@@ -4,7 +4,7 @@ Real API shapes confirmed live 2026-08-12 against a real Dallas County, TX
 meeting (dallascounty.civicweb.net) -- see BACKLOG.md/BACKLOG_DONE.md.
 """
 
-from app.platforms.base import detect_platform
+from app.platforms.base import detect_platform, register
 from app.platforms.civicweb import CivicWebAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -157,3 +157,155 @@ async def test_resolve_url_with_no_meeting_id_reports_error():
     assert result.video_warnings == [
         "Could not find a meeting id in this CivicWeb URL."
     ]
+
+
+def test_extract_meeting_id_is_case_insensitive():
+    # Real gap fixed 2026-08-27: "Diligent Community"
+    # (community.diligentoneplatform.com), a real, live second domain for
+    # this exact same underlying software (confirmed live on a real
+    # Winthrop, MN meeting -- byte-identical Portal/MeetingInformation.aspx
+    # path and Services/MeetingsService.svc backend API), uses a
+    # lowercase `id=` query param where classic civicweb.net tenants use
+    # `Id=` -- a case-sensitive match silently missed every meeting on
+    # this real, live domain. See BACKLOG_DONE.md.
+    diligent_community_url = (
+        "https://winthropminnesota.community.diligentoneplatform.com/"
+        "Portal/MeetingInformation.aspx?Org=Cal&id=63"
+    )
+    assert CivicWebAssetFinder._extract_meeting_id(diligent_community_url) == "63"
+
+
+DILIGENT_COMMUNITY_MEETING_URL = (
+    "https://winthropminnesota.community.diligentoneplatform.com/"
+    "Portal/MeetingInformation.aspx?Org=Cal&id=63"
+)
+DILIGENT_COMMUNITY_VIDEOLINK_URL = (
+    "https://winthropminnesota.community.diligentoneplatform.com/api/videolink/63"
+)
+DILIGENT_COMMUNITY_MEETING_DATA_URL = (
+    "https://winthropminnesota.community.diligentoneplatform.com/"
+    "Services/MeetingsService.svc/meetings/63/meetingData"
+)
+DILIGENT_COMMUNITY_HTML = (
+    "<html><head><title>\n\tCity of Winthrop - Meeting Information\n</title>"
+    "</head><body></body></html>"
+)
+REAL_EXTERNAL_VIDEO_ID = "ocPJdmtbtJU"
+
+
+async def test_resolve_falls_back_to_meeting_data_external_video_link(monkeypatch):
+    # Real, confirmed-live second video source: /api/videolink/{id} (the
+    # only one previously checked) came back genuinely empty ("[]") on
+    # this real Winthrop, MN meeting, while meetingData's own
+    # MeetingExternalMinutesLinkUrl carried a real, populated youtu.be
+    # link -- paired with MeetingExternalMinutesLinkName: "Video", the
+    # signal that gates trusting it. Confirmed byte-for-byte against the
+    # real API response.
+    register(YouTubeAssetFinder())
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    meeting_data_json = (
+        '{"Id":63,"Location":"Council Chambers",'
+        '"MeetingExternalLinkName":"","MeetingExternalLinkUrl":"",'
+        '"MeetingExternalMinutesLinkName":"Video",'
+        f'"MeetingExternalMinutesLinkUrl":"https://youtu.be/{REAL_EXTERNAL_VIDEO_ID}",'
+        '"Name":"Regular Council - Aug 03 2026","Time":"07:00 PM","TypeId":10}'
+    )
+    routes = {
+        DILIGENT_COMMUNITY_MEETING_URL: FakeResponse(
+            status=200, text=DILIGENT_COMMUNITY_HTML, url=DILIGENT_COMMUNITY_MEETING_URL
+        ),
+        DILIGENT_COMMUNITY_VIDEOLINK_URL: FakeResponse(
+            status=200, text="[]", url=DILIGENT_COMMUNITY_VIDEOLINK_URL
+        ),
+        DILIGENT_COMMUNITY_MEETING_DATA_URL: FakeResponse(
+            status=200, text=meeting_data_json, url=DILIGENT_COMMUNITY_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DILIGENT_COMMUNITY_MEETING_URL)
+
+    assert result.platform == "youtube"
+    assert result.source_url == DILIGENT_COMMUNITY_MEETING_URL
+    assert result.external_id == f"youtube:{REAL_EXTERNAL_VIDEO_ID}"
+    assert result.title == "Regular Council - Aug 03 2026"
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_EXTERNAL_VIDEO_ID}"
+
+
+async def test_meeting_data_external_link_ignored_when_not_named_video(monkeypatch):
+    # The two MeetingExternal*Link fields are generic link slots, not
+    # video-specific -- a populated URL whose paired ...LinkName doesn't
+    # say "Video" (e.g. a real agenda-packet or minutes link) must not be
+    # treated as a video source.
+    meeting_data_json = (
+        '{"Id":63,"Location":"Council Chambers",'
+        '"MeetingExternalLinkName":"Agenda Packet",'
+        '"MeetingExternalLinkUrl":"https://example.com/packet.pdf",'
+        '"MeetingExternalMinutesLinkName":"","MeetingExternalMinutesLinkUrl":"",'
+        '"Name":"Regular Council - Aug 03 2026","Time":"07:00 PM","TypeId":10}'
+    )
+    routes = {
+        DILIGENT_COMMUNITY_MEETING_URL: FakeResponse(
+            status=200, text=DILIGENT_COMMUNITY_HTML, url=DILIGENT_COMMUNITY_MEETING_URL
+        ),
+        DILIGENT_COMMUNITY_VIDEOLINK_URL: FakeResponse(
+            status=200, text="[]", url=DILIGENT_COMMUNITY_VIDEOLINK_URL
+        ),
+        DILIGENT_COMMUNITY_MEETING_DATA_URL: FakeResponse(
+            status=200, text=meeting_data_json, url=DILIGENT_COMMUNITY_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DILIGENT_COMMUNITY_MEETING_URL)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
+
+
+async def test_meeting_data_external_video_link_to_an_unsupported_platform_degrades_cleanly(
+    monkeypatch,
+):
+    # A real "Video"-named link that isn't a platform detect_platform()
+    # recognizes -- not confirmed to ever happen live, but the field is
+    # generic, so this must degrade to the same "no video" outcome rather
+    # than raising. Forces the UnsupportedPlatformError branch directly
+    # (rather than relying on a real unmocked URL actually being
+    # unsupported) since detect_platform() falls through to
+    # generic_fallback.py for any ordinary http(s) URL once it's
+    # registered -- which, per this file's own process-global _REGISTRY,
+    # may or may not be true depending on what other test files already
+    # ran in the same pytest process (see conftest.py's own
+    # registered_platforms() docstring).
+    import app.platforms.civicweb as civicweb_module
+    from app.platforms.base import UnsupportedPlatformError
+
+    async def _raise_unsupported(url):
+        raise UnsupportedPlatformError(url=url, detected="unknown")
+
+    monkeypatch.setattr(civicweb_module, "resolve_via_platform", _raise_unsupported)
+
+    meeting_data_json = (
+        '{"Id":63,"Location":"Council Chambers",'
+        '"MeetingExternalLinkName":"","MeetingExternalLinkUrl":"",'
+        '"MeetingExternalMinutesLinkName":"Video",'
+        '"MeetingExternalMinutesLinkUrl":"https://example.com/not-a-real-platform",'
+        '"Name":"Regular Council - Aug 03 2026","Time":"07:00 PM","TypeId":10}'
+    )
+    routes = {
+        DILIGENT_COMMUNITY_MEETING_URL: FakeResponse(
+            status=200, text=DILIGENT_COMMUNITY_HTML, url=DILIGENT_COMMUNITY_MEETING_URL
+        ),
+        DILIGENT_COMMUNITY_VIDEOLINK_URL: FakeResponse(
+            status=200, text="[]", url=DILIGENT_COMMUNITY_VIDEOLINK_URL
+        ),
+        DILIGENT_COMMUNITY_MEETING_DATA_URL: FakeResponse(
+            status=200, text=meeting_data_json, url=DILIGENT_COMMUNITY_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DILIGENT_COMMUNITY_MEETING_URL)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]

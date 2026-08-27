@@ -1,5 +1,60 @@
 # Backlog — done
 
+## CivicWeb: Diligent Community domain support — case-insensitive meeting id, second video source [Done 2026-08-27]
+
+Found while investigating a user-supplied "iCompass" footer-branding lead
+(`sonomacity.org`) — see `BACKLOG.md`'s still-open `filepro`-widget entry
+for the sibling finding from the same investigation that this fix does
+**not** address (a different URL shape, still unfixed). Full writeup of
+both, plus the discovery method that found them (footer-phrase search,
+including a lead sourced from a Facebook post):
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §15.
+
+**"Diligent Community" (`community.diligentoneplatform.com`) is a real,
+currently-live second domain for the exact same underlying software as
+`civicweb.net`** — confirmed live on a real Winthrop, MN meeting: byte-
+identical `Portal/MeetingInformation.aspx` path and `Services/
+MeetingsService.svc/meetings/{id}/meetingData` backend API, both
+reachable and returning real data on the new domain. Two real gaps this
+exposed in `app/platforms/civicweb.py`, both fixed same-day (PR #449):
+
+1. **Case-sensitive meeting-id extraction.** `_MEETING_ID_RE` required a
+   capital `Id=`; Diligent Community tenants use lowercase `id=63`. Every
+   meeting on this real, live domain silently failed with "Could not find
+   a meeting id in this CivicWeb URL." Fixed with a case-insensitive
+   regex (`[?&][Ii]d=(\d+)`).
+2. **A second, unchecked video source.** `/api/videolink/{id}` (the only
+   source previously checked) came back genuinely empty for a meeting
+   that has real video — confirmed live, the actual `youtu.be` link was
+   sitting in `meetingData`'s own `MeetingExternalMinutesLinkUrl` field,
+   paired with `MeetingExternalMinutesLinkName: "Video"`. These two
+   `MeetingExternal*Link` fields are generic link slots (a parallel
+   `MeetingExternalLinkUrl`/`Name` pair exists too), not video-specific,
+   so the fix only trusts a link when its own paired `...LinkName` field
+   says "Video", then delegates through `resolve_via_platform()` (not
+   assumed to always be YouTube) — with a clean degrade, not a raised
+   exception, if that link turns out to point at a platform this app
+   doesn't recognize.
+
+**Verified end-to-end against the real Winthrop meeting, not just unit-
+tested in isolation**: before the fix, every field was empty. After:
+real title ("Regular Council - Aug 03 2026"), real jurisdiction ("City of
+Winthrop"), a real YouTube video delegated correctly, and 4,165 real
+transcript segments.
+
+9 new/updated tests in `tests/test_civicweb.py`. One test-design note
+worth keeping in mind for future adapter tests: an early version of the
+"degrades cleanly on an unsupported platform" test relied on
+`detect_platform()` genuinely returning nothing usable for a bare
+`example.com` URL — passed in isolation, failed in the full suite,
+because `generic_fallback.py` (registered under `platform_name =
+"unknown"`) had already been registered by an earlier-running test file
+in the same process (`_REGISTRY` is process-global and tests
+deliberately leak registrations into it, per `conftest.py`'s own
+`registered_platforms()` docstring). Fixed by monkeypatching
+`resolve_via_platform` directly to force the exception path rather than
+depending on real, order-sensitive registry state.
+
 ## ChampDS's whole-audio-cache fix ported from the cloud worker to the local script [Done 2026-08-27, WO-64]
 
 WO-54 (2026-08-25, see that entry below) fixed ChampDS's `ffmpeg timed out

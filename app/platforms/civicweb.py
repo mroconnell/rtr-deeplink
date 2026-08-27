@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
-from .base import AssetFinder
+from .base import AssetFinder, UnsupportedPlatformError, resolve_via_platform
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
@@ -31,7 +31,17 @@ from ..utils import jurisdiction_enrich
 # empty on the one real meeting checked -- not built here, per this repo's
 # "don't claim a data path works without a positive example" convention;
 # see BACKLOG.md.
-_MEETING_ID_RE = re.compile(r"[?&]Id=(\d+)")
+# Case-insensitive as of 2026-08-27: confirmed live that "Diligent
+# Community" (community.diligentoneplatform.com), a real, currently-live
+# second domain for the exact same underlying software -- same
+# Portal/MeetingInformation.aspx path, same Services/MeetingsService.svc
+# backend API, confirmed byte-identical live on a real tenant
+# (winthropminnesota) -- uses a lowercase `id=` query param where classic
+# civicweb.net tenants use `Id=`. Both real, both live; a case-sensitive
+# match silently missed every Diligent Community tenant, real video and
+# all (confirmed: MeetingExternalMinutesLinkUrl populated with a real
+# youtu.be link on the same meeting this was found from).
+_MEETING_ID_RE = re.compile(r"[?&][Ii]d=(\d+)")
 _TITLE_JURISDICTION_RE = re.compile(
     r"<title>\s*([^<]+?)\s*-\s*Meeting Information\s*</title>", re.IGNORECASE
 )
@@ -76,7 +86,34 @@ class CivicWebAssetFinder(AssetFinder):
         if entry and entry.get("MeetingDate"):
             date = entry["MeetingDate"][:10]  # "2026-08-04T00:00:00" -> "2026-08-04"
 
-        if not video_id:
+        # Real, confirmed-live second video source, 2026-08-27: `/api/
+        # videolink/{id}` (the only one previously checked) can come back
+        # genuinely empty (`[]`) even when the meetingData service's own
+        # MeetingExternalLinkUrl/MeetingExternalMinutesLinkUrl pair
+        # carries a real video link -- confirmed on a real Winthrop, MN
+        # meeting (winthropminnesota.community.diligentoneplatform.com,
+        # a "Diligent Community"-branded second domain for the exact same
+        # underlying software, see _MEETING_ID_RE's own comment): a real,
+        # populated `youtu.be` URL sat in `MeetingExternalMinutesLinkUrl`
+        # while `/api/videolink/` returned nothing. Each of these two
+        # fields is a generic "external link" slot, not video-specific --
+        # only trusted here when its own paired `...LinkName` field says
+        # so, and delegated through `resolve_via_platform()` rather than
+        # assumed to always be YouTube, since nothing here confirms that
+        # for every tenant.
+        external_video_url = None
+        if meeting_data:
+            for link_field, name_field in (
+                ("MeetingExternalMinutesLinkUrl", "MeetingExternalMinutesLinkName"),
+                ("MeetingExternalLinkUrl", "MeetingExternalLinkName"),
+            ):
+                link_url = meeting_data.get(link_field)
+                link_name = meeting_data.get(name_field) or ""
+                if link_url and "video" in link_name.lower():
+                    external_video_url = link_url
+                    break
+
+        if not video_id and not external_video_url:
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -86,7 +123,28 @@ class CivicWebAssetFinder(AssetFinder):
                 video_warnings=["No video found for this meeting."],
             )
 
-        resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)
+        if video_id:
+            resolved = await YouTubeAssetFinder.resolve_video_id(
+                video_id, source_url=url
+            )
+        else:
+            try:
+                resolved = await resolve_via_platform(external_video_url)
+                resolved.source_url = url
+            except UnsupportedPlatformError:
+                # A real, live "video" link that isn't one this app can
+                # play -- not confirmed to ever happen, but the field is
+                # generic ("external link"), not guaranteed video, so
+                # degrade to the same "no video" outcome rather than
+                # letting an unhandled exception break the whole resolve.
+                return ResolvedMeeting(
+                    platform=self.platform_name,
+                    source_url=url,
+                    title=title,
+                    date=date,
+                    jurisdiction=jurisdiction,
+                    video_warnings=["No video found for this meeting."],
+                )
         if title:
             resolved.title = title
         if date:

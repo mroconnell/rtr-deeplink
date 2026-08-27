@@ -1517,6 +1517,21 @@ table (search the exact footer phrase, or check whether other already-
 known CivicWeb tenants also carry both widgets) before writing a second
 meeting-id-extraction path into `civicweb.py`.
 
+**Update 2026-08-27 — a related but distinct gap found by the same
+footer-phrase search was fixed same-day; this one (the `filepro` widget
+shape) is still open.** Pushing the same "iCompass" search further
+surfaced a second, genuinely different real domain — "Diligent
+Community" (`community.diligentoneplatform.com`), confirmed live to be
+the same underlying software as `civicweb.net` (byte-identical
+`Portal/MeetingInformation.aspx` path and `Services/MeetingsService.svc`
+API) but broken by a lowercase `id=` query param and a real video source
+(`MeetingExternalMinutesLinkUrl`) the adapter never checked. Both fixed
+in `rtr-deeplink` PR #449, see `BACKLOG_DONE.md`. That fix does **not**
+touch the `filepro` shape this entry describes — different URL path,
+different real gap, still unfixed. Full writeup of both findings from
+the same investigation: `ENUMERATION_METHODS.md` §15 in
+`rtr-business/research`.
+
 ### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 
 **Symptom A (the `ffmpeg timed out after 120s` cluster) was fixed
