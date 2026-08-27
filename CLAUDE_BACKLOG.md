@@ -708,3 +708,55 @@ site-wide for `redtaperecordings.com`:
   which URLs are actually affected before guessing further — flagging
   this one as a genuine question for the user rather than a hypothesis,
   since there isn't yet enough signal to reason from.
+
+## Platform coverage leads from an external researcher (2026-08-27)
+
+Five platforms passed along by a researcher (not this project) as
+candidates for future enumeration. Recorded here, not `BACKLOG.md`,
+because none of these have been checked against a real, live sample yet
+— per `CLAUDE.md`'s own house rule, no adapter work should start until
+that's done. One of the five turns out to already be built.
+
+- **ProudCity — already shipped, not a new lead.** `app/platforms/
+  proudcity.py` (PR #425), with a real, live-verified adapter and its own
+  enumeration round (~40 real tenants found via GitHub issue-tracker
+  leakage + Wayback CDX, see `BACKLOG_DONE.md`'s 2026-08-26 entries).
+  Worth telling the researcher this one's done, so their next pass
+  doesn't duplicate it.
+- **Revize Solutions** (`revize.com`) — genuinely new, zero references
+  anywhere in this repo. Researcher's tip: look for `revize.com` links in
+  footer scripts or custom web forms — same "check the real footer
+  credit text first" lesson `CIVICPLUS_FIRST_RUN.md`'s BuiltWith
+  addendum already learned the hard way (guessed wording wasted a whole
+  pass on other platforms; fetching one real page first found the actual
+  phrase in one try). Fetch a real, live Revize-powered municipal site
+  before guessing what that credit line actually says.
+- **Streamline** — new. Researcher describes it as built specifically for
+  small special districts (fire/water/levee boards) with a "DocAccess"
+  PDF compliance tool as a distinguishing marker. Worth checking early
+  whether it hosts video at all, or is agenda/document-only like
+  destinyhosted/BoardDocs — those wrappers were worth adapters only
+  because of what they link *out* to (see `ENUMERATION_METHODS.md` §13a),
+  not native video of their own.
+- **Town Web** (`townweb.com`) — new. Small-town/borough/village focus,
+  "Powered by Town Web" branding per the researcher — a real, checkable
+  footer phrase per the same lesson as Revize above. Small special-purpose
+  platforms like this are exactly where the BuiltWith free-tier list
+  (`CIVICPLUS_FIRST_RUN.md` addendum) is worth checking first, before any
+  manual crawl — a two-minute check of whether `trends.builtwith.com/
+  websitelist/TownWeb` (or similar) resolves to a real tracked technology
+  at all.
+- **EvoGov** — new. Researcher flags "no separate platform migration
+  patterns" as a distinguishing trait, which — if accurate — cuts against
+  the CDX/subdomain-enumeration methods this project has leaned on most
+  (those depend on tenants living on a recognizable shared subdomain
+  pattern). Worth confirming that claim against one real tenant before
+  assuming standard CDX/subdomain enumeration won't work here.
+
+**Suggested first step whenever this gets picked up**: the BuiltWith
+free-tier sweep (`CIVICPLUS_FIRST_RUN.md`, done 2026-08-27) took minutes
+per platform and found real, current customer counts for CivicPlus,
+Granicus, TelVue, and ProudCity with zero signup. Running the same check
+against these four names first — before any manual crawl — would answer
+"is this platform even fingerprintable, and roughly how big is it" for
+free, the same way it did for the platforms already checked.
