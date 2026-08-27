@@ -6,6 +6,51 @@ detail — what was checked, on which real cities, what turned out to be a
 non-issue vs. a real bug — is itself useful project memory, not just a
 changelog of task titles.
 
+## Re-ran the ProudCity classify-then-push tooling against ClerkBase and TelVue's dormant candidate lists [Done 2026-08-26]
+
+Applying the session's own lesson from the ProudCity round: the
+resolve-locally/classify/push tooling built there isn't ProudCity-
+specific, and this repo already had real, never-fully-processed
+candidate lists sitting in `~/Documents/rtr-business/research/
+url_lists/` for exactly the platforms README flags as thin
+(`clerkshq_all.txt`, `telvue_reingest.txt`) — cheaper to run those
+through the same tooling than to start a fresh enumeration round.
+
+**ClerkBase (`clerkshq.com`) — went from 1 confirmed customer to 6 real,
+live, pushed pages.** Ran all 26 candidates in `clerkshq_all.txt`
+through the real resolver locally. 5 real tier-1 pushes (complete
+transcripts): Cumberland Town Council RI (2,623 segments), East
+Providence City Council RI (2,266), Pawtucket City Council RI (552),
+South Kingstown School Committee RI (2,834), West Warwick Town Council
+RI (3,720). One tier-2 push (video found, no segments yet): Scituate RI.
+The other 19 came back with no real content on the specific `docId`
+checked — real per-URL negatives (dead old document ids, meetings with
+no video), not adapter bugs.
+
+**A real, instructive non-bug found along the way**: the *original*
+confirmed customer, Yellow Springs OH, no longer resolves via its old
+candidate URL (`?docId=AGENDA`) — looked like a possible regression,
+wasn't one. `docId=AGENDA` is a "current meeting" pointer, not a stable
+permalink; fetching the same URL now lands on a different (later),
+genuinely video-less meeting than the one originally confirmed.
+Confirmed directly: the page's `autoOpenDocUrl`/`autoOpenDocTitle`
+variables still populate correctly, and the linked document (a real,
+current Aug 17, 2026 meeting) simply has no video embedded this time.
+Worth remembering before treating any `docId=AGENDA`-style stale-looking
+result as a platform regression.
+
+**TelVue — 3 more real pages pushed**, all Ashland, OR (2,683 / 4,144 /
+4,108 segments) — the same jurisdiction as the original sample, not new
+city diversity, but real, complete, previously-un-pushed transcripts
+that were already sitting in `telvue_reingest.txt` unprocessed.
+
+**Not re-run**: ChampDS's 65-URL list (`champds_all.txt`) is already
+documented as shipped to the tier-3 auto-transcription queue via a
+separate, earlier PR — re-running it here would risk duplicate/
+conflicting queue state, not add real value. SuiteOne's 5 remaining CDX
+leads are already confirmed dead (404) per `README.md` — not worth a
+third check without a fresh enumeration pass first.
+
 ## ProudCity — new platform, real evidence gathered end-to-end, nothing built yet [Investigated 2026-08-26]
 
 A new vendor (`proudcity.com`, WordPress-based government CMS,
