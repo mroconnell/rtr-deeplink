@@ -56,9 +56,9 @@ from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import (
     extract_chunk_audio,
     extract_full_audio,
-    is_hls,
     is_plausible_meeting_duration,
     probe_duration,
+    should_cache_whole_audio,
     slice_cached_audio,
 )
 from app.utils.retry import retry_async
@@ -334,38 +334,6 @@ def _reset_audio_cache_root() -> None:
         logger.warning("Could not reset the job audio cache", exc_info=True)
 
 
-def _should_cache_whole_audio(media_url: str, total_chunks: int) -> bool:
-    """Whether to pull this job's audio once instead of per chunk.
-
-    Two conditions, and both are load-bearing:
-
-    * **Not HLS.** ffmpeg fetches only the segments covering a chunk's
-      window off a playlist, so per-chunk extraction is already minimal
-      there; pre-fetching everything would download the whole video
-      stream to save nothing.
-    * **More than one chunk.** With a single chunk there is nothing to
-      amortise -- the whole-file read and the chunk read are the same
-      read.
-
-    For a multi-chunk progressive file this is never worse on bytes (both
-    approaches move the whole file in total) and strictly better on
-    requests and on seek cost, which for ChampDS is nearly all of the
-    cost -- see media_probe.extract_full_audio()'s measurements.
-
-    **The gate is deliberately broad, and the caller's fallback is what
-    makes that safe (WO-58).** Not every progressive source has ChampDS's
-    seek pathology -- IQM2 was measured on 2026-08-25 and does not, its
-    time-to-first-byte being flat and non-monotonic with offset (0.05s at
-    byte 0, 2.8s at 50MB, 1.4s at 150MB -- ordinary variance, not a scan).
-    Detecting the pathology per source would cost its own probe on every
-    job, so instead this takes the cheap structural test and the caller
-    retries per-chunk if the whole-file pull does not work out. That
-    turns "wrong guess" into "slower once" rather than "failed job",
-    which matters: this gate covers 99 IQM2 pages in the current backlog.
-    """
-    return total_chunks > 1 and not is_hls(media_url)
-
-
 async def _chunk_audio_via_cache(
     *,
     job_id: int,
@@ -463,7 +431,7 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             # meeting's audio is pulled once and every chunk is then a local
             # slice. HLS keeps the per-chunk path, where fetching is already
             # minimal.
-            if _should_cache_whole_audio(media_url, total_chunks):
+            if should_cache_whole_audio(media_url, total_chunks):
                 extracted, extraction_error = await _chunk_audio_via_cache(
                     job_id=job_id,
                     media_url=media_url,

@@ -167,8 +167,11 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.media_probe import (
     extract_chunk_audio,
+    extract_full_audio,
     is_plausible_meeting_duration,
     probe_duration,
+    should_cache_whole_audio,
+    slice_cached_audio,
 )  # noqa: E402
 from app.utils.retry import retry_async  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -1012,8 +1015,73 @@ async def transcribe_meeting(
             f"in {path}, a re-run resumes from there"
         )
 
+    # A progressive multi-chunk source (ChampDS above all -- see
+    # media_probe.extract_full_audio()'s own docstring for the
+    # measurements) pays a server-side seek scan per chunk that grows
+    # with the offset, so the whole meeting's audio is pulled once here
+    # and every chunk becomes a local slice instead. Same gate and same
+    # functions worker/main.py's cloud pipeline already uses (WO-54);
+    # ported here 2026-08-27 (WO-64) after this exact ChampDS timeout
+    # took out 5 of 5 meetings in one local run that the cloud fix would
+    # have carried through -- see BACKLOG_DONE.md's WO-64 entry. Unlike
+    # the worker (which re-checks the gate on every poll, since each
+    # chunk can be claimed by a different worker process), this script
+    # processes one meeting sequentially in one process, so a failed
+    # whole-file pull is remembered for the rest of THIS meeting's chunks
+    # rather than being retried every chunk (that would burn a full
+    # _FULL_AUDIO_TIMEOUT_SECONDS on every remaining chunk for no gain --
+    # the worker only avoids that cost by luck, since a fresh poll after
+    # a failure typically lands on the same still-failing state anyway).
+    use_whole_audio_cache = should_cache_whole_audio(result.video_url, total_chunks)
+    whole_audio_cache_failed = False
+
+    async def _extract_chunk(
+        cache_path: Path, start: float, dur: float, out_path: Path
+    ):
+        nonlocal whole_audio_cache_failed
+        if use_whole_audio_cache and not whole_audio_cache_failed:
+            if not cache_path.exists():
+                logger.info(
+                    "    pulling whole-meeting audio once (seek-hostile source) "
+                    "instead of seeking per chunk"
+                )
+                ok, reason = await extract_full_audio(
+                    result.video_url, source_page_url=source_url, out_path=cache_path
+                )
+                if not ok:
+                    cache_path.unlink(missing_ok=True)
+                    whole_audio_cache_failed = True
+                    logger.info(
+                        "    whole-audio pull failed (%s) -- falling back to "
+                        "per-chunk extraction for the rest of this meeting",
+                        reason,
+                    )
+                    return await extract_chunk_audio(
+                        result.video_url,
+                        start=start,
+                        duration=dur,
+                        source_page_url=source_url,
+                        out_path=out_path,
+                    )
+                logger.info(
+                    "    cached %s bytes of audio -- every remaining chunk of "
+                    "this meeting is now a local slice with no network at all",
+                    cache_path.stat().st_size,
+                )
+            return await slice_cached_audio(
+                cache_path, start=start, duration=dur, out_path=out_path
+            )
+        return await extract_chunk_audio(
+            result.video_url,
+            start=start,
+            duration=dur,
+            source_page_url=source_url,
+            out_path=out_path,
+        )
+
     chunks_done = first_chunk
     with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
+        whole_audio_path = Path(tmpdir) / "full_audio.mp3"
         try:
             for idx in range(first_chunk, total_chunks):
                 chunk_wall_start = time.time()
@@ -1022,13 +1090,7 @@ async def transcribe_meeting(
                 dur = chunk_duration(idx, chunk_size_seconds, duration)
                 audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
                 extracted, extraction_error = await retry_async(
-                    lambda: extract_chunk_audio(
-                        result.video_url,
-                        start=start,
-                        duration=dur,
-                        source_page_url=source_url,
-                        out_path=audio_path,
-                    ),
+                    lambda: _extract_chunk(whole_audio_path, start, dur, audio_path),
                     label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
                     attempts=MEDIA_ATTEMPTS,
                     base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
@@ -1170,10 +1232,20 @@ async def process_one(
             "(or a future yt-dlp-audio fallback, see BACKLOG.md), not direct URL audio extraction",
         }
 
+    # detect_platform() fresh, not page["platform"] -- that field is whatever
+    # was true at original ingest time, and a domain added to an adapter's
+    # known-domains list *after* a page was ingested (real case, 2026-08-27:
+    # several ProudCity .gov domains ingested as "unknown" before #425-428
+    # added ProudCity support) leaves it stale forever. get_finder() on a
+    # stale "unknown" raises UnsupportedPlatformError, which reads identically
+    # to a genuinely-unsupported site -- silently hiding now-resolvable
+    # meetings from every unattended (non --url) run. main()'s --url path
+    # already does this fresh lookup; this brings the default candidate-list
+    # path in line with it.
     result = await transcribe_meeting(
         engine,
         page["source_url_normalized"],
-        page["platform"],
+        detect_platform(page["source_url_normalized"]),
         chunk_size_seconds=chunk_size_seconds,
         resume=resume,
         chunk_cooldown_seconds=chunk_cooldown_seconds,

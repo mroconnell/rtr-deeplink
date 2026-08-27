@@ -499,6 +499,25 @@ under everything else. This repo extracts and fixes just that part.
   file's own comment on the second block for the full reasoning, and
   `BACKLOG.md`'s matching entry for the residual auto-generation race
   this avoids.
+- **There are two independent transcription paths — the cloud worker
+  (`worker/main.py`) and the local script
+  (`scripts/transcribe_backlog_locally.py`) — and an improvement to one
+  does not reach the other on its own.** Real, confirmed gap (WO-64,
+  2026-08-27): WO-54's ChampDS whole-audio-cache fix (see
+  `BACKLOG_DONE.md`) landed in the worker on 2026-08-25 and sat there for
+  two days before the local script hit the identical, already-solved
+  failure — 5 of 5 meetings lost in one run. **Whenever you change either
+  script's media-extraction/chunking/resilience logic (not adapter or
+  ingest logic, which are already shared through `app/platforms/`),
+  check whether the same improvement applies to the other one.** If it
+  does, either port it in the same change (preferred when small, and put
+  the shared logic in `app/platforms/media_probe.py` — already the
+  common import both scripts use — rather than duplicating it, the way
+  `should_cache_whole_audio()` was relocated there for exactly this
+  reason) or, if porting is out of scope for the current task, log the
+  gap as an explicit `BACKLOG.md` entry naming both scripts rather than
+  letting it go unrecorded. This cuts both directions: a local-script
+  improvement worth having in the cloud pipeline needs the same check.
 
 - **This repo is sometimes worked on by more than one session/dev at the
   same time — check before assuming the working tree is yours alone.**

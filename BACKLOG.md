@@ -1538,8 +1538,12 @@ the same investigation: `ENUMERATION_METHODS.md` §15 in
 2026-08-25** by pulling a progressive source's whole audio once per job
 instead of seeking per chunk — full measurement, including the ChampDS
 seek-cost model that forced the design, in `BACKLOG_DONE.md`'s "ChampDS
-charges for every seek". This entry keeps only the half that is still
-open.
+charges for every seek". That fix landed in the cloud worker only;
+`scripts/transcribe_backlog_locally.py` did not get it until WO-64
+(2026-08-27, see `BACKLOG_DONE.md`) after the exact same symptom took out
+5 of 5 ChampDS meetings in one local run. Both paths now share one
+`should_cache_whole_audio()` gate in `app/platforms/media_probe.py`. This
+entry keeps only the half that is still open.
 
 **Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
 for this meeting".** Untouched by the above and still unexplained; a fast
@@ -2450,7 +2454,8 @@ job; this is just one place where it does it too well.
   pass measured 0.128 s/s vs 0.12 s/s for a good cold per-chunk — no real
   win, because the cost is per-segment CDN fill rather than ChampDS's
   O(N²) seek, and the same segments get fetched either way.
-  `_should_cache_whole_audio()`'s HLS exclusion is correct as written.
+  `should_cache_whole_audio()`'s (`app/platforms/media_probe.py`) HLS
+  exclusion is correct as written.
   **Full measurements, the three earlier Granicus numbers this
   invalidates, and the "one fresh asset per data point" rule that
   probing this host requires are in `BACKLOG_DONE.md`** under
