@@ -3791,8 +3791,18 @@ means somebody found the example, not that somebody decided to guess.
   - **Riverside County, CA** (2.5M) — `rivco*.org` domains 403
     non-browser fetches (Cloudflare/WAF), the same class of problem
     `headless_browser.py` was built to solve for Minneapolis LIMS/SLC.
-    Likely just needs the existing solution pointed at a new domain, but
-    unconfirmed.
+    **Refined 2026-08-26, applying that session's honest-vs-browser
+    header-negotiation finding**: confirmed on both `rivcocob.org`
+    (Clerk of the Board) and `rivcotv.org` (the county's own video
+    streaming domain) that this is specifically a real Cloudflare
+    `Just a moment...` JS challenge interstitial, not a plain UA/header
+    mismatch — an honest identified UA, a full verbatim Chrome header
+    set, and a plain default UA all got the identical challenge page. So
+    "likely just needs different headers" is ruled out; this is
+    genuinely the same shape `headless_browser.py` already solves for
+    LIMS/SLC/Wayne County (a real headless Chromium fetch executes the
+    challenge's JS, unlike this header-only test) — untried against
+    Riverside specifically, and the actual next step, not a guess.
   - **Broward County, FL** — a real, confirmed **positive** two-tier
     Granicus captions example (a live CC toggle plus a separate
     on-demand "enhanced" captions link). Worth checking against
