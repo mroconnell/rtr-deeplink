@@ -232,6 +232,16 @@ REQUEST_DELAY_SECONDS = 2.0
 # for why this exists at all.
 CHUNK_SIZE_SECONDS = 900
 
+# Default --chunk-seconds for --engine gemini, deliberately much smaller
+# than CHUNK_SIZE_SECONDS above -- see --chunk-seconds' own --help text
+# for the arithmetic (a 900s chunk alone is ~22500 estimated input tokens,
+# more than double the free tier's entire 10000-tokens/minute budget in
+# one call). 180s is ~4500 estimated tokens -- comfortably under budget
+# with real margin for GeminiTranscriptionEngine's own rate-limiter pacing
+# to work with across a multi-chunk meeting, rather than every single
+# chunk needing its own wait.
+GEMINI_DEFAULT_CHUNK_SECONDS = 180
+
 # --- Retry/backoff for this script's own calls to the Archive API ----------
 # Real incident, 2026-08-16/17: the very first HTTP call a real overnight
 # run makes (GET /internal/transcription-backlog, fetching the whole 40-
@@ -1267,17 +1277,44 @@ async def main() -> None:
         "resolve. Ignores --limit when set.",
     )
     parser.add_argument(
+        "--engine",
+        choices=["whisper", "gemini"],
+        default="whisper",
+        help="Which TranscriptionEngine to use (worker/transcription_engine.py). "
+        "'whisper' (default): self-hosted faster-whisper, same as the cloud worker's engine "
+        "but with real RAM to use a bigger model (see --model-size). "
+        "'gemini': Gemini 3.5 Transcribe via the Google API -- evaluated 2026-08-26 against a "
+        "real, live Whisper `tiny` bug (see CLAUDE_BACKLOG.md's 'On-demand transcription "
+        "follow-ups' entry) and requires GEMINI_API_KEY (or GOOGLE_API_KEY) in .env. Free-tier "
+        "rate-limited (see GeminiTranscriptionEngine's own docstring) -- fine for this script's "
+        "occasional manual runs, NOT sized for the cloud pipeline's continuous volume. "
+        "--model-size/--cpu-threads are ignored (and warned about) when this is 'gemini'.",
+    )
+    parser.add_argument(
+        "--gemini-tokens-per-minute",
+        type=int,
+        default=None,
+        help="Override GeminiTranscriptionEngine's token-per-minute rate-limit pacing budget "
+        "(default: the real observed free-tier ceiling, 10000). Raise this if using a paid-tier "
+        "key, where that ceiling doesn't apply. Ignored for --engine whisper.",
+    )
+    parser.add_argument(
         "--model-size",
         default=None,
         help="faster-whisper model size (tiny|base|small|medium|large-v3|...). "
-        "Defaults based on this Mac's real total RAM -- see _pick_default_model_size().",
+        "Defaults based on this Mac's real total RAM -- see _pick_default_model_size(). "
+        "Ignored for --engine gemini.",
     )
     parser.add_argument(
         "--chunk-seconds",
         type=int,
-        default=CHUNK_SIZE_SECONDS,
-        help=f"Seconds of audio per ffmpeg extraction call (default {CHUNK_SIZE_SECONDS} -- "
-        "see module docstring for why this isn't just 'the whole meeting at once' locally).",
+        default=None,
+        help=f"Seconds of audio per extraction call. Default {CHUNK_SIZE_SECONDS} for "
+        "--engine whisper (see module docstring for why this isn't just 'the whole meeting at "
+        f"once' locally); default {GEMINI_DEFAULT_CHUNK_SECONDS} for --engine gemini -- a "
+        f"{CHUNK_SIZE_SECONDS}s chunk alone is {CHUNK_SIZE_SECONDS * 25} estimated input tokens, "
+        "well over the free tier's entire 10000-tokens/minute budget in one call, so Gemini "
+        "gets a smaller default independent of the Whisper-sized constant above.",
     )
     parser.add_argument(
         "--promote",
@@ -1346,21 +1383,42 @@ async def main() -> None:
         )
         sys.exit(1)
 
-    model_size = args.model_size or _pick_default_model_size()
-    cpu_threads = (
-        args.cpu_threads
-        if args.cpu_threads is not None
-        else _pick_default_cpu_threads()
-    )
+    chunk_seconds = args.chunk_seconds
+    if chunk_seconds is None:
+        chunk_seconds = (
+            GEMINI_DEFAULT_CHUNK_SECONDS
+            if args.engine == "gemini"
+            else CHUNK_SIZE_SECONDS
+        )
+
+    if args.engine == "gemini":
+        if args.model_size is not None:
+            logger.warning("--model-size is ignored with --engine gemini")
+        if args.cpu_threads is not None:
+            logger.warning("--cpu-threads is ignored with --engine gemini")
+        model_size = cpu_threads = None
+    else:
+        if args.gemini_tokens_per_minute is not None:
+            logger.warning(
+                "--gemini-tokens-per-minute is ignored with --engine whisper"
+            )
+        model_size = args.model_size or _pick_default_model_size()
+        cpu_threads = (
+            args.cpu_threads
+            if args.cpu_threads is not None
+            else _pick_default_cpu_threads()
+        )
 
     # A real, plain-English "what is this run actually doing" line up front
     # -- someone checking on an unattended overnight run should be able to
-    # see the real config (model size, whether it's a dry run, how many
-    # meetings it's targeting) from the top of the log without reading
+    # see the real config (engine, model size, whether it's a dry run, how
+    # many meetings it's targeting) from the top of the log without reading
     # Python source.
     logger.info(
-        "Run started: model_size=%s (%s), cpu_threads=%s (%s), chunk_cooldown_seconds=%s, "
-        "limit=%s, newest_first=%s, dry_run=%s, chunk_seconds=%s, promote=%s, resume=%s, target=%s",
+        "Run started: engine=%s, model_size=%s (%s), cpu_threads=%s (%s), "
+        "chunk_cooldown_seconds=%s, limit=%s, newest_first=%s, dry_run=%s, chunk_seconds=%s, "
+        "promote=%s, resume=%s, target=%s",
+        args.engine,
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
         cpu_threads,
@@ -1371,7 +1429,7 @@ async def main() -> None:
         args.limit if args.limit is not None else "(none -- full backlog)",
         args.newest_first,
         args.dry_run,
-        args.chunk_seconds,
+        chunk_seconds,
         args.promote,
         not args.no_resume,
         args.url or "(oldest-first backlog queue)",
@@ -1379,13 +1437,26 @@ async def main() -> None:
 
     register_all_finders()
 
-    logger.info(
-        "Loading faster-whisper model (this can take a while on first run, while weights download)..."
-    )
-    from worker.transcription_engine import FasterWhisperEngine
+    if args.engine == "gemini":
+        from worker.transcription_engine import GeminiTranscriptionEngine
 
-    engine = FasterWhisperEngine(model_size=model_size, cpu_threads=cpu_threads)
-    logger.info("Model loaded.")
+        gemini_kwargs = {}
+        if args.gemini_tokens_per_minute is not None:
+            gemini_kwargs["tokens_per_minute"] = args.gemini_tokens_per_minute
+        try:
+            engine = GeminiTranscriptionEngine(**gemini_kwargs)
+        except RuntimeError as e:
+            logger.error(str(e))
+            sys.exit(1)
+        logger.info("Gemini 3.5 Transcribe engine ready.")
+    else:
+        logger.info(
+            "Loading faster-whisper model (this can take a while on first run, while weights download)..."
+        )
+        from worker.transcription_engine import FasterWhisperEngine
+
+        engine = FasterWhisperEngine(model_size=model_size, cpu_threads=cpu_threads)
+        logger.info("Model loaded.")
 
     async with aiohttp.ClientSession() as session:
         if args.url:
@@ -1461,7 +1532,7 @@ async def main() -> None:
                     engine,
                     page,
                     dry_run=args.dry_run,
-                    chunk_size_seconds=args.chunk_seconds,
+                    chunk_size_seconds=chunk_seconds,
                     promote=args.promote,
                     resume=not args.no_resume,
                     chunk_cooldown_seconds=args.chunk_cooldown_seconds,

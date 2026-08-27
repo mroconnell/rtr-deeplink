@@ -238,6 +238,92 @@ Both raised directly by the user alongside the original transcription
 request, deliberately not built as part of it — see `BACKLOG_DONE.md`'s
 2026-08-08 entry for the full feature this extends.
 
+- **Gemini 3.5 Transcribe's custom vocabulary looks like a real fix for a
+  real, live bug — worth a serious look, not just a curiosity (evaluated
+  2026-08-26).** Google announced `gemini-3.5-transcribe` this session
+  (promo email, free tier through end of 2026); a one-off side-by-side
+  eval script (not committed — lived in a scratchpad, throwaway) ran it
+  against the actual deployed Whisper `tiny` model on real audio from two
+  live meetings, targeting this session's own pet-peeve bug: "ADU"
+  transcribed as "80 use"/"80 user"/"80 used"/"ADO". Real, decisive
+  result: Whisper `tiny` mistranscribed the ADU abbreviation in **every
+  one of 9 real windows** across both meetings (San Diego's 2025-06-16
+  council meeting, already live at `/m/city-of-san-diego-ca-2025-06-16-
+  city-council-meetings-monday-agenda` with 25+ real "80 use" instances in
+  its stored transcript; St Helena's 2026-08-25 ADU-ordinance meeting,
+  CivicClerk). Gemini with `custom_vocabulary: ["ADU", "ADUs", "accessory
+  dwelling unit", "accessory dwelling units"]` got "ADU"/"ADUs" **right in
+  all 5 windows that actually completed** (free-tier rate limits — see
+  below — throttled 4 of 9 calls before they could run). Whisper's failure
+  is specifically on the spoken *abbreviation*: it transcribes "accessory
+  dwelling unit" spoken in full correctly, just not the three-letter
+  initialism. Separately, on Beaufort SC's already-known garbled Pledge of
+  Allegiance case (`/m/beaufort-board-of-education-academics-committee`,
+  "the United States of Arizona" in BACKLOG_DONE.md) — no custom
+  vocabulary, testing raw quality — Gemini also came out ahead of Whisper
+  `tiny` on the same real audio window, with only a minor doubled-word
+  glitch ("allegiance allegiance").
+  **Real constraints found along the way, not in the published docs
+  page:** (1) `custom_vocabulary` and `timestamp_granularities` are
+  mutually exclusive — a request with both gets a 400
+  ("custom_vocabulary is incompatible with timestamps"); this eval
+  dropped word timestamps whenever vocab was set. (2) The free tier is
+  genuinely rate-limited — hit a 429 ("quota exceeded... limit: 10000",
+  `generativelanguage.googleapis.com/generate_content_free_tier_input_
+  token_count`) mid-run; paid pricing is cheap ($0.75/1M input tokens
+  through Dec 2026) but real usage needs billing enabled, not just a free
+  key. (3) Untested here: the 1-hour cap (30 min with diarization/word-
+  timestamps on) that would require chunking long meetings the same way
+  Whisper already is (see this file's CLAUDE.md chunking notes) — every
+  eval window was a short clip, well under either cap. (4) Only compared
+  against the actual deployed `tiny` model, not a bigger local Whisper —
+  this shows "would switching help what's live today," not "beats
+  Whisper's best."
+  **Update, same session:** the custom_vocabulary-vs-timestamps tradeoff
+  above turned out to be moot for this specific bug. Re-tested the same
+  San Diego window with `custom_vocabulary` OMITTED (just `mode:
+  {type: verbatim, timestamp_granularities: [word]}`): the baseline model
+  *already* transcribed every "ADU"/"ADUs" in that window correctly,
+  no vocab boost needed, AND the response carried real per-word timing
+  (`steps[0].content[0].annotations`, each a `{start_offset, end_offset,
+  text}` triple like `{"Mission", "1s", "1.200s"}` — chunk-relative,
+  same shape `worker/segment_utils.py`'s `shift_segments()` already
+  expects, just needs the `"1.200s"` string form parsed to float
+  seconds). So for THIS bug, skip `custom_vocabulary` entirely and keep
+  timestamps — no tradeoff to make. (Confirmed separately: WITH
+  `custom_vocabulary` set, `model_dump()`'s full response has no timing
+  data anywhere, not just absent from `output_text` — so the two really
+  are mutually exclusive on this API when you do need vocab-boosting for
+  something rarer than "ADU" turned out to be.)
+  **Cost/volume context, real numbers (2026-08-26):** the cloud
+  auto-transcription pipeline alone completed 508 meetings /
+  ~4.06M seconds (~1,128 hours) of audio in the trailing 14 days
+  (`transcription_jobs` in the Archive's DB, `rtr_archive` — NOT the
+  resolver's own `rtr_deeplink_db`, same Postgres server, two logical
+  databases per `render.yaml`'s `databases:` comment; easy to query the
+  wrong one). At 25 audio tokens/sec + ~175 text tokens/min (Gemini's
+  published rate), that's ~113M tokens / ~$345 at paid-tier pricing for
+  just those 14 days — and it blows straight through the free tier's
+  real rate limit (10k input tokens/min ≈ only ~400s of audio/min, so
+  ~6.7x realtime max) almost immediately at that volume. The *local*
+  backlog script is the realistic free-tier fit: an occasional, manual,
+  much-lower-volume run, not the continuous cloud pipeline — gate it to
+  the free tier's real throughput ceiling the same way that script
+  already thermal-paces Whisper (`--chunk-cooldown-seconds`), and this
+  eval's finding suggests real quality upside at zero dollar cost, with
+  timestamps intact, for exactly the kind of ADU-class bug that motivated
+  this eval.
+  **What a real build would need**, if this gets prioritized: parsing
+  the `"1.200s"`-style offset strings into the existing segment schema, a
+  decision on whether Gemini becomes a second `TranscriptionEngine`
+  alongside `FasterWhisperEngine` (worker/transcription_engine.py's
+  existing interface is already engine-swappable) or stays local-script-
+  only, and — if custom_vocabulary is ever needed for a rarer term than
+  ADU turned out to be — an explicit choice to sacrifice timestamps for
+  that specific call, or a two-pass approach (one call for vocab-accurate
+  text, one for timing) if both are ever needed at once. Sample size here
+  is still small (2 real meetings, 9 windows, 1 garbled-transcript case)
+  — a real qualitative signal, not a rigorous benchmark.
 - **Speaker diarization + a UI to map detected speakers to real names —
   confirmed 2026-08-09 as a good future feature, journalistic-value
   framing added.** For journalistic use, an unattributed quote is much

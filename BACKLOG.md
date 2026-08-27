@@ -49,11 +49,12 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (4)
+Standing decisions — do NOT re-raise  (5)
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
+  Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
@@ -178,7 +179,8 @@ Trust, safety & data quality  (7)
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
     [NEEDS-AUDIT] Second real instance of the Fountain Valley-shaped
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (21)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
+  `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
     [IMPROVEMENT-ROUND] `[BIG]` "Feed cities" — should this app ever
@@ -325,6 +327,31 @@ requesting fullscreen on the wrapper and therefore owning a fullscreen
 button rather than delegating to the native control bar — judged not
 worth that, not merely deprioritised. See `BACKLOG_DONE.md`'s WO-56
 entry for the control's design.
+
+### Gemini 3.5 Transcribe stays available but unused — Whisper remains the default (Ryan's call, 2026-08-26)
+
+`scripts/transcribe_backlog_locally.py --engine gemini` (built the same
+day, see `CLAUDE_BACKLOG.md`'s "On-demand transcription follow-ups"
+entry for the full eval and build writeup) got a real production test:
+10 real backlog meetings, free-tier key. Result: 1 ingested clean, 4
+skipped for reasons unrelated to Gemini, **5 failed on sustained
+rate-limiting that never cleared for 5-15+ minutes per meeting** despite
+correctly honoring the API's own retry-after hints each time — behavior
+consistent with a longer-window (hourly/daily, undocumented) quota
+distinct from the per-minute ceiling the engine's rate limiter already
+paces against, most likely exhausted by the cumulative volume of the
+same day's eval/testing calls against one free key.
+Ryan's call: not worth paying for the paid tier to work around this
+right now. `--engine whisper` (the script's existing default) keeps
+being what actually runs. The `--engine gemini` option and its 3 saved
+per-meeting checkpoints (`local_transcription_backups/partial/` —
+Auburn NY 9/27 chunks, Belle Meade TN 6/20, Painesville OH 1/17) are
+left in place, not reverted — a future re-run of the same command
+resumes them rather than starting over, whenever this gets revisited.
+Don't re-propose switching the default or spending on paid tier without
+new information (e.g. confirming the real quota window/reset via
+https://ai.dev/rate-limit, or a cost re-ask once real per-meeting
+economics matter more).
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -2039,6 +2066,10 @@ from a live check), but the Legistar calendar itself is still untried.
   `ResolvedMeeting`, a matching Archive column + migration, and template
   work — a real, scoped follow-up, deliberately not smuggled into WO-29.
   Worth checking whether any other platform has the same shape first.
+  **Chicago is one instance of a general gap** — see "Roadmap & strategy"'s
+  "Agenda text as a first-class, versioned asset", which scopes the model,
+  the resolver/adapter work and the display together. Do not build a
+  Chicago-shaped fix for it.
 
 - **[JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
   no dates at all — YouTube's own public Atom feed does, confirmed live
@@ -2823,6 +2854,120 @@ transcription crawler) grows in a **separate app** ("the Archive"), not
 this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
+
+### `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class, **versioned** asset — model, resolver, every adapter, and display
+
+Three linked pieces. None of them is Chicago-specific; Chicago ELMS is one
+instance of the gap, not the reason for it.
+
+**1. The data model.** `MeetingPage` has no agenda text at all today, and the
+two fields that look like it are not it:
+
+* `agenda_items` is `List[TranscriptSegment]` — `{start, end, text}` chapter
+  markers tied to a video position. Filling it from an agenda would mean
+  inventing timestamps.
+* `agenda_link` ([archive/db/models.py:83](archive/db/models.py:83)) is a bare
+  URL that is never fetched, so nothing about the agenda is searchable.
+
+What it needs is **not a column — it is a versioned child table**, mirroring
+`TranscriptVersion`'s shape, because **agendas get amended and transcripts do
+not.** That is the one real semantic difference between the two assets. An
+agenda is republished before the meeting: items added, struck, continued.
+Content-hash dedupe means an unchanged re-fetch stores nothing while a genuine
+revision becomes a first-class event — which is exactly what an alert should
+fire on, and what a reader should be able to see ("this item was added on
+Monday").
+
+**2. The resolver and every adapter.** Resolving a meeting should *fetch and
+extract* the agenda, not merely link it. Today ~23 adapters surface
+`agenda_link` at best. This is the largest part of the work and the part with
+the most hidden traps — all of them already hit and solved in `rtr-upcoming`,
+listed below so they are not rediscovered one adapter at a time.
+
+**3. Display and search.** Templates for agenda text and its versions, a diff
+view between versions, and inclusion in `search_corpus` so the text is
+actually findable. Without this the other two are invisible.
+
+**Why now: it also unblocks `rtr-upcoming`.** That repo (separate, local,
+`~/Documents/rtr-upcoming`) resolves upcoming agendas across **all 108 Bay
+Area jurisdictions** and extracts their text. It has no accounts, saved
+searches, query language or email delivery, and should never grow its own —
+this repo has all four. The ingest gate already accepts a video-less page
+(`result.segments or result.agenda_items or result.agenda_link or
+result.video_url`, [app/main.py:709](app/main.py:709)); agenda **text** is the
+only thing it cannot carry. So this work is a prerequisite for that
+integration and independently worth doing for the archive's own pages.
+
+**Read these in `rtr-upcoming` first — it is a working reference
+implementation of piece 2, and every claim in it is measured, not assumed:**
+
+| file | what it answers |
+|---|---|
+| `UPCOMING_AGENDAS_FIELD_GUIDE.md` | The whole thing. "Getting the document, not just the link" covers extraction; the per-vendor guide covers every platform's traps. |
+| `app/agenda_text.py` | Format dispatch and extraction (PDF/HTML/RTF/TXT/DOCX). |
+| `app/agenda_diff.py` | What *changed* between versions, in blocks rather than lines. |
+| `app/db.py` | `agenda_versions`: content-hash dedupe and version `kind`. |
+| `COVERAGE.md` / `coverage.csv` | Every jurisdiction, provider, example agenda URL, and where the document really resolves after redirects. |
+
+**Traps that will each cost a day, all measured 2026-08-26:**
+
+* **~70% of agenda links are PDF**, 18% HTML. PDF extraction is the main path,
+  not an edge case — and sniff the *response*, never the URL: Legistar's
+  `View.ashx?M=A` and CivicPlus's `/AgendaCenter/ViewFile/` both return
+  `application/pdf` with no `.pdf` in the link.
+* **Never truncate a response body.** A PDF's cross-reference table is at the
+  END of the file, so a sliced PDF is corrupt rather than partial (`pypdf`:
+  "EOF marker not found"). A 25 MB cap silently destroyed five jurisdictions'
+  agendas that extract 23k–762k characters when handed over whole. Packets run
+  to 90 MB.
+* **Prefer the agenda PACKET over the agenda** — it is additive, so a keyword
+  appearing only in a staff report is still found. Morgan Hill 12,659 →
+  762,698 characters. Whole corpus 17.4 MB across 283 versions, ~85 KB
+  average.
+* **A cell often holds several renditions and the best is not first**, and
+  which format wins depends on which column it came from. Los Gatos: agenda
+  column PDF 8,702 / HTML 8,141 (equivalent — take HTML); packet column PDF
+  290,592 / HTML 10,079 (Municode serves the same `adaHtmlDocument` in both
+  columns, so preferring HTML discards the staff reports).
+* **A content type lies.** Martinez serves `application/msword` for bytes that
+  begin `PK` — a .docx. Trust the magic number.
+* **A zero-byte body is "not published yet", not "unreadable"** — CivicClerk
+  streams 0 bytes for an agenda that does not exist yet, while the event
+  already carries a non-zero `agendaId`.
+* **Classify a new version by CONTENT similarity, not by URL.** Jurisdictions
+  publish amended agendas as **new attachments under new URLs**, so a URL rule
+  both misses real amendments and manufactures false ones whenever an adapter
+  changes where it fetches from — that happened here: switching one adapter
+  produced 9 false "amendments" in a single run.
+* **A scanned PDF is not a broken one.** No `/Font` resource on any page means
+  a scan; label it rather than reporting a parser failure. Measured at one
+  document across 108 jurisdictions, which is why OCR is not worth building.
+
+**One design mismatch to plan for, not code around.** The saved-search alert
+cursor is `created_after` — *archive* time, when a page was ingested
+([archive/db/crud.py:3534](archive/db/crud.py:3534)). Agenda events are
+different: a first agenda appearing, and an amendment to one already seen.
+`rtr-upcoming` classifies exactly that (`initial` / `amendment` / `reissued` /
+`alternate`) and `created_after` cannot express it.
+
+**Some PDFs extract mangled, and it costs SEARCH more than display** — a
+query for "participate" can never match `parBcipate`. Two distinct shapes,
+both real: **ligature loss** (`parBcipate`, `submiLed` — `ti`→`B`, `tt`→`L`/
+`M`, from a broken ToUnicode CMap) and **space loss** (`reportedRequest`,
+`firstBank`). `pdfplumber` reads all of them cleanly where `pypdf` does not
+(Cloverdale 19 mangled → 0, Colma 25 → 0, Oakley 94 → 0) at roughly **3x the
+time** — 54s against 16s on an 81 MB packet — so `rtr-upcoming` uses it as a
+*fallback* triggered only on detected damage, keeping whichever result
+measures better. Not everything that looks mangled is: Millbrae's 58
+`supportLists` come from the city exporting Word HTML to PDF with
+`<!--[if !supportLists]-->` rendered into the page, so there is nothing to
+repair.
+
+**And improving extraction must not itself read as an amendment.** Repairing
+a document already stored rewrites every affected block — that is our change,
+not the jurisdiction's, and alerting on it is the same false positive as the
+URL case. Exclude blocks whose old side carried mangled words and whose new
+side does not.
 
 ### `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see [AUDIT_BRIEF.md](AUDIT_BRIEF.md)
 
