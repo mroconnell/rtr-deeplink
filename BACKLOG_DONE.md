@@ -94,7 +94,7 @@ transcript gap every other YouTube-backed page has today.
 **Correction, 2026-08-26 (same day) — Petaluma and Marin County were never
 really ProudCity-meetings candidates in the first place.** The original
 draft of this entry called both Cloudflare-gated and left them
-unresolved. A sibling project (`~/Documents/rtr-upcoming`, a separate
+unresolved. A sibling project (`~/src/rtr-upcoming`, a separate
 forward-looking-agendas tool with its own independently-built roster of
 Bay Area jurisdictions) settles it: both are on the roster with
 `platform=primegov` (`cityofpetaluma.primegov.com`/

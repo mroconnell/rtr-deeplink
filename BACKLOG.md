@@ -2889,7 +2889,8 @@ view between versions, and inclusion in `search_corpus` so the text is
 actually findable. Without this the other two are invisible.
 
 **Why now: it also unblocks `rtr-upcoming`.** That repo (separate, local,
-`~/Documents/rtr-upcoming`) resolves upcoming agendas across **all 108 Bay
+`~/src/rtr-upcoming` — deliberately NOT under `~/Documents`, because macOS
+blocks scheduled background jobs from reading it there) resolves upcoming agendas across **all 108 Bay
 Area jurisdictions** and extracts their text. It has no accounts, saved
 searches, query language or email delivery, and should never grow its own —
 this repo has all four. The ingest gate already accepts a video-less page
