@@ -22036,3 +22036,84 @@ guessing a general dedup rule from one example.
   **Docs updated in the same PR**: `README.md` (both page sections
   rewritten, plus the test-coverage paragraph), `BACKLOG.md` (this entry
   replaced with the measurement follow-up and two residual gaps).
+
+## Inbox-triage ledger protocol rollout confirmed complete — `CLAUDE_INBOX_TRIAGE.md`'s "Open item" section was stale [Investigated 2026-08-27]
+
+`CLAUDE_INBOX_TRIAGE.md`'s "Open item" section claimed the Routine's own
+scheduled-task prompt (which lives outside this repo, not in
+`scripts/`) still needed Ryan to switch it from the dead
+`-label:rtr-claude-processed` Gmail query over to
+`scripts/inbox_triage_ledger.py`'s ledger-based flow, and that until he
+did, "the ledger stays empty" and every run keeps re-reviewing the whole
+backlog from scratch. **That was stale as of this promotion review.**
+
+**Re-verified, not just re-read**: the same file's own 2026-08-22 dated
+section already documents the switchover happening that day ("First run
+under the new ledger-based dedupe protocol (WO-33)... This run used the
+real ledger for the first time"), and every dated section from
+2026-08-22 through 2026-08-26 describes searching
+`label:rtr-claude newer_than:30d` and filtering candidates through the
+ledger before review — exactly the new protocol, not the old query.
+Independently confirmed against the ledger file itself:
+`CLAUDE_INBOX_TRIAGE_SEEN.txt` (on `origin/main` as of this review) holds
+105 real `<date>\t<message-id>` lines (not just its 14 lines of header
+comment), spanning message dates 2026-08-19 through 2026-08-26, and
+`git log` on that file shows a real commit from every daily run in that
+window. A further run (branch `claude-inbox-triage-2026-08-27`, commit
+`fb2d958`, not yet merged as of this review) added 6 more ledger entries
+for today, continuing the same pattern.
+
+The rollout is done and has been working correctly for at least 6
+consecutive days. No code or prompt change is outstanding — the "Open
+item" section has been removed from `CLAUDE_INBOX_TRIAGE.md`; the
+"Dedupe protocol" section in the same file already documents the working
+system accurately and is the section to read going forward.
+
+## "test-redtaperecordings" recurring alert + one-off synthetic transcription-job emails: consolidated, promoted to `BACKLOG.md` as a real open question for Ryan [Investigated 2026-08-27]
+
+Across `CLAUDE_INBOX_TRIAGE.md`'s 2026-08-19 through 2026-08-26 dated
+sections, a "Server failure detected on test-redtaperecordings: Exited
+with status 3" email recurred at least 8 times (2026-08-18, -19, -20,
+-22, -23, -25, -26, and again per today's 2026-08-27 run per its commit
+message) and was flagged every time as "likely test/dev noise" without
+ever being confirmed or promoted. Separately, the 2026-08-19 section
+flagged two near-identical "Transcription job 1 failed" emails
+(12:51:08/12:51:09 UTC, one second apart) with obviously-synthetic data
+(`job_id: 1`, meeting titled "Some Meeting"/"(untitled)",
+`requester: requester@example.com`/`r@example.com`,
+`source_url: (unknown)`) landing in the same ~24h window as one of the
+`test-redtaperecordings` failures and a "deploy failed for
+rtr-deeplink-staging" email — also left unresolved.
+
+**Re-verified 2026-08-27**: `grep -rn "redtaperecordings"` across the
+whole repo (excluding `BACKLOG_DONE.md`/`CLAUDE_INBOX_TRIAGE.md`
+themselves) turns up only the real `redtaperecordings.com` /
+`ally.redtaperecordings.com` domain and code paths — `test-
+redtaperecordings` does not appear anywhere in `render.yaml`'s tracked
+Blueprint or anywhere else in this repo. There is no PR-preview or
+ephemeral-environment workflow under `.github/workflows/` that could be
+spinning up a service by that name. This is consistent with a standalone
+Render service Ryan created directly in the dashboard for manual
+testing, unrelated to the tracked app — but that's inference from
+absence, not confirmation, and it's exactly the kind of thing only Ryan
+can actually answer (he's the one with Render dashboard access to that
+service).
+
+**The synthetic "job 1" emails specifically**: this is the only
+occurrence across all reviewed runs (2026-08-19 through 2026-08-26/27) —
+it has not recurred in the 8 days since. Combined with the placeholder
+data shape and the same-window `test-redtaperecordings` failure and
+staging deploy, this reads as a manual test run against a scratch
+environment rather than a real product bug, but — same caveat — that's
+inference, not confirmation. Since it's a one-off with no recurrence and
+no plausible production impact even if wrong, it does not warrant its
+own `BACKLOG.md` entry; it's folded into the `test-redtaperecordings`
+write-up below as supporting context instead.
+
+**Outcome**: not stale (still recurring as of today), not a confirmed
+bug, not resolvable from the repo alone — this is a genuine "needs
+Ryan's dashboard" question. Promoted into `BACKLOG.md`'s "Needs a
+human" → "Confirmations nobody has actually watched happen" section
+(`[HUMAN]` `[LOGIN]`) rather than left scattered across seven different
+`CLAUDE_INBOX_TRIAGE.md` dated sections, and those sections' mentions of
+it were consolidated into that one entry.

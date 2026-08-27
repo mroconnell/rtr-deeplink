@@ -71,9 +71,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
-  Confirmations nobody has actually watched happen  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
+  Confirmations nobody has actually watched happen  (5)
     [HUMAN] Decide the /meetings result link order from real click data,
+    [HUMAN] `[LOGIN]` "test-redtaperecordings" Render service keeps
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
@@ -737,6 +738,46 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
+- **[HUMAN] `[LOGIN]` "test-redtaperecordings" Render service keeps
+  firing crash alerts — 8+ occurrences since 2026-08-18, still
+  unconfirmed as noise vs. a real problem (from the daily inbox-triage
+  Routine, `CLAUDE_INBOX_TRIAGE.md`, consolidated and promoted here
+  2026-08-27).** "Server failure detected on test-redtaperecordings:
+  Exited with status 3" emails have recurred on 2026-08-18, 19, 20, 22,
+  23, 25, 26 and 27 — every occurrence dismissed by the Routine as
+  "likely test/dev noise" without ever being confirmed, because
+  `test-redtaperecordings` is invisible from this repo: it doesn't
+  appear anywhere in `render.yaml`'s tracked Blueprint (confirmed via
+  `grep -rn "redtaperecordings"` across the whole repo — the only
+  matches are the real `redtaperecordings.com`/`ally.redtaperecordings.com`
+  domain and code paths), and there's no PR-preview or ephemeral-
+  environment workflow under `.github/workflows/` that could be spinning
+  up a service by that name. It reads like a standalone service Ryan
+  created directly in the Render dashboard for manual testing — but
+  that's inference from absence, not confirmation.
+  One likely-related, non-recurring data point: two near-identical
+  "Transcription job 1 failed" emails on 2026-08-19 (12:51:08/12:51:09
+  UTC, one second apart) carried obviously-synthetic data (`job_id: 1`,
+  meeting titled "Some Meeting"/"(untitled)",
+  `requester: requester@example.com`/`r@example.com`,
+  `source_url: (unknown)`) in the same ~24h window as one of these
+  failures and a "deploy failed for rtr-deeplink-staging" email —
+  consistent with a manual test run against a scratch environment, and
+  it has not recurred since (full investigation detail in
+  `BACKLOG_DONE.md`).
+  **Impact**: small but real and recurring — costs the daily triage
+  Routine one "probably noise" judgment call on nearly every run (9
+  times and counting), and it's a completely uninvestigated service
+  crashing repeatedly if it turns out *not* to be expected test
+  behavior. **Open question for Ryan**: what is `test-redtaperecordings`,
+  and is the repeated non-zero exit expected (e.g. a script that
+  intentionally exits non-zero when a manual test finishes)? If
+  expected, delete the Render alert subscription for it (or otherwise
+  stop it from reaching the `rtr-claude` Gmail label) so it stops
+  consuming review attention; if not expected, it's worth a look on its
+  own terms regardless of whether it's "production." **Fix effort**: a
+  few minutes once Ryan has the dashboard open — either mute the alert
+  or investigate the actual crash, no code change either way.
 - **[HUMAN] Render's health-check gate has never blocked a deploy —
   checked 2026-08-22, and not worth forcing.** WO-6's 503 logic is
   unit-tested; the open question was whether a real Render deploy has

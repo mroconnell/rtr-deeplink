@@ -1,7 +1,8 @@
 """Tests for scripts/inbox_triage_ledger.py (WO-33) -- the repo-side
 processed-message-ID ledger that replaced the daily triage Routine's
-`rtr-claude-processed` Gmail label (no Gmail write scope, permanently:
-see CLAUDE_INBOX_TRIAGE.md's "Open item").
+`rtr-claude-processed` Gmail label (no Gmail write scope, permanently --
+Ryan's 2026-08-21 decision, see CLAUDE_INBOX_TRIAGE.md's "Dedupe
+protocol" section).
 
 These are pure-logic tests against a tmp_path ledger -- no Gmail calls,
 no network. The message IDs below are synthetic (16-hex-ish strings in
