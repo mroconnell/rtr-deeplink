@@ -6,7 +6,9 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .base import AssetFinder, CalendarPageError, detect_platform, resolve_via_platform
+from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting
+from ..utils import jurisdiction_enrich
 
 
 class CivicPlusAssetFinder(AssetFinder):
@@ -53,8 +55,28 @@ class CivicPlusAssetFinder(AssetFinder):
                 final_url = str(response.url)
                 html = await response.text()
 
+        # Real, confirmed-live signal-loss fix, 2026-08-27: a delegated
+        # video's own jurisdiction guess (`resolve_via_platform()`'s own
+        # result) depends entirely on whatever that platform's own page/
+        # channel data says -- for YouTube specifically, a real government
+        # channel name can be a genuine multi-state collision ("City of
+        # Westminster, Maryland" declines to validate on its own, since
+        # Westminster is also real in CA/CO/SC/VT -- see BACKLOG_DONE.md).
+        # CivicPlus's own subdomain is a stronger, authoritative,
+        # per-tenant signal that already disambiguates this for free
+        # ("md-westminster.civicplus.com" -- the state is right there),
+        # so it's preferred outright over the delegated platform's own
+        # guess, not just used as a fallback when that guess is empty --
+        # same "the subdomain's own validated identity wins outright"
+        # precedent `jurisdiction_enrich.finalize_jurisdiction()` already
+        # documents for platforms that never leave their own domain.
+        subdomain_jurisdiction = self._jurisdiction_from_subdomain(url)
+
         if "civicplus.com" not in urlparse(final_url).netloc.lower():
-            return await resolve_via_platform(final_url)
+            result = await resolve_via_platform(final_url)
+            if subdomain_jurisdiction:
+                result.jurisdiction = subdomain_jurisdiction
+            return result
 
         soup = BeautifulSoup(html, "html.parser")
         candidates = self._find_video_rows(soup, final_url)
@@ -63,6 +85,7 @@ class CivicPlusAssetFinder(AssetFinder):
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
+                jurisdiction=subdomain_jurisdiction,
                 video_warnings=["No video link found on this CivicPlus page."],
             )
 
@@ -73,9 +96,39 @@ class CivicPlusAssetFinder(AssetFinder):
                     "not a link to one specific meeting."
                 ),
                 candidates=candidates,
+                jurisdiction_hint=subdomain_jurisdiction,
             )
 
-        return await resolve_via_platform(candidates[0]["url"])
+        result = await resolve_via_platform(candidates[0]["url"])
+        if subdomain_jurisdiction:
+            result.jurisdiction = subdomain_jurisdiction
+        return result
+
+    @staticmethod
+    def _jurisdiction_from_subdomain(url: str) -> Optional[str]:
+        """CivicPlus's own AgendaCenter subdomains follow a real, stable
+        `{2-letter state code}-{name}.civicplus.com` convention (confirmed
+        across hundreds of real tenants, e.g. `md-westminster`,
+        `ca-ventura`, `ri-eastgreenwich`). The state is authoritative --
+        given directly by the tenant's own registered subdomain, not
+        guessed -- so this only needs to confirm the `name` half is a real
+        place, never resolve a state ambiguity the way a bare-name lookup
+        does (`lookup_city_state()` alone declines "Westminster": real in
+        five different states). Declines (returns None) rather than
+        guessing when the name half doesn't validate -- real for
+        acronym-heavy tenants wordninja can't split correctly (confirmed:
+        "hamiltoncountywwta", "fultoncountymagistratecourt" both decline)
+        -- same honest-gap philosophy as every other adapter here.
+        """
+        netloc = urlparse(url).netloc.lower()
+        label = netloc.split(".")[0]
+        prefix, sep, rest = label.partition("-")
+        if not sep or prefix not in US_STATE_ABBREVIATIONS or not rest:
+            return None
+        name = jurisdiction_enrich.validated_label_extract(rest)
+        if not name:
+            return None
+        return f"{name}, {prefix.upper()}"
 
     def _find_video_rows(self, soup: BeautifulSoup, page_url: str) -> List[dict]:
         candidates = []

@@ -219,6 +219,20 @@ register_all_finders()
 
 class ResolveRequest(BaseModel):
     url: str
+    # Set only by the calendar-page pick-list flow (renderCalendarPage() in
+    # player.js) -- re-submitting the one candidate a human picked from a
+    # multi-meeting listing page, carrying forward what that listing page
+    # already knew rather than losing it once the request becomes a bare
+    # single-video URL. jurisdiction_hint is preferred outright over
+    # whatever the picked candidate's own platform resolves to (see
+    # CalendarPageError's own docstring for why the listing page can be
+    # the stronger signal); title_hint/date_hint only fill in when the
+    # resolve itself came back empty -- unlike jurisdiction, there's no
+    # confirmed case yet where the listing row's own title beats a real
+    # video's own title, so this stays conservative until there is one.
+    jurisdiction_hint: Optional[str] = None
+    title_hint: Optional[str] = None
+    date_hint: Optional[str] = None
 
 
 async def safe(fn, *args, **kwargs):
@@ -636,6 +650,7 @@ async def resolve(
             "platform": platform,
             "message": str(e),
             "candidates": e.candidates,
+            "jurisdiction_hint": e.jurisdiction_hint,
         }
     except Exception as e:
         await safe(
@@ -651,6 +666,18 @@ async def resolve(
             "platform": platform,
             "message": str(e),
         }
+
+    # Carries a calendar-page pick-list resolve's hints (see
+    # ResolveRequest's own comment) onto the result of resolving the
+    # single candidate a human actually picked -- applied here, before
+    # anything downstream (logging, payload, ingest) reads these fields,
+    # so a hint takes effect everywhere a fresh resolve normally would.
+    if req.jurisdiction_hint:
+        result.jurisdiction = req.jurisdiction_hint
+    if req.title_hint and not result.title:
+        result.title = req.title_hint
+    if req.date_hint and not result.date:
+        result.date = req.date_hint
 
     payload = result.model_dump()
     # Diagnostic only -- computed here for /admin/stats visibility into
@@ -1552,13 +1579,24 @@ async def index(request: Request, topic: str = ""):
 
 
 @app.get("/meeting")
-async def meeting_redirect(request: Request, url: str = ""):
+async def meeting_redirect(
+    request: Request,
+    url: str = "",
+    jurisdiction_hint: str = "",
+    title_hint: str = "",
+    date_hint: str = "",
+):
     if not url:
         return RedirectResponse("/")
     return templates.TemplateResponse(
         request,
         "meeting.html",
-        {"source_url": url},
+        {
+            "source_url": url,
+            "jurisdiction_hint": jurisdiction_hint,
+            "title_hint": title_hint,
+            "date_hint": date_hint,
+        },
     )
 
 
