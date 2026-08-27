@@ -104,7 +104,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (37)
+Platform & jurisdiction coverage  (38)
+  `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
@@ -1373,6 +1374,35 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
+  looks buildable, but the real media URL is still unconfirmed.**
+  `proudcity.py`'s existing `_EXTERNAL_VIDEO_RE` correctly detects a
+  `title="View video on external website"` link and reports it as
+  `video_link` (a best-effort pointer, never `video_url`) rather than
+  guessing at playback — confirmed correct on a real page, Wilmington OH
+  (`wilmingtonohio.gov/meetings/city-council-meeting-april-16-2026` →
+  `boxcast.tv/channel/x1jps4n28nlgtaozsv5y`). Investigated 2026-08-27
+  whether BoxCast specifically is worth a real delegation, the way
+  YouTube already gets one: `rest.boxcast.com/channels/{channel_id}/
+  broadcasts/_search?l=N` is a real, public, unauthenticated REST API
+  (found in `boxcast.tv`'s own JS bundle) returning every broadcast's
+  name/date/duration for a channel — the same date-matching shape
+  `app/platforms/youtube_channel.py` already uses for Legistar cities.
+  Confirmed a real past broadcast has real data
+  (`recording_duration_seconds: 5043.2`) and a real individually-playable
+  page at `boxcast.tv/view/{channel_id-field-from-the-broadcast-detail}`
+  (the field is confusingly named — it's a per-broadcast slug, not the
+  parent channel) that autoplays real recorded video in-browser (screen-
+  verified). **Not yet confirmed**: the actual video/HLS manifest URL —
+  the player renders into a `blob:` MediaSource URL, and neither the main
+  JS bundle nor this session's network-request tooling surfaced the
+  underlying segment-fetch requests (likely a lazily-loaded player chunk
+  not yet reverse-engineered). Per this file's own "never build a
+  platform adapter from assumption" rule, not attempted blind — the next
+  step is real browser devtools network inspection (or a proxy) against
+  a `boxcast.tv/view/...` page while it plays, to find that URL, before
+  writing a `boxcast.py` adapter.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
