@@ -49,11 +49,12 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (4)
+Standing decisions — do NOT re-raise  (5)
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   The playback-speed chip is absent in native fullscreen, and that's…
+  Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
@@ -326,6 +327,31 @@ requesting fullscreen on the wrapper and therefore owning a fullscreen
 button rather than delegating to the native control bar — judged not
 worth that, not merely deprioritised. See `BACKLOG_DONE.md`'s WO-56
 entry for the control's design.
+
+### Gemini 3.5 Transcribe stays available but unused — Whisper remains the default (Ryan's call, 2026-08-26)
+
+`scripts/transcribe_backlog_locally.py --engine gemini` (built the same
+day, see `CLAUDE_BACKLOG.md`'s "On-demand transcription follow-ups"
+entry for the full eval and build writeup) got a real production test:
+10 real backlog meetings, free-tier key. Result: 1 ingested clean, 4
+skipped for reasons unrelated to Gemini, **5 failed on sustained
+rate-limiting that never cleared for 5-15+ minutes per meeting** despite
+correctly honoring the API's own retry-after hints each time — behavior
+consistent with a longer-window (hourly/daily, undocumented) quota
+distinct from the per-minute ceiling the engine's rate limiter already
+paces against, most likely exhausted by the cumulative volume of the
+same day's eval/testing calls against one free key.
+Ryan's call: not worth paying for the paid tier to work around this
+right now. `--engine whisper` (the script's existing default) keeps
+being what actually runs. The `--engine gemini` option and its 3 saved
+per-meeting checkpoints (`local_transcription_backups/partial/` —
+Auburn NY 9/27 chunks, Belle Meade TN 6/20, Painesville OH 1/17) are
+left in place, not reverted — a future re-run of the same command
+resumes them rather than starting over, whenever this gets revisited.
+Don't re-propose switching the default or spending on paid tier without
+new information (e.g. confirming the real quota window/reset via
+https://ai.dev/rate-limit, or a cost re-ask once real per-meeting
+economics matter more).
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
