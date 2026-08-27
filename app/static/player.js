@@ -6,6 +6,15 @@
 // shared with the Archive's meeting_page.js.
 
 const sourceUrl = document.body.dataset.sourceUrl;
+// Set only when this page was reached by picking a candidate off a
+// calendar-page pick-list (renderCalendarPage() below) -- see
+// meeting.html's own body_attrs block and ResolveRequest's comment in
+// app/main.py for the rest of this chain. Empty string (never populated)
+// on every other path, not just undefined -- guard with `|| undefined` so
+// an empty hint doesn't ride along in the resolve POST as a real value.
+const jurisdictionHint = document.body.dataset.jurisdictionHint || undefined;
+const titleHint = document.body.dataset.titleHint || undefined;
+const dateHint = document.body.dataset.dateHint || undefined;
 // Every caption track that was actually fetched (the chosen one plus any
 // alternates -- see ResolvedMeeting.alternate_transcripts), so the language
 // picker can switch `segments` client-side with no second /api/resolve call.
@@ -1218,8 +1227,24 @@ function renderCalendarPage(data) {
     return;
   }
 
+  // Carry this listing page's own known context forward to whichever
+  // candidate gets picked -- otherwise it's gone the moment the next
+  // request is just a bare single-video URL with no memory of where it
+  // came from (real, confirmed-live gap: a CivicPlus tenant's own
+  // subdomain already disambiguates its jurisdiction, e.g.
+  // "Westminster, MD", but the picked YouTube video's own channel name
+  // alone can't -- "Westminster" is real in five different states -- see
+  // BACKLOG_DONE.md's 2026-08-27 CivicPlus entries). jurisdiction_hint is
+  // page-level (data.jurisdiction_hint, same for every candidate);
+  // title_hint/date_hint are per-candidate, straight from this listing
+  // page's own row.
+  const jurisdictionHintParam = data.jurisdiction_hint
+    ? `&jurisdiction_hint=${encodeURIComponent(data.jurisdiction_hint)}`
+    : '';
   list.innerHTML = candidates.map((c) => {
-    const href = `/meeting?url=${encodeURIComponent(c.url)}`;
+    const titleHintParam = c.title ? `&title_hint=${encodeURIComponent(c.title)}` : '';
+    const dateHintParam = c.date ? `&date_hint=${encodeURIComponent(c.date)}` : '';
+    const href = `/meeting?url=${encodeURIComponent(c.url)}${jurisdictionHintParam}${titleHintParam}${dateHintParam}`;
     return `<div class="calendar-candidate"><a href="${href}">${escapeHtml(c.title || 'Untitled meeting')}</a>` +
       (c.date ? ` <span class="calendar-candidate-date">${escapeHtml(c.date)}</span>` : '') +
       `</div>`;
@@ -1251,7 +1276,12 @@ async function init() {
     const res = await fetch('/api/resolve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: sourceUrl }),
+      body: JSON.stringify({
+        url: sourceUrl,
+        jurisdiction_hint: jurisdictionHint,
+        title_hint: titleHint,
+        date_hint: dateHint,
+      }),
     });
     data = await res.json();
   } catch (e) {

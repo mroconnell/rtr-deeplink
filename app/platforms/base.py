@@ -27,10 +27,26 @@ class CalendarPageError(Exception):
     with their own video link, rather than one meeting's video. Carries
     enough per-meeting info (title, date, direct URL) for the frontend to
     show the user a pickable list instead of a bare failure.
+
+    `jurisdiction_hint` is optional, page-level (one value for every
+    candidate, not per-candidate) -- set by an adapter whose listing page
+    itself is a stronger jurisdiction signal than whatever the eventually-
+    picked candidate's own platform can guess (CivicPlus's per-tenant
+    `{state}-{name}.civicplus.com` subdomain is the first real source,
+    2026-08-27 -- see civicplus.py's `_jurisdiction_from_subdomain()`).
+    None for any adapter that doesn't have one (Legistar's Calendar.aspx
+    today) -- the frontend simply has nothing extra to carry through in
+    that case, not an error.
     """
 
-    def __init__(self, message: str, candidates: List[CalendarCandidate]):
+    def __init__(
+        self,
+        message: str,
+        candidates: List[CalendarCandidate],
+        jurisdiction_hint: Optional[str] = None,
+    ):
         self.candidates = candidates
+        self.jurisdiction_hint = jurisdiction_hint
         super().__init__(message)
 
 

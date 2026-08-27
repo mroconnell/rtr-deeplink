@@ -7,7 +7,7 @@
      shared_static/playback_speed.js. -#}
   <link rel="stylesheet" href="/shared-static/playback_speed.css">
 {% endblock %}
-{% block body_attrs %} data-source-url="{{ source_url }}"{% endblock %}
+{% block body_attrs %} data-source-url="{{ source_url }}" data-jurisdiction-hint="{{ jurisdiction_hint }}" data-title-hint="{{ title_hint }}" data-date-hint="{{ date_hint }}"{% endblock %}
 {% block content %}
   <main class="meeting-page">
     <div id="meta" class="meta"></div>
