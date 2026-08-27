@@ -104,10 +104,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (38)
+Platform & jurisdiction coverage  (39)
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
+  `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
   `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
@@ -1479,6 +1480,42 @@ they wait. That is a guard, not the fix.
 true). Run from the Archive service's Render shell, where the variable
 is already in the environment, so the value never has to be pasted
 anywhere: `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" ...`.
+
+### `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded meeting-table URL shape our adapter doesn't parse
+
+**Real, confirmed-live, one tenant so far.** Flagged by the user via a
+real page (`sonomacity.org/agendas-minutes-videos/`) that visibly carries
+a "© iCompass - A Diligent Brand 2026" footer on one of its two meeting
+tables, distinct from the CivicWeb "Portal" links elsewhere on the same
+page. Traced the real underlying links in that iCompass-branded table
+before assuming this was a new, unenumerated platform (per this file's
+own "verify before recording" convention) — **it isn't one**. Every link
+in it (`Video`/`HTML`/`PDF` columns) resolves to
+`sonomacity.civicweb.net/filepro/document/{id}/{title}.html?
+splitscreen=true&widget=true&media=true` — the same `civicweb.net`
+domain as the tenant's other, already-working `Portal/
+MeetingInformation.aspx` links. "iCompass" is most likely a legacy/
+acquired product name CivicWeb (or its parent, Diligent — which also
+owns BoardDocs) ships as an alternate embeddable widget skin over the
+same backend, not a separate vendor.
+
+**The real, actionable part**: `detect_platform()` correctly routes
+this URL to `civicweb` (matches on the `civicweb.net` netloc), but
+`CivicWebAssetFinder`'s own meeting-id extraction only recognizes the
+`Portal/MeetingInformation.aspx` shape — tested live against the exact
+URL above and it fails cleanly with "Could not find a meeting id in this
+CivicWeb URL," zero video, zero title, zero jurisdiction. So any
+jurisdiction that embeds this iCompass-branded widget instead of (or
+alongside) the Portal one is currently unreachable through this
+platform's existing adapter, even though the video is right there.
+
+**Not yet built, on purpose** — only one real tenant confirmed
+(Sonoma, CA). Per this file's own house rule, adapter work on a new URL
+shape needs several independent real examples first, not one. Next step:
+find 2-3 more CivicWeb tenants whose page embeds the iCompass-branded
+table (search the exact footer phrase, or check whether other already-
+known CivicWeb tenants also carry both widgets) before writing a second
+meeting-id-extraction path into `civicweb.py`.
 
 ### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 
