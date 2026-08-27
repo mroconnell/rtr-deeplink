@@ -80,7 +80,12 @@ async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
     # test_resolve_video_id_prefers_release_date_over_upload_date below
     # for the now-fixed, real-release_date case.
     assert result.date == "2026-08-05"
-    assert result.jurisdiction == REAL_UPLOADER
+    # REAL_UPLOADER ("cityofokc") doesn't validate as a real place on its
+    # own -- glued, no space, doesn't wordninja-split into anything Census
+    # recognizes -- so this is the honest, validated outcome (None), not
+    # the old raw-passthrough behavior. See test_jurisdiction_* below for
+    # dedicated coverage of _jurisdiction()'s validation logic itself.
+    assert result.jurisdiction is None
     assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
     assert result.video_format == "youtube"
     assert [s.text for s in result.segments] == [
@@ -234,3 +239,70 @@ async def test_resolve_delegates_to_resolve_video_id_for_a_standalone_url(monkey
 async def test_resolve_raises_for_a_non_youtube_url():
     with pytest.raises(ValueError, match="Could not find a YouTube video ID"):
         await YouTubeAssetFinder().resolve("https://example.com/not-youtube")
+
+
+# _jurisdiction() coverage. Real, live examples throughout -- a CivicPlus
+# AgendaCenter multi-candidate scan (2026-08-27) surfaced real government
+# channels shaped both ways ("Roosevelt City", "Village of Angel Fire, New
+# Mexico") and real *wrong*-video incidents whose uploader name would have
+# gone straight onto a public page unvalidated before this fix: a tenant's
+# page linked CivicPlus's own recruiting video ("CivicPlus"), a community
+# advocacy org's video instead of an official meeting ("Hamden Action
+# NOW"), and a local news station's clip ("KSAT 12") -- see BACKLOG_DONE.md.
+@pytest.mark.parametrize(
+    "uploader,expected",
+    [
+        (None, None),
+        ("", None),
+        ("   ", None),
+        # Glued channel-handle shape -- doesn't wordninja-split into
+        # anything Census recognizes, so this is an honest decline, not a
+        # bug (matches vimeo.py's own "cityofokc"-shaped precedent).
+        ("cityofokc", None),
+        # Already well-formed, validates as-is.
+        ("Roosevelt City", "Roosevelt City"),
+        ("City Of Avenal", "City Of Avenal, CA"),
+        # Glued with a real entity prefix -- validated_label_extract()
+        # strips "County of" and resolves the real place underneath.
+        ("CountyofJackson", "Jackson"),
+        # Already "Name, State" shaped -- the comma-branch, checked
+        # directly against real place/county data rather than run through
+        # the glued-label path (which rejects any comma outright).
+        (
+            "Village of Angel Fire, New Mexico",
+            "Village of Angel Fire, New Mexico",
+        ),
+        # The real incidents this fix exists for -- a vendor's own
+        # channel, an unrelated community org, a news station. All three
+        # previously flowed straight through as `jurisdiction` verbatim.
+        ("CivicPlus", None),
+        ("Hamden Action NOW", None),
+        ("KSAT 12", None),
+        # A comma-shaped name whose base doesn't validate as a real place
+        # -- the comma alone isn't enough to trust it.
+        ("Some Random Channel, Not A Place", None),
+    ],
+)
+def test_jurisdiction_validates_before_trusting_the_uploader_name(uploader, expected):
+    assert YouTubeAssetFinder._jurisdiction(uploader) == expected
+
+
+async def test_resolve_video_id_jurisdiction_is_validated_end_to_end(monkeypatch):
+    """Confirms _jurisdiction() is actually wired into resolve_video_id()
+    -- the parametrized test above covers the validation logic itself in
+    isolation, this pins that the real path uses it."""
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": "Working at CivicPlus",
+            "uploader": "CivicPlus",
+            "upload_date": "20161202",
+        },
+    )
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "7TFZ6k6vbAk", source_url="https://example.com"
+    )
+
+    assert result.jurisdiction is None

@@ -6,6 +6,7 @@ import yt_dlp
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     dedupe_rollup_cues,
@@ -181,7 +182,7 @@ class YouTubeAssetFinder(AssetFinder):
             external_id=f"youtube:{video_id}",
             title=info.get("title"),
             date=date,
-            jurisdiction=info.get("uploader"),
+            jurisdiction=cls._jurisdiction(info.get("uploader")),
             video_url=video_url,
             video_format="youtube",
             segments=segments,
@@ -189,6 +190,63 @@ class YouTubeAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _jurisdiction(uploader: Optional[str]) -> Optional[str]:
+        """yt-dlp's `uploader` is a YouTube *channel* name, not a
+        jurisdiction -- real values range from "Roosevelt City" (usable
+        as-is) through "cityofokc" (glued, needs splitting) to "CivicPlus"
+        or "Hamden Action NOW" (a vendor's own channel or an unrelated
+        community org, not the government at all -- real, confirmed-live
+        examples of a tenant's page linking the wrong video entirely, see
+        BACKLOG_DONE.md's 2026-08-27 CivicPlus entry). Every other
+        adapter here that reads a bare account/channel name
+        (`vimeo.py`'s `_jurisdiction()` is the direct model this mirrors)
+        runs it through `validated_label_extract()` before trusting it;
+        this one didn't, so a channel name flowed straight onto the page
+        with zero validation -- confirmed live: the CivicPlus incident's
+        page would have shown "jurisdiction: CivicPlus" verbatim had it
+        not been caught and removed by hand.
+
+        `validated_label_extract()` alone isn't quite enough here, unlike
+        Vimeo: real YouTube channel names for small governments are often
+        already a full, well-formed "Village of X, State" string (e.g.
+        "Village of Angel Fire, New Mexico"), which that function -- built
+        for a single glued subdomain-shaped token, never a comma or a
+        multi-word state name -- rejects outright. So a name that already
+        looks like "X, State" is checked directly instead: real only if
+        the part before the comma independently validates as a real place
+        or county on its own (`lookup_city_state()`/`lookup_county_state()`,
+        both of which already strip a leading "City of"/"Village of"/etc.
+        internally). Everything else goes through the glued-label path,
+        same as Vimeo. Either path declines (returns None) rather than
+        guessing -- most YouTube-direct resolves legitimately carry no
+        jurisdiction at all, which is the honest outcome, not a bug (see
+        vimeo.py's own docstring for the same reasoning).
+        """
+        name = (uploader or "").strip()
+        if not name:
+            return None
+        if "," in name:
+            base = name.split(",", 1)[0].strip()
+            if (
+                jurisdiction_enrich.lookup_city_state(base)
+                or jurisdiction_enrich.lookup_county_state(base)
+                or jurisdiction_enrich.is_literal_known_place(base)
+            ):
+                return jurisdiction_enrich.enrich_jurisdiction_text(
+                    name, netloc="youtube.com"
+                )
+            return None
+        label = jurisdiction_enrich.validated_label_extract(name)
+        if not label:
+            return None
+        # Keep the channel's own casing when it already validated as-is
+        # (validated_label_extract() title-cases what it returns, built
+        # for glued subdomain labels -- see that function's own docstring).
+        if label.lower() == name.lower():
+            label = name
+        return jurisdiction_enrich.enrich_jurisdiction_text(label, netloc="youtube.com")
 
     @staticmethod
     def _extract_info(video_id: str) -> Optional[dict]:
