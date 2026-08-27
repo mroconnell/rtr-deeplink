@@ -515,3 +515,63 @@ async def test_write_refuses_when_reviewed_at_does_not_exist_yet(monkeypatch):
     body = response.json()
     assert body["reviewed_at_column_available"] is False
     assert body["updated"] == 0
+
+
+# --- suspicious-source backstop (2026-08-26) -----------------------------
+
+
+def test_ingest_forces_best_effort_on_a_staging_hostname():
+    """The systemic backstop for the real, confirmed-twice incident shape
+    (see archive/utils/suspicious_source.py's module docstring): a
+    payload that never claimed best_effort at all should still land in
+    the low-trust queue when its source URL is a staging/UAT tenant.
+
+    Jurisdiction deliberately overridden away from _payload()'s default
+    "City of Dublin, CA" -- that jurisdiction's page_count is shared
+    (and already high) across this whole session-scoped DB, and
+    test_state_pages.py's California page only shows its top-N
+    jurisdictions by count; adding to Dublin's count here pushed a
+    smaller real one off that page in a different test file. A
+    synthetic non-US "state" sidesteps that class of cross-file
+    interference entirely rather than just avoiding today's specific
+    collision.
+    """
+    result = _ingest(
+        _payload(
+            source_url="https://uat.example-city.primegov.com/Portal/Meeting?meetingTemplateId=1",
+            jurisdiction="Suspicious Source Test City, ZZ",
+        )
+    )
+    row = _row_for(result["slug"])
+    assert row is not None
+    assert row["best_effort"] is True
+    assert "best_effort" in row["reasons"]
+
+
+def test_ingest_forces_best_effort_on_a_known_demo_path():
+    """Same backstop, the other confirmed shape: a known shared vendor
+    demo/seed page (ProudCity's real one, from the actual incident). See
+    the sibling test above for why jurisdiction is overridden."""
+    result = _ingest(
+        _payload(
+            platform="proudcity",
+            source_url="https://some-other-city.gov/meetings/example-city-council-meeting",
+            jurisdiction="Suspicious Source Test City, ZZ",
+        )
+    )
+    row = _row_for(result["slug"])
+    assert row is not None
+    assert row["best_effort"] is True
+
+
+def test_ingest_leaves_a_normal_source_url_alone():
+    """A real production hostname/path must not get swept up by either
+    check -- the whole point is a low false-positive rate. A page that
+    isn't flagged for any reason doesn't appear in the low-trust listing
+    at all, so the real assertion is absence, not best_effort=False."""
+    result = _ingest(
+        _payload(
+            source_url="https://example.granicus.com/player/clip/not-suspicious-xyz"
+        )
+    )
+    assert _row_for(result["slug"]) is None

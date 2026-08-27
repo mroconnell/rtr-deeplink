@@ -1,5 +1,48 @@
 # Backlog — done
 
+## A systemic backstop for the "vendor's own non-production content got ingested as real" failure shape [Done 2026-08-26]
+
+This exact incident shape has now happened twice on two unrelated
+platforms: three PrimeGov UAT/staging tenant pages got real-ingested
+during a bulk gate-blindness recheck (2026-08-19, the reason `/internal/
+admin/delete-pages` exists at all), and ProudCity's shared `/meetings/
+example-city-council-meeting/` seed post got real-ingested twice this
+same session (Santa Ana CA, Palmview TX — see the ProudCity entry
+below). Both times the fix was reactive and platform-specific. This adds
+a shared, cross-adapter backstop instead of waiting for a third
+incident on a fourth platform to teach the same lesson again.
+
+**What it is**: `archive/utils/suspicious_source.py`, a small pure
+function (`suspicious_source_reason(url)`) checking a resolved page's
+own source URL — never its title or content — for two confirmed shapes:
+a staging/UAT/sandbox/demo/preprod/dev subdomain *label* (word-boundary
+matched, so a real place literally named "Test" doesn't false-positive),
+and a small, growable list of known shared vendor demo/seed paths
+(seeded with ProudCity's real one). Wired into `crud.ingest_resolution()`
+— every ingest, from every adapter, every script, goes through this one
+function.
+
+**Deliberately conservative**: flags for review by forcing
+`best_effort=True` (the existing low-trust-queue mechanism, not a new
+one — see `/internal/low-trust-pages`), never rejects outright. A false
+positive costs one human review; a false negative ships fabricated
+content with full trust, which is what actually happened twice — the
+asymmetry is why this defaults to flagging rather than blocking.
+
+**Why the URL and not the title**: a real meeting's own title can
+legitimately contain "test" ("COVID Testing Site Task Force") or "demo"
+("Product Demo Day Proclamation") — real government text. A URL's
+hostname or path essentially never does by accident, which is what
+keeps this safe to run unconditionally on every ingest rather than
+needing a human in the loop to tune it.
+
+`proudcity.py`'s own `_DEMO_SLUG_RE` (see that file) stays in place
+alongside this — it's strictly stronger for the one case it covers (a
+known-zero-false-positive exact match that refuses the resolve outright
+before any fetch), while this module is the backstop for the *next*
+platform that has the same shape and hasn't earned its own dedicated
+check yet.
+
 Completed items moved out of [BACKLOG.md](BACKLOG.md) to keep the live
 document short. Kept verbatim (not summarized) because the investigation
 detail — what was checked, on which real cities, what turned out to be a
