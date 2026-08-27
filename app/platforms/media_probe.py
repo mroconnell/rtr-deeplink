@@ -494,6 +494,44 @@ def is_hls(media_url: str) -> bool:
     return urlparse(media_url).path.lower().endswith((".m3u8", ".m3u"))
 
 
+def should_cache_whole_audio(media_url: str, total_chunks: int) -> bool:
+    """Whether to pull this meeting's audio once instead of per chunk.
+
+    Two conditions, and both are load-bearing:
+
+    * **Not HLS.** ffmpeg fetches only the segments covering a chunk's
+      window off a playlist, so per-chunk extraction is already minimal
+      there; pre-fetching everything would download the whole video
+      stream to save nothing.
+    * **More than one chunk.** With a single chunk there is nothing to
+      amortise -- the whole-file read and the chunk read are the same
+      read.
+
+    For a multi-chunk progressive file this is never worse on bytes (both
+    approaches move the whole file in total) and strictly better on
+    requests and on seek cost, which for ChampDS is nearly all of the
+    cost -- see extract_full_audio()'s own docstring for the measurements.
+
+    **The gate is deliberately broad, and the caller's fallback is what
+    makes that safe (WO-58).** Not every progressive source has ChampDS's
+    seek pathology -- IQM2 was measured on 2026-08-25 and does not, its
+    time-to-first-byte being flat and non-monotonic with offset (0.05s at
+    byte 0, 2.8s at 50MB, 1.4s at 150MB -- ordinary variance, not a scan).
+    Detecting the pathology per source would cost its own probe on every
+    job, so instead this takes the cheap structural test and the caller
+    retries per-chunk if the whole-file pull does not work out. That
+    turns "wrong guess" into "slower once" rather than "failed job",
+    which matters: this gate covers 99 IQM2 pages in the current backlog.
+
+    Lives here (not in worker/main.py, where it originated) so both the
+    cloud worker and scripts/transcribe_backlog_locally.py share one
+    definition -- see WO-64's BACKLOG_DONE.md entry for why keeping the
+    cloud and local transcription paths from silently drifting apart
+    matters enough to relocate a function for.
+    """
+    return total_chunks > 1 and not is_hls(media_url)
+
+
 async def extract_full_audio(
     media_url: str,
     *,

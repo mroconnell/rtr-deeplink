@@ -53,7 +53,7 @@ def test_hls_never_takes_the_whole_audio_path():
     is already minimal for HLS -- pre-fetching everything would pull the
     entire video stream to save nothing."""
     assert (
-        worker_main._should_cache_whole_audio(
+        worker_main.should_cache_whole_audio(
             "https://cerritos.cablecast.tv/vod/372-x-v2/vod.m3u8", 22
         )
         is False
@@ -64,7 +64,7 @@ def test_single_chunk_jobs_skip_the_cache():
     """With one chunk the whole-file read and the chunk read are the same
     read, so there is nothing to amortise."""
     assert (
-        worker_main._should_cache_whole_audio(
+        worker_main.should_cache_whole_audio(
             "https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50", 1
         )
         is False
@@ -73,7 +73,7 @@ def test_single_chunk_jobs_skip_the_cache():
 
 def test_multi_chunk_progressive_source_uses_the_cache():
     assert (
-        worker_main._should_cache_whole_audio(
+        worker_main.should_cache_whole_audio(
             "https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50", 8
         )
         is True
@@ -254,7 +254,7 @@ async def test_a_failed_whole_audio_pull_falls_back_to_per_chunk(tmp_path, monke
     # Exercise the branch directly rather than standing up a whole job:
     # the point under test is that a failed cache result is not terminal.
     media_url = "https://MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4"
-    assert worker_main._should_cache_whole_audio(media_url, 8) is True
+    assert worker_main.should_cache_whole_audio(media_url, 8) is True
 
     extracted, error = await worker_main._chunk_audio_via_cache(
         job_id=1,
@@ -284,7 +284,7 @@ def test_iqm2_progressive_files_are_in_scope_of_the_gate():
     import worker.main as worker_main
 
     assert (
-        worker_main._should_cache_whole_audio(
+        worker_main.should_cache_whole_audio(
             "https://MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4", 8
         )
         is True

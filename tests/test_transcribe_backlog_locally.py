@@ -445,6 +445,101 @@ async def test_transcribe_meeting_does_not_retry_a_missing_ffmpeg(local_media):
     assert len(attempts) == 1
 
 
+# --- whole-audio caching for seek-hostile progressive sources (WO-64) ------
+#
+# Ported from worker/main.py's WO-54 fix after the exact ChampDS symptom it
+# was built for (ffmpeg timed out after 120s, per-chunk seeking on a
+# progressive MP4) took out 5 of 5 real meetings in one local run on
+# 2026-08-27 -- the fix existed in the cloud pipeline the whole time, but
+# this script never got it. should_cache_whole_audio() is the same shared
+# app/platforms/media_probe.py function the worker's own tests exercise
+# (tests/test_whole_audio_cache.py) -- not re-tested here, just relied on.
+
+_REAL_CHAMPDS_URL = (
+    "https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50"
+)
+
+
+class _ResolvesToChampds:
+    """Unlike _AlwaysResolves (hard-coded to the default HLS-shaped
+    _resolved()), returns the real, non-HLS ChampDS media shape that
+    should_cache_whole_audio() must gate on."""
+
+    async def resolve(self, url):
+        return _resolved(video_url=_REAL_CHAMPDS_URL)
+
+
+async def test_transcribe_meeting_caches_whole_audio_once_for_champds(local_media):
+    """The whole point of WO-54/WO-64: one download for the whole meeting,
+    then every chunk is a local slice -- extract_chunk_audio() (the old
+    per-chunk seek path) must never be called at all."""
+    local_media.setattr(tbl, "get_finder", lambda platform: _ResolvesToChampds())
+
+    full_pulls = []
+    slices = []
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        full_pulls.append(media_url)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+        return True, None
+
+    async def _fake_slice(cached_path, *, start, duration, out_path):
+        assert cached_path.exists()
+        slices.append(start)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    async def _fail_if_called(*a, **k):
+        raise AssertionError(
+            "per-chunk extraction must not run when the whole-audio cache succeeded"
+        )
+
+    local_media.setattr(tbl, "extract_full_audio", _fake_full)
+    local_media.setattr(tbl, "slice_cached_audio", _fake_slice)
+    local_media.setattr(tbl, "extract_chunk_audio", _fail_if_called)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(), _REAL_CHAMPDS_URL, "champds", chunk_size_seconds=900
+    )
+    assert result["ok"] is True
+    assert full_pulls == [_REAL_CHAMPDS_URL]  # downloaded exactly once
+    assert slices == [0.0, 900.0]  # both chunks sliced locally
+
+
+async def test_transcribe_meeting_falls_back_to_per_chunk_after_a_failed_whole_audio_pull(
+    local_media,
+):
+    """A failed whole-file pull (e.g. a file too large for the download's
+    own budget) must not be retried on every remaining chunk -- that would
+    burn a full timeout per chunk for no gain. Confirms exactly one
+    whole-audio attempt for the entire meeting, with every chunk (including
+    the one that triggered the failure) falling back to per-chunk
+    extraction."""
+    local_media.setattr(tbl, "get_finder", lambda platform: _ResolvesToChampds())
+
+    full_pull_attempts = []
+    per_chunk_calls = []
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        full_pull_attempts.append(media_url)
+        return False, "full-audio download timed out after 360s"
+
+    async def _fake_per_chunk(media_url, *, start, duration, source_page_url, out_path):
+        per_chunk_calls.append(start)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    local_media.setattr(tbl, "extract_full_audio", _fake_full)
+    local_media.setattr(tbl, "extract_chunk_audio", _fake_per_chunk)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(), _REAL_CHAMPDS_URL, "champds", chunk_size_seconds=900
+    )
+    assert result["ok"] is True
+    assert len(full_pull_attempts) == 1  # not retried on chunk 2
+    assert per_chunk_calls == [0.0, 900.0]  # every chunk still got transcribed
+
+
 async def test_a_late_chunk_failure_keeps_the_chunks_already_transcribed(local_media):
     """The pub-3ce.escribemeetings.com case in miniature: several chunks
     succeed, then one fails even after its retries. The finished chunks
