@@ -90,7 +90,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
+  [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
@@ -1051,6 +1052,34 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
+  2026-08-26 — two real, live findings, root cause not chased yet.**
+  Ran a real recent meeting through the actual resolver for each of the
+  4 curated cities (Phoenix, Philadelphia, Baltimore, Albuquerque), as a
+  follow-up to the ProudCity work's "curated domain lists can go stale"
+  lesson. (1) **A real crash on Phoenix**: a matched fallback video
+  (`uLzcNgtnyQ4`, correctly found by title+date) failed with `[youtube]
+  uLzcNgtnyQ4: This live event has ended` — yt-dlp's extraction path for
+  a livestream that ended but hasn't finished processing into a normal
+  VOD, a shape this module's error handling doesn't account for. Whether
+  this is transient (resolves once YouTube finishes processing) or a
+  real gap needing its own handling is unconfirmed — worth a repeat
+  check on the same video id before assuming either. (2) **Two real,
+  past Philadelphia meetings (Aug 5 and Aug 6, 2026) found zero fallback
+  match at all** — "No video link found," not even an attempted-but-
+  missed warning — despite both predating today by three weeks. Could be
+  a genuine content gap (the city didn't post these specific meetings),
+  a stricter-than-expected title/date match, or something else; not
+  diagnosed. **One real positive finding, not a bug**: one Baltimore
+  meeting resolved with a real video found directly on its own Legistar
+  page (empty `video_warnings`, no fallback needed) — the city may have
+  started adding some real video links since this fallback was built,
+  which would be a good thing (a shrinking, not growing, reliance on the
+  fallback) rather than a regression. Albuquerque not re-checked this
+  round — its Legistar calendar page's current HTML didn't match the
+  same link-scraping shape used for the other three; needs a fresh look
+  at the page structure before it can be re-verified the same way.
 
 - **[NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   `Webhook.verify()` returns `None` instead of the parsed event
