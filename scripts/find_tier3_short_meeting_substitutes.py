@@ -212,14 +212,19 @@ def cc_duration_seconds(event: dict) -> float | None:
 
 def cc_media_path(event: dict) -> str | None:
     # Same precedence civicclerk.py applies to the event-level fields
-    # (its first choice, EventsMedia's videoUrl, needs a second API call
-    # -- callers that made one pass its videoUrl separately).
-    return (
-        event.get("mediaStreamPath")
-        or event.get("mediaSourcePathMp4")
-        or event.get("externalMediaUrl")
-        or None
-    )
+    # (its first choice, EventsMedia's videoUrl, needs a second API call).
+    # Absolute URLs only: live losaltoshillsca event 4354 (2026-08-28)
+    # returned a *relative* "stream/LOSALTOSHILLSCA/{file}.mp4" here while
+    # EventsMedia's videoUrl held the real absolute form
+    # (https://cpmedia.azureedge.net/losaltoshillsca/{file}.mp4), so a
+    # relative value is treated as "not probeable from this row" and
+    # callers fall back to the EventsMedia call rather than guessing the
+    # CDN base from one observed mapping.
+    for field in ("mediaStreamPath", "mediaSourcePathMp4", "externalMediaUrl"):
+        value = event.get(field)
+        if value and value.startswith(("http://", "https://")):
+            return value
+    return None
 
 
 def cc_past_candidates(
@@ -344,6 +349,25 @@ async def cc_list_past_events(
         return _odata_rows(await _get_json(session, filtered))
     except aiohttp.ClientResponseError:
         return _odata_rows(await _get_json(session, plain))
+
+
+async def cc_probeable_video_url(
+    session: aiohttp.ClientSession, api_base: str, event: dict
+) -> str | None:
+    """Absolute media URL for an Events row: the row's own fields when
+    already absolute, else EventsMedia/{id}'s videoUrl (see
+    cc_media_path's comment on the relative-path finding)."""
+    media_url = cc_media_path(event)
+    if media_url:
+        return media_url
+    event_id = event.get("id")
+    if event_id is None:
+        return None
+    try:
+        media = await _get_json(session, f"{api_base}/EventsMedia/{event_id}")
+    except Exception:  # noqa: BLE001 -- EventsMedia 404s on media-less events
+        return None
+    return media.get("videoUrl") or media.get("externalVideoUrl") or None
 
 
 async def legistar_list_past_events(
@@ -556,7 +580,7 @@ async def _cc_find_substitute(
             substitute_url = cc_portal_url(tenant, event["id"])
             # One verification probe against the media file; if it can't
             # be verified the API duration still stands, honestly labeled.
-            media_url = cc_media_path(event)
+            media_url = await cc_probeable_video_url(session, api_base, event)
             verified = (
                 await probe_duration(media_url, source_page_url=substitute_url)
                 if media_url
@@ -581,7 +605,7 @@ async def _cc_find_substitute(
     # No candidate had a populated in-window API duration -- ffprobe the
     # newest few with media until one lands in the window.
     for event in candidates[:max_candidates]:
-        media_url = cc_media_path(event)
+        media_url = await cc_probeable_video_url(session, api_base, event)
         if not media_url:
             continue
         checked += 1
@@ -836,7 +860,9 @@ async def cmd_smoke(args) -> None:
         if versions.get("ffprobe"):
             for url, event in cc_events:
                 api_duration = cc_duration_seconds(event)
-                media_url = cc_media_path(event)
+                media_url = await cc_probeable_video_url(
+                    session, cc_api_base(tenant_of(url)), event
+                )
                 if api_duration is None or not media_url:
                     continue
                 probed = await probe_duration(media_url, source_page_url=url)

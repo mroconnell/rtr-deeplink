@@ -50,6 +50,18 @@ def test_unpopulated_duration_min_is_none_not_zero():
     )
 
 
+def test_relative_media_path_is_not_probeable():
+    # Live finding (losaltoshillsca event 4354, 2026-08-28): some tenants'
+    # event-level media fields hold a relative "stream/TENANT/{file}.mp4"
+    # path; only EventsMedia's videoUrl is absolute. A relative value must
+    # read as "fall back to EventsMedia", never be handed to ffprobe.
+    event = dict(_emporia_event())
+    event["mediaStreamPath"] = "stream/LOSALTOSHILLSCA/1b3aa745.mp4"
+    event["mediaSourcePathMp4"] = "stream/LOSALTOSHILLSCA/1b3aa745.mp4"
+    event["externalMediaUrl"] = ""
+    assert f3s.cc_media_path(event) is None
+
+
 def test_short_window_bounds():
     assert not f3s.in_short_window(599)
     assert f3s.in_short_window(600)
