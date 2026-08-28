@@ -54,8 +54,9 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
+  [JUST-DO-IT] `[EASY]` Static assets ship no `Cache-Control`, so a
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
@@ -327,6 +328,41 @@ so that work reads together.
   `dedupe_rollup_transcripts.py` used to, wasting requests against an
   endpoint already refusing every one. Genuinely `[EASY]`: copy the
   helper and its call sites over, no new design needed.
+
+- **[JUST-DO-IT] `[EASY]` Static assets ship no `Cache-Control`, so a
+  returning visitor runs stale JS/CSS after a deploy (WO-66,
+  2026-08-28).** Confirmed live, not theoretical: right after WO-65
+  deployed, a browser that had visited before the deploy kept executing
+  the **old** `/shared-static/clerk_nav.js` (12,106 bytes, no sign-up
+  mount code) while the server was serving the new one (16,381 bytes).
+  `performance.getEntriesByType("resource")` reported `transferSize: 0`
+  — straight from cache, no revalidation. The new `/sign-up` page
+  therefore rendered its heading and an **empty form area**, and looked
+  exactly like a broken deploy for several minutes of debugging.
+  **Root cause**: every static mount (`/static/*`, `/shared-static/*`,
+  `/archive-static/*`, both services) returns `ETag` and `Last-Modified`
+  but **no `Cache-Control` at all**, so browsers fall back to *heuristic*
+  freshness (RFC 9111 §4.2.2 — commonly ~10% of the time since
+  `Last-Modified`) and may serve a cached copy for a long time without
+  ever asking the server. The ETags are already correct; nothing is
+  revalidating against them.
+  **Fix (small)**: set `Cache-Control: no-cache` on these mounts —
+  despite the name it means "revalidate before use", so with the existing
+  ETags the common case is a cheap `304`, not a re-download. Do it where
+  the `StaticFiles` mounts are declared in `app/main.py` /
+  `archive/main.py` (a small `StaticFiles` subclass overriding
+  `file_response`, or middleware scoped to those path prefixes).
+  **Worth knowing before "improving" it further**: content-hashed
+  filenames plus `max-age=31536000, immutable` is the strictly better
+  end state, but it needs a build step this repo deliberately doesn't
+  have (templates reference these paths as plain literals), so it is a
+  separate, larger piece of work — not a reason to leave the current
+  no-header state in place.
+  **Why it matters beyond this one bug**: it applies to every JS/CSS
+  change this repo ever ships, silently. Any future "the deploy didn't
+  work" report should check `transferSize`/asset byte length before
+  anything else — that check is what resolved WO-65's false alarm in
+  minutes rather than hours. See `BACKLOG_DONE.md`'s WO-65 entry.
 
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**

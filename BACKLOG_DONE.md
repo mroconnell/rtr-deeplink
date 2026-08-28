@@ -3624,11 +3624,32 @@ which positively confirmed all four branches: arrived-from-`/account/saved`
 → `forceRedirectUrl` = `/account/saved`; landed-directly → same fallback;
 stale `/sign-up` stash → correctly rejected rather than looping; and
 `/sign-in` mounting `mountSignIn` with `signUpUrl: "/sign-up"`. Route and
-`noindex` coverage is in `tests/test_auth_pages.py`. **Still unconfirmed
-until a production deploy**: that Clerk's own component actually renders
-inside these two mount points against the real key — no local signal for
-it, same "don't claim it works without a positive example" caveat this
-repo already carries on `afterSignOutUrl`.
+`noindex` coverage is in `tests/test_auth_pages.py`.
+
+**Confirmed live on production 2026-08-28 after deploy**, closing the
+one caveat above: `/sign-up` and `/sign-in` both render Clerk's real
+component, they cross-link to each other rather than to a 404, and the
+originally-reported path works end to end — `/account/saved` → "Sign up"
+→ a working registration form, with the post-auth target correctly
+reading `/account/saved` so a new user lands back on their saved items.
+
+**That verification produced a false alarm worth learning from.** The
+first check after deploy showed `/sign-up` rendering its heading and an
+**empty form area**, which looked exactly like the fix not working. It
+was not: the browser was still executing a **cached copy** of the old
+`clerk_nav.js` (12,106 bytes, no sign-up mount code) while the server
+served the new one (16,381 bytes) — `transferSize: 0`, straight from
+cache with no revalidation. Several plausible-but-wrong hypotheses got
+chased first (event ordering between `DOMContentLoaded` and
+`rtr-clerk-ready`, `clerkLoaded` being false, a mount throwing) before
+the deployed-vs-executing byte comparison settled it in one call. **On
+any future "the deploy didn't work" report, compare the executing asset
+against the served one first** — `fetch(url, {cache:'force-cache'})` vs
+`{cache:'reload'}`, or `performance.getEntriesByType("resource")`.
+The underlying cause is a real, still-open gap filed as WO-66 in
+`BACKLOG.md`: these static mounts send no `Cache-Control` header at all,
+so browsers use heuristic freshness. It affects every JS/CSS change this
+repo ships, not just this one.
 
 **Nav copy changed in the same pass**, at the user's request and choice:
 the signed-out nav link now reads "Sign in / Register" (both services'
