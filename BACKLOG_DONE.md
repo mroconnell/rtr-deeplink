@@ -1,6 +1,6 @@
 # Backlog — done
 
-## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 2,298 rows [Done 2026-08-28]
+## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 3,344 rows [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §23. Direct response to a user request: every rejection from today's
@@ -8,23 +8,38 @@ enumeration work (§13-22) only ever existed in ephemeral scratchpad JSON
 files or as prose in these write-ups — no durable, queryable record of
 which URLs were checked and rejected, or why. Added a `reject_reason`
 column to `jurisdiction_coverage.csv` and reconstructed it from every
-scratchpad file still on disk: 2,298 rows now carry one of
-`already-covered` (209), `no-video-found` (73), `off-mission` (72),
-`resolve-failed` (29), `no-platform-link-found` (1,867),
-`no-platform-signature` (21), `dns-unresolvable` (14),
-`wrong-domain-mapping` (6), `signature-found-not-verified` (5),
-`listing-page-not-single-meeting` (1), or `duplicate-queued` (1). A
-blank `reject_reason` with a blank `transcribed` means "not yet checked
-by anything in §13-22"; blank `reject_reason` with `transcribed` set
-means it was successfully ingested or queued.
+scratchpad file still on disk: **3,344 rows now carry one of**
+`no-platform-link-found` (2,836), `already-covered` (209),
+`resolve-failed` (82), `no-video-found` (73), `off-mission` (72),
+`broken-template-false-positive` (24), `no-platform-signature` (21),
+`dns-unresolvable` (14), `wrong-domain-mapping` (6),
+`signature-found-not-verified` (5), `duplicate-queued` (1), or
+`listing-page-not-single-meeting` (1). A blank `reject_reason` with a
+blank `transcribed` means "not yet checked by anything in §13-22";
+blank `reject_reason` with `transcribed` set means it was successfully
+ingested or queued.
 
-**Known limitation**: reconstructed after the fact, not captured live at
-rejection time, so a few buckets couldn't be mapped back to a CSV row at
-all (the IQM2/eScribe dork tokens from §22 aren't part of this CSV's
-population; the outbound-link scan's 7 held-out tier-3 candidates from
-§20 aren't distinguished from the ordinary already-ingested case, since
-no file recorded that specific split). Any future rejection should write
-this column directly, not rely on a reconstruction pass.
+**A first pass covered 2,298 rows and missed a real chunk**: it never
+cross-referenced §20's original 1,211-page candidate list against what
+actually got resolved, so ~1,046 rows from that specific scan (970 with
+no regex match at all, 24 broken-template false positives, 53 that
+matched but never resolved) had no `reject_reason` at all — caught only
+because the user asked directly "did you put ALL your scratchpad
+rejected urls in," which prompted re-deriving the gap by diffing
+candidate counts rather than trusting the first pass's own summary.
+Fixed in the same session.
+
+**Known limitation, still real after the fix**: reconstructed after the
+fact, not captured live at rejection time, so a few buckets still
+couldn't be mapped back to a CSV row at all (the IQM2/eScribe dork
+tokens from §22 aren't part of this CSV's population; the outbound-link
+scan's 7 held-out tier-3 candidates from §20 aren't distinguished from
+the ordinary already-ingested case, since no file recorded that specific
+split). Any future rejection should write this column directly, not
+rely on a reconstruction pass — and any future reconstruction pass
+should diff candidate-list counts against resolved counts *before*
+declaring itself complete, the check that was skipped here the first
+time.
 
 **Real gap this closes for the still-open multi-meeting-check finding**
 (`BACKLOG.md`'s matching `[NEEDS-AUDIT]` entry): that entry can now say
