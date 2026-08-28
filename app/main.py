@@ -1772,6 +1772,31 @@ async def subscribe(request: Request):
     return templates.TemplateResponse(request, "subscribe.html", {})
 
 
+# Clerk renders its own "No account? Sign up" / "Have an account? Sign
+# in" cross-links at signUpUrl/signInUrl, which default to /sign-up and
+# /sign-in *on this origin*. Neither path existed until WO-65, so the
+# inline sign-in form on /account/saved dead-ended in a 404 -- confirmed
+# live 2026-08-28, the rendered link's href really was
+# https://redtaperecordings.com/sign-up. The nav's modal (openSignIn)
+# was never affected: it uses Clerk's virtual router, so its own link is
+# the sentinel "CLERK-ROUTER/VIRTUAL/sign-up" and switches views inside
+# the modal without navigating anywhere -- verified live in the same
+# pass, and deliberately left alone here rather than "fixed" too.
+#
+# Both routes live on the resolver even though the form that links to
+# them is served by the Archive (/account/saved is proxied through
+# _proxy_to_archive), because Clerk resolves these against the public
+# origin, which is the resolver.
+@app.get("/sign-up")
+async def sign_up(request: Request):
+    return templates.TemplateResponse(request, "sign_up.html", {})
+
+
+@app.get("/sign-in")
+async def sign_in(request: Request):
+    return templates.TemplateResponse(request, "sign_in.html", {})
+
+
 def _admin_token_ok(authorization: Optional[str] = None) -> bool:
     """`Authorization: Bearer`-only, matching archive/main.py's `_token_ok()`.
     The `?token=` query-param fallback (WO-8) was kept only until both

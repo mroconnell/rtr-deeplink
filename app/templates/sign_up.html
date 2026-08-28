@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Create your account | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="robots" content="noindex">
+{% endblock %}
+{% block content %}
+  <main class="center-page">
+    <h1>Create your account</h1>
+    <p class="subtitle">Save meetings and searches so they're waiting for you next time.</p>
+    {#- Mounted by shared_static/clerk_nav.js. Empty (and the page
+       otherwise still renders fine) when CLERK_PUBLISHABLE_KEY isn't
+       set, same "accounts are entirely optional" rule the rest of the
+       Clerk wiring follows. -#}
+    <div id="clerk-sign-up"></div>
+  </main>
+{% endblock %}

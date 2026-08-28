@@ -64,7 +64,13 @@ def test_saved_items_page_anonymous_shows_sign_in_prompt_not_an_error(monkeypatc
     monkeypatch.setenv("CLERK_SECRET_KEY", "sk_test_fake_for_this_test")
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
-    assert "Sign in to save meetings" in response.text
+    # Asserted on the mount point plus the stable half of the sentence
+    # rather than the full prompt: the exact wording is product copy and
+    # has already changed once (WO-65 added "or create a free account"
+    # to it), while what this test actually cares about is that an
+    # anonymous visitor gets the sign-in form instead of an error.
+    assert 'id="clerk-sign-in"' in response.text
+    assert "to save meetings and searches" in response.text
 
 
 def test_nav_has_no_clerk_elements_when_unconfigured(monkeypatch):
@@ -95,7 +101,7 @@ def test_nav_shows_signed_in_state_immediately_when_active_account_present(monke
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
     assert (
-        '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in</a>'
+        '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in / Register</a>'
         in response.text
     )
     assert '<span id="clerk-user-button"></span>' in response.text
@@ -115,7 +121,7 @@ def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
     assert (
-        '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in</a>'
+        '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in / Register</a>'
         in response.text
     )
     assert '<span id="clerk-user-button" hidden></span>' in response.text
