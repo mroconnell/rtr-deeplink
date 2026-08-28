@@ -4092,41 +4092,31 @@ means somebody found the example, not that somebody decided to guess.
 
 - **[NEEDS-AUDIT] Every "no video" verdict this week (and likely
   earlier) came from checking exactly one meeting per jurisdiction —
-  real, confirmed false negatives found by checking more, and there's
-  no durable list of what got rejected to re-check.** Found 2026-08-28,
-  in direct response to a user question about whether a single-meeting
-  check could be missing video that exists elsewhere on the same portal.
-  It can: re-checking Cambridge, MA (IQM2) across all 4 meetings listed
-  on its portal homepage, the actual "City Council Regular Meeting"
-  itself (not just the subcommittee meeting originally checked) still
-  came back with no video — suspicious for a city this size, a possible
-  real IQM2 video-detection gap, not confirmed either way. Worse,
-  re-checking Watsonville, CA (eScribe) — tried standalone, not part of
-  a batch, to rule out rate-limiting — came back with `title`, `date`,
-  AND `video_url` all `None`, meaning the adapter failed to parse that
-  meeting page at all rather than correctly finding no video. Neither
-  case was caught during the original passes (§18-22) because each only
-  ever tried one meeting ID per jurisdiction, usually just the first one
-  found on a portal's homepage — not the specific "Council"/"Board"
-  regular-session meeting most likely to actually have video, and never
-  a second meeting to rule out a fluke (an upcoming meeting with no
-  video yet, a subcommittee that doesn't get recorded, or an adapter
-  bug like Watsonville's). **What to build**: (1) for any jurisdiction
-  marked "no video" going forward, check at least 2-3 real meetings
-  before concluding — ideally one clearly labeled as the main
-  Council/Board/Commission meeting, not whatever the regex happened to
-  find first; (2) **there is currently no durable, greppable record of
-  which specific URLs were rejected for "no video" vs. "already
-  covered" vs. "off-mission"** — every rejection this week only exists
-  in ephemeral scratchpad JSON files (cleaned up at session end) or as
-  prose inside `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
-  write-ups, neither of which a future session can query. Fix by adding
-  a `reject_reason` column to `jurisdiction_coverage.csv` (values like
-  `no-video-found`, `already-covered`, `off-mission`, `adapter-error`)
-  written whenever a candidate is checked and rejected, so a later pass
-  can filter specifically for `no-video-found` rows and retry them with
-  the multi-meeting check above, instead of re-scanning everything from
-  scratch or, worse, having no way to find them again at all.
+  real, confirmed false negatives found by checking more.** Found
+  2026-08-28, in direct response to a user question about whether a
+  single-meeting check could be missing video that exists elsewhere on
+  the same portal. It can: re-checking Cambridge, MA (IQM2) across all 4
+  meetings listed on its portal homepage, the actual "City Council
+  Regular Meeting" itself (not just the subcommittee meeting originally
+  checked) still came back with no video — suspicious for a city this
+  size, a possible real IQM2 video-detection gap, not confirmed either
+  way. Worse, re-checking Watsonville, CA (eScribe) — tried standalone,
+  not part of a batch, to rule out rate-limiting — came back with
+  `title`, `date`, AND `video_url` all `None`, meaning the adapter
+  failed to parse that meeting page at all rather than correctly finding
+  no video. Neither case was caught during the original passes (§18-22)
+  because each only ever tried one meeting ID per jurisdiction, usually
+  just the first one found on a portal's homepage — not the specific
+  "Council"/"Board" regular-session meeting most likely to actually have
+  video, and never a second meeting to rule out a fluke (an upcoming
+  meeting with no video yet, a subcommittee that doesn't get recorded,
+  or an adapter bug like Watsonville's). **What to build**: for any
+  jurisdiction marked `no-video-found` in `jurisdiction_coverage.csv`'s
+  now-live `reject_reason` column (see `BACKLOG_DONE.md`'s matching
+  entry — the tracking half of this finding is already built), check at
+  least 2-3 real meetings before concluding no video exists — ideally
+  one clearly labeled as the main Council/Board/Commission meeting, not
+  whatever the regex happened to find first.
 
 ## Parked deliberately — allowed back `[PARK]`
 

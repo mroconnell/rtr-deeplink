@@ -1,5 +1,36 @@
 # Backlog — done
 
+## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 2,298 rows [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§23. Direct response to a user request: every rejection from today's
+enumeration work (§13-22) only ever existed in ephemeral scratchpad JSON
+files or as prose in these write-ups — no durable, queryable record of
+which URLs were checked and rejected, or why. Added a `reject_reason`
+column to `jurisdiction_coverage.csv` and reconstructed it from every
+scratchpad file still on disk: 2,298 rows now carry one of
+`already-covered` (209), `no-video-found` (73), `off-mission` (72),
+`resolve-failed` (29), `no-platform-link-found` (1,867),
+`no-platform-signature` (21), `dns-unresolvable` (14),
+`wrong-domain-mapping` (6), `signature-found-not-verified` (5),
+`listing-page-not-single-meeting` (1), or `duplicate-queued` (1). A
+blank `reject_reason` with a blank `transcribed` means "not yet checked
+by anything in §13-22"; blank `reject_reason` with `transcribed` set
+means it was successfully ingested or queued.
+
+**Known limitation**: reconstructed after the fact, not captured live at
+rejection time, so a few buckets couldn't be mapped back to a CSV row at
+all (the IQM2/eScribe dork tokens from §22 aren't part of this CSV's
+population; the outbound-link scan's 7 held-out tier-3 candidates from
+§20 aren't distinguished from the ordinary already-ingested case, since
+no file recorded that specific split). Any future rejection should write
+this column directly, not rely on a reconstruction pass.
+
+**Real gap this closes for the still-open multi-meeting-check finding**
+(`BACKLOG.md`'s matching `[NEEDS-AUDIT]` entry): that entry can now say
+"check every row where `reject_reason == no-video-found`" instead of
+"there's no way to find these again."
+
 ## Dorking eScribe/IQM2/Swagit the same day as their gap-list sweep: a clean 0-new result [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
