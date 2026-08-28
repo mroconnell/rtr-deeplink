@@ -214,7 +214,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (30)
+Dormant — needs a real example first `[LATER]`  (32)
   Thumbnails  (1)
     [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
@@ -237,7 +237,7 @@ Dormant — needs a real example first `[LATER]`  (30)
     [LATER] Stale archived transcripts have no automated refresh path —
     [LATER] `[EXAMPLE]` Perry GA's eScribe host
     [LATER] Swagit custom-domain embeds unverified
-  Platform discovery & enumeration — leads not yet chased  (11)
+  Platform discovery & enumeration — leads not yet chased  (13)
     [LATER] TelVue host enumeration — partially done 2026-08-16 via
     [LATER] CivicPlus has zero currently-live, confirmed-real URLs
     [LATER] Collect custom-domain examples for popular platforms as
@@ -249,6 +249,8 @@ Dormant — needs a real example first `[LATER]`  (30)
     [LATER] Hallucinated-transcript detection has two real, known
     [LATER] A *sparse* loop of 5-11 cues is still missed
     [LATER] `[EXAMPLE]` Cablecast has a real, documented "RSS Schedule
+    [LATER] `[BIG]` The ~21,331 `jurisdiction_coverage.csv` rows with
+    [LATER] Dork a platform *before* its known-gap-list sweep, not
 
 Parked deliberately — allowed back `[PARK]`  (3)
   [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction
@@ -4050,6 +4052,42 @@ means somebody found the example, not that somebody decided to guess.
   platform-coverage entry above) — not a direct video/caption file URL
   — so at best it would speed up discovering *that a show aired*, not
   skip the existing `window.__remixContext` scrape.
+
+- **[LATER] `[BIG]` The ~21,331 `jurisdiction_coverage.csv` rows with
+  neither a meeting URL nor even a domain are the real remaining
+  frontier, but they need outside research, not more URL-shape
+  scanning.** Found 2026-08-28 while closing out the CSV-mining phase
+  (`BACKLOG_DONE.md`'s "no-video-signal tier" entry,
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §21): every
+  method that worked this week — known-gap-list checks, outbound-link
+  scanning, `detect_platform()` against a row's own URL — needs *some*
+  URL or domain to start from. These rows have city/state/population
+  only. A 40-domain sample of the smaller adjacent tier (rows with a
+  domain but no meeting URL, §21 bucket 3) already showed this shape of
+  data degrades fast — not worth extending the same technique further
+  down to zero-signal rows. This is a "find the government's own
+  website first" research task, structurally different from everything
+  §13-22 did.
+
+- **[LATER] Dork a platform *before* its known-gap-list sweep, not
+  after — same-day ordering matters and this project got it backwards
+  for eScribe/IQM2/Swagit.** Found 2026-08-28
+  (`BACKLOG_DONE.md`'s "Dorking eScribe/IQM2/Swagit" entry,
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §22):
+  phrase-dorking those three platforms the same day they'd already had
+  a known-gap-list sweep against `jurisdiction_coverage.csv` returned a
+  clean 0 new — every real video find (Santa Maria CA, Currituck County
+  NC, Edmonton, Calgary AB, Atlanta GA) was already covered, because the
+  gap-list pass already claimed the smaller, less-searchable places and
+  a same-day dork was left sampling only the search engine's own
+  popularity ranking (large, long-covered cities). TelVue's high yield
+  the same day wasn't dorking being better — it was the *first* method
+  ever run against a platform with zero prior list coverage. **Next
+  time**: dork CivicWeb, PrimeGov, and Cablecast — three platforms in
+  this project's adapter registry that have never had a known-gap-list
+  sweep at all, so the TelVue-shaped "virgin territory" advantage should
+  still apply. Do the dork pass *before* running any gap-list check
+  against them, not after.
 
 ## Parked deliberately — allowed back `[PARK]`
 
