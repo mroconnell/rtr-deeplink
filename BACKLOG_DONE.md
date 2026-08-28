@@ -1,5 +1,51 @@
 # Backlog — done
 
+## DNS/CNAME fingerprinting toolkit from a parallel session: 16 new jurisdictions, plus a real WAF gap logged [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§32. A parallel Cowork session independently attacked discovery via DNS
+CNAME fingerprinting against 12,761 CISA `.gov` domains — delivered as
+`rtr-discovery-toolkit.zip`, reviewed (all 3 scripts clean, data spot-
+checked against the report's own claimed numbers, matched exactly)
+before acting on any of it.
+
+Two platforms in the labeled CSV are directly actionable (real adapters
+already exist): 216 CivicPlus domains, 97 Granicus. CivicPlus: checked
+coverage first, 176 genuinely new, resolved each (single-meeting check,
+same limitation as always) — 17/176 real video, 16 after excluding one
+already-covered. Two jx-derivation bugs caught before shipping (same
+root cause as the Granicus mistake in the CDX entry above — trusting
+the DNS row's *listed city* instead of the real name embedded in the
+domain): `marshallcountyky.gov` → "Benton County, KY" (wrong; Benton is
+the seat, not the county name) and `natronacounty-wy.gov` → "Casper
+County, WY" (wrong; Casper is the seat, real answer Natrona County).
+**13 tier-1/2 ingested directly, 3 tier-3 queued.**
+
+Granicus's 97 domains hit a real wall: `detect_platform()` doesn't
+recognize a jurisdiction's own `.gov` domain as Granicus at all (only
+literal `granicus.com`), and every domain tested (4/4) returns an
+outright 403/connection-reset — Granicus's separate "GovAccess CMS"
+product, a different WAF than the classic subdomain hosting this
+project already handles. A real, partially-successful workaround:
+fuzzy-matching a GovAccess domain's city+state against the complete
+687-tenant Granicus CDX list already pulled the same day recovered 7
+genuinely correct classic-subdomain matches (e.g. `belmont.gov` →
+`belmont-ca.granicus.com`) — but also 1 confirmed **wrong** match
+(`albemarlenc.gov` matched to `albemarle.granicus.com`, which turned
+out to be Albemarle County, VA's own real tenant, an unrelated place).
+All genuine new hits from this cross-reference were already queued via
+the direct CDX pull — clean cross-validation, no new coverage from it.
+Logged as an open `[NEEDS-AUDIT]` lead in `BACKLOG.md`, not pursued
+further this session.
+
+**A real, durable lead for later, also logged**: six platforms
+(PrimeGov, eScribe, CivicPlus, BoardDocs, CivicWeb, Cablecast) don't
+wildcard their DNS, meaning their entire customer base is enumerable by
+generating slugs from a real census place list and resolving — zero
+HTTP, zero rate limit. Not run this session (no census place list on
+hand); logged as `[LATER]` in `BACKLOG.md` along with nine new vendor
+signatures the parallel session found by clustering real CNAME targets.
+
 ## CDX applied to Swagit/CivicClerk/Granicus: 217 new jurisdictions, one real bug caught before shipping [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`

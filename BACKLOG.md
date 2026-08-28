@@ -214,7 +214,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (33)
+Dormant — needs a real example first `[LATER]`  (35)
   Thumbnails  (1)
     [LATER] `[EASY]` A page whose only stored frames are non-default
   Captions — formats and sources with no confirmed positive example  (7)
@@ -237,7 +237,7 @@ Dormant — needs a real example first `[LATER]`  (33)
     [LATER] Stale archived transcripts have no automated refresh path —
     [LATER] `[EXAMPLE]` Perry GA's eScribe host
     [LATER] Swagit custom-domain embeds unverified
-  Platform discovery & enumeration — leads not yet chased  (14)
+  Platform discovery & enumeration — leads not yet chased  (16)
     [LATER] TelVue host enumeration — partially done 2026-08-16 via
     [LATER] CivicPlus has zero currently-live, confirmed-real URLs
     [LATER] Collect custom-domain examples for popular platforms as
@@ -252,6 +252,8 @@ Dormant — needs a real example first `[LATER]`  (33)
     [LATER] `[BIG]` The ~21,331 `jurisdiction_coverage.csv` rows with
     [LATER] Dork a platform *before* its known-gap-list sweep, not
     [NEEDS-AUDIT] Every "no video" verdict this week (and likely
+    [NEEDS-AUDIT] Granicus's "GovAccess CMS" product (CNAMEs through
+    [LATER] Six meeting/CMS platforms don't wildcard their DNS —
 
 Parked deliberately — allowed back `[PARK]`  (3)
   [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction
@@ -4117,6 +4119,76 @@ means somebody found the example, not that somebody decided to guess.
   least 2-3 real meetings before concluding no video exists — ideally
   one clearly labeled as the main Council/Board/Commission meeting, not
   whatever the regex happened to find first.
+
+- **[NEEDS-AUDIT] Granicus's "GovAccess CMS" product (CNAMEs through
+  `granicusgovaccess.net`) is completely undetected by `detect_platform()`
+  and blocks every request outright, on a jurisdiction's own custom
+  `.gov` domain — a real, confirmed gap, not pursued further
+  2026-08-28.** Found via a DNS CNAME fingerprinting toolkit delivered by
+  a parallel session (`~/Documents/rtr-business/research/
+  ENUMERATION_METHODS.md` §32 has the full writeup): 97 real `.gov`
+  domains CNAME to `granicusgovaccess.net`, a distinct Granicus product
+  from the classic `{tenant}.granicus.com` subdomain hosting this
+  project already supports. Two separate problems, confirmed live on 4
+  different domains: (1) `detect_platform()` only recognizes literal
+  `granicus.com` URLs, so these resolve as `"unknown"` even though
+  they're 100% real Granicus tenants; (2) every path tested on every one
+  of these `.gov` domains returns a 403 or connection reset, including
+  through the adapter's own `resolve()` (which already sends realistic
+  headers that work fine for classic Granicus subdomains) — a plain bot
+  WAF block, not a CAPTCHA/human-verification wall, so still fair game
+  to solve, just not solved here. **A real, partially-successful
+  workaround found the same session**: since this project separately
+  pulled the *complete* list of 687 classic Granicus tenant subdomains
+  via CDX the same day (§29/§31), fuzzy-matching a GovAccess domain's
+  city+state against that list can recover the tenant's *real* classic
+  subdomain when one exists — e.g. `belmont.gov` → `belmont-ca.granicus.
+  com`, which resolves fine and has real video. Of 29 fuzzy matches
+  attempted, 8 resolved to real content and 7 were genuinely correct;
+  one (`albemarlenc.gov` → `albemarle.granicus.com`) was a confirmed
+  **wrong** match — that classic subdomain turned out to be Albemarle
+  County, **VA**'s own real tenant, an unrelated place that just shares
+  a base name with Albemarle, NC. All genuinely-new hits from this
+  cross-reference turned out to already be queued via the direct CDX
+  pull (same tenants, found independently by both methods — a clean
+  cross-validation, not new coverage). **What's left, for whoever picks
+  this up**: (a) build real `detect_platform()`/adapter support for
+  `granicusgovaccess.net` CNAMEs directly, ideally with different
+  request headers that might satisfy this specific WAF; (b) the
+  city+state fuzzy-match-against-known-CDX-tenants trick is real and
+  reusable for any future GovAccess batch, but needs per-match
+  verification (title/jurisdiction check) before trusting it, since
+  base-name collisions across states are a confirmed real failure mode,
+  not a hypothetical one.
+
+- **[LATER] Six meeting/CMS platforms don't wildcard their DNS —
+  `primegov.com`, `escribemeetings.com`, `civicplus.com`,
+  `boarddocs.com`, `civicweb.net`, `cablecast.tv` — meaning their entire
+  customer base is enumerable by DNS alone against a census place list,
+  with zero HTTP and zero rate-limit exposure.** Confirmed empirically
+  2026-08-28 by the same parallel-session toolkit (`ENUMERATION_METHODS.
+  md` §32): a nonsense subdomain on any of these six returns `NXDOMAIN`,
+  while the same test against `granicus.com`/`legistar.com`/`iqm2.com`/
+  `civicclerk.com`/`novusagenda.com`/`municipalcodeonline.com`/
+  `swagit.com`/`agendasuite.org` resolves to a real catch-all server
+  regardless — so DNS existence can only ever confirm a tenant on the
+  first six. **Not run this session** — needs a real census place list
+  (city/town names) to generate candidate slugs from, which wasn't on
+  hand; the CISA `.gov`-domain list already used for the CivicPlus/
+  Granicus DNS work (`dotgov.csv`, in the delivered toolkit) is a
+  plausible substitute if a proper census file isn't available, though
+  it under-samples relative to a true place list (many small towns have
+  no `.gov` domain at all). Also worth adding when this gets picked up:
+  nine vendor signatures found by clustering real CNAME targets that
+  aren't in this project's current detection list —
+  `granicusgovaccess.net` (see the entry above), `civicplus.io`,
+  `civiclive.com`, `revizesites.com`, `opencities.com`,
+  `municodeweb.com`, `municipalcms.com`/`.cloud`, `getstreamline.net`,
+  `apptegy.net`. Most of these (Revize, OpenCities, Apptegy, Municode,
+  MunicipalCMS, Streamline) are general government CMS platforms with no
+  known video shape of their own, so they'd need the same "check the
+  CMS's own outbound links" treatment already established for CivicPlus,
+  not a new dedicated adapter.
 
 ## Parked deliberately — allowed back `[PARK]`
 
