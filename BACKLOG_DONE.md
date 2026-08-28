@@ -1,5 +1,32 @@
 # Backlog — done
 
+## `reject_reason` backfilled from the earlier Cablecast/Legistar/TelVue enumeration session — 9 rows, 2 new taxonomy values [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§24. Same ask as the entry below, applied to a *different, earlier*
+enumeration session (2026-08-16/17's PrimeGov/CivicWeb/eScribe/IQM2/
+ClerkBase/ChampDS/Legistar/TelVue/Granicus/Cablecast/Swagit/CivicClerk
+push, documented in `CDX_QUERIES.md`/`HYLAND_DISCOVERY.md`/
+`telvue_org_tokens.md`, not §13-22 below). Real constraint hit
+immediately: that session's scratchpad/task-output files are 12 days
+gone, so nothing could be reconstructed from disk the way §23 did —
+only what survived in the conversation transcript's own prose counted
+as memory. That gave precise per-host detail for Legistar (19) and
+TelVue (12 tokens), but only aggregate tier counts for
+Cablecast/Swagit/CivicClerk's 728 candidates — flagged as a real,
+unrecoverable gap rather than guessed at. **9 rows written** (Ann
+Arbor MI, Chicago IL, Naperville IL, Philadelphia PA, Sunnyvale CA,
+Fresno County CA, Fulton County GA, Mountain View CA, Kalamazoo MI),
+two new taxonomy values added (`video-no-captions` for a confirmed real
+meeting page with zero transcript segments; reused `no-video-found` for
+Legistar/TelVue's delegation-came-up-empty shape). 10 more candidates
+deliberately skipped: 5 already `transcribed=True` via another platform
+(writing a reject reason would have contradicted an already-correct
+row), 4 already carrying a different `reject_reason` (never overwrite —
+though 3 of those disagree with this session's own finding and are
+worth a human look, see §24's table), 2 real jurisdictions not present
+in this CSV's population at all.
+
 ## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 3,344 rows [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
