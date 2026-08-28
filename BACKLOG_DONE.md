@@ -1,5 +1,58 @@
 # Backlog — done
 
+## The no-video-signal tier: 54 more new jurisdictions, two real bugs caught by verification [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§21. Worked the 25,226 `jurisdiction_coverage.csv` rows left over after
+§16-20 — no `suspected_video_provider`, no `shares_video`, not yet
+marked `transcribed`. Split into three buckets by shape:
+
+1. **75 rows whose own URL is a known platform**, just never flagged as
+   one in the CSV (`detect_platform()` recognized it directly). Real
+   yield: **1 of 75** (Cleveland County, OK — Legistar→Granicus,
+   video-only, queued). The other 74 — mostly ~28 small Ontario eScribe
+   municipalities — resolved cleanly but have no video at all; these
+   deployments host agendas/minutes only. Caught and fixed in-flight: a
+   first pass mistakenly counted 1,947 "unknown"-platform rows as
+   "detected" because `detect_platform()` returns the literal string
+   `"unknown"` for a non-match rather than `None`.
+2. **1,947 rows with a URL that isn't a known platform, but might embed
+   one** — same method as §20's outbound-link scan, different source
+   column. An 80-page-hit result out of 1,947 (4.1%, vs §20's 20%) still
+   produced **51 new tier-1/2 meetings + 3 new tier-3 candidates** (1
+   already covered) after resolving and filtering off-mission YouTube
+   noise the same way §20 did.
+3. **1,873 domain-only rows (no meeting URL at all)** — sampled (40
+   domains) and rejected: 13/40 didn't even resolve via DNS (the CSV's
+   `domain` field here looks inferred, not verified), and only 5/40
+   (12.5%) showed any known-platform signature, several of those just a
+   YouTube link in a page footer. Materially worse yield than every
+   other method used this week on a much bigger population — not scaled
+   up. Left over: 21,331 rows with neither URL nor domain, which is a
+   research task (find the government's website first), not an
+   enumeration task.
+
+**Second real bug, caught only by spot-checking ingested jurisdiction
+names**: a `clean_city_name()` fallback helper stripped a trailing
+" County" the same way it strips city-type suffixes (" city"/" town"/
+" village"/" borough") — wrong, because a US county's "County" is part
+of its real official name, not a CSV type-suffix. Silently produced
+"Natrona, WY" instead of "Natrona County, WY" for 6 of the 51 new
+meetings, wherever the adapter itself didn't supply a jurisdiction.
+Fixed by re-ingesting the same `source_url` key with the corrected
+jurisdiction string — `_find_or_create_page()` matches and updates in
+place rather than duplicating (verified: `Natrona, WY` → `Natrona
+County, WY` on the live `/api/jurisdictions` lookup, same page URL).
+Lesson for any future fallback of this shape: never strip "County" the
+way a city-type suffix gets stripped.
+
+**Net: 54 new jurisdictions** (52 direct-ingested — including the 6
+corrected in place — plus 2 queued; 1 held out as a duplicate of an
+already-queued meeting for the same county). This closes out the
+`jurisdiction_coverage.csv`-mining phase started in §16 — the only
+remaining rows in that file need real outbound research, not more
+URL-shape scanning.
+
 ## Agenda-only rows: outbound-link scan at scale, 96 more new jurisdictions [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
