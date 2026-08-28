@@ -1,5 +1,36 @@
 # Backlog — done
 
+## Dorking eScribe/IQM2/Swagit the same day as their gap-list sweep: a clean 0-new result [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§22. §17 flagged that TelVue/Granicus-style phrase-dorking hadn't yet
+been tried against eScribe/IQM2/Swagit/CivicClerk, only the known-gap-
+list method (§18). Ran it against the first three: ~11 search queries,
+27 unique subdomains found, 24 resolved to a real specific meeting, only
+5 had actual video attached — and every one of those 5 (Santa Maria CA,
+Currituck County NC, Edmonton, Calgary AB, Atlanta GA) was already
+covered, either live in Archive or already sitting in the tier-3 queue.
+**Net: 0 new jurisdictions.**
+
+Real, useful negative result, not a wasted pass: it confirms and
+sharpens §17's "dorking is biased toward famous places" finding — that
+bias compounds when a platform has *also* just had a same-day known-gap-
+list sweep, since the list method already claims the smaller,
+less-searchable places, leaving a same-day dork sampling almost
+exclusively from the search engine's own popularity ranking (which
+skews toward exactly the large cities this project covered years ago).
+TelVue's high yield (§16) wasn't dorking being better — it was the
+*first* method run against a platform with zero prior list coverage.
+**Rule for future platforms**: dork before (or instead of) the gap-list
+sweep, not after — same-day, the two methods compete for the same easy
+wins and gap-list-first exhausts what dorking would have reached.
+
+Not pursued further this session: CivicClerk (the fourth platform from
+§17's original list) wasn't dorked, since the pattern was already
+consistent across 3 platforms; genuinely fresh territory (a platform
+never gap-list-swept) remains the better target for this technique going
+forward.
+
 ## The no-video-signal tier: 54 more new jurisdictions, two real bugs caught by verification [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
