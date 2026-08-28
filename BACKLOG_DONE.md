@@ -1,5 +1,37 @@
 # Backlog — done
 
+## Cablecast dorking: 6 new jurisdictions, reject_reason written live for the first time [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§28. The scoped-down version of "run the massive enumeration job":
+Cablecast had never been gap-list-swept or dorked this week, so it's
+genuine virgin territory (same shape as §16's TelVue pass). 5 search
+queries found 15 unique tenant subdomains — matching TelVue's yield
+rate, confirming §22's "dork before gap-list, not after" rule on a
+second fresh platform.
+
+Applied §23's own lesson directly: every negative got a second meeting
+checked before writing `reject_reason` (not just the first one found),
+which caught a real false negative on the first try — Holbrook, MA's
+first meeting had no video, its second did (26 real segments,
+genuinely new). **6 new jurisdictions live** (Champaign IL, La Quinta
+CA, Claremont NH — disambiguated from an already-covered *different*
+Claremont, CA — Bismarck ND, Holbrook MA), **1 more queued** (Groton
+MA). 7 other tenants failed to resolve; checked directly against the
+raw HTTP response rather than assumed, and confirmed as plain 404s on
+extracted show IDs (stale/wrong ID, not "no video exists") — logged as
+`resolve-failed`, not `no-video-found`, since that distinction tells a
+future session whether a real page likely exists at a different ID.
+
+**The actual point of this section**: every checked candidate this
+time has `reject_reason` or `transcribed` set at the moment it was
+found, not reconstructed afterward — closing the gap §23-27 kept
+running into. Swagit and CivicClerk (the other two platforms named
+alongside Cablecast) weren't picked up this same session since both
+already had a same-day gap-list sweep and dorking check with much lower
+remaining yield; their original 2026-08-16/17 unrecoverable candidate
+population is the real open item if this gets picked up again.
+
 ## `reject_reason` backfilled from the earlier Cablecast/Legistar/TelVue enumeration session — 9 rows, 2 new taxonomy values [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
