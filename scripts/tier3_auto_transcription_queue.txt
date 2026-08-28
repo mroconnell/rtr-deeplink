@@ -1337,3 +1337,6 @@ https://samtrans.granicus.com/player/clip/1395?view_id=1&redirect=true
 https://bucoks.granicus.com/player/clip/598?view_id=1&redirect=true
 https://onelakewood.granicus.com/player/clip/2843?view_id=1&redirect=true
 https://evansville.granicus.com/player/clip/7516?view_id=1&redirect=true
+https://pittsfieldnh.gov/AgendaCenter
+https://bristoltn.gov/AgendaCenter
+https://roseville-mi.gov/AgendaCenter
