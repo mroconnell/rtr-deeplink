@@ -174,3 +174,41 @@ def test_guess_jurisdiction_rejects_generic_placeholder_words():
     assert TelvueAssetFinder._guess_jurisdiction("Town Council") is None
     assert TelvueAssetFinder._guess_jurisdiction("Village Board") is None
     assert TelvueAssetFinder._guess_jurisdiction("Township Committee") is None
+
+
+def test_guess_jurisdiction_rejects_bare_governance_body_titles():
+    # Real bug, confirmed live 2026-08-28 while enumerating TelVue
+    # customers by search-dorking real player URLs: several real customers'
+    # titles are just the meeting body's own name with no city prefix at
+    # all -- "Select Board" (Goffstown, NH), "Planning Board 5-1-2025"
+    # (Nashua, NH), "School Committee - Meeting March 12, 2026" (Yarmouth,
+    # MA) -- so the leftmost-match regex happily captured "Select"/
+    # "Planning"/"School" as if they were the city name. Real Census
+    # lookup was tried as the validation gate first and reverted --
+    # jurisdiction_data/places.csv only has 58 MA entries and doesn't
+    # include Natick, so it would have also rejected real New England
+    # towns (see test_guess_jurisdiction_handles_select_board above).
+    assert TelvueAssetFinder._guess_jurisdiction("Select Board") is None
+    assert TelvueAssetFinder._guess_jurisdiction("Planning Board 5-1-2025") is None
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "School Committee - Meeting March 12, 2026"
+        )
+        is None
+    )
+    # A real city name merged with an adjacent modifier word ("Summit, NJ"
+    # + "Planning") is rejected too, same reasoning -- no reliable way to
+    # separate the real name from the modifier without a validated match,
+    # and declining beats guessing wrong.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "Summit Planning Board Meeting: June 29, 2026"
+        )
+        is None
+    )
+    # Confirms the Natick fix still works: a real city name adjacent to
+    # "Select" is preserved, only a *trailing* stopword is checked.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Natick Select Board June 10, 2026")
+        == "Natick"
+    )

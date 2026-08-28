@@ -56,7 +56,7 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
@@ -70,6 +70,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
+  [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (4)
@@ -708,6 +709,7 @@ so that work reads together.
   14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
+- **[JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the meeting title, when a much more reliable signal sits unused on the same page.** Found 2026-08-28 while enumerating TelVue customers by search-dorking real player URLs (`BACKLOG_DONE.md`'s matching entry has the full writeup, method, and the day's yield): every real customer page checked carries `id="org-logo" alt="{Org Name} - {tagline} - organization logo"` — e.g. `alt="NCM - Nashua Community Media - Nashua Government TV - organization logo"` — a real per-customer identity string that's present regardless of what a given meeting happens to be titled, immune to the whole class of bug the 2026-08-28 stopword fix (PR #460) had to work around (bare-body-word titles with no city prefix at all). **Not built**: parsing real org names into a jurisdiction is genuinely messy — "Fitchburg Access TV" → "Fitchburg", "CMNtv Chris Weagel for Auburn Hills Govt Cable" → "Auburn Hills", "Town of Orleans MA" → "Orleans, MA" (already has a state!), "Stoneham, MA" → itself unchanged — no single strip-trailing-words rule covers all of these cleanly, so this needs either a broader trailing-phrase stopword list (`Access TV`, `Community TV`, `Community Media`, `Media Center`, `Government TV`, `Community Access Television`, `TV{digits}`, `Telecommunications`, etc.) or a small per-customer override map the way `_KNOWN_ORG_TOKEN_JURISDICTIONS` already is, built up the same "one confirmed entry at a time" way. Worth doing before the next TelVue enumeration pass, not before — the current title-based guess plus the stopword fix already ships correct (if sparse) jurisdictions today.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
