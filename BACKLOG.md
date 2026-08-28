@@ -58,11 +58,12 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
-  Confirmations nobody has actually watched happen  (3)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+  Confirmations nobody has actually watched happen  (4)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
+    [HUMAN] `[LOGIN]` A Render service called `test-redtaperecordings`
   Production actions only Ryan should take  (7)
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
@@ -431,6 +432,40 @@ convenient.
   (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
   events on `/m/*` pages" entry. GA internal-traffic setup and
   cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
+- **[HUMAN] `[LOGIN]` A Render service called `test-redtaperecordings`
+  has been sending "Exited with status 3" failure emails roughly once a
+  day for the full nine days the inbox-triage Routine has been running,
+  and nobody has ever confirmed what it is (surfaced by
+  `CLAUDE_INBOX_TRIAGE.md`, promoted here 2026-08-28).** Seven distinct
+  occurrences, all the identical "Exited with status 3" shape, no other
+  detail in the email: 2026-08-18 17:46 UTC, 2026-08-19 18:17:43 UTC,
+  2026-08-20 20:23:54 UTC, 2026-08-22 02:14:05 UTC, 2026-08-23 06:49 UTC,
+  2026-08-25 09:35 UTC, 2026-08-26 11:09 UTC. Every triage run from
+  2026-08-19 onward flagged it as "likely test/dev noise, not obviously
+  nothing either" and deferred rather than guessing — this entry is that
+  deferral finally written down instead of re-deferred an eighth time.
+  **Confirmed from the repo side**: `test-redtaperecordings` does not
+  appear anywhere in `render.yaml` — it is not one of the four tracked
+  Blueprint services (`rtr-deeplink`, `rtr-deeplink-archive`,
+  `rtr-transcription-worker`, `rtr-transcription-worker-2`) and not the
+  documented disposable `rtr-deeplink-staging`/`rtr-deeplink-staging-db`
+  either. It is not referenced anywhere else in this repo (checked via
+  `git grep` across the whole tree). Whatever it is, it lives entirely
+  outside this codebase — a separate Render service under the same
+  account, most plausibly something Ryan spun up by hand for manual
+  testing against a similarly-named `redtaperecordings` domain.
+  **Open question for Ryan, and only Ryan can answer it**: what is this
+  service, is the near-daily "Exited with status 3" expected (e.g. a
+  script/cron container that's supposed to run once and exit non-zero on
+  its own test-failure path), and if it's not going anywhere, either mute
+  its Render failure-email notifications or add it as a documented
+  disposable service the way `rtr-deeplink-staging` already is —
+  whichever removes it from the inbox-triage Routine's daily read without
+  masking a real problem if there ever is one. Low urgency (nine days,
+  zero evidence of user impact, self-contained to a service nothing else
+  depends on) but it's been silently costing a few minutes of triage
+  attention on every single run since 2026-08-19, which is exactly the
+  kind of small recurring cost this section exists to close out.
 
 ### Production actions only Ryan should take
 

@@ -3681,6 +3681,59 @@ New test: `test_guess_jurisdiction_rejects_bare_governance_body_titles`.
 identity signal than parsing the meeting title at all — present on every
 real customer page checked, immune to the whole class of bug this fix
 addresses. Not wired into the adapter; see `BACKLOG.md`'s matching entry.
+## Inbox-triage promotion pass: eight closed-out dated sections deleted, one new finding promoted [Done 2026-08-28]
+
+Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s dated
+sections from 2026-08-19 through 2026-08-26 (the file's own body order —
+2026-08-26 appears before 2026-08-25). Unlike the 2026-08-25 pass
+(WO-61, above), every individual finding in these eight sections already
+carried its own "promoted"/"resolved"/"no promotion needed" note, each
+one re-verified rather than taken on faith:
+
+- Spot-checked every cross-reference these sections point to and
+  confirmed it actually exists where claimed: the Aurora canary and
+  Archive reverse-proxy streaming-crash fixes, the `rtr-deeplink-archive`
+  health-check `[NEEDS-AUDIT]` entry, WO-45 (Cablecast HLS chunk 1),
+  WO-59 (deploys are manual), WO-60/WO-61 (storage alert + `/internal/
+  db-size`), the `markupsafe` `[JUST-DO-IT]` entry, the Resend `422` fix,
+  WO-37 (thumbnails backfill / `send-worker-daily-report`), and the
+  `destinyhosted` canary-retry fix — all present in `BACKLOG.md`/
+  `BACKLOG_DONE.md` exactly as each triage section said. Also confirmed
+  the 2026-08-24 Search Console residual ("Not found (404)" still needing
+  the affected-URL list) is already captured in `BACKLOG.md`'s "Needs a
+  human" section, narrowed exactly as that triage entry described — no
+  separate promotion needed.
+- **One genuinely unpromoted thread survived all eight sections**: a
+  Render service called `test-redtaperecordings`, not present anywhere
+  in `render.yaml` or the rest of the repo (`git grep` confirmed), sent
+  seven "Exited with status 3" failure emails roughly once a day from
+  2026-08-18 through 2026-08-26. Every single run flagged it as "likely
+  test noise, not obviously nothing either" and deferred rather than
+  guess — for nine straight days, without ever becoming a real entry.
+  Nine days of identical deferral is itself a signal, so this pass wrote
+  it up properly: **promoted into `BACKLOG.md`'s "Needs a human" section**
+  ("Confirmations nobody has actually watched happen") as a `[HUMAN]
+  [LOGIN]` entry asking Ryan to confirm what the service is and either
+  mute its alerts or document it as disposable, the way
+  `rtr-deeplink-staging` already is.
+- The "Open item" note above the dated sections (Gmail write scope /
+  ledger rollout) had gone stale in one specific way: it still said "the
+  Routine's own definition ... couldn't be changed ... the ledger stays
+  empty," but the very next section in the same file (2026-08-22) already
+  documents the switchover happening and the ledger being populated from
+  that run onward — confirmed live by `git log` on
+  `CLAUDE_INBOX_TRIAGE_SEEN.txt`, which shows continuous commits through
+  the 2026-08-28 run. Corrected in place rather than left contradicting
+  itself.
+
+**Result: all eight dated sections (2026-08-19 through 2026-08-26)
+deleted from `CLAUDE_INBOX_TRIAGE.md`** — every finding in them was
+either already promoted/fixed/refuted with a working cross-reference, or
+(the one exception above) promoted in this pass. Nothing was left open
+for Ryan beyond what the new `test-redtaperecordings` entry itself asks.
+No BACKLOG.md entries needed correcting or reverting — the spot-checks
+all held up, unlike the 2026-08-25 pass where a third of six findings
+didn't survive re-verification.
 
 ## CivicWeb: Diligent Community domain support — case-insensitive meeting id, second video source [Done 2026-08-27]
 
