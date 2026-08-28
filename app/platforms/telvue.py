@@ -248,7 +248,45 @@ class TelvueAssetFinder(AssetFinder):
         # name on their own.
         if name.lower() in {"city", "town", "village", "township"}:
             return None
-        return name or None
+        if not name:
+            return None
+        # Second, broader real bug, confirmed live 2026-08-28 while
+        # enumerating TelVue customers by search-dorking real player URLs:
+        # a title that's just the body name with no city prefix at all
+        # ("Select Board", "Planning Board 5-1-2025", "School Committee ...")
+        # still matches this regex, because the leftmost-match search
+        # happily captures the FIRST word(s) before whichever alternative
+        # matches first -- "Select" before bare "Board", "Planning" before
+        # "Board" again (the "Planning Commission" alternative doesn't fire
+        # when the actual phrase is "Planning Board"), "School" before
+        # "Committee". None of "Select"/"Planning"/"School" are real places,
+        # but nothing upstream ever checked that -- enrich_jurisdiction_text()
+        # only appends a state to whatever it's given, it never validates the
+        # base name (see its own docstring: "Returns jurisdiction unchanged
+        # if..."), so bad guesses flowed straight through to production.
+        #
+        # Tried validating the extracted name against jurisdiction_enrich's
+        # real Census-backed place lookups first (same fix shape as the
+        # CivicWeb/YouTube jurisdiction gaps closed earlier this project,
+        # PR #444) -- reverted. `jurisdiction_data/places.csv` turns out to
+        # only carry 58 Massachusetts entries and doesn't include Natick, a
+        # real, well-known MA town already covered by this file's own
+        # `test_guess_jurisdiction_handles_select_board` test -- validating
+        # against it would have silently rejected real New England towns
+        # wholesale, which is TelVue's actual core customer base. A stopword
+        # list, not a validating lookup, is the safe tool here: these three
+        # words are governance-generic the same way "city"/"town" already
+        # are above, never a real jurisdiction name on their own, checked
+        # against just the LAST word so a real prefix name (e.g. "Summit" in
+        # "Summit Planning Board") still gets rejected rather than guessed
+        # at -- there's no reliable way to know the modifier word is
+        # separable from the real name without a validated match, and this
+        # file's own decline-rather-than-guess convention says lose the
+        # recoverable case over risking a wrong one.
+        last_word = name.rsplit(None, 1)[-1].lower()
+        if last_word in {"select", "planning", "school"}:
+            return None
+        return name
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):
