@@ -1,5 +1,39 @@
 # Backlog — done
 
+## CDX applied to Swagit/CivicClerk/Granicus: 217 new jurisdictions, one real bug caught before shipping [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§31. Scaled §29's Cablecast CDX method to the other three named
+platforms. Complete tenant counts: Swagit 516, CivicClerk 261, Granicus
+687 — all bigger than Cablecast's 138. Yield: Swagit 44 new jurisdictions,
+CivicClerk 62 (two sub-batches), Granicus 111 = **217 total** (26
+ingested directly with real transcripts, 191 queued video-only).
+
+**Real bug caught before anything shipped**: deriving a missing state
+from a hostname's trailing two letters (the trick that worked for
+Cablecast in §28) produced systematically wrong results at Granicus's
+scale — `sanantonioisd.granicus.com` → "SD" (matched "ISD," not South
+Dakota; real answer TX), `benicia.granicus.com` → "IA" (matched
+benic**ia**; real answer CA), `cityofepa.granicus.com` → "PA" (matched
+**e**pa; real answer CA). At least 8 of 23 "resolved" entries were
+wrong this way. Caught by reading the coverage-check output before
+writing anything — fixed by deriving state only from a literal word
+token in the adapter's own parsed `jx` text, or individually-verified
+manual entries, never from arbitrary hostname letter endings.
+
+**Legistar hit a genuine CDX server limitation**, not pursued further:
+`url=legistar.com&matchType=domain` timed out (504) at every limit
+tried, including `limit=5000` returning no data at all — meaning CDX
+has to materialize legistar.com's entire crawl history before any
+filter applies, likely because Legistar serves many more page types per
+tenant than the other three platforms. Logged as an open item; Legistar
+mostly delegates to Granicus anyway, already covered independently.
+
+**Every checked candidate across all three platforms has
+`reject_reason` or `transcribed` written live** — 3,590 total CSV rows
+now carry a reason, continuing §28's fix for the reconstruction problem
+§23-27 kept hitting.
+
 ## CDX/Wayback beats dorking by ~10x: 138 real Cablecast tenants, 20 new jurisdictions [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
