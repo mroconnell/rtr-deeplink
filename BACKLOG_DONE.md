@@ -1,5 +1,34 @@
 # Backlog — done
 
+## `jurisdiction_coverage.csv` reject_reason backfill from this repo's own 2026-08-21 adapter-build session — 7 rows [Done 2026-08-21]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§25. A second, same-day backfill alongside §24's — that one reconstructed
+a 12-day-old rtr-deeplink session from transcript memory alone; this one
+comes from a same-day session that built three new platform adapters
+(SuiteOne Media, Castus, open.media — PRs #263-#265) and a Vimeo playback
+adapter (PR #277), so the rejected candidates were still fresh rather
+than reconstructed.
+
+**7 rows written**, all re-verified against the live CSV immediately
+before writing: McAllen TX, South Bend IN, Richland WA, Scottsdale AZ,
+Chandler AZ, and Colorado Springs CO all got `already-covered` (a
+SuiteOne Media tenant subdomain 404'd or turned out to be an off-mission
+municipal-court AV system, but each city already has real coverage via a
+different platform); Layton UT got `resolve-failed` (the one genuinely
+open gap of the seven — no other lead exists for it anywhere in the
+CSV). Prescott AZ and Pinal County AZ were correctly left untouched —
+both already carried `already-covered` from earlier work.
+
+**One real finding deliberately not written as a CSV row**: the Vimeo
+adapter's `vimeo.com/spokanecitycouncil` channel (Spokane city, WA) hit
+a Cloudflare human-verification wall reaching for captions, but the
+video itself resolves fine — confirmed live. Since this CSV tracks
+whether video exists at all, not whether captions are extractable,
+writing a rejection there would have misrepresented a real, working find
+as a dead end. See §25 for the full reasoning and this repo's own
+`BACKLOG.md`/`CLAUDE.md` standing decision on the caption wall itself.
+
 ## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 3,344 rows [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
