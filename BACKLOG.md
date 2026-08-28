@@ -56,7 +56,7 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (15)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
@@ -71,6 +71,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
   [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the…
+  [JUST-DO-IT] `[EASY]` A manual `jurisdiction` override passed into…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (4)
@@ -710,6 +711,7 @@ so that work reads together.
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
 - **[JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the meeting title, when a much more reliable signal sits unused on the same page.** Found 2026-08-28 while enumerating TelVue customers by search-dorking real player URLs (`BACKLOG_DONE.md`'s matching entry has the full writeup, method, and the day's yield): every real customer page checked carries `id="org-logo" alt="{Org Name} - {tagline} - organization logo"` — e.g. `alt="NCM - Nashua Community Media - Nashua Government TV - organization logo"` — a real per-customer identity string that's present regardless of what a given meeting happens to be titled, immune to the whole class of bug the 2026-08-28 stopword fix (PR #460) had to work around (bare-body-word titles with no city prefix at all). **Not built**: parsing real org names into a jurisdiction is genuinely messy — "Fitchburg Access TV" → "Fitchburg", "CMNtv Chris Weagel for Auburn Hills Govt Cable" → "Auburn Hills", "Town of Orleans MA" → "Orleans, MA" (already has a state!), "Stoneham, MA" → itself unchanged — no single strip-trailing-words rule covers all of these cleanly, so this needs either a broader trailing-phrase stopword list (`Access TV`, `Community TV`, `Community Media`, `Media Center`, `Government TV`, `Community Access Television`, `TV{digits}`, `Telecommunications`, etc.) or a small per-customer override map the way `_KNOWN_ORG_TOKEN_JURISDICTIONS` already is, built up the same "one confirmed entry at a time" way. Worth doing before the next TelVue enumeration pass, not before — the current title-based guess plus the stopword fix already ships correct (if sparse) jurisdictions today.
+- **[JUST-DO-IT] `[EASY]` A manual `jurisdiction` override passed into `bulk_ingest._ingest()` fixes the displayed jurisdiction but not the URL slug.** Confirmed twice on 2026-08-28 during a Granicus/IQM2/Swagit/CivicClerk enumeration pass (see `BACKLOG_DONE.md`'s matching entries and `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §17-18): a Grass Valley, CA meeting resolved with a wrong org-level jurisdiction guess ("Nevada County"), overridden to "Grass Valley, CA" before ingest — the resulting page correctly *displays* "Grass Valley, CA" but its slug is `/m/unknown-jurisdiction-...`. Same shape on a Hamden, CT meeting (CivicClerk's own adapter guessed the wrong state, "OH") — page displays "Hamden, CT" correctly, slug is `/m/hamden-oh-...`. Not a data-correctness bug (readers never see the raw slug as a label, and the page content itself is right) — but it means the *URL* silently carries stale/wrong text forever once ingested this way. Root cause not yet located precisely; likely the slug is generated from the adapter's raw `ResolvedMeeting` before whatever step applies the override, rather than from the final jurisdiction. Low priority given it's cosmetic, but easy to fix once found and worth doing before the next large manual-override ingest batch.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 

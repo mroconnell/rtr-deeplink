@@ -1,5 +1,62 @@
 # Backlog — done
 
+## Granicus/IQM2/Swagit/CivicClerk: combining known-gap lists with real-URL verification, 52 new jurisdictions [Done 2026-08-28]
+
+Full writeup, method, and per-platform numbers:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §17-18. This
+entry is the short version.
+
+Followed up the same day's TelVue dorking work (`BACKLOG_DONE.md`'s
+matching entry above) with a different combined method: cross-reference
+`jurisdiction_coverage.csv`'s (in the `rtr-business` research folder)
+`suspected_video_provider` column — populated from earlier work, mostly
+never verified — against Archive's real live coverage
+(`/api/jurisdictions`), for the four platforms with existing signal:
+Granicus (268 rows), Swagit (267), eScribe (118), IQM2 (107), CivicClerk
+(100). No fresh discovery needed; every row already carried a real
+candidate URL.
+
+**Net: 52 new jurisdictions ingested** (2 Granicus dorking + 8 Granicus
+known-gap-list + 10 IQM2 + 22 Swagit + 12 CivicClerk + 0 eScribe, all
+already fully covered). All Tier 3 (video, no captions) except where
+noted in the research file.
+
+**A real, recurring data-quality pattern found along the way, not fixed
+this session**: several rows in `jurisdiction_coverage.csv` carry a
+confirmed *wrong* domain-to-place mapping — a real, resolving URL, just
+belonging to a different jurisdiction than the row claims. 8 confirmed
+instances across Granicus and Swagit (Oregon County MO → reads like OR
+state legislature; Albemarle city NC → resolves to Albemarle County,
+*Virginia*; Colorado County TX → domain is literally `coloradoga...`;
+Laverne OK → La Verne, *California*; a literal duplicate URL shared
+between a wrong "Charleston County, SC" row and a correct "Charleston
+city, WV" row; two more). Caught by comparing the adapter's own resolved
+jurisdiction (read from real page content) against the CSV's claim,
+never trusting either alone. All excluded from ingestion rather than
+"fixed" — there's no way to know the *correct* domain for these specific
+rows from this pass alone.
+
+**One real adapter-side bug, not a source-file error**: CivicClerk's own
+jurisdiction guess landed on the wrong state for a correctly-targeted
+row — "Hamden village, Ohio" pointed at `hamdenct.portal.civicclerk.com`
+(the domain itself spells "ct"), a real Hamden, Connecticut meeting, but
+the adapter guessed "OH". Corrected manually for this ingest, not fixed
+in code.
+
+**A separate, cosmetic pipeline quirk confirmed twice**: overriding
+`result.jurisdiction` before calling `bulk_ingest._ingest()` correctly
+changes the *displayed* jurisdiction on the resulting page, but the URL
+*slug* is generated from the pre-override guess — see `BACKLOG.md`'s
+matching `[JUST-DO-IT]` entry.
+
+`jurisdiction_coverage.csv` updated in place: 242 rows (77 Granicus + 165
+across the other four) marked `transcribed=True` so a future pass over
+this file skips confirmed rows. The file's own `suspected_video_provider`
+column is now mostly drained for these five platforms; the large
+remaining opportunity is the rows with no platform guess at all (most of
+the file's 27,649 rows) — a harder, discovery-first problem rather than a
+verify-what's-already-guessed one, not started this session.
+
 ## Registration was unreachable: Clerk's own sign-up link pointed at a 404 (WO-65) [Done 2026-08-28]
 
 Reported by the user while testing account registration: `/sign-up`
