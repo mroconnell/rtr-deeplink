@@ -823,6 +823,15 @@ any of them is the same cheap check used throughout this round:
 `GET {domain}/wp-json/wp/v2/meetings?per_page=1`, watching for the
 Rye Brook/Sonoma stale-or-unused shape as well as an outright miss.
 
+**Addendum, 2026-08-28 — this round's rejections backfilled into
+`jurisdiction_coverage.csv`'s `reject_reason` column.** 8 rows (Munford
+TN, Mount Pocono PA, Indian Hill OH → `no-real-content-found`; Jarrell
+TX, Ruston WA, George West TX, Lafayette CA → `no-active-meeting-content`;
+Talent OR → `cloudflare-challenge-blocked`, from the Cloudflare
+header-negotiation refinement above). Full reasoning, the two new
+taxonomy values, and what was skipped and why:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §26.
+
 ## Hyland threw away 14 real agendas because the meetings had no video (WO-63) [Done 2026-08-25]
 
 Direct follow-on from WO-62's production audit, and a case where the
