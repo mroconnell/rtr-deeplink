@@ -1,5 +1,45 @@
 # Backlog — done
 
+## CDX/Wayback beats dorking by ~10x: 138 real Cablecast tenants, 20 new jurisdictions [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§29. Direct answer to a user question about whether to dork deeper,
+switch search engines, or go back to CDX/Wayback. Tested CDX live
+(`curl web.archive.org/cdx/search/cdx`, no auth needed) rather than
+trusting an earlier session's note that it was unreachable — it works
+fine. One request returned **138 real Cablecast tenant subdomains**
+against §28's 15 from 5 dorking queries on the same platform, same day
+— because CDX indexes every URL a crawler ever actually fetched,
+sidestepping the "dorking favors famous places" bias entirely (§17,
+§22).
+
+Of 120 unchecked hosts, 79 resolved to real video; the same off-mission
+filter from §20/§21 cut that to 25 genuine government-meeting
+candidates (54 were real archived shows, just not meetings — school
+sports, cooking segments, historical programs). 5 needed real identity
+verification via targeted search (bare subdomain tokens don't reliably
+say which government they belong to — two were genuinely ambiguous
+between two real places, Rutland MA vs Rutland City VT and Bedford MA
+vs Bedford NH). **5 already covered, 20 genuinely new** (19 queued
+video-only, 1 — Rutland, MA's Special Town Meeting, 359 segments —
+ingested directly).
+
+Two real mistakes caught and fixed in the same session: a loose
+substring match briefly wrote `already-covered` to "Eagle town,
+Colorado" as a side effect of checking "Eagle County, Colorado" (both
+contain "eagle") — caught by re-reading the write log before shipping,
+reverted immediately. `reflect-townofwellfleet`'s adapter-guessed
+jurisdiction was `"Wellfleet, NE"` (should be MA) — corrected manually
+before ingest.
+
+**The real point**: this method needs no gap-list, no dorking, and
+doesn't depend on any session's memory — it only needs a platform's URL
+shape, which every adapter in this project already has. The same query
+applies directly to Swagit, CivicClerk, eScribe, IQM2, TelVue, or
+Granicus, including recovering the *lost* 2026-08-16/17
+Cablecast/Swagit/CivicClerk population (`BACKLOG_DONE.md`'s §24 entry)
+that memory reconstruction genuinely couldn't reach.
+
 ## Cablecast dorking: 6 new jurisdictions, reject_reason written live for the first time [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
