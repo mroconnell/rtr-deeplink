@@ -1198,3 +1198,7 @@ https://seabrooktx.portal.civicclerk.com/event/1761/media
 https://ellensburgwa.portal.civicclerk.com/event/1577/media
 https://fridayharborwa.portal.civicclerk.com/event/2285/media
 https://mukwonagowi.portal.civicclerk.com/event/6507/media
+https://cityofcampbell.granicus.com/MediaPlayer.php?publish_id=1f3360a1-93f5-11f0-8df7-005056a89546
+https://woodstockil.granicus.com/MediaPlayer.php?view_id=1&clip_id=498
+https://kemah-tx.granicus.com/player/clip/423?view_id=1&redirect=true
+https://spokanevalley.granicus.com/player/clip/1729?meta_id=109904

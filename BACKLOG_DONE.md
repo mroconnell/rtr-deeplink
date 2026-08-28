@@ -1,5 +1,39 @@
 # Backlog — done
 
+## Agenda-only rows: outbound-link scan at scale, 96 more new jurisdictions [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§20. Short version: 1,211 `jurisdiction_coverage.csv` rows had
+`shares_video=True` but only an agenda/calendar URL, no direct meeting
+URL. Fetched all 1,211 pages, regex-scanned for known-platform outbound
+links (same "check the CMS's own outbound links" method as the CivicPlus/
+destinyhosted work) — 241 real matches (~20% hit rate), 24 broken-
+template false positives (a shared Nebraska-county CMS bug leaving
+unrendered `$1$3` placeholders in page source), 60 real-but-off-mission
+videos (tourism promos, tree lightings, podcasts, open-meetings-law
+training) filtered out by hand-verified keyword rules. 217 clean
+candidates resolved through the real adapter registry, 104 kept after
+filtering, 96 genuinely new (85 with real transcripts, 11 video-only).
+
+**Real methodology bug caught mid-batch, by the user directly**: the
+first ingest attempt set each page's `source_url` to the bare matched
+video link (e.g. a raw YouTube URL) instead of the real government
+agenda page it was found on. Root cause: `finder.resolve()` sets
+`source_url` from whatever URL it's given, and the scan naturally
+resolved the matched video URL, not the page hosting it. Fixed by
+overriding `result.source_url` to the real agenda URL before ingesting
+— confirmed correct via spot-check. General rule going forward: whenever
+a video is discovered via a link on a separate page, that page is the
+real source, not the video link itself.
+
+**A related, only-partly-resolvable limitation surfaced by the same
+fix**: `tier3_auto_transcription_queue.txt` has no way to carry a paired
+`source_url` (see `BACKLOG.md`'s matching `[NEEDS-AUDIT]` entry) — fine
+for Granicus/Vimeo/Cablecast candidates (the platform URL is itself a
+real page), broken for bare YouTube/Vimeo links with no page context of
+their own. Of 11 video-only candidates, only 4 (Granicus) were queued;
+7 were held out rather than queued wrong.
+
 ## Blank-`suspected_video_provider` rows with `shares_video=True`: 52 more new jurisdictions [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
