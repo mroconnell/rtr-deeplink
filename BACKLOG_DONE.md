@@ -1,5 +1,47 @@
 # Backlog — done
 
+## TelVue: jurisdiction extraction leaking bare governance-body words [Done 2026-08-28]
+
+Found while enumerating TelVue customers by search-dorking real player
+URLs (`videoplayer.telvue.com/player/...`) after BuiltWith's free
+`/websitelist/TelVue` page turned out to be gated behind an image CAPTCHA
+(confirmed persistent, not a one-off — declined to solve it, same line
+this project already draws for Vimeo's Cloudflare challenge). Full
+writeup of the dorking method, the org-logo alt-text discovery, and the
+day's full yield (26 real org tokens, 10 meetings ingested):
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §16.
+
+Real customers whose title has no city prefix at all ("Select Board",
+"Planning Board 5-1-2025", "School Committee - Meeting...") were leaking
+words like "Select"/"Planning"/"School" as if they were real jurisdiction
+names — `_guess_jurisdiction()`'s regex captures whatever precedes a
+governance-body suffix, and nothing upstream ever validated the captured
+name was a real place (`enrich_jurisdiction_text()` only appends a state
+to whatever it's given, per its own docstring).
+
+Tried validating the extracted name against `jurisdiction_enrich`'s real
+Census-backed place lookups first, the same fix shape as the CivicWeb/
+YouTube jurisdiction gaps closed in [PR #444](https://github.com/mroconnell/rtr-deeplink/pull/444) — reverted.
+`jurisdiction_data/places.csv` only carries 58 Massachusetts entries and
+is missing Natick, a real town this file's own pre-existing test already
+depended on — validating against it would have rejected real New England
+towns wholesale, which is TelVue's actual core customer base. Shipped a
+stopword list on just the trailing word instead (`select`/`planning`/
+`school`, same category as the file's existing `city`/`town`/`village`/
+`township` list) — also correctly declines a real city name merged with
+an adjacent modifier ("Summit, NJ" + "Planning" → "Summit Planning")
+rather than guessing which word is real.
+
+[PR #460](https://github.com/mroconnell/rtr-deeplink/pull/460), merged.
+New test: `test_guess_jurisdiction_rejects_bare_governance_body_titles`.
+
+**Residual gap, not built this session**: the org-logo `alt` text
+(`id="org-logo" alt="NCM - Nashua Community Media - Nashua Government TV
+- organization logo"`) turned out to be a far more reliable per-customer
+identity signal than parsing the meeting title at all — present on every
+real customer page checked, immune to the whole class of bug this fix
+addresses. Not wired into the adapter; see `BACKLOG.md`'s matching entry.
+
 ## CivicWeb: Diligent Community domain support — case-insensitive meeting id, second video source [Done 2026-08-27]
 
 Found while investigating a user-supplied "iCompass" footer-branding lead
