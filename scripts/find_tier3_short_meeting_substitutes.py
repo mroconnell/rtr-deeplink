@@ -278,8 +278,25 @@ def srt_tail_seconds(text: str) -> float | None:
     return max(ends) if ends else None
 
 
-def in_short_window(seconds: float) -> bool:
-    return SHORT_MIN_SECONDS <= seconds <= SHORT_MAX_SECONDS
+def in_short_window(
+    seconds: float,
+    *,
+    lo: float = SHORT_MIN_SECONDS,
+    hi: float = SHORT_MAX_SECONDS,
+) -> bool:
+    return lo <= seconds <= hi
+
+
+def _window_label(lo: float, hi: float) -> str:
+    return f"{int(lo // 60)}-{int(hi // 60)} min"
+
+
+def _window_note(lo: float, hi: float) -> str:
+    """Search rows record a non-default window so the report says which
+    pass found the substitute (e.g. the 50-90 min fallback sweep)."""
+    if (lo, hi) == (SHORT_MIN_SECONDS, SHORT_MAX_SECONDS):
+        return ""
+    return f"found in widened {_window_label(lo, hi)} window"
 
 
 def classify_duration(seconds: float | None) -> str:
@@ -558,7 +575,9 @@ async def _cc_find_substitute(
     *,
     max_candidates: int,
     use_api_durations: bool,
+    window: tuple[float, float] = (SHORT_MIN_SECONDS, SHORT_MAX_SECONDS),
 ) -> dict:
+    lo, hi = window
     api_base = cc_api_base(tenant)
     try:
         events = await cc_list_past_events(session, api_base)
@@ -574,7 +593,7 @@ async def _cc_find_substitute(
     if use_api_durations:
         for event in candidates:
             api_duration = cc_duration_seconds(event)
-            if api_duration is None or not in_short_window(api_duration):
+            if api_duration is None or not in_short_window(api_duration, lo=lo, hi=hi):
                 continue
             checked += 1
             substitute_url = cc_portal_url(tenant, event["id"])
@@ -586,7 +605,7 @@ async def _cc_find_substitute(
                 if media_url
                 else None
             )
-            if verified is not None and not in_short_window(verified):
+            if verified is not None and not in_short_window(verified, lo=lo, hi=hi):
                 continue
             duration = verified if verified is not None else api_duration
             source = "ffprobe" if verified is not None else "civicclerk_api_unverified"
@@ -599,7 +618,7 @@ async def _cc_find_substitute(
                 "substitute_duration_hms": hms(duration),
                 "substitute_duration_source": source,
                 "candidates_checked": str(checked),
-                "note": "",
+                "note": _window_note(lo, hi),
             }
 
     # No candidate had a populated in-window API duration -- ffprobe the
@@ -612,7 +631,7 @@ async def _cc_find_substitute(
         substitute_url = cc_portal_url(tenant, event["id"])
         duration = await probe_duration(media_url, source_page_url=substitute_url)
         await asyncio.sleep(REQUEST_DELAY_SECONDS)
-        if duration is None or not in_short_window(duration):
+        if duration is None or not in_short_window(duration, lo=lo, hi=hi):
             continue
         return {
             "search_status": "found",
@@ -623,14 +642,14 @@ async def _cc_find_substitute(
             "substitute_duration_hms": hms(duration),
             "substitute_duration_source": "ffprobe",
             "candidates_checked": str(checked),
-            "note": "",
+            "note": _window_note(lo, hi),
         }
     return {
         "search_status": "none",
         "candidates_checked": str(checked),
         "note": (
-            f"no 10-50 min meeting among {len(candidates)} past events "
-            f"({checked} duration-checked)"
+            f"no {_window_label(lo, hi)} meeting among {len(candidates)} past "
+            f"events ({checked} duration-checked)"
         ),
     }
 
@@ -641,7 +660,9 @@ async def _legistar_find_substitute(
     exclude_ids: set[str],
     *,
     max_candidates: int,
+    window: tuple[float, float] = (SHORT_MIN_SECONDS, SHORT_MAX_SECONDS),
 ) -> dict:
+    lo, hi = window
     client = legistar_client(tenant)
     try:
         events = await legistar_list_past_events(session, client)
@@ -664,7 +685,7 @@ async def _legistar_find_substitute(
         fields = await _resolve_and_probe(site_url)
         await asyncio.sleep(REQUEST_DELAY_SECONDS)
         duration = fields.get("duration_seconds")
-        if duration is None or not in_short_window(duration):
+        if duration is None or not in_short_window(duration, lo=lo, hi=hi):
             continue
         return {
             "search_status": "found",
@@ -676,14 +697,14 @@ async def _legistar_find_substitute(
             "substitute_duration_hms": hms(duration),
             "substitute_duration_source": "ffprobe",
             "candidates_checked": str(checked),
-            "note": "",
+            "note": _window_note(lo, hi),
         }
     return {
         "search_status": "none",
         "candidates_checked": str(checked),
         "note": (
-            f"no 10-50 min meeting among {len(events)} past events "
-            f"({checked} duration-checked)"
+            f"no {_window_label(lo, hi)} meeting among {len(events)} past "
+            f"events ({checked} duration-checked)"
         ),
     }
 
@@ -712,11 +733,24 @@ async def cmd_substitute(args) -> None:
         if row["duration_seconds"] and float(row["duration_seconds"]) > LONG_SECONDS:
             long_tenants.setdefault(tenant_of(url), row["platform"])
 
+    window = (args.min_minutes * 60.0, args.max_minutes * 60.0)
     done = _load_rows(SEARCH_CSV, "tenant")
-    todo = [(t, p) for (t, p) in long_tenants.items() if t not in done]
+    if args.retry_none:
+        # Re-search only tenants whose earlier pass found nothing (a
+        # widened-window sweep). The sidecar is append-only and
+        # _load_rows keeps the last row per tenant, so the new result
+        # simply supersedes the old one on the next load.
+        todo = [
+            (t, p)
+            for (t, p) in long_tenants.items()
+            if done.get(t, {}).get("search_status") == "none"
+        ]
+    else:
+        todo = [(t, p) for (t, p) in long_tenants.items() if t not in done]
     print(
         f"{len(long_tenants)} tenant(s) with a >90 min queue row, "
-        f"{len(done)} already searched, {len(todo)} to search now."
+        f"{len(done)} already searched, {len(todo)} to search now "
+        f"(window {_window_label(*window)})."
     )
     if not todo:
         print("Nothing new to search.")
@@ -735,10 +769,15 @@ async def cmd_substitute(args) -> None:
                         exclude,
                         max_candidates=args.max_candidates,
                         use_api_durations=not args.no_api_durations,
+                        window=window,
                     )
                 else:
                     result = await _legistar_find_substitute(
-                        session, tenant, exclude, max_candidates=args.max_candidates
+                        session,
+                        tenant,
+                        exclude,
+                        max_candidates=args.max_candidates,
+                        window=window,
                     )
                 row = {field: "" for field in SEARCH_FIELDS}
                 row.update({"tenant": tenant, "platform": platform, **result})
@@ -794,8 +833,14 @@ def cmd_report(args) -> None:
                             "candidates_checked",
                         ):
                             row[field] = search[field]
-                        row["notes"] = (
-                            f"duration source: {search['substitute_duration_source']}"
+                        row["notes"] = "; ".join(
+                            part
+                            for part in (
+                                f"duration source: "
+                                f"{search['substitute_duration_source']}",
+                                search.get("note", ""),
+                            )
+                            if part
                         )
                     else:
                         row["status"] = "no_short_meeting_found"
@@ -925,6 +970,25 @@ def main() -> None:
     p_sub = sub.add_parser("substitute", help="find a short meeting per long tenant")
     p_sub.add_argument("--max-candidates", type=int, default=8)
     p_sub.add_argument("--no-api-durations", action="store_true")
+    p_sub.add_argument(
+        "--min-minutes",
+        type=float,
+        default=SHORT_MIN_SECONDS / 60,
+        help="lower bound of the acceptable substitute duration (minutes)",
+    )
+    p_sub.add_argument(
+        "--max-minutes",
+        type=float,
+        default=SHORT_MAX_SECONDS / 60,
+        help="upper bound of the acceptable substitute duration (minutes)",
+    )
+    p_sub.add_argument(
+        "--retry-none",
+        action="store_true",
+        help="re-search only tenants whose earlier pass found nothing "
+        "(for a widened-window fallback sweep); their sidecar rows are "
+        "superseded",
+    )
 
     sub.add_parser("report", help="write the committed report CSV")
 
