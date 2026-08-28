@@ -1,5 +1,22 @@
 # Backlog — done
 
+## Blank-`suspected_video_provider` rows with `shares_video=True`: 52 more new jurisdictions [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§19. Short version: the ~26,500 rows in `jurisdiction_coverage.csv` with
+no platform ever classified looked like a hard, discovery-first problem
+(correctly, in general) — but 61 of them already had `shares_video=True`
+*and* a real `example_meeting_url` recorded, meaning they only needed
+verification, same as the same-day Granicus/IQM2/Swagit/CivicClerk pass
+(entry below). 59/61 resolved; 2 more confirmed wrong domain-to-place
+mappings (Victor, Iowa → resolves to Victoria, Minnesota; DeWitt County,
+Texas → resolves to DeWitt, New York). 5 already covered, 52 new: 20 with
+real transcripts ingested directly, 32 video-only queued into the tier-3
+feed rather than pushed directly (see this session's real correction,
+`feedback_transcription_queue_naming` memory — a burst of untranscribed-
+looking pages visibly tanks the Archive's apparent coverage ratio for new
+visitors; the queue's metered drip exists specifically to prevent that).
+
 ## Granicus/IQM2/Swagit/CivicClerk: combining known-gap lists with real-URL verification, 52 new jurisdictions [Done 2026-08-28]
 
 Full writeup, method, and per-platform numbers:
