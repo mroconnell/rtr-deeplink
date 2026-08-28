@@ -40,6 +40,16 @@
   // (removed on read) so it only ever fires once per sign-in.
   const SIGNIN_RETURN_KEY = "rtrSignInReturnUrl";
 
+  // "rtr-clerk-ready" fires on the failure path too (by design -- see the
+  // header comment: listeners must never hang waiting for an event that
+  // won't come), and ClerkJS's *script* having loaded doesn't mean
+  // Clerk.load() succeeded. So window.Clerk can exist, expose every
+  // mount* method, and still throw "ClerkJS components are not ready
+  // yet" on any of them. Caught live 2026-08-28 as a genuine uncaught
+  // page error while verifying WO-65 against a key that rejected the
+  // origin. Every mount below checks this flag first.
+  let clerkLoaded = false;
+
   function markSignInReturnUrl() {
     try {
       sessionStorage.setItem(SIGNIN_RETURN_KEY, window.location.href);
@@ -49,6 +59,51 @@
     }
   }
   window.rtrMarkSignInReturn = markSignInReturnUrl;
+
+  // Standalone /sign-up and /sign-in pages (WO-65). Those exist because
+  // Clerk's *mounted* (non-modal) SignIn renders its "No account? Sign
+  // up" link at signUpUrl -- default /sign-up on this origin -- and that
+  // path used to 404. The modal opened from the nav is unaffected and is
+  // deliberately left on Clerk's virtual router; only the mounted
+  // components below get explicit signUpUrl/signInUrl.
+  //
+  // Their post-auth destination can't be window.location.href the way
+  // every other trigger's is, or signing up would land the visitor back
+  // on the sign-up page. Prefer whatever the page they came *from*
+  // stashed (normally /account/saved, stashed by the inline mount there
+  // before its "Sign up" link navigated away), and otherwise send them
+  // to /account/saved -- the one page that only exists for signed-in
+  // visitors. Written back into the stash so maybeForceSignInReturn()
+  // handles the redirect uniformly, exactly as it does everywhere else.
+  const ACCOUNT_LANDING = "/account/saved";
+  const AUTH_PAGE_RE = /\/sign-(in|up)(?:[/?#]|$)/;
+
+  function standaloneAuthDestination() {
+    let stashed = null;
+    try {
+      stashed = sessionStorage.getItem(SIGNIN_RETURN_KEY);
+    } catch (e) {
+      // Storage disabled -- fall through to the default landing below.
+    }
+    if (stashed && !AUTH_PAGE_RE.test(stashed)) return stashed;
+    const fallback = window.location.origin + ACCOUNT_LANDING;
+    try {
+      sessionStorage.setItem(SIGNIN_RETURN_KEY, fallback);
+    } catch (e) {
+      // Same as above -- forceRedirectUrl below still carries it.
+    }
+    return fallback;
+  }
+
+  // Same contract as init()'s own catch: a mount that blows up leaves
+  // the surrounding page working and logs, rather than throwing.
+  function mountOrIgnore(fn) {
+    try {
+      fn();
+    } catch (e) {
+      console.error("Clerk component failed to mount -- rest of the page unaffected.", e);
+    }
+  }
 
   function maybeForceSignInReturn(signedIn) {
     if (!signedIn) return false;
@@ -199,6 +254,7 @@
       return;
     }
 
+    clerkLoaded = true;
     window.RTRClerk = {
       isSignedIn: () => !!window.Clerk.user,
       getUserId: () => (window.Clerk.user ? window.Clerk.user.id : null),
@@ -243,10 +299,52 @@
     const inlineSignIn = document.getElementById("clerk-sign-in");
     if (inlineSignIn) {
       document.addEventListener("rtr-clerk-ready", () => {
-        if (window.Clerk && !window.Clerk.user) {
+        if (clerkLoaded && !window.Clerk.user) {
           markSignInReturnUrl();
-          window.Clerk.mountSignIn(inlineSignIn, { forceRedirectUrl: window.location.href });
+          mountOrIgnore(() =>
+            window.Clerk.mountSignIn(inlineSignIn, {
+              forceRedirectUrl: window.location.href,
+              // Explicit rather than relying on Clerk's default
+              // resolution of this same path -- the default is what
+              // silently produced a link to a 404 before /sign-up
+              // existed, so it's pinned here so a Clerk-side default
+              // change can't re-break it.
+              signUpUrl: "/sign-up",
+            }),
+          );
         }
+      });
+    }
+    // Standalone /sign-up and /sign-in pages -- see
+    // standaloneAuthDestination() above for why their redirect target is
+    // computed rather than being the current URL.
+    const signUpPage = document.getElementById("clerk-sign-up");
+    const signInPage = document.getElementById("clerk-sign-in-page");
+    if (signUpPage || signInPage) {
+      document.addEventListener("rtr-clerk-ready", () => {
+        if (!clerkLoaded) return;
+        // Already signed in: these two pages have nothing to show, so
+        // send them where they were headed instead of rendering an empty
+        // page. window.location.replace() keeps /sign-up out of the back
+        // history, so "back" doesn't bounce them straight here again.
+        if (window.Clerk.user) {
+          window.location.replace(standaloneAuthDestination());
+          return;
+        }
+        const dest = standaloneAuthDestination();
+        mountOrIgnore(() => {
+          if (signUpPage) {
+            window.Clerk.mountSignUp(signUpPage, {
+              forceRedirectUrl: dest,
+              signInUrl: "/sign-in",
+            });
+          } else {
+            window.Clerk.mountSignIn(signInPage, {
+              forceRedirectUrl: dest,
+              signUpUrl: "/sign-up",
+            });
+          }
+        });
       });
     }
   });

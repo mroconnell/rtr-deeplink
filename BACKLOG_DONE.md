@@ -1,5 +1,88 @@
 # Backlog — done
 
+## Registration was unreachable: Clerk's own sign-up link pointed at a 404 (WO-65) [Done 2026-08-28]
+
+Reported by the user while testing account registration: `/sign-up`
+returned "page not found", and the sign-in form on `/account/saved` had a
+"Sign up" link that just went to that same dead URL.
+
+**Root cause.** Clerk's *mounted* (non-modal) `SignIn` component renders
+its "No account? Sign up" link at `signUpUrl`, which defaults to
+`/sign-up` **on this app's own origin**. Nothing in this repo ever set
+that prop and no such route existed, so Clerk generated a link to a page
+we don't serve. Confirmed live rather than inferred — reading the
+rendered DOM on production returned
+`href="https://redtaperecordings.com/sign-up"` verbatim.
+
+**The nav modal was never affected, and was deliberately left alone.**
+`Clerk.openSignIn()` uses Clerk's virtual router, so the same link
+renders as the sentinel `CLERK-ROUTER/VIRTUAL/sign-up` and switches
+views *inside* the modal without navigating. Verified live in the same
+pass by opening the modal and clicking through to a working "Create your
+account" form. Worth knowing before "fixing" it: setting a global
+`signUpUrl` in `Clerk.load()` would have been the obvious one-line fix
+and would have **regressed the modal** into navigating away. The
+`signUpUrl`/`signInUrl` props are therefore passed per-mounted-component
+only, never globally.
+
+**Both halves were needed, not just the reported one.** `SignUp` has the
+mirror-image link ("Have an account? Sign in" at `signInUrl`, default
+`/sign-in`), so shipping only `/sign-up` would have moved the same 404
+one click further in.
+
+**What landed** (resolver-side, because Clerk resolves these against the
+public origin, which is the resolver — even though the form that links
+to them is served by the Archive through `_proxy_to_archive`):
+
+- `/sign-up` and `/sign-in` routes + templates (`app/main.py`,
+  `app/templates/sign_{up,in}.html`), both `noindex`.
+- `shared_static/clerk_nav.js` mounts them, and pins `signUpUrl` on the
+  existing `/account/saved` inline form so a Clerk-side default change
+  can't silently re-break it.
+- Their post-auth destination is **computed**, not `window.location.href`
+  the way every other trigger's is — that would have landed a new user
+  back on the sign-up page. It prefers the `sessionStorage` return URL
+  the previous page stashed (normally `/account/saved`) and otherwise
+  falls back to `/account/saved`, explicitly rejecting a stale stash that
+  is *itself* a `/sign-(in|up)` URL. That last case is a real redirect
+  loop, not a hypothetical one, and is covered by the verification below.
+
+**A second, separate bug found while verifying, and fixed here too.**
+`rtr-clerk-ready` fires on the *failure* path as well (by design — see
+that file's header: listeners must never hang waiting for an event that
+won't come), and ClerkJS's *script* loading does not mean `Clerk.load()`
+succeeded. So `window.Clerk` can exist, expose every `mount*` method, and
+still throw `ClerkJS components are not ready yet`. This surfaced as a
+genuine **uncaught page error** during local verification. Fixed with an
+explicit `clerkLoaded` flag plus a `mountOrIgnore()` wrapper, applied to
+the pre-existing `/account/saved` mount as well as the two new ones — it
+had the same latent hole. This restores that file's own stated contract
+that no Clerk failure is ever left to break the rest of the page.
+
+**Verification.** The live production key is domain-locked and 400s on
+`localhost`, so Clerk's own UI could not render locally. Rather than ship
+on the strength of the docs alone, the *real* `clerk_nav.js` source was
+executed in-browser against a stubbed Clerk and a stubbed script fetch,
+which positively confirmed all four branches: arrived-from-`/account/saved`
+→ `forceRedirectUrl` = `/account/saved`; landed-directly → same fallback;
+stale `/sign-up` stash → correctly rejected rather than looping; and
+`/sign-in` mounting `mountSignIn` with `signUpUrl: "/sign-up"`. Route and
+`noindex` coverage is in `tests/test_auth_pages.py`. **Still unconfirmed
+until a production deploy**: that Clerk's own component actually renders
+inside these two mount points against the real key — no local signal for
+it, same "don't claim it works without a positive example" caveat this
+repo already carries on `afterSignOutUrl`.
+
+**Nav copy changed in the same pass**, at the user's request and choice:
+the signed-out nav link now reads "Sign in / Register" (both services'
+`base.html`), and `/account/saved`'s prompt says "or create a free
+account". A conditional "Register only if we don't recognize you" was
+explicitly considered and rejected — a signed-*out* visitor is
+indistinguishable from a first-timer (new device, incognito, cleared
+storage), so it would mislabel returning users. One test's assertion on
+that prompt was loosened to the stable half of the sentence, since it was
+pinning product copy rather than the behavior it exists to protect.
+
 ## TelVue: jurisdiction extraction leaking bare governance-body words [Done 2026-08-28]
 
 Found while enumerating TelVue customers by search-dorking real player
