@@ -1772,6 +1772,12 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # (it's actually Albemarle County, VA's -- see BACKLOG.md's Granicus
     # GovAccess entry). No data was wrong, just a bad-looking URL.
     "albemarle-nc-2026-03-04-board-of-supervisors-on-2026-03-04-1-00-pm-regular-first": "albemarle-county-va-2026-03-04-board-of-supervisors-on-2026-03-04-1-00-pm-regula",
+    # 2026-08-29: TelVue round-2 ingest froze two more wrong-state/gap
+    # jurisdictions into slugs before the same-day telvue.py fixes
+    # (Needham AL->MA collision, Vail Planning-and-Environmental
+    # _BODY_SUFFIX_RE gap) landed -- see BACKLOG_DONE.md.
+    "needham-al-needham-select-board-8-11-26": "needham-ma-needham-select-board-8-11-26",
+    "vail-vail-planning-and-environmental-commission": "vail-co-vail-planning-and-environmental-commission",
 }
 
 

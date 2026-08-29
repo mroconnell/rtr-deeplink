@@ -339,3 +339,17 @@ def test_guess_jurisdiction_handles_zoning_board():
         )
         == "Newmarket"
     )
+
+
+def test_guess_jurisdiction_handles_planning_and_environmental_commission():
+    # Real bug, confirmed live 2026-08-29, same shape as Select/Zoning
+    # Board: "Vail Planning and Environmental Commission" matched bare
+    # "Commission" first, producing "Vail Planning and Environmental"
+    # instead of "Vail" -- Vail, CO's real governing body name needed
+    # its own alternative ahead of the bare "Commission" one.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "Vail Planning and Environmental Commission"
+        )
+        == "Vail"
+    )
