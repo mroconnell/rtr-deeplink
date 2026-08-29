@@ -116,7 +116,7 @@ Platform & jurisdiction coverage  (41)
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
-    [JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
+    [JUST-DO-IT] `[WAIT]` `/j/snoqualmie-washington-meetings`: a trailing
     [JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
@@ -1680,32 +1680,51 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
 
-- **[JUST-DO-IT] A land acknowledgement became a jurisdiction, and it
-  has a live public URL.** Found 2026-08-22 in Search Console's
-  non-indexed URL list — this is a real page Google crawled:
+- **[JUST-DO-IT] `[WAIT]` `/j/snoqualmie-washington-meetings`: a trailing
+  "Meetings" bleed `finalize_jurisdiction()` still doesn't catch — the
+  other two rows in this entry turned out to be stale, not code bugs
+  (re-verified 2026-08-28).** Re-checked all three real rows this entry
+  originally listed directly against today's `finalize_jurisdiction()`
+  before touching any code, per this repo's "verify before acting" rule
+  — two of the three are **already fixed by existing repair logic**:
 
-  `/j/oshawa-is-situated-on-lands-within-the-traditional-and-treaty-territory-of-the-michi-saagiig-and-chippewa-anishinaabeg-and-the-signatories-of-the-williams-treaties`
+  ```python
+  >>> finalize_jurisdiction("Oshawa is situated on lands within the "
+  ...     "traditional and treaty territory of the Michi Saagiig and "
+  ...     "Chippewa Anishinaabeg and the signatories of the Williams Treaties")
+  JurisdictionResult(jurisdiction='Oshawa, ON', ..., confidence='repaired')
+  >>> finalize_jurisdiction("Cambridge Council Meeting Agenda Meeting")
+  JurisdictionResult(jurisdiction='Cambridge', ..., confidence='repaired')
+  ```
 
-  The correct jurisdiction is **Oshawa, ON**. The extractor took the
-  land-acknowledgement paragraph that follows the city name on the
-  source page and used the whole thing. Distinct from the existing
-  bled-subdomain and single-word-tail entries below: those truncate or
-  merge a *name*, this swallows a **sentence**, so a length ceiling or a
-  "stop at the first sentence boundary" guard would catch it where the
-  existing name-shaped heuristics don't.
-  **Worse than a cosmetic slug**: a `/j/` hub is a real indexable page
-  and the meetings filed under it are grouped by this string, so Oshawa's
-  meetings are not discoverable under "Oshawa". Two more from the same
-  list share the shape at smaller scale —
-  **`/j/cambridge-council-meeting-agenda-meeting`** (a *meeting title*
-  captured as the jurisdiction) and **`/j/snoqualmie-washington-meetings`**
-  (a trailing `-meetings` suffix bled in, which also appears in three
-  `/m/` slugs, e.g.
-  `/m/snoqualmie-washington-meetings-city-council-regular-meeting`).
-  **Check whether an acknowledgement-shaped capture exists elsewhere**
-  before fixing — Canadian municipal sites carry these routinely, so
-  Oshawa is unlikely to be the only one, and the fix should be validated
-  against however many there are rather than this single row.
+  `_trim_repair()`'s longest-valid-prefix search already lands on
+  "Oshawa"/"Cambridge" and `_looks_like_bleed()` already accepts each
+  discarded tail (the Oshawa tail starts lowercase; "Agenda Meeting"
+  hits the existing `_KNOWN_JUNK_TAIL_WORDS` path). **These two rows are
+  a stale-data gap, not a code gap** — they were stored before this
+  repair logic existed (or last touched) and just need a real backfill
+  re-run through `POST /internal/jurisdiction/backfill-apply` (admin-
+  token-gated production write, not done here).
+
+  **Snoqualmie is a real, different, still-open gap**:
+  `finalize_jurisdiction("Snoqualmie Washington Meetings")` returns the
+  string completely unrepaired (`confidence='unverified'`). Root cause:
+  `_trim_repair()`'s longest-valid-prefix search hits a **literal**
+  match at "Snoqualmie" (cut=1), whose tail is "Washington Meetings" —
+  `_looks_like_bleed()` only treats a trailing `_KNOWN_JUNK_TAIL_WORDS`
+  word as bleed-proof when the ENTIRE tail is that one word
+  (`len(words) == 1`); a 2-word tail ending in a junk word ("Washington
+  Meetings") falls through to the generic `_MIN_BLEED_WORD_RUN` gate
+  (4+ words) and fails it, so `_trim_repair()` hits a literal match with
+  a tail that doesn't look like bleed and gives up outright (its own
+  documented "stop at the first literal hit" rule) rather than trying a
+  useful trim. **Not fixed here** — `_looks_like_bleed()` is a
+  649-row-corpus-calibrated heuristic (see its own docstring) and this
+  repo's convention is not to touch a heuristic like that on the
+  strength of one confirmed row; `[WAIT]` until a second real example of
+  a short (2-3 word), junk-word-ending tail turns up to calibrate
+  against, the same way `_KNOWN_JUNK_TAIL_WORDS` itself was built one
+  confirmed case at a time.
 
 - **[JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
   causes now known (WO-47, 2026-08-23), row repairs deliberately
