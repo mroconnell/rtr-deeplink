@@ -115,7 +115,7 @@ Platform & jurisdiction coverage  (38)
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
   Jurisdiction extraction & backfill  (17)
-    [JUST-DO-IT] `[WAIT]` `/j/snoqualmie-washington-meetings`: a trailing
+    [JUST-DO-IT] `[WAIT]` Two of three "land acknowledgement" rows
     [JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
@@ -1582,51 +1582,16 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
 
-- **[JUST-DO-IT] `[WAIT]` `/j/snoqualmie-washington-meetings`: a trailing
-  "Meetings" bleed `finalize_jurisdiction()` still doesn't catch — the
-  other two rows in this entry turned out to be stale, not code bugs
-  (re-verified 2026-08-28).** Re-checked all three real rows this entry
-  originally listed directly against today's `finalize_jurisdiction()`
-  before touching any code, per this repo's "verify before acting" rule
-  — two of the three are **already fixed by existing repair logic**:
-
-  ```python
-  >>> finalize_jurisdiction("Oshawa is situated on lands within the "
-  ...     "traditional and treaty territory of the Michi Saagiig and "
-  ...     "Chippewa Anishinaabeg and the signatories of the Williams Treaties")
-  JurisdictionResult(jurisdiction='Oshawa, ON', ..., confidence='repaired')
-  >>> finalize_jurisdiction("Cambridge Council Meeting Agenda Meeting")
-  JurisdictionResult(jurisdiction='Cambridge', ..., confidence='repaired')
-  ```
-
-  `_trim_repair()`'s longest-valid-prefix search already lands on
-  "Oshawa"/"Cambridge" and `_looks_like_bleed()` already accepts each
-  discarded tail (the Oshawa tail starts lowercase; "Agenda Meeting"
-  hits the existing `_KNOWN_JUNK_TAIL_WORDS` path). **These two rows are
-  a stale-data gap, not a code gap** — they were stored before this
-  repair logic existed (or last touched) and just need a real backfill
-  re-run through `POST /internal/jurisdiction/backfill-apply` (admin-
-  token-gated production write, not done here).
-
-  **Snoqualmie is a real, different, still-open gap**:
-  `finalize_jurisdiction("Snoqualmie Washington Meetings")` returns the
-  string completely unrepaired (`confidence='unverified'`). Root cause:
-  `_trim_repair()`'s longest-valid-prefix search hits a **literal**
-  match at "Snoqualmie" (cut=1), whose tail is "Washington Meetings" —
-  `_looks_like_bleed()` only treats a trailing `_KNOWN_JUNK_TAIL_WORDS`
-  word as bleed-proof when the ENTIRE tail is that one word
-  (`len(words) == 1`); a 2-word tail ending in a junk word ("Washington
-  Meetings") falls through to the generic `_MIN_BLEED_WORD_RUN` gate
-  (4+ words) and fails it, so `_trim_repair()` hits a literal match with
-  a tail that doesn't look like bleed and gives up outright (its own
-  documented "stop at the first literal hit" rule) rather than trying a
-  useful trim. **Not fixed here** — `_looks_like_bleed()` is a
-  649-row-corpus-calibrated heuristic (see its own docstring) and this
-  repo's convention is not to touch a heuristic like that on the
-  strength of one confirmed row; `[WAIT]` until a second real example of
-  a short (2-3 word), junk-word-ending tail turns up to calibrate
-  against, the same way `_KNOWN_JUNK_TAIL_WORDS` itself was built one
-  confirmed case at a time.
+- **[JUST-DO-IT] `[WAIT]` Two of three "land acknowledgement" rows
+  (Oshawa, Cambridge) need a production backfill re-run — not a code
+  bug.** Re-verified 2026-08-28 against today's `finalize_jurisdiction()`
+  before touching any code: both already repair correctly
+  (`"Oshawa is situated on lands..." -> "Oshawa, ON"`,
+  `"Cambridge Council Meeting Agenda Meeting" -> "Cambridge"`). They were
+  stored before this repair logic existed (or last touched) and just
+  need `POST /internal/jurisdiction/backfill-apply` (admin-token-gated
+  production write, not done here). The Snoqualmie row from the same
+  original entry is fixed — see `BACKLOG_DONE.md`.
 
 - **[JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
   causes now known (WO-47, 2026-08-23), row repairs deliberately
@@ -1841,50 +1806,41 @@ from a live check), but the Legistar calendar itself is still untried.
   per-incident-override approach, and the three bad rows were repaired
   via the recompute backfill.
 
-  **Now SIX confirmed domains, and two more shapes, found 2026-08-23
-  while re-ingesting the untitled PrimeGov pages. Both reproduce live
-  and deterministically** (probed directly, not inferred from stored
-  rows):
+  **The `lasvegas.primegov.com` name-tail-overrun shape is now fixed —
+  2026-08-28, but at the shared `finalize_jurisdiction()` layer, not in
+  `primegov.py` itself.** `_extract_jurisdiction()` still returns the
+  same raw `'City of Las Vegas Internet Address'` from the same
+  boilerplate footer (`"City of Las Vegas Internet Address:
+  www.lasvegasnevada.gov"`) — that part of the adapter is unchanged and
+  still over-runs past the real place name. What changed is
+  `jurisdiction_enrich._looks_like_bleed()` (see `BACKLOG_DONE.md`):
+  every real ingest already runs the raw value through
+  `finalize_jurisdiction()`, and its `_trim_repair()` already found the
+  correct literal prefix ("City of Las Vegas") — it just used to decline
+  trimming because the 2-word discarded tail ("Internet Address") didn't
+  register as bleed. Confirmed live:
+  `finalize_jurisdiction('City of Las Vegas Internet Address',
+  netloc='lasvegas.primegov.com')` now returns `'City of Las Vegas'` at
+  `confidence='repaired'`. Page **2041** (which carries the old bad
+  value) is a recompute-backfill candidate now that this is fixed.
 
-  - **`lasvegas.primegov.com` — the name-tail has no stop condition.**
-    `_extract_jurisdiction()` returns
-    **`'City of Las Vegas Internet Address'`**. The source is a
-    boilerplate agenda *footer*:
-    `"City of Las Vegas Internet Address:\xa0www.lasvegasnevada.gov"`.
-    The `(?:City|County|Town) of X` match kept consuming capitalized
-    words past the real place name. This is a **different failure from
-    the other five** — they picked the wrong *phrase* on the page; this
-    one picked the right phrase and then over-ran its end. Note the
-    `\xa0` non-breaking space right after the colon, which is what a
-    naive "stop at the colon" fix has to survive.
-  - **`lacity.primegov.com` — same domain, opposite outcomes on two
-    pages.** Meeting 156963 returns `None` while 157675 returns a
-    correct `'City of Los Angeles, CA'`. Nothing distinguishes them
-    structurally: it depends purely on whether that meeting's agenda
-    body text happens to contain the phrase. This is the cleanest
-    demonstration yet that the body-text search isn't a fallback with a
-    gap — it's a coin flip per page.
-
-  **These two are also the argument against a sixth and seventh
-  override.** `slc` is in `_KNOWN_DOMAINS`; `lacity`, `lasvegas` and
-  `okc` are not (verified) — and OKC only *looks* fine because its
-  agenda text happens to cooperate. That's now SIX confirmed domains on
-  the same structural gap, so the "worth revisiting the structural
-  options" threshold is met, not merely arguable. Concrete next step
-  unchanged: a page-position/first-N-chars scoping experiment against
-  all six real domains' pages, plus a name-tail stop condition for the
-  Las Vegas shape. **Live-reproducible test URLs** for that experiment:
-  `lasvegas.primegov.com/Portal/Meeting?meetingTemplateId=43332`,
+  **`lacity.primegov.com`'s coin-flip problem is still open and
+  unaffected by the above — a different failure shape.** Meeting 156963
+  returns `None` while 157675 returns a correct `'City of Los Angeles,
+  CA'`; nothing distinguishes them structurally, it depends purely on
+  whether that meeting's agenda body text happens to contain the
+  phrase at all. `_looks_like_bleed()` can't help here since there's no
+  bled value to repair — the search just finds nothing. This is the
+  same family as the OKC/Thousand-Oaks/SLC page-position problem two
+  paragraphs up, and the same caution applies: two prior fix attempts
+  (a positional window, a bold-tag rule) were tried and reverted after
+  real live-page character-offset data showed neither generalizes past
+  the 3 examples that motivated it. **Live-reproducible test URLs**:
   `lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963` (None)
-  and `...=157675` (correct), `okc.primegov.com/Portal/Meeting?
-  meetingTemplateId=68482`.
-
-  **Two production rows carry these values right now** (written by the
-  2026-08-23 re-ingest, which correctly fixed their titles and re-applied
-  the pre-existing jurisdiction gap): page **2041** = `'City of Las
-  Vegas Internet Address'`, page **2033** = `NULL`. Repairing them is a
-  recompute-backfill candidate once the extraction fix lands — not
-  before, or the same wrong values get rewritten.
+  vs `...=157675` (correct), `okc.primegov.com/Portal/Meeting?
+  meetingTemplateId=68482` (works, but only because its agenda text
+  happens to cooperate). Page **2033** (`NULL`) is this same bug, not
+  the Las Vegas one — not fixed by anything above.
 
 - **[NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
   jurisdiction at all (residual of WO-29, 2026-08-21).** oEmbed's
