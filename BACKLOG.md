@@ -95,7 +95,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (40)
+Platform & jurisdiction coverage  (41)
+  `[NEEDS-AUDIT]` Vimeo's oEmbed call comes back with no `title`/
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
@@ -1186,6 +1187,44 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[NEEDS-AUDIT]` Vimeo's oEmbed call comes back with no `title`/
+  `duration`/`description` at all for some real videos, root cause
+  confirmed live 2026-08-29.** `vimeo.com/api/oembed.json` returns a
+  stripped response (just `type`/`html`/`width`/`height`) plus a
+  `"domain_status_code": 403` field when the request's `Referer`
+  doesn't match a domain the video owner has whitelisted — a real,
+  legitimate content-owner privacy control on embed *metadata*
+  specifically (playback still works), not a bot-block. Confirmed live
+  side by side on the same video id: no `Referer` → stripped; `Referer:
+  https://vimeo.com/` → still stripped (a generic Vimeo referer doesn't
+  satisfy it); `Referer:` set to the real tenant's own domain (e.g.
+  `https://www.corvallisoregon.gov/`) → full real metadata immediately.
+  Real, live effect: `app/platforms/vimeo.py`'s title extraction (line
+  ~338) silently falls through to `None`, producing a frozen
+  `meeting-{hash}` slug — at least 2 confirmed instances shipped this
+  way tonight (Corvallis OR, Harpswell ME — see `BACKLOG_DONE.md`'s
+  Vimeo-dorking entry). **Not fixed this pass** — the real fix needs
+  the tenant's own domain as `Referer`, which the adapter doesn't
+  currently have (most real calls arrive as a bare `vimeo.com/...` URL
+  with no originating city domain in hand). Two real candidate fixes:
+  (a) when `resolve()` is called with the *original* city-domain URL
+  that embedded the Vimeo link (the common real shape — a `.gov` page
+  with an embedded player), pass that domain through as `Referer`
+  instead of discarding it; (b) fall back to scraping the plain
+  `vimeo.com/{id}` page's own `<title>` tag (unauthenticated, no oEmbed
+  dependency) when oEmbed comes back stripped — confirmed live the
+  public page still renders a real title even when oEmbed's metadata is
+  gated. **(a) should reuse the existing `jurisdiction_hint` mechanism
+  (`app/platforms/base.py`'s `CalendarPageError`), generalized to carry
+  an origin domain rather than only a jurisdiction string** — every
+  Vimeo URL found via dorking (see `ENUMERATION_METHODS.md` §46) is
+  already known to have come from a real `.gov`-adjacent origin page at
+  discovery time; the fix is to stop discarding that domain before it
+  reaches the oEmbed call, not to invent a new lookup. This covers most
+  dork-discovered URLs directly; (b)'s scrape fallback is still needed
+  for a bare `vimeo.com/...` URL with no recorded origin (cold user
+  paste, or an Archive record with no linking page).
 
 - **`[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   school-district agenda platform, weak for video but a strong,

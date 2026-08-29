@@ -1,5 +1,63 @@
 # Backlog — done
 
+## Direct Vimeo channel dorking: 24 new real ingests, zero prior systematic discovery pass on this platform [Done 2026-08-29]
+
+Closed `BACKLOG.md`'s long-open "Vimeo's real-world prevalence among
+small local governments" lead, which had sat unexplored specifically
+because Vimeo has no tenant-subdomain structure to enumerate via DNS
+the way TelVue/Cablecast/CivicPlus do. Acted on the user's own
+correction to an earlier vendor-signature investigation's framing
+("dead end" was the wrong verdict; consider a different discovery route
+for the same vendors) — the fix wasn't a better signature match, it was
+dorking Vimeo directly rather than routing through any CMS vendor's
+tenant list.
+
+**Method**: the same proven 5-query dork pattern already used for
+TelVue and Cablecast (`"vimeo.com/channels"` + a rotating governance
+phrase: city council / board of supervisors|county commission / select
+board|town council / planning commission|zoning board / school
+board|school committee) via WebSearch. Found ~25 unique real channels
+in one pass — a higher hit density than either prior platform's dork,
+likely because `vimeo.com/channels` is a far more distinctive, lower-
+noise search phrase than a CMS vendor domain that also serves millions
+of unrelated personal/business videos.
+
+**24/25 resolved and ingested cleanly** (1 genuine skip: Hampstead NH's
+channel had zero real video ids on its own page). Spans Salisbury NC,
+New Brunswick NJ, Covington LA, Morrilton AR, Corvallis OR (also
+independently found via a separate Municode-link finding the same
+session — a clean cross-validation that both routes sample the same
+real population), Rancho Cucamonga CA, Willits CA, Medina MN, Upper
+Merion Township PA, San Diego County CA, Penfield NY, Harpswell ME,
+South Hadley MA, Peters Township PA (town council and, separately, its
+school district — two distinct channels), Amherst NH, Secaucus NJ,
+City of Lakeland (state unconfirmed, likely FL), Ludington MI, Seekonk
+MA schools, Jefferson Parish LA schools, Hopkins MN schools, and
+Highland Park/Deerfield IL's District 113 schools. One channel
+(Manchester NH's "MPTS Channel 22") left with its jurisdiction
+genuinely unresolved rather than guessed — the channel's own name
+covers an unnamed "OTHER CITY," not Manchester itself. All 24 landed as
+tier2 (video, no captions) and were appended to
+`scripts/tier3_auto_transcription_queue.txt` — consistent with this
+project's already-documented "Vimeo captions unconfirmed" gap, not a
+new finding.
+
+**A real, confirmed bug found investigating why several ingests had
+`title: null` and a frozen `meeting-{hash}` slug**: Vimeo's oEmbed API
+returns a stripped response (no `title`/`author_name`/`duration`) plus
+`"domain_status_code": 403` when the request's `Referer` doesn't match
+a domain the video owner has authorized — confirmed live via side-by-
+side curl (no Referer → stripped; generic `vimeo.com` Referer → still
+stripped; the real tenant's own domain as Referer → full metadata). A
+legitimate content-owner privacy control on embed metadata specifically
+(playback is unaffected), not a bot-block — logged to `BACKLOG.md`'s
+"Platform & jurisdiction coverage" section with two candidate fixes
+rather than fixed blind, since the adapter currently has no way to
+derive the tenant's real domain from a bare `vimeo.com/...` URL. Full
+writeup, evidence, and the extrapolation-to-other-video-services
+follow-up: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§45–§46.
+
 ## A YouTube caption-fetch 429 crashed resolve() outright instead of degrading gracefully [Done 2026-08-29]
 
 Found while running a deliberate, single, isolated re-test of BACKLOG.md's
