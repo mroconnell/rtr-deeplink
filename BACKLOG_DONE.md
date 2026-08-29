@@ -1,5 +1,57 @@
 # Backlog — done
 
+## A YouTube caption-fetch 429 crashed resolve() outright instead of degrading gracefully [Done 2026-08-29]
+
+Found while running a deliberate, single, isolated re-test of BACKLOG.md's
+"bulk re-resolve gets this IP blocked by YouTube" entry (see that
+entry's own update) — a week after the 2026-08-22 incident, to check
+whether the block had cleared enough to test the still-open pacing
+question. It hadn't (or something else is going on — see that entry),
+but the re-test surfaced a real, separate, previously-undocumented bug
+along the way.
+
+**What happened**: `YouTubeAssetFinder.resolve_video_id()`'s call to
+`_extract_info()` raised an uncaught `yt_dlp.networking.exceptions.
+HTTPError` (429 Too Many Requests), crashing the whole resolve — live,
+reproduced twice against two different real, unrelated videos
+(`5LZqoNDRMYk`, `uLzcNgtnyQ4`). The existing `except yt_dlp.utils.
+DownloadError:` clause (added 2026-08-09 for YouTube's "Sign in to
+confirm you're not a bot" anti-bot block, see that entry) didn't catch
+it: `HTTPError` is a different yt_dlp exception class, raised by
+`_pick_caption_track()`'s own direct `ydl.urlopen(...).read()` call for
+the caption track file — a network call the extractor makes *after*
+`extract_info()` itself already succeeded, not part of extraction, so
+`extract_info()`'s own `ignoreerrors: False` handling never sees it
+either.
+
+**Fix**: widened the except clause from `yt_dlp.utils.DownloadError` to
+its common base `yt_dlp.utils.YoutubeDLError` (confirmed both share this
+base via `__mro__`). Both this real caption-fetch `HTTPError` and the
+original anti-bot `DownloadError` now degrade identically — a real,
+playable `ResolvedMeeting` with an honest "YouTube is currently blocking
+automated caption requests" warning, matching the existing 2026-08-09
+precedent's own reasoning: playback needs nothing from yt-dlp, only the
+video id. Any other yt_dlp-raised failure mode degrades the same way
+going forward too, rather than needing its own except clause added by
+hand the next time one turns up.
+
+**Real production implication, not just a test artifact**: since the
+same 429 was reproduced on two independent, real, unrelated videos, any
+real user-facing resolve of a YouTube-backed meeting during a window
+like this would previously have hit a raw crash (surfacing to the
+reader as a generic resolve-failure error) instead of a playable video
+with an honest transcript-unavailable warning. Fixed regardless of
+whether the underlying IP-block/rate-limit question ever gets fully
+resolved.
+
+New regression test: `test_resolve_video_id_degrades_on_caption_fetch_
+http_error` (mirrors the existing `..._on_download_error` test) — raises
+the shared `YoutubeDLError` base directly rather than constructing a
+real `HTTPError` (which needs a real `Response` object the except
+clause doesn't care about anyway, since it catches the base class).
+Confirmed it fails against the pre-fix code with the exact real
+traceback observed live. All four CI gates clean.
+
 ## Detect a transcript that simply ends early -- the last undetectable truncation form [Done 2026-08-29]
 
 Closes the `[JUST-DO-IT]` entry sitting in `BACKLOG.md` since 2026-08-24.
