@@ -54,14 +54,13 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (4)
-  [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
-  [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
-  [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+  [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  Confirmations nobody has actually watched happen  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
+  Confirmations nobody has actually watched happen  (5)
+    [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
@@ -80,7 +79,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+  [NEEDS-AUDIT] Two residual gaps deliberately left open by the
+  [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
@@ -319,131 +320,18 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
-  the script's circuit breaker doesn't notice (measured twice,
-  2026-08-22).** The first corpus-scale
-  `dedupe_rollup_transcripts.py --apply` split perfectly by platform:
-
-  ```
-  failed:  youtube 10   (every one HTTP 429: Too Many Requests)
-  applied: granicus 11, civicclerk 2, escribe 1   (zero 429s)
-  ```
-
-  **The obvious reading — "too fast, so pace it" — was tested and is
-  wrong.** A retry at `--resolve-delay 60`, starting after ~9 minutes of
-  no YouTube traffic at all, failed **identically on all 10**, and the
-  *first* request of that run 429'd cold. So this is not a per-request
-  rate limit that slower pacing walks around; the burst earns a
-  sustained block on the IP that outlives at least ten minutes of
-  idling. Duration unknown — nobody has measured when it clears.
-
-  **The settled part of the fix — the circuit breaker.**
-  `sweep()` tracks `consecutive_errors` against
-  `MAX_CONSECUTIVE_ERRORS = 5`. It *did* increment the counter on the
-  resolve-failure path — the narrower truth, corrected on re-reading the
-  code: the **threshold was only ever checked inside the `except`
-  branch**, which a resolve failure never reaches. So the count climbed
-  and was never tested, and the breaker could not trip on the exact
-  failure that matters. Across the two
-  runs the script marched through **20 requests against an endpoint that
-  was already refusing every one** — which plausibly extends the block it
-  is failing against. **Fixed 2026-08-22**: both failure paths now route through one
-  `_should_abort()` helper, and a rate-limit signal aborts on the *first*
-  occurrence rather than waiting for the count. Applies to any bulk re-resolve, not just this script —
-  `backfill_archived_pages.py` has the identical shape.
-
-  **The unsettled part, re-tested 2026-08-29 (7 days later) — still
-  unsettled, not resolved.** A single, isolated, cold `resolve()` call
-  (not a bulk sweep — no burst at all) against two different real
-  videos both hit the identical `HTTP Error 429: Too Many Requests` on
-  the caption-fetch step. This does **not** confirm "pacing doesn't
-  work" — a lone request 429ing is a different, and in some ways more
-  concerning, shape than "burst traffic earns a block," and there's no
-  way from this environment to tell apart "the original block never
-  cleared in a week" from "something about this residential IP more
-  generally trips YouTube's caption-endpoint limit regardless of this
-  app's own behavior." What it does confirm: there is currently no way
-  to get a clean, unblocked baseline to test pacing against from this
-  environment, so the question stays genuinely open. Worth knowing
-  before designing around it that `CLAUDE.md` flags YouTube caption
-  fetching as the one dependency actively trying to block scraping, and
-  that this has only ever been measured from a residential IP, never
-  Render's — production may behave differently either way.
-
-  **Real, separate bug found and fixed via this same re-test**: the 429
-  above crashed `resolve()` outright rather than degrading gracefully —
-  see `BACKLOG_DONE.md`'s matching entry. Unrelated to whether the IP
-  block itself can be avoided, but a real, live production risk on its
-  own (any YouTube-backed resolve could have hit this).
-
-  Do not re-run a bulk YouTube sweep; a single isolated check is enough
-  to know the block situation hasn't meaningfully changed, and running
-  more only risks extending whatever is causing it.
-
-  **Real scale correction, 2026-08-26**: this was scoped against one
-  script's 10 failures, but the actual blast radius is much bigger.
-  `/coverage`'s own live jurisdiction data puts **184** real
-  jurisdictions on `platform="YouTube"` today — not just the four
-  curated `youtube_channel.py` cities (Phoenix/Philadelphia/Baltimore/
-  Albuquerque), but every jurisdiction whose *final* resolved video
-  comes through `YouTubeAssetFinder`, including everything delegated
-  there from CivicWeb, PrimeGov, ClerkBase, and Minneapolis LIMS.
-  Captions for every one of those 184 go through the same yt-dlp call
-  this block hits — so a sustained IP block doesn't just stall a bulk
-  backfill script, it's a real single point of failure sitting behind
-  roughly a tenth of this app's jurisdiction coverage. Worth weighing
-  into how urgently the unsettled pacing question above gets answered.
-
-- **[JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
-  saved-search alert emails are "not built yet"** — stale; shipped
-  2026-08-13 (PR #30) and runs daily. `README.md`'s copy was already
-  corrected 2026-08-16. **Now confirmed at the strongest possible level
-  (2026-08-22)**: P5's inbox check found **eight consecutive days of
-  real digests** actually delivered, 08-14 → 08-21, arriving daily
-  ~23:47–23:50 UTC with real matched meetings and quoted transcript
-  snippets — see `BACKLOG_DONE.md`'s P5 entry. There is no remaining
-  ambiguity about whether the feature is built; the line is simply
-  wrong.
-  **Deliberately not fixed from this repo** — business-workspace edits
-  stay separate per `CLAUDE.md`, and that separation is worth more than
-  saving one line of typing. Fix it from an `~/Documents/rtr-business`
-  session or by hand. **Worth a wider pass while in there**: a doc that
-  was wrong about a shipped feature for nine days probably isn't wrong
-  about only one line, and the same day's audit found this exact
-  failure shape three times over in this repo's own docs (a Sentry issue
-  already fixed, a bandwidth limit off by 5×, a Bluesky check believed
-  impossible from a sandbox).
-
-- **[NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
-  Google's indexing verdict.** The rebuild shipped 2026-08-23.
-  **`STATE_HUB_PAGES.md` is the full reference** for how `/state/*` and
-  `/j/*` work, why each decision was made, what was tried and rejected
-  (with the measurements), a tuning table, how to verify a change, and
-  the ranked list of future improvements — **read it before changing
-  anything on these two surfaces**, rather than reverse-engineering the
-  reasoning from `crud.py`. `BACKLOG_DONE.md` keeps the original
-  investigation. **Measure against the 3.6× (`/j/`) and 3.1× (`/state/`)
-  over-representation figures, not the raw non-indexed count** — the raw
-  count moves with corpus growth, so it cannot answer this on its own.
-  Needs a Search Console export at least a few weeks out; nothing to do
-  until then, and nothing to change in the code meanwhile.
-  Residual gaps deliberately left open by that work:
-  - **Garbled source transcripts still produce garbled snippets.** The
-    coherence guards catch a hammered content word and an interleaved
-    roll-up phrase, but a *fluently wrong* transcription (real live
-    example: Santa Rosa, CA — "brought for their concerns and need for
-    essential anti displacement home parks and aims of protections for
-    the mobile emergency concerns") has no repetition signal to detect
-    and reads as word salad. Detecting it needs a coherence model, not a
-    regex; attempting it with thresholds misfires on good snippets
-    (measured — see `tests/test_highlights.py`'s frozen cases). The
-    honest framing is that this is transcription quality surfacing, not
-    snippet selection failing.
-  - **Topic chips are ranked by corpus hits, not real demand.**
-    `search_queries` now logs every `/meetings` keyword
-    (identity-free) and `crud.top_search_keywords()` reads it, but
-    nothing ranks chips by it yet — there is no data until the table
-    fills. Revisit once it has real volume.
+- **[JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
+  `_should_abort()` circuit breaker to `backfill_archived_pages.py`,
+  which never got it.** Found 2026-08-29 re-verifying the original fix
+  (`BACKLOG_DONE.md`, 2026-08-22) before logging it — the note that
+  `backfill_archived_pages.py` "has the identical shape" turned out to
+  mean it has the identical *vulnerability*, not that it got the same
+  fix. Confirmed live: no `_should_abort`/`MAX_CONSECUTIVE_ERRORS`
+  anywhere in that file. A bulk run of that script could still march
+  through an entire YouTube IP block the same way
+  `dedupe_rollup_transcripts.py` used to, wasting requests against an
+  endpoint already refusing every one. Genuinely `[EASY]`: copy the
+  helper and its call sites over, no new design needed.
 
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
@@ -484,6 +372,23 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Confirmations nobody has actually watched happen
+
+- **[HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
+  rebuild moved Google's indexing verdict — needs a Search Console
+  export.** `STATE_HUB_PAGES.md` is the full reference for how
+  `/state/*` and `/j/*` work, why each decision was made, what was
+  tried and rejected (with the measurements), a tuning table, and the
+  ranked list of future improvements — read it before changing anything
+  on these two surfaces rather than reverse-engineering the reasoning
+  from `crud.py`. `BACKLOG_DONE.md` keeps the original investigation.
+  **Measure against the 3.6× (`/j/`) and 3.1× (`/state/`)
+  over-representation figures, not the raw non-indexed count** — the raw
+  count moves with corpus growth, so it cannot answer this on its own.
+  Needs a Search Console export (login-gated dashboard) at least a few
+  weeks out from the rebuild date; nothing to do until then, and
+  nothing to change in the code meanwhile. (See also the still-open
+  engineering residuals this rebuild left behind, filed separately
+  under Open bugs — not blocked on this dashboard step.)
 
 - **[HUMAN] Decide the /meetings result link order from real click data,
   not from taste (2026-08-24).** The row's headline now opens the matched
@@ -861,6 +766,70 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
+  2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
+  reference for how `/state/*` and `/j/*` work and why — read it before
+  changing anything on these two surfaces. Neither of these is blocked
+  on a human/dashboard step, unlike the Search Console measurement
+  question that used to sit alongside them (moved to **Needs a
+  human**):
+  - **Garbled source transcripts still produce garbled snippets.** The
+    coherence guards catch a hammered content word and an interleaved
+    roll-up phrase, but a *fluently wrong* transcription (real live
+    example: Santa Rosa, CA — "brought for their concerns and need for
+    essential anti displacement home parks and aims of protections for
+    the mobile emergency concerns") has no repetition signal to detect
+    and reads as word salad. Detecting it needs a coherence model, not a
+    regex; attempting it with thresholds misfires on good snippets
+    (measured — see `tests/test_highlights.py`'s frozen cases). The
+    honest framing is that this is transcription quality surfacing, not
+    snippet selection failing.
+  - **Topic chips are ranked by corpus hits, not real demand.**
+    `search_queries` now logs every `/meetings` keyword
+    (identity-free) and `crud.top_search_keywords()` reads it, but
+    nothing ranks chips by it yet — there is no data until the table
+    fills. Revisit once it has real volume.
+
+- **[NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
+  whether pacing avoids it, is still genuinely unresolved — re-tested
+  and still open as of 2026-08-29.** The circuit-breaker bug that used
+  to sit alongside this entry is fixed and done (`BACKLOG_DONE.md`,
+  2026-08-22) — this is the other, harder half that was mistakenly left
+  filed as "fix settled" alongside it. Original finding: a corpus-scale
+  `dedupe_rollup_transcripts.py --apply` failed 10/10 YouTube resolves
+  with `HTTP 429`, zero failures on any other platform. A retry at
+  `--resolve-delay 60`, starting after ~9 minutes of no YouTube traffic
+  at all, failed identically on all 10, with the *first* request of
+  that run 429ing cold — ruling out "too fast, pace it" as the whole
+  story; the burst appears to earn a sustained IP-level block that
+  outlives at least ten minutes of idling, duration still unmeasured.
+  **Re-tested 2026-08-29 (7 days later), still unresolved**: a single,
+  isolated, cold `resolve()` call (no burst at all) against two
+  different real videos both hit the identical 429 on the caption-fetch
+  step. That does *not* confirm pacing is hopeless — a lone request
+  429ing is a different, more concerning shape than "burst earns a
+  block" — but there is currently no way to get a clean, unblocked
+  baseline to test against from this environment, so the real question
+  (does it ever clear? is it IP-specific or broader? does Render's IP
+  behave differently from the residential IP every test so far has used?)
+  stays open. `CLAUDE.md` already flags YouTube caption fetching as the
+  one dependency actively trying to block scraping. **Do not re-run a
+  bulk YouTube sweep to test this** — a single isolated check is enough
+  to know the situation hasn't meaningfully changed, and running more
+  only risks extending whatever is causing it.
+  **Real scale, confirmed 2026-08-26**: not a narrow risk. `/coverage`'s
+  live jurisdiction data puts **184** real jurisdictions on
+  `platform="YouTube"` today — not just the four curated
+  `youtube_channel.py` cities, but every jurisdiction whose *final*
+  resolved video comes through `YouTubeAssetFinder`, including
+  everything delegated there from CivicWeb, PrimeGov, ClerkBase, and
+  Minneapolis LIMS. Captions for all 184 go through the same yt-dlp call
+  this block hits, so a sustained block is a real single point of
+  failure behind roughly a tenth of this app's jurisdiction coverage —
+  worth weighing into how urgently this gets root-caused, ideally by
+  someone who can test from Render's own IP rather than a residential
+  one.
 
 - **[NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   2026-08-26 — two real, live findings, root cause not chased yet.**

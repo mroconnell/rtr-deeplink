@@ -1,5 +1,73 @@
 # Backlog — done
 
+## `dedupe_rollup_transcripts.py`'s circuit breaker couldn't actually trip on the failure it existed for [Done 2026-08-22, logged 2026-08-29]
+
+Real bug, only being logged here now — the fix landed 2026-08-22 but
+sat undocumented as part of a `BACKLOG.md` "Ship next" entry that
+should have been split the same day (see that entry's still-open half,
+now correctly filed under Open bugs — whether a sustained YouTube IP
+block ever clears).
+
+**What broke**: a corpus-scale `dedupe_rollup_transcripts.py --apply`
+hit 10/10 YouTube resolve failures (`HTTP 429`), and across two runs
+the script marched through 20 requests against an endpoint that was
+already refusing every one — plausibly extending whatever block it was
+failing against. `sweep()`'s own circuit breaker
+(`consecutive_errors` vs. `MAX_CONSECUTIVE_ERRORS = 5`) should have
+stopped this; it didn't, because **the threshold was only ever checked
+inside the `except` branch**, which a resolve failure (an error
+returned in-band, not a raised exception) never reaches. The counter
+climbed but was never tested.
+
+**Fix**: both failure paths (`except`, and the in-band resolve-failure
+branch) now route through one shared `_should_abort()` helper
+(`scripts/dedupe_rollup_transcripts.py:1042`), and a rate-limit signal
+aborts on the *first* occurrence rather than waiting for the count —
+confirmed live in the code, `_should_abort` is called from both sites.
+
+**Residual gap, found re-verifying this entry 2026-08-29, not yet
+fixed**: the original entry claimed this "applies to any bulk
+re-resolve... `backfill_archived_pages.py` has the identical shape" —
+re-checked, and that script has **no `_should_abort`/
+`MAX_CONSECUTIVE_ERRORS` at all**, meaning the fix was never actually
+ported there despite the note. Real, live gap: a bulk run of that
+script could still march through a full YouTube block the same way
+`dedupe_rollup_transcripts.py` used to. Worth a small follow-up to
+port the same `_should_abort()` pattern over — genuinely `[EASY]` since
+the helper and the reasoning already exist, just not filed as an open
+`BACKLOG.md` entry yet since this was only caught while verifying this
+one, not actively worked.
+
+## `rtr-business/BUSINESS_OVERVIEW.md`'s stale saved-search-alerts line fixed, plus a wider staleness pass [Done 2026-08-29]
+
+Fixed from `~/Documents/rtr-business` per `CLAUDE.md`'s separation —
+business-workspace edits stay out of this repo. Removed "saved-search
+alert emails" from the "Not built yet" list and added a real "Shipped
+and live" bullet citing the same evidence this repo's own entry did
+(daily digest cron, PR #30, 8 consecutive days of real delivered
+digests confirmed 2026-08-22). Also corrected the Roadmap section,
+which had the same feature listed as future work gated on the
+accounts-phase-2 `NoteSubscription` build — what actually shipped is
+materially simpler (reuses the existing `SavedItem` table directly).
+
+**The "worth a wider pass" instinct paid off**: a doc wrong about a
+shipped feature for nine days wasn't wrong about only that one line.
+Seven more stale claims found and fixed, each independently verified
+against this repo's real current state rather than guessed: service
+count (said 3 Render services, it's 4 — the second transcription
+worker added 2026-08-21), Archive's plan (said starter, it's standard
+since the 2026-08-17 OOM crash), the database's plan (said
+Basic-256mb, it's Basic-1gb since the same incident), the bandwidth
+allowance (said 5GB — genuinely wrong, it's 25GB, the same "off by 5×"
+failure shape this repo's own entry named), an "unexplained billing
+anomaly" that's now explained (the Archive's mid-month tier upgrade),
+GA's measurement ID marked "TBD" (confirmed live since 2026-08-22),
+and a "still no channels" positioning claim (Bluesky auto-posting
+shipped and was live-verified 2026-08-21). Left alone rather than
+guessed: current storage/cost dashboard figures (no live access to
+verify) and whether "no deliberate launch" is still accurate (no
+contrary evidence found either way).
+
 ## WO-60 storage cleanup actually executed against production — real before/after numbers [Done 2026-08-29]
 
 The code half of WO-60 (`MAX_FRAMES_PER_PAGE` lowered 12→3,
