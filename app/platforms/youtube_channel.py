@@ -83,6 +83,7 @@ from datetime import date as date_cls
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+import aiohttp
 import yt_dlp
 
 logger = logging.getLogger("rtr_deeplink.youtube_channel")
@@ -277,6 +278,11 @@ class ChannelMatch:
     video_title: str
     channel_name: str
     channel_url: str
+    # Best-effort corroboration only, from the channel's public Atom feed
+    # (see _fetch_atom_published_date below) -- None whenever the fetch
+    # fails or the video isn't among the feed's ~15 most recent entries.
+    # Never a rejection signal on its own; see video_date_is_plausible().
+    atom_published_date: Optional[str] = None
 
 
 def has_channel_fallback(netloc: str) -> bool:
@@ -529,6 +535,67 @@ def is_publishable(entry: dict) -> bool:
     return bool(entry.get("duration"))
 
 
+_ATOM_ENTRY_RE = re.compile(r"<entry>(?:(?!</entry>).)*?</entry>", re.DOTALL)
+_ATOM_VIDEO_ID_RE = re.compile(r"<yt:videoId>([^<]+)</yt:videoId>")
+_ATOM_PUBLISHED_RE = re.compile(r"<published>([^<]+)</published>")
+
+
+async def _fetch_atom_published_date(channel_id: str, video_id: str) -> Optional[str]:
+    """Best-effort corroboration only for a video `_pick()` already chose.
+
+    YouTube's public per-channel Atom feed -- unauthenticated, no yt-dlp,
+    a structurally different call surface from the single-video fetch
+    that's the documented Render IP-block target (see this module's own
+    docstring and youtube.py's resolve_video_id()). Real shape confirmed
+    live 2026-08-29 against Phoenix's channel (UCx7FQNzOFCbtExt_gRub9JQ):
+    each <entry> carries a sibling <yt:videoId>/<published> pair, e.g.
+    <published>2026-08-28T17:00:23+00:00</published>.
+
+    Capped at the feed's ~15 most recent uploads (confirmed real, binding
+    limit -- also live-tested just now: Phoenix's most recent entries are
+    mostly non-meeting "Shorts" content, so this misses often on anything
+    not resolved same-day, or on a Shorts-heavy channel). Returns None
+    (never an error, never raises) whenever the video isn't among the
+    feed's entries, the fetch fails, or the feed is malformed -- callers
+    must treat this purely as corroboration, not a required signal.
+    """
+    url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        "YouTube Atom feed fetch got HTTP %s for channel %s",
+                        response.status,
+                        channel_id,
+                    )
+                    return None
+                xml = await response.text()
+    except Exception:
+        logger.warning(
+            "YouTube Atom feed fetch failed for channel %s",
+            channel_id,
+            exc_info=True,
+        )
+        return None
+
+    for entry_match in _ATOM_ENTRY_RE.finditer(xml):
+        entry_xml = entry_match.group(0)
+        id_match = _ATOM_VIDEO_ID_RE.search(entry_xml)
+        if not id_match or id_match.group(1) != video_id:
+            continue
+        published_match = _ATOM_PUBLISHED_RE.search(entry_xml)
+        if not published_match:
+            return None
+        try:
+            return datetime.fromisoformat(published_match.group(1)).date().isoformat()
+        except ValueError:
+            return None
+    return None
+
+
 async def find_channel_match(
     netloc: str, meeting_title: Optional[str], meeting_date: Optional[str]
 ) -> Optional[ChannelMatch]:
@@ -563,9 +630,13 @@ async def find_channel_match(
     chosen = _pick(matches)
     if not chosen:
         return None
+    atom_published_date = await _fetch_atom_published_date(
+        fallback.channel_id, chosen["id"]
+    )
     return ChannelMatch(
         video_id=chosen["id"],
         video_title=chosen.get("title") or "",
         channel_name=fallback.channel_name,
         channel_url=f"https://www.youtube.com/channel/{fallback.channel_id}",
+        atom_published_date=atom_published_date,
     )

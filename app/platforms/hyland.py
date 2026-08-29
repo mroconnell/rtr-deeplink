@@ -197,6 +197,12 @@ class HylandAssetFinder(AssetFinder):
                     segments = youtube_delegated.segments
                     transcript_language = youtube_delegated.transcript_language
                     transcript_warnings = list(youtube_delegated.transcript_warnings)
+                    # youtube_delegated carries its own bot-block message
+                    # here (video_url still set -- the embed needs no
+                    # network call -- but yt-dlp's metadata/caption fetch
+                    # failed); without this the page looks identical to a
+                    # fully successful delegation.
+                    video_warnings.extend(youtube_delegated.video_warnings)
             event_points = self._parse_event_points(html)
 
             title, date, agenda_items, agenda_link = None, None, [], None

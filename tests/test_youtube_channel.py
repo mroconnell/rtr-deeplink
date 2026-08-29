@@ -29,6 +29,7 @@ from datetime import date
 
 from app.platforms import youtube_channel as yc
 
+from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
 
 
@@ -300,3 +301,93 @@ async def test_find_channel_match_logs_a_listing_failure(monkeypatch, caplog):
 
     assert result is None
     assert any("YouTube channel listing failed" in r.message for r in caplog.records)
+
+
+# --------------------------------------------------------------------
+# Atom feed date corroboration -- WO-30 residual, added 2026-08-29
+#
+# Synthetic fixtures below (not fetched from a real customer meeting):
+# the XML shape -- <entry> carrying sibling <yt:videoId>/<published> tags
+# -- is real, confirmed live against Phoenix's actual public feed
+# (channel_id=UCx7FQNzOFCbtExt_gRub9JQ,
+# https://www.youtube.com/feeds/videos.xml?channel_id=...) on 2026-08-29;
+# only the specific video ids/timestamps here are made up for the test.
+# --------------------------------------------------------------------
+
+PHOENIX_CHANNEL_ID = "UCx7FQNzOFCbtExt_gRub9JQ"
+ATOM_FEED_URL = (
+    f"https://www.youtube.com/feeds/videos.xml?channel_id={PHOENIX_CHANNEL_ID}"
+)
+
+
+def _atom_feed(entries: list) -> str:
+    items = "\n".join(
+        f"<entry><yt:videoId>{video_id}</yt:videoId>"
+        f"<published>{published}</published></entry>"
+        for video_id, published in entries
+    )
+    return f"<feed>{items}</feed>"
+
+
+async def test_fetch_atom_published_date_finds_a_real_shaped_match():
+    xml = _atom_feed(
+        [
+            ("QBkbY4E5GoA", "2026-08-28T17:00:23+00:00"),
+            ("srjuXI5vGuw", "2026-07-01T19:04:11+00:00"),
+        ]
+    )
+    routes = {ATOM_FEED_URL: FakeResponse(status=200, text=xml)}
+
+    with mock_session(routes):
+        result = await yc._fetch_atom_published_date(PHOENIX_CHANNEL_ID, "srjuXI5vGuw")
+
+    assert result == "2026-07-01"
+
+
+async def test_fetch_atom_published_date_none_when_video_not_in_feed():
+    # Real, binding limit: the feed only carries ~15 most recent uploads,
+    # so a video resolved even slightly late won't be there at all.
+    xml = _atom_feed([("QBkbY4E5GoA", "2026-08-28T17:00:23+00:00")])
+    routes = {ATOM_FEED_URL: FakeResponse(status=200, text=xml)}
+
+    with mock_session(routes):
+        result = await yc._fetch_atom_published_date(PHOENIX_CHANNEL_ID, "srjuXI5vGuw")
+
+    assert result is None
+
+
+async def test_fetch_atom_published_date_none_on_non_200():
+    routes = {ATOM_FEED_URL: FakeResponse(status=503, text="")}
+
+    with mock_session(routes):
+        result = await yc._fetch_atom_published_date(PHOENIX_CHANNEL_ID, "srjuXI5vGuw")
+
+    assert result is None
+
+
+async def test_fetch_atom_published_date_none_on_malformed_xml():
+    routes = {
+        ATOM_FEED_URL: FakeResponse(
+            status=200, text="<entry><yt:videoId>srjuXI5vGuw</yt:videoId></entry>"
+        )
+    }
+
+    with mock_session(routes):
+        result = await yc._fetch_atom_published_date(PHOENIX_CHANNEL_ID, "srjuXI5vGuw")
+
+    assert result is None
+
+
+async def test_find_channel_match_includes_atom_corroboration(monkeypatch):
+    entries = [e for e in _entries("phoenix") if yc.is_publishable(e)]
+    monkeypatch.setattr(yc, "_list_channel", lambda channel_id: entries)
+    xml = _atom_feed([("srjuXI5vGuw", "2026-07-01T19:04:11+00:00")])
+    routes = {ATOM_FEED_URL: FakeResponse(status=200, text=xml)}
+
+    with mock_session(routes):
+        match = await yc.find_channel_match(
+            "phoenix.legistar.com", "City Council Formal Meeting", "2026-07-01"
+        )
+
+    assert match.video_id == "srjuXI5vGuw"
+    assert match.atom_published_date == "2026-07-01"
