@@ -39,6 +39,42 @@ checking for the log line), and added one new `caplog`-based regression
 test each to `test_proudcity.py`/`test_townhallstreams.py` simulating a
 real HTTP failure. All four CI gates clean.
 
+## Cablecast wildcard-free DNS sweep: 45 new hosts, 3 real ingests, 2 new unsupported portal templates found and logged [Done 2026-08-29]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§40. Closes the "Six meeting/CMS platforms don't wildcard their DNS"
+lead for `cablecast.tv` specifically (BACKLOG.md's Platform &
+jurisdiction coverage section) — PrimeGov/CivicWeb/eScribe already had
+this sweep; Cablecast didn't, despite being on the same confirmed-
+wildcard-free list, and only had 138 CDX-found tenants (whatever
+Wayback happened to crawl, not the complete real universe).
+
+Same slug pattern as every prior sweep, checked via `aiodns` against
+all 22,331 unchecked `jurisdiction_coverage.csv` rows (32,344 unique
+slugs) — finished in under 2 minutes, no rate-limit exposure at all
+since it's DNS-only with zero HTTP for the discovery pass itself. 50
+real hosts found, 45 not already in Archive.
+
+**DNS existence alone wasn't enough this time, unlike the earlier three
+platforms** — Cablecast turns out to have at least 4 distinct real
+portal templates in the wild. Classified all 45 by actually fetching
+each: 4 matched the template `app/platforms/cablecast.py` already
+supports, 17 were a private login-gated station-admin panel (not a
+public viewer — Cablecast is also sold as pure internal broadcast
+software), 17 hit connection errors (likely dead/misconfigured), and 3
+matched two more real, previously-undocumented templates
+(`CablecastPublicSite`, `WebSchedule`) — logged to `BACKLOG.md` as a
+future adapter-build lead with real example URLs, not investigated
+further per this project's "never build from assumption" rule.
+
+**3 real pages ingested, all with real transcripts**: Fargo, ND's
+Budget Workshop (565 segments), Artesia, CA's City Council Meeting
+(1,132 segments, jurisdiction correctly resolved), Champaign, IL's
+Board of Fire and Police Commissioners (34 segments). A fourth usable
+host (Jacksonville) turned out to have zero shows with a populated
+`vodUrl` in its real listing data — a genuine "no video" case, not a
+bug, same shape already documented for Tucson's Hyland tenant.
+
 ## Common Crawl full-corpus signature scan: 58 new jurisdiction pages across Hyland/OnBase, ChampDS, and TelVue — a domain-agnostic discovery method, not tenant-subdomain enumeration [Done 2026-08-29]
 
 Full writeup, methodology, and every real number lives in
