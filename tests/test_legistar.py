@@ -79,6 +79,46 @@ async def test_single_meeting_delegates_to_granicus():
     assert result.external_id == "granicus:cityofmaricopa.granicus.com:1504"
 
 
+async def test_single_meeting_delegation_populates_meeting_body():
+    # 2026-08-28: legistar.py's own page <title> already carried the real
+    # governing-body name ("Meeting of {body}") -- it was only ever used
+    # as a title fallback, never surfaced as ResolvedMeeting.meeting_body
+    # (the field Granicus's RSS channel title already feeds, see
+    # archive/db/crud.py's precedence comment). Wired up on all three
+    # resolve() paths; this covers the primary a.videolink delegation one.
+    meeting_url = "https://maricopa.legistar.com/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://maricopa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+
+    meeting_html = (
+        "<html><head><title>The City of Maricopa - Meeting of City Council "
+        "on 4/8/2026 at 6:00 PM</title></head><body>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "granicus"
+    assert result.meeting_body == "City Council"
+
+
 def test_find_video_links_ignores_audio_only_variants():
     # Real bug fixed 2026-08-12, confirmed live on Charlotte, NC: some
     # Legistar instances render three separate a.videolink anchors per real
@@ -371,6 +411,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         committee_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
     ) == {
         "title": "Committee on Finance",
+        "body": "Committee on Finance",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
         "agenda_link": None,
@@ -385,6 +426,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         full_council_soup, "https://legistar.council.nyc.gov/MeetingDetail.aspx?ID=1"
     ) == {
         "title": "City Council",
+        "body": "City Council",
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
         "agenda_link": None,
@@ -424,6 +466,7 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
         soup, "https://baltimore.legistar.com/MeetingDetail.aspx?ID=1"
     ) == {
         "title": "Baltimore City Council",
+        "body": "Baltimore City Council",
         "jurisdiction": "City of Baltimore, MD",
         "date": "2025-10-20",
         "agenda_link": None,

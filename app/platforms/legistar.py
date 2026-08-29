@@ -152,6 +152,9 @@ class LegistarAssetFinder(AssetFinder):
                     resolved.agenda_link = resolved.agenda_link or page_info.get(
                         "agenda_link"
                     )
+                    resolved.meeting_body = resolved.meeting_body or page_info.get(
+                        "body"
+                    )
                 return resolved
 
             return ResolvedMeeting(
@@ -254,6 +257,7 @@ class LegistarAssetFinder(AssetFinder):
             else:
                 resolved.date = resolved.date or page_info["date"]
             resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+            resolved.meeting_body = resolved.meeting_body or page_info.get("body")
         return resolved
 
     @staticmethod
@@ -308,6 +312,7 @@ class LegistarAssetFinder(AssetFinder):
         resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
         resolved.date = page_info["date"]
         resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+        resolved.meeting_body = page_info.get("body")
 
         # Provenance, said plainly and up front. Deliberately NOT
         # `best_effort=True`: that flag means "this government website
@@ -429,8 +434,15 @@ class LegistarAssetFinder(AssetFinder):
             jurisdiction, netloc=urlparse(page_url).netloc, page_text=text
         )
         month, day, year = int(match.group(3)), int(match.group(4)), match.group(5)
+        # group(2) ("Meeting of {body}") is the real governing-body name
+        # this page's own title already carries -- surfaced separately as
+        # "body" (2026-08-28) so callers can feed ResolvedMeeting.
+        # meeting_body directly, rather than only using it as a title
+        # fallback the way this dict's "title" key already did.
+        body = match.group(2).strip()
         return {
-            "title": match.group(2).strip(),
+            "title": body,
+            "body": body,
             "jurisdiction": jurisdiction,
             "date": f"{year}-{month:02d}-{day:02d}",
             "agenda_link": LegistarAssetFinder._extract_agenda_link(soup, page_url),
