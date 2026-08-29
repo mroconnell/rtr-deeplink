@@ -189,6 +189,27 @@ _NO_CAPTIONS_WARNING = (
     "CC button inside the player above will still turn them on."
 )
 
+# K-12/library institutional suffixes that ride along on a real place name
+# in a Vimeo account's `author_name` -- confirmed real, 2026-08-29, from
+# the direct-dorking batch's own 22 real channels (BACKLOG_DONE.md):
+# "Peters Township School District" (Peters Township, PA), "Hopkins
+# Public Schools" (Hopkins, MN), "Jefferson Parish Schools" (Jefferson
+# Parish, LA), "Seekonk Public Schools" (Seekonk, MA), "Mason County
+# District Library" (Mason County, MI -- the channel that actually
+# uploads Ludington, MI's city council meetings). Without stripping these
+# first, `validated_label_extract()` correctly declines on the full glued
+# phrase (none of these five validate as a single unit), which used to
+# throw away a real, usable place name for exactly the accounts most
+# likely to BE a real, unambiguous place ("Public Schools"/"School
+# District" is never itself part of a US place's proper name). Order
+# matters only in that a more specific phrase must be tried before a
+# shorter one it contains ("Public Schools" before bare "Schools"), so
+# stripping "Schools" alone never leaves a dangling "Public".
+_INSTITUTIONAL_SUFFIX_RE = re.compile(
+    r"\s+(?:Public Schools|School District|District Library|Schools)$",
+    re.IGNORECASE,
+)
+
 
 def is_vimeo_host(netloc: str) -> bool:
     netloc = netloc.lower().split(":")[0]
@@ -402,15 +423,22 @@ class VimeoAssetFinder(AssetFinder):
         """oEmbed's `author_name` is a Vimeo *account* name, not a
         jurisdiction -- real values range from "City of Sebastopol"
         (usable) through "CitySalisburyNC" / "cityofcorvallis" (glued) to
-        "COC" (Chicago's, meaningless out of context). Run through the
-        same Census-validated `validated_label_extract()` every other
-        adapter uses, which declines rather than guessing -- so most
-        Vimeo-direct resolves legitimately carry no jurisdiction at all.
-        That's the honest outcome, not a bug: see BACKLOG.md.
+        "COC" (Chicago's, meaningless out of context). A confirmed real
+        institutional-suffix subcategory ("Hopkins Public Schools",
+        "Peters Township School District" -- see
+        `_INSTITUTIONAL_SUFFIX_RE`'s own comment) is stripped first, since
+        the suffix is never part of the place's own proper name. Run
+        through the same Census-validated `validated_label_extract()`
+        every other adapter uses, which declines rather than guessing --
+        so a genuinely unrecoverable Vimeo account name (no place name
+        anywhere in it, e.g. "District 113 Media") still carries no
+        jurisdiction at all. That's the honest outcome, not a bug: see
+        BACKLOG.md.
         """
         author = ((oembed or {}).get("author_name") or "").strip()
         if not author:
             return None
+        author = _INSTITUTIONAL_SUFFIX_RE.sub("", author)
         label = jurisdiction_enrich.validated_label_extract(author)
         if not label:
             return None
