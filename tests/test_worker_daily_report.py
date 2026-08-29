@@ -474,3 +474,73 @@ async def test_the_delta_survives_a_failed_send_and_lands_on_the_next_one(monkey
     # have diffed against what the first attempt wrote, yielding a zero delta.
     assert seen[0]["cumulative_chunks_completed"] == 1000
     assert seen[1]["cumulative_chunks_completed"] == 1000
+
+
+def _summary(*, active_jobs: int, cumulative_chunks: int) -> dict:
+    return {
+        "active_jobs": active_jobs,
+        "remaining_chunks_in_active_jobs": 0,
+        "cumulative_chunks_completed_all_time": cumulative_chunks,
+        "cumulative_jobs_completed_all_time": 0,
+        "jobs_completed_last_24h": 0,
+        "segments_added_last_24h": 0,
+        "backlog_no_transcript": 0,
+        "tier3_queue_remaining": 0,
+    }
+
+
+async def test_daily_report_warns_when_chunks_are_flat_with_active_jobs(monkeypatch):
+    """The dead-worker-pool signal (2026-08-24 incident, BACKLOG_DONE.md):
+    cumulative_chunks_completed_all_time not moving while active_jobs > 0
+    is the one number that separated a real outage from healthy pacing."""
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=_summary(active_jobs=10, cumulative_chunks=4028),
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    assert "stalled or dead" in captured["html"]
+
+
+async def test_daily_report_no_warning_when_chunks_are_moving(monkeypatch):
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=_summary(active_jobs=10, cumulative_chunks=4100),
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    assert "stalled or dead" not in captured["html"]
+
+
+async def test_daily_report_no_warning_when_no_active_jobs(monkeypatch):
+    """Zero chunks completed with zero active jobs is just an idle queue,
+    not a stalled pool -- the warning is specifically about looking busy
+    while making no progress."""
+    captured = {}
+
+    async def _fake_send(to, subject, html, *, cc=""):
+        captured["html"] = html
+        return True
+
+    monkeypatch.setattr(email_utils, "_send", _fake_send)
+
+    await email_utils.send_worker_daily_report(
+        "ops@example.com",
+        summary=_summary(active_jobs=0, cumulative_chunks=4028),
+        previous={"cumulative_chunks_completed": 4028},
+    )
+    assert "stalled or dead" not in captured["html"]
