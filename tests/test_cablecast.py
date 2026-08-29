@@ -10,6 +10,8 @@ real bug (jurisdiction hardcoded to "Detroit, MI" for every customer) was
 only found once a second real customer was checked.
 """
 
+import json
+
 from app.platforms.base import detect_platform
 from app.platforms.cablecast import CablecastAssetFinder
 
@@ -417,3 +419,157 @@ def test_format_date_handles_iso_with_offset_and_invalid():
     )
     assert CablecastAssetFinder._format_date(None) is None
     assert CablecastAssetFinder._format_date("not-a-date") is None
+
+
+# --------------------------------------------------------------------
+# CablecastPublicSite -- a third, genuinely different real portal
+# template (Ember.js, not Remix), found via a 2026-08-29 wildcard-free
+# DNS sweep. No HTML scraping here at all: real content sits behind a
+# plain, open, unauthenticated JSON API (`cablecastapi/v1/shows/{id}`,
+# `cablecastapi/v1/vods/{id}`) that this session confirmed live on two
+# independent tenants -- fixtures below are the real, unmodified JSON
+# responses fetched 2026-08-29. See cablecast.py's own module docstring
+# above `_PUBLICSITE_SHOW_ID_RE` for the full investigation, including
+# the confirmed HTTPS/HTTP asymmetry between the two tenants (Urbana
+# answers over HTTPS; Smyrna's HTTPS times out outright, HTTP-only).
+# --------------------------------------------------------------------
+
+URBANA_SHOW_URL = "https://urbana.cablecast.tv/CablecastPublicSite/show/870?site=1"
+SMYRNA_SHOW_URL = "https://smyrna.cablecast.tv/CablecastPublicSite/show/4070?site=1"
+
+
+def test_detect_platform_recognizes_cablecast_publicsite_show_url():
+    assert detect_platform(URBANA_SHOW_URL) == "cablecast"
+    assert detect_platform(SMYRNA_SHOW_URL) == "cablecast"
+    # A bare CablecastPublicSite channel-listing page (no /show/{id})
+    # isn't a single meeting -- correctly unclaimed, same posture as the
+    # Remix templates' own listing/root pages.
+    assert (
+        detect_platform("https://urbana.cablecast.tv/CablecastPublicSite/?site=1")
+        == "unknown"
+    )
+    # WebSchedule -- confirmed live 2026-08-29 to be a legacy print-
+    # schedule generator with no per-show links or video at all (see
+    # BACKLOG.md) -- correctly never claimed by this or any adapter.
+    assert (
+        detect_platform(
+            "https://peabody.cablecast.tv/Cablecast/Plugins/WebSchedule/default.aspx"
+        )
+        == "unknown"
+    )
+
+
+async def test_resolve_real_urbana_publicsite_show():
+    show_json = load_fixture("cablecast", "urbana_publicsite_show_870.json")
+    vod_json = load_fixture("cablecast", "urbana_publicsite_vod_1207.json")
+    routes = {
+        "https://urbana.cablecast.tv/cablecastapi/v1/shows/870": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://urbana.cablecast.tv/cablecastapi/v1/vods/1207": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(URBANA_SHOW_URL)
+
+    assert result.platform == "cablecast"
+    assert result.title == "City Council Regular meeting - 8/24/2026 6:30:00 PM"
+    assert result.date == "2026-08-24"
+    assert result.jurisdiction == "Urbana, IL"
+    assert (
+        result.video_url
+        == "https://urbana.cablecast.tv/store-3/870-City-Council-Regular-v1/vod.mp4"
+    )
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []
+    # No confirmed transcript source for this template yet -- see
+    # cablecast.py's own module note.
+    assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+async def test_resolve_real_smyrna_publicsite_show_falls_back_to_http():
+    # The confirmed real HTTPS/HTTP asymmetry: Smyrna's HTTPS times out
+    # outright, so this test mocks the HTTPS attempt as reachable-but-
+    # unusable (a non-200) to exercise the fallback path, then the real
+    # HTTP fixture data for the successful attempt.
+    show_json = load_fixture("cablecast", "smyrna_publicsite_show_4070.json")
+    vod_json = load_fixture("cablecast", "smyrna_publicsite_vod_2746.json")
+    routes = {
+        "https://smyrna.cablecast.tv/cablecastapi/v1/shows/4070": FakeResponse(
+            status=503
+        ),
+        "http://smyrna.cablecast.tv/cablecastapi/v1/shows/4070": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://smyrna.cablecast.tv/cablecastapi/v1/vods/2746": FakeResponse(
+            status=503
+        ),
+        "http://smyrna.cablecast.tv/cablecastapi/v1/vods/2746": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(SMYRNA_SHOW_URL)
+
+    assert result.platform == "cablecast"
+    assert result.title == "Beer Board Meeting - April 6, 2026"
+    assert result.date == "2026-04-06"
+    assert result.jurisdiction == "Smyrna, TN"
+    assert result.video_url is not None
+    assert result.video_format == "mp4"
+    assert result.video_warnings == []
+
+
+async def test_resolve_publicsite_show_not_found_on_either_scheme():
+    routes = {
+        "https://urbana.cablecast.tv/cablecastapi/v1/shows/999999999": FakeResponse(
+            status=404
+        ),
+        "http://urbana.cablecast.tv/cablecastapi/v1/shows/999999999": FakeResponse(
+            status=404
+        ),
+    }
+    url = "https://urbana.cablecast.tv/CablecastPublicSite/show/999999999?site=1"
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    assert result.video_url is None
+    assert result.video_warnings == [
+        "Could not find this show on the CablecastPublicSite API."
+    ]
+    # Jurisdiction still resolves from the known-domain registry even
+    # when the specific show id doesn't exist -- same posture the Remix
+    # path already has for a not-found show.
+    assert result.jurisdiction == "Urbana, IL"
+
+
+async def test_resolve_publicsite_show_with_no_vods_reports_no_video():
+    show_json = json.dumps(
+        {
+            "show": {
+                "id": 999,
+                "title": "A meeting with no recording yet",
+                "eventDate": "2026-09-01T18:30:00-05:00",
+                "vods": [],
+            }
+        }
+    )
+    routes = {
+        "https://urbana.cablecast.tv/cablecastapi/v1/shows/999": FakeResponse(
+            status=200, text=show_json
+        ),
+    }
+    url = "https://urbana.cablecast.tv/CablecastPublicSite/show/999?site=1"
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
+    assert result.jurisdiction == "Urbana, IL"
