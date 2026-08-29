@@ -226,6 +226,35 @@ async def test_resolve_known_org_token_corrects_a_wrong_state_not_just_a_missing
     assert result.jurisdiction == "Newmarket, NH"
 
 
+async def test_resolve_uses_known_org_token_when_org_logo_alt_text_declines():
+    # Auburn Hills, MI's real org token, added 2026-08-29 alongside the
+    # messy-org-name parser above -- integration check that when BOTH the
+    # title guess (a bare "City Council Meeting", no city prefix) AND the
+    # org-logo alt-text parser (real shape, no explicit state -- see
+    # test_org_logo_jurisdiction_declines_bare_name_with_no_stated_state)
+    # come up empty, _KNOWN_ORG_TOKEN_JURISDICTIONS still lands on the
+    # real, hand-verified answer end to end through resolve(), not just
+    # in the two helpers tested in isolation above.
+    url = (
+        "https://videoplayer.telvue.com/player/RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb/media/1"
+    )
+    html = (
+        "<html><head><title>City Council Meeting 1-1-24</title></head><body>"
+        '<img id="org-logo" alt="CMNtv Chris Weagel for Auburn Hills Govt '
+        'Cable - Auburn Hills Live and VoD - organization logo" '
+        'src="/x.png" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Council Meeting 1-1-24", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Auburn Hills, MI"
+
+
 async def test_split_title_date_handles_missing_date():
     title, date = TelvueAssetFinder._split_title_date("Untitled Meeting")
     assert title == "Untitled Meeting"
@@ -375,3 +404,169 @@ def test_org_logo_jurisdiction_rejects_org_name_alt_text():
 
 def test_org_logo_jurisdiction_handles_missing_tag():
     assert TelvueAssetFinder._org_logo_jurisdiction("<html></html>") is None
+
+
+# --- Messy-org-name parser (2026-08-29) -- BACKLOG.md's "TelVue's
+# jurisdiction extraction still can't parse a *messy* org name" entry.
+# Every alt text below is a real, live-fetched sample from a real TelVue
+# customer's own `id="org-logo"` tag (see telvue.py's own module comment
+# above `_ORG_LOGO_LEADING_ENTITY_RE` for the full list and how each was
+# found) -- these are synthetic HTML fixtures per this repo's own
+# synthetic-test convention (the underlying alt-text shapes are already
+# live-confirmed, only the wrapping `<img>` tag here is hand-built).
+
+
+def test_org_logo_jurisdiction_strips_access_tv_and_keeps_stated_state():
+    # Real alt text, Fitchburg MA's org token (yycCAZPb0NN3zj2o5qio-
+    # YFMNC43NjCG), confirmed live 2026-08-29: "Fitchburg Access TV -
+    # Fitchburg MA VOD Player". "Fitchburg" alone is nationally ambiguous
+    # (real places in both MA and WI per the Census table), but the state
+    # is spelled out right in the second half -- no lookup needed.
+    html = (
+        '<img id="org-logo" alt="Fitchburg Access TV - Fitchburg MA VOD '
+        'Player - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) == "Fitchburg, MA"
+
+
+def test_org_logo_jurisdiction_strips_leading_town_of_and_trailing_tagline():
+    # Real alt text, Orleans MA's org token (zzV8HNURw1G02-ue3glR7BRTpI-
+    # bknlL), confirmed live 2026-08-29: "Town of Orleans MA - Town of
+    # Orleans Video on Demand". Needs both a leading "Town of" strip and
+    # a trailing "Video on Demand" strip before the state is visible.
+    html = (
+        '<img id="org-logo" alt="Town of Orleans MA - Town of Orleans '
+        'Video on Demand - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) == "Orleans, MA"
+
+
+def test_org_logo_jurisdiction_handles_three_dash_separated_segments():
+    # Real alt text, Nashua NH's org token (LGzST4YdA6GIkRCa0H5CwbVBptJR
+    # J3XD), confirmed live 2026-08-29: "NCM - Nashua Community Media -
+    # Nashua Government TV" -- three segments, not two, so the parser
+    # must not assume there are exactly 2 dash-separated halves. Neither
+    # "Nashua Community Media" nor "Nashua Government TV" states a
+    # state, and "Nashua" alone is nationally ambiguous (IA/MN/NH/MT per
+    # the Census table) -- correctly declines rather than guess NH from
+    # world knowledge. (Real jurisdiction added to
+    # _KNOWN_ORG_TOKEN_JURISDICTIONS instead, confirmed via nashuanh.gov.)
+    html = (
+        '<img id="org-logo" alt="NCM - Nashua Community Media - Nashua '
+        'Government TV - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_declines_bare_name_with_no_stated_state():
+    # Real alt text, Auburn Hills MI's org token (RbS8sAKYVBOy0BmYID5Gw
+    # GYZw1XwFiLb), confirmed live 2026-08-29: "CMNtv Chris Weagel for
+    # Auburn Hills Govt Cable - Auburn Hills Live and VoD". The second
+    # half reduces cleanly to bare "Auburn Hills" after stripping "Live
+    # and VoD", but there's no state anywhere in the text -- this parser
+    # never falls back to a Census lookup to fill one in (see telvue.py's
+    # module comment for why: that's exactly what produced the real
+    # Needham -> "AL" bug), so it declines even though "Auburn Hills" is
+    # otherwise unambiguous. (Real jurisdiction added to
+    # _KNOWN_ORG_TOKEN_JURISDICTIONS instead, confirmed via
+    # auburnhills.org.)
+    html = (
+        '<img id="org-logo" alt="CMNtv Chris Weagel for Auburn Hills '
+        'Govt Cable - Auburn Hills Live and VoD - organization logo" '
+        'src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_never_reintroduces_the_needham_al_bug():
+    # Real alt text, Needham MA's org token (O7e6JrKKSJ3H_TX3VgEvpbSSL7
+    # Dbnrk2), confirmed live 2026-08-29: "The Needham Channel - Needham
+    # Community TV VOD Player". Stripping "Community TV" and "VOD Player"
+    # from the second half reduces it to bare "Needham" -- and
+    # jurisdiction_enrich.lookup_city_state("Needham") really does return
+    # "AL" (confirmed live 2026-08-29: places.csv has no Needham, MA
+    # entry at all), the exact wrong-state bug already fixed once for the
+    # title-guess path via this org's own _KNOWN_ORG_TOKEN_JURISDICTIONS
+    # entry. This test exists so a future change that adds a Census-
+    # lookup fallback to _reduce_org_logo_piece() gets caught
+    # immediately, not just by ordering (the known-token map already
+    # protects production because it's checked first).
+    html = (
+        '<img id="org-logo" alt="The Needham Channel - Needham Community '
+        'TV VOD Player - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_declines_real_org_name_that_is_not_a_place():
+    # Real alt text, Vail CO's org token (YGktjFZCLukJd_8Fx53BkVRk4tAZa
+    # fS4), confirmed live 2026-08-29: "High Five Access Media - High
+    # Five Access Media" -- both halves IDENTICAL, which would have
+    # passed the narrow original "identical halves" check's spirit if
+    # "Access Media" were treated as a strippable tagline. "High Five
+    # Access Media" is the real Eagle County, CO nonprofit media
+    # organization's own name (not Vail), which is exactly why "Access
+    # Media" is deliberately excluded from _ORG_LOGO_TRAILING_STOPWORDS
+    # -- stripping it would produce a confident, wrong "High Five".
+    html = (
+        '<img id="org-logo" alt="High Five Access Media - High Five '
+        'Access Media - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_declines_when_no_segment_states_a_place():
+    # Real alt text, a State College PA-serving org token
+    # (GNduNoua2rBThhw6N4PRP9OCSPf6B2ru, from jurisdiction_coverage.csv),
+    # confirmed live 2026-08-29: "CNET - C-NET VOD Player". Stripping
+    # "VOD Player" from the second half leaves "C-NET", an acronym that
+    # doesn't reduce to any place name -- correctly declines.
+    html = (
+        '<img id="org-logo" alt="CNET - C-NET VOD Player - organization '
+        'logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_stopword_loop_strips_multiple_phrases():
+    # Real alt text shape, Everett MA's org token (cT30AQ_xtOBQF0oJM2gIV
+    # CDX9kjgfWZb), confirmed live 2026-08-29: "Everett Community TV -
+    # Everett Community TV VOD Player". The second half needs BOTH "VOD
+    # Player" and "Community TV" stripped in sequence to reach bare
+    # "Everett" -- exercises the strip-until-stable loop directly. No
+    # state is present anywhere, so this still declines ("Everett" is
+    # also nationally ambiguous: MA/WA/PA per the Census table).
+    html = (
+        '<img id="org-logo" alt="Everett Community TV - Everett '
+        'Community TV VOD Player - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_already_known_riverhead_shape_still_works():
+    # Real alt text, Riverhead NY's org token (BjiipOg61Ac-YpNM5RFZy8f49
+    # fIMR7Kq), confirmed live 2026-08-29: "Town of Riverhead, NY - Town
+    # of Riverhead, New York". First half strips the leading "Town of"
+    # and is already comma-state-shaped; second half's spelled-out "New
+    # York" doesn't match the two-letter-abbreviation check and is
+    # simply ignored (not a conflict) since the two halves agree on the
+    # base city name "Riverhead". This org token is already hand-curated
+    # in _KNOWN_ORG_TOKEN_JURISDICTIONS -- this test just confirms the
+    # general parser independently reaches the same real answer.
+    html = (
+        '<img id="org-logo" alt="Town of Riverhead, NY - Town of '
+        'Riverhead, New York - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) == "Riverhead, NY"
+
+
+def test_org_logo_jurisdiction_declines_on_disagreeing_segments():
+    # Synthetic (no real sample has this exact shape) -- exercises the
+    # cross-segment-agreement check directly: two segments that each
+    # independently reduce to a state-bearing place, but a DIFFERENT one,
+    # must decline rather than pick either guess.
+    html = (
+        '<img id="org-logo" alt="Springfield MA VOD Player - Springfield '
+        'OH VOD Player - organization logo" src="/x.png" />'
+    )
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None

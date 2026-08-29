@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import aiohttp
 
 from .base import AssetFinder
+from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
@@ -111,8 +112,91 @@ _ORG_TOKEN_RE = re.compile(r"/player/([^/]+)/")
 # hand-curated _KNOWN_ORG_TOKEN_JURISDICTIONS map have already failed --
 # never overrides either, since both are more specific/more verified than
 # a generic parse of a logo caption.
+#
+# This is still the FIRST thing `_reduce_org_logo_piece()` below checks
+# (an already-clean "City, ST" segment is accepted immediately, no
+# stripping needed) -- the messy-org-name parsing added after it (see
+# that function's own module comment) is a second, broader pass over the
+# same alt text for the common case this narrow rule declines on.
 _ORG_LOGO_ALT_RE = re.compile(r'id="org-logo"[^>]*\balt="([^"]*)"')
 _ORG_LOGO_CITY_STATE_RE = re.compile(r"^[A-Za-z][A-Za-z .'-]*,\s*[A-Z]{2}$")
+
+# Messy-org-name parser, built 2026-08-29 to close the residual gap
+# `_org_logo_jurisdiction()`'s narrow "identical, already City,ST-shaped"
+# check above correctly declines on -- BACKLOG.md's "TelVue's jurisdiction
+# extraction still can't parse a *messy* org name" entry. Every phrase and
+# shape below comes from real org-logo alt text fetched live from real
+# TelVue customer pages 2026-08-29 (org tokens found via the same
+# search-dork method BACKLOG_DONE.md's TelVue entries already document),
+# not from assumption:
+#   "Fitchburg Access TV - Fitchburg MA VOD Player"                  (Fitchburg, MA)
+#   "Town of Orleans MA - Town of Orleans Video on Demand"           (Orleans, MA)
+#   "Stoneham, MA - Stoneham, MA VOD Player"                         (Stoneham, MA -- already known)
+#   "Town of Riverhead, NY - Town of Riverhead, New York"            (Riverhead, NY -- already known)
+#   "Newmarket TV - Newmarket NH Video on Demand"                    (Newmarket, NH -- already known)
+#   "NCM - Nashua Community Media - Nashua Government TV"            (no explicit state anywhere -- declines)
+#   "Everett Community TV - Everett Community TV VOD Player"         (no explicit state -- declines)
+#   "CMNtv Chris Weagel for Auburn Hills Govt Cable - Auburn Hills Live and VoD" (no explicit state -- declines)
+#   "Rogue Valley Community Television (RVTV) - Watch RVTV"          (not a place at all -- declines)
+#   "High Five Access Media - High Five Access Media"                (Vail, CO's real media org name,
+#                                                                      NOT a place -- declines)
+#   "City Of Clifton VoD" / "Natick Pegasus ... VOD Player" /
+#   "Wellesley Media Corporation ... VOD Player" / "CNET - C-NET VOD Player" (no explicit state -- decline)
+#
+# The design choice this data forces: NEVER fill in a missing state via a
+# Census-table lookup here. `jurisdiction_enrich.lookup_city_state("Needham")`
+# returns "AL" (confirmed live 2026-08-29) because `places.csv` is missing
+# Needham, MA entirely -- New England towns are frequently absent from the
+# Census incorporated-place gazetteer this repo's lookup tables are built
+# from (the same gap this file's own `_KNOWN_ORG_TOKEN_JURISDICTIONS`
+# comment already documents for the title-guess path, e.g. Needham's own
+# entry there). A stopword-strip-then-lookup design would have silently
+# reproduced that exact wrong-state bug on Needham's real alt text
+# ("Needham Community TV VOD Player" reduces cleanly to bare "Needham").
+# So the rule here is narrower and always safe: strip only boilerplate
+# phrases (a leading "Town/City/Village/Township/County of", a trailing
+# PEG-industry tagline), and accept the result ONLY when a real two-letter
+# US state abbreviation is *already literally present* in the source text
+# -- never guessed. This is exactly why Fitchburg and Orleans resolve (the
+# state is right there in the alt text) while Auburn Hills, Nashua, and
+# Everett -- all real, all independently verified for
+# `_KNOWN_ORG_TOKEN_JURISDICTIONS` below -- do not: nothing in their
+# org-logo alt text states a jurisdiction, so this parser declines rather
+# than guess, the same philosophy `validated_label_extract()` uses
+# elsewhere in this codebase.
+_ORG_LOGO_LEADING_ENTITY_RE = re.compile(
+    r"^(?:Town|City|Village|Township|County)\s+of\s+", re.I
+)
+# Ordered longest-phrase-first so a loop that strips one matching phrase
+# per pass never grabs a short phrase (e.g. bare "vod") when a longer one
+# also matches the same trailing text (e.g. "live and vod") -- otherwise
+# a real case like "Auburn Hills Live and VoD" could strip down to
+# "Auburn Hills Live and" instead of "Auburn Hills". "Access Media" is
+# deliberately NOT in this list -- see the module comment above (Vail's
+# real "High Five Access Media" alt text, where "Access Media" is part of
+# the media nonprofit's own name, not boilerplate). "Community Access
+# Television", "Media Center", and "Telecommunications" are carried over
+# from BACKLOG.md's own pre-existing candidate list (real prior research,
+# not directly re-fetched this session) rather than dropped -- safe to
+# include either way since a stopword can only ever help reach the
+# explicit-state gate below, never produce a wrong guess on its own.
+_ORG_LOGO_TRAILING_STOPWORDS = [
+    "community access television",
+    "community television",
+    "telecommunications",
+    "video on demand",
+    "community media",
+    "government tv",
+    "community tv",
+    "media center",
+    "live and vod",
+    "govt cable",
+    "vod player",
+    "access tv",
+    "govt tv",
+    "vod",
+]
+_ORG_LOGO_TRAILING_TVNUM_RE = re.compile(r"\s+tv\s*\d+$", re.I)
 
 # Per-customer jurisdiction map, the "later" this file's own module
 # comment above anticipated -- built one confirmed entry at a time as a
@@ -193,6 +277,30 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # record, same belt-and-suspenders reasoning as the Ashland/Vail
     # entries above.
     "XRGvXhGamdDe6nt3IU9wLyKjf4BqK24i": "Irondequoit, NY",
+    # RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb: found 2026-08-29 while gathering
+    # real org-logo alt-text samples for the messy-org-name parser above
+    # (`_reduce_org_logo_piece()`) -- this org's own alt text, "CMNtv
+    # Chris Weagel for Auburn Hills Govt Cable - Auburn Hills Live and
+    # VoD", has no explicit state anywhere, so the general parser
+    # correctly declines on it. Confirmed live via two independent real
+    # sources: this org token's own real meeting titles ("City Council
+    # Meeting - April 7, 2025", location "1827 North Squirrel Road,
+    # Auburn Hills, MI") and auburnhills.org's own official page (same
+    # street address, "1827 N. Squirrel Road, Auburn Hills, Michigan
+    # 48326"). "Auburn Hills" is otherwise unambiguous in the Census
+    # place table (only one real match, MI).
+    "RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb": "Auburn Hills, MI",
+    # LGzST4YdA6GIkRCa0H5CwbVBptJRJ3XD: same shape as Auburn Hills above
+    # -- real alt text "NCM - Nashua Community Media - Nashua Government
+    # TV" has no explicit state, and "Nashua" is nationally ambiguous
+    # (real places in IA/MN/NH/MT per the Census table), so the general
+    # parser correctly declines. Confirmed live via nashuanh.gov's own
+    # "Watch Nashua Community Media TV Anytime | Nashua, NH" page
+    # describing this exact service (GOV TV 16, Nashua ETV Ch. 22, NPTV
+    # Ch. 6, NCM-HD Ch. 1073) -- the same channel names appear verbatim
+    # on this org token's own real TelVue page ("NASHUA ETV22", "NPTV
+    # Ch. 6", "NCM-HD CH. 1073").
+    "LGzST4YdA6GIkRCa0H5CwbVBptJRJ3XD": "Nashua, NH",
 }
 
 
@@ -432,16 +540,72 @@ class TelvueAssetFinder(AssetFinder):
         return name
 
     @staticmethod
+    def _reduce_org_logo_piece(piece: str) -> Optional[str]:
+        """One dash-separated segment of the org-logo alt text, reduced
+        to a "City, ST" jurisdiction using only boilerplate-stripping and
+        a state abbreviation already present in the text -- or None if it
+        doesn't reduce to one. See the module comment above
+        `_ORG_LOGO_LEADING_ENTITY_RE` for the real data this is built
+        from and why it never falls back to a Census-table lookup for the
+        state."""
+        text = _ORG_LOGO_LEADING_ENTITY_RE.sub("", piece.strip()).strip()
+        if not text:
+            return None
+        changed = True
+        while changed:
+            changed = False
+            stripped = _ORG_LOGO_TRAILING_TVNUM_RE.sub("", text)
+            if stripped != text:
+                text = stripped.strip()
+                changed = True
+                continue
+            lower = text.lower()
+            for phrase in _ORG_LOGO_TRAILING_STOPWORDS:
+                if lower.endswith(phrase) and len(text) > len(phrase):
+                    text = text[: -len(phrase)].strip()
+                    changed = True
+                    break
+        if not text:
+            return None
+        if _ORG_LOGO_CITY_STATE_RE.match(text):
+            return text
+        words = text.rsplit(None, 1)
+        if len(words) != 2:
+            return None
+        name, maybe_state = words
+        name = name.rstrip(",").strip()
+        if not name or maybe_state.lower() not in US_STATE_ABBREVIATIONS:
+            return None
+        return f"{name}, {maybe_state.upper()}"
+
+    @staticmethod
     def _org_logo_jurisdiction(html: str) -> Optional[str]:
         match = _ORG_LOGO_ALT_RE.search(html)
         if not match:
             return None
-        parts = [p.strip() for p in match.group(1).split(" - ")]
-        if len(parts) < 2 or parts[0] != parts[1]:
+        # Drop the trailing "organization logo" boilerplate segment every
+        # real sample ends with -- confirmed on every fixture/live fetch
+        # in this file -- and reduce each remaining segment independently
+        # (there can be 2 or 3+, e.g. Nashua's real "NCM - Nashua
+        # Community Media - Nashua Government TV"). Only accept when every
+        # segment that DOES reduce to a jurisdiction produces the exact
+        # same "City, ST" string -- a segment that doesn't reduce at all
+        # (no explicit state) is simply ignored, not treated as a
+        # conflict, but two segments landing on the SAME city name with
+        # DIFFERENT states (a real, plausible collision -- Springfield is
+        # a real place in over 20 states) must decline rather than pick
+        # either one, which comparing base names alone would have missed.
+        parts = [p.strip() for p in match.group(1).split(" - ") if p.strip()]
+        if parts and parts[-1].lower() == "organization logo":
+            parts = parts[:-1]
+        candidates = []
+        for part in parts:
+            reduced = TelvueAssetFinder._reduce_org_logo_piece(part)
+            if reduced:
+                candidates.append(reduced)
+        if not candidates or len(set(candidates)) > 1:
             return None
-        if not _ORG_LOGO_CITY_STATE_RE.match(parts[0]):
-            return None
-        return parts[0]
+        return candidates[0]
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):

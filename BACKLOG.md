@@ -54,12 +54,11 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (4)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   [JUST-DO-IT] Every byte the public site serves is billed twice:
-  [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction still can't…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Confirmations nobody has actually watched happen  (4)
@@ -477,7 +476,6 @@ so that work reads together.
   14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
-- **[JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction still can't parse a *messy* org name into a jurisdiction — narrower than this entry used to say.** Found 2026-08-28 while enumerating TelVue customers by search-dorking real player URLs (`BACKLOG_DONE.md`'s matching entry has the full writeup, method, and the day's yield): every real customer page carries `id="org-logo" alt="{Org Name} - {tagline} - organization logo"`. **Partially shipped 2026-08-29 (PR #516, see `BACKLOG_DONE.md`)**: a narrow, safe fallback now fires when both dash-separated halves of that alt text are identical AND already "City, ST"-shaped (Irondequoit's real case) — declining rather than guessing on anything else. **Still not built, and this is the actual remaining scope**: parsing a *messy* org name into a jurisdiction — "Fitchburg Access TV" → "Fitchburg", "CMNtv Chris Weagel for Auburn Hills Govt Cable" → "Auburn Hills", "Town of Orleans MA" → "Orleans, MA" (already has a state!) — none of which are "City, ST"-shaped, so PR #516's fallback correctly declines on all of them rather than mishandling them. No single strip-trailing-words rule covers all of these cleanly, so this needs either a broader trailing-phrase stopword list (`Access TV`, `Community TV`, `Community Media`, `Media Center`, `Government TV`, `Community Access Television`, `TV{digits}`, `Telecommunications`, etc.) or a small per-customer override map the way `_KNOWN_ORG_TOKEN_JURISDICTIONS` already is, built up the same "one confirmed entry at a time" way. Worth doing before the next TelVue enumeration pass, not before — the current title-based guess plus the stopword fix plus PR #516's narrow fallback already ship correct (if sparse) jurisdictions today.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
