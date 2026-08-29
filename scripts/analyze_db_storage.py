@@ -99,7 +99,7 @@ async def main():
             SELECT
                 etag,
                 COUNT(*) as count,
-                pg_size_pretty(byte_size) as size,
+                pg_size_pretty(byte_size::bigint) as size,
                 COUNT(*) * byte_size as total_wasted
             FROM meeting_page_thumbnails
             GROUP BY etag, byte_size
