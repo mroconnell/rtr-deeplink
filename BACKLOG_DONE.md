@@ -99,6 +99,37 @@ browser-vs-server difference went through, or the page changed between
 the report and this check. Either way, don't re-open this as a selector
 gap without a fresh, current report.
 
+## CivicWeb + PrimeGov dorking: 6 real ingests, and confirmation both platforms are already well-covered [Done 2026-08-29]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§41. Closes BACKLOG.md's own "dork CivicWeb, PrimeGov, and Cablecast"
+note (Cablecast was closed separately via DNS sweep instead, a better
+fit for a wildcard-free platform — see this file's matching entry).
+Same proven method as the earlier TelVue/Cablecast dorking passes: the
+platform's real URL prefix as a literal phrase + a rotating governance-
+body word, 5 `WebSearch` queries per platform.
+
+**25 CivicWeb + 18 PrimeGov unique tenants dorked, but only 14 and 7
+respectively were genuinely new** (not already in Archive) — unlike
+TelVue/Cablecast's true virgin territory, both platforms already had a
+real gap-list/DNS sweep this week, so a search engine's own popularity
+ranking mostly re-surfaced already-covered places. That's the real
+finding here, not a failure: confirmation both platforms are close to
+already-covered via search-dorking alone, future growth more likely
+from a systematic method.
+
+**6 real pages ingested** (2 with real transcripts: Missouri City TX,
+Nassau County FL; 4 video-only: Calistoga CA, Newport News VA, Foster
+City CA, Bellaire TX) out of 19 candidates with a usable meeting URL,
+13 genuine skips. One candidate (Telluride, CO) hit a real, persistent
+YouTube caption-endpoint 429 across every retry attempt (confirmed via
+the raw traceback — `yt_dlp`'s caption fetch, not CivicWeb itself, the
+same occasionally-rate-limited endpoint `CLAUDE.md` already documents)
+— left for a plain retry once the window clears, not a code issue.
+Palo Alto's candidate skipped as expected, a clean confirmation of the
+already-documented Midpen Media Center video gap rather than a new
+failure.
+
 ## CI guard for the worker's real import graph, defense-in-depth on the 2026-08-24 markupsafe outage fix [Done 2026-08-29]
 
 `scripts/check_worker_import_graph.py` + `tests/test_worker_import_graph.py`
