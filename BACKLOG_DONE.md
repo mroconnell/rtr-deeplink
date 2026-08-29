@@ -1,5 +1,61 @@
 # Backlog — done
 
+## Legistar CDX small unfiltered sample: web.archive.org recovered, real URL shapes found [Done 2026-08-28]
+
+Closes the residual left by "Legistar CDX pagination killed at 39%"
+below — that entry's own kill left a small follow-up query
+(`url=legistar.com&matchType=domain&limit=30`, no filter) still owed,
+which had hit `web.archive.org`'s post-load cooldown before returning
+anything.
+
+**Cooldown confirmed recovered** (`curl` against the same trivial query
+now returns 200 promptly). Ran the owed sample plus two follow-ups to
+actually characterize the domain's real shape, since a bare 30-row
+sample sorted by urlkey only ever returns the bare root domain
+(`legistar.com`/`www.legistar.com`) — every one of its ~200+ unique root
+URLs sorts before any subdomain in CDX's SURT ordering, so a small limit
+never reaches a tenant subdomain at all.
+
+**What's actually on `legistar.com` (root domain)**: entirely Granicus's
+own vendor marketing site — case studies, job postings, partner-network
+pages, press releases, CSS/image assets. Zero tenant meeting content.
+
+**Real tenant subdomains, once filtered to `urlkey:^com,legistar,`**:
+confirmed real Legistar customer sites (`17-1899a2gov`, `20-0620a2gov`,
+`2020publicationousd`, `2022publicationlongbeach`, and more), each
+carrying a `.well-known/` boilerplate set (security.txt, ai-plugin.json,
+etc.) alongside real content — dominated by `LegislationDetail.aspx`
+(individual legislation/agenda items), not `Video.aspx`.
+
+**The original pagination sweep's filter shape is real, not wrong** —
+`filter=original:.*Mode%3DGranicus.*` against the whole domain returns
+real, live hits: `chicago.legistar.com/Video.aspx?Mode=Granicus&ID1=…`
+and `chapelhill.legistar.com/Video.aspx?Mode=Granicus&ID1=6038&…` both
+exist with real IDs. **So the 39%-scanned zero was not a structural
+absence of the shape** (correcting that entry's own hypothesis) — it's
+that CDX pages are fixed-size chunks of the full, duplicate-inclusive
+snapshot list, not one page per subdomain, so a handful of
+heavy-snapshot-count subdomains earlier in SURT order can consume the
+first 920 pages before the sweep ever reaches `chicago`/`chapelhill`.
+Also found a second, different real shape on `a2gov.legistar.com`
+(Ann Arbor, MI): `Video.aspx?Mode=Auto&URL={base64 PEGCentral player
+URL}&Offset={n}&Mode2=Video` — a live PEGCentral/RTMP redirect target,
+not a Granicus one.
+
+**No adapter change needed**: `app/platforms/legistar.py`'s `resolve()`
+already follows the real HTTP redirect chain via `resolve_via_platform()`
+rather than pattern-matching on the `Mode=` query value, so both shapes
+already resolve correctly today regardless of which vendor a given
+tenant's `Video.aspx` redirects to.
+
+**Two new jurisdiction leads, not chased further here** (see the
+`[LATER]` `[EXAMPLE]` entry in `BACKLOG.md`): `chicago.legistar.com`
+(real City of Chicago Legistar tenant) and `a2gov.legistar.com` (Ann
+Arbor, MI) both have live crawl history and neither shows up in
+production's `/api/jurisdictions` search today. Left for a real
+resolve-then-ingest pass rather than acted on from a CDX read alone, per
+this repo's "test against a real, live URL first" convention.
+
 ## Worker daily report now warns when chunks are flat but jobs are active [Done 2026-08-28]
 
 Closes the `Ship next` entry for the 2026-08-24 dead-worker-pool outage
