@@ -53,6 +53,105 @@ beforehand**:
 No user-facing impact from any of this — default thumbnails unchanged,
 only excess per-page frames beyond the 3 most recent were pruned.
 
+## TelVue: messy org-logo alt text now parses into a jurisdiction, not just clean "City, ST" [Done 2026-08-29]
+
+Closes the residual scope PR #516 (below) deliberately left open: that
+PR's `_org_logo_jurisdiction()` only ever fired when both dash-separated
+halves of the alt text were IDENTICAL and already "City, ST"-shaped —
+correct but narrow, so a real, messy org name (an acronym, a tagline, a
+"Town of X ST" phrasing) still produced no jurisdiction at all.
+
+**Gathered 15 real, live-fetched `id="org-logo"` alt-text samples** before
+writing any parsing rule (per this repo's own "never build from
+assumption" convention) — the four named in the original entry plus 11
+more found via search-dorking real `videoplayer.telvue.com` pages, the
+same method `BACKLOG_DONE.md`'s earlier TelVue entries already document.
+Every one is quoted verbatim in `app/platforms/telvue.py`'s own module
+comment above `_ORG_LOGO_LEADING_ENTITY_RE`. The full real sample set,
+each independently curl'd with the adapter's own User-Agent:
+
+| Org token (city) | Real alt text | Parses to |
+|---|---|---|
+| Fitchburg, MA | "Fitchburg Access TV - Fitchburg MA VOD Player" | **Fitchburg, MA** |
+| Orleans, MA | "Town of Orleans MA - Town of Orleans Video on Demand" | **Orleans, MA** |
+| Stoneham, MA (known) | "Stoneham, MA - Stoneham, MA VOD Player" | Stoneham, MA (unchanged) |
+| Riverhead, NY (known) | "Town of Riverhead, NY - Town of Riverhead, New York" | Riverhead, NY (unchanged) |
+| Newmarket, NH (known) | "Newmarket TV - Newmarket NH Video on Demand" | Newmarket, NH (unchanged) |
+| Irondequoit, NY (known) | "Irondequoit, NY - Irondequoit, NY" | Irondequoit, NY (unchanged) |
+| Auburn Hills, MI | "CMNtv Chris Weagel for Auburn Hills Govt Cable - Auburn Hills Live and VoD" | declines — no state in text |
+| Nashua, NH | "NCM - Nashua Community Media - Nashua Government TV" | declines — no state in text |
+| Everett, MA (known) | "Everett Community TV - Everett Community TV VOD Player" | declines — no state in text |
+| Ashland, OR (known) | "Rogue Valley Community Television (RVTV) - Watch RVTV" | declines — not a place |
+| Vail, CO (known) | "High Five Access Media - High Five Access Media" | declines — media org's own name, not a place |
+| State College, PA | "CNET - C-NET VOD Player" | declines — acronym, no place |
+| Natick, MA | "Natick Pegasus - Natick Pegasus VOD Player" | declines — no state in text |
+| (Clifton, presumably NJ) | "City of Clifton - City Of Clifton VoD" | declines — no state in text |
+| Wellesley, MA | "Wellesley Media Corporation - Wellesley Media Corporation VOD Player" | declines — no state in text |
+
+**Design decision the data forced, not a preference**: the new parser
+(`_reduce_org_logo_piece()`) strips a leading "Town/City/Village/
+Township/County of" phrase and a trailing PEG-industry tagline (a
+stopword list — `VOD Player`, `Video on Demand`, `Community TV`,
+`Community Media`, `Government TV`, `Access TV`, `Live and VoD`, `Govt
+Cable`, plus `Community Access Television`/`Media Center`/
+`Telecommunications`/`TV{digits}` carried over from this entry's own
+pre-existing candidate list), then accepts the result **only when a real
+two-letter US state abbreviation is already literally present in the
+text** — it never falls back to a Census-table lookup to fill in a
+missing state. Confirmed live why that matters:
+`jurisdiction_enrich.lookup_city_state("Needham")` returns **"AL"**, not
+MA — `places.csv` has no Needham, MA entry at all (New England towns are
+frequently missing from the Census incorporated-place gazetteer this
+repo's lookup tables are built from). Needham's own real alt text
+("Needham Community TV VOD Player") reduces cleanly to bare "Needham" —
+a lookup-based design would have silently reproduced the exact
+Needham→AL bug `_KNOWN_ORG_TOKEN_JURISDICTIONS` was already carrying a
+hand-fix for. `test_org_logo_jurisdiction_never_reintroduces_the_needham_
+al_bug` in `tests/test_telvue.py` pins this down directly, independent of
+`_KNOWN_ORG_TOKEN_JURISDICTIONS`'s own ordering protection.
+
+Also fixed a real latent bug caught while writing tests: comparing only
+the *base city name* across multiple dash-separated segments (Nashua's
+alt text has 3, not 2) would have accepted two segments landing on the
+same city name but DIFFERENT states as "agreeing" — e.g. a hypothetical
+"Springfield MA" + "Springfield OH" pair. Fixed to compare the full
+`"City, ST"` string instead, so same-name/different-state genuinely
+declines rather than silently picking whichever segment came first.
+
+**Two new real jurisdictions added to `_KNOWN_ORG_TOKEN_JURISDICTIONS`**
+(Auburn Hills and Nashua — both decline under the general parser since
+neither's alt text states a jurisdiction, so they need the same one-
+entry-at-a-time hand-curation every existing entry there already has):
+- **Auburn Hills, MI** (org token `RbS8sAKYVBOy0BmYID5GwGYZw1XwFiLb`) —
+  confirmed via two independent real sources: this org's own real
+  meeting titles/addresses ("1827 North Squirrel Road, Auburn Hills, MI")
+  and auburnhills.org's own official page (same street address, "Auburn
+  Hills, Michigan 48326").
+- **Nashua, NH** (org token `LGzST4YdA6GIkRCa0H5CwbVBptJRJ3XD`) —
+  confirmed via nashuanh.gov's own "Watch Nashua Community Media TV
+  Anytime | Nashua, NH" page, whose described channel lineup (GOV TV 16,
+  Nashua ETV Ch. 22, NPTV Ch. 6, NCM-HD Ch. 1073) matches this org
+  token's own real page verbatim ("NASHUA ETV22", "NPTV Ch. 6", "NCM-HD
+  CH. 1073").
+
+**What's still not built, by design, not oversight**: any TelVue
+customer whose org-logo alt text never states a jurisdiction at all
+(Everett, Ashland, Natick, Clifton, Wellesley, State College above, and
+presumably others not yet enumerated) still needs a hand-verified
+`_KNOWN_ORG_TOKEN_JURISDICTIONS` entry — this parser deliberately never
+guesses a state from a bare name, the same "decline over guess"
+philosophy `validated_label_extract()` uses elsewhere in this codebase.
+That's an intentional, permanent scope boundary (identical to the one
+every existing hand-curated entry already lives with), not a residual
+gap worth tracking separately.
+
+11 new tests in `tests/test_telvue.py` (31 total, up from 20), each
+commented with the real sample it's modeled on. All four CI gates clean
+(`ruff check`, `ruff format --check`, `python -m pytest` — full suite,
+1993 passed/15 skipped — and `alembic check` for both `app/` and
+`archive/`, neither of which needed a migration since no schema
+changed).
+
 ## TelVue: fall back to org-logo alt text when title guess and known-token map both fail [Done 2026-08-29]
 
 PR #516, followup to the Irondequoit fix (#514). Rather than only hand-
