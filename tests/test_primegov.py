@@ -851,6 +851,50 @@ async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_matc
     )
 
 
+async def test_resolve_reports_known_video_when_tenant_api_has_no_url_but_sets_video_icon():
+    # Real gap found 2026-08-28 (BACKLOG.md's Midpen Media Center entry):
+    # Palo Alto's real PrimeGov meetings sometimes have a genuine recording
+    # (confirmed live -- the user pointed at two specific meetings with
+    # real video) whose host (midpenmedia.org) this API's own videoUrl
+    # field never names -- but `isShowVideoIcon` is real, confirmed-live
+    # signal (114/158 of Palo Alto's 2026 meetings) that a recording
+    # exists at all. Rather than the flat, indistinguishable-from-
+    # genuinely-no-video "No video found on this PrimeGov page." message,
+    # this meeting must come through with an honest, more specific one.
+    url = "https://cityofpaloalto.primegov.com/Portal/Meeting?meetingTemplateId=18785"
+    api_url = (
+        f"https://cityofpaloalto.primegov.com/api/v2/PublicPortal/"
+        f"ListArchivedMeetings?year={CURRENT_YEAR}"
+    )
+    api_response = json.dumps(
+        [
+            {
+                "id": 900,
+                "documentList": [
+                    {"id": 1, "templateId": 18785, "templateName": "Agenda"}
+                ],
+                "videoUrl": None,
+                "isShowVideoIcon": True,
+                "title": "City Council Meeting",
+            }
+        ]
+    )
+    routes = {
+        url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url),
+        api_url: FakeResponse(status=200, text=api_response),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(url)
+
+    assert result.platform == "primegov"
+    assert result.video_url is None
+    assert result.video_warnings == [
+        "This meeting's own listing shows it has a recording, "
+        "but we could not find a playable link for it."
+    ]
+
+
 async def test_resolve_skips_tenant_api_entirely_when_url_has_no_meeting_template_id():
     # No meetingTemplateId in the URL at all -- _extract_meeting_template_id
     # returns None before any API request would be built, so this must

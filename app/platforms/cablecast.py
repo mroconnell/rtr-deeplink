@@ -293,6 +293,21 @@ class CablecastAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
+            # Namespaced by host, not just the bare show_id -- confirmed
+            # live 2026-08-29 that the same Cablecast show is routinely
+            # reachable at 2-3 literal URLs (old "/internetchannel/show/"
+            # template vs. new bare "/show/" template, http vs. https,
+            # a trailing "?site=1" or not) with no id in common between
+            # them except this one, so an unnamespaced/absent external_id
+            # let _find_existing_page() (archive/db/crud.py) fall through
+            # to exact source_url string equality and create a separate
+            # page per URL variant for one real meeting (Coralville, IA
+            # show 2907 landed as 3 rows). See BACKLOG.md/BACKLOG_DONE.md.
+            # This only collapses same-host scheme/query variants, not a
+            # genuine cross-host domain migration (old vs. new hostname
+            # for the same tenant) -- that half still needs a confirmed
+            # domain-alias table entry.
+            external_id=f"cablecast:{urlparse(fetch_url).netloc.lower()}:{show_id}",
             title=show.get("title"),
             date=self._format_date(show.get("eventDate")),
             jurisdiction=jurisdiction,
@@ -359,6 +374,10 @@ class CablecastAssetFinder(AssetFinder):
         return ResolvedMeeting(
             platform=CablecastAssetFinder.platform_name,
             source_url=url,
+            # Same host-namespacing fix as the Remix path above -- see its
+            # external_id comment for the real duplicate-page bug this
+            # closes.
+            external_id=f"cablecast:{netloc.lower()}:{show_id}",
             title=show.get("title"),
             date=CablecastAssetFinder._format_date(show.get("eventDate")),
             jurisdiction=jurisdiction,
