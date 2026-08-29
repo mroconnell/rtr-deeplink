@@ -3,8 +3,10 @@ from bs4 import BeautifulSoup
 from app.platforms.models import TranscriptSegment
 from app.platforms.swagit import (
     SwagitAssetFinder,
+    _extract_balanced_json_array,
     _group_word_fragments,
     _is_swagit_events_template_dead_candidate,
+    _parse_swagit_playlist_entries,
     _parse_swagit_transcript_download,
 )
 
@@ -516,3 +518,92 @@ def test_is_swagit_events_template_dead_candidate_matches_real_placeholder_and_l
     assert not _is_swagit_events_template_dead_candidate(
         "https://archive-stream.granicus.com/x/playlist.m3u8"
     )
+
+
+# --- Multi-segment (chaptered) meetings have no single "whole meeting"
+# video file (BACKLOG.md) -----------------------------------------------
+#
+# Real jwplayer playlist JSON, trimmed from 12 to 3 entries but otherwise
+# byte-identical to what a live fetch of Yolo County CA clip 324107
+# returns 2026-08-29 -- titles, ids, seq numbers and file URLs are all
+# real, not invented (this repo's convention for a synthetic test: the
+# payload shape must come from a confirmed real fixture). A second real
+# tenant (White Plains NY clip 292830, 5 entries) was also fetched live
+# and confirmed the same shape, so this isn't a one-tenant fluke.
+REAL_YOLO_MULTI_SEGMENT_PLAYLIST = (
+    '[{"id":25506987,"seq":6,"title":" 9:00 A.M. CALL TO ORDER","dfile":'
+    '"https://swagit-video.granicus.com/archive/2024/05/07/05072024-532.360.mp4",'
+    '"file":"https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo'
+    '/archive/2024/05/07/05072024-532.360.mp4/playlist.m3u8","image":'
+    '"http://stills.swagit.com/swagit/swagit/05072024-532.480x360.jpg"},'
+    '{"id":25506994,"seq":13,"title":" CONSENT AGENDA","dfile":'
+    '"https://swagit-video.granicus.com/archive/2024/05/07/05072024-533.360.mp4",'
+    '"file":"https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo'
+    '/archive/2024/05/07/05072024-533.360.mp4/playlist.m3u8","image":'
+    '"http://stills.swagit.com/swagit/swagit/05072024-533.480x360.jpg"},'
+    '{"id":25507035,"seq":51,"title":" INTRODUCTIONS \\u0026 HONORARY RESOLUTIONS",'
+    '"dfile":"https://swagit-video.granicus.com/archive/2024/05/07/05072024-536.360.mp4",'
+    '"file":"https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo'
+    '/archive/2024/05/07/05072024-536.360.mp4/playlist.m3u8","image":'
+    '"http://stills.swagit.com/swagit/swagit/05072024-536.480x360.jpg"}]'
+)
+
+YOLO_URL = "https://yolocountyca.new.swagit.com/videos/324107"
+YOLO_MULTI_SEGMENT_HTML = (
+    "<html><head><title>May 07, 2024 Board of Supervisors - Yolo County, "
+    "CA</title></head><body>"
+    # Real syntax confirmed live: the jwplayer setup object literal uses
+    # `playlist: [...]` (a colon), not a `var playlist = [...]` assignment
+    # -- this file's own _PLAYLIST_MARKER keys off the colon form.
+    f"<script>jwplayer('player').setup({{playlist: "
+    f"{REAL_YOLO_MULTI_SEGMENT_PLAYLIST}}});</script>"
+    "</body></html>"
+)
+
+
+async def test_resolve_warns_when_meeting_has_multiple_playlist_segments():
+    routes = {
+        YOLO_URL: FakeResponse(status=200, text=YOLO_MULTI_SEGMENT_HTML, url=YOLO_URL)
+    }
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(YOLO_URL)
+
+    # The first segment still wins video selection (unchanged) -- this is
+    # about being honest that it's not the whole meeting, not fixing
+    # which segment gets picked.
+    assert (
+        result.video_url
+        == "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo"
+        "/archive/2024/05/07/05072024-532.360.mp4/playlist.m3u8"
+    )
+    assert any(
+        "3 separate" in w and "not a single continuous recording" in w
+        for w in result.video_warnings
+    )
+
+
+async def test_resolve_no_multi_segment_warning_for_a_single_segment_meeting():
+    # BASE_HTML's own playlist has exactly one entry -- the common,
+    # unaffected case must not get a spurious warning.
+    html = BASE_HTML.format(captions_tag="")
+
+    with mock_session({PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL)}):
+        result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    assert not any("separate" in w for w in result.video_warnings)
+
+
+def test_parse_swagit_playlist_entries_returns_none_when_absent():
+    assert _parse_swagit_playlist_entries("<html>no playlist here</html>") is None
+
+
+def test_extract_balanced_json_array_handles_brackets_inside_a_title():
+    # A naive non-greedy regex (`\[.*?\]`) would stop at the first "]" --
+    # which is inside the first entry's own title here, not the real end
+    # of the array. A real agenda item title containing "[" or "]" (e.g.
+    # "Item [Continued from 5/07]") is exactly the shape this guards
+    # against.
+    text = '[{"title": "Item [Continued]"}, {"title": "Second"}]TRAILING'
+    result = _extract_balanced_json_array(text, 0)
+    assert result == '[{"title": "Item [Continued]"}, {"title": "Second"}]'

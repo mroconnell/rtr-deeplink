@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from datetime import datetime
@@ -127,6 +128,66 @@ _TRANSCRIPT_BRACKET_LINE_RE = re.compile(r"^\[.*\]$")
 _SWAGIT_EVENTS_TEMPLATE_PLACEHOLDER_RE = re.compile(
     r"vault01/abilenetx/59d7e173-684b-4da4-9433-50d6e22555f1\.mp4", re.IGNORECASE
 )
+
+
+_PLAYLIST_MARKER = "playlist:"
+
+
+def _extract_balanced_json_array(text: str, start_idx: int) -> Optional[str]:
+    """From `text[start_idx] == "["`, returns the substring up to and
+    including the matching closing `]`, respecting nested `[]`/`{}` and
+    skipping bracket-look-alike characters inside JSON string literals
+    (a real agenda-item title can itself contain "[" or "]", e.g.
+    "Item [Continued from 5/07]") -- or None if the text ends before it
+    balances. A plain non-greedy regex (`\\[.*?\\]`) would stop at the
+    *first* "]" it finds, which is wrong the moment any entry's own
+    title contains one."""
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start_idx, len(text)):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            depth += 1
+        elif ch in "]}":
+            depth -= 1
+            if depth == 0:
+                return text[start_idx : i + 1]
+    return None
+
+
+def _parse_swagit_playlist_entries(html: str) -> Optional[List[dict]]:
+    """The real jwplayer `playlist: [{...}, {...}, ...]` JSON blob (see
+    class docstring) as structured data, one dict per video segment --
+    distinct from `media_scan.scan_media_urls()`'s generic regex scan
+    over the raw HTML, which finds media-looking URL strings but has no
+    idea how many separate segments they belong to. Returns None if the
+    marker isn't present or the blob doesn't parse (a page structure not
+    yet seen), never raises."""
+    idx = html.find(_PLAYLIST_MARKER)
+    if idx == -1:
+        return None
+    bracket_idx = html.find("[", idx)
+    if bracket_idx == -1:
+        return None
+    raw = _extract_balanced_json_array(html, bracket_idx)
+    if raw is None:
+        return None
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+    return data if isinstance(data, list) else None
 
 
 def _is_swagit_events_template_dead_candidate(url: str) -> bool:
@@ -390,6 +451,30 @@ class SwagitAssetFinder(AssetFinder):
                 )
             else:
                 video_warnings.append("No playable video found on this page.")
+
+        # Real, confirmed-live structural gap (BACKLOG.md): some Swagit
+        # customers don't publish one continuous recording per meeting --
+        # the real jwplayer playlist has a separate file per agenda item
+        # (confirmed live against Yolo County CA clip 324107, 12 entries,
+        # and White Plains NY clip 292830, 5 entries). Whichever candidate
+        # won video selection above is only the first of these, so both
+        # its own runtime and any transcript built from it cover only a
+        # fraction of the real meeting -- silently reporting that as if
+        # it were the whole thing is actively misleading (a 2-minute
+        # duration for a multi-hour meeting), not just an honest gap.
+        # Not attempting to concatenate the segments into one virtual
+        # timeline here -- that's a real design decision (stitch vs. treat
+        # each as its own unit) this entry deliberately leaves open.
+        if video_url:
+            playlist_entries = _parse_swagit_playlist_entries(html)
+            if playlist_entries and len(playlist_entries) > 1:
+                video_warnings.append(
+                    f"This meeting is split into {len(playlist_entries)} separate "
+                    "video segments on Swagit's own page (one per agenda item), "
+                    "not a single continuous recording -- only the first segment "
+                    "is shown above, so the video and any transcript cover only "
+                    "part of the meeting."
+                )
 
         segments: List[TranscriptSegment] = []
 
