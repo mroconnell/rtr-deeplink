@@ -95,7 +95,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (40)
+Platform & jurisdiction coverage  (41)
+  `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
@@ -1205,6 +1206,28 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[LATER]` Recover, rather than just decline, a domain-privacy-
+  blocked Vimeo video by forwarding the real origin domain as
+  `Referer`.** `app/platforms/vimeo.py`'s `resolve_video_id()` now
+  correctly declines (`video_url=None`, no title, an honest warning)
+  when Vimeo's oEmbed response carries a non-200 `domain_status_code`
+  — see `BACKLOG_DONE.md`'s 2026-08-29 Vimeo-dorking entry for the bug
+  this closed. That's the correctness fix; it does not recover anything
+  that could otherwise have played. A confirmed real path exists to do
+  better for videos found via dorking specifically: every Vimeo URL
+  found that way (`ENUMERATION_METHODS.md` §46) is already known to
+  have come from a real `.gov`-adjacent origin page at discovery time,
+  and Vimeo's own restriction is scoped to a domain allowlist — so
+  passing that real origin domain through as `Referer` on the oEmbed
+  (and embed) request would likely unblock some fraction of these
+  rather than just declining them. Should reuse the existing
+  `jurisdiction_hint` mechanism (`app/platforms/base.py`'s
+  `CalendarPageError`), generalized to carry an origin domain rather
+  than only a jurisdiction string, so the plumbing isn't invented twice.
+  Not yet attempted — unverified how large that recoverable fraction
+  actually is, since `Referer` can be spoofed by any client (this app
+  included) but Vimeo's check might key on more than just that header.
 
 - **`[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   school-district agenda platform, weak for video but a strong,

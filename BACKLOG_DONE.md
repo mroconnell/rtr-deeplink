@@ -1,5 +1,91 @@
 # Backlog — done
 
+## Direct Vimeo channel dorking: 22 new real ingests, plus a real bug where a fully privacy-blocked video was faking a successful resolve [Done 2026-08-29]
+
+Closed `BACKLOG.md`'s long-open "Vimeo's real-world prevalence among
+small local governments" lead, which had sat unexplored specifically
+because Vimeo has no tenant-subdomain structure to enumerate via DNS
+the way TelVue/Cablecast/CivicPlus do. Acted on the user's own
+correction to an earlier vendor-signature investigation's framing
+("dead end" was the wrong verdict; consider a different discovery route
+for the same vendors) — the fix wasn't a better signature match, it was
+dorking Vimeo directly rather than routing through any CMS vendor's
+tenant list.
+
+**Method**: the same proven 5-query dork pattern already used for
+TelVue and Cablecast (`"vimeo.com/channels"` + a rotating governance
+phrase: city council / board of supervisors|county commission / select
+board|town council / planning commission|zoning board / school
+board|school committee) via WebSearch. Found ~25 unique real channels
+in one pass — a higher hit density than either prior platform's dork,
+likely because `vimeo.com/channels` is a far more distinctive, lower-
+noise search phrase than a CMS vendor domain that also serves millions
+of unrelated personal/business videos.
+
+**24/25 resolved and, at first, appeared to ingest cleanly** (1 genuine
+skip: Hampstead NH's channel had zero real video ids on its own page).
+Spans Salisbury NC, New Brunswick NJ, Covington LA, Morrilton AR,
+Rancho Cucamonga CA, Willits CA, Medina MN, Upper Merion Township PA,
+San Diego County CA, Penfield NY, South Hadley MA, Peters Township PA
+(town council and, separately, its school district — two distinct
+channels), Amherst NH, Secaucus NJ, City of Lakeland (state
+unconfirmed, likely FL), Ludington MI, Seekonk MA schools, Jefferson
+Parish LA schools, Hopkins MN schools, and Highland Park/Deerfield IL's
+District 113 schools — **22 real pages**, the corrected final count
+(see below). One channel (Manchester NH's "MPTS Channel 22") left with
+its jurisdiction genuinely unresolved rather than guessed — the
+channel's own name covers an unnamed "OTHER CITY," not Manchester
+itself. All landed video-only (no captions), appended to `scripts/
+tier3_auto_transcription_queue.txt` for the cloud auto-transcription
+worker to pick up — consistent with this project's already-documented
+"Vimeo captions unconfirmed" gap, not a new finding. (Corrected
+terminology: this project's real "tier 2" means a video whose
+transcript IS obtainable, just only via a local yt-dlp-style query the
+cloud server can't make — primarily YouTube. Vimeo has no such path at
+all — confirmed nothing, local or cloud, can reach its signed caption
+config outside a real browser session — so "video-only, queued for
+cloud auto-transcription" is the accurate description, not "tier 2";
+an earlier pass of this entry and of `ENUMERATION_METHODS.md` used that
+label loosely and has been corrected.)
+
+**A real, confirmed and now-fixed bug, caught by the user reviewing
+these live in production**: two of the 24 ingests (Corvallis OR,
+Harpswell ME) produced a completely blank page — no title, no
+jurisdiction, and a video that flatly refuses to play
+("Because of its privacy settings, this video cannot be played here").
+Root cause: Vimeo's oEmbed API returns a 200 with a stripped body (no
+`title`/`author_name`/`duration`) plus a `"domain_status_code": 403`
+field when the video owner has restricted the video to specific
+domains — and, confirmed live by fetching `player.vimeo.com/video/{id}`
+directly for both the broken videos and a known-good real sample
+(Salisbury NC), **that same signal means the embed itself is broken on
+this domain, not just its metadata** — the broken videos' player URL
+returns a real 403 "Sorry ... privacy settings" page, while the known-
+good sample's player URL returns 401 and plays fine in a real browser.
+`app/platforms/vimeo.py`'s `resolve_video_id()` didn't check this field
+at all, so it always reported a "successful" resolve with a video_url
+that would never actually play — the correctness bug the user flagged
+("this should not have passed our test for ingestion/resolution").
+**Fixed**: `resolve_video_id()` now checks `domain_status_code` and, when
+present and non-200, returns a `ResolvedMeeting` with no `video_url`, no
+title, and an honest "this video's privacy settings... don't allow it
+to play here" warning — a clean decline instead of a fake success.
+Regression test `test_resolve_declines_a_domain_privacy_blocked_video`
+(`tests/test_vimeo.py`) added against a real captured fixture
+(`oembed_corvallis_1220285695_domain_blocked.json`). The two blank live
+pages were deleted via `POST /internal/admin/delete-pages` (dry-run
+verified first) and their URLs removed from the tier-3 queue, bringing
+the real total to **22 new pages**, not 24. A **not-yet-built**
+enhancement — recovering rather than just declining these, by
+forwarding the real origin domain as `Referer` — is logged separately
+in `BACKLOG.md`, since it's unverified how much of this is actually
+recoverable versus a hard privacy wall.
+
+Full writeup, evidence, and the extrapolation-to-other-video-services
+follow-up: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§45–§46 (also corrected for the same tier-terminology and page-count
+fixes).
+
 ## Frozen-slug page's jurisdiction root cause found: a second, unregistered Modesto subdomain [Done 2026-08-29]
 
 Closes the jurisdiction-extraction half of the 5th frozen-slug-page

@@ -335,6 +335,35 @@ class VimeoAssetFinder(AssetFinder):
         CLAUDE.md)."""
         oembed = await cls._fetch_oembed(video_id, privacy_hash)
 
+        # `domain_status_code` is present (and non-200) on a real oEmbed
+        # 200 response whenever the video owner has restricted *both*
+        # embedding and metadata to specific domains -- confirmed live
+        # 2026-08-29 on two real government meetings (Corvallis OR
+        # `1220285695`, Harpswell ME `1131371113`): `player.vimeo.com/
+        # video/{id}` itself 403s with a real "Sorry ... privacy settings"
+        # page in this state, not just a stripped oEmbed body. This is a
+        # DIFFERENT, worse case than an oEmbed fetch simply failing
+        # (network error, non-200, bad JSON) -- that case's embed still
+        # works in the browser (confirmed live on a real Salisbury NC
+        # sample: `player.vimeo.com` there answers 401, not 403, and a
+        # real browser plays it fine), so only THIS specific signal means
+        # the embed itself is genuinely broken on this domain.
+        blocked = isinstance(oembed, dict) and oembed.get("domain_status_code") not in (
+            None,
+            200,
+        )
+
+        if blocked:
+            return ResolvedMeeting(
+                platform=cls.platform_name,
+                source_url=source_url or canonical_video_url(video_id, privacy_hash),
+                external_id=f"vimeo:{video_id}",
+                video_warnings=[
+                    "This video's privacy settings restrict it to specific "
+                    "domains and don't allow it to play here."
+                ],
+            )
+
         title = (oembed or {}).get("title") or None
         resolved = ResolvedMeeting(
             platform=cls.platform_name,
