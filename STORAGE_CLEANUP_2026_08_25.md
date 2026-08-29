@@ -19,7 +19,9 @@ Run the diagnostic script first to see the actual breakdown:
 # 1. Click Archive service
 # 2. Click "Shell"
 
-cd /app
+# The shell opens directly into the repo root already -- confirmed live
+# 2026-08-29, no `cd /app` needed (that path doesn't exist on the real
+# instance; the real cwd is ~/project/src).
 python scripts/analyze_db_storage.py
 ```
 
@@ -52,7 +54,6 @@ git push origin main
 
 ```bash
 # From Render shell (Archive service)
-cd /app
 python scripts/cleanup_old_thumbnails.py --keep 3 --dry-run
 ```
 
@@ -64,13 +65,15 @@ This shows:
 **Then: actually delete** (once you've verified the numbers):
 
 ```bash
-cd /app
 python scripts/cleanup_old_thumbnails.py --keep 3
 ```
 
 This keeps only the 3 most recent frames per page and deletes the rest.
 
-**Expected result:** Reclaim 300-500 MB (depending on how many pages have excess frames)
+**Expected result:** trust the `--dry-run` output's own "Would reclaim"
+line over this doc's original 300-500 MB guess -- confirmed live
+2026-08-29 the real number was **~117 MB** across 402 pages, well under
+that estimate.
 
 ---
 
@@ -80,7 +83,6 @@ After deleting rows, tell Postgres to reclaim disk space:
 
 ```bash
 # From Render shell (Archive service)
-cd /app
 psql << 'EOF'
 VACUUM FULL ANALYZE;
 EOF
@@ -165,5 +167,10 @@ The database snapshots are kept by Render for 7 days.
 
 - **Now:** Deploy code (MAX_FRAMES_PER_PAGE = 3)
 - **After deploy:** Run cleanup script (30 seconds to a few minutes depending on database size)
-- **After cleanup:** VACUUM (5-10 minutes, no downtime)
-- **Result:** Database storage drops to ~60-70% of limit
+- **After cleanup:** VACUUM FULL takes an exclusive lock on each table it
+  processes for the duration -- not "no downtime," just brief and scoped
+  to the affected tables (`meeting_page_thumbnails` here), not the whole
+  app.
+- **Result:** database storage drops by however much the dry run's real
+  "Would reclaim" figure says -- see the Verification section below for
+  why "300-500 MB" was a guess, not a measurement.
