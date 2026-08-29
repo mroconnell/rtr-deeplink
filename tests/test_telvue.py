@@ -280,3 +280,33 @@ def test_guess_jurisdiction_rejects_bare_governance_body_titles():
         TelvueAssetFinder._guess_jurisdiction("Natick Select Board June 10, 2026")
         == "Natick"
     )
+
+
+def test_guess_jurisdiction_strips_leading_date():
+    # Real bug, confirmed live 2026-08-29 via the Common Crawl full-corpus
+    # signature sweep (see BACKLOG_DONE.md's matching entry): unlike
+    # _TITLE_DATE_RE's trailing "- Month DD, YYYY" shape, a title starting
+    # with a numeric date has nothing for that regex to strip, so the date
+    # itself flowed into _BODY_SUFFIX_RE and got captured as the
+    # "jurisdiction" -- "2024-03-19 Town Board Meeting" produced
+    # "2024-03-19 Town", "03/10/2025 Regular Council" produced
+    # "03/10/2025 Regular". Both are confident wrong answers, not just a
+    # missed one.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("2024-03-19 Town Board Meeting") is None
+    )
+    assert TelvueAssetFinder._guess_jurisdiction("03/10/2025 Regular Council") is None
+
+
+def test_guess_jurisdiction_handles_zoning_board():
+    # Real bug, confirmed live 2026-08-29, same shape as the Select Board
+    # fix above: "Newmarket Zoning Board of Adjustments Meeting" matched
+    # bare "Board" first, producing "Newmarket Zoning" instead of
+    # "Newmarket" -- "Zoning Board" needed its own alternative ahead of
+    # the bare "Board" one.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "Newmarket Zoning Board of Adjustments Meeting"
+        )
+        == "Newmarket"
+    )

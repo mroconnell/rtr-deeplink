@@ -56,16 +56,30 @@ TARGET_LANGUAGE = "en"
 # customers; may need a real per-customer jurisdiction map later the way
 # some other adapters already have.
 _TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
+# A LEADING numeric date (unlike _TITLE_DATE_RE's trailing "- Month DD,
+# YYYY" shape) is never itself part of the jurisdiction name -- real
+# case, confirmed live 2026-08-29 via the Common Crawl sweep: titles like
+# "2024-03-19 Town Board Meeting" and "03/10/2025 Regular Council" have
+# no dash-separated trailing date for _TITLE_DATE_RE to strip, so the
+# whole string (date included) reached _BODY_SUFFIX_RE below, which
+# happily captured "2024-03-19 Town"/"03/10/2025 Regular" as the
+# "jurisdiction" -- a confident wrong answer, not just a missed one.
+# Stripped before the suffix match runs, not folded into the stopword
+# list at the bottom, since a date is never a real word to filter by.
+_LEADING_DATE_RE = re.compile(r"^\d{1,4}[/-]\d{1,2}[/-]\d{1,4}\s+")
 _BODY_SUFFIX_RE = re.compile(
-    # "Select Board" must precede the bare "Board" alternative -- real case,
-    # confirmed live 2026-08-18: "Natick Select Board June 10, 2026" (no
-    # dash-separated date, so _guess_jurisdiction() sees the whole string)
-    # matched bare "Board" first, capturing "Natick Select" as the
-    # jurisdiction instead of "Natick". Listed first so the regex's
-    # leftmost-match search locks onto the two-word suffix starting one
-    # word earlier, not because alternation order breaks ties at the same
+    # "Select Board"/"Zoning Board" must precede the bare "Board"
+    # alternative -- real cases, confirmed live 2026-08-18 and
+    # 2026-08-29 respectively: "Natick Select Board June 10, 2026" (no
+    # dash-separated date, so _guess_jurisdiction() sees the whole
+    # string) matched bare "Board" first, capturing "Natick Select" as
+    # the jurisdiction instead of "Natick"; "Newmarket Zoning Board of
+    # Adjustments Meeting" the same way captured "Newmarket Zoning".
+    # Both two-word alternatives are listed first so the regex's
+    # leftmost-match search locks onto the phrase starting one word
+    # earlier, not because alternation order breaks ties at the same
     # position (it doesn't -- position is what matters here).
-    r"^(.*?)\s+(City Council|Council|Planning Commission|Commission|Select Board|Board|Committee|Authority|District)\b",
+    r"^(.*?)\s+(City Council|Council|Planning Commission|Commission|Select Board|Zoning Board|Board|Committee|Authority|District)\b",
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
@@ -265,6 +279,7 @@ class TelvueAssetFinder(AssetFinder):
     def _guess_jurisdiction(title: Optional[str]) -> Optional[str]:
         if not title:
             return None
+        title = _LEADING_DATE_RE.sub("", title.strip())
         match = _BODY_SUFFIX_RE.match(title.strip())
         if not match:
             return None
@@ -313,7 +328,13 @@ class TelvueAssetFinder(AssetFinder):
         # file's own decline-rather-than-guess convention says lose the
         # recoverable case over risking a wrong one.
         last_word = name.rsplit(None, 1)[-1].lower()
-        if last_word in {"select", "planning", "school"}:
+        # "regular" added 2026-08-29 -- same Common Crawl sweep that found
+        # the leading-date bug above also hit "03/10/2025 Regular Council":
+        # stripping the leading date left "Regular Council", and "Regular"
+        # is a meeting-type modifier ("Regular Meeting", "Regular Session"),
+        # never a real place name, same governance-generic shape as the
+        # three words already here.
+        if last_word in {"select", "planning", "school", "regular"}:
             return None
         return name
 
