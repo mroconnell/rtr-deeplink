@@ -1,14 +1,2 @@
-https://westlakevillage.granicus.com/player/clip/1601
-https://westlinn.granicus.com/player/clip/1718
-https://westminsterca.granicus.com/player/clip/760
-https://westspringfieldma.granicus.com/player/clip/87
-https://whatcom.granicus.com/player/clip/1450?view_id=1
-https://wheatridge.granicus.com/player/clip/1075
-https://wilmington.granicus.com/player/clip/7077
-https://windcresttx.granicus.com/player/clip/2702?view_id=8
-https://windhamweb.granicus.com/player/clip/1047?view_id=2
-https://windsor-ct.granicus.com/player/clip/1410?view_id=2
-https://woodstockil.granicus.com/player/clip/448?view_id=1
-https://yorbalinda.granicus.com/player/clip/1612
 https://yorktownny.granicus.com/player/clip/2045?view_id=7
 http://multnomah.granicus.com/ViewPublisher.php?view_id=3
