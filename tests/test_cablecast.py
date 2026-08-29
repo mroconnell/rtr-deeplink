@@ -55,6 +55,10 @@ async def test_resolve_real_detroit_show():
         result = await CablecastAssetFinder().resolve(PORTAL_URL)
 
     assert result.platform == "cablecast"
+    # Host-namespaced, not just the bare show_id -- see cablecast.py's own
+    # external_id comment for the real duplicate-page bug (Coralville, IA)
+    # this closes.
+    assert result.external_id == "cablecast:detroit-vod.cablecast.tv:15323"
     assert result.title == "Detroit City Council Formal Session 07-28-2026"
     assert result.date == "2026-07-28"
     assert result.jurisdiction == "Detroit, MI"
@@ -96,6 +100,7 @@ async def test_resolve_real_charlotte_show():
         result = await CablecastAssetFinder().resolve(CHARLOTTE_PORTAL_URL)
 
     assert result.platform == "cablecast"
+    assert result.external_id == "cablecast:charlotte.cablecast.tv:2451"
     assert result.title == "Council Meeting - June 22, 2026"
     assert result.date == "2026-06-22"
     assert result.jurisdiction == "Charlotte, NC"
@@ -114,6 +119,39 @@ async def test_resolve_real_charlotte_show():
     # No explicit end time in the source -- each cue's end is the next
     # cue's own start.
     assert result.segments[0].end == result.segments[1].start == 38.8
+
+
+async def test_resolve_external_id_is_stable_across_scheme_and_query_variants():
+    # Real bug, confirmed live 2026-08-29 (Coralville, IA show 2907): the
+    # same show reachable at http+"?site=1", https bare, and https+
+    # "?site=1" produced 3 separate archived pages because nothing tied
+    # them together except source_url string equality, which normalize_url
+    # deliberately doesn't collapse across scheme/query differences. All
+    # three variants must now resolve to the identical external_id so
+    # _find_existing_page() (archive/db/crud.py) merges them into one page.
+    html = load_fixture("cablecast", "detroit_show_15323.html")
+    # resolve() always forces http (_force_http()) but leaves the query
+    # string as pasted, so both the with- and without-"?site=1" forced
+    # URLs need a registered route to exercise every real variant.
+    with_query = "http://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1"
+    without_query = "http://detroit-vod.cablecast.tv/internetchannel/show/15323"
+    routes = {
+        with_query: FakeResponse(status=200, text=html, url=with_query),
+        without_query: FakeResponse(status=200, text=html, url=without_query),
+    }
+
+    variants = [
+        "http://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1",
+        "https://detroit-vod.cablecast.tv/internetchannel/show/15323",
+        "https://detroit-vod.cablecast.tv/internetchannel/show/15323?site=1",
+    ]
+    external_ids = set()
+    for variant in variants:
+        with mock_session(routes):
+            result = await CablecastAssetFinder().resolve(variant)
+        external_ids.add(result.external_id)
+
+    assert external_ids == {"cablecast:detroit-vod.cablecast.tv:15323"}
 
 
 async def test_resolve_falls_back_gracefully_when_transcript_fetch_fails(caplog):
@@ -475,6 +513,7 @@ async def test_resolve_real_urbana_publicsite_show():
         result = await CablecastAssetFinder().resolve(URBANA_SHOW_URL)
 
     assert result.platform == "cablecast"
+    assert result.external_id == "cablecast:urbana.cablecast.tv:870"
     assert result.title == "City Council Regular meeting - 8/24/2026 6:30:00 PM"
     assert result.date == "2026-08-24"
     assert result.jurisdiction == "Urbana, IL"

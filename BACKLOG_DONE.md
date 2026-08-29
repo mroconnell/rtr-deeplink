@@ -1,5 +1,132 @@
 # Backlog — done
 
+## YouTube channel Atom-feed dates, multi-URL adapter canaries, hyland/civicclerk bot-block warning drop [Done 2026-08-29, logged 2026-08-29]
+
+Three small, disjoint fixes that landed in PR #496 (`youtube_channel.py`/
+`legistar.py`/`hyland.py`/`scripts/adapter_canary.py`) and PR #510
+(`civicclerk.py`) but were never logged here or removed from
+`BACKLOG.md`'s open entries describing them — found and corrected during
+a fresh pass over the Platform & jurisdiction coverage section, verified
+directly against the merged code and its real test coverage before
+closing.
+
+- **`youtube_channel.py`'s flat channel listing had no dates.** Fixed by
+  corroborating a matched video's date via YouTube's public, per-channel
+  Atom feed (`_fetch_atom_published_date()`, unauthenticated, a
+  structurally different call surface from the single-video yt-dlp fetch
+  that's the documented Render IP-block target) — `legistar.py`'s
+  plausibility check now prefers it when yt-dlp's own date is empty.
+  Tested (`tests/test_youtube_channel.py`, `tests/test_legistar.py`).
+- **No adapter-canary coverage for the city-YouTube-channel fallback
+  path.** `scripts/adapter_canary.py`'s `CANARY_URLS` now holds a list of
+  URLs per platform instead of exactly one, with a second, Phoenix-
+  specific `legistar` canary URL exercising this path specifically —
+  generalizes to every multi-tenant adapter, not just this one. Tested
+  (`tests/test_adapter_canary.py`).
+- **`hyland.py` (PR #496) and `civicclerk.py` (PR #510) silently dropped
+  a YouTube delegation's `video_warnings`.** A real anti-bot block on the
+  delegated video (still returns a playable-looking `ResolvedMeeting`
+  with its own warning message) looked identical to a fully successful
+  resolve, since neither adapter copied the delegated warning through to
+  its own returned `ResolvedMeeting`. Both now do. Tested
+  (`tests/test_hyland.py`, `tests/test_civicclerk.py`).
+
+## Cablecast never set `external_id`, so the same show landed as 2-3 separate pages — 2 of 3 real Coralville, IA duplicates now fixed at the source [Done 2026-08-29]
+
+Real bug, found investigating a user report of 3 near-identical
+"Coralville City Council Meeting (Aug. 11, 2026)" rows on
+`/j/coralville-ia`. All three really do point at the same real show
+(`2907`), confirmed via each page's own `source_url`/`video_url`:
+`http://coralvision.cablecast.tv:8080/internetchannel/show/2907?site=1`
+(lastmod 2026-08-18, base slug, old "/internetchannel" template — the
+legacy hostname/template `cablecast.py`'s own module docstring already
+documents for satellitebeach),
+`https://cityofcoralvilleiowa.cablecast.tv/show/2907` (lastmod
+2026-08-18, `-b9f57c` slug, new bare `/show/{id}` template), and
+`http://cityofcoralvilleiowa.cablecast.tv/show/2907?site=1` (lastmod
+2026-08-19, `-a8dfeb` slug — same new host as the second, differing only
+by scheme+`?site=1`). The `-a8dfeb`/`-b9f57c` suffixes are
+`_unique_slug()`'s own collision-retry hex — the direct fingerprint of
+`_find_or_create_page()` failing to match an already-existing page.
+Likely mechanism, not confirmed from a ledger (no per-ingest audit trail
+exists): the same large Cablecast enumeration pass that produced the
+~104 no-jurisdiction Cablecast rows and ~35-tenant HLS-seek cluster
+elsewhere in `BACKLOG.md` likely hit Coralville's portal under both its
+pre- and post-migration hostname/template, each treated as an unrelated
+URL and separately pushed — not one person manually re-pasting the same
+link three times.
+
+**Root cause**: `CablecastAssetFinder.resolve()` returned
+`source_url=url` (the raw pasted/fetched URL) and never set
+`ResolvedMeeting.external_id` at all, so `_find_existing_page()`
+(`archive/db/crud.py`) had no platform-level identity to key on and fell
+straight through to exact `source_url_normalized` string equality —
+which `normalize_url()` deliberately never collapses across different
+hosts/ports (correctly so, generically), and which still didn't collapse
+a same-host, same-show http-vs-https-plus-`?site=1` pair the way it
+would for most other adapters, because nothing established "these URLs
+are the same show" independent of the literal string.
+
+**Fix**: host-namespaced `external_id`
+(`f"cablecast:{urlparse(fetch_url).netloc.lower()}:{show_id}"`), same
+pattern `civicclerk.py`/`granicus.py` already use, added to both
+`CablecastAssetFinder.resolve()` (the Remix template path) and
+`_resolve_publicsite()` (the CablecastPublicSite/Ember template path).
+This merges the second and third Coralville duplicates above (same
+host, different scheme/query) into one on any future re-ingest —
+regression-tested directly
+(`test_resolve_external_id_is_stable_across_scheme_and_query_variants`,
+`tests/test_cablecast.py`, exercises all 3 real scheme/query
+combinations against the same show and asserts one identical
+`external_id`).
+
+**Deliberately not fixed by this change, per this file's "verify before
+building" convention (only one real cross-host migration confirmed)**:
+the first-vs-second URL pair above is a genuine cross-host migration
+(`coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`),
+which host-namespacing can't and shouldn't try to collapse — that needs
+either a confirmed domain-alias table entry (once a second migrated
+Cablecast tenant confirms this isn't a one-off) or a manual merge. Also
+not done: cleaning up the 3 already-archived Coralville rows themselves
+— this fix only prevents *future* duplicates, it doesn't retroactively
+merge existing ones. No page-merge/dedupe script exists in `scripts/`;
+the existing `POST /internal/admin/delete-pages` endpoint can remove the
+2 duplicates once the most complete of the 3 (by transcript/segment
+completeness) is picked as canonical, but that pick-and-delete pass
+needs a session with the admin token, not done here. See `BACKLOG.md`'s
+matching residual entry.
+
+## PrimeGov: surface a known-but-unresolved video via `isShowVideoIcon` instead of a flat "no video found" [Done 2026-08-29]
+
+Real gap named in `BACKLOG.md`'s Midpen Media Center entry (2026-08-28):
+`isShowVideoIcon` is a real field on PrimeGov's own
+`ListArchivedMeetings` API response — confirmed live on Palo Alto, where
+114/158 of its 2026 meetings have it `true` — that says "this meeting
+genuinely has a recording" independent of whether the same record's
+`videoUrl` field names it. Palo Alto's real gap: the video for some
+meetings lives on Midpen Media Center (`midpenmedia.org`), a host this
+API never names and no adapter here resolves — so `videoUrl` comes back
+blank even though the meeting has real video, and the page used to
+report the same flat "No video found on this PrimeGov page." as a
+genuinely video-less meeting.
+
+**Fix**: `_fetch_tenant_video_url()` now also returns the matched
+meeting's own `isShowVideoIcon` value; `_resolve_via_tenant_video_url()`
+uses it when `videoUrl` is blank to return an honest, more specific
+warning ("This meeting's own listing shows it has a recording, but we
+could not find a playable link for it.") instead of falling through to
+the generic no-video message. Does **not** solve the Midpen case itself
+— readers still can't play the video from this app — it only makes the
+failure mode distinguishable from a real agenda-only meeting, which is
+what the original entry asked for ("worth adding... even though it
+alone doesn't solve the Midpen case"). Regression-tested against the
+real confirmed field shape
+(`test_resolve_reports_known_video_when_tenant_api_has_no_url_but_sets_video_icon`,
+`tests/test_primegov.py`). `BACKLOG.md`'s Midpen Media Center entry is
+otherwise unchanged — building an actual Midpen adapter or a
+bare-YouTube-channel-link resolver is still real, unscoped adapter-build
+work per that entry's own scoping.
+
 ## `dedupe_rollup_transcripts.py`'s circuit breaker couldn't actually trip on the failure it existed for [Done 2026-08-22, logged 2026-08-29]
 
 Real bug, only being logged here now — the fix landed 2026-08-22 but

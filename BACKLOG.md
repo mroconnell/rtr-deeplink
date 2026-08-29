@@ -91,14 +91,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (41)
+Platform & jurisdiction coverage  (40)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
-  `[NEEDS-AUDIT]` Cablecast never sets `external_id`, so the same real
+  `[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
@@ -123,11 +123,10 @@ Platform & jurisdiction coverage  (41)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (12)
+  Adapter & platform gaps  (11)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
-    [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
@@ -1213,11 +1212,13 @@ actionability sections above.
   **`isShowVideoIcon`** (a real field on PrimeGov's
   `ListArchivedMeetings` API response, 114/158 of Palo Alto's 2026
   meetings have it true) is a confirmed-live, genuine "this meeting has
-  video" signal **not currently checked anywhere in `primegov.py`**
-  (only `videoUrl`/`swagitId`/`isMediaManagerVideo` are) — worth adding
-  to the existing tenant-API-delegation check even though it alone
-  doesn't solve the Midpen case (it would correctly identify *that*
-  video exists, just not resolve *where*). **Not built**: a Midpen
+  video" signal — **now checked, 2026-08-29** (see `BACKLOG_DONE.md`):
+  when the tenant API confirms a meeting has video but `videoUrl` itself
+  is blank (exactly the Midpen shape), the page now reports an honest
+  "has a recording, but we could not find a playable link" instead of
+  the flat no-video message a genuinely agenda-only meeting gets. Only
+  ever corroborates that *a* video exists — it does not resolve Midpen
+  playback itself. **Not built**: a Midpen
   Media Center adapter, or a fallback that resolves a bare YouTube
   channel link into a specific video (e.g. searching the channel for a
   title/date match) — either is real, un-scoped adapter-build work per
@@ -1283,61 +1284,28 @@ actionability sections above.
   a `boxcast.tv/view/...` page while it plays, to find that URL, before
   writing a `boxcast.py` adapter.
 
-- **`[NEEDS-AUDIT]` Cablecast never sets `external_id`, so the same real
-  meeting can land as 2-3 separate `MeetingPage` rows when its show is
-  reachable at more than one literal URL — confirmed live 2026-08-29 on
-  Coralville, IA (show `2907`).** Found while investigating a user report
-  of 3 near-identical "Coralville City Council Meeting (Aug. 11, 2026)"
-  rows on the `/j/coralville-ia` hub. All three really do point at the
-  same show, confirmed via each page's own `source_url`/`video_url`:
-  `http://coralvision.cablecast.tv:8080/internetchannel/show/2907?site=1`
-  (lastmod 2026-08-18, base slug, old "/internetchannel" template — the
-  legacy hostname/template this adapter's own module docstring already
-  documents for satellitebeach),
-  `https://cityofcoralvilleiowa.cablecast.tv/show/2907` (lastmod
-  2026-08-18, `-b9f57c` slug, new bare `/show/{id}` template), and
-  `http://cityofcoralvilleiowa.cablecast.tv/show/2907?site=1` (lastmod
-  2026-08-19, `-a8dfeb` slug — same new host as the second, differing
-  only by scheme+`?site=1`). The `-a8dfeb`/`-b9f57c` suffixes are
-  `_unique_slug()`'s own collision-retry hex, i.e. the direct fingerprint
-  of `_find_or_create_page()` failing to match an already-existing page.
-  Likely mechanism, not confirmed from a ledger (no per-ingest audit
-  trail exists — see `CLAUDE.md`'s "how were these added" gap below):
-  the same large Cablecast enumeration pass that produced the ~104
-  no-jurisdiction Cablecast rows and ~35-tenant HLS-seek cluster
-  elsewhere in this file likely hit Coralville's Cablecast portal under
-  both its pre- and post-migration hostname/template, each treated as an
-  unrelated URL and separately pushed — not one person manually
-  re-pasting the same link three times.
-  **Root cause**: `CablecastAssetFinder.resolve()`
-  (`app/platforms/cablecast.py`) returns `source_url=url` (the raw
-  pasted/fetched URL) and never sets `ResolvedMeeting.external_id` at
-  all, so `_find_existing_page()` (`archive/db/crud.py`) has no
-  platform-level identity to key on and falls straight through to exact
-  `source_url_normalized` string equality — which `normalize_url()`
-  deliberately never collapses across different hosts/ports (correctly
-  so, generically), and which still doesn't collapse a same-host,
-  same-show http-vs-https-plus-`?site=1` pair the way it would for most
-  other adapters, because nothing establishes "these three URLs are the
-  same show" independent of the literal string.
-  **Fix shape, not built**: host-namespace `external_id` in
-  `cablecast.py` (e.g. `f"{urlparse(url).netloc.lower()}:{show_id}"`,
-  same pattern `crud.py`'s own `_find_existing_page()` docstring already
-  prescribes for CivicClerk/Granicus) would merge the second and third
-  duplicates above (same host, different scheme/query) into one, but
-  **not** the first-vs-second (genuinely different hosts from a real
-  domain/template migration) — that half needs either a confirmed
-  domain-alias table entry (old hostname → new hostname, once a second
-  migrated Cablecast tenant confirms the pattern isn't a one-off) or a
-  manual merge. **Cleanup for these 3 specific rows, not yet done**: no
-  page-merge/dedupe script exists in `scripts/`; the existing
-  `POST /internal/admin/delete-pages` endpoint (`archive/main.py`) can
-  remove the two duplicates once the best of the three (the one with the
-  most complete transcript/segments) is picked as canonical, but nobody
-  has done that pick-and-delete pass yet. Worth checking whether any
-  other Cablecast tenant besides Coralville has both an old- and
-  new-template hostname on record before writing the domain-alias table,
-  the same way any new platform quirk gets scoped here.
+- **`[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
+  now 2/3 fixed at the source (2026-08-29) — the residual needs a
+  cross-host alias table and a manual pick-and-delete pass, neither
+  built.** Full original investigation (root cause, all 3 real URLs, the
+  `_unique_slug()` collision-retry fingerprint) in `BACKLOG_DONE.md`.
+  `CablecastAssetFinder` now sets a host-namespaced `external_id`
+  (`cablecast.py`, both the Remix and CablecastPublicSite paths), so any
+  *future* re-ingest of the same show under a same-host scheme/query
+  variant (2 of the 3 real Coralville URLs) merges into one page instead
+  of creating a new one — regression-tested
+  (`test_resolve_external_id_is_stable_across_scheme_and_query_variants`,
+  `tests/test_cablecast.py`). **Still open**: (1) the first-vs-second URL
+  pair is a genuine cross-host migration
+  (`coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`)
+  that host-namespacing can't collapse — needs a confirmed domain-alias
+  table entry once a second migrated Cablecast tenant confirms the
+  pattern, or a manual merge; (2) the 3 already-archived Coralville rows
+  themselves are untouched by this fix (it only prevents new duplicates)
+  — no page-merge/dedupe script exists in `scripts/`, so picking the most
+  complete of the 3 as canonical and removing the other 2 via the
+  existing `POST /internal/admin/delete-pages` endpoint is still a manual
+  pass nobody has done.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
@@ -1937,29 +1905,6 @@ from a live check), but the Legistar calendar itself is still untried.
   the resolver/adapter work and the display together. Do not build a
   Chicago-shaped fix for it.
 
-- **[JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
-  no dates at all — YouTube's own public Atom feed does, confirmed live
-  2026-08-26.** `_list_channel()`/`_list_channel_tab()` go through
-  yt-dlp's flat extraction, which per this file's own long-standing note
-  returns every date field as `None` — the matcher falls back entirely
-  to parsing dates out of video titles. `https://www.youtube.com/feeds/
-  videos.xml?channel_id={id}` is a plain, unauthenticated GET (no
-  yt-dlp, no bot-check exposure) and was fetched live against Phoenix's
-  channel (`UCx7FQNzOFCbtExt_gRub9JQ`, one of the four curated
-  netloc→channel-id entries this file already uses): real `<published>`
-  timestamps on every entry, ISO 8601, e.g. "Memorial Towers Grand
-  Opening" → `2026-08-26T10:16:43+00:00`. **Capped at the 15 most recent
-  uploads per channel** — a real limit that rules it out as a backlog-
-  matching replacement for the full yt-dlp listing, but makes it a
-  cheap, reliable source for exactly the case that matters most: a real
-  video-id/title/date triple to enrich or corroborate a *recent* match
-  before falling back to title-parsing. Small, scoped fix: call the Atom
-  feed first (or in parallel) in the four-city fallback path and use its
-  `<published>` date when the video id matches, keeping the existing
-  title-parse as the fallback for anything older than 15 uploads back.
-  Doesn't touch the separate, harder problem below (Render's IP getting
-  YouTube-blocked) — this only fixes *dating* a video once one is found.
-
 - **[NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
   ~18 real tenants (2026-08-26), three small things still open.** Full
   build + two enumeration/push rounds + a real fabricated-content
@@ -1975,7 +1920,7 @@ from a live check), but the Legistar calendar itself is still untried.
   yield from this round.
 
 - **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
-  channel fallback (2026-08-21) — three real ones, none blocking.**
+  channel fallback (2026-08-21) — two real ones open, none blocking.**
   1. **The channel listing only goes back ~400 entries per tab**, since
      yt-dlp's channel extraction is not lazy (`playlistend` is the only
      bound; 34s for a full channel vs. ~6s for 400 entries). On
@@ -1989,12 +1934,18 @@ from a live check), but the Legistar calendar itself is still untried.
      is canonical, so `_pick()` declines. Declining is the correct
      posture as built; a real disambiguation rule would recover a
      handful of meetings per city but needs more real examples first.
-  3. **No adapter-canary coverage for this path specifically** — it
-     rides on `legistar`'s existing single canary URL, so a break in the
-     channel matcher wouldn't surface. The honest fix is letting
-     `CANARY_URLS` hold more than one URL per platform (a real
-     per-tenant coverage gap predating this work, applying to every
-     multi-tenant adapter), not a second `legistar`-ish key.
+  3. ~~No adapter-canary coverage for this path specifically~~ —
+     **closed 2026-08-29** (PR #496, undocumented until now): `CANARY_URLS`
+     (`scripts/adapter_canary.py`) now holds a list of URLs per platform
+     instead of exactly one, and a second, Phoenix-specific `legistar`
+     canary URL exercises this channel-fallback path specifically. Also
+     landed in the same PR, undocumented until this correction: YouTube's
+     public Atom feed now corroborates a matched video's date
+     (`youtube_channel.py`, this file previously described this as an
+     open `[JUST-DO-IT]` `[EASY]` item — it wasn't, see
+     `BACKLOG_DONE.md`), and `hyland.py`/`civicclerk.py` (PR #496/#510)
+     now both copy a YouTube delegation's bot-block `video_warnings`
+     through instead of silently dropping them.
 
 - **[LATER] `[EASY]` PrimeGov's own better date/title still isn't
   threaded through for Granicus `MediaPlayer.php?event_id=...` pages.**

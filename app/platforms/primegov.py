@@ -289,10 +289,11 @@ class PrimeGovAssetFinder(AssetFinder):
         netloc = urlparse(url).netloc
         tried_years = self._candidate_years(self._extract_date(html))
         video_url = None
+        has_video_icon = False
         matched = False
         async with aiohttp.ClientSession(headers=self.headers) as session:
             for year in tried_years:
-                matched, video_url = await self._fetch_tenant_video_url(
+                matched, video_url, has_video_icon = await self._fetch_tenant_video_url(
                     session, netloc, meeting_template_id, year
                 )
                 if matched:
@@ -317,12 +318,36 @@ class PrimeGovAssetFinder(AssetFinder):
                 for year in await self._fetch_archived_years(session, netloc):
                     if year in tried_years:
                         continue
-                    matched, video_url = await self._fetch_tenant_video_url(
+                    (
+                        matched,
+                        video_url,
+                        has_video_icon,
+                    ) = await self._fetch_tenant_video_url(
                         session, netloc, meeting_template_id, year
                     )
                     if matched:
                         break
         if not video_url:
+            if has_video_icon:
+                # Real gap found 2026-08-28 (BACKLOG.md's Midpen Media
+                # Center entry): `isShowVideoIcon` is this tenant's own
+                # confirmation that a recording genuinely exists for this
+                # meeting, even when videoUrl itself is blank -- seen live
+                # on Palo Alto meetings whose real video sits on
+                # midpenmedia.org, a host this API's videoUrl field never
+                # names and no adapter here resolves yet. Surfacing this
+                # distinguishes "PrimeGov says there's no recording" from
+                # "there is one, we just can't find where" -- the caller
+                # (resolve()) uses this instead of its generic fallback
+                # warning.
+                return ResolvedMeeting(
+                    platform=self.platform_name,
+                    source_url=url,
+                    video_warnings=[
+                        "This meeting's own listing shows it has a recording, "
+                        "but we could not find a playable link for it."
+                    ],
+                )
             return None
 
         # video_url is sometimes protocol-relative ("//brookhavenga.
@@ -442,18 +467,22 @@ class PrimeGovAssetFinder(AssetFinder):
         netloc: str,
         meeting_template_id: str,
         year: int,
-    ) -> Tuple[bool, Optional[str]]:
-        """Returns (matched, video_url) for one year's worth of this
-        tenant's archived meetings -- matched=True as soon as a meeting
-        whose documentList carries this meetingTemplateId is found, with
-        video_url being that meeting's own `videoUrl` field (real
-        confirmed shape: "https://{tenant}.new.swagit.com/videos/{id}",
-        "https://{tenant}.v3.swagit.com/events/{id}", or a swagit/
+    ) -> Tuple[bool, Optional[str], bool]:
+        """Returns (matched, video_url, has_video_icon) for one year's
+        worth of this tenant's archived meetings -- matched=True as soon
+        as a meeting whose documentList carries this meetingTemplateId is
+        found, with video_url being that meeting's own `videoUrl` field
+        (real confirmed shape: "https://{tenant}.new.swagit.com/videos/
+        {id}", "https://{tenant}.v3.swagit.com/events/{id}", or a swagit/
         granicus URL, possibly protocol-relative). video_url is None
         (matched still True) for a genuine agenda-only meeting with no
-        recording. Best-effort like every other adapter's opportunistic
-        API probe here -- any failure just means "nothing found," not a
-        raised exception.
+        recording -- `has_video_icon` (from the meeting's own real
+        `isShowVideoIcon` field, confirmed live 2026-08-28 on Palo Alto)
+        distinguishes that from a meeting the tenant itself says has video
+        that videoUrl just doesn't name (e.g. hosted on Midpen Media
+        Center -- see BACKLOG.md). Best-effort like every other adapter's
+        opportunistic API probe here -- any failure just means "nothing
+        found," not a raised exception.
         """
         api_url = (
             f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings?year={year}"
@@ -468,7 +497,7 @@ class PrimeGovAssetFinder(AssetFinder):
                         response.status,
                         api_url,
                     )
-                    return False, None
+                    return False, None, False
                 meetings = await response.json(content_type=None)
         except Exception:
             logger.warning(
@@ -476,10 +505,10 @@ class PrimeGovAssetFinder(AssetFinder):
                 api_url,
                 exc_info=True,
             )
-            return False, None
+            return False, None, False
 
         if not isinstance(meetings, list):
-            return False, None
+            return False, None, False
 
         template_id = int(meeting_template_id)
         for meeting in meetings:
@@ -490,8 +519,12 @@ class PrimeGovAssetFinder(AssetFinder):
                     isinstance(document, dict)
                     and document.get("templateId") == template_id
                 ):
-                    return True, meeting.get("videoUrl") or None
-        return False, None
+                    return (
+                        True,
+                        meeting.get("videoUrl") or None,
+                        bool(meeting.get("isShowVideoIcon")),
+                    )
+        return False, None, False
 
     @staticmethod
     def _extract_title(html: str) -> Optional[str]:
