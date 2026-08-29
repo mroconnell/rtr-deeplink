@@ -123,6 +123,28 @@ _GRANICUS_TRUNCATION_MARKER = "36,000 lines, a known limit"
 # *asked* for a transcript and got "failed" would rather have the
 # eighteen.
 _PARTIAL_TRANSCRIPTION_MARKER = "the transcription was interrupted"
+# A scraped caption file (or an older Whisper pass) that stops well
+# before the video's own real (ffprobed) duration, with no round-number
+# tell -- the one truncation shape the comment below used to say nothing
+# could detect. Only checkable at the moment a fresh
+# TranscriptionJob.probed_duration_seconds becomes known for a page (see
+# _flag_default_transcript_if_truncated_early() below, called from
+# create_transcription_job()) -- there's no ffprobe on the ordinary
+# ingest path, so this is opportunistic, not a full-corpus scan: most
+# pages never request a transcription job at all, so most never get this
+# check.
+_EARLY_TRUNCATION_MARKER = "may end before the meeting did"
+# Deliberately tight (Ryan's explicit call, 2026-08-29) rather than the
+# "tens of minutes" a longer measurement-first rollout would have used --
+# meant to be tuned by watching how many real pages this actually flags,
+# not guessed conservatively blind. One known, real false-positive risk
+# this doesn't account for: FasterWhisperEngine's default
+# `vad_filter=True` skips transcribing trailing silence after the last
+# real speech, so a meeting whose recording keeps rolling for several
+# minutes after adjournment will legitimately look "short" by this
+# measure even though nothing was truncated. If this turns out noisy in
+# practice, loosen back toward "tens of minutes," don't tighten further.
+_EARLY_TRUNCATION_SHORTFALL_SECONDS = 600
 
 # Every warning substring meaning "the transcript we have stops before the
 # meeting did". A tuple, so a newly-detected form of truncation is one
@@ -132,13 +154,11 @@ _PARTIAL_TRANSCRIPTION_MARKER = "the transcription was interrupted"
 # attempt (_has_real_warning_free_transcript below). Wire a new marker
 # into one without the other and you get the worst available outcome --
 # a page that reports as a known problem and can never be fixed.
-#
-# One truncation shape is known to exist and is deliberately NOT here,
-# because nothing can currently detect it: a scraped caption file that
-# simply ends early with no round-number tell. Nothing compares a
-# transcript's last segment against the video's real duration, so those
-# read as ordinary complete transcripts. See BACKLOG.md.
-_TRUNCATION_MARKERS = (_GRANICUS_TRUNCATION_MARKER, _PARTIAL_TRANSCRIPTION_MARKER)
+_TRUNCATION_MARKERS = (
+    _GRANICUS_TRUNCATION_MARKER,
+    _PARTIAL_TRANSCRIPTION_MARKER,
+    _EARLY_TRUNCATION_MARKER,
+)
 
 
 def _has_real_warning_free_transcript(warnings: Optional[list]) -> bool:
@@ -185,6 +205,7 @@ def _good_default_transcript_exists():
                 ~warnings_text.like(f"%{_GARBLED_MARKER}%"),
                 ~warnings_text.like(f"%{_HALLUCINATION_MARKER}%"),
                 ~warnings_text.like(f"%{_GRANICUS_TRUNCATION_MARKER}%"),
+                ~warnings_text.like(f"%{_EARLY_TRUNCATION_MARKER}%"),
             ),
         ),
     )
@@ -6720,6 +6741,67 @@ async def correct_transcript_version_language(
         return {"slug": slug, "version_id": version.id, "language": version.language}
 
 
+def _last_segment_end_seconds(segments: list) -> float:
+    """Latest `end` (falling back to `start`) across all segments, 0.0 for
+    an empty list. Segments aren't guaranteed sorted chronologically (see
+    _publish_partial_transcript's own explicit sort before storing), so
+    this takes the max rather than assuming the last list entry is the
+    last one chronologically."""
+    if not segments:
+        return 0.0
+    return max(float(s.get("end", s.get("start", 0.0)) or 0.0) for s in segments)
+
+
+def _looks_truncated_early(
+    last_segment_end_seconds: float, probed_duration_seconds: Optional[float]
+) -> bool:
+    """True when a transcript's last segment ends well before the video's
+    own real (ffprobed) duration -- see _EARLY_TRUNCATION_MARKER's own
+    comment for the threshold and its known false-positive risk."""
+    if not probed_duration_seconds or probed_duration_seconds <= 0:
+        return False
+    return (
+        probed_duration_seconds - last_segment_end_seconds
+        >= _EARLY_TRUNCATION_SHORTFALL_SECONDS
+    )
+
+
+async def _flag_default_transcript_if_truncated_early(
+    session, page: MeetingPage, probed_duration_seconds: float
+) -> None:
+    """Opportunistic check, called from create_transcription_job() the
+    moment a fresh, real probed video duration becomes known for a page:
+    does the page's CURRENT default transcript already look like it stops
+    well short of that duration -- the one truncation shape nothing else
+    catches (see _EARLY_TRUNCATION_MARKER above)? No-op if there's no
+    default version, it has no real content, it's already flagged with
+    this marker, or it doesn't look truncated. Caller is responsible for
+    committing -- this only stages the change on `session`."""
+    version = (
+        await session.execute(
+            select(TranscriptVersion).where(
+                TranscriptVersion.meeting_page_id == page.id,
+                TranscriptVersion.is_default.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if version is None or version.content_hash == _EMPTY_CONTENT_HASH:
+        return
+    existing_warnings = version.transcript_warnings or []
+    if any(_EARLY_TRUNCATION_MARKER in w for w in existing_warnings):
+        return
+    last_end = _last_segment_end_seconds(version.segments)
+    if not _looks_truncated_early(last_end, probed_duration_seconds):
+        return
+    covered = _duration_words(last_end)
+    total = _duration_words(probed_duration_seconds, attributive=True)
+    version.transcript_warnings = [
+        *existing_warnings,
+        f"This transcript may end before the meeting did — it covers "
+        f"about {covered} of what looks like a {total} recording.",
+    ]
+
+
 async def create_transcription_job(
     *,
     payload: dict[str, Any],
@@ -6744,9 +6826,18 @@ async def create_transcription_job(
     `priority` defaults to PRIORITY_MEDIUM (every real user-submitted
     request) -- worker/main.py's auto-generation path is the one real
     caller that passes PRIORITY_LOW instead.
+
+    Also opportunistically flags the page's *existing* default transcript
+    if it looks truncated early against this freshly-probed duration (see
+    _flag_default_transcript_if_truncated_early()) -- runs regardless of
+    which branch below actually creates a new job, since it only depends
+    on the page and the duration, not on job creation succeeding.
     """
     async with async_session() as session:
         page, _ = await _find_or_create_page(session, payload, input_url_normalized)
+        await _flag_default_transcript_if_truncated_early(
+            session, page, probed_duration_seconds
+        )
 
         not_expired_pending = or_(
             TranscriptionJob.status.in_(SPENDING_JOB_STATUSES),

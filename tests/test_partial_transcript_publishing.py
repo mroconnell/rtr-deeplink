@@ -228,7 +228,15 @@ async def test_the_job_stays_failed_so_the_cooldown_still_applies():
 async def test_a_partial_never_displaces_an_existing_good_transcript():
     """A page that already has real scraped captions keeps them as the
     default; the partial lands alongside, reachable via ?version=."""
-    scraped = [{"start": 0.0, "end": 5.0, "text": "The real full transcript."}]
+    # End time deliberately close to _job_that_dies_after()'s default
+    # total_seconds=2700 (not just some short placeholder) -- since
+    # 2026-08-29, create_transcription_job() itself flags a default
+    # transcript that ends well short of the freshly-probed duration as
+    # early-truncated (see crud._EARLY_TRUNCATION_SHORTFALL_SECONDS), and
+    # a flagged version is no longer "good" -- an unrealistically short
+    # scraped transcript here would trip that and defeat the very thing
+    # this test checks.
+    scraped = [{"start": 0.0, "end": 2695.0, "text": "The real full transcript."}]
     outcome = await _job_that_dies_after(
         "pp-no-displace", good_chunks=1, existing_segments=scraped
     )

@@ -86,6 +86,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -123,7 +124,24 @@ QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 BATCH_SIZE = 12
 
 
-async def _push_if_has_video(session: aiohttp.ClientSession, url: str) -> str:
+def _parse_queue_line(line: str) -> Tuple[str, Optional[str]]:
+    """A queue line is a bare URL, or `URL<TAB>SOURCE_URL` when the queued
+    URL is itself a bare video link discovered via a *different* page
+    (see BACKLOG_DONE.md's tier3 source_url-override entry). The second
+    field, when present, overrides what gets recorded as the meeting's
+    source_url -- otherwise a bare YouTube/Vimeo link would be ingested
+    under its own URL as source_url, the exact bug already fixed for
+    direct ingests (a reader's "View original source" link should point
+    at the government page the video was found on, not the video host)."""
+    url, _, source_url = line.partition("\t")
+    return url.strip(), (source_url.strip() or None)
+
+
+async def _push_if_has_video(
+    session: aiohttp.ClientSession,
+    url: str,
+    source_url_override: Optional[str] = None,
+) -> str:
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
@@ -140,6 +158,9 @@ async def _push_if_has_video(session: aiohttp.ClientSession, url: str) -> str:
     if not result.video_url:
         return f"[SKIP] no video found on re-resolve: {url}"
 
+    if source_url_override:
+        result.source_url = source_url_override
+
     normalized = normalize_url(url)
     try:
         response = await _ingest(session, result.model_dump(), normalized)
@@ -155,21 +176,22 @@ async def main() -> None:
         print("No queue file found -- nothing to do.")
         return
 
-    urls = [
+    lines = [
         line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()
     ]
-    if not urls:
+    if not lines:
         print("Queue is empty -- nothing left to feed. This script can be retired.")
         return
 
-    batch, remainder = urls[:BATCH_SIZE], urls[BATCH_SIZE:]
+    batch, remainder = lines[:BATCH_SIZE], lines[BATCH_SIZE:]
     print(f"Feeding {len(batch)} URL(s), {len(remainder)} remaining after this run.")
 
     register_all_finders()
 
     async with aiohttp.ClientSession() as session:
-        for i, url in enumerate(batch):
-            print(await _push_if_has_video(session, url))
+        for i, line in enumerate(batch):
+            url, source_url_override = _parse_queue_line(line)
+            print(await _push_if_has_video(session, url, source_url_override))
             if i < len(batch) - 1:
                 await asyncio.sleep(REQUEST_DELAY_SECONDS)
 

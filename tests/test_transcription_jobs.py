@@ -1554,6 +1554,208 @@ async def test_has_good_transcript_treats_granicus_36k_truncation_as_not_good():
             assert await crud._has_good_transcript(session, page_id) is expected, slug
 
 
+async def test_has_good_transcript_treats_early_truncation_as_not_good():
+    # Same "SQL predicate and per-page helper must agree" shape as the
+    # garbled/hallucinated and Granicus-36k tests above, for
+    # _EARLY_TRUNCATION_MARKER (2026-08-29).
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    async def _page_with_warning(eid: str, warning: str):
+        url = f"https://example.granicus.com/player/clip/{eid}"
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning] if warning else [],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    truncated = await _page_with_warning(
+        "auto-early-truncated",
+        "This transcript may end before the meeting did — it covers "
+        "about 10 minutes of what looks like a 40 minute recording.",
+    )
+    clean = await _page_with_warning("auto-clean4", "")
+
+    async with async_session() as session:
+        rows = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.slug.in_([truncated, clean])
+                )
+            )
+        ).all()
+        by_slug = {slug: bool(good) for slug, good in rows}
+        assert by_slug == {truncated: False, clean: True}
+        for slug, expected in by_slug.items():
+            page_id = (
+                await session.execute(
+                    select(MeetingPage.id).where(MeetingPage.slug == slug)
+                )
+            ).scalar_one()
+            assert await crud._has_good_transcript(session, page_id) is expected, slug
+
+
+# --- Early-truncation detection: a scraped transcript that simply stops --
+# early, with no round-number tell (2026-08-29) --------------------------
+
+
+def test_last_segment_end_seconds_takes_the_max_not_the_last_entry():
+    # Segments aren't guaranteed sorted -- _publish_partial_transcript
+    # explicitly sorts before storing, implying they don't always arrive
+    # that way.
+    segments = [
+        {"start": 500.0, "end": 510.0, "text": "b"},
+        {"start": 0.0, "end": 5.0, "text": "a"},
+    ]
+    assert crud._last_segment_end_seconds(segments) == 510.0
+    assert crud._last_segment_end_seconds([]) == 0.0
+
+
+def test_looks_truncated_early_respects_the_shortfall_threshold():
+    # Exactly at the threshold counts; just under it doesn't. Probed
+    # duration of 0/None never counts (nothing to compare against).
+    assert crud._looks_truncated_early(0.0, crud._EARLY_TRUNCATION_SHORTFALL_SECONDS)
+    assert not crud._looks_truncated_early(
+        1.0, crud._EARLY_TRUNCATION_SHORTFALL_SECONDS
+    )
+    assert not crud._looks_truncated_early(0.0, 0.0)
+    assert not crud._looks_truncated_early(0.0, None)
+
+
+async def test_create_transcription_job_flags_a_short_default_transcript():
+    # Real scenario this exists for: a page already has a scraped
+    # transcript that quietly stops early. Requesting a *new*
+    # transcription job for it is the first moment a real ffprobed
+    # duration becomes known -- that's when this should fire.
+    url = "https://example.granicus.com/player/clip/short-default"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:short-default",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Shortdefault",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0, "end": 300, "text": "words words words"}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+        },
+        url,
+    )
+
+    job = await crud.create_transcription_job(
+        payload={
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:short-default",
+        },
+        input_url_normalized=url,
+        requester_email="tester@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=3600.0,  # real video is an hour; transcript covers 5 min
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+
+    # Check the flag immediately -- draining the job below promotes its
+    # own (empty, since this test never reports real segments) completed
+    # transcript over this one, which would otherwise make the assertion
+    # check the wrong version entirely.
+    page = await crud.lookup_page_for_url(url)
+    assert page["has_transcript"] is False
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+    from sqlalchemy import select
+
+    async with async_session() as session:
+        page_id = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == page["slug"])
+            )
+        ).scalar_one()
+        version = (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        ).scalar_one()
+        assert any(
+            "may end before the meeting did" in w
+            for w in (version.transcript_warnings or [])
+        )
+
+    # Frees the concurrency-cap slot for later tests -- the fixture DB is
+    # shared across this whole file, not reset per test (see _drain_job's
+    # own docstring).
+    await _drain_job(job["job_id"], job["total_chunks"])
+
+
+async def test_create_transcription_job_does_not_flag_a_complete_default_transcript():
+    # The common case -- a transcript that genuinely covers the whole
+    # meeting -- must not get a spurious warning just because a job was
+    # requested for it.
+    url = "https://example.granicus.com/player/clip/complete-default"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:complete-default",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Completedefault",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0, "end": 3550, "text": "words words words"}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+        },
+        url,
+    )
+
+    job = await crud.create_transcription_job(
+        payload={
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:complete-default",
+        },
+        input_url_normalized=url,
+        requester_email="tester@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=3600.0,  # only 50s short -- well under the threshold
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    # Check before draining -- completing the job below promotes its own
+    # (empty) transcript over this one regardless of the outcome being
+    # tested here.
+    page = await crud.lookup_page_for_url(url)
+    assert page["has_transcript"] is True
+
+    await _drain_job(job["job_id"], job["total_chunks"])
+
+
 # --- WO-45: a completed job is a cooldown, not a free pass -----------------
 #
 # _cooldown_active() is pure by design (see its docstring), so these drive it
