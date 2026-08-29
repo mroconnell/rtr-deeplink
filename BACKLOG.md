@@ -56,10 +56,9 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
-  [NEEDS-AUDIT] A CI guard for the worker's real import graph is still
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
@@ -402,20 +401,6 @@ so that work reads together.
   gavel — so the threshold wants to be generous (tens of minutes short,
   not seconds) and probably measured against real pages before being
   turned on.
-
-- **[NEEDS-AUDIT] A CI guard for the worker's real import graph is still
-  unbuilt — the underlying fragility is fixed (see `BACKLOG_DONE.md`),
-  this is defense-in-depth on top of it.** The 2026-08-24 outage's root
-  cause (`archive/utils/date_status.py` importing `markupsafe` at module
-  scope, made a hard worker dependency via `archive.db.crud`) is closed.
-  Still open: walk the real import graph from `worker/main.py` across
-  `app/`/`archive/` and assert every third-party top-level import is in
-  `worker/requirements.txt`, so a *different* future HTML-shaped (or
-  otherwise heavy) import added anywhere in that graph fails CI instead
-  of only failing at worker startup. Needs a `try/except`-tolerant
-  design so it doesn't false-positive on `playwright` (deliberately
-  absent from the worker, guarded by its own try/except at the one
-  import site that needs it).
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
