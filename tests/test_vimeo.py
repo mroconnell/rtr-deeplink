@@ -23,6 +23,16 @@ the full investigation:
   place, since the fixture is a real unmodified capture and editing it
   would break that guarantee.
 - `channel_coscouncil.html` -- Salisbury, NC's channel listing page.
+- `oembed_corvallis_1220285695_domain_blocked.json` -- a real, unmodified
+  live capture taken 2026-08-29 of Corvallis, OR's actual meeting video
+  (found via the Vimeo direct-dorking sweep, see BACKLOG_DONE.md), whose
+  owner has restricted both embedding and metadata to specific domains.
+  `player.vimeo.com/video/1220285695` itself 403s with a real "Sorry ...
+  privacy settings" page in this state -- confirmed live side by side
+  with Salisbury's own sample above, which 401s instead and plays fine
+  in a real browser -- so `domain_status_code` is the one reliable
+  signal that separates a genuinely broken embed from an oEmbed call
+  that merely couldn't reach extra metadata.
 
 What is NOT tested here, deliberately, because it does not work: caption
 fetching. `player.vimeo.com/video/{id}/config` 403s every non-browser
@@ -240,6 +250,25 @@ async def test_resolve_chicago_showcase_video_reads_year_first_title_date():
     # invent one. (The ELMS adapter supplies the real one; see
     # test_chicago_elms.py.)
     assert result.jurisdiction is None
+
+
+async def test_resolve_declines_a_domain_privacy_blocked_video():
+    # Real bug, 2026-08-29: this used to still report a playable
+    # video_url and get ingested, producing a genuinely blank live page
+    # (no title, no video, no transcript -- see BACKLOG_DONE.md). A
+    # `domain_status_code` on the oEmbed body means the embed itself is
+    # broken here, not just missing extra metadata -- resolve() must not
+    # claim a video_url in that case.
+    url = "https://vimeo.com/1220285695"
+    with mock_session(
+        _oembed_route(url, "oembed_corvallis_1220285695_domain_blocked.json")
+    ):
+        result = await VimeoAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.title is None
+    assert result.jurisdiction is None
+    assert any("privacy settings" in w for w in result.video_warnings)
 
 
 async def test_resolve_still_yields_a_playable_embed_when_oembed_is_unreachable():
