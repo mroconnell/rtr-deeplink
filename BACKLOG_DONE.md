@@ -1,5 +1,64 @@
 # Backlog — done
 
+## ProudCity's BoxCast `videoStyle === 'external'` case: a real adapter, via a public REST API rather than reverse-engineering the player [Done 2026-08-29]
+
+Real gap named in `BACKLOG.md`: `proudcity.py`'s `_EXTERNAL_VIDEO_RE`
+correctly finds a BoxCast channel link (`boxcast.tv/channel/{id}`,
+confirmed live on Wilmington, OH) but could only report it as a
+best-effort `video_link` pointer, never `video_url` — the real HLS
+manifest URL was unconfirmed, since BoxCast's own web player renders into
+a `blob:` MediaSource URL with no segment-fetch requests visible in a
+plain JS-bundle read.
+
+**The real unlock, found 2026-08-29 via a plain web search (not the
+player-devtools approach the entry originally proposed)**: BoxCast
+exposes two real, public, unauthenticated REST endpoints —
+`GET rest.boxcast.com/channels/{channel_id}/broadcasts/_search?l={N}`
+(every broadcast's real `id`/`name`/`starts_at`/`stops_at`/
+`time_zone_offset`, confirmed live) and
+`GET rest.boxcast.com/broadcasts/{broadcast_id}/view` (returns
+`{"status": "recorded", "playlist": "<signed HLS master playlist
+URL>"}` for a past broadcast). Both confirmed live with real `curl`
+fetches across **three independent real government tenants**, not just
+Wilmington — Wilmington OH, St. Louis County (Clayton, MO), and City of
+Hondo, TX, each found via a plain `"boxcast.tv/channel"` web search — the
+`/view` endpoint's `playlist` field is a genuine, working signed
+`.m3u8` for all three (200, real `#EXT-X-STREAM-INF` multi-bitrate
+variants).
+
+**Built**: `app/platforms/boxcast.py`'s `find_channel_match()` — unlike
+`youtube_channel.py`'s flat yt-dlp listing (no dates at all, title-
+parsing required), BoxCast's `_search` API returns real structured
+`starts_at` timestamps directly, so matching a ProudCity page's own known
+meeting date to the right broadcast needs no title-parsing at all (only
+falls back to title-token overlap to disambiguate the real, confirmed
+case of more than one meeting on the same calendar day — e.g. St. Louis
+County's Council + Budget Committee meetings). Local-date conversion uses
+each broadcast's own real `time_zone_offset`, not a bare UTC date (a
+same-day evening meeting's `starts_at` can already be past midnight UTC).
+Wired into `proudcity.py`: a `boxcast.tv/channel/{id}` link now delegates
+to this matcher; an unresolvable case (wrong date, ambiguous same-day
+tie, or a broadcast whose recording isn't ready yet) still falls back to
+the existing honest `video_link` pointer, never a guess. No caption/
+transcript source found on any tenant checked — video-only, same posture
+as the Vimeo adapter.
+
+Regression-tested against the real confirmed Wilmington data throughout
+(`tests/test_boxcast.py`: date-matching, local-time-zone-shift, same-day
+disambiguation and its honest-tie-decline case, a not-yet-recorded
+decline, a search-failure decline; `tests/test_proudcity.py`: the
+delegation wiring end-to-end, both the success and honest-decline paths).
+
+**Residual, deliberately not attempted**: only Wilmington, OH is
+confirmed among this app's own known ProudCity tenants to use this exact
+`boxcast.tv/channel/{id}` link shape — several other known tenants
+(`johnsoncitytx.org`, `www.hellamtownship.gov`,
+`mckenziecountynd.gov`, `alvordtx.gov`, `cherrytownship.com`,
+`franklin-twp.org`) are marked "no video found" in `proudcity.py`'s own
+`PROUDCITY_KNOWN_DOMAINS` comment and worth a re-resolve to see whether
+any of them carry the same link now that this delegation exists — not
+re-checked in this pass.
+
 ## YouTube channel Atom-feed dates, multi-URL adapter canaries, hyland/civicclerk bot-block warning drop [Done 2026-08-29, logged 2026-08-29]
 
 Three small, disjoint fixes that landed in PR #496 (`youtube_channel.py`/
