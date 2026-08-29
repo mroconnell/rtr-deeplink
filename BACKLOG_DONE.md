@@ -111,6 +111,36 @@ whitespace around both fields) plus two integration tests against a
 faked finder/`_ingest()` confirming the override does and doesn't apply
 correctly. All four CI gates clean; no schema touched.
 
+## TelVue round 2: 17 more real ingests from an overnight triage agent, 2 more jurisdiction bugs fixed [Done 2026-08-29]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§37-39, 43 area (TelVue sections). A background research agent
+triaged the 78 TelVue tokens the earlier Common Crawl sweep never
+touched (78 = 116 total minus 38 already processed), reading each
+promising token's real `/home` page listing rather than trusting the
+crude 2-3-title civic/sports classifier — found 28 genuinely promising
+(22 high confidence), with real jurisdiction guesses, evidence, and a
+real `sample_media_url` each. Cross-checked against real Archive
+coverage: 17 genuinely new. **All 17 resolved and ingested successfully
+(6 with real transcripts, 11 video-only), 0 skipped, 0 failed** — a
+clean sweep, unlike every prior TelVue batch tonight, because the
+triage step already filtered out the dead ends.
+
+Two more real jurisdiction bugs found and fixed in `telvue.py` along
+the way, same collision/gap shapes already fixed earlier tonight:
+`"Needham"` enriched to `"Needham, AL"` instead of the correct
+Needham, MA (added to `_KNOWN_ORG_TOKEN_JURISDICTIONS`, confirmed via
+WebSearch showing this is "Needham Channel," the real Needham, MA
+public-access station); `"Vail Planning and Environmental Commission"`
+matched bare `"Commission"` in `_BODY_SUFFIX_RE`, producing `"Vail
+Planning and Environmental"` instead of `"Vail"` (fixed by adding
+`"Planning and Environmental Commission"` as its own alternative ahead
+of bare `"Commission"`, same pattern as the existing Select Board/
+Zoning Board fixes). Both already-ingested pages were re-resolved,
+re-pushed, and reslugged directly against production — no deploy
+needed for the correction itself, same technique used for every other
+live-bug fix tonight.
+
 ## CablecastPublicSite template built via a real, open JSON API; WebSchedule confirmed a dead end [Done 2026-08-29]
 
 Closes the "two more real Cablecast portal templates" lead from the

@@ -95,8 +95,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (39)
-  `[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
+Platform & jurisdiction coverage  (40)
+  `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
+  `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
@@ -1169,27 +1170,57 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
-- **`[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
-  instead of skipping it, confirmed on 2 real ingests 2026-08-29.**
-  `app/platforms/telvue.py`'s `_guess_jurisdiction()` (via
-  `_TITLE_DATE_RE`/`_BODY_SUFFIX_RE`) assumes the jurisdiction name is
-  the first word(s) of the title, which fails when a title starts with
-  a literal date instead of a place/body name — confirmed live on two
-  separate real meetings found via the Common Crawl sweep below:
-  `"2024-03-19 Town Board Meeting"` resolved to `jurisdiction:
-  "2024-03-19 Town"`, and `"03/10/2025 Regular Council"` resolved to
-  `jurisdiction: "03/10/2025 Regular"` — a confident wrong answer, worse
-  than the honest `None` this project already accepts elsewhere for
-  titles that can't be disambiguated (same standard as CivicWeb's own
-  documented "no state" gap). Fix: `_TITLE_DATE_RE`/the body-suffix
-  regex should strip or reject a leading date-shaped token before
-  attempting the name guess, rather than treating it as the start of a
-  jurisdiction name. A third, milder case from the same batch:
-  `"Newmarket Zoning Board of Adjustments Meeting"` resolved to
-  `"Newmarket Zoning"` (should be just `"Newmarket"`) — `_BODY_SUFFIX_RE`
-  doesn't yet have a `Zoning Board` alternative ahead of the bare
-  `Board`/`Committee` ones, same class of ordering issue its own comment
-  already documents for `Select Board` vs. `Board`.
+- **`[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
+  school-district agenda platform, weak for video but a strong,
+  unclaimed lead for `rtr-upcoming` specifically, 2026-08-29.** Checked
+  11 real districts (Fremont/Palo Alto/Paramount/Santa Barbara/Santa
+  Ana USD CA, Green Bay APSD WI, Great Neck UFSD NY, Portland Public
+  Schools ME, Downingtown ASD PA, Robbinsville PSD NJ, Gobles PSD MI —
+  full writeup `ENUMERATION_METHODS.md` §43). One shared hostname,
+  tenant in the URL *path* (`go.boarddocs.com/{state}/{district}/
+  Board.nsf/Public`), not a subdomain — DNS enumeration doesn't apply;
+  the real discovery lever is a Common Crawl full-corpus search for the
+  literal path string, same technique as tonight's ChampDS/TelVue work,
+  not run yet. Real, unauthenticated JSON meetings-list API confirmed
+  live (`BD-GETMeetingsListForSEO`, just needs a same-origin `Referer`
+  header) — no video field, but real structured per-meeting data
+  `rtr-upcoming` doesn't have from this vendor today. Per-meeting detail
+  API (`BD-GetMeeting`/`BD-GetAgenda`/`BD-GetAgendaItem`) confirmed to
+  exist via real network traffic but its POST body shape wasn't
+  captured — needs one more observed real browser request. **Video**:
+  real but tier-dependent and never a clean per-meeting URL — all 3
+  LT-tier districts checked had zero video; only 1 of 10 overall
+  (Santa Barbara USD) had a real structured link, and even that's a
+  whole-school-year YouTube playlist needing date-matching, not a
+  direct URL. Not worth a `rtr-deeplink` video adapter on this
+  evidence; worth real interest for `rtr-upcoming`'s agenda side.
+
+- **`[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
+  CT-log toolkit are CMS wrappers, not adapter targets — but 2 are
+  worth reconsidering as discovery funnels into already-supported
+  platforms, 2026-08-29.** Full writeup `ENUMERATION_METHODS.md` §44.
+  `civicplus.io`, `civiclive.com`, `revizesites.com`, `opencities.com`,
+  `municodeweb.com`, `municipalcms.com`/`.cloud`, `getstreamline.net`,
+  `apptegy.net` — all general municipal website CMS platforms, none
+  host video themselves, real examples checked link out to YouTube/
+  Vimeo/Granicus (already-supported platforms) where a link-out could
+  be confirmed at all. **Two worth a second look, not as adapters but
+  as tenant-list-based discovery channels**: `municodeweb.com` (real
+  confirmed example, Corvallis OR, links to a Vimeo channel — directly
+  relevant to this file's own unexplored "Vimeo's real-world prevalence
+  among small local governments" lead, since Vimeo has no
+  tenant-subdomain structure of its own to enumerate against) and
+  `opencities.com` (now owned by Granicus itself — unconfirmed with a
+  real example, but a real cross-sell relationship worth checking
+  before dismissing). **The more durable insight**: going through a
+  CMS vendor's own tenant list at all is the *narrower* version of the
+  real signal — a full-corpus search (Common Crawl, same technique as
+  tonight's §37-42 work) for a literal string like `"vimeo.com/
+  channels/"` combined with a governance phrase, zero host restriction,
+  would catch a Municode-hosted city AND a CivicPlus-hosted city AND a
+  custom-built city site all in one pass, strictly more coverage than
+  enumerating any single CMS vendor first. Not run yet — a real,
+  concrete next step if the Vimeo-prevalence lead gets picked up.
 
 - **`[LATER]` A real, new video platform found: Midpen Media Center
   (`midpenmedia.org`) — at least Palo Alto's real PrimeGov video isn't

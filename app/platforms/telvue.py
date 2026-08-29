@@ -75,11 +75,17 @@ _BODY_SUFFIX_RE = re.compile(
     # string) matched bare "Board" first, capturing "Natick Select" as
     # the jurisdiction instead of "Natick"; "Newmarket Zoning Board of
     # Adjustments Meeting" the same way captured "Newmarket Zoning".
-    # Both two-word alternatives are listed first so the regex's
-    # leftmost-match search locks onto the phrase starting one word
-    # earlier, not because alternation order breaks ties at the same
-    # position (it doesn't -- position is what matters here).
-    r"^(.*?)\s+(City Council|Council|Planning Commission|Commission|Select Board|Zoning Board|Board|Committee|Authority|District)\b",
+    # Same shape a third time, same day: "Vail Planning and
+    # Environmental Commission" matched bare "Commission", capturing
+    # "Vail Planning and Environmental" -- Vail, CO's real governing
+    # body name is "Planning and Environmental Commission" (confirmed
+    # live via the channel's own real content), not a generic
+    # "Planning Commission". All multi-word alternatives are listed
+    # first so the regex's leftmost-match search locks onto the phrase
+    # starting one word earlier, not because alternation order breaks
+    # ties at the same position (it doesn't -- position is what
+    # matters here).
+    r"^(.*?)\s+(City Council|Council|Planning and Environmental Commission|Planning Commission|Commission|Select Board|Zoning Board|Board|Committee|Authority|District)\b",
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
@@ -136,6 +142,21 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # day for exactly this shape) catches this even though the guess
     # already has a comma.
     "XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP": "Newmarket, NH",
+    # O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2: same wrong-state collision shape
+    # as Newmarket above. Bare "Needham" enriches to "Needham, AL"
+    # instead of the correct Needham, MA -- confirmed live 2026-08-29
+    # via WebSearch showing this is "Needham Channel" (the real
+    # Needham, MA public-access station) covering the Town of Needham,
+    # MA's own Select Board.
+    "O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2": "Needham, MA",
+    # YGktjFZCLukJd_8Fx53BkVRk4tAZafS4: not a wrong state, a
+    # _BODY_SUFFIX_RE gap (fixed the same day, adding "Planning and
+    # Environmental Commission" ahead of bare "Commission") that
+    # produced "Vail Planning and Environmental" before the fix.
+    # Confirmed live via the channel's own content: "Town of Vail",
+    # "Colorado". Kept here too as a belt-and-suspenders state fill in
+    # case a future title shape slips past the regex fix.
+    "YGktjFZCLukJd_8Fx53BkVRk4tAZafS4": "Vail, CO",
 }
 
 
