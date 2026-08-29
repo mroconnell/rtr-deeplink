@@ -102,7 +102,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (39)
+Platform & jurisdiction coverage  (40)
+  `[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
@@ -1235,6 +1236,28 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
+  instead of skipping it, confirmed on 2 real ingests 2026-08-29.**
+  `app/platforms/telvue.py`'s `_guess_jurisdiction()` (via
+  `_TITLE_DATE_RE`/`_BODY_SUFFIX_RE`) assumes the jurisdiction name is
+  the first word(s) of the title, which fails when a title starts with
+  a literal date instead of a place/body name — confirmed live on two
+  separate real meetings found via the Common Crawl sweep below:
+  `"2024-03-19 Town Board Meeting"` resolved to `jurisdiction:
+  "2024-03-19 Town"`, and `"03/10/2025 Regular Council"` resolved to
+  `jurisdiction: "03/10/2025 Regular"` — a confident wrong answer, worse
+  than the honest `None` this project already accepts elsewhere for
+  titles that can't be disambiguated (same standard as CivicWeb's own
+  documented "no state" gap). Fix: `_TITLE_DATE_RE`/the body-suffix
+  regex should strip or reject a leading date-shaped token before
+  attempting the name guess, rather than treating it as the start of a
+  jurisdiction name. A third, milder case from the same batch:
+  `"Newmarket Zoning Board of Adjustments Meeting"` resolved to
+  `"Newmarket Zoning"` (should be just `"Newmarket"`) — `_BODY_SUFFIX_RE`
+  doesn't yet have a `Zoning Board` alternative ahead of the bare
+  `Board`/`Committee` ones, same class of ordering issue its own comment
+  already documents for `Select Board` vs. `Board`.
 
 - **`[LATER]` A real, new video platform found: Midpen Media Center
   (`midpenmedia.org`) — at least Palo Alto's real PrimeGov video isn't
