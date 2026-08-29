@@ -1,5 +1,47 @@
 # Backlog — done
 
+## Swagit multi-segment meetings now warn instead of silently reporting the first clip as the whole meeting [Done 2026-08-29, residual left open]
+
+Real, live-confirmed structural gap from 2026-08-18 (Yolo County CA clip
+324107, 12 real jwplayer playlist entries, one per agenda item, no
+single continuous file). The live `BACKLOG.md` entry's own "not yet
+answered" question — does a full-session file exist elsewhere for these
+customers — is now answered: re-fetched Yolo County 324107 and a second
+real tenant, White Plains NY clip 292830 (5 entries), live 2026-08-29,
+and checked their full HTML for any full/complete/download alternate or
+a stated total duration. Found nothing on either. This is genuinely how
+these customers' pages work, not a gap in what the original session
+checked.
+
+**Shipped**: `app/platforms/swagit.py`'s `resolve()` now parses the real
+jwplayer `playlist: [...]` JSON as structured data
+(`_parse_swagit_playlist_entries()`, using a hand-rolled bracket-depth
+scanner rather than a regex — a real agenda-item title can contain `[`
+or `]`, which would break a naive non-greedy regex match on the first
+`]` it finds) instead of only ever regex-scanning raw HTML for
+media-looking URLs with no idea how many segments they came from. When
+there's more than one entry, `video_warnings` now says so plainly
+("split into N separate video segments... not a single continuous
+recording") instead of silently reporting a 2-minute first-clip duration
+as if it were a multi-hour meeting. Video selection itself is
+unchanged — still the first segment — since which behavior is *correct*
+(concatenate into one virtual timeline vs. treat each clip as its own
+transcribed unit) is a real product decision this fix deliberately
+doesn't make.
+
+Verified against both real tenants' actual fetched HTML directly
+(`_parse_swagit_playlist_entries()` correctly returns 12 and 5 entries
+respectively), not just synthetic fixtures — though the new tests do use
+synthetic HTML, its playlist JSON is real, trimmed data copied from the
+live Yolo County fetch (ids, seq numbers, titles, file URLs all real),
+per this repo's synthetic-test convention. All four CI gates clean.
+
+**Left open in `BACKLOG.md`, corrected in place**: the concatenate-vs.-
+stitch design decision, and re-sizing the original 43-URL sweep (14
+plausible single-file / 29 suspiciously short) now that the mechanism is
+understood — worth doing once that decision is made, so the audit
+answers something actionable rather than re-confirming the same shape.
+
 ## svix 2.0.0's Webhook.verify() returning None root-caused and fixed, unblocking dependabot PR #376 [Done 2026-08-29]
 
 The open question the live entry left ("whether this is a genuine
@@ -44,9 +86,26 @@ so this stays caught in normal CI (which runs against the pinned 1.99.1)
 without needing a second dependency installed — confirmed it fails
 against the pre-fix code the same way. All four CI gates clean.
 
-**Dependabot PR #376 (the actual svix 1.99.1 → 2.0.0 bump) itself
-handled separately, same session** — see this file's own matching entry
-once merged.
+**Dependabot PR #376 merged the same session (2026-08-29), closing the
+loop.** Left `[NEEDS-AUDIT]` for 3 days because CI failed on it (see
+above). Once `clerk_webhook()` no longer depended on `Webhook.verify()`'s
+return value, commented `@dependabot recreate` on the stale PR rather
+than rebasing its branch by hand — the old branch was also stale on
+`uvicorn` (0.52.3 vs. main's 0.52.4) and would have needed the same
+re-conflict resolution manually. The recreated branch bumped to svix
+2.1.0 (released since the original PR), initially failed CI again with
+the exact same recurring shape `CLAUDE.md` already documents: Dependabot's
+`requirements.txt` regen dropped the deliberately-unpinned `yt-dlp` line
+(WO-11) again, `ModuleNotFoundError: No module named 'yt_dlp'` across 43
+test files. Verified the whole thing end to end in an isolated venv
+(not the shared repo `.venv`, to avoid disturbing other concurrent
+sessions using it) before pushing anything: installed the branch's real
+`requirements.txt` plus svix 2.1.0, ran the full suite for real (1954
+passed) and both `alembic check`s, then pushed the yt-dlp-line fix
+directly to the dependabot branch (`git push origin HEAD:dependabot/pip/
+svix-2.0.0`) rather than opening a separate PR, since it's a mechanical,
+previously-established fix for a bot-owned branch, not new work. CI came
+back green; merged.
 
 ## Granicus chunks get a 300s chunk size instead of the 900s default, fixing 24/24 real cold-CDN ffmpeg timeouts [Done 2026-08-29]
 

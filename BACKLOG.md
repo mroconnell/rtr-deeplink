@@ -97,7 +97,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (9)
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
   The retry papers over an unexplained asyncio/subprocess hang, and…
   28 well-formed IQM2 queue rows point at retired tenants…
-  Some Swagit meetings have no single "whole meeting" video file…
+  Some Swagit meetings have no single "whole meeting" video file, and…
 
 Platform & jurisdiction coverage  (40)
   `[LATER]` `[EXAMPLE]` Cablecast has (at least) two more real portal
@@ -1133,32 +1133,50 @@ The tenants: `losangelescountyca`, `santaclaracountyca`, `northbrookil`,
 `currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
 `hyattsvillecitymd`, `ledyardct`, `pec`, `shawneecityks`.
 
-### Some Swagit meetings have no single "whole meeting" video file `[NEEDS-AUDIT]`
+### Some Swagit meetings have no single "whole meeting" video file, and the design decision is still open `[NEEDS-AUDIT]`
 
-**Confirmed live.** While fixing a real Swagit bug (a dead legacy
-`player.src()` fallback URL winning over real video data — see
-`BACKLOG_DONE.md`'s 2026-08-18 entry), a deeper structural fact
-surfaced: Yolo County CA's clip 324107 isn't one continuous recording —
-the page's real jwplayer playlist has **12 separate entries**, one per
-agenda item, each its own file. The bug fix now correctly picks a *real*
-file, but for a chaptered meeting like this it's only the first agenda
-item's short clip (resolved duration came back 2.1 minutes, not the real
-multi-hour length). Re-ran the fixed resolver against all 43 URLs that
-had hit the dead-fallback bug: 14 resolved to a plausible single-file
-duration, but **29** came back suspiciously short — consistent with the
-same first-chapter-only pattern (full list in git history of this file
-if needed).
+**The "not yet answered" question is now answered: confirmed real, no
+single full recording exists at the source for these customers.**
+Re-fetched Yolo County CA clip 324107 and White Plains NY clip 292830
+live (2026-08-29) and read their real jwplayer `playlist` JSON directly
+(12 and 5 entries respectively) — checked the whole page for any
+"full"/"complete"/download-style alternate link or a stated total
+duration anywhere in the markup; found nothing. Swagit's own template
+has no full-agenda video, only the per-item clips already known. So this
+genuinely is how these customers' pages work, not a hidden gap in what
+this session checked before.
 
-**Not yet answered**: does Swagit still serve a true full-session file
-somewhere for these customers, or is "pre-split into per-agenda-item
-clips, no single full recording" simply how some Swagit customers' pages
-work? If the latter, this app's per-chunk transcription pipeline (built
-around "one video_url, one continuous duration") needs a real design
-decision: concatenate all N clips into one virtual timeline before
-chunking, or treat each clip as its own transcribed unit and stitch
-results together using Swagit's own seq/title ordering. Likely a much
-broader set across Swagit generally, not just these 43 — worth a fresh,
-broader live audit once the design question is answered.
+**What's still not built, and still needs a real product decision**:
+concatenate all N clips into one virtual timeline before chunking, or
+treat each clip as its own transcribed unit and stitch results together
+using Swagit's own seq/title ordering. Building either without deciding
+which would be guessing — left for a human call, same as the entry
+always said.
+
+**What ships now instead**: a small, honest, additive fix so this stops
+being *silent*. `swagit.py` only ever regex-scanned the raw HTML for
+media-looking URLs (`media_scan.scan_media_urls()`), with no idea how
+many segments they belonged to — a chaptered meeting's 2-minute first
+clip silently reported as if it were the whole thing. Added
+`_parse_swagit_playlist_entries()`, which parses the real jwplayer
+`playlist: [...]` JSON blob as structured data (a hand-rolled
+bracket-depth scanner, not a regex, since a real agenda-item title can
+itself contain `[`/`]`); when it finds more than one entry, `resolve()`
+now adds a clear `video_warnings` message naming the real segment count
+and saying the video/transcript covers only part of the meeting, instead
+of staying silent. Video selection itself is unchanged (still the first
+segment) — this doesn't attempt to solve the open design question, just
+stops hiding the gap. Verified against both real tenants' actual fetched
+HTML, not just the synthetic test fixtures (which reuse real, trimmed
+playlist JSON from the Yolo County fetch, per this repo's synthetic-test
+convention). All four CI gates clean.
+
+Re-running the fixed resolver against all 43 URLs from the original
+2026-08-18 sweep (14 plausible single-file, 29 suspiciously short) to
+size how many are genuinely multi-segment vs. something else, and a
+broader live audit across Swagit generally, are still open — worth doing
+once the concatenate-vs-stitch decision is made, so the audit answers a
+question that's actually actionable.
 
 **A second confirmed instance, 2026-08-23**: Apple Valley, MN
 (`applevalleymn.new.swagit.com/videos/11022016-1218`) hit this same
