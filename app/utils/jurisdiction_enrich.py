@@ -472,6 +472,12 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "sandiego.granicus.com": KnownJurisdiction("San Diego", "city", "CA"),
     "berkeley.granicus.com": KnownJurisdiction("Berkeley", "city", "CA"),
     "boston.granicus.com": KnownJurisdiction("Boston", "city", "MA"),
+    # "San Jose" is also a real city in Costa Rica and the Philippines, so
+    # a bare name lookup stays ambiguous by design here too -- confirmed
+    # 2026-08-28 (this same tenant's real ViewPublisher listing page is
+    # titled "CivicCenter Television Streaming Video," San Jose, CA's own
+    # real municipal-channel branding).
+    "sanjose.granicus.com": KnownJurisdiction("San Jose", "city", "CA"),
     # Legistar, not Granicus -- Baltimore's own page is the jurisdiction
     # source here (see legistar.py's _extract_page_meeting_info()), not a
     # delegated platform's domain.
@@ -541,6 +547,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "pub-cmsd.escribemeetings.com": KnownJurisdiction(
         "Costa Mesa Sanitary District", "district", "CA", strength="authoritative"
     ),
+    # "Milton" is also real and much smaller in FL -- confirmed 2026-08-28
+    # via this tenant's own real agenda page: "150 Mary Street, Milton, ON
+    # L9T 6Z5", "The Corporation of the Town of Milton", real Ontario
+    # provincial postal code. Typed "city" (not "town") so
+    # resolve_state()'s exact type match actually fires -- see
+    # KnownJurisdiction.type's own docstring: that field only ever
+    # distinguishes "which lookup table" (city vs. county), not a
+    # government's literal legal designation.
+    "pub-milton.escribemeetings.com": KnownJurisdiction("Milton", "city", "ON"),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
     # text (Maricopa/Tucson have none at all; Sacramento's happens to sit

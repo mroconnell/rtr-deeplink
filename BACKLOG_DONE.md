@@ -1,5 +1,50 @@
 # Backlog — done
 
+## Ashland/Milton/San Jose's missing-state residual closed with real positive matches [Done 2026-08-28]
+
+Closed the 3-example residual left by the WO-22 bare/state-suffixed
+jurisdiction fix by actually re-checking each real source page live
+before giving up on it, rather than leaving it blocked on "needs a
+positive text match" indefinitely.
+
+**Ashland (TelVue, org token `w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP`)**: the
+page's own `id="org-logo" alt="Rogue Valley Community Television (RVTV)
+- Watch RVTV - organization logo"` is unambiguous — Rogue Valley is a
+real, specific southern-Oregon region (Medford/Ashland/Grants Pass), not
+a generic name. Added to `_KNOWN_ORG_TOKEN_JURISDICTIONS` — but the
+existing registry could only ever fully REPLACE a jurisdiction on a
+total guess failure (`if not jurisdiction`), and Ashland's title guess
+already correctly returns bare `"Ashland"` (just missing a state, since
+"Ashland" is nationally ambiguous). Widened `telvue.py`'s `resolve()` to
+also fill in just the state when the bare guessed name matches the
+registry's own name exactly — guarded so it can never override a
+*different* real city's guess under the same org token (a real risk:
+one TelVue org token can plausibly serve multiple municipalities). 3 new
+tests, including one that a mismatched name (`"Medford"`) is correctly
+left alone.
+
+**Milton (eScribe, `pub-milton.escribemeetings.com`)**: the real agenda
+page gives "150 Mary Street, Milton, ON L9T 6Z5" and "The Corporation of
+the Town of Milton" — a real Ontario address and postal code, not
+Milton, FL. Added to `_KNOWN_DOMAINS` (typed `"city"`, not `"town"` —
+`resolve_state()`'s domain match requires an exact type match against
+only `"city"`/`"county"`, so a `"town"`-typed entry would silently never
+fire via this path; see `KnownJurisdiction.type`'s own docstring for why
+that field is a lookup-table selector, not the government's literal
+designation).
+
+**San Jose (Granicus, `sanjose.granicus.com`)**: the tenant's real
+ViewPublisher listing page is titled "CivicCenter Television Streaming
+Video" — San Jose, CA's own real municipal-channel branding, not a
+generic Granicus template string. Added to `_KNOWN_DOMAINS` alongside
+the existing Alexandria/Sacramento/Long Beach/etc. entries in the same
+block.
+
+Verified each directly against the real fetched page content (not
+assumed) before adding any registry entry, per this repo's "ground
+fixes in real confirmed data" convention. Full CI green (ruff check,
+ruff format, 1914 pytest passing, both alembic checks).
+
 ## `_sentence_case()` no longer capitalizes after a bare line-wrap `\n` [Done 2026-08-28]
 
 De-shouting an ALL-CAPS caption track used to treat every `\n` as a

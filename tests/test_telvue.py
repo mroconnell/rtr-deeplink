@@ -38,7 +38,11 @@ async def test_resolve_real_ashland_planning_commission_meeting():
     assert result.platform == "telvue"
     assert result.title == "Ashland Planning Commission"
     assert result.date == "2026-08-11"
-    assert result.jurisdiction == "Ashland"
+    # "Ashland" alone is nationally ambiguous; the state fill comes from
+    # _KNOWN_ORG_TOKEN_JURISDICTIONS (2026-08-28, BACKLOG_DONE.md) --
+    # this org's own real page carries "Rogue Valley Community
+    # Television," an unambiguous southern-Oregon regional identity.
+    assert result.jurisdiction == "Ashland, OR"
     assert result.video_url == (
         "https://telvuevod-secure.akamaized.net/vodhls/vod_player/218/media/1040134/1786772089/master.m3u8"
     )
@@ -127,6 +131,52 @@ async def test_resolve_unknown_org_token_has_no_jurisdiction():
         result = await TelvueAssetFinder().resolve(url)
 
     assert result.jurisdiction is None
+
+
+async def test_resolve_known_org_token_fills_missing_state_not_just_total_miss():
+    # 2026-08-28 widening: the registry used to only fire when the title
+    # guess found NOTHING at all (the Everett case above). This is the
+    # other real shape (Ashland): the guess already correctly finds a
+    # bare, nationally-ambiguous name -- the registry should fill in just
+    # the state, not be skipped because "jurisdiction" was already truthy.
+    url = (
+        "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1"
+    )
+    html = (
+        "<html><head><title>Ashland City Council Meeting 1-1-24</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Ashland City Council Meeting 1-1-24", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Ashland, OR"
+
+
+async def test_resolve_known_org_token_never_overrides_a_different_real_guess():
+    # Guard for the same widening: a real, DIFFERENT city correctly
+    # guessed under Ashland's own org token (e.g. a multi-city TelVue
+    # customer, or a mis-scoped token) must never be silently replaced by
+    # this registry's "Ashland, OR" -- only an exact bare-name match gets
+    # the state fill.
+    url = (
+        "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/2"
+    )
+    html = (
+        "<html><head><title>Medford City Council Meeting 1-1-24</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Medford City Council Meeting 1-1-24", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Medford"
 
 
 async def test_split_title_date_handles_missing_date():

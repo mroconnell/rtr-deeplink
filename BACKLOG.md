@@ -1705,13 +1705,16 @@ from a live check), but the Legistar calendar itself is still untried.
   a genuine interlocal-agreement mention, not a bleed. Dry run confirmed
   76 applied / 3 skipped before the real write; applied for real: 76
   rows (Dublin CA, Memphis normalizations, Clearwater, Metchosin, more),
-  spot-checked live. **Only remaining part**: 3 of the original 16
-  examples (Ashland, Milton, San Jose) still have no confirmed real
-  state after a live check of their source pages — Ashland sits on a
-  generic TelVue domain, San Jose's Granicus pages are silent on state,
-  Milton is uncertain between FL and eScribe's Ontario customer base.
-  Needs a positive text match or a second confirmed example before a
-  domain-registry entry can be added without guessing.
+  spot-checked live. **The 3-example residual (Ashland, Milton, San
+  Jose) is closed — see `BACKLOG_DONE.md`.** All three found a real
+  positive text match on a live re-check: Ashland's TelVue org page
+  carries "Rogue Valley Community Television" (unambiguous southern
+  Oregon), Milton's eScribe agenda header gives a real Ontario address
+  and postal code, San Jose's Granicus ViewPublisher page is titled
+  "CivicCenter Television Streaming Video" (that city's own real
+  municipal-channel branding). Domain-registry entries added for all
+  three; the two existing pages carrying the bare names are a
+  recompute-backfill candidate now.
 
 - **[NEEDS-AUDIT] Consolidated city-county repairs silently drop the
   state suffix instead of adding one — held back from the 2026-08-21
