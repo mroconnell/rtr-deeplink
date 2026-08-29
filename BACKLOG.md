@@ -54,8 +54,7 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
-  [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
@@ -320,20 +319,6 @@ video-only rather than going near it.
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
-
-- **[JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail frame cap and prune old frames (WO-60, 2026-08-25).** Render alert: rtr-deeplink-db exceeding 90% storage. Root cause: `meeting_page_thumbnails` stores up to 12 JPEG frames per page (30-120KB each), and with ~1200 pages in the archive that's 1.4GB+. Already fixed via three steps:
-  1. Lowered `MAX_FRAMES_PER_PAGE` from 12 to 3 (prevents future growth)
-  2. Created `scripts/cleanup_old_thumbnails.py` to delete old frames (keep 3 most recent per page, reclaims 300-500MB)
-  3. Run `VACUUM FULL ANALYZE` to return disk space to Postgres
-  
-  **What to do**: From Render shell (Archive service):
-  ```bash
-  cd /app
-  python scripts/cleanup_old_thumbnails.py --keep 3 --dry-run  # verify first
-  python scripts/cleanup_old_thumbnails.py --keep 3            # actually delete
-  psql -c 'VACUUM FULL ANALYZE;'                                # reclaim space
-  ```
-  See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
