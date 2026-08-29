@@ -104,10 +104,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (41)
+Platform & jurisdiction coverage  (39)
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-  `[LATER]` `[EXAMPLE]` Chicago, IL and Ann Arbor, MI: real Legistar
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
@@ -133,14 +132,13 @@ Platform & jurisdiction coverage  (41)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (14)
+  Adapter & platform gaps  (13)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
-    [JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
     [LATER] `[EASY]` PrimeGov's own better date/title still isn't
     [LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
@@ -1367,19 +1365,6 @@ actionability sections above.
   real Canadian place) before this silently mislabels a Granicus page
   the same way.
 
-- **`[LATER]` `[EXAMPLE]` Chicago, IL and Ann Arbor, MI: real Legistar
-  tenants found live, neither archived yet — needs a real resolve/ingest
-  pass, not done here.** Found 2026-08-28 finishing the small unfiltered
-  CDX sample below: `chicago.legistar.com` and `a2gov.legistar.com` (Ann
-  Arbor's real Legistar subdomain) both have real, live-crawled
-  `Video.aspx` history. `/api/jurisdictions?q=Chicago` on production
-  returns only "New Chicago, IN" and an RTA hit — the actual City of
-  Chicago isn't archived via Legistar yet; `q=Ann+Arbor` returns zero
-  matches at all. Not resolved or ingested here — needs the real
-  adapter run live against a current meeting URL first (this repo's
-  standing "test against a real URL first" rule), which a quick CDX
-  read alone doesn't satisfy.
-
 - **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   looks buildable, but the real media URL is still unconfirmed.**
   `proudcity.py`'s existing `_EXTERNAL_VIDEO_RE` correctly detects a
@@ -2181,18 +2166,6 @@ from a live check), but the Legistar calendar itself is still untried.
   — none resolved on a first domain guess, not tried further). Low
   priority — the adapter and known-domains list already cover the real
   yield from this round.
-
-- **[JUST-DO-IT] `vimeo.com/showcase/{id}/embed` isn't claimed by
-  `detect_platform()`, so a real Vimeo listing falls to the best-effort
-  pointer (found live 2026-08-22, WO-43 / #307).** `is_vimeo_listing()`
-  matches `/showcase/{id}` but not the `/embed` suffix. Confirmed case:
-  Birmingham MI
-  (`bhamgov.org/about_birmingham/city_government/watch_a_city_meeting.php`
-  → `vimeo.com/showcase/11598114/embed`) gets the tier-5 pointer instead
-  of Vimeo's `calendar_page` pick-list. Narrow fix: accept the optional
-  `/embed` suffix in that matcher. Worth checking whether the same
-  suffix appears on the non-showcase Vimeo shapes before widening
-  further.
 
 - **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
   channel fallback (2026-08-21) — three real ones, none blocking.**

@@ -167,6 +167,16 @@ def test_is_vimeo_listing_only_for_showcase_and_channel_roots():
     assert not is_vimeo_listing("https://vimeo.com/rocklandmaine")
 
 
+def test_is_vimeo_listing_accepts_trailing_embed_suffix():
+    # Real case (2026-08-28, BACKLOG.md): Birmingham MI's own watch-a-
+    # meeting page embeds vimeo.com/showcase/11598114/embed, which this
+    # matcher didn't claim before -- confirmed live to be the same real
+    # showcase (57/54-play City of Birmingham videos), just server-
+    # rendered without the bare URL's JSON-LD.
+    assert is_vimeo_listing("https://vimeo.com/showcase/11598114/embed")
+    assert is_vimeo_listing("https://vimeo.com/channels/coscouncil/embed")
+
+
 # --- Single-video resolves, against the three real oEmbed captures. ---
 
 
@@ -301,6 +311,26 @@ async def test_channel_listing_returns_calendar_candidates():
     assert any(c["url"] == "https://vimeo.com/1212025580" for c in candidates)
     ids = [parse_vimeo_video(c["url"])[0] for c in candidates]
     assert len(ids) == len(set(ids))
+
+
+async def test_embed_suffixed_showcase_fetches_the_unsuffixed_url():
+    # The /embed variant itself carries zero JSON-LD (confirmed live) --
+    # resolve() must fetch the bare showcase URL, not the /embed one, or
+    # this would regress to "couldn't read any meetings" despite
+    # is_vimeo_listing() now claiming the URL.
+    embed_url_in = "https://vimeo.com/showcase/crrma/embed"
+    bare_url = "https://vimeo.com/showcase/crrma"
+    routes = {
+        bare_url: FakeResponse(
+            status=200, text=load_fixture("vimeo", "showcase_crrma.html"), url=bare_url
+        )
+    }
+
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as excinfo:
+            await VimeoAssetFinder().resolve(embed_url_in)
+
+    assert len(excinfo.value.candidates) >= 10
 
 
 async def test_listing_with_no_readable_meetings_fails_honestly():
