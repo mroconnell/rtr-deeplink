@@ -197,6 +197,35 @@ async def test_resolve_known_org_token_never_overrides_a_different_real_guess():
     assert result.jurisdiction == "Medford"
 
 
+async def test_resolve_known_org_token_corrects_a_wrong_state_not_just_a_missing_one():
+    # Real bug, confirmed live 2026-08-29 via the Common Crawl sweep: the
+    # "fills missing state" widening above only fired when the guess had
+    # no comma at all. It missed the case where enrich_jurisdiction_text()
+    # resolves a bare, ambiguous name to the WRONG place instead of
+    # leaving it bare -- "Newmarket" (from the title) enriched to
+    # "Newmarket, ON" (a real, more prominent place of that name), when
+    # this channel's own real content (newmarketnh.gov's own "Zoning
+    # Board of Adjustment" page) confirms it's Newmarket, NH. The
+    # base-name-only comparison (ignoring whatever state/country
+    # enrichment guessed) corrects this the same way it fills a bare
+    # name, without needing a separate code path.
+    url = (
+        "https://videoplayer.telvue.com/player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP/media/1"
+    )
+    html = (
+        "<html><head><title>Newmarket Zoning Board Meeting</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Newmarket Zoning Board Meeting", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Newmarket, NH"
+
+
 async def test_split_title_date_handles_missing_date():
     title, date = TelvueAssetFinder._split_title_date("Untitled Meeting")
     assert title == "Untitled Meeting"

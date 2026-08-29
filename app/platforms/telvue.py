@@ -111,6 +111,31 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # so this is a state fill for an already-correct name, not an
     # override -- see resolve()'s own comment on that distinction.
     "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP": "Ashland, OR",
+    # BjiipOg61Ac-YpNM5RFZy8f49fIMR7Kq: title-only guess gets nothing --
+    # every real sample title is a bare "Town Board Meeting"/"Public
+    # Forum", no city prefix at all. Confirmed 2026-08-29 via the
+    # channel's own playlist, which includes one real, unambiguous entry:
+    # "Town of Riverhead NY Live Stream".
+    "BjiipOg61Ac-YpNM5RFZy8f49fIMR7Kq": "Riverhead, NY",
+    # MYHMRKXBbGFaah07vKkZ_-J4SThODdPq: title-only guess gets "Stoneham"
+    # with no state (real, well-known MA town, but this file's own guess
+    # never appends one on its own). Confirmed 2026-08-29 via the
+    # channel's own page directly stating "Stoneham, MA" -- a state fill
+    # for an already-correct name, same shape as the Ashland/OR entry
+    # above, not an override.
+    "MYHMRKXBbGFaah07vKkZ_-J4SThODdPq": "Stoneham, MA",
+    # XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP: real, genuine collision, not just
+    # a missing state. Title guess -> enrich_jurisdiction_text() resolves
+    # bare "Newmarket" to "Newmarket, ON" (Ontario) -- a real, larger
+    # place of that name, presumably preferred by whatever the enrichment
+    # lookup ranks first among same-named places. This channel is
+    # unambiguously Newmarket, NH (confirmed live 2026-08-29 via
+    # newmarketnh.gov's own "Zoning Board of Adjustment" page, matching
+    # this channel's real title "Newmarket Zoning Board of Adjustments
+    # Meeting"). The base-name-only match in resolve() (widened the same
+    # day for exactly this shape) catches this even though the guess
+    # already has a comma.
+    "XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP": "Newmarket, NH",
 }
 
 
@@ -163,20 +188,29 @@ class TelvueAssetFinder(AssetFinder):
             )
             if not jurisdiction:
                 jurisdiction = known_jurisdiction
-            elif known_jurisdiction and "," not in jurisdiction:
-                # Real gap found 2026-08-28 (BACKLOG_DONE.md): a bare,
+            elif known_jurisdiction:
+                # Real gap found 2026-08-28 (BACKLOG_DONE.md), widened
+                # 2026-08-29: originally only handled a *bare*,
                 # nationally-ambiguous name (e.g. "Ashland") the title
-                # guess + enrich_jurisdiction_text() already resolved
-                # correctly, just with no state to go with it -- the old
-                # `if not jurisdiction` gate only ever consulted this
-                # registry on a TOTAL guess failure, never a
-                # missing-state-only one. Only fills the state, and only
-                # when the guessed bare name matches this org's own
-                # registered name -- never lets one org's registry entry
-                # override a DIFFERENT city's real guess under the same
-                # token.
+                # guess had left with no state -- the old `if not
+                # jurisdiction` gate only ever consulted this registry on
+                # a TOTAL guess failure. That still missed the case where
+                # `enrich_jurisdiction_text()` resolves an ambiguous bare
+                # name to the WRONG state/country instead of no state at
+                # all -- confirmed live: "Newmarket" (bare, from the
+                # title) enriched to "Newmarket, ON" (Ontario, presumably
+                # the more populous/prominent real place of that name),
+                # when this specific channel's own page is unambiguously
+                # Newmarket, NH (newmarketnh.gov). Comparing only the
+                # base name (before any comma) on both sides -- ignoring
+                # whatever state enrichment guessed -- catches both
+                # shapes with one check, while the base-name-match
+                # requirement still guarantees this never lets one org's
+                # registry entry override a genuinely DIFFERENT city's
+                # real guess under the same token.
                 known_name = known_jurisdiction.split(",")[0].strip().lower()
-                if jurisdiction.strip().lower() == known_name:
+                guessed_name = jurisdiction.split(",")[0].strip().lower()
+                if guessed_name == known_name:
                     jurisdiction = known_jurisdiction
 
             video_url = entry.get("file")
