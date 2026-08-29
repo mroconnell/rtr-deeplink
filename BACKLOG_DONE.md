@@ -1,5 +1,71 @@
 # Backlog — done
 
+## Common Crawl full-corpus signature scan: 58 new jurisdiction pages across Hyland/OnBase, ChampDS, and TelVue — a domain-agnostic discovery method, not tenant-subdomain enumeration [Done 2026-08-29]
+
+Full writeup, methodology, and every real number lives in
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §36-38 (not
+in this repo, per this file's own convention of splitting business/
+research narrative from code-repo state). Short version for this repo:
+
+Every prior enumeration method this session (CDX pagination, CT-log
+harvest, DNS wildcard sweeps) is host-first — it can only ever confirm
+tenants of a vendor domain already known. Some platforms' media instead
+lives on a **fixed CDN host** with the tenant in the *path*
+(`archive-stream.granicus.com/.../{tenant}/...`) or spans **many
+unrelated domains sharing one URL path shape**
+(`{any-city-domain}/OnBaseAgendaOnline/Meetings/ViewMeeting?id=...` for
+Hyland/OnBase) — structurally invisible to host-first enumeration. A
+one-shot Common Crawl columnar-index query (`url ILIKE '%signature%'`,
+zero host restriction, DuckDB + httpfs against the public Parquet
+index, no AWS account needed) finds these directly. Confirmed genuinely
+new, real domains this way that no other method this session would
+have surfaced: `agenda.friscotexas.gov`, `meetings.muni.org`
+(Anchorage, AK), `amv.siouxfalls.gov`, `cityordinances.durhamnc.gov`,
+`onlinedocs.akronohio.gov`, plus real ChampDS tenants (`worcesterma`,
+`yubacoca`, `gwinnettcoga`, ...) and TelVue PEG channels resolving to
+real towns/counties (Pierre, SD; Stoneham, MA; Garfield County, CO).
+
+Every candidate was cross-checked against the real, current Archive
+(`GET /internal/pages/all-urls`) before touching it — not just
+`app.utils.jurisdiction_enrich._KNOWN_DOMAINS`, which only covers
+disambiguation overrides and missed several already-ingested ChampDS
+tenants. Genuinely-new candidates were then resolved and pushed through
+the real adapters (same `resolve()` + `POST /internal/ingest` path
+`scripts/bulk_ingest.py` uses), with a real "try another meeting on the
+same domain" retry (nearby numeric ids for Hyland/ChampDS; TelVue's
+scan had already found multiple real media ids per token, so those were
+tried directly). **Result: 58 real pages ingested, 0 failures** — 6
+with real transcripts, 38 video-only (queued into
+`scripts/tier3_auto_transcription_queue.txt` for the worker's
+auto-transcription feed), 14 real agenda-only pages. 14 genuine skips,
+traced to a real, already-documented ChampDS platform limitation (most
+of its customers' video is in a `VOD2` shape deliberately excluded from
+`video_url` because `securestream10.champds.com`'s `Referer` check 406s
+real playback — not a bug, see `champds.py`'s own docstring), not an
+adapter fault.
+
+Two real, confirmed jurisdiction-extraction bugs surfaced in
+`telvue.py`'s title-based guesser along the way (a leading date
+misparsed as the jurisdiction name; `Zoning Board` not matched ahead of
+bare `Board`) — logged as a live `BACKLOG.md` entry (`[EASY]`, WO-66)
+rather than fixed in the same pass, since fixing was out of scope for
+this sweep.
+
+**Residual work, not done this session** (left as live leads, not
+re-filed as separate `BACKLOG.md` entries since the full context lives
+in `ENUMERATION_METHODS.md` §38): a repeat of the scan with a refined
+signature list (add `connect.telvue.com`, found by accident during
+resolution — the same TelVue tenant content is also served from that
+second domain and the scan never searched for it; add
+`legistar1.com`, Legistar's separate per-tenant media-hosting domain);
+2 TelVue civic tokens the scan only found a `/home` hit for (no direct
+media URL) were left unresolved rather than guessing an id; the
+`jurisdiction_coverage.csv` cross-reference file was not updated for
+any of these 58 (most Hyland hosts resolve a jurisdiction straight from
+the hostname and don't need it the way the DNS-sweep-era platforms
+did; TelVue's jurisdiction field is real but inconsistently populated
+and would need a per-row pass, not a bulk write).
+
 ## `date_status.py`'s markupsafe import made lazy — the actual fragility behind the 9.3-hour worker outage [Done 2026-08-28]
 
 Closes the second (root-cause) half of "the worker's requirements can
