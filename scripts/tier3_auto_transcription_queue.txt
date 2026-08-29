@@ -1359,3 +1359,8 @@ https://calistoga.civicweb.net/Portal/MeetingInformation.aspx?Id=4467
 https://nngov.civicweb.net/Portal/MeetingInformation.aspx?Id=4074
 https://bellairetx.civicweb.net/Portal/MeetingInformation.aspx?Id=5829
 https://fostercity.primegov.com/Portal/Meeting?meetingTemplateId=6633
+https://chanhassen.granicus.com/player/clip/2061
+https://eastvale.granicus.com/player/clip/822
+https://lexingtonnc.granicus.com/player/clip/685
+https://richmondtx.granicus.com/player/clip/49
+https://stlouispark.granicus.com/player/clip/473

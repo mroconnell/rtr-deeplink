@@ -1756,6 +1756,22 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # 2026-08-24/28: slug frozen from ClerkBase's boilerplate page title
     # at first resolve, not the meeting's own -- see BACKLOG_DONE.md.
     "welcome-to-clerkbase": "yellow-springs-oh-2022-02-07-february-7-2022-regular-village-council-meeting",
+    # 2026-08-29: granicus.py's Census-validated jurisdiction extraction
+    # chain (page-text phrasing, reversed "X County" pattern, then a
+    # humanized subdomain fallback) failed all three tiers for
+    # stlouispark.granicus.com, freezing the literal "Unknown
+    # Jurisdiction" placeholder into the slug -- see BACKLOG.md's
+    # matching entry (real extraction gap, not fixed in the adapter
+    # itself this pass) and BACKLOG_DONE.md's GovAccess fuzzy-match
+    # entry for how this page was found.
+    "unknown-jurisdiction-st-louis-park-planning-commission-meeting-feb-7-2024": "st-louis-park-mn-st-louis-park-planning-commission-meeting-feb-7-2024",
+    # 2026-08-29: this page's own stored jurisdiction was already correct
+    # ("Albemarle County, VA") from whenever it was first ingested -- only
+    # the slug carried the wrong label, frozen from the domain-guess era
+    # that mistook albemarle.granicus.com for Albemarle, NC's tenant
+    # (it's actually Albemarle County, VA's -- see BACKLOG.md's Granicus
+    # GovAccess entry). No data was wrong, just a bad-looking URL.
+    "albemarle-nc-2026-03-04-board-of-supervisors-on-2026-03-04-1-00-pm-regular-first": "albemarle-county-va-2026-03-04-board-of-supervisors-on-2026-03-04-1-00-pm-regula",
 }
 
 
