@@ -1339,20 +1339,29 @@ actionability sections above.
 
 - **`[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   resolve a same-named-in-two-countries subdomain to the wrong country's
-  real place.** Found 2026-08-28 in the eScribe wildcard-free-sweep
-  batch (`BACKLOG_DONE.md`, `ENUMERATION_METHODS.md` §35): `pub-
+  real place — confirmed once on eScribe, no second Granicus case found
+  on a real live spot-check (2026-08-28).** Original find: `pub-
   richmond.escribemeetings.com` resolved to "Richmond, CA" when the real
-  customer is almost certainly Richmond, BC (matched under the Canadian
-  half of a census-style place sweep; the rest of that tenant's platform
-  batch skewed heavily Canadian). This function is shared by
-  `escribe.py` and `granicus.py`'s `_humanize_subdomain()` — **not
-  checked whether Granicus resolves have the same failure shape**, only
-  confirmed for the one eScribe case (corrected by hand before ingest,
-  not fixed at the source). Worth auditing Granicus jurisdiction output
-  for other US/Canada same-name collisions (Richmond, London, Windsor,
-  Cambridge, Victoria, and similar names all have both a real US and a
-  real Canadian place) before this silently mislabels a Granicus page
-  the same way.
+  customer is almost certainly Richmond, BC (`ENUMERATION_METHODS.md`
+  §35). This function is shared by `granicus.py`'s
+  `_humanize_subdomain()`, so the same failure shape is structurally
+  possible there — checked live against the 5 candidate names named
+  here (Richmond, London, Windsor, Cambridge, Victoria): only
+  `richmond.granicus.com` and `victoria.granicus.com` are real,
+  registered tenants (the other 3 404); `richmond.granicus.com` exposes
+  no public content page to check further (root redirects straight to
+  the internal MediaManager staff login); `victoria.granicus.com`'s real
+  content page identifies itself as **"Victoria, MN"** in its own page
+  title — not a same-name collision in practice, since the real
+  extraction path would find that title text before ever falling back to
+  `_humanize_subdomain()`'s subdomain guess (confirmed:
+  `_humanize_subdomain()` alone returns bare `'Victoria'`, no state —
+  the page's own title is what actually disambiguates it, upstream of
+  this function). **No second live Granicus collision found this
+  session** — leaving open rather than building speculative
+  disambiguation logic with only one confirmed case behind it, per this
+  repo's own convention. Worth re-checking if a second real example
+  turns up during a future Granicus enumeration pass.
 
 - **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   looks buildable, but the real media URL is still unconfirmed.**
