@@ -1,5 +1,79 @@
 # Backlog — done
 
+## CI guard for the worker's real import graph, defense-in-depth on the 2026-08-24 markupsafe outage fix [Done 2026-08-29]
+
+`scripts/check_worker_import_graph.py` + `tests/test_worker_import_graph.py`
+(the latter wired into the normal `pytest` gate, so a regression fails
+CI, not just worker startup). Walks the real reachable import graph from
+`worker/main.py` and asserts every third-party import it needs is
+declared in `worker/requirements.txt`.
+
+**Graph traversal deliberately isn't module-level-only.**
+`app/platforms/__init__.py`'s `register_all_finders()` imports every
+platform adapter from inside its own function body on purpose (its own
+docstring explains why), and `worker/main.py`'s `run_forever()` calls it
+unconditionally on every real run — so the BFS follows *any* local
+`app.`/`archive.`/`worker.` import found anywhere in a file, not just at
+module top level, or it would never reach a single adapter file.
+
+**Two real false-positive/false-negative traps found live while building
+this, both worth recording since the entry itself only anticipated the
+first:**
+
+1. **`try/except ImportError`-guarded imports** (the one case the
+   original entry called out — `headless_browser.py`'s playwright import,
+   deliberately absent from `worker/requirements.txt`) — handled by
+   walking each file's own try/except structure and excluding anything
+   inside a handler that catches `ImportError`/`ModuleNotFoundError`/
+   `Exception`. `if TYPE_CHECKING:` blocks (never execute at runtime at
+   all — `archive/utils/date_status.py`'s own markupsafe import, from the
+   2026-08-24 fix this is defense-in-depth for) get the same treatment.
+
+2. **A nested import's real reachability isn't decidable from syntax
+   alone, and naive fixes go wrong in both directions.** `worker/
+   transcription_engine.py`'s `GeminiTranscriptionEngine.__init__` has its
+   own `from google import genai` — real code, never called
+   (`build_default_engine()` always returns `FasterWhisperEngine()`, never
+   Gemini — a real, existing, unrelated standing decision, not something
+   this work changed). A first version restricted to true module-level
+   imports to avoid flagging this as a false positive — but that also
+   silently stopped verifying two real, always-executed dependencies
+   nested the same way: `worker/main.py`'s own `_init_sentry()` (calls
+   `import sentry_sdk` inside a function invoked unconditionally right
+   after its own definition) and `FasterWhisperEngine.__init__`'s `from
+   faster_whisper import WhisperModel` (real, used by the worker's actual
+   default engine). Fixed by tracking, across the whole reachable graph,
+   which plain function names and class names are ever directly called
+   (`name(...)` — the same AST shape for a function call and a class
+   instantiation), and treating a nested import as required only if its
+   enclosing function is called directly, or its enclosing class's
+   `__init__` belongs to a class that's ever instantiated. This correctly
+   requires `sentry_sdk`/`faster_whisper` (both already declared, so no
+   failure) while still excluding the dead Gemini import.
+   **A second bug surfaced building that fix**: collecting `obj.attr(...)`
+   calls by bare attribute name (to be more inclusive) put dunder names
+   like `__init__` into the "called" set the instant *any* class anywhere
+   calls `super().__init__(...)` — which every class here does — which
+   made every class's own `__init__` read as "reachable" regardless of
+   whether the class itself was ever instantiated, silently defeating the
+   Gemini exclusion again. Fixed by only counting `Name`-based calls
+   (`foo(...)`), never `Attribute`-based ones (`obj.foo(...)`) — both bugs
+   have their own regression test in `tests/test_worker_import_graph.py`
+   (`test_dead_init_is_not_required_but_a_called_class_init_is`,
+   `test_collect_called_names_ignores_attribute_calls`).
+
+This is a shallow, name-based approximation, not real call-graph/type
+analysis — documented in the script's own module docstring as capable of
+being fooled by a method invoked only through an attribute call on an
+object whose type it can't resolve. No such pattern exists anywhere in
+this codebase today (checked by hand against every nested import the
+graph walk turns up, not assumed). Verified the guard actually catches
+real regressions, not just passes today by luck: reproduced the exact
+2026-08-24 incident shape (a fresh module-scope import added to
+`archive/utils/date_status.py`) and separately removed `sentry-sdk` from
+`worker/requirements.txt` — both correctly failed the check, then
+reverted before committing. All four CI gates clean; no schema touched.
+
 ## 3 more silent-exception sites logged: headless_browser.py, proudcity.py, townhallstreams.py [Done 2026-08-29]
 
 Residual from the 2026-08-28 22-adapter exception-logging sweep: an
