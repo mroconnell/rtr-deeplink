@@ -1,5 +1,45 @@
 # Backlog — done
 
+## Legistar now supplies `meeting_body` on all three resolve paths [Done 2026-08-28]
+
+Closes "Give `meeting_body` an adapter-supplied path" — but that entry
+turned out to be stale before any of "the work" it described was even
+started: re-reading the code before acting (per this repo's "verify
+before acting" rule) found **half the described work already shipped**,
+undocumented, on 2026-08-23 (PR #347, WO-47) — a day after the entry
+itself was written and never reconciled against it:
+
+- `ResolvedMeeting.meeting_body` already exists (`app/platforms/
+  models.py:48`), contra the entry's "no such field."
+- `granicus.py` already sets it from its RSS channel title (`app/
+  platforms/granicus.py:928`), contra "no adapter supplies it."
+- `archive/db/crud.py` already has the precedence logic wired on both
+  the create and re-ingest paths (`payload.get("meeting_body") or
+  jx_result.meeting_body`, with its own comment citing Granicus by name).
+
+**What was genuinely still missing**: only `legistar.py`, the entry's
+own stated primary target. Its `_extract_page_meeting_info()` already
+parses the real governing-body name off the page's own `<title>`
+("{Jurisdiction} - Meeting of {body} on {date} at {time}") — it was
+just stored under the `"title"` key and used only as a *title* fallback
+for a bad delegated-platform title, never surfaced as `meeting_body` at
+all. Added a `"body"` key alongside the existing `"title"` one (same
+value, so nothing about the existing title-fallback behavior changes),
+and wired `resolved.meeting_body` into all three of `resolve()`'s real
+return paths — the primary `a.videolink` delegation, `_try_fallback_
+video_link()`'s find-a-different-platform-link delegation, and
+`_try_known_channel_video()`'s YouTube-channel fallback — matching each
+site's own existing precedence style (truthy-gated `or` on the first
+two, unconditional "page wins outright" on the third, consistent with
+how `agenda_link`/`jurisdiction`/`date` already behave at each site).
+
+Updated 3 existing tests whose exact-dict assertions on
+`_extract_page_meeting_info()`'s return shape needed the new `"body"`
+key; added one new end-to-end test confirming a real delegated resolve
+(Legistar → Granicus) surfaces `result.meeting_body == "City Council"`.
+Full CI green (ruff check, ruff format, 1928 pytest passing, both
+alembic checks).
+
 ## 22 platform adapters now log exception/HTTP-failure fetches that used to be silent [Done 2026-08-28]
 
 Closes the "32 places across 23 adapters swallow an exception" entry.

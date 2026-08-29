@@ -56,14 +56,13 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
-  [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
   `[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
@@ -103,10 +102,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (38)
+Platform & jurisdiction coverage  (39)
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
+  `[NEEDS-AUDIT]` Cablecast never sets `external_id`, so the same real
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
@@ -546,30 +546,6 @@ so that work reads together.
     nothing ranks chips by it yet — there is no data until the table
     fills. Revisit once it has real volume.
 
-- **[JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
-  none today.** Decided 2026-08-22, out of the Legistar title question
-  (now a **Standing decision** — see `BACKLOG_DONE.md`'s archive: the
-  delegated title winning is correct).
-  The government body's own name *is* worth capturing; it just belongs
-  in `meeting_body`, not in the title.
-  **Confirmed by reading the code, not assumed:** `meeting_body` exists
-  only as an Archive column (`archive/db/models.py:65`) and is populated
-  from exactly one source — `jx_result.meeting_body`
-  (`archive/db/crud.py:450`, `:496`), the entity name split off a
-  leading prefix by jurisdiction extraction. **`grep -rln "meeting_body"
-  app/platforms/*.py` returns nothing**: no adapter supplies it, and
-  `ResolvedMeeting` has no such field.
-  **The work**: add `meeting_body` to `ResolvedMeeting`; have an
-  adapter-supplied value take **precedence over** the entity-prefix
-  split (which stays as the fallback for adapters that don't set it);
-  populate it in `legistar.py` on **all** paths, including the
-  delegated-video path where the title comes from elsewhere. **Granicus
-  follows as the second adapter** — its RSS carries a real body name.
-  **Note the ordering benefit**: this is also the precondition for the
-  existing `[IMPROVEMENT-ROUND]` entries on auditing per-adapter
-  `meeting_body` coverage and on using `meeting_body` in search
-  facets — both are currently reasoning about a field that only
-  jurisdiction extraction ever writes.
 - **`[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
   needs its jurisdiction resolved before it can be reslugged.** Residual
   from a batch of 5 frozen-fallback-slug pages found in the WO-63 Hyland
@@ -1370,6 +1346,62 @@ actionability sections above.
   step is real browser devtools network inspection (or a proxy) against
   a `boxcast.tv/view/...` page while it plays, to find that URL, before
   writing a `boxcast.py` adapter.
+
+- **`[NEEDS-AUDIT]` Cablecast never sets `external_id`, so the same real
+  meeting can land as 2-3 separate `MeetingPage` rows when its show is
+  reachable at more than one literal URL — confirmed live 2026-08-29 on
+  Coralville, IA (show `2907`).** Found while investigating a user report
+  of 3 near-identical "Coralville City Council Meeting (Aug. 11, 2026)"
+  rows on the `/j/coralville-ia` hub. All three really do point at the
+  same show, confirmed via each page's own `source_url`/`video_url`:
+  `http://coralvision.cablecast.tv:8080/internetchannel/show/2907?site=1`
+  (lastmod 2026-08-18, base slug, old "/internetchannel" template — the
+  legacy hostname/template this adapter's own module docstring already
+  documents for satellitebeach),
+  `https://cityofcoralvilleiowa.cablecast.tv/show/2907` (lastmod
+  2026-08-18, `-b9f57c` slug, new bare `/show/{id}` template), and
+  `http://cityofcoralvilleiowa.cablecast.tv/show/2907?site=1` (lastmod
+  2026-08-19, `-a8dfeb` slug — same new host as the second, differing
+  only by scheme+`?site=1`). The `-a8dfeb`/`-b9f57c` suffixes are
+  `_unique_slug()`'s own collision-retry hex, i.e. the direct fingerprint
+  of `_find_or_create_page()` failing to match an already-existing page.
+  Likely mechanism, not confirmed from a ledger (no per-ingest audit
+  trail exists — see `CLAUDE.md`'s "how were these added" gap below):
+  the same large Cablecast enumeration pass that produced the ~104
+  no-jurisdiction Cablecast rows and ~35-tenant HLS-seek cluster
+  elsewhere in this file likely hit Coralville's Cablecast portal under
+  both its pre- and post-migration hostname/template, each treated as an
+  unrelated URL and separately pushed — not one person manually
+  re-pasting the same link three times.
+  **Root cause**: `CablecastAssetFinder.resolve()`
+  (`app/platforms/cablecast.py`) returns `source_url=url` (the raw
+  pasted/fetched URL) and never sets `ResolvedMeeting.external_id` at
+  all, so `_find_existing_page()` (`archive/db/crud.py`) has no
+  platform-level identity to key on and falls straight through to exact
+  `source_url_normalized` string equality — which `normalize_url()`
+  deliberately never collapses across different hosts/ports (correctly
+  so, generically), and which still doesn't collapse a same-host,
+  same-show http-vs-https-plus-`?site=1` pair the way it would for most
+  other adapters, because nothing establishes "these three URLs are the
+  same show" independent of the literal string.
+  **Fix shape, not built**: host-namespace `external_id` in
+  `cablecast.py` (e.g. `f"{urlparse(url).netloc.lower()}:{show_id}"`,
+  same pattern `crud.py`'s own `_find_existing_page()` docstring already
+  prescribes for CivicClerk/Granicus) would merge the second and third
+  duplicates above (same host, different scheme/query) into one, but
+  **not** the first-vs-second (genuinely different hosts from a real
+  domain/template migration) — that half needs either a confirmed
+  domain-alias table entry (old hostname → new hostname, once a second
+  migrated Cablecast tenant confirms the pattern isn't a one-off) or a
+  manual merge. **Cleanup for these 3 specific rows, not yet done**: no
+  page-merge/dedupe script exists in `scripts/`; the existing
+  `POST /internal/admin/delete-pages` endpoint (`archive/main.py`) can
+  remove the two duplicates once the best of the three (the one with the
+  most complete transcript/segments) is picked as canonical, but nobody
+  has done that pick-and-delete pass yet. Worth checking whether any
+  other Cablecast tenant besides Coralville has both an old- and
+  new-template hostname on record before writing the domain-alias table,
+  the same way any new platform quirk gets scoped here.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
