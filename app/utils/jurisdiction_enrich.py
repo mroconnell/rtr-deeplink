@@ -472,6 +472,12 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "sandiego.granicus.com": KnownJurisdiction("San Diego", "city", "CA"),
     "berkeley.granicus.com": KnownJurisdiction("Berkeley", "city", "CA"),
     "boston.granicus.com": KnownJurisdiction("Boston", "city", "MA"),
+    # "San Jose" is also a real city in Costa Rica and the Philippines, so
+    # a bare name lookup stays ambiguous by design here too -- confirmed
+    # 2026-08-28 (this same tenant's real ViewPublisher listing page is
+    # titled "CivicCenter Television Streaming Video," San Jose, CA's own
+    # real municipal-channel branding).
+    "sanjose.granicus.com": KnownJurisdiction("San Jose", "city", "CA"),
     # Legistar, not Granicus -- Baltimore's own page is the jurisdiction
     # source here (see legistar.py's _extract_page_meeting_info()), not a
     # delegated platform's domain.
@@ -541,6 +547,15 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "pub-cmsd.escribemeetings.com": KnownJurisdiction(
         "Costa Mesa Sanitary District", "district", "CA", strength="authoritative"
     ),
+    # "Milton" is also real and much smaller in FL -- confirmed 2026-08-28
+    # via this tenant's own real agenda page: "150 Mary Street, Milton, ON
+    # L9T 6Z5", "The Corporation of the Town of Milton", real Ontario
+    # provincial postal code. Typed "city" (not "town") so
+    # resolve_state()'s exact type match actually fires -- see
+    # KnownJurisdiction.type's own docstring: that field only ever
+    # distinguishes "which lookup table" (city vs. county), not a
+    # government's literal legal designation.
+    "pub-milton.escribemeetings.com": KnownJurisdiction("Milton", "city", "ON"),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
     # text (Maricopa/Tucson have none at all; Sacramento's happens to sit
@@ -1202,7 +1217,7 @@ def _ends_with_known_entity_suffix(tail: str) -> bool:
 
 
 # Residual gap fix #3, 2026-08-18: a closed, curated stoplist of confirmed
-# single trailing junk words -- the inverse of `_ENTITY_TYPE_SUFFIX_WORDS`
+# trailing junk words -- the inverse of `_ENTITY_TYPE_SUFFIX_WORDS`
 # above (that one PROTECTS a short tail from being trimmed; this one
 # AUTHORIZES trimming a short tail that `_MIN_BLEED_WORD_RUN`'s word-count
 # signal alone can't distinguish from a legitimate short suffix -- see its
@@ -1213,7 +1228,27 @@ def _ends_with_known_entity_suffix(tail: str) -> bool:
 # unlike a general 1-2-word-tail rule (already rejected by
 # `_MIN_BLEED_WORD_RUN`'s own comment -- it would also wrongly trim real
 # long names down to a single word) it can't make that same mistake.
-_KNOWN_JUNK_TAIL_WORDS = {"attachments", "meeting"}
+#
+# Widened 2026-08-28 from "the WHOLE tail is exactly one junk word" to
+# "the tail's LAST word is a known junk word" (still gated to tails under
+# `_MIN_BLEED_WORD_RUN`, and still the same closed stoplist -- see
+# `_looks_like_bleed()`) after two real, independently-confirmed cases hit
+# the same gap in the old narrower form: `Snoqualmie Washington Meetings`
+# (`/j/snoqualmie-washington-meetings`, tail "Washington Meetings") and
+# PrimeGov's `lasvegas.primegov.com` name-tail overrun (`_extract_
+# jurisdiction()` in `primegov.py` returning "City of Las Vegas Internet
+# Address" from a real page footer, "City of Las Vegas Internet Address:
+# www.lasvegasnevada.gov" -- tail "Internet Address"). Both tails are 2
+# words, below the word-count floor, and neither the old 1-word check nor
+# `_ends_with_known_entity_suffix()` (only consulted at 4+ words) covered
+# them -- `_trim_repair()` found the correct literal prefix
+# ("Snoqualmie"/"City of Las Vegas") both times and declined anyway
+# because the tail didn't look like bleed. "meetings"/"address" added as
+# new grounded entries; the widened last-word check doesn't loosen WHICH
+# words authorize a trim, so the existing "Town of Castle Rock
+# Authorizing"/real-long-name guard tests are unaffected -- "authorizing"/
+# "district"/"authority"/etc. still aren't on this list.
+_KNOWN_JUNK_TAIL_WORDS = {"attachments", "meeting", "meetings", "address"}
 
 
 def _looks_like_bleed(tail: str) -> bool:
@@ -1274,7 +1309,7 @@ def _looks_like_bleed(tail: str) -> bool:
     if any(w[0].islower() for w in words if w):
         return True
     if len(words) < _MIN_BLEED_WORD_RUN:
-        if len(words) == 1 and words[0].strip(".,;:").lower() in _KNOWN_JUNK_TAIL_WORDS:
+        if words[-1].strip(".,;:").lower() in _KNOWN_JUNK_TAIL_WORDS:
             return True
         return False
     return not _ends_with_known_entity_suffix(tail)

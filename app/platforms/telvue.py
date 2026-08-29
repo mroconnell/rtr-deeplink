@@ -85,6 +85,15 @@ _ORG_TOKEN_RE = re.compile(r"/player/([^/]+)/")
 # same organization.
 _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     "cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb": "Everett, MA",
+    # w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP: "Ashland" is nationally ambiguous
+    # (also real in OR/WI/OH/KY/VA and more), so the title guess alone
+    # ("Ashland Planning Commission") never gets a state -- confirmed
+    # 2026-08-28 via this org's own real `id="org-logo"` alt text, "Rogue
+    # Valley Community Television (RVTV)". Rogue Valley is a real,
+    # unambiguous southern-Oregon region (Medford/Ashland/Grants Pass),
+    # so this is a state fill for an already-correct name, not an
+    # override -- see resolve()'s own comment on that distinction.
+    "w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP": "Ashland, OR",
 }
 
 
@@ -131,10 +140,27 @@ class TelvueAssetFinder(AssetFinder):
             jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
                 jurisdiction, netloc=None, page_text=html
             )
+            org_token = _org_token_from_url(final_url)
+            known_jurisdiction = (
+                _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token) if org_token else None
+            )
             if not jurisdiction:
-                org_token = _org_token_from_url(final_url)
-                if org_token:
-                    jurisdiction = _KNOWN_ORG_TOKEN_JURISDICTIONS.get(org_token)
+                jurisdiction = known_jurisdiction
+            elif known_jurisdiction and "," not in jurisdiction:
+                # Real gap found 2026-08-28 (BACKLOG_DONE.md): a bare,
+                # nationally-ambiguous name (e.g. "Ashland") the title
+                # guess + enrich_jurisdiction_text() already resolved
+                # correctly, just with no state to go with it -- the old
+                # `if not jurisdiction` gate only ever consulted this
+                # registry on a TOTAL guess failure, never a
+                # missing-state-only one. Only fills the state, and only
+                # when the guessed bare name matches this org's own
+                # registered name -- never lets one org's registry entry
+                # override a DIFFERENT city's real guess under the same
+                # token.
+                known_name = known_jurisdiction.split(",")[0].strip().lower()
+                if jurisdiction.strip().lower() == known_name:
+                    jurisdiction = known_jurisdiction
 
             video_url = entry.get("file")
             video_format = "m3u8" if video_url and ".m3u8" in video_url else None

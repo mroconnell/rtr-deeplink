@@ -913,6 +913,31 @@ def test_finalize_jurisdiction_known_junk_tail_words_are_repaired():
     assert result.confidence == "repaired"
 
 
+def test_finalize_jurisdiction_known_junk_tail_words_repair_a_multi_word_tail_too():
+    # Widened 2026-08-28: the junk-tail-word check used to require the
+    # WHOLE discarded tail to be exactly one junk word; these two real,
+    # independently-confirmed cases have a 2-word tail that only ENDS in
+    # a known junk word, which the old narrower check missed entirely.
+    #
+    # Real, confirmed-live: /j/snoqualmie-washington-meetings' stored raw
+    # value. Tail "Washington Meetings" -- "Washington" alone doesn't
+    # authorize a trim, but the tail ending in "Meetings" does.
+    result = je.finalize_jurisdiction("Snoqualmie Washington Meetings")
+    assert result.jurisdiction == "Snoqualmie, WA"
+    assert result.confidence == "repaired"
+
+    # Real, confirmed-live: PrimeGov's lasvegas.primegov.com/Portal/Meeting
+    # ?meetingTemplateId=43332 -- primegov.py's own _extract_jurisdiction()
+    # returns this exact string from a page footer ("City of Las Vegas
+    # Internet Address: www.lasvegasnevada.gov"), the "name-tail overrun"
+    # BACKLOG.md documents. Tail "Internet Address" ends in "Address".
+    result = je.finalize_jurisdiction(
+        "City of Las Vegas Internet Address", netloc="lasvegas.primegov.com"
+    )
+    assert result.jurisdiction == "City of Las Vegas"
+    assert result.confidence == "repaired"
+
+
 # --- Second-pass fixes, 2026-08-17: `_trim_repair()` no longer falls
 # through past a literal-matching prefix, a real consolidated-government
 # formatting gap, and a positive-evidence entity-type-suffix allowlist

@@ -676,9 +676,19 @@ def normalize_shouting_caption(cues: List[Dict[str, Any]]) -> None:
 
 
 def _sentence_case(text: str) -> str:
+    """De-shouts an ALL-CAPS track by capitalizing only real sentence
+    starts. A bare `\\n` is deliberately NOT a boundary on its own -- a
+    two-line cue's line wrap is mid-sentence, not a new sentence (real
+    confirmed case: Antioch CA CivicClerk 2026-03-10, where treating
+    every `\\n` as a boundary produced "...our regular city Council
+    meeting of march the 10th, 2026." -- "Council" wrongly capitalized
+    because a line happened to wrap right before it). A real
+    punctuation-then-newline boundary ("Hello.\\nGood evening") is still
+    caught: `\\s+` after `[.!?]` already spans a bare `\\n`, so nothing
+    is lost by dropping the standalone `\\n` alternative."""
     text = text.lower()
     text = re.sub(
-        r"(^|[.!?]\s+|\n)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text
+        r"(^|[.!?]\s+)([a-z])", lambda m: m.group(1) + m.group(2).upper(), text
     )
     text = re.sub(r"\bi\b", "I", text)
     return text

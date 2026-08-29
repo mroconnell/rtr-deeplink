@@ -1,5 +1,139 @@
 # Backlog — done
 
+## Ashland/Milton/San Jose's missing-state residual closed with real positive matches [Done 2026-08-28]
+
+Closed the 3-example residual left by the WO-22 bare/state-suffixed
+jurisdiction fix by actually re-checking each real source page live
+before giving up on it, rather than leaving it blocked on "needs a
+positive text match" indefinitely.
+
+**Ashland (TelVue, org token `w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP`)**: the
+page's own `id="org-logo" alt="Rogue Valley Community Television (RVTV)
+- Watch RVTV - organization logo"` is unambiguous — Rogue Valley is a
+real, specific southern-Oregon region (Medford/Ashland/Grants Pass), not
+a generic name. Added to `_KNOWN_ORG_TOKEN_JURISDICTIONS` — but the
+existing registry could only ever fully REPLACE a jurisdiction on a
+total guess failure (`if not jurisdiction`), and Ashland's title guess
+already correctly returns bare `"Ashland"` (just missing a state, since
+"Ashland" is nationally ambiguous). Widened `telvue.py`'s `resolve()` to
+also fill in just the state when the bare guessed name matches the
+registry's own name exactly — guarded so it can never override a
+*different* real city's guess under the same org token (a real risk:
+one TelVue org token can plausibly serve multiple municipalities). 3 new
+tests, including one that a mismatched name (`"Medford"`) is correctly
+left alone.
+
+**Milton (eScribe, `pub-milton.escribemeetings.com`)**: the real agenda
+page gives "150 Mary Street, Milton, ON L9T 6Z5" and "The Corporation of
+the Town of Milton" — a real Ontario address and postal code, not
+Milton, FL. Added to `_KNOWN_DOMAINS` (typed `"city"`, not `"town"` —
+`resolve_state()`'s domain match requires an exact type match against
+only `"city"`/`"county"`, so a `"town"`-typed entry would silently never
+fire via this path; see `KnownJurisdiction.type`'s own docstring for why
+that field is a lookup-table selector, not the government's literal
+designation).
+
+**San Jose (Granicus, `sanjose.granicus.com`)**: the tenant's real
+ViewPublisher listing page is titled "CivicCenter Television Streaming
+Video" — San Jose, CA's own real municipal-channel branding, not a
+generic Granicus template string. Added to `_KNOWN_DOMAINS` alongside
+the existing Alexandria/Sacramento/Long Beach/etc. entries in the same
+block.
+
+Verified each directly against the real fetched page content (not
+assumed) before adding any registry entry, per this repo's "ground
+fixes in real confirmed data" convention. Full CI green (ruff check,
+ruff format, 1914 pytest passing, both alembic checks).
+
+## `_sentence_case()` no longer capitalizes after a bare line-wrap `\n` [Done 2026-08-28]
+
+De-shouting an ALL-CAPS caption track used to treat every `\n` as a
+sentence boundary, so a two-line cue's line wrap produced mid-sentence
+capitals — real confirmed case: Antioch CA CivicClerk 2026-03-10,
+`"...Welcome to our regular city Council meeting of march the 10th,
+2026."` ("Council" wrongly capitalized because the raw ALL-CAPS cue
+wrapped "CITY" / "COUNCIL MEETING..." across two lines).
+
+**Fix**: dropped the bare `\n` alternative from `_sentence_case()`'s
+capitalization regex, leaving `^`/`[.!?]\s+` as the only real sentence
+boundaries. Nothing is lost by dropping it: `\s+` after `[.!?]` already
+spans a bare `\n`, so a genuine punctuation-then-newline boundary
+("Hello.\nGood evening") still capitalizes correctly — confirmed with a
+direct test.
+
+**Real regression this touched, caught by the full suite, not
+by inspection**: `tests/test_vtt_parser.py`'s roll-up-dedup test for
+this exact Antioch track had frozen the OLD buggy casing as its expected
+value, since that test's actual purpose was pinning that
+`dedupe_rollup_cues()`'s case-folded comparison correctly reconstructs
+the roll-up despite the casing mismatch between cues. With the casing
+bug fixed at the source, both cues now read `"councilmember to move
+number"` identically (correctly lowercase, mid-sentence) instead of
+`"Councilmember..."` / `"councilmember..."` — the dedup still produces
+the same 61 segments with no duplicates, so the underlying roll-up logic
+was unaffected; only the test's frozen literal strings needed updating
+to the corrected casing. Its own comment now explains the case-fold
+stays in place as a safety net for real case drift from other sources,
+even though this specific fixture no longer exercises it.
+
+New direct test: `test_sentence_case_does_not_capitalize_after_a_bare_line_wrap`.
+Full CI green (ruff check, ruff format, 1912 pytest passing, both
+alembic checks).
+
+## `_looks_like_bleed()` widened to catch a short tail that only ENDS in a junk word [Done 2026-08-28]
+
+Fixes two independent, real, confirmed jurisdiction-extraction bugs with
+one shared-code change: `/j/snoqualmie-washington-meetings` (stored raw
+value `"Snoqualmie Washington Meetings"`) and PrimeGov's
+`lasvegas.primegov.com` name-tail overrun (`_extract_jurisdiction()`
+returning `"City of Las Vegas Internet Address"` from a real page
+footer — see `BACKLOG.md`'s PrimeGov entry for that half).
+
+**Root cause, precisely**: `_trim_repair()`'s longest-valid-prefix
+search correctly found the right literal answer both times
+("Snoqualmie", "City of Las Vegas") and then declined to trim anyway,
+because `_looks_like_bleed()`'s `_KNOWN_JUNK_TAIL_WORDS` check only ever
+fired when the ENTIRE discarded tail was exactly one junk word
+(`len(words) == 1`). Both real tails are 2 words ("Washington Meetings",
+"Internet Address") that merely END in a word already on that closed,
+curated stoplist — below `_MIN_BLEED_WORD_RUN` (4), so the positive-
+evidence entity-suffix check never got a chance to run either, and the
+tail fell through to "not bleed" by default, which — combined with
+`_trim_repair()`'s own "never fall through past a literal match" rule —
+meant the correct trim was found and then thrown away.
+
+**Fix**: widened the check from "the tail IS one junk word" to "the
+tail's LAST word is a known junk word," still gated to short
+(< `_MIN_BLEED_WORD_RUN`) tails and still the same closed stoplist —
+this doesn't loosen WHICH words authorize a trim, only how much of the
+tail is allowed to precede that word. Added two new grounded entries,
+"meetings" and "address", one per real case. Verified this doesn't
+reopen the previously-rejected "general short-tail rule" (`BACKLOG.md`'s
+own history on `_MIN_BLEED_WORD_RUN` explicitly rejected lowering the
+threshold generally, since it wrongly trims real long names like "Lake
+Washington School District" down to "Lake") — that rejection was about
+loosening WHICH tails count as bleed broadly; this change only extends
+an already-narrow, per-word-grounded exception, and none of the 4 real
+long names `BACKLOG.md`/tests protect end in "meetings" or "address".
+
+**Verified against real data, both directions**: `finalize_jurisdiction()`
+now returns `'Snoqualmie, WA'` and `'City of Las Vegas'` (both
+`confidence='repaired'`) where it previously returned each string
+unchanged (`'unverified'`). Full jurisdiction test suite (111 tests) and
+the two guard tests for real long names / "Town of Castle Rock
+Authorizing" (a single-word tail deliberately NOT on the stoplist) still
+pass unchanged. One new test added:
+`test_finalize_jurisdiction_known_junk_tail_words_repair_a_multi_word_tail_too`.
+Full CI green (ruff check, ruff format, 1911 pytest passing, both
+alembic checks).
+
+**Two rows this fixes retroactively once backfilled** (not done here —
+needs the admin-token-gated `POST /internal/jurisdiction/backfill-
+apply`, a production write): the Snoqualmie page, and PrimeGov page
+2041 (`'City of Las Vegas Internet Address'`). PrimeGov page 2033
+(`NULL`) is the OTHER, unrelated `lacity.primegov.com` coin-flip bug —
+still open, see `BACKLOG.md`.
+
 ## Chicago and Ann Arbor, MI ingested: the Legistar CDX leads resolved [Done 2026-08-28]
 
 Follow-through on the lead the Legistar CDX close-out below found:
