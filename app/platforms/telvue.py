@@ -91,6 +91,29 @@ _BODY_SUFFIX_RE = re.compile(
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
 _ORG_TOKEN_RE = re.compile(r"/player/([^/]+)/")
 
+# Automated last-resort fallback, added 2026-08-29 after the Irondequoit
+# fix below was found by hand: every TelVue page already carries an
+# `id="org-logo"` <img> with descriptive alt text (no extra fetch --
+# it's in the same `html` already downloaded for the playlist). But the
+# shape of that text is NOT consistent enough to trust blindly --
+# confirmed from two real fixtures already in this file: Irondequoit's is
+# "Irondequoit, NY - Irondequoit, NY - organization logo" (a clean,
+# duplicated "City, ST"), while Ashland/RVTV's is "Rogue Valley Community
+# Television (RVTV) - Watch RVTV - organization logo" (an org name + a
+# tagline, not a place at all -- using this blindly would have produced
+# "Rogue Valley Community Television (RVTV)" as a "jurisdiction", exactly
+# the confident-wrong-guess failure mode this file exists to avoid). So
+# this only ever fires when the two dash-separated halves are IDENTICAL
+# and already comma-state-shaped -- narrow enough that a non-place tagline
+# never matches, at the cost of not helping the (unknown, possibly
+# common) case where the two halves differ but both are still real city
+# names. Runs only as a last resort, after both the title guess and the
+# hand-curated _KNOWN_ORG_TOKEN_JURISDICTIONS map have already failed --
+# never overrides either, since both are more specific/more verified than
+# a generic parse of a logo caption.
+_ORG_LOGO_ALT_RE = re.compile(r'id="org-logo"[^>]*\balt="([^"]*)"')
+_ORG_LOGO_CITY_STATE_RE = re.compile(r"^[A-Za-z][A-Za-z .'-]*,\s*[A-Z]{2}$")
+
 # Per-customer jurisdiction map, the "later" this file's own module
 # comment above anticipated -- built one confirmed entry at a time as a
 # title-only guess proves ambiguous/wrong, never guessed speculatively.
@@ -164,7 +187,11 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # ("2024-03-19 Town"). Confirmed live 2026-08-29 via this org's own
     # `id="org-logo"` alt text, "Irondequoit, NY - Irondequoit, NY -
     # organization logo" (reported by a user after seeing the wrong
-    # jurisdiction on a live page).
+    # jurisdiction on a live page). This is also the sample that prompted
+    # `_org_logo_jurisdiction()` below, which would now catch this same
+    # org token on its own -- kept here anyway as the confirmed, permanent
+    # record, same belt-and-suspenders reasoning as the Ashland/Vail
+    # entries above.
     "XRGvXhGamdDe6nt3IU9wLyKjf4BqK24i": "Irondequoit, NY",
 }
 
@@ -242,6 +269,8 @@ class TelvueAssetFinder(AssetFinder):
                 guessed_name = jurisdiction.split(",")[0].strip().lower()
                 if guessed_name == known_name:
                     jurisdiction = known_jurisdiction
+            if not jurisdiction:
+                jurisdiction = self._org_logo_jurisdiction(html)
 
             video_url = entry.get("file")
             video_format = "m3u8" if video_url and ".m3u8" in video_url else None
@@ -401,6 +430,18 @@ class TelvueAssetFinder(AssetFinder):
         if last_word in {"select", "planning", "school", "regular"}:
             return None
         return name
+
+    @staticmethod
+    def _org_logo_jurisdiction(html: str) -> Optional[str]:
+        match = _ORG_LOGO_ALT_RE.search(html)
+        if not match:
+            return None
+        parts = [p.strip() for p in match.group(1).split(" - ")]
+        if len(parts) < 2 or parts[0] != parts[1]:
+            return None
+        if not _ORG_LOGO_CITY_STATE_RE.match(parts[0]):
+            return None
+        return parts[0]
 
     @staticmethod
     async def _fetch_vtt(session: aiohttp.ClientSession, vtt_url: str):

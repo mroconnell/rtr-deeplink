@@ -353,3 +353,25 @@ def test_guess_jurisdiction_handles_planning_and_environmental_commission():
         )
         == "Vail"
     )
+
+
+def test_org_logo_jurisdiction_accepts_clean_city_state_alt_text():
+    # Real shape, confirmed live 2026-08-29 (Irondequoit, NY,
+    # media id 865360): both dash-separated halves of the alt text are
+    # identical and already "City, ST"-shaped, which is specific enough
+    # to trust without a lookup.
+    html = '<img id="org-logo" alt="Irondequoit, NY - Irondequoit, NY - organization logo" src="/x.png" />'
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) == "Irondequoit, NY"
+
+
+def test_org_logo_jurisdiction_rejects_org_name_alt_text():
+    # Real shape from the Ashland/RVTV fixture -- the two halves differ
+    # ("Rogue Valley Community Television (RVTV)" vs. "Watch RVTV") and
+    # neither is "City, ST"-shaped, so this must decline rather than
+    # guess "Rogue Valley Community Television (RVTV)" is a jurisdiction.
+    html = load_fixture("telvue", "ashland_planning_1040134_page.html")
+    assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_org_logo_jurisdiction_handles_missing_tag():
+    assert TelvueAssetFinder._org_logo_jurisdiction("<html></html>") is None
