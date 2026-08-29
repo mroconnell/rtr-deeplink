@@ -145,6 +145,23 @@ async def test_resolve_external_video_is_a_pointer_not_a_playable_url(monkeypatc
     assert result.video_link == "https://example-video-host.com/watch/abc123"
 
 
+async def test_resolve_logs_a_warning_when_the_page_fetch_fails(caplog):
+    # Real silent-exception site found live during the 2026-08-28 sweep
+    # (BACKLOG.md) -- _fetch_text()'s non-200 branch used to return None
+    # with no record of why, so a real fetch failure and a page that
+    # genuinely doesn't exist looked identical in the logs.
+    routes = {MEETING_URL: FakeResponse(status=500, text="", url=MEETING_URL)}
+
+    with mock_session(routes), caplog.at_level("WARNING"):
+        result = await ProudCityAssetFinder().resolve(MEETING_URL)
+
+    assert result.video_warnings == ["Could not fetch this ProudCity meeting page."]
+    assert any(
+        "500" in record.message and MEETING_URL in record.message
+        for record in caplog.records
+    )
+
+
 async def test_resolve_refuses_the_shared_demo_meeting_slug():
     """Real incident, 2026-08-26: this exact slug is a shared WordPress
     seed post on every ProudCity install, confirmed on three unrelated

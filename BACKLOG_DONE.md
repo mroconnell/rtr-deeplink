@@ -1,5 +1,44 @@
 # Backlog — done
 
+## 3 more silent-exception sites logged: headless_browser.py, proudcity.py, townhallstreams.py [Done 2026-08-29]
+
+Residual from the 2026-08-28 22-adapter exception-logging sweep: an
+AST-based re-derivation of the file list (not a line-number grep, same
+method as the original sweep) had turned up the identical pattern in 3
+files the 2026-08-25 survey didn't include, but they were out of scope
+for that PR. Re-checked live before touching anything (per this file's
+"a backlog entry is a lead, not a spec" convention) — all 3 line numbers
+still matched exactly (`headless_browser.py:171`, `proudcity.py:253`,
+`townhallstreams.py:272`), unlike `civicweb.py`'s two sites in the
+original sweep, which had already drifted.
+
+Same per-site judgment as the original sweep, not a mechanical copy:
+
+- **`headless_browser.py:171`** (`_get_browser()`'s Chromium self-heal
+  retry): the exception itself was never silent — it re-raises
+  `HeadlessBrowserUnavailable` when self-heal fails — but a *successful*
+  self-heal (missing binary, reinstalled, retried) left no trace at all
+  that Chromium was ever missing in the first place. Added a
+  `logger.warning(..., exc_info=True)` on the retry path.
+- **`proudcity.py:253`** (`_fetch_text()`): plain fetch-failure pattern,
+  same shape as the original sweep — logged both the non-200 branch and
+  the exception branch.
+- **`townhallstreams.py:272`** (`_check_for_transcript()`): a
+  best-effort check whose reader-facing text ("No captions found for
+  this video.") is correct either way, so this looked like a candidate
+  to leave alone — but a real fetch failure and a genuinely-empty
+  positive response are different facts worth telling apart when
+  debugging, so both branches got a warning too.
+
+Added `import logging` + `logger = logging.getLogger("rtr_deeplink.
+<module>")` to `proudcity.py` and `townhallstreams.py` (`headless_
+browser.py` already had one). Tests: extended the existing
+`test_get_browser_self_heals_when_binary_missing` with a `caplog`
+assertion (same test already exercised this exact path, just wasn't
+checking for the log line), and added one new `caplog`-based regression
+test each to `test_proudcity.py`/`test_townhallstreams.py` simulating a
+real HTTP failure. All four CI gates clean.
+
 ## Common Crawl full-corpus signature scan: 58 new jurisdiction pages across Hyland/OnBase, ChampDS, and TelVue — a domain-agnostic discovery method, not tenant-subdomain enumeration [Done 2026-08-29]
 
 Full writeup, methodology, and every real number lives in

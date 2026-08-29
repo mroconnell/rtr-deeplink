@@ -129,6 +129,30 @@ async def test_resolve_flags_unexpected_non_empty_transcript_response():
     assert "doesn't yet know how to read" in result.transcript_warnings[0]
 
 
+async def test_resolve_logs_a_warning_when_the_transcript_check_fails(caplog):
+    # Real silent-exception site found live during the 2026-08-28 sweep
+    # (BACKLOG.md) -- _check_for_transcript()'s non-200 branch used to
+    # return the generic "No captions found" message with no record of
+    # why, so a real fetch failure and a genuinely-empty response looked
+    # identical in the logs.
+    html = load_fixture("townhallstreams", "lisbon_me_stream.html")
+
+    routes = {
+        LISBON_URL: FakeResponse(status=200, text=html, url=LISBON_URL),
+        LISBON_TRANSCRIPT_URL: FakeResponse(
+            status=503, text="", url=LISBON_TRANSCRIPT_URL
+        ),
+    }
+
+    with mock_session(routes), caplog.at_level("WARNING"):
+        result = await TownHallStreamsAssetFinder().resolve(LISBON_URL)
+
+    assert result.transcript_warnings == ["No captions found for this video."]
+    assert any(
+        "503" in record.message and "94" in record.message for record in caplog.records
+    )
+
+
 async def test_resolve_missing_video_config_returns_warning_not_crash():
     url = "https://townhallstreams.com/stream.php?location_id=1&id=2"
     html = "<html><body>Not the right shape.</body></html>"

@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -8,6 +9,8 @@ import wordninja
 from .base import AssetFinder
 from .models import ResolvedMeeting
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.townhallstreams")
 
 # townhallstreams.com -- a small, real, live, multi-town government video
 # vendor (one meeting per `stream.php?location_id={town}&id={meeting}`
@@ -267,9 +270,21 @@ class TownHallStreamsAssetFinder(AssetFinder):
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Got HTTP %s checking for captions (location_id=%s, id=%s)",
+                        response.status,
+                        location_id,
+                        meeting_id,
+                    )
                     return ["No captions found for this video."]
                 text = (await response.text()).strip()
         except Exception:
+            logger.warning(
+                "Caption check failed (location_id=%s, id=%s)",
+                location_id,
+                meeting_id,
+                exc_info=True,
+            )
             return ["No captions found for this video."]
 
         if not text or text == "1":
