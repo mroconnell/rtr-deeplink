@@ -1,5 +1,58 @@
 # Backlog — done
 
+## WO-60 storage cleanup actually executed against production — real before/after numbers [Done 2026-08-29]
+
+The code half of WO-60 (`MAX_FRAMES_PER_PAGE` lowered 12→3,
+`scripts/cleanup_old_thumbnails.py` written) shipped 2026-08-25, but the
+actual Render-shell execution — cleanup script + `VACUUM FULL ANALYZE`
+against the real production database — hadn't happened yet, which is
+why the entry stayed in `BACKLOG.md`'s "Ship next" rather than moving
+here. Run tonight by Ryan from the Archive service's Render shell.
+
+**Real measured result** (not the runbook's original 300-500MB guess):
+
+| | Before | After | Reclaimed |
+|---|---|---|---|
+| Total DB size | 1142 MB | 1005 MB | **137 MB** |
+| `meeting_page_thumbnails` | 501 MB | 382 MB | 119 MB |
+| Thumbnail rows | 7,595 | 5,702 | 1,893 |
+| Raw image bytes | 477 MB | 361 MB | 116 MB |
+
+The dry run had predicted ~117MB of raw image bytes across 402 pages
+with more than 3 stored frames — the real cleanup matched that closely
+(116MB), and `VACUUM FULL` reclaimed a bit more than the raw byte
+count on top of that by also compacting the table's TOAST/index
+overhead (499 of `meeting_page_thumbnails`' original 501MB was
+TOAST+index, not the plain table). A second cleanup run afterward
+confirmed clean: "No pages with more than 3 thumbnails found."
+
+**Two real things found running this live, not caught by testing
+beforehand**:
+1. **`cd /app` in the original runbook doesn't exist on the real Render
+   shell** — the actual cwd is already the repo root
+   (`~/project/src`). Corrected in `STORAGE_CLEANUP_2026_08_25.md`.
+2. **A real bug in `scripts/analyze_db_storage.py`**: its "duplicate
+   images" report bare-calls `pg_size_pretty(byte_size)` where
+   `byte_size` is a plain `integer` column — genuinely ambiguous in
+   Postgres between the `bigint` and `numeric` overloads (neither is
+   the "preferred" type in that category, so implicit-cast resolution
+   can't pick one), producing a live crash
+   (`AmbiguousFunctionError: function pg_size_pretty(integer) is not
+   unique`) partway through the script, after the useful table-size
+   output had already printed. Fixed with an explicit `::bigint` cast
+   (PR #520) — every other `pg_size_pretty()` call site in the script
+   was already safe, since they're all wrapped in `SUM()`/`MAX()`/a
+   `pg_*_size()` function that already returns `bigint`. Unblocked live
+   with a `sed` one-liner patch directly on the running shell so the
+   cleanup itself didn't have to wait on a deploy; the real fix is
+   merged to `main` for the next deploy. Also corrected the runbook's
+   "VACUUM FULL... no downtime" claim — it does take an exclusive lock
+   on each table it processes for the duration, just briefly and scoped
+   to the affected tables, not full app downtime.
+
+No user-facing impact from any of this — default thumbnails unchanged,
+only excess per-page frames beyond the 3 most recent were pruned.
+
 ## TelVue: fall back to org-logo alt text when title guess and known-token map both fail [Done 2026-08-29]
 
 PR #516, followup to the Irondequoit fix (#514). Rather than only hand-
