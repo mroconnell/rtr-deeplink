@@ -377,12 +377,16 @@ class EscribeAssetFinder(AssetFinder):
         # uses (`jurisdiction_enrich.validated_label_extract()`), rather
         # than reimplementing wordninja-split-and-guess locally -- declining
         # (returning None) on a subdomain that doesn't validate rather than
-        # asserting a wrong name. Known, honestly-flagged residual gap: a
-        # handful of real Ontario "regional municipality" names (Durham
-        # Region, Peel Region, Region of Waterloo) and hyphenated municipal
-        # names (Chatham-Kent, Arran-Elderslie) aren't in the StatsCan table
-        # under this exact form, so they now decline instead of returning
-        # their previous (accurate but unvalidated) guess -- see BACKLOG.md.
+        # asserting a wrong name. Known, honestly-flagged residual gap,
+        # corrected 2026-08-29 (the table gap below was fixed 2026-08-21;
+        # this comment hadn't been updated to say so): Durham Region, Peel
+        # Region and Region of Waterloo are all in the StatsCan table now
+        # (`build_canada_regional_municipalities()`) and validate correctly
+        # from their real glued-subdomain form. Chatham-Kent, Arran-Elderslie
+        # and The Blue Mountains are ALSO already in the table -- the
+        # remaining gap for those three is the label matcher's own hyphen
+        # handling declining a real, present row, not a missing table row
+        # -- see BACKLOG.md's "Ontario regional municipality" entry.
         return jurisdiction_enrich.validated_label_extract(label)
 
     @staticmethod
