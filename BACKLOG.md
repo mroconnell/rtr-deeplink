@@ -100,7 +100,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (40)
+Platform & jurisdiction coverage  (41)
+  `[LATER]` `[EXAMPLE]` Cablecast has (at least) two more real portal
   `[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
@@ -1209,6 +1210,29 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[LATER]` `[EXAMPLE]` Cablecast has (at least) two more real portal
+  templates `cablecast.py` doesn't parse, found via a 2026-08-29
+  wildcard-free DNS sweep (BACKLOG_DONE.md's matching entry, full
+  writeup `ENUMERATION_METHODS.md` §40).** The adapter only handles the
+  Remix `/internetchannel/show/{id}` template (Detroit, Charlotte,
+  satellitebeach, and 4 new hosts from this sweep). Two more real
+  templates confirmed live, neither investigated further per this
+  file's "never build from assumption" rule: **`CablecastPublicSite`**
+  (`smyrna.cablecast.tv/CablecastPublicSite/?channel=1`,
+  `reflect-origin-1440.cablecast.tv/CablecastPublicSite/` — the latter
+  reached via a redirect from `urbana.cablecast.tv`) and
+  **`WebSchedule`** (`peabody.cablecast.tv/Cablecast/Plugins/
+  WebSchedule/default.aspx` — looks schedule-only from the URL shape,
+  may not even carry on-demand video). Also confirmed live: a real,
+  substantial fraction of `{tenant}.cablecast.tv` DNS hits (17 of 45 in
+  the same sweep) are a **private, login-gated station-admin panel**
+  (`/FrontDoor/Login.aspx`), not a public viewer at all — Cablecast is
+  also sold as pure internal broadcast-automation software, so a
+  resolving DNS name isn't a reliable "has a public archive" signal the
+  way it is for PrimeGov/CivicWeb/eScribe. Whoever picks this up should
+  fetch-and-read each template shape for real before writing any
+  parsing code, per the standing convention.
 
 - **`[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   instead of skipping it, confirmed on 2 real ingests 2026-08-29.**
