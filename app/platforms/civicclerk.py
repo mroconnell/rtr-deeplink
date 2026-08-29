@@ -195,6 +195,13 @@ class CivicClerkAssetFinder(AssetFinder):
                     )
                     video_url = youtube_delegated.video_url
                     video_format = youtube_delegated.video_format
+                    # Real bug found 2026-08-29 (same as hyland.py): a
+                    # YouTube anti-bot block on the delegated video still
+                    # returns a playable ResolvedMeeting with a real
+                    # video_warnings message -- without copying it through,
+                    # a bot-blocked page looked identical to a fully
+                    # successful delegation.
+                    video_warnings.extend(youtube_delegated.video_warnings)
 
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the

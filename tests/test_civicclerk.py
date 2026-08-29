@@ -1,3 +1,5 @@
+import yt_dlp
+
 from app.platforms.civicclerk import CivicClerkAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -103,6 +105,54 @@ async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
     # segments staying empty forever.
     assert len(result.segments) == 1
     assert result.segments[0].text == "Call to order."
+
+
+async def test_resolve_surfaces_youtube_bot_block_video_warning(monkeypatch):
+    # Same drop bug as hyland.py (fixed 2026-08-29, see that file's own
+    # regression test): when yt-dlp's own fetch for the delegated video id
+    # hits YouTube's anti-bot block (yt_dlp.utils.DownloadError -- the
+    # same real, live block documented in youtube.py's resolve_video_id()),
+    # that call still returns a playable ResolvedMeeting with a real
+    # video_warnings message -- but civicclerk.py copied video_url/
+    # video_format off youtube_delegated without also copying
+    # video_warnings, so a bot-blocked event looked identical to a fully
+    # successful delegation. No real CivicClerk customer has been caught
+    # live with this exact failure yet -- this reuses the same event 17
+    # fixture as the test above (a confirmed-real YouTube-delegation
+    # shape), just forcing yt-dlp's extraction to fail instead of mocking
+    # a successful track.
+    def _raise_download_error(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot.")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise_download_error)
+
+    url = "https://clovisca.portal.civicclerk.com/event/17/media"
+    event_json = load_fixture("civicclerk", "clovisca_event17.json")
+    media_json = load_fixture("civicclerk", "clovisca_media17.json")
+
+    routes = {
+        "https://clovisca.api.civicclerk.com/v1/Events/17": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://clovisca.api.civicclerk.com/v1/EventsMedia/17": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.platform == "civicclerk"
+    # The embed URL needs no network call, so playback still works even
+    # though yt-dlp's metadata/caption fetch was blocked.
+    assert result.video_url == "https://www.youtube.com/embed/2SkDu11i3hQ"
+    assert result.video_format == "youtube"
+    assert result.video_warnings == [
+        "YouTube is currently blocking automated caption requests from our server, so "
+        "no transcript is available for this video — but it should still play fine "
+        "above."
+    ]
+    assert result.segments == []
 
 
 async def test_resolve_real_event_with_populated_srt_captions():
