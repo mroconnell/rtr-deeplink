@@ -56,22 +56,22 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
-  `[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
   [JUST-DO-IT] Every byte the public site serves is billed twice:
   [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Confirmations nobody has actually watched happen  (4)
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
     [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (7)
+  Production actions only Ryan should take  (8)
+    `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
     [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
     [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
@@ -501,26 +501,6 @@ so that work reads together.
     nothing ranks chips by it yet — there is no data until the table
     fills. Revisit once it has real volume.
 
-- **`[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
-  needs its jurisdiction resolved before it can be reslugged.** Residual
-  from a batch of 5 frozen-fallback-slug pages found in the WO-63 Hyland
-  sweep (2026-08-25); the other 4 were reslugged 2026-08-28 (see
-  `BACKLOG_DONE.md`). This one resolves with `jurisdiction=None`, so
-  `build_base_slug()` would just produce another dateless stub — find
-  and fix why jurisdiction extraction fails for this page's source URL
-  first, *then* run `POST /internal/admin/reslug-page` (dry-run first,
-  then add the returned `{old_slug: new_slug}` pair to `archive/main.py`'s
-  `_SLUG_REDIRECTS` and deploy).
-  **Incidental, not a defect:** 257 of the 2,383 `/m/` slugs contain no
-  ISO-format date, but spot-checking shows nearly all carry a date in
-  another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
-  this is slug-format inconsistency rather than missing data. Noted only
-  so a future scan doesn't re-flag it as a bug.
-  **Still open, unrelated to the above**: the second boilerplate-shaped
-  slug found in the same 2026-08-22 scan
-  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
-  is a **Granicus vendor marketing event, not a government meeting** —
-  needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
   `app/main.py:1527-1593` proxies essentially the whole public site —
@@ -633,6 +613,45 @@ convenient.
 
 ### Production actions only Ryan should take
 
+- **`[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
+  — jurisdiction root cause fixed and merged; only the reslug call
+  itself (needs the admin token) is left.** Residual from a batch of 5
+  frozen-fallback-slug pages found in the WO-63 Hyland sweep
+  (2026-08-25); the other 4 were reslugged 2026-08-28 (see
+  `BACKLOG_DONE.md`). Root cause found 2026-08-29 (see `BACKLOG_DONE.md`'s
+  matching entry): source URL is `https://agenda2.modestogov.com/
+  OnBaseAgendaOnlineCouncil/Meetings/ViewMeeting?doctype=1&id=2305` —
+  `agenda2.modestogov.com` is a real, second Modesto, CA subdomain that
+  wasn't in `jurisdiction_enrich.py`'s known-domains registry (only the
+  sibling `agenda.modestogov.com` was). Now registered and merged;
+  confirmed live that this page resolves with `jurisdiction="Modesto,
+  CA"` today. **What's left, from a Render shell** (`archive/main.py`'s
+  `internal_reslug_page()` takes `slug` in the body, `dry_run` as a
+  query param, and the same `ARCHIVE_INGEST_TOKEN` bearer auth every
+  other `/internal/*` route uses):
+  ```bash
+  # dry-run first
+  curl -s -X POST "$ARCHIVE_BASE_URL/internal/admin/reslug-page?dry_run=true" \
+    -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -H "Content-Type: application/json" \
+    -d '{"slug": "2026-08-11-council-meeting"}'
+  # then for real, once the preview looks right
+  curl -s -X POST "$ARCHIVE_BASE_URL/internal/admin/reslug-page?dry_run=false" \
+    -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -H "Content-Type: application/json" \
+    -d '{"slug": "2026-08-11-council-meeting"}'
+  ```
+  Then add the returned `{old_slug: new_slug}` pair to `archive/main.py`'s
+  `_SLUG_REDIRECTS` and deploy (same pattern as the other 4 — see
+  `BACKLOG_DONE.md`'s 2026-08-28 entry for the exact precedent).
+  **Incidental, not a defect:** 257 of the 2,383 `/m/` slugs contain no
+  ISO-format date, but spot-checking shows nearly all carry a date in
+  another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
+  this is slug-format inconsistency rather than missing data. Noted only
+  so a future scan doesn't re-flag it as a bug.
+  **Still open, unrelated to the above**: the second boilerplate-shaped
+  slug found in the same 2026-08-22 scan
+  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
+  is a **Granicus vendor marketing event, not a government meeting** —
+  needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
 - **[HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
   limit and auto-restarted once — first occurrence, not yet clustering
   (2026-08-26T01:13:58Z).** From the daily inbox-triage Routine
