@@ -3903,45 +3903,70 @@ means somebody found the example, not that somebody decided to guess.
   whatever the regex happened to find first.
 
 - **[NEEDS-AUDIT] Granicus's "GovAccess CMS" product (CNAMEs through
-  `granicusgovaccess.net`) is completely undetected by `detect_platform()`
-  and blocks every request outright, on a jurisdiction's own custom
-  `.gov` domain — a real, confirmed gap, not pursued further
-  2026-08-28.** Found via a DNS CNAME fingerprinting toolkit delivered by
-  a parallel session (`~/Documents/rtr-business/research/
-  ENUMERATION_METHODS.md` §32 has the full writeup): 97 real `.gov`
-  domains CNAME to `granicusgovaccess.net`, a distinct Granicus product
-  from the classic `{tenant}.granicus.com` subdomain hosting this
-  project already supports. Two separate problems, confirmed live on 4
-  different domains: (1) `detect_platform()` only recognizes literal
-  `granicus.com` URLs, so these resolve as `"unknown"` even though
-  they're 100% real Granicus tenants; (2) every path tested on every one
-  of these `.gov` domains returns a 403 or connection reset, including
-  through the adapter's own `resolve()` (which already sends realistic
-  headers that work fine for classic Granicus subdomains) — a plain bot
-  WAF block, not a CAPTCHA/human-verification wall, so still fair game
-  to solve, just not solved here. **A real, partially-successful
-  workaround found the same session**: since this project separately
-  pulled the *complete* list of 687 classic Granicus tenant subdomains
-  via CDX the same day (§29/§31), fuzzy-matching a GovAccess domain's
-  city+state against that list can recover the tenant's *real* classic
-  subdomain when one exists — e.g. `belmont.gov` → `belmont-ca.granicus.
-  com`, which resolves fine and has real video. Of 29 fuzzy matches
-  attempted, 8 resolved to real content and 7 were genuinely correct;
-  one (`albemarlenc.gov` → `albemarle.granicus.com`) was a confirmed
-  **wrong** match — that classic subdomain turned out to be Albemarle
-  County, **VA**'s own real tenant, an unrelated place that just shares
-  a base name with Albemarle, NC. All genuinely-new hits from this
-  cross-reference turned out to already be queued via the direct CDX
-  pull (same tenants, found independently by both methods — a clean
-  cross-validation, not new coverage). **What's left, for whoever picks
-  this up**: (a) build real `detect_platform()`/adapter support for
-  `granicusgovaccess.net` CNAMEs directly, ideally with different
-  request headers that might satisfy this specific WAF; (b) the
-  city+state fuzzy-match-against-known-CDX-tenants trick is real and
-  reusable for any future GovAccess batch, but needs per-match
-  verification (title/jurisdiction check) before trusting it, since
-  base-name collisions across states are a confirmed real failure mode,
-  not a hypothetical one.
+  `granicusgovaccess.net`) is still completely undetected by
+  `detect_platform()`, and its Akamai WAF is now confirmed genuinely
+  hard to solve, not just untried — 2026-08-29 follow-up closes most of
+  the fuzzy-match side of this entry.** Original gap (2026-08-28): 97
+  real `.gov` domains CNAME to `granicusgovaccess.net`, a distinct
+  Granicus product from the classic `{tenant}.granicus.com` hosting this
+  project already supports; every path 403s or connection-resets, and
+  `detect_platform()` only recognizes literal `granicus.com` URLs.
+  **WAF tested harder this round, still blocked**: a real headless
+  Chromium browser (`app/platforms/headless_browser.py`, already used
+  elsewhere in this repo) from a genuine residential AT&T IP (not a
+  datacenter/cloud range) still gets a domain-wide 403 from Akamai —
+  confirmed on `belmont.gov`, root path included, not just the specific
+  `ViewPublisher.php` endpoint. This isn't a client-fingerprint problem
+  a different `User-Agent`/header set can solve; the WAF config itself
+  is the wall. Real adapter work for a future session, if picked up at
+  all — no further ideas on file for getting past it.
+
+  **The fuzzy-match-to-classic-subdomain workaround was re-run against
+  all 97 domains** (the 2026-08-28 pass only tried 29) with the CSV's
+  own state column correctly read this time (a real bug in the first
+  attempt: `STATE_ABBR` was keyed by full state name, but
+  `dns_platform_labels.csv`'s `state` column is already a 2-letter
+  abbreviation, so no state-suffixed slug variant — e.g. the
+  `belmont-ca` shape the technique depends on — was ever tried; fixing
+  it took the match rate from 9/97 to 25/97). **Every match was then
+  identity-verified against real page content** before trusting it —
+  worth doing, since it caught real problems an DNS/HTTP-only check
+  would have missed: 4 empty Granicus template shells (a consistent
+  ~9-10KB placeholder page, `calcasieu.gov`, `darenc.gov`,
+  `claytonmo.gov`, `kentwa.gov`), and — the more serious class —
+  **2 confirmed county-vs-city-seat wrong matches**: `mchenrycountyil.
+  gov` (McHenry County) matched `woodstockil.granicus.com`, but that's
+  genuinely the City of Woodstock's own tenant (zero mentions of
+  "McHenry" anywhere on the page); `carvercountymn.gov` (Carver County)
+  matched `carvermn.granicus.com`, genuinely the City of Carver's own
+  tenant ("City of Carver" appears 6x, "Carver County" only once,
+  incidentally). **The pre-existing `albemarlenc.gov` → `albemarle.
+  granicus.com` "wrong match" this entry already flagged turned out to
+  be a smaller problem than described**: the page's actual stored
+  jurisdiction was already correct ("Albemarle County, VA") from
+  whenever it was first ingested — only its *slug* carried the wrong
+  "albemarle-nc" label. Fixed via `POST /internal/admin/reslug-page`
+  (see `archive/main.py`'s `_SLUG_REDIRECTS`), no data was actually
+  wrong. 18 matches survived verification; 7 were already in Archive,
+  **11 genuinely new, 7 resolved to real content and ingested** (2 with
+  real transcripts: Fremont CA, Lincoln City OR; 5 video-only:
+  Chanhassen MN, Eastvale CA, Lexington NC, Richmond TX, St. Louis Park
+  MN), 4 skipped (stale/404ing `clip_id`s on the listing page). One more
+  real bug found and fixed along the way: `granicus.py`'s 3-tier
+  Census-validated jurisdiction chain (page-text phrasing, reversed "X
+  County" pattern, humanized-subdomain fallback) failed all three for
+  `stlouispark.granicus.com`, freezing the literal "Unknown
+  Jurisdiction" placeholder into that page's slug — corrected by hand
+  (jurisdiction + reslug), not fixed in the adapter itself; a real,
+  narrow extraction gap worth a look if this file's jurisdiction-
+  extraction backlog gets picked up.
+
+  **What's actually left**: (a) `detect_platform()`/adapter support for
+  `granicusgovaccess.net` CNAMEs directly — still blocked entirely by
+  the WAF, so this only matters if the WAF gets solved first; (b) the
+  86 GovAccess domains that never got a fuzzy match at all (72 no-match
+  + the 4 empty-shell + 2 wrong-entity rejects) — no further lever on
+  file for these beyond the WAF itself.
 
 - **[LATER] Six meeting/CMS platforms don't wildcard their DNS —
   `primegov.com`, `escribemeetings.com`, `civicplus.com`,

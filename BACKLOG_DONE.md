@@ -114,6 +114,37 @@ plausible single-file / 29 suspiciously short) now that the mechanism is
 understood — worth doing once that decision is made, so the audit
 answers something actionable rather than re-confirming the same shape.
 
+## Granicus GovAccess: WAF confirmed genuinely hard, fuzzy-match fixed and re-run — 7 new ingests, 2 live production bugs fixed [Done 2026-08-29]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§42. Closes the Akamai WAF question honestly: a real headless Chromium
+browser (`app/platforms/headless_browser.py`) from a genuine residential
+IP still gets a domain-wide 403 on the GovAccess CNAME domains — not a
+client-fingerprint problem, no further "different headers" idea worth
+trying. The fuzzy-match-to-classic-subdomain workaround had a real bug
+(state-abbreviation lookup keyed by full name against a CSV column
+that's already abbreviated, silently disabling every state-suffixed
+slug guess) — fixed, re-run against all 97 GovAccess domains (up from
+29 originally attempted), tripling the match rate to 25/97.
+
+Every match was identity-verified against real page content, which
+caught 2 confirmed county-vs-city-seat wrong matches (McHenry County →
+really the City of Woodstock's tenant; Carver County → really the City
+of Carver's) and 4 empty template shells, before any got treated as
+real. **7 new real pages ingested** (2 with real transcripts: Fremont
+CA, Lincoln City OR), 4 skipped on stale clip references.
+
+**Two real, live production bugs found and fixed along the way,
+neither requiring a deploy**: (1) `albemarlenc.gov`'s already-correct
+stored jurisdiction ("Albemarle County, VA") had a wrong-looking slug
+frozen since an earlier session ("albemarle-nc...") — no data was
+actually wrong, just the URL; fixed via `reslug-page`. (2) St. Louis
+Park's ingest resolved with the literal placeholder `jurisdiction:
+"Unknown Jurisdiction"` frozen into its slug, after `granicus.py`'s
+3-tier Census-validated extraction chain failed on it — corrected by
+hand (explicit override + reslug), the underlying extraction gap
+logged to `BACKLOG.md` rather than patched blind.
+
 ## svix 2.0.0's Webhook.verify() returning None root-caused and fixed, unblocking dependabot PR #376 [Done 2026-08-29]
 
 The open question the live entry left ("whether this is a genuine
