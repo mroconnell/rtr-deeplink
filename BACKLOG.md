@@ -407,16 +407,33 @@ so that work reads together.
   occurrence rather than waiting for the count. Applies to any bulk re-resolve, not just this script —
   `backfill_archived_pages.py` has the identical shape.
 
-  **The unsettled part**: whether a *first* pass paced slowly enough
-  avoids the block at all. Untested — by the time pacing was tried the
-  block already existed, so that measurement is still owed. Worth
-  knowing before designing around it that `CLAUDE.md` flags YouTube
-  caption fetching as the one dependency actively trying to block
-  scraping, and that this has only ever been measured from a residential
-  IP, never Render's.
+  **The unsettled part, re-tested 2026-08-29 (7 days later) — still
+  unsettled, not resolved.** A single, isolated, cold `resolve()` call
+  (not a bulk sweep — no burst at all) against two different real
+  videos both hit the identical `HTTP Error 429: Too Many Requests` on
+  the caption-fetch step. This does **not** confirm "pacing doesn't
+  work" — a lone request 429ing is a different, and in some ways more
+  concerning, shape than "burst traffic earns a block," and there's no
+  way from this environment to tell apart "the original block never
+  cleared in a week" from "something about this residential IP more
+  generally trips YouTube's caption-endpoint limit regardless of this
+  app's own behavior." What it does confirm: there is currently no way
+  to get a clean, unblocked baseline to test pacing against from this
+  environment, so the question stays genuinely open. Worth knowing
+  before designing around it that `CLAUDE.md` flags YouTube caption
+  fetching as the one dependency actively trying to block scraping, and
+  that this has only ever been measured from a residential IP, never
+  Render's — production may behave differently either way.
 
-  Do not re-run the YouTube half today; give the block real time
-  (hours, not minutes) and re-measure before assuming anything.
+  **Real, separate bug found and fixed via this same re-test**: the 429
+  above crashed `resolve()` outright rather than degrading gracefully —
+  see `BACKLOG_DONE.md`'s matching entry. Unrelated to whether the IP
+  block itself can be avoided, but a real, live production risk on its
+  own (any YouTube-backed resolve could have hit this).
+
+  Do not re-run a bulk YouTube sweep; a single isolated check is enough
+  to know the block situation hasn't meaningfully changed, and running
+  more only risks extending whatever is causing it.
 
   **Real scale correction, 2026-08-26**: this was scoped against one
   script's 10 failures, but the actual blast radius is much bigger.

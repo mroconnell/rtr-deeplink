@@ -86,7 +86,7 @@ class YouTubeAssetFinder(AssetFinder):
 
         try:
             info = await asyncio.to_thread(cls._extract_info, video_id)
-        except yt_dlp.utils.DownloadError:
+        except yt_dlp.utils.YoutubeDLError:
             # Real production incident, 2026-08-09: YouTube's anti-bot
             # check ("Sign in to confirm you're not a bot") blocks
             # Render's server IP outright, regardless of which internal
@@ -104,6 +104,24 @@ class YouTubeAssetFinder(AssetFinder):
             # page parsing) still gets to use it -- resolve_video_id()
             # failing outright previously threw that away too, even when
             # the caller already had it in hand.
+            #
+            # Widened from the original bare `yt_dlp.utils.DownloadError`
+            # to its base `YoutubeDLError` 2026-08-29, after live-
+            # reproducing a second, distinct real failure this shape
+            # applies to: `_pick_caption_track()`'s own `ydl.urlopen(...)
+            # .read()` call for the caption track file raises a plain
+            # `yt_dlp.networking.exceptions.HTTPError` (429 Too Many
+            # Requests) on its own, uncaught by `extract_info()`'s own
+            # error handling since it's a direct network call the
+            # extractor makes afterward, not part of extraction itself --
+            # confirmed live against two real videos, a week after the
+            # 2026-08-22 bulk-resolve IP-block incident (BACKLOG.md),
+            # meaning the caption endpoint is still (or newly) blocking
+            # this session's IP regardless of request pacing. Both
+            # `DownloadError` and `HTTPError` share this common base, and
+            # any other yt_dlp-raised failure mode does too -- catching
+            # the base class means a future one degrades the same way
+            # instead of crashing the whole resolve again.
             return ResolvedMeeting(
                 platform=cls.platform_name,
                 source_url=source_url,

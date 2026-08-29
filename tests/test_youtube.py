@@ -212,6 +212,39 @@ async def test_resolve_video_id_degrades_to_playable_meeting_on_download_error(
     assert any("No transcript available" in w for w in result.transcript_warnings)
 
 
+async def test_resolve_video_id_degrades_on_caption_fetch_http_error(monkeypatch):
+    # Real, live-reproduced 2026-08-29 (BACKLOG_DONE.md): a week after the
+    # 2026-08-22 bulk-resolve YouTube IP-block incident, a single,
+    # isolated resolve() still hit yt_dlp.networking.exceptions.HTTPError
+    # (429 Too Many Requests) from _pick_caption_track()'s own
+    # `ydl.urlopen(...).read()` call for the caption track file -- a
+    # different exception type than the anti-bot DownloadError above, but
+    # from the same real cause (YouTube blocking this app's requests),
+    # previously uncaught since it's raised by a direct network call the
+    # extractor makes *after* extract_info() itself succeeds, not part of
+    # extraction. Must degrade the same way DownloadError does, not crash
+    # the whole resolve. Uses the shared yt_dlp.utils.YoutubeDLError base
+    # directly (both DownloadError and the real HTTPError subclass it)
+    # rather than constructing a real HTTPError, which needs a real
+    # Response object -- the except clause catches the base class
+    # specifically so it doesn't matter which subclass is raised.
+    def _raise(video_id):
+        raise yt_dlp.utils.YoutubeDLError("HTTP Error 429: Too Many Requests")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
+
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_VIDEO_ID}"
+    assert result.video_format == "youtube"
+    assert result.segments == []
+    assert any(
+        "blocking automated caption requests" in w for w in result.video_warnings
+    )
+
+
 async def test_resolve_video_id_raises_when_no_info_returned(monkeypatch):
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: None)
 
