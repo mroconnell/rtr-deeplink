@@ -89,11 +89,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
-  [NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -1031,17 +1030,6 @@ coverage** instead.
   reliability** for the fix (a smaller chunk size for this host). That
   fix should also settle the scheduling question this entry raises: a
   chunk that fits the budget stops burning a slot on doomed attempts.
-
-- **[NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
-  the 2026-08-28 sweep, not in the original survey — same treatment
-  needed.** Re-deriving the file list fresh (AST-based, not a line-number
-  grep) for `BACKLOG_DONE.md`'s "22 platform adapters now log exception
-  fetch failures" sweep also turned up the identical pattern in 3 files
-  the original 2026-08-25 survey didn't include: `headless_browser.py:171`,
-  `proudcity.py:253`, `townhallstreams.py:272`. Not fixed in that sweep
-  (scope was the originally-surveyed 23 files plus the one it had
-  missed) — same judgment-per-site approach applies, see
-  `BACKLOG_DONE.md` for the pattern to copy.
 
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?

@@ -25,7 +25,7 @@ def _reset_module_state():
     hb._install_attempted = False
 
 
-async def test_get_browser_self_heals_when_binary_missing(monkeypatch):
+async def test_get_browser_self_heals_when_binary_missing(monkeypatch, caplog):
     _reset_module_state()
 
     launch_calls = []
@@ -58,10 +58,15 @@ async def test_get_browser_self_heals_when_binary_missing(monkeypatch):
         hb, "_install_chromium", lambda: True
     )  # simulate a successful runtime install
 
-    browser = await _get_browser()
+    with caplog.at_level("WARNING"):
+        browser = await _get_browser()
 
     assert browser == "fake-browser-instance"
     assert len(launch_calls) == 2  # first attempt failed, retry after install succeeded
+    # Real silent-exception site found live during the 2026-08-28 sweep
+    # (BACKLOG.md): a successful self-heal used to leave no trace that
+    # Chromium was ever missing in the first place.
+    assert any("self-heal" in record.message.lower() for record in caplog.records)
 
 
 async def test_get_browser_raises_clean_message_when_install_also_fails(monkeypatch):
