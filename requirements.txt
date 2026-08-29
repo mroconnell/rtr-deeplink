@@ -134,7 +134,7 @@ standardwebhooks==1.1.0
     # via svix
 starlette==1.6.0
     # via fastapi
-svix==1.99.1
+svix==2.1.0
     # via -r requirements.in
 typing-extensions==4.16.0
     # via

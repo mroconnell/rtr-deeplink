@@ -19,7 +19,7 @@ alembic>=1.13
 # verifies the webhook signature Clerk uses to notify us of account
 # create/delete events.
 clerk-backend-api>=6.0
-svix>=1.99
+svix>=2.1.0
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern as Clerk above -- see app/main.py's _init_sentry().
 sentry-sdk>=2.0
