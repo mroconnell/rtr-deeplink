@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -14,6 +15,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_vtt,
 )
+
+logger = logging.getLogger("rtr_deeplink.viebit")
 
 TARGET_LANGUAGE = "en"
 
@@ -218,9 +221,15 @@ class ViebitAssetFinder(AssetFinder):
                 vtt_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Viebit VTT fetch got HTTP %s for %s",
+                        response.status,
+                        vtt_url,
+                    )
                     return None
                 raw = await response.read()
         except Exception:
+            logger.warning("Viebit VTT fetch failed for %s", vtt_url, exc_info=True)
             return None
         content = decode_vtt_bytes(raw)
         cues = dedupe_rollup_cues(parse_vtt(content))

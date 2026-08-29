@@ -76,6 +76,23 @@ async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
     assert result.agenda_link is None
 
 
+async def test_resolve_agenda_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch()'s non-200 branch used to be silent.
+    html = load_fixture("hyland", "tucson_view_meeting.html")
+    routes = {
+        TUCSON_URL: FakeResponse(status=200, text=html, url=TUCSON_URL),
+        TUCSON_AGENDA_URL: FakeResponse(status=404, url=TUCSON_AGENDA_URL),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await HylandAssetFinder().resolve(TUCSON_URL)
+
+    assert result.platform == "hyland"
+    assert result.agenda_items == []
+    assert any("Hyland fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_maricopa_real_video_and_timestamped_agenda_items():
     # Maricopa County's page has ZERO static jurisdiction/title text
     # anywhere (confirmed: no meta, no h1, no agenda-link title attribute)

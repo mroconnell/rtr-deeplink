@@ -1,4 +1,5 @@
 import html as html_module
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional
@@ -11,6 +12,8 @@ from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.hyland")
 
 # Hyland "OnBase Agenda Online" -- confirmed 2026-08-16 across 23 real
 # customers on 23 different hosting domains (see jurisdiction_enrich.py's
@@ -272,9 +275,13 @@ class HylandAssetFinder(AssetFinder):
                 url, timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Hyland fetch got HTTP %s for %s", response.status, url
+                    )
                     return None
                 return await response.text()
         except Exception:
+            logger.warning("Hyland fetch failed for %s", url, exc_info=True)
             return None
 
     @staticmethod

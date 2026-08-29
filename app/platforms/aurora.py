@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import Optional
 
@@ -12,6 +13,8 @@ from ..utils.vtt_parser import (
     detect_language_from_texts,
     parse_captions_by_extension,
 )
+
+logger = logging.getLogger("rtr_deeplink.aurora")
 
 # Aurora, CO's own Drupal-built video site (auroratv.org) -- found during a
 # Wave 2 platform-coverage pass (see BACKLOG.md), confirmed live 2026-08-12.
@@ -152,9 +155,17 @@ class AuroraTvAssetFinder(AssetFinder):
                     caption_url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "Aurora caption fetch got HTTP %s for %s",
+                            response.status,
+                            caption_url,
+                        )
                         return None
                     raw = await response.read()
         except Exception:
+            logger.warning(
+                "Aurora caption fetch failed for %s", caption_url, exc_info=True
+            )
             return None
         content = decode_vtt_bytes(raw)
         cues, _ = parse_captions_by_extension(caption_url, content)

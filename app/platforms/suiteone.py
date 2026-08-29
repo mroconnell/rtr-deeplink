@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -10,6 +11,8 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.suiteone")
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     detect_language_from_texts,
@@ -348,9 +351,17 @@ class SuiteOneAssetFinder(AssetFinder):
                 caption_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "SuiteOne caption fetch got HTTP %s for %s",
+                        response.status,
+                        caption_url,
+                    )
                     return None
                 raw = await response.read()
         except Exception:
+            logger.warning(
+                "SuiteOne caption fetch failed for %s", caption_url, exc_info=True
+            )
             return None
         content = decode_vtt_bytes(raw)
         return parse_vtt(content) or None
@@ -371,9 +382,17 @@ class SuiteOneAssetFinder(AssetFinder):
                 home_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "SuiteOne home-page fetch got HTTP %s for %s",
+                        response.status,
+                        home_url,
+                    )
                     return None
                 home_html = await response.text()
         except Exception:
+            logger.warning(
+                "SuiteOne home-page fetch failed for %s", home_url, exc_info=True
+            )
             return None
         return SuiteOneAssetFinder._extract_date_from_home(home_html, event_id)
 

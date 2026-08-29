@@ -306,3 +306,21 @@ async def test_resolve_video_id_jurisdiction_is_validated_end_to_end(monkeypatch
     )
 
     assert result.jurisdiction is None
+
+
+def test_first_cue_start_logs_a_parse_failure(monkeypatch, caplog):
+    # 2026-08-28: _first_cue_start()'s except Exception used to be silent.
+    import app.platforms.youtube as youtube_module
+
+    def _boom(text):
+        raise ValueError("simulated parse failure")
+
+    monkeypatch.setattr(youtube_module, "parse_vtt", _boom)
+
+    with caplog.at_level("WARNING"):
+        result = YouTubeAssetFinder._first_cue_start(
+            b"WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi"
+        )
+
+    assert result is None
+    assert any("first-cue-start parse failed" in r.message for r in caplog.records)

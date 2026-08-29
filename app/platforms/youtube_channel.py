@@ -75,6 +75,7 @@ Real constraints found while building this, all live-confirmed
 """
 
 import asyncio
+import logging
 import re
 import time
 from dataclasses import dataclass
@@ -83,6 +84,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 import yt_dlp
+
+logger = logging.getLogger("rtr_deeplink.youtube_channel")
 
 
 @dataclass(frozen=True)
@@ -544,6 +547,14 @@ async def find_channel_match(
     try:
         entries = await asyncio.to_thread(_list_channel, fallback.channel_id)
     except Exception:
+        logger.warning(
+            "YouTube channel listing failed for %s (netloc %s) -- possible "
+            "IP block, see this module's own docstring on the Render-vs-"
+            "residential asymmetry",
+            fallback.channel_id,
+            netloc,
+            exc_info=True,
+        )
         return None
 
     matches = [

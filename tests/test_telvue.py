@@ -73,6 +73,24 @@ async def test_resolve_real_ashland_planning_commission_meeting():
     assert result.transcript_warnings == []
 
 
+async def test_resolve_vtt_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_vtt()'s non-200 branch used to be silent.
+    html = load_fixture("telvue", "ashland_planning_1040134_page.html")
+    chapters = load_fixture("telvue", "ashland_planning_1040134_chapters.vtt")
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        CAPTIONS_URL: FakeResponse(status=404, url=CAPTIONS_URL),
+        CHAPTERS_URL: FakeResponse(status=200, text=chapters, url=CHAPTERS_URL),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await TelvueAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert any("VTT fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_no_video_returns_warning_not_crash():
     url = "https://videoplayer.telvue.com/player/exampleorg/media/999999"
     html = (

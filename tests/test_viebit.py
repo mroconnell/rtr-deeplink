@@ -51,6 +51,22 @@ async def test_resolve_real_nyc_council_meeting():
     assert "council" in full_text.lower()
 
 
+async def test_resolve_vtt_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_vtt()'s non-200 branch used to be silent.
+    html = load_fixture("viebit", "nycc_vod_page.html")
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        VTT_URL: FakeResponse(status=404, url=VTT_URL),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await ViebitAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert any("Viebit VTT fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_missing_page_config_returns_warning_not_crash():
     url = "https://councilnyc.viebit.com/vod/?v=missing"
     html = "<html><body>Not the right shape.</body></html>"

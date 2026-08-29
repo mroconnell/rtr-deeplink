@@ -147,6 +147,32 @@ async def test_resolve_real_event_with_populated_srt_captions():
     assert result.segments[3].text == "Meeting to order."
 
 
+async def test_resolve_caption_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_captions()'s non-200 branch used to be silent.
+    # Reuses the same real Emporia, KS fixtures as the test above, but
+    # with the caption URL 404ing instead of succeeding.
+    url = "https://emporiaks.portal.civicclerk.com/event/585/media"
+    event_json = load_fixture("civicclerk", "emporiaks_event585.json")
+    media_json = load_fixture("civicclerk", "emporiaks_media585.json")
+    caption_url = "https://cpmedia.azureedge.net/emporiaks/ClosedCaption/07222026172024531-585.srt"
+    routes = {
+        "https://emporiaks.api.civicclerk.com/v1/Events/585": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://emporiaks.api.civicclerk.com/v1/EventsMedia/585": FakeResponse(
+            status=200, text=media_json
+        ),
+        caption_url: FakeResponse(status=404),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.segments == []
+    assert any("caption fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_fills_in_missing_state_via_shared_lookup():
     # Synthetic -- every real CivicClerk sample found so far (Clovis CA,
     # Emporia KS, Highland CA, Lino Lakes MN) already has eventLocation.state

@@ -1,4 +1,5 @@
 import html as html_module
+import logging
 import os
 import re
 from typing import List, Optional, Tuple
@@ -7,7 +8,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 from bs4 import BeautifulSoup
 
-from .base import AssetFinder, find_platform_link, get_finder
+from .base import AssetFinder, CalendarPageError, find_platform_link, get_finder
 from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
@@ -18,6 +19,8 @@ from ..utils.vtt_parser import (
     detect_language_from_texts,
     parse_captions_by_extension,
 )
+
+logger = logging.getLogger("rtr_deeplink.generic_fallback")
 
 _AGENDA_TEXT_RE = re.compile(r"agenda", re.IGNORECASE)
 
@@ -542,7 +545,9 @@ class GenericFallbackAssetFinder(AssetFinder):
                     status = response.status
                     body = await read_capped_text(response)
         except Exception:
-            pass
+            logger.warning(
+                "generic_fallback page fetch failed for %s", url, exc_info=True
+            )
 
         blocked = status in _BLOCK_STATUSES or (
             status == 200
@@ -574,6 +579,11 @@ class GenericFallbackAssetFinder(AssetFinder):
 
             return await fetch_via_browser(url)
         except Exception:
+            logger.warning(
+                "generic_fallback headless-browser escalation failed for %s",
+                url,
+                exc_info=True,
+            )
             return None
 
     @staticmethod
@@ -885,10 +895,24 @@ class GenericFallbackAssetFinder(AssetFinder):
         try:
             finder = get_finder(platform)
             resolved = await finder.resolve(candidate)
+        except CalendarPageError:
+            # Routine, expected outcome (e.g. a Legistar calendar link
+            # rather than one specific meeting) -- not logged at warning
+            # level, since this fires on every ordinary calendar-shaped
+            # delegation candidate, not just a real problem.
+            logger.debug(
+                "generic_fallback delegation to %s hit a calendar page for %s",
+                platform,
+                candidate,
+            )
+            return None
         except Exception:
-            # Covers CalendarPageError (e.g. a Legistar calendar link
-            # rather than one specific meeting) same as any other resolve
-            # failure -- see this method's own docstring.
+            logger.warning(
+                "generic_fallback delegation to %s failed for %s",
+                platform,
+                candidate,
+                exc_info=True,
+            )
             return None
         resolved.source_url = page_url
         resolved.video_warnings = [_BEST_EFFORT_VIDEO_WARNING, *resolved.video_warnings]
@@ -950,9 +974,19 @@ class GenericFallbackAssetFinder(AssetFinder):
                     session, caption_url, timeout=aiohttp.ClientTimeout(total=15)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "generic_fallback caption fetch got HTTP %s for %s",
+                            response.status,
+                            caption_url,
+                        )
                         return None
                     raw = await read_capped_bytes(response)
         except Exception:
+            logger.warning(
+                "generic_fallback caption fetch failed for %s",
+                caption_url,
+                exc_info=True,
+            )
             return None
         content = decode_vtt_bytes(raw)
         cues, _fallback_text = parse_captions_by_extension(caption_url, content)

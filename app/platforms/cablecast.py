@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional
@@ -15,6 +16,8 @@ from ..utils.vtt_parser import (
     detect_language_from_texts,
     normalize_shouting_caption,
 )
+
+logger = logging.getLogger("rtr_deeplink.cablecast")
 
 TARGET_LANGUAGE = "en"
 
@@ -386,9 +389,19 @@ class CablecastAssetFinder(AssetFinder):
                 transcript_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Cablecast transcript fetch got HTTP %s for %s",
+                        response.status,
+                        transcript_url,
+                    )
                     return None
                 raw = await response.read()
         except Exception:
+            logger.warning(
+                "Cablecast transcript fetch failed for %s",
+                transcript_url,
+                exc_info=True,
+            )
             return None
         cues = CablecastAssetFinder._parse_transcript(decode_vtt_bytes(raw))
         return cues or None

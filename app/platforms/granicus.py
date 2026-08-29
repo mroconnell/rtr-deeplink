@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import random
 import re
 from datetime import date as _date, datetime, timedelta
@@ -20,6 +21,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_captions_by_extension,
 )
+
+logger = logging.getLogger("rtr_deeplink.granicus")
 
 TARGET_LANGUAGE = "en"
 
@@ -984,6 +987,11 @@ class GranicusAssetFinder(AssetFinder):
                 agenda_url, timeout=aiohttp.ClientTimeout(total=15)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Granicus agenda fetch got HTTP %s for %s",
+                        response.status,
+                        agenda_url,
+                    )
                     return [], None
                 final_url = str(response.url)
                 try:
@@ -991,6 +999,9 @@ class GranicusAssetFinder(AssetFinder):
                 except (UnicodeDecodeError, LookupError):
                     return [], final_url
         except Exception:
+            logger.warning(
+                "Granicus agenda fetch failed for %s", agenda_url, exc_info=True
+            )
             return [], None
 
         soup = BeautifulSoup(html, "html.parser")
@@ -1042,9 +1053,17 @@ class GranicusAssetFinder(AssetFinder):
                 allow_redirects=False,
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Granicus minutes fetch got HTTP %s for %s",
+                        response.status,
+                        minutes_url,
+                    )
                     return None
                 html = await response.text()
         except Exception:
+            logger.warning(
+                "Granicus minutes fetch failed for %s", minutes_url, exc_info=True
+            )
             return None
 
         text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)[:1000]
@@ -1088,9 +1107,15 @@ class GranicusAssetFinder(AssetFinder):
                 rss_url, timeout=aiohttp.ClientTimeout(total=10)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "Granicus RSS fetch got HTTP %s for %s",
+                        response.status,
+                        rss_url,
+                    )
                     return None, None, None
                 xml = await response.text()
         except Exception:
+            logger.warning("Granicus RSS fetch failed for %s", rss_url, exc_info=True)
             return None, None, None
 
         jurisdiction = body = None

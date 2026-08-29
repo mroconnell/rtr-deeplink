@@ -114,7 +114,7 @@ async def test_resolve_real_charlotte_show():
     assert result.segments[0].end == result.segments[1].start == 38.8
 
 
-async def test_resolve_falls_back_gracefully_when_transcript_fetch_fails():
+async def test_resolve_falls_back_gracefully_when_transcript_fetch_fails(caplog):
     # A populated vodTranscripts entry whose URL 404s (or times out) must
     # degrade to the same honest "no transcript" outcome as one with no
     # entry at all, not raise or crash the whole resolve.
@@ -126,11 +126,14 @@ async def test_resolve_falls_back_gracefully_when_transcript_fetch_fails():
         CHARLOTTE_TRANSCRIPT_URL: FakeResponse(status=404),
     }
 
-    with mock_session(routes):
-        result = await CablecastAssetFinder().resolve(CHARLOTTE_PORTAL_URL)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await CablecastAssetFinder().resolve(CHARLOTTE_PORTAL_URL)
 
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
+    # 2026-08-28: a failed transcript fetch used to be silent -- now logged.
+    assert any("transcript fetch got HTTP 404" in r.message for r in caplog.records)
 
 
 async def test_resolve_forces_http_even_when_https_is_pasted():

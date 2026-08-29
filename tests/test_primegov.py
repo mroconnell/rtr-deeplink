@@ -809,13 +809,19 @@ async def test_resolve_delegates_to_granicus_via_tenant_api_when_no_youtube_vide
     assert result.source_url == BROOKHAVEN_URL
 
 
-async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_match():
+async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_match(
+    caplog,
+):
     # A meetingTemplateId genuinely not found in either of the two
     # guessed-year archives, or in any other year the tenant has ever
     # archived -- a real agenda-only page with no video anywhere, not a
     # bug. GetArchivedMeetingYears returning [] here means the current/
     # prior-year misses below are the only two requests made before
     # giving up -- confirms the fallback doesn't loop forever.
+    #
+    # api_url_current 404s rather than returning "[]" so this also
+    # exercises the 2026-08-28 logging fix on _fetch_tenant_video_url()'s
+    # non-200 branch (previously silent).
     url = "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=99999"
     api_url_current = (
         f"https://okc.primegov.com/api/v2/PublicPortal/"
@@ -828,17 +834,21 @@ async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_matc
     years_url = "https://okc.primegov.com/api/v2/PublicPortal/GetArchivedMeetingYears"
     routes = {
         url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url),
-        api_url_current: FakeResponse(status=200, text="[]"),
+        api_url_current: FakeResponse(status=404),
         api_url_prior: FakeResponse(status=200, text="[]"),
         years_url: FakeResponse(status=200, text="[]"),
     }
 
-    with mock_session(routes):
-        result = await PrimeGovAssetFinder().resolve(url)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await PrimeGovAssetFinder().resolve(url)
 
     assert result.platform == "primegov"
     assert result.video_url is None
     assert any("no video found" in w.lower() for w in result.video_warnings)
+    assert any(
+        "archived-meetings fetch got HTTP 404" in r.message for r in caplog.records
+    )
 
 
 async def test_resolve_skips_tenant_api_entirely_when_url_has_no_meeting_template_id():

@@ -282,3 +282,21 @@ def test_only_the_four_confirmed_tenants_have_a_channel():
     assert yc.has_channel_fallback("PHILA.LEGISTAR.COM")
     assert not yc.has_channel_fallback("charlottenc.legistar.com")
     assert not yc.has_channel_fallback("legistar.council.nyc.gov")
+
+
+async def test_find_channel_match_logs_a_listing_failure(monkeypatch, caplog):
+    # 2026-08-28: find_channel_match()'s `except Exception` around
+    # _list_channel() used to be silent -- a real production concern
+    # given this module's own docstring on the Render-IP-block asymmetry.
+    def _boom(channel_id):
+        raise RuntimeError("simulated yt-dlp failure")
+
+    monkeypatch.setattr(yc, "_list_channel", _boom)
+
+    with caplog.at_level("WARNING"):
+        result = await yc.find_channel_match(
+            "phoenix.legistar.com", "City Council Formal Meeting", "2026-07-01"
+        )
+
+    assert result is None
+    assert any("YouTube channel listing failed" in r.message for r in caplog.records)

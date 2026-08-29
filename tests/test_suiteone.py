@@ -96,7 +96,9 @@ async def test_resolve_lorain_video_with_no_captions():
     assert result.transcript_warnings == ["No captions found for this video."]
 
 
-async def test_resolve_st_marys_ga_no_video_yet_and_resolves_glued_jurisdiction():
+async def test_resolve_st_marys_ga_no_video_yet_and_resolves_glued_jurisdiction(
+    caplog,
+):
     # Real page fetched live 2026-08-21 -- St Marys, GA event id 1000
     # ("Orange Hall Management Committee") is a real, confirmed case of
     # the SAME page shape served with `var src = '';` -- this vendor's own
@@ -120,8 +122,9 @@ async def test_resolve_st_marys_ga_no_video_yet_and_resolves_glued_jurisdiction(
         ST_MARYS_HOME: FakeResponse(status=404, text=""),
     }
 
-    with mock_session(routes):
-        result = await SuiteOneAssetFinder().resolve(ST_MARYS_URL)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await SuiteOneAssetFinder().resolve(ST_MARYS_URL)
 
     assert result.title == "Orange Hall Management Committee"
     assert result.video_url is None
@@ -131,6 +134,8 @@ async def test_resolve_st_marys_ga_no_video_yet_and_resolves_glued_jurisdiction(
     assert result.date is None
     # Was None until the WO-22 shared-module fix -- see docstring above.
     assert result.jurisdiction == "St Marys, GA"
+    # 2026-08-28: a failed home-page fetch used to be silent -- now logged.
+    assert any("home-page fetch got HTTP 404" in r.message for r in caplog.records)
 
 
 async def test_resolve_holladay_ut_agenda_link_and_real_captions():

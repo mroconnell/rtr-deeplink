@@ -70,7 +70,7 @@ async def test_resolve_missing_mp4_url_reports_no_video():
     assert result.video_warnings == ["No video found on this page."]
 
 
-async def test_resolve_caption_fetch_failure_reports_no_transcript():
+async def test_resolve_caption_fetch_failure_reports_no_transcript(caplog):
     html = load_fixture("aurora", "regular_meeting_june_22_2026.html")
 
     routes = {
@@ -78,9 +78,12 @@ async def test_resolve_caption_fetch_failure_reports_no_transcript():
         CAPTION_URL: FakeResponse(status=404),
     }
 
-    with mock_session(routes):
-        result = await AuroraTvAssetFinder().resolve(MEETING_URL)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await AuroraTvAssetFinder().resolve(MEETING_URL)
 
     assert result.video_url == REAL_MP4_URL
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
+    # 2026-08-28: a failed caption fetch used to be silent -- now logged.
+    assert any("caption fetch got HTTP 404" in r.message for r in caplog.records)

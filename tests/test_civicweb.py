@@ -128,6 +128,24 @@ async def test_resolve_missing_video_id_reports_no_video(monkeypatch):
     assert result.title == "Commissioners Court - Aug 04 2026"
 
 
+async def test_resolve_degrades_honestly_when_videolink_fetch_fails(caplog):
+    # 2026-08-28: _fetch_json()'s non-200 branch used to be silent.
+    routes = {
+        MEETING_URL: FakeResponse(status=200, text=MEETING_HTML, url=MEETING_URL),
+        VIDEOLINK_URL: FakeResponse(status=404, url=VIDEOLINK_URL),
+        MEETING_DATA_URL: FakeResponse(
+            status=200, text=MEETING_DATA_JSON, url=MEETING_DATA_URL
+        ),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await CivicWebAssetFinder().resolve(MEETING_URL)
+
+    assert result.video_url is None
+    assert any("JSON fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 def test_extract_jurisdiction_fills_in_state_for_an_unambiguous_county():
     # "Dallas County" itself is genuinely ambiguous (real counties by that
     # name exist in AL, AR, IA, MO, *and* TX -- confirmed via

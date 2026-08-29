@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
@@ -9,6 +10,8 @@ from .base import AssetFinder, UnsupportedPlatformError, resolve_via_platform
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.civicweb")
 
 # CivicWeb (iCompass, a Diligent brand -- footer-confirmed, a genuinely
 # different vendor from eScribe despite both being Canadian civic-meeting
@@ -203,9 +206,15 @@ class CivicWebAssetFinder(AssetFinder):
                 url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "CivicWeb text fetch got HTTP %s for %s",
+                        response.status,
+                        url,
+                    )
                     return None
                 return await response.text()
         except Exception:
+            logger.warning("CivicWeb text fetch failed for %s", url, exc_info=True)
             return None
 
     @staticmethod
@@ -226,9 +235,15 @@ class CivicWebAssetFinder(AssetFinder):
                 url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "CivicWeb JSON fetch got HTTP %s for %s",
+                        response.status,
+                        url,
+                    )
                     return None
                 data = await response.json()
         except Exception:
+            logger.warning("CivicWeb JSON fetch failed for %s", url, exc_info=True)
             return None
         if isinstance(data, str):
             try:

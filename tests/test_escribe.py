@@ -155,7 +155,7 @@ async def test_resolve_no_video_integration_returns_warning_not_crash():
     assert any("no video integration found" in w.lower() for w in result.video_warnings)
 
 
-async def test_resolve_video_present_but_no_caption_file_found():
+async def test_resolve_video_present_but_no_caption_file_found(caplog):
     url = "https://pub-example.escribemeetings.com/Meeting.aspx?Id=3"
     html = (
         "<html><head><title>Meeting - January 1, 2026</title></head><body>"
@@ -171,14 +171,17 @@ async def test_resolve_video_present_but_no_caption_file_found():
         )
         routes[vtt_url] = FakeResponse(status=404)
 
-    with mock_session(routes):
-        result = await EscribeAssetFinder().resolve(url)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await EscribeAssetFinder().resolve(url)
 
     assert result.video_url is not None
     assert result.segments == []
     assert any(
         "no caption file was found" in w.lower() for w in result.transcript_warnings
     )
+    # 2026-08-28: a failed VTT fetch used to be silent -- now logged.
+    assert any("VTT fetch got HTTP 404" in r.message for r in caplog.records)
 
 
 # --- 2026-08-14 rebuild coverage (Phase 4: the opt-in generic-scan

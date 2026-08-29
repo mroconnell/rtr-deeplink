@@ -70,6 +70,7 @@ Whisper transcription is blocked by the *same* wall, not a separate one
 """
 
 import json
+import logging
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, quote, urlparse
@@ -81,6 +82,8 @@ from .base import AssetFinder, CalendarCandidate, CalendarPageError
 from .models import ResolvedMeeting
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_text
+
+logger = logging.getLogger("rtr_deeplink.vimeo")
 
 # Vimeo fronts some page requests with Cloudflare; a modern desktop UA is
 # what a real visitor sends. Same scoped-to-this-adapter approach as
@@ -478,7 +481,11 @@ class VimeoAssetFinder(AssetFinder):
                     session, url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "Vimeo fetch got HTTP %s for %s", response.status, url
+                        )
                         return None
                     return await read_capped_text(response)
         except Exception:
+            logger.warning("Vimeo fetch failed for %s", url, exc_info=True)
             return None
