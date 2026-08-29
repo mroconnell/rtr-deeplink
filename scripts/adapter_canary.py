@@ -21,14 +21,18 @@ schedule (.github/workflows/adapter-canary.yml), which turns a non-zero
 exit into a failed run and reuses WO-7's `if: failure()` notification
 step.
 
-CANARY_URLS below is deliberately one real URL per platform, not a list --
-"keep it cheap: one URL per platform, not a full crawl" per WO-13's own
-acceptance criteria. Each URL is the actual real, live meeting URL that
-platform's test fixtures were built and verified against (see
-tests/test_<platform>.py) -- not a guess. A URL going stale (the source
-city removing an old meeting) is a real, expected failure mode distinct
-from an adapter bug; if a canary run starts failing, check the URL still
-resolves in a browser before assuming the adapter regressed.
+CANARY_URLS below holds one real URL per platform by default -- "keep it
+cheap: one URL per platform, not a full crawl" per WO-13's own acceptance
+criteria still applies -- but a platform can carry more than one when a
+single URL genuinely can't exercise every path worth monitoring (e.g.
+"legistar" carries a second, Phoenix URL specifically for WO-30's
+city-YouTube-channel fallback, which the ordinary Charlotte URL never
+touches). Each URL is the actual real, live meeting URL that platform's
+test fixtures were built and verified against (see tests/test_<platform>.py)
+-- not a guess. A URL going stale (the source city removing an old
+meeting) is a real, expected failure mode distinct from an adapter bug; if
+a canary run starts failing, check the URL still resolves in a browser
+before assuming the adapter regressed.
 
 Every registered platform must appear in either CANARY_URLS or
 CANARY_EXCLUSIONS -- `tests/test_adapter_canary.py` enforces that in CI,
@@ -69,96 +73,116 @@ from app.platforms.models import ResolvedMeeting  # noqa: E402
 # silently going unmonitored (which is what happened to destinyhosted,
 # suiteone, and open_media, all added blind between 2026-08-19 and
 # 2026-08-21 and only caught by that test being written).
-CANARY_URLS: dict[str, str] = {
-    "aurora_tv": "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026",
-    "ca_legislature": "https://www.senate.ca.gov/media/senate-floor-session-20260806",
-    "cablecast": "http://charlotte.cablecast.tv/internetchannel/show/2451?site=1",
-    "castus": "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME",
-    "champds": "https://play.champds.com/atlantaga/event/1227",
+CANARY_URLS: dict[str, list[str]] = {
+    "aurora_tv": [
+        "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
+    ],
+    "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
+    "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
+    "castus": [
+        "https://cloud.castus.tv/vod/comm7tv/video/6a83b3f9d94c83000226f83d?page=HOME"
+    ],
+    "champds": ["https://play.champds.com/atlantaga/event/1227"],
     # Chicago's 2026-07-15 City Council meeting -- live-verified 2026-08-21
     # (WO-29). Watch for two distinct failure shapes here: the ELMS API
     # itself changing, or Vimeo's public oEmbed endpoint starting to
     # refuse this app's server IP (the metadata half comes from there, see
     # vimeo.py). A resolve with a real video_url but no title/date points
     # at the second.
-    "chicago_elms": (
+    "chicago_elms": [
         "https://chicityclerkelms.chicago.gov/Meeting/"
         "?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941"
-    ),
-    "civicclerk": "https://emporiaks.portal.civicclerk.com/event/585/media",
-    "civicweb": "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108",
-    "clerkbase": (
+    ],
+    "civicclerk": ["https://emporiaks.portal.civicclerk.com/event/585/media"],
+    "civicweb": [
+        "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
+    ],
+    "clerkbase": [
         "https://clerkshq.com/YellowSprings-OH?docId=feb07_22ag&"
         "path=ArchAgenda_VilCouncil%2C2022_COUNCIL_AGENDAS%2Cfeb07_22ag%2C"
-    ),
+    ],
     # The Woodlands Township, TX -- the exact real URL
     # tests/test_destinyhosted.py's fixture shape was taken from, and the
     # one real confirmed case of this CMS's onclick-Swagit delegation
     # actually producing a video (most destinyhosted tenants are
     # agenda-only). A successful resolve here reports platform "swagit",
     # since the delegation's own identity survives on purpose.
-    "destinyhosted": (
+    "destinyhosted": [
         "https://public.destinyhosted.com/agenda_publish.cfm"
         "?id=96635&mt=ALL&get_month=8&get_year=2026&dsp=ag&seq=4147"
-    ),
-    "escribe": (
+    ],
+    "escribe": [
         "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?"
         "Id=981f78d7-8211-4b4b-b066-5f93b4fd5e74&Agenda=Agenda&lang=English"
-    ),
-    "granicus": "https://simivalley.granicus.com/player/clip/2840",
-    "hyland": "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3",
-    "iqm2": "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601",
-    # Charlotte, NC -- the ordinary Legistar->Granicus delegation. Note
-    # this does NOT exercise WO-30's city-YouTube-channel fallback
-    # (app/platforms/youtube_channel.py), which only runs on the four
-    # registered instances and only when a page has no video link at all.
-    # That path introduced no new registered platform_name (it resolves as
-    # "legistar" -> "youtube" like every other delegation), so the
-    # coverage test below is satisfied without a new key -- but it is
-    # genuinely unmonitored here. See BACKLOG.md's WO-30 residual-gaps
-    # entry: the real fix is letting this dict hold more than one URL per
-    # platform, a per-tenant gap that applies to every multi-tenant
-    # adapter in it, not a second legistar-shaped key.
-    "legistar": (
+    ],
+    "granicus": ["https://simivalley.granicus.com/player/clip/2840"],
+    "hyland": [
+        "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3"
+    ],
+    "iqm2": ["https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601"],
+    # Charlotte, NC -- the ordinary Legistar->Granicus delegation, plus (as
+    # of 2026-08-29) a real Phoenix URL that exercises WO-30's
+    # city-YouTube-channel fallback (app/platforms/youtube_channel.py)
+    # specifically -- the same URL tests/test_legistar.py's `_PHOENIX_URL`
+    # is built against. That path used to be genuinely unmonitored here: it
+    # introduces no new registered platform_name (still resolves as
+    # "legistar" -> "youtube", like the Charlotte URL), so the coverage
+    # test was satisfied without ever exercising it. This second URL costs
+    # more per run than a single-page resolve -- it drives the real,
+    # heavier yt-dlp channel-listing path (~400 entries, ~6s per tab, per
+    # youtube_channel.py's own docstring), untested from Render's egress --
+    # that's the point (catching this path breaking), but it's worth
+    # knowing before treating a Phoenix-only failure as equally cheap to
+    # retry as everything else here.
+    "legistar": [
         "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1365278"
-        "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|"
-    ),
-    "lims": "https://lims.minneapolismn.gov/MarkedAgenda/CI/6133",
+        "&GUID=E6E474AC-A2A9-4CE4-BCF0-5B118522E3BE&Options=info|",
+        "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831",
+    ],
+    "lims": ["https://lims.minneapolismn.gov/MarkedAgenda/CI/6133"],
     # Eugene, OR -- the richest of tests/test_openmedia.py's three real
     # tenants (Goodyear AZ and Cortez CO are the other two, both also
     # live-verified 2026-08-21 if this one ever goes stale). open.media
     # embeds YouTube, so a failure here can also mean yt-dlp needs an
     # update rather than an open.media change -- check that first.
-    "open_media": (
+    "open_media": [
         "https://eugene.open.media/sessions/344982/"
         "city-council-work-session-july-15-2026"
-    ),
-    "primegov": "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482",
+    ],
+    "primegov": ["https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482"],
     # Town of Fairfax, CA -- the tenant this adapter was built and tested
     # against (see proudcity.py's own module docstring, BACKLOG_DONE.md's
     # 2026-08-26 entry). Real video, real jurisdiction, real agenda PDF.
-    "proudcity": "https://townoffairfaxca.gov/meetings/town-council-meeting-august-5-2026/",
-    "seattle_channel": "https://www.seattlechannel.org/videos?videoid=x184865",
-    "slc": "https://www.slc.gov/council/march-3-2026-meeting-recap/",
+    "proudcity": [
+        "https://townoffairfaxca.gov/meetings/town-council-meeting-august-5-2026/"
+    ],
+    "seattle_channel": ["https://www.seattlechannel.org/videos?videoid=x184865"],
+    "slc": ["https://www.slc.gov/council/march-3-2026-meeting-recap/"],
     # Holladay, UT -- the strongest of tests/test_suiteone.py's six
     # confirmed-live tenants: real populated WebVTT captions *and* a real
     # agenda PDF on the same event.
-    "suiteone": "https://holladayut.suiteonemedia.com/event/?id=2652",
-    "telvue": "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1040134",
-    "townhallstreams": "https://townhallstreams.com/stream.php?location_id=94&id=75799",
+    "suiteone": ["https://holladayut.suiteonemedia.com/event/?id=2652"],
+    "telvue": [
+        "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1040134"
+    ],
+    "townhallstreams": [
+        "https://townhallstreams.com/stream.php?location_id=94&id=75799"
+    ],
     # "unknown" is generic_fallback.py's registered platform_name -- the
     # exact string detect_platform() returns for an unmatched host, not a
     # placeholder. Kept under that key so the coverage test can compare
     # registry keys directly.
-    "unknown": "https://www.crrma.org/information/meetings/board/2025-11-12",
-    "viebit": "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4",
+    "unknown": ["https://www.crrma.org/information/meetings/board/2025-11-12"],
+    "viebit": [
+        "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4"
+    ],
     # Salisbury, NC's real 7/21/2026 City Council meeting -- the one city
     # in the WO-29 investigation confirmed (via a real browser) to have
     # populated English captions inside the Vimeo player. This adapter is
     # video-only by design (see vimeo.py), so `has_real_content()` here is
     # satisfied by video + metadata, not segments.
-    "vimeo": "https://vimeo.com/1212025580",
-    "youtube": "https://www.youtube.com/watch?v=uNDJRR3ywVo",
+    "vimeo": ["https://vimeo.com/1212025580"],
+    "youtube": ["https://www.youtube.com/watch?v=uNDJRR3ywVo"],
 }
 
 # Registered platforms that deliberately have no canary URL, each with the
@@ -205,8 +229,9 @@ def has_real_content(result: ResolvedMeeting) -> bool:
     )
 
 
-# A canary run makes one request each to 27 live third-party sites it
-# does not control, so a transient failure somewhere in that set is
+# A canary run makes one request each to 29 live third-party sites it
+# does not control (28 platforms, one -- "legistar" -- carrying 2 URLs),
+# so a transient failure somewhere in that set is
 # expected rather than exceptional -- and reporting the first one as a
 # real failure emails an alert that costs a full triage investigation.
 # That is not hypothetical: the 2026-08-22 `destinyhosted` failure was
@@ -283,13 +308,25 @@ async def check_platform(name: str, url: str) -> dict:
     return retried
 
 
-async def run_canary(urls: dict[str, str]) -> list[dict]:
+async def run_canary(urls: dict[str, list[str]]) -> list[dict]:
     # One request per distinct real-world site, not the same site hit
     # repeatedly -- concurrent is fine, no politeness concern like a
     # single-site crawl would have.
-    return await asyncio.gather(
-        *(check_platform(name, url) for name, url in urls.items())
-    )
+    #
+    # A platform with only one URL keeps its report label exactly as
+    # before ("legistar", not "legistar[0]") -- every existing single-URL
+    # platform's report output stays byte-identical. A platform with more
+    # than one gets an index suffix per URL so each result stays
+    # independently attributable.
+    tasks = []
+    for name, url_list in urls.items():
+        if len(url_list) == 1:
+            tasks.append(check_platform(name, url_list[0]))
+        else:
+            tasks.extend(
+                check_platform(f"{name}[{i}]", url) for i, url in enumerate(url_list)
+            )
+    return await asyncio.gather(*tasks)
 
 
 def format_report(results: list[dict]) -> str:

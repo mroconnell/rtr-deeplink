@@ -1,4 +1,5 @@
 import pytest
+import yt_dlp
 
 from app.platforms.base import CalendarPageError, register
 from app.platforms.granicus import GranicusAssetFinder
@@ -720,10 +721,20 @@ _PHOENIX_LISTING = [
 ]
 
 
-def _stub_channel(monkeypatch, entries):
+def _stub_channel(monkeypatch, entries, atom_published_date=None):
     monkeypatch.setattr(
         youtube_channel, "_list_channel", lambda channel_id: list(entries)
     )
+
+    async def _fake_atom_fetch(channel_id, video_id):
+        return atom_published_date
+
+    # Stubbed rather than left to hit the real network mock: these tests
+    # are about the matching/plausibility logic, not the Atom feed itself
+    # (see tests/test_youtube_channel.py for that). Defaults to None,
+    # matching the real "video not among the feed's ~15 most recent
+    # uploads" case, which is what every one of these fixture pairs is.
+    monkeypatch.setattr(youtube_channel, "_fetch_atom_published_date", _fake_atom_fetch)
 
 
 def _stub_youtube(monkeypatch):
@@ -805,6 +816,34 @@ async def test_channel_fallback_declines_rather_than_matching_the_wrong_video(
         ],
     )
     _stub_youtube(monkeypatch)
+    routes = {
+        _PHOENIX_URL: FakeResponse(status=200, text=_PHOENIX_HTML, url=_PHOENIX_URL)
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_PHOENIX_URL)
+
+    assert result.platform == "legistar"
+    assert result.video_url is None
+    assert result.video_warnings == ["No video link found on this Legistar page."]
+
+
+async def test_channel_fallback_atom_date_corroborates_when_ytdlp_is_blocked(
+    monkeypatch,
+):
+    # Real scenario this WO-30 residual targets: yt-dlp's own single-video
+    # fetch hits YouTube's anti-bot block (the documented Render-IP
+    # incident -- see youtube.py's resolve_video_id()), so resolved.date
+    # comes back None and video_date_is_plausible() would otherwise pass
+    # with no real signal at all. The Atom feed's corroborated date, when
+    # present, is used instead -- and here it's a month off from the real
+    # meeting date, which the None-date case alone would have missed.
+    _stub_channel(monkeypatch, _PHOENIX_LISTING, atom_published_date="2026-06-01")
+
+    def _raise_download_error(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot.")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise_download_error)
     routes = {
         _PHOENIX_URL: FakeResponse(status=200, text=_PHOENIX_HTML, url=_PHOENIX_URL)
     }

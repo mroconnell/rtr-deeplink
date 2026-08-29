@@ -1,3 +1,5 @@
+import yt_dlp
+
 from app.platforms.hyland import (
     _AGENDA_ITEM_NEW_RE,
     _AGENDA_ITEM_RE,
@@ -379,6 +381,57 @@ async def test_resolve_delegates_to_youtube_when_no_direct_media_file(monkeypatc
     # Real timestamped agenda outline still works independent of which
     # video source was used.
     assert len(result.agenda_items) == 3
+
+
+async def test_resolve_surfaces_youtube_bot_block_video_warning(monkeypatch):
+    # Real bug found 2026-08-29: the delegation above (this file's previous
+    # test) only ever exercised the success path. When yt-dlp's own fetch
+    # for the delegated video id hits YouTube's anti-bot block
+    # (yt_dlp.utils.DownloadError -- the same real, live block documented
+    # in youtube.py's resolve_video_id()), that call still returns a
+    # playable ResolvedMeeting with a real video_warnings message -- but
+    # hyland.py copied every field off it except video_warnings, so a
+    # bot-blocked Anchorage-shaped page looked identical to a fully
+    # successful one on the rendered page.
+    url = (
+        "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeeting?id=6500&doctype=1"
+    )
+    agenda_a_url = "https://meetings.muni.org/AgendaOnline/Meetings/ViewMeetingAgenda?meetingId=6500&type=1"
+    agenda_b_url = "https://meetings.muni.org/AgendaOnline/Documents/ViewAgenda?meetingId=6500&type=agenda&doctype=1"
+    html = load_fixture("hyland", "anchorage_view_meeting_youtube.html")
+    notfound_html = load_fixture(
+        "hyland", "anchorage_view_meeting_agenda_notfound.html"
+    )
+    doc_html = load_fixture("hyland", "anchorage_view_agenda_document.html")
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        agenda_a_url: FakeResponse(status=200, text=notfound_html, url=agenda_a_url),
+        agenda_b_url: FakeResponse(status=200, text=doc_html, url=agenda_b_url),
+    }
+
+    def _raise_download_error(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot.")
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise_download_error)
+
+    with mock_session(routes):
+        result = await HylandAssetFinder().resolve(url)
+
+    assert result.platform == "hyland"
+    # The embed URL needs no network call, so playback still works even
+    # though yt-dlp's metadata/caption fetch was blocked.
+    assert result.video_url == "https://www.youtube.com/embed/92SgT7nRbKw"
+    assert result.video_format == "youtube"
+    assert result.video_warnings == [
+        "YouTube is currently blocking automated caption requests from our server, so "
+        "no transcript is available for this video — but it should still play fine "
+        "above."
+    ]
+    assert result.transcript_warnings == [
+        "No transcript available — YouTube is currently blocking caption requests from "
+        "our server."
+    ]
+    assert result.segments == []
 
 
 async def test_resolve_no_meeting_id_skips_agenda_fetch_gracefully():
