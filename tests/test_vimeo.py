@@ -385,3 +385,41 @@ async def test_listing_fetch_failure_is_logged(caplog):
     assert result.video_url is None
     assert any("couldn't read any meetings" in w for w in result.video_warnings)
     assert any("Vimeo fetch got HTTP 503" in r.message for r in caplog.records)
+
+
+def test_jurisdiction_strips_institutional_suffix_before_validating():
+    # Real account names, 2026-08-29 direct-dorking batch (BACKLOG_DONE.md,
+    # "22 new real ingests"): each one is an unrecoverable glued phrase as-
+    # is (validated_label_extract() correctly declines "Peters Township
+    # School District" whole), but a real, unambiguous place name once the
+    # trailing institutional phrase is stripped.
+    assert (
+        VimeoAssetFinder._jurisdiction(
+            {"author_name": "Peters Township School District"}
+        )
+        == "Peters Township"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Hopkins Public Schools"})
+        == "Hopkins"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Jefferson Parish Schools"})
+        == "Jefferson Parish"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Seekonk Public Schools"})
+        == "Seekonk"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Mason County District Library"})
+        == "Mason County"
+    )
+
+
+def test_jurisdiction_still_declines_a_name_with_no_real_place_in_it():
+    # "District 113 Media" (Highland Park/Deerfield IL's District 113
+    # schools) has no institutional suffix this file strips and no place
+    # name for validated_label_extract() to find either way -- must stay
+    # None rather than guess "District 113".
+    assert VimeoAssetFinder._jurisdiction({"author_name": "District 113 Media"}) is None
