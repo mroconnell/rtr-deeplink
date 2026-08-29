@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import aiohttp
 
 from .base import AssetFinder
+from .boxcast import find_channel_match
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
@@ -41,9 +42,11 @@ logger = logging.getLogger("rtr_deeplink.proudcity")
 # (4) promotion out of `best_effort` status.
 #
 # `video_style === 'external'` is a second, real video field (a plain
-# outbound `<a href>` link, not an embed) -- confirmed to exist in the
-# theme template but not yet confirmed populated on any real tenant
-# checked. Treated as a `video_link` pointer, never `video_url`, per this
+# outbound `<a href>` link, not an embed) -- confirmed populated 2026-08-27
+# on Wilmington, OH, always a BoxCast *channel* link so far. Delegates to
+# `boxcast.py`'s date-matched channel resolver (added 2026-08-29, see its
+# own module docstring) when the link matches that shape; falls back to a
+# `video_link` pointer, never `video_url`, for anything else, per this
 # repo's convention that `video_url` must always be directly playable.
 PROUDCITY_KNOWN_DOMAINS = frozenset(
     {
@@ -103,12 +106,20 @@ _BOOKMARK_RE = re.compile(
     r'data-youtube-seek="(\d+)">\s*([^<]+?)\s*<span', re.IGNORECASE
 )
 # `videoStyle === 'external'` case -- a plain outbound link, not an embed.
-# Schema-verified against the theme source, not yet confirmed populated on
-# a real tenant either.
+# Confirmed populated on a real tenant 2026-08-27 (Wilmington, OH -- see
+# BACKLOG.md/BACKLOG_DONE.md): a link to a BoxCast *channel*, not one
+# specific broadcast.
 _EXTERNAL_VIDEO_RE = re.compile(
     r'<a href="([^"]+)"[^>]*title="View video on external website"',
     re.IGNORECASE,
 )
+# boxcast.tv/channel/{id} specifically -- see boxcast.py's own module
+# docstring for the real delegation this enables (date-matched against
+# this page's own meeting date, via BoxCast's public broadcast-search
+# API). A boxcast.tv/view/{slug} link (one specific broadcast, no
+# matching needed) isn't confirmed to appear here on any real tenant --
+# only handling the confirmed shape.
+_BOXCAST_CHANNEL_RE = re.compile(r"boxcast\.tv/channel/([A-Za-z0-9]+)", re.IGNORECASE)
 
 # Real, confirmed incident, 2026-08-26: `/meetings/example-city-council-
 # meeting/` is a shared WordPress seed/demo post every ProudCity install
@@ -183,6 +194,29 @@ class ProudCityAssetFinder(AssetFinder):
         external_match = _EXTERNAL_VIDEO_RE.search(page_html)
         if external_match:
             video_link = external_match.group(1)
+
+        if video_link:
+            channel_match = _BOXCAST_CHANNEL_RE.search(video_link)
+            if channel_match:
+                boxcast_match = await find_channel_match(
+                    channel_match.group(1), title, date
+                )
+                if boxcast_match:
+                    return ResolvedMeeting(
+                        platform=self.platform_name,
+                        source_url=url,
+                        title=title,
+                        date=date,
+                        jurisdiction=jurisdiction,
+                        agenda_items=agenda_items,
+                        agenda_link=agenda_link,
+                        video_url=boxcast_match.video_url,
+                        video_format="m3u8",
+                        # No confirmed caption/transcript source on any
+                        # real BoxCast government tenant checked -- see
+                        # boxcast.py's own module docstring.
+                        transcript_warnings=["No transcript found for this event."],
+                    )
 
         warnings = (
             ["We think the video is here, but can't play it directly: " + video_link]

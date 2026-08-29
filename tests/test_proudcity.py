@@ -11,7 +11,9 @@ any real tenant checked -- marked below, per this repo's "don't claim a
 data path works without a positive example" convention.
 """
 
+from app.platforms import proudcity
 from app.platforms.base import detect_platform
+from app.platforms.boxcast import BoxcastMatch
 from app.platforms.proudcity import ProudCityAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
@@ -143,6 +145,83 @@ async def test_resolve_external_video_is_a_pointer_not_a_playable_url(monkeypatc
     assert result.platform == "proudcity"
     assert result.video_url is None
     assert result.video_link == "https://example-video-host.com/watch/abc123"
+
+
+# Real link shape confirmed live 2026-08-27 on Wilmington, OH
+# (wilmingtonohio.gov/meetings/city-council-meeting-april-16-2026) --
+# a BoxCast *channel* link, not one specific broadcast. See boxcast.py's
+# own module docstring for the real date-matched delegation this fixture
+# exercises.
+HTML_WITH_BOXCAST_LINK = """
+<html><head>
+<meta property="og:site_name" content="City of Wilmington">
+</head><body>
+<h1 class="entry-title">City Council Regular Meeting: August 6, 2026  </h1>
+<p>Date and time: 2026-08-06 07:00 pm</p>
+<a href="https://boxcast.tv/channel/x1jps4n28nlgtaozsv5y" target="_blank"
+   title="View video on external website">Video</a>
+</body></html>
+"""
+
+
+async def test_resolve_delegates_a_boxcast_channel_link_to_the_date_matched_broadcast(
+    monkeypatch,
+):
+    async def fake_find_channel_match(channel_id, meeting_title, meeting_date):
+        assert channel_id == "x1jps4n28nlgtaozsv5y"
+        assert meeting_date == "2026-08-06"
+        return BoxcastMatch(
+            broadcast_id="afjvqrnty4auvtywkunc",
+            broadcast_name="Wilmington City Council Regular Meeting 8/6/2026",
+            video_url="https://play.boxcast.com/p/skd3evxqqhli7timl3qw/v/all.m3u8?Expires=1",
+        )
+
+    monkeypatch.setattr(proudcity, "find_channel_match", fake_find_channel_match)
+    routes = {
+        MEETING_URL: FakeResponse(
+            status=200, text=HTML_WITH_BOXCAST_LINK, url=MEETING_URL
+        )
+    }
+
+    with mock_session(routes):
+        result = await ProudCityAssetFinder().resolve(MEETING_URL)
+
+    assert result.platform == "proudcity"
+    assert (
+        result.video_url
+        == "https://play.boxcast.com/p/skd3evxqqhli7timl3qw/v/all.m3u8?Expires=1"
+    )
+    assert result.video_format == "m3u8"
+    assert result.video_link is None
+    assert result.title == "City Council Regular Meeting: August 6, 2026"
+    assert result.transcript_warnings == ["No transcript found for this event."]
+
+
+async def test_resolve_falls_back_to_a_pointer_when_no_boxcast_broadcast_matches(
+    monkeypatch,
+):
+    # The honest decline case -- find_channel_match() found no confident
+    # match (wrong date, ambiguous same-day tie, or recording not yet
+    # available; see test_boxcast.py for each). Must still surface the
+    # channel link as a best-effort pointer, same as any other
+    # unresolvable external-video case, rather than silently dropping it.
+    async def fake_find_channel_match(channel_id, meeting_title, meeting_date):
+        return None
+
+    monkeypatch.setattr(proudcity, "find_channel_match", fake_find_channel_match)
+    routes = {
+        MEETING_URL: FakeResponse(
+            status=200, text=HTML_WITH_BOXCAST_LINK, url=MEETING_URL
+        )
+    }
+
+    with mock_session(routes):
+        result = await ProudCityAssetFinder().resolve(MEETING_URL)
+
+    assert result.platform == "proudcity"
+    assert result.video_url is None
+    assert result.video_link == "https://boxcast.tv/channel/x1jps4n28nlgtaozsv5y"
+    assert "can't play it directly" in result.video_warnings[0]
 
 
 async def test_resolve_logs_a_warning_when_the_page_fetch_fails(caplog):

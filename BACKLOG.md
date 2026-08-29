@@ -91,13 +91,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (40)
+Platform & jurisdiction coverage  (39)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-  `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
@@ -1255,34 +1254,19 @@ actionability sections above.
   repo's own convention. Worth re-checking if a second real example
   turns up during a future Granicus enumeration pass.
 
-- **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
-  looks buildable, but the real media URL is still unconfirmed.**
-  `proudcity.py`'s existing `_EXTERNAL_VIDEO_RE` correctly detects a
-  `title="View video on external website"` link and reports it as
-  `video_link` (a best-effort pointer, never `video_url`) rather than
-  guessing at playback — confirmed correct on a real page, Wilmington OH
-  (`wilmingtonohio.gov/meetings/city-council-meeting-april-16-2026` →
-  `boxcast.tv/channel/x1jps4n28nlgtaozsv5y`). Investigated 2026-08-27
-  whether BoxCast specifically is worth a real delegation, the way
-  YouTube already gets one: `rest.boxcast.com/channels/{channel_id}/
-  broadcasts/_search?l=N` is a real, public, unauthenticated REST API
-  (found in `boxcast.tv`'s own JS bundle) returning every broadcast's
-  name/date/duration for a channel — the same date-matching shape
-  `app/platforms/youtube_channel.py` already uses for Legistar cities.
-  Confirmed a real past broadcast has real data
-  (`recording_duration_seconds: 5043.2`) and a real individually-playable
-  page at `boxcast.tv/view/{channel_id-field-from-the-broadcast-detail}`
-  (the field is confusingly named — it's a per-broadcast slug, not the
-  parent channel) that autoplays real recorded video in-browser (screen-
-  verified). **Not yet confirmed**: the actual video/HLS manifest URL —
-  the player renders into a `blob:` MediaSource URL, and neither the main
-  JS bundle nor this session's network-request tooling surfaced the
-  underlying segment-fetch requests (likely a lazily-loaded player chunk
-  not yet reverse-engineered). Per this file's own "never build a
-  platform adapter from assumption" rule, not attempted blind — the next
-  step is real browser devtools network inspection (or a proxy) against
-  a `boxcast.tv/view/...` page while it plays, to find that URL, before
-  writing a `boxcast.py` adapter.
+- **ProudCity's BoxCast delegation — closed 2026-08-29, see
+  `BACKLOG_DONE.md`.** `app/platforms/boxcast.py` now resolves a
+  `boxcast.tv/channel/{id}` link (ProudCity's real `videoStyle ===
+  'external'` shape) to a real, working, unauthenticated signed HLS
+  manifest, date-matched against the meeting's own date via a real public
+  BoxCast REST API — no headless browser or `blob:`-URL reverse-
+  engineering needed, confirmed live across 3 independent real government
+  tenants. Residual, genuinely open: this only helps tenants that already
+  route through the confirmed `boxcast.tv/channel/{id}` link shape (so
+  far only Wilmington, OH confirmed among this app's own known ProudCity
+  tenants) — worth checking the other `PROUDCITY_KNOWN_DOMAINS` entries
+  currently marked "no video found" for the same shape on a future
+  re-resolve.
 
 - **`[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
   now 2/3 fixed at the source (2026-08-29) — the residual needs a
