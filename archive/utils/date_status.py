@@ -17,12 +17,33 @@ importing archive.main. Meeting dates are stored as
 local-to-the-meeting "YYYY-MM-DD" strings with no timezone, so comparing
 against a UTC date can be off by at most one calendar day around
 midnight -- acceptable for a soft label, not worth a timezone lookup.
+
+`markupsafe` is imported lazily, inside `meeting_date_html()` itself,
+not at module scope (2026-08-28, BACKLOG_DONE.md) -- root cause of the
+real 9.3-hour worker outage this file's own WO-50 move created:
+`archive/db/crud.py` imports this module at module scope, and
+`worker/main.py` imports `archive.db.crud`, so a module-scope
+`markupsafe` import here became a hard runtime dependency of a process
+that renders no HTML at all (its own requirements.txt says so: "No
+fastapi/uvicorn/jinja2/slowapi here"). The 2026-08-24 hotfix added
+`markupsafe` to `worker/requirements.in` to stop the bleeding; this is
+the actual fix, so the *next* HTML-shaped import added here can't
+silently repeat the exact same outage. `from __future__ import
+annotations` (PEP 563) makes the `-> Markup` return-type hint below a
+deferred string, so it doesn't need the name in scope at module-import
+time either.
 """
 
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from __future__ import annotations
 
-from markupsafe import Markup, escape
+from datetime import date, datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # Type-checker/linter only -- never executed, so this doesn't
+    # reintroduce the module-scope runtime dependency the lazy import
+    # inside meeting_date_html() below exists to avoid.
+    from markupsafe import Markup
 
 # How long after the meeting date a transcript-less page is still labeled
 # "Recent" (captions may still be on their way) rather than left as a
@@ -121,6 +142,8 @@ def meeting_date_html(raw: Optional[str]) -> Markup:
     escapes its arguments, so an odd stored `date` string can't inject
     markup through the visible half.
     """
+    from markupsafe import Markup, escape
+
     iso = iso_meeting_date(raw)
     if not iso:
         return Markup(escape(raw or ""))
