@@ -151,7 +151,7 @@ Reliability, ops & cost  (17)
     `[LATER]` Tighten the two workers to their real import surface.
   `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
   Media-source reliability  (3)
-    [JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
+    [NEEDS-AUDIT] `scripts/transcribe_backlog_locally.py` doesn't get the
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (5)
@@ -2245,34 +2245,28 @@ job; this is just one place where it does it too well.
 
 ### Media-source reliability
 
-- **[JUST-DO-IT] Granicus chunks time out because a 900s chunk does not
-  fit the 120s budget on a cold CDN — use a smaller chunk size for this
-  host (measured 2026-08-25).** All Granicus tenants share one media host
-  (`archive-stream.granicus.com/OnDemand/_definst_/mp4:…`, Wowza
-  on-demand repackaging behind CloudFront), and **24 of 24** Granicus
-  chunk failures in the last 3 days are ffmpeg timeouts — the only
-  platform at 100%.
-  **Cost scales linearly with chunk duration** (four fresh assets, one
-  per data point): 900s→108s, 450s→61s, 300s→49s, 150s→31s. The worst
-  cold rate measured anywhere was 0.29 s/s (`jaxcityc`), at which a
-  **300s chunk costs ~87s and fits**, a 450s chunk costs ~130s and does
-  not. So 300s is the size to pick, chosen against the worst observed
-  rate rather than the median — cold cost varies 2.5× across assets and
-  times for reasons still uncontrolled.
-  **Whisper time is unaffected**: transcription dominates a chunk
-  (~15 min of the ~15 min/chunk observed on job 911) and is proportional
-  to audio duration, so 3× the chunks is ~the same total work, just in
-  units that fit the budget.
-  **Do not reach for the ChampDS fix here.** A whole-audio sequential
-  pass measured 0.128 s/s vs 0.12 s/s for a good cold per-chunk — no real
-  win, because the cost is per-segment CDN fill rather than ChampDS's
-  O(N²) seek, and the same segments get fetched either way.
-  `should_cache_whole_audio()`'s (`app/platforms/media_probe.py`) HLS
-  exclusion is correct as written.
-  **Full measurements, the three earlier Granicus numbers this
-  invalidates, and the "one fresh asset per data point" rule that
-  probing this host requires are in `BACKLOG_DONE.md`** under
-  "Granicus timeouts are a CDN cache-fill cost".
+- **[NEEDS-AUDIT] `scripts/transcribe_backlog_locally.py` doesn't get the
+  2026-08-29 Granicus 300s-chunk fix automatically — a real gap, not yet
+  confirmed as a real failure.** `app/main.py` and `worker/main.py` (the
+  two real production job-creation paths) and
+  `scripts/bulk_queue_transcription_backlog.py` (the unattended bulk
+  queuer) all now call `app/platforms/media_probe.py`'s new
+  `chunk_size_seconds_for_platform()`, which gives Granicus 300s instead
+  of the 900s every other platform still gets (see `BACKLOG_DONE.md`).
+  `transcribe_backlog_locally.py` picks one `chunk_seconds` value **once
+  per run**, before any candidate page (or its platform) is known, then
+  reuses it across every meeting the run processes — there's no per-page
+  hook to slot the new function into without restructuring that loop.
+  The same shared 120s ffmpeg subprocess timeout this fix responds to
+  does apply locally too (confirmed in that script's own module
+  docstring), so a local run against a Granicus source could in
+  principle hit the identical timeout — but no one has actually observed
+  that locally yet (this script wasn't part of the 24/24 real
+  measurements the fix is based on), so treat this as an unconfirmed
+  risk, not a live bug. If it does bite: `--chunk-seconds 300` on the CLI
+  works today as a manual per-run workaround; the real fix would be
+  moving the chunk-size decision into `process_one()` (where
+  `detect_platform()` already runs per page) instead of `main()`.
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 

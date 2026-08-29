@@ -6,6 +6,7 @@ import pytest
 from app.platforms import media_probe
 from app.platforms.media_probe import (
     _mean_volume_db,
+    chunk_size_seconds_for_platform,
     extract_chunk_audio,
     is_plausible_meeting_duration,
 )
@@ -459,3 +460,20 @@ async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
     )
 
     assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)
+
+
+# --- chunk_size_seconds_for_platform(): Granicus gets a smaller chunk ----
+# Real, measured 2026-08-25 (BACKLOG_DONE.md): 24/24 real Granicus chunk
+# failures over 3 days were ffmpeg timeouts on cold CDN fill, the only
+# platform at 100%. 300s was chosen against the worst observed cold rate
+# (0.29 s/s) so a chunk still fits under the shared 120s subprocess
+# timeout; every other platform keeps the original 900s default.
+
+
+def test_granicus_gets_the_smaller_chunk_size():
+    assert chunk_size_seconds_for_platform("granicus") == 300
+
+
+def test_other_platforms_keep_the_default_chunk_size():
+    for platform in ("civicclerk", "escribe", "youtube", "unknown", ""):
+        assert chunk_size_seconds_for_platform(platform) == 900

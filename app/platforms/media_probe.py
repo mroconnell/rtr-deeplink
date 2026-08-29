@@ -485,6 +485,36 @@ async def _extract_chunk_once(
 _FULL_AUDIO_TIMEOUT_SECONDS = 360
 
 
+_DEFAULT_CHUNK_SIZE_SECONDS = 900
+# Granicus-specific: measured 2026-08-25 (see BACKLOG_DONE.md's "Granicus
+# timeouts are a CDN cache-fill cost"). All Granicus tenants share one
+# media host (archive-stream.granicus.com, Wowza on-demand repackaging
+# behind CloudFront), and 24 of 24 real Granicus chunk failures over 3
+# days were ffmpeg timeouts on cold CDN fill -- the only platform at
+# 100%. Cost scales linearly with chunk duration (four fresh assets, one
+# per data point: 900s->108s, 450s->61s, 300s->49s, 150s->31s); the
+# worst cold rate measured anywhere was 0.29 s/s (jaxcityc), at which a
+# 300s chunk costs ~87s and fits under _SUBPROCESS_TIMEOUT_SECONDS
+# (120s) while a 450s chunk (~130s) does not. Chosen against that worst
+# observed rate, not the median, since cold cost varies ~2.5x across
+# assets/times for reasons still uncontrolled. Whisper time is
+# unaffected: transcription (not the CDN fetch) dominates a chunk and is
+# proportional to audio duration, so 3x the chunks is ~the same total
+# work, just in smaller units that each fit the timeout budget.
+_GRANICUS_CHUNK_SIZE_SECONDS = 300
+
+
+def chunk_size_seconds_for_platform(platform: str) -> int:
+    """The chunk size (seconds) to use when creating a transcription job
+    for this platform -- shared by app/main.py's on-demand request path
+    and worker/main.py's auto-generation path so both stay in sync (see
+    each call site's own "must match" comment, which now points here
+    instead of duplicating the value)."""
+    if platform == "granicus":
+        return _GRANICUS_CHUNK_SIZE_SECONDS
+    return _DEFAULT_CHUNK_SIZE_SECONDS
+
+
 def is_hls(media_url: str) -> bool:
     """True for an HLS playlist. HLS is exactly the case the whole-file
     path must NOT be used for: ffmpeg fetches only the segments covering

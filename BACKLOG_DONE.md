@@ -1,5 +1,61 @@
 # Backlog — done
 
+## Granicus chunks get a 300s chunk size instead of the 900s default, fixing 24/24 real cold-CDN ffmpeg timeouts [Done 2026-08-29]
+
+Root cause and measurements were already fully worked out (2026-08-25,
+see this file's own "Granicus timeouts are a CDN cache-fill cost" entry)
+— this closes the fix itself, which had been sitting as a `[JUST-DO-IT]`
+in `BACKLOG.md`. All Granicus tenants share one media host
+(`archive-stream.granicus.com`, Wowza on-demand repackaging behind
+CloudFront); 24 of 24 real Granicus chunk failures over 3 days were
+ffmpeg timeouts on cold CDN fill — the only platform at 100%. 300s was
+the size chosen against the worst observed cold rate (0.29 s/s,
+`jaxcityc`), fitting comfortably under the shared 120s ffmpeg subprocess
+timeout, while a 450s chunk (~130s at that rate) does not.
+
+**Added `app/platforms/media_probe.py`'s `chunk_size_seconds_for_platform
+(platform)`** — Granicus gets 300s, every other platform keeps the
+original 900s default — and wired it into every real job-creation path:
+`app/main.py`'s on-demand `/api/transcription/submit`, `worker/main.py`'s
+`maybe_generate_auto_job()`, and `scripts/bulk_queue_transcription_
+backlog.py`'s unattended bulk queuer. All three previously duplicated a
+hardcoded `900` (or a same-value constant with a "must match" comment
+pointing at each other) — replaced with calls to the one shared function,
+which also removes the "must match" duplication risk itself, not just
+the Granicus gap.
+
+**`scripts/retranscribe_first_chunk.py` deliberately left alone** — its
+`--chunk-seconds` describes the *original* job's historical chunk size
+for re-extracting a matching first chunk, not a new job's chunk size
+choice; auto-deriving it from the current function would be wrong for
+any job created before this fix. Its `--help` text was updated to name
+the new default split instead of the removed constant.
+
+**`scripts/transcribe_backlog_locally.py` deliberately left alone, gap
+logged as its own `BACKLOG.md` entry** (per `CLAUDE.md`'s "two
+independent transcription paths" convention) — it picks one chunk size
+once per run, before any candidate page's platform is known, so slotting
+the new per-platform function in isn't a small mechanical port the way
+the other three call sites were; would need restructuring `process_one()`
+to decide chunk size per page instead of `main()` deciding once for the
+whole run. No real local Granicus timeout has actually been observed
+(this script wasn't part of the 24/24 measurements the fix is based on),
+so this is a logged, unconfirmed risk, not a live bug — `--chunk-seconds
+300` already works as a manual per-run workaround today.
+
+Verified 3 stale doc references to the two removed constants
+(`app/main.py`'s `TRANSCRIPTION_CHUNK_SIZE_SECONDS`, `worker/main.py`'s
+`AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS` — both removed now that the
+shared function is the source of truth) and updated all of them rather
+than leaving them pointing at deleted code, including one that had
+drifted into an actively false claim ("proven safe at 900s-per-call in
+production" — the whole reason for this fix is that it wasn't, for
+Granicus). New tests: `chunk_size_seconds_for_platform()` unit tests in
+`tests/test_media_probe.py`, plus a `worker/main.py` auto-generation
+regression test asserting a Granicus candidate gets `chunk_size_seconds
+== 300`. All four CI gates clean, including the new worker
+import-graph guard (confirms the refactor didn't drop a real dependency).
+
 ## 4-platform jurisdiction gap sizing: re-scoped per platform, two entries corrected as stale [Investigated 2026-08-29]
 
 BACKLOG.md's "Four platforms account for ~78% of the 470 real live pages

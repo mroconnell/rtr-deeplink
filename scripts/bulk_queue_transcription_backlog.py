@@ -111,6 +111,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, get_finder  # noqa: E402
 from app.platforms.media_probe import (  # noqa: E402
+    chunk_size_seconds_for_platform,
     is_plausible_meeting_duration,
     probe_duration,
 )
@@ -134,12 +135,6 @@ REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=65)  # matches archive_client.PUSH
 # Deliberately well under archive/db/crud.py's global
 # MAX_CONCURRENT_TRANSCRIPTION_JOBS=15 -- see module docstring for why.
 BATCH_SIZE = 8
-
-# Must match app/main.py's TRANSCRIPTION_CHUNK_SIZE_SECONDS / worker/
-# main.py's AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS -- duplicated rather
-# than imported across the script/worker boundary, same convention
-# worker/main.py itself already uses for this exact constant.
-CHUNK_SIZE_SECONDS = 900
 
 # Same retry policy as scripts/transcribe_backlog_locally.py's
 # _request_json() -- see that function's own comment for the full
@@ -166,9 +161,7 @@ async def _request_json(
     """Copied from scripts/transcribe_backlog_locally.py's own
     _request_json() verbatim (same retry policy, same reasoning) rather
     than importing it -- that script is a standalone entry point, not a
-    shared library, same "duplicated across scripts" convention this
-    repo already uses elsewhere (e.g. worker/main.py's own
-    AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS).
+    shared library.
     """
     last_error: Optional[Exception] = None
     for attempt in range(max_retries):
@@ -254,7 +247,9 @@ async def _create_job(
         "media_url": media_url,
         "media_kind": media_kind,
         "probed_duration_seconds": duration,
-        "chunk_size_seconds": CHUNK_SIZE_SECONDS,
+        "chunk_size_seconds": chunk_size_seconds_for_platform(
+            payload.get("platform", "")
+        ),
         "clerk_verified": True,  # see module docstring -- trusted internal caller
         "priority": 0,  # crud.PRIORITY_LOW -- see module docstring
     }

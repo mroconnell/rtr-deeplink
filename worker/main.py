@@ -54,6 +54,7 @@ _init_sentry()
 from app.platforms import register_all_finders
 from app.platforms.base import UnsupportedPlatformError, get_finder
 from app.platforms.media_probe import (
+    chunk_size_seconds_for_platform,
     extract_chunk_audio,
     extract_full_audio,
     is_plausible_meeting_duration,
@@ -92,12 +93,6 @@ EMPTY_POLL_HEARTBEAT_EVERY = 20
 # trying to break on a sentence boundary; good enough for "here's a taste,
 # click through for the rest."
 EMAIL_EXCERPT_CHARS = 500
-
-# Must match app/main.py's TRANSCRIPTION_CHUNK_SIZE_SECONDS -- duplicated
-# rather than imported across the app/worker service boundary (same
-# reasoning as archive/utils/language.py's deliberate duplicate-of-app's-
-# own detect_language_from_texts()).
-AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900
 
 # How often to even check for an auto-generation candidate, separate from
 # the much shorter poll/backoff cadence above -- checking on literally
@@ -233,7 +228,7 @@ async def maybe_generate_auto_job() -> bool:
         media_url=result.video_url,
         media_kind=_auto_media_kind(result.video_format),
         probed_duration_seconds=duration,
-        chunk_size_seconds=AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS,
+        chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),
         skip_confirmation=True,
         priority=crud.PRIORITY_LOW,
     )

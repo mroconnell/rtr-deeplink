@@ -211,6 +211,35 @@ async def test_auto_generation_retries_a_probe_that_fails_once(monkeypatch):
     assert created["probed_duration_seconds"] == 3600.0
 
 
+async def test_auto_generation_gives_granicus_the_smaller_chunk_size(monkeypatch):
+    # Real, measured 2026-08-25 (BACKLOG_DONE.md): 24/24 real Granicus
+    # chunk failures were ffmpeg timeouts on cold CDN fill. Auto-generated
+    # jobs must get Granicus's 300s chunk size, not the 900s every other
+    # platform still gets -- see app/platforms/media_probe.py's
+    # chunk_size_seconds_for_platform().
+    created = _retrying_worker(monkeypatch)
+    from app.platforms.models import ResolvedMeeting
+
+    class _Finder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="granicus",
+                source_url=url,
+                video_url="https://example.org/meeting.m3u8",
+                video_format="m3u8",
+            )
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
+
+    async def _probe(video_url, *, source_page_url):
+        return 3600.0
+
+    monkeypatch.setattr(worker.main, "probe_duration", _probe)
+
+    assert await worker.main.maybe_generate_auto_job() is True
+    assert created["chunk_size_seconds"] == 300
+
+
 async def test_auto_generation_still_records_a_permanently_unreadable_source(
     monkeypatch,
 ):
