@@ -60,6 +60,34 @@ def test_webhook_rejects_missing_signature_headers(monkeypatch):
     assert response.status_code == 400
 
 
+async def test_webhook_works_even_when_verify_returns_none(monkeypatch):
+    # Real, confirmed bug (BACKLOG_DONE.md): svix 2.0.0's Webhook.verify()
+    # calls its own inner verifier with json_parse=False and returns None
+    # on success (still raises on a bad signature -- only the "also hand
+    # back the parsed body" behavior changed), while 1.99.1 (pinned today)
+    # returns the parsed dict. clerk_webhook() must not depend on which
+    # one is installed. Monkeypatching Webhook.verify to return None
+    # directly (rather than actually installing svix 2.0.0) means this
+    # test still means something after a future svix bump changes
+    # behavior yet again, and doesn't require a second dependency pin in
+    # this test suite.
+    monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", _TEST_SECRET)
+    monkeypatch.setattr(Webhook, "verify", lambda self, data, headers: None)
+
+    async def _fake_upsert(email, *, unsubscribed):
+        return True
+
+    monkeypatch.setattr(app.main, "_resend_audience_upsert", _fake_upsert)
+
+    event = {
+        "type": "user.created",
+        "data": {"id": "user_1", "email_addresses": []},
+    }
+    body, headers = _signed_request(event)
+    response = client.post("/api/clerk/webhook", content=body, headers=headers)
+    assert response.status_code == 200
+
+
 async def test_user_created_upserts_the_primary_email(monkeypatch):
     monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", _TEST_SECRET)
     captured = {}

@@ -1,5 +1,53 @@
 # Backlog — done
 
+## svix 2.0.0's Webhook.verify() returning None root-caused and fixed, unblocking dependabot PR #376 [Done 2026-08-29]
+
+The open question the live entry left ("whether this is a genuine
+behavior change... hasn't been determined yet") is now answered by
+directly installing both versions and reading `Webhook.verify()`'s real
+source, not guessing from the changelog (which never mentions this
+method by name — its listed breaking changes are all about the full API
+client's `*Config`/`*ConfigPatch` types):
+
+- **svix 1.99.1**: `Webhook.verify()` calls `self._inner.verify(data,
+  headers)` (the underlying `standardwebhooks` library, whose own
+  `json_parse` parameter defaults to `True`) and **returns** the result
+  — the parsed JSON body.
+- **svix 2.0.0**: `Webhook.verify()` now calls `self._inner.verify(data,
+  headers, json_parse=False)` and returns nothing (`-> None` in its own
+  type signature). Confirmed the *signature/timestamp validation itself*
+  is unaffected — `standardwebhooks`' own `verify()` still raises
+  `WebhookVerificationError` on a bad/missing/stale signature regardless
+  of `json_parse`; only whether it returns the parsed payload afterward
+  changed. So this was a genuine, deliberate return-value change in
+  svix's own Python wrapper, not a bug in this repo's usage, and not
+  something a version-pin-only fix could route around.
+
+**Fix**: `clerk_webhook()` (`app/main.py`) no longer treats `verify()`'s
+return value as the event — it calls `verify()` purely to validate (still
+raises → 400 on failure) and then parses `event = json.loads(body)`
+itself. This works identically on both svix versions, so it doesn't need
+to track which one is installed, and is strictly more robust than relying
+on a third-party wrapper's return-value convenience in the first place.
+
+**Verified two ways, not just read from source**: (1) built two throwaway
+venvs, one per svix version, confirmed via `inspect.getsource()` exactly
+what changed; (2) force-installed svix 2.0.0 over this repo's normal test
+venv and ran `tests/test_clerk_webhook.py` + `tests/test_lifecycle_emails.py`
+for real — reproduced the exact `AttributeError: 'NoneType' object has no
+attribute 'get'` from the live entry against the *pre-fix* code, and
+confirmed all 23 tests pass against the *post-fix* code with svix 2.0.0
+actually installed, not just with the normally-pinned 1.99.1. Added a
+permanent regression test (`test_webhook_works_even_when_verify_returns_
+none`) that monkeypatches `Webhook.verify` to return `None` directly,
+so this stays caught in normal CI (which runs against the pinned 1.99.1)
+without needing a second dependency installed — confirmed it fails
+against the pre-fix code the same way. All four CI gates clean.
+
+**Dependabot PR #376 (the actual svix 1.99.1 → 2.0.0 bump) itself
+handled separately, same session** — see this file's own matching entry
+once merged.
+
 ## Granicus chunks get a 300s chunk size instead of the 900s default, fixing 24/24 real cold-CDN ffmpeg timeouts [Done 2026-08-29]
 
 Root cause and measurements were already fully worked out (2026-08-25,

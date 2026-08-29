@@ -1,6 +1,7 @@
 import csv
 import html
 import io
+import json
 import logging
 import os
 import re
@@ -1094,11 +1095,18 @@ async def clerk_webhook(request: Request):
 
     body = await request.body()
     try:
-        event = Webhook(signing_secret).verify(body, dict(request.headers))
+        # Deliberately ignore verify()'s return value rather than treat it
+        # as the parsed event -- svix 2.0.0's Webhook.verify() calls its
+        # own inner verifier with json_parse=False and returns None on
+        # success (the pre-2.0 version returned the parsed body). Parsing
+        # `body` ourselves right after works identically on both, so this
+        # doesn't need to track which svix version is installed.
+        Webhook(signing_secret).verify(body, dict(request.headers))
     except Exception:
         logger.warning("Clerk webhook signature verification failed.")
         return JSONResponse({"error": "invalid_signature"}, status_code=400)
 
+    event = json.loads(body)
     event_type = event.get("type", "")
     data = event.get("data", {})
 
