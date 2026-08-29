@@ -1,5 +1,30 @@
 # Backlog — done
 
+## TelVue: fall back to org-logo alt text when title guess and known-token map both fail [Done 2026-08-29]
+
+PR #516, followup to the Irondequoit fix (#514). Rather than only hand-
+curating each new TelVue org token's jurisdiction one entry at a time,
+added an automated last-resort fallback that parses the `id="org-logo"`
+alt text already present in the HTML this app already fetches for the
+playlist (no extra request). Only fires when both dash-separated halves
+of the alt text are identical AND already "City, ST"-shaped — confirmed
+real and reliable for Irondequoit ("Irondequoit, NY - Irondequoit, NY -
+organization logo"), and confirmed it correctly declines on Ashland/
+RVTV's alt text ("Rogue Valley Community Television (RVTV) - Watch RVTV
+- organization logo"), which is an org name plus a tagline, not a
+place. Runs only after both the title guess and the hand-curated
+`_KNOWN_ORG_TOKEN_JURISDICTIONS` map have failed — never overrides
+either. New tests cover the clean accept case, the real Ashland/RVTV
+reject case, and a missing tag. 20 TelVue tests passing, full suite and
+both lint gates clean.
+
+**Residual, still open**: this only handles the case where the alt text
+is already a clean "City, ST" pair — it does not parse a *messy* org
+name ("Fitchburg Access TV", "CMNtv Chris Weagel for Auburn Hills Govt
+Cable") into a jurisdiction. `BACKLOG.md`'s matching "Ship next" entry
+was narrowed to reflect that this is what's actually left, not the
+whole problem it used to describe.
+
 ## Direct Vimeo channel dorking: 22 new real ingests, plus a real bug where a fully privacy-blocked video was faking a successful resolve [Done 2026-08-29]
 
 Closed `BACKLOG.md`'s long-open "Vimeo's real-world prevalence among
@@ -24514,6 +24539,44 @@ straight from the source page's own agenda-link `title` attribute,
 re-confirmed by a live re-resolve 2026-08-15 — plausibly a genuine
 `"{meeting type} {body name} MEETING"` template, not an artifact worth
 guessing a general dedup rule from one example.
+
+### The playback-speed chip is absent in native fullscreen, and that's accepted
+
+Ryan's call, 2026-08-25 — don't file it as a bug. The chip is an overlay
+inside `.video-wrapper`, and the native fullscreen button expands the
+`<video>` **element**, so every sibling overlay (this chip and the older
+`.big-play-button` alike) is hidden for the duration. The rate already
+chosen stays applied and the browser's own speed menu still works there,
+so nothing is lost but discoverability. Restoring it would mean
+requesting fullscreen on the wrapper and therefore owning a fullscreen
+button rather than delegating to the native control bar — judged not
+worth that, not merely deprioritised. See `BACKLOG_DONE.md`'s WO-56
+entry for the control's design.
+
+### Gemini 3.5 Transcribe stays available but unused — Whisper remains the default (Ryan's call, 2026-08-26)
+
+`scripts/transcribe_backlog_locally.py --engine gemini` (built the same
+day, see `CLAUDE_BACKLOG.md`'s "On-demand transcription follow-ups"
+entry for the full eval and build writeup) got a real production test:
+10 real backlog meetings, free-tier key. Result: 1 ingested clean, 4
+skipped for reasons unrelated to Gemini, **5 failed on sustained
+rate-limiting that never cleared for 5-15+ minutes per meeting** despite
+correctly honoring the API's own retry-after hints each time — behavior
+consistent with a longer-window (hourly/daily, undocumented) quota
+distinct from the per-minute ceiling the engine's rate limiter already
+paces against, most likely exhausted by the cumulative volume of the
+same day's eval/testing calls against one free key.
+Ryan's call: not worth paying for the paid tier to work around this
+right now. `--engine whisper` (the script's existing default) keeps
+being what actually runs. The `--engine gemini` option and its 3 saved
+per-meeting checkpoints (`local_transcription_backups/partial/` —
+Auburn NY 9/27 chunks, Belle Meade TN 6/20, Painesville OH 1/17) are
+left in place, not reverted — a future re-run of the same command
+resumes them rather than starting over, whenever this gets revisited.
+Don't re-propose switching the default or spending on paid tier without
+new information (e.g. confirming the real quota window/reset via
+https://ai.dev/rate-limit, or a cost re-ask once real per-meeting
+economics matter more).
 
 ## [Done 2026-08-23] State & jurisdiction hub pages rebuilt around real transcript snippets (WO-46)
 
