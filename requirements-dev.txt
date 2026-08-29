@@ -265,7 +265,7 @@ starlette==1.6.0
     # via
     #   -r requirements.txt
     #   fastapi
-svix==1.99.1
+svix==2.1.0
     # via -r requirements.txt
 tomli==2.4.1
     # via pip-audit
