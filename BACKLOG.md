@@ -107,7 +107,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
 Platform & jurisdiction coverage  (41)
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-  `[EASY]` Legistar CDX: still owed a small, unfiltered "what URL
+  `[LATER]` `[EXAMPLE]` Chicago, IL and Ann Arbor, MI: real Legistar
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
@@ -1367,19 +1367,18 @@ actionability sections above.
   real Canadian place) before this silently mislabels a Granicus page
   the same way.
 
-- **`[EASY]` Legistar CDX: still owed a small, unfiltered "what URL
-  shapes does legistar.com actually have" sample.** The 2,368-page
-  paginated `Video.aspx?Mode=Granicus` sweep (see `BACKLOG_DONE.md`'s
-  "Legistar CDX pagination killed at 39%" entry) was killed with zero
-  matches through 39% of the domain — a real, likely-structural zero,
-  not just bad luck. The user's own framing was that even a full
-  zero-result run would teach something from the raw URL shapes present
-  on the domain, but a follow-up small query (`url=legistar.com&
-  matchType=domain&limit=30`, no filter) was attempted right after the
-  kill and hit `web.archive.org`'s post-load cooldown before returning
-  anything (see the same BACKLOG_DONE entry). Cheap to finish once
-  `web.archive.org` responds normally again — no pagination needed, just
-  one small unfiltered query.
+- **`[LATER]` `[EXAMPLE]` Chicago, IL and Ann Arbor, MI: real Legistar
+  tenants found live, neither archived yet — needs a real resolve/ingest
+  pass, not done here.** Found 2026-08-28 finishing the small unfiltered
+  CDX sample below: `chicago.legistar.com` and `a2gov.legistar.com` (Ann
+  Arbor's real Legistar subdomain) both have real, live-crawled
+  `Video.aspx` history. `/api/jurisdictions?q=Chicago` on production
+  returns only "New Chicago, IN" and an RTA hit — the actual City of
+  Chicago isn't archived via Legistar yet; `q=Ann+Arbor` returns zero
+  matches at all. Not resolved or ingested here — needs the real
+  adapter run live against a current meeting URL first (this repo's
+  standing "test against a real URL first" rule), which a quick CDX
+  read alone doesn't satisfy.
 
 - **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   looks buildable, but the real media URL is still unconfirmed.**
