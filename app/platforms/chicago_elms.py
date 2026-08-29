@@ -57,6 +57,7 @@ the portal URL's own `?meetingId=` query param. Real fields used here:
 """
 
 import json
+import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -66,6 +67,8 @@ from .base import AssetFinder
 from .models import ResolvedMeeting
 from .vimeo import VimeoAssetFinder, parse_vimeo_video
 from ..utils.url_guard import guarded_get, read_capped_text
+
+logger = logging.getLogger("rtr_deeplink.chicago_elms")
 
 _API_BASE = "https://api.chicityclerkelms.chicago.gov/meeting-agenda/"
 
@@ -213,8 +216,16 @@ class ChicagoElmsAssetFinder(AssetFinder):
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "Chicago ELMS meeting fetch got HTTP %s for %s",
+                            response.status,
+                            meeting_id,
+                        )
                         return None
                     payload = json.loads(await read_capped_text(response))
         except Exception:
+            logger.warning(
+                "Chicago ELMS meeting fetch failed for %s", meeting_id, exc_info=True
+            )
             return None
         return payload if isinstance(payload, dict) else None

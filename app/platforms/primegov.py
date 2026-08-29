@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -10,6 +11,8 @@ from .base import AssetFinder, detect_platform, get_finder
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.primegov")
 
 _VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})"')
 
@@ -417,9 +420,17 @@ class PrimeGovAssetFinder(AssetFinder):
                 api_url, timeout=aiohttp.ClientTimeout(total=15)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "PrimeGov archived-years fetch got HTTP %s for %s",
+                        response.status,
+                        api_url,
+                    )
                     return []
                 years = await response.json(content_type=None)
         except Exception:
+            logger.warning(
+                "PrimeGov archived-years fetch failed for %s", api_url, exc_info=True
+            )
             return []
         if not isinstance(years, list):
             return []
@@ -452,9 +463,19 @@ class PrimeGovAssetFinder(AssetFinder):
                 api_url, timeout=aiohttp.ClientTimeout(total=15)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "PrimeGov archived-meetings fetch got HTTP %s for %s",
+                        response.status,
+                        api_url,
+                    )
                     return False, None
                 meetings = await response.json(content_type=None)
         except Exception:
+            logger.warning(
+                "PrimeGov archived-meetings fetch failed for %s",
+                api_url,
+                exc_info=True,
+            )
             return False, None
 
         if not isinstance(meetings, list):

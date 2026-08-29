@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Optional, Tuple
 from urllib.parse import parse_qs, urlparse
@@ -10,6 +11,8 @@ from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_text
+
+logger = logging.getLogger("rtr_deeplink.openmedia")
 
 # open.media (OMP Network) -- confirmed live 2026-08-21 across 6 real
 # tenants (Goodyear AZ, Eugene OR, Cortez CO, Santa Barbara CA, Surprise
@@ -136,9 +139,15 @@ class OpenMediaAssetFinder(AssetFinder):
                     session, url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "OpenMedia fetch got HTTP %s for %s",
+                            response.status,
+                            url,
+                        )
                         return None
                     return await read_capped_text(response)
         except Exception:
+            logger.warning("OpenMedia fetch failed for %s", url, exc_info=True)
             return None
 
     @staticmethod

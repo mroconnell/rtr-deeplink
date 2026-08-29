@@ -212,6 +212,20 @@ async def test_url_without_a_meeting_id_fails_honestly():
     assert any("one specific meeting" in w for w in result.video_warnings)
 
 
+async def test_meeting_api_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_meeting()'s non-200 branch used to be silent.
+    api_url = API + BUDGET_ID
+    routes = {api_url: FakeResponse(status=503, url=api_url)}
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await ChicagoElmsAssetFinder().resolve(BUDGET_URL)
+
+    assert result.video_url is None
+    assert any("couldn't load this meeting" in w for w in result.video_warnings)
+    assert any("meeting fetch got HTTP 503" in r.message for r in caplog.records)
+
+
 async def test_unreachable_api_degrades_without_raising():
     with mock_session({}):
         result = await ChicagoElmsAssetFinder().resolve(BUDGET_URL)

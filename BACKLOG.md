@@ -94,7 +94,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
-  [NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
+  [NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -1075,37 +1075,16 @@ coverage** instead.
   fix should also settle the scheduling question this entry raises: a
   chunk that fits the budget stops burning a slot on doomed attempts.
 
-- **[NEEDS-AUDIT] 32 places across 23 adapters swallow an exception and
-  return nothing, with no log line (surveyed 2026-08-25).** The same
-  pattern that made ChampDS's symptom B undiagnosable for two
-  investigations, and it is everywhere:
-  `except Exception: return None`, no logger call, caller turns it into a
-  generic user-facing warning. When any of these fire in production the
-  real cause is simply gone.
-  Surveyed with a crude heuristic (an `except Exception` whose next three
-  lines return/pass and mention no logger), so treat the list as a
-  starting point, not gospel — and note `champds.py`'s own two remaining
-  hits are false positives, since they now return a *reason* rather than
-  a bare None:
-
-  ```
-  aurora:157  ca_legislature:175  cablecast:391  chicago_elms:218
-  civicclerk:413,457  civicweb:150,173  escribe:272
-  generic_fallback:544,576,955  granicus:993,1047,1093  hyland:277
-  iqm2:240  legistar:202  openmedia:141  primegov:422
-  seattlechannel:175  suiteone:353,376  swagit:587,605  telvue:262
-  viebit:223  vimeo:462  youtube:307  youtube_channel:546
-  ```
-
-  **Not a mechanical sweep.** Some of these are correct as they stand —
-  an optional enrichment step that legitimately has nothing to say
-  should stay quiet, and turning all 32 into warnings would bury the
-  real ones. The judgment per site is "would a human debugging a failed
-  resolve want to know this happened?" See `champds.py`'s `_fetch_json()`
-  for the shape worth copying: return a reason alongside the value, log
-  it at the call site, leave the reader-facing copy alone.
-  Worth doing on the adapters that actually fail in production first —
-  the daily digest names them.
+- **[NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
+  the 2026-08-28 sweep, not in the original survey — same treatment
+  needed.** Re-deriving the file list fresh (AST-based, not a line-number
+  grep) for `BACKLOG_DONE.md`'s "22 platform adapters now log exception
+  fetch failures" sweep also turned up the identical pattern in 3 files
+  the original 2026-08-25 survey didn't include: `headless_browser.py:171`,
+  `proudcity.py:253`, `townhallstreams.py:272`. Not fixed in that sweep
+  (scope was the originally-surveyed 23 files plus the one it had
+  missed) — same judgment-per-site approach applies, see
+  `BACKLOG_DONE.md` for the pattern to copy.
 
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?

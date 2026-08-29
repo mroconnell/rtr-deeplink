@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse
@@ -8,6 +9,8 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.iqm2")
 
 # IQM2 (a Granicus-family product -- footer/support address confirmed,
 # distinct UI/URL shape from the classic ViewPublisher/MediaPlayer this
@@ -235,7 +238,11 @@ class IQM2AssetFinder(AssetFinder):
                 url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "IQM2 fetch got HTTP %s for %s", response.status, url
+                    )
                     return None
                 return await response.text()
         except Exception:
+            logger.warning("IQM2 fetch failed for %s", url, exc_info=True)
             return None

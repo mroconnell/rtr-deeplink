@@ -206,15 +206,18 @@ async def test_resolve_missing_mp4_reports_no_video():
     assert result.jurisdiction == "Seattle, WA"
 
 
-async def test_resolve_caption_fetch_failure_reports_no_transcript():
+async def test_resolve_caption_fetch_failure_reports_no_transcript(caplog):
     routes = {
         MEETING_URL: FakeResponse(status=200, text=REAL_PAGE_HTML, url=MEETING_URL),
         CAPTION_URL: FakeResponse(status=404),
     }
 
-    with mock_session(routes):
-        result = await SeattleChannelAssetFinder().resolve(MEETING_URL)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await SeattleChannelAssetFinder().resolve(MEETING_URL)
 
     assert result.video_url == REAL_MP4_URL
     assert result.segments == []
     assert result.transcript_warnings == ["No transcript found for this event."]
+    # 2026-08-28: a failed caption fetch used to be silent -- now logged.
+    assert any("caption fetch got HTTP 404" in r.message for r in caplog.records)

@@ -1,5 +1,62 @@
 # Backlog — done
 
+## 22 platform adapters now log exception/HTTP-failure fetches that used to be silent [Done 2026-08-28]
+
+Closes the "32 places across 23 adapters swallow an exception" entry.
+Root cause and fix pattern exactly as that entry described — the same
+shape that made ChampDS's symptom B undiagnosable across two
+investigations before `_fetch_json()`'s own fix (see that entry's own
+BACKLOG_DONE writeup): `except Exception: return None`, no logger call,
+so a real cause (timeout, 404, malformed body, connection reset) is
+simply gone when one of these fires in production.
+
+**Re-derived the file:line list fresh with an AST-based scan (not the
+original line-number grep) before touching anything** — per this repo's
+"a backlog entry is a lead, not a spec" rule, already proven necessary
+earlier this same session. Found real drift: `civicweb.py`'s original
+lines 150/173 no longer matched the pattern at all (unrelated code sits
+there now); the real current sites are 208/231. One site from the
+original list, `youtube.py:307`, had also moved (to line 365,
+`_first_cue_start()`) and was fixed too. The AST scan also surfaced 3
+files with the identical pattern that weren't in the original 2026-08-25
+survey at all (`headless_browser.py`, `proudcity.py`,
+`townhallstreams.py`) — left open as a residual, see `BACKLOG.md`, since
+this sweep's scope was the originally-surveyed files.
+
+**Fix shape — inline logging, not `champds.py`'s full `(value, reason)`
+tuple propagation.** Threading a reason value back through every
+caller's return type across 32+ sites in 22 files would be a much
+larger, riskier diff for marginal benefit over logging directly inside
+each existing `except Exception:` block (and each adjacent
+`if response.status != 200:` branch, which returns just as silently and
+gets the identical treatment) — no signature or caller changes anywhere.
+Every one of the 22 files needed a `logger = logging.getLogger(
+"rtr_deeplink.<module>")` added (none had one before, except
+`champds.py`).
+
+**Genuine judgment per site, not a mechanical find-and-replace**, per
+the original entry's own instruction:
+- Two sites (`generic_fallback.py`'s delegation-to-another-platform
+  attempt, `legistar.py`'s equivalent) catch `CalendarPageError`
+  *separately* from other exceptions, at `logger.debug` rather than
+  `warning` — hitting a calendar-shaped link during opportunistic
+  delegation is a routine, expected outcome (fires on every ordinary
+  case), not a problem; logging it at warning severity would just be
+  noise. Only a genuinely unexpected delegation failure logs at warning.
+- Every other site is a real fetch (HTML/VTT/JSON/API) whose failure is
+  always worth knowing about — no other site had a similar "expected
+  failure" shape to special-case.
+
+**Verified per-file, not just by inspection**: one `caplog`-based
+regression test added per touched file (23 total — 22 adapters plus
+`youtube_channel.py`'s separate `find_channel_match()` site), each
+simulating a real failure (a mocked 404/500/503, or a raised exception
+via `FakeResponse(text_raises=...)`/monkeypatching) and asserting the
+new warning actually fires. Several tests extend an existing failure-
+path test that already exercised the right route rather than adding a
+new one from scratch. Full CI green (ruff check, ruff format, 1927
+pytest passing — up from 1914 before this sweep, both alembic checks).
+
 ## Ashland/Milton/San Jose's missing-state residual closed with real positive matches [Done 2026-08-28]
 
 Closed the 3-example residual left by the WO-22 bare/state-suffixed

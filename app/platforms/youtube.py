@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from typing import List, Optional, Tuple
 
@@ -13,6 +14,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_vtt,
 )
+
+logger = logging.getLogger("rtr_deeplink.youtube")
 
 TARGET_LANGUAGE = "en"
 
@@ -363,4 +366,9 @@ class YouTubeAssetFinder(AssetFinder):
             cues = parse_vtt(decode_vtt_bytes(raw_bytes))
             return cues[0]["start"] if cues else None
         except Exception:
+            logger.warning(
+                "YouTube first-cue-start parse failed on %d bytes",
+                len(raw_bytes),
+                exc_info=True,
+            )
             return None

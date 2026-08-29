@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -15,6 +16,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_captions_by_extension,
 )
+
+logger = logging.getLogger("rtr_deeplink.civicclerk")
 
 TARGET_LANGUAGE = "en"
 
@@ -408,9 +411,17 @@ class CivicClerkAssetFinder(AssetFinder):
                 caption_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "CivicClerk caption fetch got HTTP %s for %s",
+                        response.status,
+                        caption_url,
+                    )
                     return None, None
                 raw = await response.read()
         except Exception:
+            logger.warning(
+                "CivicClerk caption fetch failed for %s", caption_url, exc_info=True
+            )
             return None, None
         content = decode_vtt_bytes(raw)
         return parse_captions_by_extension(caption_url, content)
@@ -443,18 +454,37 @@ class CivicClerkAssetFinder(AssetFinder):
                 plaintext_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as resp:
                 if resp.status != 200:
+                    logger.warning(
+                        "CivicClerk agenda-text fetch got HTTP %s for %s",
+                        resp.status,
+                        plaintext_url,
+                    )
                     return None
                 blob_info = await resp.json()
             blob_uri = blob_info.get("blobUri")
             if not blob_uri:
+                logger.warning(
+                    "CivicClerk agenda-text response had no blobUri for %s",
+                    plaintext_url,
+                )
                 return None
             async with session.get(
                 blob_uri, timeout=aiohttp.ClientTimeout(total=20)
             ) as resp:
                 if resp.status != 200:
+                    logger.warning(
+                        "CivicClerk agenda-text blob fetch got HTTP %s for %s",
+                        resp.status,
+                        blob_uri,
+                    )
                     return None
                 return await resp.text()
         except Exception:
+            logger.warning(
+                "CivicClerk agenda-text fetch failed for %s",
+                plaintext_url,
+                exc_info=True,
+            )
             return None
 
     @staticmethod

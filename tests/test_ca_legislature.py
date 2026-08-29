@@ -43,6 +43,25 @@ async def test_resolve_text_fallback_when_caption_format_is_unstructured():
     assert any("plain text" in w for w in result.transcript_warnings)
 
 
+async def test_resolve_caption_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_captions()'s non-200 branch used to be silent.
+    html = BASE_HTML.format(
+        captions_tag='<track src="https://vod.senate.ca.gov/captions.sbv">'
+    )
+    caption_url = "https://vod.senate.ca.gov/captions.sbv"
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        caption_url: FakeResponse(status=404),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await CaliforniaLegislatureAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert any("caption fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_links_out_when_caption_format_is_unreadable():
     html = BASE_HTML.format(
         captions_tag='<track src="https://vod.senate.ca.gov/captions.scc">'

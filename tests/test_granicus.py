@@ -81,7 +81,9 @@ async def test_resolve_event_id_meeting_reports_honest_no_video_status():
     assert result.agenda_link is None
 
 
-async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdiction():
+async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdiction(
+    caplog,
+):
     # No "City/County of X" text anywhere on the page (unlike the Napa
     # fixture reused elsewhere in this file) -- forces the subdomain
     # fallback. "fresno" is a real, unambiguous Census place, so this
@@ -99,10 +101,13 @@ async def test_resolve_humanizes_valid_city_subdomain_when_no_page_text_jurisdic
         ),
     }
 
-    with mock_session(routes):
-        result = await GranicusAssetFinder().resolve(url)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await GranicusAssetFinder().resolve(url)
 
     assert result.jurisdiction == "Fresno, CA"
+    # 2026-08-28: a failed agenda fetch used to be silent -- now logged.
+    assert any("agenda fetch got HTTP 404" in r.message for r in caplog.records)
 
 
 async def test_resolve_declines_subdomain_humanization_for_unvalidated_acronym():

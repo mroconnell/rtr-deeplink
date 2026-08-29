@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional
@@ -17,6 +18,8 @@ from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
 from . import youtube_channel
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.legistar")
 
 # Confirmed live (2026-08-09) on two real NYC MeetingDetail.aspx pages: the
 # outer page's own <title> reliably gives "{jurisdiction} - Meeting of
@@ -199,7 +202,20 @@ class LegistarAssetFinder(AssetFinder):
             candidate, platform = match
             try:
                 resolved = await get_finder(platform).resolve(candidate)
+            except CalendarPageError:
+                logger.debug(
+                    "Legistar delegation to %s hit a calendar page for %s",
+                    platform,
+                    candidate,
+                )
+                return None
             except Exception:
+                logger.warning(
+                    "Legistar delegation to %s failed for %s",
+                    platform,
+                    candidate,
+                    exc_info=True,
+                )
                 return None
 
         page_info = LegistarAssetFinder._extract_page_meeting_info(soup, page_url)

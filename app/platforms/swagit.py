@@ -1,3 +1,4 @@
+import logging
 import re
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -10,6 +11,8 @@ from .base import AssetFinder
 from .media_scan import is_hls_url, scan_media_urls, media_type
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.swagit")
 from ..utils.vtt_parser import (
     STRUCTURED_CAPTION_PARSERS,
     decode_vtt_bytes,
@@ -582,9 +585,19 @@ class SwagitAssetFinder(AssetFinder):
                     transcript_url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "Swagit transcript fetch got HTTP %s for %s",
+                            response.status,
+                            transcript_url,
+                        )
                         return None
                     raw = await response.read()
         except Exception:
+            logger.warning(
+                "Swagit transcript fetch failed for %s",
+                transcript_url,
+                exc_info=True,
+            )
             return None
         return decode_vtt_bytes(raw)
 
@@ -600,9 +613,17 @@ class SwagitAssetFinder(AssetFinder):
                     caption_url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     if response.status != 200:
+                        logger.warning(
+                            "Swagit caption fetch got HTTP %s for %s",
+                            response.status,
+                            caption_url,
+                        )
                         return None, None
                     raw = await response.read()
         except Exception:
+            logger.warning(
+                "Swagit caption fetch failed for %s", caption_url, exc_info=True
+            )
             return None, None
         content = decode_vtt_bytes(raw)
         return parse_captions_by_extension(caption_url, content)

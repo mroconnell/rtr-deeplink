@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -19,6 +20,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_vtt,
 )
+
+logger = logging.getLogger("rtr_deeplink.escribe")
 
 TARGET_LANGUAGE = "en"
 # eScribe/iSiLIVE encodes caption language in the filename itself, unlike
@@ -267,9 +270,15 @@ class EscribeAssetFinder(AssetFinder):
                 vtt_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "eScribe VTT fetch got HTTP %s for %s",
+                        response.status,
+                        vtt_url,
+                    )
                     return None
                 raw = await response.read()
         except Exception:
+            logger.warning("eScribe VTT fetch failed for %s", vtt_url, exc_info=True)
             return None
         content = decode_vtt_bytes(raw)
         # eScribe is one of the three platforms BACKLOG.md named as serving

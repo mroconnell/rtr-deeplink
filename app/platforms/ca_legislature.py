@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import List, Optional
 
@@ -14,6 +15,8 @@ from ..utils.vtt_parser import (
     is_likely_garbled,
     parse_captions_by_extension,
 )
+
+logger = logging.getLogger("rtr_deeplink.ca_legislature")
 
 
 class CaliforniaLegislatureAssetFinder(AssetFinder):
@@ -170,9 +173,19 @@ class CaliforniaLegislatureAssetFinder(AssetFinder):
                 caption_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "CA Legislature caption fetch got HTTP %s for %s",
+                        response.status,
+                        caption_url,
+                    )
                     return None, None
                 raw = await response.read()
         except Exception:
+            logger.warning(
+                "CA Legislature caption fetch failed for %s",
+                caption_url,
+                exc_info=True,
+            )
             return None, None
         content = decode_vtt_bytes(raw)
         return parse_captions_by_extension(caption_url, content)

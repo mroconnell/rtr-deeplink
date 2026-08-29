@@ -342,3 +342,17 @@ async def test_listing_with_no_readable_meetings_fails_honestly():
 
     assert result.video_url is None
     assert any("couldn't read any meetings" in w for w in result.video_warnings)
+
+
+async def test_listing_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch()'s non-200 branch used to be silent.
+    url = "https://vimeo.com/showcase/unreachable"
+    routes = {url: FakeResponse(status=503, url=url)}
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await VimeoAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert any("couldn't read any meetings" in w for w in result.video_warnings)
+    assert any("Vimeo fetch got HTTP 503" in r.message for r in caplog.records)

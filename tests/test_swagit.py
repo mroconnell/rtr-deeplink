@@ -49,6 +49,24 @@ async def test_resolve_falls_back_to_caption_file_when_no_transcript_fragments()
     assert any("plain text" in w for w in result.transcript_warnings)
 
 
+async def test_resolve_caption_file_fetch_failure_is_logged(caplog):
+    # 2026-08-28: _fetch_captions()'s non-200 branch used to be silent.
+    html = BASE_HTML.format(
+        captions_tag='<a href="https://example.new.swagit.com/captions.sbv">CC</a>'
+    )
+    routes = {
+        PAGE_URL: FakeResponse(status=200, text=html, url=PAGE_URL),
+        "https://example.new.swagit.com/captions.sbv": FakeResponse(status=404),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await SwagitAssetFinder().resolve(PAGE_URL)
+
+    assert result.segments == []
+    assert any("caption fetch got HTTP 404" in r.message for r in caplog.records)
+
+
 async def test_resolve_detects_language_from_transcript_fragments():
     # Real bug (2026-08-08): SwagitAssetFinder never called language
     # detection at all, so /meetings' "· en" listing indicator was always

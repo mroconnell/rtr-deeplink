@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import List, Optional
 from urllib.parse import urljoin
@@ -9,6 +10,8 @@ from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import decode_vtt_bytes, is_likely_garbled, parse_vtt
+
+logger = logging.getLogger("rtr_deeplink.telvue")
 
 TARGET_LANGUAGE = "en"
 
@@ -321,9 +324,15 @@ class TelvueAssetFinder(AssetFinder):
                 vtt_url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning(
+                        "TelVue VTT fetch got HTTP %s for %s",
+                        response.status,
+                        vtt_url,
+                    )
                     return None
                 raw = await response.read()
         except Exception:
+            logger.warning("TelVue VTT fetch failed for %s", vtt_url, exc_info=True)
             return None
         content = decode_vtt_bytes(raw)
         cues = parse_vtt(content)

@@ -220,17 +220,20 @@ async def test_resolve_reports_no_video_when_none_found():
     assert result.video_warnings == ["No video found for this open.media session."]
 
 
-async def test_resolve_reports_load_failure():
+async def test_resolve_reports_load_failure(caplog):
     url = "https://example-town.open.media/sessions/1"
     routes = {url: FakeResponse(status=403, text="blocked", url=url)}
 
-    with mock_session(routes):
-        result = await OpenMediaAssetFinder().resolve(url)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await OpenMediaAssetFinder().resolve(url)
 
     assert result.platform == "open_media"
     assert result.video_warnings == [
         "Could not load this open.media page -- it may be temporarily unreachable."
     ]
+    # 2026-08-28: a failed page fetch used to be silent -- now logged.
+    assert any("OpenMedia fetch got HTTP 403" in r.message for r in caplog.records)
 
 
 def test_find_agenda_link_ignores_empty_interactive_html_iframe():

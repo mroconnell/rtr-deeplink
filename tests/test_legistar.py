@@ -145,6 +145,38 @@ async def test_charlotte_single_meeting_with_audio_links_delegates_to_granicus()
     assert result.external_id == "granicus:charlottenc.granicus.com:3692"
 
 
+async def test_fallback_delegation_failure_is_logged_and_degrades_honestly(caplog):
+    # No a.videolink, no YouTube link -- forces _try_fallback_video_link()
+    # into find_platform_link()'s delegation branch. The delegated
+    # Granicus page's .text() call raises a plain (non-ClientError)
+    # exception, which GranicusAssetFinder._fetch_page()'s own retry logic
+    # doesn't catch -- exercising legistar.py's `except Exception` path
+    # (2026-08-28: previously silent) rather than the CalendarPageError
+    # one right above it.
+    url = "https://example.legistar.com/MeetingDetail.aspx?ID=1"
+    granicus_url = "https://example.granicus.com/player/clip/1"
+    html = (
+        "<html><head><title>City Council Meeting</title></head><body>"
+        f'<a href="{granicus_url}">Watch here</a>'
+        "</body></html>"
+    )
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        granicus_url: FakeResponse(
+            status=200, text_raises=ValueError("boom"), url=granicus_url
+        ),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await LegistarAssetFinder().resolve(url)
+
+    assert result.video_warnings == ["No video link found on this Legistar page."]
+    assert any(
+        "Legistar delegation to granicus failed" in r.message for r in caplog.records
+    )
+
+
 async def test_nyc_calendar_page_raises_pick_list_via_telerik_onclick():
     # Real legistar.council.nyc.gov/Calendar.aspx, fetched live 2026-08-08.
     # NYC's video links use onclick="OpenTelerikWindow('Video.aspx?Mode=

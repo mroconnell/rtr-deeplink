@@ -171,7 +171,9 @@ async def test_resolve_extracts_real_timestamped_agenda_items_and_skips_document
     assert result.agenda_items[2].end == 263.901
 
 
-async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url():
+async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url(
+    caplog,
+):
     # Real, confirmed live: Santa Clara County meetings checked so far
     # never populate the video onclick at all -- degrades to an honest
     # "no video found" rather than crashing or guessing.
@@ -182,8 +184,9 @@ async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url()
         SCC_SPLIT_URL: FakeResponse(status=404, text="", url=SCC_SPLIT_URL),
     }
 
-    with mock_session(routes):
-        result = await IQM2AssetFinder().resolve(SCC_URL)
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await IQM2AssetFinder().resolve(SCC_URL)
 
     assert result.title == "Personnel Board Business Meeting"
     assert result.date == "2026-08-14"
@@ -191,6 +194,8 @@ async def test_resolve_reports_no_video_found_when_split_page_has_no_media_url()
     assert result.video_url is None
     assert result.video_warnings == ["No video found for this meeting."]
     assert result.agenda_items == []
+    # 2026-08-28: a failed text fetch used to be silent -- now logged.
+    assert any("IQM2 fetch got HTTP 404" in r.message for r in caplog.records)
 
 
 async def test_resolve_returns_a_clear_error_when_no_meeting_id_is_in_the_url():
