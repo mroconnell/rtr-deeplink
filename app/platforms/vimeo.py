@@ -118,7 +118,23 @@ _PATH_PATTERNS = (
 # `base.find_platform_link()` from mistaking a city site's
 # "vimeo.com/cityname" footer link for a real meeting link -- the same
 # false-positive class that made "youtube" an excluded platform there.
-_LISTING_PATH_RE = re.compile(r"^/(?:showcase|channels)/[^/]+/?$")
+#
+# Optional trailing `/embed` (2026-08-28, BACKLOG.md): a real case,
+# Birmingham MI (`bhamgov.org`'s watch-a-meeting page embeds
+# `vimeo.com/showcase/11598114/embed`), previously fell through to the
+# best-effort pointer instead of Vimeo's own pick-list. Confirmed live
+# the `/embed` variant is the SAME showcase (57/54-play real City of
+# Birmingham videos, e.g. "New Parking Equipment City of Birmingham,
+# MI") -- just server-rendered with zero JSON-LD, unlike the bare
+# showcase URL (one `application/ld+json` ItemList, confirmed live).
+# `_listing_candidates()` strips this suffix back off before fetching so
+# it reaches the JSON-LD-bearing page rather than the bare embed shell.
+# Only confirmed live on `/showcase/`; extended to `/channels/` too on
+# the same reasoning (an embeddable-iframe suffix is a Vimeo-wide
+# mechanism, not per-listing-type), not yet independently confirmed on
+# a real channels URL.
+_LISTING_PATH_RE = re.compile(r"^/(?:showcase|channels)/[^/]+(?:/embed)?/?$")
+_LISTING_EMBED_SUFFIX_RE = re.compile(r"/embed/?$", re.IGNORECASE)
 
 # Real, confirmed meeting-date shapes inside Vimeo video titles. Nothing
 # is inferred beyond these three, each taken from a real government
@@ -394,8 +410,13 @@ class VimeoAssetFinder(AssetFinder):
         """Every showcase/channel listing page checked live server-renders
         a JSON-LD `ItemList` of `VideoObject`s. Read from that structured
         blob rather than by scraping the (client-rendered, class-hashed)
-        visible markup."""
-        html = await cls._fetch(url)
+        visible markup.
+
+        A trailing `/embed` is stripped before fetching -- confirmed live
+        that shape server-renders zero JSON-LD (a bare iframe shell),
+        while the identical listing at the un-suffixed URL carries the
+        real `ItemList` this method depends on."""
+        html = await cls._fetch(_LISTING_EMBED_SUFFIX_RE.sub("", url))
         if not html:
             return []
         candidates: List[CalendarCandidate] = []

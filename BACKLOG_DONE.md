@@ -1,5 +1,49 @@
 # Backlog — done
 
+## Vimeo `/embed`-suffixed showcase/channel listings now resolve to a real pick-list [Done 2026-08-28]
+
+`is_vimeo_listing()` (`app/platforms/vimeo.py`) matched
+`/showcase/{id}` and `/channels/{id}` but not the same paths with a
+trailing `/embed` — the real shape Birmingham MI's own
+`bhamgov.org/about_birmingham/city_government/watch_a_city_meeting.php`
+embeds (`vimeo.com/showcase/11598114/embed`), which fell to the
+best-effort pointer instead of Vimeo's `calendar_page` pick-list.
+
+Verified live before writing any fix (this repo's own convention):
+fetched both `vimeo.com/showcase/11598114/embed` and the bare
+`vimeo.com/showcase/11598114` directly. Both are the same real listing
+— 10 real City of Birmingham videos ("New Parking Equipment City of
+Birmingham, MI", 57 plays; "Welcome to the City of Birmingham, MI",
+etc.) — but the `/embed` variant server-renders **zero** JSON-LD, while
+the bare URL carries exactly one `application/ld+json` `ItemList` of
+`VideoObject`s, which is what `_listing_candidates()` actually parses.
+So a naive fix (just widening `_LISTING_PATH_RE` to accept `/embed`)
+would have made `is_vimeo_listing()` correctly claim the URL and then
+immediately regressed to "we couldn't read any meetings off it" — worse
+than shipping nothing, since the resolve would look like it tried and
+failed rather than falling through to whatever weaker pointer catches
+it today.
+
+**Real fix, two parts**: (1) `_LISTING_PATH_RE` now accepts an optional
+trailing `/embed`; (2) `_listing_candidates()` strips that suffix
+before fetching, so it reaches the JSON-LD-bearing page instead of the
+bare embed shell. Verified end-to-end against the live Birmingham URL:
+`VimeoAssetFinder._listing_candidates("https://vimeo.com/showcase/
+11598114/embed")` now returns all 10 real candidates with correct
+titles/dates/URLs.
+
+Extended to `/channels/{id}/embed` on the same reasoning (an
+embeddable-iframe suffix is a Vimeo-wide mechanism, not specific to
+showcases) — not independently confirmed live on a real channels URL,
+noted as such in the code comment.
+
+2 new tests in `tests/test_vimeo.py`: `/embed` is claimed for both
+showcase and channel paths, and a `/showcase/crrma/embed` resolve
+correctly fetches the mocked bare `/showcase/crrma` route (reusing the
+existing real `showcase_crrma.html` fixture) rather than 404ing on a
+route nobody registered for the `/embed` URL itself. Full CI green
+(ruff check, ruff format, 1910 pytest passing, both alembic checks).
+
 ## Legistar CDX small unfiltered sample: web.archive.org recovered, real URL shapes found [Done 2026-08-28]
 
 Closes the residual left by "Legistar CDX pagination killed at 39%"
