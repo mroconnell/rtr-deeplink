@@ -578,3 +578,103 @@ in a different way than assumed: nothing in `app/`, `archive/`, `scripts/`
 or `worker/` had ever queried `pg_database_size`. `GET /internal/db-size`
 now reports it, so the number no longer needs a dashboard login — only the
 plan's storage *cap* does. Full write-up in `BACKLOG_DONE.md`.
+
+## 2026-08-29
+
+Reviewed 8 new messages under `label:rtr-claude newer_than:30d` (all 8
+were new — the ledger held 120 entries from prior runs). Skipped as
+purely informational, no write-up: two transcription-worker daily
+reports. Skipped as duplicates of already-tracked patterns, no new
+entry: another "Server failure detected on `test-redtaperecordings`"
+email (2026-08-28 14:26 UTC, "Exited with status 3") — same
+likely-test-noise pattern flagged and left unconfirmed since the
+2026-08-19 section, now its 9th+ occurrence across runs, still no new
+signal; "Transcription job 1156 failed" (Stillwater, MN,
+`cityofstillwater.granicus.com/player/clip/1773`, chunk 0,
+`ffmpeg timed out after 120s`) and its customer-facing "We hit a snag on
+your transcript" duplicate — same already-documented Granicus
+slow-source/cold-storage timeout root cause as `BACKLOG.md`'s existing
+ffprobe/120s-timeout entry; and a "YouTube transcripts: 2 added"
+digest whose 6 failures are 5 already-documented `TranscriptsDisabled`
+cases plus one single, one-off `YouTubeRequestFailed` (502 Bad Gateway
+fetching the transcript list) — no prior occurrence of that specific
+502 found in `BACKLOG.md`/`BACKLOG_DONE.md`, but a single transient
+upstream 502 with no recurrence isn't actionable on its own.
+
+**Two new findings, both Confirmed via code (no BACKLOG.md/CLAUDE_BACKLOG.md
+duplicate found for either):**
+
+**1. The whole-audio-cache extraction path (WO-54/WO-58,
+`worker/main.py`'s `_chunk_audio_via_cache()`) never got the corrupt-chunk
+decodability guard that `extract_chunk_audio()` has had since 2026-08-21.**
+Surfaced by "Transcription job 1157 failed" (2026-08-28 21:06 UTC, City of
+San Diego, `sandiego.granicus.com/ViewPublisher.php?view_id=3`, 25 chunks,
+gave up after 0 retries at 10/25 chunks completed): `last error:
+[Errno 1094995529] Invalid data found when processing input:
+'/tmp/rtr_transcribe_odzfqdgs/chunk_10.mp3'` — the exact raw PyAV
+`InvalidDataError` (errno 1094995529 = `AVERROR_INVALIDDATA`) that the
+2026-08-21 fix (`app/platforms/media_probe.py`'s `_mean_volume_db()` guard
+inside `extract_chunk_audio()`, lines 739-756) was built specifically to
+catch and turn into a normal retryable `(False, reason)` instead of an
+unhandled exception from inside whisper's decode step. Traced in current
+code: San Diego is a non-HLS, 25-chunk (>1) source, so
+`should_cache_whole_audio()` (`app/platforms/media_probe.py:497-532`)
+routes it through `_chunk_audio_via_cache()` → `slice_cached_audio()`
+(`media_probe.py:614-652`), which only checks ffmpeg's exit code and that
+the output file is non-empty — it never calls `_mean_volume_db()`. So a
+corrupt/undecodable byte range inside the cached whole-file audio (this
+job's chunk 10, retried 3 times across ~27 minutes, same error every
+time) bypasses the guard entirely and reaches
+`engine.transcribe_chunk()` raw, where `worker/main.py`'s
+`except Exception as e:` (line 494) catches it but stores the raw PyAV
+text as `error_message` instead of the friendlier, guard-caught reason —
+and, more importantly, skips the WO-45 output-side-seek retry that
+`extract_chunk_audio()`'s own guard triggers on this exact failure
+signature. **Impact**: WO-54/58's whole-audio-cache path was built
+specifically for seek-hostile progressive sources (ChampDS, Granicus) —
+exactly the sources most likely to have a corrupt/interrupted byte range
+somewhere in a long pull — so this gap sits on the path most likely to
+need it. This job lost 15 of 25 chunks (60% of the meeting) to a single
+corrupt cached region with no seek-retry attempted. Scope beyond this one
+job is unmeasured (would need a query grouping failed jobs by
+`chunks_completed < total_chunks` and this error signature, not available
+from this Routine). **Fix, sized small**: add the same
+`_mean_volume_db()` decodability check to `slice_cached_audio()` that
+`extract_chunk_audio()` already has, returning `(False, "...isn't
+decodable (likely truncated/corrupt)")` instead of `(True, None)` on an
+undecodable slice — `worker/main.py`'s existing per-chunk retry/budget
+logic already treats that shape as a normal retryable failure, no other
+code path needs to change.
+
+**2. `app/archive_client.py`'s `proxy_get()` and `app/main.py`'s
+`_proxy_to_archive()` both catch only `except Exception`, which does not
+catch `asyncio.CancelledError`** (a `BaseException` subclass since Python
+3.8) — so a request cancelled mid-fetch (client/bot disconnects while
+`await session.get(...)` is in flight) still leaks the session's
+connector exactly the way PYTHON-FASTAPI-V/S did before the 2026-08-21
+fix (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), just via a path
+that fix didn't close. Surfaced by Sentry **PYTHON-FASTAPI-13** ("Unclosed
+connector", 2026-08-28 20:19 UTC, `environment=production`,
+`transaction=/state/{path:path}`, `browser=ClaudeBot`, `url=
+https://redtaperecordings.com/state/massachusetts`) — a new issue ID
+(sequentially later than -Q/-S/-T/-V/-W/-X), confirming this is a fresh
+recurrence of the leak class, not a resurfaced old one (the 2026-08-21
+writeup itself notes the `transaction` tag on these is arbitrary/
+misleading — whichever request is executing when the leaked connector's
+finalizer runs, not the one that leaked it — so `/state/{path:path}`
+itself is not necessarily where the leak originated). **Unconfirmed**
+which exact call site leaked this specific instance (Sentry's own
+dashboard, which would show the real traceback, is auth-walled and not
+reachable from this Routine) — but the `except Exception` /
+`CancelledError` gap is directly confirmed in the current code at
+`app/archive_client.py:465-474` and `app/main.py:1622-1632`, and is a
+plausible, sufficient explanation on its own. **Impact**: same
+self-healing-via-GC resource leak as the already-fixed cases, not a
+user-visible crash; likely low-frequency (needs a client disconnect
+during the exact window the archive fetch is in flight) but structurally
+still open on every proxy route (`/m/*`, `/state/*`, `/j/*`, `/meetings`,
+`/coverage`, sitemap, feed) since they all funnel through the same two
+functions. **Fix, sized small**: in both functions' `except Exception`
+blocks, also close the session on `asyncio.CancelledError` before
+re-raising it (e.g. `except (Exception, asyncio.CancelledError):` with
+the close, always re-raising — never swallowing the cancellation).
