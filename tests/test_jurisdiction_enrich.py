@@ -173,6 +173,18 @@ def test_lookup_by_domain_returns_none_for_an_unconfirmed_domain():
     assert je.lookup_by_domain("some-random-city.example.com") is None
 
 
+def test_lookup_by_domain_resolves_modestos_second_agenda_subdomain():
+    # Real production page (id 2542, slug "2026-08-11-council-meeting")
+    # was stuck with jurisdiction=None: agenda2.modestogov.com is a
+    # second, distinct Modesto, CA subdomain (OnBaseAgendaOnlineCouncil,
+    # real City Council meetings -- confirmed live 2026-08-29, see
+    # BACKLOG_DONE.md) separate from the already-registered
+    # agenda.modestogov.com. Same Hyland/OnBase "no in-page jurisdiction
+    # text, domain-only lookup" shape as every other Hyland customer.
+    known = je.lookup_by_domain("agenda2.modestogov.com")
+    assert known == je.KnownJurisdiction("Modesto", "city", "CA")
+
+
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.

@@ -647,6 +647,13 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # unregistered.
     "onbaseweb.pittsburgca.gov": KnownJurisdiction("Pittsburg", "city", "CA"),
     "agenda.modestogov.com": KnownJurisdiction("Modesto", "city", "CA"),
+    # A second, distinct real Modesto subdomain -- confirmed live
+    # 2026-08-29 (BACKLOG_DONE.md's frozen-slug-page entry):
+    # agenda2.modestogov.com/OnBaseAgendaOnlineCouncil/... serves real
+    # City Council meetings (e.g. "Council Meeting - 8/11/2026"), same
+    # city, no in-page jurisdiction text either (see this file's own
+    # note on Hyland/OnBase's domain-only jurisdiction strategy).
+    "agenda2.modestogov.com": KnownJurisdiction("Modesto", "city", "CA"),
     "onbase.centennialco.gov": KnownJurisdiction("Centennial", "city", "CO"),
     # A second, distinct real Santa Barbara subdomain (docs.
     # santabarbaraca.gov is already registered above) -- both resolve

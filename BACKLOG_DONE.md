@@ -1,5 +1,38 @@
 # Backlog — done
 
+## Frozen-slug page's jurisdiction root cause found: a second, unregistered Modesto subdomain [Done 2026-08-29]
+
+Closes the jurisdiction-extraction half of the 5th frozen-slug-page
+residual from the WO-63 Hyland sweep (2026-08-25) — the reslug call
+itself is still open in `BACKLOG.md` (needs the admin token Ryan holds).
+
+Ryan pulled the real row from a Render shell (`psql`) rather than me
+guessing at DB access: page id 2542, slug `2026-08-11-council-meeting`,
+`source_url_normalized = https://agenda2.modestogov.com/
+OnBaseAgendaOnlineCouncil/Meetings/ViewMeeting?doctype=1&id=2305`.
+Fetched the real page live and ran it through the current
+`HylandAssetFinder` before touching anything: title, date, video, and 4
+agenda items all resolved correctly — jurisdiction was the *only* gap,
+confirmed via `hyland.py`'s own domain-only jurisdiction strategy
+(`jurisdiction_enrich.lookup_by_domain(parsed.netloc)`, no in-page
+jurisdiction text on any Hyland/OnBase page).
+
+**Root cause**: `agenda.modestogov.com` (no "2") was already registered
+as Modesto, CA in `jurisdiction_enrich.py`'s known-domains table —
+`agenda2.modestogov.com` is a real, second, distinct Modesto subdomain
+(this page's own `OnBaseAgendaOnlineCouncil` path suggests it's the
+City Council-specific one) that was never added. One-line fix:
+registered it too. Confirmed live post-fix: the same real page now
+resolves with `jurisdiction="Modesto, CA"`.
+
+New test: `test_lookup_by_domain_resolves_modestos_second_agenda_
+subdomain` (`tests/test_jurisdiction_enrich.py`), matching the existing
+`lookup_by_domain()` test pattern. All four CI gates clean; no
+end-to-end Hyland fixture test added on top, since the domain-lookup
+mechanism itself is already covered by existing tests for other Hyland
+customers (Maricopa County, Tucson, etc.) — only the new domain mapping
+was actually new.
+
 ## A YouTube caption-fetch 429 crashed resolve() outright instead of degrading gracefully [Done 2026-08-29]
 
 Found while running a deliberate, single, isolated re-test of BACKLOG.md's
