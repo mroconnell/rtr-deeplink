@@ -939,16 +939,28 @@ coverage** instead.
   (`uLzcNgtnyQ4`, correctly found by title+date) failed with `[youtube]
   uLzcNgtnyQ4: This live event has ended` — yt-dlp's extraction path for
   a livestream that ended but hasn't finished processing into a normal
-  VOD, a shape this module's error handling doesn't account for. Whether
-  this is transient (resolves once YouTube finishes processing) or a
-  real gap needing its own handling is unconfirmed — worth a repeat
-  check on the same video id before assuming either. (2) **Two real,
+  VOD, a shape this module's error handling doesn't account for.
+  **Confirmed transient, 2026-08-29**: re-ran `yt-dlp` directly against
+  the same video id three days later — it now extracts cleanly (real
+  title, `live_status=was_live`, `availability=public`, a plausible
+  8878s/~2.5hr duration). No code change needed for this half; a genuine
+  gap would be worth adding a clearer transient-vs-permanent distinction
+  to this module's error handling, but there's no confirmed real case of
+  the *permanent* form to build that against yet. (2) **Two real,
   past Philadelphia meetings (Aug 5 and Aug 6, 2026) found zero fallback
   match at all** — "No video link found," not even an attempted-but-
-  missed warning — despite both predating today by three weeks. Could be
-  a genuine content gap (the city didn't post these specific meetings),
-  a stricter-than-expected title/date match, or something else; not
-  diagnosed. **One real positive finding, not a bug**: one Baltimore
+  missed warning — despite both predating today by three weeks.
+  **Content gap ruled out for at least one of the two, 2026-08-29**: a
+  flat listing of Philadelphia City Council's real channel
+  (`UC9bXJCRFPLxMhT22nZ7t8XA`) has a real, current
+  "Committee on Education 08-06-26" upload — so the video exists; a
+  fallback match failing to find it points at the title/date matching
+  logic, not missing content. (Philadelphia's calendar page itself
+  wouldn't render the real August rows for this check — likely paginated
+  or month-scoped server-side, not a plain GET — so which specific
+  Legistar meeting title this needed to match against, and why the
+  matcher missed it, is still not diagnosed; the Aug 5 case is unchecked
+  either way.) **One real positive finding, not a bug**: one Baltimore
   meeting resolved with a real video found directly on its own Legistar
   page (empty `video_warnings`, no fallback needed) — the city may have
   started adding some real video links since this fallback was built,
