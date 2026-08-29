@@ -1,5 +1,116 @@
 # Backlog — done
 
+## Detect a transcript that simply ends early -- the last undetectable truncation form [Done 2026-08-29]
+
+Closes the `[JUST-DO-IT]` entry sitting in `BACKLOG.md` since 2026-08-24.
+Ryan's explicit calls, made when this was scoped: a **10-minute**
+shortfall threshold (tighter than the entry's own "tens of minutes"
+starting suggestion), wired in for real rather than built as a
+report-only tool first, with the plan to loosen it if it turns out
+noisy on real pages.
+
+**Added `archive/db/crud.py`'s `_EARLY_TRUNCATION_MARKER`** (`"may end
+before the meeting did"`) to the existing `_TRUNCATION_MARKERS` tuple
+alongside the Granicus 36k-cue cap and the interrupted-transcription
+marker — same "one line, not a parallel bucket" convention that tuple's
+own comment already documents, so `_classify_page_outcome()`'s
+`truncated_transcript` bucket and `_has_real_warning_free_transcript()`'s
+re-transcription eligibility both pick it up automatically. Manually
+updated the one place that check doesn't cover itself:
+`_good_default_transcript_exists()`'s raw SQL `LIKE` list (per
+`CLAUDE.md`'s own "a new quality marker needs updating in three places"
+note — the third, `app/db/outcomes.py`, only mirrors `_GARBLED_MARKER`,
+not the truncation markers, so it didn't need touching).
+
+**Detection is opportunistic, not a corpus scan**: there's no ffprobe on
+the ordinary ingest path, so the only moment a real ffprobed video
+duration becomes known for a page is when someone requests a
+transcription job for it (`crud.create_transcription_job()`, the shared
+choke point every real job-creation path already goes through — see the
+Granicus chunk-size entry above for why that centralization already
+existed). Added `_flag_default_transcript_if_truncated_early()`, called
+right after the page is resolved: if the page's *current* default
+transcript's last segment ends >= 600s before the freshly-probed
+duration and isn't already flagged, it gets the new warning. Most pages
+never request a job, so most never get checked — this deliberately
+doesn't change that.
+
+**Known, real false-positive risk, flagged in the code, not hidden**:
+`FasterWhisperEngine`'s default `vad_filter=True` skips transcribing
+trailing silence after the last real speech, so a meeting whose
+recording keeps rolling for several minutes after adjournment will
+legitimately look "short" by this measure even though nothing was
+truncated. Ryan's own words when picking the tight 10-minute threshold:
+"we will know we went too tight if we get a lot of false positives
+showing up as truncated" — the plan is to watch the real rate on
+production pages and loosen back toward the entry's original
+"tens of minutes" guidance if it's noisy, documented directly in
+`_EARLY_TRUNCATION_SHORTFALL_SECONDS`'s own comment so a future reader
+doesn't have to rediscover this reasoning.
+
+**Real bug caught building this, unrelated to the feature's own logic**:
+`tests/test_partial_transcript_publishing.py::test_a_partial_never_
+displaces_an_existing_good_transcript` used a 5-second "full transcript"
+fixture against a 2700-second probed duration purely for test brevity —
+which the new detector correctly flagged as truncated, which then made
+that fixture's "existing good transcript" stop counting as good, which
+let the test's own partial-publish path displace it, breaking the test's
+actual intent. Not a logic bug — an unrealistic fixture no longer
+holding up against real new behavior. Fixed by giving that fixture a
+duration consistent with what it claims to be. A second, genuinely new
+bug in my own test additions: two new tests created transcription jobs
+without draining them, silently leaking two permanently-active jobs into
+the shared fixture DB `tests/test_transcription_jobs.py`'s own
+`_drain_job()` docstring already warns about — caught immediately by an
+unrelated test's before/after job-count assertion elsewhere in the full
+suite failing, not by anything in the new tests themselves. Both are a
+real illustration of why "run the *full* suite, not just the new
+tests" matters even for a change that looks self-contained.
+
+New tests: `_last_segment_end_seconds()`/`_looks_truncated_early()` unit
+tests, a `_has_good_transcript()`/`_good_default_transcript_exists()`
+agreement test matching the existing pattern for the other two markers,
+and two `create_transcription_job()` integration tests (flags a short
+default transcript; leaves a complete one alone) — the latter two
+deliberately assert *before* draining their jobs, since normal job
+completion unconditionally promotes its own (empty, in these tests)
+transcript over whatever was default before, which would otherwise check
+the wrong version entirely. All four CI gates clean, including the new
+worker import-graph guard; no migration needed (reads/writes only
+already-existing `segments`/`transcript_warnings` JSON columns).
+
+## `tier3_auto_transcription_queue.txt` can now carry a paired `source_url` override [Done 2026-08-29]
+
+Closes the `[NEEDS-AUDIT]` entry from 2026-08-28's outbound-link
+enumeration pass. Ryan's explicit choice of the entry's two proposed
+fix shapes: extend the queue file format, not exclude bare-video-host
+URLs outright (which would have required requeuing the 7 real
+candidates already held back for this reason under their real source
+pages instead).
+
+**`scripts/tier3_auto_transcription_queue.txt` lines can now be
+`URL` or `URL<TAB>SOURCE_URL`** — the second field, when present,
+overrides what `feed_tier3_auto_transcription.py` records as the
+resolved meeting's `source_url` before pushing to `/internal/ingest`,
+the same override pattern already used for direct ingests (see this
+file's 2026-08-28 entry). Without it, a queued bare YouTube/Vimeo link
+discovered via an outbound link on some other page gets ingested under
+its *own* URL as `source_url` — a reader's "View original source" link
+would point at the video host, not the government page the video was
+actually found on. `input_url_normalized` (the dedup key) deliberately
+stays the bare video URL itself, unaffected — that's genuinely what this
+script looked up; only the *displayed* source page changes.
+
+Added `_parse_queue_line()` (pure, tab-split, trims both fields) and
+threaded `source_url_override` through `_push_if_has_video()`; the
+queue's own advance/write-back logic needed no change since it already
+writes back whole, untouched lines. New test file
+`tests/test_feed_tier3_auto_transcription.py` (this script had zero
+test coverage before): line-parsing edge cases (no tab, trailing tab,
+whitespace around both fields) plus two integration tests against a
+faked finder/`_ingest()` confirming the override does and doesn't apply
+correctly. All four CI gates clean; no schema touched.
+
 ## CablecastPublicSite template built via a real, open JSON API; WebSchedule confirmed a dead end [Done 2026-08-29]
 
 Closes the "two more real Cablecast portal templates" lead from the
@@ -24312,3 +24423,21 @@ guessing a general dedup rule from one example.
   **Docs updated in the same PR**: `README.md` (both page sections
   rewritten, plus the test-coverage paragraph), `BACKLOG.md` (this entry
   replaced with the measurement follow-up and two residual gaps).
+
+### Saved-search digest's "+N more" count stays bundled across all of a user's saved searches — decided 2026-08-29
+
+Ryan's explicit call: `_digest_subject()`'s `extra = total_matches - 1`
+summing matches across *every* saved search in the digest, while the
+subject names only `keywords[0]`, is the intended framing — a single
+"you have N total new matches" signal, not a per-search count. Not a
+bug. Don't re-raise without new evidence that real users read "+N more"
+as scoped to the named search specifically.
+
+### Grass Valley/Hamden stale-slug cosmetic cleanup — declined 2026-08-29
+
+Ryan's explicit call: not worth spending an admin-token-gated
+`POST /internal/admin/reslug-page` call on a purely cosmetic fix readers
+never see (the raw slug isn't rendered as a label anywhere). Same
+already-accepted "slugs don't regenerate on re-ingest" tradeoff as
+Fitchburg and Everett MA (see this file's earlier entries). Revisit only
+if a slug like this ever becomes reader-visible somewhere.

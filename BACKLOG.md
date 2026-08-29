@@ -56,18 +56,14 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
-  [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   `[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
-  [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
   [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the…
-  `[EASY]` Grass Valley/Hamden pages have a stale slug — optional
-  [NEEDS-AUDIT] `tier3_auto_transcription_queue.txt` has no way to…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (4)
@@ -377,29 +373,6 @@ so that work reads together.
   ```
   See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
-- **[JUST-DO-IT] Nothing detects a transcript that simply ends early
-  (2026-08-24).** The two detectable truncation forms are now both
-  handled — the Granicus 36,000-cue cap, and a transcription job that
-  died partway (both in `_TRUNCATION_MARKERS`). What is left is the form
-  nothing can see: a scraped caption file that stops before the meeting
-  did, with no round-number tell, which presents to a reader as an
-  ordinary complete transcript.
-  **This is now the *only* remaining form, which is why it is worth
-  building.** The whole-archive scan run on 2026-08-24 (see
-  `BACKLOG_DONE.md`) found the 36,000 cap effectively closed — one page,
-  already marked — and no evidence of a second cap at any count above
-  20,000, so the round-number heuristic has no more work to do.
-  The general check is comparing a transcript's last segment against the
-  video's real duration, and the pieces already exist:
-  `TranscriptionJob.probed_duration_seconds` holds a real ffprobe'd
-  duration for every page that has ever had a job, and
-  `crud._partial_transcription_warning()` already renders exactly this
-  shape of sentence from a (covered, total) pair. Watch out for the
-  obvious false positive — a meeting whose video runs long after the
-  gavel — so the threshold wants to be generous (tens of minutes short,
-  not seconds) and probably measured against real pages before being
-  turned on.
-
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
   2026-08-22).** The first corpus-scale
@@ -529,16 +502,6 @@ so that work reads together.
   (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
   is a **Granicus vendor marketing event, not a government meeting** —
   needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
-- **[NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
-  bundle matches across unrelated saved searches — not confirmed as
-  wrong, a product call.** Residual from the double-quoting fix below
-  (`archive/utils/email.py`'s `_digest_subject()`, fixed 2026-08-24 —
-  see `BACKLOG_DONE.md`): `extra = total_matches - 1` sums matches
-  across *every* group in the digest, while the subject names only
-  `keywords[0]` — so with several saved searches, "+N more" silently
-  includes matches belonging to a different search than the one named.
-  That may well be the intended digest framing; needs a decision, not
-  necessarily a fix.
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
   `app/main.py:1527-1593` proxies essentially the whole public site —
@@ -571,17 +534,6 @@ so that work reads together.
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
 - **[JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the meeting title, when a much more reliable signal sits unused on the same page.** Found 2026-08-28 while enumerating TelVue customers by search-dorking real player URLs (`BACKLOG_DONE.md`'s matching entry has the full writeup, method, and the day's yield): every real customer page checked carries `id="org-logo" alt="{Org Name} - {tagline} - organization logo"` — e.g. `alt="NCM - Nashua Community Media - Nashua Government TV - organization logo"` — a real per-customer identity string that's present regardless of what a given meeting happens to be titled, immune to the whole class of bug the 2026-08-28 stopword fix (PR #460) had to work around (bare-body-word titles with no city prefix at all). **Not built**: parsing real org names into a jurisdiction is genuinely messy — "Fitchburg Access TV" → "Fitchburg", "CMNtv Chris Weagel for Auburn Hills Govt Cable" → "Auburn Hills", "Town of Orleans MA" → "Orleans, MA" (already has a state!), "Stoneham, MA" → itself unchanged — no single strip-trailing-words rule covers all of these cleanly, so this needs either a broader trailing-phrase stopword list (`Access TV`, `Community TV`, `Community Media`, `Media Center`, `Government TV`, `Community Access Television`, `TV{digits}`, `Telecommunications`, etc.) or a small per-customer override map the way `_KNOWN_ORG_TOKEN_JURISDICTIONS` already is, built up the same "one confirmed entry at a time" way. Worth doing before the next TelVue enumeration pass, not before — the current title-based guess plus the stopword fix already ships correct (if sparse) jurisdictions today.
-- **`[EASY]` Grass Valley/Hamden pages have a stale slug — optional
-  cosmetic cleanup via the existing `reslug-page` admin endpoint, no
-  code change needed.** Investigated 2026-08-28: turned out to be the
-  same already-accepted "slugs don't regenerate on re-ingest" tradeoff
-  exercised twice before (Fitchburg, Everett MA — see
-  `BACKLOG_DONE.md`), not a distinct bug — full root-cause writeup in
-  `BACKLOG_DONE.md`'s matching entry. `POST /internal/admin/reslug-page`
-  already exists and is dry-run-safe; a human just needs to name the two
-  slugs (`unknown-jurisdiction-...` and `hamden-oh-...`) if the cleanup
-  is wanted. Not urgent — readers never see the raw slug as a label.
-- **[NEEDS-AUDIT] `tier3_auto_transcription_queue.txt` has no way to carry a paired `source_url` override, which matters whenever the queued URL is a bare video link discovered via a *different* page.** Found 2026-08-28 during an outbound-link enumeration pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §20 has the full writeup): a real methodology bug this same session — ingesting a video found via an outbound link on a government agenda page directly under the *video's own* URL as `source_url`, rather than the real agenda page it was embedded in — got caught and fixed for direct ingests (override `result.jurisdiction`/`result.source_url` before calling `bulk_ingest._ingest()`, confirmed correct via a spot-check). But the TIER-3 queue file is a plain one-URL-per-line format, and `feed_tier3_auto_transcription.py` resolves each line directly with no paired-context mechanism at all — so a queued Granicus/Vimeo/Cablecast/TelVue clip URL is fine (the platform URL itself is a real, specific page), but a queued bare YouTube or Vimeo video link recreates the exact bug just fixed, silently, whenever the feed script eventually processes it. 7 real candidates from the same session were held out of the queue for exactly this reason rather than queued wrong. **Fix shape, not built**: either (a) extend the queue file format to optionally carry a second, tab- or pipe-separated `source_url` field per line, with `feed_tier3_auto_transcription.py` applying it as an override the same way manual ingest scripts already do, or (b) simply exclude bare-video-host URLs (YouTube/Vimeo with no richer page structure) from ever being queued this way, requiring a real platform-hosted URL instead. Worth doing before the next outbound-link-discovery pass finds more of these.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
