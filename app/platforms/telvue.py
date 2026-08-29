@@ -157,6 +157,15 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # "Colorado". Kept here too as a belt-and-suspenders state fill in
     # case a future title shape slips past the regex fix.
     "YGktjFZCLukJd_8Fx53BkVRk4tAZafS4": "Vail, CO",
+    # XRGvXhGamdDe6nt3IU9wLyKjf4BqK24i: same title-shape gap as Riverhead
+    # above -- every real sample title is a bare "Town Board Meeting" with
+    # no city prefix, plus this ingest predates the leading-date fix
+    # above, so the stored jurisdiction was the literal date+"Town"
+    # ("2024-03-19 Town"). Confirmed live 2026-08-29 via this org's own
+    # `id="org-logo"` alt text, "Irondequoit, NY - Irondequoit, NY -
+    # organization logo" (reported by a user after seeing the wrong
+    # jurisdiction on a live page).
+    "XRGvXhGamdDe6nt3IU9wLyKjf4BqK24i": "Irondequoit, NY",
 }
 
 
