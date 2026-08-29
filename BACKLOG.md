@@ -58,7 +58,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
   Confirmations nobody has actually watched happen  (5)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
@@ -77,7 +77,6 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
-  Product calls
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
@@ -531,8 +530,9 @@ convenient.
   services: `plan: starter` → `plan: standard` in `render.yaml`.
 - **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
   the resolver's own database was never measured, and the plan's real
-  storage cap is still unknown (2026-08-25).** WO-60 (Ship next, above)
-  root-caused the 2026-08-24 ">90% storage" alert to
+  storage cap is still unknown (2026-08-25).** WO-60 (fully executed and
+  closed 2026-08-29 — see `BACKLOG_DONE.md` for the real before/after
+  numbers) root-caused the 2026-08-24 ">90% storage" alert to
   `meeting_page_thumbnails` and shipped the cap/cleanup. **Correction
   worth keeping**: this entry previously guessed the driver was ordinary
   segment growth (the second worker plus 167,719 segments in 24h). That
@@ -576,8 +576,9 @@ convenient.
   YouTube-backed page failed** with `HTTP Error 429: Too Many Requests`,
   a perfect split. Nothing was written for the 10 — they failed at the
   resolve step, before any push, so their transcripts are untouched.
-  Root cause in its own entry under **Ship next**, and it is *not*
-  simple rate limiting: **a retry at `--resolve-delay 60` after nine
+  Root cause in its own entry under **Open bugs** (moved there
+  2026-08-29 — it's an unresolved question, not a settled fix), and it
+  is *not* simple rate limiting: **a retry at `--resolve-delay 60` after nine
   idle minutes failed identically on all 10**, first request included.
   The IP is blocked, not throttled, so pacing alone will not clear it.
   Wait hours, not minutes, then retry — and note the state file records
@@ -758,8 +759,6 @@ convenient.
   (direct DB delete) until this automation is exercised for real. Worth
   closing before this phase is treated as a finished right-to-deletion
   story.
-
-### Product calls
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
