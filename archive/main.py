@@ -1744,7 +1744,19 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
 # by-hand corrections for a slug frozen from vendor boilerplate rather
 # than the meeting's own title, not a general redirect system). Add an
 # entry here in the same change that performs the real rename.
-_SLUG_REDIRECTS: dict[str, str] = {}
+_SLUG_REDIRECTS: dict[str, str] = {
+    # 2026-08-28: build_base_slug() froze the literal fallback "meeting"
+    # (plus hex-suffixed collisions) from a first resolve that had no
+    # jurisdiction/date/title yet -- all 4 have real metadata now (see
+    # BACKLOG_DONE.md's "Five frozen-slug pages reslugged" entry).
+    "meeting": "tucson-az-2026-08-05-regular-meeting",
+    "meeting-1e9bac": "maricopa-county-az-2026-07-15-formal",
+    "meeting-38ca49": "sacramento-county-ca-2026-08-11-board-of-supervisors-meeting",
+    "meeting-ef5ba6": "maricopa-county-az-2026-04-08-formal",
+    # 2026-08-24/28: slug frozen from ClerkBase's boilerplate page title
+    # at first resolve, not the meeting's own -- see BACKLOG_DONE.md.
+    "welcome-to-clerkbase": "yellow-springs-oh-2022-02-07-february-7-2022-regular-village-council-meeting",
+}
 
 
 @app.get("/m/{slug}")

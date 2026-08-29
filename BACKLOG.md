@@ -56,9 +56,8 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (16)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
-  [JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
   [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
@@ -66,12 +65,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (16)
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
   [JUST-DO-IT] Give `meeting_body` an adapter-supplied path — it has
-  [JUST-DO-IT] `[EASY]` Five more frozen-slug pages, a different shape
-  [JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
+  `[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
   [NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   [JUST-DO-IT] Every byte the public site serves is billed twice:
   [JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the…
-  [JUST-DO-IT] `[EASY]` A manual `jurisdiction` override passed into…
+  `[EASY]` Grass Valley/Hamden pages have a stale slug — optional
   [NEEDS-AUDIT] `tier3_auto_transcription_queue.txt` has no way to…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
@@ -107,10 +105,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (39)
+Platform & jurisdiction coverage  (41)
+  `[LATER]` A real, new video platform found: Midpen Media Center
+  `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
+  `[EASY]` Legistar CDX: still owed a small, unfiltered "what URL
   `[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
-  `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings…
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…
   `[Done 2026-08-23]` Four archived pages pointed at agenda systems…
@@ -384,29 +384,6 @@ so that work reads together.
   ```
   See `STORAGE_CLEANUP_2026_08_25.md` for full runbook. No user-facing impact — default thumbnails unchanged, timestamp-specific frames fall back to default if deleted.
 
-- **[JUST-DO-IT] `[EASY]` "We think we found an agenda here" is hedged for
-  every adapter, including the seven that don't guess (2026-08-25).**
-  `meeting_page.html:496` renders that line for any `agenda_link`, and its
-  own comment still describes the field as `generic_fallback`'s
-  best-effort "found a link that looks like the agenda" result. That was
-  true when it shipped 2026-08-10; **eight adapters set `agenda_link`
-  now** — `legistar`, `granicus`, `champds`, `hyland`, `suiteone`,
-  `chicago_elms` and `openmedia` as well — and for those it is usually the
-  real agenda document pulled straight off the source, not a guess. So the
-  page apologises for a link it is sure about. Fix: keep the hedge for
-  `generic_fallback` (and `platform == "unknown"`), say something plain
-  like "Agenda" for the rest, and correct the stale comment. Found while
-  fixing the Soft 404 (WO-62, `BACKLOG_DONE.md`).
-  **Now visible on 14 real pages, not just hypothetical (2026-08-25).**
-  `ingest_resolution()` is truthy-gated (`page.agenda_link =
-  payload.get("agenda_link") or page.agenda_link`), so a re-ingest can
-  never *clear* a stored link. `hyland.py` nulls `agenda_link` once it has
-  real items, but the WO-63 sweep could only add — so those 14 pages now
-  render their real agenda **and** the "We think we found an agenda here"
-  line above it, pointing at the same document. Harmless, but it is the
-  clearest argument for doing this: the hedge is now demonstrably wrong on
-  live pages.
-
 - **[JUST-DO-IT] Nothing detects a transcript that simply ends early
   (2026-08-24).** The two detectable truncation forms are now both
   handled — the Granicus 36,000-cue cap, and a transcription job that
@@ -628,53 +605,26 @@ so that work reads together.
   `meeting_body` coverage and on using `meeting_body` in search
   facets — both are currently reasoning about a field that only
   jurisdiction extraction ever writes.
-- **[JUST-DO-IT] `[EASY]` Five more frozen-slug pages, a different shape
-  from the two below — four are the literal fallback slug `meeting`
-  (2026-08-25).** Seen directly in the WO-63 Hyland sweep output:
-  `meeting`, `meeting-1e9bac`, `meeting-38ca49`, `meeting-ef5ba6`, plus
-  `2026-08-11-council-meeting` resolving with `jurisdiction=None`.
-  **Root cause is not a vendor's boilerplate title** (that's the entry
-  below) but `build_base_slug()` (`archive/utils/slugify.py:23-33`),
-  which returns the literal string `"meeting"` when jurisdiction, date
-  and title are *all* empty — then `_unique_slug()` appends a hex suffix
-  for each collision, which is where `-1e9bac` and friends come from.
-  **These pages have real metadata now**: the same sweep printed
-  `jurisdiction='Tucson, AZ'`, `'Maricopa County, AZ'` (×2) and
-  `'Sacramento County, CA'` for four of them. The slug is just frozen
-  from a first resolve that had nothing. So `/m/meeting-38ca49` is a live,
-  real Sacramento County meeting with an unreadable, unsearchable URL.
-  **Fix**: same `POST /internal/admin/reslug-page` + `_SLUG_REDIRECTS`
-  procedure as the entry below — dry-run first, then add each
-  `{old_slug: new_slug}` pair so the old permalink 301s rather than 404s.
-  The fifth (`jurisdiction=None`) needs its jurisdiction resolved first,
-  or a reslug just produces another dateless stub.
-
-- **[JUST-DO-IT] `[WAIT]` Two archived pages have slugs frozen from a
-  vendor's boilerplate page title, not the meeting's — fix built
-  2026-08-24, not yet run against production.** `POST
-  /internal/admin/reslug-page` (`archive/main.py` + `crud.reslug_page()`,
-  dry-run-safe, same pattern as the existing `/internal/admin/
-  delete-pages`) now exists for **`/m/welcome-to-clerkbase`** (a real
-  Yellow Springs, OH meeting whose slug was frozen from ClerkBase's
-  boilerplate page title at first resolve — see `BACKLOG_DONE.md` for
-  the original find). `archive/main.py`'s `_SLUG_REDIRECTS` dict is the
-  redirect half, currently empty. **Remaining steps, in order**: (1) `curl
-  -X POST .../internal/admin/reslug-page -d '{"slug":
-  "welcome-to-clerkbase"}'` with the admin Bearer token to preview the
-  computed new slug (dry_run defaults true); (2) re-run with
-  `?dry_run=false` to actually rename it; (3) add the returned
-  `{old_slug: new_slug}` pair to `_SLUG_REDIRECTS` and deploy so the old
-  permalink 301s instead of 404ing.
-  The second boilerplate-shaped slug found in the same 2026-08-22 scan
-  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
-  is a **Granicus vendor marketing event, not a government meeting** —
-  handled via the existing `/internal/admin/delete-pages` (dry_run
-  first), not re-slugged.
+- **`[EASY]` One more frozen-slug page — `2026-08-11-council-meeting`
+  needs its jurisdiction resolved before it can be reslugged.** Residual
+  from a batch of 5 frozen-fallback-slug pages found in the WO-63 Hyland
+  sweep (2026-08-25); the other 4 were reslugged 2026-08-28 (see
+  `BACKLOG_DONE.md`). This one resolves with `jurisdiction=None`, so
+  `build_base_slug()` would just produce another dateless stub — find
+  and fix why jurisdiction extraction fails for this page's source URL
+  first, *then* run `POST /internal/admin/reslug-page` (dry-run first,
+  then add the returned `{old_slug: new_slug}` pair to `archive/main.py`'s
+  `_SLUG_REDIRECTS` and deploy).
   **Incidental, not a defect:** 257 of the 2,383 `/m/` slugs contain no
   ISO-format date, but spot-checking shows nearly all carry a date in
   another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
   this is slug-format inconsistency rather than missing data. Noted only
   so a future scan doesn't re-flag it as a bug.
+  **Still open, unrelated to the above**: the second boilerplate-shaped
+  slug found in the same 2026-08-22 scan
+  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
+  is a **Granicus vendor marketing event, not a government meeting** —
+  needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
 - **[NEEDS-AUDIT] The saved-search digest subject's "+N more" count may
   bundle matches across unrelated saved searches — not confirmed as
   wrong, a product call.** Residual from the double-quoting fix below
@@ -717,7 +667,16 @@ so that work reads together.
   implied), but it is free money and halves the blast radius of any
   future traffic spike.
 - **[JUST-DO-IT] `[EASY]` TelVue's jurisdiction extraction parses the meeting title, when a much more reliable signal sits unused on the same page.** Found 2026-08-28 while enumerating TelVue customers by search-dorking real player URLs (`BACKLOG_DONE.md`'s matching entry has the full writeup, method, and the day's yield): every real customer page checked carries `id="org-logo" alt="{Org Name} - {tagline} - organization logo"` — e.g. `alt="NCM - Nashua Community Media - Nashua Government TV - organization logo"` — a real per-customer identity string that's present regardless of what a given meeting happens to be titled, immune to the whole class of bug the 2026-08-28 stopword fix (PR #460) had to work around (bare-body-word titles with no city prefix at all). **Not built**: parsing real org names into a jurisdiction is genuinely messy — "Fitchburg Access TV" → "Fitchburg", "CMNtv Chris Weagel for Auburn Hills Govt Cable" → "Auburn Hills", "Town of Orleans MA" → "Orleans, MA" (already has a state!), "Stoneham, MA" → itself unchanged — no single strip-trailing-words rule covers all of these cleanly, so this needs either a broader trailing-phrase stopword list (`Access TV`, `Community TV`, `Community Media`, `Media Center`, `Government TV`, `Community Access Television`, `TV{digits}`, `Telecommunications`, etc.) or a small per-customer override map the way `_KNOWN_ORG_TOKEN_JURISDICTIONS` already is, built up the same "one confirmed entry at a time" way. Worth doing before the next TelVue enumeration pass, not before — the current title-based guess plus the stopword fix already ships correct (if sparse) jurisdictions today.
-- **[JUST-DO-IT] `[EASY]` A manual `jurisdiction` override passed into `bulk_ingest._ingest()` fixes the displayed jurisdiction but not the URL slug.** Confirmed twice on 2026-08-28 during a Granicus/IQM2/Swagit/CivicClerk enumeration pass (see `BACKLOG_DONE.md`'s matching entries and `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §17-18): a Grass Valley, CA meeting resolved with a wrong org-level jurisdiction guess ("Nevada County"), overridden to "Grass Valley, CA" before ingest — the resulting page correctly *displays* "Grass Valley, CA" but its slug is `/m/unknown-jurisdiction-...`. Same shape on a Hamden, CT meeting (CivicClerk's own adapter guessed the wrong state, "OH") — page displays "Hamden, CT" correctly, slug is `/m/hamden-oh-...`. Not a data-correctness bug (readers never see the raw slug as a label, and the page content itself is right) — but it means the *URL* silently carries stale/wrong text forever once ingested this way. Root cause not yet located precisely; likely the slug is generated from the adapter's raw `ResolvedMeeting` before whatever step applies the override, rather than from the final jurisdiction. Low priority given it's cosmetic, but easy to fix once found and worth doing before the next large manual-override ingest batch.
+- **`[EASY]` Grass Valley/Hamden pages have a stale slug — optional
+  cosmetic cleanup via the existing `reslug-page` admin endpoint, no
+  code change needed.** Investigated 2026-08-28: turned out to be the
+  same already-accepted "slugs don't regenerate on re-ingest" tradeoff
+  exercised twice before (Fitchburg, Everett MA — see
+  `BACKLOG_DONE.md`), not a distinct bug — full root-cause writeup in
+  `BACKLOG_DONE.md`'s matching entry. `POST /internal/admin/reslug-page`
+  already exists and is dry-run-safe; a human just needs to name the two
+  slugs (`unknown-jurisdiction-...` and `hamden-oh-...`) if the cleanup
+  is wanted. Not urgent — readers never see the raw slug as a label.
 - **[NEEDS-AUDIT] `tier3_auto_transcription_queue.txt` has no way to carry a paired `source_url` override, which matters whenever the queued URL is a bare video link discovered via a *different* page.** Found 2026-08-28 during an outbound-link enumeration pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §20 has the full writeup): a real methodology bug this same session — ingesting a video found via an outbound link on a government agenda page directly under the *video's own* URL as `source_url`, rather than the real agenda page it was embedded in — got caught and fixed for direct ingests (override `result.jurisdiction`/`result.source_url` before calling `bulk_ingest._ingest()`, confirmed correct via a spot-check). But the TIER-3 queue file is a plain one-URL-per-line format, and `feed_tier3_auto_transcription.py` resolves each line directly with no paired-context mechanism at all — so a queued Granicus/Vimeo/Cablecast/TelVue clip URL is fine (the platform URL itself is a real, specific page), but a queued bare YouTube or Vimeo video link recreates the exact bug just fixed, silently, whenever the feed script eventually processes it. 7 real candidates from the same session were held out of the queue for exactly this reason rather than queued wrong. **Fix shape, not built**: either (a) extend the queue file format to optionally carry a second, tab- or pipe-separated `source_url` field per line, with `feed_tier3_auto_transcription.py` applying it as an override the same way manual ingest scripts already do, or (b) simply exclude bare-video-host URLs (YouTube/Vimeo with no richer page structure) from ever being queued this way, requiring a real platform-hosted URL instead. Worth doing before the next outbound-link-discovery pass finds more of these.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
@@ -1387,6 +1346,73 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
+- **`[LATER]` A real, new video platform found: Midpen Media Center
+  (`midpenmedia.org`) — at least Palo Alto's real PrimeGov video isn't
+  on YouTube/Swagit/Granicus at all.** Found 2026-08-28 chasing a real
+  discrepancy: the user confirmed two specific Palo Alto meetings
+  (`cityofpaloalto.primegov.com/Portal/Meeting?meetingTemplateId=18785`
+  and `=20733`) have real video, but this repo's PrimeGov adapter found
+  none on either — not a false negative in the sense of the video being
+  present and unextracted; checked the actual rendered page (browser,
+  not just raw HTML) and confirmed **no specific video URL is present
+  on the page at all**, only a bare YouTube *channel* link
+  (`youtube.com/c/cityofpaloalto`) and a bare
+  `midpenmedia.org` homepage link, both mentioned in prose ("broadcast
+  on Cable TV Channel 76, live on YouTube ..., and streamed to Midpen
+  Media Center ..."). Same bare-link-only shape confirmed on Palo
+  Alto's own city-clerk agenda page
+  (`paloalto.gov/Events-Directory/City-Clerk/2026/082426-City-Council-
+  Meeting`) — not a PrimeGov-specific gap, the source itself just
+  doesn't publish a direct per-meeting video link anywhere upstream.
+  **`isShowVideoIcon`** (a real field on PrimeGov's
+  `ListArchivedMeetings` API response, 114/158 of Palo Alto's 2026
+  meetings have it true) is a confirmed-live, genuine "this meeting has
+  video" signal **not currently checked anywhere in `primegov.py`**
+  (only `videoUrl`/`swagitId`/`isMediaManagerVideo` are) — worth adding
+  to the existing tenant-API-delegation check even though it alone
+  doesn't solve the Midpen case (it would correctly identify *that*
+  video exists, just not resolve *where*). **Not built**: a Midpen
+  Media Center adapter, or a fallback that resolves a bare YouTube
+  channel link into a specific video (e.g. searching the channel for a
+  title/date match) — either is real, un-scoped adapter-build work per
+  this file's own "test against a real live URL first" convention, not
+  a same-session fix. Worth checking whether other PrimeGov tenants
+  besides Palo Alto also route through Midpen (a real community media
+  nonprofit likely serving multiple Peninsula-area cities, not just
+  one) before building anything, the same way any new platform gets
+  scoped here.
+
+- **`[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
+  resolve a same-named-in-two-countries subdomain to the wrong country's
+  real place.** Found 2026-08-28 in the eScribe wildcard-free-sweep
+  batch (`BACKLOG_DONE.md`, `ENUMERATION_METHODS.md` §35): `pub-
+  richmond.escribemeetings.com` resolved to "Richmond, CA" when the real
+  customer is almost certainly Richmond, BC (matched under the Canadian
+  half of a census-style place sweep; the rest of that tenant's platform
+  batch skewed heavily Canadian). This function is shared by
+  `escribe.py` and `granicus.py`'s `_humanize_subdomain()` — **not
+  checked whether Granicus resolves have the same failure shape**, only
+  confirmed for the one eScribe case (corrected by hand before ingest,
+  not fixed at the source). Worth auditing Granicus jurisdiction output
+  for other US/Canada same-name collisions (Richmond, London, Windsor,
+  Cambridge, Victoria, and similar names all have both a real US and a
+  real Canadian place) before this silently mislabels a Granicus page
+  the same way.
+
+- **`[EASY]` Legistar CDX: still owed a small, unfiltered "what URL
+  shapes does legistar.com actually have" sample.** The 2,368-page
+  paginated `Video.aspx?Mode=Granicus` sweep (see `BACKLOG_DONE.md`'s
+  "Legistar CDX pagination killed at 39%" entry) was killed with zero
+  matches through 39% of the domain — a real, likely-structural zero,
+  not just bad luck. The user's own framing was that even a full
+  zero-result run would teach something from the raw URL shapes present
+  on the domain, but a follow-up small query (`url=legistar.com&
+  matchType=domain&limit=30`, no filter) was attempted right after the
+  kill and hit `web.archive.org`'s post-load cooldown before returning
+  anything (see the same BACKLOG_DONE entry). Cheap to finish once
+  `web.archive.org` responds normally again — no pagination needed, just
+  one small unfiltered query.
+
 - **`[NEEDS-AUDIT]` ProudCity's `videoStyle === 'external'` case: BoxCast
   looks buildable, but the real media URL is still unconfirmed.**
   `proudcity.py`'s existing `_EXTERNAL_VIDEO_RE` correctly detects a
@@ -1427,70 +1453,6 @@ actionability sections above.
   be recovered that way either. Nothing to build — this tenant's own
   server appears to be down, not a bug in this repo — worth a quick
   re-check before assuming it is still down if this URL comes up again.
-
-### `[JUST-DO-IT]` `[EASY]` Nine PrimeGov pages and two real meetings need re-resolving — **not** an adapter bug
-
-**This entry previously claimed a PrimeGov title-extraction bug and
-called three pages "junk test pages". Both claims were wrong; corrected
-2026-08-23 by testing against live URLs and reading the actual stored
-transcripts.** Left here as written because it is a clean example of the
-"an entry is a lead, not a spec" rule in `CLAUDE.md` — and of what
-checking costs versus what acting on it would have.
-
-**There is no adapter bug.** `PrimeGovAssetFinder` was tested live
-against four real tenant URLs (okc ×2, slc, lasvegas): `_extract_title()`
-returns a real title from the page's inner `<title>` for **every one**
-(e.g. `'City Council - 8/4/2026 1:30:00 PM'`), and a full `resolve()`
-returns complete metadata (`'Oklahoma City Council Meeting - August 4,
-2026'`, date, jurisdiction). The `if not resolved.title` fallback landed
-**2026-08-13** (PR #42), a week *before* these pages were created. The
-code works today.
-
-**It was a one-day event.** All 9 PrimeGov-sourced pages created
-2026-08-20 are untitled; **all 69 PrimeGov pages from every other day
-have titles.** So something was wrong on that date only (yt-dlp blocked
-from Render's IP *and* the page fallback also coming back empty is the
-most likely shape — that asymmetry between Render's IP and a residential
-one is already documented in `CLAUDE.md` for `youtube_channel.py`, and
-is not reproducible from a laptop). **Do not "fix" the adapter.**
-
-**The fix is to re-resolve the affected rows**, which the working
-adapter will populate correctly: ids **2032, 2033, 2038, 2041, 2042,
-2043, 2044, 2045, 2046**.
-
-**Two more rows need metadata, and one needs deleting — check before
-acting, the three are not alike:**
-
-- **id 2034 — genuine junk, safe to delete.** `youtube:jNQXAC9IVRw` is
-  *"Me at the zoo"*, the first video ever uploaded to YouTube: 6
-  segments, **18 seconds**, about elephants. Saved by zero users.
-- **id 2035 — a REAL meeting, do not delete.** 5,999 segments, **3h50m**,
-  a real council/planning session ("parking standard that applies…",
-  "i would set the 38 retail as a baseline", "residents look at the park
-  and they want more picnic tables"). Ingested from a bare YouTube
-  *playlist* URL, so no jurisdiction could be extracted.
-- **id 2036 — also a REAL meeting, do not delete.** 7,535 segments,
-  **5h39m**, a **Columbus, OH** City Council session (density and unit
-  counts, "Clerk please call the role", "vice president Harden"). Its
-  opening seconds are garbled noise, which is what made it look like
-  junk from the first line alone.
-
-2035 and 2036 want jurisdiction/title attached (or re-ingesting from a
-proper source URL), **not** deletion — between them they hold **13,534
-real transcript segments**. Deleting on the strength of the earlier
-version of this entry would have destroyed both.
-
-**Already mitigated at render time**: `_featured_entry()`
-(`archive/db/crud.py`) now declines to feature an untitled page, so none
-of these can reach a public page as an "Untitled meeting" card while
-they wait. That is a guard, not the fix.
-
-**Applying any of this needs the admin token** (`ARCHIVE_INGEST_TOKEN`)
-— re-resolve via `scripts/bulk_ingest.py`, delete via
-`POST /internal/admin/delete-pages` (slug-based, `dry_run` defaults
-true). Run from the Archive service's Render shell, where the variable
-is already in the environment, so the value never has to be pasted
-anywhere: `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" ...`.
 
 ### `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded meeting-table URL shape our adapter doesn't parse
 
