@@ -301,6 +301,28 @@ def test_normalize_shouting_caption_leaves_normal_case_alone():
     assert cues[0]["text"].startswith("The meeting will now come to order")
 
 
+def test_sentence_case_does_not_capitalize_after_a_bare_line_wrap():
+    # Real confirmed case (2026-08-28, BACKLOG_DONE.md): Antioch CA
+    # CivicClerk 2026-03-10 -- a de-shouted two-line cue used to read
+    # "...our regular city\nCouncil meeting..." because a bare "\n" line
+    # wrap was treated as a sentence boundary. A line wrap is mid-sentence,
+    # not a new sentence.
+    from app.utils.vtt_parser import _sentence_case
+
+    assert (
+        _sentence_case(
+            "WELCOME TO OUR REGULAR CITY\nCOUNCIL MEETING OF MARCH THE 10TH, 2026."
+        )
+        == "Welcome to our regular city\ncouncil meeting of march the 10th, 2026."
+    )
+    # A real punctuation-then-newline boundary must still capitalize --
+    # \s+ after [.!?] already spans a bare \n, so nothing regresses here.
+    assert (
+        _sentence_case("GOOD EVENING.\nWELCOME EVERYONE.")
+        == "Good evening.\nWelcome everyone."
+    )
+
+
 def test_parse_vtt_replaces_literal_speaker_change_entity_with_marker():
     # Real structure confirmed live: YouTube's own raw auto-caption VTT
     # contains the literal 8-character string "&gt;&gt;" as real cue text
@@ -752,36 +774,43 @@ def test_dedupe_rollup_cues_real_civicclerk_two_line_rollup_fixture():
     #
     # Third real roll-up shape, and the one that motivates case-folded
     # comparison: the previous line is promoted to the top of a two-line cue
-    # with no blank-line alternation, and because the track is ALL CAPS,
-    # parse_vtt's de-shouting re-cases it -- capitalising after every "\n".
-    # So the *same words* read "Councilmember to move number" as one cue's
-    # second line and "councilmember to move number" as the next cue's
-    # first. Case-sensitive matching drops this track's measured roll-up
-    # ratio from 0.451 to 0.111, i.e. under the detection gate entirely.
+    # with no blank-line alternation. Before the 2026-08-28 _sentence_case()
+    # fix (BACKLOG_DONE.md), the ALL-CAPS de-shouting wrongly capitalised
+    # after every bare "\n" line wrap, so the *same words* read
+    # "Councilmember to move number" as one cue's second line and
+    # "councilmember to move number" as the next cue's first -- case-
+    # sensitive matching dropped this track's measured roll-up ratio from
+    # 0.451 to 0.111, under the detection gate entirely. Fixed at the
+    # source now: a line wrap is correctly left lowercase mid-sentence on
+    # both sides, so the two instances match exactly. The case-folded
+    # comparison this test originally existed to pin stays in place as a
+    # safety net (real sources may still emit genuine case drift some
+    # other way), so this fixture is kept as a real-data regression guard
+    # even though it no longer exercises the fold itself.
     content = load_fixture("civicclerk", "antiochca_event18_captions.srt")
     cues = parse_srt(content)
     assert len(cues) == 60
-    assert cues[0]["text"] == "I would like to have a\nCouncilmember to move number"
+    assert cues[0]["text"] == "I would like to have a\ncouncilmember to move number"
     assert (
         cues[1]["text"]
-        == "councilmember to move number\nFive to number 10, I know these"
+        == "councilmember to move number\nfive to number 10, I know these"
     )
 
     segments = dedupe_rollup_cues(cues)
     assert [s["text"] for s in segments][:6] == [
         "I would like to have a",
-        "Councilmember to move number",
-        "Five to number 10, I know these",
-        "Meetings usually go long so I",
-        "Just wanted to get that moved",
-        "Up.",
+        "councilmember to move number",
+        "five to number 10, I know these",
+        "meetings usually go long so I",
+        "just wanted to get that moved",
+        "up.",
     ]
     # 60 cues carry 120 caption lines, every one of which appears twice in
     # the source; the reconstruction emits each exactly once.
     assert len(segments) == 61
     joined = " ".join(s["text"] for s in segments)
     assert (
-        "Councilmember to move number councilmember to move number"
+        "councilmember to move number councilmember to move number"
         not in joined.lower()
     )
 

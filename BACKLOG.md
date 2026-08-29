@@ -90,7 +90,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
@@ -98,7 +98,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
-  [NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
   The retry papers over an unexplained asyncio/subprocess hang, and…
   28 well-formed IQM2 queue rows point at retired tenants…
@@ -1175,16 +1174,6 @@ coverage** instead.
   a meaningful truncation — worth measuring real per-chunk
   `probe_duration()` deltas across live HLS and direct-file jobs before
   picking one. Not observed in production yet.
-
-- **[NEEDS-AUDIT] `_sentence_case()` capitalises after every `\n`, so a
-  de-shouted two-line roll-up track comes out with mid-sentence
-  capitals** — e.g. Antioch CA CivicClerk 2026-03-10: "...Welcome to our
-  regular city Council meeting of march the 10th, 2026." Pre-existing,
-  unchanged by WO-34's roll-up fix — lowercasing a line-initial capital
-  would be a guess that destroys real proper nouns. Honest fix is
-  probably in `_sentence_case()` itself (a `\n` inside a caption cue is a
-  line wrap, not a sentence boundary), but that changes output for every
-  de-shouted track and needs its own pass with its own samples.
 
 ### WO-34's roll-up calibration gap is real at corpus scale — a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
 

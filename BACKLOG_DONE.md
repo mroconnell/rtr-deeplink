@@ -1,5 +1,40 @@
 # Backlog — done
 
+## `_sentence_case()` no longer capitalizes after a bare line-wrap `\n` [Done 2026-08-28]
+
+De-shouting an ALL-CAPS caption track used to treat every `\n` as a
+sentence boundary, so a two-line cue's line wrap produced mid-sentence
+capitals — real confirmed case: Antioch CA CivicClerk 2026-03-10,
+`"...Welcome to our regular city Council meeting of march the 10th,
+2026."` ("Council" wrongly capitalized because the raw ALL-CAPS cue
+wrapped "CITY" / "COUNCIL MEETING..." across two lines).
+
+**Fix**: dropped the bare `\n` alternative from `_sentence_case()`'s
+capitalization regex, leaving `^`/`[.!?]\s+` as the only real sentence
+boundaries. Nothing is lost by dropping it: `\s+` after `[.!?]` already
+spans a bare `\n`, so a genuine punctuation-then-newline boundary
+("Hello.\nGood evening") still capitalizes correctly — confirmed with a
+direct test.
+
+**Real regression this touched, caught by the full suite, not
+by inspection**: `tests/test_vtt_parser.py`'s roll-up-dedup test for
+this exact Antioch track had frozen the OLD buggy casing as its expected
+value, since that test's actual purpose was pinning that
+`dedupe_rollup_cues()`'s case-folded comparison correctly reconstructs
+the roll-up despite the casing mismatch between cues. With the casing
+bug fixed at the source, both cues now read `"councilmember to move
+number"` identically (correctly lowercase, mid-sentence) instead of
+`"Councilmember..."` / `"councilmember..."` — the dedup still produces
+the same 61 segments with no duplicates, so the underlying roll-up logic
+was unaffected; only the test's frozen literal strings needed updating
+to the corrected casing. Its own comment now explains the case-fold
+stays in place as a safety net for real case drift from other sources,
+even though this specific fixture no longer exercises it.
+
+New direct test: `test_sentence_case_does_not_capitalize_after_a_bare_line_wrap`.
+Full CI green (ruff check, ruff format, 1912 pytest passing, both
+alembic checks).
+
 ## `_looks_like_bleed()` widened to catch a short tail that only ENDS in a junk word [Done 2026-08-28]
 
 Fixes two independent, real, confirmed jurisdiction-extraction bugs with
