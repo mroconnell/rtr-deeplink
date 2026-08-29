@@ -737,6 +737,15 @@ async def send_worker_daily_report(
     explicit empty list renders a real "none, all clean" line. That
     distinction matters: silence should never be the only signal, which is
     the same reason this report sends daily even when nothing happened.
+
+    Stalled-worker warning (2026-08-28, see BACKLOG_DONE.md): a dead
+    worker pool produces zero failures (nothing gets far enough to fail)
+    and an active-looking queue (jobs keep getting created), so
+    `chunks_24h == 0` while `active_jobs > 0` was the only real signal in
+    a 9.3-hour outage that every other check missed. Both numbers were
+    already computed here and rendered side by side in the same table --
+    this just calls the combination out explicitly instead of leaving a
+    human to notice a zero in one row and a nonzero in another.
     """
     chunks_24h = (
         summary["cumulative_chunks_completed_all_time"]
@@ -750,7 +759,15 @@ async def send_worker_daily_report(
     segments_24h = summary["segments_added_last_24h"]
     segments_24h_str = f"{segments_24h:,}" if segments_24h is not None else "n/a"
 
-    body = (
+    body = ""
+    if chunks_24h == 0 and summary["active_jobs"] > 0:
+        body += (
+            '<p style="color:#a00;font-weight:bold">⚠ 0 chunks completed '
+            f"in the last 24 hours while {summary['active_jobs']:,} job(s) "
+            "are still active -- the worker pool may be stalled or dead, "
+            "not just idle.</p>"
+        )
+    body += (
         "<h2>Transcription worker activity, last 24 hours</h2>"
         '<table cellpadding="6" style="border-collapse: collapse">'
         f"<tr><td>Chunks completed</td><td><strong>{chunks_24h_str}</strong></td></tr>"

@@ -1,5 +1,40 @@
 # Backlog — done
 
+## Worker daily report now warns when chunks are flat but jobs are active [Done 2026-08-28]
+
+Closes the `Ship next` entry for the 2026-08-24 dead-worker-pool outage
+(9.3 hours, both workers crash-looped, zero existing signal fired — see
+that entry's own writeup, still in this file above, for the full
+incident). The daily report (`archive/utils/email.py`'s
+`send_worker_daily_report()`) already computed and rendered both
+`chunks_24h` and `active_jobs` side by side in the same table; it never
+compared them to each other. Added an explicit warning line
+(`"0 chunks completed in the last 24 hours while N job(s) are still
+active -- the worker pool may be stalled or dead, not just idle"`) when
+`chunks_24h == 0 and active_jobs > 0`.
+
+Deliberately rides the existing daily email rather than adding a new
+channel — `BACKLOG.md`'s Standing decisions already declined
+`ALERT_WEBHOOK_URL` (2026-08-21), and this fix doesn't need a faster
+channel to be worth having: it turns a number a human has to notice
+into a line that says so directly, at the same cadence the report
+already sends.
+
+**What this does not cover** (left open in `BACKLOG.md`): a single job
+wedged while the rest of the pool keeps moving — the pool-wide
+`chunks_24h`/`active_jobs` comparison can't see that, since other jobs'
+progress masks it. That's a separate, still-open detector (per-job
+`chunks_completed` staleness vs. observed pace).
+
+Verified via 3 new tests in `tests/test_worker_daily_report.py` calling
+`send_worker_daily_report()` directly with `email.py`'s `_send()`
+mocked and inspecting the rendered HTML: warning fires on the exact
+shape from the incident (4028 chunks, both snapshots equal, 10 active
+jobs), does not fire when chunks are moving, and does not fire when the
+queue is simply idle (0 active jobs) — the pool isn't "stalled," it has
+nothing to do. Full CI green (ruff check, ruff format, pytest, both
+alembic checks).
+
 ## rtr-upcoming's roster.csv cross-checked: 14 new Bay Area jurisdictions, a real CivicClerk discovery API found, and a real Midpen Media Center lead [Done 2026-08-28]
 
 Separate from the wildcard-free DNS sweep below — this used

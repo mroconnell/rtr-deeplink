@@ -56,10 +56,9 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (14)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
-  [JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
   [JUST-DO-IT] The worker's requirements can silently drift out of
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
@@ -406,37 +405,6 @@ so that work reads together.
   gavel — so the threshold wants to be generous (tens of minutes short,
   not seconds) and probably measured against real pages before being
   turned on.
-
-- **[JUST-DO-IT] `[EASY]` Nothing notices a dead worker pool — chunks
-  can sit flat for 9 hours while every dashboard reads "healthy"
-  (2026-08-24).** Both workers crash-looped for **9.3 hours** and not one
-  existing signal fired. Worth building the check that would have caught
-  it, because the failure is genuinely invisible otherwise:
-
-  - `/internal/transcription-queue-stats` read **10 active jobs, 95
-    chunks pending** — indistinguishable from a busy, correctly-paced
-    system.
-  - Jobs kept being *created* the whole time, so the queue looked alive.
-  - **No failure emails, and nothing in the WO-46 digest** — dead workers
-    produce no failures. Nothing ever got far enough to fail.
-  - The `/loop`-style re-queue script sitting at its concurrency cap
-    looks exactly like healthy pacing.
-
-  The one signal that separated the two:
-  **`cumulative_chunks_completed_all_time` did not move** (4028 at 03:07,
-  4028 at 12:23).
-
-  **Fix**: alert when `cumulative_chunks_completed_all_time` is flat
-  while `active_jobs > 0` over some window. The daily report
-  (`archive/utils/email.py`'s `send_worker_daily_report()`) *already
-  computes both numbers* and already diffs the cumulative figure against
-  `WorkerReportSnapshot` — it just never compares them to each other. A
-  "chunks completed: 0 while 10 jobs were active" line in that email
-  would have surfaced this at the next daily send; something faster
-  (UptimeRobot against a small endpoint) would have caught it in
-  minutes. Pick one deliberately — see `BACKLOG.md`'s Standing decisions
-  on `ALERT_WEBHOOK_URL`, declined 2026-08-21, before adding a new
-  alerting channel. Full incident writeup: `BACKLOG_DONE.md`.
 
 - **[JUST-DO-IT] The worker's requirements can silently drift out of
   sync with its real import graph, and CI cannot see it (2026-08-24).**
@@ -2559,10 +2527,12 @@ top-up driver has been creating zero jobs" under **Transcription queue
   clear 15 min by a wide margin.
   **Detection is the cheaper half and probably comes first**: nothing
   reports a job whose `chunks_completed` has not moved in far longer than
-  its own observed per-chunk pace. Pairs directly with `Ship next`'s
-  "Nothing notices a dead worker pool" — same blind spot. From the
-  outside a wedged job and a slow one are indistinguishable, which is the
-  actual problem.
+  its own observed per-chunk pace. Same blind spot as the pool-wide
+  "chunks flat while jobs active" check shipped 2026-08-28 (see
+  `BACKLOG_DONE.md`) — that catches the whole pool going dead, this would
+  catch one job wedged while the rest of the pool keeps moving, which the
+  pool-wide check can't see. From the outside a wedged job and a slow one
+  are indistinguishable, which is the actual problem.
 
 - **[NEEDS-AUDIT] The hourly transcription top-up driver has been
   creating zero jobs — measured 2026-08-22, at least 25 hours of it.**
