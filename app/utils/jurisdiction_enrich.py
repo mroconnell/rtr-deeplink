@@ -445,6 +445,20 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # used elsewhere on the same site (e.g. Granicus's confirmed
     # jurisdiction text for other CO consolidated city-counties).
     "broomfieldco.cablecast.tv": KnownJurisdiction("Broomfield", "county", "CO"),
+    # CablecastPublicSite template (a separate portal template from the
+    # Remix one above -- see cablecast.py's own module docstring) has no
+    # jurisdiction-bearing text anywhere confirmed live: both tenants'
+    # og:title/twitter:title/meta description are just channel branding
+    # ("Urbana Public Television"), no "City/Town of X" phrase on either
+    # the site root or a real show page. Both entries below confirmed via
+    # real, live evidence rather than the name alone: Urbana's page links
+    # `urbanail.gov` and names "Cunningham Township" (a real Champaign
+    # County, IL township) on a real show; "Urbana" alone is ambiguous
+    # (also real in OH). Smyrna's page links `townofsmyrna.org` and a
+    # 615 (Nashville-area, TN) phone number; "Smyrna" alone is ambiguous
+    # (also real in GA/DE).
+    "urbana.cablecast.tv": KnownJurisdiction("Urbana", "city", "IL"),
+    "smyrna.cablecast.tv": KnownJurisdiction("Smyrna", "city", "TN"),
     # "Minneapolis" is also a real, if much smaller, city in Kansas --
     # confirmed via app/utils/jurisdiction_data -- so a bare name lookup
     # alone would stay ambiguous for this real, confirmed LIMS customer.

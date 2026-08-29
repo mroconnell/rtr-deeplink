@@ -1,5 +1,77 @@
 # Backlog — done
 
+## CablecastPublicSite template built via a real, open JSON API; WebSchedule confirmed a dead end [Done 2026-08-29]
+
+Closes the "two more real Cablecast portal templates" lead from the
+2026-08-29 wildcard-free DNS sweep. Fetched all three named real example
+URLs live before writing any code, per this repo's standing convention.
+
+**WebSchedule — confirmed dead end, nothing built.** Peabody's page
+(`peabody.cablecast.tv/Cablecast/Plugins/WebSchedule/default.aspx`) is a
+24-line legacy ASP.NET "generate a printable TV schedule" form — pick a
+channel and a day count, submit. No per-show links, no video URL, nothing
+for an adapter to parse. Matches the entry's own original hunch exactly.
+
+**CablecastPublicSite — built, and better than the entry anticipated.**
+Confirmed live on two independent real tenants: `urbana.cablecast.tv`
+(Cunningham Township Board/City Council, Champaign County, IL) and
+`smyrna.cablecast.tv` (a Smyrna, TN Beer Board meeting — HTTP-only,
+HTTPS times out on port 443, same asymmetry the Remix template's own
+portal domain already has). Real find: the page itself is Ember.js-
+rendered with no embedded state (confirmed by reading the raw HTML), but
+a plain, open, unauthenticated JSON API sits underneath it and is what
+the app itself calls client-side:
+
+```
+GET {netloc}/cablecastapi/v1/shows/{id}  -> title, eventDate, vods[]
+GET {netloc}/cablecastapi/v1/vods/{id}   -> direct .../vod.mp4 url
+```
+
+Confirmed this same API also answers identically on Charlotte, an
+existing Remix-template tenant — it's a universal Cablecast backend API,
+not template-specific. Deliberately **not** pursued as a refactor of the
+existing Remix path in this pass (bigger, separate decision, explicitly
+declined when scoping this work) — `cablecast.py`'s Remix-scraping path
+is untouched. Captions are **not** available via this API even when a
+show's own record says `hasCaptions: true` (confirmed on Charlotte's
+known-transcript show: the API's own `webVtt`/chapters endpoint returns a
+real but empty `WEBVTT FILE`) — no confirmed transcript source exists yet
+for this template, so `resolve()` degrades to "No transcript found for
+this event." honestly rather than guessing at one.
+
+**Implementation**: `app/platforms/cablecast.py` — a new
+`_PUBLICSITE_SHOW_ID_RE` route (`/CablecastPublicSite/show/{id}`),
+dispatched to a new `_resolve_publicsite()`/`_fetch_publicsite_json()`
+pair, entirely separate from the Remix path's HTML scraping. Tries HTTPS
+first, falls back to HTTP on any failure (covers the confirmed real
+Urbana/Smyrna asymmetry without hardcoding either). `app/platforms/
+base.py`'s `detect_platform()` updated to route this URL shape to
+`cablecast` — caught and fixed a real bug in the same pass: the check was
+first written against `path` case-sensitively (`"/CablecastPublicSite/"`),
+but `detect_platform()` lowercases `path` before any routing check runs,
+so the first version silently never matched anything; caught by testing
+through the real `detect_platform() -> get_finder() -> resolve()` pipeline
+before considering this done, not just the finder in isolation — the
+exact gap an existing comment in `base.py` already warns about from a
+past incident with this same adapter's bare-`/show/{id}` routing.
+Jurisdiction has no in-page signal on this template at all (confirmed:
+og:title/twitter:title/meta description are just channel branding on
+both tenants, no "City/Town of X" phrase anywhere) — both confirmed
+tenants registered in `jurisdiction_enrich._KNOWN_DOMAINS` instead
+(`urbana.cablecast.tv` -> Urbana, IL; `smyrna.cablecast.tv` -> Smyrna,
+TN — both disambiguated via real evidence on the page: a `.gov`/`.org`
+domain link and a phone area code, not the bare name alone, since both
+city names are genuinely ambiguous nationally).
+
+**Tests**: `tests/test_cablecast.py` — 5 new tests using real, unmodified
+JSON fixtures (`tests/fixtures/cablecast/{urbana,smyrna}_publicsite_*.json`)
+fetched live 2026-08-29: happy path per tenant (Urbana exercises the
+HTTPS-succeeds case, Smyrna exercises the HTTPS-fails-falls-back-to-HTTP
+case), show-not-found-on-either-scheme, and no-vods-yet. Plus a
+`detect_platform()` coverage test confirming the new show-URL shape
+routes correctly and the listing/WebSchedule pages correctly don't. All
+four CI gates clean; no schema touched.
+
 ## Swagit multi-segment meetings now warn instead of silently reporting the first clip as the whole meeting [Done 2026-08-29, residual left open]
 
 Real, live-confirmed structural gap from 2026-08-18 (Yolo County CA clip

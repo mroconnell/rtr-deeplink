@@ -175,7 +175,9 @@ def detect_platform(url: str) -> str:
         path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
     )
     if "cablecast.tv" in netloc and (
-        "/internetchannel/show/" in path or _cablecast_bare_show_id.isdigit()
+        "/internetchannel/show/" in path
+        or _cablecast_bare_show_id.isdigit()
+        or "/cablecastpublicsite/show/" in path
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
@@ -192,11 +194,19 @@ def detect_platform(url: str) -> str:
         # production caller actually uses -- a fix verified only by
         # calling the finder directly bypasses this exact gap, which is
         # what happened here until this was caught by re-testing through
-        # the real pipeline. Still scoped to a `/show/{id}` path
-        # specifically, not the whole domain, so the other confirmed
+        # the real pipeline. Still scoped to specific `/show/{id}`-shaped
+        # paths, not the whole domain, so the other confirmed
         # out-of-scope templates (a login-gated FrontDoor.aspx ASP.NET
-        # portal, a fully client-rendered SPA with no embedded state)
-        # remain correctly unclaimed.
+        # portal, a legacy ASP.NET "WebSchedule" print-schedule generator
+        # with no per-show links at all) remain correctly unclaimed. The
+        # third path variant added here, "/CablecastPublicSite/show/{id}",
+        # is what an earlier version of this comment called "a fully
+        # client-rendered SPA with no embedded state" -- true of the
+        # *page*, but a real, open JSON API sits underneath it, found
+        # 2026-08-29 (see cablecast.py's own module docstring on
+        # `_PUBLICSITE_SHOW_ID_RE` for the real API shape) -- so it's in
+        # scope now, just resolved differently (two JSON calls, no HTML
+        # scraping) from the other two.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one

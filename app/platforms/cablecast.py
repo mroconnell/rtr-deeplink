@@ -106,6 +106,50 @@ _REMIX_CONTEXT_RE = re.compile(
     r"window\.__remixContext\s*=\s*(\{.*?\});</script>", re.DOTALL
 )
 
+# A third, genuinely different real Cablecast portal template --
+# "CablecastPublicSite" (an Ember.js app, not Remix) -- found via a
+# 2026-08-29 wildcard-free DNS sweep and confirmed live on two independent
+# tenants (urbana.cablecast.tv, smyrna.cablecast.tv, both real government
+# meetings: Cunningham Township Board/City Council and a Smyrna Beer Board
+# meeting respectively). Real show pages live at
+# "/CablecastPublicSite/show/{id}?site=1". Deliberately NOT scraped the
+# way the Remix templates are -- this template's real content is
+# JS-rendered client-side (confirmed: the raw HTML has no video/vod data
+# anywhere), but a plain, open, unauthenticated JSON API sits underneath
+# it and is what the app itself calls:
+#   GET {netloc}/cablecastapi/v1/shows/{id}  -> title, eventDate, vods[]
+#   GET {netloc}/cablecastapi/v1/vods/{id}   -> direct .../vod.mp4 url
+# Confirmed this same API also answers identically on an existing
+# Remix-template tenant (Charlotte) -- it looks like a universal Cablecast
+# backend API, not something specific to this template -- but that's a
+# separate refactor question, deliberately not pursued here; this stays
+# scoped to giving the CablecastPublicSite template a working path.
+# No captions available via this API even when a show's own record says
+# `hasCaptions: true` (confirmed on Charlotte's known-transcript show:
+# the API's own `webVtt` field points at a real but empty
+# "WEBVTT FILE" response) -- unlike the Remix template's `vodTranscripts`
+# mechanism, there is no confirmed transcript source for this template at
+# all yet, so `resolve()` degrades to no-transcript honestly rather than
+# guessing at one.
+_PUBLICSITE_SHOW_ID_RE = re.compile(r"/CablecastPublicSite/show/(\d+)")
+
+# Confirmed live 2026-08-29: this API answers over HTTPS on some tenants
+# (urbana) and only over plain HTTP on others (smyrna -- HTTPS times out
+# outright on port 443, the same asymmetry the Remix template's own
+# portal domain already has, see _force_http() above). Tries HTTPS first
+# since it's the more common real case, falls back to HTTP on any
+# failure rather than assuming either scheme for an unconfirmed tenant.
+_PUBLICSITE_SCHEMES = ("https", "http")
+
+# Confirmed live 2026-08-29 on both CablecastPublicSite tenants checked:
+# no jurisdiction-bearing text anywhere -- og:title/twitter:title/meta
+# description are all just channel branding ("Urbana Public Television"),
+# on both the site root and a real show page. No text-extraction attempt
+# here at all (unlike the Remix path's _JURISDICTION_RE), since there is
+# no confirmed signal to extract -- jurisdiction for this template comes
+# only from jurisdiction_enrich's known-domain registry (see
+# jurisdiction_enrich.py's own comment on the two entries added for this).
+
 # Real bug fixed 2026-08-12: this used to be a single hardcoded
 # "Detroit, MI" constant applied to *every* Cablecast customer, confirmed
 # wrong live on a real Charlotte, NC meeting (resolved everything else
@@ -140,13 +184,19 @@ _JURISDICTION_RE = re.compile(r"\b(?:City|County|Town) of ([A-Z][a-zA-Z]+)\b")
 
 
 class CablecastAssetFinder(AssetFinder):
-    """Detroit, MI and Charlotte, NC's Cablecast video portals (same
-    underlying Remix.js template -- see module docstring above and
-    `_extract_jurisdiction()` for how the two are told apart)."""
+    """Detroit, MI and Charlotte, NC's Cablecast video portals (Remix.js
+    template -- see module docstring above and `_extract_jurisdiction()`
+    for how the two are told apart), plus Urbana, IL and Smyrna, TN's
+    (the separate CablecastPublicSite/Ember.js template -- see the
+    `_PUBLICSITE_SHOW_ID_RE` module note above for how that one works)."""
 
     platform_name = "cablecast"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        publicsite_match = _PUBLICSITE_SHOW_ID_RE.search(urlparse(url).path)
+        if publicsite_match:
+            return await self._resolve_publicsite(url, int(publicsite_match.group(1)))
+
         show_id = self._extract_show_id(url)
         if show_id is None:
             return ResolvedMeeting(
@@ -253,6 +303,90 @@ class CablecastAssetFinder(AssetFinder):
             alternate_transcripts=alternate_transcripts,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    async def _resolve_publicsite(url: str, show_id: int) -> ResolvedMeeting:
+        """The CablecastPublicSite template's resolve path -- see the
+        `_PUBLICSITE_SHOW_ID_RE` module note above for the real API shape
+        this is built on. Entirely separate from the Remix path above: no
+        HTML scraping at all, just two JSON API calls."""
+        netloc = urlparse(url).netloc
+        payload = await CablecastAssetFinder._fetch_publicsite_json(
+            netloc, f"/cablecastapi/v1/shows/{show_id}"
+        )
+        show = (payload or {}).get("show")
+        jurisdiction = None
+        known = jurisdiction_enrich.lookup_by_domain(netloc)
+        if known:
+            jurisdiction = f"{known.name}, {known.state}"
+
+        if not show:
+            return ResolvedMeeting(
+                platform=CablecastAssetFinder.platform_name,
+                source_url=url,
+                jurisdiction=jurisdiction,
+                video_warnings=[
+                    "Could not find this show on the CablecastPublicSite API."
+                ],
+            )
+
+        video_url = None
+        video_format = None
+        vod_ids = show.get("vods") or []
+        if vod_ids:
+            vod_payload = await CablecastAssetFinder._fetch_publicsite_json(
+                netloc, f"/cablecastapi/v1/vods/{vod_ids[0]}"
+            )
+            vod = (vod_payload or {}).get("vod") or {}
+            raw_url = vod.get("url")
+            if raw_url:
+                video_url = raw_url
+                ext = raw_url.rsplit(".", 1)[-1].split("?")[0].lower()
+                # Both real examples confirmed so far end in .mp4; the
+                # extension is still checked rather than hardcoded in
+                # case a future tenant's vod is HLS instead, matching the
+                # Remix path's own video_format handling.
+                video_format = ext if ext in ("mp4", "m3u8", "mov", "m4v") else "mp4"
+
+        if not video_url:
+            return ResolvedMeeting(
+                platform=CablecastAssetFinder.platform_name,
+                source_url=url,
+                jurisdiction=jurisdiction,
+                video_warnings=["No video found for this meeting."],
+            )
+
+        return ResolvedMeeting(
+            platform=CablecastAssetFinder.platform_name,
+            source_url=url,
+            title=show.get("title"),
+            date=CablecastAssetFinder._format_date(show.get("eventDate")),
+            jurisdiction=jurisdiction,
+            video_url=video_url,
+            video_format=video_format,
+            # No confirmed transcript source for this template yet -- see
+            # the module-level note above _PUBLICSITE_SHOW_ID_RE.
+            transcript_warnings=["No transcript found for this event."],
+        )
+
+    @staticmethod
+    async def _fetch_publicsite_json(netloc: str, path: str) -> Optional[dict]:
+        for scheme in _PUBLICSITE_SCHEMES:
+            target = f"{scheme}://{netloc}{path}"
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        target, timeout=aiohttp.ClientTimeout(total=15)
+                    ) as response:
+                        if response.status != 200:
+                            continue
+                        try:
+                            return await response.json(content_type=None)
+                        except (json.JSONDecodeError, aiohttp.ContentTypeError):
+                            continue
+            except (aiohttp.ClientError, TimeoutError):
+                continue
+        return None
 
     @staticmethod
     def _extract_show_id(url: str) -> Optional[int]:
