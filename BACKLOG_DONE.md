@@ -1,5 +1,419 @@
 # Backlog — done
 
+## rtr-upcoming's roster.csv cross-checked: 14 new Bay Area jurisdictions, a real CivicClerk discovery API found, and a real Midpen Media Center lead [Done 2026-08-28]
+
+Separate from the wildcard-free DNS sweep below — this used
+`~/Documents/rtr-upcoming/roster.csv` (136 rows, real curated Bay Area
+jurisdiction → platform → URL combos with measured meeting counts,
+already verified real by that project) as a source list, rather than a
+DNS/CDX-discovered candidate set. Much higher baseline confidence: no
+discovery ambiguity, just a coverage check against Archive.
+
+**97 of 136 already covered.** Coverage-checking hit three real bugs in
+the ad-hoc matcher script before it could be trusted, each caught by
+spot-checking a suspicious result rather than accepting the first pass:
+1. A single-pass prefix-stripper turned `"The City of San Leandro, CA"`
+   into `"city of san leandro"` instead of `"san leandro"` — needed a
+   `while`-loop, not a single `for`-pass, to fully strip stacked
+   prefixes.
+2. `normalize_city()`'s generic `" city"`-suffix stripping mangled
+   **"Union City"** into `"union"` — a real place where "City" is part
+   of the proper name, not a type suffix, so the aggressive strip broke
+   its own subsequent link-format check. Same failure class as this
+   file's other jx-string-matching warnings, just inside a throwaway
+   script rather than shipped code this time.
+3. Two false "already covered" entries needed a browser check to
+   resolve: **Windsor and Woodside** both matched a bare "Town of X"
+   Archive entry with no state at all. Confirmed both are the real CA
+   jurisdictions (Woodside's stored page links to `woodsideca.gov`
+   directly; Windsor's carries a "Wildfire & emergency" topic tag
+   matching Sonoma County) — a known, already-accepted "no-state
+   jurisdiction" display gap, not a missing jurisdiction. Excluded from
+   the new-candidate list on that basis. San Francisco's 5 roster rows
+   all matched one existing "City and County of San Francisco" entry
+   under its irregular consolidated-government naming — also excluded.
+
+**A real CivicClerk discovery API found, same shape as the CivicWeb/
+eScribe wins earlier the same day**: 6 of the real candidates were
+CivicClerk tenants whose bare portal root doesn't resolve (`civicclerk.py`
+needs a specific `/event/{id}/...` path). Found the real API by reading
+`~/Documents/rtr-upcoming/app/adapters/civicclerk.py` directly rather
+than reverse-engineering it: `GET https://{slug}.api.civicclerk.com/v1/
+Events` (a different subdomain than the portal, `{slug}.api.civicclerk.
+com` not `{slug}.portal.civicclerk.com`) returns real events, each
+carrying a genuine, confirmed-live `hasMedia` boolean — a real video
+signal, unlike eScribe's total absence of one or CivicWeb's `VideoIcon`.
+All 6 CivicClerk tenants checked had real video among their (API-capped)
+15 most recent events.
+
+**14 real jurisdictions ingested**: Alameda (city), Brisbane, Campbell,
+Cloverdale (4,677 segments), Daly City, Millbrae, Milpitas, Moraga
+(1,203 segments), Newark, Pleasanton, St. Helena, San Bruno (6,251
+segments), San Mateo County (11,139 segments), and an Alameda County
+Board of Supervisors meeting promoted past a relevance-filter false
+negative (generic "BOS View" title, same shape as CivicWeb's Princeton
+catch). Two more real jx bugs caught and corrected before ingest:
+**Newark** resolved to "City of Newark, NJ" (the real, much larger New
+Jersey city) when the actual customer is Newark, Alameda County, CA —
+a same-name collision in Legistar's own extraction, not the
+`validated_label_extract()` utility flagged in the eScribe entry below,
+so a distinct instance of the same failure class; and a stray leading
+space in "St. Helena, CA"'s resolved jurisdiction string.
+
+**A real, deeper investigation, not just a quick win**: the user
+flagged that this project only checks for agendas, not video, so a
+real meeting count in `roster.csv` doesn't guarantee video exists —
+warranted retrying rather than accepting "no video" at face value for
+platforms known to generally support it. Deepened the PrimeGov
+discovery to check more years/meetings, which recovered San Bruno's
+6,251 segments (previously found with no video on a shallower search).
+Palo Alto specifically stayed real-video-less despite deep retrying —
+the user then supplied two specific PrimeGov meeting URLs they'd
+personally confirmed have video. Checked both in an actual browser
+(not just raw HTML) and found the real explanation: **Palo Alto's video
+isn't on YouTube/Swagit/Granicus at all** — the agenda page only
+mentions a bare YouTube *channel* link and a link to a previously-
+unseen platform, **Midpen Media Center** (`midpenmedia.org`), in prose
+("streamed to Midpen Media Center"), with no specific per-meeting video
+URL anywhere on the page or on the city's own clerk page. A real,
+confirmed video-signal field on PrimeGov's own API
+(`isShowVideoIcon`, true on 114/158 of Palo Alto's 2026 meetings) isn't
+checked anywhere in `primegov.py` today — logged as a `[LATER]`
+`BACKLOG.md` entry along with the Midpen lead, since building either a
+Midpen adapter or a channel-search fallback is real, unscoped
+adapter-build work, not a same-session fix.
+
+## Wildcard-free DNS sweep fully closed out: eScribe's 54 (122 total across all 3 platforms), no CDX needed after all [Done 2026-08-28]
+
+Closes the last open piece of the wildcard-free DNS sweep (PrimeGov and
+CivicWeb entries above/below this one). eScribe (174 candidates) had
+been blocked on the CDX pipeline, which was itself blocked on
+`web.archive.org` recovering from a connection-level cooldown (see the
+Legistar entry below) — until the user pointed at a sibling local
+project, `~/Documents/rtr-upcoming` (tracks upcoming agendas across the
+same vendor set this repo covers for past meetings), which had already
+solved eScribe's meeting-discovery problem for its own purposes.
+
+**Full method, taxonomy, and the two jx bugs caught**:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §35. Short
+version: `rtr-upcoming/app/adapters/escribe_api.py` documents a real,
+unauthenticated ASP.NET PageMethod JSON endpoint every eScribe tenant
+exposes (`POST {host}/MeetingsCalendarView.aspx/GetCalendarMeetings`,
+returns real meeting GUIDs for a given date window) — called it
+directly with a wide historical window instead of rtr-upcoming's
+future-only one, confirmed live it answers fully (206/573/459 real
+meetings for 3 different known tenants), and fed the GUIDs into this
+repo's own `escribe.py` adapter for video/transcript resolution (a
+different concern from rtr-upcoming's agenda-text extraction, and
+unaffected by a real trap documented in their code: the deterministic
+agenda-URL shape returns the same byte-identical page for different
+meeting GUIDs on some tenants).
+
+**54 real+relevant video hits out of 174 candidates**, all ingested.
+Two real jx-extraction bugs caught by spot-checking before ingest, both
+in the *shared* `jurisdiction_enrich.validated_label_extract()`
+collision-handling utility (also used by `granicus.py` — logged as an
+open `[NEEDS-AUDIT]` in `BACKLOG.md` since only the eScribe case was
+actually checked): `pub-richmond.escribemeetings.com` resolved to
+"Richmond, CA" when the real customer is almost certainly Richmond, BC;
+`pub-northcowichan.escribemeetings.com` resolved to "Town of Lake
+Cowichan, BC" — a real, but different, actual BC municipality. Both
+corrected by hand before ingest.
+
+**Wildcard-free DNS sweep grand total: 122 new jurisdictions** (11
+PrimeGov + 57 CivicWeb + 54 eScribe) from a single 547-hostname, 13-
+minute, zero-rate-limit DNS sweep — and two of the three platforms
+(CivicWeb, eScribe) turned out to have their own real, direct discovery
+APIs once actually looked for, needing no CDX/archive.org involvement
+at all.
+
+## Five frozen-slug pages reslugged via the existing admin tool — code change undeployed [Done 2026-08-28]
+
+Two long-open `[EASY]`/`[WAIT]` entries, both blocked only on someone
+actually running the already-built `POST /internal/admin/reslug-page`
+tool (dry-run-safe, built 2026-08-24) — no new code needed for the
+reslug itself. Ran dry-run first for all 5 candidates, confirmed every
+preview looked right (real jurisdiction/date/title-derived slugs, not
+more boilerplate), then executed for real:
+
+| old slug | new slug |
+|---|---|
+| `meeting` | `tucson-az-2026-08-05-regular-meeting` |
+| `meeting-1e9bac` | `maricopa-county-az-2026-07-15-formal` |
+| `meeting-38ca49` | `sacramento-county-ca-2026-08-11-board-of-supervisors-meeting` |
+| `meeting-ef5ba6` | `maricopa-county-az-2026-04-08-formal` |
+| `welcome-to-clerkbase` | `yellow-springs-oh-2022-02-07-february-7-2022-regular-village-council-meeting` |
+
+Verified the new slugs serve real content on production (checked
+`tucson-az-2026-08-05-regular-meeting` live: "REGULAR MEETING — Tucson,
+AZ (2026-08-05)"). Added all 5 to `archive/main.py`'s `_SLUG_REDIRECTS`
+in the same change, per `reslug_page()`'s own documented requirement.
+Full CI green (ruff check, ruff format, 1905 pytest passing including
+`tests/test_reslug_page.py`, both alembic checks).
+
+**Real gap, not yet closed**: the redirect code is *not deployed*
+(`render.yaml`'s `autoDeploy: false`) — confirmed live that
+`/m/meeting` currently 404s rather than 301ing, since production is
+still running the code from before this change. The reslug itself
+already happened (it's a live API call against the production DB, not
+a deploy-gated change), so the new slugs work right now — only the
+old-slug redirect is waiting on a deploy. Anyone who had one of these 5
+old links bookmarked or shared sees a 404 until that deploy ships.
+
+One residual left open in `BACKLOG.md`: a 5th frozen-slug page
+(`2026-08-11-council-meeting`) needs its jurisdiction resolved before a
+reslug is possible, and a Granicus vendor-marketing-event page
+(unrelated slug shape) needs `delete-pages`, not a reslug — left for a
+deliberate, separately-confirmed cleanup rather than bundled into this
+change, since deletion warrants its own explicit go-ahead.
+
+## "Nine PrimeGov pages need re-resolving" entry closed — already stale by the time it was re-checked [Done 2026-08-28]
+
+Re-verified this `[EASY]` entry before acting on it, per `CLAUDE.md`'s
+"an entry is a lead, not a spec" rule — the entry itself was already a
+good example of that rule (a previous session had corrected two wrong
+claims in it on 2026-08-23), and re-checking it again 5 days later
+found it fully stale.
+
+**What the entry claimed**: 9 specific page ids (2032, 2033, 2038,
+2041-2046) were untitled PrimeGov pages from 2026-08-20 needing a
+re-resolve, plus 3 more ids (2034 junk-delete, 2035/2036 real meetings
+needing jurisdiction/title) needing individual handling.
+
+**What a fresh check found**: pulled the full corpus via
+`GET /internal/pages/all-urls` (3,193 pages, the endpoint the project's
+own backfill sweep already uses for exactly this kind of lookup) and
+filtered for the entry's own described shape. **Zero PrimeGov pages
+were created on 2026-08-20 at all.** The corpus's only 7 currently-
+untitled pages are all different platforms and different dates (one
+`unknown` from 08-13, one `escribe` from 08-16, four `youtube` from
+08-20/08-25/08-27, one more) — none match the entry's specific ids or
+descriptions. The described "Me at the zoo" junk video
+(`youtube:jNQXAC9IVRw`) isn't in the corpus either.
+
+**Conclusion: someone already fixed this** (re-resolved the 9, handled
+2034/2035/2036) sometime between 2026-08-23 and now, without updating
+the entry to say so. No action taken here beyond closing the entry —
+there was nothing left to act on, and re-resolving or deleting against
+ids that don't correspond to what's actually live would have been
+acting on stale information rather than real state. Note: `all-urls`
+doesn't return numeric `id` at all (only slug/title/platform/
+source_url_normalized/created_at), so the original ids couldn't be
+directly re-checked even if they still mattered — matching was by
+platform+date+title shape instead.
+
+## "We think we found an agenda here" hedge fixed for the 8 adapters that don't guess [Done 2026-08-28]
+
+`meeting_page.html`'s agenda section hedged every `agenda_link` with
+"We think we found an agenda here," a line written back when only
+`generic_fallback.py`'s best-effort scan set that field (2026-08-10).
+As of 2026-08-25, nine adapters set it (`legistar`, `granicus`,
+`champds`, `hyland`, `suiteone`, `chicago_elms`, `openmedia`,
+`proudcity`, plus the original `generic_fallback`) and for eight of
+those it's a real, confirmed link pulled straight off the source, not a
+guess — visible on 14 real pages by the time this was fixed.
+
+**Fix**: branch on `page.platform == "unknown"` (the literal
+`platform_name` `generic_fallback.py` registers under, already used
+elsewhere in the same template for the same distinction) — keep the
+original hedge for that case, plain "Agenda:" label for every other
+adapter. Verified two ways before shipping: (1) an isolated Jinja
+render of just the conditional block against every real platform value,
+confirming the branch produces the right text; (2) confirmed the bug
+was real by checking a live production page first — a real Boston, MA
+`legistar` meeting (`/m/city-of-boston-ma-2026-08-11-city-council-on-
+2026-08-11-10-00-am`) showing the wrong hedge on a real Legistar-sourced
+agenda PDF. Full local rendering against the real production DB wasn't
+possible (local model code is ahead of what's actually migrated in
+production — `meeting_body` column doesn't exist yet, a known and
+expected state per `CLAUDE.md`'s "migrations ride with the deploy, not
+the merge" — not a bug from this change), so the isolated-template
+render plus the production before/after check stood in for it.
+
+## Manual-jurisdiction-override slug bug: investigated, turned out to be the existing "no reslug on re-ingest" tradeoff [Done 2026-08-28]
+
+The open `[EASY]` entry ("a manual jurisdiction override fixes the
+displayed jurisdiction but not the URL slug," confirmed on Grass Valley
+CA and Hamden CT pages during the 2026-08-28 enumeration work) named the
+symptom but not the root cause. Traced it via a research agent before
+writing any fix, since the entry's own framing ("easy to fix once
+found") implied a code change was owed.
+
+**Root cause, precisely**: `_find_or_create_page()`
+(`archive/db/crud.py:455`) computes `page.slug` (via `build_base_slug()`
++ `_unique_slug()`) only in the first-creation branch (line 499-502).
+The re-ingest branch (existing page, line 531 onward) refreshes
+`page.jurisdiction` at line 554 but never touches `page.slug` — and
+that's explicit, not an oversight: the branch's own comment reads "Keep
+page-level fields fresh (title/video/agenda can improve on a later,
+better resolve) **without touching the slug**." Both branches read the
+*same* `jurisdiction` variable, so there's no separate stale
+URL-derived guess feeding the slug — the divergence is purely "slug is
+write-once at creation, jurisdiction is refresh-every-ingest."
+
+**What actually happened on Grass Valley/Hamden**: each page was
+ingested once with a wrong jurisdiction guess (creating the page and
+freezing its slug from that wrong value), then re-ingested later with a
+manually corrected `jurisdiction` override. The correction landed on
+the existing page via the re-ingest branch — display fixed, slug frozen
+from the first pass.
+
+**This is not a new bug — it's the same tradeoff already in production
+and already exercised twice before**: `BACKLOG_DONE.md`'s TelVue
+`_KNOWN_ORG_TOKEN_JURISDICTIONS` entries for Fitchburg and Everett, MA
+both note "slug unchanged... same 'slugs don't regenerate on re-ingest'
+tradeoff." **Auto-reslugging on every jurisdiction change was
+considered and rejected as the fix** — the far more common case than a
+one-off bad guess is a routine re-ingest that *improves* jurisdiction
+text (a better resolve, a newly-built adapter, a jurisdiction-enrich
+fix), and auto-reslugging on every one of those would break permalink
+stability for shared/indexed URLs across the whole archive, for a
+cosmetic gain. This is the same design principle
+`reslug_page()`'s own docstring already states: it's a deliberate,
+human-invoked, one-page-at-a-time correction (`POST
+/internal/admin/reslug-page`, dry-run-safe, already built 2026-08-24 —
+see this file's "WO-8's `?token=` admin fallback removed" entry), not
+something to run automatically.
+
+**Net**: no code change made. The live `BACKLOG.md` entry now just
+points at the existing `reslug-page` endpoint for the two known pages,
+marked optional/cosmetic. **Real preventive takeaway for future large
+manual-override ingest batches** (the kind this session ran all day):
+get the jurisdiction override right on the URL's *first* ingest call,
+before any page exists — a "resolve once, correct the jx, then ingest"
+sequence never creates the stale-slug page in the first place, unlike
+"ingest, notice it's wrong, re-ingest with a fix."
+
+## Wildcard-free DNS sweep: 547 hostnames found, PrimeGov + CivicWeb resolved (68 new), eScribe deferred [Done 2026-08-28]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§33. Follow-through on the "six wildcard-free vendors" lead logged in
+the entry below — scoped to the 3 of 6 with real adapters in this
+project (PrimeGov, eScribe, CivicWeb; BoardDocs has no adapter,
+Cablecast/CivicPlus already covered same day via other methods). Pure
+DNS sweep (`socket.getaddrinfo`, no external dependency), 191,124
+checks against `jurisdiction_coverage.csv`'s still-unchecked rows, ~13
+minutes, zero rate limiting. **1,461 raw hits → 547 unique hostnames**
+(326 civicweb, 179 escribe, 42 primegov). Coverage-checked against
+Archive: only 8/547 already covered.
+
+A substring-match bug in the coverage-check itself was caught and fixed
+before shipping: matching `"coquitlam" in normalize_city(label)`
+false-matched the real, separate Coquitlam BC against Archive's
+existing Port Coquitlam BC entry, which would have silently hidden a
+genuine new jurisdiction as "already covered." Fixed to require exact
+equality against the label's pre-comma city part.
+
+**PrimeGov (40 candidates) fully resolved: 11 real jurisdictions with
+video, ingested directly** (Clay County FL, City of Nampa ID, Baldwin
+Park CA, Union City CA, Palm Springs CA, San Antonio TX, Long Beach CA,
+La Plata County CO, Gresham OR, Lima OH, Tyler TX — 6 already have
+segments, others video-only). Discovery used the tenant's own public
+API (`GetArchivedMeetingYears` → `ListArchivedMeetings?year=YYYY`)
+rather than scraping. Same jx-derivation trap as the CivicPlus/Granicus
+entries below, one level up the stack: the DNS sweep's own city/state
+guess (fuzzy-matched hostname slug against the census-style place list)
+was wrong for several real hits — "nampa.primegov.com" guessed **Nampa,
+Alberta** (no such place; real answer Nampa, ID), "gresham.primegov.com"
+guessed **Gresham, Nebraska** (real answer Gresham, OR),
+"laplata.primegov.com" guessed **La Plata, Maryland** (real answer La
+Plata County, CO) — all corrected against the adapter's own resolve()
+output or independently verified real-world fact before ingest, never
+against the sweep's own guess.
+
+**CivicWeb (325 candidates) fully resolved: 57 real jurisdictions with
+video, ingested directly** (a US/Canada mix — Nelson BC, Niagara Falls
+ON, Bowen Island BC, Sarnia ON, Coaldale AB, Mill Creek WA, Pearland TX,
+Leawood KS, and 49 more). No CDX needed at all: found a real,
+unauthenticated, generic JSON API every CivicWeb tenant exposes
+(`Services/MeetingsService.svc/meetings?from=...&to=...`) by tracing
+network requests on a known-good tenant in the browser — sidesteps the
+"listing page is client-rendered" problem entirely, and each tenant's
+response carries a `VideoIcon` flag that reliably identifies which of
+its meetings have video before ever calling the real adapter. Full
+detail, including two new `reject_reason` taxonomy values written live
+for the 267 non-ingested candidates (`no-meetings-found`,
+`template-instance-not-real` — the latter catching one tenant that
+turned out to be an unconfigured CivicWeb demo instance) and one
+relevance-filter false negative caught and fixed by hand (Princeton, a
+real meeting titled "Regular Agenda" with no council/meeting keyword to
+trip the filter): `ENUMERATION_METHODS.md` §33-34.
+
+**eScribe (174) deferred, not abandoned**: its meeting-listing page is
+not scrapable server-side (confirmed live via browser against Peel
+Region, eScribe's own known-good real sample — the Past Meetings list
+loads via a client-side-chained AJAX call with no server-rendered
+fallback, and no equivalent to CivicWeb's direct API was found for it
+this session). Real fallback is the same CDX pipeline already built for
+Legistar/Swagit/CivicClerk/Granicus, but a domain-wide CDX pull timed
+out repeatedly while the same-session Legistar CDX pagination job
+(below) was still running and absorbing archive.org's shared rate-limit
+headroom — and after that job was killed (see below), `web.archive.org`
+itself went into a real connection-level cooldown that outlasted the
+session. Left as an open `BACKLOG.md` item, including a suggestion to
+check for a direct API the way CivicWeb had one before falling back to
+CDX again — the domain and filter pattern needed are recorded in
+`ENUMERATION_METHODS.md` §33.
+
+**A reusable lesson banked for any future large CDX pull**: the
+original Legistar pagination script only wrote its matched-URL list to
+disk in a final "all pages done" step, so a mid-run kill would have lost
+every result found so far (moot this run, since it found zero, but a
+real risk on a run that finds real matches partway through). Rebuilt as
+`cdx_paginate_incremental.py` (that session's scratchpad) per explicit
+user feedback — appends matched URLs to a `.jsonl` file after every
+batch instead, so a kill never loses anything already found.
+
+## Legistar CDX pagination killed at 39%: 0 real hits, a genuine structural zero not a rate-limit artifact [Done 2026-08-28]
+
+Separate from the wildcard-free sweep above — this was the pagination
+approach for Legistar's `Video.aspx?Mode=Granicus` shape, filtered
+domain-wide across `legistar.com` via `web.archive.org/cdx/search/cdx`
+(`showNumPages=true` → 2,368 pages, `page=N` fetched individually,
+concurrency 3, exponential backoff on 429). Ran ~97 minutes, reached
+920/2,368 pages (38.9%) with **zero matches the entire way**, 1,306
+rate-limit retries absorbed, then started failing outright (20/20 pages
+in the last batch gave up with no 429 at all — a harder failure than
+rate-limiting, not something the retry logic could productively wait
+out). Killed by explicit user decision rather than run to completion,
+after confirming the kill loses no accumulated results (the script's
+`urls_so_far` had been 0 throughout, and the only cost of stopping early
+is not knowing whether the unscanned 61% contains any real hits).
+
+**Zero hits through 39% of the domain, on a filter this session had
+already applied successfully elsewhere the same day (Swagit/CivicClerk/
+Granicus via the same CDX approach, see below), points to a genuine
+structural zero for this specific URL/platform combination rather than
+bad luck or rate-limiting** — Legistar delegates video to other
+platforms via `resolve_via_platform()` (see `CLAUDE.md`'s "platform
+turns out to be a wrapper" convention), so `Video.aspx?Mode=Granicus`
+specifically may simply not be the shape Legistar's own crawl history
+actually uses for its Granicus delegation, or that delegation may not
+be common enough on the archived pages CDX indexed to show up in the
+first 900 pages. **Not conclusively resolved** — the user's own
+framing going in was that even a full 2,368-page zero-result run would
+teach something about URL shapes, but the process never reached a
+lightweight, unfiltered "what URL shapes does legistar.com actually
+have" sample: a follow-up small query (no `filter=`, just `limit=30`)
+was attempted immediately after the kill specifically to still get that
+information, but hit a separate, real complication (below) before it
+could return anything.
+
+**Killing the heavy job did not restore CDX access — `web.archive.org`
+itself went into a real connection-level cooldown that outlasted the
+kill.** Confirmed by testing a trivial, unrelated query
+(`url=example.com&limit=5`), which failed the same way as the Legistar
+follow-up query; further confirmed as `web.archive.org`-specific, not a
+general network problem, by successfully reaching `https://archive.org`
+(the main site, unaffected, responded in 0.1s) in the same test. This
+is a real, reusable caution for future large CDX pulls: sustained load
+against `web.archive.org` can produce a cooldown that persists for a
+meaningful period after the load stops, not just for the duration of
+the load itself — budget recovery time, and don't immediately retry
+hard against it once a heavy job is killed. Left the small "URL shapes"
+sample query as still-owed future work in `BACKLOG.md` rather than
+fabricating one from memory.
+
 ## DNS/CNAME fingerprinting toolkit from a parallel session: 16 new jurisdictions, plus a real WAF gap logged [Done 2026-08-28]
 
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
