@@ -2231,6 +2231,40 @@ def validated_label_extract_with_state(
     return _validated_label_extract_with_state(label)
 
 
+# K-12/library institutional suffixes that ride along on a real place name
+# in a free-text account/channel name -- confirmed real, 2026-08-29, from
+# Vimeo's direct-dorking batch (BACKLOG_DONE.md, "22 new real ingests"):
+# "Peters Township School District" (Peters Township, PA), "Hopkins
+# Public Schools" (Hopkins, MN), "Jefferson Parish Schools" (Jefferson
+# Parish, LA), "Seekonk Public Schools" (Seekonk, MA), "Mason County
+# District Library" (Mason County, MI). Shared here (not left local to
+# vimeo.py) because youtube.py's `_jurisdiction()` explicitly mirrors
+# vimeo.py's model and hits the identical `validated_label_extract()`
+# call on the identical shape of input (a platform account/channel's own
+# display name) -- the suffix is a naming convention real government
+# accounts use, not a Vimeo-specific quirk, so a second adapter reading
+# the same kind of name is exactly the case this needs to already cover.
+# Order matters only in that a more specific phrase must be tried before
+# a shorter one it contains ("Public Schools" before bare "Schools"), so
+# stripping "Schools" alone never leaves a dangling "Public".
+_INSTITUTIONAL_SUFFIX_RE = re.compile(
+    r"\s+(?:Public Schools|School District|District Library|Schools)$",
+    re.IGNORECASE,
+)
+
+
+def strip_institutional_suffix(name: str) -> str:
+    """Strips a confirmed-real trailing K-12/library institutional phrase
+    from a free-text account/channel name, e.g. "Hopkins Public Schools"
+    -> "Hopkins" -- see `_INSTITUTIONAL_SUFFIX_RE`'s own comment for the
+    real examples this is built from. A caller should run this BEFORE
+    `validated_label_extract()`/`enrich_jurisdiction_text()`, since the
+    suffix is never part of the place's own proper name and blocks the
+    whole glued phrase from validating as one unit. Returns `name`
+    unchanged when no such suffix is present."""
+    return _INSTITUTIONAL_SUFFIX_RE.sub("", name)
+
+
 def _base_name_key(jurisdiction: str) -> str:
     """Bare, normalized identity key for a finished jurisdiction string --
     state suffix stripped, then normalized down to its bare proper name

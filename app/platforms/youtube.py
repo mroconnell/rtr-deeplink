@@ -240,10 +240,16 @@ class YouTubeAssetFinder(AssetFinder):
         or county on its own (`lookup_city_state()`/`lookup_county_state()`,
         both of which already strip a leading "City of"/"Village of"/etc.
         internally). Everything else goes through the glued-label path,
-        same as Vimeo. Either path declines (returns None) rather than
-        guessing -- most YouTube-direct resolves legitimately carry no
-        jurisdiction at all, which is the honest outcome, not a bug (see
-        vimeo.py's own docstring for the same reasoning).
+        same as Vimeo -- including the same confirmed-real institutional-
+        suffix strip (`jurisdiction_enrich.strip_institutional_suffix()`,
+        added 2026-08-29 for Vimeo's "Hopkins Public Schools"-shaped
+        channel names), since a YouTube channel name is the identical kind
+        of free-text account display name and the suffix is a national
+        naming convention, not a Vimeo-specific quirk. Either path
+        declines (returns None) rather than guessing -- most YouTube-
+        direct resolves legitimately carry no jurisdiction at all, which
+        is the honest outcome, not a bug (see vimeo.py's own docstring for
+        the same reasoning).
         """
         name = (uploader or "").strip()
         if not name:
@@ -259,6 +265,7 @@ class YouTubeAssetFinder(AssetFinder):
                     name, netloc="youtube.com"
                 )
             return None
+        name = jurisdiction_enrich.strip_institutional_suffix(name)
         label = jurisdiction_enrich.validated_label_extract(name)
         if not label:
             return None
