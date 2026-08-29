@@ -1,5 +1,45 @@
 # Backlog — done
 
+## Chicago and Ann Arbor, MI ingested: the Legistar CDX leads resolved [Done 2026-08-28]
+
+Follow-through on the lead the Legistar CDX close-out below found:
+`chicago.legistar.com` and `a2gov.legistar.com` had live crawl history
+but weren't in Archive. Resolved each against a real, live URL rather
+than a stale CDX snapshot (both had confirmed real hits, but from
+2014-2019 — too old to trust as still-live).
+
+**`chicago.legistar.com/Calendar.aspx` is dead** — returns the literal
+body `Invalid parameters!` today. Not a bug on this end; the tenant
+itself appears decommissioned. **The real City of Chicago platform is
+`chicityclerkelms.chicago.gov`** (Chicago's own custom "ELMS" system,
+already known to this repo — see `CLAUDE.md`'s sample-URL list, built
+for the `chicago_elms` adapter). Resolved the real sample URL there
+directly: `City Council`, 2026-07-15, jurisdiction "Chicago, IL", video
+on Vimeo (`player.vimeo.com/video/1209979957`, 0 segments — the known,
+accepted Vimeo captions-can't-be-fetched-server-side limitation, video-
+only still counts as real content per this repo's ingest gate).
+Ingested at `/m/chicago-il-2026-07-15-city-council`.
+
+**`a2gov.legistar.com` is real and live** — 426 real records, but
+finding one with actual video took real navigation: the default
+Calendar view sorts nearest-future-first and its own visible rows (an
+Airport Advisory Committee sample) had no video links, and CDX had
+nothing recent (2023-2026 `Video.aspx` search came back empty) despite
+the tenant being genuinely alive. **Filtering the live calendar's own
+"Departments" dropdown to "City Council" surfaced real `Video` column
+links straight to YouTube** — a sub-committee's lack of video was a
+red herring, not evidence the tenant lacks it. Resolved a real
+2026-01-20 City Council meeting: jurisdiction "City of Ann Arbor, MI",
+**8,648 real transcript segments**. Ingested at
+`/m/city-of-ann-arbor-mi-2026-01-20-ann-arbor-city-council-meeting-1-20-26`.
+
+**Both cases reinforce the same lesson already established this
+session** (Palo Alto's Midpen Media Center investigation, the CivicWeb/
+eScribe hit-rate checks): a platform/tenant showing no video on the
+first thing checked isn't evidence the tenant lacks video — check a
+different meeting type, a different sort order, or a different real
+source before concluding "no video" as a final answer.
+
 ## Vimeo `/embed`-suffixed showcase/channel listings now resolve to a real pick-list [Done 2026-08-28]
 
 `is_vimeo_listing()` (`app/platforms/vimeo.py`) matched
