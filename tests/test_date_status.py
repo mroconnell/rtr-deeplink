@@ -3,6 +3,8 @@ the "Upcoming" / "Recent" pills on /meetings and the notice on a meeting
 page. Pinned `today` throughout, so these never drift with the calendar.
 """
 
+import subprocess
+import sys
 from datetime import date, timedelta
 
 from archive.utils.date_status import (
@@ -73,3 +75,28 @@ def test_defaults_today_to_now_when_not_pinned():
     assert meeting_date_status("2999-01-01", has_transcript=False) == UPCOMING
     # Far-past date with no transcript is just a gap, not "recent".
     assert meeting_date_status("2000-01-01", has_transcript=False) is None
+
+
+def test_archive_db_crud_imports_without_markupsafe():
+    # Real 9.3-hour worker outage, 2026-08-24 (BACKLOG_DONE.md): this
+    # module used to `from markupsafe import Markup, escape` at MODULE
+    # SCOPE. archive/db/crud.py imports this module at module scope too,
+    # and worker/main.py imports archive.db.crud -- so a module-scope
+    # markupsafe import here became a hard runtime dependency of a
+    # process that renders no HTML at all and (deliberately) doesn't
+    # declare markupsafe in worker/requirements.in's own dependency
+    # philosophy ("No fastapi/uvicorn/jinja2/slowapi here"). markupsafe
+    # is now only imported lazily inside meeting_date_html() itself.
+    #
+    # Run in a fresh subprocess, not in-process: archive.db.crud is
+    # already cached in sys.modules by the time this test file loads (via
+    # other test modules' own imports), so an in-process check would
+    # trivially pass without ever re-executing the import chain.
+    # sys.modules["markupsafe"] = None is the standard trick for making
+    # any `import markupsafe` in the subprocess raise ImportError, without
+    # needing markupsafe to be genuinely uninstalled.
+    script = "import sys; sys.modules['markupsafe'] = None; import archive.db.crud"
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr

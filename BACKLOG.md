@@ -59,7 +59,7 @@ Standing decisions — do NOT re-raise  (5)
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
-  [JUST-DO-IT] The worker's requirements can silently drift out of
+  [NEEDS-AUDIT] A CI guard for the worker's real import graph is still
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
@@ -403,39 +403,19 @@ so that work reads together.
   not seconds) and probably measured against real pages before being
   turned on.
 
-- **[JUST-DO-IT] The worker's requirements can silently drift out of
-  sync with its real import graph, and CI cannot see it (2026-08-24).**
-  Root cause of the 9.3-hour outage above. `worker/main.py` imports
-  `archive.db.crud`, which imports `archive/utils/date_status.py` at
-  **module scope** — a *presentation* module. WO-50 added
-  `from markupsafe import Markup, escape` there for the date pills, and
-  the worker (whose requirements are deliberately lean — *"No fastapi/
-  uvicorn/jinja2/slowapi here"*) had no `markupsafe`. It could not start.
-
-  **Why CI is blind to this by construction**: tests run in an
-  environment that has `markupsafe` (via `jinja2`, via the Archive's own
-  deps), so the import resolves fine everywhere except the one process
-  that matters. Nothing in the test suite exercises "can the worker's
-  declared dependency set actually import the worker."
-
-  **Fix, in cost order:**
-  1. **A CI guard** — walk the real import graph from `worker/main.py`
-     across `app/` and `archive/` and assert every third-party top-level
-     import is in `worker/requirements.txt`. This was written ad hoc
-     during the incident and worked (46 files; correctly found
-     `markupsafe` as the only genuine gap, and correctly did *not* flag
-     `playwright`, which sits in a `try/except` with a comment saying it
-     is deliberately absent). Needs that try/except tolerance to avoid a
-     false positive.
-  2. **Stop `crud.py` importing a presentation module at module scope** —
-     the actual fragility. Either move the display helpers out of
-     `date_status.py`, or import it lazily inside the functions that
-     need it. Until this changes, *any* HTML-shaped dependency added to
-     `date_status.py` becomes a hard worker dependency again.
-
-  Note the shipped hotfix (`markupsafe` in `worker/requirements.in`)
-  addresses neither — it fixes this one instance and leaves the
-  mechanism intact.
+- **[NEEDS-AUDIT] A CI guard for the worker's real import graph is still
+  unbuilt — the underlying fragility is fixed (see `BACKLOG_DONE.md`),
+  this is defense-in-depth on top of it.** The 2026-08-24 outage's root
+  cause (`archive/utils/date_status.py` importing `markupsafe` at module
+  scope, made a hard worker dependency via `archive.db.crud`) is closed.
+  Still open: walk the real import graph from `worker/main.py` across
+  `app/`/`archive/` and assert every third-party top-level import is in
+  `worker/requirements.txt`, so a *different* future HTML-shaped (or
+  otherwise heavy) import added anywhere in that graph fails CI instead
+  of only failing at worker startup. Needs a `try/except`-tolerant
+  design so it doesn't false-positive on `playwright` (deliberately
+  absent from the worker, guarded by its own try/except at the one
+  import site that needs it).
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,

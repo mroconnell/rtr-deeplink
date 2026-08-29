@@ -1,5 +1,55 @@
 # Backlog — done
 
+## `date_status.py`'s markupsafe import made lazy — the actual fragility behind the 9.3-hour worker outage [Done 2026-08-28]
+
+Closes the second (root-cause) half of "the worker's requirements can
+silently drift out of sync with its real import graph" — the 2026-08-24
+hotfix (`markupsafe` added to `worker/requirements.in`) fixed the one
+instance and explicitly left this mechanism intact.
+
+**Root cause, precisely**: `archive/utils/date_status.py` had
+`from markupsafe import Markup, escape` at **module scope**, added in
+WO-50 for `meeting_date_html()`'s `<time>` tag rendering.
+`archive/db/crud.py` imports `date_status` at module scope, and
+`worker/main.py` imports `archive.db.crud` — so a presentation-only
+dependency became a hard runtime import for a process that renders no
+HTML at all (its own `requirements.in` says so: "No fastapi/uvicorn/
+jinja2/slowapi here"). Any *future* HTML-shaped import added to
+`date_status.py` would silently reintroduce the identical class of
+outage.
+
+**Fix**: moved the `markupsafe` import inside `meeting_date_html()`
+itself — the only function that actually needs it (`parse_meeting_date`/
+`iso_meeting_date`/`meeting_date_status`, everything `crud.py` and the
+worker's own code paths actually call, need nothing from it). Added
+`from __future__ import annotations` (PEP 563) so the `-> Markup` return
+type hint doesn't need the name in scope at module-import time, plus a
+`TYPE_CHECKING`-guarded import so `ruff`/static analysis still resolves
+the annotation without reintroducing a real runtime dependency.
+
+**Verified two ways, not just by inspection**: (1) a one-off script
+importing `archive.db.crud` with `sys.modules["markupsafe"] = None`
+(the standard "simulate uninstalled" trick) — succeeds after the fix,
+and `meeting_date_html()` itself still correctly raises
+`ModuleNotFoundError` only when actually *called* without markupsafe
+present, exactly the lazy-failure shape wanted; (2) a permanent
+regression test (`tests/test_date_status.py::
+test_archive_db_crud_imports_without_markupsafe`) doing the same check
+in a fresh subprocess (in-process would trivially pass against an
+already-cached module) — confirmed this test actually catches the
+original bug by reverting the fix locally and re-running it: real
+failure, `ModuleNotFoundError: import of markupsafe halted`, exact
+match to the real incident.
+
+**Left open**: the *first* half of the original entry (a CI guard that
+walks the worker's whole real import graph, so a *different* future
+heavy import elsewhere in `app`/`archive` also fails CI instead of only
+failing at worker startup) — real defense-in-depth, not required to
+close this specific mechanism, see the residual `BACKLOG.md` entry.
+
+Full CI green (ruff check, ruff format, 1929 pytest passing, both
+alembic checks).
+
 ## Legistar now supplies `meeting_body` on all three resolve paths [Done 2026-08-28]
 
 Closes "Give `meeting_body` an adapter-supplied path" — but that entry
