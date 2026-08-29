@@ -56,19 +56,24 @@ exact thresholds) -- override with --model-size small|medium|large-v3|...
 any faster-whisper model_size string.
 
 **No chunk-size-driven memory concern locally** (unlike the worker, whose
-900s AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS exists specifically to keep
-faster-whisper's peak RSS under Render's 2GB ceiling -- see that
-constant's own comment in worker/main.py) -- this Mac has real RAM to
-spare. Chunking is kept anyway (CHUNK_SIZE_SECONDS below, same 900s
-value) for a *different* reason: app/platforms/media_probe.py's shared
-`_run()` helper (used by both probe_duration() and extract_chunk_audio(),
-and by the production worker) enforces a 120-second subprocess timeout
-per ffmpeg/ffprobe call -- proven safe at 900s-per-call in production,
-untested at multi-hour single-pass extraction against a slow/rate-limited
-government source. Raising or removing that shared timeout would affect
-the worker's own reliability boundary too, not just this script, so it
-wasn't touched here on a guess. --chunk-seconds is exposed if a larger
-value is ever verified safe against a real slow source.
+900s default chunk size exists specifically to keep faster-whisper's
+peak RSS under Render's 2GB ceiling -- see app/platforms/media_probe.py's
+chunk_size_seconds_for_platform()) -- this Mac has real RAM to spare.
+Chunking is kept anyway (CHUNK_SIZE_SECONDS below, same 900s value, for
+every platform except Granicus -- see this script's own residual gap
+noted at that constant's definition) for a *different* reason: app/
+platforms/media_probe.py's shared `_run()` helper (used by both
+probe_duration() and extract_chunk_audio(), and by the production
+worker) enforces a 120-second subprocess timeout per ffmpeg/ffprobe call
+-- proven safe at 900s-per-call for most platforms in production, but
+NOT for Granicus specifically (24/24 real chunk-timeout failures on a
+cold CDN fill, measured 2026-08-25 -- see BACKLOG_DONE.md), and untested
+at multi-hour single-pass extraction against a slow/rate-limited
+government source generally. Raising or removing that shared timeout
+would affect the worker's own reliability boundary too, not just this
+script, so it wasn't touched here on a guess. --chunk-seconds is exposed
+if a larger value is ever verified safe against a real slow source, or a
+smaller one is needed for a specific Granicus meeting today.
 
 **One transient failure no longer costs a whole meeting (2026-08-22).**
 Every call that reaches a live government source -- finder.resolve(),
@@ -226,13 +231,17 @@ INGEST_TIMEOUT = aiohttp.ClientTimeout(
 # basic courtesy to the source sites.
 REQUEST_DELAY_SECONDS = 2.0
 
-# Must match worker/main.py's AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS --
-# duplicated rather than imported across the script/worker boundary, same
-# convention worker/main.py itself uses for the matching constant it
-# duplicates from app/main.py (see that constant's own comment). Kept at
-# the same value here for a different reason than the worker's real one
-# (RAM headroom, irrelevant on this Mac) -- see the module docstring above
-# for why this exists at all.
+# Matches app/platforms/media_probe.py's chunk_size_seconds_for_platform()
+# default -- duplicated rather than imported since this is a single
+# global value for the whole run (chosen once in main(), before any
+# candidate page or its platform is known), not resolved per meeting the
+# way the two real job-creation paths (app/main.py, worker/main.py) do.
+# A Granicus meeting run through this script therefore doesn't get that
+# function's smaller 300s Granicus chunk size automatically -- see
+# BACKLOG.md for this residual gap. Kept at 900 here for a different
+# reason than the worker's own real one anyway (RAM headroom, irrelevant
+# on this Mac) -- see the module docstring above for why this exists at
+# all.
 CHUNK_SIZE_SECONDS = 900
 
 # Default --chunk-seconds for --engine gemini, deliberately much smaller

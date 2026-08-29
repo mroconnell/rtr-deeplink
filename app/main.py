@@ -65,7 +65,11 @@ from .platforms.base import (
     UnsupportedPlatformError,
 )
 from .platforms.headless_browser import warm_up as warm_up_headless_browser
-from .platforms.media_probe import is_plausible_meeting_duration, probe_duration
+from .platforms.media_probe import (
+    chunk_size_seconds_for_platform,
+    is_plausible_meeting_duration,
+    probe_duration,
+)
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
@@ -1245,8 +1249,9 @@ async def api_unsave_search(request: Request, req: UnsaveSearchApiRequest):
 # Checkpoint granularity for the worker service, not an external API's
 # file-size ceiling (self-hosted faster-whisper has none) -- see the plan
 # this was built from for why. Frozen onto the TranscriptionJob row at
-# creation, so changing this constant later never affects an in-flight job.
-TRANSCRIPTION_CHUNK_SIZE_SECONDS = 900
+# creation, so changing the value chunk_size_seconds_for_platform() returns
+# later never affects an in-flight job. Per-platform since 2026-08-29 --
+# see that function's own docstring.
 
 
 class TranscriptionFeasibilityRequest(BaseModel):
@@ -1467,7 +1472,7 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         media_url=result.video_url,
         media_kind=_media_kind(result.video_format),
         probed_duration_seconds=duration,
-        chunk_size_seconds=TRANSCRIPTION_CHUNK_SIZE_SECONDS,
+        chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),
         clerk_verified=bool(get_clerk_user_id(request)),
     )
     if job is None:

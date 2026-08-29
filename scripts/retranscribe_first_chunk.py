@@ -199,7 +199,9 @@ async def main() -> None:
         type=int,
         default=900,
         help="Nominal chunk size the original transcription used (default 900, "
-        "matching worker/main.py's AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS).",
+        "the default every platform except Granicus gets -- see app/platforms/"
+        "media_probe.py's chunk_size_seconds_for_platform(). Pass 300 for a job "
+        "that was created against a Granicus source.",
     )
     parser.add_argument(
         "--overlap-buffer-seconds",
