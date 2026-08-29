@@ -1,4 +1,5 @@
 import html as html_module
+import logging
 import re
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse
@@ -9,6 +10,8 @@ from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
+
+logger = logging.getLogger("rtr_deeplink.proudcity")
 
 # ProudCity (WordPress-based government CMS, `wp-proud-meeting` plugin +
 # `wp-proud-theme` theme -- github.com/proudcity/wp-proud-meeting,
@@ -248,7 +251,9 @@ class ProudCityAssetFinder(AssetFinder):
                 url, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
                 if response.status != 200:
+                    logger.warning("Got HTTP %s fetching %s", response.status, url)
                     return None
                 return await response.text()
         except Exception:
+            logger.warning("Fetch failed for %s", url, exc_info=True)
             return None

@@ -99,6 +99,155 @@ browser-vs-server difference went through, or the page changed between
 the report and this check. Either way, don't re-open this as a selector
 gap without a fresh, current report.
 
+## CI guard for the worker's real import graph, defense-in-depth on the 2026-08-24 markupsafe outage fix [Done 2026-08-29]
+
+`scripts/check_worker_import_graph.py` + `tests/test_worker_import_graph.py`
+(the latter wired into the normal `pytest` gate, so a regression fails
+CI, not just worker startup). Walks the real reachable import graph from
+`worker/main.py` and asserts every third-party import it needs is
+declared in `worker/requirements.txt`.
+
+**Graph traversal deliberately isn't module-level-only.**
+`app/platforms/__init__.py`'s `register_all_finders()` imports every
+platform adapter from inside its own function body on purpose (its own
+docstring explains why), and `worker/main.py`'s `run_forever()` calls it
+unconditionally on every real run — so the BFS follows *any* local
+`app.`/`archive.`/`worker.` import found anywhere in a file, not just at
+module top level, or it would never reach a single adapter file.
+
+**Two real false-positive/false-negative traps found live while building
+this, both worth recording since the entry itself only anticipated the
+first:**
+
+1. **`try/except ImportError`-guarded imports** (the one case the
+   original entry called out — `headless_browser.py`'s playwright import,
+   deliberately absent from `worker/requirements.txt`) — handled by
+   walking each file's own try/except structure and excluding anything
+   inside a handler that catches `ImportError`/`ModuleNotFoundError`/
+   `Exception`. `if TYPE_CHECKING:` blocks (never execute at runtime at
+   all — `archive/utils/date_status.py`'s own markupsafe import, from the
+   2026-08-24 fix this is defense-in-depth for) get the same treatment.
+
+2. **A nested import's real reachability isn't decidable from syntax
+   alone, and naive fixes go wrong in both directions.** `worker/
+   transcription_engine.py`'s `GeminiTranscriptionEngine.__init__` has its
+   own `from google import genai` — real code, never called
+   (`build_default_engine()` always returns `FasterWhisperEngine()`, never
+   Gemini — a real, existing, unrelated standing decision, not something
+   this work changed). A first version restricted to true module-level
+   imports to avoid flagging this as a false positive — but that also
+   silently stopped verifying two real, always-executed dependencies
+   nested the same way: `worker/main.py`'s own `_init_sentry()` (calls
+   `import sentry_sdk` inside a function invoked unconditionally right
+   after its own definition) and `FasterWhisperEngine.__init__`'s `from
+   faster_whisper import WhisperModel` (real, used by the worker's actual
+   default engine). Fixed by tracking, across the whole reachable graph,
+   which plain function names and class names are ever directly called
+   (`name(...)` — the same AST shape for a function call and a class
+   instantiation), and treating a nested import as required only if its
+   enclosing function is called directly, or its enclosing class's
+   `__init__` belongs to a class that's ever instantiated. This correctly
+   requires `sentry_sdk`/`faster_whisper` (both already declared, so no
+   failure) while still excluding the dead Gemini import.
+   **A second bug surfaced building that fix**: collecting `obj.attr(...)`
+   calls by bare attribute name (to be more inclusive) put dunder names
+   like `__init__` into the "called" set the instant *any* class anywhere
+   calls `super().__init__(...)` — which every class here does — which
+   made every class's own `__init__` read as "reachable" regardless of
+   whether the class itself was ever instantiated, silently defeating the
+   Gemini exclusion again. Fixed by only counting `Name`-based calls
+   (`foo(...)`), never `Attribute`-based ones (`obj.foo(...)`) — both bugs
+   have their own regression test in `tests/test_worker_import_graph.py`
+   (`test_dead_init_is_not_required_but_a_called_class_init_is`,
+   `test_collect_called_names_ignores_attribute_calls`).
+
+This is a shallow, name-based approximation, not real call-graph/type
+analysis — documented in the script's own module docstring as capable of
+being fooled by a method invoked only through an attribute call on an
+object whose type it can't resolve. No such pattern exists anywhere in
+this codebase today (checked by hand against every nested import the
+graph walk turns up, not assumed). Verified the guard actually catches
+real regressions, not just passes today by luck: reproduced the exact
+2026-08-24 incident shape (a fresh module-scope import added to
+`archive/utils/date_status.py`) and separately removed `sentry-sdk` from
+`worker/requirements.txt` — both correctly failed the check, then
+reverted before committing. All four CI gates clean; no schema touched.
+
+## 3 more silent-exception sites logged: headless_browser.py, proudcity.py, townhallstreams.py [Done 2026-08-29]
+
+Residual from the 2026-08-28 22-adapter exception-logging sweep: an
+AST-based re-derivation of the file list (not a line-number grep, same
+method as the original sweep) had turned up the identical pattern in 3
+files the 2026-08-25 survey didn't include, but they were out of scope
+for that PR. Re-checked live before touching anything (per this file's
+"a backlog entry is a lead, not a spec" convention) — all 3 line numbers
+still matched exactly (`headless_browser.py:171`, `proudcity.py:253`,
+`townhallstreams.py:272`), unlike `civicweb.py`'s two sites in the
+original sweep, which had already drifted.
+
+Same per-site judgment as the original sweep, not a mechanical copy:
+
+- **`headless_browser.py:171`** (`_get_browser()`'s Chromium self-heal
+  retry): the exception itself was never silent — it re-raises
+  `HeadlessBrowserUnavailable` when self-heal fails — but a *successful*
+  self-heal (missing binary, reinstalled, retried) left no trace at all
+  that Chromium was ever missing in the first place. Added a
+  `logger.warning(..., exc_info=True)` on the retry path.
+- **`proudcity.py:253`** (`_fetch_text()`): plain fetch-failure pattern,
+  same shape as the original sweep — logged both the non-200 branch and
+  the exception branch.
+- **`townhallstreams.py:272`** (`_check_for_transcript()`): a
+  best-effort check whose reader-facing text ("No captions found for
+  this video.") is correct either way, so this looked like a candidate
+  to leave alone — but a real fetch failure and a genuinely-empty
+  positive response are different facts worth telling apart when
+  debugging, so both branches got a warning too.
+
+Added `import logging` + `logger = logging.getLogger("rtr_deeplink.
+<module>")` to `proudcity.py` and `townhallstreams.py` (`headless_
+browser.py` already had one). Tests: extended the existing
+`test_get_browser_self_heals_when_binary_missing` with a `caplog`
+assertion (same test already exercised this exact path, just wasn't
+checking for the log line), and added one new `caplog`-based regression
+test each to `test_proudcity.py`/`test_townhallstreams.py` simulating a
+real HTTP failure. All four CI gates clean.
+
+## Cablecast wildcard-free DNS sweep: 45 new hosts, 3 real ingests, 2 new unsupported portal templates found and logged [Done 2026-08-29]
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§40. Closes the "Six meeting/CMS platforms don't wildcard their DNS"
+lead for `cablecast.tv` specifically (BACKLOG.md's Platform &
+jurisdiction coverage section) — PrimeGov/CivicWeb/eScribe already had
+this sweep; Cablecast didn't, despite being on the same confirmed-
+wildcard-free list, and only had 138 CDX-found tenants (whatever
+Wayback happened to crawl, not the complete real universe).
+
+Same slug pattern as every prior sweep, checked via `aiodns` against
+all 22,331 unchecked `jurisdiction_coverage.csv` rows (32,344 unique
+slugs) — finished in under 2 minutes, no rate-limit exposure at all
+since it's DNS-only with zero HTTP for the discovery pass itself. 50
+real hosts found, 45 not already in Archive.
+
+**DNS existence alone wasn't enough this time, unlike the earlier three
+platforms** — Cablecast turns out to have at least 4 distinct real
+portal templates in the wild. Classified all 45 by actually fetching
+each: 4 matched the template `app/platforms/cablecast.py` already
+supports, 17 were a private login-gated station-admin panel (not a
+public viewer — Cablecast is also sold as pure internal broadcast
+software), 17 hit connection errors (likely dead/misconfigured), and 3
+matched two more real, previously-undocumented templates
+(`CablecastPublicSite`, `WebSchedule`) — logged to `BACKLOG.md` as a
+future adapter-build lead with real example URLs, not investigated
+further per this project's "never build from assumption" rule.
+
+**3 real pages ingested, all with real transcripts**: Fargo, ND's
+Budget Workshop (565 segments), Artesia, CA's City Council Meeting
+(1,132 segments, jurisdiction correctly resolved), Champaign, IL's
+Board of Fire and Police Commissioners (34 segments). A fourth usable
+host (Jacksonville) turned out to have zero shows with a populated
+`vodUrl` in its real listing data — a genuine "no video" case, not a
+bug, same shape already documented for Tucson's Hyland tenant.
+
 ## Common Crawl full-corpus signature scan: 58 new jurisdiction pages across Hyland/OnBase, ChampDS, and TelVue — a domain-agnostic discovery method, not tenant-subdomain enumeration [Done 2026-08-29]
 
 Full writeup, methodology, and every real number lives in

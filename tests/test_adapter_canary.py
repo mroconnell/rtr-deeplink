@@ -88,6 +88,15 @@ def test_every_exclusion_states_a_reason():
         assert reason.strip(), f"{platform} is excluded with no reason given"
 
 
+def test_every_canary_url_list_is_non_empty():
+    # A platform key with an empty list would silently monitor nothing
+    # while still satisfying the coverage test above.
+    for platform, urls in CANARY_URLS.items():
+        assert urls, f"{platform} has an empty CANARY_URLS list"
+        for url in urls:
+            assert url.startswith("http"), f"{platform} has a non-URL entry: {url!r}"
+
+
 def _meeting(**overrides) -> ResolvedMeeting:
     base = {"platform": "test", "source_url": "https://example.com/1"}
     base.update(overrides)
@@ -320,10 +329,53 @@ async def test_run_canary_reports_each_platform_independently(monkeypatch):
         "scripts.adapter_canary.get_finder", lambda platform: finders[platform]
     )
 
-    results = await run_canary({"good": "good", "broken": "broken"})
+    results = await run_canary({"good": ["good"], "broken": ["broken"]})
 
     by_platform = {r["platform"]: r["ok"] for r in results}
     assert by_platform == {"good": True, "broken": False}
+
+
+async def test_run_canary_keeps_single_url_labels_unchanged(monkeypatch):
+    # A platform with exactly one URL must report under its bare name
+    # ("good", not "good[0]") -- every existing single-URL platform's
+    # report string has to stay byte-identical after this dict-shape
+    # change.
+    monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: url)
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder",
+        lambda platform: _FakeFinder(
+            result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+        ),
+    )
+
+    results = await run_canary({"good": ["good"]})
+
+    assert [r["platform"] for r in results] == ["good"]
+
+
+async def test_run_canary_fans_out_multiple_urls_independently(monkeypatch):
+    # A platform with 2 URLs must produce 2 independently-labeled,
+    # independently-succeeding/failing results -- one failing must not
+    # mask the other passing (the whole point of WO-30's canary gap: a
+    # single legistar URL couldn't catch a break isolated to the second
+    # path).
+    finders = {
+        "https://good.example/1": _FakeFinder(
+            result=_meeting(segments=[{"start": 0, "end": 1, "text": "hi"}])
+        ),
+        "https://broken.example/2": _FakeFinder(result=_meeting()),
+    }
+    monkeypatch.setattr("scripts.adapter_canary.detect_platform", lambda url: url)
+    monkeypatch.setattr(
+        "scripts.adapter_canary.get_finder", lambda platform: finders[platform]
+    )
+
+    results = await run_canary(
+        {"multi": ["https://good.example/1", "https://broken.example/2"]}
+    )
+
+    by_platform = {r["platform"]: r["ok"] for r in results}
+    assert by_platform == {"multi[0]": True, "multi[1]": False}
 
 
 def test_format_report_lists_only_failures():

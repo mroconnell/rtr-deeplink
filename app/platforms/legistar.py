@@ -295,8 +295,18 @@ class LegistarAssetFinder(AssetFinder):
         resolved = await YouTubeAssetFinder.resolve_video_id(
             match.video_id, source_url=source_url
         )
+        # Prefer the Atom feed's corroborated date over resolved.date when
+        # both exist -- resolved.date comes from the single-video yt-dlp
+        # fetch, the exact call known to be blocked on Render's IP
+        # sometimes (see youtube.py's resolve_video_id()); when that
+        # happens resolved.date is None and the plausibility check below
+        # would otherwise pass with no real signal at all. The Atom feed
+        # is a structurally different, unauthenticated call surface that
+        # can still supply a date in that case (see
+        # youtube_channel._fetch_atom_published_date's own docstring for
+        # its real ~15-most-recent-uploads cap).
         if not youtube_channel.video_date_is_plausible(
-            page_info["date"], resolved.date
+            page_info["date"], match.atom_published_date or resolved.date
         ):
             return None
 

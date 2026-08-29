@@ -56,10 +56,9 @@ Standing decisions — do NOT re-raise  (5)
   The playback-speed chip is absent in native fullscreen, and that's…
   Gemini 3.5 Transcribe stays available but unused — Whisper remains…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   [JUST-DO-IT] `[EASY]` Database storage cleanup — lower thumbnail…
   [JUST-DO-IT] Nothing detects a transcript that simply ends early
-  [NEEDS-AUDIT] A CI guard for the worker's real import graph is still
   [JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   [JUST-DO-IT] `[EASY]` `rtr-business/BUSINESS_OVERVIEW.md` still says
   [NEEDS-AUDIT] `[WAIT]` Measure whether the state/hub rebuild moved
@@ -89,11 +88,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   Product calls
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (10)
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
   [NEEDS-AUDIT] svix 2.0.0 breaks Clerk webhook verification —
   [NEEDS-AUDIT] The chunk-failure budget only catches sources that fail
-  [NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
   [NEEDS-AUDIT] Two pages have had a failed transcription job and
   [NEEDS-AUDIT] Render "HTTP health check failed" on
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -102,7 +100,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (39)
+Platform & jurisdiction coverage  (40)
+  `[LATER]` `[EXAMPLE]` Cablecast has (at least) two more real portal
   `[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
@@ -402,20 +401,6 @@ so that work reads together.
   gavel — so the threshold wants to be generous (tens of minutes short,
   not seconds) and probably measured against real pages before being
   turned on.
-
-- **[NEEDS-AUDIT] A CI guard for the worker's real import graph is still
-  unbuilt — the underlying fragility is fixed (see `BACKLOG_DONE.md`),
-  this is defense-in-depth on top of it.** The 2026-08-24 outage's root
-  cause (`archive/utils/date_status.py` importing `markupsafe` at module
-  scope, made a hard worker dependency via `archive.db.crud`) is closed.
-  Still open: walk the real import graph from `worker/main.py` across
-  `app/`/`archive/` and assert every third-party top-level import is in
-  `worker/requirements.txt`, so a *different* future HTML-shaped (or
-  otherwise heavy) import added anywhere in that graph fails CI instead
-  of only failing at worker startup. Needs a `try/except`-tolerant
-  design so it doesn't false-positive on `playwright` (deliberately
-  absent from the worker, guarded by its own try/except at the one
-  import site that needs it).
 
 - **[JUST-DO-IT] A bulk re-resolve gets this IP blocked by YouTube, and
   the script's circuit breaker doesn't notice (measured twice,
@@ -1031,17 +1016,6 @@ coverage** instead.
   fix should also settle the scheduling question this entry raises: a
   chunk that fits the budget stops burning a slot on doomed attempts.
 
-- **[NEEDS-AUDIT] `[EASY]` 3 more silent-exception sites found live during
-  the 2026-08-28 sweep, not in the original survey — same treatment
-  needed.** Re-deriving the file list fresh (AST-based, not a line-number
-  grep) for `BACKLOG_DONE.md`'s "22 platform adapters now log exception
-  fetch failures" sweep also turned up the identical pattern in 3 files
-  the original 2026-08-25 survey didn't include: `headless_browser.py:171`,
-  `proudcity.py:253`, `townhallstreams.py:272`. Not fixed in that sweep
-  (scope was the originally-surveyed 23 files plus the one it had
-  missed) — same judgment-per-site approach applies, see
-  `BACKLOG_DONE.md` for the pattern to copy.
-
 - **[NEEDS-AUDIT] Two pages have had a failed transcription job and
   nothing else for months — are they still re-entering the queue at all?
   (2026-08-24)** A page with no good transcript is supposed to stay an
@@ -1235,6 +1209,29 @@ just with per-clip boundaries instead of per-900s ones.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
+
+- **`[LATER]` `[EXAMPLE]` Cablecast has (at least) two more real portal
+  templates `cablecast.py` doesn't parse, found via a 2026-08-29
+  wildcard-free DNS sweep (BACKLOG_DONE.md's matching entry, full
+  writeup `ENUMERATION_METHODS.md` §40).** The adapter only handles the
+  Remix `/internetchannel/show/{id}` template (Detroit, Charlotte,
+  satellitebeach, and 4 new hosts from this sweep). Two more real
+  templates confirmed live, neither investigated further per this
+  file's "never build from assumption" rule: **`CablecastPublicSite`**
+  (`smyrna.cablecast.tv/CablecastPublicSite/?channel=1`,
+  `reflect-origin-1440.cablecast.tv/CablecastPublicSite/` — the latter
+  reached via a redirect from `urbana.cablecast.tv`) and
+  **`WebSchedule`** (`peabody.cablecast.tv/Cablecast/Plugins/
+  WebSchedule/default.aspx` — looks schedule-only from the URL shape,
+  may not even carry on-demand video). Also confirmed live: a real,
+  substantial fraction of `{tenant}.cablecast.tv` DNS hits (17 of 45 in
+  the same sweep) are a **private, login-gated station-admin panel**
+  (`/FrontDoor/Login.aspx`), not a public viewer at all — Cablecast is
+  also sold as pure internal broadcast-automation software, so a
+  resolving DNS name isn't a reliable "has a public archive" signal the
+  way it is for PrimeGov/CivicWeb/eScribe. Whoever picks this up should
+  fetch-and-read each template shape for real before writing any
+  parsing code, per the standing convention.
 
 - **`[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   instead of skipping it, confirmed on 2 real ingests 2026-08-29.**

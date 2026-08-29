@@ -173,6 +173,11 @@ async def _get_browser() -> Browser:
                 raise HeadlessBrowserUnavailable(
                     "This meeting needs a real browser to load, and it isn't available right now."
                 ) from e
+            logger.warning(
+                "Chromium binary was missing; self-heal install succeeded, "
+                "retrying launch.",
+                exc_info=True,
+            )
             _browser = await playwright.chromium.launch(headless=True)
         return _browser
 
