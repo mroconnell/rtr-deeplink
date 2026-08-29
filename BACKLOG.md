@@ -102,7 +102,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file…
 
-Platform & jurisdiction coverage  (40)
+Platform & jurisdiction coverage  (39)
   `[EASY]` (WO-66) TelVue's jurisdiction guesser grabs a leading date
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
@@ -124,7 +124,7 @@ Platform & jurisdiction coverage  (40)
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
-    [NEEDS-AUDIT] Swagit's jurisdiction extraction has no fallback at
+    [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
     [NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
     [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
@@ -132,9 +132,8 @@ Platform & jurisdiction coverage  (40)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (13)
+  Adapter & platform gaps  (12)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
-    [NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [JUST-DO-IT] `[EASY]` `youtube_channel.py`'s flat channel listing has
@@ -1784,23 +1783,24 @@ from a live check), but the Legistar calendar itself is still untried.
   mid-word-truncation signal documented elsewhere in this file for title
   extraction — or something else). Worth watching for a second example.
 
-- **[NEEDS-AUDIT] Swagit's jurisdiction extraction has no fallback at
-  all when the page `<title>` doesn't end in a plain `"..., {2-letter
-  state}"` shape — every special-purpose entity (school district, MPO,
-  transit/utility authority, state agency) comes through blank, even
-  though the real jurisdiction text is sitting right in the same title.
-  Confirmed live 2026-08-15.** Root cause,
-  [swagit.py:308](app/platforms/swagit.py:308): `_extract_metadata()`'s
-  only jurisdiction source is a regex requiring the trailing `", ST"`
-  shape — no fallback (contrast Granicus, which at least humanizes the
-  subdomain). Verified on three real pages (Santa Clara County Office of
-  Education, ERCOT, DFPS — the last also had a literal tab character in
-  the raw `<title>`, **fixed 2026-08-16** by collapsing internal
-  whitespace). 16 real examples of the blank-jurisdiction gap turned up
-  in one `/meetings` pass. Not designed yet: the real jurisdiction text
-  sits in a different place per entity type (before the first ` - ` for
-  some, the whole remainder for others), so this isn't as mechanical a
-  fix as it looks.
+- **[NEEDS-AUDIT] Swagit still resolves every special-purpose entity
+  (school district, MPO, transit/utility authority, state agency) with
+  a blank jurisdiction.** Corrected 2026-08-29: the original "no
+  fallback at all" framing (2026-08-15) is stale — `resolve()`
+  ([swagit.py:305-314](app/platforms/swagit.py:305)) now falls back to
+  `jurisdiction_enrich.extract_jurisdiction_chain()`, but re-resolving
+  fresh real meetings from the same three named tenants (ERCOT, DFPS,
+  Santa Clara County Office of Education) confirms the chain still
+  doesn't recover any of them — the gap is real, not stale, just
+  differently caused now: none of these titles has a "City/County/Town
+  of X" phrase, and none of the three subdomains validates against the
+  Census/StatsCan tables. Same structural "no national table for
+  non-Census entities" problem as the 4-platform sizing entry below.
+  Full re-verification detail (URLs used, exact outcome) in
+  `BACKLOG_DONE.md`'s 2026-08-29 entry. 16 real examples of the
+  blank-jurisdiction gap turned up in one `/meetings` pass (2026-08-15);
+  not designed yet, since the real jurisdiction text sits in a
+  different place per entity type.
 
 - **[JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
   structural fix for the SLC/Holladay false-positive — only patched for
@@ -1970,21 +1970,6 @@ from a live check), but the Legistar calendar itself is still untried.
   Render's egress. Cheapest first step: re-resolve that one page and see
   whether `video_url` ever comes back.
 
-- **[NEEDS-AUDIT] Brentwood eScribe resolves without video, but the
-  meeting page visibly has one (reported by Ryan 2026-08-26).**
-  `https://pub-brentwood.escribemeetings.com/Meeting.aspx?Id=6b76a99f-35c5-4346-9eaa-4cfadca3ad47&Agenda=Agenda&lang=English`
-  — user-confirmed video present in the browser; **not verified from a
-  session yet** (this sandbox's egress proxy blocks
-  `escribemeetings.com`, so nobody has fetched the real HTML).
-  **Where to look first**: `escribe.py:121-123` matches only
-  `#isi_player[data-client_id][data-stream_name]` or the
-  `[data-file_name]` variant. Two eScribe player shapes are confirmed so
-  far; a third would fall straight through to the `scan_for_media()`
-  fallback and then to no video. So the one thing to check is whether
-  Brentwood's page has an `#isi_player` div at all, and which `data-*`
-  attributes it carries. If there's no `#isi_player`, this is a new
-  player integration rather than a missing attribute.
-
 - **[NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
   same single blocker, and it is still unsolved (residual of WO-29).**
   Real, populated English WebVTT genuinely exists (Salisbury NC,
@@ -2144,9 +2129,20 @@ from a live check), but the Legistar calendar itself is still untried.
   total (full numbers in `BACKLOG_DONE.md`'s WO-38 entry): **eScribe
   117, Cablecast 104, YouTube 78, Swagit 72** — 371 of 474 rows on just
   these four, versus Granicus 34, IQM2 33, CivicClerk 24, unknown 7,
-  ChampDS 4, TelVue 1. Worth a dedicated investigation on those four
-  specifically rather than treating each row as a one-off. This is a
-  sizing finding, not a diagnosis.
+  ChampDS 4, TelVue 1. This is a sizing finding, not a diagnosis. Real
+  per-platform scoping done 2026-08-29 (full detail in
+  `BACKLOG_DONE.md`'s matching entry) — short version: **Swagit** and
+  **eScribe** both turned out narrower than their original framing (see
+  the corrected `[NEEDS-AUDIT]` entries for each above); **Cablecast**
+  is blocked on a real multi-word-city customer turning up (its
+  single-word regex is deliberate, don't widen speculatively); **YouTube**
+  is structurally not fixable in the general case (`uploader` is a
+  channel name, not a government field — no extraction tuning changes
+  that). Nothing here is a promise to close the 371 rows — eScribe's
+  hyphen-matcher gap and Cablecast's example-gated regex are the only
+  two with a concrete, scoped next action; Swagit and YouTube need a
+  structural answer (a non-Census entity table, and channel-name
+  validation) neither of which exists yet.
 
 ## Reliability, ops & cost
 

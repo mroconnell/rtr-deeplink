@@ -1,5 +1,104 @@
 # Backlog — done
 
+## 4-platform jurisdiction gap sizing: re-scoped per platform, two entries corrected as stale [Investigated 2026-08-29]
+
+BACKLOG.md's "Four platforms account for ~78% of the 470 real live pages
+with no jurisdiction" entry (eScribe 117, Cablecast 104, YouTube 78,
+Swagit 72, from WO-38's 2026-08-21 `/internal/low-trust-pages` snapshot)
+was a sizing finding, not a diagnosis. Real per-platform work this pass:
+
+**Swagit — gap confirmed real, framing corrected.** The live entry's
+"no fallback at all" claim (2026-08-15) predates `swagit.py`'s own
+`extract_jurisdiction_chain()` fallback (added since). Re-resolved fresh,
+current meetings from the same three named tenants against today's code:
+`https://ercot.new.swagit.com/videos/389805`,
+`https://dfps.new.swagit.com/videos/355341`,
+`https://sccoe.new.swagit.com/videos/337949` (found live via web search —
+no URL for these three was recorded anywhere in the repo from the
+original 2026-08-15 finding). All three still resolve with
+`jurisdiction=None`. Root cause is now precise: none of the titles
+contains a "City/County/Town of X" phrase (the chain's primary signal),
+and none of the three Swagit subdomains (`ercot`, `dfps`, `sccoe`)
+validates against the Census/StatsCan tables the chain's subdomain
+fallback checks — a school district, a state utility regulator, and a
+state agency are exactly the entity types outside those tables by
+construction. Live BACKLOG.md entry corrected to state this precisely
+rather than the stale "no fallback" framing.
+
+**eScribe — gap narrower than described, in-code comment was stale.**
+The existing `[NEEDS-AUDIT]` "Ontario regional municipality" entry
+already correctly described Durham/Peel/Region of Waterloo as fixed
+2026-08-21 and Chatham-Kent/Arran-Elderslie/Blue Mountains as still open
+"lost purely on a hyphen-formatting mismatch" — that entry needed no
+correction. But `escribe.py`'s own in-code comment
+([escribe.py:380-385](app/platforms/escribe.py:380)) still claimed all
+six names "aren't in the StatsCan table," which is what the original
+2026-08-29 pass expected to fix via small additive CSV rows. Checking
+`app/utils/jurisdiction_data/places.csv` directly found all six rows
+already present (`Durham Region,ON`, `Peel Region,ON`, `Region of
+Waterloo,ON`, `Chatham-Kent,ON`, `Arran-Elderslie,ON`, `The Blue
+Mountains,ON`). Live-testing `jurisdiction_enrich.validated_label_extract()`
+against the real glued-subdomain forms confirmed the actual split:
+`"durhamregion"`/`"peelregion"`/`"regionofwaterloo"`/`"thebluemountains"`
+all resolve correctly; `"chathamkent"`/`"arranelderslie"` both still
+return `None` despite their CSV rows existing — a label-matcher
+hyphen-handling gap, not a missing table row. No CSV change made (there
+was nothing to add); `escribe.py`'s comment corrected to state the real,
+narrower gap and point at the existing accurate BACKLOG.md entry instead
+of duplicating a second, now-wrong description of it.
+
+**Cablecast — reaffirmed blocked-on-example, not touched.**
+`_JURISDICTION_RE` ([cablecast.py:126](app/platforms/cablecast.py:126))
+is single-word by construction; every real confirmed customer in
+`tests/test_cablecast.py` (Detroit, Charlotte, Broomfield) is a
+one-word city name, and the in-code comment already says to widen only
+once a real multi-word-city customer turns up. Left alone per this
+repo's "never build from assumption" convention.
+
+**YouTube — reaffirmed structurally out of scope, not touched.**
+`_jurisdiction()` derives from yt-dlp's `uploader`, a channel name, not
+a government-authored field — the adapter's own docstring already names
+confirmed real false signals (a vendor's own channel, an unrelated
+community org). No extraction/regex tuning fixes that. A narrower
+validation tightening (trust `uploader` only when it independently
+validates) is the only thing worth scoping later, not attempted here.
+
+**Deliverable**: BACKLOG.md's live entries corrected to reflect verified
+current state (Swagit's framing, eScribe's actual remaining gap); no
+promise made to close any of the 371 rows — eScribe's hyphen-matcher gap
+and Cablecast's example-gated regex are the only two platforms with a
+concrete next action, and neither was built in this pass (out of scope
+for a sizing/verification session).
+
+## Brentwood eScribe "missing video" report doesn't reproduce — real video, real gap was somewhere else entirely [Investigated 2026-08-29]
+
+The live entry (`BACKLOG.md`, filed 2026-08-26 from Ryan's browser report)
+said `https://pub-brentwood.escribemeetings.com/Meeting.aspx?Id=6b76a99f-35c5-4346-9eaa-4cfadca3ad47&Agenda=Agenda&lang=English`
+resolved with no video despite the meeting page visibly having one, and
+that this session's own egress proxy blocked `escribemeetings.com`
+outright, so nobody had ever fetched the real HTML to check.
+
+Neither premise held. A direct `curl` fetched the real page cleanly
+(HTTP 200) — this session's egress to `escribemeetings.com` is not
+blocked. The raw server-rendered HTML already carries
+`id="isi_player" data-client_id="brentwood" data-stream_name="..."`,
+exactly the first of `escribe.py`'s two already-handled selector shapes
+([escribe.py:124-126](app/platforms/escribe.py:124)) — not a third,
+unhandled one. Running `EscribeAssetFinder().resolve()` against the real
+URL end to end confirms it: real title ("City Council - Special
+Meeting"), real date (2026-08-25), real jurisdiction ("Brentwood, CA"),
+and a real, playable `video_url`
+(`cdn1.isilive.ca/vod/.../playlist.m3u8`, format `m3u8`), `video_warnings`
+empty. The only real gap on this page is captions (no VTT in any
+language yet — a separate, already-known, unrelated category of gap, not
+this one).
+
+No code change made — there was no confirmed gap to fix. Most likely
+explanation: a transient network issue on whatever path the original
+browser-vs-server difference went through, or the page changed between
+the report and this check. Either way, don't re-open this as a selector
+gap without a fresh, current report.
+
 ## Common Crawl full-corpus signature scan: 58 new jurisdiction pages across Hyland/OnBase, ChampDS, and TelVue — a domain-agnostic discovery method, not tenant-subdomain enumeration [Done 2026-08-29]
 
 Full writeup, methodology, and every real number lives in
