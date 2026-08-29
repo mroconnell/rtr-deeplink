@@ -2478,11 +2478,17 @@ top-up driver has been creating zero jobs" under **Transcription queue
     `BACKLOG_DONE.md`.
   - **"Not found (404)"** is the one category still with no URL list.
     `/state/{slug}`, `/j/{slug}` and `/m/{slug}` all return a real 404 for
-    an unknown slug, so genuine 404s are expected after a de-index — but
-    note `_SLUG_REDIRECTS` (`archive/main.py`) is still **empty** and the
-    `welcome-to-clerkbase` reslug has never been run, so a frozen-slug
-    rename leaving a dangling permalink is a live candidate here (see that
-    entry under "Ship next").
+    an unknown slug, so genuine 404s are expected after a de-index.
+    **Stale as of this re-check (2026-08-29)**: this used to say
+    `_SLUG_REDIRECTS` was empty and the `welcome-to-clerkbase` reslug had
+    never been run — both wrong now. `_SLUG_REDIRECTS`
+    (`archive/main.py`) holds several real mappings today (see
+    `BACKLOG_DONE.md`'s "Five frozen-slug pages reslugged" entry,
+    2026-08-28, `welcome-to-clerkbase` included), so a frozen-slug rename
+    leaving a dangling permalink is no longer a live candidate for
+    *those* — though the redirect code's actual deploy status wasn't
+    confirmed here and is worth checking before ruling this category out
+    entirely.
 
 - **[HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
   content" (alert 2026-08-17) is still genuinely unexplained — and
