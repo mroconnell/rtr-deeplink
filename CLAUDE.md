@@ -71,8 +71,14 @@ under everything else. This repo extracts and fixes just that part.
   ON (`pub-peelregion.escribemeetings.com`, real "Regional Council"
   meeting, iSiLIVE video) resolves with 1101 real caption segments, zero
   warnings — add it to the sample sheet alongside the row above.
-  CivicClerk's own version of the same gap is still real and unconfirmed
-  either way, not addressed by this. Vimeo (added 2026-08-21, WO-29) is
+  CivicClerk's own version of the same gap closed 2026-08-30: two
+  independent real customers now confirm two different real caption
+  fields on its API — Emporia, KS (`closedCaptionTracks`, SRT, confirmed
+  2026-08-08) and Los Altos Hills, CA (`transcriptionUrl`, VTT, confirmed
+  2026-08-30, real coherent transcript already live on
+  redtaperecordings.com) — both already handled by
+  `app/platforms/civicclerk.py`'s existing fallback chain with no code
+  change needed. Vimeo (added 2026-08-21, WO-29) is
   a deliberate, documented exception to "find a real caption sample
   first": its video half was built against 8 real jurisdictions, but
   captions genuinely cannot be fetched server-side at all — the signed
