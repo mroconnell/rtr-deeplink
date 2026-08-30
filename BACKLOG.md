@@ -54,15 +54,15 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
-  [JUST-DO-IT] Every byte the public site serves is billed twice:
+Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (7)
+  Production actions only Ryan should take  (8)
+    [HUMAN] Two live pages for the same Kitchener meeting — pick one,
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] Postgres Storage Autoscaling is off — decide whether to
@@ -74,7 +74,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+  [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
   [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -311,40 +312,6 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] Every byte the public site serves is billed twice:
-  the resolver proxies to the Archive over its *public* URL.**
-  `app/main.py:1527-1593` proxies essentially the whole public site —
-  `/m/*`, `/meetings`, `/coverage`, `/state/*`, `/j/*`,
-  `/archive-static/*`, `/sitemap.xml`, `/feed.xml` — through
-  `_proxy_to_archive()`. **Confirmed 2026-08-22 from the Render
-  dashboard**: `ARCHIVE_BASE_URL` is an `https://…onrender.com` URL
-  (public path, not private networking), and the workspace's
-  **"Service-Initiated (Private Link)" bandwidth is `0 MB`** — nothing
-  in the account uses private networking at all. So each proxied page
-  view is billed as *two* egress events: Archive→resolver, then
-  resolver→user. With "HTTP Responses" at **12.46 GB** for the month,
-  the plausible reading is ~6 GB of real user traffic and ~6 GB of pure
-  internal duplication, though the dashboard's own breakdown is by
-  *category*, not by service, so that split is inferred rather than
-  measured (a per-service breakdown would confirm it outright).
-  **Fix**: point `ARCHIVE_BASE_URL` at Render's internal/private address
-  for `rtr-deeplink-archive` instead of the public hostname. **Verify
-  two things first**, neither yet confirmed: (1) both web services are
-  in the same region — `render.yaml` sets `region: oregon` only on the
-  database (line 462), so the services' region is the *default*, not an
-  asserted one; (2) the proxy still passes `cookie` and conditional
-  `If-None-Match` headers correctly over the internal address, since
-  `/meetings`, `/coverage`, `/state/*` and `/account/saved` all forward
-  the user's cookie for Clerk auth. Roll back by restoring the public
-  URL if anything 502s — it's a single env-var change, no code deploy.
-  **Updated 2026-08-29, and this changes the urgency**: bandwidth is now
-  **31.74 GB of the 25 GB included allowance — already over**, up from
-  14.54 GB when this entry last measured it (see `BACKLOG_DONE.md`'s
-  "Render bandwidth" entry for that earlier read). The double-proxy
-  waste this entry describes is no longer just "free money left on the
-  table" — it's now plausibly a real chunk of a real overage charge.
-  Worth doing sooner rather than opportunistically.
-
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -415,6 +382,34 @@ convenient.
   events on `/m/*` pages" entry. GA internal-traffic setup and
   cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 ### Production actions only Ryan should take
+
+- **[HUMAN] Two live pages for the same Kitchener meeting — pick one,
+  redirect the other.** Found 2026-08-30 verifying the forced-English
+  Kitchener re-transcription (see the repair entry's step 2 above):
+  `/m/kitchener-2026-05-05-heritage-kitchener-committee` (the original,
+  the one all prior backlog entries name) and
+  `/m/city-of-kitchener-on-2026-05-05-heritage-kitchener-committee`
+  (where the 2026-08-30 ingest landed) are **two separate rows, both
+  200, each with a self-referencing canonical** — a real duplicate for
+  search engines, not a `_SLUG_REDIRECTS` alias (`archive/main.py`'s
+  table has no kitchener pair). Both now serve full *English* AI
+  transcripts, but different ones — diffing the two `/transcript.txt`
+  downloads shows them identical for the first ~15 minutes then
+  diverging (different Whisper runs), so at some point the original
+  page ALSO got re-transcribed (plausibly a cloud worker's `tiny`
+  after its garbled default was cleaned; not verified). The 2026-08-30
+  version (504 segments, model `small`, forced `en`, version 3551 on
+  the new-slug page) is the deliberately-made one. **The action needs
+  the admin token**: decide which page survives (the new-slug one has
+  the better transcript; the old slug has the inbound-link history),
+  consolidate via the same reslug/`_SLUG_REDIRECTS` + deploy pattern
+  as the 2026-08-28 frozen-slug batch (precedent one entry down and in
+  `BACKLOG_DONE.md`), and check `/internal/admin/delete-pages`
+  (dry-run first) for whichever row is retired. Worth also asking *how*
+  a second row came to exist — the ingest was expected to match the
+  existing page by normalized source URL, and didn't; if slug-affecting
+  jurisdiction fixes change what a fresh resolve keys to, other
+  re-resolved pages could quietly duplicate the same way.
 
 - **`[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
   — jurisdiction root cause fixed and merged; only the reslug call
@@ -682,14 +677,20 @@ convenient.
       real stutter/roll-call fixtures confirming no false positives; all
       four CI gates pass. Same "tool only, nothing run against
       production yet" state as step 1.
-  2. **Re-transcribe Kitchener only** (local script, forced English);
-     trim the other three. Not started — needs real Whisper compute
-     against real audio (typically 2-4 hours per meeting per this
-     entry's own cost note), which isn't something to run inline from an
-     interactive session; the existing `scripts/
-     transcribe_backlog_locally.py --promote` is the right tool, run by
-     Ryan on a local Mac the way every other local-Whisper backlog run
-     already happens.
+  2. **Re-transcribe Kitchener only** (local script, forced English) —
+     **Kitchener half done 2026-08-30**: run locally with the
+     `--language en` flag added for exactly this (PR #560; forcing was
+     impossible before — neither the script nor `FasterWhisperEngine`
+     accepted a language), model `small`, 6 minutes wall-clock (the
+     meeting is ~47 min, not the 2-4 hr typical). 504 real English
+     segments ingested and promoted (version 3551) — verified live:
+     coherent English end-to-end, zero Welsh script, zero
+     `Ff.`/`w`-run loops. **But the ingest landed on a page whose slug
+     is `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee`,
+     and the original `kitchener-2026-05-05-heritage-kitchener-
+     committee` page is a separate, still-live row** — see the new
+     duplicate-page entry under "Needs a human". **Trimming the other
+     three (Sacramento etc.) is still not started.**
   3. **Re-transcription on report** for anything the repair can't fix.
      Not started.
   4. **Extend the repair to the uncounted local-batch population by
@@ -727,6 +728,34 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
+  mystery recurred 2026-08-30** — during that day's four-service
+  redeploy, a service log showed the exact documented failure shape
+  (`BrowserType.launch: Executable doesn't exist at /opt/render/.cache/
+  ms-playwright/chromium_headless_shell-1234/...`), the same error
+  `app/platforms/headless_browser.py`'s own docstring records from
+  2026-08-09 with root cause explicitly unconfirmed. New data points:
+  (1) it happens even though the resolver's `buildCommand` runs
+  `playwright install chromium` — the missing piece is specifically the
+  `chromium_headless_shell` variant that playwright 1.62's headless
+  launches use, so the build step may be installing full chromium but
+  not the headless shell, or the build-time cache isn't the runtime
+  cache; (2) the pasted log had `/api/health` polls (both services
+  serve that route) and startup continuing normally afterwards, so
+  `_get_browser()`'s in-process self-heal (`playwright install
+  chromium`, once, then retry) likely absorbed it — at the cost of a
+  browser download on the first Cloudflare-gated resolve after every
+  deploy. **To settle it (needs the dashboard):** read the resolver's
+  actual build log for the `playwright install chromium` step's output
+  (does it list `chromium_headless_shell`?), then hit a known
+  headless-gated resolve (Minneapolis LIMS / Wayne County MI) and
+  confirm it works without a mid-request download. If the build step
+  genuinely skips the headless shell, the fix is likely
+  `playwright install chromium --with-shell` or pinning
+  `PLAYWRIGHT_BROWSERS_PATH` into the project dir — but confirm from
+  the build log first, per the docstring's own advice, rather than
+  guessing a fourth time.
 
 - **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
