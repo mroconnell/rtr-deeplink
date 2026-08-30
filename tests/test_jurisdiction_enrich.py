@@ -1710,6 +1710,21 @@ def test_strip_institutional_suffix_confirmed_real_vimeo_youtube_names():
     assert (
         je.strip_institutional_suffix("Mason County District Library") == "Mason County"
     )
+    # Community-media suffixes -- same real shape, different institution
+    # category (added alongside the two glued-abbreviation Vimeo accounts
+    # this same batch surfaced).
+    assert (
+        je.strip_institutional_suffix("Willits Community Television Inc") == "Willits"
+    )
+    assert je.strip_institutional_suffix("Morrilton Community Channel 6") == "Morrilton"
+    assert (
+        je.strip_institutional_suffix("Peters Township Community TV")
+        == "Peters Township"
+    )
+    assert (
+        je.strip_institutional_suffix("Town of Penfield Television")
+        == "Town of Penfield"
+    )
     # No suffix present -- unchanged.
     assert je.strip_institutional_suffix("City of Sebastopol") == "City of Sebastopol"
     # "Schools" alone must not strip "Public" out from under "Public

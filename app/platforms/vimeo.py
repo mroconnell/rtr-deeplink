@@ -189,6 +189,30 @@ _NO_CAPTIONS_WARNING = (
     "CC button inside the player above will still turn them on."
 )
 
+# Per-account jurisdiction map for account names that are glued
+# abbreviations validated_label_extract() has no generic way to expand --
+# same pattern as telvue.py's _KNOWN_ORG_TOKEN_JURISDICTIONS, built one
+# confirmed entry at a time, never guessed speculatively. Both entries
+# below are corroborated by this project's own real investigation of the
+# same 2026-08-29 direct-dorking batch (BACKLOG_DONE.md's "22 new real
+# ingests" already names both cities), not a fresh guess:
+#
+# "UMTownship" -- the account's video content is "Board of Supervisors
+# Meeting Live August 13, 2026"; Upper Merion Township, PA (a real PA
+# township, governed by a Board of Supervisors) is one of the batch's
+# named cities. "UM" as "Upper Merion" isn't derivable by any generic
+# split/validate logic (it's an abbreviation, not a glued compound word).
+_KNOWN_ACCOUNT_JURISDICTIONS = {
+    "UMTownship": "Upper Merion Township, PA",
+    # "SHCTV15" -- the account's video content is "Selectboard:
+    # 08/11/2026" (New England town governance), and this session's own
+    # separate "shselectboard" channel handle for the same real meeting
+    # matches "South Hadley Select Board." South Hadley, MA is one of
+    # the batch's named cities; "SHCTV" (South Hadley Community TV) is
+    # a real local-access channel name, not derivable generically.
+    "SHCTV15": "South Hadley, MA",
+}
+
 
 def is_vimeo_host(netloc: str) -> bool:
     netloc = netloc.lower().split(":")[0]
@@ -412,12 +436,18 @@ class VimeoAssetFinder(AssetFinder):
         declines rather than guessing -- so a genuinely unrecoverable
         Vimeo account name (no place name anywhere in it, e.g. "District
         113 Media") still carries no jurisdiction at all. That's the
-        honest outcome, not a bug: see BACKLOG.md.
+        honest outcome, not a bug: see BACKLOG.md. A separate, narrower
+        fallback (`_KNOWN_ACCOUNT_JURISDICTIONS`) covers the one real
+        remaining category this can't reach at all: a glued abbreviation
+        ("UMTownship") with no generic split/validate path to its real
+        name.
         """
-        author = ((oembed or {}).get("author_name") or "").strip()
-        if not author:
+        raw_author = ((oembed or {}).get("author_name") or "").strip()
+        if not raw_author:
             return None
-        author = jurisdiction_enrich.strip_institutional_suffix(author)
+        if raw_author in _KNOWN_ACCOUNT_JURISDICTIONS:
+            return _KNOWN_ACCOUNT_JURISDICTIONS[raw_author]
+        author = jurisdiction_enrich.strip_institutional_suffix(raw_author)
         label = jurisdiction_enrich.validated_label_extract(author)
         if not label:
             return None

@@ -423,3 +423,48 @@ def test_jurisdiction_still_declines_a_name_with_no_real_place_in_it():
     # name for validated_label_extract() to find either way -- must stay
     # None rather than guess "District 113".
     assert VimeoAssetFinder._jurisdiction({"author_name": "District 113 Media"}) is None
+
+
+def test_jurisdiction_strips_community_media_suffixes():
+    # More real account names from the same 2026-08-29 batch
+    # (BACKLOG_DONE.md) -- community-media suffixes, not K-12/library
+    # ones, but the identical shape: a real place name plus a trailing
+    # organizational phrase validated_label_extract() correctly declines
+    # to guess as one glued unit.
+    assert (
+        VimeoAssetFinder._jurisdiction(
+            {"author_name": "Willits Community Television Inc"}
+        )
+        == "Willits, CA"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Morrilton Community Channel 6"})
+        == "Morrilton, AR"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Peters Township Community TV"})
+        == "Peters Township"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "Town of Penfield Television"})
+        == "Town of Penfield"
+    )
+
+
+def test_jurisdiction_known_account_map_covers_glued_abbreviations():
+    # "UMTownship" and "SHCTV15" are real 2026-08-29 batch accounts whose
+    # names are glued abbreviations (Upper Merion Township PA, South
+    # Hadley MA) with no generic split/validate path to the real name --
+    # corroborated by this project's own BACKLOG_DONE.md writeup of the
+    # same batch, which already names both cities, plus each account's
+    # own video content ("Board of Supervisors Meeting" for a PA
+    # township; "Selectboard" for a New England town) and, for South
+    # Hadley, a second real channel handle on the same meeting
+    # ("shselectboard").
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "UMTownship"})
+        == "Upper Merion Township, PA"
+    )
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "SHCTV15"}) == "South Hadley, MA"
+    )
