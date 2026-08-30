@@ -21,7 +21,15 @@ from starlette.staticfiles import StaticFiles
 
 
 class RevalidatingStaticFiles(StaticFiles):
-    async def file_response(self, *args, **kwargs) -> Response:
-        response = await super().file_response(*args, **kwargs)
+    # Overrides get_response (async in every modern Starlette), NOT
+    # file_response: in the pinned starlette==1.6.0 file_response is a
+    # *sync* method, and the original async-override-with-await of it
+    # raised TypeError on every request -- a 500 on every static asset
+    # on both services, live from the first deploy that carried WO-66
+    # (2026-08-30) until this fix. No behavioral difference otherwise:
+    # 404/304 responses get the header too, which is harmless-to-correct
+    # (a 304 with no-cache still means "revalidate next time").
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
         response.headers["Cache-Control"] = "no-cache"
         return response
