@@ -695,6 +695,172 @@ async def test_resolve_publicsite_show_not_found_on_either_scheme():
     assert result.jurisdiction == "Urbana, IL"
 
 
+# --------------------------------------------------------------------
+# CCX Media -- reflect-ccx.cablecast.tv is one Cablecast host shared by 9
+# real, distinct Minnesota cities (Brooklyn Center, Brooklyn Park,
+# Crystal, Golden Valley, Maple Grove, New Hope, Osseo, Plymouth,
+# Robbinsdale), keyed apart only by a `site=` query param. Real bug fixed
+# 2026-08-30: none of `_extract_jurisdiction()`'s existing tiers could
+# tell the 9 apart -- every one resolved jurisdiction=None. Real, current
+# CCX links use the "/CablecastPublicSite/show/{id}?site=X" URL shape
+# (confirmed live -- Google indexes these directly), which this host
+# 301s to its Remix template server-side but which itself routes through
+# `_resolve_publicsite()`'s JSON-API branch, not the Remix/HTML branch --
+# both branches needed the fix, so both are covered here. Fixtures below
+# are the real, unmodified `cablecastapi/v1/shows|vods` JSON responses
+# fetched live 2026-08-30 for two of the 9 cities.
+# --------------------------------------------------------------------
+
+CCX_MAPLEGROVE_SHOW_URL = (
+    "https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986?site=16"
+)
+CCX_BROOKLYNPARK_SHOW_URL = (
+    "https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/35842?site=8"
+)
+
+
+async def test_resolve_real_ccx_maple_grove_show_resolves_jurisdiction_via_site_param():
+    show_json = load_fixture("cablecast", "ccx_maplegrove_publicsite_show_36986.json")
+    vod_json = load_fixture("cablecast", "ccx_maplegrove_publicsite_vod_11039.json")
+    routes = {
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows/36986": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/vods/11039": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(CCX_MAPLEGROVE_SHOW_URL)
+
+    assert result.platform == "cablecast"
+    assert result.title == "Maple Grove Report 3/4/2025"
+    assert result.date == "2025-03-04"
+    # The real fix: this used to be None -- pageDescription is generic
+    # CCX Media+ app-download text (identical across all 9 cities) and
+    # the bare site title ("Maple Grove") has no "City of" prefix for
+    # the regex, so only the confirmed site=16 -> Maple Grove mapping
+    # gets this right.
+    assert result.jurisdiction == "Maple Grove, MN"
+    assert result.video_url == (
+        "https://reflect-ccx.cablecast.tv/store-17/"
+        "36986-Maple-Grove-Report-3-4-25-v1/vod.mp4"
+    )
+    assert result.video_warnings == []
+
+
+async def test_resolve_real_ccx_brooklyn_park_show_resolves_jurisdiction_via_site_param():
+    show_json = load_fixture("cablecast", "ccx_brooklynpark_publicsite_show_35842.json")
+    vod_json = load_fixture("cablecast", "ccx_brooklynpark_publicsite_vod_10386.json")
+    routes = {
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/shows/35842": FakeResponse(
+            status=200, text=show_json
+        ),
+        "https://reflect-ccx.cablecast.tv/cablecastapi/v1/vods/10386": FakeResponse(
+            status=200, text=vod_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(CCX_BROOKLYNPARK_SHOW_URL)
+
+    assert result.platform == "cablecast"
+    assert result.title == "Northwest Development-BP 11-11-24 to 12-2-24"
+    # Different siteId (8), different real city -- confirms the mapping
+    # isn't just hardcoded to one CCX city.
+    assert result.jurisdiction == "Brooklyn Park, MN"
+    assert result.video_url == (
+        "https://reflect-ccx.cablecast.tv/store-17/"
+        "35842-Northwest-Development-BP-11-11-24-to-12-2-24-v1/vod.mp4"
+    )
+
+
+def test_ccx_media_jurisdiction_covers_all_9_real_confirmed_cities():
+    # Synthetic (no live fixture per city -- see this repo's convention
+    # for a narrower edge case on an already fixture-verified adapter):
+    # the shape here (host + a numeric `site=` query param) is real and
+    # fixture-confirmed by the two live tests above; the remaining 7
+    # (siteId, city) pairs are the real values read directly off CCX
+    # Media's own real, live site catalog (confirmed 2026-08-30, embedded
+    # identically on every real CCX show page checked -- see
+    # cablecast.py's `_CCX_MEDIA_SITES` module comment), just not each
+    # independently fixture-verified end to end through a full resolve().
+    expected = {
+        7: "Brooklyn Center, MN",
+        8: "Brooklyn Park, MN",
+        10: "Crystal, MN",
+        15: "Golden Valley, MN",
+        16: "Maple Grove, MN",
+        17: "New Hope, MN",
+        18: "Osseo, MN",
+        19: "Plymouth, MN",
+        20: "Robbinsdale, MN",
+    }
+    for site_id, jurisdiction in expected.items():
+        url = f"https://reflect-ccx.cablecast.tv/internetchannel/show/1?site={site_id}"
+        assert CablecastAssetFinder._ccx_media_jurisdiction(url) == jurisdiction
+
+
+def test_ccx_media_jurisdiction_declines_an_unmapped_site_id():
+    url = "https://reflect-ccx.cablecast.tv/internetchannel/show/1?site=999"
+    assert CablecastAssetFinder._ccx_media_jurisdiction(url) is None
+
+
+def test_ccx_media_jurisdiction_declines_a_different_cablecast_host():
+    # Same site=8 value, but not the CCX Media host -- must not leak into
+    # an unrelated Cablecast customer's own resolve.
+    url = "https://charlotte.cablecast.tv/internetchannel/show/1?site=8"
+    assert CablecastAssetFinder._ccx_media_jurisdiction(url) is None
+
+
+# --------------------------------------------------------------------
+# yourtown.cablecast.tv -- Cablecast's own vendor demo/sales tenant, not
+# a real government. Real bug found 2026-08-30: its real catalog is
+# deliberately built to look like ordinary local-government content
+# (confirmed real show titles: "Pasadena City Council Meeting 3-31-23",
+# "YourTown School Board Meeting with Agenda") and its own
+# pageDescription plainly says so ("...send an email to
+# sales@cablecast.tv"), but nothing in the page's structure otherwise
+# distinguished it from a genuine tenant -- risking bulk-ingest as if it
+# were a real Pasadena, CA meeting.
+# --------------------------------------------------------------------
+
+
+async def test_resolve_rejects_the_vendor_demo_tenant_outright():
+    # No route registered at all -- mock_session raises AssertionError on
+    # any unmocked request, so this also proves the guard fires before
+    # any network fetch, not just that the final result looks rejected.
+    url = "https://yourtown.cablecast.tv/internetchannel/show/32?site=1"
+
+    with mock_session({}):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.platform == "cablecast"
+    assert result.video_url is None
+    assert result.title is None
+    assert result.jurisdiction is None
+    assert result.video_warnings == [
+        "yourtown.cablecast.tv is Cablecast's own vendor demo/sales tenant, "
+        "not a real government -- not resolved as a real meeting."
+    ]
+
+
+async def test_resolve_rejects_the_vendor_demo_tenant_via_publicsite_url_shape_too():
+    # The guard is a hostname check at the very top of resolve(), before
+    # either URL-shape branch -- confirm the CablecastPublicSite-shaped
+    # URL is caught the same way as the plain internetchannel one above.
+    url = "https://yourtown.cablecast.tv/CablecastPublicSite/show/32?site=1"
+
+    with mock_session({}):
+        result = await CablecastAssetFinder().resolve(url)
+
+    assert result.video_warnings == [
+        "yourtown.cablecast.tv is Cablecast's own vendor demo/sales tenant, "
+        "not a real government -- not resolved as a real meeting."
+    ]
+
+
 async def test_resolve_publicsite_show_with_no_vods_reports_no_video():
     show_json = json.dumps(
         {
