@@ -34,6 +34,50 @@ logger = logging.getLogger("rtr_deeplink.civicweb")
 # empty on the one real meeting checked -- not built here, per this repo's
 # "don't claim a data path works without a positive example" convention;
 # see BACKLOG.md.
+#
+# A second, genuinely different real CivicWeb URL shape -- confirmed live
+# 2026-08-30, found via a Wayback Machine CDX search (Common Crawl doesn't
+# index civicweb.net past robots.txt/homepage -- confirmed empirically,
+# not assumed) for the "iCompass"-branded splitscreen video widget's own
+# `media=true` query flag: a direct `{tenant}.civicweb.net/document/{id}/`
+# link (also reachable via a `/filepro/document/{id}/{title}.html` alias
+# on some tenants -- confirmed byte-identical content on achdidaho, so
+# this adapter only needs to handle the shorter canonical form). Unlike
+# the `Portal/MeetingInformation.aspx?Id=` shape above, the real meeting
+# id here is NOT in the URL at all -- it's the page's own inline JS config
+# (`"meetingId":{N}`), a different numeric value from the document id in
+# the URL path (confirmed live: achdidaho document 36574 -> meetingId
+# 702). That meetingId is the same identifier space `/api/videolink/`
+# already keys on above (confirmed live: dallascounty meetingId 1957
+# resolves the identical real "Commissioners Court - Oct 01 2024" meeting
+# both via `Portal/MeetingInformation.aspx?Id=1957` and via a `/document/`
+# page whose own config names meetingId 1957) -- just reached from a
+# different real link shape CivicWeb's own UI generates. 108 distinct
+# real government tenants confirmed carrying this exact `media=true` URL
+# shape in the Wayback CDX index (a lower bound -- only what's been
+# archived); 3 independently verified live end-to-end (Ada County
+# Highway District ID, Des Moines WA, Dallas County TX) -- each a real,
+# playable YouTube video confirmed via YouTube's own oEmbed endpoint,
+# title matching exactly.
+#
+# Uses a real, richer, unauthenticated sibling API for this shape --
+# `/api/geteventwithindexpoints/{meetingId}` -- confirmed to return
+# everything `/api/videolink/` does (same `YouTube`/event-id fields,
+# nested one level deeper under `Event`) PLUS real, populated
+# `LocalIndexPoints` (confirmed live on both Des Moines and Dallas
+# County's real meetings -- genuine per-agenda-item video timestamps,
+# `{RelatedItem, ItemId, Value (seconds)}`) where `/api/videolink/`'s own
+# `LocalIndexPoints` field came back empty on the one meeting originally
+# checked (see this file's own comment above) -- not just a different
+# meeting, the richer field is real and reachable, this app just wasn't
+# calling the endpoint that populates it. **Not built here**: turning
+# `LocalIndexPoints` into `agenda_items` -- each entry only carries
+# opaque numeric `ItemId`s, and no confirmed real mapping from an `ItemId`
+# to its human-readable agenda-item text has been found yet (checked the
+# document page's own raw HTML for one; not there). Real, scoped
+# follow-up once that mapping is found; see BACKLOG.md.
+_DOCUMENT_PATH_ID_RE = re.compile(r"/document/(\d+)")
+_CONFIG_MEETING_ID_RE = re.compile(r'"meetingId":(\d+)')
 # Case-insensitive as of 2026-08-27: confirmed live that "Diligent
 # Community" (community.diligentoneplatform.com), a real, currently-live
 # second domain for the exact same underlying software -- same
@@ -52,8 +96,10 @@ _TITLE_JURISDICTION_RE = re.compile(
 
 class CivicWebAssetFinder(AssetFinder):
     """iCompass/CivicWeb (Diligent) -- doesn't host video, delegates to
-    YouTube via a real, unauthenticated JSON API. See module docstring
-    above.
+    YouTube via a real, unauthenticated JSON API. Two real URL shapes:
+    `Portal/MeetingInformation.aspx?Id={id}` (`resolve()`'s main path) and
+    a direct `/document/{id}/` splitscreen-widget link
+    (`_resolve_document_shape()`) -- see module docstring above for both.
     """
 
     platform_name = "civicweb"
@@ -61,6 +107,12 @@ class CivicWebAssetFinder(AssetFinder):
     async def resolve(self, url: str) -> ResolvedMeeting:
         meeting_id = self._extract_meeting_id(url)
         if not meeting_id:
+            # A `/document/{id}/` (or `/filepro/document/{id}/...`) link --
+            # see module docstring for the real second URL shape this
+            # covers -- has no `Id=` query param at all, only checked once
+            # the primary shape's own extraction has already declined.
+            if _DOCUMENT_PATH_ID_RE.search(urlparse(url).path):
+                return await self._resolve_document_shape(url)
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
@@ -175,6 +227,73 @@ class CivicWebAssetFinder(AssetFinder):
             resolved.jurisdiction = jurisdiction_enrich.known_jurisdiction_display(
                 urlparse(url).netloc
             )
+        return resolved
+
+    @classmethod
+    async def _resolve_document_shape(cls, url: str) -> ResolvedMeeting:
+        """A `/document/{id}/` (or `/filepro/document/{id}/...`) link --
+        see module docstring for the real second URL shape, evidence, and
+        the richer `/api/geteventwithindexpoints/` API this uses. The
+        numeric id in the URL is a *document* id, not the meeting id the
+        API needs -- that only exists in this page's own inline config,
+        so (unlike the `Id=` shape above) the page has to be fetched
+        before any API call can be made at all.
+        """
+        parsed = urlparse(url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+
+        async with aiohttp.ClientSession() as session:
+            html = await cls._fetch_text(session, url)
+            config_match = _CONFIG_MEETING_ID_RE.search(html) if html else None
+            if not config_match:
+                return ResolvedMeeting(
+                    platform=cls.platform_name,
+                    source_url=url,
+                    video_warnings=[
+                        "Could not find a meeting id in this CivicWeb URL."
+                    ],
+                )
+            meeting_id = config_match.group(1)
+            event_payload = await cls._fetch_json(
+                session, f"{origin}/api/geteventwithindexpoints/{meeting_id}"
+            )
+            meeting_data = await cls._fetch_json(
+                session,
+                f"{origin}/Services/MeetingsService.svc/meetings/{meeting_id}/meetingData",
+            )
+
+        entry = event_payload[0] if event_payload else None
+        event = (entry.get("Event") or {}) if entry else {}
+        video_id = event.get("eventId") if entry and entry.get("YouTube") else None
+        title = event.get("eventTitle") or (
+            meeting_data.get("Name") if meeting_data else None
+        )
+        date = None
+        if entry and entry.get("MeetingDate"):
+            date = entry["MeetingDate"][:10]  # "2026-08-04T00:00:00" -> "2026-08-04"
+        # This page's own HTML carries no jurisdiction-bearing text at all
+        # (confirmed live on all 3 verified tenants -- no title, no
+        # og:site_name, no visible chrome, just the split-screen widget
+        # frame) -- only a confirmed known-domain gets one here, same
+        # honest-decline posture as the Id= shape's own fallback above.
+        jurisdiction = jurisdiction_enrich.known_jurisdiction_display(parsed.netloc)
+
+        if not video_id:
+            return ResolvedMeeting(
+                platform=cls.platform_name,
+                source_url=url,
+                title=title,
+                date=date,
+                jurisdiction=jurisdiction,
+                video_warnings=["No video found for this meeting."],
+            )
+
+        resolved = await YouTubeAssetFinder.resolve_video_id(video_id, source_url=url)
+        if title:
+            resolved.title = title
+        if date:
+            resolved.date = date
+        resolved.jurisdiction = jurisdiction
         return resolved
 
     @staticmethod

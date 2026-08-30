@@ -99,7 +99,7 @@ Platform & jurisdiction coverage  (40)
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
-  `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
+  CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
@@ -1293,84 +1293,21 @@ actionability sections above.
   server appears to be down, not a bug in this repo — worth a quick
   re-check before assuming it is still down if this URL comes up again.
 
-### `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded meeting-table URL shape our adapter doesn't parse
+### CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed 2026-08-30, see `BACKLOG_DONE.md`
 
-**Real, confirmed-live, one tenant so far.** Flagged by the user via a
-real page (`sonomacity.org/agendas-minutes-videos/`) that visibly carries
-a "© iCompass - A Diligent Brand 2026" footer on one of its two meeting
-tables, distinct from the CivicWeb "Portal" links elsewhere on the same
-page. Traced the real underlying links in that iCompass-branded table
-before assuming this was a new, unenumerated platform (per this file's
-own "verify before recording" convention) — **it isn't one**. Every link
-in it (`Video`/`HTML`/`PDF` columns) resolves to
-`sonomacity.civicweb.net/filepro/document/{id}/{title}.html?
-splitscreen=true&widget=true&media=true` — the same `civicweb.net`
-domain as the tenant's other, already-working `Portal/
-MeetingInformation.aspx` links. "iCompass" is most likely a legacy/
-acquired product name CivicWeb (or its parent, Diligent — which also
-owns BoardDocs) ships as an alternate embeddable widget skin over the
-same backend, not a separate vendor.
-
-**The real, actionable part**: `detect_platform()` correctly routes
-this URL to `civicweb` (matches on the `civicweb.net` netloc), but
-`CivicWebAssetFinder`'s own meeting-id extraction only recognizes the
-`Portal/MeetingInformation.aspx` shape — tested live against the exact
-URL above and it fails cleanly with "Could not find a meeting id in this
-CivicWeb URL," zero video, zero title, zero jurisdiction. So any
-jurisdiction that embeds this iCompass-branded widget instead of (or
-alongside) the Portal one is currently unreachable through this
-platform's existing adapter, even though the video is right there.
-
-**Not yet built, on purpose** — only one real tenant confirmed
-(Sonoma, CA). Per this file's own house rule, adapter work on a new URL
-shape needs several independent real examples first, not one. Next step:
-find 2-3 more CivicWeb tenants whose page embeds the iCompass-branded
-table (search the exact footer phrase, or check whether other already-
-known CivicWeb tenants also carry both widgets) before writing a second
-meeting-id-extraction path into `civicweb.py`.
-
-**Update 2026-08-27 — a related but distinct gap found by the same
-footer-phrase search was fixed same-day; this one (the `filepro` widget
-shape) is still open.** Pushing the same "iCompass" search further
-surfaced a second, genuinely different real domain — "Diligent
-Community" (`community.diligentoneplatform.com`), confirmed live to be
-the same underlying software as `civicweb.net` (byte-identical
-`Portal/MeetingInformation.aspx` path and `Services/MeetingsService.svc`
-API) but broken by a lowercase `id=` query param and a real video source
-(`MeetingExternalMinutesLinkUrl`) the adapter never checked. Both fixed
-in `rtr-deeplink` PR #449, see `BACKLOG_DONE.md`. That fix does **not**
-touch the `filepro` shape this entry describes — different URL path,
-different real gap, still unfixed. Full writeup of both findings from
-the same investigation: `ENUMERATION_METHODS.md` §15 in
-`rtr-business/research`.
-
-**Update 2026-08-29 — a real second tenant confirmed (Bowen Island, BC),
-still no positive video example.** A targeted web search for the exact
-`splitscreen=true`/`widget=true` query shape (not just the footer
-phrase) surfaced `bowenisland.civicweb.net/filepro/document/{id}/
-{title}.html?splitscreen=true&notes=true&widget=true` — same underlying
-`filepro/document` template confirmed structurally (not guessed): the
-page embeds a real inline JSON config with `"Video":true,"youTube":true,
-...,"media":<bool>` fields, and the query string itself carries a
-`media=true` flag exactly when the link is the Video-column one (the
-fetched Bowen Island example was an Agenda-column link — `notes=true`,
-no `media=true` — and its own `"media":false` in the config agrees).
-That's a real, useful structural confirmation this is a genuine
-multi-tenant widget, not Sonoma-specific, and the `media=true` query
-param looks like a reliable "this is the video link" signal on its own.
-**Still not built, and a live browse turned up nothing further**:
-checked several real `civicweb.net`/"Document Center" tenants directly
-(browser, not just search) — Victoria, MN (a same-name collision with
-the Granicus "Victoria, MN" case elsewhere in this file, real but no
-Video button on its most recent Regular Council Meeting) and Sarnia, ON
-(also no Video button on its most recent meeting) — neither had a
-`media=true`/video-attached document among the meetings actually
-checked. Per this file's own "don't claim a data path works without a
-positive example" convention, the actual playable-video extraction
-(what field/embed the page uses when `media:true`) is still unconfirmed.
-Worth trying a tenant more likely to record video (a larger city, or one
-already known from another platform to livestream) rather than guessing
-further at random ones.
+Real second URL shape now handled by `civicweb.py` — a direct
+`{tenant}.civicweb.net/document/{id}/` link (also reachable via a
+`/filepro/document/{id}/{title}.html` alias) resolves real YouTube video
+via a second, richer unauthenticated API
+(`/api/geteventwithindexpoints/{meetingId}`). Found via a Wayback
+Machine CDX search for the `media=true` query flag (Common Crawl doesn't
+index civicweb.net past robots.txt/homepage — confirmed empirically);
+108 distinct real tenants confirmed carrying this shape, 3 verified
+live end-to-end. **Residual, not built**: turning the same API's real
+`LocalIndexPoints` field into per-agenda-item deep-link timestamps — the
+data is real and populated (confirmed on 2 of the 3 verified tenants),
+but each entry only carries an opaque numeric `ItemId` with no confirmed
+mapping to its human-readable agenda-item text yet.
 
 ### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 

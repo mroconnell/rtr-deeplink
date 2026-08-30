@@ -326,4 +326,164 @@ async def test_meeting_data_external_video_link_to_an_unsupported_platform_degra
         result = await CivicWebAssetFinder().resolve(DILIGENT_COMMUNITY_MEETING_URL)
 
     assert result.video_url is None
+
+
+# The second real URL shape (see civicweb.py's own module docstring for
+# the full evidence trail -- found 2026-08-30 via a Wayback Machine CDX
+# search, 108 real tenants confirmed, 3 verified end-to-end live). Real
+# (trimmed) values below are from Ada County Highway District, ID
+# (achdidaho.civicweb.net), fetched live 2026-08-30 -- the page's own
+# inline config, and the real geteventwithindexpoints/meetingData API
+# responses for meetingId 702.
+DOCUMENT_URL = (
+    "https://achdidaho.civicweb.net/document/36574/?splitscreen=true&media=true"
+)
+DOCUMENT_HTML = (
+    '<html><body><script>doc.init({"id":36574,"meetingId":702,'
+    '"title":"Capital Investment Citizen Advisory Committee (CICAC) - '
+    '21 Aug 2023 - Agenda - Html","media":true});</script></body></html>'
+)
+EVENT_URL = "https://achdidaho.civicweb.net/api/geteventwithindexpoints/702"
+DOCUMENT_MEETING_DATA_URL = "https://achdidaho.civicweb.net/Services/MeetingsService.svc/meetings/702/meetingData"
+REAL_DOCUMENT_VIDEO_ID = "hWX_rHEeWeI"
+# Real double-JSON-encoded shape (same WCF/.svc-family quirk as
+# /api/videolink/, see _fetch_json's own docstring) -- confirmed live.
+EVENT_JSON = (
+    '"[{\\"Event\\":{\\"eventTitle\\":\\"Capital Investment Citizen Advisory '
+    'Committee (CICAC) - 21 Aug 2023\\",\\"eventId\\":\\"'
+    f"{REAL_DOCUMENT_VIDEO_ID}"
+    '\\"},\\"LocalIndexPoints\\":[],\\"MeetingDate\\":\\"2023-08-21T00:00:00\\",'
+    '\\"TodayLiveStream\\":false,\\"ShowVideoLink\\":true,\\"ShowTimeStamps\\":false,'
+    '\\"StartAtFirstTimestamp\\":false,\\"Historic\\":false,\\"YouTube\\":true,'
+    '\\"IndexPoints\\":\\"\\"}]"'
+)
+DOCUMENT_MEETING_DATA_JSON = (
+    '{"Id":702,"Name":"Capital Investment Citizen Advisory Committee (CICAC)",'
+    '"Time":"12:00 PM","TypeId":10}'
+)
+
+
+def _fake_extract_info_document(video_id):
+    return {
+        "title": "Capital Investment Citizen Advisory Committee (CICAC) - 21 Aug 2023",
+        "uploader": "ACHD IDAHO",
+        "upload_date": "20230822",
+    }
+
+
+async def test_resolve_document_shape_delegates_to_youtube(monkeypatch):
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_extract_info", _fake_extract_info_document
+    )
+    routes = {
+        DOCUMENT_URL: FakeResponse(status=200, text=DOCUMENT_HTML, url=DOCUMENT_URL),
+        EVENT_URL: FakeResponse(status=200, text=EVENT_JSON, url=EVENT_URL),
+        DOCUMENT_MEETING_DATA_URL: FakeResponse(
+            status=200, text=DOCUMENT_MEETING_DATA_JSON, url=DOCUMENT_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DOCUMENT_URL)
+
+    assert result.platform == "youtube"
+    assert result.source_url == DOCUMENT_URL  # not the delegated platform's own URL
+    assert result.video_url == f"https://www.youtube.com/embed/{REAL_DOCUMENT_VIDEO_ID}"
+    assert (
+        result.title
+        == "Capital Investment Citizen Advisory Committee (CICAC) - 21 Aug 2023"
+    )
+    assert result.date == "2023-08-21"
+    # Unlike the Id= shape, this page carries no jurisdiction-bearing text
+    # at all (confirmed live) -- achdidaho isn't a confirmed domain, so
+    # this must decline rather than fall through to YouTube's own
+    # uploader ("ACHD IDAHO" -- real, but not what this field means).
+    assert result.jurisdiction is None
+
+
+async def test_resolve_document_shape_reports_no_meeting_id_when_config_is_absent():
+    html_without_config = "<html><body>No config here.</body></html>"
+    routes = {
+        DOCUMENT_URL: FakeResponse(
+            status=200, text=html_without_config, url=DOCUMENT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DOCUMENT_URL)
+
+    assert result.video_url is None
+    assert result.video_warnings == [
+        "Could not find a meeting id in this CivicWeb URL."
+    ]
+
+
+async def test_resolve_document_shape_reports_no_video_but_keeps_real_title_and_date():
+    # media:false on the real page config is the honest, common case (see
+    # civicweb.py's own module docstring) -- geteventwithindexpoints still
+    # gets called (the config doesn't distinguish media:true/false before
+    # the API call), and a genuinely video-less meeting must still surface
+    # its own real title/date rather than coming back completely bare.
+    no_video_json = (
+        '"[{\\"YouTube\\":false,\\"MeetingDate\\":\\"2023-08-21T00:00:00\\"}]"'
+    )
+    routes = {
+        DOCUMENT_URL: FakeResponse(status=200, text=DOCUMENT_HTML, url=DOCUMENT_URL),
+        EVENT_URL: FakeResponse(status=200, text=no_video_json, url=EVENT_URL),
+        DOCUMENT_MEETING_DATA_URL: FakeResponse(
+            status=200, text=DOCUMENT_MEETING_DATA_JSON, url=DOCUMENT_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DOCUMENT_URL)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
+    assert result.title == "Capital Investment Citizen Advisory Committee (CICAC)"
+    assert result.date == "2023-08-21"
+
+
+async def test_resolve_document_shape_degrades_honestly_when_event_fetch_fails(
+    caplog,
+):
+    routes = {
+        DOCUMENT_URL: FakeResponse(status=200, text=DOCUMENT_HTML, url=DOCUMENT_URL),
+        EVENT_URL: FakeResponse(status=404, url=EVENT_URL),
+        DOCUMENT_MEETING_DATA_URL: FakeResponse(
+            status=200, text=DOCUMENT_MEETING_DATA_JSON, url=DOCUMENT_MEETING_DATA_URL
+        ),
+    }
+
+    with caplog.at_level("WARNING"):
+        with mock_session(routes):
+            result = await CivicWebAssetFinder().resolve(DOCUMENT_URL)
+
+    assert result.video_url is None
+    assert any("JSON fetch got HTTP 404" in r.message for r in caplog.records)
+
+
+async def test_resolve_falls_through_to_document_shape_only_when_id_param_is_absent():
+    # A /document/{id}/ URL that somehow ALSO carries a real Id= query
+    # param must keep using the primary, already-proven path -- the
+    # document-shape fallback is only ever reached when _extract_meeting_id
+    # finds nothing, never as a second guess layered on top.
+    hybrid_url = (
+        "https://achdidaho.civicweb.net/document/36574/?Id=702&splitscreen=true"
+    )
+    routes = {
+        hybrid_url: FakeResponse(status=200, text=MEETING_HTML, url=hybrid_url),
+        "https://achdidaho.civicweb.net/api/videolink/702": FakeResponse(
+            status=200, text='"[]"'
+        ),
+        "https://achdidaho.civicweb.net/Services/MeetingsService.svc/meetings/702/meetingData": FakeResponse(
+            status=200, text='{"Id":702,"Name":"x","Time":"","TypeId":10}'
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(hybrid_url)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
     assert result.video_warnings == ["No video found for this meeting."]
