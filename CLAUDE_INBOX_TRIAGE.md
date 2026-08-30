@@ -252,3 +252,143 @@ re-verification each finding got before being promoted, closed as stale,
 or (in one case, the `test-redtaperecordings` Render alert) finally
 written up as its own `BACKLOG.md` entry after nine days of every run
 deferring it as "not obviously nothing either."
+
+## 2026-08-30
+
+Reviewed 14 new messages under `label:rtr-claude newer_than:30d` (22
+candidates, 8 already ledgered from the 2026-08-29 run). Skipped as
+purely informational: two more transcription-worker daily reports and a
+"YouTube transcripts: 3 added" digest (19 failures, all already-documented
+`TranscriptsDisabled`/`VideoUnplayable`/`VideoUnavailable` cases); a
+Dependabot push notification for PR #376 (routine dependency bump, not an
+alert); Sentry's "free 14-day Business trial has ended" notice (usage is
+9,486/1,000,000 events on the resulting free plan — 1% — so no actual
+monitoring loss, nothing to act on). Skipped as duplicates of
+already-tracked patterns: another "Server failure detected on
+`test-redtaperecordings`" (2026-08-29 18:27 UTC, "Exited with status 3"
+again — same 9th+/10th+ occurrence noted since 2026-08-19, still no new
+signal); "Server failure detected on `rtr-deeplink-archive`" (2026-08-29
+20:20 UTC, "HTTP health check failed, timed out after 5 seconds") — same
+already-open `BACKLOG.md` `[NEEDS-AUDIT]` entry on the Archive's O(n)
+health-check query; the daily YouTube transcript fetch's `IpBlocked`
+error (2026-08-29 16:03 UTC) — same already-closed, confirmed
+expected/self-clearing behavior from `BACKLOG_DONE.md`'s 2026-08-20
+entry; and "Transcription job 1226 failed" (College Station TX,
+CivicClerk, `collegestationtx.portal.civicclerk.com/event/3580/media`,
+11/17 chunks, `errno 1094995529` on chunk 11 three times) — same
+`slice_cached_audio()` missing-decodability-guard root cause as
+yesterday's still-unpromoted finding #1 in this file, just on a
+**non-Granicus source** (CivicClerk); worth noting when that finding is
+promoted that the gap isn't Granicus-specific, but not a separate entry.
+Also skipped, after investigation rather than on sight: Sentry
+**PYTHON-FASTAPI-14** (`TypeError: 'coroutine' object is not callable`
+flagged inside `archive/main.py`'s `handle_head_requests`, two events
+2026-08-30 16:46/16:52 UTC, both on `/static/style.css`). This looked
+like a new finding worth writing up —
+until checking it against a fresh `git fetch origin main` mid-run turned
+up that it already has a full write-up as **[Done 2026-08-30]** in
+`BACKLOG_DONE.md` ("Site-wide static-asset 500s ... WO-66's
+`RevalidatingStaticFiles` awaited Starlette's sync `file_response`"),
+found and fixed same-day (PR #561, merged ~17:06 UTC — about 15 minutes
+after this Routine's own alert emails). The two Sentry events this
+Routine saw are real, live evidence of that exact incident window, not a
+separate problem; no action needed since it's already closed. Worth
+recording as a reminder of why this file's own "verify before writing"
+convention matters even inside a single run.
+
+**One genuinely new pattern, first occurrence, flagged as an open
+question rather than a finding**: "Server failure detected on
+`rtr-deeplink`" (the production resolver itself, not Archive or test —
+2026-08-30 16:54 UTC, "Exited with status 134" = SIGABRT). No prior
+occurrence of this service+status combination found in
+`BACKLOG.md`/`BACKLOG_DONE.md`/this file (the existing Render-crash
+patterns are all `rtr-deeplink-archive` health-check timeouts or
+`test-redtaperecordings` status 3). Render's own dashboard/logs are
+auth-walled and unreachable from this Routine, so root cause is
+**Unconfirmed** — a SIGABRT is consistent with a fatal C-extension abort
+(uvloop, a native dependency) but that's a guess, not a diagnosis. Single
+occurrence, self-recovered per Render's own alert text. Open question for
+Ryan: worth a look at the Render logs around 16:54 UTC if it recurs.
+
+**Two new findings, both Confirmed via code/logs (no `BACKLOG.md`/
+`CLAUDE_BACKLOG.md` duplicate found for either):**
+
+**1. The newly-added Phoenix Legistar canary sample was already a
+known-dead URL — the "Adapter health canary" GitHub Actions failure on
+`main` (run
+[33267651969](https://github.com/mroconnell/rtr-deeplink/actions/runs/33267651969),
+2026-08-29 18:14 UTC) has never actually tested what it was meant to.**
+`scripts/adapter_canary.py`'s second Legistar `CANARY_URLS` entry,
+`https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, was added
+in commit `e245a9c` on 2026-08-29 — but `BACKLOG_DONE.md` already
+documented, as of a 2026-08-11 survey, that this exact meeting ID's page
+"now 410 Gones entirely" (Phoenix's Legistar video links are absent
+site-wide; the real recordings live on Phoenix's own YouTube channel
+instead, which is what the WO-30 YouTube-channel fallback this URL
+presumably meant to exercise is for). The canary's first-ever run against
+it failed immediately: `FAIL legistar[1]: ClientResponseError: 410,
+message='Gone', url='https://phoenix.legistar.com/MeetingDetail.aspx?
+ID=1425831'` (confirmed via the run's own job logs; the rest of the
+suite was healthy, 28/29 platforms OK). Traced in current code why a 410
+never reaches the fallback: `legistar.py`'s `LegistarAssetFinder._fetch()`
+(line ~438) calls `response.raise_for_status()` unconditionally with no
+exception handling, so a page that's entirely gone (as opposed to one
+that loads fine but lacks a `videolink` anchor, which the existing
+fallback chain — `_try_fallback_video_link()` /
+`_try_known_channel_video()` / `_try_granicus_view_publisher_video()` —
+already handles gracefully) raises before any fallback logic runs.
+**Impact**: not production-facing — every real call site wraps
+`finder.resolve()` in a generic `except Exception` (confirmed in
+`app/main.py`), so a real visitor hitting a 410'd Legistar page gets a
+`{"error": "resolve_failed", "message": "410, message='Gone', url=..."}`-
+shaped response, not a crash — just an unpolished raw exception string
+instead of a friendly "this meeting listing is no longer available"
+message. The real cost is the canary itself: it will keep emailing a
+"failed" GitHub Actions notification on every scheduled run (daily, 15:00
+UTC) until fixed, and in the meantime a genuine adapter regression
+elsewhere in the 29-platform sweep could get lost in the noise of an
+already-red build. **Fix, sized small**: swap the canary's Phoenix sample
+for a currently-live Phoenix Legistar meeting ID (per this repo's own
+"never build/verify from an assumption" convention, needs a real fresh
+URL, not a guessed one) — or reconsider whether a live HTTP hit is the
+right way to canary-test this fallback at all, given Phoenix's Legistar
+pages apparently retire quickly; `tests/test_legistar.py`'s fixture-based
+coverage of the same fallback chain may already cover the intent without
+depending on a URL staying alive. Optional secondary polish: catch a
+404/410 in `_fetch()` and return a `ResolvedMeeting` with a friendly
+`video_warnings` message the same way "no video link found" already does,
+rather than surfacing raw aiohttp exception text to a real requester.
+
+**2. Transcription job 1238 (East Lansing MI, Granicus) hit a new,
+previously-undocumented ffmpeg failure signature: "Failed to configure
+output pad on auto_aresample_0" / "Error reinitializing filters!" (exit
+234).** Confirmed via the job's own stored error message plus
+`app/platforms/media_probe.py`'s `_extract_chunk_once()` (the `-ac 1
+-ar 16000 -c:a libmp3lame` command whose implicit resample/downmix is
+what triggers ffmpeg's auto-inserted `auto_aresample_0` filter).
+`eastlansing.granicus.com/player/clip/1211?view_id=2`, chunk 1 of 27,
+failed identically three times over ~25 seconds (05:56:39 → 05:57:04
+UTC) — including after the WO-45 output-side-seek retry should have run
+on the second attempt (a non-zero-exit input-side failure sets
+`worth_seek_retry=True`), yet all three failures show the exact same
+filter-graph error, unlike WO-45's targeted bad-seek case (an empty/
+undecodable file that a different `-ss` placement actually fixes). No
+prior occurrence of this exact ffmpeg signature ("auto_aresample_0" /
+"Error reinitializing filters") found in `BACKLOG.md`/`BACKLOG_DONE.md`,
+so this looks like a genuinely new failure mode, not a recurrence.
+**Impact**: the job gave up at chunk 1/27, so this meeting has zero
+transcript; scope beyond this one job is unmeasured (would need a DB
+query grouping failures by this error string, not available from this
+Routine). **Unconfirmed** root cause — the most plausible explanation
+(not verified against the live source) is a mid-stream audio-parameter
+change in this specific Granicus recording confusing ffmpeg's
+auto-negotiated resample filter graph right at the chunk-1 boundary, but
+this wasn't reproduced. **Open question for a follow-up session**: worth
+running `ffmpeg` directly against the real source at the chunk-1 offset
+to see if this reproduces, and whether explicitly forcing `-af
+aresample=async=1` (already known from the Napa VOD investigation to be
+a safe no-op for a different, cosmetic ffmpeg dts warning) happens to
+route around this filter-config failure too.
+
+Ledger: 14 new message IDs recorded (128 → 142 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).
