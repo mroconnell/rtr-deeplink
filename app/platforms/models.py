@@ -46,6 +46,21 @@ class ResolvedMeeting(BaseModel):
     # jurisdiction-string-split fallback finalize_jurisdiction()
     # produces; None leaves that fallback in charge.
     meeting_body: Optional[str] = None
+    # A real, usable street address for where the meeting physically took
+    # place, when the platform exposes one AND it actually looks
+    # address-shaped -- Legistar's MeetingDetail.aspx "Meeting location"
+    # field is the first adapter source (2026-08-30). That field is NOT
+    # always an address (confirmed live across four real Legistar
+    # customers: Mesa AZ and Naperville carry a meeting-type/room
+    # descriptor instead, Chapel Hill has no field at all, only Santa
+    # Clara carries a real street address) -- see
+    # legistar.py's `_looks_like_street_address()` for the heuristic that
+    # decides which is which. None whenever no adapter found one, or the
+    # field it found didn't look like a real address. Archive's ingest
+    # model silently drops unknown fields (see `video_link`'s own comment
+    # below), so no Archive schema change is needed for this field to
+    # exist here.
+    meeting_location: Optional[str] = None
     video_url: Optional[str] = (
         None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     )

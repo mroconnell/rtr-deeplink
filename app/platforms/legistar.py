@@ -37,6 +37,26 @@ _PAGE_TITLE_RE = re.compile(
 )
 _RAW_FILENAME_RE = re.compile(r"\.(mp4|mov|wmv|avi|mkv|m4v)$", re.IGNORECASE)
 
+# Address-shape heuristic for MeetingDetail.aspx's "Meeting location" field
+# -- see _looks_like_street_address()'s own docstring for the real, live
+# evidence (four real customers, four different shapes) behind why this
+# needs to be a heuristic rather than a blanket surface/skip.
+_STREET_SUFFIX_WORDS = (
+    r"St|Ave|Blvd|Rd|Way|Dr|Ln|Ct|Pl|Pkwy|Hwy|Cir|Ter|Sq|Trail|Trl|"
+    r"Street|Avenue|Boulevard|Road|Drive|Lane|Court|Place|Parkway|Highway|"
+    r"Circle|Terrace|Square"
+)
+_STREET_ADDRESS_RE = re.compile(
+    rf"\d+\s+\S.*?\b(?:{_STREET_SUFFIX_WORDS})\b\.?", re.IGNORECASE
+)
+# "CA 95050" shaped -- a two-letter state abbreviation immediately followed
+# by a 5 (or 5+4) digit zip, confirmed live on the same real Santa Clara
+# location text the street-suffix pattern above also matches ("Santa
+# Clara, CA 95050"). Kept as a second, independent signal rather than
+# relying on the street-suffix match alone, since not every real address
+# shape necessarily spells out a street suffix word.
+_STATE_ZIP_RE = re.compile(r"\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b")
+
 
 class LegistarAssetFinder(AssetFinder):
     """Resolves a Legistar URL by finding and delegating to the real video
@@ -167,6 +187,9 @@ class LegistarAssetFinder(AssetFinder):
                     resolved.meeting_body = resolved.meeting_body or page_info.get(
                         "body"
                     )
+                    resolved.meeting_location = (
+                        resolved.meeting_location or page_info.get("location")
+                    )
                 return resolved
 
             return ResolvedMeeting(
@@ -270,6 +293,9 @@ class LegistarAssetFinder(AssetFinder):
                 resolved.date = resolved.date or page_info["date"]
             resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
             resolved.meeting_body = resolved.meeting_body or page_info.get("body")
+            resolved.meeting_location = resolved.meeting_location or page_info.get(
+                "location"
+            )
         return resolved
 
     @staticmethod
@@ -335,6 +361,7 @@ class LegistarAssetFinder(AssetFinder):
         resolved.date = page_info["date"]
         resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
         resolved.meeting_body = page_info.get("body")
+        resolved.meeting_location = page_info.get("location")
 
         # Provenance, said plainly and up front. Deliberately NOT
         # `best_effort=True`: that flag means "this government website
@@ -412,6 +439,7 @@ class LegistarAssetFinder(AssetFinder):
         resolved.date = page_info["date"]
         resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
         resolved.meeting_body = page_info.get("body")
+        resolved.meeting_location = page_info.get("location")
         resolved.video_warnings.insert(
             0,
             "This meeting page has no video on it. We matched this recording from "
@@ -527,12 +555,25 @@ class LegistarAssetFinder(AssetFinder):
         # meeting_body directly, rather than only using it as a title
         # fallback the way this dict's "title" key already did.
         body = match.group(2).strip()
+        raw_location = LegistarAssetFinder._extract_meeting_location_text(soup)
         return {
             "title": body,
             "body": body,
             "jurisdiction": jurisdiction,
             "date": f"{year}-{month:02d}-{day:02d}",
             "agenda_link": LegistarAssetFinder._extract_agenda_link(soup, page_url),
+            # Only surfaced when the text itself looks like a real street
+            # address -- see _looks_like_street_address()'s docstring.
+            # `raw_location` is still real, confirmed text on the other
+            # three real shapes (a meeting-type/room descriptor, or the
+            # field absent), it's just deliberately not surfaced as a
+            # location under this key when it isn't one.
+            "location": (
+                raw_location
+                if raw_location
+                and LegistarAssetFinder._looks_like_street_address(raw_location)
+                else None
+            ),
         }
 
     @staticmethod
@@ -554,6 +595,68 @@ class LegistarAssetFinder(AssetFinder):
         if not link or not link.get("href"):
             return None
         return urljoin(page_url, link["href"])
+
+    @staticmethod
+    def _extract_meeting_location_text(soup: BeautifulSoup) -> Optional[str]:
+        """Raw text of MeetingDetail.aspx's own "Meeting location" field --
+        `<span id="ctl00_ContentPlaceHolder1_lblLocation">`, next to its
+        "Meeting location:" label span (`..._lblLocationX`, deliberately
+        NOT matched by the suffix check below since it ends in an extra
+        "X"). Matched by ID suffix, same reasoning as
+        `_extract_agenda_link()` above.
+
+        Confirmed live 2026-08-30 across four real Legistar customers to
+        carry four different real shapes -- the original build (2026-08-12,
+        Mesa AZ only) wrongly assumed this field was always a non-address
+        descriptor and never scraped it at all:
+          - Mesa, AZ: a meeting-type descriptor rendered across a `<br>`
+            plus an `<em>` ("Study Session" / "Special Council Meeting"),
+            not an address.
+          - Naperville: a bare room name ("Council Chambers"), same
+            descriptor shape as Mesa.
+          - Santa Clara: a real, usable street address, but embedded in a
+            multi-line block that also carries a "Hybrid Meeting" /
+            room-name line ahead of it (confirmed real text: "Hybrid
+            Meeting\\nCity Hall Council Chambers/Virtual \\n1500 Warburton
+            Avenue\\nSanta Clara, CA 95050") -- the *field's own single
+            text node* contains real newlines here, not separate tags.
+          - Chapel Hill: the field absent entirely (no `lblLocation` span
+            anywhere on the page) -- a real, non-error state, not checked
+            further.
+
+        This method only extracts and line-joins whatever text is there
+        (`get_text("\\n")`, not a bare `get_text()` -- needed for Mesa's
+        `<br>`-separated shape, since bs4 renders a `<br>` as nothing
+        without an explicit separator, which would otherwise glue "Study
+        Session" and "Special Council Meeting" into one word). Callers
+        decide whether the result looks address-shaped via
+        `_looks_like_street_address()` before surfacing it as a location.
+        """
+        span = soup.find("span", id=lambda x: x and x.endswith("lblLocation"))
+        if not span:
+            return None
+        lines = [line.strip() for line in span.get_text("\n").split("\n")]
+        text = ", ".join(line for line in lines if line)
+        return text or None
+
+    @staticmethod
+    def _looks_like_street_address(text: Optional[str]) -> bool:
+        """True when `text` looks like a real, usable street address
+        rather than a meeting-type/room descriptor -- the distinction
+        MeetingDetail.aspx's own "Meeting location" field doesn't make for
+        us (see `_extract_meeting_location_text()`'s docstring for the
+        four real shapes this was built against). Two independent
+        signals, either one sufficient: a number followed eventually by a
+        street-suffix word (matches Santa Clara's real "1500 Warburton
+        Avenue"), or a two-letter state abbreviation immediately followed
+        by a zip code (matches that same text's real "Santa Clara, CA
+        95050"). Neither pattern matches Mesa's "Study Session, Special
+        Council Meeting" or Naperville's "Council Chambers" -- confirmed
+        live against both real texts, not assumed.
+        """
+        if not text:
+            return False
+        return bool(_STREET_ADDRESS_RE.search(text)) or bool(_STATE_ZIP_RE.search(text))
 
     @staticmethod
     def _looks_like_raw_filename(title: Optional[str]) -> bool:
