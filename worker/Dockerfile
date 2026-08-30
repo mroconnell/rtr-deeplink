@@ -36,4 +36,15 @@ COPY app app
 COPY archive archive
 COPY worker worker
 
+# yt-dlp and faster-whisper are deliberately unpinned (WO-11) so the
+# workers track upstream -- yt-dlp in particular only works because it's
+# continuously maintained against YouTube's blocking. But the pip layer
+# above is keyed on requirements.txt's *contents*, so Render's layer
+# cache reuses it for as long as that file goes untouched, silently
+# freezing both packages at whatever was current at its last edit. This
+# layer sits below the code COPYs on purpose: any code-triggered rebuild
+# invalidates it, so freshness tracks merge cadence with no manual bump.
+# Do not "fix" staleness by pinning these two -- that reverses WO-11.
+RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper
+
 CMD ["python", "-m", "worker.main"]

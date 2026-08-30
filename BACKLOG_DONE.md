@@ -1,5 +1,39 @@
 # Backlog — done
 
+## Worker Docker layer cache no longer freezes the deliberately-unpinned `yt-dlp`/`faster-whisper` [Done 2026-08-30]
+
+Closes BACKLOG.md's "Docker layer caching silently freezes the workers'
+*deliberately unpinned* `yt-dlp` and `faster-whisper`" entry (found
+2026-08-22 while measuring build volume).
+
+**The confirmation check ran 2026-08-30 and came back clean — but
+confounded, which is why the entry's own "if the versions match, delete
+this entry" instruction was NOT followed.** Ryan ran `pip show` in a
+live `rtr-transcription-worker` Render shell: yt-dlp **2026.8.19** and
+faster-whisper **1.2.1**, both exactly matching PyPI's current releases
+that day. However, `worker/requirements.txt` last changed 2026-08-24
+(commit `209bba2`, the markupsafe hotfix) — *after* yt-dlp 2026.8.19
+shipped (Aug 19) — so pip had genuinely re-run more recently than the
+newest release, and a match was guaranteed regardless of whether the
+cache freezes anything. The check couldn't distinguish "caching is
+harmless" from "caching hasn't had time to bite since the last
+requirements edit." The freeze mechanism itself is straightforwardly
+real (Render caches intermediate layers by default per its own Docker
+docs; the install layer is keyed on the requirements file's contents),
+so the entry's premise stood even though no live staleness existed.
+
+**Fix shipped instead of re-checking later**: `worker/Dockerfile` gains
+a final `RUN pip install --no-cache-dir --upgrade yt-dlp faster-whisper`
+placed *below* the `COPY app/archive/worker` layers, so any
+code-triggered rebuild invalidates it and freshness automatically
+tracks merge cadence — no manual cache-bust ARG to remember, no
+pinning (which would reverse WO-11's deliberate unpinning decision).
+Build-time cost is roughly 30–60s per worker build ×2 worker services,
+accepted knowingly against the pipeline-minutes budget; the expensive
+layers above (ffmpeg apt install, the full requirements install) stay
+cached exactly as before. Takes effect on each worker's next manual
+deploy — merging alone changes nothing (`autoDeploy: false`).
+
 ## `lacity.primegov.com`'s coin-flip jurisdiction gap fixed via a domain override, not another text-extraction guess [Done 2026-08-30]
 
 Closes the real, open half of BACKLOG.md's PrimeGov jurisdiction entry
