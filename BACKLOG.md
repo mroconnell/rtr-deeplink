@@ -2887,6 +2887,21 @@ real work on shipped code rather than a plan.
   the existing last-resort fallback list is a separate, real cost (see
   the curated-map's own docstring for why it's a hand-verified map, not
   a search).
+
+  **Addendum, 2026-08-30 — a sized-out design for the broader "expand
+  the corpus" question exists, see `CORPUS_EXPANSION_PLAN.md`.**
+  Planned, not built. Covers discovering *additional* meetings from
+  tenants already in the Archive (not new-tenant discovery, which is
+  what the crawler above is about) — real sizing pulled live from
+  production: only 4 mechanisms (Granicus RSS, CivicClerk Events API,
+  PrimeGov `ListArchivedMeetings`, YouTube channel listings) can list a
+  tenant's meetings beyond one known URL today, covering ~1,030 of
+  ~2,358 tenants (~44%). Duration filtering was ruled out entirely
+  (transcription here is on-demand, not a batch queue, so it was never
+  a real cost lever); agenda-vs-transcript topic splitting was
+  deliberately left to the eventual `rtr-upcoming` app, which will
+  discover agendas before video exists and filter on topic at that
+  cheaper stage.
 - **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
   once instead of one at a time.** Removes the main friction point for a
   journalist working many jurisdictions at once. Worth sequencing after
