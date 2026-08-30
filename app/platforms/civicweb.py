@@ -1,13 +1,14 @@
+import html as html_module
 import json
 import logging
 import re
-from typing import Optional
+from typing import Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
 from .base import AssetFinder, UnsupportedPlatformError, resolve_via_platform
-from .models import ResolvedMeeting
+from .models import ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
@@ -70,14 +71,47 @@ logger = logging.getLogger("rtr_deeplink.civicweb")
 # `LocalIndexPoints` field came back empty on the one meeting originally
 # checked (see this file's own comment above) -- not just a different
 # meeting, the richer field is real and reachable, this app just wasn't
-# calling the endpoint that populates it. **Not built here**: turning
-# `LocalIndexPoints` into `agenda_items` -- each entry only carries
-# opaque numeric `ItemId`s, and no confirmed real mapping from an `ItemId`
-# to its human-readable agenda-item text has been found yet (checked the
-# document page's own raw HTML for one; not there). Real, scoped
-# follow-up once that mapping is found; see BACKLOG.md.
+# calling the endpoint that populates it.
+#
+# `LocalIndexPoints` -> `agenda_items`, built 2026-08-30: the real
+# mapping is `RelatedItem` (NOT `ItemId`, which turned out to be a
+# secondary/duplicate reference -- confirmed by cross-checking every
+# `RelatedItem` value against the document's own real anchor ids and
+# finding a clean 1:1 match, while several `ItemId` values didn't
+# correspond to any real anchor at all) against the document's own real
+# HTML body -- confirmed the SAME `{numeric id}` used in `RelatedItem`
+# is the literal suffix of an `<a name="AgendaHeadingN">` or
+# `<a name="AgendaItemN">` anchor already embedded in
+# `{origin}/document/{docId}/?record=false` (the plain agenda content,
+# separate from the splitscreen wrapper page). Only `RelationshipTypeId
+# == 6` entries match an anchor directly -- the `== 7` entries (also
+# real, also present) point at a different, not-yet-understood
+# relationship and were excluded rather than guessed at, since every
+# `RelationshipTypeId == 6` entry checked (33 across the two verified
+# tenants below) matched a real anchor exactly, and no `== 7` entry ever
+# did.
+#
+# The anchor's own title text needs its own real, tenant-varying
+# extraction: confirmed live on two independently-templated tenants --
+# Des Moines puts the real heading text directly in the first non-empty
+# `<span>` after the anchor ("CALL TO ORDER"), but a bare "Item N."
+# label sits in that same first-span position for some (not all) of its
+# own items, requiring a skip-and-continue; Dallas County's template
+# puts an outline marker ("G.", "(5)") in that first span instead, with
+# the real title one `<span>` further in ("INVOCATION"). Both skipped by
+# `_AGENDA_LABEL_RE` so the walk continues to the real text -- confirmed
+# correct on every one of 20 Dallas County items and 14 Des Moines items
+# checked, not a guess extrapolated from one shape.
 _DOCUMENT_PATH_ID_RE = re.compile(r"/document/(\d+)")
 _CONFIG_MEETING_ID_RE = re.compile(r'"meetingId":(\d+)')
+_AGENDA_ANCHOR_RE = re.compile(
+    r'<a[^>]*name="(?:AgendaHeading|AgendaItem)(\d+)"[^>]*></a>'
+)
+_AGENDA_SPAN_RE = re.compile(r"<span[^>]*>([^<]*)</span>")
+# A bare outline marker ("Item 3.", "G.", "(5)") -- real, confirmed-live
+# filler text CivicWeb's own template puts ahead of the real title on
+# some (not all) items; see module docstring.
+_AGENDA_LABEL_RE = re.compile(r"^(?:Item\s+\d+\.?|[A-Za-z]\.|\(\d+\))$", re.IGNORECASE)
 # Case-insensitive as of 2026-08-27: confirmed live that "Diligent
 # Community" (community.diligentoneplatform.com), a real, currently-live
 # second domain for the exact same underlying software -- same
@@ -241,6 +275,7 @@ class CivicWebAssetFinder(AssetFinder):
         """
         parsed = urlparse(url)
         origin = f"{parsed.scheme}://{parsed.netloc}"
+        doc_id_match = _DOCUMENT_PATH_ID_RE.search(parsed.path)
 
         async with aiohttp.ClientSession() as session:
             html = await cls._fetch_text(session, url)
@@ -262,9 +297,22 @@ class CivicWebAssetFinder(AssetFinder):
                 f"{origin}/Services/MeetingsService.svc/meetings/{meeting_id}/meetingData",
             )
 
-        entry = event_payload[0] if event_payload else None
-        event = (entry.get("Event") or {}) if entry else {}
-        video_id = event.get("eventId") if entry and entry.get("YouTube") else None
+            entry = event_payload[0] if event_payload else None
+            event = (entry.get("Event") or {}) if entry else {}
+            video_id = event.get("eventId") if entry and entry.get("YouTube") else None
+            local_index_points = (entry.get("LocalIndexPoints") or []) if entry else []
+            agenda_items: List[TranscriptSegment] = []
+            # Only worth the extra fetch when there's both a video to seek
+            # within and real per-item timestamps to place on it.
+            if video_id and local_index_points and doc_id_match:
+                body_html = await cls._fetch_text(
+                    session, f"{origin}/document/{doc_id_match.group(1)}/?record=false"
+                )
+                if body_html:
+                    agenda_items = cls._build_agenda_items(
+                        body_html, local_index_points
+                    )
+
         title = event.get("eventTitle") or (
             meeting_data.get("Name") if meeting_data else None
         )
@@ -294,7 +342,50 @@ class CivicWebAssetFinder(AssetFinder):
         if date:
             resolved.date = date
         resolved.jurisdiction = jurisdiction
+        resolved.agenda_items = agenda_items
         return resolved
+
+    @staticmethod
+    def _build_agenda_items(
+        body_html: str, local_index_points: List[dict]
+    ) -> List[TranscriptSegment]:
+        """Turns this meeting's real `LocalIndexPoints` into deep-link
+        bookmarks -- see module docstring for the real mapping (matched
+        by `RelatedItem` against the document's own real anchor ids,
+        `RelationshipTypeId == 6` only) and the title-extraction shape
+        confirmed across two independently-templated real tenants.
+        """
+        anchor_titles: Dict[int, str] = {}
+        for anchor_match in _AGENDA_ANCHOR_RE.finditer(body_html):
+            anchor_id = int(anchor_match.group(1))
+            if anchor_id in anchor_titles:
+                continue
+            window = body_html[anchor_match.end() : anchor_match.end() + 2000]
+            for span_match in _AGENDA_SPAN_RE.finditer(window):
+                text = html_module.unescape(span_match.group(1))
+                text = text.replace("\xa0", " ").strip()
+                if text and not _AGENDA_LABEL_RE.match(text):
+                    anchor_titles[anchor_id] = text
+                    break
+
+        raw: List[tuple] = []
+        for point in local_index_points:
+            if not isinstance(point, dict) or point.get("RelationshipTypeId") != 6:
+                continue
+            related_item = point.get("RelatedItem")
+            value = point.get("Value")
+            title = anchor_titles.get(related_item)
+            if title and isinstance(value, (int, float)):
+                raw.append((float(value), title))
+        raw.sort(key=lambda pair: pair[0])
+
+        items: List[TranscriptSegment] = []
+        for i, (seconds, text) in enumerate(raw):
+            end = raw[i + 1][0] if i + 1 < len(raw) else seconds
+            items.append(
+                TranscriptSegment(start=seconds, end=max(end, seconds), text=text)
+            )
+        return items
 
     @staticmethod
     def _extract_meeting_id(url: str) -> Optional[str]:
