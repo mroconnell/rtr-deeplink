@@ -1,5 +1,94 @@
 # Backlog — done
 
+## Repetition-loop collapse tool built; drop-segments route generalized beyond seam-dup [Done 2026-08-30]
+
+Builds step 1b of BACKLOG.md's "[JUST-DO-IT] `[BIG]` Repair the three
+already-live transcript-defect populations" entry — the sibling of the
+2026-08-30 seam-duplication repair tool, for the 74-of-304 (24%)
+repetition-loop population WO-36 already measured.
+
+**Design decisions made and recorded** (previously the open question
+blocking this): keep a run's first cue as a representative marker, drop
+every other segment in the run, never shift any other segment's
+timestamps. The dropped span reverts to unlabeled silence, which WO-36's
+own investigation already established is almost always what it
+factually was (loops come from real silence, music, or a recess, not
+real speech) — shifting later timestamps to close the gap would touch
+far more of the transcript than the defect itself for no real reader
+benefit.
+
+**`scripts/repair_repetition_loops.py`**: reuses WO-36's own per-run
+rules completely unmodified (`_repetition_runs()`/
+`_run_span_and_coverage()`, `worker/segment_utils.py`) — no new
+detection logic, just applied to find every qualifying run in a
+transcript instead of stopping at the first (`_has_hallucinated_
+repetition_run()`'s own short-circuit, correct for a bool flag, wrong
+for an exhaustive repair list). Candidates come from the existing `GET
+/internal/transcription/hallucination-candidates` audit endpoint
+(paginated), filtered to `is_default` versions only — a non-default
+version isn't shown to any reader and isn't reachable by the repair
+write either.
+
+**The shared write route was renamed and generalized**: `POST
+/internal/transcript-version/repair-seam-duplication` →
+`/internal/transcript-version/drop-segments`
+(`crud.create_seam_repair_version()` → `create_segment_drop_version()`),
+once it became clear seam-dup and repetition-loop reduce to the
+identical operation — drop a caller-named set of segment indices from
+the current default version, promote the result, never touch any other
+field. Renamed before either tool's `--apply` had ever run against
+production, so no caller depended on the old name. `scripts/
+repair_seam_duplication.py` updated to the new route; its own test
+suite re-verified green after the rename.
+
+**Test coverage, real fixtures throughout**: `tests/
+test_repair_repetition_loops.py` runs detection against the exact real
+WO-36 fixtures already in `tests/fixtures/hallucination_runs/` — Haines
+City FL (the tiled-block rule) and Halifax NS (the long-sparse-run
+rule, the case `BACKLOG.md` once wrongly called a false positive, see
+that fixture's own regression test in `test_worker_segment_utils.py`),
+plus the real decoder-stutter and roll-call fixtures confirming no
+false positives on genuine repeated speech. A dedicated test confirms a
+real finding applies cleanly through the (now generic) `drop-segments`
+route and leaves every real surrounding sentence untouched.
+
+All four CI gates pass (`ruff check`, `ruff format --check`, `pytest`,
+`alembic check` — no schema change, the route reuses existing tables).
+
+**Not done**: nothing has been run against production. `--dry-run`
+still needs to run, the report needs review, and only then would
+`--apply` go out — same "tool only" state as the seam-dup script.
+
+## Glued eScribe-subdomain residuals: Beaumont AB pair applied, entry closed [Done 2026-08-30]
+
+Closes the last live piece of the WO-47 glued-label-repair residual
+entry. The Beaumont AB fix (`_KNOWN_DOMAINS` registration for
+`pub-beaumontab.escribemeetings.com`, 2026-08-29) was confirmed
+deployed by querying `GET /internal/jurisdiction/bleed-backfill-
+candidates` directly against production: both pages showed the correct
+repaired value (`repaired_confidence: "validated"`) before any write,
+which only happens once the new code is actually live, not just merged.
+
+Applied via `POST /internal/jurisdiction/backfill-apply?dry_run=false&
+only_ids=1053,1030` (dry-run first, confirmed the exact expected 2-row
+diff, then committed):
+- page 1053 (`beaumont-regular-council-meeting-agenda-tuesday-2024-04-23-regular-council-meeti`):
+  `"City of Beaumont"` → `"City of Beaumont, AB"`
+- page 1030 (`beaumont-regular-council-meeting-agenda-tuesday-2024-04-23-water-management-stra`):
+  `"Beaumont"` (confidence `"repaired"`) → `"Beaumont, AB"` (confidence
+  `"validated"`)
+
+Re-queried the candidates endpoint afterward: neither page still
+appears, confirming the write landed. A third `beaumont-tx-*` page
+(453, Beaumont, TX) was correctly never a candidate — unrelated city,
+current already matched repaired.
+
+`Townofws` (page 693) remains permanently unfixable — wordninja can't
+expand "ws" into anything, no recoverable signal exists. Every other
+row this entry ever named (Bonnyville, Grand Valley, Point Edward,
+Boulder County, Mackenzie) was already closed in WO-47's own applied
+batch — see that entry. Nothing left open in this population.
+
 ## WO-22 bare/state-suffixed jurisdiction duplicates: root cause fixed, production write run, 3-example residual closed [Done 2026-08-21, residual closed 2026-08-29, compacted 2026-08-30]
 
 Root cause fixed 2026-08-21, production write run the same day — 76 rows

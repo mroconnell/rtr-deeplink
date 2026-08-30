@@ -6666,34 +6666,40 @@ async def manually_promote_transcript_version(
         return {"slug": slug, "promoted_version_id": version_id}
 
 
-async def create_seam_repair_version(
+async def create_segment_drop_version(
     *, slug: str, expected_srt_hash: str, drop_segment_indices: list[int]
 ) -> Optional[dict]:
-    """Admin action backing `scripts/repair_seam_duplication.py --apply`:
+    """Generic admin action, deliberately not tied to one defect type:
     creates a new TranscriptVersion identical to the page's current
     default except with `drop_segment_indices` removed, and promotes it.
     Same "never destroys history" shape as `manually_promote_transcript_
     version()` above -- the old default stays reachable via `?version=`.
 
-    Why this exists (WO-22 residual, seam-duplication repair): the
-    duplicated segments a multi-chunk transcription's HLS seam produced
-    (see `worker/segment_utils.py`'s `count_seam_overlap_segments()` --
-    the prevention half of this fix, live since 2026-08-16) are already
-    *in* the stored segments for every page transcribed before that fix
-    shipped. Nothing in this codebase needs to re-run Whisper to fix
-    them -- the correct content is already there, just with a few extra
-    segments at each chunk seam restating what the previous chunk's tail
-    already said. This is a plain slice-and-drop, not a re-transcription.
+    Why this exists (WO-22 residual, "repair stored segments instead of
+    bulk re-transcribing", Ryan's 2026-08-22 decision -- see BACKLOG.md's
+    matching `[BIG]` entry): the codebase settled on retroactive-repair
+    scripts for defects where the correct content is already sitting in
+    the stored segments and only needs a clean removal, rather than
+    re-running Whisper to reproduce output that would be mostly
+    identical to what's already there. Two callers so far, both a plain
+    "drop N segments, keep the rest exactly as-is" operation with no
+    other field touched: `scripts/repair_seam_duplication.py` (a
+    multi-chunk transcription's HLS seam restating the previous chunk's
+    last sentence) and `scripts/repair_repetition_loops.py` (WO-36's
+    detector finding a hallucinated repeated-cue run, collapsed to its
+    first occurrence). A future defect of the same shape -- confirmed
+    duplicate/garbage content at known segment indices, nothing else
+    needing to change -- can reuse this directly instead of a new
+    endpoint.
 
     `expected_srt_hash` is optimistic concurrency, not a formality: the
     dry-run script that computes `drop_segment_indices` reads the page's
     transcript once (via its own public `/m/{slug}/transcript.srt`
-    export, see `scripts/repair_seam_duplication.py`) and the write can
-    land much later (a human reviews the report first) -- if anything
-    else repromoted a different version, retranscribed the page, or a
-    previous repair run already applied in the meantime, the indices
-    computed against the old content would silently corrupt whatever is
-    live now. Hashing `to_srt()`'s own output rather than
+    export) and the write can land much later (a human reviews the
+    report first) -- if anything else repromoted a different version,
+    retranscribed the page, or a previous repair run already applied in
+    the meantime, the indices computed against the old content would
+    silently corrupt whatever is live now. Hashing `to_srt()`'s own
     TranscriptVersion.content_hash is deliberate: content_hash is a hash
     of joined segment *text* only, computed from the original JSON, while
     the caller only ever sees this page's data as the literal bytes

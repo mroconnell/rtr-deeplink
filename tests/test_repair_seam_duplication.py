@@ -1,10 +1,13 @@
 """Tests for scripts/repair_seam_duplication.py's pure detection logic
-and for the admin action it drives, POST /internal/transcript-version/
-repair-seam-duplication (archive/main.py) ->
-crud.create_seam_repair_version() -- the retroactive repair for the
+and for the generic admin action it drives, POST /internal/transcript-
+version/drop-segments (archive/main.py) ->
+crud.create_segment_drop_version() -- the retroactive repair for the
 already-live seam-duplication defect (see that script's own module
 docstring, and BACKLOG.md's "[JUST-DO-IT] `[BIG]` Repair the three
-already-live transcript-defect populations" entry).
+already-live transcript-defect populations" entry). The same route also
+backs scripts/repair_repetition_loops.py -- see
+tests/test_repair_repetition_loops.py for that caller's own coverage;
+this file only tests the route itself plus this script's own detection.
 """
 
 import hashlib
@@ -201,7 +204,7 @@ def test_seam_scoping_never_reaches_back_across_an_earlier_seam():
             assert 0 not in finding["drop_segment_indices"]
 
 
-# --- POST /internal/transcript-version/repair-seam-duplication -----------
+# --- POST /internal/transcript-version/drop-segments -----------
 
 
 async def _ingest_meeting_with_segments(url_suffix: str, segments: list[dict]) -> str:
@@ -232,7 +235,7 @@ def _srt_hash(segments: list[dict]) -> str:
 
 def test_repair_endpoint_rejects_missing_token():
     response = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": "whatever",
             "expected_srt_hash": "x",
@@ -244,7 +247,7 @@ def test_repair_endpoint_rejects_missing_token():
 
 def test_repair_endpoint_404s_for_unknown_slug():
     response = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": "no-such-slug-at-all",
             "expected_srt_hash": "x",
@@ -262,7 +265,7 @@ async def test_repair_endpoint_drops_the_named_segments_and_promotes_a_new_versi
     original_default_id = next(v["id"] for v in page["versions"] if v["is_default"])
 
     response = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": slug,
             "expected_srt_hash": _srt_hash(segments),
@@ -293,7 +296,7 @@ async def test_repair_endpoint_refuses_a_stale_hash():
     original_default_id = next(v["id"] for v in page["versions"] if v["is_default"])
 
     response = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": slug,
             "expected_srt_hash": "0" * 64,  # deliberately wrong
@@ -315,7 +318,7 @@ async def test_repair_endpoint_refuses_to_empty_a_transcript():
     slug = await _ingest_meeting_with_segments("repair-empty", segments)
 
     response = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": slug,
             "expected_srt_hash": _srt_hash(segments),
@@ -335,7 +338,7 @@ async def test_repair_endpoint_reapplying_the_same_repair_reuses_the_existing_ve
     slug = await _ingest_meeting_with_segments("repair-idempotent", segments)
 
     first = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": slug,
             "expected_srt_hash": _srt_hash(segments),
@@ -349,7 +352,7 @@ async def test_repair_endpoint_reapplying_the_same_repair_reuses_the_existing_ve
     # Re-fetch the (now repaired) transcript's real hash, same as the
     # script's own --apply re-probe-before-writing step.
     second = client.post(
-        "/internal/transcript-version/repair-seam-duplication",
+        "/internal/transcript-version/drop-segments",
         json={
             "slug": slug,
             "expected_srt_hash": _srt_hash([_REAL_NEW_HEAD]),
