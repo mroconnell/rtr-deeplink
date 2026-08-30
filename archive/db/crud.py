@@ -8133,11 +8133,19 @@ async def delete_account_data(clerk_user_id: str) -> int:
 async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> dict:
     """Permanently removes one or more MeetingPage rows by slug, plus every
     row that references them (TranscriptionJob, TranscriptVersion,
-    MeetingPageUrlAlias, SavedItem) -- there's no DB-level ON DELETE CASCADE
-    on any of those foreign keys, so a plain `session.delete(page)` would
-    fail with a real FK violation, not silently cascade. TranscriptionJob is
-    deleted before TranscriptVersion since a job can reference a version via
-    `transcript_version_id`.
+    MeetingPageUrlAlias, SavedItem, MeetingPageThumbnail, SocialPost) --
+    there's no DB-level ON DELETE CASCADE on any of those foreign keys
+    (MeetingHighlight is the one exception, and needs no handling here), so
+    a plain `session.delete(page)` would fail with a real FK violation, not
+    silently cascade. TranscriptionJob is deleted before TranscriptVersion
+    since a job can reference a version via `transcript_version_id`.
+    MeetingPageThumbnail and SocialPost were missing from this list until
+    2026-08-30 -- found while merging 3 real http/https duplicate-page
+    pairs (see BACKLOG_DONE.md), when every one of them turned out to have
+    thumbnail rows and would have failed this call with an FK violation on
+    `meeting_page_thumbnails` (a single-transaction failure, so it would
+    have rolled back cleanly rather than partially deleting -- just never
+    actually removed anything).
 
     Built for one specific real cleanup (3 PrimeGov UAT/staging tenant
     pages accidentally real-ingested during a bulk gate-blindness recheck,
@@ -8225,6 +8233,32 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             )
             for item in saved:
                 await session.delete(item)
+
+            thumbnails = (
+                (
+                    await session.execute(
+                        select(MeetingPageThumbnail).where(
+                            MeetingPageThumbnail.meeting_page_id == page.id
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for thumbnail in thumbnails:
+                await session.delete(thumbnail)
+
+            social_posts = (
+                (
+                    await session.execute(
+                        select(SocialPost).where(SocialPost.meeting_page_id == page.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for social_post in social_posts:
+                await session.delete(social_post)
 
             await session.delete(page)
 
