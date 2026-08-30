@@ -2467,29 +2467,38 @@ top-up driver has been creating zero jobs" under **Transcription queue
 
 - **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
-  the 2026-08-21 fix. Investigated live 2026-08-29: three real, distinct
-  contributors found, one fixed same day, one scoped, one still open.**
-  Original root cause (2026-08-21): `meeting_page.html` used to render
-  every non-YouTube video as a bare `<video>` tag with no `src`/`<source>`
-  server-side. Fix shipped same day: a `<source>` for `.m3u8`, `src=`
-  directly for `.mp4`. **Someone did click VALIDATE FIX** (contrary to
-  this entry's earlier "Not Started" read) — Search Console shows
-  **Started: 8/22/26, Failed: 8/24/26**, Affected videos **1.76K**.
+  the 2026-08-21 fix. Investigated live 2026-08-29 against Google's own
+  documented requirements ([indexing status
+  reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
+  [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
+  four real, distinct contributors found, one fixed same day, one
+  scoped, two genuinely open.** Original root cause (2026-08-21):
+  `meeting_page.html` used to render every non-YouTube video as a bare
+  `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
+  day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. **Someone
+  did click VALIDATE FIX** (contrary to this entry's earlier "Not
+  Started" read) — Search Console shows **Started: 8/22/26, Failed:
+  8/24/26**, Affected videos **1.76K**.
 
   **Contributor 1 — meeting-page template fix: confirmed genuinely
   deployed and correct**, checked against a wide, user-supplied sample
   of real currently-failing URLs (2026-08-29), spanning Cablecast mp4,
   Granicus m3u8, champds, isilive, townhallstreams, Seattle Channel, and
-  CloudFront-tokenized. All rendered correctly. So the template fix
-  itself is not the open question. Two real, undistinguished hypotheses
-  remain for *why* validation still failed: (1) the fix wasn't live in
-  production yet when Google's 8/22-8/24 validation ran (deploys here
-  are manual, `autoDeploy: false`) — a **fresh** Validate Fix attempt
-  should now succeed if so; or (2) Google's video indexer may not be
-  able to index an HLS `.m3u8` manifest as watchable content at all,
-  regardless of correct markup — a real platform limitation, not a code
-  bug. A fresh Validate Fix click, read after Google finishes,
-  distinguishes them.
+  CloudFront-tokenized. All rendered correctly. Also checked directly
+  against Google's own watch-page checklist: **video position is
+  already good** (`<div id="videoColumn">` sits immediately after the
+  `<h1>`/meta block, before any transcript/agenda content — no "move it
+  higher" gap), and **thumbnails are correctly guarded and stable**
+  (`thumbnail_url` only emits when a real extracted frame exists, served
+  from a self-hosted, non-expiring `/m/{slug}/card.jpg`). **One
+  hypothesis from the first pass at this is now refuted, not just
+  unconfirmed**: Google's own supported-file-type list explicitly
+  includes M3U8, so "Google's indexer can't handle HLS manifests" is
+  wrong — drop that theory. What remains open is narrower: the fix
+  wasn't live in production yet when Google's 8/22-8/24 validation ran
+  (deploys here are manual, `autoDeploy: false`) — a **fresh** Validate
+  Fix attempt is the next real step, and should succeed for this
+  contributor if that's the whole story.
 
   **Contributor 2 — IQM2 hardcoded `video_format="m3u8"` regardless of
   the real file extension: confirmed and fixed 2026-08-29.** Not every
@@ -2506,8 +2515,41 @@ top-up driver has been creating zero jobs" under **Transcription queue
   deployed — see this file's "Deploys are manual" standing note.
 
   **Contributor 3 — `/j/*` (and `/state/*`) hub pages emit `VideoObject`
-  for content they don't host: real, scoped, not yet fixed** — see its
-  own entry immediately below.
+  for content they don't host: real, scoped, not yet fixed, and now
+  confirmed against Google's own documented negative example, not just
+  inferred.** Google's indexing-status reference literally names **"a
+  video category page that lists multiple videos of equal prominence"**
+  as an example of a page that is *not* a watch page — that is a
+  verbatim description of `/j/*` and `/state/*`'s moments-feed layout.
+  This is no longer "no upside to keeping VideoObject here," it's a
+  direct violation of a documented rule. See its own entry immediately
+  below for the fix.
+
+  **Contributor 4 — new, found by checking Google's "stable URL"
+  requirement directly: at least one unidentified vendor's `contentUrl`
+  is a signed, expiring CloudFront URL — genuinely unfixable without a
+  video proxy, not a quick template change.** Confirmed live on 2 real
+  pages (`compton-ca-2026-07-21-city-council-regular`,
+  `2026-08-11-council-meeting` — the latter is the same slug as the
+  still-open Modesto CA frozen-slug reslug entry above, worth
+  cross-checking once that's resolved): `contentUrl` is literally
+  `https://d2dix8ue17m7lv.cloudfront.net/mcvod/mediacache/amlst:.../
+  playlist.m3u8?token=...&mode=AWS` — a signed URL with an access token
+  baked directly into the stored, server-rendered JSON-LD. Per Google's
+  docs, an unstable/expiring media URL is why a video may never
+  successfully index, independent of format or markup correctness. No
+  dedicated adapter matches this URL shape (`grep` across
+  `app/platforms/*.py` found nothing) — it's coming through
+  `generic_fallback.py`'s best-effort regex scan of an unidentified
+  vendor's page (path segment `mcvod` — likely a real product name, not
+  yet identified), which has no way to know the URL it captured is
+  signed rather than permanent. **Real fix would mean proxying the video
+  bytes through our own stable URL** (a genuine engineering decision,
+  not a template tweak) or accepting the population as permanently
+  unindexable. Population size not yet swept — only 2 confirmed examples
+  found in the sample pasted today; worth a `grep`-style sweep of stored
+  `video_url` values for `?token=` before deciding whether this is worth
+  building.
 
   **What's no longer true**: the WO-37 card backfill's "No thumbnail URL
   provided — 1 video, flat" reassurance. That single item turned out to
@@ -2523,7 +2565,13 @@ top-up driver has been creating zero jobs" under **Transcription queue
   own `url` correctly points to the real meeting page, but the hub page
   itself renders **no `<video>` element at all**. Google reads a
   `VideoObject` on a page as a claim the video is watchable *there*, so
-  every hub/state page with a moments feed gets flagged.
+  every hub/state page with a moments feed gets flagged. **Confirmed
+  directly against Google's own docs, not just inferred**: its
+  [indexing-status
+  reference](https://support.google.com/webmasters/answer/9495631#indexing_status)
+  literally names *"a video category page that lists multiple videos of
+  equal prominence"* as an example of a page that is **not** a watch
+  page — a verbatim description of this layout.
   **Scoping agent confirmed the blast radius is bigger than originally
   suspected: three templates, not one** —
   `archive/templates/jurisdiction_page.html:22-50`,
