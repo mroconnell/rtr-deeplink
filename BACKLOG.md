@@ -1995,6 +1995,28 @@ from a live check), but the Legistar calendar itself is still untried.
      is canonical, so `_pick()` declines. Declining is the correct
      posture as built; a real disambiguation rule would recover a
      handful of meetings per city but needs more real examples first.
+     **Checked live 2026-08-30, specifically for more examples, before
+     attempting a third try at this general shape of problem** (two
+     prior PrimeGov position/style heuristics for an adjacent
+     jurisdiction-extraction bug were reverted for exactly this reason —
+     see this file's PrimeGov entry): pulled both real channel tabs
+     (`videos`/`streams`) for all four cities this fallback covers
+     (Phoenix, Baltimore, Albuquerque, Philadelphia) and checked for a
+     date appearing on **both tabs** — the literal Philadelphia
+     `/streams`-archive-vs-`/videos`-re-upload shape. **Zero cross-tab
+     date collisions found on any of the other three cities**; the
+     original Philadelphia case is still the only confirmed real
+     instance of this specific pattern. (A broader within-`videos`-tab
+     same-date scan mostly surfaces genuinely *different* meetings that
+     happen to share a date — e.g. two different committees both meeting
+     on 2026-04-27 — which `_candidates()`'s own body-token-containment
+     filter already keeps apart correctly; that's not this bug and isn't
+     evidence for or against it.) Still nothing to build — a rule from
+     n=1 would still be a guess — but the caution is now backed by an
+     actual search across the full deployed population, not just an
+     assumption, and the apparent rarity (1 confirmed instance across 4
+     cities, ~1,600 combined listing entries) is itself worth knowing
+     when weighing whether this is worth building at all.
   3. ~~No adapter-canary coverage for this path specifically~~ —
      **closed 2026-08-29** (PR #496, undocumented until now): `CANARY_URLS`
      (`scripts/adapter_canary.py`) now holds a list of URLs per platform
