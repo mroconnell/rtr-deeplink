@@ -547,6 +547,21 @@ class TelvueAssetFinder(AssetFinder):
         # three words already here.
         if last_word in {"select", "planning", "school", "regular"}:
             return None
+        # Real bug, confirmed live 2026-08-29 auditing archived pages
+        # missing a jurisdiction: two real, independent titles ("WB Board
+        # of Selectmen Mtg" for West Bridgewater, MA; "MCS Board Mtg." --
+        # an unconfirmed district) both matched this regex with an
+        # all-caps 2-3 letter initialism as `name`, which enrich_
+        # jurisdiction_text() then happily stored verbatim ("WB", "MCS")
+        # since it never validates the base name any more than it does
+        # for the "select"/"planning"/etc. stopwords above. No real US/CA
+        # jurisdiction is a bare 2-3 letter all-caps initialism, so this
+        # is a safe, general decline -- same "lose the recoverable case
+        # over risking a wrong one" reasoning as the stopword list, just
+        # keyed on shape (short + all-caps) rather than a specific word
+        # list, since an initialism could be anything.
+        if len(name) <= 3 and name.isupper():
+            return None
         return name
 
     @staticmethod
