@@ -761,12 +761,17 @@ coverage** instead.
   validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
   the 2026-08-21 fix. Human dashboard verification is done; what's left
   is a real code investigation, not a dashboard check — moved out of
-  Needs a human 2026-08-29.** Checked live against Google's own
-  documented requirements ([indexing status
+  Needs a human 2026-08-29. Real quantified breakdown of the failing
+  population landed 2026-08-30 (finding 7) — most of the count is now
+  explained, and the majority isn't fixable in this app's code.**
+  Checked live against Google's own documented requirements ([indexing
+  status
   reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
   [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
-  four real, distinct contributors found so far, one fixed same day, one
-  scoped, two genuinely open. Original root cause (2026-08-21):
+  seven real, distinct contributors found, two fixed and undeployed, one
+  scoped, one quantified-and-explained, three genuine third-party
+  infrastructure limits (two confirmed, one a lead). Original root
+  cause (2026-08-21):
   `meeting_page.html` used to render every non-YouTube video as a bare
   `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
   day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. Search
@@ -855,45 +860,127 @@ coverage** instead.
      not something to render/play inline." Google's video indexer
      plausibly treats a `contentUrl` serving `attachment` disposition
      as not-actually-embeddable, distinct from and compounding the
-     Granicus issue above. **This is a real, live, reproduced header on
-     CivicClerk's own azureedge instance — not yet independently
-     confirmed on a real Cablecast/azureedge URL**, since Ryan's own
-     failing-examples list names "Cablecast/azureedge" specifically and
-     no live Cablecast-via-azureedge sample was in hand to test
-     directly (Cablecast's `vodUrl` is per-tenant and dynamic — see
-     `app/platforms/cablecast.py` — most fixture tenants resolve to
-     `*.cablecast.tv` directly, not azureedge). If a real failing
-     Cablecast/azureedge example turns up, the exact same curl-with-
-     two-UAs-plus-headers check applies. No fix exists on our side for
-     this either if confirmed — Azure Blob Storage's `Content-
-     Disposition` is set by the vendor's CDN config, not by anything
-     this app controls; a proxy has the same cost caveat as finding 5.
+     Granicus issue above. **Confirmed against Google's own real export
+     2026-08-30 (see finding 7): the azureedge failures are CivicClerk's,
+     not Cablecast's.** Ryan's original per-host list named
+     "Cablecast/azureedge" from memory, but the real Search Console CSV
+     export shows every azureedge failure resolves to
+     `cpmedia.azureedge.net` specifically — CivicClerk's own video CDN
+     (confirmed via `tests/fixtures/civicclerk/*.json`'s real `videoUrl`
+     fields). No Cablecast tenant in the real export uses azureedge at
+     all — every Cablecast row is a direct `*.cablecast.tv` URL (see
+     finding 7). No fix exists on our side for this — Azure Blob
+     Storage's `Content-Disposition` is set by the vendor's CDN config,
+     not by anything this app controls; a proxy has the same cost
+     caveat as finding 5.
+  7. **Real quantified breakdown from Ryan's own Search Console export
+     (2026-08-30, `redtaperecordings.com-Video-indexing-Drilldown-
+     2026-08-29`, 1,000 rows — capped by the export tool, real total is
+     1,764 per the Chart.csv trend below) — replaces guesswork with hard
+     numbers, and rules out one platform findings 5-6 would have
+     wrongly implicated.** Breakdown by the failing "Video URL" column's
+     domain: **Granicus 516/1000 (51.6%)** — `archive-stream.granicus.com`
+     + `archive-video.granicus.com`, matching finding 5 exactly.
+     **`cpmedia.azureedge.net` 134/1000 (13.4%)** — CivicClerk's own
+     host, matching finding 6 exactly (see finding 6's update above:
+     this settles that it's CivicClerk, not Cablecast). **`cdn1.
+     isilive.ca` (eScribe) 101/1000 (10.1%)** — see the isilive-specific
+     note below. **`mediahttp.iqm2.com` 95/1000 (9.5%)** — this is
+     finding 2's already-fixed-but-undeployed population; should clear
+     once that fix deploys and the issue is revalidated. **`N/A` (no
+     video URL at all) 65/1000 (6.5%)** — finding 3's `/j/`+`/state/`
+     hub pages, already fixed and undeployed at the time of this export
+     (Ryan separately confirmed shipping this fix the same day). **66
+     rows across many distinct `*.cablecast.tv` tenants (6.6%)** — see
+     the Cablecast note below. Remainder: champds (11), townhallstreams
+     (5), CloudFront-tokenized (3, finding 4's population — now sized:
+     small), and a long tail of one-off hosts. Together, Granicus +
+     azureedge + isilive + IQM2 + the hub pages account for **91% of
+     this sample** — the real "actual remaining work" list below is
+     reordered by this, not alphabetically.
+     **Trend (Chart.csv, GSC's own daily count)**: 98 (8/12) → 460
+     (8/13, flat to 8/16) → 947 (8/17, flat to 8/19, matching the
+     original entry's number) → 1,651 (8/20, flat to 8/23) → 1,764
+     (8/24, flat through the export's last date, 8/26). Confirms growth
+     stopped 8/24 and has been flat since — useful for ruling things
+     out: the 2026-08-30 site-wide static-asset 500 incident
+     (`BACKLOG_DONE.md`) started and was fixed entirely within
+     2026-08-30 and cannot be a contributor to any of this trend.
+     **isilive.ca (finding 7a) — likely NOT a real bug, needs
+     revalidation instead of a code fix.** Google's raw export shows a
+     literal newline character embedded mid-filename in several
+     `cdn1.isilive.ca` URLs (e.g. `.../mp4:watsonville/Encoder \n788_CC_
+     ...`). Traced to `app/platforms/escribe.py`'s
+     `quote(stream_name, safe="")` call — verified directly that Python's
+     `quote()` correctly encodes a literal newline to `%0A` (and a space
+     to `%20`), so a raw newline could not survive that call. Checked
+     the CURRENT live page for that exact Watsonville example: it
+     renders `Encoder%20788_CC_...` — properly encoded, no `%0A`, and
+     the resulting URL is **200 for a Chrome UA, Googlebot's UA, and a
+     plain `curl` UA alike** (no UA-blocking, unlike Granicus). The
+     newline in Google's CSV is almost certainly Search Console's own
+     decoded/human-readable display of a properly-encoded `%0A` (or
+     reflects a since-superseded HTML capture), not a real malformed URL
+     in what this app actually serves today. All isilive rows in this
+     export were last crawled 2026-08-19 through 2026-08-24 — before or
+     right around when the 2026-08-21 template fix would have reached
+     production (deploys are manual) — so the likely explanation is the
+     same as finding 1's own open item: stale crawl data, not a live
+     defect. Worth confirming with a fresh Validate Fix / recrawl rather
+     than chasing a code change.
+     **Cablecast (finding 7b) — reachable and correctly rendered, root
+     cause still genuinely open, one unconfirmed lead.** Tested a real
+     failing example (Champaign, IL, `champaign-cablecast.cablecast.tv`)
+     across Chrome/Googlebot/plain-curl UAs: **200 for all three** — no
+     UA-blocking. Headers are clean (served via CloudFront, no
+     `Content-Disposition: attachment`, correct `content-type`). The
+     live watch page's `contentUrl`/`<source src>` matches the manifest
+     URL exactly. One unconfirmed lead: the manifest body itself
+     (`vod.m3u8`, generated by Cablecast, not by this app) has a minor
+     HLS spec deviation — `SUBTITLES ="subs"` and `AUDIO="audio"` with a
+     stray space before `=` in the `#EXT-X-STREAM-INF` attribute lists,
+     technically invalid per RFC 8216's attribute-list grammar (real
+     players like hls.js tolerate it, which is why playback works fine
+     for real visitors). Whether Google's video validator is strict
+     enough to reject a manifest over this is unknown and unconfirmed —
+     flagged as a lead worth checking via URL Inspection's raw fetch
+     view on a real Cablecast example, not a settled cause. If it does
+     turn out to matter, it's Cablecast's own manifest generation, not
+     fixable in this app's code, same shape as findings 5-6.
 
-  **The actual remaining work, per Ryan (2026-08-29): take one real,
-  currently-failing sample URL from *each* host/platform showing up in
-  Search Console's failing-examples list and read that page line by
-  line — full rendered HTML, JSON-LD, and the actual served video/
-  thumbnail resources — looking for what's systematically making Google
-  say "not on a watch page" for that platform specifically.** Granicus
-  and (CivicClerk's) azureedge are now done — see findings 5-6 above,
-  both real infrastructure-level blockers outside this app's control
-  rather than a fixable bug. **Still unswept**: champds, isilive,
-  townhallstreams, CloudFront-tokenized (finding 4's population size),
-  a real Cablecast/azureedge example specifically (to confirm finding 6
-  generalizes past CivicClerk), and any others that turn up. The six
+  **The actual remaining work, per Ryan (2026-08-29), now reordered by
+  finding 7's real weights: take one real, currently-failing sample URL
+  from *each* host/platform showing up in Search Console's
+  failing-examples list and read that page line by line — full
+  rendered HTML, JSON-LD, and the actual served video/thumbnail
+  resources — looking for what's systematically making Google say "not
+  on a watch page" for that platform specifically.** Granicus, azureedge
+  (CivicClerk), isilive, and Cablecast are now done — see findings 5-7
+  above. Of the top 5 hosts by real volume (findings 5, 6, 2, 3, 7a —
+  Granicus, azureedge, IQM2, hub pages, isilive — 91% of the sample),
+  three are genuine infrastructure limits outside this app's control,
+  and two (IQM2, hub pages) are already fixed and just waiting on a
+  deploy + revalidation. **Still genuinely unswept**: champds (11),
+  townhallstreams (5), and any smaller one-off hosts in the long tail —
+  each too small to move the total materially on its own. The seven
   findings above came from spot-checking a handful of examples per
-  platform, not an exhaustive per-host read; a real per-host pass may
-  surface further platform-specific issues the spot-checks missed (the
-  IQM2 bug is exactly the shape of thing a broader per-host read finds
-  that a handful of random samples doesn't). Cross-reference each
-  platform's `video_format`/`video_url` assignment in
+  platform (finding 7 raised that to "every host, quantified against
+  the real export," which is a meaningfully stronger form of the same
+  check than a handful of random samples) — a genuinely exhaustive
+  per-URL read of all 1,000 rows hasn't been done and probably isn't
+  worth doing given how concentrated the causes already are. Cross-
+  reference each platform's `video_format`/`video_url` assignment in
   `app/platforms/*.py` against what the template actually renders, the
   same way the IQM2 fix was found.
-  **Two of the six findings (5, 6) are likely not fixable in this
-  app's code at all** — worth deciding, once the remaining platforms
-  are swept, whether the honest final state here is "partially fixed,
-  rest is third-party infrastructure we don't control" rather than
-  continuing to treat 100% resolution as the goal.
+  **Given findings 5, 6, and (unconfirmed) 7b account for the clear
+  majority of real volume and are not fixable in this app's code, the
+  honest target here is no longer 100% resolution.** Once IQM2 and the
+  hub-page fix deploy and get revalidated (findings 2, 3 — 16% of this
+  sample), and isilive gets a fresh crawl (finding 7a — another 10%),
+  the realistic floor for this metric is roughly the Granicus + azureedge
+  share (~65% of this sample) unless a video-proxy investment is made —
+  which the bandwidth-cost findings elsewhere this session argue against
+  pursuing casually.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
