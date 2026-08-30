@@ -282,3 +282,133 @@ def test_extract_meeting_id_prefers_meetingid_over_id_on_legifile_urls():
 def test_detect_platform_recognizes_both_real_confirmed_customers():
     assert detect_platform(ATLANTA_URL) == "iqm2"
     assert detect_platform(SCC_URL) == "iqm2"
+
+
+# Real shape confirmed live 2026-08-30 against the module's own cited
+# Atlanta proof-of-concept meeting (MediaID=76801): the same SplitView.aspx
+# script tag that feeds JWPlayer the video URL also carries a
+# `"tracks":[{"file":"/Services/TranscriptGet.aspx?MediaID=76801&
+# format=vtt", ..., "kind":"captions", ...}]` entry -- but this endpoint's
+# real response is an HTTP 200 with only an 11-byte "WEBVTT \n\n" body, no
+# actual cues. Confirmed the same on two other Atlanta MediaIDs (76785,
+# 76793) -- Atlanta itself appears not to have real captioning turned on
+# for any meeting sampled, not a broken endpoint (see the real Santa Clara
+# County content below).
+ATLANTA_CAPTION_URL = "https://atlantacityga.iqm2.com/Services/TranscriptGet.aspx?MediaID=76801&format=vtt"
+ATLANTA_SPLIT_WITH_TRACKS_HTML = """
+<div><!-- MEDIA URL: https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/atlantacityga/76801_480.mp4/playlist.m3u8--></div>
+<script type='text/javascript'> SetupJWPlayer(eval('[{"file":"https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/atlantacityga/76801_480.mp4/playlist.m3u8","type":"video/mp4","label":"SD 480","default":true,"tracks":[{"file":"/Services/TranscriptGet.aspx?MediaID=76801&format=vtt","label":"English","kind":"captions","default":true}]}]'),'False','True'); </script>
+"""
+ATLANTA_CAPTION_PLACEHOLDER_VTT = "WEBVTT \n\n"
+
+
+async def test_resolve_reports_blank_transcript_warning_for_real_placeholder_caption():
+    routes = {
+        ATLANTA_OUTLINE_URL: FakeResponse(
+            status=200, text=ATLANTA_OUTLINE_HTML, url=ATLANTA_OUTLINE_URL
+        ),
+        ATLANTA_SPLIT_URL: FakeResponse(
+            status=200, text=ATLANTA_SPLIT_WITH_TRACKS_HTML, url=ATLANTA_SPLIT_URL
+        ),
+        ATLANTA_CAPTION_URL: FakeResponse(
+            status=200,
+            text=ATLANTA_CAPTION_PLACEHOLDER_VTT,
+            url=ATLANTA_CAPTION_URL,
+        ),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(ATLANTA_URL)
+
+    assert result.video_url is not None
+    assert result.segments == []
+    assert result.transcript_warnings == [
+        "Caption file was blank, so we don't have a transcript for "
+        "this meeting yet — you can request a transcript from the "
+        "audio instead."
+    ]
+
+
+# Real shape confirmed live 2026-08-30: Santa Clara County, CA, Board of
+# Supervisors Regular Meeting prior to Closed Session, Jan 26 2026
+# (sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18002). Unlike every
+# Atlanta MediaID sampled above, this tenant's TranscriptGet.aspx response
+# has real, substantive, correctly-timed cues -- confirmed on 4 real SCC
+# meetings total (MediaIDs 28254, 28261, 28267, 28273); the fixture below
+# is the real opening of 28273, trimmed from 162 lines to the first 3 cues.
+SCC_TRANSCRIPT_URL = "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=18002"
+SCC_TRANSCRIPT_OUTLINE_URL = (
+    "https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+    "&Mode=Video&Frame=Nothing&ID=18002"
+)
+SCC_TRANSCRIPT_SPLIT_URL = "https://sccgov.iqm2.com/citizens/SplitView.aspx?Mode=Video&MeetingID=18002&Format=Minutes"
+SCC_TRANSCRIPT_CAPTION_URL = (
+    "https://sccgov.iqm2.com/Services/TranscriptGet.aspx?MediaID=28273&format=vtt"
+)
+SCC_TRANSCRIPT_OUTLINE_HTML = """
+<html><head><title>
+2026/01/26 02:00 PM Board of Supervisors Regular Meeting prior to Closed Session - Web Outline - The County of Santa Clara, California
+</title></head>
+<body>No AgendaOutlineLink items in this fixture -- this test's focus is transcript segments.</body></html>
+"""
+SCC_TRANSCRIPT_SPLIT_HTML = """
+<div><!-- MEDIA URL: https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/sccgov/28273_480.mp4/playlist.m3u8--></div>
+<script type='text/javascript'> SetupJWPlayer(eval('[{"file":"https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/sccgov/28273_480.mp4/playlist.m3u8","type":"video/mp4","label":"SD 480","default":true,"tracks":[{"file":"/Services/TranscriptGet.aspx?MediaID=28273&format=vtt","label":"English","kind":"captions","default":true}]}]'),'False','True'); </script>
+"""
+SCC_TRANSCRIPT_VTT = """WEBVTT
+
+00:00:00.000 --> 00:00:00.900
+>> Supervisor Lee:
+
+
+00:00:01.100 --> 00:00:04.834
+Good afternoon, it's Monday, January 26th, 2:00 p.m., we'll go ahead and call the regular
+
+
+00:00:05.839 --> 00:00:10.339
+meeting prior to closed session to order. >> Clerk: Supervisor Abe-Koga. >> Supervisor Abe-Koga: Here.
+"""
+
+
+async def test_resolve_fetches_real_captions_from_iqm2s_own_transcript_endpoint():
+    routes = {
+        SCC_TRANSCRIPT_OUTLINE_URL: FakeResponse(
+            status=200,
+            text=SCC_TRANSCRIPT_OUTLINE_HTML,
+            url=SCC_TRANSCRIPT_OUTLINE_URL,
+        ),
+        SCC_TRANSCRIPT_SPLIT_URL: FakeResponse(
+            status=200, text=SCC_TRANSCRIPT_SPLIT_HTML, url=SCC_TRANSCRIPT_SPLIT_URL
+        ),
+        SCC_TRANSCRIPT_CAPTION_URL: FakeResponse(
+            status=200, text=SCC_TRANSCRIPT_VTT, url=SCC_TRANSCRIPT_CAPTION_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(SCC_TRANSCRIPT_URL)
+
+    assert result.transcript_warnings == []
+    assert [s.text for s in result.segments] == [
+        ">> Supervisor Lee:",
+        "Good afternoon, it's Monday, January 26th, 2:00 p.m., we'll go ahead and call the regular",
+        "meeting prior to closed session to order. >> Clerk: Supervisor Abe-Koga. >> Supervisor Abe-Koga: Here.",
+    ]
+    assert result.segments[0].start == 0.0
+    assert result.segments[0].end == 0.9
+    assert result.segments[1].start == 1.1
+    assert result.segments[2].end == 10.339
+
+
+def test_extract_caption_track_finds_real_transcriptget_path():
+    assert (
+        IQM2AssetFinder._extract_caption_track(ATLANTA_SPLIT_WITH_TRACKS_HTML)
+        == "/Services/TranscriptGet.aspx?MediaID=76801&format=vtt"
+    )
+
+
+def test_extract_caption_track_returns_none_when_no_tracks_entry():
+    # Real shape -- SCC_BOS_SPLIT_HTML and SAN_CARLOS_SPLIT_HTML above are
+    # both real captured pages with a populated video but no tracks array
+    # at all in their SetupJWPlayer call.
+    assert IQM2AssetFinder._extract_caption_track(SCC_BOS_SPLIT_HTML) is None
