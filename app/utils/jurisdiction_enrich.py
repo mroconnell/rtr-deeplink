@@ -570,6 +570,22 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # distinguishes "which lookup table" (city vs. county), not a
     # government's literal legal designation.
     "pub-milton.escribemeetings.com": KnownJurisdiction("Milton", "city", "ON"),
+    # Beaumont, AB -- real, ambiguous nationally (a real Beaumont, TX
+    # customer already exists in the archive on a different platform), so
+    # the bare "Beaumont" stored on these two pages needs a domain
+    # override the same way Milton above does. Confirmed real:
+    # `validated_label_extract_with_state("beaumontab")` already resolves
+    # this correctly (Census/StatsCan-validated) -- this file's own
+    # `_PROVINCE_ABBREVIATIONS_LOWER` comment names this exact subdomain
+    # as the motivating real example for that lookup existing at all. The
+    # gap this entry closes: that resolution only ever ran at *resolve*
+    # time (escribe.py's `_jurisdiction_from_subdomain()`), not at
+    # recompute-backfill time (`finalize_jurisdiction()`, which only
+    # checks this registry by netloc, never re-parses a subdomain) -- so
+    # the two already-archived pages stored before this tenant's
+    # subdomain-parsing ran (or matching it) stayed at bare "Beaumont"
+    # with no state, unrepairable by a bulk recompute until now.
+    "pub-beaumontab.escribemeetings.com": KnownJurisdiction("Beaumont", "city", "AB"),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
     # text (Maricopa/Tucson have none at all; Sacramento's happens to sit
