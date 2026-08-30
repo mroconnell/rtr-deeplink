@@ -74,7 +74,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
   [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
@@ -102,7 +102,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (18)
+  Jurisdiction extraction & backfill  (19)
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
@@ -114,6 +114,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
     [NEEDS-AUDIT] A name that's already "X, State"-shaped with an
     [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
+    [NEEDS-AUDIT] A fresh TelVue batch (2026-08-30) landed with several
     [NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
     [NEEDS-AUDIT] eScribe residuals after the 2026-08-29 sweep (2 of 14
     [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
@@ -1803,6 +1804,37 @@ from a live check), but the Legistar calendar itself is still untried.
   `archive/main.py`), grouped by platform with a capped sample of slugs
   per platform, would make the next sweep self-serve instead of needing
   a one-off DB script.
+
+- **[NEEDS-AUDIT] A fresh TelVue batch (2026-08-30) landed with several
+  jurisdiction-less/mis-parsed pages, surfacing two real title shapes
+  `_guess_jurisdiction()` still can't handle.** Not from `rtr-discovery`
+  (checked its `ledger.db` directly — no matching tenants or titles) and
+  not from `scripts/tier3_auto_transcription_queue.txt` (that queue
+  requests transcription for already-ingested pages, it doesn't create
+  new ones) — this looks like a manual `bulk_ingest.py` pass against the
+  same known TelVue org-token list that queue file already carries
+  (confirmed: the new pages' org tokens, e.g.
+  `5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq` and
+  `bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA`, already appear there against older
+  media IDs — these are the same orgs' newest uploads). Two new real
+  failure shapes, both live on `/meetings` right now: (1)
+  `/m/summit-planning-board-meeting-august-17-2026` — title "Summit
+  Planning Board Meeting: August 17, 2026" declines entirely (blank
+  jurisdiction) because `_TITLE_DATE_RE` only strips a trailing
+  dash-separated `"- Month DD, YYYY"`; this title uses a colon, so the
+  date never gets stripped and `_BODY_SUFFIX_RE`'s search over the whole
+  string doesn't land on a clean capture. (2)
+  `/m/albany-common-albany-common-council-08-03-26` — title "Albany
+  Common Council 08 03 26" mis-parses to jurisdiction "Albany Common"
+  (confidently wrong, not just missing): "Common Council" (Albany, NY's
+  real governing-body name) isn't one of `_BODY_SUFFIX_RE`'s listed
+  multi-word phrases, so it falls through to bare `Council`, capturing
+  "Albany Common" instead of "Albany" — same failure shape as the
+  Natick/Newmarket/Vail cases already documented in that regex's own
+  comments, just with "Common Council" as the new offending phrase.
+  Neither fixed here — flagging so whoever next tackles the "TelVue 46"
+  residual above has two concrete, currently-live repro cases instead of
+  needing to re-find them.
 
 - **[NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
   17 already fixed by refreshing stale rows — see `BACKLOG_DONE.md`).**
