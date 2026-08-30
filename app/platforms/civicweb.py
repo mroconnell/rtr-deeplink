@@ -102,6 +102,123 @@ logger = logging.getLogger("rtr_deeplink.civicweb")
 # `_AGENDA_LABEL_RE` so the walk continues to the real text -- confirmed
 # correct on every one of 20 Dallas County items and 14 Des Moines items
 # checked, not a guess extrapolated from one shape.
+#
+# API reference -- every field below is real, observed live (not from any
+# published CivicWeb/Diligent documentation, which doesn't appear to
+# exist publicly); a field not listed here was never seen populated in
+# any real response checked. All three endpoints are unauthenticated GET
+# requests with no required headers.
+#
+# GET {origin}/api/videolink/{meetingId}
+#   Response is double-JSON-encoded (see `_fetch_json`'s own docstring --
+#   a WCF/.svc-family quirk: the raw HTTP body is a JSON STRING literal
+#   containing the real array, not the array itself). `[]` when this
+#   meetingId has no video at all. Real example (dallascounty, meetingId
+#   2108):
+#     [{
+#       "MeetingDate": "2026-08-04T00:00:00",  // no timezone in the string
+#       "TodayLiveStream": false,
+#       "IndexPoints": "",             // always empty in every response
+#                                       // checked on this endpoint
+#       "LocalIndexPoints": "",        // a STRING here, always empty --
+#                                       // this is the field the original
+#                                       // investigation checked and found
+#                                       // empty; it is genuinely never
+#                                       // populated via THIS endpoint, use
+#                                       // geteventwithindexpoints instead
+#       "ShowTimeStamps": true,
+#       "ShowVideoLink": true,
+#       "YouTube": true,
+#       "YouTubeEventId": "t2rG96zqw7M"  // YouTube video id, used directly
+#     }]
+#
+# GET {origin}/api/geteventwithindexpoints/{meetingId}
+#   Same meetingId space and double-JSON-encoding as `/api/videolink/`
+#   above; `[]` when this meetingId has no video. Real example
+#   (dallascounty, meetingId 1957, trimmed to 2 of its real 20
+#   LocalIndexPoints entries):
+#     [{
+#       "Event": {
+#         "eventTitle": "Commissioners Court - Oct 01 2024",
+#         "eventId": "HvvTMOoqRAQ"     // YouTube video id when YouTube
+#                                       // (below) is true; used directly
+#       },
+#       "LocalIndexPoints": [          // a real LIST here (contrast
+#                                       // /api/videolink/'s always-empty
+#                                       // string above)
+#         {
+#           "RelatedItem": 984504,     // THE real match key -- the exact
+#                                       // numeric suffix of an
+#                                       // <a name="AgendaHeadingN"> or
+#                                       // <a name="AgendaItemN"> anchor
+#                                       // in the document's own body HTML
+#                                       // (confirmed 33/33 across 2
+#                                       // tenants -- see the paragraph
+#                                       // above this reference)
+#           "RelationshipTypeId": 6,   // 6 = RelatedItem matches an
+#                                       // anchor directly (trusted, the
+#                                       // only value this adapter uses).
+#                                       // 7 = also real, also present,
+#                                       // points at some other,
+#                                       // unconfirmed relationship --
+#                                       // never matched a real anchor in
+#                                       // any case checked, excluded
+#           "ItemId": 984504,          // NOT a reliable match key --
+#                                       // looks like it should be one,
+#                                       // but several real ItemId values
+#                                       // don't correspond to any anchor
+#                                       // at all; don't use this field
+#           "Value": 419.0,            // video timestamp, seconds
+#           "Event": "HvvTMOoqRAQ"     // same id as Event.eventId above,
+#                                       // redundant, unused
+#         },
+#         ...
+#       ],
+#       "MeetingDate": "2024-10-01T00:00:00",
+#       "TodayLiveStream": false,
+#       "ShowVideoLink": true,
+#       "ShowTimeStamps": true,
+#       "StartAtFirstTimestamp": false,  // unused; real meaning unconfirmed
+#       "Historic": false,               // unused; real meaning unconfirmed
+#       "YouTube": true,
+#       "IndexPoints": ""               // always empty in every response
+#                                        // checked on this endpoint too
+#     }]
+#
+# GET {origin}/Services/MeetingsService.svc/meetings/{meetingId}/meetingData
+#   Single-encoded JSON object (NOT double-encoded, unlike the two
+#   endpoints above -- a plain `.svc` service, not the WCF-family
+#   `/api/...` ones). Real example (dallascounty, meetingId 2108):
+#     {
+#       "Id": 2108,
+#       "Location": "Commissioners Court Room",
+#       "MeetingExternalLinkName": "",           // a generic "external
+#       "MeetingExternalLinkUrl": "",             // link" slot, not
+#       "MeetingExternalLinkTarget": "",          // video-specific --
+#       "MeetingExternalMinutesLinkName": "",     // only trusted as video
+#       "MeetingExternalMinutesLinkUrl": "",      // (see `resolve()`) when
+#       "MeetingExternalMinutesLinkTarget": "",   // its own paired
+#                                                  // ...LinkName field
+#                                                  // literally says "video"
+#       "Name": "Commissioners Court - Aug 04 2026",  // real meeting title
+#       "Time": "09:00 AM",
+#       "TypeId": 10                              // unused; real meaning
+#                                                  // unconfirmed (a
+#                                                  // meeting-type
+#                                                  // enum -- 10 and 13 are
+#                                                  // the only values seen)
+#     }
+#
+# The `/document/{id}/` wrapper page's own inline JS config (parsed by
+# `_CONFIG_MEETING_ID_RE`) -- real example (achdidaho, document 36574):
+#     doc.init({"id":36574,"meetingId":702,"title":"...","media":true, ...})
+#   `id` is the document id already in the URL (unused, redundant);
+#   `meetingId` is the real key for all three API endpoints above; `media`
+#   (bool) is true exactly when this document has a video attached, but
+#   isn't checked directly -- `geteventwithindexpoints` is called
+#   unconditionally and its own absence of a video id is what "no video"
+#   is actually decided from, since `media` was never seen to disagree
+#   with that in any real page checked.
 _DOCUMENT_PATH_ID_RE = re.compile(r"/document/(\d+)")
 _CONFIG_MEETING_ID_RE = re.compile(r'"meetingId":(\d+)')
 _AGENDA_ANCHOR_RE = re.compile(
