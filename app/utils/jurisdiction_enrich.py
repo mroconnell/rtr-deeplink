@@ -595,6 +595,29 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "lacity.primegov.com": KnownJurisdiction(
         "Los Angeles", "city", "CA", strength="authoritative"
     ),
+    # townoffrisco.primegov.com (Frisco, CO) -- BACKLOG.md's open
+    # [NEEDS-AUDIT] entry for this domain claimed the false-positive root
+    # cause was an embedded "Subscribe to Town of Frisco Government
+    # YouTube Channel" widget label beating the real "TOWN OF FRISCO"
+    # header. Re-verified live 2026-08-30 against 4 real meeting pages
+    # (both the `?meetingTemplateId=` and `?compiledMeetingDocumentFileId=`
+    # URL shapes): that widget text is never present in the actual
+    # server-rendered HTML this adapter fetches -- it's YouTube's own
+    # IFrame Player chrome, rendered client-side inside a cross-origin
+    # `<iframe>` this adapter's plain HTTP fetch never sees at all (the
+    # page only ever carries an empty `<div id="ytplayer">` placeholder
+    # server-side). `_extract_jurisdiction()` on the real fetched HTML
+    # already returns "Town of Frisco" correctly with no false positive.
+    # The real, confirmed gap: "Frisco" is nationally ambiguous (a real
+    # Frisco, TX customer is also registered here, see
+    # agenda.friscotexas.gov below), so the name-only state lookup stays
+    # deliberately ambiguous and the page resolves with no state at all --
+    # same "ambiguous name, no domain override yet" shape as Alexandria/
+    # Sacramento/Long Beach above, not a wrong-match shape. This entry
+    # fills the missing state the same way those do; "fallback" strength
+    # (not "authoritative") since the page's own extraction isn't wrong,
+    # just incomplete.
+    "townoffrisco.primegov.com": KnownJurisdiction("Frisco", "town", "CO"),
     # Costa Mesa Sanitary District (pub-cmsd.escribemeetings.com,
     # 2026-08-23) -- the page's own venue line names it ("Costa Mesa
     # Sanitary District - 290 Paularino Ave., Costa Mesa, CA 92626",

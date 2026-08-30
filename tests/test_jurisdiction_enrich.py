@@ -1803,6 +1803,30 @@ def test_known_jurisdiction_display_special_entities_and_county_names():
     )
 
 
+def test_known_jurisdiction_display_fills_state_for_ambiguous_town_name():
+    # townoffrisco.primegov.com (Frisco, CO) -- re-verified live 2026-08-30
+    # against 4 real meeting pages that BACKLOG.md's open [NEEDS-AUDIT]
+    # entry's claimed root cause (an embedded "Subscribe to Town of
+    # Frisco Government YouTube Channel" widget label beating the real
+    # header in the page's raw HTML) does not actually occur: that text
+    # is never present in the server-rendered HTML this adapter fetches
+    # -- it's YouTube's own IFrame Player chrome, rendered client-side
+    # inside a cross-origin <iframe> a plain HTTP fetch never sees (the
+    # page only ever carries an empty `<div id="ytplayer">` placeholder
+    # server-side). The real, confirmed gap: "Frisco" is nationally
+    # ambiguous (a real Frisco, TX customer is also registered --
+    # agenda.friscotexas.gov), so a bare name lookup stays deliberately
+    # ambiguous and the real page-text extraction ("Town of Frisco")
+    # comes through with no state at all until this domain entry fills
+    # it in -- same "ambiguous name, no domain override yet" shape as
+    # the Alexandria/Sacramento/Long Beach entries above, not a
+    # wrong-match shape.
+    assert (
+        je.known_jurisdiction_display("townoffrisco.primegov.com")
+        == "Town of Frisco, CO"
+    )
+
+
 def test_strip_institutional_suffix_confirmed_real_vimeo_youtube_names():
     # Real account names, 2026-08-29 (BACKLOG_DONE.md) -- shared by
     # vimeo.py and youtube.py, both of which read a free-text account/
