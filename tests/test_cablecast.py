@@ -103,7 +103,17 @@ async def test_resolve_real_charlotte_show():
     assert result.external_id == "cablecast:charlotte.cablecast.tv:2451"
     assert result.title == "Council Meeting - June 22, 2026"
     assert result.date == "2026-06-22"
-    assert result.jurisdiction == "Charlotte, NC"
+    # "City of Charlotte, NC" not bare "Charlotte, NC" as of 2026-08-29:
+    # _extract_jurisdiction() now tries extract_jurisdiction_chain()
+    # first (see that change's own comment -- fixes real multi-word-name
+    # truncation on Virginia Beach/La Quinta), and its capitalization-
+    # bounded walk correctly keeps the "City of" prefix from this real
+    # fixture's own text ("...The City of Charlotte is committed to
+    # making our services..." -- stops cleanly at the lowercase "is"),
+    # same convention every other chain-based adapter already uses. Not
+    # a correctness regression, just a formatting change for an
+    # already-correct real customer.
+    assert result.jurisdiction == "City of Charlotte, NC"
     assert result.video_url == CHARLOTTE_VOD_URL
     assert result.video_format == "m3u8"
     assert result.transcript_language == "en"
@@ -456,6 +466,31 @@ def test_extract_jurisdiction_resolves_state_via_gazetteer_for_an_unconfirmed_bu
     assert (
         CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL)
         == "Chicago, IL"
+    )
+
+
+def test_extract_jurisdiction_recovers_a_multi_word_name_the_narrow_regex_truncates():
+    # Real bug, confirmed live 2026-08-29 auditing stored (not missing --
+    # confidently WRONG) jurisdictions via /coverage: the narrow
+    # _JURISDICTION_RE below only ever captures ONE word after "City of"/
+    # "County of", so a real multi-word city name gets truncated at the
+    # first word. Both are real customers: virginiabeach.cablecast.tv's
+    # own site title is literally "City of Virginia Beach" (used to
+    # store bare "Virginia"), laquinta.cablecast.tv's is "City of La
+    # Quinta" (used to store bare "La").
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(
+            {"title": "City of Virginia Beach", "pageDescription": ""},
+            "http://virginiabeach.cablecast.tv/show/2235?site=1",
+        )
+        == "City of Virginia Beach, VA"
+    )
+    assert (
+        CablecastAssetFinder._extract_jurisdiction(
+            {"title": "City of La Quinta", "pageDescription": ""},
+            "https://laquinta.cablecast.tv/show/825?site=1",
+        )
+        == "City of La Quinta, CA"
     )
 
 
