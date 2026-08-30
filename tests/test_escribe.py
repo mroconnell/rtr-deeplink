@@ -513,6 +513,16 @@ def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
         ("pub-portmoody.escribemeetings.com", "Port Moody"),
         ("pub-thunderbay.escribemeetings.com", "Thunder Bay"),
         ("pub-delta.escribemeetings.com", "Delta"),
+        # Real gap found 2026-08-29 auditing archived pages missing a
+        # jurisdiction (BACKLOG.md's "StatsCan/Census table completeness
+        # gap" entry): these two real Ontario municipalities are stored
+        # hyphenated in the table but neither the label's own hyphen
+        # ("chatham-kent", stripped by this function's own `.replace("-",
+        # "")` before validation) nor a glued/spaced wordninja join ever
+        # reconstructed it -- fixed at the shared validator via a new
+        # hyphen-joined candidate.
+        ("pub-chatham-kent.escribemeetings.com", "Chatham-Kent"),
+        ("pub-arranelderslie.escribemeetings.com", "Arran-Elderslie"),
     ]
     for netloc, expected in cases:
         assert (

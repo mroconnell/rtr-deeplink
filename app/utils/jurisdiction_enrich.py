@@ -777,6 +777,44 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # slug, "glendale-az" -- genuinely distinct from Glendale, CA already
     # archived under a different (PrimeGov) domain.
     "glendale-az.granicus.com": KnownJurisdiction("Glendale", "city", "AZ"),
+    # Hyland/OnBase customers, added 2026-08-29 auditing archived pages
+    # missing a jurisdiction -- hyland.py has no in-page jurisdiction text
+    # to extract at all (see that adapter's own module comment) and relies
+    # entirely on this table, so an unlisted domain always carries no
+    # jurisdiction. Each domain below fetched and confirmed live: 10
+    # straightforward city/county domains, plus two real special-purpose
+    # districts (verified via each org's own real "who we are"/"cities we
+    # serve" page text, not guessed from the domain alone).
+    "imaging.sedgwickcounty.org": KnownJurisdiction("Sedgwick", "county", "KS"),
+    "cityordinances.durhamnc.gov": KnownJurisdiction("Durham", "city", "NC"),
+    # Medicine Hat, AB -- also directly confirmed by this exact meeting's
+    # own title, "REGULAR MEDICINE HAT CITY COUNCIL".
+    "docs.medicinehat.ca": KnownJurisdiction("Medicine Hat", "city", "AB"),
+    "meetings.redwoodcity.org": KnownJurisdiction("Redwood City", "city", "CA"),
+    "ob.wvc-ut.gov": KnownJurisdiction("West Valley City", "city", "UT"),
+    "amv.siouxfalls.gov": KnownJurisdiction("Sioux Falls", "city", "SD"),
+    "agenda.friscotexas.gov": KnownJurisdiction("Frisco", "city", "TX"),
+    "connect.sussexcountyde.gov": KnownJurisdiction("Sussex", "county", "DE"),
+    "stream.ci.concord.ca.us": KnownJurisdiction("Concord", "city", "CA"),
+    "agendas.cityofsparks.us": KnownJurisdiction("Sparks", "city", "NV"),
+    # Jurupa Community Services District, CA -- a real special district
+    # (water/wastewater/parks/street-lighting), NOT the city of Jurupa
+    # Valley itself: confirmed via jcsd.us's own page, "serves the cities
+    # of Jurupa Valley and Eastvale in Riverside County, California".
+    "records.jcsd.us": KnownJurisdiction(
+        "Jurupa Community Services District", "district", "CA"
+    ),
+    "meeting.reddeer.ca": KnownJurisdiction("Red Deer", "city", "AB"),
+    # Water Replenishment District, CA -- a real special district serving
+    # multiple Los Angeles County cities, HQ'd in Lakewood: confirmed via
+    # wrd.org's own "Cities We Serve" page, not tied to any single city.
+    "agendas.wrd.org": KnownJurisdiction(
+        "Water Replenishment District", "district", "CA"
+    ),
+    "onlinedocs.akronohio.gov": KnownJurisdiction("Akron", "city", "OH"),
+    "onbaseep22.mesacounty.us": KnownJurisdiction("Mesa", "county", "CO"),
+    "tampagov.hylandcloud.com": KnownJurisdiction("Tampa", "city", "FL"),
+    "agendaonline.mymanatee.org": KnownJurisdiction("Manatee", "county", "FL"),
 }
 
 
@@ -2185,6 +2223,24 @@ def _validated_label_extract_with_state(
     spaced = " ".join(w.capitalize() for w in words)
     if len(spaced.replace(" ", "")) >= 3 and _table_lookup(spaced):
         return spaced, stripped_state
+    # Hyphen-joined, tried between spaced and glued -- real gap found
+    # 2026-08-29 auditing archived pages missing a jurisdiction: eScribe's
+    # own "pub-{city}" subdomain convention means a real hyphenated Census/
+    # StatsCan name either survives as-is in the label ("pub-chatham-kent"
+    # -> wordninja splits its own "pub-" prefix's hyphen away too, cleanly
+    # giving ['chatham', 'kent']) or arrives already glued by whoever
+    # registered the subdomain ("pub-arranelderslie" -> wordninja still
+    # splits it cleanly into ['arran', 'elderslie'], since both are real
+    # dictionary-adjacent words on their own) -- but the table's own key is
+    # "chatham-kent"/"arran-elderslie" (StatsCan's real hyphenated name),
+    # which neither the spaced ("Chatham Kent") nor glued ("Chathamkent")
+    # candidate above ever matches. Tried only when there are exactly 2
+    # words: a 3+-word hyphenation would need to guess WHICH gap to
+    # hyphenate, which no real example here motivates.
+    if len(words) == 2:
+        hyphenated = "-".join(w.capitalize() for w in words)
+        if _table_lookup(hyphenated):
+            return hyphenated, stripped_state
     glued = "".join(words).capitalize()
     if len(glued) >= 3 and _table_lookup(glued):
         return glued, stripped_state
