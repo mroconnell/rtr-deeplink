@@ -91,22 +91,21 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (38)
+Platform & jurisdiction coverage  (37)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
   `[LATER]` A real, new video platform found: Midpen Media Center
   `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-  `[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
+  `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
   `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[NEEDS-AUDIT]` CivicWeb has a second, "iCompass"-branded…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (17)
-    [JUST-DO-IT] `[WAIT]` Two of three "land acknowledgement" rows
-    [JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
+  Jurisdiction extraction & backfill  (16)
+    [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
     [JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
@@ -1267,28 +1266,17 @@ actionability sections above.
   currently marked "no video found" for the same shape on a future
   re-resolve.
 
-- **`[NEEDS-AUDIT]` Cablecast's Coralville, IA triplicate (show `2907`) is
-  now 2/3 fixed at the source (2026-08-29) — the residual needs a
-  cross-host alias table and a manual pick-and-delete pass, neither
-  built.** Full original investigation (root cause, all 3 real URLs, the
-  `_unique_slug()` collision-retry fingerprint) in `BACKLOG_DONE.md`.
-  `CablecastAssetFinder` now sets a host-namespaced `external_id`
-  (`cablecast.py`, both the Remix and CablecastPublicSite paths), so any
-  *future* re-ingest of the same show under a same-host scheme/query
-  variant (2 of the 3 real Coralville URLs) merges into one page instead
-  of creating a new one — regression-tested
-  (`test_resolve_external_id_is_stable_across_scheme_and_query_variants`,
-  `tests/test_cablecast.py`). **Still open**: (1) the first-vs-second URL
-  pair is a genuine cross-host migration
-  (`coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`)
-  that host-namespacing can't collapse — needs a confirmed domain-alias
-  table entry once a second migrated Cablecast tenant confirms the
-  pattern, or a manual merge; (2) the 3 already-archived Coralville rows
-  themselves are untouched by this fix (it only prevents new duplicates)
-  — no page-merge/dedupe script exists in `scripts/`, so picking the most
-  complete of the 3 as canonical and removing the other 2 via the
-  existing `POST /internal/admin/delete-pages` endpoint is still a manual
-  pass nobody has done.
+- **`[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
+  `coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`
+  — is the one piece of the Coralville, IA triplicate still open.** Full
+  original investigation and the 2026-08-29 cleanup (the 3 already-
+  archived duplicate pages resolved to 1; `external_id` now prevents
+  *future* same-host scheme/query duplicates) are in `BACKLOG_DONE.md`.
+  What's left is real but not actionable yet: host-namespacing can't
+  collapse a genuine cross-host migration, and there's only one
+  confirmed example so far — needs either a second migrated Cablecast
+  tenant to confirm the pattern before building a domain-alias table, or
+  a manual merge if/when a second real case turns up.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
@@ -1506,68 +1494,26 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
 
-- **[JUST-DO-IT] `[WAIT]` Two of three "land acknowledgement" rows
-  (Oshawa, Cambridge) need a production backfill re-run — not a code
-  bug.** Re-verified 2026-08-28 against today's `finalize_jurisdiction()`
-  before touching any code: both already repair correctly
-  (`"Oshawa is situated on lands..." -> "Oshawa, ON"`,
-  `"Cambridge Council Meeting Agenda Meeting" -> "Cambridge"`). They were
-  stored before this repair logic existed (or last touched) and just
-  need `POST /internal/jurisdiction/backfill-apply` (admin-token-gated
-  production write, not done here). The Snoqualmie row from the same
-  original entry is fixed — see `BACKLOG_DONE.md`.
-
-- **[JUST-DO-IT] Duplicate `/j/` hubs for one real government — root
-  causes now known (WO-47, 2026-08-23), row repairs deliberately
-  deferred to their own PR per Ryan.** The confirmed pairs and causes:
-  **Redding/Redding City, Healdsburg/Healdsburg City, Arcata/Arcata
-  City** — IQM2 tenant page-titles carry "{Name} City" as the
-  customer's own branding ("Video Outline - Redding City, California",
-  confirmed live in each tenant's real `<title>`), which validated only
-  via the trailing-type-word strip and stored the bogus " City" form
-  alongside the correct bare form from other platforms.
-  **Pasorobles/El Paso De Robles** — eScribe `pub-pasorobles` rows
-  stored the glued subdomain, and the Census row "El Paso de Robles
-  (Paso Robles) city" was invisible to lookups until WO-47's
-  parenthetical-alt-name indexing. **Santa Clara — do NOT bulk-consolidate on
-  the name; corrected 2026-08-23 after a live re-query, the earlier
-  description here was wrong.** This entry previously called it three
-  "phrasing variants ... needs a display-normalization decision". There
-  are **six** distinct stored strings and **two of them are genuinely
-  different governments**: `The County of Santa Clara, CA` (2),
-  `County of Santa Clara, CA` (1), `Santa Clara County, CA` (1) and
-  `County of Santa Clara Office` (1) are the county; **`City of Santa
-  Clara` is the city** and **`Santa Clara Valley Transportation
-  Authority` is the transit agency** — separate governments that must
-  stay on separate hubs. Merging on the substring would recreate exactly
-  the wrong-government class of bug WO-47 just fixed. Those last two
-  also lack the canonical `", ST"` suffix, so they are invisible to the
-  state pages entirely (a second, independent bug).
-  **Canonical form decided 2026-08-23: `Santa Clara County, CA`** for
-  the county rows only — consistent with every other county in the
-  archive (`Napa County, CA`, `Sonoma County, CA`, `Los Angeles County,
-  CA`). Reversible; a display-name choice, not a data-model one. **The repairs are already mechanical**: WO-47's
-  branding-strip + glued-label + alt-name fixes make every non-Santa
-  Clara row above a `POST /internal/jurisdiction/backfill-apply`
-  candidate today (they were explicitly excluded from WO-47's applied
-  batch: ids 944, 1470, 977, 2194, 998, 1046, 1066). All seven were
-  re-queried live 2026-08-23 and still hold the bogus forms exactly as
-  described (`Arcata City, CA` x2, `Healdsburg City, CA` x2, `Redding
-  City, CA`, `Pasorobles, CA`, `El Paso De Robles, CA`) — the claim is
-  current, not stale.
-  **The follow-up PR is**: apply those seven ids, apply the Santa Clara
-  canonical form to the *county rows only*, give `City of Santa Clara`
-  and the VTA their `", CA"` suffixes, and confirm each pair collapses
-  to one hub on `/state/california` (`Arcata City` is still visibly
-  duplicated there today).
-  **Why the 2026-08-23 state/hub session that re-verified this did not
-  apply it**: the apply path is `POST /internal/jurisdiction/
-  backfill-apply`, which needs the admin token — and reading that out
-  of `.env` is the exact thing this repo has a standing rule against
-  (see `CLAUDE.md`; it has already caused one real token rotation).
-  Raw SQL instead would bypass `finalize_jurisdiction()`, the verified
-  single path these repairs are supposed to go through. So this needs a
-  session that has been handed the token, not a workaround.
+- **[HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
+  canonical-form choice applied — no existing admin endpoint can write
+  it.** Residual of WO-47 (full row/cause detail in `BACKLOG_DONE.md`'s
+  2026-08-29 "needs a human" review entry, which also closed the
+  Redding/Healdsburg/Arcata/Paso Robles half of this same original
+  entry via `POST /internal/jurisdiction/backfill-apply`). Real, newly
+  confirmed gap: `County of Santa Clara, CA` / `The County of Santa
+  Clara, CA` / `Santa Clara County, CA` / `County of Santa Clara Office`
+  all independently validate today, so `finalize_jurisdiction()`'s
+  recompute makes zero changes to any of them (confirmed live,
+  current==repaired on every one) — `backfill-apply` only ever
+  recomputes via that function, and no admin endpoint accepts an
+  explicit caller-supplied jurisdiction string. Canonical form already
+  decided (2026-08-23): `Santa Clara County, CA` for the county rows,
+  consistent with every other county in the archive. City of Santa
+  Clara and the VTA also still need their `", CA"` suffixes added (same
+  "no write path exists" blocker). Needs either a small new admin
+  capability (an explicit-string override endpoint, scoped tightly) or
+  a deliberate one-off decision to bypass `finalize_jurisdiction()` for
+  this one case — a product/engineering call, not a token-access one.
 
 - **[NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
   deliberately NOT applied in WO-47's write — several are confidently
@@ -1604,23 +1550,25 @@ from a live check), but the Legistar calendar itself is still untried.
 
 - **[JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
   WO-47's glued-label repair (2026-08-23): only `Townofws` (page 693)
-  and the Beaumont AB pair (pages 1030/1053, bare "Beaumont"/"City of
-  Beaumont" — nationally ambiguous, so no state can be filled from text
-  alone) remain.** This entry previously claimed the whole original list
-  (Bonnyville, Grand Valley, Point Edward, Boulder County, Beaumont,
-  Mackenzie) was "STILL wrong" and that glued values could never be
-  text-patched — both claims were stale when re-checked against live
-  rows (the verify-before-acting rule): Bonnyville (890) was already
-  correct ("Town of Bonnyville, AB"), and WO-47's glued-label repair
-  tier in `finalize_jurisdiction()` (the same Census/StatsCan-validated
-  `_validated_label_extract_with_state()` the subdomain paths already
-  trust) text-patches the rest mechanically through the existing
-  `POST /internal/jurisdiction/backfill-apply` — Grand Valley, Point
-  Edward, Boulder County, and Mackenzie were all in WO-47's applied
-  batch (see `BACKLOG_DONE.md`). `Townofws` genuinely has no
-  recoverable signal (wordninja can't expand "ws"); the Beaumont pair
-  needs a real re-resolve (its subdomain is `pub-beaumontab`, and only
-  the resolve path sees the netloc's trailing province code).
+  remains once the Beaumont AB pair's fix deploys.** This entry
+  previously claimed the whole original list (Bonnyville, Grand Valley,
+  Point Edward, Boulder County, Beaumont, Mackenzie) was "STILL wrong"
+  and that glued values could never be text-patched — both claims were
+  stale when re-checked against live rows (the verify-before-acting
+  rule): Bonnyville (890) was already correct ("Town of Bonnyville,
+  AB"), and WO-47's glued-label repair tier in `finalize_jurisdiction()`
+  (the same Census/StatsCan-validated `_validated_label_extract_with_
+  state()` the subdomain paths already trust) text-patches the rest
+  mechanically through the existing `POST /internal/jurisdiction/
+  backfill-apply` — Grand Valley, Point Edward, Boulder County, and
+  Mackenzie were all in WO-47's applied batch (see `BACKLOG_DONE.md`).
+  `Townofws` genuinely has no recoverable signal (wordninja can't expand
+  "ws"). **Beaumont fixed 2026-08-29 without a live re-resolve** — a
+  `_KNOWN_DOMAINS` registration for `pub-beaumontab.escribemeetings.com`
+  closes the real gap instead (see `BACKLOG_DONE.md`'s matching entry):
+  once that PR deploys, both pages (bare "Beaumont"/"City of Beaumont")
+  become real `backfill-apply` candidates, same as every other row this
+  entry already closed.
 
 - **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
   fixed 2026-08-21, production write run the same day — 76 rows applied,
