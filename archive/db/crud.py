@@ -79,6 +79,7 @@ from .models import (
     SearchQuery,
     SearchVocabulary,
     SocialPost,
+    Tier3QueueState,
     TranscriptionJob,
     TranscriptVersion,
     WorkerReportSnapshot,
@@ -1419,6 +1420,34 @@ async def advance_worker_report_snapshot(
                     cumulative_jobs_completed=cumulative_jobs_completed,
                 )
             )
+        await session.commit()
+
+
+async def read_tier3_queue_remaining() -> Optional[int]:
+    """The tier-3 discovery queue's remaining depth as of the last feed
+    run, or None if no run has ever reported one (see Tier3QueueState's
+    own docstring). Read-only counterpart to
+    set_tier3_queue_remaining() below."""
+    async with async_session() as session:
+        row = await session.get(Tier3QueueState, 1)
+        return row.remaining if row is not None else None
+
+
+async def set_tier3_queue_remaining(remaining: int) -> None:
+    """Overwrite the stored queue-remaining count -- single row, id=1 by
+    convention, same update-in-place shape as
+    advance_worker_report_snapshot() above. Called by `POST /internal/
+    tier3-queue-remaining` right after scripts/
+    feed_tier3_auto_transcription.py rewrites the queue file, so this
+    number tracks the real file state without archive/main.py ever
+    needing to read that file itself."""
+    async with async_session() as session:
+        previous = await session.get(Tier3QueueState, 1)
+        if previous is not None:
+            previous.remaining = remaining
+            previous.recorded_at = datetime.now(timezone.utc)
+        else:
+            session.add(Tier3QueueState(id=1, remaining=remaining))
         await session.commit()
 
 

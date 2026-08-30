@@ -1,5 +1,112 @@
 # Backlog — done
 
+## WO-22 bare/state-suffixed jurisdiction duplicates: root cause fixed, production write run, 3-example residual closed [Done 2026-08-21, residual closed 2026-08-29, compacted 2026-08-30]
+
+Root cause fixed 2026-08-21, production write run the same day — 76 rows
+applied, 3 held back. Both prior known-bad repairs no longer appeared as
+candidates; the third original suspect (`page_id 279`, "New Port Richey,
+FL" → "Clearwater, FL") was confirmed correct — verified live, a genuine
+interlocal-agreement mention, not a bleed. Dry run confirmed 76 applied /
+3 skipped before the real write; applied for real: 76 rows (Dublin CA,
+Memphis normalizations, Clearwater, Metchosin, more), spot-checked live.
+
+**The 3-example residual (Ashland, Milton, San Jose) closed 2026-08-29.**
+All three found a real positive text match on a live re-check: Ashland's
+TelVue org page carries "Rogue Valley Community Television" (unambiguous
+southern Oregon), Milton's eScribe agenda header gives a real Ontario
+address and postal code, San Jose's Granicus ViewPublisher page is
+titled "CivicCenter Television Streaming Video" (that city's own real
+municipal-channel branding). Domain-registry entries (`_KNOWN_DOMAINS`)
+added for all three.
+
+**Genuinely still open** (kept as a live `BACKLOG.md` entry, not closed
+here): the two existing pages still carrying the bare names are now real
+`POST /internal/jurisdiction/backfill-apply` candidates — that
+production write hasn't been run yet.
+
+## Static assets now send `Cache-Control: no-cache` on both services (WO-66) [Done 2026-08-30]
+
+Fixes the real bug found 2026-08-28: every `StaticFiles` mount
+(`/static/*`, `/shared-static/*`, both services, plus `/archive-static/*`
+which proxies through the Archive's own `/static/*`) emitted `ETag`/
+`Last-Modified` but no `Cache-Control`, so browsers fell back to RFC 9111
+§4.2.2 heuristic freshness and could serve a stale asset for a long time
+without ever revalidating — confirmed live right after WO-65 shipped,
+when a returning browser kept executing an old `clerk_nav.js` with
+`transferSize: 0`.
+
+**Fix**: `app/utils/cache_static.py` / `archive/utils/cache_static.py`
+(deliberately duplicated, same convention as `url_normalize.py` and
+`clerk_auth.py` — see either file's own header comment) — a
+`RevalidatingStaticFiles(StaticFiles)` subclass that overrides
+`file_response()` to set `Cache-Control: no-cache` on every response.
+Both `/static` and `/shared-static` mounts in `app/main.py` and
+`archive/main.py` now use it. `/archive-static/*` needed no separate
+change — `app/main.py`'s `_proxy_to_archive()` forwards
+`filter_proxy_headers()`, which only strips hop-by-hop headers, so the
+Archive's own `Cache-Control` passes straight through.
+
+`no-cache` (despite the name) means "revalidate before use" — with the
+existing ETags intact, the common case after this change is a cheap
+`304`, not a re-download. Content-hashed filenames plus
+`max-age=31536000, immutable` remains the strictly better end state, but
+still needs a build step this repo deliberately doesn't have (templates
+reference these paths as plain literals) — left as a separate, larger
+piece of work, not blocking this fix.
+
+Verified: `ruff check`/`ruff format --check`/`pytest`/`alembic check`
+(×2) all pass; no route changes, so no browser check needed beyond the
+header itself, which is exercised indirectly by the existing static-file
+tests already exercising these mounts.
+
+## `_tier3_queue_remaining()` now sourced from the database, not a tracked file (WO-66 residual) [Done 2026-08-30]
+
+Closes the second residual left by the pipeline-minutes work — the first
+(this file's own "Render `buildFilter`s reworked..." entry) restored
+three of four service build-filter lists to a clean allow-list shape;
+`scripts/tier3_auto_transcription_queue.txt` was the one exception,
+present on the Archive's list *only* because `archive/main.py`'s
+`_tier3_queue_remaining()` line-counted that tracked file directly off
+disk for the `/internal/transcription-queue-stats` ops report — meaning
+the Archive had to rebuild whenever the file changed, or the reported
+count silently froze at whatever the last real deploy happened to ship.
+
+**Fix**: new single-row `Tier3QueueState` table
+(`archive/db/models.py`, migration
+`archive/alembic/versions/2026_08_30_1200-a3c8f1d5b6e7_add_tier3_queue_state.py`,
+same "one row, id=1, updated in place" shape as the existing
+`WorkerReportSnapshot`/`advance_worker_report_snapshot()` pattern this
+was modeled on) plus `crud.read_tier3_queue_remaining()`/
+`crud.set_tier3_queue_remaining()`. `archive/main.py`'s
+`_tier3_queue_remaining()` is now `async` and reads from the database
+instead of the file; a new token-gated `POST /internal/
+tier3-queue-remaining?remaining=N` route lets
+`scripts/feed_tier3_auto_transcription.py` report its post-run remainder
+right after it rewrites the queue file (best-effort — a failed report
+logs a warning but doesn't fail the run, since the file itself stays the
+real source of truth). `render.yaml`'s Archive `buildFilter` no longer
+lists the queue file, restoring all four services' allow-lists to the
+same shape.
+
+New tests in `tests/test_worker_daily_report.py`: default-to-zero with
+no reported count yet, set/read round-trip, the new route's token gate,
+and the route's write reflected back through
+`/internal/transcription-queue-stats`. Verified: `ruff check`/
+`ruff format --check`/full `pytest`/`alembic check` (×2, fresh
+migration-built SQLite) all pass.
+
+## `test-redtaperecordings` Render service — confirmed by Ryan, closed [Investigated 2026-08-30]
+
+Closes the recurring "Exited with status 3" alert this file's inbox-triage
+promotion pass (#458) surfaced 2026-08-28 after nine days of every daily
+triage run deferring it as "likely test/dev noise, not obviously nothing
+either." **Confirmed directly by Ryan**: `test-redtaperecordings` is an
+old, unrelated Render instance — not connected to this app. Not
+`render.yaml`'s tracked Blueprint or the documented disposable
+`rtr-deeplink-staging`, and not a real signal about this codebase's
+health. Nothing to build; the recurring alert is expected/inert noise
+from an unrelated service under the same Render account.
+
 ## CivicWeb `/document/{id}/` pages now surface real per-agenda-item video deep-links (`agenda_items`), via the same richer API [Done 2026-08-30]
 
 Closes the residual left open in this file's own "CivicWeb's iCompass
@@ -995,18 +1102,21 @@ branch) now route through one shared `_should_abort()` helper
 aborts on the *first* occurrence rather than waiting for the count —
 confirmed live in the code, `_should_abort` is called from both sites.
 
-**Residual gap, found re-verifying this entry 2026-08-29, not yet
-fixed**: the original entry claimed this "applies to any bulk
-re-resolve... `backfill_archived_pages.py` has the identical shape" —
-re-checked, and that script has **no `_should_abort`/
-`MAX_CONSECUTIVE_ERRORS` at all**, meaning the fix was never actually
-ported there despite the note. Real, live gap: a bulk run of that
-script could still march through a full YouTube block the same way
-`dedupe_rollup_transcripts.py` used to. Worth a small follow-up to
-port the same `_should_abort()` pattern over — genuinely `[EASY]` since
-the helper and the reasoning already exist, just not filed as an open
-`BACKLOG.md` entry yet since this was only caught while verifying this
-one, not actively worked.
+**"Residual gap" claim above was itself wrong — corrected 2026-08-30.**
+The 2026-08-29 note said `backfill_archived_pages.py` had "no
+`_should_abort`/`MAX_CONSECUTIVE_ERRORS` at all" and filed a
+`[JUST-DO-IT]` `BACKLOG.md` entry to port the helper over. That was a
+too-literal grep: the exact names don't appear, but the file already
+carries an equivalent, independently-built circuit breaker
+(`MAX_CONSECUTIVE_FAILURES = 5` / `consecutive_failures`, with the same
+hair-trigger `looks_rate_limited()` check that breaks the loop on the
+*first* 429 rather than waiting for the count) — added in the **same
+PR** this entry's fix landed in, #318 (`904cdb6`, 2026-08-22, "Gate
+thumbnail extraction on every iframe-embed platform, and stop a bulk
+run on a rate limit"). So both scripts got the protection in the same
+change; the earlier note just didn't check the actual PR. Removed the
+now-incorrect `BACKLOG.md` entry rather than porting a redundant
+helper — nothing to build here.
 
 ## `rtr-business/BUSINESS_OVERVIEW.md`'s stale saved-search-alerts line fixed, plus a wider staleness pass [Done 2026-08-29]
 

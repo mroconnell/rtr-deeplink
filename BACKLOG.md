@@ -54,17 +54,14 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
-  [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
-  [JUST-DO-IT] `[EASY]` Static assets ship no `Cache-Control`, so a
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
-  Confirmations nobody has actually watched happen  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-    [HUMAN] `[LOGIN]` A Render service called `test-redtaperecordings`
   Production actions only Ryan should take  (7)
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
@@ -108,7 +105,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
-    [JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
+    [JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
     [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
@@ -136,9 +133,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (16)
-  `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
-    `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
+Reliability, ops & cost  (15)
+  `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
   `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
   Media-source reliability  (3)
@@ -317,54 +313,6 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
-  `_should_abort()` circuit breaker to `backfill_archived_pages.py`,
-  which never got it.** Found 2026-08-29 re-verifying the original fix
-  (`BACKLOG_DONE.md`, 2026-08-22) before logging it — the note that
-  `backfill_archived_pages.py` "has the identical shape" turned out to
-  mean it has the identical *vulnerability*, not that it got the same
-  fix. Confirmed live: no `_should_abort`/`MAX_CONSECUTIVE_ERRORS`
-  anywhere in that file. A bulk run of that script could still march
-  through an entire YouTube IP block the same way
-  `dedupe_rollup_transcripts.py` used to, wasting requests against an
-  endpoint already refusing every one. Genuinely `[EASY]`: copy the
-  helper and its call sites over, no new design needed.
-
-- **[JUST-DO-IT] `[EASY]` Static assets ship no `Cache-Control`, so a
-  returning visitor runs stale JS/CSS after a deploy (WO-66,
-  2026-08-28).** Confirmed live, not theoretical: right after WO-65
-  deployed, a browser that had visited before the deploy kept executing
-  the **old** `/shared-static/clerk_nav.js` (12,106 bytes, no sign-up
-  mount code) while the server was serving the new one (16,381 bytes).
-  `performance.getEntriesByType("resource")` reported `transferSize: 0`
-  — straight from cache, no revalidation. The new `/sign-up` page
-  therefore rendered its heading and an **empty form area**, and looked
-  exactly like a broken deploy for several minutes of debugging.
-  **Root cause**: every static mount (`/static/*`, `/shared-static/*`,
-  `/archive-static/*`, both services) returns `ETag` and `Last-Modified`
-  but **no `Cache-Control` at all**, so browsers fall back to *heuristic*
-  freshness (RFC 9111 §4.2.2 — commonly ~10% of the time since
-  `Last-Modified`) and may serve a cached copy for a long time without
-  ever asking the server. The ETags are already correct; nothing is
-  revalidating against them.
-  **Fix (small)**: set `Cache-Control: no-cache` on these mounts —
-  despite the name it means "revalidate before use", so with the existing
-  ETags the common case is a cheap `304`, not a re-download. Do it where
-  the `StaticFiles` mounts are declared in `app/main.py` /
-  `archive/main.py` (a small `StaticFiles` subclass overriding
-  `file_response`, or middleware scoped to those path prefixes).
-  **Worth knowing before "improving" it further**: content-hashed
-  filenames plus `max-age=31536000, immutable` is the strictly better
-  end state, but it needs a build step this repo deliberately doesn't
-  have (templates reference these paths as plain literals), so it is a
-  separate, larger piece of work — not a reason to leave the current
-  no-header state in place.
-  **Why it matters beyond this one bug**: it applies to every JS/CSS
-  change this repo ever ships, silently. Any future "the deploy didn't
-  work" report should check `transferSize`/asset byte length before
-  anything else — that check is what resolved WO-65's false alarm in
-  minutes rather than hours. See `BACKLOG_DONE.md`'s WO-65 entry.
-
 - **[JUST-DO-IT] Every byte the public site serves is billed twice:
   the resolver proxies to the Archive over its *public* URL.**
   `app/main.py:1527-1593` proxies essentially the whole public site —
@@ -468,41 +416,6 @@ convenient.
   (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
   events on `/m/*` pages" entry. GA internal-traffic setup and
   cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
-- **[HUMAN] `[LOGIN]` A Render service called `test-redtaperecordings`
-  has been sending "Exited with status 3" failure emails roughly once a
-  day for the full nine days the inbox-triage Routine has been running,
-  and nobody has ever confirmed what it is (surfaced by
-  `CLAUDE_INBOX_TRIAGE.md`, promoted here 2026-08-28).** Seven distinct
-  occurrences, all the identical "Exited with status 3" shape, no other
-  detail in the email: 2026-08-18 17:46 UTC, 2026-08-19 18:17:43 UTC,
-  2026-08-20 20:23:54 UTC, 2026-08-22 02:14:05 UTC, 2026-08-23 06:49 UTC,
-  2026-08-25 09:35 UTC, 2026-08-26 11:09 UTC. Every triage run from
-  2026-08-19 onward flagged it as "likely test/dev noise, not obviously
-  nothing either" and deferred rather than guessing — this entry is that
-  deferral finally written down instead of re-deferred an eighth time.
-  **Confirmed from the repo side**: `test-redtaperecordings` does not
-  appear anywhere in `render.yaml` — it is not one of the four tracked
-  Blueprint services (`rtr-deeplink`, `rtr-deeplink-archive`,
-  `rtr-transcription-worker`, `rtr-transcription-worker-2`) and not the
-  documented disposable `rtr-deeplink-staging`/`rtr-deeplink-staging-db`
-  either. It is not referenced anywhere else in this repo (checked via
-  `git grep` across the whole tree). Whatever it is, it lives entirely
-  outside this codebase — a separate Render service under the same
-  account, most plausibly something Ryan spun up by hand for manual
-  testing against a similarly-named `redtaperecordings` domain.
-  **Open question for Ryan, and only Ryan can answer it**: what is this
-  service, is the near-daily "Exited with status 3" expected (e.g. a
-  script/cron container that's supposed to run once and exit non-zero on
-  its own test-failure path), and if it's not going anywhere, either mute
-  its Render failure-email notifications or add it as a documented
-  disposable service the way `rtr-deeplink-staging` already is —
-  whichever removes it from the inbox-triage Routine's daily read without
-  masking a real problem if there ever is one. Low urgency (nine days,
-  zero evidence of user impact, self-contained to a service nothing else
-  depends on) but it's been silently costing a few minutes of triage
-  attention on every single run since 2026-08-19, which is exactly the
-  kind of small recurring cost this section exists to close out.
-
 ### Production actions only Ryan should take
 
 - **`[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
@@ -1646,25 +1559,15 @@ from a live check), but the Legistar calendar itself is still untried.
   become real `backfill-apply` candidates, same as every other row this
   entry already closed.
 
-- **[JUST-DO-IT] Bare/state-suffixed jurisdiction duplicates: root cause
-  fixed 2026-08-21, production write run the same day — 76 rows applied,
-  3 held back, one residual left.** (Full WO-22 investigation in
-  `BACKLOG_DONE.md`.) Both prior known-bad repairs no longer appear as
-  candidates; the third original suspect (`page_id 279`, "New Port
-  Richey, FL" → "Clearwater, FL") is confirmed correct — verified live,
-  a genuine interlocal-agreement mention, not a bleed. Dry run confirmed
-  76 applied / 3 skipped before the real write; applied for real: 76
-  rows (Dublin CA, Memphis normalizations, Clearwater, Metchosin, more),
-  spot-checked live. **The 3-example residual (Ashland, Milton, San
-  Jose) is closed — see `BACKLOG_DONE.md`.** All three found a real
-  positive text match on a live re-check: Ashland's TelVue org page
-  carries "Rogue Valley Community Television" (unambiguous southern
-  Oregon), Milton's eScribe agenda header gives a real Ontario address
-  and postal code, San Jose's Granicus ViewPublisher page is titled
-  "CivicCenter Television Streaming Video" (that city's own real
-  municipal-channel branding). Domain-registry entries added for all
-  three; the two existing pages carrying the bare names are a
-  recompute-backfill candidate now.
+- **[JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
+  "San Jose" jurisdiction names are a recompute-backfill candidate.**
+  Residual of WO-22 (full investigation, including the 76-row production
+  write and the 3-example Ashland/Milton/San Jose closure, moved to
+  `BACKLOG_DONE.md` 2026-08-30 — see that entry for how each name was
+  confirmed real via a live source, and the `_KNOWN_DOMAINS` entries
+  added for all three). Needs identifying the specific page IDs in
+  production and running `POST /internal/jurisdiction/backfill-apply`
+  against them — a production write, not attempted here.
 
 - **[NEEDS-AUDIT] Consolidated city-county repairs silently drop the
   state suffix instead of adding one — held back from the 2026-08-21
@@ -2202,13 +2105,7 @@ a build *count*, and Render bills build *minutes* — nobody has read
 per-service durations off the dashboard yet — and a saving only lands on
 pushes that touch one service's tree, so it decays as PRs get broader.
 
-**Two residuals:**
-- **`[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
-  database** rather than line-counting a tracked file. It is the sole
-  reason `scripts/tier3_auto_transcription_queue.txt` sits in the
-  Archive's allow-list; removing it restores all four lists to lockstep
-  and kills an ops metric whose freshness silently depends on deploy
-  cadence.
+**One residual:**
 - **`[LATER]` Tighten the two workers to their real import surface.**
   Scoping them to the four subtrees `worker/main.py` actually imports
   takes each ~243 → ~200 builds/fortnight. **Deliberately declined

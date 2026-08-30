@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel
@@ -73,6 +72,7 @@ from .platforms.media_probe import (
 )
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
+from .utils.cache_static import RevalidatingStaticFiles
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.jurisdiction_enrich import finalize_jurisdiction
 from .utils.url_guard import BlockedURLError, check_destination
@@ -168,13 +168,15 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+app.mount(
+    "/static", RevalidatingStaticFiles(directory=APP_DIR / "static"), name="static"
+)
 # Deep-link JS shared with the Archive service (archive/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
 # own header comment for why this exists.
 app.mount(
     "/shared-static",
-    StaticFiles(directory=APP_DIR.parent / "shared_static"),
+    RevalidatingStaticFiles(directory=APP_DIR.parent / "shared_static"),
     name="shared_static",
 )
 # Two roots: this service's own templates, then the repo-root

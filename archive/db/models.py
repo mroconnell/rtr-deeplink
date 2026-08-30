@@ -626,6 +626,42 @@ class WorkerReportSnapshot(Base):
     )
 
 
+class Tier3QueueState(Base):
+    """Single-row snapshot of how many URLs remain in the tier-3
+    auto-transcription discovery queue -- same "one row, id=1, updated
+    in place" shape as WorkerReportSnapshot above, for the same reason:
+    a cheap stored reference point beats a new event-log table for a
+    single number.
+
+    Why this exists (WO-66 residual, 2026-08-30): the queue itself is
+    still a plain git-tracked file, `scripts/
+    tier3_auto_transcription_queue.txt` -- `scripts/
+    feed_tier3_auto_transcription.py` pops a batch off it and rewrites
+    it on every run, via GitHub Actions, which has no direct database
+    access (it only talks to this service over HTTP with an ingest
+    token). Before this table existed, `archive/main.py`'s
+    `_tier3_queue_remaining()` read that file directly off disk, which
+    only worked because this service's own deploy also checks out the
+    whole repo -- meaning the file had to sit in this service's
+    `render.yaml` build-filter allow-list purely so a stats route could
+    line-count it, and the count was only ever as fresh as the last
+    deploy that happened to include the file's current state. Now the
+    feed script reports its own post-run remainder to `POST /internal/
+    tier3-queue-remaining` right after it rewrites the file, this table
+    stores that number, and the stats route reads it from here instead
+    -- so the file no longer needs to be part of this service's deploy
+    tree at all.
+    """
+
+    __tablename__ = "tier3_queue_state"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    remaining: Mapped[int] = mapped_column(Integer, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class MeetingHighlight(Base):
     """One precomputed, quotable moment per meeting page (plus a moment
     per curated topic present in it) -- what the state pages and
