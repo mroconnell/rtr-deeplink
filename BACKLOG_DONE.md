@@ -1,5 +1,94 @@
 # Backlog — done
 
+## CivicWeb's "iCompass"-branded `/document/{id}/` video widget — a second real URL shape, found via Wayback Machine CDX search [Done 2026-08-30]
+
+Closes the long-open "CivicWeb has a second, iCompass-branded meeting-
+table URL shape" entry, which had sat since 2026-08-26 waiting on "2-3
+more tenants" and, since 2026-08-29, a positive video example — asked
+for directly by the user via search-engine dorking/CDN/Common Crawl.
+
+**Common Crawl ruled out empirically, not assumed**: queried its CDX API
+(`index.commoncrawl.org`) for the entire `civicweb.net` domain across
+the latest crawl — 280 total captures, 277 of them `robots.txt`. Common
+Crawl's own crawler simply doesn't go deep into these tenant sites (low
+authority, JS-heavy navigation, no sitemap it follows) — zero
+`/document/` or `/filepro/document/` pages indexed anywhere on the
+domain. Not a dead end from a bad query; a real, confirmed limit of that
+specific corpus.
+
+**The Wayback Machine's CDX API (`web.archive.org/cdx/search/cdx`) is
+the one that actually works** — broader, more persistent crawling than
+Common Crawl's monthly web-scale pass. A domain-wide query filtered on
+`urlkey:.*media=true.*` (the exact query flag CivicWeb's own UI sets on
+the Video-column link, confirmed 2026-08-29) returned **108 distinct
+real government tenants** carrying this shape — Ada County Highway
+District ID, Des Moines WA, Dallas County TX, Collingwood ON, and 104
+more, spanning the US and Canada. A lower bound (only what's been
+archived), not a full census, but conclusive proof this is a common,
+real, multi-tenant widget shape, not a Sonoma-specific one.
+
+**3 independently verified live end-to-end**, not just found in an
+index: fetched each tenant's real `/document/{id}/` page, parsed its
+inline `"meetingId":{N}` config value (a different numeric id from the
+one in the URL — confirmed live: achdidaho document 36574 maps to
+meetingId 702), called the real, public, unauthenticated
+`/api/geteventwithindexpoints/{meetingId}` endpoint (found via the
+Browser pane's own network-request log while manually clicking the
+page's video button — not guessed), and confirmed each returned
+`Event.eventId` is a genuine, playable YouTube video via YouTube's own
+oEmbed endpoint (exact title match every time): Ada County Highway
+District's "Capital Investment Citizen Advisory Committee (CICAC) - 21
+Aug 2023" (`hWX_rHEeWeI`), Des Moines' "Council Meeting 11/18/2021"
+(`QB44CklYlIw`), Dallas County's "Commissioners Court - Oct 01 2024"
+(`HvvTMOoqRAQ`).
+
+**Confirmed the same identifier space as the already-supported
+`Portal/MeetingInformation.aspx?Id=` shape**, not a separate video
+system: Dallas County meetingId 1957 resolves the identical real
+"Commissioners Court - Oct 01 2024" meeting both via
+`Portal/MeetingInformation.aspx?Id=1957` and via the `/document/` page
+whose own config names meetingId 1957 — and `/api/videolink/1957` (the
+endpoint the existing adapter already calls for that shape) returns the
+exact same YouTube id. The real gap was never "this meeting has no
+video," only that `/document/{id}/` pages carry no `Id=` query param at
+all, so the existing meeting-id extraction found nothing to work with.
+
+**Bonus finding**: `/api/geteventwithindexpoints/` is a strictly richer
+sibling of `/api/videolink/` (same `YouTube`/event-id fields, nested one
+level under `Event`) — its `LocalIndexPoints` field came back genuinely
+populated on 2 of the 3 verified meetings (`{RelatedItem, ItemId, Value
+(seconds)}` triples, real per-agenda-item video timestamps), where
+`/api/videolink/`'s own `LocalIndexPoints` was empty on the one meeting
+originally checked back in 2026-08-12 (a real, different meeting, not a
+wrong claim — the field genuinely is more often empty via that
+endpoint). **Not built**: mapping each entry's opaque `ItemId` to its
+human-readable agenda-item text — checked the document page's own raw
+HTML for one, not there; no confirmed source found yet. Real, scoped
+follow-up, not attempted blind.
+
+**Built** (`app/platforms/civicweb.py`): `_resolve_document_shape()`,
+reached only when the primary `Id=`-based extraction finds nothing (zero
+regression risk to the already-proven path — that code is untouched).
+Fetches the document page, extracts `meetingId` from its inline config,
+calls the new endpoint, and delegates to `YouTubeAssetFinder` the same
+way the existing shape does. Jurisdiction: this page shape carries no
+jurisdiction-bearing text at all (confirmed live on all 3 tenants — no
+title, no `og:site_name`, no visible chrome) — only a domain already in
+the confirmed-known registry gets one (e.g. Dallas County), same honest-
+decline posture the existing shape's own fallback already uses; achdidaho
+and Des Moines correctly come back with no jurisdiction rather than a
+guess.
+
+Regression-tested (`tests/test_civicweb.py`, 5 new tests) against real
+field values from Ada County Highway District's live page/API responses
+— the happy path, a missing-config decline, a genuinely video-less
+meeting still surfacing its real title/date (same "always show what you
+know" convention this file's own Cablecast entry established earlier
+tonight), an API-fetch-failure decline, and a guard confirming a
+document-shaped URL that also happens to carry a real `Id=` param keeps
+using the already-proven primary path rather than being double-guessed.
+17/17 passing, zero regression to the 12 pre-existing tests.
+
 ## Kansas City, MO's Legistar meetings resolve real video again, via a new Granicus ViewPublisher RSS fallback [Done 2026-08-29]
 
 Real root-cause investigation replacing `BACKLOG.md`'s stale "only the
