@@ -1387,6 +1387,19 @@ async def main() -> None:
         "Ignored for --engine gemini.",
     )
     parser.add_argument(
+        "--language",
+        default=None,
+        help="Force Whisper to transcribe in this language (ISO 639-1 code, e.g. 'en') instead "
+        "of auto-detecting per chunk. Auto-detection decides from each chunk's first seconds "
+        "and can lock a whole chunk into the wrong language when a real meeting opens with "
+        "silence/music -- the confirmed Kitchener case (BACKLOG_DONE.md's WO-36 audit entry): "
+        "an English meeting transcribed end-to-end as Welsh-script gibberish. Default None "
+        "(auto-detect) preserves the original behavior; only force a code when the meeting's "
+        "real spoken language is known, since forcing the wrong one produces exactly the "
+        "failure this flag exists to fix. Ignored (with a warning) for --engine gemini, whose "
+        "engine already pins en-US in its own request config.",
+    )
+    parser.add_argument(
         "--chunk-seconds",
         type=int,
         default=None,
@@ -1477,6 +1490,10 @@ async def main() -> None:
             logger.warning("--model-size is ignored with --engine gemini")
         if args.cpu_threads is not None:
             logger.warning("--cpu-threads is ignored with --engine gemini")
+        if args.language is not None:
+            logger.warning(
+                "--language is ignored with --engine gemini (its request config already pins en-US)"
+            )
         model_size = cpu_threads = None
     else:
         if args.gemini_tokens_per_minute is not None:
@@ -1496,10 +1513,11 @@ async def main() -> None:
     # many meetings it's targeting) from the top of the log without reading
     # Python source.
     logger.info(
-        "Run started: engine=%s, model_size=%s (%s), cpu_threads=%s (%s), "
+        "Run started: engine=%s, language=%s, model_size=%s (%s), cpu_threads=%s (%s), "
         "chunk_cooldown_seconds=%s, limit=%s, newest_first=%s, dry_run=%s, chunk_seconds=%s, "
         "promote=%s, resume=%s, target=%s",
         args.engine,
+        args.language or "(auto-detect)",
         model_size,
         "explicit --model-size" if args.model_size else "auto-picked from local RAM",
         cpu_threads,
@@ -1536,7 +1554,9 @@ async def main() -> None:
         )
         from worker.transcription_engine import FasterWhisperEngine
 
-        engine = FasterWhisperEngine(model_size=model_size, cpu_threads=cpu_threads)
+        engine = FasterWhisperEngine(
+            model_size=model_size, cpu_threads=cpu_threads, language=args.language
+        )
         logger.info("Model loaded.")
 
     async with aiohttp.ClientSession() as session:

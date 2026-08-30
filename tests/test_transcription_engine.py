@@ -107,3 +107,49 @@ def test_no_words_falls_back_to_segment_span():
 def test_blank_text_produces_no_segments():
     seg = _FakeSegment(start=0.0, end=1.0, text="   ", words=[])
     assert _split_segment_on_word_gaps(seg) == []
+
+
+# --- FasterWhisperEngine language passthrough -------------------------------
+#
+# Synthetic (a faked faster_whisper module, since the real one downloads
+# model weights on construction): exercises only the plumbing between
+# FasterWhisperEngine(language=...) and model.transcribe(language=...),
+# added for scripts/transcribe_backlog_locally.py's --language flag (the
+# Kitchener misdetection re-run -- see BACKLOG_DONE.md's WO-36 audit
+# entry). The real transcription behavior of forcing a language is
+# faster-whisper's own, not covered here.
+
+
+class _FakeWhisperModel:
+    def __init__(self, *args, **kwargs):
+        self.transcribe_kwargs: List[dict] = []
+
+    def transcribe(self, path, **kwargs):
+        self.transcribe_kwargs.append(kwargs)
+        return iter([]), None
+
+
+def _engine_with_fake_model(monkeypatch, **engine_kwargs):
+    import sys
+    import types
+
+    from worker.transcription_engine import FasterWhisperEngine
+
+    fake = types.ModuleType("faster_whisper")
+    fake.WhisperModel = _FakeWhisperModel
+    monkeypatch.setitem(sys.modules, "faster_whisper", fake)
+    return FasterWhisperEngine(**engine_kwargs)
+
+
+def test_forced_language_reaches_the_transcribe_call(monkeypatch, tmp_path):
+    engine = _engine_with_fake_model(monkeypatch, language="en")
+    engine._transcribe_sync(tmp_path / "chunk.wav")
+    assert engine._model.transcribe_kwargs[0]["language"] == "en"
+
+
+def test_default_stays_auto_detect(monkeypatch, tmp_path):
+    # worker/main.py never passes language= -- the cloud worker must keep
+    # faster-whisper's own auto-detection (language=None) unchanged.
+    engine = _engine_with_fake_model(monkeypatch)
+    engine._transcribe_sync(tmp_path / "chunk.wav")
+    assert engine._model.transcribe_kwargs[0]["language"] is None
