@@ -134,7 +134,7 @@ Platform & jurisdiction coverage  (40)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (17)
+Reliability, ops & cost  (16)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -149,12 +149,11 @@ Reliability, ops & cost  (17)
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (5)
+  Search Console, structured data & SEO plumbing  (4)
     [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
     [WAIT] Search Console "Page indexed without content"
     [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
-    [JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -735,15 +734,13 @@ coverage** instead.
      regression test in `tests/test_iqm2.py`, full suite green). Not yet
      deployed.
   3. **`/j/*` and `/state/*` hub pages emit `VideoObject` for content
-     they don't host: real, scoped, fix recommendation ready, not yet
-     built** — see its own entry under **Reliability, ops & cost →
-     Search Console, structured data & SEO plumbing**
-     (`archive/templates/jurisdiction_page.html`,
-     `state_page.html`, `state_all50.html`). Confirmed against Google's
-     own named negative example ("a video category page that lists
-     multiple videos of equal prominence"), not just inferred. Estimated
-     700-800 live pages affected — plausibly the dominant driver of the
-     947→1,764 growth.
+     they don't host: confirmed and fixed 2026-08-29** — see
+     `BACKLOG_DONE.md`. Retyped to `CreativeWork` in all three templates
+     (`jurisdiction_page.html`, `state_page.html`, `state_all50.html`),
+     factored into a shared `_featured_itemlist.html` partial, 3 new
+     regression tests added (previously zero coverage). Full suite
+     green. Not yet deployed. Estimated 700-800 live pages affected —
+     plausibly the dominant driver of the 947→1,764 growth.
   4. **At least one vendor's `contentUrl` is a signed, expiring
      CloudFront URL** (`?token=...`, routed through
      `generic_fallback.py`, no dedicated adapter) — a genuine stable-URL
@@ -2443,55 +2440,6 @@ top-up driver has been creating zero jobs" under **Transcription queue
   structured-data report and click **VALIDATE FIX** on "Missing field
   'thumbnailUrl'" — Validation still reads "Not Started," nobody has
   asked Google to re-verify yet. Nothing to build.
-
-- **[JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
-  structured data for teaser content they don't actually host — scoped
-  2026-08-29, fix recommendation ready, not yet built.** `/j/rockwall-tx`'s
-  JSON-LD emits an `ItemList` whose `itemListElement` are full
-  `@type: VideoObject` entries (name, description, uploadDate,
-  thumbnailUrl, transcript) for its "moments" teaser feed — each entry's
-  own `url` correctly points to the real meeting page, but the hub page
-  itself renders **no `<video>` element at all**. Google reads a
-  `VideoObject` on a page as a claim the video is watchable *there*, so
-  every hub/state page with a moments feed gets flagged. **Confirmed
-  directly against Google's own docs, not just inferred**: its
-  [indexing-status
-  reference](https://support.google.com/webmasters/answer/9495631#indexing_status)
-  literally names *"a video category page that lists multiple videos of
-  equal prominence"* as an example of a page that is **not** a watch
-  page — a verbatim description of this layout.
-  **Scoping agent confirmed the blast radius is bigger than originally
-  suspected: three templates, not one** —
-  `archive/templates/jurisdiction_page.html:22-50`,
-  `archive/templates/state_page.html:23-69`, and
-  `archive/templates/state_all50.html:21-59` (route `/state/all-50`),
-  all built from `_build_featured()`/`_featured_entry()`
-  (`archive/db/crud.py:4876-4941`). Live-verified `/state/texas` and
-  `/state/all-50` both carry the identical pattern. **Gating is looser
-  than indexability**: `{% if public_base_url and featured %}` fires on
-  just one transcribed+titled+highlighted meeting, well below the
-  2-meeting indexable threshold — so even a `noindex`'d hub can still
-  emit the bad markup. From the live sitemap (754 `/j/*` + 61 `/state/*`
-  = 815 URLs) and the loose gate, the realistic estimate is **700-800
-  live pages actively emit this today** — this is very plausibly the
-  dominant, previously-uncounted driver of the 947→1,764 growth, since
-  the original 2026-08-21 investigation only ever looked at `/m/*` pages.
-  **Recommended fix**: retype the nested `item` from `VideoObject` to
-  `CreativeWork` in all three templates (keep `url`/`name`/`description`/
-  `thumbnailUrl`, rename `uploadDate`→`datePublished`, drop
-  `transcript` — those two properties are `VideoObject`/`MediaObject`-
-  scoped in schema.org, `CreativeWork` isn't). The real `VideoObject` for
-  that same content already exists correctly on the linked `/m/{slug}`
-  page, so nothing loses coverage, and Search Console already shows
-  these hub entries failing validation today (`Video URL: N/A`) — no
-  upside is being given up. Also worth doing in the same change: extract
-  the near-identical duplicated block into one shared
-  `archive/templates/_featured_itemlist.html` partial (precedent:
-  `_government_groups.html`, `state_page.html`'s own `_topic_chips.html`
-  include) so it can't drift across three copies again, and add
-  regression test coverage — **currently zero** — asserting no
-  `"@type": "VideoObject"` in hub/state JSON-LD
-  (`tests/test_jurisdiction_hubs.py` / `tests/test_state_pages.py`).
 
 ### `/coverage` as a QA surface
 

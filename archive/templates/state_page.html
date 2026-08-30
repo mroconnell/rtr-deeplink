@@ -22,12 +22,12 @@
   <meta property="og:type" content="website">
   {#- Structured data. BreadcrumbList states the Home > Coverage > State
      hierarchy the site already forms (the hubs carry the fourth level).
-     The ItemList of VideoObjects is what can earn a video rich result:
-     every entry is a real archived meeting with a transcript, and
-     thumbnailUrl is emitted only for pages whose frame is confirmed
-     stored (crud.pages_with_thumbnails()) -- advertising a card URL that
-     would 404 is worse than advertising none, same rule /m/{slug}
-     follows for og:image. -#}
+     The ItemList is real navigation content, not a video rich-result
+     claim -- see _featured_itemlist.html for why `item` is CreativeWork,
+     not VideoObject. thumbnailUrl is emitted only for pages whose frame
+     is confirmed stored (crud.pages_with_thumbnails()) -- advertising a
+     card URL that would 404 is worse than advertising none, same rule
+     /m/{slug} follows for og:image. -#}
   {% if public_base_url %}
   <script type="application/ld+json">
   {
@@ -47,21 +47,7 @@
     "mainEntity": {
       "@type": "ItemList",
       "itemListElement": [
-        {%- for m in featured %}
-        {
-          "@type": "ListItem",
-          "position": {{ loop.index }},
-          "item": {
-            "@type": "VideoObject",
-            "name": {{ (m.title or "Public meeting")|tojson }},
-            "description": {{ m.snippet_text|tojson }},
-            "url": {{ (public_base_url ~ m.deep_link)|tojson }},
-            {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
-            {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
-            "transcript": {{ m.snippet_text|tojson }}
-          }
-        }{{ "," if not loop.last }}
-        {%- endfor %}
+        {%- include "_featured_itemlist.html" %}
       ]
     }{% endif %}
   }

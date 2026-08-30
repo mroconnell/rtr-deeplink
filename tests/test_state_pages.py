@@ -7,6 +7,9 @@ anchored ", CA" suffix match, never list_pages()-style substring ilike --
 "Decatur, GA" contains "ca" and must not appear on /state/california.
 """
 
+import json
+import re
+
 from fastapi.testclient import TestClient
 
 import app.main
@@ -15,6 +18,10 @@ from archive.db import crud
 from archive.utils.jurisdiction_format import jurisdiction_hub_slug
 
 client = TestClient(archive.main.app)
+
+_JSON_LD_RE = re.compile(
+    r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>', re.DOTALL
+)
 
 
 def _payload(
@@ -142,6 +149,71 @@ async def test_state_page_seo_meta():
     # env may not set it, so only assert the tag when it renders.
     if 'rel="canonical"' in response.text:
         assert "/state/california" in response.text.split('rel="canonical"')[1][:200]
+
+
+async def test_state_page_moments_itemlist_uses_creativework_not_videoobject(
+    monkeypatch,
+):
+    # Real regression, 2026-08-29: this ItemList used to type its entries
+    # as VideoObject even though the state page renders no <video>
+    # element -- Google's own indexing-status reference names "a video
+    # category page that lists multiple videos of equal prominence" as
+    # an explicit non-watch-page example, and Search Console flagged
+    # every hub/state page with a moments feed as "video isn't on a
+    # watch page" as a result. See BACKLOG_DONE.md's 2026-08-29 entry.
+    # Reno, NV (real, deliberately a state no other test in this file
+    # touches -- California is used by several other tests that depend
+    # on the shared DB pool having *no* real highlight yet, e.g. the
+    # "recent_pages" fallback only renders `{% if not featured %}`, so
+    # seeding the first-ever real California highlight here would flip
+    # that conditional for every other California-based test in this
+    # file, same fragility this file's own Wyoming comment already
+    # documents for a different reason). Its own dedicated seed: the
+    # moments feed only features a page once compute_highlight_payload()
+    # finds a quotable window (MIN_WORDS = 25 in
+    # archive/utils/highlights.py, and a window must also clear
+    # SKIP_HEAD_FRACTION/SKIP_TAIL_FRACTION of the meeting's duration --
+    # see the matching test in test_jurisdiction_hubs.py for the full
+    # reasoning), and _seed_all()'s short fixture text is deliberately
+    # below that bar for its own tests. This transcript text is
+    # synthetic filler, not a real quote.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    await _seed(
+        "granicus:state-reno",
+        jurisdiction="Reno, NV",
+        title="Reno City Council",
+        segments=[
+            {
+                "start": 600,
+                "end": 3600,
+                "text": (
+                    "The council will now move to the second item on tonight's "
+                    "agenda, a discussion of the proposed downtown parking "
+                    "structure and the budget allocation that would be required "
+                    "to complete the environmental review process this year."
+                ),
+            }
+        ],
+    )
+    r = client.get("/state/nevada")
+    assert r.status_code == 200
+    match = _JSON_LD_RE.search(r.text)
+    assert match, "no JSON-LD script block found"
+    data = json.loads(match.group(1))
+    assert data["@type"] == "CollectionPage"
+    items = data["mainEntity"]["itemListElement"]
+    assert items, "expected at least one featured meeting"
+    for entry in items:
+        item = entry["item"]
+        assert item["@type"] == "CreativeWork"
+        assert item["url"].startswith("https://example.org/m/")
+        assert "transcript" not in item
+        assert "uploadDate" not in item
+        if "datePublished" in item:
+            assert item["datePublished"]
+    assert "VideoObject" not in r.text
 
 
 async def test_coverage_page_links_states(monkeypatch):
@@ -405,6 +477,49 @@ def test_state_all50_page_renders():
     response = client.get("/state/all-50")
     assert response.status_code == 200
     assert "Public meetings from all 50 states" in response.text
+
+
+async def test_state_all50_moments_itemlist_uses_creativework_not_videoobject(
+    monkeypatch,
+):
+    # Same regression as test_state_page_moments_itemlist_uses_
+    # creativework_not_videoobject above, checked separately since
+    # state_all50.html is its own template with its own copy of the
+    # ItemList block, not sharing state_page.html's route handler.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    await _seed(
+        "granicus:state-all50-elpaso",
+        jurisdiction="El Paso, TX",
+        title="El Paso City Council",
+        segments=[
+            {
+                "start": 600,
+                "end": 3600,
+                "text": (
+                    "The council will now move to the second item on tonight's "
+                    "agenda, a discussion of the proposed downtown parking "
+                    "structure and the budget allocation that would be required "
+                    "to complete the environmental review process this year."
+                ),
+            }
+        ],
+    )
+    r = client.get("/state/all-50")
+    assert r.status_code == 200
+    match = _JSON_LD_RE.search(r.text)
+    assert match, "no JSON-LD script block found"
+    data = json.loads(match.group(1))
+    assert data["@type"] == "CollectionPage"
+    items = data["mainEntity"]["itemListElement"]
+    assert items, "expected at least one featured meeting"
+    for entry in items:
+        item = entry["item"]
+        assert item["@type"] == "CreativeWork"
+        assert "transcript" not in item
+        assert "uploadDate" not in item
+    assert "VideoObject" not in r.text
 
 
 async def test_state_all50_excludes_canada_and_unknown_platform():

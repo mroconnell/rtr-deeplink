@@ -20,30 +20,16 @@
   <meta property="og:description" content="Watch and search {{ total_pages }} archived {{ display }} government meeting{{ 's' if total_pages != 1 else '' }} with transcripts and deep links to specific moments.">
   <meta property="og:type" content="website">
   {% if public_base_url and featured %}
-  {#- ItemList of the hub's featured meetings as VideoObjects -- the same
-     structured data the state pages emit, and the reason a hub can earn
-     a video rich result rather than just a blue link. thumbnailUrl only
-     where a stored frame is confirmed (crud.pages_with_thumbnails()). -#}
+  {#- ItemList of the hub's featured meetings, real navigation content
+     supporting the page -- see _featured_itemlist.html for why `item`
+     is CreativeWork, not VideoObject. thumbnailUrl only where a stored
+     frame is confirmed (crud.pages_with_thumbnails()). -#}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "itemListElement": [
-      {%- for m in featured %}
-      {
-        "@type": "ListItem",
-        "position": {{ loop.index }},
-        "item": {
-          "@type": "VideoObject",
-          "name": {{ (m.title or "Public meeting")|tojson }},
-          "description": {{ m.snippet_text|tojson }},
-          "url": {{ (public_base_url ~ m.deep_link)|tojson }},
-          {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
-          {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
-          "transcript": {{ m.snippet_text|tojson }}
-        }
-      }{{ "," if not loop.last }}
-      {%- endfor %}
+      {%- include "_featured_itemlist.html" %}
     ]
   }
   </script>

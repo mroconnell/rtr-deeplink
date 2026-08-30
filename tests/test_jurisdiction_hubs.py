@@ -8,6 +8,9 @@ the state-page tests' shared session DB), so counts and threshold
 assertions are stable regardless of test order.
 """
 
+import json
+import re
+
 from fastapi.testclient import TestClient
 
 import app.main
@@ -16,6 +19,10 @@ from archive.db import crud
 from archive.utils.jurisdiction_format import jurisdiction_hub_slug
 
 client = TestClient(archive.main.app)
+
+_JSON_LD_RE = re.compile(
+    r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>', re.DOTALL
+)
 
 
 def _payload(
@@ -197,6 +204,77 @@ async def test_hub_route_renders_meetings_breadcrumb_and_links():
     assert 'content="noindex"' not in r.text
     # canonical/BreadcrumbList are gated on PUBLIC_BASE_URL (unset in tests),
     # same as the state pages -- rendering without it is the tested path.
+
+
+async def test_hub_moments_itemlist_uses_creativework_not_videoobject(monkeypatch):
+    # Real regression, 2026-08-29: this ItemList used to type its entries
+    # as VideoObject even though the hub page itself renders no <video>
+    # element -- Google's own indexing-status reference names "a video
+    # category page that lists multiple videos of equal prominence" as
+    # an explicit non-watch-page example, and Search Console flagged
+    # every hub/state page with a moments feed as "video isn't on a
+    # watch page" as a result. See BACKLOG_DONE.md's 2026-08-29 entry.
+    # Boise, ID (real state capital, deliberately not California --
+    # test_state_pages.py has several tests that depend on the shared DB
+    # pool having *no* real highlight anywhere in California yet (its
+    # "recent_pages" fallback only renders `{% if not featured %}`, so
+    # this file's tests run alphabetically before that one and a
+    # California seed here would flip that conditional for every
+    # California-based test over there -- confirmed live, 2026-08-29: it
+    # broke test_state_page_lists_states_jurisdictions in a full-suite
+    # run despite passing in isolation). Own dedicated seed rather than
+    # _seed_all(): the moments feed only features a page once
+    # compute_highlight_payload() finds a quotable window (MIN_WORDS = 25
+    # in archive/utils/highlights.py), and _seed_all()'s short fixture
+    # text ("hub page test transcript") is deliberately below that bar
+    # for its own threshold tests. This transcript text is synthetic
+    # filler, not a real quote.
+    monkeypatch.setitem(
+        archive.main.templates.env.globals, "public_base_url", "https://example.org"
+    )
+    await _seed(
+        "granicus:hub-boise1",
+        jurisdiction="Boise, ID",
+        title="Boise City Council",
+        date="2026-02-03",
+        meeting_body="City Council",
+        segments=[
+            {
+                # start=600 deliberately clears _candidate_windows()'s
+                # SKIP_HEAD_FRACTION bound (skips the first ~8% of the
+                # meeting -- procedural "call to order" chatter) against
+                # a duration derived from this segment's own `end`.
+                "start": 600,
+                "end": 3600,
+                "text": (
+                    "The council will now move to the second item on tonight's "
+                    "agenda, a discussion of the proposed downtown parking "
+                    "structure and the budget allocation that would be required "
+                    "to complete the environmental review process this year."
+                ),
+            }
+        ],
+    )
+    r = client.get("/j/boise-id")
+    assert r.status_code == 200
+    match = _JSON_LD_RE.search(r.text)
+    assert match, "no JSON-LD script block found"
+    data = json.loads(match.group(1))
+    assert data["@type"] == "ItemList"
+    items = data["itemListElement"]
+    assert items, "expected at least one featured meeting"
+    for entry in items:
+        item = entry["item"]
+        assert item["@type"] == "CreativeWork"
+        assert item["url"].startswith("https://example.org/m/")
+        assert "transcript" not in item
+        assert "uploadDate" not in item
+        # datePublished is the CreativeWork equivalent of uploadDate --
+        # only asserted present when the source meeting has a date, same
+        # conditional the template itself uses.
+        if "datePublished" in item:
+            assert item["datePublished"]
+    assert "VideoObject" not in r.text
 
 
 async def test_hub_route_below_threshold_is_noindexed_and_unknown_404s():
