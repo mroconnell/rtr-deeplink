@@ -946,3 +946,35 @@ async def test_resolve_populates_meeting_body_from_rss_channel_title():
 
     assert result.meeting_body == "City Council Meetings"
     assert result.jurisdiction == "City of San Diego, CA"
+
+
+async def test_resolve_rejects_a_domain_shaped_rss_channel_title():
+    # Real bug, confirmed live 2026-08-29 auditing archived pages:
+    # lcd.granicus.com's own real RSS <title> is literally
+    # "lcd.granicus.com: Oregon LCD View (Videos Feed)" -- a misconfigured
+    # customer echoing their own hostname instead of a real jurisdiction
+    # name -- which flowed straight through as the stored jurisdiction
+    # with no validation at all, unlike every other tier. A domain-shaped
+    # string (has a dot, no spaces) must be rejected rather than trusted.
+    url = "https://lcd.granicus.com/player/clip/106?view_id=1"
+    html = "<html><body>Oregon LCD View</body></html>"
+    rss = (
+        "<rss><channel><title>lcd.granicus.com: Oregon LCD View "
+        "(Videos Feed)</title></channel></rss>"
+    )
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://lcd.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video": FakeResponse(
+            status=200, text=rss
+        ),
+        "https://lcd.granicus.com/videos/106/captions.vtt": FakeResponse(status=404),
+        "https://lcd.granicus.com/videos/106/player": FakeResponse(status=404),
+        "https://lcd.granicus.com/AgendaViewer.php?clip_id=106&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Unknown Jurisdiction"

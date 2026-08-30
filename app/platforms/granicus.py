@@ -1124,6 +1124,23 @@ class GranicusAssetFinder(AssetFinder):
             parts = title_match.group(1).strip().split(":", 1)
             if len(parts) == 2:
                 jurisdiction = parts[0].strip() or None
+                # Real bug found 2026-08-29 auditing archived pages missing
+                # a jurisdiction: this override trusts the RSS channel
+                # title's own text with no validation at all, unlike every
+                # other tier above it -- confirmed live on
+                # lcd.granicus.com's own real feed, whose <title> is
+                # literally "lcd.granicus.com: Oregon LCD View (Videos
+                # Feed)" (a misconfigured customer echoing their own
+                # hostname instead of a real jurisdiction name), which
+                # flowed straight through as the stored jurisdiction. A
+                # domain-shaped string (has a dot, no spaces -- a real
+                # "City of X"/"X County" name always has a space) is never
+                # a real jurisdiction, so this declines rather than
+                # trusting it -- same "decline instead of guessing"
+                # posture used everywhere else in this module, just
+                # applied to this one tier that never had it.
+                if jurisdiction and "." in jurisdiction and " " not in jurisdiction:
+                    jurisdiction = None
                 body = re.sub(r"\s*\(.*?Feed\)\s*$", "", parts[1]).strip() or None
 
         item_date = None

@@ -595,3 +595,23 @@ def test_org_logo_jurisdiction_declines_on_disagreeing_segments():
         'OH VOD Player - organization logo" src="/x.png" />'
     )
     assert TelvueAssetFinder._org_logo_jurisdiction(html) is None
+
+
+def test_guess_jurisdiction_rejects_short_allcaps_initialisms():
+    # Real bug, confirmed live 2026-08-29 auditing archived pages missing
+    # a jurisdiction: "WB Board of Selectmen Mtg" (West Bridgewater, MA)
+    # and "MCS Board Mtg." both matched with a 2-3 letter all-caps
+    # initialism as the captured name -- no real US/CA jurisdiction is
+    # a bare short all-caps initialism, so this must decline rather than
+    # store "WB"/"MCS" verbatim.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "WB Board of Selectmen Mtg: - March 20th, 2024"
+        )
+        is None
+    )
+    assert TelvueAssetFinder._guess_jurisdiction("MCS Board Mtg.") is None
+    # A real, longer place name must still pass through untouched -- this
+    # guard is keyed on length + case, not a blanket rejection of any
+    # short-looking prefix.
+    assert TelvueAssetFinder._guess_jurisdiction("Delta Board Meeting") == "Delta"
