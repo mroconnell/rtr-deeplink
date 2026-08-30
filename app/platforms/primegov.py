@@ -38,6 +38,25 @@ _VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})"')
 # then the year before, stopping at the first year whose archive actually
 # contains this meetingTemplateId. A meeting older than that is a real,
 # unaddressed gap -- see BACKLOG.md.
+#
+# A second real, indexed URL shape carries `?compiledMeetingDocumentFileId=`
+# instead of `?meetingTemplateId=` -- confirmed live 2026-08-30:
+# sanantonio.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=9911
+# used to return "No video found" even though this tenant's own
+# ListArchivedMeetings API has a real Swagit video for the underlying
+# meeting. `compiledMeetingDocumentFileId` is a `documentList[].id` value
+# (one specific compiled document/file), a different id space from
+# `documentList[].templateId` -- confirmed live these don't correspond to
+# the same meeting id-for-id, so this is matched separately: the same API
+# search below also checks each document's own `id` field, and whichever
+# document matches (by templateId OR by document id) hands back its
+# parent meeting's videoUrl/title/date/isShowVideoIcon exactly as before.
+# Confirmed live: document id 9911 belongs to San Antonio's Jan 26, 2022
+# Planning Commission meeting (templateId 3915, videoUrl
+# https://sanantoniotx.new.swagit.com/videos/153553) -- a different,
+# older meeting than templateId 61635 (Zoning Board of Adjustment, Jan
+# 12, 2026), so the two aren't the same meeting; both are real,
+# independently-confirmed examples of this lookup path working.
 
 # The PrimeGov page's own agenda header ("FORMAL AGENDA / CITY COUNCIL /
 # August 4, 2026", "REGULAR MEETING / Tuesday, July 07, 2026") -- confirmed
@@ -296,7 +315,8 @@ class PrimeGovAssetFinder(AssetFinder):
         honest "no video found" response.
         """
         meeting_template_id = self._extract_meeting_template_id(url)
-        if not meeting_template_id:
+        compiled_document_id = self._extract_compiled_document_id(url)
+        if not meeting_template_id and not compiled_document_id:
             return None
 
         netloc = urlparse(url).netloc
@@ -305,7 +325,7 @@ class PrimeGovAssetFinder(AssetFinder):
         async with aiohttp.ClientSession(headers=self.headers) as session:
             for year in tried_years:
                 lookup = await self._fetch_tenant_video_url(
-                    session, netloc, meeting_template_id, year
+                    session, netloc, meeting_template_id, compiled_document_id, year
                 )
                 if lookup.matched:
                     # A real meeting matching this URL's meetingTemplateId
@@ -330,7 +350,7 @@ class PrimeGovAssetFinder(AssetFinder):
                     if year in tried_years:
                         continue
                     lookup = await self._fetch_tenant_video_url(
-                        session, netloc, meeting_template_id, year
+                        session, netloc, meeting_template_id, compiled_document_id, year
                     )
                     if lookup.matched:
                         break
@@ -443,6 +463,20 @@ class PrimeGovAssetFinder(AssetFinder):
         return value if value and value.isdigit() else None
 
     @staticmethod
+    def _extract_compiled_document_id(url: str) -> Optional[str]:
+        """The `?compiledMeetingDocumentFileId=` query param -- a second
+        real, indexed PrimeGov URL shape (confirmed live 2026-08-30, see
+        the module-level comment above `_VIDEO_URL_VAR_RE`'s siblings).
+        This is a `documentList[].id` value, a different id space from
+        `meetingTemplateId`'s `documentList[].templateId` -- callers must
+        match it against `document.get("id")`, never treat it as
+        interchangeable with a template id."""
+        value = parse_qs(urlparse(url).query).get(
+            "compiledMeetingDocumentFileId", [None]
+        )[0]
+        return value if value and value.isdigit() else None
+
+    @staticmethod
     def _candidate_years(page_date: Optional[str]) -> List[int]:
         """Years to try against ListArchivedMeetings, in priority order:
         the year parsed from the page's own header text (most likely
@@ -502,29 +536,37 @@ class PrimeGovAssetFinder(AssetFinder):
     async def _fetch_tenant_video_url(
         session: aiohttp.ClientSession,
         netloc: str,
-        meeting_template_id: str,
+        meeting_template_id: Optional[str],
+        compiled_document_id: Optional[str],
         year: int,
     ) -> "_TenantMeetingLookup":
-        """Looks up this URL's meetingTemplateId in one year's worth of
-        this tenant's archived meetings -- `matched=True` as soon as a
-        meeting whose documentList carries it is found, with `video_url`
-        being that meeting's own `videoUrl` field (real confirmed shape:
-        "https://{tenant}.new.swagit.com/videos/{id}", "https://{tenant}.
-        v3.swagit.com/events/{id}", or a swagit/granicus URL, possibly
-        protocol-relative). `video_url` is None (matched still True) for a
-        genuine agenda-only meeting with no recording -- `has_video_icon`
-        (from the meeting's own real `isShowVideoIcon` field, confirmed
-        live 2026-08-28 on Palo Alto) distinguishes that from a meeting
-        the tenant itself says has video that videoUrl just doesn't name
-        (e.g. hosted on Midpen Media Center -- see BACKLOG.md). `title`/
-        `date` are the meeting's own real API fields (confirmed live
-        shape: `"date": "Jan 12, 2026"`, abbreviated month) -- used by the
-        caller only to backfill a delegated Granicus/Swagit resolve that
-        came back with nothing of its own (see `_resolve_via_tenant_
-        video_url`'s own comment on the `event_id` sub-case this covers).
-        Best-effort like every other adapter's opportunistic API probe
-        here -- any failure just means "nothing found," not a raised
-        exception.
+        """Looks up this URL's meetingTemplateId (or, when the URL instead
+        carries `?compiledMeetingDocumentFileId=`, that document id -- see
+        `_extract_compiled_document_id()`) in one year's worth of this
+        tenant's archived meetings -- `matched=True` as soon as a document
+        whose `templateId` OR `id` matches is found, with `video_url`
+        being that document's *parent meeting's* own `videoUrl` field
+        (real confirmed shape: "https://{tenant}.new.swagit.com/videos/
+        {id}", "https://{tenant}.v3.swagit.com/events/{id}", or a swagit/
+        granicus URL, possibly protocol-relative). Exactly one of
+        `meeting_template_id`/`compiled_document_id` is expected to be
+        set per call (the caller extracts whichever query param the URL
+        actually carries) -- both matched against the same documentList
+        entries, since a compiled-document id and a template id are
+        different fields on the same real record, not different records.
+        `video_url` is None (matched still True) for a genuine agenda-only
+        meeting with no recording -- `has_video_icon` (from the meeting's
+        own real `isShowVideoIcon` field, confirmed live 2026-08-28 on
+        Palo Alto) distinguishes that from a meeting the tenant itself
+        says has video that videoUrl just doesn't name (e.g. hosted on
+        Midpen Media Center -- see BACKLOG.md). `title`/`date` are the
+        meeting's own real API fields (confirmed live shape: `"date":
+        "Jan 12, 2026"`, abbreviated month) -- used by the caller only to
+        backfill a delegated Granicus/Swagit resolve that came back with
+        nothing of its own (see `_resolve_via_tenant_video_url`'s own
+        comment on the `event_id` sub-case this covers). Best-effort like
+        every other adapter's opportunistic API probe here -- any failure
+        just means "nothing found," not a raised exception.
         """
         api_url = (
             f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings?year={year}"
@@ -552,15 +594,18 @@ class PrimeGovAssetFinder(AssetFinder):
         if not isinstance(meetings, list):
             return _TenantMeetingLookup(matched=False)
 
-        template_id = int(meeting_template_id)
+        template_id = int(meeting_template_id) if meeting_template_id else None
+        document_id = int(compiled_document_id) if compiled_document_id else None
         for meeting in meetings:
             if not isinstance(meeting, dict):
                 continue
             for document in meeting.get("documentList") or []:
+                if not isinstance(document, dict):
+                    continue
                 if (
-                    isinstance(document, dict)
+                    template_id is not None
                     and document.get("templateId") == template_id
-                ):
+                ) or (document_id is not None and document.get("id") == document_id):
                     return _TenantMeetingLookup(
                         matched=True,
                         video_url=meeting.get("videoUrl") or None,

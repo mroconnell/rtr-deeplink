@@ -34,6 +34,45 @@ async def test_listing_with_multiple_videos_raises_pick_list():
     assert candidates[0]["title"] == "City Council Regular Meeting"
 
 
+async def test_real_durham_listing_page_parses_correctly():
+    # Real, raw-saved live page -- nc-durham.civicplus.com/AgendaCenter/
+    # City-Council-4, fetched live 2026-08-30. This is the confirmed real
+    # sample the class docstring and BACKLOG.md reference; unlike
+    # agendacenter_listing.html above (hand-built after the original
+    # ca-westlakevillage sample went DNS-dead), this fixture is the actual
+    # HTML the site served, with only <script>/<style>/comment blocks
+    # stripped to keep the file a reasonable size -- every
+    # tr.catAgendaRow/td.media/h3>strong/td>p>a element is untouched.
+    #
+    # Live-confirmed at fetch time: 31 tr.catAgendaRow rows, 22 with a
+    # real video link in td.media (21 Granicus + 1 YouTube). One specific
+    # link spot-checked live before saving: durham.granicus.com/player/
+    # clip/3313 ("Joint City County Meeting", June 9, 2026).
+    url = "https://nc-durham.civicplus.com/AgendaCenter/City-Council-4"
+    html = load_fixture("civicplus", "durham_agendacenter_citycouncil.html")
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        with pytest.raises(CalendarPageError) as exc_info:
+            await CivicPlusAssetFinder().resolve(url)
+
+    candidates = exc_info.value.candidates
+    assert len(candidates) == 22
+    assert exc_info.value.jurisdiction_hint == "Durham, NC"
+
+    granicus_candidates = [c for c in candidates if "granicus.com" in c["url"]]
+    youtube_candidates = [c for c in candidates if "youtube.com" in c["url"]]
+    assert len(granicus_candidates) == 21
+    assert len(youtube_candidates) == 1
+
+    clip_3313 = next(
+        c for c in candidates if "durham.granicus.com/player/clip/3313" in c["url"]
+    )
+    assert clip_3313["title"] == "Joint City County Meeting"
+    assert clip_3313["date"] == "2026-06-09"
+
+
 async def test_listing_with_single_video_delegates_to_granicus():
     url = "https://example.civicplus.com/AgendaCenter"
     html = load_fixture("civicplus", "agendacenter_single.html")

@@ -1,5 +1,608 @@
 # Backlog — done
 
+## TelVue: 10 of the 12 independently-verified new jurisdictions ingested for real [Done 2026-08-30]
+
+Real content ingestion, not just research — closes the immediate,
+verified-safe slice of the ~112-candidate TelVue queue found earlier
+tonight (`BACKLOG.md`'s TelVue CDX-enumeration entry, still open for
+the remaining ~100 unverified candidates).
+
+Per each of the 12 independently-verified org tokens: found one real,
+current meeting on the channel's own `/home` page, confirmed it live,
+then submitted it through the public `POST /api/resolve` endpoint — the
+same path a real visitor's browser uses, no admin/internal access
+involved.
+
+**10 ingested successfully**: Winchester MA, Derry NH, Pierre SD,
+Guttenberg IA, Kalamazoo MI, Leominster MA, Royal Oak MI, Albany NY,
+Summit NJ, Luverne MN — each confirmed live afterward via a real `/m/`
+page with a working video player.
+
+**1 already archived**: Aiken SC's candidate meeting was already
+ingested before this session (found already live at
+`/m/city-council-aug-24-2026`).
+
+**1 skipped, correctly**: Cleveland OH's channel's newest content is
+over 4 years old (last real meeting: March 2022) — no current meeting
+existed to ingest, so nothing was forced.
+
+**Real bug found along the way, filed separately**: several of the
+ingested pages came back with an empty or garbled `jurisdiction` field
+from the TelVue adapter — see `BACKLOG.md`'s new "Jurisdiction
+extraction & backfill" entry for the specific pages and what's
+actually wrong.
+
+## "Open bugs" re-verification pass: 61 entries audited via 4 parallel agents, real drift found and corrected [Investigated 2026-08-30]
+
+Full re-verification pass on `BACKLOG.md`'s "Open bugs" section (61
+entries, ~1,410 lines — the file's largest and stalest section, mixing
+tonight's fresh adds with much older undated ones). Same method as the
+Dormant-section pass earlier tonight: 4 parallel agents, each auditing
+one chunk of the section against live code, live production data, and
+`git log`, per CLAUDE.md's own "a backlog entry is a lead, not a spec"
+rule. Real result: **2 entries fully closed (already fixed), 5 entries
+had a genuinely stale or wrong claim corrected in place, 1 new bug
+found incidentally, and the other 53 held up under direct verification**
+— confirming most of the section is solid, not just assuming it.
+
+**Process note worth recording**: partway through, the shared checkout
+at `~/Documents/rtr-deeplink` was found to be on a different branch
+(`iqm2-caption-fetch`, from an unrelated parallel session) rather than
+`main` — a real instance of the multi-session collision CLAUDE.md
+already warns about. Cross-checked which of the 4 agents' findings
+depended on reading local files that branch had modified (mainly
+`cablecast.py`, `civicclerk.py`, `civicplus.py`, `iqm2.py`,
+`legistar.py`, `models.py`, `primegov.py`, `jurisdiction_enrich.py`,
+`scripts/adapter_canary.py` — all files this session's own earlier PRs
+571-574 touched, which that other branch simply hadn't merged yet) —
+one finding (a stale read of the old, pre-compaction Search Console
+entry) was discarded outright as a result; everything else either read
+files untouched by that branch, or depended on live production
+fetches/git history unaffected by which local branch was checked out.
+
+**Closed — already fixed, moved here from Open bugs**:
+- **Chunk-failure budget only catching consistent failures.** The
+  underlying cause (Wowza/CloudFront cold-cache fill on
+  `archive-stream.granicus.com`, mistaken for genuine intermittency) was
+  already root-caused and fixed via a smaller Granicus chunk size —
+  commit `7149722` ("Give Granicus a 300s chunk size, fixing 24/24 real
+  cold-CDN ffmpeg timeouts"), confirmed merged. That fix also settles
+  this entry's own scheduling question: a chunk that fits the timeout
+  budget stops burning a worker slot on doomed attempts.
+- **Two pages (Napa job 20, Detroit job 47) stuck with a failed
+  transcription job for months, with the open question being whether
+  the backoff/retry pool was actually still working.** Checked both
+  pages live 2026-08-30: Detroit (`/m/detroit-mi-2026-07-28-...`) now
+  has a complete, un-flagged transcript (version 2506, 3,930 segments,
+  full ~5hr7min meeting). Napa (`/m/city-of-napa-2026-06-30-...`) has a
+  real partial transcript with an honest in-page warning about the
+  interruption (version 2371, 1,058 segments). Both job/version numbers
+  are now in the 2300s-2500s range, well past job 20/47 — directly
+  confirms the backoff pool *is* working as designed for these two rows,
+  answering the entry's central question.
+
+**Corrected in place — stale or wrong claim, real fix kept live** (see
+`BACKLOG.md` for the corrected entries themselves):
+- StatsCan/Census table gap: Chatham-Kent and Arran-Elderslie were
+  already fixed via the eScribe-residuals hyphen-matcher tier; only
+  Blue Mountains is still genuinely open.
+- Census-table 649-row baseline validation: the three named
+  jurisdiction-side bleed cases (Sarasota/Hollywood/Hampton) are all
+  already fixed via the existing bleed signal — the mid-word-truncation
+  detector this entry justified is now only motivated by a separate
+  title-side example, not the three originally cited.
+- Hyland/YouTube Anchorage bot-block: doesn't reproduce today — a fix
+  that landed 16 days *before* this entry was written already means a
+  blocked-after-finding-an-embed case still gets a real playable
+  `video_url`; today's live re-test shows no embed at all in the source
+  HTML, a different (unconfirmed) cause than originally described.
+- ProudCity residuals: 2 of 3 "still open" items were already chased
+  and resolved the same day the entry describes (Franklin Township
+  pushed as agenda-only; Effingham/George West confirmed negative);
+  Holyoke's YouTube 429 was already retried once and failed again, not
+  merely "needs a retry."
+- Four-platforms-account-for-78%-of-470 sizing: the 474-page count is
+  stale (a later fresh audit found 269), and the Cablecast sub-claim
+  ("blocked on a multi-word-city customer, don't widen speculatively")
+  was directly contradicted by a fix that shipped the same day this
+  entry's own "scoping done" note was written — 23 of Cablecast's 101
+  gap rows were recovered via a subdomain-validation fallback.
+
+**New finding, filed as its own entry**: a real, previously-undocumented
+jurisdiction mis-attribution surfaced incidentally while checking the
+NYC/Viebit row in the "50 largest cities" subsection —
+`/m/new-york-ny-2026-08-19-8-18-26-council-meeting-mp4` is tagged "New
+York, NY" but its real source is `ringwoodtv.viebit.com` (Ringwood, NJ).
+
+**Everything else in the section (53 of 61 entries) was checked and
+holds up** — confirmed still-accurate against live code/data, or
+correctly already marked closed. Two items surfaced needing production
+DB/admin-token access to fully settle (the 51-candidate list behind
+`bleed-backfill-candidates`, and the current low-trust-page count after
+the Cablecast fix above) — both noted in place, not chased further here.
+
+## Five real bugs found by the 2026-08-30 dorking pass, all fixed and shipped same day (PRs #571-574) [Done 2026-08-30]
+
+Closes five entries filed earlier the same day out of the CivicWeb/
+PrimeGov/Cablecast dorking pass and the Dormant-section triage — all
+built, fixture-tested against real live pages, and merged within hours
+of being found.
+
+**CivicPlus (PR #571)**: the adapter's "zero live confirmed URLs"
+problem is solved. `nc-durham.civicplus.com/AgendaCenter/City-Council-4`
+confirmed live (31 `catAgendaRow` rows, 22 with real video links, 21
+Granicus + 1 YouTube) and added as the adapter's real verified sample —
+a real fixture captured from the live page, a new regression test
+confirming all 22 candidates extract correctly with the right
+Granicus/YouTube split, and `scripts/adapter_canary.py`'s civicplus
+exclusion removed (it now points at Durham).
+
+**Legistar (PR #572)**: "Meeting location" is now extracted, but only
+when address-shaped. Confirmed live on 4 real hosts: Santa Clara (a real
+street address, now surfaced), Mesa and Naperville (meeting-type/room
+descriptors, correctly NOT surfaced as addresses), Chapel Hill (field
+absent, handled with no error). New `ResolvedMeeting.meeting_location`
+field; `_extract_meeting_location_text()` handles both the newline- and
+`<br>`-separated real page shapes seen; `_looks_like_street_address()`
+gates what gets surfaced. No Archive migration needed — unknown fields
+are already silently dropped by Archive's ingest model (the same
+pattern `video_link` already uses).
+
+**Cablecast (PR #573), two bugs**: (1) the CCX Media `site=` param is
+now read and mapped to real jurisdictions — confirmed live across two
+separate code paths (`_resolve_publicsite()`'s JSON-API branch and the
+Remix/HTML branch both needed the fix; the real public URL shape,
+`/CablecastPublicSite/show/{id}?site=X`, 301-redirects into the branch
+that was tested by hand first, which is why both had to be checked). A
+real, explicit `_CCX_MEDIA_SITES` table was used instead of a generic
+gazetteer lookup, since several of the 9 real city names (Plymouth, New
+Hope) are nationally ambiguous. Orion Township MI and Montgomery AL
+added as ordinary `jurisdiction_enrich._KNOWN_DOMAINS` entries. (2)
+`yourtown.cablecast.tv` (Cablecast's own vendor sales-demo tenant,
+confirmed via its real `pageDescription` text) is now rejected before
+any network fetch, closing the real risk that an automated enumeration
+pass could have bulk-ingested it as genuine Pasadena, CA content.
+
+**PrimeGov (PR #574), two bugs — one confirmed as filed, one corrected
+after re-verification found the original claim didn't hold up.**
+(1) `?compiledMeetingDocumentFileId=` URLs now resolve correctly — a
+new `_extract_compiled_document_id()` matches against `documentList[].
+id` (a different id space from `templateId`), confirmed live against a
+real San Antonio document. (2) **The Frisco CO jurisdiction bug's
+originally-filed root cause did not reproduce.** Per this repo's own
+"verify before building" rule, the fix session re-checked the claimed
+"YouTube widget label beats the real page header" mechanism against 4
+real `townoffrisco.primegov.com` fetches (curl and a live browser,
+including inspecting the actual iframe DOM) and found the claimed
+widget text is never present in the server-rendered HTML this adapter
+fetches — it's YouTube's own cross-origin iframe chrome, invisible to a
+server-side fetch. `_extract_jurisdiction()` already correctly returned
+"Town of Frisco" on the real page. **The real, confirmed gap**: a
+missing state — "Frisco" is nationally ambiguous with the
+already-registered Frisco, TX. Fixed with a `townoffrisco.primegov.com`
+entry in `jurisdiction_enrich._KNOWN_DOMAINS`, the same pattern already
+used for Alexandria/Sacramento/Long Beach. `resolve()` now correctly
+returns "Town of Frisco, CO." The corrected story is what's preserved
+here, per this file's own convention that a stale/wrong original claim
+gets corrected in the same pass that finds the real cause, not repeated.
+
+All four PRs: real live-fetched fixtures (not synthetic), full CI gates
+clean (ruff check/format, pytest, alembic check for both services),
+built and reviewed independently in parallel isolated worktrees, merged
+same day.
+
+## Dork-before-sweep lesson applied to CivicWeb, PrimeGov, Cablecast: 14 new jurisdictions found, 3 real bugs surfaced [Investigated 2026-08-30]
+
+Closes the "dork a platform before its known-gap-list sweep" lesson
+(found 2026-08-28: doing this out of order on eScribe/IQM2/Swagit
+returned a clean 0 new, because the gap-list pass had already claimed
+the smaller, more-searchable places). The entry named three platforms
+that had never had a known-gap-list sweep at all — CivicWeb, PrimeGov,
+Cablecast — as the next real "virgin territory" opportunity.
+
+**CivicWeb — 5 real, new, live jurisdictions confirmed with video**,
+same phrase-dorking pattern as TelVue's, each confirmed genuinely new
+(`git grep` zero hits) and resolved end-to-end via
+`CivicWebAssetFinder.resolve()`: Evanston IL (native YouTube tier),
+Newport News VA (the `MeetingExternalLinkUrl` fallback added 2026-08-27
+for Winthrop MN — confirmed on a second, structurally *different* real
+tenant, this one delegating to Swagit rather than YouTube, the first
+confirmed non-YouTube case of that fallback), Missouri City TX (same
+Swagit-delegated tier), Rehoboth Beach DE, Walton County FL.
+
+**PrimeGov — 5 real, new jurisdictions, plus two real code bugs found**
+(both filed separately in `BACKLOG.md`'s Adapter & platform gaps):
+Reno NV, San Antonio TX, Town of Frisco CO, Prescott Valley AZ, Town of
+Yountville CA — all real YouTube or Swagit video. Cross-checked against
+`jurisdiction_enrich.py`'s known domains and `git grep` to exclude
+already-known tenants first.
+
+**Cablecast — 4 new tenants, one important false-positive caught, one
+shared root cause found** (filed separately): Midland MI (clean full
+resolve), Orion Township MI, 9 cities sharing CCX Media's
+`reflect-ccx.cablecast.tv` host (Brooklyn Center/Brooklyn Park/Crystal/
+Golden Valley/Maple Grove/New Hope/Osseo/Plymouth/Robbinsdale), and
+Montgomery AL. Cablecast had already had a thorough dork **and** a
+CDX/Wayback sweep on 2026-08-28 (~35 new jurisdictions found then), so
+this pass mostly re-surfaced known tenants — the real value was the
+false-positive catch and the shared-root-cause finding, not fresh
+volume.
+
+**None of these 14 jurisdictions have been ingested yet** — found and
+verified live, but ingestion (pasting each URL through the normal
+resolve flow) is a separate follow-up action, not done as part of this
+research pass.
+
+## IQM2 Riverside County CA title/jurisdiction bug: confirmed already resolved, zero action needed [Investigated 2026-08-30]
+
+User-reported 2026-08-14: `/m/meeting-4fefb4` (a real Riverside County
+CA meeting) showed "Untitled meeting," no jurisdiction, despite the
+video playing fine and a direct `curl` of the adapter's own `outline_url`
+showing well-formed matching `<title>` text. Same-day follow-up already
+found that running `IQM2AssetFinder().resolve()` directly against the
+live URL returned correct data, shifting the theory to "stale archived
+page, fixed by some incidental shared-code change, never rechecked in
+production."
+
+**Checked live 2026-08-30**: `/m/meeting-4fefb4` shows a full real title
+("(RCTC-GM) Riverside County Transportation Commission General Meeting
+Regular Meeting"), jurisdiction "Riverside County, CA," date, and
+transcript access — not "Untitled meeting." The stale-page theory is
+confirmed correct. No admin recheck, no code change, nothing left to do.
+
+## CivicClerk's populated-captions gap closed — two real fields confirmed on two real customers, no code change needed [Investigated 2026-08-30]
+
+CLAUDE.md used to say CivicClerk's version of "no populated-captions
+example" (the counterpart to eScribe's, closed 2026-08-18 via Peel
+Region ON) was "still real and unconfirmed either way." That was
+already partly stale before this pass: a 2026-08-16 DB query had found
+26 rows with real, non-empty caption content, but nobody had read the
+actual rows to confirm which field they came from.
+
+**Confirmed live 2026-08-30 (research agent, verified against two real,
+independent CivicClerk customers):**
+- **Emporia, KS** (event 585) — `EventsMedia.closedCaptionTracks[0].
+  file`, a real, populated SRT. This was already the documented,
+  code-handled case (confirmed 2026-08-08).
+- **Los Altos Hills, CA** (`losaltoshillsca.portal.civicclerk.com`,
+  event 4581, live on redtaperecordings.com today) — `closedCaptionTracks`
+  is empty, but `EventsMedia.transcriptionUrl` is populated with a real
+  VTT, fetched directly and confirmed as coherent real municipal content
+  ("There were two subdivision proposals... 119 home sites"). This field
+  was previously only assumed possible from the API schema, never
+  independently confirmed with a real example.
+
+Both fields are already handled by `civicclerk.py`'s existing fallback
+chain (`closedCaptionTracks` preferred, `closedCaptionUrl` or
+`transcriptionUrl` as fallback) — **no code change was needed**, only a
+documentation correction. `civicclerk.py`'s docstring and CLAUDE.md's
+own working-conventions section were both updated the same day to credit
+both confirmed fields instead of describing this as still open.
+
+## Granicus GovAccess CMS fuzzy-match re-run: 11 new jurisdictions ingested, 2 wrong county/city matches caught and rejected, 1 adapter bug fixed [Investigated 2026-08-29, compacted 2026-08-30]
+
+Full investigation behind the compact conclusion that stays in
+`BACKLOG.md`'s Open bugs (the WAF itself is still unsolved — that part
+didn't move). This is the fuzzy-match-to-classic-subdomain workaround
+re-run against all 97 real `.gov` domains that CNAME to
+`granicusgovaccess.net` (the earlier 2026-08-28 pass only tried 29).
+
+**Real bug found and fixed in the matching script itself**: `STATE_ABBR`
+was keyed by full state name, but `dns_platform_labels.csv`'s `state`
+column is already a 2-letter abbreviation, so no state-suffixed slug
+variant (the `belmont-ca` shape the technique depends on) was ever
+tried. Fixing it took the match rate from 9/97 to 25/97.
+
+**Every match was then identity-verified against real page content**
+before trusting it — worth doing, since it caught real problems a
+DNS/HTTP-only check would have missed:
+- **4 empty Granicus template shells** (a consistent ~9-10KB placeholder
+  page): `calcasieu.gov`, `darenc.gov`, `claytonmo.gov`, `kentwa.gov`.
+- **2 confirmed county-vs-city-seat wrong matches**: `mchenrycountyil.
+  gov` (McHenry County) matched `woodstockil.granicus.com`, but that's
+  genuinely the City of Woodstock's own tenant (zero mentions of
+  "McHenry" anywhere on the page); `carvercountymn.gov` (Carver County)
+  matched `carvermn.granicus.com`, genuinely the City of Carver's own
+  tenant ("City of Carver" appears 6x, "Carver County" only once,
+  incidentally).
+- **The pre-existing `albemarlenc.gov` → `albemarle.granicus.com` "wrong
+  match" this entry had already flagged turned out smaller than
+  described**: the page's actual stored jurisdiction was already
+  correct ("Albemarle County, VA") from whenever it was first ingested —
+  only its *slug* carried the wrong "albemarle-nc" label. Fixed via
+  `POST /internal/admin/reslug-page` (`_SLUG_REDIRECTS` in
+  `archive/main.py`); no data was actually wrong.
+
+**Outcome**: 18 matches survived verification; 7 were already in
+Archive, **11 genuinely new, 7 resolved to real content and ingested**
+(2 with real transcripts: Fremont CA, Lincoln City OR; 5 video-only:
+Chanhassen MN, Eastvale CA, Lexington NC, Richmond TX, St. Louis Park
+MN), 4 skipped (stale/404ing `clip_id`s on the listing page).
+
+**One more real bug found and fixed along the way**: `granicus.py`'s
+3-tier Census-validated jurisdiction chain (page-text phrasing, reversed
+"X County" pattern, humanized-subdomain fallback) failed all three for
+`stlouispark.granicus.com`, freezing the literal "Unknown Jurisdiction"
+placeholder into that page's slug. Corrected by hand (jurisdiction +
+reslug), not fixed in the adapter itself — a real, narrow extraction gap
+worth a look if the jurisdiction-extraction backlog gets picked up.
+
+**What's still actually open** (left live in `BACKLOG.md`'s Open bugs):
+the Akamai WAF itself is unsolved — a real headless Chromium browser
+from a genuine residential IP still gets domain-wide 403'd — so
+`detect_platform()`/adapter support for `granicusgovaccess.net` CNAMEs
+directly still can't happen; and 86 of the 97 domains never got a fuzzy
+match at all (72 no-match + the 4 empty-shell + 2 wrong-entity rejects),
+with no further lever on file for those beyond solving the WAF.
+
+## Cablecast's "RSS Schedule Output" feature checked against real tenants — real negative, closed [Investigated 2026-08-26, compacted from Dormant 2026-08-30]
+
+Cablecast has a real, documented "RSS Schedule Output" product feature
+(`cablecast.tv/feature/rss-schedule-output`, structure corroborated by a
+third-party integration doc): a real-time RSS feed of the program
+schedule, one `<item>` per air date with `guid` (show ID), `title`,
+`pubDate`, a `description` holding duration, and a `link` to the show
+page in the legacy ASP.NET "Cablecast Public Site" template format
+(`.../Cablecast/Public/Show.aspx?ChannelID=1&ShowID={id}`) — not the
+modern Remix.js template `cablecast.py` is built against.
+
+**Real tenant count corrected while checking this**: this project has
+17 real live Cablecast tenants (`charlotte`, `concordca`, `coralvision`,
+`glendoraca`, `hctv`, `leonvalleytx`, `cityofpontiac`, `rialtoca`,
+`riverviewmi`, `salem`, `cityofsantee`, `city-slp-mn`, `virginiabeach`,
+`wilmington-nc`, `winchendon`, Detroit's `reflect-detroit-vod`, and one
+more not re-identified) — corrected from an earlier build-time count
+that only said "two."
+
+**Direct live fetches of 15 of those 17 tenants' real show pages found
+no feed link on any of them** — no `<link rel="alternate"
+type="application/rss+xml">`, nothing — across both the
+`/internetchannel/show/{id}` and bare `/show/{id}` template families.
+Reads as a real negative, not an inconclusive one: either a
+legacy-template-only feature none of the current tenants run, or one
+needing per-install admin configuration most installs don't turn on.
+Closed rather than left open — even if a live example turns up
+elsewhere, its `link` is a page pointer (like Granicus's own RSS), not a
+direct video/caption file URL, so at best it would speed up discovering
+*that a show aired*, not skip the existing `window.__remixContext`
+scrape this adapter already does.
+
+**Unrelated thread surfaced while identifying tenants, noted but not
+chased**: the "Lake County Illinois" row in the source data checked
+against lists Cablecast as its platform, but the real page found via
+site search resolves through `lakecounty.legistar.com`, not a
+`cablecast.tv` domain — either a separate Lake County Cablecast meeting
+exists, or that row's platform label is stale.
+
+## Headless-browser adapters (LIMS/SLC): resolved sub-items compacted out of Dormant [Investigated 2026-08-09 through 2026-08-21, compacted 2026-08-30]
+
+Three sub-items that used to ride alongside the still-open "is LIMS
+white-labeled" question (kept live in `BACKLOG.md`) and the SLC
+extraction gap (moved to Open bugs) — all resolved or deliberately
+deprioritized, kept here for the record rather than in the live file:
+
+- **Real Render deployment of `playwright install chromium` was
+  unverified — verified working 2026-08-14.** A fresh Minneapolis LIMS
+  meeting resolved fully through production, and the same verification
+  green-lit enabling `GENERIC_FALLBACK_HEADLESS=1` in prod the same day
+  (Wayne County MI, fully Akamai-blocked, resolved through production's
+  own browser).
+- **Headless-browser fetches are real, meaningfully slower than every
+  other adapter** — LIMS needs two sequential fetches, each with its own
+  page-load + Cloudflare-challenge wait. No caching/performance work
+  was ever done; no real production latency incident has been reported
+  in the weeks since deployment, so this is treated as an accepted cost
+  rather than an active problem.
+- **Tier 2 (iframe the government's own page) / Tier 3 (explanatory
+  fallback) design questions** were deprioritized once Tier 1 (direct
+  video via a real headless browser) was confirmed working for both
+  real Cloudflare-gated cases found at the time (Minneapolis LIMS, SLC).
+  Not deleted outright in the original entry, since a future platform
+  could in principle resist even a realistic-UA headless fetch — closing
+  it here since nothing has actually needed Tier 2/3 in the time since.
+
+## El Paso, TX Vimeo showcases: search-engine reverse-lookup tested negative, direct crawl unblocked all 13 [Investigated 2026-08-21, compacted from Dormant 2026-08-30]
+
+User's 2026-08-12 idea: given a known video channel with no direct .gov
+link, can search engines find the page that embeds it? Real answer for
+El Paso: didn't need to find out — `elpasotexas.gov/videos/` is a plain
+server-rendered page linking directly to every one of the city's 13
+Vimeo showcases plus its YouTube channel. The search-engine
+reverse-lookup idea itself, tested directly, came back negative: neither
+`site:elpasotexas.gov vimeo.com` nor a direct showcase-URL search
+surfaced the page proven to link to it — not conclusive the technique
+never works, but real evidence it isn't reliable enough to lean on as a
+general strategy. A direct, methodical crawl of a known city's own
+domain is the more promising general pattern.
+
+**Unblocked 2026-08-21 (WO-29)**: every one of El Paso's 13 showcases
+now resolves — a real pick-list of that body's meetings, deep-linkable.
+Two corrections found while building it: `vimeo.com/showcase/{id}` and
+`vimeo.com/channels/{name}` pages are **not** JS-rendered in the way
+that mattered — the raw HTML embeds a real server-rendered JSON-LD
+`ItemList`, needing only a plain `curl`, not a headless-browser fetch (a
+bare *user* page like `vimeo.com/rocklandmaine` genuinely is
+client-rendered, which is why the adapter doesn't claim that shape).
+
+**Residual, still open and real** (moved to `BACKLOG.md`'s Adapter &
+platform gaps as a one-line `[LATER]`): `elpasotexas.gov/videos/` itself
+has no adapter, so pasting that URL still lands in `generic_fallback.py`
+rather than a "pick a body, then pick a meeting" flow. Low priority now
+that the showcases themselves work.
+
+## Baltimore's Legistar instance: CharmTV fallback built, 29/53 events recovered; the "why" question closed as not worth chasing [Investigated 2026-08-21, compacted from Dormant 2026-08-30]
+
+Original question: how often does a Baltimore Legistar meeting actually
+have video in the Attachments table, and is there a better way to find
+it when missing? A quick check (4 sampled meeting IDs, all with a
+completely empty Attachments field) confirmed the observation was real
+but not why.
+
+**WO-30 (2026-08-21) built the real fix**: a curated city→CharmTV-
+channel matcher. 29 of 53 real events (2026-05-01 to 2026-08-20) now
+resolve to a real recording — the coverage gap this entry existed to
+close is largely paid regardless of the underlying "why."
+
+**The original curiosity question was left open and explicitly judged
+not worth finishing**: attachment presence really is inconsistent
+rather than following a body/era rule (checked two same-day, same-era
+full standing bodies — one carries its own link, the other doesn't),
+and the `Departments.aspx` walk that would explain why was never done.
+Closed here rather than kept live, since the entry's own text called it
+"worth finishing only if someone wants the *why*" — a nice-to-know, not
+a real gap anyone is blocked on.
+
+## Search Console "video isn't on a watch page" — full investigation, 7 findings, real numbers [Investigated 2026-08-30]
+
+Not `[Done]` — nothing here is fully shipped-and-verified-live; this is
+the complete evidence trail behind the compact conclusion that still
+lives in `BACKLOG.md`'s Search Console section. Moved here per this
+file's own compaction convention once the live entry passed ~220 lines.
+Original issue: Search Console's video-indexing report flagged
+"Video isn't on a watch page," **947 → 1,764 affected videos** between
+2026-08-17 and 2026-08-24, growth flat since. Root cause first found
+2026-08-21: `meeting_page.html` rendered non-YouTube video as a bare
+`<video>` tag with no `src`/`<source>` server-side, so nothing in the
+server-rendered HTML matched the JSON-LD `contentUrl` Google was trying
+to verify. Fixed same day (`<source>` for `.m3u8`, `src=` for `.mp4`).
+Validation **FAILED again 2026-08-24** with the count nearly doubled,
+which is what triggered this full investigation (moved out of "Needs a
+human" 2026-08-29 — human dashboard verification was done; what was
+missing was code investigation).
+
+**Seven findings, in the order discovered:**
+
+1. **Meeting-page template fix confirmed genuinely deployed and
+   correct**, checked against a wide, real, currently-failing sample
+   (Cablecast mp4, Granicus m3u8, champds, isilive, townhallstreams,
+   Seattle Channel, CloudFront-tokenized) — all render correctly. Video
+   position in the DOM is already good, thumbnails already correctly
+   guarded and stable. Refuted, not just left unconfirmed: M3U8 is
+   explicitly a Google-supported file type, so "the indexer can't
+   handle HLS" was wrong.
+2. **IQM2 hardcoded `video_format="m3u8"` regardless of the real file
+   extension: confirmed and fixed 2026-08-29** (`app/platforms/
+   iqm2.py`, regression test in `tests/test_iqm2.py`, full suite
+   green).
+3. **`/j/*` and `/state/*` hub pages emit `VideoObject` for content
+   they don't host: confirmed and fixed 2026-08-29.** Retyped to
+   `CreativeWork` in all three templates (`jurisdiction_page.html`,
+   `state_page.html`, `state_all50.html`), factored into a shared
+   `_featured_itemlist.html` partial, 3 new regression tests added
+   (previously zero coverage). Full suite green. Estimated 700-800
+   live pages affected — plausibly the dominant driver of the
+   947→1,764 growth.
+4. **At least one vendor's `contentUrl` is a signed, expiring
+   CloudFront URL** (`?token=...`, routed through `generic_fallback.py`,
+   no dedicated adapter) — a genuine stable-URL violation per Google's
+   docs, confirmed on 2 real pages. Would need a video proxy to fix,
+   not a template change. Later sized at 3/1000 rows in the real export
+   (finding 7) — small.
+5. **Granicus's own media CDN hard-blocks Googlebot (and Bingbot)
+   outright — confirmed live 2026-08-30, high confidence, NOT fixable
+   from this app's code.** Not a markup problem — the template already
+   renders correct, matching video markup (finding 1). The problem is
+   one level down: Google's crawler can never fetch the file it's
+   verifying. Reproduced directly and repeatedly against real URLs on
+   **two independent tenants** (Tacoma WA and Jacksonville FL, both on
+   the shared `archive-stream.granicus.com` host): a real desktop
+   Chrome `User-Agent` gets **200**, while Googlebot's real crawler UA
+   string, Bingbot's UA string, plain `curl`, and any UA merely
+   containing the word "bot" all get **403** — with and without a
+   `Referer` header, no difference either way, so this is User-Agent
+   filtering, not Referer-based hotlink protection. Confirmed
+   Granicus-wide (same shared CDN host across two unrelated tenants),
+   not one city's config. No template/backend fix on our side can make
+   Granicus serve Googlebot. The only code-side lever — proxying video
+   bytes through our own domain — is not recommended without a careful
+   cost check: this same session found the resolver double-proxying
+   *HTML* into a real bandwidth overage (see this file's
+   `ARCHIVE_BASE_URL` entry); proxying multi-GB video would be a much
+   bigger version of the same cost.
+6. **Azure-CDN-hosted video files (`*.azureedge.net`) are served with
+   `Content-Disposition: attachment` — confirmed live 2026-08-30 on
+   CivicClerk's `cpmedia.azureedge.net`, medium-high confidence.**
+   Unlike Granicus, the file is fully reachable — a real CivicClerk mp4
+   (Emporia, KS; from `tests/fixtures/civicclerk/emporiaks_media585
+   .json`'s real `videoUrl`) returns **200** for both a normal browser
+   UA and Googlebot's real UA, correct `content-type`/`content-length`.
+   But every response (both UAs) carries `content-disposition:
+   attachment` — the header telling a client "this is a download," not
+   something to render inline. Google's video indexer plausibly treats
+   this as not-actually-embeddable. **Confirmed against Google's own
+   real export (finding 7) that this is CivicClerk's traffic, not
+   Cablecast's** — Ryan's original per-host list said "Cablecast/
+   azureedge" from memory, but every azureedge row in the real export
+   resolves to `cpmedia.azureedge.net` specifically, which is
+   CivicClerk's video CDN; no Cablecast tenant in the real data uses
+   azureedge at all (Cablecast tenants are all direct `*.cablecast.tv`
+   — see finding 7). No fix on our side — Azure Blob Storage's
+   `Content-Disposition` is vendor CDN config; a proxy has the same
+   cost caveat as finding 5.
+7. **Real quantified breakdown from Ryan's own Search Console export**
+   (2026-08-30, `redtaperecordings.com-Video-indexing-Drilldown-2026-08-
+   29`, 1,000 rows — capped by the export tool, real total 1,764 per
+   the trend below). Breakdown by the failing "Video URL" column's
+   domain: **Granicus 516/1000 (51.6%)**, matching finding 5 exactly.
+   **`cpmedia.azureedge.net` 134/1000 (13.4%)**, matching finding 6 and
+   settling the CivicClerk-not-Cablecast question. **`cdn1.isilive.ca`
+   (eScribe) 101/1000 (10.1%)** — see 7a below. **`mediahttp.iqm2.com`
+   95/1000 (9.5%)** — finding 2's population. **`N/A` (no video URL)
+   65/1000 (6.5%)** — finding 3's hub pages. **66 rows across many
+   `*.cablecast.tv` tenants (6.6%)** — see 7b below. Remainder: champds
+   (11), townhallstreams (5), CloudFront-tokenized (3, finding 4's
+   population), and a long one-off tail. Together Granicus + azureedge
+   + isilive + IQM2 + hub pages = **91% of the sample**.
+   **Trend (Chart.csv)**: 98 (8/12) → 460 (8/13, flat to 8/16) → 947
+   (8/17, flat to 8/19) → 1,651 (8/20, flat to 8/23) → 1,764 (8/24, flat
+   through the export's last date, 8/26). Growth stopped 8/24 and has
+   been flat since — rules out the unrelated 2026-08-30 site-wide
+   static-asset 500 incident (this file's own entry) as any kind of
+   contributor, since that started and was fixed entirely within
+   2026-08-30, well after this trend had already gone flat.
+   **7a. isilive.ca — likely NOT a real bug.** Google's raw export
+   shows a literal newline character embedded mid-filename in several
+   `cdn1.isilive.ca` URLs (e.g. `.../mp4:watsonville/Encoder \n788_CC_
+   ...`). Traced to `app/platforms/escribe.py`'s `quote(stream_name,
+   safe="")` call — verified directly that Python's `quote()` correctly
+   encodes a literal newline to `%0A` (and a space to `%20`), so a raw
+   newline could not survive that call. The current live page for that
+   exact Watsonville example renders `Encoder%20788_CC_...` — properly
+   encoded, no `%0A` — and that URL is **200 for a Chrome UA,
+   Googlebot's UA, and a plain `curl` UA alike** (no UA-blocking, unlike
+   Granicus). The newline in Google's CSV is almost certainly Search
+   Console's own decoded/human-readable display of a properly-encoded
+   `%0A`, not a real malformed URL in what this app serves today. All
+   isilive rows in this export were last crawled 2026-08-19 through
+   2026-08-24 — before or right around when the 2026-08-21 template fix
+   would have reached production (deploys are manual) — so stale crawl
+   data is the likely explanation, same as finding 1's own open item.
+   **7b. Cablecast — reachable and correctly rendered, root cause still
+   genuinely open, one unconfirmed lead.** A real failing example
+   (Champaign, IL, `champaign-cablecast.cablecast.tv`) tested 200 for
+   Chrome/Googlebot/plain-curl UAs alike — no UA-blocking. Headers are
+   clean (CloudFront, no `Content-Disposition: attachment`, correct
+   `content-type`). The live watch page's `contentUrl`/`<source src>`
+   matches the manifest URL exactly. One unconfirmed lead: the manifest
+   body itself (`vod.m3u8`, generated by Cablecast, not by this app)
+   has a minor HLS spec deviation — `SUBTITLES ="subs"` and
+   `AUDIO="audio"` with a stray space before `=` in the
+   `#EXT-X-STREAM-INF` attribute lists, technically invalid per RFC
+   8216's attribute-list grammar (real players like hls.js tolerate it,
+   which is why playback works fine for real visitors). Whether
+   Google's video validator is strict enough to reject a manifest over
+   this is unknown — a lead worth checking via URL Inspection's raw
+   fetch view on a real Cablecast example, not a settled cause.
+
+**What this means overall**: of the 91% explained, three findings (5,
+6, and possibly 7b) are genuine third-party infrastructure this app's
+code cannot fix — Granicus and CivicClerk's azureedge alone are ~65%
+of the sample. Two (2, 3) are already fixed in code and just need a
+deploy + a Search Console Validate Fix click. One (7a) needs only a
+fresh crawl, no code change. The honest target for this metric is no
+longer 100% — see `BACKLOG.md`'s compact live entry for what's still
+actually actionable.
+
 ## `ARCHIVE_BASE_URL` moved to Render private networking — the double-billed proxy egress is gone [Done 2026-08-30]
 
 Closes BACKLOG.md's "Every byte the public site serves is billed twice"

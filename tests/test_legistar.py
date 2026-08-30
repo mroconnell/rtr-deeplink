@@ -120,6 +120,97 @@ async def test_single_meeting_delegation_populates_meeting_body():
     assert result.meeting_body == "City Council"
 
 
+async def test_single_meeting_delegation_populates_meeting_location_when_address_shaped():
+    # Same wiring shape as the meeting_body test above, for the new
+    # "Meeting location" field (2026-08-30) -- uses the real location
+    # block confirmed live on a real Santa Clara, CA meeting
+    # (santaclara.legistar.com/MeetingDetail.aspx?ID=1233773), which is
+    # the one of the four real shapes checked that's actually a usable
+    # street address. Video delegation chain is synthetic/reused
+    # (Maricopa/Granicus, as above) since this test is only exercising
+    # the meeting_location wiring, not a new video path.
+    meeting_url = "https://santaclara.legistar.com/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://santaclara.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+
+    meeting_html = (
+        "<html><head><title>City of Santa Clara - Meeting of Council and "
+        "Authorities Concurrent Meeting on 10/8/2024 at 6:00 PM</title></head>"
+        "<body>"
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Hybrid Meeting\n'
+        "City Hall Council Chambers/Virtual \n"
+        "1500 Warburton Avenue\n"
+        "Santa Clara, CA 95050</span>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "granicus"
+    assert result.meeting_location == (
+        "Hybrid Meeting, City Hall Council Chambers/Virtual, "
+        "1500 Warburton Avenue, Santa Clara, CA 95050"
+    )
+
+
+async def test_single_meeting_delegation_declines_real_mesa_descriptor_as_location():
+    # Negative counterpart: a real meeting-type descriptor (Mesa, AZ)
+    # must not come through as meeting_location on the full resolve()
+    # path, not just in the extraction unit tests above.
+    meeting_url = "https://mesa.legistar.com/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://mesa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    granicus_url = "https://cityofmaricopa.granicus.com/player/clip/1504"
+
+    meeting_html = (
+        "<html><head><title>The City of Mesa - Meeting of City Council "
+        "on 4/8/2026 at 6:00 PM</title></head><body>"
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Study Session'
+        "<br /><em>Special Council Meeting</em></span>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://cityofmaricopa.granicus.com/videos/1504/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofmaricopa.granicus.com/AgendaViewer.php?clip_id=1504&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "granicus"
+    assert result.meeting_location is None
+
+
 def test_find_video_links_ignores_audio_only_variants():
     # Real bug fixed 2026-08-12, confirmed live on Charlotte, NC: some
     # Legistar instances render three separate a.videolink anchors per real
@@ -416,6 +507,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
         "agenda_link": None,
+        "location": None,
     }
 
     full_council_soup = BeautifulSoup(
@@ -431,6 +523,7 @@ def test_extract_page_meeting_info_parses_real_nyc_title_shapes():
         "jurisdiction": "New York City Council",
         "date": "2025-12-18",
         "agenda_link": None,
+        "location": None,
     }
 
 
@@ -471,6 +564,7 @@ def test_extract_page_meeting_info_falls_back_to_rss_link_when_title_empty():
         "jurisdiction": "City of Baltimore, MD",
         "date": "2025-10-20",
         "agenda_link": None,
+        "location": None,
     }
 
 
@@ -525,6 +619,230 @@ def test_extract_agenda_link_returns_none_when_absent():
         )
         is None
     )
+
+
+def test_extract_meeting_location_reads_real_santa_clara_address():
+    # Real shape confirmed live 2026-08-30 on a real Santa Clara, CA
+    # meeting (santaclara.legistar.com/MeetingDetail.aspx?ID=1233773) --
+    # the field's own single text node carries real embedded newlines,
+    # not separate tags, and mixes a "Hybrid Meeting" / room-name line
+    # ahead of the real street address.
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Hybrid Meeting\n'
+        "City Hall Council Chambers/Virtual \n"
+        "1500 Warburton Avenue\n"
+        "Santa Clara, CA 95050</span>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    text = LegistarAssetFinder._extract_meeting_location_text(soup)
+    assert text == (
+        "Hybrid Meeting, City Hall Council Chambers/Virtual, "
+        "1500 Warburton Avenue, Santa Clara, CA 95050"
+    )
+    assert LegistarAssetFinder._looks_like_street_address(text)
+
+
+def test_extract_meeting_location_declines_real_mesa_descriptor():
+    # Real shape confirmed live 2026-08-30 on a real Mesa, AZ meeting
+    # (mesa.legistar.com/MeetingDetail.aspx?ID=1428059) -- a meeting-type
+    # descriptor rendered across a <br> plus an <em>, not an address. This
+    # is the same field the original 2026-08-12 build looked at once and
+    # wrongly assumed was always this shape (see legistar.py's
+    # _extract_meeting_location_text docstring).
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Study Session'
+        "<br /><em>Special Council Meeting</em></span>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    text = LegistarAssetFinder._extract_meeting_location_text(soup)
+    assert text == "Study Session, Special Council Meeting"
+    assert not LegistarAssetFinder._looks_like_street_address(text)
+
+
+def test_extract_meeting_location_declines_real_naperville_room_name():
+    # Real shape confirmed live 2026-08-30 on a real Naperville, IL
+    # meeting (naperville.legistar.com/MeetingDetail.aspx?ID=1355601) --
+    # a bare room name, same descriptor shape as Mesa's above.
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Council Chambers</span>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    text = LegistarAssetFinder._extract_meeting_location_text(soup)
+    assert text == "Council Chambers"
+    assert not LegistarAssetFinder._looks_like_street_address(text)
+
+
+def test_extract_meeting_location_absent_on_real_chapel_hill_page():
+    # Real shape confirmed live 2026-08-30 on a real Chapel Hill, NC
+    # meeting (chapelhill.legistar.com/MeetingDetail.aspx?ID=1330653) --
+    # the field is absent entirely (no lblLocation span anywhere on the
+    # real page -- confirmed by grepping every ContentPlaceHolder1_lbl*
+    # span on it), a real non-error state. Other real Meeting Details
+    # spans included here to confirm this isn't just an empty/unrelated
+    # soup -- the page genuinely goes straight from date/time to minutes
+    # status with no location row in between.
+    from bs4 import BeautifulSoup
+
+    html = (
+        '<span id="ctl00_ContentPlaceHolder1_lblDateX">Meeting date/time:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblDate">10/8/2025</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblTime">6:00 PM</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblMinutesStatusX">Minutes status:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblMinutesStatus">Final</span>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    assert LegistarAssetFinder._extract_meeting_location_text(soup) is None
+
+
+def test_looks_like_street_address_matches_real_shapes():
+    # "Northside Branch Library, 695 Moreland Way, Santa Clara, CA 95054"
+    # is the real address text this repo's own conventions doc cites as
+    # confirmed-usable; kept here as a second, independent real example
+    # alongside the live-fetched Santa Clara meeting used above.
+    assert LegistarAssetFinder._looks_like_street_address(
+        "Northside Branch Library, 695 Moreland Way, Santa Clara, CA 95054"
+    )
+    assert not LegistarAssetFinder._looks_like_street_address("Meeting Room C")
+    assert not LegistarAssetFinder._looks_like_street_address(None)
+    assert not LegistarAssetFinder._looks_like_street_address("")
+
+
+def test_extract_page_meeting_info_surfaces_real_santa_clara_address():
+    # End-to-end wiring check: a real Santa Clara MeetingDetail.aspx page
+    # title plus the real location block confirmed live above should
+    # surface "location" in the returned dict -- unlike the Mesa/
+    # Baltimore/NYC dict-equality tests elsewhere in this file, which
+    # correctly assert "location": None.
+    from bs4 import BeautifulSoup
+
+    html = (
+        "<title>City of Santa Clara - Meeting of Council and Authorities "
+        "Concurrent Meeting on 10/8/2024 at 6:00 PM</title>"
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Hybrid Meeting\n'
+        "City Hall Council Chambers/Virtual \n"
+        "1500 Warburton Avenue\n"
+        "Santa Clara, CA 95050</span>"
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    info = LegistarAssetFinder._extract_page_meeting_info(
+        soup, "https://santaclara.legistar.com/MeetingDetail.aspx?ID=1233773"
+    )
+    assert info["location"] == (
+        "Hybrid Meeting, City Hall Council Chambers/Virtual, "
+        "1500 Warburton Avenue, Santa Clara, CA 95050"
+    )
+
+
+def test_extract_page_meeting_info_declines_real_naperville_room_name():
+    # Same end-to-end wiring check as above, for the negative case: a
+    # real room-name descriptor must not come through as "location".
+    from bs4 import BeautifulSoup
+
+    html = (
+        "<title>City of Naperville - Meeting of City Council "
+        "on 3/3/2026 at 7:00 PM</title>"
+        '<span id="ctl00_ContentPlaceHolder1_lblLocationX">Meeting location:</span>'
+        '<span id="ctl00_ContentPlaceHolder1_lblLocation">Council Chambers</span>'
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    info = LegistarAssetFinder._extract_page_meeting_info(
+        soup, "https://naperville.legistar.com/MeetingDetail.aspx?ID=1355601"
+    )
+    assert info["location"] is None
+
+
+def test_extract_meeting_location_against_full_real_fixture_pages():
+    # Same four real hosts, but run against the literal full real
+    # MeetingDetail.aspx page bodies (fetched live 2026-08-30), not just
+    # a hand-typed snippet of the location table -- catches anything a
+    # trimmed-down snippet could miss (other spans sharing the "Location"
+    # ID suffix, encoding quirks, extra surrounding whitespace).
+    from bs4 import BeautifulSoup
+
+    mesa_soup = BeautifulSoup(
+        load_fixture("legistar", "mesa_meeting_detail.html"), "html.parser"
+    )
+    assert (
+        LegistarAssetFinder._extract_meeting_location_text(mesa_soup)
+        == "Study Session, Special Council Meeting"
+    )
+
+    naperville_soup = BeautifulSoup(
+        load_fixture("legistar", "naperville_meeting_detail.html"), "html.parser"
+    )
+    assert (
+        LegistarAssetFinder._extract_meeting_location_text(naperville_soup)
+        == "Council Chambers"
+    )
+
+    santaclara_soup = BeautifulSoup(
+        load_fixture("legistar", "santaclara_meeting_detail.html"), "html.parser"
+    )
+    santaclara_text = LegistarAssetFinder._extract_meeting_location_text(
+        santaclara_soup
+    )
+    assert santaclara_text == (
+        "Hybrid Meeting, City Hall Council Chambers/Virtual, "
+        "1500 Warburton Avenue, Santa Clara, CA 95050"
+    )
+    assert LegistarAssetFinder._looks_like_street_address(santaclara_text)
+
+    chapelhill_soup = BeautifulSoup(
+        load_fixture("legistar", "chapelhill_meeting_detail.html"), "html.parser"
+    )
+    assert LegistarAssetFinder._extract_meeting_location_text(chapelhill_soup) is None
+
+
+def test_extract_page_meeting_info_against_full_real_fixture_pages():
+    # Same real pages as above, through the full _extract_page_meeting_info
+    # wiring (title parsing + location filtering together) rather than the
+    # location extraction alone.
+    from bs4 import BeautifulSoup
+
+    mesa_info = LegistarAssetFinder._extract_page_meeting_info(
+        BeautifulSoup(
+            load_fixture("legistar", "mesa_meeting_detail.html"), "html.parser"
+        ),
+        "https://mesa.legistar.com/MeetingDetail.aspx?ID=1428059",
+    )
+    assert mesa_info["location"] is None
+
+    naperville_info = LegistarAssetFinder._extract_page_meeting_info(
+        BeautifulSoup(
+            load_fixture("legistar", "naperville_meeting_detail.html"), "html.parser"
+        ),
+        "https://naperville.legistar.com/MeetingDetail.aspx?ID=1355601",
+    )
+    assert naperville_info["location"] is None
+
+    santaclara_info = LegistarAssetFinder._extract_page_meeting_info(
+        BeautifulSoup(
+            load_fixture("legistar", "santaclara_meeting_detail.html"), "html.parser"
+        ),
+        "https://santaclara.legistar.com/MeetingDetail.aspx?ID=1233773",
+    )
+    assert santaclara_info["location"] == (
+        "Hybrid Meeting, City Hall Council Chambers/Virtual, "
+        "1500 Warburton Avenue, Santa Clara, CA 95050"
+    )
+
+    chapelhill_info = LegistarAssetFinder._extract_page_meeting_info(
+        BeautifulSoup(
+            load_fixture("legistar", "chapelhill_meeting_detail.html"), "html.parser"
+        ),
+        "https://chapelhill.legistar.com/MeetingDetail.aspx?ID=1330653",
+    )
+    assert chapelhill_info["location"] is None
 
 
 def test_looks_like_raw_filename_matches_real_viebit_title():

@@ -215,6 +215,24 @@ def test_lookup_by_domain_resolves_beaumont_ab_over_the_ambiguous_bare_name():
     assert known == je.KnownJurisdiction("Beaumont", "city", "AB")
 
 
+def test_lookup_by_domain_resolves_orion_township_and_montgomery_al_cablecast():
+    # Two more real Cablecast customers confirmed live 2026-08-30 with no
+    # usable "City/Town of X" text anywhere on their real pages: Orion
+    # Township, MI's reflect-ontv.cablecast.tv (real show page
+    # `/CablecastPublicSite/show/2904?site=3` -- pageDescription is just
+    # a phone number, and the real jurisdiction name lives on a sibling
+    # site object cablecast.py's own `_find_site()` never reaches) and
+    # Montgomery, AL's capitalcityconnection.cablecast.tv (real
+    # pageDescription names "Montgomery Zoo"/"City-County Library" but
+    # never the bare "City of Montgomery" phrase the regex needs).
+    assert je.lookup_by_domain("reflect-ontv.cablecast.tv") == je.KnownJurisdiction(
+        "Orion Township", "city", "MI"
+    )
+    assert je.lookup_by_domain(
+        "capitalcityconnection.cablecast.tv"
+    ) == je.KnownJurisdiction("Montgomery", "city", "AL")
+
+
 def test_finalize_jurisdiction_recompute_now_repairs_the_bare_beaumont_pages():
     # The actual gap this closes, end to end through finalize_jurisdiction()
     # -- the same function GET /internal/jurisdiction/bleed-backfill-
@@ -1800,6 +1818,30 @@ def test_known_jurisdiction_display_special_entities_and_county_names():
     assert (
         je.known_jurisdiction_display("slc.primegov.com")
         == "City of Salt Lake City, UT"
+    )
+
+
+def test_known_jurisdiction_display_fills_state_for_ambiguous_town_name():
+    # townoffrisco.primegov.com (Frisco, CO) -- re-verified live 2026-08-30
+    # against 4 real meeting pages that BACKLOG.md's open [NEEDS-AUDIT]
+    # entry's claimed root cause (an embedded "Subscribe to Town of
+    # Frisco Government YouTube Channel" widget label beating the real
+    # header in the page's raw HTML) does not actually occur: that text
+    # is never present in the server-rendered HTML this adapter fetches
+    # -- it's YouTube's own IFrame Player chrome, rendered client-side
+    # inside a cross-origin <iframe> a plain HTTP fetch never sees (the
+    # page only ever carries an empty `<div id="ytplayer">` placeholder
+    # server-side). The real, confirmed gap: "Frisco" is nationally
+    # ambiguous (a real Frisco, TX customer is also registered --
+    # agenda.friscotexas.gov), so a bare name lookup stays deliberately
+    # ambiguous and the real page-text extraction ("Town of Frisco")
+    # comes through with no state at all until this domain entry fills
+    # it in -- same "ambiguous name, no domain override yet" shape as
+    # the Alexandria/Sacramento/Long Beach entries above, not a
+    # wrong-match shape.
+    assert (
+        je.known_jurisdiction_display("townoffrisco.primegov.com")
+        == "Town of Frisco, CO"
     )
 
 
