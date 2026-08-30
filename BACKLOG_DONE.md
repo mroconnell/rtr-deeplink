@@ -1,5 +1,74 @@
 # Backlog — done
 
+## http/https normalization backfill: 261 stale rows fixed, 3 real duplicate pairs merged, a cascade-delete gap found and fixed along the way [Done 2026-08-30]
+
+Started as a two-URL mystery: refreshing two Cablecast pages via
+`/api/refresh-archived-page` returned `not_archived` even though both
+were genuinely in the Archive. Root cause traced to commit 6b47794
+("collapse http/https identity in `normalize_url()`"): that fix made
+every lookup normalize its input to `https://` before matching, but it
+was never backfilled onto rows ingested *before* it landed — any row
+whose `source_url_normalized` still carried a literal `http://` became
+permanently unreachable by every caller (`archive_client.lookup()`, a
+manual refresh click, a future re-ingest's own dedup check). A live
+audit found this wasn't isolated to those two pages: **261 rows across
+7 platforms** still carried `http://`.
+
+**Built the standard dry-run-first admin endpoint pair** (PR #564,
+mirroring `list_jurisdiction_bleed_backfill_candidates()`/
+`apply_jurisdiction_bleed_backfill()`'s existing shape):
+`GET /internal/pages/http-scheme-candidates` (read-only audit, splits
+into `safe` — no colliding `https://` row exists, a straight rename is
+enough — vs `needs_merge` — a separate `https://` page for the
+identical URL already exists, meaning a stray re-crawl had already
+silently created a duplicate at least 3 times) and
+`POST /internal/pages/http-scheme-backfill-apply` (recomputes the
+collision check itself at write time rather than trusting the earlier
+audit, so a row that gained a collision between listing and applying
+is still excluded automatically). Applied for real: **258 of 261 rows
+renamed cleanly**, 3 left as genuine collisions.
+
+**The 3 collision pairs were resolved by hand, from real data, not
+timestamps.** Pulled segment counts, transcript-quality warnings, and
+saved-item references (`saved_items.meeting_page_id`) for both pages
+in each pair before deciding which to keep:
+- Chapel Hill, NC (granicus, clip 8134): kept the `http://` page
+  (id 768, transcript clean, 672 segments) over the `https://` page
+  that a later re-crawl had created (id 2067, transcript flagged
+  **hallucinated** — "may be hallucinated by the transcription model
+  ... treat it as unreliable"). Deleted 2067, then re-ran the apply
+  endpoint (now collision-free) to rename 768 to `https://` — final
+  `applied_count: 1`.
+- Angleton, TX (swagit, video 307669): kept the pre-existing `https://`
+  page (id 443) over a duplicate the bug had spawned (id 1123) —
+  identical default transcripts (767 segments, no warnings) so no data
+  was lost deleting the duplicate.
+- Baltimore County Schools, MD (swagit, video 371979): same shape —
+  kept the pre-existing `https://` page (id 459) over its duplicate
+  (id 1137), identical 1956-segment transcripts.
+
+None of the 6 pages had ever been saved by a user, so no saved-item
+impact either way.
+
+**Real bug found executing the merge, fixed in the same session (PR
+#577):** `delete_meeting_pages_by_slug()` (the existing
+`POST /internal/admin/delete-pages`, built 2026-08-19 for an unrelated
+PrimeGov cleanup) cleaned up `TranscriptionJob`/`TranscriptVersion`/
+`MeetingPageUrlAlias`/`SavedItem` before deleting a page, but missed
+`MeetingPageThumbnail` and `SocialPost` — neither has an
+`ON DELETE CASCADE`, so deleting a page with thumbnail rows would fail
+with a real FK violation rather than either succeeding or leaving an
+orphan. All 3 duplicate pages being deleted here had thumbnail rows,
+so this would have failed on the very first real attempt. Fixed by
+extending the same cleanup sweep; added `tests/test_delete_pages.py`
+(no coverage existed for this function at all before) covering plain
+delete, thumbnail cleanup, social-post cleanup, and dry-run-leaves-
+everything-untouched.
+
+Confirmed live 2026-08-30 after deploy: final
+`GET /internal/pages/http-scheme-candidates` returns
+`total_http_rows: 0`.
+
 ## TelVue: 10 of the 12 independently-verified new jurisdictions ingested for real [Done 2026-08-30]
 
 Real content ingestion, not just research — closes the immediate,
