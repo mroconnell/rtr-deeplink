@@ -57,6 +57,7 @@ from ..utils.search import (
 )
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.suspicious_source import suspicious_source_reason
+from ..utils.transcript_export import to_srt
 from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.highlights import compute_highlight_payload, display_text
 from ..topics import (
@@ -6663,6 +6664,142 @@ async def manually_promote_transcript_version(
             ]
         await session.commit()
         return {"slug": slug, "promoted_version_id": version_id}
+
+
+async def create_seam_repair_version(
+    *, slug: str, expected_srt_hash: str, drop_segment_indices: list[int]
+) -> Optional[dict]:
+    """Admin action backing `scripts/repair_seam_duplication.py --apply`:
+    creates a new TranscriptVersion identical to the page's current
+    default except with `drop_segment_indices` removed, and promotes it.
+    Same "never destroys history" shape as `manually_promote_transcript_
+    version()` above -- the old default stays reachable via `?version=`.
+
+    Why this exists (WO-22 residual, seam-duplication repair): the
+    duplicated segments a multi-chunk transcription's HLS seam produced
+    (see `worker/segment_utils.py`'s `count_seam_overlap_segments()` --
+    the prevention half of this fix, live since 2026-08-16) are already
+    *in* the stored segments for every page transcribed before that fix
+    shipped. Nothing in this codebase needs to re-run Whisper to fix
+    them -- the correct content is already there, just with a few extra
+    segments at each chunk seam restating what the previous chunk's tail
+    already said. This is a plain slice-and-drop, not a re-transcription.
+
+    `expected_srt_hash` is optimistic concurrency, not a formality: the
+    dry-run script that computes `drop_segment_indices` reads the page's
+    transcript once (via its own public `/m/{slug}/transcript.srt`
+    export, see `scripts/repair_seam_duplication.py`) and the write can
+    land much later (a human reviews the report first) -- if anything
+    else repromoted a different version, retranscribed the page, or a
+    previous repair run already applied in the meantime, the indices
+    computed against the old content would silently corrupt whatever is
+    live now. Hashing `to_srt()`'s own output rather than
+    TranscriptVersion.content_hash is deliberate: content_hash is a hash
+    of joined segment *text* only, computed from the original JSON, while
+    the caller only ever sees this page's data as the literal bytes
+    `/m/{slug}/transcript.srt` returned -- which are exactly `to_srt(this
+    same segments list)`, byte for byte, no other route. Comparing
+    against anything else risks a spurious mismatch from format
+    differences that were never a real staleness. Refusing on a real
+    mismatch is still the only safe response; the caller re-scans and
+    retries with fresh indices rather than being handed a merge to
+    resolve.
+
+    Returns None if the page or its default version doesn't exist,
+    `{"error": "stale", ...}` if expected_srt_hash doesn't match the
+    current default's own to_srt() output, `{"error": "empty_result",
+    ...}` if dropping every named index would leave zero segments
+    (refused -- a transcript must never go fully empty), or
+    `{"version_id": ..., "dropped": N, "kept": M}` on success.
+    """
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+
+        default_version = (
+            (
+                await session.execute(
+                    select(TranscriptVersion).where(
+                        TranscriptVersion.meeting_page_id == page.id,
+                        TranscriptVersion.is_default.is_(True),
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if default_version is None:
+            return None
+
+        current_srt_hash = hashlib.sha256(
+            to_srt(default_version.segments).encode("utf-8")
+        ).hexdigest()
+        if current_srt_hash != expected_srt_hash:
+            return {
+                "error": "stale",
+                "message": "The page's default transcript has changed since "
+                "this repair was computed -- re-scan and retry with fresh "
+                "segment indices.",
+            }
+
+        drop_set = set(drop_segment_indices)
+        new_segments = [
+            seg for i, seg in enumerate(default_version.segments) if i not in drop_set
+        ]
+        if not new_segments:
+            return {
+                "error": "empty_result",
+                "message": "Dropping every named index would leave zero "
+                "segments -- refused.",
+            }
+
+        content_hash = _content_hash(new_segments)
+        existing_id = (
+            await session.execute(
+                select(TranscriptVersion.id).where(
+                    TranscriptVersion.meeting_page_id == page.id,
+                    TranscriptVersion.content_hash == content_hash,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_id is not None:
+            # Already repaired (e.g. this apply run is a retry, or a
+            # previous run already fixed this exact page) -- reuse the
+            # existing version rather than stacking an identical one,
+            # same dedup convention as ingest_resolution().
+            await promote_transcript_version(session, page.id, existing_id)
+            await session.commit()
+            return {
+                "version_id": existing_id,
+                "dropped": len(drop_set),
+                "kept": len(new_segments),
+            }
+
+        version = TranscriptVersion(
+            meeting_page_id=page.id,
+            language=default_version.language,
+            source=default_version.source,
+            is_default=False,
+            segments=new_segments,
+            transcript_warnings=default_version.transcript_warnings,
+            content_hash=content_hash,
+        )
+        session.add(version)
+        await session.flush()  # assigns version.id
+
+        await promote_transcript_version(session, page.id, version.id)
+        await _refresh_search_corpus(session, page)
+        await session.commit()
+        return {
+            "version_id": version.id,
+            "dropped": len(drop_set),
+            "kept": len(new_segments),
+        }
 
 
 async def correct_transcript_version_warnings(

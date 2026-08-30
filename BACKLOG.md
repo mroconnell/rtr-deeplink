@@ -642,20 +642,49 @@ convenient.
   that would be mostly identical to what's already stored.
 
   **The work, in order:**
-  1. **A stored-segment repair script for seam-dup + loops**, in the
-     same shape `scripts/dedupe_rollup_transcripts.py` just established:
-     dry-run report → confidence bands → Ryan runs `--apply`. No
-     compute, no source fetch.
+  1. **Seam-duplication repair script — built 2026-08-30, not yet run
+     against production.** `scripts/repair_seam_duplication.py`
+     (dry-run report → `--apply`, same shape as
+     `scripts/dedupe_rollup_transcripts.py`). Reconstructs each seam's
+     approximate boundary from the completed job's own `total_chunks`/
+     `chunk_size_seconds` (`worker/segment_utils.chunk_start()`), then
+     hands a windowed slice of the flat stored segments to the exact
+     same, already-shipped `count_seam_overlap_segments()` the live
+     prevention path uses — no new detection logic, no source fetch, no
+     compute. Applying writes through a new admin route,
+     `POST /internal/transcript-version/repair-seam-duplication`
+     (`crud.create_seam_repair_version()`), which never destroys
+     history (old version stays reachable via `?version=`) and refuses
+     on a stale `expected_srt_hash` rather than risking a silent
+     overwrite of a page that changed since the dry run. Full test
+     coverage including the real Boulder County fixture; all four CI
+     gates pass. **Still needed before this is actually useful**: run
+     `--dry-run` against production, review the report, then Ryan runs
+     `--apply --from-report ...` — none of that has happened yet, this
+     is the tool only.
+  1b. **Repetition-loop collapse is a separate, still-undesigned
+      piece — do not conflate it with the seam-dup script above.**
+      WO-36's detector (`_repetition_run_ratio()`,
+      `worker/segment_utils.py`/`archive/utils/transcription_quality.py`)
+      only *flags* a loop; nothing collapses one in stored segments yet,
+      and unlike seam-dup (where the fix is "drop N segments, keep
+      everything else exactly as-is"), a loop's correct collapsed form
+      is a real open question — keep one representative cue and delete
+      the rest? What happens to the timestamps/duration of the segments
+      that follow — shifted to close the gap, or left with a stretch of
+      dead air? That choice needs settling before any code, not
+      discovered by writing the code.
   2. **Re-transcribe Kitchener only** (local script, forced English);
-     trim the other three.
+     trim the other three. Not started.
   3. **Re-transcription on report** for anything the repair can't fix.
+     Not started.
   4. **Extend the repair to the uncounted local-batch population by
      scanning stored segments, not job records.** This is the part the
      old framing couldn't reach at all:
      `scripts/transcribe_backlog_locally.py`'s local-Mac runs never
      touch `transcription_jobs`, so any job-record-based list misses
      them by construction. Scanning segments makes that population
-     visible for free.
+     visible for free. Not started.
 
   **Knock-on:** this makes the reader-facing low-confidence flag
   (currently in `CLAUDE_BACKLOG.md`) *less* urgent — the visible damage
