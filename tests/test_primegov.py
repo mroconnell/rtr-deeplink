@@ -524,6 +524,77 @@ async def test_resolve_known_domain_override_beats_a_false_positive_body_match(
     assert result.jurisdiction == "City of Salt Lake City, UT"
 
 
+# Real page shape, fetched live 2026-08-30
+# (lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963) --
+# BACKLOG.md's "lacity.primegov.com's coin-flip problem" entry. Confirmed
+# via the real raw HTML that this page's ENTIRE letterhead is just the
+# committee name and date -- no "City of"/"Los Angeles City Council"
+# phrase anywhere on the page for any regex to find (unlike the OKC/
+# Thousand Oaks/SLC/Bedford false-positive shape, this is a genuine
+# absence, not a wrong match). Trimmed of the outer <html>/<head>
+# wrapper and page chrome, kept verbatim otherwise (including the exact
+# committee name and inline styling of the real letterhead block).
+LA_COMMITTEE_HEADER_HTML = """
+<p style="text-align: center; font-family: arial; font-size: 12pt; font-weight: bold"> </p>
+<p style="text-align: center; margin-bottom: 25px; font-family: Arial; text-transform: uppercase; font-size: 12pt; font-weight: bold"><span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size: 12pt">Housing and Homelessness Committee</span></span></p>
+<p style="text-align: center; font-family: arial; text-transform: uppercase; font-size: 12pt; font-weight: bold"><span style="font-family:Arial,Helvetica,sans-serif;"><span style="font-size: 12pt">Wednesday, August 5, 2026 - 2:00 PM</span></span></p>
+"""
+
+PAGE_HTML_LA_COMMITTEE = f"""
+<html><head><title>Housing and Homelessness Committee - 8/5/2026 9:00:00 PM</title></head>
+<body>
+{LA_COMMITTEE_HEADER_HTML}
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+var videoUrl = "{REAL_VIDEO_ID}";
+</script>
+</body></html>
+"""
+
+
+async def test_resolve_lacity_known_domain_override_fixes_the_real_committee_page_gap(
+    monkeypatch,
+):
+    # The real, live-confirmed case behind the "coin-flip" entry:
+    # meetingTemplateId 156963 (a committee meeting, real fixture above)
+    # used to resolve jurisdiction=None because neither _JURISDICTION_RE
+    # nor _COUNCIL_HEADER_RE has anything to match -- the page genuinely
+    # never says "Los Angeles" anywhere near "City"/"Council"/"of". A
+    # domain override (like SLC/CCTA/Lancaster above) fixes this without
+    # touching the shared text-extraction regexes at all, so it can't
+    # regress any other PrimeGov tenant.
+    la_url = "https://lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {la_url: FakeResponse(status=200, text=PAGE_HTML_LA_COMMITTEE, url=la_url)}
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(la_url)
+
+    assert result.jurisdiction == "City of Los Angeles, CA"
+
+
+async def test_resolve_lacity_known_domain_override_applies_even_when_a_header_exists(
+    monkeypatch,
+):
+    # The "working" half of the same real pair (meetingTemplateId
+    # 157675) already resolved correctly via _COUNCIL_HEADER_RE's own
+    # "Los Angeles City Council" match before this domain override
+    # existed -- confirming the override doesn't just fix the broken
+    # case, it also produces the identical answer on a page that would
+    # have worked anyway, so applying it unconditionally (rather than
+    # only as a fallback) can't change behavior for that page either.
+    la_url = "https://lacity.primegov.com/Portal/Meeting?meetingTemplateId=157675"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {
+        la_url: FakeResponse(status=200, text=PAGE_HTML_OKC_FULL, url=la_url)
+    }  # any header-bearing page shape; the override wins regardless
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(la_url)
+
+    assert result.jurisdiction == "City of Los Angeles, CA"
+
+
 def test_extract_title_reads_the_real_inner_title_tag():
     # Real shape confirmed live 2026-08-13 across 3 independent real
     # PrimeGov customers (OKC, Thousand Oaks, a real LA City Council

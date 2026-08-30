@@ -570,6 +570,31 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "cityofventura.granicus.com": KnownJurisdiction(
         "Ventura", "city", "CA", strength="authoritative"
     ),
+    # lacity.primegov.com's real "coin-flip" gap (BACKLOG.md, open since
+    # 2026-08-16) -- fetched two real meeting pages live 2026-08-30 to
+    # actually see the structural difference between meetingTemplateId
+    # 156963 (jurisdiction resolved None) and 157675 (resolved correctly)
+    # instead of guessing at another positional/regex rule, which is what
+    # both prior reverted attempts on this general PrimeGov problem did.
+    # The real difference: 157675 is a full City Council meeting, with a
+    # genuine "Los Angeles City Council Agenda" letterhead and city-seal
+    # image `_COUNCIL_HEADER_RE` matches; 156963 is a COMMITTEE meeting
+    # (`<title>Housing and Homelessness Committee - 8/5/2026...`), whose
+    # entire real letterhead is just "Housing and Homelessness Committee"
+    # -- no "City of"/"Los Angeles City Council" phrase anywhere on the
+    # page, confirmed by a full-page search of the raw HTML. This is not
+    # a case of the extraction picking the wrong match (the OKC/Thousand
+    # Oaks/SLC/Bedford shape both earlier fix attempts were reverted
+    # over) -- it is a page-shape gap: LA's own committee pages carry no
+    # jurisdiction-identifying text at all for any regex to find. A
+    # domain override is the right tool for exactly this failure mode
+    # (the same reasoning as ccta.primegov.com/cityoflancasterca.primegov.com
+    # above), and lacity.primegov.com is confirmed single-tenant (every
+    # page on it, committee or full council, belongs to the City of Los
+    # Angeles) so it's safe to apply unconditionally.
+    "lacity.primegov.com": KnownJurisdiction(
+        "Los Angeles", "city", "CA", strength="authoritative"
+    ),
     # Costa Mesa Sanitary District (pub-cmsd.escribemeetings.com,
     # 2026-08-23) -- the page's own venue line names it ("Costa Mesa
     # Sanitary District - 290 Paularino Ave., Costa Mesa, CA 92626",
