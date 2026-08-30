@@ -224,6 +224,46 @@ async def test_resolve_show_not_found_in_page_reports_no_video():
     assert result.video_warnings == ["No video found for this meeting."]
 
 
+async def test_resolve_no_vod_url_still_surfaces_the_shows_real_title_and_date():
+    # Real bug found 2026-08-29 investigating a user report on Detroit:
+    # a show that's found but genuinely has no video (Cablecast's own
+    # `isWatchable: false`, confirmed live on real show 13797 -- a short
+    # "Council Corner" segment, not a committee meeting) used to come
+    # back with title=None/date=None too, even though the same JSON this
+    # method already parses has both. Synthetic tree (see this repo's
+    # convention for a narrower edge case on an already fixture-verified
+    # adapter), but the title text and the no-`vodUrl` shape are real,
+    # grounded in that live show.
+    show_id = 13797
+    tree = {
+        "shows": [
+            {
+                "showId": show_id,
+                "title": "Council Member YOUNG    Brush Park Manor Council Corner",
+                "eventDate": "2026-08-29T06:04:03-04:00",
+                "isWatchable": False,
+            }
+        ],
+        "site": {"siteId": 1, "title": "Channel 10"},
+    }
+    html = (
+        "<html><body><script>window.__remixContext = "
+        + json.dumps(tree)
+        + ";</script></body></html>"
+    )
+    fetch_url = f"http://detroit-vod.cablecast.tv/internetchannel/show/{show_id}?site=1"
+    routes = {fetch_url: FakeResponse(status=200, text=html, url=fetch_url)}
+
+    with mock_session(routes):
+        result = await CablecastAssetFinder().resolve(fetch_url)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found for this meeting."]
+    assert result.title == "Council Member YOUNG    Brush Park Manor Council Corner"
+    assert result.date == "2026-08-29"
+    assert result.external_id == "cablecast:detroit-vod.cablecast.tv:13797"
+
+
 async def test_resolve_newer_template_show_url_falls_back_to_root():
     # Real gap found 2026-08-18 re-checking a research pass's Cablecast
     # "miss" list against this adapter: a newer Cablecast portal template

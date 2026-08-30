@@ -16,7 +16,7 @@ from .base import (
 )
 from .models import ResolvedMeeting
 from .youtube import YouTubeAssetFinder
-from . import youtube_channel
+from . import granicus_channel, youtube_channel
 from ..utils import jurisdiction_enrich
 
 logger = logging.getLogger("rtr_deeplink.legistar")
@@ -76,15 +76,22 @@ class LegistarAssetFinder(AssetFinder):
     supported platform), reused rather than duplicated.
 
     If that finds nothing either, `_try_known_channel_video()` (added
-    2026-08-21, WO-30) is the last resort -- for the four confirmed
-    instances (Phoenix, Philadelphia, Baltimore, Albuquerque) where there
-    is genuinely nothing on the page to parse because the city publishes
-    its recordings only to its own YouTube channel. It matches the
-    meeting's own name and date against a curated, human-verified channel
-    listing; see `youtube_channel.py` for the matching rules and the real
-    evidence behind them, and note that a wrong match there would be
-    worse than no video at all, which is why every uncertain case
-    declines.
+    2026-08-21, WO-30) tries next -- for the four confirmed instances
+    (Phoenix, Philadelphia, Baltimore, Albuquerque) where there is
+    genuinely nothing on the page to parse because the city publishes its
+    recordings only to its own YouTube channel. It matches the meeting's
+    own name and date against a curated, human-verified channel listing;
+    see `youtube_channel.py` for the matching rules and the real evidence
+    behind them, and note that a wrong match there would be worse than no
+    video at all, which is why every uncertain case declines.
+
+    Last resort: `_try_granicus_view_publisher_video()` (added
+    2026-08-29) -- for a confirmed real tenant (Kansas City, MO) whose
+    recordings are real and on Granicus, just under a different meeting
+    id than this page names, reachable only via the tenant's own public
+    Granicus RSS listing. Same name+date matching philosophy and same
+    decline-on-uncertainty posture as the YouTube case; see
+    `granicus_channel.py` for the evidence and matching rules.
     """
 
     platform_name = "legistar"
@@ -117,6 +124,11 @@ class LegistarAssetFinder(AssetFinder):
                 )
                 if channel_match:
                     return channel_match
+                view_publisher_match = await self._try_granicus_view_publisher_video(
+                    soup, final_url, url
+                )
+                if view_publisher_match:
+                    return view_publisher_match
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
@@ -341,6 +353,71 @@ class LegistarAssetFinder(AssetFinder):
             f"{match.channel_name}'s own YouTube channel by meeting name and date "
             f'("{match.video_title}") — it is not linked from the meeting page '
             "itself, so double-check it is the meeting you expected.",
+        )
+        return resolved
+
+    @staticmethod
+    async def _try_granicus_view_publisher_video(
+        soup: BeautifulSoup, page_url: str, source_url: str
+    ) -> Optional[ResolvedMeeting]:
+        """Last resort, for a confirmed real Legistar tenant (Kansas City,
+        MO, 2026-08-29 -- see `granicus_channel.py`'s own module docstring
+        for the full evidence) whose own video-link mechanism attaches
+        nothing for most meetings, while a real Granicus recording exists
+        under a different meeting id in the tenant's own public "Video on
+        Demand" listing. Distinct from `_try_known_channel_video()` above:
+        that one is for a recording that's genuinely unlinked from
+        anywhere except the city's own YouTube channel; this one is for a
+        recording that exists on the SAME platform (Granicus) this
+        tenant's video already comes from when it's linked at all, just
+        under an id this page doesn't reference.
+
+        Runs only after every other mechanism has found nothing, so a
+        meeting that *does* attach its own recording never reaches here.
+        Every uncertain path returns None, same honest-decline posture as
+        every sibling fallback in this file.
+        """
+        page_info = LegistarAssetFinder._extract_page_meeting_info(soup, page_url)
+        if not page_info:
+            return None
+        netloc = urlparse(page_url).netloc
+        if not granicus_channel.has_view_publisher_fallback(netloc):
+            return None
+        match = await granicus_channel.find_view_publisher_match(
+            netloc, page_info["body"], page_info["date"]
+        )
+        if not match:
+            return None
+
+        try:
+            resolved = await get_finder("granicus").resolve(match.clip_url)
+        except CalendarPageError:
+            return None
+        except Exception:
+            logger.warning(
+                "Legistar ViewPublisher delegation to granicus failed for %s",
+                match.clip_url,
+                exc_info=True,
+            )
+            return None
+
+        # Legistar's own page wins outright, same reasoning as
+        # _try_known_channel_video() above -- this is still a match found
+        # by name+date, not a direct link on the page, so the page's own
+        # already-correct fields are more trustworthy than whatever the
+        # matched Granicus clip's own page happens to say.
+        resolved.source_url = source_url
+        resolved.title = page_info["title"]
+        resolved.jurisdiction = page_info["jurisdiction"] or resolved.jurisdiction
+        resolved.date = page_info["date"]
+        resolved.agenda_link = resolved.agenda_link or page_info.get("agenda_link")
+        resolved.meeting_body = page_info.get("body")
+        resolved.video_warnings.insert(
+            0,
+            "This meeting page has no video on it. We matched this recording from "
+            f"this tenant's own Granicus video listing by meeting name and date (\""
+            f'{match.item_body}") — it is not linked from the meeting page itself, '
+            "so double-check it is the meeting you expected.",
         )
         return resolved
 

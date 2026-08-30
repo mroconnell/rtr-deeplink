@@ -1489,12 +1489,22 @@ Atlanta GA (ChampDS; live-verified to have at least one working page, so
 narrower than "not working" — recheck against the user's specific
 failing URL), Omaha NE (video/minutes on separate unpaired pages), Tampa
 FL (transcripts posted separately at `apps.tampagov.net`, need matching
-back to the meeting), Virginia Beach VA (`onboardgov.virginiabeach.gov`,
-not yet triaged), Kansas City MO (only the Transportation Infrastructure
-and Operations Committee comes through; other real committees are
-missing — confirmed live), Detroit MI (Cablecast, user-flagged "not
-working well," independent of the already-fixed Charlotte/Detroit
-mis-attribution — worth a live recheck), Austin TX and San Antonio TX
+back to the meeting), Virginia Beach VA (`onboardgov.virginiabeach.gov`
+-- triaged 2026-08-29: not simply a white-labeled ClerkBase/ClerkHQ
+instance despite sharing `cdn.clerkbase.com` assets — confirmed live it
+carries none of `clerkbase.py`'s expected `window.autoOpenDocUrl`/
+`window.clientSite` JS variables at all, and the page has no server-
+rendered content to scrape (a fully client-rendered SPA, "OnBoardGOV" —
+likely a separate product line from the same vendor, not the meeting-
+agenda tool this adapter already covers). Needs a real headless-browser
+investigation before any adapter work, not a quick domain-list addition),
+Kansas City MO (root-caused and fixed 2026-08-29 — see `BACKLOG_DONE.md`:
+recent meetings for Council and other frequently-meeting bodies now
+resolve real video via a new Granicus ViewPublisher RSS fallback; an
+infrequent body's older meeting can still miss if it's aged out of that
+feed's real ~8-month/100-item coverage), Detroit MI (Cablecast,
+user-flagged "not working well," independent of the already-fixed
+Charlotte/Detroit mis-attribution — worth a live recheck), Austin TX and San Antonio TX
 and Columbus OH (Austin and San Antonio confirmed live with real
 transcripts as of the 2026-08-21 `/coverage` re-check; Columbus OH is
 still genuinely absent).

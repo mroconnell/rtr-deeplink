@@ -912,3 +912,79 @@ async def test_channel_fallback_never_pre_empts_a_link_the_page_does_carry(monke
     # 2026-08-17, YouTube's upload date, because the fallback path only
     # filled in the page's own date when the delegated one was empty.
     assert result.date == "2026-08-05"
+
+
+# Real Kansas City, MO page shape, confirmed live 2026-08-29: <title> is
+# populated (unlike Baltimore's empty one) with the standard "{Jurisdiction}
+# - Meeting of {body} on {date} at {time}" text, but there is no
+# a.videolink[onclick] carrying a real Video.aspx target anywhere on the
+# page -- confirmed across 9 real Council meetings, not a one-off. See
+# granicus_channel.py's own module docstring for the full evidence.
+_KC_COUNCIL_URL = (
+    "https://kansascity.legistar.com/MeetingDetail.aspx"
+    "?LEGID=19409&GID=821&G=D2E89A09-8736-4EFB-B4AE-572E0903BD5A"
+)
+_KC_COUNCIL_HTML = (
+    "<html><head><title>Kansas City - Meeting of Council on "
+    "8/13/2026 at 2:00 PM</title></head><body>"
+    '<a id="hypVideo" class="audioDownloadNotAvailableLink videolink" '
+    'data-running-text="In progress"></body></html>'
+)
+_KC_RSS_URL = (
+    "https://kansascity.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video"
+)
+_KC_GRANICUS_URL = (
+    "https://kansascity.granicus.com/MediaPlayer.php?view_id=2&clip_id=14515"
+)
+# Real (trimmed) Granicus clip page shape -- enough for GranicusAssetFinder's
+# own already-tested parsing, not a captured real page (see test_granicus.py
+# for that).
+_KC_GRANICUS_HTML = (
+    "<html><head><title>Council Legislative Session</title></head>"
+    '<body><script>var url = "https://archive-stream.granicus.com/z/'
+    'playlist.m3u8";</script></body></html>'
+)
+
+
+async def test_view_publisher_fallback_finds_kansas_citys_unlinked_recording(
+    monkeypatch,
+):
+    xml = load_fixture("granicus_channel", "kansascity_viewpublisher_rss.xml")
+    routes = {
+        _KC_COUNCIL_URL: FakeResponse(
+            status=200, text=_KC_COUNCIL_HTML, url=_KC_COUNCIL_URL
+        ),
+        _KC_RSS_URL: FakeResponse(status=200, text=xml),
+        _KC_GRANICUS_URL: FakeResponse(
+            status=200, text=_KC_GRANICUS_HTML, url=_KC_GRANICUS_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_KC_COUNCIL_URL)
+
+    assert result.platform == "granicus"
+    assert result.video_url == "https://archive-stream.granicus.com/z/playlist.m3u8"
+    assert result.source_url == _KC_COUNCIL_URL
+    # Legistar's own page wins over the matched Granicus clip's page.
+    assert result.title == "Council"
+    assert result.date == "2026-08-13"
+    assert result.meeting_body == "Council"
+    warning = result.video_warnings[0]
+    assert "Council Legislative Session" in warning
+    assert "not linked from the meeting page" in warning
+
+
+async def test_view_publisher_fallback_does_not_run_for_an_unregistered_instance():
+    # Every other Legistar tenant keeps its existing behavior exactly --
+    # same registry-guard convention as the YouTube channel fallback's own
+    # test above.
+    url = "https://charlottenc.legistar.com/MeetingDetail.aspx?ID=1"
+    html = _KC_COUNCIL_HTML.replace("Kansas City", "City of Charlotte")
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(url)
+
+    assert result.platform == "legistar"
+    assert result.video_warnings == ["No video link found on this Legistar page."]

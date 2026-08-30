@@ -231,9 +231,28 @@ class CablecastAssetFinder(AssetFinder):
         jurisdiction = self._extract_jurisdiction(site, url) if site else None
 
         if not show or not show.get("vodUrl"):
+            # Real bug found 2026-08-29 investigating a user report on
+            # Detroit: a genuinely video-less show (`isWatchable: false`,
+            # e.g. a short "Council Corner" segment, show 13797) still
+            # carries a real title/eventDate in the same JSON this
+            # method already has in hand -- this used to come back
+            # completely bare (no title, no date) instead of surfacing
+            # what's actually known, the same "always show what you have"
+            # convention every other adapter here follows for its own
+            # no-video case. external_id is set here too (not just on the
+            # video-found path below) for the same host-namespaced dedup
+            # reason -- a video-less show is just as reachable at
+            # multiple scheme/query URL variants as one with video.
             return ResolvedMeeting(
                 platform=self.platform_name,
                 source_url=url,
+                external_id=(
+                    f"cablecast:{urlparse(fetch_url).netloc.lower()}:{show_id}"
+                    if show
+                    else None
+                ),
+                title=show.get("title") if show else None,
+                date=self._format_date(show.get("eventDate")) if show else None,
                 jurisdiction=jurisdiction,
                 video_warnings=["No video found for this meeting."],
             )
@@ -364,9 +383,15 @@ class CablecastAssetFinder(AssetFinder):
                 video_format = ext if ext in ("mp4", "m3u8", "mov", "m4v") else "mp4"
 
         if not video_url:
+            # Same real gap as the Remix path's own no-video branch (see
+            # its comment) -- `show` already has a real title/eventDate
+            # even when there's no vod to play.
             return ResolvedMeeting(
                 platform=CablecastAssetFinder.platform_name,
                 source_url=url,
+                external_id=f"cablecast:{netloc.lower()}:{show_id}",
+                title=show.get("title"),
+                date=CablecastAssetFinder._format_date(show.get("eventDate")),
                 jurisdiction=jurisdiction,
                 video_warnings=["No video found for this meeting."],
             )
