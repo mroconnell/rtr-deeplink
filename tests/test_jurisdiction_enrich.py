@@ -236,6 +236,47 @@ def test_finalize_jurisdiction_recompute_now_repairs_the_bare_beaumont_pages():
     assert texas.jurisdiction == "Beaumont, TX"
 
 
+def test_lookup_by_domain_resolves_17_hyland_customers_found_2026_08_29():
+    # Real gap found auditing archived pages missing a jurisdiction:
+    # hyland.py has no in-page jurisdiction text to extract at all and
+    # relies entirely on this table, so these 18 real customer domains
+    # (17 city/county + special-district ones here, plus
+    # agenda2.modestogov.com covered by its own test above) all carried
+    # no jurisdiction until confirmed live one at a time via each org's
+    # own real site content.
+    cases = {
+        "imaging.sedgwickcounty.org": je.KnownJurisdiction("Sedgwick", "county", "KS"),
+        "cityordinances.durhamnc.gov": je.KnownJurisdiction("Durham", "city", "NC"),
+        "docs.medicinehat.ca": je.KnownJurisdiction("Medicine Hat", "city", "AB"),
+        "meetings.redwoodcity.org": je.KnownJurisdiction("Redwood City", "city", "CA"),
+        "ob.wvc-ut.gov": je.KnownJurisdiction("West Valley City", "city", "UT"),
+        "amv.siouxfalls.gov": je.KnownJurisdiction("Sioux Falls", "city", "SD"),
+        "agenda.friscotexas.gov": je.KnownJurisdiction("Frisco", "city", "TX"),
+        "connect.sussexcountyde.gov": je.KnownJurisdiction("Sussex", "county", "DE"),
+        "stream.ci.concord.ca.us": je.KnownJurisdiction("Concord", "city", "CA"),
+        "agendas.cityofsparks.us": je.KnownJurisdiction("Sparks", "city", "NV"),
+        "meeting.reddeer.ca": je.KnownJurisdiction("Red Deer", "city", "AB"),
+        "onlinedocs.akronohio.gov": je.KnownJurisdiction("Akron", "city", "OH"),
+        "onbaseep22.mesacounty.us": je.KnownJurisdiction("Mesa", "county", "CO"),
+        "tampagov.hylandcloud.com": je.KnownJurisdiction("Tampa", "city", "FL"),
+        "agendaonline.mymanatee.org": je.KnownJurisdiction("Manatee", "county", "FL"),
+    }
+    for domain, expected in cases.items():
+        assert je.lookup_by_domain(domain) == expected, domain
+
+
+def test_lookup_by_domain_resolves_special_districts_not_a_single_city():
+    # Two real special-purpose districts, each serving multiple cities --
+    # confirmed via each org's own real "cities we serve" page text, not
+    # tied to (or guessed from) any one municipality's name.
+    assert je.lookup_by_domain("records.jcsd.us") == je.KnownJurisdiction(
+        "Jurupa Community Services District", "district", "CA"
+    )
+    assert je.lookup_by_domain("agendas.wrd.org") == je.KnownJurisdiction(
+        "Water Replenishment District", "district", "CA"
+    )
+
+
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.
@@ -1499,6 +1540,24 @@ def test_validated_label_extract_resolves_ontario_regional_municipalities():
     assert je.validated_label_extract("pub-peelregion") == "Peel Region"
     assert je.validated_label_extract("pub-durhamregion") == "Durham Region"
     assert je.validated_label_extract("pub-waterlooregion") == "Waterloo Region"
+
+
+def test_validated_label_extract_resolves_hyphenated_ontario_municipalities():
+    # Real gap, confirmed live 2026-08-29 auditing archived pages missing
+    # a jurisdiction: BACKLOG.md's "StatsCan/Census table completeness
+    # gap" entry already diagnosed Chatham-Kent and Arran-Elderslie as
+    # "real Ontario municipalities lost purely on a hyphen-formatting
+    # mismatch" -- the table stores them hyphenated ("chatham-kent",
+    # "arran-elderslie"), but the old tier 2 only ever tried a spaced or
+    # fully-glued join of wordninja's split, never a hyphen-joined one.
+    # Two real, different subdomain shapes: eScribe's own "pub-" prefix
+    # means "pub-chatham-kent" already has the real hyphen in the label
+    # (wordninja splits its "pub-" prefix's hyphen away too, cleanly
+    # giving ['chatham','kent']), while "pub-arranelderslie" arrives
+    # already glued by whoever registered that subdomain -- both need the
+    # SAME new hyphen-joined candidate to reach the table's real key.
+    assert je.validated_label_extract("pub-chatham-kent") == "Chatham-Kent"
+    assert je.validated_label_extract("pub-arranelderslie") == "Arran-Elderslie"
 
 
 # --- WO-22, 2026-08-21: the subdomain cross-check above (PR #254) turned
