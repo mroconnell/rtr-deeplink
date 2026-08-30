@@ -75,9 +75,18 @@ class CivicClerkAssetFinder(AssetFinder):
         event (id 585, user-supplied example) after three earlier sample
         cities all had these null/empty. The file is **SRT, not VTT**
         (`.closedCaptionTracks[].file` ends in `.srt`) — the first real
-        CivicClerk sample with populated captions, so this is the only
-        confirmed format; a VTT track has never actually been observed
-        here, only assumed possible from the schema.
+        CivicClerk sample with populated captions.
+      - `EventsMedia.transcriptionUrl` (the fallback below, when
+        `closedCaptionTracks` is empty): confirmed live 2026-08-30 via a
+        second real customer, Los Altos Hills, CA (`losaltoshillsca.
+        portal.civicclerk.com`, event 4581) — a real, coherent VTT
+        transcript, previously only assumed possible from the schema.
+        CLAUDE.md used to describe CivicClerk's populated-captions gap as
+        "still real and unconfirmed either way"; that was stale as of this
+        confirmation (corrected the same day) — two independent real
+        customers now confirm two different real fields on this API, both
+        already handled by the fallback chain below with no code change
+        needed.
     """
 
     platform_name = "civicclerk"
