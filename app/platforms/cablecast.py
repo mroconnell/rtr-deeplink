@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 from typing import List, Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
@@ -182,6 +182,59 @@ _JURISDICTION_RE = re.compile(r"\b(?:City|County|Town) of ([A-Z][a-zA-Z]+)\b")
 # nationally-unique city name would get for free with no allowlist entry
 # needed at all.
 
+# CCX Media (reflect-ccx.cablecast.tv) is one Cablecast host shared by 9
+# real, distinct Minnesota cities, keyed apart only by a `site=` query
+# param -- confirmed live 2026-08-30 by fetching real show pages for 3 of
+# the 9 (Brooklyn Park site=8, Maple Grove site=16, New Hope site=17):
+# each page's own embedded site catalog names all 9 real siteIds
+# consistently (Brooklyn Center=7, Brooklyn Park=8, Crystal=10, Golden
+# Valley=15, Maple Grove=16, New Hope=17, Osseo=18, Plymouth=19,
+# Robbinsdale=20). This host can't go in jurisdiction_enrich's
+# `_KNOWN_DOMAINS` table (that's one host -> one jurisdiction, and this
+# host serves 9), and none of `_extract_jurisdiction()`'s existing tiers
+# can tell the 9 apart either: `_find_site()` does happen to land on the
+# right site object (its own `title` field is the bare real city name,
+# e.g. "Maple Grove"), but with no "City of"/"County of" phrase anywhere
+# on the page -- pageDescription is generic CCX Media+ app-download text,
+# identical across all 9 -- so both `extract_jurisdiction_chain()` and
+# `_JURISDICTION_RE` come back empty, and this shared host obviously
+# can't validate as any one city's subdomain either. Several of these 9
+# names are also nationally ambiguous (e.g. "Plymouth", "New Hope"), so a
+# generic gazetteer lookup on the bare title wouldn't reliably supply MN
+# for all of them -- an explicit table, keyed on the real, confirmed
+# siteId, is the only tier that gets every one of the 9 right.
+_CCX_MEDIA_HOST = "reflect-ccx.cablecast.tv"
+_CCX_MEDIA_SITES = {
+    "7": jurisdiction_enrich.KnownJurisdiction("Brooklyn Center", "city", "MN"),
+    "8": jurisdiction_enrich.KnownJurisdiction("Brooklyn Park", "city", "MN"),
+    "10": jurisdiction_enrich.KnownJurisdiction("Crystal", "city", "MN"),
+    "15": jurisdiction_enrich.KnownJurisdiction("Golden Valley", "city", "MN"),
+    "16": jurisdiction_enrich.KnownJurisdiction("Maple Grove", "city", "MN"),
+    "17": jurisdiction_enrich.KnownJurisdiction("New Hope", "city", "MN"),
+    "18": jurisdiction_enrich.KnownJurisdiction("Osseo", "city", "MN"),
+    "19": jurisdiction_enrich.KnownJurisdiction("Plymouth", "city", "MN"),
+    "20": jurisdiction_enrich.KnownJurisdiction("Robbinsdale", "city", "MN"),
+}
+
+# Cablecast's own vendor demo/sales tenant -- confirmed live 2026-08-30:
+# yourtown.cablecast.tv's real site object's own pageDescription says
+# outright "YourTownTV is the live streaming video channel of Cablecast
+# Community Media... If you would like to demo Cablecast and see how we
+# can improve your workflow, send an email to sales@cablecast.tv." Its
+# real catalog is deliberately built to *look* like ordinary local-
+# government content -- confirmed real, present shows include "Pasadena
+# City Council Meeting 3-31-23" (show 32, real vodUrl) and "YourTown
+# School Board Meeting with Agenda" (show 97) -- neither a real
+# government's own channel, so nothing in the page's own structure
+# (title/pageDescription shape, show titles) distinguishes this tenant
+# from a genuine one the way every other check in this file does.
+# Excluded by hostname outright rather than content-sniffed: this one
+# host is the only confirmed instance of this pattern, so a hostname
+# check is exact with no false-positive risk, unlike guessing at a text
+# pattern that might or might not recur across other Cablecast demo/sales
+# infrastructure this session hasn't seen.
+_VENDOR_DEMO_HOST = "yourtown.cablecast.tv"
+
 
 class CablecastAssetFinder(AssetFinder):
     """Detroit, MI and Charlotte, NC's Cablecast video portals (Remix.js
@@ -193,6 +246,21 @@ class CablecastAssetFinder(AssetFinder):
     platform_name = "cablecast"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
+        if urlparse(url).netloc.lower() == _VENDOR_DEMO_HOST:
+            # See the `_VENDOR_DEMO_HOST` module comment -- this tenant's
+            # own real content is Cablecast's sales demo catalog, not a
+            # real government, however real-looking a given show's title
+            # is. Declined outright rather than resolved.
+            return ResolvedMeeting(
+                platform=self.platform_name,
+                source_url=url,
+                video_warnings=[
+                    "yourtown.cablecast.tv is Cablecast's own vendor demo/sales "
+                    "tenant, not a real government -- not resolved as a real "
+                    "meeting."
+                ],
+            )
+
         publicsite_match = _PUBLICSITE_SHOW_ID_RE.search(urlparse(url).path)
         if publicsite_match:
             return await self._resolve_publicsite(url, int(publicsite_match.group(1)))
@@ -349,10 +417,20 @@ class CablecastAssetFinder(AssetFinder):
             netloc, f"/cablecastapi/v1/shows/{show_id}"
         )
         show = (payload or {}).get("show")
-        jurisdiction = None
-        known = jurisdiction_enrich.lookup_by_domain(netloc)
-        if known:
-            jurisdiction = f"{known.name}, {known.state}"
+        # CCX Media's own real links use exactly this "/CablecastPublicSite/
+        # show/{id}?site=X" shape (confirmed live 2026-08-30 -- e.g.
+        # https://reflect-ccx.cablecast.tv/CablecastPublicSite/show/36986
+        # ?site=16), even though the host itself 301s that path to the
+        # Remix template server-side -- this branch is the one that
+        # actually runs for those real pasted URLs, so the `site=`
+        # lookup has to be checked here too, not just in
+        # `_extract_jurisdiction()`. See `_CCX_MEDIA_HOST`'s module
+        # comment for the full investigation.
+        jurisdiction = CablecastAssetFinder._ccx_media_jurisdiction(url)
+        if not jurisdiction:
+            known = jurisdiction_enrich.lookup_by_domain(netloc)
+            if known:
+                jurisdiction = f"{known.name}, {known.state}"
 
         if not show:
             return ResolvedMeeting(
@@ -532,7 +610,34 @@ class CablecastAssetFinder(AssetFinder):
         return None
 
     @staticmethod
+    def _ccx_media_jurisdiction(url: str) -> Optional[str]:
+        """See the `_CCX_MEDIA_HOST`/`_CCX_MEDIA_SITES` module comment.
+        Shared between both real URL shapes this host answers to -- the
+        Remix "/internetchannel/show/{id}?site=X" path (via
+        `_extract_jurisdiction()` below) and the real, commonly-linked
+        "/CablecastPublicSite/show/{id}?site=X" path (via
+        `_resolve_publicsite()`), which 301s to the Remix template
+        server-side but is itself a real, pasteable URL that routes
+        through this adapter's *other* resolve branch."""
+        netloc = urlparse(url).netloc.lower()
+        if netloc != _CCX_MEDIA_HOST:
+            return None
+        site_ids = parse_qs(urlparse(url).query).get("site") or []
+        known = _CCX_MEDIA_SITES.get(site_ids[0]) if site_ids else None
+        return f"{known.name}, {known.state}" if known else None
+
+    @staticmethod
     def _extract_jurisdiction(site: dict, url: str) -> Optional[str]:
+        # CCX Media's shared host -- tried first and independent of
+        # `site`'s own text: neither pageDescription (generic app-
+        # download text, identical on all 9 cities) nor a bare title
+        # ("Maple Grove", no "City of" prefix) ever resolves through the
+        # tiers below.
+        ccx_jurisdiction = CablecastAssetFinder._ccx_media_jurisdiction(url)
+        if ccx_jurisdiction:
+            return ccx_jurisdiction
+
+        netloc = urlparse(url).netloc.lower()
         page_description = site.get("pageDescription")
         # Real gap found 2026-08-29 auditing stored (not missing --
         # confidently WRONG) jurisdictions via /coverage: the narrower
@@ -581,7 +686,6 @@ class CablecastAssetFinder(AssetFinder):
         # Broomfield, CO 2026-08-19, same class of gap Detroit/Charlotte
         # already hit. Falls back to the known-domain table (same pattern
         # as lims.py/hyland.py) rather than dropping jurisdiction entirely.
-        netloc = urlparse(url).netloc
         known = jurisdiction_enrich.lookup_by_domain(netloc)
         if known:
             return f"{known.name}, {known.state}"

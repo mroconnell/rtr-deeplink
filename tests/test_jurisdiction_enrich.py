@@ -215,6 +215,24 @@ def test_lookup_by_domain_resolves_beaumont_ab_over_the_ambiguous_bare_name():
     assert known == je.KnownJurisdiction("Beaumont", "city", "AB")
 
 
+def test_lookup_by_domain_resolves_orion_township_and_montgomery_al_cablecast():
+    # Two more real Cablecast customers confirmed live 2026-08-30 with no
+    # usable "City/Town of X" text anywhere on their real pages: Orion
+    # Township, MI's reflect-ontv.cablecast.tv (real show page
+    # `/CablecastPublicSite/show/2904?site=3` -- pageDescription is just
+    # a phone number, and the real jurisdiction name lives on a sibling
+    # site object cablecast.py's own `_find_site()` never reaches) and
+    # Montgomery, AL's capitalcityconnection.cablecast.tv (real
+    # pageDescription names "Montgomery Zoo"/"City-County Library" but
+    # never the bare "City of Montgomery" phrase the regex needs).
+    assert je.lookup_by_domain("reflect-ontv.cablecast.tv") == je.KnownJurisdiction(
+        "Orion Township", "city", "MI"
+    )
+    assert je.lookup_by_domain(
+        "capitalcityconnection.cablecast.tv"
+    ) == je.KnownJurisdiction("Montgomery", "city", "AL")
+
+
 def test_finalize_jurisdiction_recompute_now_repairs_the_bare_beaumont_pages():
     # The actual gap this closes, end to end through finalize_jurisdiction()
     # -- the same function GET /internal/jurisdiction/bleed-backfill-

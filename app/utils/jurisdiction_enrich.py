@@ -481,6 +481,27 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # (also real in GA/DE).
     "urbana.cablecast.tv": KnownJurisdiction("Urbana", "city", "IL"),
     "smyrna.cablecast.tv": KnownJurisdiction("Smyrna", "city", "TN"),
+    # Two more real Cablecast (Remix-template) customers confirmed live
+    # 2026-08-30 with no usable "City/Town of X" text at all: Orion
+    # Township, MI's real show page (reflect-ontv.cablecast.tv,
+    # `/CablecastPublicSite/show/2904?site=3`) embeds a "Government"
+    # channel with generic pageDescription text (a phone number, no city
+    # name) -- the site's own catalog separately lists a sibling
+    # `{"siteId": 4, "title": "Orion Township"}` channel confirming the
+    # real jurisdiction name, but that's a different siteId than the one
+    # any given show page resolves to, so it's not reachable through
+    # `_find_site()`'s existing pageDescription-based match. Montgomery,
+    # AL's capitalcityconnection.cablecast.tv names "Montgomery Zoo" and
+    # "City-County Library" in its real pageDescription but never the
+    # bare "City of Montgomery" phrase `_JURISDICTION_RE` requires.
+    # Neither subdomain ("reflect-ontv", "capitalcityconnection") itself
+    # validates as a place name either. "Orion Township" typed "city"
+    # here (not "county") since a Michigan charter township is a
+    # general-purpose municipal government, same convention as every
+    # other single-jurisdiction domain entry in this table -- no
+    # "township"-typed entry existed here before this one.
+    "reflect-ontv.cablecast.tv": KnownJurisdiction("Orion Township", "city", "MI"),
+    "capitalcityconnection.cablecast.tv": KnownJurisdiction("Montgomery", "city", "AL"),
     # "Minneapolis" is also a real, if much smaller, city in Kansas --
     # confirmed via app/utils/jurisdiction_data -- so a bare name lookup
     # alone would stay ambiguous for this real, confirmed LIMS customer.
