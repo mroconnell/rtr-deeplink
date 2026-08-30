@@ -1,5 +1,126 @@
 # Backlog — done
 
+## TelVue: 10 of the 12 independently-verified new jurisdictions ingested for real [Done 2026-08-30]
+
+Real content ingestion, not just research — closes the immediate,
+verified-safe slice of the ~112-candidate TelVue queue found earlier
+tonight (`BACKLOG.md`'s TelVue CDX-enumeration entry, still open for
+the remaining ~100 unverified candidates).
+
+Per each of the 12 independently-verified org tokens: found one real,
+current meeting on the channel's own `/home` page, confirmed it live,
+then submitted it through the public `POST /api/resolve` endpoint — the
+same path a real visitor's browser uses, no admin/internal access
+involved.
+
+**10 ingested successfully**: Winchester MA, Derry NH, Pierre SD,
+Guttenberg IA, Kalamazoo MI, Leominster MA, Royal Oak MI, Albany NY,
+Summit NJ, Luverne MN — each confirmed live afterward via a real `/m/`
+page with a working video player.
+
+**1 already archived**: Aiken SC's candidate meeting was already
+ingested before this session (found already live at
+`/m/city-council-aug-24-2026`).
+
+**1 skipped, correctly**: Cleveland OH's channel's newest content is
+over 4 years old (last real meeting: March 2022) — no current meeting
+existed to ingest, so nothing was forced.
+
+**Real bug found along the way, filed separately**: several of the
+ingested pages came back with an empty or garbled `jurisdiction` field
+from the TelVue adapter — see `BACKLOG.md`'s new "Jurisdiction
+extraction & backfill" entry for the specific pages and what's
+actually wrong.
+
+## "Open bugs" re-verification pass: 61 entries audited via 4 parallel agents, real drift found and corrected [Investigated 2026-08-30]
+
+Full re-verification pass on `BACKLOG.md`'s "Open bugs" section (61
+entries, ~1,410 lines — the file's largest and stalest section, mixing
+tonight's fresh adds with much older undated ones). Same method as the
+Dormant-section pass earlier tonight: 4 parallel agents, each auditing
+one chunk of the section against live code, live production data, and
+`git log`, per CLAUDE.md's own "a backlog entry is a lead, not a spec"
+rule. Real result: **2 entries fully closed (already fixed), 5 entries
+had a genuinely stale or wrong claim corrected in place, 1 new bug
+found incidentally, and the other 53 held up under direct verification**
+— confirming most of the section is solid, not just assuming it.
+
+**Process note worth recording**: partway through, the shared checkout
+at `~/Documents/rtr-deeplink` was found to be on a different branch
+(`iqm2-caption-fetch`, from an unrelated parallel session) rather than
+`main` — a real instance of the multi-session collision CLAUDE.md
+already warns about. Cross-checked which of the 4 agents' findings
+depended on reading local files that branch had modified (mainly
+`cablecast.py`, `civicclerk.py`, `civicplus.py`, `iqm2.py`,
+`legistar.py`, `models.py`, `primegov.py`, `jurisdiction_enrich.py`,
+`scripts/adapter_canary.py` — all files this session's own earlier PRs
+571-574 touched, which that other branch simply hadn't merged yet) —
+one finding (a stale read of the old, pre-compaction Search Console
+entry) was discarded outright as a result; everything else either read
+files untouched by that branch, or depended on live production
+fetches/git history unaffected by which local branch was checked out.
+
+**Closed — already fixed, moved here from Open bugs**:
+- **Chunk-failure budget only catching consistent failures.** The
+  underlying cause (Wowza/CloudFront cold-cache fill on
+  `archive-stream.granicus.com`, mistaken for genuine intermittency) was
+  already root-caused and fixed via a smaller Granicus chunk size —
+  commit `7149722` ("Give Granicus a 300s chunk size, fixing 24/24 real
+  cold-CDN ffmpeg timeouts"), confirmed merged. That fix also settles
+  this entry's own scheduling question: a chunk that fits the timeout
+  budget stops burning a worker slot on doomed attempts.
+- **Two pages (Napa job 20, Detroit job 47) stuck with a failed
+  transcription job for months, with the open question being whether
+  the backoff/retry pool was actually still working.** Checked both
+  pages live 2026-08-30: Detroit (`/m/detroit-mi-2026-07-28-...`) now
+  has a complete, un-flagged transcript (version 2506, 3,930 segments,
+  full ~5hr7min meeting). Napa (`/m/city-of-napa-2026-06-30-...`) has a
+  real partial transcript with an honest in-page warning about the
+  interruption (version 2371, 1,058 segments). Both job/version numbers
+  are now in the 2300s-2500s range, well past job 20/47 — directly
+  confirms the backoff pool *is* working as designed for these two rows,
+  answering the entry's central question.
+
+**Corrected in place — stale or wrong claim, real fix kept live** (see
+`BACKLOG.md` for the corrected entries themselves):
+- StatsCan/Census table gap: Chatham-Kent and Arran-Elderslie were
+  already fixed via the eScribe-residuals hyphen-matcher tier; only
+  Blue Mountains is still genuinely open.
+- Census-table 649-row baseline validation: the three named
+  jurisdiction-side bleed cases (Sarasota/Hollywood/Hampton) are all
+  already fixed via the existing bleed signal — the mid-word-truncation
+  detector this entry justified is now only motivated by a separate
+  title-side example, not the three originally cited.
+- Hyland/YouTube Anchorage bot-block: doesn't reproduce today — a fix
+  that landed 16 days *before* this entry was written already means a
+  blocked-after-finding-an-embed case still gets a real playable
+  `video_url`; today's live re-test shows no embed at all in the source
+  HTML, a different (unconfirmed) cause than originally described.
+- ProudCity residuals: 2 of 3 "still open" items were already chased
+  and resolved the same day the entry describes (Franklin Township
+  pushed as agenda-only; Effingham/George West confirmed negative);
+  Holyoke's YouTube 429 was already retried once and failed again, not
+  merely "needs a retry."
+- Four-platforms-account-for-78%-of-470 sizing: the 474-page count is
+  stale (a later fresh audit found 269), and the Cablecast sub-claim
+  ("blocked on a multi-word-city customer, don't widen speculatively")
+  was directly contradicted by a fix that shipped the same day this
+  entry's own "scoping done" note was written — 23 of Cablecast's 101
+  gap rows were recovered via a subdomain-validation fallback.
+
+**New finding, filed as its own entry**: a real, previously-undocumented
+jurisdiction mis-attribution surfaced incidentally while checking the
+NYC/Viebit row in the "50 largest cities" subsection —
+`/m/new-york-ny-2026-08-19-8-18-26-council-meeting-mp4` is tagged "New
+York, NY" but its real source is `ringwoodtv.viebit.com` (Ringwood, NJ).
+
+**Everything else in the section (53 of 61 entries) was checked and
+holds up** — confirmed still-accurate against live code/data, or
+correctly already marked closed. Two items surfaced needing production
+DB/admin-token access to fully settle (the 51-candidate list behind
+`bleed-backfill-candidates`, and the current low-trust-page count after
+the Cablecast fix above) — both noted in place, not chased further here.
+
 ## Five real bugs found by the 2026-08-30 dorking pass, all fixed and shipped same day (PRs #571-574) [Done 2026-08-30]
 
 Closes five entries filed earlier the same day out of the CivicWeb/
