@@ -144,6 +144,50 @@ async def test_resolve_reads_real_title_date_jurisdiction_and_video():
     assert result.video_warnings == []
 
 
+# Real, confirmed live 2026-08-29: not every IQM2 tenant's MEDIA URL
+# comment is Granicus HLS like Atlanta's -- San Carlos, CA
+# (mediahttp.iqm2.com/SanCarlosCA/1450_480.mp4) returns a direct .mp4
+# instead. Confirmed via a live fetch of the resolved page's rendered
+# <video>/<source> tag (a real Search Console "video isn't on a watch
+# page" contributor -- see BACKLOG.md/BACKLOG_DONE.md); the outline
+# HTML below reuses the same confirmed Atlanta/SCC page shape rather
+# than an independently-fetched San Carlos raw page.
+SAN_CARLOS_URL = "https://mediahttp.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1450"
+SAN_CARLOS_OUTLINE_URL = (
+    "https://mediahttp.iqm2.com/Citizens/Detail_Meeting.aspx?Target=Detail&CssClass=AgendaOutline"
+    "&Mode=Video&Frame=Nothing&ID=1450"
+)
+SAN_CARLOS_SPLIT_URL = "https://mediahttp.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1450&Format=Minutes"
+SAN_CARLOS_OUTLINE_HTML = """
+<html><head><title>
+2017/11/13 07:00 PM City Council Regular Meeting - Web Outline - City of San Carlos, California
+</title></head>
+<body>No AgendaOutlineLink items in this fixture -- this test's focus is video_format.</body></html>
+"""
+SAN_CARLOS_SPLIT_HTML = """
+<div><!-- MEDIA URL: https://mediahttp.iqm2.com/SanCarlosCA/1450_480.mp4--></div>
+"""
+
+
+async def test_resolve_derives_mp4_format_instead_of_hardcoding_m3u8():
+    routes = {
+        SAN_CARLOS_OUTLINE_URL: FakeResponse(
+            status=200, text=SAN_CARLOS_OUTLINE_HTML, url=SAN_CARLOS_OUTLINE_URL
+        ),
+        SAN_CARLOS_SPLIT_URL: FakeResponse(
+            status=200, text=SAN_CARLOS_SPLIT_HTML, url=SAN_CARLOS_SPLIT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await IQM2AssetFinder().resolve(SAN_CARLOS_URL)
+
+    assert result.video_url == "https://mediahttp.iqm2.com/SanCarlosCA/1450_480.mp4"
+    # Not "m3u8" -- that mislabel produced a <source type=
+    # "application/vnd.apple.mpegurl"> pointing at a real .mp4 file.
+    assert result.video_format == "mp4"
+
+
 async def test_resolve_extracts_real_timestamped_agenda_items_and_skips_document_links():
     routes = {
         ATLANTA_OUTLINE_URL: FakeResponse(

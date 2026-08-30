@@ -155,7 +155,7 @@ Reliability, ops & cost  (18)
     [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
     [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
     [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
-    [NEEDS-AUDIT] `/j/*` jurisdiction hub pages emit `VideoObject`
+    [JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -2466,70 +2466,96 @@ top-up driver has been creating zero jobs" under **Transcription queue
   build.
 
 - **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
-  validation FAILED 2026-08-24, and the count nearly doubled (947 → 1,764)
-  since the 2026-08-21 fix. Investigated live 2026-08-29; the fix is
-  real and correctly deployed, but doesn't explain the whole population.**
+  validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
+  the 2026-08-21 fix. Investigated live 2026-08-29: three real, distinct
+  contributors found, one fixed same day, one scoped, one still open.**
   Original root cause (2026-08-21): `meeting_page.html` used to render
   every non-YouTube video as a bare `<video>` tag with no `src`/`<source>`
-  server-side — Google had no server-rendered URL to confirm against
-  JSON-LD `contentUrl`. Fix shipped same day: a `<source>` for `.m3u8`,
-  `src=` directly for `.mp4`.
-  **Someone did click VALIDATE FIX** (contrary to this entry's earlier
-  "Not Started" read) — Search Console shows **Started: 8/22/26, Failed:
-  8/24/26**, and Affected videos has grown to **1.76K**.
-  **Checked 3 real examples live (2026-08-29), across both platform
-  shapes — the fix is genuinely present in production HTML on all
-  three**: `kaysville-ut-2024-09-05-city-council-meeting` (Cablecast mp4,
-  `src="https://cpmedia.azureedge.net/..."` directly on `<video>`),
-  `snohomish-county-wa-2026-01-27-health-and-community-services`
-  (Granicus, `<source src="https://archive-stream.granicus.com/.../
-  playlist.m3u8" type="application/vnd.apple.mpegurl">`), and
-  `lynchburg-va-2024-08-13-city-council-special-called-meeting-august-13-2024`
-  (Cablecast mp4, same pattern — this is also the actual page behind the
-  separate `thumbnailUrl` flag below, not San Carlos as previously
-  guessed).
-  **So the meeting-page template fix is not the open question anymore —
-  two real, undistinguished possibilities remain**: (1) the fix wasn't
-  actually live in production yet when Google's 8/22-8/24 validation ran
-  (deploys here are manual, `autoDeploy: false` — a fix merged 8/21
-  could easily have validated against stale prod, see this file's
-  "Deploys are manual" standing note) — if so, a **fresh** Validate Fix
-  attempt now should succeed; or (2) Google's video indexer may not be
+  server-side. Fix shipped same day: a `<source>` for `.m3u8`, `src=`
+  directly for `.mp4`. **Someone did click VALIDATE FIX** (contrary to
+  this entry's earlier "Not Started" read) — Search Console shows
+  **Started: 8/22/26, Failed: 8/24/26**, Affected videos **1.76K**.
+
+  **Contributor 1 — meeting-page template fix: confirmed genuinely
+  deployed and correct**, checked against a wide, user-supplied sample
+  of real currently-failing URLs (2026-08-29), spanning Cablecast mp4,
+  Granicus m3u8, champds, isilive, townhallstreams, Seattle Channel, and
+  CloudFront-tokenized. All rendered correctly. So the template fix
+  itself is not the open question. Two real, undistinguished hypotheses
+  remain for *why* validation still failed: (1) the fix wasn't live in
+  production yet when Google's 8/22-8/24 validation ran (deploys here
+  are manual, `autoDeploy: false`) — a **fresh** Validate Fix attempt
+  should now succeed if so; or (2) Google's video indexer may not be
   able to index an HLS `.m3u8` manifest as watchable content at all,
-  regardless of the `<source>` tag being syntactically correct — a real
-  platform limitation, not a code bug, and one that would explain why
-  Granicus/Swagit `.m3u8` URLs dominate the failing-examples list. A
-  fresh Validate Fix click, read after Google finishes, distinguishes
-  them: a strong pass rate → it was the deploy-timing gap; persistent
-  m3u8-specific failures → the HLS indexability theory.
-  **Separately, and NOT explained by anything above: `/j/*` jurisdiction
-  hub pages are also in the failing-examples list, with `N/A` for video
-  URL** (`/j/rockwall-tx`, `/j/village-of-rye-brook-ny`, `/j/alpharetta-ga`,
-  `/j/inyo`, `/j/parker-tx`, `/j/gig-harbor-wa`, and more). This is a
-  real, distinct, unfixed bug — see its own entry immediately below.
+  regardless of correct markup — a real platform limitation, not a code
+  bug. A fresh Validate Fix click, read after Google finishes,
+  distinguishes them.
+
+  **Contributor 2 — IQM2 hardcoded `video_format="m3u8"` regardless of
+  the real file extension: confirmed and fixed 2026-08-29.** Not every
+  IQM2 tenant's MEDIA URL comment is Granicus HLS like the Atlanta
+  sample this adapter was originally built against — San Carlos, CA
+  (`mediahttp.iqm2.com/SanCarlosCA/1450_480.mp4`) returns a direct
+  `.mp4`, and the hardcoded format produced
+  `<source src="....mp4" type="application/vnd.apple.mpegurl">` — a
+  real MIME-type mismatch. Fixed in `app/platforms/iqm2.py` by deriving
+  `video_format` from the real extension, mirroring the pattern already
+  used in `cablecast.py`'s PublicSite path; falls back to `"m3u8"` (the
+  original default) for an unrecognized extension. Regression test added
+  in `tests/test_iqm2.py`. Full suite green (2020 passed). Not yet
+  deployed — see this file's "Deploys are manual" standing note.
+
+  **Contributor 3 — `/j/*` (and `/state/*`) hub pages emit `VideoObject`
+  for content they don't host: real, scoped, not yet fixed** — see its
+  own entry immediately below.
+
   **What's no longer true**: the WO-37 card backfill's "No thumbnail URL
   provided — 1 video, flat" reassurance. That single item turned out to
   be the Lynchburg page (see the `thumbnailUrl` entry above) — already
   confirmed fixed live, just never validated.
 
-- **[NEEDS-AUDIT] `/j/*` jurisdiction hub pages emit `VideoObject`
-  structured data for teaser content they don't actually host — real,
-  unfixed root cause for part of the "video isn't on a watch page"
-  failures above, found 2026-08-29.** `/j/rockwall-tx`'s JSON-LD emits
-  an `ItemList` whose `itemListElement` are full `@type: VideoObject`
-  entries (name, description, uploadDate, thumbnailUrl, transcript) for
-  its "moments" teaser feed (WO-50). Each entry's own `url` field
-  correctly points to the real meeting page
-  (`.../m/rockwall-tx-2023-06-05-jun-05-2023-city-council?t=7`) — but
-  the hub page itself renders **no `<video>` element at all**. Google
-  reads a `VideoObject` on a page as a claim that the video is watchable
-  *there*; since it isn't, every hub page with a moments feed gets
-  flagged, independent of anything fixed on the meeting-page side. Not
-  yet confirmed whether `/state/*` hub pages (same moments-feed feature,
-  per WO-50/WO-51) carry the identical pattern — worth checking as part
-  of scoping the fix. Agent dispatched 2026-08-29 to scope a fix (read
-  `STATE_HUB_PAGES.md` first, per this file's own convention for
-  touching `/state/*`/`/j/*`); no code changed yet.
+- **[JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
+  structured data for teaser content they don't actually host — scoped
+  2026-08-29, fix recommendation ready, not yet built.** `/j/rockwall-tx`'s
+  JSON-LD emits an `ItemList` whose `itemListElement` are full
+  `@type: VideoObject` entries (name, description, uploadDate,
+  thumbnailUrl, transcript) for its "moments" teaser feed — each entry's
+  own `url` correctly points to the real meeting page, but the hub page
+  itself renders **no `<video>` element at all**. Google reads a
+  `VideoObject` on a page as a claim the video is watchable *there*, so
+  every hub/state page with a moments feed gets flagged.
+  **Scoping agent confirmed the blast radius is bigger than originally
+  suspected: three templates, not one** —
+  `archive/templates/jurisdiction_page.html:22-50`,
+  `archive/templates/state_page.html:23-69`, and
+  `archive/templates/state_all50.html:21-59` (route `/state/all-50`),
+  all built from `_build_featured()`/`_featured_entry()`
+  (`archive/db/crud.py:4876-4941`). Live-verified `/state/texas` and
+  `/state/all-50` both carry the identical pattern. **Gating is looser
+  than indexability**: `{% if public_base_url and featured %}` fires on
+  just one transcribed+titled+highlighted meeting, well below the
+  2-meeting indexable threshold — so even a `noindex`'d hub can still
+  emit the bad markup. From the live sitemap (754 `/j/*` + 61 `/state/*`
+  = 815 URLs) and the loose gate, the realistic estimate is **700-800
+  live pages actively emit this today** — this is very plausibly the
+  dominant, previously-uncounted driver of the 947→1,764 growth, since
+  the original 2026-08-21 investigation only ever looked at `/m/*` pages.
+  **Recommended fix**: retype the nested `item` from `VideoObject` to
+  `CreativeWork` in all three templates (keep `url`/`name`/`description`/
+  `thumbnailUrl`, rename `uploadDate`→`datePublished`, drop
+  `transcript` — those two properties are `VideoObject`/`MediaObject`-
+  scoped in schema.org, `CreativeWork` isn't). The real `VideoObject` for
+  that same content already exists correctly on the linked `/m/{slug}`
+  page, so nothing loses coverage, and Search Console already shows
+  these hub entries failing validation today (`Video URL: N/A`) — no
+  upside is being given up. Also worth doing in the same change: extract
+  the near-identical duplicated block into one shared
+  `archive/templates/_featured_itemlist.html` partial (precedent:
+  `_government_groups.html`, `state_page.html`'s own `_topic_chips.html`
+  include) so it can't drift across three copies again, and add
+  regression test coverage — **currently zero** — asserting no
+  `"@type": "VideoObject"` in hub/state JSON-LD
+  (`tests/test_jurisdiction_hubs.py` / `tests/test_state_pages.py`).
 
 ### `/coverage` as a QA surface
 
