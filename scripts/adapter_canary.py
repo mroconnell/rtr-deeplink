@@ -94,6 +94,16 @@ CANARY_URLS: dict[str, list[str]] = {
         "?meetingId=DF5C52EA-0D6B-F111-A823-001DD8019941"
     ],
     "civicclerk": ["https://emporiaks.portal.civicclerk.com/event/585/media"],
+    # Durham, NC -- confirmed live 2026-08-30, replacing the earlier
+    # ca-westlakevillage.civicplus.com sample after it went DNS-dead (see
+    # civicplus.py's own docstring and tests/fixtures/civicplus/README.md).
+    # This is a category listing page, not a single-meeting URL -- CivicPlus
+    # has no single-meeting URL shape at all (every real one observed is a
+    # listing) -- so this always raises CalendarPageError, which
+    # _attempt_platform() already treats as a correct, expected outcome as
+    # long as real per-meeting candidates come back (31 rows, 22 with a
+    # real video link, confirmed at canary-build time).
+    "civicplus": ["https://nc-durham.civicplus.com/AgendaCenter/City-Council-4"],
     "civicweb": [
         "https://dallascounty.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2108"
     ],
@@ -204,17 +214,6 @@ CANARY_EXCLUSIONS: dict[str, str] = {
         "delegates into the real Swagit adapter, so a total Swagit "
         "parsing break would surface there -- but as a destinyhosted "
         "failure, not a swagit one."
-    ),
-    "civicplus": (
-        "The one real site this adapter was ever confirmed against "
-        "(ca-westlakevillage.civicplus.com) already had a documented "
-        "fixture note (tests/fixtures/civicplus/README.md) saying it "
-        "stopped resolving as of 2026-08-07 -- re-confirmed live "
-        "2026-08-16 building this canary (DNS failure, not an adapter "
-        "bug). BACKLOG.md's Platform coverage section has a real untested "
-        "replacement candidate (Maricopa County, AZ's CivicPlus "
-        "AgendaCenter) -- add civicplus back to CANARY_URLS once that (or "
-        "another) real site is actually verified against the live adapter."
     ),
 }
 
