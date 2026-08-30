@@ -118,7 +118,12 @@ from app.platforms.base import (
     CalendarPageError,
 )  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
-from scripts.bulk_ingest import _ingest, REQUEST_DELAY_SECONDS  # noqa: E402
+from scripts.bulk_ingest import (  # noqa: E402
+    _base_url,
+    _headers,
+    _ingest,
+    REQUEST_DELAY_SECONDS,
+)
 
 QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 BATCH_SIZE = 12
@@ -199,6 +204,29 @@ async def main() -> None:
     # retry failing commands in a loop" reasoning as
     # feed_granicus_auto_transcription.py.
     QUEUE_FILE.write_text("\n".join(remainder) + ("\n" if remainder else ""))
+
+    # Report the new depth to the Archive so its own
+    # /internal/transcription-queue-stats reads a real, current number
+    # from the database instead of needing this file present in its
+    # deploy tree (see archive/db/models.py's Tier3QueueState docstring).
+    # Best-effort: the queue file above is the real source of truth, so a
+    # failed report here shouldn't fail the whole run -- the next run's
+    # report just catches the count back up.
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{_base_url()}/internal/tier3-queue-remaining",
+                params={"remaining": len(remainder)},
+                headers=_headers(),
+                timeout=aiohttp.ClientTimeout(total=30),
+            ) as response:
+                if response.status != 200:
+                    print(
+                        f"[WARN] failed to report queue depth to Archive: "
+                        f"HTTP {response.status}"
+                    )
+    except Exception as e:
+        print(f"[WARN] failed to report queue depth to Archive: {e}")
 
 
 if __name__ == "__main__":

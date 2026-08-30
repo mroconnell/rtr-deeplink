@@ -544,3 +544,64 @@ async def test_daily_report_no_warning_when_no_active_jobs(monkeypatch):
         previous={"cumulative_chunks_completed": 4028},
     )
     assert "stalled or dead" not in captured["html"]
+
+
+# --- WO-66 residual: tier3_queue_remaining sourced from the database ------
+#
+# _tier3_queue_remaining() used to line-count scripts/
+# tier3_auto_transcription_queue.txt directly off disk, which was the sole
+# reason that file had to sit in the Archive's render.yaml build-filter
+# allow-list. It now reads a stored count instead
+# (Tier3QueueState/crud.read_tier3_queue_remaining()), written by
+# scripts/feed_tier3_auto_transcription.py via POST
+# /internal/tier3-queue-remaining right after it rewrites the queue file.
+
+
+async def _delete_tier3_state() -> None:
+    from archive.db.models import Tier3QueueState
+
+    async with async_session() as session:
+        existing = await session.get(Tier3QueueState, 1)
+        if existing is not None:
+            await session.delete(existing)
+            await session.commit()
+
+
+async def test_tier3_queue_remaining_defaults_to_zero_with_no_reported_count():
+    await _delete_tier3_state()
+    assert await crud.read_tier3_queue_remaining() is None
+    assert await archive.main._tier3_queue_remaining() == 0
+
+
+async def test_set_tier3_queue_remaining_persists_and_is_read_back():
+    await crud.set_tier3_queue_remaining(37)
+    assert await crud.read_tier3_queue_remaining() == 37
+    assert await archive.main._tier3_queue_remaining() == 37
+
+    # Overwrites in place -- single row, same convention as
+    # advance_worker_report_snapshot().
+    await crud.set_tier3_queue_remaining(12)
+    assert await crud.read_tier3_queue_remaining() == 12
+
+
+def test_internal_tier3_queue_remaining_route_requires_token():
+    response = client.post(
+        "/internal/tier3-queue-remaining",
+        params={"remaining": 5},
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+    assert response.status_code == 404
+
+
+async def test_internal_tier3_queue_remaining_route_updates_stored_value():
+    response = client.post(
+        "/internal/tier3-queue-remaining",
+        params={"remaining": 21},
+        headers=_HEADERS,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "remaining": 21}
+    assert await crud.read_tier3_queue_remaining() == 21
+
+    stats = client.get("/internal/transcription-queue-stats", headers=_HEADERS)
+    assert stats.json()["tier3_queue_remaining"] == 21

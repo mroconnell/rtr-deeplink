@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, Query, Request
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from pydantic import BaseModel, field_validator
@@ -45,6 +44,7 @@ from .db.engine import init_models
 from .topics import TOPICS
 from .utils import email as email_utils
 from .utils import social
+from .utils.cache_static import RevalidatingStaticFiles
 from .utils.clerk_auth import clerk_frontend_api_url, get_clerk_user_id
 from .utils.date_status import (
     iso_meeting_date,
@@ -117,13 +117,15 @@ async def handle_head_requests(request: Request, call_next):
     )
 
 
-app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+app.mount(
+    "/static", RevalidatingStaticFiles(directory=APP_DIR / "static"), name="static"
+)
 # Deep-link JS shared with the resolver service (app/main.py mounts the
 # same top-level directory identically) -- see shared_static/deep_link.js's
 # own header comment for why this exists.
 app.mount(
     "/shared-static",
-    StaticFiles(directory=APP_DIR.parent / "shared_static"),
+    RevalidatingStaticFiles(directory=APP_DIR.parent / "shared_static"),
     name="shared_static",
 )
 # Two roots: this service's own templates, then the repo-root
@@ -622,29 +624,39 @@ async def internal_transcription_backlog(
     return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
 
 
-# Repo root -- this service's build/deploy checks out the whole repo (see
-# render.yaml's rtr-deeplink-archive buildCommand), so a plain tracked
-# file like the tier-3 queue is physically present on disk here, same as
-# every adapter module this service already imports from app/platforms.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-_TIER3_QUEUE_FILE = _REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
-
-
-def _tier3_queue_remaining() -> int:
-    """Plain line count of the tracked tier-3 discovery queue file --
-    each line is one URL still waiting to be fed into the Archive by
-    scripts/feed_tier3_auto_transcription.py (see that script's own
-    docstring). Not a DB query at all; this file lives in git, not the
-    database. Returns 0 rather than raising if the file's ever missing
-    (e.g. a stale build) -- this is one line of an ops report, not
-    something that should 500 the whole route over a missing file.
+async def _tier3_queue_remaining() -> int:
+    """The tier-3 discovery queue's remaining depth, as of the last real
+    feed run -- sourced from the database (crud.read_tier3_queue_remaining(),
+    see Tier3QueueState's own docstring for why), not by reading
+    scripts/tier3_auto_transcription_queue.txt off disk. This used to be
+    a plain line count of that tracked file, which meant it was the sole
+    reason the file had to sit in this service's render.yaml build-filter
+    allow-list, and its freshness silently depended on deploy cadence
+    rather than on when the queue actually last changed. Returns 0 if no
+    feed run has ever reported a count yet -- this is one line of an ops
+    report, not something that should 500 the whole route.
     """
-    try:
-        return sum(
-            1 for line in _TIER3_QUEUE_FILE.read_text().splitlines() if line.strip()
-        )
-    except OSError:
-        return 0
+    remaining = await crud.read_tier3_queue_remaining()
+    return remaining if remaining is not None else 0
+
+
+@app.post("/internal/tier3-queue-remaining")
+async def internal_tier3_queue_remaining(
+    remaining: int, authorization: Optional[str] = Header(None)
+):
+    """Written by scripts/feed_tier3_auto_transcription.py right after it
+    rewrites the queue file, so _tier3_queue_remaining() above can read a
+    real, current count from the database instead of needing the file
+    itself present in this service's deploy tree. `remaining` is a query
+    param (matches this service's other simple internal-token routes,
+    e.g. /admin/recheck-archive-page's `url=`) rather than a JSON body --
+    the caller has exactly one integer to send.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    await crud.set_tier3_queue_remaining(remaining)
+    return {"ok": True, "remaining": remaining}
 
 
 @app.get("/internal/transcription-queue-stats")
@@ -662,7 +674,7 @@ async def internal_transcription_queue_stats(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     summary = await crud.get_transcription_queue_summary()
-    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+    summary["tier3_queue_remaining"] = await _tier3_queue_remaining()
     return summary
 
 
@@ -735,7 +747,7 @@ async def internal_send_worker_daily_report(
         )
 
     summary = await crud.get_transcription_queue_summary()
-    summary["tier3_queue_remaining"] = _tier3_queue_remaining()
+    summary["tier3_queue_remaining"] = await _tier3_queue_remaining()
 
     previous = await crud.read_worker_report_snapshot()
 

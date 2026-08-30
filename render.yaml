@@ -246,16 +246,18 @@ services:
     # too. That is real dependency, not waste -- do not "tidy" app/** out
     # of this list without re-checking those three imports first.
     #
-    # scripts/tier3_auto_transcription_queue.txt is listed HERE and on no
-    # other service. That is the same exception this block always had,
-    # inverted: under the old deny-list it was the one list that OMITTED
-    # the file, and under an allow-list it is the one list that NAMES it.
-    # Reason is unchanged -- this is the only service that reads it at
-    # runtime (main.py's _TIER3_QUEUE_FILE / _tier3_queue_remaining()
-    # line-counts it on disk for the ops report), so it has to rebuild
-    # when the file changes or that number silently freezes at whatever
-    # the last real deploy shipped. Removing it needs the count sourced
-    # from the database first; see BACKLOG.md's pipeline-minutes entry.
+    # scripts/tier3_auto_transcription_queue.txt no longer needs to be
+    # listed here (removed 2026-08-30) -- this service used to be the
+    # only one that read it at runtime (main.py's _TIER3_QUEUE_FILE /
+    # _tier3_queue_remaining() line-counted it on disk for the ops
+    # report), which meant a rebuild whenever the file changed or that
+    # number silently froze at whatever the last real deploy shipped.
+    # _tier3_queue_remaining() now reads a stored count from the database
+    # instead (Tier3QueueState, updated by scripts/
+    # feed_tier3_auto_transcription.py via POST /internal/
+    # tier3-queue-remaining right after it rewrites the file) -- see that
+    # model's own docstring. All four build-filter lists are back in
+    # lockstep with no file-specific exception.
     buildFilter:
       paths:
         - archive/**
@@ -264,7 +266,6 @@ services:
         # See the resolver block above -- same shared partials, same
         # allow-list trap.
         - shared_templates/**
-        - scripts/tier3_auto_transcription_queue.txt
         - render.yaml
       ignoredPaths:
         - "**/*.md"
