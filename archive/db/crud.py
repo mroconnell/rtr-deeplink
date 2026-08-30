@@ -2673,6 +2673,181 @@ async def apply_jurisdiction_bleed_backfill(
         }
 
 
+async def list_http_scheme_backfill_candidates() -> dict:
+    """Read-only audit for a real gap found 2026-08-30: `normalize_url()`
+    was fixed (commit 6b47794, "collapse http/https identity") to always
+    normalize to `https://`, but that fix was never backfilled onto rows
+    ingested before it landed -- any row whose `source_url_normalized`
+    still starts with `http://` is now permanently unreachable by
+    `archive_client.lookup()`, since every caller (a manual "Refresh this
+    page" click, a future re-ingest's own duplicate check, the passive
+    ARCHIVE_RECHECK_AFTER cycle) normalizes its input to `https://` before
+    looking up, and that string will never match the stale stored one.
+
+    Confirmed live 2026-08-30: 261 rows across 7 platforms still carry
+    `http://`, and this isn't just a dead-lookup annoyance -- 3 of them
+    already have a SEPARATE `https://` page for the identical URL,
+    meaning a re-crawl already silently created a duplicate instead of
+    updating the original at least three times.
+
+    Splits candidates into two buckets:
+    - `safe`: no colliding `https://` row exists for this URL -- a
+      straight `http://` -> `https://` rename on `source_url_normalized`
+      is enough to make the row reachable again, no data loss.
+    - `needs_merge`: a colliding `https://` row already exists (a real,
+      confirmed duplicate) -- renaming would violate the pair's identity
+      and silently orphan one of the two pages' own data (segments,
+      video_url, saved-item references). Reported with both pages' own
+      identifying fields so a human can decide which to keep; never
+      auto-applied by `apply_http_scheme_backfill()` below.
+    """
+    async with async_session() as session:
+        http_rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.title,
+                    MeetingPage.platform,
+                    MeetingPage.source_url_normalized,
+                    MeetingPage.updated_at,
+                ).where(MeetingPage.source_url_normalized.like("http://%"))
+            )
+        ).all()
+
+        safe = []
+        needs_merge = []
+        for page_id, slug, title, platform, source_url, updated_at in http_rows:
+            https_form = "https://" + source_url[len("http://") :]
+            existing = (
+                await session.execute(
+                    select(
+                        MeetingPage.id,
+                        MeetingPage.slug,
+                        MeetingPage.title,
+                        MeetingPage.updated_at,
+                    ).where(MeetingPage.source_url_normalized == https_form)
+                )
+            ).first()
+            if existing:
+                other_id, other_slug, other_title, other_updated_at = existing
+                needs_merge.append(
+                    {
+                        "http_page": {
+                            "meeting_page_id": page_id,
+                            "slug": slug,
+                            "title": title,
+                            "updated_at": updated_at.isoformat()
+                            if updated_at
+                            else None,
+                        },
+                        "https_page": {
+                            "meeting_page_id": other_id,
+                            "slug": other_slug,
+                            "title": other_title,
+                            "updated_at": other_updated_at.isoformat()
+                            if other_updated_at
+                            else None,
+                        },
+                        "platform": platform,
+                    }
+                )
+            else:
+                safe.append(
+                    {
+                        "meeting_page_id": page_id,
+                        "slug": slug,
+                        "title": title,
+                        "platform": platform,
+                        "current_url": source_url,
+                        "renamed_url": https_form,
+                    }
+                )
+
+        return {
+            "total_http_rows": len(http_rows),
+            "safe_count": len(safe),
+            "needs_merge_count": len(needs_merge),
+            "safe": safe,
+            "needs_merge": needs_merge,
+        }
+
+
+async def apply_http_scheme_backfill(
+    *,
+    dry_run: bool = True,
+    only_ids: Optional[Set[int]] = None,
+    exclude_ids: Optional[Set[int]] = None,
+) -> dict:
+    """Write counterpart to list_http_scheme_backfill_candidates() above
+    -- renames `source_url_normalized` from `http://` to `https://` for
+    the `safe` bucket only. Never touches a `needs_merge` row: recomputes
+    the collision check itself at write time (not just trusting a
+    previously-fetched audit), so a row that gains a colliding `https://`
+    page between listing and applying is automatically excluded rather
+    than silently corrupting a pair. Same dry-run-first, only_ids/
+    exclude_ids-narrowing shape as apply_jurisdiction_bleed_backfill()
+    above, for the same reason -- a caller can restrict which of the
+    recomputed candidates may actually be written, but can't use the
+    filters to force a write on a row the recompute didn't independently
+    flag as safe."""
+    async with async_session() as session:
+        http_rows = (
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.source_url_normalized.like("http://%"))
+            )
+        ).all()
+
+        changes = []
+        skipped_by_filter = 0
+        skipped_as_collision = 0
+        for page_id, slug, source_url in http_rows:
+            https_form = "https://" + source_url[len("http://") :]
+            collision = (
+                await session.execute(
+                    select(MeetingPage.id).where(
+                        MeetingPage.source_url_normalized == https_form
+                    )
+                )
+            ).first()
+            if collision:
+                skipped_as_collision += 1
+                continue
+            if (only_ids is not None and page_id not in only_ids) or (
+                exclude_ids is not None and page_id in exclude_ids
+            ):
+                skipped_by_filter += 1
+                continue
+            changes.append(
+                {
+                    "meeting_page_id": page_id,
+                    "slug": slug,
+                    "before": source_url,
+                    "after": https_form,
+                }
+            )
+
+        if not dry_run and changes:
+            for change in changes:
+                page = await session.get(MeetingPage, change["meeting_page_id"])
+                if page is None:
+                    continue
+                page.source_url_normalized = change["after"]
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "applied_count": len(changes),
+            "skipped_by_filter": skipped_by_filter,
+            "skipped_as_collision": skipped_as_collision,
+            "changes": changes,
+        }
+
+
 async def clear_future_meeting_dates(
     *,
     dry_run: bool = True,
