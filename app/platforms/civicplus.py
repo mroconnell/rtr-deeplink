@@ -28,6 +28,19 @@ class CivicPlusAssetFinder(AssetFinder):
     Unlike Legistar's onclick-based links, these are plain <a href> --
     server-rendered, no JS execution needed to find them.
 
+    That original sample site has since gone DNS-dead (see
+    `tests/fixtures/civicplus/README.md`), which for a while left this
+    adapter with no live-verified sample at all --
+    `scripts/adapter_canary.py` excluded civicplus as a result. Re-verified
+    on a fresh real site 2026-08-30: nc-durham.civicplus.com/AgendaCenter/
+    City-Council-4, 31 `tr.catAgendaRow` rows, 22 with real video links in
+    `td.media` (21 Granicus + 1 YouTube) -- the exact same structure
+    described above, confirmed independently on a second live tenant, not
+    just carried forward from the first. One link spot-checked live:
+    `durham.granicus.com/player/clip/3313`. See
+    `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html` (a
+    real, raw-saved page) and its matching test in `tests/test_civicplus.py`.
+
     CivicPlus doesn't appear to have a "single meeting" URL shape the way
     Legistar's MeetingDetail.aspx does -- every AgendaCenter URL observed
     is a category listing with multiple dated rows. So: 0 video-bearing
