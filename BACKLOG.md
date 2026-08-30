@@ -75,7 +75,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
   [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -88,15 +88,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
   The retry papers over an unexplained asyncio/subprocess hang, and…
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
-
-Platform & jurisdiction coverage  (40)
-  `[LATER]` Recover, rather than just decline, a domain-privacy-
-  `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
-  `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
-  `[LATER]` A real, new video platform found: Midpen Media Center
-  `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-  `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
-  `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
+  `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
+  `[NEEDS-AUDIT]` A saved failed-ingest payload sat unrecovered for 2…  (7)
+    `[LATER]` Recover, rather than just decline, a domain-privacy-
+    `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
+    `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
+    `[LATER]` A real, new video platform found: Midpen Media Center
+    `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
+    `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
+    `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
@@ -1111,7 +1111,63 @@ own seq/title ordering for offsets — the same shift-and-merge approach
 `worker/segment_utils.py` already uses across ordinary chunk boundaries,
 just with per-clip boundaries instead of per-900s ones.
 
-## Platform & jurisdiction coverage
+### `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to zero usable segments
+
+Found auditing local-Whisper run logs for failures that never made it
+into this file (2026-08-27). `high-plains-underground-water-conservation-
+district-no-1-2022-11-08-board-of-dir`
+(`https://hpwd.granicus.com/player/clip/44?view_id=1`) is a real board
+meeting — passed duration/probe checks, ran the full local Whisper
+pipeline, and came out with **zero usable segments** (VAD likely
+filtered the whole thing as silence, or the audio track is bad in a way
+that doesn't fail extraction outright). Still has no transcript as of
+this check. `transcription produced no usable segments` isn't the
+"implausible duration" ad-detection case (`BACKLOG.md`'s "Duration alone
+cannot separate..." entry above) — the file plays its full expected
+length, it just has nothing Whisper can transcribe. Not chased further
+this pass; worth a manual listen to the source file before deciding
+whether this is a genuinely silent/bad recording (nothing to do) or a
+VAD-tuning gap (real fix).
+
+The same symptom hit two other real URLs in the same audit, both since
+self-resolved (now have real segment counts on a live check) so not
+carried forward as open: `branchburg-2025-carols-by-candlelight`
+(Granicus) and eScribe's `pub-scrd.escribemeetings.com`
+`2025-10-23-committee-of-the-whole`. A fourth,
+`st-2025-12-16-st-louis-park-high-school-wind-ensemble-concert-dec-11-2025`
+(Cablecast), is a school concert broadcast, not a government meeting —
+zero segments is arguably the correct outcome there, not a bug.
+
+### `[NEEDS-AUDIT]` A saved failed-ingest payload sat unrecovered for 2 days, and the recovery doc understates what it takes
+
+`chino-valley-az-2026-02-10-town-council-meeting`
+(`https://chinovalleyaz.portal.civicclerk.com/event/6568/media?fbclid=...`)
+finished a full local Whisper transcription (1320 segments) on
+2026-08-25 09:15 but `/internal/ingest` returned HTTP 500 on all 6
+retries — real production behavior the retry system's own design
+anticipated (see `BACKLOG_DONE.md`'s local-script retry/checkpoint
+entry), which is why the finished payload was written to
+`local_transcription_backups/20260825_091547_chino-valley-az-2026-02-10-
+town-council-meeting.json` instead of being discarded. Nobody had
+pushed it back — recovered manually this session (2026-08-27, now live
+at `/m/chino-valley-az-2026-02-10-town-council-meeting`) and it went
+through on the very first attempt, suggesting the original 500s were a
+transient Archive-side blip around that timestamp, not something wrong
+with this specific payload or its unusually long `fbclid`-tracking-
+parameter-laden source URL.
+
+Two real gaps this surfaced, neither acted on: (1) **the recovery isn't
+actually the plain `curl -X POST ... -d @<path>` `_save_local_backup()`'s
+own docstring describes** — the saved JSON is `_ingest()`'s payload
+*before* `input_url_normalized`/`source` are added, so a literal copy-
+paste of that curl command would 422 on a real recovery attempt; the doc
+comment needs those two fields added back in, or the saved file needs to
+already include them. (2) **nothing surfaces that a recoverable payload
+is sitting in `local_transcription_backups/` at all** — it only came up
+because this session went looking; a Sentry/inbox-triage check for files
+in that directory older than a day (or a plain startup-time log line
+when the local script finds pre-existing ones) would close the actual
+"we lose it" risk rather than relying on someone remembering to check.
 
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
