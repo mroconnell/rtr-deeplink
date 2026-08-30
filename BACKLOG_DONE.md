@@ -1,5 +1,77 @@
 # Backlog — done
 
+## Archive-wide missing-jurisdiction audit: Hyland (17 domains) and eScribe's hyphenated-name gap [Done 2026-08-29]
+
+Continuation of the same-day Vimeo jurisdiction audit (see this file's
+own matching entry) into two more platforms, after direct Archive DB
+access (via the local `.env`'s `ARCHIVE_DATABASE_URL`, distinct from
+`DATABASE_URL` which points at the resolver's own `rtr_deeplink_db` —
+a real, confirmed gotcha worth remembering for any future one-off
+script here) gave real counts instead of guesses: 269 of 3,406 archived
+pages have no jurisdiction, broken down by platform in `BACKLOG.md`'s
+matching `[NEEDS-AUDIT]` entry.
+
+**Hyland (18 pages, all fixed)**: `hyland.py` has zero in-page
+jurisdiction text and relies entirely on `jurisdiction_enrich`'s
+known-domain table — an unregistered customer domain always carries no
+jurisdiction. `agenda2.modestogov.com` was already registered by
+another session earlier the same day (just needed a refresh). The
+other 17 were fetched and confirmed live one at a time (same discipline
+as `telvue.py`'s own per-org-token map): 10 ordinary city/county
+domains (`durhamnc.gov`→Durham NC, `medicinehat.ca`→Medicine Hat AB —
+also directly named in that exact meeting's own title,
+`redwoodcity.org`, `wvc-ut.gov`→West Valley City UT, `siouxfalls.gov`,
+`friscotexas.gov`, `sussexcountyde.gov`→Sussex County DE,
+`stream.ci.concord.ca.us`→Concord CA — a second real subdomain distinct
+from the already-registered `stream2.` one, `cityofsparks.us`→Sparks
+NV, `reddeer.ca`→Red Deer AB, `akronohio.gov`), `sedgwickcounty.org`→
+Sedgwick County KS, `mesacounty.us`→Mesa County CO (not Mesa, AZ),
+`mymanatee.org`→Manatee County FL, `tampagov.hylandcloud.com`→Tampa FL
+(a shared-host glued label, same shape Cablecast/eScribe already use),
+and two real special districts verified via each org's own "who we
+are"/"cities we serve" page text rather than guessed from the domain
+name: `jcsd.us` is the Jurupa Community Services District, serving
+Jurupa Valley and Eastvale in Riverside County, CA (water/wastewater/
+parks/street-lighting, not a city government itself); `wrd.org` is the
+Water Replenishment District, serving multiple LA County cities from
+Lakewood.
+
+**eScribe (2 of 14 fixed, root cause shared)**: closed the
+`[NEEDS-AUDIT]` "StatsCan/Census table completeness gap" entry's
+Chatham-Kent/Arran-Elderslie residual, previously described as "lost
+purely on a hyphen-formatting mismatch" without the exact mechanism.
+Root cause: both names are real, present in the table with their
+real hyphen (`chatham-kent,ON` / `arran-elderslie,ON`), but
+`_validated_label_extract_with_state()`'s wordninja-split tier only
+ever tried a SPACED join (`Chatham Kent`) or fully-GLUED join
+(`Chathamkent`) of the split words — never a HYPHEN-joined one
+(`Chatham-Kent`) — so real, cleanly-split names (`wordninja.split
+("chathamkent") == ['chatham','kent']`) still never matched the
+table's own hyphenated key. Fixed by adding a hyphen-joined candidate
+between the spaced and glued ones, gated to exactly 2 words (a 3+-word
+hyphenation would have to guess which gap to hyphenate, which nothing
+here motivates) — fixed at the shared function since any future
+hyphenated Census/StatsCan name (a real US example: Winston-Salem,
+Wilkes-Barre) would hit the identical gap, not just these two Ontario
+municipalities.
+
+**CivicClerk (10 of 17 fixed with zero code change)**: live-testing each
+of the 17 gap pages against the CURRENTLY DEPLOYED adapter found that
+10 already resolve correctly — `civicclerk.py`'s own `extract_
+jurisdiction_chain()` fallback (added in an earlier, unrelated session)
+already covers them; these particular archived rows simply predated
+that fix and were never refreshed. Refreshed all 10 directly via the
+public `/api/refresh-archived-page` endpoint, confirmed live: Green
+Bay WI, Travis/Clallam/Frederick/Greeley/Cass Counties (all bare, no
+state — genuinely ambiguous nationally as city names, correctly
+declined), Mill Creek, Los Altos Hills CA, Hapeville GA. The remaining
+6 residuals (2 real special entities needing individual research, 2
+wordninja-segmentation gaps, 1 non-government ingest, all detailed in
+`BACKLOG.md`'s matching entry) are genuinely still open, not stale.
+
+Shipped as PR #539 (jurisdiction_enrich.py + tests only — the CivicClerk
+refreshes needed no code change at all, just the live API calls above).
+
 ## Kansas City, MO's Legistar meetings resolve real video again, via a new Granicus ViewPublisher RSS fallback [Done 2026-08-29]
 
 Real root-cause investigation replacing `BACKLOG.md`'s stale "only the
