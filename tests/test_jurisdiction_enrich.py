@@ -1691,3 +1691,27 @@ def test_known_jurisdiction_display_special_entities_and_county_names():
         je.known_jurisdiction_display("slc.primegov.com")
         == "City of Salt Lake City, UT"
     )
+
+
+def test_strip_institutional_suffix_confirmed_real_vimeo_youtube_names():
+    # Real account names, 2026-08-29 (BACKLOG_DONE.md) -- shared by
+    # vimeo.py and youtube.py, both of which read a free-text account/
+    # channel display name that can carry one of these K-12/library
+    # suffixes on top of a real place name.
+    assert (
+        je.strip_institutional_suffix("Peters Township School District")
+        == "Peters Township"
+    )
+    assert je.strip_institutional_suffix("Hopkins Public Schools") == "Hopkins"
+    assert (
+        je.strip_institutional_suffix("Jefferson Parish Schools") == "Jefferson Parish"
+    )
+    assert je.strip_institutional_suffix("Seekonk Public Schools") == "Seekonk"
+    assert (
+        je.strip_institutional_suffix("Mason County District Library") == "Mason County"
+    )
+    # No suffix present -- unchanged.
+    assert je.strip_institutional_suffix("City of Sebastopol") == "City of Sebastopol"
+    # "Schools" alone must not strip "Public" out from under "Public
+    # Schools" -- the longer phrase has to win.
+    assert "Public" not in je.strip_institutional_suffix("Hopkins Public Schools")

@@ -314,6 +314,16 @@ async def test_resolve_raises_for_a_non_youtube_url():
         # A comma-shaped name whose base doesn't validate as a real place
         # -- the comma alone isn't enough to trust it.
         ("Some Random Channel, Not A Place", None),
+        # Institutional-suffix reuse, added 2026-08-29: these are the
+        # exact real account names that motivated
+        # jurisdiction_enrich.strip_institutional_suffix() on the Vimeo
+        # side (BACKLOG_DONE.md) -- a YouTube channel's `uploader` name is
+        # the identical kind of free-text account display name, so the
+        # same national K-12 naming convention applies here too, not just
+        # on Vimeo.
+        ("Peters Township School District", "Peters Township"),
+        ("Hopkins Public Schools", "Hopkins"),
+        ("Jefferson Parish Schools", "Jefferson Parish"),
     ],
 )
 def test_jurisdiction_validates_before_trusting_the_uploader_name(uploader, expected):
