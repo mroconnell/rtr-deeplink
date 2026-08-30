@@ -1,5 +1,63 @@
 # Backlog — done
 
+## `ARCHIVE_BASE_URL` moved to Render private networking — the double-billed proxy egress is gone [Done 2026-08-30]
+
+Closes BACKLOG.md's "Every byte the public site serves is billed twice"
+entry. Ryan set the resolver's `ARCHIVE_BASE_URL` to
+`http://rtr-deeplink-archive:10000` (both web services confirmed same
+region, Oregon, from the dashboard first — the entry's precondition (1)).
+
+**The entry's "this hasn't been tried" framing was stale**: it HAD been
+tried once, on 2026-08-22, and the resulting outage was the reason for
+hesitancy ("the whole database part of the site crashed 502"). Root
+cause of that attempt was already diagnosed in
+`app/archive_client.py`'s own comment: the value was set to the bare
+`rtr-deeplink-archive:10000` — exactly how Render's dashboard displays
+the internal address, with **no `http://` scheme** — and aiohttp raises
+on a schemeless URL per request (Sentry PYTHON-FASTAPI-Y). The guard
+added after that incident (`configuration_problem()`) now degrades a
+bad shape gracefully with one startup log line. The 2026-08-30 retry
+with the scheme typed out worked first time.
+
+**Verified live**: `/meetings`, `/coverage`, `/m/*`, `/state/alabama`,
+`/sitemap.xml`, `/feed.xml`, `/archive-static/*` all 200 through the
+internal path with normal latency. (A same-day site-wide static-asset
+500 looked like a regression from this flip but was fully unrelated —
+see the RevalidatingStaticFiles entry below.) **One check still open**:
+a signed-in load of `/account/saved` (the entry's precondition (2),
+Clerk cookie forwarding over the internal address) hadn't been
+exercised by a real logged-in browser yet when this was written; if it
+fails, rollback is restoring the public URL. Confirmation the private
+path is actually in use: the dashboard's "Service-Initiated (Private
+Link)" bandwidth should move off its long-standing 0 MB within a day.
+
+## Site-wide static-asset 500s (2026-08-30): WO-66's RevalidatingStaticFiles awaited Starlette's sync file_response [Done 2026-08-30]
+
+Real production incident, found and fixed same-day (PR #561). WO-66's
+`RevalidatingStaticFiles` (#550, merged 2026-08-28) declared
+`file_response` as `async` and awaited `super()`'s — but in the pinned
+`starlette==1.6.0` that method is **sync**, so awaiting its return
+value raised `TypeError` on every static request. Latent on `main` for
+two days, went live with the first deploys carrying it (2026-08-30),
+and broke `/static/*` + `/shared-static/*` on BOTH services — and
+therefore the resolver's proxied `/archive-static/*` — so the whole
+public site served unstyled HTML with no JS until the fix deployed
+later the same day. Found not by any alert but by a routine
+verification pass on the ARCHIVE_BASE_URL flip (the entry above),
+which is worth noticing: nothing in monitoring watches static assets.
+
+**Why 2000+ green tests never caught it**: no test in the suite fetched
+a single static file. `tests/test_static_assets.py` now exists — one
+real file per mount per service asserting 200 + `Cache-Control:
+no-cache`, plus a 404-stays-404 case — and was verified to fail
+against the broken code with the exact production `TypeError` before
+the fix. Fix itself: override `get_response` (async in every modern
+Starlette, its documented extension point) in both deliberately-
+duplicated copies (`app/utils/cache_static.py`,
+`archive/utils/cache_static.py`). Verified live post-deploy: statics
+200 with `cache-control: no-cache` — so WO-66's actual goal only
+started working 2026-08-30.
+
 ## Worker Docker layer cache no longer freezes the deliberately-unpinned `yt-dlp`/`faster-whisper` [Done 2026-08-30]
 
 Closes BACKLOG.md's "Docker layer caching silently freezes the workers'
