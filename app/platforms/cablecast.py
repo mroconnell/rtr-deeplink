@@ -528,9 +528,30 @@ class CablecastAssetFinder(AssetFinder):
         # Broomfield, CO 2026-08-19, same class of gap Detroit/Charlotte
         # already hit. Falls back to the known-domain table (same pattern
         # as lims.py/hyland.py) rather than dropping jurisdiction entirely.
-        known = jurisdiction_enrich.lookup_by_domain(urlparse(url).netloc)
+        netloc = urlparse(url).netloc
+        known = jurisdiction_enrich.lookup_by_domain(netloc)
         if known:
             return f"{known.name}, {known.state}"
+        # Last resort: the subdomain itself, run through the same
+        # validated-subdomain-label machinery eScribe/CivicPlus/
+        # TownHallStreams already share. The module comment above (written
+        # against only Detroit/Charlotte) says "no reliable domain-based
+        # signal" -- true for a STATE, but wrong for a NAME: confirmed live
+        # 2026-08-29 auditing 101 archived Cablecast pages with no
+        # jurisdiction, 23 of 62 distinct real customer subdomains checked
+        # validate cleanly this way (e.g. "champaign.cablecast.tv" ->
+        # Champaign, "fargo.cablecast.tv" -> Fargo, "cerritos.cablecast.tv"
+        # -> Cerritos) -- this adapter just never tried. Same safety
+        # property as every other tier here: declines rather than
+        # guessing on a made-up/unvalidatable subdomain, and only adds a
+        # state when the bare name is unambiguous or the domain is
+        # separately confirmed above.
+        subdomain_name = jurisdiction_enrich.validated_subdomain_extract(url)
+        if subdomain_name:
+            state = jurisdiction_enrich.resolve_state(
+                subdomain_name, "city", netloc=netloc, page_text=page_description
+            )
+            return f"{subdomain_name}, {state}" if state else subdomain_name
         return None
 
     @staticmethod

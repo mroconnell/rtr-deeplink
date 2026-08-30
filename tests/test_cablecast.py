@@ -419,6 +419,39 @@ def test_extract_jurisdiction_resolves_state_via_gazetteer_for_an_unconfirmed_bu
     )
 
 
+def test_extract_jurisdiction_falls_back_to_validated_subdomain():
+    # Real gap found 2026-08-29 auditing archived pages missing a
+    # jurisdiction: neither title/pageDescription branding nor the
+    # curated known-domain table covers most real Cablecast customers --
+    # confirmed live, 23 of 62 real distinct subdomains among 101 archived
+    # gap pages validate cleanly via the same validated-subdomain-label
+    # machinery eScribe/CivicPlus/TownHallStreams already share, which
+    # this adapter never called at all. "Champaign" is nationally
+    # unambiguous, so this also confirms a real state (IL).
+    site = {"title": "Channel 8", "pageDescription": ""}
+    url = "https://champaign.cablecast.tv/internetchannel/show/6000"
+    assert CablecastAssetFinder._extract_jurisdiction(site, url) == "Champaign, IL"
+
+
+def test_extract_jurisdiction_subdomain_fallback_omits_state_when_ambiguous():
+    # "Fargo" alone is nationally ambiguous (real in ND and elsewhere per
+    # the Census place table) -- same honest-gap philosophy as every
+    # other tier here, not a guess just because the subdomain is a strong
+    # real-world hint.
+    site = {"title": "Channel 8", "pageDescription": ""}
+    url = "https://fargo.cablecast.tv/internetchannel/show/13272"
+    assert CablecastAssetFinder._extract_jurisdiction(site, url) == "Fargo"
+
+
+def test_extract_jurisdiction_subdomain_fallback_declines_an_unvalidatable_subdomain():
+    # _UNKNOWN_DOMAIN_URL's "some-other-city" label doesn't validate
+    # against the Census tables either raw or wordninja-split -- must
+    # stay None, not the previous behavior (also None, but confirms the
+    # new tier doesn't regress this).
+    site = {"title": "Channel 10", "pageDescription": "Watch local meetings here."}
+    assert CablecastAssetFinder._extract_jurisdiction(site, _UNKNOWN_DOMAIN_URL) is None
+
+
 def test_parse_transcript_reads_real_cue_shape():
     # Real shape confirmed live 2026-08-12 on a real Charlotte show: one
     # cue per line, "HH:MM:SS,mmm<TAB>TEXT", blank-line-separated, real

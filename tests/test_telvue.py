@@ -135,6 +135,31 @@ async def test_resolve_falls_back_to_known_org_token_jurisdiction():
     assert result.jurisdiction == "Everett, MA"
 
 
+async def test_resolve_falls_back_to_known_org_token_for_talk_show_titled_meeting():
+    # Real case, found 2026-08-29 auditing archived pages missing a
+    # jurisdiction: "Eye on Piscataway August 2026" is a talk-show-style
+    # title with no "X Board/Council" suffix at all, so _guess_jurisdiction()
+    # never runs its regex successfully, and the real org-logo alt text
+    # ("Piscataway Community TV - Piscataway Community TV VOD Player") has
+    # no explicit state for the general org-logo parser to key on either
+    # -- only the known-org-token map closes this one.
+    url = "https://videoplayer.telvue.com/player/Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY/media/1039761"
+    html = (
+        "<html><head><title>Eye on Piscataway August 2026.</title></head><body>"
+        '<img id="org-logo" alt="Piscataway Community TV - Piscataway Community TV '
+        'VOD Player - organization logo" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Eye on Piscataway August 2026.", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Piscataway, NJ"
+
+
 async def test_resolve_unknown_org_token_has_no_jurisdiction():
     url = "https://videoplayer.telvue.com/player/someOtherOrgToken123/media/1"
     html = (

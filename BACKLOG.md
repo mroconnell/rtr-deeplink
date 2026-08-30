@@ -91,7 +91,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (37)
+Platform & jurisdiction coverage  (38)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
@@ -104,7 +104,7 @@ Platform & jurisdiction coverage  (37)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (16)
+  Jurisdiction extraction & backfill  (17)
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
@@ -115,7 +115,8 @@ Platform & jurisdiction coverage  (37)
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
-    [NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
+    [NEEDS-AUDIT] A name that's already "X, State"-shaped with an
+    [NEEDS-AUDIT] No archive-wide way to find pages missing a
     [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
@@ -1718,19 +1719,48 @@ from a live check), but the Legistar calendar itself is still untried.
   happens to cooperate). Page **2033** (`NULL`) is this same bug, not
   the Las Vegas one — not fixed by anything above.
 
-- **[NEEDS-AUDIT] A Vimeo-hosted meeting usually resolves with no
-  jurisdiction at all (residual of WO-29, 2026-08-21).** oEmbed's
-  `author_name` is a Vimeo *account* name, not a place — values range
-  from valid ("City of Sebastopol") through glued ("CitySalisburyNC") to
-  meaningless ("COC", Chicago's). `vimeo.py` runs it through the shared
-  Census-validated `validated_label_extract()`, which correctly declines
-  rather than guessing, so most Vimeo-direct resolves carry no
-  jurisdiction (keeping them out of `/state/{slug}`/`/j/{slug}` hubs).
-  Wrappers that know their own jurisdiction are unaffected. Likely fix:
-  a glued-label pass like `suiteone.py`/`townhallstreams.py` already
-  share (wordninja split + trailing-state-code strip), applied to the
-  account name — not attempted, and worth doing only against several
-  real account names at once.
+- **[NEEDS-AUDIT] A name that's already "X, State"-shaped with an
+  explicit, spelled-out state still declines when the bare name alone
+  is nationally ambiguous — found 2026-08-29 auditing the Vimeo batch
+  (see `BACKLOG_DONE.md`'s matching entry for everything that pass DID
+  fix).** Real example: Vimeo account "City of Medina, Minnesota" —
+  "Medina" alone is real in 6 states (MN/ND/OH/TN/WA/NY per
+  `places.csv`), so `lookup_city_state("City of Medina")` correctly
+  returns `None` for ambiguity even though the source text isn't
+  actually ambiguous at all; it names the state directly. `youtube.py`'s
+  comma-branch (`_jurisdiction()`) has the identical requirement —
+  "independently validates as a real place *on its own*" — so it would
+  decline the same input too, not just Vimeo's simpler non-comma path.
+  Real, safe fix shape: when a claimed state is given directly (a
+  governance-type prefix + a full US state/province name after a
+  comma), check that the claimed state is a MEMBER of the name's real
+  state list (`"MN" in _PLACE_STATES.get("medina", [])`) rather than
+  requiring the name be globally unambiguous first — strictly safer
+  than the current check (never accepts a state the real data doesn't
+  actually list), and would recover this and any structurally identical
+  case. Not attempted here: touches a shared, heavily-used function
+  (`resolve_state()`/`lookup_city_state()`), and `vimeo.py` doesn't even
+  have `youtube.py`'s comma-branch yet — worth its own careful pass with
+  fresh test coverage, not tacked onto an already-large session.
+
+- **[NEEDS-AUDIT] No archive-wide way to find pages missing a
+  jurisdiction — the 2026-08-29 Vimeo audit above was done by manually
+  paging `/meetings?page=N` (sorted newest-touched) and eyeballing which
+  rows had no "City, ST ·" prefix.** Works, but only covers whatever's
+  recently touched — the site has 3,393 archived pages across 170
+  pages of that listing, and nothing was checked past the first two.
+  Real gap this leaves open: no idea how many of the other ~3,350 pages
+  (older ingests, other platforms never audited this way) are missing a
+  jurisdiction for a similarly-recoverable reason. `/meetings` has no
+  `has_jurisdiction=false` filter, and the read-only `/internal/*` audit
+  endpoints (e.g. `get_jurisdiction_coverage()`) all query `WHERE
+  jurisdiction IS NOT NULL` — built for the opposite question ("what do
+  we have"), not "what's missing." A `GET
+  /internal/jurisdiction/missing`-shaped endpoint (same
+  dry-run-first, admin-token-gated pattern as the bleed-backfill
+  endpoints already in `archive/main.py`), grouped by platform with a
+  capped sample of slugs per platform, would make a real systematic
+  sweep possible instead of one lucky enough to be recent.
 
 - **[LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
   fallback is unconfirmed against any real second customer.** WO-19
