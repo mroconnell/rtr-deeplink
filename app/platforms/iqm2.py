@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
+from ..utils.vtt_parser import decode_vtt_bytes, dedupe_rollup_cues, parse_vtt
 
 logger = logging.getLogger("rtr_deeplink.iqm2")
 
@@ -54,10 +55,14 @@ logger = logging.getLogger("rtr_deeplink.iqm2")
 # Board Business Meeting - Web Outline - The County of Santa Clara,
 # California"), but every "Video" link checked across several real past
 # committee meetings there was still a bare, unpopulated placeholder,
-# unlike Atlanta's -- unconfirmed whether that's because those specific
-# meetings genuinely have no recording, or a real per-customer gap in this
-# adapter. Not yet checked against a real past Board of Supervisors
-# meeting specifically -- see BACKLOG.md.
+# unlike Atlanta's. Resolved 2026-08-14 (see test_iqm2.py's
+# SCC_BOS_SPLIT_HTML fixture): SCC's flagship Board of Supervisors body
+# DOES get a real, populated video -- confirmed again live 2026-08-30
+# across 6 more real past Board of Supervisors meetings (SplitView
+# MeetingIDs 17442, 17576, 17633, 17740, 17759, 18002, all real non-empty
+# `archive-stream.granicus.com` URLs). So this is a real, body-type-
+# dependent gap (smaller commissions/subcommittees don't always get a
+# recording attached), not a per-customer or per-adapter one.
 # Real, confirmed bug (2026-08-23): a bare `[?&](?:ID|MeetingID)=(\d+)`
 # regex just returns whichever of the two params happens to appear first
 # in the URL's own query-string order -- fine for the two page shapes this
@@ -84,6 +89,48 @@ logger = logging.getLogger("rtr_deeplink.iqm2")
 # present at all, on any of the three page shapes), fall back to bare ID
 # only when MeetingID is genuinely absent (Detail_Meeting.aspx's own
 # confirmed shape).
+#
+# Real gap fixed 2026-08-30: `segments` (the actual transcript) was never
+# populated at all -- the only per-item timestamps this adapter ever
+# extracted were agenda outline items (`_extract_agenda_items` above),
+# deliberately kept in the separate `agenda_items` field so they're never
+# mistaken for a real transcript (see ResolvedMeeting.agenda_items's own
+# docstring in models.py). The video is a real Granicus-hosted HLS stream
+# (see above), which raised the question of whether it carries the same
+# closed-caption VTT track a normal granicus.com page's own resolve()
+# fetches (see granicus.py) -- but delegating to GranicusAssetFinder or
+# reconstructing a Granicus clip/view id from the stream URL both turned
+# out to be the wrong approach. Confirmed live 2026-08-30 against the
+# same SplitView.aspx page the MEDIA URL comment above comes from: the
+# same inline `SetupJWPlayer(eval('[{...}]'))` call that feeds JWPlayer
+# the video file also carries a `"tracks":[{"file":"/Services/
+# TranscriptGet.aspx?MediaID={id}&format=vtt", ...,"kind":"captions",...}]`
+# entry whenever this meeting has one -- e.g. Atlanta's own MediaID=76801
+# (the module's cited proof-of-concept meeting) and, real content
+# confirmed, four Santa Clara County meetings (MediaIDs 28254, 28261,
+# 28267, 28273 -- e.g. 28273's real opening line: "Good afternoon, it's
+# Monday, January 26th, 2:00 p.m., we'll go ahead and call the regular
+# meeting..."). This is IQM2's OWN captioning service, entirely separate
+# from Granicus's -- fetching it needs only this path relative to the
+# IQM2 tenant's own origin, no Granicus id of any kind. Confirmed via DNS
+# and a direct fetch that there is in fact no live Granicus ViewPublisher
+# site to delegate to for Atlanta's tenant anyway: `atlantacityga.
+# granicus.com` resolves to the real Granicus cluster IP (same as e.g.
+# `sandiego.granicus.com`) but every path there 302s to a bare IIS
+# `/core/error/NotFound.aspx` -- unlike a real live tenant like San
+# Diego's, which serves a normal 200 ViewPublisher homepage on the same
+# cluster.
+#
+# Not every meeting with a video has a populated caption track, though:
+# confirmed real HTTP 200 responses from TranscriptGet.aspx that are only
+# an 11-byte "WEBVTT \n\n" placeholder body (zero cues) on the module's
+# own Atlanta example (MediaID=76801) and two other sampled Atlanta
+# meetings (76785, 76793) -- the identical generate-a-file-regardless-of-
+# whether-captioning-ran pattern already documented on Granicus's own
+# captions.vtt in granicus.py, not a broken/fake endpoint. Surfaced as a
+# transcript_warning (see _fetch_captions), same as Granicus's own
+# placeholder case.
+_CAPTION_TRACK_RE = re.compile(r'"tracks"\s*:\s*\[\s*\{\s*"file"\s*:\s*"([^"]+)"')
 _MEETING_ID_PRIMARY_RE = re.compile(r"[?&]MeetingID=(\d+)", re.IGNORECASE)
 _MEETING_ID_FALLBACK_RE = re.compile(r"[?&]ID=(\d+)", re.IGNORECASE)
 # The literal "Web Outline" string is IQM2's own generic vendor branding
@@ -142,42 +189,55 @@ class IQM2AssetFinder(AssetFinder):
             outline_html = await self._fetch_text(session, outline_url)
             split_html = await self._fetch_text(session, split_url)
 
-        title, date, jurisdiction, agenda_items = None, None, None, []
-        if outline_html:
-            title, date, jurisdiction = self._extract_title_date_jurisdiction(
-                outline_html
-            )
-            agenda_items = self._extract_agenda_items(outline_html)
-            if jurisdiction:
-                jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
-                    jurisdiction, netloc=parsed.netloc, page_text=outline_html
+            title, date, jurisdiction, agenda_items = None, None, None, []
+            if outline_html:
+                title, date, jurisdiction = self._extract_title_date_jurisdiction(
+                    outline_html
+                )
+                agenda_items = self._extract_agenda_items(outline_html)
+                if jurisdiction:
+                    jurisdiction = jurisdiction_enrich.enrich_jurisdiction_text(
+                        jurisdiction, netloc=parsed.netloc, page_text=outline_html
+                    )
+
+            video_url = self._extract_video_url(split_html) if split_html else None
+
+            if not video_url:
+                return ResolvedMeeting(
+                    platform=self.platform_name,
+                    source_url=url,
+                    title=title,
+                    date=date,
+                    jurisdiction=jurisdiction,
+                    agenda_items=agenda_items,
+                    video_warnings=["No video found for this meeting."],
                 )
 
-        video_url = self._extract_video_url(split_html) if split_html else None
+            ext = video_url.rsplit(".", 1)[-1].split("?")[0].lower()
+            # Confirmed live 2026-08-29: not every IQM2 tenant's MEDIA URL
+            # comment is Granicus HLS like the Atlanta sample this adapter was
+            # originally built against -- San Carlos, CA returns a direct
+            # .mp4 instead, and hardcoding "m3u8" mislabeled it, producing a
+            # <source type="application/vnd.apple.mpegurl"> pointing at a
+            # real .mp4 file. That mismatch was a real, confirmed contributor
+            # to Search Console's "video isn't on a watch page" report (see
+            # BACKLOG.md). Same extension-derivation pattern as
+            # cablecast.py's PublicSite path; falls back to "m3u8" (the
+            # originally-confirmed default) for an unrecognized extension.
+            video_format = ext if ext in ("mp4", "m3u8", "mov", "m4v") else "m3u8"
 
-        if not video_url:
-            return ResolvedMeeting(
-                platform=self.platform_name,
-                source_url=url,
-                title=title,
-                date=date,
-                jurisdiction=jurisdiction,
-                agenda_items=agenda_items,
-                video_warnings=["No video found for this meeting."],
-            )
-
-        ext = video_url.rsplit(".", 1)[-1].split("?")[0].lower()
-        # Confirmed live 2026-08-29: not every IQM2 tenant's MEDIA URL
-        # comment is Granicus HLS like the Atlanta sample this adapter was
-        # originally built against -- San Carlos, CA returns a direct
-        # .mp4 instead, and hardcoding "m3u8" mislabeled it, producing a
-        # <source type="application/vnd.apple.mpegurl"> pointing at a
-        # real .mp4 file. That mismatch was a real, confirmed contributor
-        # to Search Console's "video isn't on a watch page" report (see
-        # BACKLOG.md). Same extension-derivation pattern as
-        # cablecast.py's PublicSite path; falls back to "m3u8" (the
-        # originally-confirmed default) for an unrecognized extension.
-        video_format = ext if ext in ("mp4", "m3u8", "mov", "m4v") else "m3u8"
+            segments: List[TranscriptSegment] = []
+            transcript_warnings: List[str] = []
+            caption_path = self._extract_caption_track(split_html)
+            if caption_path:
+                caption_url = (
+                    f"{origin}{caption_path}"
+                    if caption_path.startswith("/")
+                    else caption_path
+                )
+                segments, transcript_warnings = await self._fetch_captions(
+                    session, caption_url
+                )
 
         return ResolvedMeeting(
             platform=self.platform_name,
@@ -188,6 +248,8 @@ class IQM2AssetFinder(AssetFinder):
             video_url=video_url,
             video_format=video_format,
             agenda_items=agenda_items,
+            segments=segments,
+            transcript_warnings=transcript_warnings,
         )
 
     @staticmethod
@@ -242,6 +304,55 @@ class IQM2AssetFinder(AssetFinder):
     def _extract_video_url(html: str) -> Optional[str]:
         match = _MEDIA_URL_RE.search(html)
         return match.group(1) if match else None
+
+    @staticmethod
+    def _extract_caption_track(html: str) -> Optional[str]:
+        match = _CAPTION_TRACK_RE.search(html)
+        return match.group(1) if match else None
+
+    async def _fetch_captions(
+        self, session: aiohttp.ClientSession, caption_url: str
+    ) -> Tuple[List[TranscriptSegment], List[str]]:
+        """Fetch + parse IQM2's own TranscriptGet.aspx VTT endpoint (see
+        _CAPTION_TRACK_RE's docstring) -- returns (segments, warnings),
+        mirroring granicus.py's own blank-placeholder handling for its
+        very similar captions.vtt case.
+        """
+        try:
+            async with session.get(
+                caption_url, timeout=aiohttp.ClientTimeout(total=20)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        "IQM2 caption fetch got HTTP %s for %s",
+                        response.status,
+                        caption_url,
+                    )
+                    return [], []
+                raw = await response.read()
+        except Exception:
+            logger.warning(
+                "IQM2 caption fetch failed for %s", caption_url, exc_info=True
+            )
+            return [], []
+
+        cues = dedupe_rollup_cues(parse_vtt(decode_vtt_bytes(raw)))
+        if not cues:
+            # Real, confirmed placeholder case -- see _CAPTION_TRACK_RE's
+            # docstring. A genuine HTTP 200 with an empty "WEBVTT \n\n"
+            # body, not a fetch failure. Phrasing matches castus.py/
+            # suiteone.py's identical real warning exactly (not
+            # granicus.py's own slightly different wording for the same
+            # situation) so player.js's `_TRANSCRIBE_PHRASE_RE` -- which
+            # only matches "request a transcript from the audio" -- turns
+            # this into a real clickable "Request Transcript from Audio"
+            # trigger.
+            return [], [
+                "Caption file was blank, so we don't have a transcript for "
+                "this meeting yet — you can request a transcript from the "
+                "audio instead."
+            ]
+        return [TranscriptSegment(**cue) for cue in cues], []
 
     async def _fetch_text(
         self, session: aiohttp.ClientSession, url: str
