@@ -1,5 +1,75 @@
 # Backlog — done
 
+## Vimeo jurisdiction gap closed for 11 of 22 real batch pages; root-caused a shared subdivision-table gap [Done 2026-08-29]
+
+Closes this file's own long-open "A Vimeo-hosted meeting usually
+resolves with no jurisdiction at all" entry — it asked for exactly this
+kind of pass ("worth doing only against several real account names at
+once"), and the same day's direct-dorking batch (22 real ingests, see
+this file's own matching entry) finally supplied enough real examples
+to do it properly instead of guessing.
+
+**Trigger**: user reported one specific TelVue page's wrong jurisdiction
+(Irondequoit, NY), fixed as a one-off first (PR #514), then generalized
+into an `id="org-logo"` alt-text fallback for TelVue generally (PR
+#516) since the same title-shape gap plausibly affected other TelVue
+customers. User then asked whether the same fix pattern applied to the
+day's other big platform batch (Vimeo), prompting a full audit of all
+22 real pages rather than guessing from the 8-page sample first
+surfaced.
+
+**What was actually wrong, per real account name** (oEmbed `author_name`,
+Vimeo's only jurisdiction signal): `validated_label_extract()` correctly
+declines a name it's never seen before as a whole unit, but several real
+government/community-media accounts glue a real place name to a
+national naming-convention suffix or an abbreviation it has no way to
+expand:
+- K-12/library institutional suffixes (PR #524): "Hopkins Public
+  Schools", "Peters Township School District", "Jefferson Parish
+  Schools", "Seekonk Public Schools", "Mason County District Library".
+- The identical gap on YouTube's `uploader` field, ported for free
+  (PR #527) since `youtube.py`'s own `_jurisdiction()` already said it
+  "mirrors" the Vimeo model — same suffix, same fix, shared as
+  `jurisdiction_enrich.strip_institutional_suffix()` rather than
+  duplicated.
+- Community-media suffixes, a second category (PR #532): "Willits
+  Community Television Inc", "Morrilton Community Channel 6", "Peters
+  Township Community TV", "Town of Penfield Television".
+- Glued abbreviations with no generic split path at all (PR #532): a
+  small `_KNOWN_ACCOUNT_JURISDICTIONS` map (mirroring `telvue.py`'s
+  org-token map) resolves "UMTownship" → Upper Merion Township, PA and
+  "SHCTV15" → South Hadley, MA, both corroborated by this same batch's
+  own investigation write-up naming both cities.
+
+**Root cause underneath several of these** (PR #534): even after
+stripping the suffix, "Seekonk" and "Piscataway" (the latter found
+auditing a TelVue page, "Eye on Piscataway August 2026") stayed
+stateless, because `lookup_city_state()` only ever checked
+`places.csv` — the separate `county_subdivisions.csv` (COUSUB) table
+townships/towns actually live in was never consulted. Fixed at the
+shared root: falls back to subdivisions only when places.csv has zero
+match at all, so no existing places.csv outcome changes (confirmed:
+Needham's real-but-wrong-for-MA `AL` entry in places.csv is untouched,
+since that lookup already succeeds before the new fallback ever runs).
+Still correctly declines on a genuine subdivisions-table collision
+("Peters Township" is real in both KS and PA).
+
+**Verified end to end, not just unit-tested**: after the user deployed,
+every fixable page was re-resolved live via the public
+`/api/refresh-archived-page` endpoint and its new jurisdiction confirmed
+on the actual `/m/{slug}` page.
+
+**Final count**: 11 of the batch's 22 real pages recovered a real
+jurisdiction that previously showed none. The remaining 3 genuinely
+have no place-name signal anywhere in their account name (District 113
+Media, MPTS - Channel 22) or resolve but stay state-ambiguous (City of
+Lakeland — real in FL/GA/TN, already a separately known issue). See
+`BACKLOG.md`'s replacement entry for what's still open: a
+state-explicit-but-nationally-ambiguous name case ("City of Medina,
+Minnesota") that neither Vimeo nor YouTube's comma-branch logic
+recovers today, and the lack of any archive-wide "missing jurisdiction"
+audit tool, which made this pass slower than it needed to be.
+
 ## PrimeGov backfills date (and, when missing, title) from its own API for a dateless Granicus `event_id` delegation [Done 2026-08-29]
 
 Residual of the 2026-08-21 `MediaPlayer.php?event_id=...` fix (root cause
