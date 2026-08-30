@@ -201,6 +201,41 @@ def test_lookup_by_domain_resolves_modestos_second_agenda_subdomain():
     assert known == je.KnownJurisdiction("Modesto", "city", "CA")
 
 
+def test_lookup_by_domain_resolves_beaumont_ab_over_the_ambiguous_bare_name():
+    # "Beaumont" is also real in TX (a separate, already-archived Swagit
+    # customer) -- confirmed 2026-08-29 while reviewing two pre-existing
+    # pages (bare "Beaumont" / "City of Beaumont", no state) that
+    # escribe.py's own resolve-time subdomain parsing already knows how
+    # to name correctly (validated_label_extract_with_state("beaumontab")
+    # -> ("Beaumont", "AB")) but a bulk recompute-backfill couldn't, since
+    # finalize_jurisdiction() only ever checks this registry by netloc,
+    # never re-parses a subdomain itself. Registering the domain here
+    # closes that gap without needing a live re-resolve.
+    known = je.lookup_by_domain("pub-beaumontab.escribemeetings.com")
+    assert known == je.KnownJurisdiction("Beaumont", "city", "AB")
+
+
+def test_finalize_jurisdiction_recompute_now_repairs_the_bare_beaumont_pages():
+    # The actual gap this closes, end to end through finalize_jurisdiction()
+    # -- the same function GET /internal/jurisdiction/bleed-backfill-
+    # candidates and POST /internal/jurisdiction/backfill-apply both call,
+    # so this test is what makes those two already-archived pages
+    # (bare "Beaumont" and "City of Beaumont") real, safe recompute-backfill
+    # candidates now.
+    bare = je.finalize_jurisdiction(
+        "Beaumont", netloc="pub-beaumontab.escribemeetings.com"
+    )
+    assert bare.jurisdiction == "Beaumont, AB"
+    prefixed = je.finalize_jurisdiction(
+        "City of Beaumont", netloc="pub-beaumontab.escribemeetings.com"
+    )
+    assert prefixed.jurisdiction == "City of Beaumont, AB"
+    # The real Beaumont, TX customer on a different platform/domain must
+    # stay completely unaffected by this domain-scoped override.
+    texas = je.finalize_jurisdiction("Beaumont, TX", netloc="beaumonttx.new.swagit.com")
+    assert texas.jurisdiction == "Beaumont, TX"
+
+
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.

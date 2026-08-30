@@ -103,6 +103,86 @@ Regression-tested
 show 13797 title text and no-`vodUrl` shape, per this repo's convention
 for a narrower edge case on an already fixture-verified adapter.
 
+## "Needs a human" review, 7 items: 2 production writes applied, 1 code fix built, 3 stale claims corrected, 2 real product/scope gaps surfaced [Done 2026-08-29]
+
+Ryan handed over `ARCHIVE_INGEST_TOKEN`/`ARCHIVE_BASE_URL` (already in
+the shared `.env`, loaded explicitly by path rather than grepped) to
+work through 7 items across the "Duplicate `/j/` hubs", "land
+acknowledgement rows", "Coralville triplicate", "glued eScribe
+residuals", "51 recompute-backfill candidates", "consolidated
+city-county repairs", and "PrimeGov title override" entries. Re-verified
+every claim against live production data before acting, per this file's
+own "a backlog entry is a lead, not a spec" convention — three of the
+seven turned out to need correcting.
+
+**Production writes applied (via the existing admin endpoints, dry-run
+verified first, no code change):**
+- `POST /internal/jurisdiction/backfill-apply` on the 6 confirmed
+  Redding/Healdsburg/Arcata/Paso Robles duplicate-jurisdiction rows
+  (ids 1046, 1066, 1470, 977, 998, 2194) — matches the original entry's
+  claim exactly. (A 7th id, 944, was already correct and correctly
+  skipped by the endpoint's own "only write on a real string change"
+  rule.)
+- `POST /internal/admin/delete-pages` on 2 of the 3 Coralville, IA
+  Cablecast triplicate pages — kept the newest page (on the current
+  real tenant domain, `cityofcoralvilleiowa.cablecast.tv`) as canonical;
+  all 3 were confirmed near-identical in content first (fetched all 3
+  public pages directly, ~257-258KB each). Verified live afterward: the
+  Arcata duplicate is gone from `/state/california`, the canonical
+  Coralville page still serves.
+
+**Stale claims corrected:**
+- **Land acknowledgement rows (Oshawa, Cambridge)**: already fixed in
+  production — searched the full live candidate list (3,139 pages
+  checked) for either city name anywhere in a stored jurisdiction; both
+  matching rows already hold the correct value. Nothing to write. Likely
+  fixed by another concurrent session already applying a broader
+  backfill.
+- **Santa Clara canonicalization** (`Duplicate /j/ hubs` entry's other
+  half): the original framing said this "just needs the token" — wrong.
+  Checked every admin write endpoint in `archive/main.py`: none accepts
+  an explicit caller-supplied jurisdiction string. `backfill-apply` only
+  ever recomputes via `finalize_jurisdiction()`, and all 4 Santa Clara
+  variants already independently validate (confirmed live,
+  current==repaired on every one), so the recompute makes zero changes.
+  Live BACKLOG.md entry corrected to describe the real blocker (no write
+  path exists yet) instead of "needs the token."
+- **Beaumont AB pair**: the original entry said this "needs a real
+  re-resolve." A cheaper, better fix exists — see below.
+
+**Code fix built, PR open** (`app/utils/jurisdiction_enrich.py`,
+`app/utils/url_normalize.py` + `archive/utils/url_normalize.py`,
++ tests): registered `pub-beaumontab.escribemeetings.com` (Beaumont, AB)
+in `_KNOWN_DOMAINS`, closing the real gap without a live re-resolve —
+escribe.py's own resolve-time subdomain parsing
+(`validated_label_extract_with_state("beaumontab")` -> `("Beaumont",
+"AB")`) already names this tenant correctly, but the recompute-backfill
+path only ever checks the domain registry by netloc, never re-parses a
+subdomain, so the two already-archived pages (stored before that
+parsing existed) were stuck. Once this deploys, `backfill-apply` picks
+both up directly. Also fixed, found investigating the Coralville
+triplicate's root cause: `normalize_url()` (both copies) now collapses
+`http://`/`https://` to the same identity — 2 of the 3 Coralville
+duplicates differed only by scheme (plus a query-string variant,
+deliberately left untouched, matching the function's own existing
+"query strings can be load-bearing identity" reasoning). Small,
+general, low-risk: only 2 real call sites (resolver cache, Archive
+ingest dedup), benefits every platform without its own `external_id`.
+
+**Real gaps surfaced, not attempted (correctly left for a human/bigger
+scope):**
+- **51 pre-existing recompute-backfill candidates** and **consolidated
+  city-county repairs**: Ryan's own re-verification tonight (confirmed
+  "Lucas" validates as both a place and a county nationally via the real
+  Census tables, ruling out a blanket "county" heuristic) stands —
+  genuinely needs per-row source-page checks, not a bulk apply.
+- **PrimeGov title override**: already resolved as backfill-only, not
+  forced (see this file's own "PrimeGov backfills date..." entry above)
+  — deliberately not decided here either; a real "which source wins"
+  product call, not a data gap.
+
+All four CI gates clean on the code-fix PR; no schema touched.
+
 ## Vimeo jurisdiction gap closed for 11 of 22 real batch pages; root-caused a shared subdivision-table gap [Done 2026-08-29]
 
 Closes this file's own long-open "A Vimeo-hosted meeting usually
