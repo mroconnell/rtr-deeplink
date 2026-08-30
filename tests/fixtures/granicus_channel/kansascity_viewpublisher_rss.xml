@@ -1,0 +1,77 @@
+<?xml version="1.0" ?>
+<?xml-stylesheet href="browserfriendlyRSS_Layout.xslt" type="text/xsl" media="screen"?>
+<rss version="2.0"
+    xmlns:dc="https://purl.org/dc/elements/1.1/"
+    xmlns:gran="https://www.granicus.com/schema/rss-supplements" >
+<channel>
+  <title>City of Kansas City: Video on Demand: Meetings (Videos Feed)</title>
+  <gran:sourceURL>https://kansascity.granicus.com/ViewPublisherRSS.php?view_id=2&amp;mode=video</gran:sourceURL>
+  <link>https://kansascity.granicus.com/ViewPublisher.php?view_id=2</link>
+  <description></description>
+  <language>en-us</language>
+<item>
+  <guid isPermaLink="false">99523fcc-76f4-4aab-8109-da50f1886981</guid>
+  <title>Council Legislative Session - Aug 13, 2026</title>
+  <pubDate>Thu, 13 Aug 2026 02:00:00 -0800</pubDate>
+  <gran:pubDateParts yr='2026' mo='08' day='13' hr='14' min='00' sec='0' tz='7' />
+  <link>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14515</link>
+  <description>
+    <![CDATA[
+      <p style='margin-top:2px;'>
+The agenda for Council Legislative Session dated Thursday, 13 August 2026  has been archived. Access it here:<br />      <a href="https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14515" style='margin-right:50px;'>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14515</a>
+      <a href="https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14515">Download File</a>
+      </p>
+    ]]>
+  </description>
+  <enclosure url='https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14515' type="video/x-ms-wmv" />
+</item>
+<item>
+  <guid isPermaLink="false">39ed584f-58e4-4c14-93da-40837e345f8e</guid>
+  <title>Transportation, Infrastructure and Operations Committee  - Aug 11, 2026</title>
+  <pubDate>Tue, 11 Aug 2026 07:15:00 -0800</pubDate>
+  <gran:pubDateParts yr='2026' mo='08' day='11' hr='07' min='15' sec='0' tz='7' />
+  <link>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14508</link>
+  <description>
+    <![CDATA[
+      <p style='margin-top:2px;'>
+The agenda for Transportation, Infrastructure and Operations Committee  dated Tuesday, 11 August 2026  has been archived. Access it here:<br />      <a href="https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14508" style='margin-right:50px;'>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14508</a>
+      <a href="https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14508">Download File</a>
+      </p>
+    ]]>
+  </description>
+  <enclosure url='https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14508' type="video/x-ms-wmv" />
+</item>
+<item>
+  <guid isPermaLink="false">279227f0-d6af-4123-a985-1a27405485a4</guid>
+  <title>Neighborhood Planning and Development Committee - Aug 11, 2026</title>
+  <pubDate>Tue, 11 Aug 2026 11:45:00 -0800</pubDate>
+  <gran:pubDateParts yr='2026' mo='08' day='11' hr='11' min='45' sec='0' tz='7' />
+  <link>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14511</link>
+  <description>
+    <![CDATA[
+      <p style='margin-top:2px;'>
+The agenda for Neighborhood Planning and Development Committee dated Tuesday, 11 August 2026  has been archived. Access it here:<br />      <a href="https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14511" style='margin-right:50px;'>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14511</a>
+      <a href="https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14511">Download File</a>
+      </p>
+    ]]>
+  </description>
+  <enclosure url='https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14511' type="video/x-ms-wmv" />
+</item>
+<item>
+  <guid isPermaLink="false">9bf57fef-b8ac-4cc1-90f6-51c1fa8f9df1</guid>
+  <title>Finance Governance &amp; Public Safety Committee  - Aug 18, 2026</title>
+  <pubDate>Tue, 18 Aug 2026 07:45:00 -0800</pubDate>
+  <gran:pubDateParts yr='2026' mo='08' day='18' hr='07' min='45' sec='0' tz='7' />
+  <link>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14518</link>
+  <description>
+    <![CDATA[
+      <p style='margin-top:2px;'>
+The agenda for Finance Governance &amp; Public Safety Committee  dated Tuesday, 18 August 2026  has been archived. Access it here:<br />      <a href="https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14518" style='margin-right:50px;'>https://kansascity.granicus.com/MediaPlayer.php?view_id=2&amp;clip_id=14518</a>
+      <a href="https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14518">Download File</a>
+      </p>
+    ]]>
+  </description>
+  <enclosure url='https://kansascity.granicus.com/DownloadFile.php?view_id=2&amp;clip_id=14518' type="video/x-ms-wmv" />
+</item>
+</channel>
+</rss>

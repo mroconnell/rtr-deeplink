@@ -1,5 +1,108 @@
 # Backlog — done
 
+## Kansas City, MO's Legistar meetings resolve real video again, via a new Granicus ViewPublisher RSS fallback [Done 2026-08-29]
+
+Real root-cause investigation replacing `BACKLOG.md`'s stale "only the
+Transportation Infrastructure and Operations Committee comes through"
+framing. Checked live: 9 real Council meetings across 9 different dates
+(2026-05-21 through 2026-08-20) — every single one has **no**
+`a.videolink[onclick]` video mechanism at all, the structural norm for
+that body, not a rare gap. A broader sweep of 49 real committee bodies
+(one recent meeting each) found only 2/49 resolving real video via the
+existing mechanisms.
+
+**Not the already-covered "video column is structurally empty, real
+recordings live only on the city's own YouTube channel" case
+`youtube_channel.py` already handles** (Phoenix/Philadelphia/Baltimore/
+Albuquerque, WO-30) — Kansas City's real recordings are on Granicus, not
+YouTube, and aren't unlinked from *everywhere*: the tenant's own "Video
+on Demand" listing (`kansascity.granicus.com/ViewPublisher.php?
+view_id=2`) has them, just under Granicus's own separate per-meeting id
+space, with no link back from the Legistar page. Confirmed along the
+way: `_try_fallback_video_link()`'s broad `find_platform_link()` scan
+was quietly picking up an unrelated, generic `granicus.com/boards/w/
+{token}` navigation-chrome link (present verbatim on every KC page
+checked, a Granicus "Boards" product portal, not a video) as a false-
+positive candidate on meetings with no primary video link — harmless in
+practice (it 404s, caught, falls through to the honest decline) but
+worth knowing about; not fixed here since it's a shared, cross-tenant
+function and this is a one-tenant quirk.
+
+**Fix**: `app/platforms/granicus_channel.py` — `find_view_publisher_match()`
+fetches the tenant's own `ViewPublisherRSS.php?view_id={id}&mode=video`
+feed (the same real, public, unauthenticated feed `granicus.py`'s own
+`_fetch_channel_info()` already reads, there only to *corroborate* a
+date once a `clip_id` is already known) and matches by real structured
+date (`<gran:pubDateParts>`) plus body-name prefix, falling back to the
+matched item's own `clip_id` link -- `granicus.py`'s already-tested
+`clip_id` extraction needs zero new code to play it. Unlike
+`youtube_channel.py`'s YouTube listing (no dates at all, title-parsing
+required), this RSS feed carries real dates directly. Wired into
+`legistar.py` as a new last-resort tier
+(`_try_granicus_view_publisher_video()`), after every existing fallback,
+with the same decline-on-any-uncertainty posture (an unmatched date, an
+ambiguous same-day tie between two bodies, a fetch failure -- all
+decline rather than guess).
+
+Curated per-tenant (`_VIEW_PUBLISHER_FALLBACKS`), same pattern as
+`youtube_channel.py`'s `_CHANNEL_FALLBACKS` -- confirmed live for
+exactly Kansas City so far, not a general Legistar+Granicus rule.
+
+Regression-tested against real fetched RSS data throughout
+(`tests/fixtures/granicus_channel/kansascity_viewpublisher_rss.xml`, a
+real trimmed 3-item excerpt including a genuine same-day two-committee
+case used to test disambiguation) in both
+`tests/test_granicus_channel.py` (the matcher in isolation) and
+`tests/test_legistar.py` (the end-to-end wiring, plus the existing-tenant
+registry guard). Verified live end-to-end beyond the test suite too: a
+real Council meeting (LEGID=19409, 2026-08-13) that resolved bare before
+this fix now resolves a real, playable `archive-stream.granicus.com/
+.../playlist.m3u8`, with the correct provenance warning.
+
+**Residual, real and worth knowing**: the RSS feed is capped at 100 most-
+recent items *across every body on the tenant combined*, so an
+infrequently-meeting body's older occurrence can fall outside the
+feed's practical coverage even though the feed itself spans ~8 months
+(confirmed: items from Dec 2025 are still present) — frequent bodies
+(Council, the 3-4 committees that meet weekly) crowd out less-frequent
+ones' older history faster than the feed's own date range would suggest.
+Also confirmed live: at least one real Council meeting (2026-07-02) has
+a malformed RSS title (`"[Legislative Session 7.2.2026"` instead of the
+usual `"Council Legislative Session"`) — a real upstream data-quality
+inconsistency on Granicus/KC's own end that this matcher correctly
+declines on rather than guessing past.
+
+## Cablecast's no-video result dropped a show's real title/date even when it had them [Done 2026-08-29]
+
+Found investigating a user report on Detroit, MI ("Cablecast... not
+working well"): live-tested a batch of real, older Detroit shows (ids
+13797-13809, from the same "related shows" carousel already-working
+recent shows like 15304-15314 came from) and found every one resolving
+completely bare -- `title=None`, `date=None`, just "No video found for
+this meeting." Checked directly against the real underlying JSON
+(`"isWatchable":false,"title":"Council Member YOUNG Brush Park Manor
+Council Corner"`, show 13797): these are real, genuinely video-less
+short segments (not committee meetings), so the "no video" outcome
+itself is correct -- but the real title Cablecast's own API already
+returned was being thrown away instead of surfaced, unlike every other
+adapter's own no-video case in this codebase.
+
+**Fix**: both of `cablecast.py`'s "no video" early-return branches (the
+Remix template path and the CablecastPublicSite path) now include
+`title`/`date`/`external_id` from the `show` dict they already have in
+hand, instead of a bare `ResolvedMeeting` with only `source_url`/
+`jurisdiction`/`video_warnings`. `external_id` is included here too, not
+just on the video-found path (see this file's own Coralville, IA
+external_id entry) -- a video-less show is just as reachable at multiple
+scheme/query URL variants as one with video, so the same host-namespaced
+dedup applies.
+
+Regression-tested
+(`test_resolve_no_vod_url_still_surfaces_the_shows_real_title_and_date`,
+`tests/test_cablecast.py`) with a synthetic tree grounded in the real
+show 13797 title text and no-`vodUrl` shape, per this repo's convention
+for a narrower edge case on an already fixture-verified adapter.
+
 ## "Needs a human" review, 7 items: 2 production writes applied, 1 code fix built, 3 stale claims corrected, 2 real product/scope gaps surfaced [Done 2026-08-29]
 
 Ryan handed over `ARCHIVE_INGEST_TOKEN`/`ARCHIVE_BASE_URL` (already in
