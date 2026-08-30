@@ -407,9 +407,13 @@ def test_jurisdiction_strips_institutional_suffix_before_validating():
         VimeoAssetFinder._jurisdiction({"author_name": "Jefferson Parish Schools"})
         == "Jefferson Parish"
     )
+    # "Seekonk, MA" not bare "Seekonk" -- lookup_city_state()'s
+    # subdivision-table fallback (added the same day) resolves the state
+    # too, since Seekonk is a real, unambiguous MA town missing from
+    # places.csv but present in the COUSUB subdivisions table.
     assert (
         VimeoAssetFinder._jurisdiction({"author_name": "Seekonk Public Schools"})
-        == "Seekonk"
+        == "Seekonk, MA"
     )
     assert (
         VimeoAssetFinder._jurisdiction({"author_name": "Mason County District Library"})

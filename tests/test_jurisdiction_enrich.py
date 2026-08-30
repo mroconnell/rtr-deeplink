@@ -100,6 +100,22 @@ def test_lookup_city_state_returns_none_for_kansas_city():
     assert je.lookup_city_state("City of Kansas City") is None
 
 
+def test_lookup_city_state_falls_back_to_subdivisions_table():
+    # Real gap, confirmed live 2026-08-29 while auditing archived pages
+    # missing a jurisdiction: "Seekonk" (MA) and "Piscataway" (NJ) are
+    # both real, nationally-unambiguous towns/townships missing from
+    # places.csv entirely (New England towns and NJ/PA townships are
+    # frequently absent from the incorporated-place gazetteer this table
+    # is built from) but present in the separate county_subdivisions.csv
+    # (COUSUB) table. Falls back there only when places.csv has no match
+    # at all, so a real collision in the subdivisions table alone
+    # ("Peters Township" is real in both KS and PA) still correctly
+    # declines.
+    assert je.lookup_city_state("Seekonk") == "MA"
+    assert je.lookup_city_state("Piscataway") == "NJ"
+    assert je.lookup_city_state("Peters Township") is None
+
+
 def test_lookup_county_by_zip_resolves_a_real_zip():
     # Real Santa Rosa, CA ZIP, sitting inside Sonoma County.
     result = je.lookup_county_by_zip("95403")
