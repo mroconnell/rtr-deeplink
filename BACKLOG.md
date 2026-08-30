@@ -56,12 +56,13 @@ Standing decisions — do NOT re-raise  (3)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (8)
+  Production actions only Ryan should take  (9)
+    [HUMAN] Deploy resolver + Archive, then click Validate Fix in
     [HUMAN] Two live pages for the same Kitchener meeting — pick one,
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
@@ -76,7 +77,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
-  [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+  [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
@@ -382,6 +383,17 @@ convenient.
   events on `/m/*` pages" entry. GA internal-traffic setup and
   cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 ### Production actions only Ryan should take
+
+- **[HUMAN] Deploy resolver + Archive, then click Validate Fix in
+  Search Console — clears ~26% of the "video isn't on a watch page"
+  count with zero further code work.** Two real fixes (IQM2's
+  `video_format` bug, the `/j/`/`/state/` `VideoObject`→`CreativeWork`
+  retype — 16% of the failing population combined) are merged and
+  tested but not yet deployed; a third population (eScribe/isilive,
+  10%) is already correctly rendered live today and almost certainly
+  just needs a fresh crawl. See `BACKLOG.md`'s Search Console entry and
+  `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup for the full
+  numbers.
 
 - **[HUMAN] Two live pages for the same Kitchener meeting — pick one,
   redirect the other.** Found 2026-08-30 verifying the forced-English
@@ -757,230 +769,37 @@ coverage** instead.
   the build log first, per the docstring's own advice, rather than
   guessing a fourth time.
 
-- **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
-  validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
-  the 2026-08-21 fix. Human dashboard verification is done; what's left
-  is a real code investigation, not a dashboard check — moved out of
-  Needs a human 2026-08-29. Real quantified breakdown of the failing
-  population landed 2026-08-30 (finding 7) — most of the count is now
-  explained, and the majority isn't fixable in this app's code.**
-  Checked live against Google's own documented requirements ([indexing
-  status
-  reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
-  [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
-  seven real, distinct contributors found, two fixed and undeployed, one
-  scoped, one quantified-and-explained, three genuine third-party
-  infrastructure limits (two confirmed, one a lead). Original root
-  cause (2026-08-21):
-  `meeting_page.html` used to render every non-YouTube video as a bare
-  `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
-  day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. Search
-  Console shows **Started: 8/22/26, Failed: 8/24/26**, Affected videos
-  **1.76K**.
-
-  **Found so far:**
-  1. **Meeting-page template fix: confirmed genuinely deployed and
-     correct**, checked against a wide, real, currently-failing sample
-     (Cablecast mp4, Granicus m3u8, champds, isilive, townhallstreams,
-     Seattle Channel, CloudFront-tokenized) — all render correctly.
-     Video position in the DOM is already good, thumbnails are already
-     correctly guarded and stable. One prior hypothesis is refuted, not
-     just unconfirmed: M3U8 is explicitly a Google-supported file type,
-     so "the indexer can't handle HLS" is wrong. What's left open: the
-     fix may not have been live in production yet when Google's
-     8/22-8/24 validation ran (deploys here are manual) — needs a fresh
-     Validate Fix click to test.
-  2. **IQM2 hardcoded `video_format="m3u8"` regardless of the real file
-     extension: confirmed and fixed 2026-08-29** (`app/platforms/iqm2.py`,
-     regression test in `tests/test_iqm2.py`, full suite green). Not yet
-     deployed.
-  3. **`/j/*` and `/state/*` hub pages emit `VideoObject` for content
-     they don't host: confirmed and fixed 2026-08-29** — see
-     `BACKLOG_DONE.md`. Retyped to `CreativeWork` in all three templates
-     (`jurisdiction_page.html`, `state_page.html`, `state_all50.html`),
-     factored into a shared `_featured_itemlist.html` partial, 3 new
-     regression tests added (previously zero coverage). Full suite
-     green. Not yet deployed. Estimated 700-800 live pages affected —
-     plausibly the dominant driver of the 947→1,764 growth.
-  4. **At least one vendor's `contentUrl` is a signed, expiring
-     CloudFront URL** (`?token=...`, routed through
-     `generic_fallback.py`, no dedicated adapter) — a genuine stable-URL
-     violation per Google's docs, confirmed on 2 real pages. Would need
-     a video proxy to fix, not a template change; population size
-     unswept.
-  5. **Granicus's own media CDN hard-blocks Googlebot (and Bingbot)
-     outright — confirmed live 2026-08-30, high confidence, NOT
-     fixable from this app's code.** Not a markup problem: the template
-     already renders a correct, matching `<source>`/`contentUrl` for
-     Granicus's `.m3u8`/`.mp4` (finding 1 above). The problem is one
-     level down — Google's crawler can never fetch the file it's being
-     asked to verify. Reproduced directly, repeatedly, against a real
-     live URL (Tacoma WA, `archive-stream.granicus.com/OnDemand/
-     _definst_/mp4:archive/cityoftacoma/...playlist.m3u8`, also
-     confirmed on the sibling `archive-video.granicus.com` `.mp4`):
-     a real desktop Chrome `User-Agent` gets **200**, while Googlebot's
-     real crawler UA string, Bingbot's UA string, a plain `curl` default
-     UA, and any UA merely containing the word "bot" all get **403** —
-     tested with and without a `Referer` header (no effect either way),
-     so this is User-Agent-string filtering, not Referer-based hotlink
-     protection. Granicus is one of this corpus's largest platforms
-     (CLAUDE.md: one of the four platforms accounting for ~78% of the
-     corpus), so if this generalizes past Tacoma it's plausibly the
-     single largest contributor to the 947→1,764 growth — bigger than
-     finding 3's hub-page fix. **No template/backend fix on our side can
-     make Granicus serve Googlebot** — Granicus's server is the one
-     deciding this, and this app already sends a normal browser UA when
-     *we* fetch (CLAUDE.md's "query sites politely" policy), which is
-     exactly why our own resolve works while Google's crawler doesn't.
-     The only real code-side lever would be proxying the video bytes
-     through our own domain so Googlebot fetches from
-     `redtaperecordings.com` instead — **not recommended without a
-     careful cost check first**: this session already found the
-     resolver was double-proxying *HTML* pages into a real bandwidth
-     overage (see `BACKLOG_DONE.md`'s ARCHIVE_BASE_URL entry); proxying
-     multi-GB video files would be a vastly bigger version of the same
-     cost. **Confirmed Granicus-wide, not one city's CDN config**: a
-     second, independent tenant (Jacksonville FL,
-     `jaxcityc.granicus.com`) reproduced the identical pattern —
-     Googlebot UA 403, Chrome UA 200 — on the same shared
-     `archive-stream.granicus.com` host, which is itself evidence this
-     is one central Granicus-operated CDN serving every tenant, not
-     per-city infrastructure.
-  6. **Azure-CDN-hosted video files (`*.azureedge.net`) are served with
-     `Content-Disposition: attachment` — confirmed live 2026-08-30 on
-     CivicClerk's `cpmedia.azureedge.net`, medium-high confidence, not
-     yet confirmed on Cablecast's azureedge tenants specifically.**
-     Unlike Granicus, the file itself is fully reachable — a real
-     CivicClerk mp4 (Emporia, KS; from `tests/fixtures/civicclerk/
-     emporiaks_media585.json`'s real `videoUrl`) returns **200** for
-     both a normal browser UA and Googlebot's real UA, correct
-     `content-type: video/mp4`, correct `content-length`. But every
-     response (both UAs) carries `content-disposition: attachment` —
-     the header a server uses to tell a client "this is a download,
-     not something to render/play inline." Google's video indexer
-     plausibly treats a `contentUrl` serving `attachment` disposition
-     as not-actually-embeddable, distinct from and compounding the
-     Granicus issue above. **Confirmed against Google's own real export
-     2026-08-30 (see finding 7): the azureedge failures are CivicClerk's,
-     not Cablecast's.** Ryan's original per-host list named
-     "Cablecast/azureedge" from memory, but the real Search Console CSV
-     export shows every azureedge failure resolves to
-     `cpmedia.azureedge.net` specifically — CivicClerk's own video CDN
-     (confirmed via `tests/fixtures/civicclerk/*.json`'s real `videoUrl`
-     fields). No Cablecast tenant in the real export uses azureedge at
-     all — every Cablecast row is a direct `*.cablecast.tv` URL (see
-     finding 7). No fix exists on our side for this — Azure Blob
-     Storage's `Content-Disposition` is set by the vendor's CDN config,
-     not by anything this app controls; a proxy has the same cost
-     caveat as finding 5.
-  7. **Real quantified breakdown from Ryan's own Search Console export
-     (2026-08-30, `redtaperecordings.com-Video-indexing-Drilldown-
-     2026-08-29`, 1,000 rows — capped by the export tool, real total is
-     1,764 per the Chart.csv trend below) — replaces guesswork with hard
-     numbers, and rules out one platform findings 5-6 would have
-     wrongly implicated.** Breakdown by the failing "Video URL" column's
-     domain: **Granicus 516/1000 (51.6%)** — `archive-stream.granicus.com`
-     + `archive-video.granicus.com`, matching finding 5 exactly.
-     **`cpmedia.azureedge.net` 134/1000 (13.4%)** — CivicClerk's own
-     host, matching finding 6 exactly (see finding 6's update above:
-     this settles that it's CivicClerk, not Cablecast). **`cdn1.
-     isilive.ca` (eScribe) 101/1000 (10.1%)** — see the isilive-specific
-     note below. **`mediahttp.iqm2.com` 95/1000 (9.5%)** — this is
-     finding 2's already-fixed-but-undeployed population; should clear
-     once that fix deploys and the issue is revalidated. **`N/A` (no
-     video URL at all) 65/1000 (6.5%)** — finding 3's `/j/`+`/state/`
-     hub pages, already fixed and undeployed at the time of this export
-     (Ryan separately confirmed shipping this fix the same day). **66
-     rows across many distinct `*.cablecast.tv` tenants (6.6%)** — see
-     the Cablecast note below. Remainder: champds (11), townhallstreams
-     (5), CloudFront-tokenized (3, finding 4's population — now sized:
-     small), and a long tail of one-off hosts. Together, Granicus +
-     azureedge + isilive + IQM2 + the hub pages account for **91% of
-     this sample** — the real "actual remaining work" list below is
-     reordered by this, not alphabetically.
-     **Trend (Chart.csv, GSC's own daily count)**: 98 (8/12) → 460
-     (8/13, flat to 8/16) → 947 (8/17, flat to 8/19, matching the
-     original entry's number) → 1,651 (8/20, flat to 8/23) → 1,764
-     (8/24, flat through the export's last date, 8/26). Confirms growth
-     stopped 8/24 and has been flat since — useful for ruling things
-     out: the 2026-08-30 site-wide static-asset 500 incident
-     (`BACKLOG_DONE.md`) started and was fixed entirely within
-     2026-08-30 and cannot be a contributor to any of this trend.
-     **isilive.ca (finding 7a) — likely NOT a real bug, needs
-     revalidation instead of a code fix.** Google's raw export shows a
-     literal newline character embedded mid-filename in several
-     `cdn1.isilive.ca` URLs (e.g. `.../mp4:watsonville/Encoder \n788_CC_
-     ...`). Traced to `app/platforms/escribe.py`'s
-     `quote(stream_name, safe="")` call — verified directly that Python's
-     `quote()` correctly encodes a literal newline to `%0A` (and a space
-     to `%20`), so a raw newline could not survive that call. Checked
-     the CURRENT live page for that exact Watsonville example: it
-     renders `Encoder%20788_CC_...` — properly encoded, no `%0A`, and
-     the resulting URL is **200 for a Chrome UA, Googlebot's UA, and a
-     plain `curl` UA alike** (no UA-blocking, unlike Granicus). The
-     newline in Google's CSV is almost certainly Search Console's own
-     decoded/human-readable display of a properly-encoded `%0A` (or
-     reflects a since-superseded HTML capture), not a real malformed URL
-     in what this app actually serves today. All isilive rows in this
-     export were last crawled 2026-08-19 through 2026-08-24 — before or
-     right around when the 2026-08-21 template fix would have reached
-     production (deploys are manual) — so the likely explanation is the
-     same as finding 1's own open item: stale crawl data, not a live
-     defect. Worth confirming with a fresh Validate Fix / recrawl rather
-     than chasing a code change.
-     **Cablecast (finding 7b) — reachable and correctly rendered, root
-     cause still genuinely open, one unconfirmed lead.** Tested a real
-     failing example (Champaign, IL, `champaign-cablecast.cablecast.tv`)
-     across Chrome/Googlebot/plain-curl UAs: **200 for all three** — no
-     UA-blocking. Headers are clean (served via CloudFront, no
-     `Content-Disposition: attachment`, correct `content-type`). The
-     live watch page's `contentUrl`/`<source src>` matches the manifest
-     URL exactly. One unconfirmed lead: the manifest body itself
-     (`vod.m3u8`, generated by Cablecast, not by this app) has a minor
-     HLS spec deviation — `SUBTITLES ="subs"` and `AUDIO="audio"` with a
-     stray space before `=` in the `#EXT-X-STREAM-INF` attribute lists,
-     technically invalid per RFC 8216's attribute-list grammar (real
-     players like hls.js tolerate it, which is why playback works fine
-     for real visitors). Whether Google's video validator is strict
-     enough to reject a manifest over this is unknown and unconfirmed —
-     flagged as a lead worth checking via URL Inspection's raw fetch
-     view on a real Cablecast example, not a settled cause. If it does
-     turn out to matter, it's Cablecast's own manifest generation, not
-     fixable in this app's code, same shape as findings 5-6.
-
-  **The actual remaining work, per Ryan (2026-08-29), now reordered by
-  finding 7's real weights: take one real, currently-failing sample URL
-  from *each* host/platform showing up in Search Console's
-  failing-examples list and read that page line by line — full
-  rendered HTML, JSON-LD, and the actual served video/thumbnail
-  resources — looking for what's systematically making Google say "not
-  on a watch page" for that platform specifically.** Granicus, azureedge
-  (CivicClerk), isilive, and Cablecast are now done — see findings 5-7
-  above. Of the top 5 hosts by real volume (findings 5, 6, 2, 3, 7a —
-  Granicus, azureedge, IQM2, hub pages, isilive — 91% of the sample),
-  three are genuine infrastructure limits outside this app's control,
-  and two (IQM2, hub pages) are already fixed and just waiting on a
-  deploy + revalidation. **Still genuinely unswept**: champds (11),
-  townhallstreams (5), and any smaller one-off hosts in the long tail —
-  each too small to move the total materially on its own. The seven
-  findings above came from spot-checking a handful of examples per
-  platform (finding 7 raised that to "every host, quantified against
-  the real export," which is a meaningfully stronger form of the same
-  check than a handful of random samples) — a genuinely exhaustive
-  per-URL read of all 1,000 rows hasn't been done and probably isn't
-  worth doing given how concentrated the causes already are. Cross-
-  reference each platform's `video_format`/`video_url` assignment in
-  `app/platforms/*.py` against what the template actually renders, the
-  same way the IQM2 fix was found.
-  **Given findings 5, 6, and (unconfirmed) 7b account for the clear
-  majority of real volume and are not fixable in this app's code, the
-  honest target here is no longer 100% resolution.** Once IQM2 and the
-  hub-page fix deploy and get revalidated (findings 2, 3 — 16% of this
-  sample), and isilive gets a fresh crawl (finding 7a — another 10%),
-  the realistic floor for this metric is roughly the Granicus + azureedge
-  share (~65% of this sample) unless a video-proxy investment is made —
-  which the bandwidth-cost findings elsewhere this session argue against
-  pursuing casually.
+- **[NEEDS-AUDIT] Search Console "video isn't on a watch page" —
+  91% of the real failing population is now explained; ~65% of it is
+  third-party infrastructure this app's code cannot fix.** Full
+  investigation (7 findings, real quantified breakdown from Ryan's own
+  GSC export) moved to `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]`
+  entry — read that for the evidence. Real numbers, from a 1,000-row
+  export (real total 1,764, flat since 2026-08-24): **Granicus 51.6%**
+  and **CivicClerk's `cpmedia.azureedge.net` 13.4%** are both confirmed,
+  live-tested, **not fixable in this app's code** — Granicus's CDN
+  blocks Googlebot's own User-Agent outright (real browsers get 200,
+  Googlebot/Bingbot/curl get 403, confirmed on two independent
+  tenants); Azure serves CivicClerk's video as `Content-Disposition:
+  attachment`, which Google's validator plausibly can't treat as
+  embeddable. Neither is a markup bug — this app's own templates
+  already render correct, matching video markup in both cases. The
+  only code-side lever (proxying video bytes through our own domain)
+  is not recommended without a real cost check, given the double-
+  proxied-HTML bandwidth overage found elsewhere this session
+  (`BACKLOG_DONE.md`'s `ARCHIVE_BASE_URL` entry).
+  **Still genuinely open**: IQM2 (9.5%) and the `/j/`/`/state/` hub-page
+  fix (6.5%) are already built and tested, just need a deploy + a
+  Search Console Validate Fix click (see "Needs a human" below).
+  eScribe/isilive (10.1%) needs only a fresh recrawl, not code — traced
+  a scary-looking newline in Google's raw export back to a display
+  artifact, not a real bug; today's live URL is correctly encoded and
+  fully reachable. Cablecast (6.6%, many small tenants) is fully
+  reachable and correctly rendered — root cause still unconfirmed, one
+  unverified lead (a minor HLS spec deviation in Cablecast's own
+  generated manifest, not something this app produces). champds (11),
+  townhallstreams (5), and a long one-off tail remain unswept, each too
+  small to matter much on their own.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
