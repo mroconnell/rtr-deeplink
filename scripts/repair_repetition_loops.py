@@ -1,90 +1,84 @@
-"""Finds and repairs the already-live seam-duplication defect in stored
-multi-chunk transcription segments -- see BACKLOG.md's "[JUST-DO-IT]
-`[BIG]` Repair the three already-live transcript-defect populations"
-entry, step 1 (the seam-duplication population specifically;
-scripts/repair_repetition_loops.py is the sibling script for step 1b,
-the repetition-loop population; the two confirmed-hallucination
-re-transcribes are separate, still-open work -- see that entry).
+"""Finds and repairs the already-live repetition-loop defect in stored
+Whisper-transcribed segments -- see BACKLOG.md's "[JUST-DO-IT] `[BIG]`
+Repair the three already-live transcript-defect populations" entry,
+step 1b (the repetition-loop population; scripts/repair_seam_
+duplication.py is the sibling script for step 1, the seam-duplication
+population -- see that entry, and that script's own module docstring
+for the shared `/internal/transcript-version/drop-segments` write path
+both scripts use).
 
-Why this exists. `worker/segment_utils.py`'s `count_seam_overlap_
-segments()` (live since 2026-08-16, see BACKLOG_DONE.md) stops a NEW
-multi-chunk transcription from restating a chunk's last sentence at the
-start of the next chunk -- an HLS seek-accuracy artifact, not a
-transcription error (see that function's own module comment for the
-full root cause). It is prevention only: every page transcribed BEFORE
-that fix shipped already has the duplicated segments baked into its
-stored default TranscriptVersion, and `GET /internal/transcription/
-completed-multichunk` audited that population at **118 completed jobs**
-(job_id 1-192, completed 2026-08-08 through 2026-08-16). Ryan's explicit
-call, 2026-08-22 (BACKLOG.md): repair the stored segments directly
-rather than bulk re-transcribing -- the individual chunks were correct,
-only the join was wrong, so everything needed to fix it is already
-there. Re-running Whisper on ~190 meetings would cost 500+ hours of
-audio to reproduce output that would be mostly identical to what's
-already stored.
+Why this exists. WO-36's `detect_hallucination_warnings()` (`worker/
+segment_utils.py` / `archive/utils/transcription_quality.py`) catches a
+Whisper transcript that degenerates into a repeated cue over silence,
+music, or a recess -- confirmed real on 6 live pages, and on 74 of 304
+(24%) real `source=="transcribed"` transcripts audited when this was
+measured (see BACKLOG_DONE.md). But that function only *flags* a
+transcript; nothing collapses the repeated cues themselves in stored
+segments, so a reader still sees the actual repeated garbage text, just
+with a warning banner above it. Ryan's 2026-08-22 decision (BACKLOG.md):
+repair stored segments directly rather than re-running Whisper on the
+same audio -- a loop comes from the audio itself (silence/music/recess),
+so re-transcribing the same audio reproduces the same loop.
 
 --------------------------------------------------------------------------
-HOW A SEAM IS RE-FOUND WITHOUT THE ORIGINAL PER-CHUNK DATA
+THE COLLAPSE DESIGN -- keep the first cue, drop the rest, touch nothing else
 --------------------------------------------------------------------------
-The worker never persists individual chunks separately -- only the
-running merged `TranscriptionJob.partial_segments` (see that model's own
-docstring), and by completion that's exactly the flat, already-duplicated
-list this script has to work with. But chunking is fixed-size and the
-job record keeps both numbers needed to reconstruct where each seam
-fell: `total_chunks` and `chunk_size_seconds`. `worker/segment_utils.
-chunk_start(i, chunk_size_seconds)` gives seam i's approximate
-meeting-relative timestamp for i in 1..total_chunks-1, and this script
-locates the stored segments immediately before/after that timestamp and
-hands them to `count_seam_overlap_segments()` -- the exact same,
-already-tested detector the live prevention path uses, just fed a
-windowed slice of one flat list instead of two separate chunk results.
-Nothing about the detection logic itself is new or reimplemented.
+For each run WO-36's own detector would flag (see find_repetition_loops()
+below -- it reuses that detector's exact rules, not a new one), this
+script keeps the run's FIRST segment and drops every other segment in
+the run. Two deliberate choices, made explicit here because they're real
+design decisions, not something to leave implicit:
+
+1. **Keep one representative cue, not zero.** A completely empty gap
+   would look like a transcription failure; one cue marks that
+   *something* (however degenerate) sat in this span, honestly.
+2. **Never shift surrounding timestamps.** The dropped segments' own
+   time span reverts to unlabeled silence -- which is what it almost
+   always factually was (see the module docstring above: loops come
+   from silence, music, or a recess). Shifting every later segment to
+   close the gap would touch far more of the transcript than the defect
+   itself, for no real benefit to a reader following along by timestamp.
 
 --------------------------------------------------------------------------
-CANDIDATE SELECTION AND READS -- no SQL, no source fetch
+CANDIDATE SELECTION AND READS -- no SQL, no source fetch, no compute
 --------------------------------------------------------------------------
-1. `GET /internal/transcription/completed-multichunk` -- the existing
-   audit endpoint, one query, no segments touched.
-2. Per candidate, `GET /m/{slug}/transcript.srt` -- the page's own public
-   export, parsed back by `parse_stored_srt()` (imported from
-   scripts/dedupe_rollup_transcripts.py -- same reasoning as that
-   script's own docstring: no re-normalization, what the export says is
-   what the row holds).
-3. Seam-by-seam windowed detection, in memory, against the fetched
-   segments. No compute, no re-transcription, no source fetch -- this
-   never contacts a government website at all, only this repo's own
-   Archive.
+1. `GET /internal/transcription/hallucination-candidates` (paginated via
+   `after_id`, same keyset shape as the endpoint's own docstring) --
+   the existing WO-36 retroactive audit, already re-running
+   detect_hallucination_warnings() against stored segments server-side.
+   Filtered here to `is_default` rows only: a non-default version isn't
+   shown to any reader and isn't reachable by this script's apply step
+   either (create_segment_drop_version() always targets the current
+   default).
+2. Per candidate, `GET /m/{slug}/transcript.srt` -- the page's own
+   public export, parsed back by `parse_stored_srt()` (imported from
+   scripts/dedupe_rollup_transcripts.py, same reasoning as that script's
+   own docstring and scripts/repair_seam_duplication.py's).
+3. In-memory run detection against the fetched segments. Never contacts
+   a government website, never re-transcribes.
 
 --------------------------------------------------------------------------
 APPLY -- always from a human-reviewed report, never a fresh scan
 --------------------------------------------------------------------------
-`--apply` requires `--from-report`, matching scripts/dedupe_rollup_
-transcripts.py's own convention: the report file a human actually looked
-at is the list that gets applied, not whatever a fresh scan happens to
-find at apply time (the page population, chunking, and defects could all
-have moved since the dry run). Each application POSTs to `/internal/
-transcript-version/drop-segments` with a fresh sha256 of the
-CURRENT `/m/{slug}/transcript.srt` body as `expected_srt_hash` --
-optimistic concurrency computed at apply time, not carried over from the
-report, so anything that changed the page since the dry run (a
-re-transcription, another repair run, a manual promote) causes a clean
-409 refusal rather than a silent corruption. See crud.
-create_segment_drop_version()'s own docstring for the full reasoning.
-Nothing is ever deleted -- the repaired page gets a new TranscriptVersion
-and the old one stays reachable via `?version=`, same as every other
-transcript-editing tool in this repo.
+Same convention as scripts/repair_seam_duplication.py and scripts/
+dedupe_rollup_transcripts.py before it: `--apply` requires
+`--from-report`, and every write re-fetches and re-hashes the page
+immediately before writing, refusing on a stale `expected_srt_hash`
+(computed from the raw `/m/{slug}/transcript.srt` body, see
+crud.create_segment_drop_version()'s own docstring) rather than risking
+a silent overwrite of a page that changed since the dry run. Nothing is
+ever deleted -- the old version stays reachable via `?version=`.
 
 Usage (from the repo root, with the venv active):
-    python scripts/repair_seam_duplication.py --dry-run
-    python scripts/repair_seam_duplication.py --dry-run --limit 5
-    python scripts/repair_seam_duplication.py --dry-run --slug some-slug
+    python scripts/repair_repetition_loops.py --dry-run
+    python scripts/repair_repetition_loops.py --dry-run --limit 5
+    python scripts/repair_repetition_loops.py --dry-run --slug some-slug
 
     # the real run: repair exactly the pages the dry-run report flagged.
-    python scripts/repair_seam_duplication.py --apply \\
-        --from-report scripts/seam_duplication_report.json
+    python scripts/repair_repetition_loops.py --apply \\
+        --from-report scripts/repetition_loop_report.json
 
-Dry run is the default, matching this repo's read-only-first posture
-(scripts/backfill_archived_pages.py, scripts/dedupe_rollup_transcripts.py).
+Dry run is the default, matching this repo's read-only-first posture.
 
 The token is read from the environment and only ever placed in an
 Authorization header -- never logged, never echoed, per CLAUDE.md.
@@ -92,7 +86,6 @@ Authorization header -- never logged, never echoed, per CLAUDE.md.
 
 import argparse
 import asyncio
-import bisect
 import hashlib
 import json
 import logging
@@ -103,7 +96,7 @@ from typing import Optional
 
 import certifi
 
-# Same reasoning as scripts/transcribe_backlog_locally.py's own fix
+# Same reasoning as scripts/repair_seam_duplication.py's own fix
 # (CLAUDE.md): a fresh Homebrew-Python venv has an empty default SSL
 # trust store, and aiohttp/connector.py builds its default SSLContext at
 # `import aiohttp` time, not lazily -- so this has to run before that
@@ -118,16 +111,16 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from app.utils.rate_limit import looks_rate_limited  # noqa: E402
 from scripts.dedupe_rollup_transcripts import parse_stored_srt  # noqa: E402
-from worker.segment_utils import chunk_start, count_seam_overlap_segments  # noqa: E402
+from worker.segment_utils import (  # noqa: E402
+    _HALLUCINATION_ABSOLUTE_RUN_LENGTH,
+    _HALLUCINATION_TILED_COVERAGE_RATIO,
+    _HALLUCINATION_TILED_MIN_SECONDS,
+    _HALLUCINATION_TILED_RUN_LENGTH,
+    _repetition_runs,
+    _run_span_and_coverage,
+)
 
-# How many segments on either side of a seam are candidates for overlap --
-# matches count_seam_overlap_segments()'s own _LOOKBACK_SEGMENTS, so the
-# windows handed to it here are the same size its live caller would give
-# it (a smaller window here would just silently make some real overlaps
-# unreachable; a larger one is wasted work, since the function itself
-# never looks further than its own constant).
-LOOKBACK_SEGMENTS = 8
-
+CANDIDATE_PAGE_SIZE = 500
 DEFAULT_PROBE_DELAY_SECONDS = 0.25
 DEFAULT_APPLY_DELAY_SECONDS = 1.0
 PROBE_TIMEOUT = aiohttp.ClientTimeout(total=60)
@@ -140,7 +133,7 @@ APPLY_TIMEOUT = aiohttp.ClientTimeout(total=60)
 # threshold.
 MAX_CONSECUTIVE_FAILURES = 5
 
-DEFAULT_REPORT_FILE = REPO_ROOT / "scripts" / "seam_duplication_report.json"
+DEFAULT_REPORT_FILE = REPO_ROOT / "scripts" / "repetition_loop_report.json"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -149,7 +142,7 @@ logging.basicConfig(
     stream=sys.stdout,
     force=True,
 )
-logger = logging.getLogger("rtr_repair_seam_duplication")
+logger = logging.getLogger("rtr_repair_repetition_loops")
 
 
 def _base_url() -> str:
@@ -161,27 +154,41 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {token}"} if token else {}
 
 
-async def list_multichunk_candidates(session: aiohttp.ClientSession) -> list[dict]:
-    async with session.get(
-        f"{_base_url()}/internal/transcription/completed-multichunk",
-        headers=_headers(),
-        timeout=LIST_TIMEOUT,
-    ) as response:
-        if response.status != 200:
-            raise RuntimeError(f"candidate list fetch failed ({response.status})")
-        data = await response.json()
-        return data.get("jobs", [])
+async def list_hallucination_candidates(session: aiohttp.ClientSession) -> list[dict]:
+    """Every page through the existing WO-36 audit endpoint, keyset-paged
+    by version_id (same shape its own docstring describes) -- default
+    versions only, see this script's own module docstring for why."""
+    all_candidates: list[dict] = []
+    after_id = None
+    while True:
+        params = {"limit": str(CANDIDATE_PAGE_SIZE)}
+        if after_id is not None:
+            params["after_id"] = str(after_id)
+        async with session.get(
+            f"{_base_url()}/internal/transcription/hallucination-candidates",
+            params=params,
+            headers=_headers(),
+            timeout=LIST_TIMEOUT,
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError(f"candidate list fetch failed ({response.status})")
+            data = await response.json()
+        batch = data.get("candidates", [])
+        all_candidates.extend(batch)
+        if len(batch) < CANDIDATE_PAGE_SIZE:
+            break
+        after_id = batch[-1]["version_id"]
+    return [c for c in all_candidates if c.get("is_default")]
 
 
 async def fetch_stored_srt(
     session: aiohttp.ClientSession, slug: str
 ) -> Optional[tuple[str, list[dict]]]:
     """(raw SRT body, parsed segments), or None if the page has no
-    transcript at all (404) -- not a failure, just nothing to check.
-    Returns the raw body too because that's what expected_srt_hash is
-    computed from, not a re-serialization of the parsed segments (see
-    crud.create_segment_drop_version()'s own docstring for why those two
-    must not be conflated)."""
+    transcript at all (404). Returns the raw body too because that's
+    what expected_srt_hash is computed from, not a re-serialization of
+    the parsed segments (see crud.create_segment_drop_version()'s own
+    docstring for why those two must not be conflated)."""
     async with session.get(
         f"{_base_url()}/m/{slug}/transcript.srt", timeout=PROBE_TIMEOUT
     ) as response:
@@ -195,94 +202,41 @@ async def fetch_stored_srt(
         return body, parse_stored_srt(body)
 
 
-# How far (in segment count) either side of the estimated boundary index
-# to also try as the prev/new split point -- see find_seam_duplicates()'s
-# own comment for why the naive "first segment at/after the boundary
-# timestamp" split isn't reliable on its own: a chunk's own transcription
-# can produce a segment starting right at (or a hair past) the nominal
-# boundary, which is exactly what the real, confirmed Boulder County case
-# does (tests/test_worker_segment_utils.py's
-# test_count_seam_overlap_detects_real_production_duplicate -- its
-# "Um, there's an exhibit at the." segment starts at exactly the 900s
-# boundary and belongs on the PREVIOUS chunk's side, not the new one).
-SPLIT_SEARCH_RADIUS = 2
-
-
-def find_seam_duplicates(
-    segments: list[dict], *, total_chunks: int, chunk_size_seconds: int
-) -> list[dict]:
-    """Every seam (1..total_chunks-1) where the stored segments show a
-    real, confirmed near-duplicate restatement -- each finding names the
-    exact segment indices (into `segments`, 0-based) that
-    count_seam_overlap_segments() says to drop. Segments are assumed
-    sorted by `start`, same invariant TranscriptVersion.segments already
-    carries (workers always append/merge in order).
-
-    For each seam, tries a small neighborhood of candidate split points
-    around the estimated boundary index and keeps whichever split
-    produces the LARGEST confirmed overlap (0 if none clear the
-    detector's own threshold) -- see SPLIT_SEARCH_RADIUS's comment for
-    why a single rigid split isn't safe to trust here. This is a handful
-    of cheap, pure-Python calls per seam, not a new detector: every
-    candidate still goes through the exact same, already-tested
-    count_seam_overlap_segments().
+def find_repetition_loops(segments: list[dict]) -> list[dict]:
+    """Every run of consecutive near-duplicate segments that WO-36's own
+    detector would flag -- same two rules `_has_hallucinated_repetition_
+    run()` (worker/segment_utils.py) uses, applied per-run here instead
+    of short-circuiting on the first qualifying run in the transcript,
+    so a page with more than one loop gets all of them. Each finding's
+    `drop_segment_indices` is every index in the run EXCEPT the first --
+    see this module's own docstring for why the first cue is kept and
+    why nothing else in the transcript is touched.
     """
-    if total_chunks < 2 or not segments:
-        return []
-
-    starts = [seg["start"] for seg in segments]
     findings = []
-    for seam_index in range(1, total_chunks):
-        boundary = chunk_start(seam_index, chunk_size_seconds)
-        estimate = bisect.bisect_left(starts, boundary)
-
-        # Neither window may reach past the ADJACENT seam's own boundary
-        # -- otherwise, on a page whose segments are sparse enough that
-        # fewer than LOOKBACK_SEGMENTS fall between two consecutive
-        # seams, this seam's window would swallow the previous or next
-        # seam's unrelated content too, and a real duplicate found there
-        # could make count_seam_overlap_segments() over-drop into content
-        # that has nothing to do with THIS seam. Confirmed by a synthetic
-        # regression case in tests/test_repair_seam_duplication.py --
-        # without this bound it drops ordinary speech from a full
-        # 900-second chunk earlier for a duplicate that only touches the
-        # boundary two chunks later.
-        prev_floor = (
-            chunk_start(seam_index - 1, chunk_size_seconds) if seam_index > 1 else None
-        )
-        next_ceiling = (
-            chunk_start(seam_index + 1, chunk_size_seconds)
-            if seam_index < total_chunks - 1
-            else None
-        )
-
-        best_drop = 0
-        best_split = None
-        lo = max(1, estimate - SPLIT_SEARCH_RADIUS)
-        hi = min(len(segments), estimate + SPLIT_SEARCH_RADIUS + 1)
-        for split in range(lo, hi):
-            prev_window = segments[max(0, split - LOOKBACK_SEGMENTS) : split]
-            new_window = segments[split : split + LOOKBACK_SEGMENTS]
-            if prev_floor is not None:
-                prev_window = [s for s in prev_window if s["start"] >= prev_floor]
-            if next_ceiling is not None:
-                new_window = [s for s in new_window if s["start"] < next_ceiling]
-            drop = count_seam_overlap_segments(prev_window, new_window)
-            if drop > best_drop:
-                best_drop = drop
-                best_split = split
-
-        if not best_drop:
+    for start, length in _repetition_runs(segments):
+        qualifies = False
+        if length >= _HALLUCINATION_ABSOLUTE_RUN_LENGTH:
+            qualifies = True
+        elif length >= _HALLUCINATION_TILED_RUN_LENGTH:
+            span, coverage = _run_span_and_coverage(segments[start : start + length])
+            qualifies = (
+                span >= _HALLUCINATION_TILED_MIN_SECONDS
+                and coverage >= _HALLUCINATION_TILED_COVERAGE_RATIO
+            )
+        if not qualifies:
             continue
 
-        drop_start = best_split - best_drop
-        dropped = segments[drop_start:best_split]
+        run = segments[start : start + length]
+        drop_indices = list(range(start + 1, start + length))
         findings.append(
             {
-                "seam_index": seam_index,
-                "boundary_seconds": boundary,
-                "drop_segment_indices": list(range(drop_start, best_split)),
-                "dropped_text": " / ".join(seg["text"] for seg in dropped),
+                "run_start_index": start,
+                "run_length": length,
+                "kept_segment_index": start,
+                "drop_segment_indices": drop_indices,
+                "sample_text": run[0]["text"][:200],
+                "run_start_seconds": run[0]["start"],
+                "run_end_seconds": run[-1]["end"],
             }
         )
     return findings
@@ -291,18 +245,21 @@ def find_seam_duplicates(
 async def scan(
     session: aiohttp.ClientSession, *, limit: Optional[int], only_slugs: list[str]
 ) -> list[dict]:
-    candidates = await list_multichunk_candidates(session)
+    candidates = await list_hallucination_candidates(session)
     if only_slugs:
         wanted = set(only_slugs)
         candidates = [c for c in candidates if c["slug"] in wanted]
     if limit:
         candidates = candidates[:limit]
 
-    logger.info("Scanning %d candidate job(s) for seam duplication...", len(candidates))
+    logger.info(
+        "Scanning %d default-version candidate(s) for repetition loops...",
+        len(candidates),
+    )
 
     reports = []
-    for index, job in enumerate(candidates, 1):
-        slug = job["slug"]
+    for index, candidate in enumerate(candidates, 1):
+        slug = candidate["slug"]
         try:
             fetched = await fetch_stored_srt(session, slug)
         except (aiohttp.ClientError, asyncio.TimeoutError, RuntimeError) as e:
@@ -318,15 +275,11 @@ async def scan(
             continue
 
         srt_body, segments = fetched
-        findings = find_seam_duplicates(
-            segments,
-            total_chunks=job["total_chunks"],
-            chunk_size_seconds=job["chunk_size_seconds"],
-        )
+        findings = find_repetition_loops(segments)
         if findings:
             srt_hash = hashlib.sha256(srt_body.encode("utf-8")).hexdigest()
             logger.info(
-                "[%d/%d] %s: %d seam(s) with duplicated segments",
+                "[%d/%d] %s: %d loop(s) found",
                 index,
                 len(candidates),
                 slug,
@@ -334,25 +287,25 @@ async def scan(
             )
             for f in findings:
                 logger.info(
-                    "    seam %d @ %.0fs: drop %d segment(s) -- %r",
-                    f["seam_index"],
-                    f["boundary_seconds"],
+                    "    run @ %.0f-%.0fs: keep 1, drop %d segment(s) -- %r",
+                    f["run_start_seconds"],
+                    f["run_end_seconds"],
                     len(f["drop_segment_indices"]),
-                    f["dropped_text"][:200],
+                    f["sample_text"],
                 )
             reports.append(
                 {
-                    "job_id": job["job_id"],
+                    "version_id": candidate["version_id"],
                     "slug": slug,
-                    "title": job.get("title"),
-                    "total_chunks": job["total_chunks"],
+                    "title": candidate.get("title"),
+                    "already_flagged": candidate.get("already_flagged"),
                     "expected_srt_hash": srt_hash,
                     "findings": findings,
                 }
             )
         else:
             logger.info(
-                "[%d/%d] %s: clean, no seam duplication found",
+                "[%d/%d] %s: clean, no repetition loop found",
                 index,
                 len(candidates),
                 slug,
@@ -485,8 +438,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         dest="slugs",
-        help="Scan only this page (repeatable). Useful for spot-checking one "
-        "job_id's slug from a prior report.",
+        help="Scan only this page (repeatable).",
     )
     parser.add_argument(
         "--limit",
@@ -547,7 +499,7 @@ async def main(argv: Optional[list[str]] = None) -> int:
         reports = await scan(session, limit=args.limit, only_slugs=args.slugs)
         args.report_file.write_text(json.dumps(reports, indent=2))
         logger.info(
-            "\n%d page(s) with confirmed seam duplication. Report written to %s.",
+            "\n%d page(s) with confirmed repetition loops. Report written to %s.",
             len(reports),
             args.report_file,
         )

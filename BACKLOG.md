@@ -74,7 +74,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
   [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -101,10 +101,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (19)
+  Jurisdiction extraction & backfill  (18)
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
-    [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
     [JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
     [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
@@ -651,9 +650,10 @@ convenient.
      hands a windowed slice of the flat stored segments to the exact
      same, already-shipped `count_seam_overlap_segments()` the live
      prevention path uses — no new detection logic, no source fetch, no
-     compute. Applying writes through a new admin route,
-     `POST /internal/transcript-version/repair-seam-duplication`
-     (`crud.create_seam_repair_version()`), which never destroys
+     compute. Applying writes through a generic admin route,
+     `POST /internal/transcript-version/drop-segments`
+     (`crud.create_segment_drop_version()` — deliberately not named
+     after seam-dup specifically, see below), which never destroys
      history (old version stays reachable via `?version=`) and refuses
      on a stale `expected_srt_hash` rather than risking a silent
      overwrite of a page that changed since the dry run. Full test
@@ -662,20 +662,35 @@ convenient.
      `--dry-run` against production, review the report, then Ryan runs
      `--apply --from-report ...` — none of that has happened yet, this
      is the tool only.
-  1b. **Repetition-loop collapse is a separate, still-undesigned
-      piece — do not conflate it with the seam-dup script above.**
-      WO-36's detector (`_repetition_run_ratio()`,
-      `worker/segment_utils.py`/`archive/utils/transcription_quality.py`)
-      only *flags* a loop; nothing collapses one in stored segments yet,
-      and unlike seam-dup (where the fix is "drop N segments, keep
-      everything else exactly as-is"), a loop's correct collapsed form
-      is a real open question — keep one representative cue and delete
-      the rest? What happens to the timestamps/duration of the segments
-      that follow — shifted to close the gap, or left with a stretch of
-      dead air? That choice needs settling before any code, not
-      discovered by writing the code.
+  1b. **Repetition-loop collapse — design settled and built 2026-08-30.**
+      Design call: keep the run's first cue, drop the rest, never shift
+      any other segment's timestamps (the dropped span reverts to
+      unlabeled silence, which — per WO-36's own finding — is almost
+      always what it factually was). `scripts/repair_repetition_loops.py`
+      reuses WO-36's own per-run rules unmodified (`_repetition_runs()`/
+      `_run_span_and_coverage()` from `worker/segment_utils.py`, same
+      tiled-block/long-sparse-run thresholds), just applied to find
+      *every* qualifying run in a transcript instead of short-circuiting
+      on the first one. Candidates come from the existing
+      `GET /internal/transcription/hallucination-candidates` audit,
+      filtered to default versions only. Applies through the same
+      generic `drop-segments` route seam-dup uses — that route was
+      renamed from the seam-dup-specific name it shipped with, once it
+      became clear both defects reduce to the identical "drop N
+      segments, keep the rest" operation. Full test coverage against the
+      real Haines City (tiled block) and Halifax (long sparse run)
+      fixtures already in `tests/fixtures/hallucination_runs/`, plus the
+      real stutter/roll-call fixtures confirming no false positives; all
+      four CI gates pass. Same "tool only, nothing run against
+      production yet" state as step 1.
   2. **Re-transcribe Kitchener only** (local script, forced English);
-     trim the other three. Not started.
+     trim the other three. Not started — needs real Whisper compute
+     against real audio (typically 2-4 hours per meeting per this
+     entry's own cost note), which isn't something to run inline from an
+     interactive session; the existing `scripts/
+     transcribe_backlog_locally.py --promote` is the right tool, run by
+     Ryan on a local Mac the way every other local-Whisper backlog run
+     already happens.
   3. **Re-transcription on report** for anything the repair can't fix.
      Not started.
   4. **Extend the repair to the uncounted local-batch population by
@@ -1566,28 +1581,6 @@ from a live check), but the Legistar calendar itself is still untried.
   written. Run `GET /internal/jurisdiction/bleed-backfill-candidates`
   for the current list; ids above are from WO-47's 2026-08-23 audit.
 
-- **[JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
-  WO-47's glued-label repair (2026-08-23): only `Townofws` (page 693)
-  remains once the Beaumont AB pair's fix deploys.** This entry
-  previously claimed the whole original list (Bonnyville, Grand Valley,
-  Point Edward, Boulder County, Beaumont, Mackenzie) was "STILL wrong"
-  and that glued values could never be text-patched — both claims were
-  stale when re-checked against live rows (the verify-before-acting
-  rule): Bonnyville (890) was already correct ("Town of Bonnyville,
-  AB"), and WO-47's glued-label repair tier in `finalize_jurisdiction()`
-  (the same Census/StatsCan-validated `_validated_label_extract_with_
-  state()` the subdomain paths already trust) text-patches the rest
-  mechanically through the existing `POST /internal/jurisdiction/
-  backfill-apply` — Grand Valley, Point Edward, Boulder County, and
-  Mackenzie were all in WO-47's applied batch (see `BACKLOG_DONE.md`).
-  `Townofws` genuinely has no recoverable signal (wordninja can't expand
-  "ws"). **Beaumont fixed 2026-08-29 without a live re-resolve** — a
-  `_KNOWN_DOMAINS` registration for `pub-beaumontab.escribemeetings.com`
-  closes the real gap instead (see `BACKLOG_DONE.md`'s matching entry):
-  once that PR deploys, both pages (bare "Beaumont"/"City of Beaumont")
-  become real `backfill-apply` candidates, same as every other row this
-  entry already closed.
-
 - **[JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
   "San Jose" jurisdiction names are a recompute-backfill candidate.**
   Residual of WO-22 (full investigation, including the 76-row production
@@ -2145,8 +2138,9 @@ pushes that touch one service's tree, so it decays as PRs get broader.
 
 ### `[JUST-DO-IT]` Docker layer caching silently freezes the workers' *deliberately unpinned* `yt-dlp` and `faster-whisper`
 
-Found 2026-08-22 while measuring build volume; **not yet confirmed
-against a running worker** — see "how to confirm" below before acting.
+Found 2026-08-22 while measuring build volume. **Half-confirmed
+2026-08-30, the half reachable without Render access** — see "how to
+confirm" below for what's still missing before acting.
 
 `worker/requirements.txt` leaves `yt-dlp` and `faster-whisper` unpinned
 on purpose (WO-11), and CLAUDE.md is explicit about why: YouTube actively
@@ -2165,11 +2159,19 @@ changed, which is exactly the failure mode the unpinning was meant to
 avoid, and it fails silently — a stale yt-dlp shows up as YouTube
 resolves degrading, not as a build error.
 
-**How to confirm (do this first):** exec into a running worker and
-compare `pip show yt-dlp` against PyPI's current release, and check
-`git log -1 --format=%cd -- worker/requirements.txt` for how long that
-layer has been reusable. If the versions match, this entry is wrong and
-should be deleted.
+**How to confirm — first half done from the repo alone, 2026-08-30:**
+`git log -1 --format=%cd -- worker/requirements.txt` → **2026-08-24**
+(commit `209bba2`, a `markupsafe` hotfix — no `yt-dlp`/`faster-whisper`
+version bump). That's the last time this file's contents changed at
+all, so the install layer has been reusable (frozen) for **6 days** as
+of this check — real, not hypothetical, though 6 days alone isn't
+necessarily enough drift to have caused a real YouTube-resolve
+degradation yet. **Second half still needs Ryan, not reachable from an
+interactive session**: exec into a running worker (Render shell,
+`rtr-transcription-worker` or `-worker-2`) and compare `pip show
+yt-dlp` against PyPI's current release. If the versions match, this
+entry is wrong and should be deleted; if they differ, that's the real
+confirmation this entry has been waiting on.
 
 **If confirmed, the fix is small** — the usual options are a cache-bust
 `ARG`, a `--no-cache-dir` reinstall of just those two in a later layer,

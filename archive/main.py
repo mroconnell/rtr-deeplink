@@ -1521,31 +1521,34 @@ async def internal_promote_version(
     return result
 
 
-class RepairSeamDuplicationRequest(BaseModel):
+class DropSegmentsRequest(BaseModel):
     slug: str
     # sha256 of the raw /m/{slug}/transcript.srt body the caller scanned
-    # for seam duplication -- optimistic concurrency, see
-    # crud.create_seam_repair_version()'s own docstring for why this must
+    # for the defect it's repairing -- optimistic concurrency, see
+    # crud.create_segment_drop_version()'s own docstring for why this must
     # be a hard refusal on mismatch, not a warning, and why it's hashed
     # against to_srt() output rather than TranscriptVersion.content_hash.
     expected_srt_hash: str
     drop_segment_indices: List[int]
 
 
-@app.post("/internal/transcript-version/repair-seam-duplication")
-async def internal_repair_seam_duplication(
-    req: RepairSeamDuplicationRequest, authorization: Optional[str] = Header(None)
+@app.post("/internal/transcript-version/drop-segments")
+async def internal_drop_segments(
+    req: DropSegmentsRequest, authorization: Optional[str] = Header(None)
 ):
-    """Backs scripts/repair_seam_duplication.py --apply -- see
-    crud.create_seam_repair_version()'s own docstring for the full
-    reasoning. Dry-run needs no route at all (the script reads the
-    public transcript.srt export directly); this is only ever called
-    for a confirmed finding a human has already had the chance to see.
+    """Generic retroactive-repair write, shared by scripts/repair_seam_
+    duplication.py --apply and scripts/repair_repetition_loops.py
+    --apply -- see crud.create_segment_drop_version()'s own docstring
+    for the full reasoning behind this being one reusable route rather
+    than a route per defect type. Dry-run needs no route at all (each
+    script reads the public transcript.srt export directly); this is
+    only ever called for a confirmed finding a human has already had
+    the chance to see.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    result = await crud.create_seam_repair_version(
+    result = await crud.create_segment_drop_version(
         slug=req.slug,
         expected_srt_hash=req.expected_srt_hash,
         drop_segment_indices=req.drop_segment_indices,
