@@ -144,6 +144,51 @@ BEDFORD_HEADER_HTML = """
 
 BEDFORD_URL = "https://bedfordoh.primegov.com/Portal/Meeting?meetingTemplateId=518"
 
+# Real (trimmed) page shape, fetched live 2026-08-30
+# (townoffrisco.primegov.com/Portal/Meeting?meetingTemplateId=1834) --
+# BACKLOG.md's open [NEEDS-AUDIT] PrimeGov/Frisco entry. Kept verbatim
+# from the real page except for surrounding CSS/agenda-item noise: the
+# real "watch the meeting on Frisco's Youtube Channel" prose line (which
+# does NOT match `_JURISDICTION_RE`'s "(city|county|town) of" shape, so
+# it was never the actual false-positive source) and the real
+# "TOWN COUNCIL OF THE TOWN OF FRISCO" letterhead. Re-verified live this
+# entry's claimed root cause -- an embedded "Subscribe to Town of Frisco
+# Government YouTube Channel" widget label beating this real header --
+# does not occur: that text is never present in the server-rendered HTML
+# fetched here (checked 4 real meeting pages, both the `meetingTemplateId`
+# and `compiledMeetingDocumentFileId` URL shapes); it's YouTube's own
+# IFrame Player chrome, rendered client-side inside a cross-origin
+# `<iframe>` a plain HTTP fetch never sees at all -- the real page only
+# ever carries an empty `<div id="ytplayer">` placeholder server-side
+# (confirmed via the real raw HTML). See jurisdiction_enrich.py's
+# `townoffrisco.primegov.com` entry for the real gap this domain actually
+# has (a missing state, not a wrong name).
+FRISCO_HEADER_HTML = """
+<span style="font-size:12pt;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>To join the Town Council meeting via Zoom Video Conferencing, or watch the meeting on Frisco&rsquo;s Youtube Channel,</strong><strong>&nbsp;</strong><strong><a href="https://www.friscogov.com/your-government/councils-and-commissions__trashed/council-and-commission-meetings/">click here.</a></strong></span></span><br>
+<span style="font-size:12pt;"><span style="font-family:Arial,Helvetica,sans-serif;"><strong>WORK SESSION AGENDA OF THE<br>
+TOWN COUNCIL OF THE TOWN OF FRISCO<br>
+FRISCO TOWN HALL<br>
+1 MAIN STREET<br>
+FRISCO, COLORADO&nbsp; 80443</strong><br>
+<strong>January 14, 2025 4:00PM</strong></span></span></p>
+"""
+
+FRISCO_URL = "https://townoffrisco.primegov.com/Portal/Meeting?meetingTemplateId=1834"
+# Real confirmed video id for this exact real meeting (ListArchivedMeetings
+# API, templateId 1834 -> videoUrl "https://youtube.com/watch?v=acILyjMy3ic").
+FRISCO_VIDEO_ID = "acILyjMy3ic"
+
+PAGE_HTML_FRISCO_FULL = f"""
+<html><head><title>Meeting</title></head>
+<body>
+{FRISCO_HEADER_HTML}
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+var videoUrl = "{FRISCO_VIDEO_ID}";
+</script>
+</body></html>
+"""
+
 
 def _fake_extract_info(video_id):
     return {
@@ -524,6 +569,36 @@ async def test_resolve_known_domain_override_beats_a_false_positive_body_match(
     assert result.jurisdiction == "City of Salt Lake City, UT"
 
 
+async def test_resolve_frisco_real_page_resolves_town_with_state_not_youtube_label(
+    monkeypatch,
+):
+    # Regression test for BACKLOG.md's open [NEEDS-AUDIT] PrimeGov/Frisco
+    # entry -- re-verified live 2026-08-30 (see FRISCO_HEADER_HTML's own
+    # comment for the full writeup) that the entry's claimed root cause
+    # (a "Subscribe to Town of Frisco Government YouTube Channel" widget
+    # label winning over the real header) never actually reaches this
+    # adapter's page-text extraction: it's rendered client-side inside a
+    # cross-origin YouTube iframe, never part of the server-rendered HTML
+    # this fetches. Against the real page, resolve() already gets the
+    # name right ("Town of Frisco") -- the actual, confirmed gap is a
+    # missing state ("Frisco" is nationally ambiguous with Frisco, TX),
+    # closed by the townoffrisco.primegov.com domain entry in
+    # jurisdiction_enrich.py. This asserts the real end-to-end outcome:
+    # the correct "Town of Frisco, CO", and explicitly not any
+    # YouTube-channel-shaped text.
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    routes = {
+        FRISCO_URL: FakeResponse(status=200, text=PAGE_HTML_FRISCO_FULL, url=FRISCO_URL)
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(FRISCO_URL)
+
+    assert result.jurisdiction == "Town of Frisco, CO"
+    assert "YouTube" not in result.jurisdiction
+    assert "Channel" not in result.jurisdiction
+
+
 # Real page shape, fetched live 2026-08-30
 # (lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963) --
 # BACKLOG.md's "lacity.primegov.com's coin-flip problem" entry. Confirmed
@@ -743,6 +818,118 @@ async def test_resolve_delegates_to_swagit_via_tenant_api_when_no_youtube_video(
     # "View original source" keeps pointing at the real PrimeGov page, not
     # the swagit.com URL discovered behind the scenes via the tenant API.
     assert result.source_url == BAYCOUNTY_URL
+
+
+SAN_ANTONIO_COMPILED_URL = (
+    "https://sanantonio.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=9911"
+)
+SAN_ANTONIO_API_URL_2022 = (
+    "https://sanantonio.primegov.com/api/v2/PublicPortal/ListArchivedMeetings?year=2022"
+)
+# Real (trimmed) page shape, fetched live 2026-08-30. `var videoUrl = ""`
+# is the real value on this page (empty, not absent) -- this URL shape
+# never carries a YouTube embed id itself; the real video lives behind
+# the tenant's own API, only reachable via this page's own
+# `compiledMeetingDocumentFileId` query param since the API's real
+# document id space (`documentList[].id`) doesn't correspond to
+# `meetingTemplateId` at all (see the API response comment below).
+SAN_ANTONIO_COMPILED_HEADER_HTML = """
+<span>Meeting City of San Antonio AGENDA<br>
+Planning Commission<br>
+Development and Business Services Center<br>
+1901 S. Alamo<br>
+Wednesday, January 26, 2022 2:00 PM</span>
+"""
+
+PAGE_HTML_SAN_ANTONIO_COMPILED = f"""
+<html><head><title>Meeting</title></head>
+<body>
+{SAN_ANTONIO_COMPILED_HEADER_HTML}
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+var videoUrl = "";
+</script>
+</body></html>
+"""
+
+# Real (trimmed) ListArchivedMeetings?year=2022 API response for this
+# exact document id -- fetched live 2026-08-30. Confirmed real:
+# `documentList[].id` 9911 belongs to meeting id 552 (San Antonio's real
+# Jan 26, 2022 Planning Commission meeting), a DIFFERENT id space from
+# `templateId` 3915 on the same document -- exactly the distinct-id-space
+# case the compiledMeetingDocumentFileId fix has to match against
+# `document["id"]`, not `document["templateId"]`.
+SAN_ANTONIO_API_RESPONSE_2022 = json.dumps(
+    [
+        {
+            "id": 552,
+            "documentList": [
+                {"id": 9911, "templateId": 3915, "templateName": "HTML Agenda"},
+                {"id": 9753, "templateId": 3915, "templateName": "Agenda"},
+            ],
+            "videoUrl": "https://sanantoniotx.new.swagit.com/videos/153553",
+            "swagitId": "videos/153553",
+            "title": "Planning Commission",
+            "date": "Jan 26, 2022",
+            "isShowVideoIcon": True,
+        }
+    ]
+)
+
+SAN_ANTONIO_SWAGIT_URL = "https://sanantoniotx.new.swagit.com/videos/153553"
+# Synthetic (see comment block above BAYCOUNTY_URL/SWAGIT_HTML) -- same
+# minimal shape tests/test_swagit.py's own BASE_HTML fixture uses; only
+# this URL's existence and its real `videoUrl` value (confirmed above via
+# the tenant API) were captured live, not the Swagit page's own markup.
+SAN_ANTONIO_SWAGIT_HTML = (
+    "<html><head><title>Jan 26, 2022 Planning Commission - "
+    "San Antonio, TX</title></head>"
+    '<body><script>var playlist = [{"file": '
+    '"https://archive-stream.granicus.com/sa/playlist.m3u8"}];</script></body></html>'
+)
+
+
+async def test_resolve_delegates_to_swagit_via_tenant_api_using_compiled_document_id():
+    # Regression test for BACKLOG.md's PrimeGov compiledMeetingDocumentFileId
+    # entry -- confirmed live 2026-08-30: sanantonio.primegov.com/Portal/
+    # Meeting?compiledMeetingDocumentFileId=9911 used to return "No video
+    # found on this PrimeGov page" (the honest-decline path, since
+    # _extract_meeting_template_id only ever read `?meetingTemplateId=`
+    # and this URL shape has none) even though this tenant's own
+    # ListArchivedMeetings API has a real Swagit video for the underlying
+    # meeting. `compiledMeetingDocumentFileId` is a `documentList[].id`
+    # value, a different id space from `documentList[].templateId` --
+    # confirmed live these don't even correspond to the same meeting
+    # id-for-id (document id 9911 is San Antonio's real Jan 26, 2022
+    # Planning Commission meeting; a differently-shaped
+    # `?meetingTemplateId=61635` URL on the same tenant resolves a real
+    # but entirely different meeting, Jan 12, 2026's Zoning Board of
+    # Adjustment) -- so this must be matched as its own real lookup path,
+    # not a simple field-name swap.
+    _register_delegation_targets()
+    routes = {
+        SAN_ANTONIO_COMPILED_URL: FakeResponse(
+            status=200,
+            text=PAGE_HTML_SAN_ANTONIO_COMPILED,
+            url=SAN_ANTONIO_COMPILED_URL,
+        ),
+        SAN_ANTONIO_API_URL_2022: FakeResponse(
+            status=200, text=SAN_ANTONIO_API_RESPONSE_2022
+        ),
+        SAN_ANTONIO_SWAGIT_URL: FakeResponse(
+            status=200, text=SAN_ANTONIO_SWAGIT_HTML, url=SAN_ANTONIO_SWAGIT_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(SAN_ANTONIO_COMPILED_URL)
+
+    assert result.platform == "swagit"  # delegated finder's own platform name
+    assert result.video_url == "https://archive-stream.granicus.com/sa/playlist.m3u8"
+    # Same source_url-preserving choice as every other delegation path in
+    # this module -- "View original source" keeps pointing at the real
+    # PrimeGov page, not the swagit.com URL discovered behind the scenes.
+    assert result.source_url == SAN_ANTONIO_COMPILED_URL
 
 
 CAMBRIDGE_URL = "https://cambridgema.primegov.com/Portal/Meeting?meetingTemplateId=2163"
@@ -1024,15 +1211,22 @@ async def test_resolve_reports_known_video_when_tenant_api_has_no_url_but_sets_v
     ]
 
 
-async def test_resolve_skips_tenant_api_entirely_when_url_has_no_meeting_template_id():
-    # No meetingTemplateId in the URL at all -- _extract_meeting_template_id
-    # returns None before any API request would be built, so this must
-    # resolve straight to the honest "no video" response with ZERO extra
-    # HTTP calls. mock_session's routes dict below deliberately contains
-    # only the page fetch itself -- an unmocked request raises
-    # AssertionError, so this test would fail loudly if the tenant-API
-    # fallback were ever (wrongly) attempted here.
-    url = "https://okc.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=123"
+async def test_resolve_skips_tenant_api_entirely_when_url_has_neither_id():
+    # Neither meetingTemplateId nor compiledMeetingDocumentFileId is in
+    # the URL at all -- both _extract_meeting_template_id and
+    # _extract_compiled_document_id return None before any API request
+    # would be built, so this must resolve straight to the honest "no
+    # video" response with ZERO extra HTTP calls. mock_session's routes
+    # dict below deliberately contains only the page fetch itself -- an
+    # unmocked request raises AssertionError, so this test would fail
+    # loudly if the tenant-API fallback were ever (wrongly) attempted
+    # here. (Before the 2026-08-30 compiledMeetingDocumentFileId fix,
+    # this test used a URL carrying that param as its "no id" case --
+    # that's now a real, valid trigger in its own right, see
+    # test_resolve_delegates_to_swagit_via_tenant_api_using_compiled_document_id
+    # below, so this test needed a URL with neither id to still prove the
+    # thing it's named for.)
+    url = "https://okc.primegov.com/Portal/Meeting?someOtherParam=123"
     routes = {url: FakeResponse(status=200, text=PAGE_HTML_NO_VIDEO, url=url)}
 
     with mock_session(routes):
@@ -1122,6 +1316,27 @@ def test_extract_meeting_template_id_returns_none_when_absent():
     assert (
         PrimeGovAssetFinder._extract_meeting_template_id(
             "https://okc.primegov.com/Portal/Meeting?compiledMeetingDocumentFileId=123"
+        )
+        is None
+    )
+
+
+def test_extract_compiled_document_id_reads_the_query_param():
+    # Real confirmed URL shape (sanantonio.primegov.com, 2026-08-30) --
+    # see the module-level comment on `_VIDEO_URL_VAR_RE`'s siblings.
+    assert (
+        PrimeGovAssetFinder._extract_compiled_document_id(
+            "https://sanantonio.primegov.com/Portal/Meeting"
+            "?compiledMeetingDocumentFileId=9911"
+        )
+        == "9911"
+    )
+
+
+def test_extract_compiled_document_id_returns_none_when_absent():
+    assert (
+        PrimeGovAssetFinder._extract_compiled_document_id(
+            "https://okc.primegov.com/Portal/Meeting?meetingTemplateId=68482"
         )
         is None
     )
