@@ -280,9 +280,31 @@ def lookup_city_state(name: str) -> Optional[str]:
     OR, AL, and TX; "Charlotte" in NC, MI, IA, TX, and TN; "Kansas City"
     is a real, substantial city in *both* KS and MO -- all three return
     None here even though this app already resolves specific, confirmed
-    instances of some via `lookup_by_domain()` below."""
+    instances of some via `lookup_by_domain()` below.
+
+    Falls back to `_SUBDIVISION_STATES` (townships/towns -- WO-16's
+    separate COUSUB gazetteer, see that table's own load-site comment)
+    ONLY when no `_PLACE_STATES` candidate matched at all -- a town
+    government is the same "not a county" category this function's
+    callers already bucket bare names into (see `resolve_state()`'s
+    city/county type split), and a place-table hit, ambiguous or not,
+    already returns before this ever runs, so adding it can't change any
+    existing place-table outcome. Real gap this closes, confirmed live
+    2026-08-29: "Seekonk" (MA) and "Piscataway" (NJ) are both real,
+    nationally-unambiguous towns/townships missing from `places.csv`
+    entirely -- New England towns and PA/NJ townships are frequently
+    absent from the incorporated-place gazetteer this module is built
+    from, the same gap this file's `_KNOWN_ORG_TOKEN_JURISDICTIONS`-style
+    per-adapter workarounds elsewhere already document; this closes it at
+    the shared root instead of per-adapter. Still correctly declines on a
+    genuine subdivision-table collision (e.g. "Peters Township" is real
+    in both KS and PA)."""
     for candidate in _normalize_candidates(name):
         states = _PLACE_STATES.get(candidate)
+        if states:
+            return states[0] if len(set(states)) == 1 else None
+    for candidate in _normalize_candidates(name):
+        states = _SUBDIVISION_STATES.get(candidate)
         if states:
             return states[0] if len(set(states)) == 1 else None
     return None
