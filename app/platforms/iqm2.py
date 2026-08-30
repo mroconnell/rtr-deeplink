@@ -166,6 +166,19 @@ class IQM2AssetFinder(AssetFinder):
                 video_warnings=["No video found for this meeting."],
             )
 
+        ext = video_url.rsplit(".", 1)[-1].split("?")[0].lower()
+        # Confirmed live 2026-08-29: not every IQM2 tenant's MEDIA URL
+        # comment is Granicus HLS like the Atlanta sample this adapter was
+        # originally built against -- San Carlos, CA returns a direct
+        # .mp4 instead, and hardcoding "m3u8" mislabeled it, producing a
+        # <source type="application/vnd.apple.mpegurl"> pointing at a
+        # real .mp4 file. That mismatch was a real, confirmed contributor
+        # to Search Console's "video isn't on a watch page" report (see
+        # BACKLOG.md). Same extension-derivation pattern as
+        # cablecast.py's PublicSite path; falls back to "m3u8" (the
+        # originally-confirmed default) for an unrecognized extension.
+        video_format = ext if ext in ("mp4", "m3u8", "mov", "m4v") else "m3u8"
+
         return ResolvedMeeting(
             platform=self.platform_name,
             source_url=url,
@@ -173,7 +186,7 @@ class IQM2AssetFinder(AssetFinder):
             date=date,
             jurisdiction=jurisdiction,
             video_url=video_url,
-            video_format="m3u8",
+            video_format=video_format,
             agenda_items=agenda_items,
         )
 

@@ -58,18 +58,15 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  Confirmations nobody has actually watched happen  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-    [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
-    [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (8)
+  Production actions only Ryan should take  (7)
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
-    [HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
-    [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
-    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
+    [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
+    [HUMAN] Postgres Storage Autoscaling is off — decide whether to
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
@@ -78,7 +75,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
+  [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
@@ -154,9 +152,9 @@ Reliability, ops & cost  (17)
   Search Console, structured data & SEO plumbing  (5)
     [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-    [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
-    [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
-    [JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
+    [WAIT] Search Console "Page indexed without content"
+    [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
+    [JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -357,11 +355,13 @@ so that work reads together.
   `/meetings`, `/coverage`, `/state/*` and `/account/saved` all forward
   the user's cookie for Clerk auth. Roll back by restoring the public
   URL if anything 502s — it's a single env-var change, no code deploy.
-  **Not urgent on cost grounds** (see the corrected numbers in
-  `BACKLOG_DONE.md`'s "Render bandwidth" entry — the account is at
-  14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
-  implied), but it is free money and halves the blast radius of any
-  future traffic spike.
+  **Updated 2026-08-29, and this changes the urgency**: bandwidth is now
+  **31.74 GB of the 25 GB included allowance — already over**, up from
+  14.54 GB when this entry last measured it (see `BACKLOG_DONE.md`'s
+  "Render bandwidth" entry for that earlier read). The double-proxy
+  waste this entry describes is no longer just "free money left on the
+  table" — it's now plausibly a real chunk of a real overage charge.
+  Worth doing sooner rather than opportunistically.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -427,35 +427,11 @@ convenient.
   check the Events tab before rolling back and record whether Render
   caught it. Kept here only so nobody re-runs the same passive check
   expecting a different answer.
-- **[HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
-  the new pinned lockfiles** (WO-11) — verified locally in an isolated
-  venv per service, but the actual Render build hasn't been watched
-  since.
-- **[HUMAN] Configure GA's internal traffic filter — the
-  `submit_meeting_url` spike this entry used to track down turned out to
-  be Ryan, not users or a bot (read live 2026-08-22, supersedes the
-  2026-08-17 partial check).** The Aug 10–16 daily numbers (184 events,
-  peaking 10× on Aug 12–13) are Ryan entering meeting URLs by hand before
-  bulk-ingestion tooling existed — not a bot, not the campaign. That
-  means the earlier "185/week, funnel looks healthy" read was measuring
-  the operator, not users: the honest current state is effectively zero
-  external `/m/*` traffic, which is fine for this stage but different
-  from what the metrics implied. Full day-by-day numbers, and why the
-  "22 `/m/*` events with no confirmed source" question is now cheap to
-  settle by watching whether they change shape post-fix, are in
-  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-22]` entry.
-
-  **The fix**: GA Admin → Data Streams → Configure tag settings → Define
-  internal traffic, then activate the `internal` filter in Admin → Data
-  Settings → Data Filters. Without it, every metric on this property is
-  a mix of operator and user activity with no way to separate them after
-  the fact — this is the second time that's produced a wrong conclusion
-  from real data.
-
-  ~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
+~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
   2026-08-22** — `GA_MEASUREMENT_ID` is now declared on the Archive too
   (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
-  events on `/m/*` pages" entry.
+  events on `/m/*` pages" entry. GA internal-traffic setup and
+  cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 
 ### Production actions only Ryan should take
 
@@ -498,76 +474,37 @@ convenient.
   (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
   is a **Granicus vendor marketing event, not a government meeting** —
   needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
-- **[HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
-  limit and auto-restarted once — first occurrence, not yet clustering
-  (2026-08-26T01:13:58Z).** From the daily inbox-triage Routine
-  (`CLAUDE_INBOX_TRIAGE.md`, promoted here). Render auto-restarted the
-  service; brief interruption, self-recovered, no user reports or
-  follow-up alerts since. Render's email gives only the generic three
-  possible causes (leak / traffic spike / undersized instance) and its
-  metrics/Events tabs are auth-walled, so this couldn't be confirmed
-  further from the repo.
-  Code review found nothing obviously memory-heavy in `app/main.py`:
-  `/meetings`, `/state/*`, `/j/*`, `/coverage`, `/account/saved` are thin
-  reverse-proxies to Archive (`_proxy_to_archive()`) that stream via
-  `response.content.iter_chunked(65536)` rather than buffering, and the
-  only worker-adjacent import is a bounded `ffprobe` duration probe
-  (`app/platforms/media_probe.py`) — no `list_pages()`-style
-  load-everything pattern like the one that OOM'd Archive on 2026-08-17.
-  **What is a real fact, not speculation**: `rtr-deeplink` is the *only*
-  one of the four Render services still on `plan: starter` (512MB) —
-  Archive and both transcription workers are already `plan: standard`,
-  and Archive's own upgrade was made for this exact failure shape
-  (`"Ran out of memory (used over 512MB)"`). That doesn't prove
-  `rtr-deeplink` needs the same upgrade from one self-recovered restart,
-  but it's not a coincidence-free signal either.
-  **Open question for Ryan**: check the Render dashboard's real memory
-  graph for `rtr-deeplink` — is this a one-off traffic spike, or does it
-  correlate with a request pattern (e.g. concurrent `/api/resolve` calls
-  each spawning an `ffprobe` subprocess)? If it recurs or clusters, the
-  fix is the same one-line change already used for the other three
-  services: `plan: starter` → `plan: standard` in `render.yaml`.
-- **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
-  the resolver's own database was never measured, and the plan's real
-  storage cap is still unknown (2026-08-25).** WO-60 (fully executed and
-  closed 2026-08-29 — see `BACKLOG_DONE.md` for the real before/after
-  numbers) root-caused the 2026-08-24 ">90% storage" alert to
-  `meeting_page_thumbnails` and shipped the cap/cleanup. **Correction
-  worth keeping**: this entry previously guessed the driver was ordinary
-  segment growth (the second worker plus 167,719 segments in 24h). That
-  was wrong — it was 12 JPEG frames per page across ~1,200 pages. A
-  plausible cause sized from a real number still isn't a measured one.
-  What WO-60 does not cover:
-  - `scripts/analyze_db_storage.py` reads `pg_database_size(current_database())`,
-    i.e. `rtr_archive` only. **One Postgres server hosts `rtr_deeplink_db`
-    too**, and a suspension takes both down. `GET /internal/db-size`
-    (WO-61) reports every database on the server, and needs no shell:
-    ```
-    curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
-    ```
-  - **The plan's storage allotment is still not written down anywhere.**
-    `render.yaml`'s `basic-1gb` comment is entirely a RAM/`shared_buffers`
-    argument. Until that number is read off the dashboard once and
-    recorded there, "90% of what?" stays unanswerable from the repo, and
-    the next alert costs the same investigation.
-
-- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
-  part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
-  cluster (unclosed connections, a proxy `TimeoutError`, a
-  `RuntimeError` on Render's own health probe, a DB-shutdown error),
-  most of it explained by `BACKLOG_DONE.md`'s already-documented WO-10
-  outage that evening (PR #116's model column deploying ~13 minutes
-  ahead of its `ALTER TABLE`). **(a) Resolved — the OOM did precede the
-  schema errors, and it caused them.** See `BACKLOG_DONE.md`'s "Archive
-  memory graph, 2026-08-17" entry for the read of Render's own graph.
-  **(b) Still open, needs the Events tab, not the metrics tab:** WO-10's
-  own fix deploy (PR #156) failed to deploy at 23:54:28 UTC =
-  **16:54 PT** the same evening, though `render.yaml` on `main` today
-  confirms a later attempt succeeded. The memory graph says nothing
-  about a failed *build*; this needs `rtr-deeplink-archive` → **Events**,
-  filtered to 2026-08-17 late afternoon PT, to see what the failure
-  actually was. Cheap to fold into the health-check-gate Events check
-  above, since that's the same tab.
+- **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
+  upgrade — evidence now leans toward "recurs," not "one-off"
+  (investigated live 2026-08-29, see `BACKLOG_DONE.md`).** The
+  2026-08-26T01:13:58Z auto-restart's memory graph shows the instance
+  sitting sustained near ~90% of its 512MB limit *before* a sharp
+  concurrent-load spike tipped it over, then climbing straight back to
+  ~90% within minutes post-restart — not a one-off blip from a healthy
+  baseline. `rtr-deeplink` is still the only one of the four Render
+  services on `plan: starter`; the other three already made this exact
+  jump for this exact failure shape. Ryan's call: bump `render.yaml`'s
+  `rtr-deeplink` block from `plan: starter` to `plan: standard`, or wait
+  for a second occurrence.
+- **[HUMAN] Postgres Storage Autoscaling is off — decide whether to
+  enable it (found 2026-08-29, see `BACKLOG_DONE.md`).** The storage
+  plan is now a documented **5 GB** (Settings → Storage), closing the
+  "cap unknown" half of the WO-60 storage-alert residuals — the
+  `render.yaml` `basic-1gb` comment was always a RAM figure, never disk.
+  What's newly surfaced: **Storage Autoscaling is disabled**, so
+  crossing 90% full again (as already happened once, 2026-08-24) has no
+  automatic backstop — Render would otherwise auto-grow by 50% (rounded
+  to the next 5GB, max once per 12h). A "Disk size changed" event fired
+  2026-08-25 9:26 AM, meaning the disk has already been bumped by hand
+  once. Ryan's call: enable autoscaling, or keep manual control given
+  the WO-60 cap/cleanup is now in place.
+  Still outstanding, unrelated to the above: `scripts/analyze_db_storage.py`
+  only reads `rtr_archive`'s size — `GET /internal/db-size` (WO-61)
+  reports every database on the shared server (including
+  `rtr_deeplink_db`) and needs no shell:
+  ```
+  curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
+  ```
 - **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
   duplication — the apply ran 2026-08-22 and rate-limited on exactly
   those.** 14 of 25 rewritten and verified live; **every non-YouTube
@@ -764,6 +701,72 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+  validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
+  the 2026-08-21 fix. Human dashboard verification is done; what's left
+  is a real code investigation, not a dashboard check — moved out of
+  Needs a human 2026-08-29.** Checked live against Google's own
+  documented requirements ([indexing status
+  reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
+  [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
+  four real, distinct contributors found so far, one fixed same day, one
+  scoped, two genuinely open. Original root cause (2026-08-21):
+  `meeting_page.html` used to render every non-YouTube video as a bare
+  `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
+  day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. Search
+  Console shows **Started: 8/22/26, Failed: 8/24/26**, Affected videos
+  **1.76K**.
+
+  **Found so far:**
+  1. **Meeting-page template fix: confirmed genuinely deployed and
+     correct**, checked against a wide, real, currently-failing sample
+     (Cablecast mp4, Granicus m3u8, champds, isilive, townhallstreams,
+     Seattle Channel, CloudFront-tokenized) — all render correctly.
+     Video position in the DOM is already good, thumbnails are already
+     correctly guarded and stable. One prior hypothesis is refuted, not
+     just unconfirmed: M3U8 is explicitly a Google-supported file type,
+     so "the indexer can't handle HLS" is wrong. What's left open: the
+     fix may not have been live in production yet when Google's
+     8/22-8/24 validation ran (deploys here are manual) — needs a fresh
+     Validate Fix click to test.
+  2. **IQM2 hardcoded `video_format="m3u8"` regardless of the real file
+     extension: confirmed and fixed 2026-08-29** (`app/platforms/iqm2.py`,
+     regression test in `tests/test_iqm2.py`, full suite green). Not yet
+     deployed.
+  3. **`/j/*` and `/state/*` hub pages emit `VideoObject` for content
+     they don't host: real, scoped, fix recommendation ready, not yet
+     built** — see its own entry under **Reliability, ops & cost →
+     Search Console, structured data & SEO plumbing**
+     (`archive/templates/jurisdiction_page.html`,
+     `state_page.html`, `state_all50.html`). Confirmed against Google's
+     own named negative example ("a video category page that lists
+     multiple videos of equal prominence"), not just inferred. Estimated
+     700-800 live pages affected — plausibly the dominant driver of the
+     947→1,764 growth.
+  4. **At least one vendor's `contentUrl` is a signed, expiring
+     CloudFront URL** (`?token=...`, routed through
+     `generic_fallback.py`, no dedicated adapter) — a genuine stable-URL
+     violation per Google's docs, confirmed on 2 real pages. Would need
+     a video proxy to fix, not a template change; population size
+     unswept.
+
+  **The actual remaining work, per Ryan (2026-08-29): take one real,
+  currently-failing sample URL from *each* host/platform showing up in
+  Search Console's failing-examples list (Granicus, Cablecast/azureedge,
+  IQM2 [now fixed], champds, isilive, townhallstreams, CloudFront-
+  tokenized, and any others that turn up) and read that page line by
+  line — full rendered HTML, JSON-LD, and the actual served video/
+  thumbnail resources — looking for what's systematically making Google
+  say "not on a watch page" for that platform specifically.** The four
+  findings above came from spot-checking a handful of examples per
+  platform, not an exhaustive per-host read; a real per-host pass may
+  surface further platform-specific issues the spot-checks missed (the
+  IQM2 bug is exactly the shape of thing a broader per-host read finds
+  that a handful of random samples doesn't). Cross-reference each
+  platform's `video_format`/`video_url` assignment in
+  `app/platforms/*.py` against what the template actually renders, the
+  same way the IQM2 fix was found.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
@@ -2066,13 +2069,14 @@ Addressed by `autoDeploy: false` on all four services plus a CLAUDE.md
 convention on batching merges and asking for deploys — see WO-59 in
 `BACKLOG_DONE.md`.
 
-**Watch this before 08-27/28.** Ryan's goal is to downgrade the workspace
-again once build volume is efficient enough. **812 / 1,000 was cumulative
-against the raised cap**, projecting ~1,145 by month end. Two caveats on
-the numbers above: they are build *counts*, and Render bills build
-*minutes* — nobody has read per-service durations off the dashboard yet —
-and a saving only lands on pushes that touch one service's tree, so it
-decays as PRs get broader.
+**Confirmed 2026-08-29 (Included Usage dashboard): 1,001 / 1,000 pipeline
+minutes — already over the included allowance**, ahead of the ~1,145
+month-end projection this entry used to carry. Ryan's goal is to
+downgrade the workspace again once build volume is efficient enough; that
+goal is not yet met. Two caveats on the earlier 812/1,000 figure: it was
+a build *count*, and Render bills build *minutes* — nobody has read
+per-service durations off the dashboard yet — and a saving only lands on
+pushes that touch one service's tree, so it decays as PRs get broader.
 
 **Two residuals:**
 - **`[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
@@ -2376,33 +2380,18 @@ top-up driver has been creating zero jobs" under **Transcription queue
 ### Search Console, structured data & SEO plumbing
 
 - **[NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
-  unknown (2026-08-25).** The Soft 404 category below is solved for one
-  of its three real URLs; these two are not, and the confirmed cause does
-  not explain them. Both **have real video and a long real transcript**
-  (Ryan pasted what they render):
+  still unknown; Request Indexing sent 2026-08-29 but the diagnostic
+  question is still open (see `BACKLOG_DONE.md`).**
   `/m/beaufort-board-of-education-academics-committee` and
-  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`.
-  Ruled out already: the transcript is fully server-rendered
-  (`meeting_page.html:522-590`, a real `{% for %}` over segments), so
-  "Googlebot needed JS and gave up" is not it. What they share, unlike the
-  solved one: both are **Granicus** (the solved one is ChampDS), both have
-  a **bare jurisdiction with no state** ("Beaufort", "Carrollton" — no
-  "More `<State>` meetings" link), and **both transcripts are visibly
-  garbled** (Beaufort renders the Pledge of Allegiance as "the United
-  States of Arizona").
-  **Two candidates, neither confirmed:** (1) Googlebot received a
-  **truncated 200** — `_proxy_to_archive()`'s `body_iterator()` catches a
-  cut-short upstream stream and lets the generator end cleanly, but
-  `StreamingResponse` has already committed 200 by then, so a crawler gets
-  a broken page with a success status. Known live failure (Sentry
-  PYTHON-FASTAPI-Q) and the crawl dates (Aug 21-22) sit beside the
-  documented 2026-08-22 Archive-proxy cluster. (2) Google judged the
-  content low-value — a dead 2022 Granicus clip plus hallucinated
-  transcript text.
-  **`[LOGIN]` One check separates them**: Search Console → URL Inspection
-  → *View crawled page*. Truncated HTML means (1) and the fix is in the
-  proxy, not in indexing rules; the full page means (2) and the answer is
-  transcript quality. Don't build for either until that's read.
+  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
+  both have real video and a long real transcript, both Granicus, both
+  bare-jurisdiction-no-state, both visibly garbled transcripts. Two
+  candidates, neither confirmed: (1) a truncated-200 proxy bug
+  (`_proxy_to_archive()`'s `body_iterator()`, known live Sentry
+  PYTHON-FASTAPI-Q failure) vs. (2) Google judging the content
+  genuinely low-value. **`[LOGIN]` `[WAIT]`**: read **View Crawled
+  Page** on either URL once the 2026-08-29 Request Indexing recrawl
+  lands — that's the one check that separates them.
 
 - **[HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
   indexed" (alerts 2026-08-23) — three of four categories now settled.**
@@ -2438,98 +2427,71 @@ top-up driver has been creating zero jobs" under **Transcription queue
     confirmed here and is worth checking before ruling this category out
     entirely.
 
-- **[HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
-  content" (alert 2026-08-17) is still genuinely unexplained — and
-  specifically NOT explained by the WO-10 outage** (that started after
-  the alert; Google's last crawl of the flagged
-  `/m/welcome-to-clerkbase` predates it). Best current theory,
-  unverified: the page's stored content on that date was a ClerkBase
-  landing-page title, not a meeting, before a later re-resolve turned it
-  into the real content it shows today — the "adapter stored a landing
-  page as a meeting" class of bug (only one real customer checked so
-  far). Cheapest next step: Search Console → URL Inspection → "Request
-  Indexing" on that slug, see if the flag clears; if other URLs are
-  flagged too, that points at a broader thin-content shape worth
-  chasing. Partial mitigation already shipped: genuinely empty pages are
-  `noindex`ed and excluded from browse/sitemap/ feed (see
-  `BACKLOG_DONE.md`) — if the flagged URLs are that shape, this closes
-  on recrawl with no further code change.
+- **[WAIT] Search Console "Page indexed without content"
+  (`/m/welcome-to-clerkbase`) — Request Indexing sent 2026-08-29 (see
+  `BACKLOG_DONE.md`), genuinely waiting on Google's recrawl.** If it
+  clears, nothing further to do. If other URLs turn out flagged too,
+  that points at a broader thin-content shape worth chasing — genuinely
+  empty pages are already `noindex`ed and excluded from browse/sitemap/
+  feed.
 
-- **[IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
-  3 "Videos" structured-data issues site-wide (2026-08-12): missing
-  `thumbnailUrl` (critical), `uploadDate` invalid/missing timezone
-  (non-critical).** All trace to the `VideoObject` JSON-LD block in
-  [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66).
-  `thumbnailUrl` and the timezone issue are **fixed** (YouTube pages get
-  a free `i.ytimg.com` thumbnail 2026-08-14; direct mp4/m3u8 pages get a
-  real ffmpeg-extracted frame via WO-28 2026-08-21; `uploadDate` now
-  emits `date + "T00:00:00Z"`). The "invalid datetime value" half is
-  **fixed on the template side** 2026-08-21 (WO-27) — both `uploadDate`
-  and Event `startDate` now go through `iso_meeting_date()` and are
-  omitted when the stored date isn't real, instead of concatenating a
-  free-text field with no validation. All 6 Minneapolis LIMS `Clip`
-  "Missing field endOffset" warnings are **fixed** (each item's `end`
-  now equals the next item's `start`), and a second, unrelated root
-  cause on San Carlos IQM2 (a whole consent-calendar block sharing one
-  timestamp) is **fixed** 2026-08-21 by using the next *distinct* start
-  as the end. **[HUMAN] Still to confirm**: a Search Console re-crawl
-  actually clearing the critical `thumbnailUrl` flag (re-run URL
-  Inspection on the San Carlos page once recrawled). **The
-  malformed-row half of this is now answered and closed — no adapter to
-  chase.** `GET /internal/date-format-audit` was actually run against
-  production 2026-08-22 and came back all-zero on both non-ISO buckets:
+- **[WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
+  corrected and confirmed fixed 2026-08-29 (see `BACKLOG_DONE.md`), only
+  the click is left.** The flagged page is Lynchburg, not San Carlos as
+  previously (unverified) guessed, and its `thumbnailUrl` is already
+  correctly populated and live. Open Search Console's Videos
+  structured-data report and click **VALIDATE FIX** on "Missing field
+  'thumbnailUrl'" — Validation still reads "Not Started," nobody has
+  asked Google to re-verify yet. Nothing to build.
 
-  ```json
-  {"total_pages": 2389,
-   "by_shape": {"null": 226, "iso_date": 2163,
-                "parseable_non_iso": 0, "unparseable": 0},
-   "suspect_rows": [], "suspect_rows_truncated": false}
-  ```
-
-  So **no real production row has ever held a malformed date value** —
-  2,163 of 2,389 pages store a clean `YYYY-MM-DD`, the remaining 226
-  store `null` (which the template already omits rather than emitting,
-  per WO-27), and `suspect_rows` is empty. Per the endpoint's own
-  docstring, all-zero means no stored value can be producing the
-  "invalid datetime value" flag and it should clear on recrawl from the
-  template fix alone. **What remains here is only the `[HUMAN]`
-  `[LOGIN]` `[WAIT]` recrawl confirmation** — re-run URL Inspection on
-  the San Carlos page once Google has recrawled, and confirm the
-  critical `thumbnailUrl` flag clears. Nothing to build.
-
-- **[JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
-  (947 videos and growing) — root-caused 2026-08-21, fix shipped same
-  day.** All 10 example URLs Search Console gave were **every one
-  non-YouTube** — same population as the `thumbnailUrl` gap above,
-  explaining its near-zero thumbnail count as a downstream symptom
-  (Google never gets far enough to check). Root cause:
-  [meeting_page.html:274](archive/templates/meeting_page.html#L274) used
-  to render every non-YouTube video as a bare `<video>` tag with no
-  `src`/`<source>` in server-rendered HTML — the real URL only existed
-  in JSON-LD `contentUrl` until JS ran, and even then `.m3u8` sources
-  set the DOM `video.src` to an opaque `blob:` URL via Media Source
-  Extensions, never the real fetchable URL in *any* browser. No reliable
-  server-rendered match for Google to confirm against `contentUrl`.
-  **Fix**: `meeting_page.html` now renders the real URL server-side too
-  (a `<source>` for `.m3u8`, `src=` directly for `.mp4`), matching
-  `contentUrl`, while the existing JS playback logic is untouched.
-  **Re-checked 2026-08-22, one day after the fix: still exactly 947,
-  trend still rising, and `Validation: Not Started`.** An *unchanged*
-  count a day later is uninformative, not negative evidence — Search
-  Console's video-indexing report lags well behind a fix, and the
-  identical figure suggests the report simply hasn't refreshed.
-  **The actionable part is that `Validation: Not Started`**: nobody has
-  asked Google to re-verify, so the wait is currently passive and
-  open-ended. Opening the "Video isn't on a watch page" issue in Search
-  Console and clicking **VALIDATE FIX** makes Google recrawl the
-  affected URLs and report progress, which both shortens the wait and
-  turns "did it work?" into something with a status rather than a
-  number to keep re-reading. Do that before treating the count as
-  meaningful either way.
-  **Also on that report:** the only other row is **"No thumbnail URL
-  provided" — 1 video, flat.** That is a reassuring number given 973
-  cards were stored by the WO-37 backfill; whatever it is, it's a
-  single page, not a systemic gap.
+- **[JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
+  structured data for teaser content they don't actually host — scoped
+  2026-08-29, fix recommendation ready, not yet built.** `/j/rockwall-tx`'s
+  JSON-LD emits an `ItemList` whose `itemListElement` are full
+  `@type: VideoObject` entries (name, description, uploadDate,
+  thumbnailUrl, transcript) for its "moments" teaser feed — each entry's
+  own `url` correctly points to the real meeting page, but the hub page
+  itself renders **no `<video>` element at all**. Google reads a
+  `VideoObject` on a page as a claim the video is watchable *there*, so
+  every hub/state page with a moments feed gets flagged. **Confirmed
+  directly against Google's own docs, not just inferred**: its
+  [indexing-status
+  reference](https://support.google.com/webmasters/answer/9495631#indexing_status)
+  literally names *"a video category page that lists multiple videos of
+  equal prominence"* as an example of a page that is **not** a watch
+  page — a verbatim description of this layout.
+  **Scoping agent confirmed the blast radius is bigger than originally
+  suspected: three templates, not one** —
+  `archive/templates/jurisdiction_page.html:22-50`,
+  `archive/templates/state_page.html:23-69`, and
+  `archive/templates/state_all50.html:21-59` (route `/state/all-50`),
+  all built from `_build_featured()`/`_featured_entry()`
+  (`archive/db/crud.py:4876-4941`). Live-verified `/state/texas` and
+  `/state/all-50` both carry the identical pattern. **Gating is looser
+  than indexability**: `{% if public_base_url and featured %}` fires on
+  just one transcribed+titled+highlighted meeting, well below the
+  2-meeting indexable threshold — so even a `noindex`'d hub can still
+  emit the bad markup. From the live sitemap (754 `/j/*` + 61 `/state/*`
+  = 815 URLs) and the loose gate, the realistic estimate is **700-800
+  live pages actively emit this today** — this is very plausibly the
+  dominant, previously-uncounted driver of the 947→1,764 growth, since
+  the original 2026-08-21 investigation only ever looked at `/m/*` pages.
+  **Recommended fix**: retype the nested `item` from `VideoObject` to
+  `CreativeWork` in all three templates (keep `url`/`name`/`description`/
+  `thumbnailUrl`, rename `uploadDate`→`datePublished`, drop
+  `transcript` — those two properties are `VideoObject`/`MediaObject`-
+  scoped in schema.org, `CreativeWork` isn't). The real `VideoObject` for
+  that same content already exists correctly on the linked `/m/{slug}`
+  page, so nothing loses coverage, and Search Console already shows
+  these hub entries failing validation today (`Video URL: N/A`) — no
+  upside is being given up. Also worth doing in the same change: extract
+  the near-identical duplicated block into one shared
+  `archive/templates/_featured_itemlist.html` partial (precedent:
+  `_government_groups.html`, `state_page.html`'s own `_topic_chips.html`
+  include) so it can't drift across three copies again, and add
+  regression test coverage — **currently zero** — asserting no
+  `"@type": "VideoObject"` in hub/state JSON-LD
+  (`tests/test_jurisdiction_hubs.py` / `tests/test_state_pages.py`).
 
 ### `/coverage` as a QA surface
 
