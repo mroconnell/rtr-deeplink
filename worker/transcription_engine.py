@@ -160,6 +160,7 @@ class FasterWhisperEngine(TranscriptionEngine):
         model_size: str = "tiny",
         compute_type: str = "int8",
         cpu_threads: int = 0,
+        language: Optional[str] = None,
     ):
         # Imported lazily so importing this module (e.g. from tests) never
         # requires the real model weights to be downloaded/available.
@@ -176,6 +177,16 @@ class FasterWhisperEngine(TranscriptionEngine):
         # cloud worker has no fan/thermal concern, and 900s chunks already
         # OOM-constrained model_size down to "tiny" there (see this class's
         # own docstring) rather than needing a CPU-time constraint too.
+        # None means faster-whisper's own per-chunk auto-detection, the
+        # only behavior this engine had before the parameter existed.
+        # A forced code exists because auto-detection decides from the
+        # chunk's first seconds and can lock a whole chunk into the wrong
+        # language on non-speech openings -- the confirmed Kitchener case
+        # (BACKLOG_DONE.md, WO-36 audit): an English meeting transcribed
+        # end-to-end as Welsh-script gibberish. worker/main.py never
+        # passes this; scripts/transcribe_backlog_locally.py's --language
+        # is the one real caller, for operator-chosen re-runs.
+        self._language = language
         self._model = WhisperModel(
             model_size,
             device="cpu",
@@ -191,6 +202,7 @@ class FasterWhisperEngine(TranscriptionEngine):
     def _transcribe_sync(self, audio_path: Path) -> List[Dict[str, Any]]:
         segments, _info = self._model.transcribe(
             str(audio_path),
+            language=self._language,
             beam_size=5,
             initial_prompt=MEETING_VOCABULARY_PROMPT,
             vad_filter=True,
