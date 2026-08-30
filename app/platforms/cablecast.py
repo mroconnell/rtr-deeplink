@@ -534,6 +534,34 @@ class CablecastAssetFinder(AssetFinder):
     @staticmethod
     def _extract_jurisdiction(site: dict, url: str) -> Optional[str]:
         page_description = site.get("pageDescription")
+        # Real gap found 2026-08-29 auditing stored (not missing --
+        # confidently WRONG) jurisdictions via /coverage: the narrower
+        # `_JURISDICTION_RE` regex below is deliberately single-word only
+        # (see its own module comment), so a real multi-word "City of X"
+        # name gets truncated at the first word -- confirmed live on two
+        # real customers, "City of Virginia Beach" -> "Virginia"
+        # (virginiabeach.cablecast.tv), "City of La Quinta" -> "La"
+        # (laquinta.cablecast.tv). Tried FIRST, ahead of the narrower
+        # regex, precisely because the narrower regex would otherwise
+        # match its own truncated prefix and return before this ever
+        # runs -- `_JURISDICTION_RE`'s own module comment anticipated
+        # this ("revisit if a real multi-word-city customer... turns up")
+        # -- it has, twice now. `extract_jurisdiction_chain()`'s
+        # capitalization-bounded walk already handles this correctly
+        # (validated against the Census table, so it can't repeat the
+        # single-word regex's own mistake in the other direction by
+        # over-capturing trailing branding words like "GOV Channel" --
+        # confirmed it still resolves Charlotte's real "City of Charlotte
+        # GOV Channel" text correctly), same shared logic Swagit/
+        # Granicus/CivicClerk already use for exactly this reason.
+        for text in (page_description, site.get("title")):
+            if not text:
+                continue
+            chained = jurisdiction_enrich.extract_jurisdiction_chain(
+                page_text=text, html="", url=url
+            )
+            if chained:
+                return chained
         for text in (page_description, site.get("title")):
             if not text:
                 continue
