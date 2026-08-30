@@ -2430,9 +2430,15 @@ top-up driver has been creating zero jobs" under **Transcription queue
   now equals the next item's `start`), and a second, unrelated root
   cause on San Carlos IQM2 (a whole consent-calendar block sharing one
   timestamp) is **fixed** 2026-08-21 by using the next *distinct* start
-  as the end. **[HUMAN] Still to confirm**: a Search Console re-crawl
-  actually clearing the critical `thumbnailUrl` flag (re-run URL
-  Inspection on the San Carlos page once recrawled). **The
+  as the end. **Correction, 2026-08-29: the flagged `thumbnailUrl` page
+  was never San Carlos — that guess was never verified and was wrong.**
+  Checked the actual Search Console "Missing field 'thumbnailUrl'" issue
+  (still 1 item, Validation: Not Started): the real URL is
+  `https://redtaperecordings.com/m/lynchburg-va-2024-08-13-city-council-special-called-meeting-august-13-2024`.
+  Fetched live: its `VideoObject` JSON-LD already has `thumbnailUrl`
+  populated (`.../card.jpg`), and that image itself returns a real
+  `200 image/jpeg`. So the underlying fix is already correctly in place
+  on this page — the flag is stale, not a real ongoing gap. **The
   malformed-row half of this is now answered and closed — no adapter to
   chase.** `GET /internal/date-format-audit` was actually run against
   production 2026-08-22 and came back all-zero on both non-ISO buckets:
@@ -2450,10 +2456,13 @@ top-up driver has been creating zero jobs" under **Transcription queue
   per WO-27), and `suspect_rows` is empty. Per the endpoint's own
   docstring, all-zero means no stored value can be producing the
   "invalid datetime value" flag and it should clear on recrawl from the
-  template fix alone. **What remains here is only the `[HUMAN]`
-  `[LOGIN]` `[WAIT]` recrawl confirmation** — re-run URL Inspection on
-  the San Carlos page once Google has recrawled, and confirm the
-  critical `thumbnailUrl` flag clears. Nothing to build.
+  template fix alone. **What remains here is only the `[HUMAN]` action**:
+  open the "Missing field 'thumbnailUrl'" issue in Search Console's
+  Videos structured-data report, and click **VALIDATE FIX** — nobody has
+  ever asked Google to re-verify it (Validation still reads "Not
+  Started"), and the Lynchburg page it actually points at already has a
+  working thumbnail live, so validation should clear it. Nothing to
+  build.
 
 - **[JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
   (947 videos and growing) — root-caused 2026-08-21, fix shipped same
