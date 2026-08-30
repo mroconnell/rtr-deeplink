@@ -1521,6 +1521,47 @@ async def internal_promote_version(
     return result
 
 
+class RepairSeamDuplicationRequest(BaseModel):
+    slug: str
+    # sha256 of the raw /m/{slug}/transcript.srt body the caller scanned
+    # for seam duplication -- optimistic concurrency, see
+    # crud.create_seam_repair_version()'s own docstring for why this must
+    # be a hard refusal on mismatch, not a warning, and why it's hashed
+    # against to_srt() output rather than TranscriptVersion.content_hash.
+    expected_srt_hash: str
+    drop_segment_indices: List[int]
+
+
+@app.post("/internal/transcript-version/repair-seam-duplication")
+async def internal_repair_seam_duplication(
+    req: RepairSeamDuplicationRequest, authorization: Optional[str] = Header(None)
+):
+    """Backs scripts/repair_seam_duplication.py --apply -- see
+    crud.create_seam_repair_version()'s own docstring for the full
+    reasoning. Dry-run needs no route at all (the script reads the
+    public transcript.srt export directly); this is only ever called
+    for a confirmed finding a human has already had the chance to see.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.create_seam_repair_version(
+        slug=req.slug,
+        expected_srt_hash=req.expected_srt_hash,
+        drop_segment_indices=req.drop_segment_indices,
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page/version."},
+            status_code=404,
+        )
+    if result.get("error") == "stale":
+        return JSONResponse(result, status_code=409)
+    if result.get("error") == "empty_result":
+        return JSONResponse(result, status_code=400)
+    return result
+
+
 class CorrectLanguageRequest(BaseModel):
     slug: str
     language: str
