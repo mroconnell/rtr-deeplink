@@ -132,10 +132,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (15)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
-  `[JUST-DO-IT]` Docker layer caching silently freezes the workers'…
   Media-source reliability  (3)
     [NEEDS-AUDIT] `scripts/transcribe_backlog_locally.py` doesn't get the
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
@@ -2162,54 +2161,6 @@ pushes that touch one service's tree, so it decays as PRs get broader.
   the first new `from app.… import …` added without a matching
   `render.yaml` edit leaves both workers silently running stale code.
   Only worth doing with a CI guard asserting the two stay in sync.
-
-### `[JUST-DO-IT]` Docker layer caching silently freezes the workers' *deliberately unpinned* `yt-dlp` and `faster-whisper`
-
-Found 2026-08-22 while measuring build volume. **Half-confirmed
-2026-08-30, the half reachable without Render access** — see "how to
-confirm" below for what's still missing before acting.
-
-`worker/requirements.txt` leaves `yt-dlp` and `faster-whisper` unpinned
-on purpose (WO-11), and CLAUDE.md is explicit about why: YouTube actively
-blocks plain caption fetches, and yt-dlp only works around that because
-it is continuously maintained. The intent is that the workers track it.
-
-**Why that intent probably isn't being honoured:** Render caches all
-intermediate Docker layers by default (confirmed in Render's own Docker
-docs). `worker/Dockerfile` runs `COPY worker/requirements.txt` and then
-`RUN pip install -r worker/requirements.txt` — so that install layer is
-keyed on the *file's contents*, not on what PyPI currently serves. As
-long as `requirements.txt` is untouched, the layer is reused and pip
-never re-runs. The unpinning then does nothing in production: both
-workers stay on whatever version was current the last time that file
-changed, which is exactly the failure mode the unpinning was meant to
-avoid, and it fails silently — a stale yt-dlp shows up as YouTube
-resolves degrading, not as a build error.
-
-**How to confirm — first half done from the repo alone, 2026-08-30:**
-`git log -1 --format=%cd -- worker/requirements.txt` → **2026-08-24**
-(commit `209bba2`, a `markupsafe` hotfix — no `yt-dlp`/`faster-whisper`
-version bump). That's the last time this file's contents changed at
-all, so the install layer has been reusable (frozen) for **6 days** as
-of this check — real, not hypothetical, though 6 days alone isn't
-necessarily enough drift to have caused a real YouTube-resolve
-degradation yet. **Second half still needs Ryan, not reachable from an
-interactive session**: exec into a running worker (Render shell,
-`rtr-transcription-worker` or `-worker-2`) and compare `pip show
-yt-dlp` against PyPI's current release. If the versions match, this
-entry is wrong and should be deleted; if they differ, that's the real
-confirmation this entry has been waiting on.
-
-**If confirmed, the fix is small** — the usual options are a cache-bust
-`ARG`, a `--no-cache-dir` reinstall of just those two in a later layer,
-or moving both into their own `RUN` below the `COPY` lines. Don't reach
-for pinning them: that reverses a deliberate decision (WO-11).
-
-**Note this is orthogonal to the allow-list work above.** Layer caching
-is also what makes the workers' frequent rebuilds cheap — `ffmpeg` and
-the pip install both sit above the `COPY` lines, so an `app/**`-triggered
-rebuild only re-runs three cheap COPY layers. The caching is doing its
-job; this is just one place where it does it too well.
 
 ### Media-source reliability
 
