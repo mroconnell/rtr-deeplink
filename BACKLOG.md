@@ -134,7 +134,7 @@ Platform & jurisdiction coverage  (40)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (17)
+Reliability, ops & cost  (18)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -149,12 +149,13 @@ Reliability, ops & cost  (17)
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (5)
+  Search Console, structured data & SEO plumbing  (6)
     [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
     [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
     [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
-    [JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
+    [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+    [NEEDS-AUDIT] `/j/*` jurisdiction hub pages emit `VideoObject`
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -2464,39 +2465,71 @@ top-up driver has been creating zero jobs" under **Transcription queue
   working thumbnail live, so validation should clear it. Nothing to
   build.
 
-- **[JUST-DO-IT] `[WAIT]` Search Console "Video isn't on a watch page"
-  (947 videos and growing) — root-caused 2026-08-21, fix shipped same
-  day.** All 10 example URLs Search Console gave were **every one
-  non-YouTube** — same population as the `thumbnailUrl` gap above,
-  explaining its near-zero thumbnail count as a downstream symptom
-  (Google never gets far enough to check). Root cause:
-  [meeting_page.html:274](archive/templates/meeting_page.html#L274) used
-  to render every non-YouTube video as a bare `<video>` tag with no
-  `src`/`<source>` in server-rendered HTML — the real URL only existed
-  in JSON-LD `contentUrl` until JS ran, and even then `.m3u8` sources
-  set the DOM `video.src` to an opaque `blob:` URL via Media Source
-  Extensions, never the real fetchable URL in *any* browser. No reliable
-  server-rendered match for Google to confirm against `contentUrl`.
-  **Fix**: `meeting_page.html` now renders the real URL server-side too
-  (a `<source>` for `.m3u8`, `src=` directly for `.mp4`), matching
-  `contentUrl`, while the existing JS playback logic is untouched.
-  **Re-checked 2026-08-22, one day after the fix: still exactly 947,
-  trend still rising, and `Validation: Not Started`.** An *unchanged*
-  count a day later is uninformative, not negative evidence — Search
-  Console's video-indexing report lags well behind a fix, and the
-  identical figure suggests the report simply hasn't refreshed.
-  **The actionable part is that `Validation: Not Started`**: nobody has
-  asked Google to re-verify, so the wait is currently passive and
-  open-ended. Opening the "Video isn't on a watch page" issue in Search
-  Console and clicking **VALIDATE FIX** makes Google recrawl the
-  affected URLs and report progress, which both shortens the wait and
-  turns "did it work?" into something with a status rather than a
-  number to keep re-reading. Do that before treating the count as
-  meaningful either way.
-  **Also on that report:** the only other row is **"No thumbnail URL
-  provided" — 1 video, flat.** That is a reassuring number given 973
-  cards were stored by the WO-37 backfill; whatever it is, it's a
-  single page, not a systemic gap.
+- **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+  validation FAILED 2026-08-24, and the count nearly doubled (947 → 1,764)
+  since the 2026-08-21 fix. Investigated live 2026-08-29; the fix is
+  real and correctly deployed, but doesn't explain the whole population.**
+  Original root cause (2026-08-21): `meeting_page.html` used to render
+  every non-YouTube video as a bare `<video>` tag with no `src`/`<source>`
+  server-side — Google had no server-rendered URL to confirm against
+  JSON-LD `contentUrl`. Fix shipped same day: a `<source>` for `.m3u8`,
+  `src=` directly for `.mp4`.
+  **Someone did click VALIDATE FIX** (contrary to this entry's earlier
+  "Not Started" read) — Search Console shows **Started: 8/22/26, Failed:
+  8/24/26**, and Affected videos has grown to **1.76K**.
+  **Checked 3 real examples live (2026-08-29), across both platform
+  shapes — the fix is genuinely present in production HTML on all
+  three**: `kaysville-ut-2024-09-05-city-council-meeting` (Cablecast mp4,
+  `src="https://cpmedia.azureedge.net/..."` directly on `<video>`),
+  `snohomish-county-wa-2026-01-27-health-and-community-services`
+  (Granicus, `<source src="https://archive-stream.granicus.com/.../
+  playlist.m3u8" type="application/vnd.apple.mpegurl">`), and
+  `lynchburg-va-2024-08-13-city-council-special-called-meeting-august-13-2024`
+  (Cablecast mp4, same pattern — this is also the actual page behind the
+  separate `thumbnailUrl` flag below, not San Carlos as previously
+  guessed).
+  **So the meeting-page template fix is not the open question anymore —
+  two real, undistinguished possibilities remain**: (1) the fix wasn't
+  actually live in production yet when Google's 8/22-8/24 validation ran
+  (deploys here are manual, `autoDeploy: false` — a fix merged 8/21
+  could easily have validated against stale prod, see this file's
+  "Deploys are manual" standing note) — if so, a **fresh** Validate Fix
+  attempt now should succeed; or (2) Google's video indexer may not be
+  able to index an HLS `.m3u8` manifest as watchable content at all,
+  regardless of the `<source>` tag being syntactically correct — a real
+  platform limitation, not a code bug, and one that would explain why
+  Granicus/Swagit `.m3u8` URLs dominate the failing-examples list. A
+  fresh Validate Fix click, read after Google finishes, distinguishes
+  them: a strong pass rate → it was the deploy-timing gap; persistent
+  m3u8-specific failures → the HLS indexability theory.
+  **Separately, and NOT explained by anything above: `/j/*` jurisdiction
+  hub pages are also in the failing-examples list, with `N/A` for video
+  URL** (`/j/rockwall-tx`, `/j/village-of-rye-brook-ny`, `/j/alpharetta-ga`,
+  `/j/inyo`, `/j/parker-tx`, `/j/gig-harbor-wa`, and more). This is a
+  real, distinct, unfixed bug — see its own entry immediately below.
+  **What's no longer true**: the WO-37 card backfill's "No thumbnail URL
+  provided — 1 video, flat" reassurance. That single item turned out to
+  be the Lynchburg page (see the `thumbnailUrl` entry above) — already
+  confirmed fixed live, just never validated.
+
+- **[NEEDS-AUDIT] `/j/*` jurisdiction hub pages emit `VideoObject`
+  structured data for teaser content they don't actually host — real,
+  unfixed root cause for part of the "video isn't on a watch page"
+  failures above, found 2026-08-29.** `/j/rockwall-tx`'s JSON-LD emits
+  an `ItemList` whose `itemListElement` are full `@type: VideoObject`
+  entries (name, description, uploadDate, thumbnailUrl, transcript) for
+  its "moments" teaser feed (WO-50). Each entry's own `url` field
+  correctly points to the real meeting page
+  (`.../m/rockwall-tx-2023-06-05-jun-05-2023-city-council?t=7`) — but
+  the hub page itself renders **no `<video>` element at all**. Google
+  reads a `VideoObject` on a page as a claim that the video is watchable
+  *there*; since it isn't, every hub page with a moments feed gets
+  flagged, independent of anything fixed on the meeting-page side. Not
+  yet confirmed whether `/state/*` hub pages (same moments-feed feature,
+  per WO-50/WO-51) carry the identical pattern — worth checking as part
+  of scoping the fix. Agent dispatched 2026-08-29 to scope a fix (read
+  `STATE_HUB_PAGES.md` first, per this file's own convention for
+  touching `/state/*`/`/j/*`); no code changed yet.
 
 ### `/coverage` as a QA surface
 
