@@ -1,5 +1,75 @@
 # Backlog — done
 
+## Five real bugs found by the 2026-08-30 dorking pass, all fixed and shipped same day (PRs #571-574) [Done 2026-08-30]
+
+Closes five entries filed earlier the same day out of the CivicWeb/
+PrimeGov/Cablecast dorking pass and the Dormant-section triage — all
+built, fixture-tested against real live pages, and merged within hours
+of being found.
+
+**CivicPlus (PR #571)**: the adapter's "zero live confirmed URLs"
+problem is solved. `nc-durham.civicplus.com/AgendaCenter/City-Council-4`
+confirmed live (31 `catAgendaRow` rows, 22 with real video links, 21
+Granicus + 1 YouTube) and added as the adapter's real verified sample —
+a real fixture captured from the live page, a new regression test
+confirming all 22 candidates extract correctly with the right
+Granicus/YouTube split, and `scripts/adapter_canary.py`'s civicplus
+exclusion removed (it now points at Durham).
+
+**Legistar (PR #572)**: "Meeting location" is now extracted, but only
+when address-shaped. Confirmed live on 4 real hosts: Santa Clara (a real
+street address, now surfaced), Mesa and Naperville (meeting-type/room
+descriptors, correctly NOT surfaced as addresses), Chapel Hill (field
+absent, handled with no error). New `ResolvedMeeting.meeting_location`
+field; `_extract_meeting_location_text()` handles both the newline- and
+`<br>`-separated real page shapes seen; `_looks_like_street_address()`
+gates what gets surfaced. No Archive migration needed — unknown fields
+are already silently dropped by Archive's ingest model (the same
+pattern `video_link` already uses).
+
+**Cablecast (PR #573), two bugs**: (1) the CCX Media `site=` param is
+now read and mapped to real jurisdictions — confirmed live across two
+separate code paths (`_resolve_publicsite()`'s JSON-API branch and the
+Remix/HTML branch both needed the fix; the real public URL shape,
+`/CablecastPublicSite/show/{id}?site=X`, 301-redirects into the branch
+that was tested by hand first, which is why both had to be checked). A
+real, explicit `_CCX_MEDIA_SITES` table was used instead of a generic
+gazetteer lookup, since several of the 9 real city names (Plymouth, New
+Hope) are nationally ambiguous. Orion Township MI and Montgomery AL
+added as ordinary `jurisdiction_enrich._KNOWN_DOMAINS` entries. (2)
+`yourtown.cablecast.tv` (Cablecast's own vendor sales-demo tenant,
+confirmed via its real `pageDescription` text) is now rejected before
+any network fetch, closing the real risk that an automated enumeration
+pass could have bulk-ingested it as genuine Pasadena, CA content.
+
+**PrimeGov (PR #574), two bugs — one confirmed as filed, one corrected
+after re-verification found the original claim didn't hold up.**
+(1) `?compiledMeetingDocumentFileId=` URLs now resolve correctly — a
+new `_extract_compiled_document_id()` matches against `documentList[].
+id` (a different id space from `templateId`), confirmed live against a
+real San Antonio document. (2) **The Frisco CO jurisdiction bug's
+originally-filed root cause did not reproduce.** Per this repo's own
+"verify before building" rule, the fix session re-checked the claimed
+"YouTube widget label beats the real page header" mechanism against 4
+real `townoffrisco.primegov.com` fetches (curl and a live browser,
+including inspecting the actual iframe DOM) and found the claimed
+widget text is never present in the server-rendered HTML this adapter
+fetches — it's YouTube's own cross-origin iframe chrome, invisible to a
+server-side fetch. `_extract_jurisdiction()` already correctly returned
+"Town of Frisco" on the real page. **The real, confirmed gap**: a
+missing state — "Frisco" is nationally ambiguous with the
+already-registered Frisco, TX. Fixed with a `townoffrisco.primegov.com`
+entry in `jurisdiction_enrich._KNOWN_DOMAINS`, the same pattern already
+used for Alexandria/Sacramento/Long Beach. `resolve()` now correctly
+returns "Town of Frisco, CO." The corrected story is what's preserved
+here, per this file's own convention that a stale/wrong original claim
+gets corrected in the same pass that finds the real cause, not repeated.
+
+All four PRs: real live-fetched fixtures (not synthetic), full CI gates
+clean (ruff check/format, pytest, alembic check for both services),
+built and reviewed independently in parallel isolated worktrees, merged
+same day.
+
 ## Dork-before-sweep lesson applied to CivicWeb, PrimeGov, Cablecast: 14 new jurisdictions found, 3 real bugs surfaced [Investigated 2026-08-30]
 
 Closes the "dork a platform before its known-gap-list sweep" lesson

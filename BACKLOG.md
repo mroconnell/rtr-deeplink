@@ -77,7 +77,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (67)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (61)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -128,15 +128,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (67)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (21)
-    [JUST-DO-IT] Real bug found 2026-08-30, dorking PrimeGov for new
-    [NEEDS-AUDIT] Real bug found 2026-08-30, dorking PrimeGov — a 5th
-    [NEEDS-AUDIT] Real bug found 2026-08-30, dorking Cablecast — 3
-    [NEEDS-AUDIT] Real false-positive caught 2026-08-30, dorking
+  Adapter & platform gaps  (15)
     [JUST-DO-IT] Moved out of Dormant 2026-08-30 — TelVue's CDX
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
-    [JUST-DO-IT] Moved out of Dormant 2026-08-30 — CivicPlus's "zero
-    [JUST-DO-IT] Moved out of Dormant 2026-08-30, real examples found —
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
@@ -2037,67 +2031,6 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Adapter & platform gaps
 
-- **[JUST-DO-IT] Real bug found 2026-08-30, dorking PrimeGov for new
-  jurisdictions — `_extract_meeting_template_id()` only reads
-  `?meetingTemplateId=`, missing a second real, indexed PrimeGov URL
-  shape that uses `?compiledMeetingDocumentFileId=` instead.**
-  `primegov.py:441-443`:
-  ```python
-  value = parse_qs(urlparse(url).query).get("meetingTemplateId", [None])[0]
-  ```
-  Confirmed live: `sanantonio.primegov.com/Portal/Meeting?
-  compiledMeetingDocumentFileId=9911` returns "No video found on this
-  PrimeGov page" even though the tenant's real `ListArchivedMeetings`
-  API has a genuine Swagit video for the underlying meeting — confirmed
-  by re-resolving the *same* meeting via its `?meetingTemplateId=61635`
-  URL instead, which works correctly (`platform=swagit`, real `.m3u8`).
-  `compiledMeetingDocumentFileId` maps to `documentList[].id` (a specific
-  compiled file), a different id space from `documentList[].templateId`
-  — not interchangeable, so this needs its own lookup path, not a simple
-  field swap.
-
-- **[NEEDS-AUDIT] Real bug found 2026-08-30, dorking PrimeGov — a 5th
-  instance of this file's already-documented unscoped-jurisdiction-regex
-  failure class, new root cause.** `_JURISDICTION_RE`'s unscoped
-  `.search()` (line ~612) matches the first hit anywhere on the page, the
-  same failure shape already confirmed on OKC/Thousand Oaks/SLC/
-  Bedford-Cuyahoga — but this is a new trigger: on
-  `townoffrisco.primegov.com`, resolve() returns
-  `jurisdiction="Town of Frisco Government YouTube Channel"` instead of
-  "Town of Frisco, CO," because an embedded "Subscribe to Town of Frisco
-  Government YouTube Channel" widget label (character offset 5465) sits
-  ahead of the real "TOWN OF FRISCO" page header (offset 5918) — an
-  embedded widget label, not a body-text mention of an unrelated place,
-  so the existing fixes for the other four cases don't cover this
-  shape.
-
-- **[NEEDS-AUDIT] Real bug found 2026-08-30, dorking Cablecast — 3
-  jurisdictions share one root cause for `jurisdiction=None`: a shared
-  host's `site=` query param is never read.** Orion Township MI
-  (`reflect-ontv.cablecast.tv`), Montgomery AL
-  (`capitalcityconnection.cablecast.tv`), and 9 cities sharing CCX
-  Media's `reflect-ccx.cablecast.tv` host (Brooklyn Center/Brooklyn
-  Park/Crystal/Golden Valley/Maple Grove/New Hope/Osseo/Plymouth/
-  Robbinsdale, keyed by a `site=` query param) all resolve real video
-  but `jurisdiction=None`: no "City/County of X" phrase on the page, no
-  known-domain entry, and a subdomain that doesn't validate as a place
-  name. `_extract_jurisdiction()` never reads the `site=` param, which
-  is exactly what would disambiguate the CCX Media shared-host cases.
-
-- **[NEEDS-AUDIT] Real false-positive caught 2026-08-30, dorking
-  Cablecast — `yourtown.cablecast.tv` is Cablecast's own vendor demo/
-  sales tenant, not a real government, but resolves cleanly through the
-  adapter with a real-looking title.** Confirmed via the page's own
-  `pageDescription`: "YourTownTV is the live streaming video channel of
-  Cablecast Community Media... If you would like to demo Cablecast...
-  send an email to sales@cablecast.tv." The adapter has no way to
-  distinguish this from a real tenant today — it produced a real-looking
-  title ("Pasadena City Council Meeting 3-31-23") that could plausibly
-  get bulk-ingested as real Pasadena, CA content by an automated
-  enumeration pass. Worth a small guard (exclude this specific hostname,
-  or detect the vendor-demo `pageDescription` pattern generally) before
-  the next bulk Cablecast ingestion touches it.
-
 - **[JUST-DO-IT] Moved out of Dormant 2026-08-30 — TelVue's CDX
   enumeration blocker is solved, and there's a real, verified queue of
   ~112 more candidate jurisdictions ready to work through.** The
@@ -2150,38 +2083,6 @@ from a live check), but the Legistar calendar itself is still untried.
   answer complicates the original plan rather than validating it.
   Jurisdiction extraction (never set today, even though the h1-assembled
   title text already contains it) is still separately open too.
-
-- **[JUST-DO-IT] Moved out of Dormant 2026-08-30 — CivicPlus's "zero
-  live confirmed URLs" problem is solved: Durham, NC is a real, live,
-  positive match for the adapter's exact expected structure.** The
-  prior candidate (Maricopa County AZ) turned out to be a plain
-  CivicPlus-built page linking straight to YouTube, not an AgendaCenter
-  listing — confirmed by direct inspection, not just URL-shape mismatch.
-  **`nc-durham.civicplus.com/AgendaCenter/City-Council-4`** is real and
-  live: 31 `catAgendaRow` rows, 22 with real video links in `td.media`
-  (21 Granicus + 1 YouTube) — exactly the structure `_find_video_rows()`
-  expects. Spot-checked one Granicus link
-  (`durham.granicus.com/player/clip/3313`) — live, 200. **Action**: add
-  Durham NC as the adapter's real verified sample, and re-enable it in
-  `scripts/adapter_canary.py` (currently deliberately excluded because
-  no live URL existed to point at — that's no longer true).
-
-- **[JUST-DO-IT] Moved out of Dormant 2026-08-30, real examples found —
-  Legistar's `MeetingDetail.aspx` "Meeting location" field is
-  extractable, but only conditionally: it's a real physical address on
-  some tenants, a room/descriptor on others.** The "assume it's always a
-  descriptor, skip it" premise this entry started with (Mesa, AZ) is
-  disproven by checking 3 more real Legistar hosts' `MeetingDetail.aspx`
-  pages: **Santa Clara** shows a real, usable street address ("Northside
-  Branch Library, 695 Moreland Way, Santa Clara, CA 95054"); **Naperville**
-  shows a room-name descriptor ("Meeting Room C"), same shape as Mesa;
-  **Chapel Hill** has no location field at all. Four real customers, four
-  different shapes. **The fix**: surface the field only when it looks
-  address-shaped (a real street-address heuristic — digits + a street
-  suffix word, or similar), not a blanket skip or a blanket surface.
-  Needs its own real-page fixture set (Santa Clara for the positive case,
-  Mesa/Naperville for the negative) per this repo's fixture-testing
-  convention, not synthetic data.
 
 - **[NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
   because Render's IP is bot-blocked — seen live, twice (2026-08-25).**
