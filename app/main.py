@@ -420,7 +420,7 @@ MANUAL_REFRESH_COOLDOWN = timedelta(hours=1)
 
 
 @app.post("/api/refresh-archived-page")
-@limiter.limit("10/hour")
+@limiter.limit("25/hour")
 async def refresh_archived_page(request: Request, req: RefreshRequest):
     """Public, rate-limited counterpart to /admin/recheck-archive-page --
     real gap fixed 2026-08-16 (WO-15, BACKLOG.md): re-submitting an
