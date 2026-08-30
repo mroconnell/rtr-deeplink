@@ -10,6 +10,7 @@ from app.platforms.swagit import SwagitAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
+from conftest import load_fixture
 
 
 def _register_delegation_targets():
@@ -807,6 +808,63 @@ async def test_resolve_delegates_to_granicus_via_tenant_api_when_no_youtube_vide
     assert result.platform == "granicus"
     assert result.video_url == "https://archive-stream.granicus.com/y/playlist.m3u8"
     assert result.source_url == BROOKHAVEN_URL
+
+
+CALABASAS_URL = "https://calabasas.primegov.com/Portal/Meeting?meetingTemplateId=99001"
+CALABASAS_API_URL = (
+    f"https://calabasas.primegov.com/api/v2/PublicPortal/"
+    f"ListArchivedMeetings?year={CURRENT_YEAR}"
+)
+CALABASAS_GRANICUS_URL = "https://calabasas.granicus.com/MediaPlayer.php?event_id=1525"
+# Real (trimmed) API fields for this exact meeting -- see BACKLOG_DONE.md's
+# "Granicus adapter doesn't recognize MediaPlayer.php?event_id=..." entry:
+# a real event_id-shaped meeting (a scheduled-but-not-yet-archived slot,
+# not a real gap in this app) whose Granicus page has a title but no
+# date-shaped text anywhere on it -- PrimeGov's own API record has both.
+CALABASAS_API_RESPONSE = json.dumps(
+    [
+        {
+            "id": 1,
+            "documentList": [{"id": 1, "templateId": 99001, "templateName": "Agenda"}],
+            "videoUrl": CALABASAS_GRANICUS_URL,
+            "title": "City Council Regular Meeting - Closed Session (Amended Agenda)",
+            "date": "Jan 28, 2026",
+        }
+    ]
+)
+
+
+async def test_resolve_backfills_date_from_tenant_api_for_a_dateless_granicus_event_id_page():
+    # Real gap closed 2026-08-29 (BACKLOG_DONE.md's residual note on the
+    # MediaPlayer.php event_id fix): GranicusAssetFinder correctly finds a
+    # title on this real fixture ("City Council Regular Meeting") but no
+    # date at all -- the real page has no date-shaped text on it. This
+    # must backfill the date from PrimeGov's own already-fetched API
+    # record, but NOT override the title Granicus did find (even though
+    # PrimeGov's own title is arguably more specific) -- title/date
+    # overrides here are deliberately backfill-only, never a replacement
+    # of a real value the delegated finder already found.
+    _register_delegation_targets()
+    html = load_fixture("granicus", "calabasas_event1525.html")
+    routes = {
+        CALABASAS_URL: FakeResponse(
+            status=200, text=PAGE_HTML_NO_VIDEO, url=CALABASAS_URL
+        ),
+        CALABASAS_API_URL: FakeResponse(status=200, text=CALABASAS_API_RESPONSE),
+        CALABASAS_GRANICUS_URL: FakeResponse(
+            status=200, text=html, url=CALABASAS_GRANICUS_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await PrimeGovAssetFinder().resolve(CALABASAS_URL)
+
+    assert result.platform == "granicus"
+    assert (
+        result.title == "City Council Regular Meeting"
+    )  # Granicus's own, not overridden
+    assert result.date == "2026-01-28"  # backfilled from PrimeGov's own API record
+    assert result.source_url == CALABASAS_URL
 
 
 async def test_resolve_falls_back_to_honest_no_video_when_tenant_api_has_no_match(

@@ -1,5 +1,48 @@
 # Backlog — done
 
+## PrimeGov backfills date (and, when missing, title) from its own API for a dateless Granicus `event_id` delegation [Done 2026-08-29]
+
+Residual of the 2026-08-21 `MediaPlayer.php?event_id=...` fix (root cause
+and the 4 verified cities are in this file's own matching entry): a
+Granicus `event_id`-shaped page (a scheduled-but-not-yet-archived meeting
+slot, a separate id namespace from a real `clip_id`) genuinely has no
+date-shaped text on it anywhere, so `GranicusAssetFinder` correctly
+returns `date=None` for it, even though PrimeGov's own already-fetched
+`ListArchivedMeetings` API record for the same meeting usually has a real
+date. `resolve()` used to leave that date backfill undone — the entry
+called it "nothing passes it along."
+
+**Fix**: `_fetch_tenant_video_url()` (now returning a small
+`_TenantMeetingLookup` dataclass instead of a growing bare tuple, since
+this was already its second field addition after `isShowVideoIcon`) also
+carries the matched meeting's own real `title`/`date` API fields.
+`_resolve_via_tenant_video_url()` backfills `resolved.date` (parsed from
+the API's real `"Jan 12, 2026"`-shaped string via a new
+`_parse_api_date()` helper) and `resolved.title` from this record —
+**backfill only, never an override**: if the delegated Granicus/Swagit
+resolve already found a real title/date of its own, it's left alone,
+consistent with the existing, deliberate "Swagit/Granicus's own page is
+normally the better source" stance for the common `clip_id` case.
+
+**What this actually changes for the real Calabasas `event_id=1525`
+case, checked directly rather than assumed**: `GranicusAssetFinder`
+already finds a title on this fixture ("City Council Regular Meeting") —
+the original entry's framing that "nothing" was threaded through
+overstated it; PrimeGov's own record has a longer, arguably more
+specific title ("City Council Regular Meeting - Closed Session (Amended
+Agenda)"), but this fix deliberately does not force it in, since title
+override is a genuine judgment call this pass isn't making. The `date`
+is the real, unambiguous win here — Granicus finds none, PrimeGov's own
+`"Jan 28, 2026"` backfills to `"2026-01-28"`.
+
+Regression-tested end-to-end against the real Calabasas fixture already
+used by the original `MediaPlayer.php` fix
+(`tests/fixtures/granicus/calabasas_event1525.html`) plus a real-field-
+shaped synthetic API response
+(`test_resolve_backfills_date_from_tenant_api_for_a_dateless_granicus_event_id_page`,
+`tests/test_primegov.py`) — asserts both the date backfill and that the
+title is left as Granicus's own, not overridden.
+
 ## ProudCity's BoxCast `videoStyle === 'external'` case: a real adapter, via a public REST API rather than reverse-engineering the player [Done 2026-08-29]
 
 Real gap named in `BACKLOG.md`: `proudcity.py`'s `_EXTERNAL_VIDEO_RE`
