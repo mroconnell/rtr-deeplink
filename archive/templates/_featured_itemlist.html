@@ -1,0 +1,34 @@
+{#- Shared "moments" ItemList entries for /j/*, /state/{slug}, and
+   /state/all-50 hub pages. Included with Jinja's default context
+   sharing, so `featured` and `public_base_url` are already in scope --
+   no explicit `with` needed.
+
+   `item` is typed CreativeWork, not VideoObject (changed 2026-08-29).
+   Google's own indexing-status reference names "a video category page
+   that lists multiple videos of equal prominence" as an explicit
+   non-watch-page example -- exactly this layout -- and every hub/state
+   page with a moments feed rendered no <video> element at all while
+   claiming VideoObject, which Search Console flagged as "video isn't
+   on a watch page" across ~700-800 live pages. The real VideoObject for
+   this same content already exists correctly on each meeting's own
+   /m/{slug} page (meeting_page.html) -- nothing loses coverage.
+   uploadDate/transcript are VideoObject/MediaObject-scoped properties
+   in schema.org and don't belong on CreativeWork; datePublished is the
+   CreativeWork equivalent of uploadDate, and transcript has no
+   CreativeWork equivalent (the real transcript already lives on the
+   linked /m/{slug} page). See BACKLOG_DONE.md's 2026-08-29 entry for
+   the investigation this closes. #}
+{%- for m in featured %}
+{
+  "@type": "ListItem",
+  "position": {{ loop.index }},
+  "item": {
+    "@type": "CreativeWork",
+    "name": {{ (m.title or "Public meeting")|tojson }},
+    "description": {{ m.snippet_text|tojson }},
+    "url": {{ (public_base_url ~ m.deep_link)|tojson }}{% if m.date %},
+    "datePublished": {{ m.date|tojson }}{% endif %}{% if m.card_url %},
+    "thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }}{% endif %}
+  }
+}{{ "," if not loop.last }}
+{%- endfor %}

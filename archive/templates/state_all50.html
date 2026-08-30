@@ -37,21 +37,7 @@
     "mainEntity": {
       "@type": "ItemList",
       "itemListElement": [
-        {%- for m in featured %}
-        {
-          "@type": "ListItem",
-          "position": {{ loop.index }},
-          "item": {
-            "@type": "VideoObject",
-            "name": {{ (m.title or "Public meeting")|tojson }},
-            "description": {{ m.snippet_text|tojson }},
-            "url": {{ (public_base_url ~ m.deep_link)|tojson }},
-            {% if m.date %}"uploadDate": {{ m.date|tojson }},{% endif %}
-            {% if m.card_url %}"thumbnailUrl": {{ (public_base_url ~ m.card_url)|tojson }},{% endif %}
-            "transcript": {{ m.snippet_text|tojson }}
-          }
-        }{{ "," if not loop.last }}
-        {%- endfor %}
+        {%- include "_featured_itemlist.html" %}
       ]
     }{% endif %}
   }

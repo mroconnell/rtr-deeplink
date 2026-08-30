@@ -399,6 +399,86 @@ scope):**
   product call, not a data gap.
 
 All four CI gates clean on the code-fix PR; no schema touched.
+## `/j/*` and `/state/*` hub pages: VideoObject retyped to CreativeWork [Done 2026-08-29]
+
+Closes the scoped-but-unbuilt residual from the "Video isn't on a watch
+page" investigation (see this file's matching entry and `BACKLOG.md`'s
+Open bugs section). `/j/*`, `/state/{slug}`, and `/state/all-50` all
+emitted `VideoObject` structured data for their "moments" teaser feed
+even though none of the three templates render a `<video>` element —
+Google's own indexing-status reference names "a video category page
+that lists multiple videos of equal prominence" as an explicit
+non-watch-page example, a verbatim description of this layout.
+
+**Fix**: retyped the nested `item` from `VideoObject` to `CreativeWork`
+in all three templates. Kept `url`/`name`/`description`/`thumbnailUrl`;
+renamed `uploadDate` → `datePublished` (the `CreativeWork` equivalent);
+dropped `transcript` (a `VideoObject`/`MediaObject`-scoped property with
+no `CreativeWork` equivalent — the real transcript already lives on the
+linked `/m/{slug}` page). The real `VideoObject` for this same content
+already exists correctly on each meeting's own page, so nothing loses
+video-rich-result coverage.
+
+**Also extracted the near-identical duplicated block into one shared
+partial**, `archive/templates/_featured_itemlist.html`, included by all
+three templates (`{%- include "_featured_itemlist.html" %}` inside each
+one's `itemListElement` array) — the three copies had already drifted
+once (state_all50.html and state_page.html were byte-identical,
+jurisdiction_page.html only cosmetically different) and this closes off
+a repeat. Precedent for the pattern: `_government_groups.html`,
+`state_page.html`'s own `_topic_chips.html` include.
+
+**Regression tests added — previously zero coverage of this JSON-LD at
+all** (confirmed by the scoping agent before this fix): one each in
+`tests/test_jurisdiction_hubs.py` (`/j/boise-id`),
+`tests/test_state_pages.py` (`/state/nevada` and `/state/all-50`,
+`/state/all-50`'s own dedicated case since it's a separate route
+handler from `state_page.html` despite sharing the partial now).
+Each asserts `item["@type"] == "CreativeWork"`, `"transcript" not in
+item`, `"uploadDate" not in item`, and that the string `"VideoObject"`
+never appears in the response body at all.
+
+**Two real debugging findings worth keeping, both about this
+codebase's test fixtures rather than the fix itself:**
+
+1. **`_seed()`'s default short transcript text ("hub page test
+   transcript" / "hello state pages") is deliberately below
+   `compute_highlight_payload()`'s quotable-window bar** (`MIN_WORDS =
+   25` in `archive/utils/highlights.py`), so `featured` stays empty for
+   every existing hub/state test — which is exactly why this JSON-LD
+   block had zero coverage despite the route tests being extensive. A
+   new test needs its own seed with a real, longer synthetic transcript
+   to exercise this path at all.
+2. **A single-segment window also has to clear
+   `_candidate_windows()`'s `SKIP_HEAD_FRACTION`/`SKIP_TAIL_FRACTION`
+   bounds** (0.08/0.03 of the derived meeting duration, meant to skip
+   "call to order"/adjournment chatter) — a segment whose own `start` is
+   inside that skipped head window scores fine but is never even
+   considered as a candidate. Set the segment's `start` safely inside
+   the bounds (e.g. `start=600, end=3600`) to avoid this trap.
+
+**Real cross-file test pollution found and fixed, worth the general
+lesson**: the shared, never-reset session DB across the whole test
+suite (documented convention, see `tests/test_state_pages.py`'s own
+Wyoming comment for a different instance of the same fragility) means
+seeding the *first-ever real highlight* into a state that other tests
+already assume has none flips a real conditional
+(`{% if not featured %}`'s "recent_pages" fallback) for every other
+test touching that state, **even across files, and even though each
+file's own tests pass in isolation**. First attempt used Placerville,
+CA for the hub test and Vallejo, CA for the state-page test — both
+broke `test_state_page_lists_states_jurisdictions` in a full-suite run
+(never in isolated per-file runs), because `test_jurisdiction_hubs.py`
+collects before `test_state_pages.py` alphabetically and the pollution
+crossed file boundaries. Fixed by moving to states no other test in
+either file touches (Boise, ID for the hub test; Reno, NV for the state
+test) rather than guessing further. **Always run the full suite, not
+just the changed test files, before calling a DB-seeding test change
+done** — this class of failure is invisible otherwise.
+
+Verified: full suite green (2023 passed, up from 2020 — the 3 new
+tests), `ruff check`/`ruff format --check` clean. Not yet deployed.
+
 ## GA internal-traffic rule and cross-domain linking configured, 2026-08-29 [Done 2026-08-29]
 
 Ryan configured two real GA4 settings live, same session as the Search
