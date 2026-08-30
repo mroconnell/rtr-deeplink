@@ -1,7 +1,8 @@
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from urllib.parse import parse_qs, urljoin, urlparse
 
 import aiohttp
@@ -158,6 +159,18 @@ _COUNCIL_HEADER_RE = re.compile(
 )
 
 
+@dataclass
+class _TenantMeetingLookup:
+    """Result of one `_fetch_tenant_video_url()` call -- see that
+    method's own docstring for what each field means."""
+
+    matched: bool
+    video_url: Optional[str] = None
+    has_video_icon: bool = False
+    title: Optional[str] = None
+    date: Optional[str] = None
+
+
 class PrimeGovAssetFinder(AssetFinder):
     """PrimeGov doesn't host video itself -- confirmed live (LA City's
     portal, lacity.primegov.com) that meeting pages embed a YouTube video
@@ -288,15 +301,13 @@ class PrimeGovAssetFinder(AssetFinder):
 
         netloc = urlparse(url).netloc
         tried_years = self._candidate_years(self._extract_date(html))
-        video_url = None
-        has_video_icon = False
-        matched = False
+        lookup = _TenantMeetingLookup(matched=False)
         async with aiohttp.ClientSession(headers=self.headers) as session:
             for year in tried_years:
-                matched, video_url, has_video_icon = await self._fetch_tenant_video_url(
+                lookup = await self._fetch_tenant_video_url(
                     session, netloc, meeting_template_id, year
                 )
-                if matched:
+                if lookup.matched:
                     # A real meeting matching this URL's meetingTemplateId
                     # was found in this year's archive -- stop here even
                     # if it turns out to have no video (an honest
@@ -304,7 +315,7 @@ class PrimeGovAssetFinder(AssetFinder):
                     # collision by continuing to search other years.
                     break
 
-            if not matched:
+            if not lookup.matched:
                 # None of the likely-recent years matched at all (not
                 # "matched with no video" -- genuinely never found this
                 # meetingTemplateId) -- confirmed live 2026-08-19 on two
@@ -318,17 +329,13 @@ class PrimeGovAssetFinder(AssetFinder):
                 for year in await self._fetch_archived_years(session, netloc):
                     if year in tried_years:
                         continue
-                    (
-                        matched,
-                        video_url,
-                        has_video_icon,
-                    ) = await self._fetch_tenant_video_url(
+                    lookup = await self._fetch_tenant_video_url(
                         session, netloc, meeting_template_id, year
                     )
-                    if matched:
+                    if lookup.matched:
                         break
-        if not video_url:
-            if has_video_icon:
+        if not lookup.video_url:
+            if lookup.has_video_icon:
                 # Real gap found 2026-08-28 (BACKLOG.md's Midpen Media
                 # Center entry): `isShowVideoIcon` is this tenant's own
                 # confirmation that a recording genuinely exists for this
@@ -354,7 +361,7 @@ class PrimeGovAssetFinder(AssetFinder):
         # granicus.com/MediaPlayer.php?clip_id=76" -- confirmed live) --
         # urljoin against the original https:// PrimeGov page URL
         # resolves that the same way a browser would.
-        normalized_url = urljoin(url, video_url)
+        normalized_url = urljoin(url, lookup.video_url)
         platform = detect_platform(normalized_url)
         if platform not in ("swagit", "granicus"):
             # Confirmed live videoUrl values are always swagit.com or
@@ -398,7 +405,37 @@ class PrimeGovAssetFinder(AssetFinder):
         # extracts real title/date/jurisdiction from their own pages, a
         # better source than PrimeGov's own header-scraping fallback.
         resolved.source_url = url
+        # Backfill ONLY -- never overrides a real value Swagit/Granicus's
+        # own resolve() already found (see the comment above this one).
+        # Real gap this closes (2026-08-21, see BACKLOG_DONE.md's
+        # MediaPlayer.php `event_id` writeup): a Granicus `event_id`-
+        # shaped page (a scheduled-but-not-yet-archived meeting slot, a
+        # separate id namespace from a real `clip_id`) has no date-shaped
+        # text anywhere on it, so `GranicusAssetFinder` correctly returns
+        # title=None/date=None for it -- but this tenant's own already-
+        # fetched API record (`lookup`, above) usually has both. Confirmed
+        # live on Calabasas `event_id=1525`: PrimeGov's API gives "City
+        # Council Regular Meeting - Closed Session (Amended Agenda)"/
+        # "Jan 28, 2026" where the delegated Granicus page has neither.
+        if not resolved.title and lookup.title:
+            resolved.title = lookup.title
+        if not resolved.date and lookup.date:
+            parsed_date = self._parse_api_date(lookup.date)
+            if parsed_date:
+                resolved.date = parsed_date
         return resolved
+
+    @staticmethod
+    def _parse_api_date(raw: str) -> Optional[str]:
+        """PrimeGov's ListArchivedMeetings API's own `date` field -- real
+        confirmed shape `"Jan 12, 2026"` (abbreviated month, comma) --
+        parsed to this app's own `YYYY-MM-DD` convention. Returns None
+        (never raises) on anything that doesn't match, same as every
+        other best-effort date parse in this file."""
+        try:
+            return datetime.strptime(raw, "%b %d, %Y").date().isoformat()
+        except ValueError:
+            return None
 
     @staticmethod
     def _extract_meeting_template_id(url: str) -> Optional[str]:
@@ -467,22 +504,27 @@ class PrimeGovAssetFinder(AssetFinder):
         netloc: str,
         meeting_template_id: str,
         year: int,
-    ) -> Tuple[bool, Optional[str], bool]:
-        """Returns (matched, video_url, has_video_icon) for one year's
-        worth of this tenant's archived meetings -- matched=True as soon
-        as a meeting whose documentList carries this meetingTemplateId is
-        found, with video_url being that meeting's own `videoUrl` field
-        (real confirmed shape: "https://{tenant}.new.swagit.com/videos/
-        {id}", "https://{tenant}.v3.swagit.com/events/{id}", or a swagit/
-        granicus URL, possibly protocol-relative). video_url is None
-        (matched still True) for a genuine agenda-only meeting with no
-        recording -- `has_video_icon` (from the meeting's own real
-        `isShowVideoIcon` field, confirmed live 2026-08-28 on Palo Alto)
-        distinguishes that from a meeting the tenant itself says has video
-        that videoUrl just doesn't name (e.g. hosted on Midpen Media
-        Center -- see BACKLOG.md). Best-effort like every other adapter's
-        opportunistic API probe here -- any failure just means "nothing
-        found," not a raised exception.
+    ) -> "_TenantMeetingLookup":
+        """Looks up this URL's meetingTemplateId in one year's worth of
+        this tenant's archived meetings -- `matched=True` as soon as a
+        meeting whose documentList carries it is found, with `video_url`
+        being that meeting's own `videoUrl` field (real confirmed shape:
+        "https://{tenant}.new.swagit.com/videos/{id}", "https://{tenant}.
+        v3.swagit.com/events/{id}", or a swagit/granicus URL, possibly
+        protocol-relative). `video_url` is None (matched still True) for a
+        genuine agenda-only meeting with no recording -- `has_video_icon`
+        (from the meeting's own real `isShowVideoIcon` field, confirmed
+        live 2026-08-28 on Palo Alto) distinguishes that from a meeting
+        the tenant itself says has video that videoUrl just doesn't name
+        (e.g. hosted on Midpen Media Center -- see BACKLOG.md). `title`/
+        `date` are the meeting's own real API fields (confirmed live
+        shape: `"date": "Jan 12, 2026"`, abbreviated month) -- used by the
+        caller only to backfill a delegated Granicus/Swagit resolve that
+        came back with nothing of its own (see `_resolve_via_tenant_
+        video_url`'s own comment on the `event_id` sub-case this covers).
+        Best-effort like every other adapter's opportunistic API probe
+        here -- any failure just means "nothing found," not a raised
+        exception.
         """
         api_url = (
             f"https://{netloc}/api/v2/PublicPortal/ListArchivedMeetings?year={year}"
@@ -497,7 +539,7 @@ class PrimeGovAssetFinder(AssetFinder):
                         response.status,
                         api_url,
                     )
-                    return False, None, False
+                    return _TenantMeetingLookup(matched=False)
                 meetings = await response.json(content_type=None)
         except Exception:
             logger.warning(
@@ -505,10 +547,10 @@ class PrimeGovAssetFinder(AssetFinder):
                 api_url,
                 exc_info=True,
             )
-            return False, None, False
+            return _TenantMeetingLookup(matched=False)
 
         if not isinstance(meetings, list):
-            return False, None, False
+            return _TenantMeetingLookup(matched=False)
 
         template_id = int(meeting_template_id)
         for meeting in meetings:
@@ -519,12 +561,14 @@ class PrimeGovAssetFinder(AssetFinder):
                     isinstance(document, dict)
                     and document.get("templateId") == template_id
                 ):
-                    return (
-                        True,
-                        meeting.get("videoUrl") or None,
-                        bool(meeting.get("isShowVideoIcon")),
+                    return _TenantMeetingLookup(
+                        matched=True,
+                        video_url=meeting.get("videoUrl") or None,
+                        has_video_icon=bool(meeting.get("isShowVideoIcon")),
+                        title=meeting.get("title") or None,
+                        date=meeting.get("date") or None,
                     )
-        return False, None, False
+        return _TenantMeetingLookup(matched=False)
 
     @staticmethod
     def _extract_title(html: str) -> Optional[str]:

@@ -91,7 +91,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (39)
+Platform & jurisdiction coverage  (38)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
@@ -122,13 +122,12 @@ Platform & jurisdiction coverage  (39)
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (11)
+  Adapter & platform gaps  (10)
     [NEEDS-AUDIT] A real YouTube-backed meeting resolves as video-less
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
-    [LATER] `[EASY]` PrimeGov's own better date/title still isn't
     [LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
     [LATER] `[EXAMPLE]` SuiteOne Media: unconfirmed CDX leads and
     [LATER] `[EXAMPLE]` Granicus's own captions.vtt appears to hard-cap
@@ -1354,6 +1353,34 @@ different real gap, still unfixed. Full writeup of both findings from
 the same investigation: `ENUMERATION_METHODS.md` §15 in
 `rtr-business/research`.
 
+**Update 2026-08-29 — a real second tenant confirmed (Bowen Island, BC),
+still no positive video example.** A targeted web search for the exact
+`splitscreen=true`/`widget=true` query shape (not just the footer
+phrase) surfaced `bowenisland.civicweb.net/filepro/document/{id}/
+{title}.html?splitscreen=true&notes=true&widget=true` — same underlying
+`filepro/document` template confirmed structurally (not guessed): the
+page embeds a real inline JSON config with `"Video":true,"youTube":true,
+...,"media":<bool>` fields, and the query string itself carries a
+`media=true` flag exactly when the link is the Video-column one (the
+fetched Bowen Island example was an Agenda-column link — `notes=true`,
+no `media=true` — and its own `"media":false` in the config agrees).
+That's a real, useful structural confirmation this is a genuine
+multi-tenant widget, not Sonoma-specific, and the `media=true` query
+param looks like a reliable "this is the video link" signal on its own.
+**Still not built, and a live browse turned up nothing further**:
+checked several real `civicweb.net`/"Document Center" tenants directly
+(browser, not just search) — Victoria, MN (a same-name collision with
+the Granicus "Victoria, MN" case elsewhere in this file, real but no
+Video button on its most recent Regular Council Meeting) and Sarnia, ON
+(also no Video button on its most recent meeting) — neither had a
+`media=true`/video-attached document among the meetings actually
+checked. Per this file's own "don't claim a data path works without a
+positive example" convention, the actual playable-video extraction
+(what field/embed the page uses when `media:true`) is still unconfirmed.
+Worth trying a tenant more likely to record video (a larger city, or one
+already known from another platform to livestream) rather than guessing
+further at random ones.
+
 ### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 
 **Symptom A (the `ffmpeg timed out after 120s` cluster) was fixed
@@ -1930,13 +1957,6 @@ from a live check), but the Legistar calendar itself is still untried.
      `BACKLOG_DONE.md`), and `hyland.py`/`civicclerk.py` (PR #496/#510)
      now both copy a YouTube delegation's bot-block `video_warnings`
      through instead of silently dropping them.
-
-- **[LATER] `[EASY]` PrimeGov's own better date/title still isn't
-  threaded through for Granicus `MediaPlayer.php?event_id=...` pages.**
-  Residual of the 2026-08-21 `MediaPlayer.php` fix (root cause and the 4
-  verified cities are in `BACKLOG_DONE.md`). PrimeGov's own API carries
-  a better date/title for these meetings than the Granicus page does;
-  nothing passes it along.
 
 - **[LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
   still unconfirmed-positive; 88-id Wayback population not yet ingested
