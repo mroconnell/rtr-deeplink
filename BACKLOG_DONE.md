@@ -399,6 +399,97 @@ scope):**
   product call, not a data gap.
 
 All four CI gates clean on the code-fix PR; no schema touched.
+## Four Render-dashboard `[HUMAN]` items walked through live with Ryan [Investigated 2026-08-29]
+
+Ryan logged into Render/Postgres dashboards and walked through the five
+open "Needs a human" items that only needed a dashboard login, one at a
+time, screenshotting each. Closes or substantially answers four of them;
+the fifth (health-check gate) was already correctly left as "nothing to
+check now."
+
+**1. Pinned-lockfile deploy (WO-11) — confirmed clean, closing that
+residual.** `rtr-deeplink` Events tab: `02caae7` ("WO-11: pin
+dependencies, then scan them", #89) shows a normal started → live pair,
+2026-08-16 5:12 PM. No dependency-resolution errors. The lockfile pin
+installed cleanly on a real Render build, matching the earlier isolated-venv
+verification.
+
+**2. `rtr-deeplink` memory auto-restart (2026-08-26T01:13:58Z) — now
+leans toward "recurs," not "one-off."** Corrected a units mistake in this
+investigation's own first pass: the restart timestamp is UTC, which is
+**Aug 25, 6:13 PM PDT**, not Aug 26 afternoon — the first screenshot
+pulled was the wrong window entirely. The right window
+(`rtr-deeplink` Metrics, Aug 25 6:00-7:58 PM PDT) shows:
+- Event timeline: **Instance failed: `7qp52` at 6:13 PM** (exact match to
+  the incident second), then `9e55965` deploy started 6:32 PM / live 6:34
+  PM.
+- **Memory (old instance `7qp52`) was sitting sustained near ~90% of the
+  512MB limit *before* the crash**, not spiking up from a healthy
+  baseline — a materially different picture than the (wrong-window)
+  Aug 26 screenshot's steady 55-60%.
+- **CPU spiked sharply to ~100% at the exact same moment** memory
+  crashed — a single sharp burst, consistent with a burst of concurrent
+  work (e.g. several `/api/resolve` calls each spawning an `ffprobe`
+  subprocess), not a slow leak.
+- After the restart, **the same old instance climbed straight back to
+  ~90% within minutes**, before the 6:32-6:34 PM deploy replaced it —
+  oscillating near the ceiling repeatedly in one short window, not
+  recovering to a healthy baseline.
+
+**Still needs Ryan's call, now with better evidence**: this pattern
+(sustained near-ceiling baseline + a sharp concurrent-load spike tipping
+it over + climbing right back to the ceiling) reads more like "recurs"
+than "isolated fluke." Live entry below carries the residual decision
+(bump `rtr-deeplink` from `plan: starter` to `plan: standard`, the same
+one-line change already applied to the other three services).
+
+**3. Archive instability, 2026-08-17, part (b) — fully closed.** The
+open question was what actually failed in PR #156's first prod
+`preDeployCommand` run (WO-10, 23:54:28 UTC / 4:54 PM PT). `rtr-deeplink-archive`
+Events tab, found it directly: **deploy `dep-da1pto6i8c9s73aj1pug` for
+`6e722be` (PR #156) failed with "Exited with status 1 while running your
+pre-deploy script."** PR #156 is the commit that *introduced*
+`preDeployCommand: alembic upgrade head` — its first real run hit a
+genuine pre-existing DB wedge: an earlier **manual** `alembic upgrade
+head` had already added the `search_tsv` column but died on the
+`CREATE INDEX CONCURRENTLY` step (which force-commits the preceding
+`ADD COLUMN`), leaving `alembic_version` stuck one revision behind
+reality. Every retry of the plain migration re-hit `DuplicateColumnError`
+on the same column. **Fixed 11 minutes later** by PR #157 (`02682ef`,
+live 5:05 PM) — added `IF NOT EXISTS` to the `ADD COLUMN` line so a retry
+from a half-applied state converges instead of repeating the failure.
+Not a build failure, not a health-check block, not a mystery — the
+migration gate's very first real-world run hit real drift and
+self-resolved within 11 minutes. Nothing further to chase.
+
+**4. Storage alert WO-60 residuals — plan storage cap now documented,
+one new decision surfaced.** Postgres instance → Settings: **storage
+plan is 5 GB** (Compute: $19/mo, 0.5 CPU, 1GB RAM — `render.yaml`'s
+`basic-1gb` comment was always about RAM, never disk, which is exactly
+why "90% of what?" was unanswerable before this). **Storage Autoscaling
+is disabled** — Render would otherwise auto-grow by 50% (rounded to the
+next 5GB) at 90% full, max once per 12h; with it off, crossing 90% again
+just risks running out with no automatic backstop. The Postgres event
+timeline also shows a **"Disk size changed" event at 2026-08-25 9:26
+AM** — the day after the WO-60 storage alert, someone already bumped the
+disk once by hand in response. Table Sizes confirms `meeting_page_thumbnails`
+is still the single largest table at **383.17 MB** even after WO-60's
+cap/cleanup shipped (`transcript_versions` 252.14MB, `meeting_pages`
+246.16MB, `transcription_jobs` 49.08MB, `rtr_deeplink_db.meeting_resolutions`
+14.98MB — 20 tables total across the server's 5 databases, only the top
+5 pulled here). New residual, not previously tracked: **Storage
+Autoscaling being off is itself worth a decision** given there's already
+been one storage alert and one manual bump — left live below.
+
+**Incidental, not part of the original 5 items but found along the way
+and directly relevant to two other open entries**: the workspace's
+**Included Usage** page (Account → Billing → Included Usage) showed, as
+of 2026-08-29: **Pipeline Minutes 1,001 / 1,000 (already over)** and
+**Bandwidth 31.74 GB / 25 GB (already over)**. Both numbers are newer
+and higher than what this file's own "Render pipeline minutes" and
+"billed twice" entries had on record (812/1,000 projected, 14.54GB
+bandwidth) — updated in place in `BACKLOG.md` rather than duplicated
+here.
 
 ## Vimeo jurisdiction gap closed for 11 of 22 real batch pages; root-caused a shared subdivision-table gap [Done 2026-08-29]
 

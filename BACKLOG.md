@@ -58,18 +58,16 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
-  Confirmations nobody has actually watched happen  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+  Confirmations nobody has actually watched happen  (4)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-    [HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
     [HUMAN] Configure GA's internal traffic filter — the
-  Production actions only Ryan should take  (8)
+  Production actions only Ryan should take  (7)
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
-    [HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
-    [HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
-    [HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
+    [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
+    [HUMAN] Postgres Storage Autoscaling is off — decide whether to
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
@@ -357,11 +355,13 @@ so that work reads together.
   `/meetings`, `/coverage`, `/state/*` and `/account/saved` all forward
   the user's cookie for Clerk auth. Roll back by restoring the public
   URL if anything 502s — it's a single env-var change, no code deploy.
-  **Not urgent on cost grounds** (see the corrected numbers in
-  `BACKLOG_DONE.md`'s "Render bandwidth" entry — the account is at
-  14.54 GB of a **25 GB** allowance, not the 5 GB the original alert
-  implied), but it is free money and halves the blast radius of any
-  future traffic spike.
+  **Updated 2026-08-29, and this changes the urgency**: bandwidth is now
+  **31.74 GB of the 25 GB included allowance — already over**, up from
+  14.54 GB when this entry last measured it (see `BACKLOG_DONE.md`'s
+  "Render bandwidth" entry for that earlier read). The double-proxy
+  waste this entry describes is no longer just "free money left on the
+  table" — it's now plausibly a real chunk of a real overage charge.
+  Worth doing sooner rather than opportunistically.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -427,10 +427,6 @@ convenient.
   check the Events tab before rolling back and record whether Render
   caught it. Kept here only so nobody re-runs the same passive check
   expecting a different answer.
-- **[HUMAN] `[LOGIN]` Confirm a real Render deploy installed cleanly off
-  the new pinned lockfiles** (WO-11) — verified locally in an isolated
-  venv per service, but the actual Render build hasn't been watched
-  since.
 - **[HUMAN] Configure GA's internal traffic filter — the
   `submit_meeting_url` spike this entry used to track down turned out to
   be Ryan, not users or a bot (read live 2026-08-22, supersedes the
@@ -498,76 +494,37 @@ convenient.
   (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
   is a **Granicus vendor marketing event, not a government meeting** —
   needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
-- **[HUMAN] `[LOGIN]` `rtr-deeplink` (the main resolver) hit its memory
-  limit and auto-restarted once — first occurrence, not yet clustering
-  (2026-08-26T01:13:58Z).** From the daily inbox-triage Routine
-  (`CLAUDE_INBOX_TRIAGE.md`, promoted here). Render auto-restarted the
-  service; brief interruption, self-recovered, no user reports or
-  follow-up alerts since. Render's email gives only the generic three
-  possible causes (leak / traffic spike / undersized instance) and its
-  metrics/Events tabs are auth-walled, so this couldn't be confirmed
-  further from the repo.
-  Code review found nothing obviously memory-heavy in `app/main.py`:
-  `/meetings`, `/state/*`, `/j/*`, `/coverage`, `/account/saved` are thin
-  reverse-proxies to Archive (`_proxy_to_archive()`) that stream via
-  `response.content.iter_chunked(65536)` rather than buffering, and the
-  only worker-adjacent import is a bounded `ffprobe` duration probe
-  (`app/platforms/media_probe.py`) — no `list_pages()`-style
-  load-everything pattern like the one that OOM'd Archive on 2026-08-17.
-  **What is a real fact, not speculation**: `rtr-deeplink` is the *only*
-  one of the four Render services still on `plan: starter` (512MB) —
-  Archive and both transcription workers are already `plan: standard`,
-  and Archive's own upgrade was made for this exact failure shape
-  (`"Ran out of memory (used over 512MB)"`). That doesn't prove
-  `rtr-deeplink` needs the same upgrade from one self-recovered restart,
-  but it's not a coincidence-free signal either.
-  **Open question for Ryan**: check the Render dashboard's real memory
-  graph for `rtr-deeplink` — is this a one-off traffic spike, or does it
-  correlate with a request pattern (e.g. concurrent `/api/resolve` calls
-  each spawning an `ffprobe` subprocess)? If it recurs or clusters, the
-  fix is the same one-line change already used for the other three
-  services: `plan: starter` → `plan: standard` in `render.yaml`.
-- **[HUMAN] `[LOGIN]` Two residuals from the storage alert WO-60 closed —
-  the resolver's own database was never measured, and the plan's real
-  storage cap is still unknown (2026-08-25).** WO-60 (fully executed and
-  closed 2026-08-29 — see `BACKLOG_DONE.md` for the real before/after
-  numbers) root-caused the 2026-08-24 ">90% storage" alert to
-  `meeting_page_thumbnails` and shipped the cap/cleanup. **Correction
-  worth keeping**: this entry previously guessed the driver was ordinary
-  segment growth (the second worker plus 167,719 segments in 24h). That
-  was wrong — it was 12 JPEG frames per page across ~1,200 pages. A
-  plausible cause sized from a real number still isn't a measured one.
-  What WO-60 does not cover:
-  - `scripts/analyze_db_storage.py` reads `pg_database_size(current_database())`,
-    i.e. `rtr_archive` only. **One Postgres server hosts `rtr_deeplink_db`
-    too**, and a suspension takes both down. `GET /internal/db-size`
-    (WO-61) reports every database on the server, and needs no shell:
-    ```
-    curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
-    ```
-  - **The plan's storage allotment is still not written down anywhere.**
-    `render.yaml`'s `basic-1gb` comment is entirely a RAM/`shared_buffers`
-    argument. Until that number is read off the dashboard once and
-    recorded there, "90% of what?" stays unanswerable from the repo, and
-    the next alert costs the same investigation.
-
-- **[HUMAN] `[LOGIN]` Archive service instability, 2026-08-17 —
-  part (a) answered 2026-08-22, part (b) still open.** Sentry showed a
-  cluster (unclosed connections, a proxy `TimeoutError`, a
-  `RuntimeError` on Render's own health probe, a DB-shutdown error),
-  most of it explained by `BACKLOG_DONE.md`'s already-documented WO-10
-  outage that evening (PR #116's model column deploying ~13 minutes
-  ahead of its `ALTER TABLE`). **(a) Resolved — the OOM did precede the
-  schema errors, and it caused them.** See `BACKLOG_DONE.md`'s "Archive
-  memory graph, 2026-08-17" entry for the read of Render's own graph.
-  **(b) Still open, needs the Events tab, not the metrics tab:** WO-10's
-  own fix deploy (PR #156) failed to deploy at 23:54:28 UTC =
-  **16:54 PT** the same evening, though `render.yaml` on `main` today
-  confirms a later attempt succeeded. The memory graph says nothing
-  about a failed *build*; this needs `rtr-deeplink-archive` → **Events**,
-  filtered to 2026-08-17 late afternoon PT, to see what the failure
-  actually was. Cheap to fold into the health-check-gate Events check
-  above, since that's the same tab.
+- **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
+  upgrade — evidence now leans toward "recurs," not "one-off"
+  (investigated live 2026-08-29, see `BACKLOG_DONE.md`).** The
+  2026-08-26T01:13:58Z auto-restart's memory graph shows the instance
+  sitting sustained near ~90% of its 512MB limit *before* a sharp
+  concurrent-load spike tipped it over, then climbing straight back to
+  ~90% within minutes post-restart — not a one-off blip from a healthy
+  baseline. `rtr-deeplink` is still the only one of the four Render
+  services on `plan: starter`; the other three already made this exact
+  jump for this exact failure shape. Ryan's call: bump `render.yaml`'s
+  `rtr-deeplink` block from `plan: starter` to `plan: standard`, or wait
+  for a second occurrence.
+- **[HUMAN] Postgres Storage Autoscaling is off — decide whether to
+  enable it (found 2026-08-29, see `BACKLOG_DONE.md`).** The storage
+  plan is now a documented **5 GB** (Settings → Storage), closing the
+  "cap unknown" half of the WO-60 storage-alert residuals — the
+  `render.yaml` `basic-1gb` comment was always a RAM figure, never disk.
+  What's newly surfaced: **Storage Autoscaling is disabled**, so
+  crossing 90% full again (as already happened once, 2026-08-24) has no
+  automatic backstop — Render would otherwise auto-grow by 50% (rounded
+  to the next 5GB, max once per 12h). A "Disk size changed" event fired
+  2026-08-25 9:26 AM, meaning the disk has already been bumped by hand
+  once. Ryan's call: enable autoscaling, or keep manual control given
+  the WO-60 cap/cleanup is now in place.
+  Still outstanding, unrelated to the above: `scripts/analyze_db_storage.py`
+  only reads `rtr_archive`'s size — `GET /internal/db-size` (WO-61)
+  reports every database on the shared server (including
+  `rtr_deeplink_db`) and needs no shell:
+  ```
+  curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
+  ```
 - **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
   duplication — the apply ran 2026-08-22 and rate-limited on exactly
   those.** 14 of 25 rewritten and verified live; **every non-YouTube
@@ -2066,13 +2023,14 @@ Addressed by `autoDeploy: false` on all four services plus a CLAUDE.md
 convention on batching merges and asking for deploys — see WO-59 in
 `BACKLOG_DONE.md`.
 
-**Watch this before 08-27/28.** Ryan's goal is to downgrade the workspace
-again once build volume is efficient enough. **812 / 1,000 was cumulative
-against the raised cap**, projecting ~1,145 by month end. Two caveats on
-the numbers above: they are build *counts*, and Render bills build
-*minutes* — nobody has read per-service durations off the dashboard yet —
-and a saving only lands on pushes that touch one service's tree, so it
-decays as PRs get broader.
+**Confirmed 2026-08-29 (Included Usage dashboard): 1,001 / 1,000 pipeline
+minutes — already over the included allowance**, ahead of the ~1,145
+month-end projection this entry used to carry. Ryan's goal is to
+downgrade the workspace again once build volume is efficient enough; that
+goal is not yet met. Two caveats on the earlier 812/1,000 figure: it was
+a build *count*, and Render bills build *minutes* — nobody has read
+per-service durations off the dashboard yet — and a saving only lands on
+pushes that touch one service's tree, so it decays as PRs get broader.
 
 **Two residuals:**
 - **`[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
