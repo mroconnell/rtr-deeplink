@@ -91,7 +91,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
   28 well-formed IQM2 queue rows point at retired tenants…
   Some Swagit meetings have no single "whole meeting" video file, and…
 
-Platform & jurisdiction coverage  (38)
+Platform & jurisdiction coverage  (40)
   `[LATER]` Recover, rather than just decline, a domain-privacy-
   `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
   `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
@@ -104,7 +104,7 @@ Platform & jurisdiction coverage  (38)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
-  Jurisdiction extraction & backfill  (17)
+  Jurisdiction extraction & backfill  (19)
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] `[EASY]` Glued eScribe-subdomain residuals after
@@ -116,7 +116,9 @@ Platform & jurisdiction coverage  (38)
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
     [NEEDS-AUDIT] A name that's already "X, State"-shaped with an
-    [NEEDS-AUDIT] No archive-wide way to find pages missing a
+    [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
+    [NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
+    [NEEDS-AUDIT] eScribe residuals after the 2026-08-29 sweep (2 of 14
     [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
     [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
@@ -1690,24 +1692,91 @@ from a live check), but the Legistar calendar itself is still untried.
   have `youtube.py`'s comma-branch yet — worth its own careful pass with
   fresh test coverage, not tacked onto an already-large session.
 
-- **[NEEDS-AUDIT] No archive-wide way to find pages missing a
-  jurisdiction — the 2026-08-29 Vimeo audit above was done by manually
-  paging `/meetings?page=N` (sorted newest-touched) and eyeballing which
-  rows had no "City, ST ·" prefix.** Works, but only covers whatever's
-  recently touched — the site has 3,393 archived pages across 170
-  pages of that listing, and nothing was checked past the first two.
-  Real gap this leaves open: no idea how many of the other ~3,350 pages
-  (older ingests, other platforms never audited this way) are missing a
-  jurisdiction for a similarly-recoverable reason. `/meetings` has no
+- **[NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
+  missing a jurisdiction," even though the real numbers are now known.**
+  The 2026-08-29 Vimeo audit above started by manually paging
+  `/meetings?page=N`; once real DB access was available the same day, a
+  direct query gave the actual counts: **269 of 3,406 archived pages**
+  have no jurisdiction, by platform: Cablecast 101 (fixed, see this
+  file's Cablecast entry), TelVue 46 (2 fixed one-off, rest need
+  per-org-token research — see telvue.py's own `_KNOWN_ORG_TOKEN_
+  JURISDICTIONS` comment), Swagit 39 (already its own entry above —
+  structurally harder, not a quick fix), Hyland 18 (fixed — see
+  `BACKLOG_DONE.md`), CivicClerk 17 (10 already fixed by refreshing
+  stale rows against already-shipped code; residuals below), YouTube 18
+  (mostly failed resolves with no title at all — overlaps the tracked
+  YouTube IP-block issue, not a jurisdiction bug), eScribe 14 (2 fixed —
+  see `BACKLOG_DONE.md`; residuals below), Vimeo 10 (residual after
+  `BACKLOG_DONE.md`'s fixes — 2 have no place signal at all, 1 resolves
+  but stays state-ambiguous), plus 6 across unknown/castus/
+  townhallstreams (not investigated). What's still missing: a real,
+  repeatable *endpoint* for this — `/meetings` has no
   `has_jurisdiction=false` filter, and the read-only `/internal/*` audit
   endpoints (e.g. `get_jurisdiction_coverage()`) all query `WHERE
-  jurisdiction IS NOT NULL` — built for the opposite question ("what do
-  we have"), not "what's missing." A `GET
-  /internal/jurisdiction/missing`-shaped endpoint (same
-  dry-run-first, admin-token-gated pattern as the bleed-backfill
-  endpoints already in `archive/main.py`), grouped by platform with a
-  capped sample of slugs per platform, would make a real systematic
-  sweep possible instead of one lucky enough to be recent.
+  jurisdiction IS NOT NULL`, built for the opposite question. A `GET
+  /internal/jurisdiction/missing`-shaped endpoint (same dry-run-first,
+  admin-token-gated pattern as the bleed-backfill endpoints already in
+  `archive/main.py`), grouped by platform with a capped sample of slugs
+  per platform, would make the next sweep self-serve instead of needing
+  a one-off DB script.
+
+- **[NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
+  17 already fixed by refreshing stale rows — see `BACKLOG_DONE.md`).**
+  6 genuinely still fail live against current code:
+  `fsusga.portal.civicclerk.com` is Florida State University's Student
+  Government Association ("SGA Election Executive Branch Debate") — not
+  a real local-government jurisdiction at all, so `jurisdiction=None` is
+  actually CORRECT here, not a bug; worth noting only because it means
+  CivicClerk's tenant base isn't purely municipal/county governments,
+  which future enumeration passes should keep in mind.
+  `macombtwpmi`/`southorangetwpnj` (Macomb Township MI, South Orange
+  Township NJ) both fail because wordninja can't segment a "twp"
+  abbreviation glued mid-string ("macombtwpmi" → `['ma','com','btw',
+  'pm','i']`, garbage) — a real, consistent 2-example shape
+  (`{name}twp{state}`) but only 2 examples, and the marker sits BETWEEN
+  name and state rather than at either end like every existing tier in
+  `_validated_label_extract_with_state()` expects, so it needs a new
+  tier shape, not a tweak to an existing one. `lenaweecomi` (Lenawee
+  County, MI) fails because "lenawee" isn't a wordninja dictionary word
+  and no existing tier tries "trailing state code AND trailing county
+  abbreviation both stripped from the raw label." `riversidesheriff` and
+  `cosumnescommunityservices` (Cosumnes Community Services District, CA)
+  are real special-purpose entities needing individual research the way
+  Hyland's JCSD/WRD entries were confirmed, not attempted yet.
+
+- **[NEEDS-AUDIT] eScribe residuals after the 2026-08-29 sweep (2 of 14
+  fixed — Chatham-Kent/Arran-Elderslie, see `BACKLOG_DONE.md`).** The
+  other 12 are all acronym or glued-institutional-suffix subdomains,
+  each needing individual confirmation:
+  `surreyschools`/`horrycountyschools` are the SAME institutional-suffix
+  shape `jurisdiction_enrich.strip_institutional_suffix()` already
+  handles for Vimeo/YouTube's free-text account names (real: Surrey, BC
+  wordninja-splits cleanly to `['surrey','schools']`), but that function
+  only strips a SPACED trailing phrase — these are GLUED subdomain
+  labels, a different shape needing the strip applied to the
+  wordninja-split word list itself, not the raw string; only 2 examples
+  so far (Horry's own "horrycountyschools" mangles further, splitting to
+  `['horr','y','county','schools']`, so fixing the suffix alone
+  wouldn't even recover it). `trca` (Toronto and Region Conservation
+  Authority), `tcdsbpublishing` (Toronto Catholic District School
+  Board), `rdco` (Regional District of Central Okanagan, BC), `scrd`
+  (Sunshine Coast Regional District, BC), `tbdhu` (Thunder Bay District
+  Health Unit, ON), `rmow` (Resort Municipality of Whistler, BC),
+  `acwtownship` — all real Canadian special-purpose entities/acronyms
+  plausible from general knowledge but NOT individually confirmed live
+  this session (unlike Hyland's JCSD/WRD, which were). `pub-hpl`'s real
+  video filename ("hamiltonpl") suggests Hamilton Public Library, ON —
+  if these are actually City of Hamilton council meetings carried on the
+  library's channel, jurisdiction should be Hamilton, ON, but that
+  inference isn't confirmed. `pub-stthomas` (St. Thomas, ON, plausible
+  but unconfirmed). `pub-lloydminster`: Lloydminster is a real city that
+  literally straddles the AB/SK border — the Census/StatsCan table
+  stores it as "Lloydminster (Part)" once per province (both filtered
+  out as junk by the existing `(Part)`-stripping logic, which is correct
+  for OTHER `(Part)` rows that really are junk, e.g. First Nations
+  reserve fragments with trailing numbers) — recovering it needs an
+  actual product decision (which province to show, or a way to
+  represent "spans two provinces"), not just a data fix.
 
 - **[LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
   fallback is unconfirmed against any real second customer.** WO-19
