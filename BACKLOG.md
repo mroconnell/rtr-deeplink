@@ -803,15 +803,84 @@ coverage** instead.
      violation per Google's docs, confirmed on 2 real pages. Would need
      a video proxy to fix, not a template change; population size
      unswept.
+  5. **Granicus's own media CDN hard-blocks Googlebot (and Bingbot)
+     outright — confirmed live 2026-08-30, high confidence, NOT
+     fixable from this app's code.** Not a markup problem: the template
+     already renders a correct, matching `<source>`/`contentUrl` for
+     Granicus's `.m3u8`/`.mp4` (finding 1 above). The problem is one
+     level down — Google's crawler can never fetch the file it's being
+     asked to verify. Reproduced directly, repeatedly, against a real
+     live URL (Tacoma WA, `archive-stream.granicus.com/OnDemand/
+     _definst_/mp4:archive/cityoftacoma/...playlist.m3u8`, also
+     confirmed on the sibling `archive-video.granicus.com` `.mp4`):
+     a real desktop Chrome `User-Agent` gets **200**, while Googlebot's
+     real crawler UA string, Bingbot's UA string, a plain `curl` default
+     UA, and any UA merely containing the word "bot" all get **403** —
+     tested with and without a `Referer` header (no effect either way),
+     so this is User-Agent-string filtering, not Referer-based hotlink
+     protection. Granicus is one of this corpus's largest platforms
+     (CLAUDE.md: one of the four platforms accounting for ~78% of the
+     corpus), so if this generalizes past Tacoma it's plausibly the
+     single largest contributor to the 947→1,764 growth — bigger than
+     finding 3's hub-page fix. **No template/backend fix on our side can
+     make Granicus serve Googlebot** — Granicus's server is the one
+     deciding this, and this app already sends a normal browser UA when
+     *we* fetch (CLAUDE.md's "query sites politely" policy), which is
+     exactly why our own resolve works while Google's crawler doesn't.
+     The only real code-side lever would be proxying the video bytes
+     through our own domain so Googlebot fetches from
+     `redtaperecordings.com` instead — **not recommended without a
+     careful cost check first**: this session already found the
+     resolver was double-proxying *HTML* pages into a real bandwidth
+     overage (see `BACKLOG_DONE.md`'s ARCHIVE_BASE_URL entry); proxying
+     multi-GB video files would be a vastly bigger version of the same
+     cost. **Confirmed Granicus-wide, not one city's CDN config**: a
+     second, independent tenant (Jacksonville FL,
+     `jaxcityc.granicus.com`) reproduced the identical pattern —
+     Googlebot UA 403, Chrome UA 200 — on the same shared
+     `archive-stream.granicus.com` host, which is itself evidence this
+     is one central Granicus-operated CDN serving every tenant, not
+     per-city infrastructure.
+  6. **Azure-CDN-hosted video files (`*.azureedge.net`) are served with
+     `Content-Disposition: attachment` — confirmed live 2026-08-30 on
+     CivicClerk's `cpmedia.azureedge.net`, medium-high confidence, not
+     yet confirmed on Cablecast's azureedge tenants specifically.**
+     Unlike Granicus, the file itself is fully reachable — a real
+     CivicClerk mp4 (Emporia, KS; from `tests/fixtures/civicclerk/
+     emporiaks_media585.json`'s real `videoUrl`) returns **200** for
+     both a normal browser UA and Googlebot's real UA, correct
+     `content-type: video/mp4`, correct `content-length`. But every
+     response (both UAs) carries `content-disposition: attachment` —
+     the header a server uses to tell a client "this is a download,
+     not something to render/play inline." Google's video indexer
+     plausibly treats a `contentUrl` serving `attachment` disposition
+     as not-actually-embeddable, distinct from and compounding the
+     Granicus issue above. **This is a real, live, reproduced header on
+     CivicClerk's own azureedge instance — not yet independently
+     confirmed on a real Cablecast/azureedge URL**, since Ryan's own
+     failing-examples list names "Cablecast/azureedge" specifically and
+     no live Cablecast-via-azureedge sample was in hand to test
+     directly (Cablecast's `vodUrl` is per-tenant and dynamic — see
+     `app/platforms/cablecast.py` — most fixture tenants resolve to
+     `*.cablecast.tv` directly, not azureedge). If a real failing
+     Cablecast/azureedge example turns up, the exact same curl-with-
+     two-UAs-plus-headers check applies. No fix exists on our side for
+     this either if confirmed — Azure Blob Storage's `Content-
+     Disposition` is set by the vendor's CDN config, not by anything
+     this app controls; a proxy has the same cost caveat as finding 5.
 
   **The actual remaining work, per Ryan (2026-08-29): take one real,
   currently-failing sample URL from *each* host/platform showing up in
-  Search Console's failing-examples list (Granicus, Cablecast/azureedge,
-  IQM2 [now fixed], champds, isilive, townhallstreams, CloudFront-
-  tokenized, and any others that turn up) and read that page line by
+  Search Console's failing-examples list and read that page line by
   line — full rendered HTML, JSON-LD, and the actual served video/
   thumbnail resources — looking for what's systematically making Google
-  say "not on a watch page" for that platform specifically.** The four
+  say "not on a watch page" for that platform specifically.** Granicus
+  and (CivicClerk's) azureedge are now done — see findings 5-6 above,
+  both real infrastructure-level blockers outside this app's control
+  rather than a fixable bug. **Still unswept**: champds, isilive,
+  townhallstreams, CloudFront-tokenized (finding 4's population size),
+  a real Cablecast/azureedge example specifically (to confirm finding 6
+  generalizes past CivicClerk), and any others that turn up. The six
   findings above came from spot-checking a handful of examples per
   platform, not an exhaustive per-host read; a real per-host pass may
   surface further platform-specific issues the spot-checks missed (the
@@ -820,6 +889,11 @@ coverage** instead.
   platform's `video_format`/`video_url` assignment in
   `app/platforms/*.py` against what the template actually renders, the
   same way the IQM2 fix was found.
+  **Two of the six findings (5, 6) are likely not fixable in this
+  app's code at all** — worth deciding, once the remaining platforms
+  are swept, whether the honest final state here is "partially fixed,
+  rest is third-party infrastructure we don't control" rather than
+  continuing to treat 100% resolution as the goal.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
