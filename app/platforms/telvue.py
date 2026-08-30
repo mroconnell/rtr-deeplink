@@ -301,6 +301,16 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # on this org token's own real TelVue page ("NASHUA ETV22", "NPTV
     # Ch. 6", "NCM-HD CH. 1073").
     "LGzST4YdA6GIkRCa0H5CwbVBptJRJ3XD": "Nashua, NH",
+    # Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY: found 2026-08-29 auditing archived
+    # pages missing a jurisdiction (a real, "Eye on Piscataway August
+    # 2026"-titled meeting -- a talk-show-style title, not "X Board/
+    # Council", so the title-guess path never even runs). Real alt text
+    # "Piscataway Community TV - Piscataway Community TV VOD Player" has
+    # no explicit state, so the general org-logo parser correctly
+    # declines on it (same shape as Auburn Hills/Nashua above). Confirmed
+    # unambiguous via `jurisdiction_enrich`'s own county-subdivisions
+    # table: real, single-state NJ township, no collision.
+    "Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY": "Piscataway, NJ",
 }
 
 
