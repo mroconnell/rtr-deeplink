@@ -2231,24 +2231,32 @@ def validated_label_extract_with_state(
     return _validated_label_extract_with_state(label)
 
 
-# K-12/library institutional suffixes that ride along on a real place name
-# in a free-text account/channel name -- confirmed real, 2026-08-29, from
-# Vimeo's direct-dorking batch (BACKLOG_DONE.md, "22 new real ingests"):
-# "Peters Township School District" (Peters Township, PA), "Hopkins
-# Public Schools" (Hopkins, MN), "Jefferson Parish Schools" (Jefferson
-# Parish, LA), "Seekonk Public Schools" (Seekonk, MA), "Mason County
-# District Library" (Mason County, MI). Shared here (not left local to
-# vimeo.py) because youtube.py's `_jurisdiction()` explicitly mirrors
-# vimeo.py's model and hits the identical `validated_label_extract()`
-# call on the identical shape of input (a platform account/channel's own
-# display name) -- the suffix is a naming convention real government
-# accounts use, not a Vimeo-specific quirk, so a second adapter reading
-# the same kind of name is exactly the case this needs to already cover.
-# Order matters only in that a more specific phrase must be tried before
-# a shorter one it contains ("Public Schools" before bare "Schools"), so
-# stripping "Schools" alone never leaves a dangling "Public".
+# K-12/library/community-media institutional suffixes that ride along on
+# a real place name in a free-text account/channel name -- confirmed
+# real, 2026-08-29, from Vimeo's direct-dorking batch (BACKLOG_DONE.md,
+# "22 new real ingests"): "Peters Township School District" (Peters
+# Township, PA), "Hopkins Public Schools" (Hopkins, MN), "Jefferson
+# Parish Schools" (Jefferson Parish, LA), "Seekonk Public Schools"
+# (Seekonk, MA), "Mason County District Library" (Mason County, MI),
+# "Willits Community Television Inc" (Willits, CA), "Morrilton Community
+# Channel 6" (Morrilton, AR), "Peters Township Community TV" (Peters
+# Township, PA again -- a second, distinct account from the school
+# district one above), "Town of Penfield Television" (Town of Penfield,
+# NY). Shared here (not left local to vimeo.py) because youtube.py's
+# `_jurisdiction()` explicitly mirrors vimeo.py's model and hits the
+# identical `validated_label_extract()` call on the identical shape of
+# input (a platform account/channel's own display name) -- the suffix is
+# a naming convention real government/community-media accounts use, not
+# a Vimeo-specific quirk, so a second adapter reading the same kind of
+# name is exactly the case this needs to already cover. Order matters
+# only in that a more specific phrase must be tried before a shorter one
+# it contains ("Public Schools" before bare "Schools", "Community
+# Television Inc" before "Television" alone), so stripping the short form
+# alone never leaves a dangling qualifier word in front of it.
 _INSTITUTIONAL_SUFFIX_RE = re.compile(
-    r"\s+(?:Public Schools|School District|District Library|Schools)$",
+    r"\s+(?:Public Schools|School District|District Library|Schools"
+    r"|Community Television(?: Inc\.?)?|Community TV|Community Channel \d+"
+    r"|Television)$",
     re.IGNORECASE,
 )
 
