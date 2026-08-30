@@ -1701,23 +1701,28 @@ from a live check), but the Legistar calendar itself is still untried.
   `confidence='repaired'`. Page **2041** (which carries the old bad
   value) is a recompute-backfill candidate now that this is fixed.
 
-  **`lacity.primegov.com`'s coin-flip problem is still open and
-  unaffected by the above — a different failure shape.** Meeting 156963
-  returns `None` while 157675 returns a correct `'City of Los Angeles,
-  CA'`; nothing distinguishes them structurally, it depends purely on
-  whether that meeting's agenda body text happens to contain the
-  phrase at all. `_looks_like_bleed()` can't help here since there's no
-  bled value to repair — the search just finds nothing. This is the
-  same family as the OKC/Thousand-Oaks/SLC page-position problem two
-  paragraphs up, and the same caution applies: two prior fix attempts
-  (a positional window, a bold-tag rule) were tried and reverted after
-  real live-page character-offset data showed neither generalizes past
-  the 3 examples that motivated it. **Live-reproducible test URLs**:
-  `lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963` (None)
-  vs `...=157675` (correct), `okc.primegov.com/Portal/Meeting?
-  meetingTemplateId=68482` (works, but only because its agenda text
-  happens to cooperate). Page **2033** (`NULL`) is this same bug, not
-  the Las Vegas one — not fixed by anything above.
+  **`lacity.primegov.com`'s coin-flip problem — fixed 2026-08-30, via a
+  domain override, not another text-extraction heuristic.** Root cause
+  actually confirmed this time by fetching both real pages live rather
+  than guessing at a third positional/regex rule: meeting 157675 is a
+  full City Council meeting with a real "Los Angeles City Council
+  Agenda" letterhead `_COUNCIL_HEADER_RE` matches; meeting 156963 is a
+  **committee** meeting (`<title>Housing and Homelessness Committee -
+  8/5/2026...`) whose entire real letterhead is just the committee name
+  and date — no "City of"/"Los Angeles City Council" phrase anywhere on
+  the page at all. Unlike the OKC/Thousand-Oaks/SLC/Bedford shape (a
+  *wrong* match winning over the *real* one), this is a genuine absence
+  on committee pages — no amount of smarter text-extraction recovers
+  text that isn't there. Fix: `lacity.primegov.com` added to
+  `jurisdiction_enrich._KNOWN_DOMAINS` as an authoritative override
+  (same mechanism already proven for `slc.primegov.com`/
+  `ccta.primegov.com`/`cityoflancasterca.primegov.com` above) — the
+  domain is confirmed single-tenant, so applying it unconditionally is
+  safe, and it produces the identical correct answer on the
+  already-working 157675 too (verified against both real, live-fetched
+  pages, not just a fixture). Page **2033** (`NULL`) and page **2041**
+  (the Las Vegas name-tail-overrun row above) are now both
+  recompute-backfill candidates.
 
 - **[NEEDS-AUDIT] A name that's already "X, State"-shaped with an
   explicit, spelled-out state still declines when the bare name alone

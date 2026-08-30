@@ -1,5 +1,57 @@
 # Backlog — done
 
+## `lacity.primegov.com`'s coin-flip jurisdiction gap fixed via a domain override, not another text-extraction guess [Done 2026-08-30]
+
+Closes the real, open half of BACKLOG.md's PrimeGov jurisdiction entry
+that two prior fix attempts (a positional window, a bold-tag rule) had
+already failed to generalize past 3 examples and been reverted from.
+This time, root-caused by fetching both real, live pages directly
+(`lacity.primegov.com/Portal/Meeting?meetingTemplateId=156963` and
+`=157675`) rather than guessing at a fourth heuristic.
+
+**What the real pages actually showed**: 157675 is a full City Council
+meeting with a genuine "Los Angeles City Council Agenda" letterhead and
+city-seal image, which `_COUNCIL_HEADER_RE` already matched correctly.
+156963 is a **committee** meeting — its real `<title>` reads "Housing
+and Homelessness Committee - 8/5/2026 9:00:00 PM", and its entire
+letterhead is just that committee name plus the date. A full search of
+the raw HTML confirms zero occurrences of "City of Los Angeles" or
+"Los Angeles City Council" anywhere on the page — every "Los Angeles"
+mention is prefixed differently ("Los Angeles Housing Department", "Los
+Angeles Homeless Services Authority", etc.), none of which match either
+extraction regex. This is structurally different from the previously-
+reverted OKC/Thousand-Oaks/SLC/Bedford cases: those were all a *wrong*
+match winning over a *real* one somewhere else on the page; this is a
+genuine absence — LA's committee-level pages carry no jurisdiction-
+identifying text at all for any regex, however clever, to find.
+
+**Fix**: `lacity.primegov.com` added to
+`jurisdiction_enrich._KNOWN_DOMAINS` as an authoritative override —
+the exact same mechanism already proven safe for `slc.primegov.com`
+(2026-08-13, the original false-positive case), `ccta.primegov.com`,
+and `cityoflancasterca.primegov.com` (2026-08-23). The domain is
+confirmed single-tenant (every meeting on it, committee or full
+council, belongs to the City of Los Angeles), so an unconditional
+override can't regress a different real jurisdiction. Verified against
+both real downloaded pages directly (not just a test fixture): 156963
+now resolves `"City of Los Angeles, CA"` (previously `None`), and
+157675 also resolves `"City of Los Angeles, CA"` (previously the
+extraction's own raw `"Los Angeles, CA"` — the override additionally
+normalizes it to the canonical "City of ..." form both other LA rows
+already use).
+
+New tests in `tests/test_primegov.py`: a real, trimmed fixture of
+156963's actual committee-page letterhead (proving the override fires
+even when the page has genuinely no matching text), and a test on
+157675's own shape confirming the override doesn't change behavior on
+a page that already worked. All four CI gates pass.
+
+**Residual, not attempted here**: pages 2033 (this bug) and 2041 (the
+adjacent Las Vegas name-tail-overrun row) are now real recompute-
+backfill candidates via `POST /internal/jurisdiction/backfill-apply`,
+but that write needs this fix deployed first — not done as part of
+this PR, which only lands the code.
+
 ## Repetition-loop collapse tool built; drop-segments route generalized beyond seam-dup [Done 2026-08-30]
 
 Builds step 1b of BACKLOG.md's "[JUST-DO-IT] `[BIG]` Repair the three
