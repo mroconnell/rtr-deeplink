@@ -1136,6 +1136,60 @@ async def internal_jurisdiction_backfill_apply(
     )
 
 
+@app.get("/internal/pages/http-scheme-candidates")
+async def internal_http_scheme_candidates(authorization: Optional[str] = Header(None)):
+    """Read-only audit: every archived page whose `source_url_normalized`
+    still starts with `http://`, real gap found 2026-08-30. `normalize_url()`
+    was fixed (commit 6b47794) to always collapse to `https://`, but that
+    fix was never backfilled onto already-archived rows -- any of these is
+    now permanently unreachable by `archive_client.lookup()`, since every
+    caller (a manual "Refresh this page" click, a future re-ingest's own
+    duplicate check, the passive ARCHIVE_RECHECK_AFTER cycle) normalizes
+    its input to `https://` first. Confirmed live: 261 rows across 7
+    platforms, 3 of which already have a separate `https://` page for the
+    identical URL -- proof a re-crawl already silently duplicated at least
+    three pages, not just a dead-lookup annoyance. See
+    crud.list_http_scheme_backfill_candidates()'s own docstring for the
+    safe/needs_merge split. Never writes anything itself.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_http_scheme_backfill_candidates()
+
+
+@app.post("/internal/pages/http-scheme-backfill-apply")
+async def internal_http_scheme_backfill_apply(
+    dry_run: bool = True,
+    only_ids: Optional[str] = None,
+    exclude_ids: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+):
+    """Write counterpart to GET /internal/pages/http-scheme-candidates
+    above -- renames `source_url_normalized` from `http://` to `https://`
+    for the `safe` bucket only (crud.apply_http_scheme_backfill() itself
+    recomputes the collision check at write time, so a `needs_merge` row
+    can never be written here even with an explicit only_ids). Same
+    dry-run-first, only_ids/exclude_ids-narrowing shape as
+    POST /internal/jurisdiction/backfill-apply above.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        only = _parse_id_filter(only_ids)
+        exclude = _parse_id_filter(exclude_ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "only_ids/exclude_ids must be comma-separated integers"},
+            status_code=400,
+        )
+
+    return await crud.apply_http_scheme_backfill(
+        dry_run=dry_run, only_ids=only, exclude_ids=exclude
+    )
+
+
 @app.post("/internal/pages/clear-future-dates")
 async def internal_pages_clear_future_dates(
     dry_run: bool = True,
