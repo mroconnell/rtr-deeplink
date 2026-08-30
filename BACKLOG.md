@@ -58,12 +58,11 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `[EASY]` Port `dedupe_rollup_transcripts.py`'s
   [JUST-DO-IT] Every byte the public site serves is billed twice:
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
-  Confirmations nobody has actually watched happen  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-    [HUMAN] Configure GA's internal traffic filter — the
   Production actions only Ryan should take  (7)
     `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
@@ -76,7 +75,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (11)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (12)
+  [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
@@ -134,7 +134,7 @@ Platform & jurisdiction coverage  (40)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms account for ~78% of the 470 real
 
-Reliability, ops & cost  (18)
+Reliability, ops & cost  (17)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (2)
     `[JUST-DO-IT]` `[EASY]` Source `_tier3_queue_remaining()` from the
     `[LATER]` Tighten the two workers to their real import surface.
@@ -149,12 +149,11 @@ Reliability, ops & cost  (18)
     [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (6)
+  Search Console, structured data & SEO plumbing  (5)
     [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-    [HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
-    [IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
-    [NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+    [WAIT] Search Console "Page indexed without content"
+    [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
     [JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
@@ -428,31 +427,11 @@ convenient.
   check the Events tab before rolling back and record whether Render
   caught it. Kept here only so nobody re-runs the same passive check
   expecting a different answer.
-- **[HUMAN] Configure GA's internal traffic filter — the
-  `submit_meeting_url` spike this entry used to track down turned out to
-  be Ryan, not users or a bot (read live 2026-08-22, supersedes the
-  2026-08-17 partial check).** The Aug 10–16 daily numbers (184 events,
-  peaking 10× on Aug 12–13) are Ryan entering meeting URLs by hand before
-  bulk-ingestion tooling existed — not a bot, not the campaign. That
-  means the earlier "185/week, funnel looks healthy" read was measuring
-  the operator, not users: the honest current state is effectively zero
-  external `/m/*` traffic, which is fine for this stage but different
-  from what the metrics implied. Full day-by-day numbers, and why the
-  "22 `/m/*` events with no confirmed source" question is now cheap to
-  settle by watching whether they change shape post-fix, are in
-  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-22]` entry.
-
-  **The fix**: GA Admin → Data Streams → Configure tag settings → Define
-  internal traffic, then activate the `internal` filter in Admin → Data
-  Settings → Data Filters. Without it, every metric on this property is
-  a mix of operator and user activity with no way to separate them after
-  the fact — this is the second time that's produced a wrong conclusion
-  from real data.
-
-  ~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
+~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
   2026-08-22** — `GA_MEASUREMENT_ID` is now declared on the Archive too
   (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
-  events on `/m/*` pages" entry.
+  events on `/m/*` pages" entry. GA internal-traffic setup and
+  cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 
 ### Production actions only Ryan should take
 
@@ -722,6 +701,72 @@ convenient.
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
+
+- **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
+  validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
+  the 2026-08-21 fix. Human dashboard verification is done; what's left
+  is a real code investigation, not a dashboard check — moved out of
+  Needs a human 2026-08-29.** Checked live against Google's own
+  documented requirements ([indexing status
+  reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
+  [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
+  four real, distinct contributors found so far, one fixed same day, one
+  scoped, two genuinely open. Original root cause (2026-08-21):
+  `meeting_page.html` used to render every non-YouTube video as a bare
+  `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
+  day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. Search
+  Console shows **Started: 8/22/26, Failed: 8/24/26**, Affected videos
+  **1.76K**.
+
+  **Found so far:**
+  1. **Meeting-page template fix: confirmed genuinely deployed and
+     correct**, checked against a wide, real, currently-failing sample
+     (Cablecast mp4, Granicus m3u8, champds, isilive, townhallstreams,
+     Seattle Channel, CloudFront-tokenized) — all render correctly.
+     Video position in the DOM is already good, thumbnails are already
+     correctly guarded and stable. One prior hypothesis is refuted, not
+     just unconfirmed: M3U8 is explicitly a Google-supported file type,
+     so "the indexer can't handle HLS" is wrong. What's left open: the
+     fix may not have been live in production yet when Google's
+     8/22-8/24 validation ran (deploys here are manual) — needs a fresh
+     Validate Fix click to test.
+  2. **IQM2 hardcoded `video_format="m3u8"` regardless of the real file
+     extension: confirmed and fixed 2026-08-29** (`app/platforms/iqm2.py`,
+     regression test in `tests/test_iqm2.py`, full suite green). Not yet
+     deployed.
+  3. **`/j/*` and `/state/*` hub pages emit `VideoObject` for content
+     they don't host: real, scoped, fix recommendation ready, not yet
+     built** — see its own entry under **Reliability, ops & cost →
+     Search Console, structured data & SEO plumbing**
+     (`archive/templates/jurisdiction_page.html`,
+     `state_page.html`, `state_all50.html`). Confirmed against Google's
+     own named negative example ("a video category page that lists
+     multiple videos of equal prominence"), not just inferred. Estimated
+     700-800 live pages affected — plausibly the dominant driver of the
+     947→1,764 growth.
+  4. **At least one vendor's `contentUrl` is a signed, expiring
+     CloudFront URL** (`?token=...`, routed through
+     `generic_fallback.py`, no dedicated adapter) — a genuine stable-URL
+     violation per Google's docs, confirmed on 2 real pages. Would need
+     a video proxy to fix, not a template change; population size
+     unswept.
+
+  **The actual remaining work, per Ryan (2026-08-29): take one real,
+  currently-failing sample URL from *each* host/platform showing up in
+  Search Console's failing-examples list (Granicus, Cablecast/azureedge,
+  IQM2 [now fixed], champds, isilive, townhallstreams, CloudFront-
+  tokenized, and any others that turn up) and read that page line by
+  line — full rendered HTML, JSON-LD, and the actual served video/
+  thumbnail resources — looking for what's systematically making Google
+  say "not on a watch page" for that platform specifically.** The four
+  findings above came from spot-checking a handful of examples per
+  platform, not an exhaustive per-host read; a real per-host pass may
+  surface further platform-specific issues the spot-checks missed (the
+  IQM2 bug is exactly the shape of thing a broader per-host read finds
+  that a handful of random samples doesn't). Cross-reference each
+  platform's `video_format`/`video_url` assignment in
+  `app/platforms/*.py` against what the template actually renders, the
+  same way the IQM2 fix was found.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
@@ -2335,33 +2380,18 @@ top-up driver has been creating zero jobs" under **Transcription queue
 ### Search Console, structured data & SEO plumbing
 
 - **[NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
-  unknown (2026-08-25).** The Soft 404 category below is solved for one
-  of its three real URLs; these two are not, and the confirmed cause does
-  not explain them. Both **have real video and a long real transcript**
-  (Ryan pasted what they render):
+  still unknown; Request Indexing sent 2026-08-29 but the diagnostic
+  question is still open (see `BACKLOG_DONE.md`).**
   `/m/beaufort-board-of-education-academics-committee` and
-  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`.
-  Ruled out already: the transcript is fully server-rendered
-  (`meeting_page.html:522-590`, a real `{% for %}` over segments), so
-  "Googlebot needed JS and gave up" is not it. What they share, unlike the
-  solved one: both are **Granicus** (the solved one is ChampDS), both have
-  a **bare jurisdiction with no state** ("Beaufort", "Carrollton" — no
-  "More `<State>` meetings" link), and **both transcripts are visibly
-  garbled** (Beaufort renders the Pledge of Allegiance as "the United
-  States of Arizona").
-  **Two candidates, neither confirmed:** (1) Googlebot received a
-  **truncated 200** — `_proxy_to_archive()`'s `body_iterator()` catches a
-  cut-short upstream stream and lets the generator end cleanly, but
-  `StreamingResponse` has already committed 200 by then, so a crawler gets
-  a broken page with a success status. Known live failure (Sentry
-  PYTHON-FASTAPI-Q) and the crawl dates (Aug 21-22) sit beside the
-  documented 2026-08-22 Archive-proxy cluster. (2) Google judged the
-  content low-value — a dead 2022 Granicus clip plus hallucinated
-  transcript text.
-  **`[LOGIN]` One check separates them**: Search Console → URL Inspection
-  → *View crawled page*. Truncated HTML means (1) and the fix is in the
-  proxy, not in indexing rules; the full page means (2) and the answer is
-  transcript quality. Don't build for either until that's read.
+  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
+  both have real video and a long real transcript, both Granicus, both
+  bare-jurisdiction-no-state, both visibly garbled transcripts. Two
+  candidates, neither confirmed: (1) a truncated-200 proxy bug
+  (`_proxy_to_archive()`'s `body_iterator()`, known live Sentry
+  PYTHON-FASTAPI-Q failure) vs. (2) Google judging the content
+  genuinely low-value. **`[LOGIN]` `[WAIT]`**: read **View Crawled
+  Page** on either URL once the 2026-08-29 Request Indexing recrawl
+  lands — that's the one check that separates them.
 
 - **[HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
   indexed" (alerts 2026-08-23) — three of four categories now settled.**
@@ -2397,164 +2427,22 @@ top-up driver has been creating zero jobs" under **Transcription queue
     confirmed here and is worth checking before ruling this category out
     entirely.
 
-- **[HUMAN] `[LOGIN]` `[WAIT]` Search Console "Page indexed without
-  content" (alert 2026-08-17) is still genuinely unexplained — and
-  specifically NOT explained by the WO-10 outage** (that started after
-  the alert; Google's last crawl of the flagged
-  `/m/welcome-to-clerkbase` predates it). Best current theory,
-  unverified: the page's stored content on that date was a ClerkBase
-  landing-page title, not a meeting, before a later re-resolve turned it
-  into the real content it shows today — the "adapter stored a landing
-  page as a meeting" class of bug (only one real customer checked so
-  far). Cheapest next step: Search Console → URL Inspection → "Request
-  Indexing" on that slug, see if the flag clears; if other URLs are
-  flagged too, that points at a broader thin-content shape worth
-  chasing. Partial mitigation already shipped: genuinely empty pages are
-  `noindex`ed and excluded from browse/sitemap/ feed (see
-  `BACKLOG_DONE.md`) — if the flagged URLs are that shape, this closes
-  on recrawl with no further code change.
+- **[WAIT] Search Console "Page indexed without content"
+  (`/m/welcome-to-clerkbase`) — Request Indexing sent 2026-08-29 (see
+  `BACKLOG_DONE.md`), genuinely waiting on Google's recrawl.** If it
+  clears, nothing further to do. If other URLs turn out flagged too,
+  that points at a broader thin-content shape worth chasing — genuinely
+  empty pages are already `noindex`ed and excluded from browse/sitemap/
+  feed.
 
-- **[IMPROVEMENT-ROUND] `[LOGIN]` `[WAIT]` Google Search Console flagged
-  3 "Videos" structured-data issues site-wide (2026-08-12): missing
-  `thumbnailUrl` (critical), `uploadDate` invalid/missing timezone
-  (non-critical).** All trace to the `VideoObject` JSON-LD block in
-  [meeting_page.html:37-66](archive/templates/meeting_page.html:37-66).
-  `thumbnailUrl` and the timezone issue are **fixed** (YouTube pages get
-  a free `i.ytimg.com` thumbnail 2026-08-14; direct mp4/m3u8 pages get a
-  real ffmpeg-extracted frame via WO-28 2026-08-21; `uploadDate` now
-  emits `date + "T00:00:00Z"`). The "invalid datetime value" half is
-  **fixed on the template side** 2026-08-21 (WO-27) — both `uploadDate`
-  and Event `startDate` now go through `iso_meeting_date()` and are
-  omitted when the stored date isn't real, instead of concatenating a
-  free-text field with no validation. All 6 Minneapolis LIMS `Clip`
-  "Missing field endOffset" warnings are **fixed** (each item's `end`
-  now equals the next item's `start`), and a second, unrelated root
-  cause on San Carlos IQM2 (a whole consent-calendar block sharing one
-  timestamp) is **fixed** 2026-08-21 by using the next *distinct* start
-  as the end. **Correction, 2026-08-29: the flagged `thumbnailUrl` page
-  was never San Carlos — that guess was never verified and was wrong.**
-  Checked the actual Search Console "Missing field 'thumbnailUrl'" issue
-  (still 1 item, Validation: Not Started): the real URL is
-  `https://redtaperecordings.com/m/lynchburg-va-2024-08-13-city-council-special-called-meeting-august-13-2024`.
-  Fetched live: its `VideoObject` JSON-LD already has `thumbnailUrl`
-  populated (`.../card.jpg`), and that image itself returns a real
-  `200 image/jpeg`. So the underlying fix is already correctly in place
-  on this page — the flag is stale, not a real ongoing gap. **The
-  malformed-row half of this is now answered and closed — no adapter to
-  chase.** `GET /internal/date-format-audit` was actually run against
-  production 2026-08-22 and came back all-zero on both non-ISO buckets:
-
-  ```json
-  {"total_pages": 2389,
-   "by_shape": {"null": 226, "iso_date": 2163,
-                "parseable_non_iso": 0, "unparseable": 0},
-   "suspect_rows": [], "suspect_rows_truncated": false}
-  ```
-
-  So **no real production row has ever held a malformed date value** —
-  2,163 of 2,389 pages store a clean `YYYY-MM-DD`, the remaining 226
-  store `null` (which the template already omits rather than emitting,
-  per WO-27), and `suspect_rows` is empty. Per the endpoint's own
-  docstring, all-zero means no stored value can be producing the
-  "invalid datetime value" flag and it should clear on recrawl from the
-  template fix alone. **What remains here is only the `[HUMAN]` action**:
-  open the "Missing field 'thumbnailUrl'" issue in Search Console's
-  Videos structured-data report, and click **VALIDATE FIX** — nobody has
-  ever asked Google to re-verify it (Validation still reads "Not
-  Started"), and the Lynchburg page it actually points at already has a
-  working thumbnail live, so validation should clear it. Nothing to
-  build.
-
-- **[NEEDS-AUDIT] Search Console "Video isn't on a watch page" —
-  validation FAILED 2026-08-24, count nearly doubled (947 → 1,764) since
-  the 2026-08-21 fix. Investigated live 2026-08-29 against Google's own
-  documented requirements ([indexing status
-  reference](https://support.google.com/webmasters/answer/9495631#indexing_status),
-  [watch-page requirements](https://developers.google.com/search/docs/appearance/video#watch-page)):
-  four real, distinct contributors found, one fixed same day, one
-  scoped, two genuinely open.** Original root cause (2026-08-21):
-  `meeting_page.html` used to render every non-YouTube video as a bare
-  `<video>` tag with no `src`/`<source>` server-side. Fix shipped same
-  day: a `<source>` for `.m3u8`, `src=` directly for `.mp4`. **Someone
-  did click VALIDATE FIX** (contrary to this entry's earlier "Not
-  Started" read) — Search Console shows **Started: 8/22/26, Failed:
-  8/24/26**, Affected videos **1.76K**.
-
-  **Contributor 1 — meeting-page template fix: confirmed genuinely
-  deployed and correct**, checked against a wide, user-supplied sample
-  of real currently-failing URLs (2026-08-29), spanning Cablecast mp4,
-  Granicus m3u8, champds, isilive, townhallstreams, Seattle Channel, and
-  CloudFront-tokenized. All rendered correctly. Also checked directly
-  against Google's own watch-page checklist: **video position is
-  already good** (`<div id="videoColumn">` sits immediately after the
-  `<h1>`/meta block, before any transcript/agenda content — no "move it
-  higher" gap), and **thumbnails are correctly guarded and stable**
-  (`thumbnail_url` only emits when a real extracted frame exists, served
-  from a self-hosted, non-expiring `/m/{slug}/card.jpg`). **One
-  hypothesis from the first pass at this is now refuted, not just
-  unconfirmed**: Google's own supported-file-type list explicitly
-  includes M3U8, so "Google's indexer can't handle HLS manifests" is
-  wrong — drop that theory. What remains open is narrower: the fix
-  wasn't live in production yet when Google's 8/22-8/24 validation ran
-  (deploys here are manual, `autoDeploy: false`) — a **fresh** Validate
-  Fix attempt is the next real step, and should succeed for this
-  contributor if that's the whole story.
-
-  **Contributor 2 — IQM2 hardcoded `video_format="m3u8"` regardless of
-  the real file extension: confirmed and fixed 2026-08-29.** Not every
-  IQM2 tenant's MEDIA URL comment is Granicus HLS like the Atlanta
-  sample this adapter was originally built against — San Carlos, CA
-  (`mediahttp.iqm2.com/SanCarlosCA/1450_480.mp4`) returns a direct
-  `.mp4`, and the hardcoded format produced
-  `<source src="....mp4" type="application/vnd.apple.mpegurl">` — a
-  real MIME-type mismatch. Fixed in `app/platforms/iqm2.py` by deriving
-  `video_format` from the real extension, mirroring the pattern already
-  used in `cablecast.py`'s PublicSite path; falls back to `"m3u8"` (the
-  original default) for an unrecognized extension. Regression test added
-  in `tests/test_iqm2.py`. Full suite green (2020 passed). Not yet
-  deployed — see this file's "Deploys are manual" standing note.
-
-  **Contributor 3 — `/j/*` (and `/state/*`) hub pages emit `VideoObject`
-  for content they don't host: real, scoped, not yet fixed, and now
-  confirmed against Google's own documented negative example, not just
-  inferred.** Google's indexing-status reference literally names **"a
-  video category page that lists multiple videos of equal prominence"**
-  as an example of a page that is *not* a watch page — that is a
-  verbatim description of `/j/*` and `/state/*`'s moments-feed layout.
-  This is no longer "no upside to keeping VideoObject here," it's a
-  direct violation of a documented rule. See its own entry immediately
-  below for the fix.
-
-  **Contributor 4 — new, found by checking Google's "stable URL"
-  requirement directly: at least one unidentified vendor's `contentUrl`
-  is a signed, expiring CloudFront URL — genuinely unfixable without a
-  video proxy, not a quick template change.** Confirmed live on 2 real
-  pages (`compton-ca-2026-07-21-city-council-regular`,
-  `2026-08-11-council-meeting` — the latter is the same slug as the
-  still-open Modesto CA frozen-slug reslug entry above, worth
-  cross-checking once that's resolved): `contentUrl` is literally
-  `https://d2dix8ue17m7lv.cloudfront.net/mcvod/mediacache/amlst:.../
-  playlist.m3u8?token=...&mode=AWS` — a signed URL with an access token
-  baked directly into the stored, server-rendered JSON-LD. Per Google's
-  docs, an unstable/expiring media URL is why a video may never
-  successfully index, independent of format or markup correctness. No
-  dedicated adapter matches this URL shape (`grep` across
-  `app/platforms/*.py` found nothing) — it's coming through
-  `generic_fallback.py`'s best-effort regex scan of an unidentified
-  vendor's page (path segment `mcvod` — likely a real product name, not
-  yet identified), which has no way to know the URL it captured is
-  signed rather than permanent. **Real fix would mean proxying the video
-  bytes through our own stable URL** (a genuine engineering decision,
-  not a template tweak) or accepting the population as permanently
-  unindexable. Population size not yet swept — only 2 confirmed examples
-  found in the sample pasted today; worth a `grep`-style sweep of stored
-  `video_url` values for `?token=` before deciding whether this is worth
-  building.
-
-  **What's no longer true**: the WO-37 card backfill's "No thumbnail URL
-  provided — 1 video, flat" reassurance. That single item turned out to
-  be the Lynchburg page (see the `thumbnailUrl` entry above) — already
-  confirmed fixed live, just never validated.
+- **[WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
+  corrected and confirmed fixed 2026-08-29 (see `BACKLOG_DONE.md`), only
+  the click is left.** The flagged page is Lynchburg, not San Carlos as
+  previously (unverified) guessed, and its `thumbnailUrl` is already
+  correctly populated and live. Open Search Console's Videos
+  structured-data report and click **VALIDATE FIX** on "Missing field
+  'thumbnailUrl'" — Validation still reads "Not Started," nobody has
+  asked Google to re-verify yet. Nothing to build.
 
 - **[JUST-DO-IT] `/j/*` AND `/state/*` hub pages emit `VideoObject`
   structured data for teaser content they don't actually host — scoped

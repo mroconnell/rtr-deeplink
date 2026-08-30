@@ -399,6 +399,106 @@ scope):**
   product call, not a data gap.
 
 All four CI gates clean on the code-fix PR; no schema touched.
+## GA internal-traffic rule and cross-domain linking configured, 2026-08-29 [Done 2026-08-29]
+
+Ryan configured two real GA4 settings live, same session as the Search
+Console/Render walkthroughs above.
+
+**1. Internal-traffic rule created** (Admin → Data Streams → Configure
+tag settings → Define internal traffic → Create internal traffic
+rule): named, `traffic_type` value `internal`, two IP conditions —
+`99.127.76.224/32` (IPv4) and `2600:1700:8280:8030:1c82:dba9:d147:5a19/128`
+(IPv6), each a single address expressed as required CIDR (GA's IP
+condition only accepts CIDR notation, no bare "equals" option — a
+single address needs the `/32`/`/128` suffix appended by hand).
+
+**Decided 2026-08-29: the matching Data Filter is deliberately left
+inactive, not a residual to chase.** Creating the rule only *tags*
+matching traffic with `traffic_type=internal`; a separate filter under
+Data Settings → Data Filters has to be flipped to Active to actually
+exclude it from reports. Ryan chose not to flip that yet — this entry
+is done as scoped (the rule now exists and correctly identifies his
+traffic), and activating the filter is a deliberate future decision,
+not an open task. Don't re-raise "flip the filter" as if it were
+forgotten.
+
+**2. Cross-domain linking configured** — all three suggested domains in
+GA's "Cross-domain Linking Configuration" screen accepted:
+`rtr-deeplink.onrender.com`, `redtaperecordings.com`,
+`rtr-deeplink-archive.onrender.com`. Fixes session-stitching across the
+public domain and the two backing Render hostnames, so navigation
+between them (e.g. the resolver's proxy to Archive) isn't misread as
+separate sessions/referrals.
+
+**3. "38 pages not tagged" (GA's Tag coverage summary, 347 included
+pages: 38 not tagged, 0 no recent data, 309 tagged) — checked thoroughly,
+the tag itself is confirmed working. Not a bug.** Live-fetched several
+flagged URLs (`/j/napa-ca`, `/state/maryland`, `/m/meeting`,
+`/m/meeting-732f78`, plus two more) and a "Tagged" control page
+(`/j/hollister-ca`) via raw HTTP: all have the identical, correct
+`gtag` script tag and measurement ID (`G-4V42BWY8EJ`) in raw
+server-rendered HTML. First attempt to confirm the script actually
+*executes*, from the sandboxed browser tool: zero requests to
+`googletagmanager.com` observed — inconclusive, since that tool likely
+blocks tracker domains by policy. **Redone in a real, unsandboxed
+Chrome session (user's own logged-in profile) and settled properly**:
+`read_network_requests` still showed no `googletagmanager.com` request
+after two reloads, but `window.dataLayer`/`window.gtag` were both
+correctly defined in the live DOM, and — the decisive check — a direct
+in-page `fetch("https://www.googletagmanager.com/gtag/js?id=G-4V42BWY8EJ")`
+returned a real `200`. So the resource is genuinely reachable and
+nothing is blocking it; the "zero requests" reading in both browser
+tools was a capture-timing artifact (the network-monitoring listener
+attaching a moment after the very-early `<head>` script request fires),
+not a real signal either time. **Conclusion: the tag works.** Given
+this site's already-documented near-zero real `/m/*` traffic (see the
+`submit_meeting_url` entry above), "these specific 38 pages simply
+haven't had a real visitor yet" is the actual explanation for GA's
+report — consistent with the mechanism, not just a guess anymore.
+Nothing to build.
+
+## Search Console dashboard walkthrough, 2026-08-29 — real action taken on 3 items, 1 fully closed [Investigated 2026-08-29]
+
+Ryan logged into Search Console for the remaining open dashboard-only
+items and worked through them live, screenshotting as he went — same
+session as the Render dashboard walkthrough above.
+
+**1. `thumbnailUrl` / "Videos" structured-data flag — root cause
+corrected and confirmed fixed, closing the investigative half
+entirely.** This entry previously guessed the flagged page was San
+Carlos IQM2, based on an unrelated fix (the consent-calendar
+`endOffset` bug) landing the same day — that guess was never verified
+and was wrong. The real flagged URL, read directly off the Search
+Console issue, is
+`https://redtaperecordings.com/m/lynchburg-va-2024-08-13-city-council-special-called-meeting-august-13-2024`.
+Fetched live: its `VideoObject` JSON-LD already has `thumbnailUrl`
+populated and that image itself returns a real `200 image/jpeg` — the
+underlying fix is already correctly in place, the flag is stale rather
+than a real ongoing gap. Separately, `GET /internal/date-format-audit`
+confirmed the `uploadDate`/timezone half is fully closed in production
+(2,163/2,389 pages a clean `YYYY-MM-DD`, 226 `null`, zero malformed
+rows). Only remaining action, left live: click **VALIDATE FIX** on the
+Search Console issue itself — Validation still read "Not Started" as
+of the live check, and nobody has done that yet.
+
+**2. "Page indexed without content" (`/m/welcome-to-clerkbase`) —
+Request Indexing sent 2026-08-29.** Real action taken, nothing to read
+yet — genuinely waiting on Google's own recrawl timeline. Left live as
+a short `[WAIT]` pointer.
+
+**3. Two non-thin Soft 404s (Beaufort/Carrollton) — Request Indexing
+sent for both 2026-08-29, but this does not answer the open diagnostic
+question.** The original ask was **View Crawled Page** specifically,
+to distinguish a truncated-stream proxy bug from Google judging the
+content genuinely low-value — those are different bugs needing
+different fixes. Ryan instead sent Request Indexing for both URLs,
+which triggers a recrawl but doesn't by itself reveal which mechanism
+was at play. Left live: either read View Crawled Page once the recrawl
+lands, or just watch whether the Soft 404 flag clears on its own
+(clearing would weakly favor the truncated-stream theory, since a
+genuinely low-value judgment wouldn't change from a re-fetch of
+identical content).
+
 ## Four Render-dashboard `[HUMAN]` items walked through live with Ryan [Investigated 2026-08-29]
 
 Ryan logged into Render/Postgres dashboards and walked through the five
