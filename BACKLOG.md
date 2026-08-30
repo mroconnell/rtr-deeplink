@@ -1303,11 +1303,10 @@ via a second, richer unauthenticated API
 Machine CDX search for the `media=true` query flag (Common Crawl doesn't
 index civicweb.net past robots.txt/homepage — confirmed empirically);
 108 distinct real tenants confirmed carrying this shape, 3 verified
-live end-to-end. **Residual, not built**: turning the same API's real
-`LocalIndexPoints` field into per-agenda-item deep-link timestamps — the
-data is real and populated (confirmed on 2 of the 3 verified tenants),
-but each entry only carries an opaque numeric `ItemId` with no confirmed
-mapping to its human-readable agenda-item text yet.
+live end-to-end. Also now builds real `agenda_items` deep-link
+timestamps from the same API's `LocalIndexPoints` field — see
+`BACKLOG_DONE.md` for the real mapping found (`RelatedItem` against the
+document's own real `AgendaHeading`/`AgendaItem` HTML anchors).
 
 ### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
 

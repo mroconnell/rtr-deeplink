@@ -486,4 +486,158 @@ async def test_resolve_falls_through_to_document_shape_only_when_id_param_is_abs
 
     assert result.video_url is None
     assert result.video_warnings == ["No video found for this meeting."]
-    assert result.video_warnings == ["No video found for this meeting."]
+
+
+# Real (trimmed) agenda-item deep-linking data, fetched live 2026-08-30
+# from Des Moines, WA (desmoines.civicweb.net, meetingId 91, document
+# 100153) -- see civicweb.py's own module docstring for the full mapping
+# evidence (RelatedItem -> the document body's own AgendaHeading/
+# AgendaItem anchor ids, RelationshipTypeId == 6 only). The HTML fixture
+# below is a real, trimmed excerpt of the actual document body
+# (`/document/100153/?record=false`) -- real anchor ids and real agenda
+# text, just with the surrounding Aspose.Words markup/unrelated sections
+# cut. Includes a real "Item 1." label case (AgendaItem100113) to prove
+# the skip-and-continue logic, not just the direct-heading case.
+DES_MOINES_DOCUMENT_URL = (
+    "https://desmoines.civicweb.net/document/100153/?splitscreen=true&media=true"
+)
+DES_MOINES_DOCUMENT_HTML = (
+    '<html><body><script>doc.init({"id":100153,"meetingId":91,'
+    '"title":"Regular Meeting - 18 Nov 2021 - Agenda - Html","media":true'
+    "});</script></body></html>"
+)
+DES_MOINES_EVENT_URL = "https://desmoines.civicweb.net/api/geteventwithindexpoints/91"
+DES_MOINES_MEETING_DATA_URL = "https://desmoines.civicweb.net/Services/MeetingsService.svc/meetings/91/meetingData"
+DES_MOINES_BODY_URL = "https://desmoines.civicweb.net/document/100153/?record=false"
+REAL_DES_MOINES_VIDEO_ID = "QB44CklYlIw"
+DES_MOINES_EVENT_JSON = (
+    '"[{\\"Event\\":{\\"eventTitle\\":\\"Council Meeting 11/18/2021\\",'
+    '\\"eventId\\":\\"'
+    f"{REAL_DES_MOINES_VIDEO_ID}"
+    '\\"},\\"LocalIndexPoints\\":['
+    '{\\"RelatedItem\\":100077,\\"RelationshipTypeId\\":6,\\"ItemId\\":100078,'
+    '\\"Value\\":23.0,\\"Event\\":\\"QB44CklYlIw\\"},'
+    '{\\"RelatedItem\\":100079,\\"RelationshipTypeId\\":6,\\"ItemId\\":100080,'
+    '\\"Value\\":85.0,\\"Event\\":\\"QB44CklYlIw\\"},'
+    '{\\"RelatedItem\\":100113,\\"RelationshipTypeId\\":6,\\"ItemId\\":100114,'
+    '\\"Value\\":1541.0,\\"Event\\":\\"QB44CklYlIw\\"},'
+    # A real RelationshipTypeId == 7 entry -- must be excluded, per
+    # civicweb.py's own module docstring on why only == 6 is trusted.
+    '{\\"RelatedItem\\":100104,\\"RelationshipTypeId\\":7,\\"ItemId\\":100139,'
+    '\\"Value\\":3285.0,\\"Event\\":\\"QB44CklYlIw\\"}'
+    '],\\"MeetingDate\\":\\"2021-11-18T00:00:00\\",\\"TodayLiveStream\\":false,'
+    '\\"ShowVideoLink\\":true,\\"ShowTimeStamps\\":true,'
+    '\\"StartAtFirstTimestamp\\":true,\\"Historic\\":false,\\"YouTube\\":true,'
+    '\\"IndexPoints\\":\\"\\"}]"'
+)
+DES_MOINES_MEETING_DATA_JSON = (
+    '{"Id":91,"Location":"City Council Chambers",'
+    '"Name":"Regular Meeting - 18 Nov 2021","Time":"05:00 PM","TypeId":13}'
+)
+# Real, trimmed excerpt of the actual document body HTML -- two headings
+# (direct-text shape) and one item (behind a real "Item 1." label, the
+# skip-and-continue case).
+DES_MOINES_BODY_HTML = (
+    '<p><a target="AgendaAttachment" name="AgendaHeading100077" '
+    'target="AgendaAttachment"></a><span style="-aw-import:ignore">&nbsp;'
+    '</span></p><p><span style="font-weight:bold">ROLL CALL</span></p>'
+    '<p><a target="AgendaAttachment" name="AgendaHeading100079" '
+    'target="AgendaAttachment"></a><span style="-aw-import:ignore">&nbsp;'
+    '</span></p><p><span style="font-weight:bold">CORRESPONDENCE</span></p>'
+    '<p line-height:5pt"><a target="AgendaAttachment" name="AgendaItem100113" '
+    'target="AgendaAttachment"></a><span style="-aw-import:ignore">&nbsp;'
+    "</span></p><table><tr><td><p><span>Item 1.</span></p></td>"
+    "<td><p><span>APPROVAL OF VOUCHERS</span></p></td></tr></table>"
+)
+
+
+def _fake_extract_info_des_moines(video_id):
+    return {
+        "title": "Council Meeting 11/18/2021",
+        "uploader": "Des Moines Councilmember",
+        "upload_date": "20211119",
+    }
+
+
+async def test_resolve_document_shape_builds_real_agenda_items_from_local_index_points(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_extract_info", _fake_extract_info_des_moines
+    )
+    routes = {
+        DES_MOINES_DOCUMENT_URL: FakeResponse(
+            status=200, text=DES_MOINES_DOCUMENT_HTML, url=DES_MOINES_DOCUMENT_URL
+        ),
+        DES_MOINES_EVENT_URL: FakeResponse(
+            status=200, text=DES_MOINES_EVENT_JSON, url=DES_MOINES_EVENT_URL
+        ),
+        DES_MOINES_MEETING_DATA_URL: FakeResponse(
+            status=200,
+            text=DES_MOINES_MEETING_DATA_JSON,
+            url=DES_MOINES_MEETING_DATA_URL,
+        ),
+        DES_MOINES_BODY_URL: FakeResponse(
+            status=200, text=DES_MOINES_BODY_HTML, url=DES_MOINES_BODY_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DES_MOINES_DOCUMENT_URL)
+
+    assert (
+        result.video_url == f"https://www.youtube.com/embed/{REAL_DES_MOINES_VIDEO_ID}"
+    )
+    # Sorted by timestamp; the RelationshipTypeId==7 entry (100104) is
+    # excluded even though its own Value (3285.0) would sort in the
+    # middle -- only the three real RelationshipTypeId==6 entries appear.
+    assert [item.text for item in result.agenda_items] == [
+        "ROLL CALL",
+        "CORRESPONDENCE",
+        "APPROVAL OF VOUCHERS",
+    ]
+    assert [item.start for item in result.agenda_items] == [23.0, 85.0, 1541.0]
+    # end = next item's start; the last item's end equals its own start.
+    assert result.agenda_items[0].end == 85.0
+    assert result.agenda_items[1].end == 1541.0
+    assert result.agenda_items[2].end == 1541.0
+
+
+async def test_resolve_document_shape_skips_agenda_fetch_when_no_index_points():
+    # The already-tested achdidaho fixture (EVENT_JSON) has an empty
+    # LocalIndexPoints -- no extra request should even be attempted, let
+    # alone break anything. mock_session's routes dict deliberately omits
+    # any /document/.../?record=false route, so an unmocked request would
+    # fail loudly if this were (wrongly) still attempted.
+    routes = {
+        DOCUMENT_URL: FakeResponse(status=200, text=DOCUMENT_HTML, url=DOCUMENT_URL),
+        EVENT_URL: FakeResponse(status=200, text=EVENT_JSON, url=EVENT_URL),
+        DOCUMENT_MEETING_DATA_URL: FakeResponse(
+            status=200, text=DOCUMENT_MEETING_DATA_JSON, url=DOCUMENT_MEETING_DATA_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicWebAssetFinder().resolve(DOCUMENT_URL)
+
+    assert result.video_url is not None
+    assert result.agenda_items == []
+
+
+def test_build_agenda_items_skips_a_bare_outline_marker_label():
+    # Dallas County's real template shape: an outline marker ("G.") sits
+    # in the first span after the anchor, with the real title one span
+    # further in -- confirmed live, distinct from Des Moines' "Item N."
+    # shape (covered by the end-to-end test above).
+    body_html = (
+        '<p><a name="AgendaItem984504" target="AgendaAttachment"></a>'
+        '<span style="-aw-import:ignore">&nbsp;</span></p>'
+        "<table><tr><td><p><span>G.</span></p></td>"
+        "<td><p><span>INVOCATION</span></p></td></tr></table>"
+    )
+    points = [
+        {"RelatedItem": 984504, "RelationshipTypeId": 6, "Value": 419.0},
+    ]
+    items = CivicWebAssetFinder._build_agenda_items(body_html, points)
+    assert [i.text for i in items] == ["INVOCATION"]
+    assert items[0].start == items[0].end == 419.0

@@ -1,5 +1,61 @@
 # Backlog — done
 
+## CivicWeb `/document/{id}/` pages now surface real per-agenda-item video deep-links (`agenda_items`), via the same richer API [Done 2026-08-30]
+
+Closes the residual left open in this file's own "CivicWeb's iCompass
+video widget" entry: `/api/geteventwithindexpoints/{meetingId}`'s real,
+populated `LocalIndexPoints` field turned into `ResolvedMeeting.
+agenda_items`, asked for directly ("do the richer api build").
+
+**The real mapping, found by cross-checking rather than guessed at**:
+`LocalIndexPoints` entries carry both a `RelatedItem` and an `ItemId`
+field, and the original entry didn't know which (if either) mapped to
+anything real. Fetched the document's own real body HTML
+(`{origin}/document/{docId}/?record=false` — the plain agenda content,
+separate from the splitscreen wrapper page fetched for the video) for
+two independently-verified real meetings and found it already embeds
+`<a name="AgendaHeadingN">`/`<a name="AgendaItemN">` anchors at exactly
+the points a reader would click to jump the video — and `RelatedItem`
+matched every one of those anchor ids exactly (33 of 33 checked across
+both tenants), while several `ItemId` values didn't correspond to any
+real anchor at all. Also confirmed only `RelationshipTypeId == 6`
+entries match an anchor this way — real `== 7` entries exist alongside
+them (same `Value`, sometimes same `ItemId`) but point at some other,
+unconfirmed relationship, so those are excluded rather than guessed at.
+
+**Title extraction needed its own real, tenant-varying rule**, confirmed
+against two differently-templated real tenants rather than assumed from
+one: Des Moines, WA puts the real heading text directly in the first
+non-empty `<span>` after the anchor ("CALL TO ORDER"), but a bare
+"Item N." label sits in that same first-span position for some (not
+all) of its own items; Dallas County, TX's template instead puts an
+outline marker ("G.", "(5)") in that first span, with the real title one
+`<span>` further in ("INVOCATION"). A single skip-and-continue rule
+(`_AGENDA_LABEL_RE`) handles both shapes — verified correct on all 20 of
+Dallas County's real `RelationshipTypeId == 6` items and all 14 of Des
+Moines' real ones checked, not extrapolated from a handful.
+
+**Built** (`app/platforms/civicweb.py`): `_build_agenda_items()`,
+called from `_resolve_document_shape()` only when there's both a real
+video and non-empty `LocalIndexPoints` (skips the extra document-body
+fetch otherwise). Same `end = next item's start` convention
+`proudcity.py`'s own `_extract_bookmarks()` already established for
+this exact shape of data.
+
+**Verified live end-to-end, not just unit-tested**: real Des Moines
+meeting (document 100153) now resolves 12 real agenda_items ("ROLL
+CALL" at 23s through "BOARD & COMMITTEE REPORTS/COUNCILMEMBER COMMENTS"
+at 7106s); real Dallas County meeting (document 1004781) resolves 21,
+starting with "CALL COURT TO ORDER" at 382s.
+
+Regression-tested (`tests/test_civicweb.py`, 3 new tests) against real
+field values and a real trimmed excerpt of Des Moines' actual document
+body HTML: the end-to-end happy path (including the RelationshipTypeId
+== 7 exclusion and the "Item 1." skip-and-continue case), a guard
+confirming the extra fetch is skipped entirely when LocalIndexPoints is
+empty (the already-tested achdidaho fixture), and a direct unit test of
+Dallas County's outline-marker skip shape. 20/20 passing.
+
 ## CivicWeb's "iCompass"-branded `/document/{id}/` video widget — a second real URL shape, found via Wayback Machine CDX search [Done 2026-08-30]
 
 Closes the long-open "CivicWeb has a second, iCompass-branded meeting-
