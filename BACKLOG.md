@@ -68,7 +68,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (34)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (32)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -77,12 +77,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (34)
   The retry papers over an unexplained asyncio/subprocess hang, and…  (2)
     [LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
     [LATER] Swagit multi-clip meetings: both transcription paths now
-  `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
-    [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
+    [JUST-DO-IT] ~12 OnBase/Hyland-family pages still resolve with no
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (3)
     [JUST-DO-IT] Tucson, AZ
     [JUST-DO-IT] Omaha, NE
@@ -93,11 +92,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (34)
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
-  Adapter & platform gaps  (15)
+  Adapter & platform gaps  (14)
     [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
     [NEEDS-AUDIT] Anchorage bot-block-during-YouTube-delegation example
-    [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
@@ -107,7 +105,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (34)
     [LATER] YouTube-backed meetings' transcripts run through
     [IMPROVEMENT-ROUND] Four platforms accounted for ~78% of a 470-page
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — ChampDS's `MediaInfo.
-    [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
+    [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
 Reliability, ops & cost  (11)
@@ -407,11 +405,19 @@ coverage** instead.
   a scary-looking newline in Google's raw export back to a display
   artifact, not a real bug; today's live URL is correctly encoded and
   fully reachable. Cablecast (6.6%, many small tenants) is fully
-  reachable and correctly rendered — root cause still unconfirmed, one
-  unverified lead (a minor HLS spec deviation in Cablecast's own
-  generated manifest, not something this app produces). champds (11),
-  townhallstreams (5), and a long one-off tail remain unswept, each too
-  small to matter much on their own.
+  reachable and correctly rendered — **the HLS-manifest lead is now
+  confirmed real, not just suspected**: Cablecast's own master `.m3u8`
+  template emits `SUBTITLES ="subs"` (a literal space before `=`) on
+  every variant line whenever the manifest includes a subtitles track —
+  a real RFC 8216 §4.3.4.1 attribute-list violation, confirmed live on
+  Charlotte NC's real manifest and confirmed absent on Detroit's (no
+  captions, no deviation) — tied to the `SUBTITLES` attribute
+  specifically, not tenant-specific, and not something this app produces
+  (it never touches the manifest bytes, only points to the URL). Whether
+  this actually causes Googlebot's parser to choke is still unconfirmed
+  — this only rules the lead *in* as real. champds (11), townhallstreams
+  (5), and a long one-off tail remain unswept, each too small to matter
+  much on their own.
   **The same Granicus block also shows up as Events/Videos rich-result
   "invalid item" flags in URL Inspection, not just the watch-page
   issue** — confirmed 2026-08-31 on
@@ -575,33 +581,6 @@ it deliberately does not explain two things, and both are still open:
   43-URL 2026-08-18 sweep to size how many are genuinely multi-segment,
   and a broader live Swagit audit, are both still open too.
 
-### `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to zero usable segments
-
-Found auditing local-Whisper run logs for failures that never made it
-into this file (2026-08-27). `high-plains-underground-water-conservation-
-district-no-1-2022-11-08-board-of-dir`
-(`https://hpwd.granicus.com/player/clip/44?view_id=1`) is a real board
-meeting — passed duration/probe checks, ran the full local Whisper
-pipeline, and came out with **zero usable segments** (VAD likely
-filtered the whole thing as silence, or the audio track is bad in a way
-that doesn't fail extraction outright). Still has no transcript as of
-this check. `transcription produced no usable segments` isn't the
-"implausible duration" ad-detection case (`BACKLOG.md`'s "Duration alone
-cannot separate..." entry above) — the file plays its full expected
-length, it just has nothing Whisper can transcribe. Not chased further
-this pass; worth a manual listen to the source file before deciding
-whether this is a genuinely silent/bad recording (nothing to do) or a
-VAD-tuning gap (real fix).
-
-The same symptom hit two other real URLs in the same audit, both since
-self-resolved (now have real segment counts on a live check) so not
-carried forward as open: `branchburg-2025-carols-by-candlelight`
-(Granicus) and eScribe's `pub-scrd.escribemeetings.com`
-`2025-10-23-committee-of-the-whole`. A fourth,
-`st-2025-12-16-st-louis-park-high-school-wind-ensemble-concert-dec-11-2025`
-(Cablecast), is a school concert broadcast, not a government meeting —
-zero segments is arguably the correct outcome there, not a bug.
-
 ### Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`
 
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
@@ -651,22 +630,23 @@ answer will be in the line — a 404, 429, connection reset, and
 429s, the fix is host-aware pacing (already deprioritised for symptom A
 on the evidence there, but this is the half it could genuinely fit).
 
-- **[NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
-  video, each needing its own per-tenant "where does this jurisdiction
-  actually put video" hunt.** Full investigation, the repoint method
-  that works, and the 3 already-fixed Santa Barbara/Pittsburg pages are
-  in `BACKLOG_DONE.md`'s "Four archived pages pointed at agenda systems
-  with no video" entry — this is only the residual left open, per this
-  file's own "an open entry carries the conclusion, not the
-  investigation" convention. Real population: 31 pages across 25
-  OnBase/Hyland-family tenants (matched on the `OnBaseAgendaOnline`/
-  `agendaonline` URL *path*, not a vendor-name grep, which misses most
-  of the platform), 17 with no video, 4 already accounted for, leaving
-  ~12 genuinely open. Growing, not fixed: 3 new tenants surfaced in a
-  single day via WO-46's daily failure digest
-  (`egenda.scgov.net`, `meetings.muni.org`, `ecm.cityofsantacruz.com`).
-  Video presence is not caption presence either — only 1 of the 31 pages
-  has real captions, so repointing buys a video, not a transcript.
+- **[JUST-DO-IT] ~12 OnBase/Hyland-family pages still resolve with no
+  video — the 3 newest tenants now have real, confirmed video sources.**
+  Full investigation and repoint method: `BACKLOG_DONE.md`. Real
+  population: 31 pages across 25 tenants, ~9 still genuinely open after
+  the 3 below. `egenda.scgov.net` is **Sarasota County, FL** (not Santa
+  Cruz), real video already on Granicus (4,172 real captions confirmed
+  live) — the easiest win, a pure OnBase-page↔Granicus-clip_id mapping,
+  same method as the closed Santa Barbara/Pittsburg cases.
+  `meetings.muni.org` (Anchorage AK) and `ecm.cityofsantacruz.com`
+  (Santa Cruz CA) each have real video on their own YouTube channel
+  (`@moameetings`, `youtube.com/ctvsantacruz` — 5,695 real captions
+  confirmed live for Santa Cruz), but `hyland.py` doesn't call
+  `youtube_channel.py`'s fallback at all today, so wiring these needs
+  the same date-matching join Legistar cities needed, not a trivial
+  repoint. Video presence is not caption presence either — most of the
+  31 pages have no real captions even once video is found, so repointing
+  usually buys a video, not a transcript.
 
 ### Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
 
@@ -917,21 +897,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   transient artifact originally), so a fresh live example is needed if
   this shape is seen again — not a code fix.
 
-- **[NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
-  same single blocker, and it is still unsolved (residual of WO-29).**
-  Real, populated English WebVTT genuinely exists (Salisbury NC,
-  confirmed via a real browser) but isn't reachable server-side — the
-  signed caption URL and the real progressive media file both live only
-  inside `player.vimeo.com/video/{id}/config`, which 403s every
-  non-browser client. `vimeo.com/{id}` also sometimes serves a real
-  Cloudflare challenge, which this app must never attempt to auto-solve
-  (see **Standing decisions**). The shipped adapter is deliberately
-  video-only with a warning pointing at the player's own CC button. The
-  plausible unlock is the same real-headless-browser approach
-  `headless_browser.py` built for Minneapolis LIMS/SLC — untried here,
-  not guaranteed to work if the Cloudflare challenge is probabilistic.
-  The Player SDK's `getTextTracks()`/`cuechange` don't yield a whole
-  transcript without playing the entire video — not a shortcut.
 
 - **[NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
   honest to go, and this is one instance of a general gap — do not build
@@ -1106,16 +1071,18 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   investigation): ChampDS video would be a smaller volume than Granicus,
   but the cost shape is the same.
 
-- **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
-  serves a JS-rendered SharePoint page the empty-shell escalation
-  deliberately does not catch.** From the 2026-08-14 generic-fallback
-  rebuild. The shell carries ~6KB of real nav/chrome text, so the
-  near-empty-text escalation trigger (tuned to Tucson's 153-char shell)
-  never fires — widening it would make every enabled fetch pay a ≥4s
-  browser cost on ordinary no-video pages. This isn't waiting on another
-  example; it needs its own trigger idea (a SharePoint-specific
-  fingerprint, or a different heuristic than raw text length) rather
-  than a wider version of the existing one.
+- **[NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates
+  correctly; the real video is still unreachable behind client-side JS.**
+  A SharePoint-specific fingerprint trigger shipped 2026-08-31 (see
+  `BACKLOG_DONE.md`), fixing the original "escalation never fires" gap.
+  What's left: the real video is a plain-fetchable Wowza HLS manifest at
+  `pbcmedia.pbcgov.org:1936/vod/_definst_/mp4:{videoid}.mp4/playlist.m3u8`
+  — `{videoid}` is literally the page's own query param, confirmed live
+  via network capture — but the manifest URL never appears in the DOM
+  (rendered or raw), only constructed by client JS, so today's static
+  `media_scan.scan_media_urls()` still can't find it even after
+  escalation. A PBC-specific URL-construction rule (derive it directly
+  from `videoid`) is the next real, scoped step.
 
 - **[LATER] `elpasotexas.gov/videos/` itself has no adapter** — pasting
   that URL lands in `generic_fallback.py` rather than a "pick a body,

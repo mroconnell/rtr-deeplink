@@ -82,6 +82,140 @@ confidently either direction; closed out rather than left open with
 nothing to act on. Revisit only if a second, clearer truncation example
 turns up.
 
+## Vimeo captions unlocked via headless browser — real transcript now reachable server-side [Done 2026-08-31]
+
+Real, populated English WebVTT existed (Salisbury NC, confirmed via a
+real browser) but wasn't reachable server-side — `player.vimeo.com/
+video/{id}/config` 403s every non-browser client. The plausible unlock
+(the same real-headless-browser approach `headless_browser.py` built
+for Minneapolis LIMS/SLC) was untried.
+
+**Tried it, real result**: navigating straight to `/config` through the
+headless browser still fails — Vimeo serves its own "Sorry, we're
+having a little trouble" `PrivacyError` HTML, not JSON, even to a real
+browser. But navigating to the **player page itself**
+(`player.vimeo.com/video/{id}`) succeeds and the rendered HTML contains
+a real `<track kind="subtitles" src="https://captions.vimeo.com/
+captions/{id}.vtt?expires=...&sig=...">` element. Fetching that signed
+URL with plain `curl` (no browser needed once you have it) returned a
+real, coherent WebVTT transcript — confirmed against Salisbury NC's full
+~2h03m meeting, ~2,210 cues, first cue at 0:00, last cue "...Motion
+passes. Meeting is adjourned." at 2:03:15.
+
+**Built**: `app/platforms/vimeo.py` — `_fetch_captions_via_headless_
+browser()`/`_extract_caption_track()`, wired into `resolve_video_id()`
+as a purely additive step (any failure — no Playwright, no `<track>`, a
+real Cloudflare challenge, fetch error — leaves the prior video-only
+warning untouched). Two real fixtures added
+(`tests/fixtures/vimeo/player_salisbury_1212025580.html`,
+`captions_salisbury_314604795.vtt`). 43 tests pass in `tests/test_vimeo.py`
+(new positive-path test against the real fixtures, a fallback test, an
+autouse mock keeping every other test network-free).
+
+Real cost: a headless Chromium render on every single-video Vimeo
+resolve (same cost class as the existing Minneapolis LIMS/SLC uses of
+this mechanism).
+
+## High Plains Water District: confirmed genuinely silent recording, nothing to fix [Investigated 2026-08-31]
+
+`hpwd.granicus.com/player/clip/44?view_id=1` transcribed to zero usable
+segments via local Whisper — real board meeting, passed all probe
+checks, just came out empty. Resolved the real HLS stream via
+`GranicusAssetFinder`, confirmed via `ffprobe` the file is intact (video
++ one AAC audio stream, nothing missing or malformed, 18m38s). Ran
+`ffmpeg volumedetect`/`astats` on three separate 5-minute windows (start,
+middle, end): **mean_volume -91.0dB, max_volume -90.3dB, RMS ≈-121 to
+-122dB, consistent across all three** — that's the digital noise floor,
+not quiet-but-real speech (real speech, even whispered, reads tens of dB
+louder with peaks near 0dB). Conclusive: the audio track is genuinely
+silent for the entire recording. Nothing to fix, not a VAD-tuning gap.
+The other two same-symptom URLs from the original 2026-08-27 audit
+(`branchburg-2025-carols-by-candlelight`, eScribe's `pub-scrd.
+escribemeetings.com`) had already self-resolved before this check; the
+fourth (a school concert broadcast on Cablecast) was already correctly
+identified as not-a-bug.
+
+## Palm Beach County FL: SharePoint-shell escalation trigger built; real video still unreachable behind client JS [Done 2026-08-31, residual left open]
+
+The near-empty-text escalation trigger (tuned to Tucson's 153-char
+shell) never fired on Palm Beach's real page, which carries ~6KB of
+real nav/chrome text.
+
+**Found two real, specific, narrow SharePoint fingerprints** in the
+real source page's raw HTML (traced from the Archive's actual
+`/m/meeting-890af1` page): `_spPageContextInfo` (a global JS var every
+on-prem SharePoint page injects) and `/_layouts/15` (71 occurrences).
+Neither appears in any of the 9 other real fixtures already in
+`tests/fixtures/generic_fallback/`.
+
+**Built**: `_looks_like_sharepoint_shell()` + `_SHAREPOINT_MARKERS` in
+`app/platforms/generic_fallback.py`, wired as a second, independent
+escalation trigger. **Caught and fixed a real bug along the way**:
+gating the new trigger on the existing `_is_empty_evidence()` check
+would never have fired, because PBC's real page carries a genuine
+server-rendered `<title>` ("BCC Meeting Videos") that alone satisfies
+that check (confirmed live). Added `_has_no_video_evidence()` (ignores
+`title`, same reasoning `_is_empty_evidence()` already applies to
+`agenda_link`) as the correct gate. 53 tests pass in
+`tests/test_generic_fallback.py`, including a spot-check against all 8
+other real fixtures with zero false positives.
+
+**Residual, deliberately not built** (out of this task's scope): the
+real video is a plain-fetchable Wowza HLS manifest at
+`pbcmedia.pbcgov.org:1936/vod/_definst_/mp4:{videoid}.mp4/playlist.m3u8`
+— `{videoid}` is literally the page's own `videoid` query parameter,
+confirmed live via network capture during a headless render — but the
+manifest URL never appears anywhere in the DOM (rendered or raw), only
+constructed by client JS, so today's static `media_scan.
+scan_media_urls()` still can't find it even with escalation firing. See
+the short live BACKLOG.md note for the scoped next step.
+
+## OnBase/Hyland: real video sources identified for the 3 newest tenants [Investigated 2026-08-31]
+
+- **`egenda.scgov.net` is Sarasota County, FL, not Santa Cruz** —
+  corrected via its meeting-type filter ("BCC-Regular/BCC-Special") and
+  web search. Real video already on Granicus, an already-supported
+  platform — resolved a real clip live, 4,172 real caption segments.
+  Cleanest case: pure OnBase-page↔Granicus-clip_id mapping, same method
+  as the closed Santa Barbara/Pittsburg precedent.
+- **`meetings.muni.org` is Anchorage, AK** (confirmed, matches this
+  file's own prior finding). `hyland.py` already delegates to YouTube
+  when a page embeds one directly (how the existing 2,261-segment page
+  got captions); the open cases have no embed at all. Real video exists
+  on Anchorage's own YouTube channel (`@moameetings`), but reaching it
+  per-page needs the same `youtube_channel.py`-style date-matching join
+  Legistar cities needed — `hyland.py` doesn't call into that mechanism
+  today, so this is new integration work, not a trivial repoint.
+- **`ecm.cityofsantacruz.com` is City of Santa Cruz, CA** (confirmed).
+  Real video lives on Community TV Santa Cruz's YouTube channel
+  (`youtube.com/ctvsantacruz`), titled "Santa Cruz City Council
+  MM/DD/YYYY." Resolved a real recent video live, 5,695 real caption
+  segments confirmed. Same `hyland.py`-doesn't-call-`youtube_channel.py`
+  caveat as Anchorage.
+
+No adapter code built for any of these per the task's own scope (none
+qualified as a trivial already-wired repoint except Sarasota, which is
+a data-mapping task, not a code change).
+
+## Cablecast HLS manifest: real RFC 8216 spec deviation confirmed [Investigated 2026-08-31]
+
+Resolved a real Charlotte, NC meeting via `CablecastAssetFinder`,
+fetched the real master playlist
+(`charlotte.cablecast.tv/store-40/2451-City-Council-Meeting-v17/vod.m3u8`)
+and a real Detroit one for comparison. Byte-level inspection found a
+literal space before `=` in `SUBTITLES ="subs"` on all 4 variant lines
+(1080p/720p/480p/360p) in Charlotte's manifest — per RFC 8216 §4.3.4.1,
+an attribute-list is `AttributeName=AttributeValue` with no whitespace
+permitted around `=`. Detroit's manifest (no captions track) has zero
+occurrences of the same pattern — the deviation is tied to Cablecast's
+own manifest-generation template emitting the `SUBTITLES=` attribute
+specifically, not tenant-specific, and not something this app produces
+(it never touches the manifest bytes, only points to the URL). The
+sub-playlist itself is otherwise fully spec-conformant. Causal link to
+the Search Console "video isn't on a watch page" issue is still
+unconfirmed — no way to test Googlebot's actual parser behavior from
+here — this only confirms the lead is real, not that it's the cause.
+
 ## WO-34's >>/» double-emission roll-up cluster: confirmed already handled, hardened with regression tests [Done 2026-08-31]
 
 The open entry claimed 10 of 26 affected pages (a real cluster: every
