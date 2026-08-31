@@ -540,6 +540,142 @@ async def test_transcribe_meeting_falls_back_to_per_chunk_after_a_failed_whole_a
     assert per_chunk_calls == [0.0, 900.0]  # every chunk still got transcribed
 
 
+# --- WO-79 port: a real multi-clip Swagit meeting (2026-08-31) -------------
+#
+# BACKLOG.md's "Swagit multi-clip meetings" entry: worker/main.py's
+# process_next_chunk() got a WO-79 fix (2026-08-30) for Swagit tenants that
+# publish several real per-agenda-item video files with no single combined
+# recording at the source (confirmed: Yolo County CA, White Plains NY,
+# Apple Valley MN -- see app/platforms/swagit.py). Per this repo's own "two
+# independent transcription paths" convention (CLAUDE.md), that fix did not
+# reach this script on its own -- this ports the same
+# ResolvedMeeting.video_segments -> probe_multi_clip_chunk_plan() ->
+# per-clip-chunk -> shift_segments() approach into transcribe_meeting()'s
+# own chunking loop.
+#
+# Reuses the SAME real fixture as tests/test_swagit.py's
+# test_resolve_warns_when_meeting_has_multiple_playlist_segments() (a real
+# jwplayer playlist independently fetched live from Yolo County CA clip
+# 324107, 2026-08-29 -- 3 real clips, real seq numbers 6/13/51, real
+# archive-stream.granicus.com URLs) rather than inventing new multi-clip
+# data, per this repo's own "synthetic test, real fixture shape" rule.
+# Per-clip *durations* are still synthetic (a real ffprobe against each of
+# these URLs is a separate, live network call this test suite doesn't make)
+# -- same approach tests/test_media_probe.py's own
+# probe_multi_clip_chunk_plan() tests and
+# tests/test_worker_multi_clip_chunk_plan.py's chunk_plan fixture both take.
+
+from app.platforms import media_probe as _media_probe  # noqa: E402
+from app.platforms.swagit import SwagitAssetFinder  # noqa: E402
+from aiohttp_mock import FakeResponse, mock_session  # noqa: E402
+from test_swagit import YOLO_MULTI_SEGMENT_HTML, YOLO_URL  # noqa: E402
+
+
+async def _resolve_real_yolo_multi_clip_meeting():
+    """The real ResolvedMeeting SwagitAssetFinder.resolve() produces for
+    the Yolo County CA fixture -- 3 real video_segments (seq 6/13/51),
+    same object shape a live production resolve of this exact page
+    builds."""
+    with mock_session(
+        {YOLO_URL: FakeResponse(status=200, text=YOLO_MULTI_SEGMENT_HTML, url=YOLO_URL)}
+    ):
+        return await SwagitAssetFinder().resolve(YOLO_URL)
+
+
+class _ResolvesToYoloMultiClip:
+    def __init__(self, resolved):
+        self._resolved = resolved
+
+    async def resolve(self, url):
+        return self._resolved
+
+
+async def test_transcribe_meeting_stitches_a_real_multi_clip_swagit_meeting(
+    local_media,
+):
+    """WO-79 port: transcribe_meeting() builds and consumes the same
+    per-clip chunk plan the cloud worker's process_next_chunk() does (see
+    tests/test_worker_multi_clip_chunk_plan.py) -- one chunk per real clip,
+    extracted from THAT clip's own URL at start=0.0/duration=the clip's own
+    full length, shifted by its own cumulative meeting-relative offset
+    rather than a fixed chunk_size_seconds window. Also confirms the
+    whole-audio cache (WO-64) never gets consulted for a chunk-plan
+    meeting -- identical reasoning to the worker's own
+    test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_job."""
+    resolved = await _resolve_real_yolo_multi_clip_meeting()
+    assert len(resolved.video_segments) == 3  # sanity: the real fixture
+
+    local_media.setattr(
+        tbl, "get_finder", lambda platform: _ResolvesToYoloMultiClip(resolved)
+    )
+
+    clip_urls = [seg.url for seg in resolved.video_segments]
+    durations = {clip_urls[0]: 120.0, clip_urls[1]: 300.0, clip_urls[2]: 45.0}
+
+    async def _probe(url, *, source_page_url):
+        assert source_page_url == resolved.source_url
+        return durations[url]
+
+    # probe_multi_clip_chunk_plan() (imported by reference into tbl's own
+    # namespace) calls probe_duration() via ITS OWN module's globals, not
+    # tbl's -- patching tbl.probe_duration alone (as `local_media` already
+    # does, for the single-clip fallback path) would not reach it.
+    local_media.setattr(_media_probe, "probe_duration", _probe)
+
+    def _fail_should_cache(media_url, total_chunks):
+        raise AssertionError(
+            "should_cache_whole_audio must never be consulted for a "
+            "chunk-plan meeting -- different clips are different files, "
+            "not offsets into the same one"
+        )
+
+    local_media.setattr(tbl, "should_cache_whole_audio", _fail_should_cache)
+
+    async def _fail_extract_full(*args, **kwargs):
+        raise AssertionError(
+            "whole-audio caching must never run for a chunk-plan meeting"
+        )
+
+    local_media.setattr(tbl, "extract_full_audio", _fail_extract_full)
+
+    extract_calls = []
+
+    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+        extract_calls.append(
+            {"media_url": media_url, "start": start, "duration": duration}
+        )
+        out_path.write_bytes(b"fake-audio")
+        return True, None
+
+    local_media.setattr(tbl, "extract_chunk_audio", _extract)
+
+    engine = _FakeEngine()
+    result = await tbl.transcribe_meeting(
+        engine, resolved.source_url, "swagit", chunk_size_seconds=900
+    )
+
+    assert result["ok"] is True
+    # Each of the 3 real clips extracted from its OWN url, at start=0.0
+    # with that clip's own full duration -- never the first clip's URL
+    # reused, never a chunk_size_seconds-windowed start/duration.
+    assert extract_calls == [
+        {"media_url": clip_urls[0], "start": 0.0, "duration": 120.0},
+        {"media_url": clip_urls[1], "start": 0.0, "duration": 300.0},
+        {"media_url": clip_urls[2], "start": 0.0, "duration": 45.0},
+    ]
+    assert engine.chunks_transcribed == 3
+    # Stitched onto one meeting-relative timeline: each chunk's own segment
+    # (start=0.0 within that chunk, per _FakeEngine) shifted by that
+    # clip's own cumulative offset (0, 120, 420) -- deliberately different
+    # from the extraction start (always 0.0 for a whole-clip chunk).
+    assert [s["start"] for s in result["segments"]] == [0.0, 120.0, 420.0]
+    assert [s["text"] for s in result["segments"]] == [
+        "chunk 1",
+        "chunk 2",
+        "chunk 3",
+    ]
+
+
 async def test_a_late_chunk_failure_keeps_the_chunks_already_transcribed(local_media):
     """The pub-3ce.escribemeetings.com case in miniature: several chunks
     succeed, then one fails even after its retries. The finished chunks
