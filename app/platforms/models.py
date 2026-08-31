@@ -101,6 +101,18 @@ class ResolvedMeeting(BaseModel):
     # it as a plain "we think we found an agenda here: <link>" line rather
     # than the clickable timestamp table agenda_items gets.
     agenda_link: Optional[str] = None
+    # The fuller "packet" rendition of the same agenda -- the agenda plus
+    # every staff report/attachment -- when a source distinguishes it
+    # from the plain agenda as a separate document (confirmed real on
+    # CivicPlus: `?packet=true` vs. the bare/`?html=true` agenda link,
+    # 2026-08-31). Deliberately never conflated with `agenda_link`: a
+    # packet can run into the tens of megabytes (rtr-upcoming's own
+    # measurement, a sister project solving the same problem, found one
+    # real packet at 90 MB), so it needs a plain outbound link rather
+    # than the inline iframe `agenda_link` gets. None when a platform
+    # doesn't distinguish a packet at all -- most don't, and that's not
+    # a gap to fill by guessing.
+    packet_link: Optional[str] = None
     # A video we found but cannot play -- no adapter/frontend support for
     # its host (e.g. a Vimeo page link), or just a video-shaped link on a
     # page where nothing playable was found. NEVER placed in `video_url`,
