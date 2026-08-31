@@ -117,7 +117,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (44)
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (11)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
   Media-source reliability  (2)
@@ -129,10 +129,8 @@ Reliability, ops & cost  (13)
     [NEEDS-AUDIT] Re-derived 2026-08-31: backlog keeps shrinking.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (4)
-    [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
+  Search Console, structured data & SEO plumbing  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-    [WAIT] Search Console "Page indexed without content"
     [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
@@ -460,6 +458,15 @@ coverage** instead.
   generated manifest, not something this app produces). champds (11),
   townhallstreams (5), and a long one-off tail remain unswept, each too
   small to matter much on their own.
+  **The same Granicus block also shows up as Events/Videos rich-result
+  "invalid item" flags in URL Inspection, not just the watch-page
+  issue** — confirmed 2026-08-31 on
+  `/m/beaufort-board-of-education-academics-committee` (see
+  `BACKLOG_DONE.md`'s "Two Soft 404 pages" entry): its "Page resources
+  couldn't be loaded" panel shows the Granicus media stream itself
+  failing Googlebot's fetch ("Other error"), matching the 403-to-
+  Googlebot finding above. Not a new bug — another symptom of the same
+  one.
 
 - **[NEEDS-AUDIT] Two residual gaps deliberately left open by the
   2026-08-23 state/hub rebuild.** `STATE_HUB_PAGES.md` is the full
@@ -1647,20 +1654,6 @@ top-up driver has been creating zero jobs" under **Transcription queue
 
 ### Search Console, structured data & SEO plumbing
 
-- **[NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
-  still unknown; Request Indexing sent 2026-08-29 but the diagnostic
-  question is still open (see `BACKLOG_DONE.md`).**
-  `/m/beaufort-board-of-education-academics-committee` and
-  `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
-  both have real video and a long real transcript, both Granicus, both
-  bare-jurisdiction-no-state, both visibly garbled transcripts. Two
-  candidates, neither confirmed: (1) a truncated-200 proxy bug
-  (`_proxy_to_archive()`'s `body_iterator()`, known live Sentry
-  PYTHON-FASTAPI-Q failure) vs. (2) Google judging the content
-  genuinely low-value. **`[LOGIN]` `[WAIT]`**: read **View Crawled
-  Page** on either URL once the 2026-08-29 Request Indexing recrawl
-  lands — that's the one check that separates them.
-
 - **[HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
   indexed" (alerts 2026-08-23) — three of four categories now settled.**
   The emails named only categories, no URLs. Ryan supplied three real
@@ -1697,14 +1690,6 @@ top-up driver has been creating zero jobs" under **Transcription queue
     different canonical the whole time. Fixed 2026-08-31 (see
     `BACKLOG_DONE.md`); worth re-checking whether any of these old
     permalinks show up newly as 301s in a future Search Console export.
-
-- **[WAIT] Search Console "Page indexed without content"
-  (`/m/welcome-to-clerkbase`) — Request Indexing sent 2026-08-29 (see
-  `BACKLOG_DONE.md`), genuinely waiting on Google's recrawl.** If it
-  clears, nothing further to do. If other URLs turn out flagged too,
-  that points at a broader thin-content shape worth chasing — genuinely
-  empty pages are already `noindex`ed and excluded from browse/sitemap/
-  feed.
 
 - **[WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
   corrected and confirmed fixed 2026-08-29 (see `BACKLOG_DONE.md`), only

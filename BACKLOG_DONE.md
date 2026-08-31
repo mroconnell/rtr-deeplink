@@ -83,6 +83,72 @@ rather than waiting out the cooldown, since the actual root cause is now
 fixed. Dry run confirmed feasible (duration 12600s, matches the real
 event's `durationMin: 12599`); real run created job **1308**.
 
+## Two Soft 404 pages: recrawl cleared both, favoring the transient-bug theory over "genuinely low value" [Investigated 2026-08-31]
+
+Resolves `BACKLOG.md`'s "Two Soft 404 pages that are NOT thin" entry's open
+question — which of two theories explained
+`/m/beaufort-board-of-education-academics-committee` and
+`/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
+showing Soft 404: (1) a truncated-200 proxy bug vs (2) Google genuinely
+judging the content low-value.
+
+**Both URLs' 2026-08-29 Request Indexing recrawl landed and Page indexing
+now reads clean (✅) in URL Inspection for both**, no Soft 404 flag on
+either. Ryan pasted the actual crawled HTML for both pages: Carrollton
+shows a real, coherent `VideoObject`/`Event` JSON-LD, a full agenda link,
+and a genuine transcript. Beaufort shows the same — ~1,394 real
+`transcript-segment` elements covering a real June 17 board meeting
+(Performance Expectations review, HR/student-services restructuring,
+social-justice curriculum integration, Wi-Fi/hotspot infrastructure, PPE
+reimbursement). **Neither transcript is garbled** — corrects the prior
+entry's "both visibly garbled transcripts" claim, which was wrong (or
+described a since-fixed state; either way, not what a direct read of
+the crawled content shows now).
+
+A recrawl clearing the flag on identical, unchanged content favors theory
+(1): a genuinely low-value judgment wouldn't reverse itself on an
+unchanged page, but a transient truncated-proxy response
+(`_proxy_to_archive()`'s `body_iterator()`, Sentry PYTHON-FASTAPI-Q) would
+look exactly like this from Google's side — Google saw a bad/incomplete
+response once, then a good one on retry. No code change identified as
+still needed; nothing else to build unless a *new* Soft 404 shows up on a
+page whose content is confirmed good the same way.
+
+**Separately, Beaufort's URL Inspection still flags Events: 1 invalid item
+/ Videos: 1 invalid item** (Carrollton's is fully clean, 1/1 valid). This
+is a different Search Console report (rich-results validity, not
+indexing/Soft-404) and, per the crawl's own "Page resources 5/20 couldn't
+be loaded" panel, has an identified likely cause: the Granicus media
+stream itself (`archive-stream.granicus.com/.../playlist.m3u8`, the
+`VideoObject`'s `contentUrl`) failed to load ("Other error") during
+Googlebot's fetch — alongside the Clerk JS bundle ("Redirection error"),
+a Google Fonts woff2, and two GA `collect` beacons (all "Other error").
+This lines up exactly with the already-documented, already-accepted
+Granicus-blocks-Googlebot's-User-Agent finding in `BACKLOG.md`'s "video
+isn't on a watch page" entry (51.6% of that population, confirmed via
+direct fetch: real browsers get 200, Googlebot/Bingbot/curl get 403,
+confirmed on two independent tenants) — not a new bug, not something
+this app's code can fix, and not something the Soft-404 recrawl was ever
+going to touch since the two reports are unrelated. Carrollton being
+clean despite also being Granicus (per the original entry) means the
+block isn't 100% consistent across tenants/videos — worth knowing if
+this resurfaces, but not worth chasing further right now given the
+existing entry already declines to fix it.
+
+## `/m/welcome-to-clerkbase` "Page indexed without content" cleared on recrawl [Investigated 2026-08-31]
+
+Resolves `BACKLOG.md`'s matching `[WAIT]` entry. Ryan pasted the Search
+Console Enhancements "Detected items" view for this URL, filtered to
+Events: it now shows "February 7, 2022 - Regular Village Council Meeting"
+(Yellow Springs, OH) — the real meeting behind this page's frozen slug
+(see "Five frozen-slug pages reslugged," this file) — "Crawled
+successfully on Aug 29, 2026," with only 6 non-critical issues, all
+"Missing field X (optional)" (organizer, eventStatus, endDate, offers,
+performer, address) on the `Event`/`Place` schema. A successful crawl
+with real Event content present is the opposite of "indexed without
+content" — the flag has cleared. The 6 remaining items are optional-field
+completeness, not blocking, and not worth chasing for one page.
+
 ## Oakville ON / Courtenay BC: the other half of the province-dropping gap, and the original bug's real source found [Done 2026-08-31]
 
 Second half of BACKLOG.md's "Missing County/province suffix" entry.
