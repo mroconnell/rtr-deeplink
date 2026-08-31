@@ -65,3 +65,11 @@ wordninja==2.0.0
     # via -r requirements.in
 yarl==1.24.5
     # via aiohttp
+
+# Deliberately unpinned (WO-11, per AUDIT_EXECUTION_BRIEF.md's explicit
+# instruction, 2026-08-16). See requirements.in's matching comment.
+# Re-add these two lines after every `pip-compile requirements.in`
+# re-run -- pip-compile doesn't know about them since they're excluded
+# from requirements.in on purpose.
+yt-dlp
+faster-whisper
