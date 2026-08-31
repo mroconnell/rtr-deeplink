@@ -269,9 +269,13 @@
   {% macro version_picker() %}
   <form method="get" class="version-picker">
     <label for="versionSelect">Version:</label>
-    <select id="versionSelect" name="version" onchange="this.form.submit()">
+    <select id="versionSelect" name="version"
+            data-active-source="{{ active_version.source if active_version else '' }}"
+            data-version-count="{{ page.versions|length }}"
+            data-is-default="{{ 'true' if (active_version and active_version.is_default) else 'false' }}"
+            onchange="trackEvent('transcript_version_change', {count: {{ page.versions|length }}, from_source: this.dataset.activeSource, to_source: this.options[this.selectedIndex].dataset.source}); this.form.submit()">
       {% for v in page.versions %}
-      <option value="{{ v.id }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language|language_name }} ({{ v.source|source_label }})</option>
+      <option value="{{ v.id }}" data-source="{{ v.source }}" {% if active_version and v.id == active_version.id %}selected{% endif %}>{{ v.language|language_name }} ({{ v.source|source_label }})</option>
       {% endfor %}
     </select>
     <noscript><button type="submit" class="cassette-btn cassette-btn-outline">Go</button></noscript>
@@ -507,6 +511,13 @@
       <p class="source-guess">We think we found an agenda here: <a href="{{ page.agenda_link }}" target="_blank" rel="noopener noreferrer">{{ page.agenda_link }}</a></p>
       {% else %}
       <p class="source-guess">Agenda: <a href="{{ page.agenda_link }}" target="_blank" rel="noopener noreferrer">{{ page.agenda_link }}</a></p>
+      {# Cheapest version of an inline agenda viewer -- zero backend
+         change, per BACKLOG.md's "PDF agenda links are never rendered
+         inline" entry. The link above stays as a fallback: agenda_link
+         is set by ~30 independent adapters pointing at arbitrary
+         government/vendor hosts, and some will refuse framing
+         (X-Frame-Options/CSP) with no way to detect that server-side. #}
+      <iframe class="agenda-inline-frame" src="{{ page.agenda_link }}" title="Meeting agenda document" loading="lazy" referrerpolicy="no-referrer"></iframe>
       {% endif %}
       {% endif %}
       {% if page.agenda_items %}
@@ -559,7 +570,7 @@
          content -- see BACKLOG.md.
 
          Deliberately `{% raw %}{% else %}{% endraw %}`, not
-         `elif source == "scraped"`: this is a *fallback*, so any
+         `elif source == "sourced"`: this is a *fallback*, so any
          TranscriptVersion.source that isn't "transcribed" gets the
          third-party disclaimer automatically. The allowlist form silently
          dropped the disclaimer for every new source value -- caught
