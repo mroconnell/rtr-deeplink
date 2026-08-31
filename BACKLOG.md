@@ -57,13 +57,12 @@ Standing decisions — do NOT re-raise  (3)
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
   [JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
   Confirmations nobody has actually watched happen  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
-  Production actions only Ryan should take  (2)
+  Production actions only Ryan should take  (1)
     [HUMAN] Click Validate Fix in Search Console once tonight's
-    [NEEDS-AUDIT] `hpsb` was refused by the roll-up dedup's safety
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -341,17 +340,6 @@ convenient.
   done and riding along in that deploy — see `BACKLOG_DONE.md`. Don't
   expect this to clear 100% (full numbers and why in
   `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup).
-
-- **[NEEDS-AUDIT] `hpsb` was refused by the roll-up dedup's safety
-  gate, correctly** — "fresh resolve produced no segments".
-  `pub-hpsb.escribemeetings.com` now returns no captions for that
-  meeting, so the gate declined to overwrite a real transcript with an
-  empty one rather than treating a vanished source as an improvement.
-  Whether those captions are gone permanently or the meeting was
-  re-published is unanswered; a second look decides whether this is a
-  dead source or a transient. (The 10 YouTube-backed pages this same
-  apply run originally rate-limited on are now fixed — see
-  `BACKLOG_DONE.md`.)
 
 ### Decisions about already-live content
 
