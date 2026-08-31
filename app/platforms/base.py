@@ -349,6 +349,14 @@ def detect_platform(url: str) -> str:
         # suiteone.py's own module docstring for the real page structure
         # this was built against.
         return "suiteone"
+    if netloc == "apps.tampagov.net":
+        # Tampa, FL City Council's own real-time-captioning transcript
+        # webapp ("CTTV") -- confirmed live 2026-08-30 (WO-73). See
+        # tampa.py's own module docstring for the real page structure
+        # (a paired YouTube video embedded directly on every transcript
+        # detail page, no cross-referencing against the paginated listing
+        # grid needed).
+        return "tampa"
     if netloc in PROUDCITY_KNOWN_DOMAINS:
         # ProudCity (WordPress `wp-proud-meeting` plugin) -- no shared apex
         # domain across tenants (white-labeled onto each city's own

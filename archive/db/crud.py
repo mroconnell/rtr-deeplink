@@ -3947,6 +3947,13 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # from vimeo.py, so these rows are matched by MeetingPage.platform
     # directly (same as ca_legislature/aurora_tv).
     "chicago_elms": "Chicago City Clerk (ELMS)",
+    # Tampa, FL City Council's own real-time-captioning transcript webapp
+    # (apps.tampagov.net) -- WO-73, 2026-08-30. Same shape as chicago_elms
+    # above: tampa.py delegates to YouTubeAssetFinder for the video but
+    # resets `resolved.platform` back to "tampa" afterward (confirmed by
+    # reading resolve() end to end), so a real pushed row keeps its own
+    # label rather than reading "youtube" the way lims/slc/clerkbase do.
+    "tampa": "Tampa, FL City Council transcripts (apps.tampagov.net)",
 }
 
 # Registered platforms (app/platforms/__init__.py's
