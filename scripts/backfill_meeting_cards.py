@@ -255,6 +255,17 @@ _MARKERS: tuple[tuple[str, str], ...] = (
     ("skipped: extraction queue full", "skipped: extraction queue full"),
     ("ffmpeg not found on PATH", "ffmpeg not found on PATH"),
     ("ffmpeg could not be started", "ffmpeg could not be started"),
+    # WO-85: video_thumbnail.SKIP_NO_VIDEO_STREAM (a re-attempt that
+    # short-circuited on the persisted marker) and
+    # FAIL_NO_VIDEO_STREAM_CONFIRMED (the attempt that just discovered
+    # it) share this substring on purpose -- both mean the same real
+    # fact, "this page can never get a thumbnail," and should count
+    # together, not split into two buckets an operator has to know are
+    # the same thing.
+    (
+        "no video stream (confirmed audio-only source)",
+        "audio-only source, no video stream",
+    ),
     ("timed out after", "ffmpeg timed out"),
     ("Connection refused", "ffmpeg: connection refused"),
     ("Invalid data found", "ffmpeg: invalid data (input not decodable)"),

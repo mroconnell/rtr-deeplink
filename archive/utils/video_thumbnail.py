@@ -34,7 +34,7 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple, Optional
 
-from .video_formats import is_iframe_embed_format
+from .video_formats import is_audio_only_format, is_iframe_embed_format
 
 logger = logging.getLogger("rtr_archive.video_thumbnail")
 
@@ -159,12 +159,19 @@ def target_offset_seconds(
     return UNKNOWN_DURATION_OFFSET_SECONDS
 
 
-def is_extractable(video_url: Optional[str], video_format: Optional[str]) -> bool:
-    """True when there is a real media file ffmpeg could open. False for a
-    page with no video, and for every iframe-embed platform -- their
-    stored `video_url` is a player *page*, not media (the same structural
+def is_extractable(
+    video_url: Optional[str],
+    video_format: Optional[str],
+    *,
+    known_no_video_stream: bool = False,
+) -> bool:
+    """True when there is a real media file ffmpeg could open AND that
+    file actually has a video stream to pull a frame from. False for a
+    page with no video, for every iframe-embed platform -- their stored
+    `video_url` is a player *page*, not media (the same structural
     reasoning app/main.py's _unreadable_media_message() uses to say such a
-    meeting can't be self-transcribed).
+    meeting can't be self-transcribed) -- and for a source that is
+    audio-only.
 
     Gated on IFRAME_EMBED_VIDEO_FORMATS rather than "youtube" alone since
     2026-08-22. The YouTube-only form was written when YouTube was the
@@ -177,10 +184,32 @@ def is_extractable(video_url: Optional[str], video_format: Optional[str]) -> boo
     The URL-shape check stays as a second line of defence: a page whose
     video_format was never set (or set wrong) but whose URL is plainly a
     YouTube link is still not extractable.
+
+    **Audio-only, two ways (BACKLOG_DONE.md's 2026-08-30 "19 audio-only
+    meetings" entry).** Some sources are audio-only in a way this function
+    can tell on its own, no probe required: `is_audio_only_format()`
+    catches a page whose `video_format` is literally "mp3"/"wav" (real
+    examples: cpmedia.azureedge.net URLs civicclerk.py extension-detects).
+    The rest -- audio hiding *inside* an mp4/m3u8 container on
+    Granicus/IQM2, indistinguishable from a real video file by URL or
+    `video_format` alone -- can only be told apart by actually probing the
+    stream, which is I/O this function deliberately never does (every
+    caller here is a fast, synchronous pre-check before scheduling a
+    background extraction, not the extraction itself). `extract_and_store()`
+    below does that probing, once, the first time it fails to pull a
+    frame, and persists the result (MeetingPage.no_video_stream_confirmed_at)
+    so a later call already knows the answer -- pass it in here as
+    `known_no_video_stream` rather than re-probing. Either way, once a
+    page is confirmed audio-only it is permanently non-extractable: no
+    future ffmpeg attempt against it could ever succeed.
     """
+    if known_no_video_stream:
+        return False
     if not video_url:
         return False
     if is_iframe_embed_format(video_format) or _YOUTUBE_ID_RE.search(video_url):
+        return False
+    if is_audio_only_format(video_format):
         return False
     return True
 
@@ -295,6 +324,15 @@ STORE_REJECTED = (
     "or no thumbnails table)"
 )
 UNREPORTED_FAILURE = "extraction failed without reporting a reason"
+# WO-85. Two distinct reason strings for the same underlying fact,
+# deliberately: SKIP_NO_VIDEO_STREAM is a `skipped` outcome (nothing was
+# attempted -- crud.is_no_video_stream_confirmed() already knew the
+# answer from a previous run), FAIL_NO_VIDEO_STREAM_CONFIRMED is the one
+# real attempt that discovered it just now, via probe_has_video_stream().
+# scripts/backfill_meeting_cards.py's reason_bucket() matches on the
+# shared "no video stream" substring for both.
+SKIP_NO_VIDEO_STREAM = "skipped: no video stream (confirmed audio-only source)"
+FAIL_NO_VIDEO_STREAM_CONFIRMED = "no video stream (confirmed audio-only source)"
 
 
 def _skip_cooldown_reason() -> str:
@@ -331,6 +369,18 @@ async def extract_and_store(
     from app.platforms import media_probe
 
     from ..db import crud
+
+    # WO-85: a page already confirmed audio-only (see
+    # MeetingPage.no_video_stream_confirmed_at) can never produce a frame
+    # -- checked before doing any real work, including the duration probe
+    # below, so a page in this state costs one indexed read instead of an
+    # ffprobe/ffmpeg round trip every time it's re-warmed (ingest,
+    # /m/{slug}, the card route -- none of these consult
+    # crud.list_pages_missing_default_thumbnail()'s SQL-level exclusion,
+    # since they call this function directly rather than going through
+    # the backfill sweep's candidate query).
+    if await crud.is_no_video_stream_confirmed(page_id):
+        return FrameOutcome(None, SKIP_NO_VIDEO_STREAM, skipped=True)
 
     if timestamp is None:
         duration = await media_probe.probe_duration(
@@ -376,6 +426,26 @@ async def extract_and_store(
                         "No card frame for page %s @ %ss: %s", page_id, offset, reason
                     )
                     _failed_at[key] = _now()
+                    # WO-85: a failed extraction might be transient (a CDN
+                    # timeout, an HTTP error, a genuinely broken stream --
+                    # all covered by the ordinary 6h cooldown above) or it
+                    # might be a source that can *never* succeed because
+                    # it has no video stream at all. One extra ffprobe
+                    # call tells them apart; only the confirmed-False case
+                    # gets written permanently -- a probe failure (None)
+                    # says nothing about which this is, so it's treated
+                    # the same as any other transient failure.
+                    has_video = await media_probe.probe_has_video_stream(
+                        video_url, source_page_url=source_page_url
+                    )
+                    if has_video is False:
+                        await crud.mark_no_video_stream_confirmed(page_id)
+                        logger.info(
+                            "Page %s confirmed audio-only -- won't retry thumbnail "
+                            "extraction again",
+                            page_id,
+                        )
+                        return FrameOutcome(None, FAIL_NO_VIDEO_STREAM_CONFIRMED)
                     # extract_frame() always supplies a reason today; the
                     # fallback keeps a future (False, None) from turning
                     # back into the bare, undiagnosable None this whole

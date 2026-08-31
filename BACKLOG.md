@@ -55,7 +55,7 @@ Standing decisions — do NOT re-raise  (3)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
-  [JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
+  [EASY] CivicClerk's `mediaStreamPath` fallback is a relative path,…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
   Confirmations nobody has actually watched happen  (2)
@@ -263,22 +263,32 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
-  them have no transcript either (found 2026-08-22, re-tagged from
-  `[HUMAN]` 2026-08-30 — neither remaining action needs Ryan).**
-  Thumbnail extraction needs a *video* stream; transcription only needs
-  audio. These recordings are audio-only (some literally `.mp3` URLs on
-  `cpmedia.azureedge.net`, others audio inside a video container on
-  Granicus/IQM2 — invisible to any URL or `video_format` check, only
-  detectable by probing), so they will fail thumbnail extraction on
-  every sweep forever while being perfectly good transcription sources.
-  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
-  transcripts. Two actions, neither urgent: teach `is_extractable()` a
-  no-video-stream case so they stop being retried (needs a probe, so it
-  belongs at extraction time, not in the candidate query), and push the
-  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
-  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
-  transcription queue.
+- **[EASY] CivicClerk's `mediaStreamPath` fallback is a relative path, used
+  as if it were absolute — confirmed live 2026-08-30 (WO-85), one real
+  stuck page.** `app/platforms/civicclerk.py`'s video_url chain
+  (`media.get("videoUrl") or event.get("mediaStreamPath") or
+  event.get("mediaSourcePathMp4")`) falls through to `mediaStreamPath`
+  when `videoUrl` is empty — real on kaysville-ut-2023-04-28-city-council-
+  work-session (event 823): `media.videoUrl` is `""`, so it falls to
+  `event.mediaStreamPath = "stream/KAYSVILLEUT/87a33df6-4669-4c97-a6fe-
+  3e5c25fadd0f.mp3"`, a **relative** path (not a URL — no scheme, no
+  host), used unmodified as `ResolvedMeeting.video_url`. ffprobe/ffmpeg
+  can never open it, which is why this page has sat in
+  `_in_auto_transcription_cooldown()` failing repeatedly. **Fix
+  confirmed live**: prefixing `https://cpmedia.azureedge.net/` +
+  lowercasing the subdomain segment + dropping the `stream/` prefix
+  reconstructs the exact same absolute URL wawona/layton-ut's `videoUrl`
+  already returns for their own events (`https://cpmedia.azureedge.net/
+  {subdomain.lower()}/{guid}.{ext}`) — `HEAD` on the reconstructed
+  `https://cpmedia.azureedge.net/kaysvilleut/87a33df6-4669-4c97-a6fe-
+  3e5c25fadd0f.mp3` returns a real 200, 101999092 bytes,
+  `application/octet-stream`. Needs the standard adapter-fix treatment
+  (verify against a couple more real `mediaStreamPath`-only events before
+  assuming the transform generalizes, add a fixture-backed regression
+  test per CLAUDE.md's synthetic-test convention) rather than a blind
+  one-line patch. Once fixed, push kaysville-ut-2023-04-28-city-council-
+  work-session through the same `/internal/transcription/create-job`
+  path WO-85 already used for its two siblings (see BACKLOG_DONE.md).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 

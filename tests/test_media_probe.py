@@ -9,6 +9,7 @@ from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
     is_plausible_meeting_duration,
+    probe_has_video_stream,
 )
 
 
@@ -576,3 +577,81 @@ async def test_probe_multi_clip_chunk_plan_returns_none_for_a_single_segment():
         [_video_segment("https://x/a.m3u8", seq=1)], source_page_url="https://x/"
     )
     assert plan is None
+
+
+# --- probe_has_video_stream() (WO-85) ---------------------------------------
+#
+# Built for BACKLOG_DONE.md's 2026-08-30 "19 audio-only meetings can never
+# have a card" entry: archive/utils/video_thumbnail.is_extractable() can
+# already tell a URL-detectable audio-only source apart (video_format ==
+# "mp3"/"wav") with no probe at all, but the rest -- audio hiding *inside*
+# an mp4/m3u8 container on Granicus/IQM2 -- looks identical to a real
+# video file by URL/format alone. This is the probe that tells the two
+# apart, run once by video_thumbnail.extract_and_store() after a first
+# failed frame extraction. `-select_streams v -show_entries
+# stream=codec_type -of json -i <url>` returns a `streams` array with one
+# entry per matching stream -- empty when there is no video stream at
+# all, which is the real, documented ffprobe behavior this mirrors (not
+# invented: the same flag shape probe_duration() above already uses for
+# `format=duration`, just selecting stream entries instead of the
+# container-level field).
+
+
+async def test_probe_has_video_stream_true_for_a_real_video_stream(monkeypatch):
+    async def _run(*args):
+        return 0, b'{"streams": [{"codec_type": "video"}]}', b""
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    result = await probe_has_video_stream(
+        "https://MediaHTTP.IQM2.com/SanCarlosCA/1450_480.mp4",
+        source_page_url="https://sancarlosca.iqm2.com/Citizens/",
+    )
+    assert result is True
+
+
+async def test_probe_has_video_stream_false_for_an_audio_only_source(monkeypatch):
+    # An empty `streams` array is exactly what `-select_streams v` reports
+    # when the container has no video stream at all -- audio hiding
+    # inside an mp4/m3u8 on Granicus/IQM2, the exact shape that made 19
+    # pages fail thumbnail extraction on every sweep forever before this.
+    async def _run(*args):
+        return 0, b'{"streams": []}', b""
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    result = await probe_has_video_stream(
+        "https://archive-stream.granicus.com/x/audio-only.m3u8",
+        source_page_url="https://example.granicus.com/player/clip/1",
+    )
+    assert result is False
+
+
+async def test_probe_has_video_stream_none_on_ffprobe_failure(monkeypatch):
+    # A probe failure (timeout, unreachable host, malformed output) must
+    # not be read as "confirmed audio-only" -- that would permanently
+    # blacklist a page over a transient CDN problem, not a real fact
+    # about the source. None is the honest "don't know."
+    async def _run(*args):
+        return 1, b"", b"Connection timed out"
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    result = await probe_has_video_stream(
+        "https://archive-stream.granicus.com/x/y.m3u8",
+        source_page_url="https://example.granicus.com/player/clip/1",
+    )
+    assert result is None
+
+
+async def test_probe_has_video_stream_none_when_ffprobe_missing(monkeypatch):
+    async def _run(*args):
+        raise FileNotFoundError()
+
+    monkeypatch.setattr(media_probe, "_run", _run)
+
+    result = await probe_has_video_stream(
+        "https://archive-stream.granicus.com/x/y.m3u8",
+        source_page_url="https://example.granicus.com/player/clip/1",
+    )
+    assert result is None

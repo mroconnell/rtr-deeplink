@@ -42,3 +42,26 @@ def is_iframe_embed_format(video_format: Optional[str]) -> bool:
     silently drop real pages.
     """
     return video_format in IFRAME_EMBED_VIDEO_FORMATS
+
+
+# Real, fetchable media that is nonetheless audio-only -- a URL-detectable
+# subset of the "19 audio-only meetings can never have a card" gap (found
+# 2026-08-22, see BACKLOG_DONE.md). civicclerk.py sets `video_format` to
+# the raw file extension it found (`ext in ("mp4", "mp3", "m3u8", "wav")`,
+# app/platforms/civicclerk.py), so a page whose source is literally an
+# `.mp3`/`.wav` URL on cpmedia.azureedge.net already carries that fact in
+# `video_format` -- no ffprobe needed to know ffmpeg's `-frames:v 1` can
+# only ever fail against it. This is deliberately NOT the whole gap: the
+# rest is audio hiding *inside* an mp4/m3u8 container on Granicus/IQM2,
+# which looks identical to a real video file by URL/format alone and is
+# only detectable by actually probing the stream (see
+# video_thumbnail.extract_and_store()).
+AUDIO_ONLY_VIDEO_FORMATS: frozenset[str] = frozenset({"mp3", "wav"})
+
+
+def is_audio_only_format(video_format: Optional[str]) -> bool:
+    """True when `video_format` itself already says "this is audio, not
+    video" -- see AUDIO_ONLY_VIDEO_FORMATS. `None` is False for the same
+    reason as is_iframe_embed_format(): an unknown format is presumed a
+    real video file, not silently excluded."""
+    return video_format in AUDIO_ONLY_VIDEO_FORMATS

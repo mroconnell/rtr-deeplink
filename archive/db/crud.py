@@ -58,7 +58,7 @@ from ..utils.search import (
 from ..utils.slugify import build_base_slug, random_suffix
 from ..utils.suspicious_source import suspicious_source_reason
 from ..utils.transcript_export import to_srt
-from ..utils.video_formats import IFRAME_EMBED_VIDEO_FORMATS
+from ..utils.video_formats import AUDIO_ONLY_VIDEO_FORMATS, IFRAME_EMBED_VIDEO_FORMATS
 from ..utils.highlights import compute_highlight_payload, display_text
 from ..topics import (
     TOPICS,
@@ -403,6 +403,10 @@ async def _ensure_alias(session, url_normalized: str, meeting_page_id: int) -> N
 _BEST_EFFORT_CHECK_TTL = timedelta(seconds=60)
 _best_effort_state: dict[str, Any] = {"available": None, "checked_at": None}
 _reviewed_at_state: dict[str, Any] = {"available": None, "checked_at": None}
+_no_video_stream_confirmed_state: dict[str, Any] = {
+    "available": None,
+    "checked_at": None,
+}
 
 
 async def _meeting_pages_column_available(session, column: str, state: dict) -> bool:
@@ -457,6 +461,63 @@ async def _reviewed_at_available(session) -> bool:
     return await _meeting_pages_column_available(
         session, "reviewed_at", _reviewed_at_state
     )
+
+
+async def _no_video_stream_confirmed_available(session) -> bool:
+    """True when meeting_pages.no_video_stream_confirmed_at really exists
+    (2026-08-30, WO-85). Same gate: list_pages_missing_default_thumbnail()'s
+    read and mark_no_video_stream_confirmed()'s write both go through it,
+    so that code and its migration are safe to deploy in either order."""
+    return await _meeting_pages_column_available(
+        session, "no_video_stream_confirmed_at", _no_video_stream_confirmed_state
+    )
+
+
+async def mark_no_video_stream_confirmed(page_id: int) -> None:
+    """Stamp MeetingPage.no_video_stream_confirmed_at with now(), once.
+
+    Called by video_thumbnail.extract_and_store() the first time ffprobe
+    confirms a page's video_url has no video stream at all (WO-85, see
+    that column's own comment on the model). A no-op if the migration
+    hasn't run yet on this database -- a card thumbnail is decoration, so
+    a missed write here just costs one more doomed extraction attempt
+    next sweep, never something worth failing the caller over.
+
+    Idempotent: the WHERE clause only touches rows still NULL, so a
+    second confirmation (a race between two concurrent extraction
+    attempts for the same page) leaves the original timestamp alone
+    rather than re-dating it.
+    """
+    async with async_session() as session:
+        if not await _no_video_stream_confirmed_available(session):
+            return
+        await session.execute(
+            update(MeetingPage)
+            .where(
+                MeetingPage.id == page_id,
+                MeetingPage.no_video_stream_confirmed_at.is_(None),
+            )
+            .values(no_video_stream_confirmed_at=func.now())
+        )
+        await session.commit()
+
+
+async def is_no_video_stream_confirmed(page_id: int) -> bool:
+    """True when mark_no_video_stream_confirmed() already ran for this
+    page. extract_and_store() checks this first, before doing any ffmpeg
+    work, so a page already known audio-only costs one indexed read
+    instead of another doomed subprocess call."""
+    async with async_session() as session:
+        if not await _no_video_stream_confirmed_available(session):
+            return False
+        row = (
+            await session.execute(
+                select(MeetingPage.no_video_stream_confirmed_at).where(
+                    MeetingPage.id == page_id
+                )
+            )
+        ).first()
+        return row is not None and row[0] is not None
 
 
 async def _unique_slug(session, base: str) -> str:
@@ -8817,6 +8878,16 @@ async def list_pages_missing_default_thumbnail(
     succeed; mirrors video_thumbnail.is_extractable(), and both now read
     the same constant.
 
+    Two more exclusions added 2026-08-30 (WO-85), same "mirrors
+    is_extractable()" discipline: `AUDIO_ONLY_VIDEO_FORMATS` (mp3/wav --
+    URL-detectable audio-only, no probe needed) and
+    `no_video_stream_confirmed_at IS NOT NULL` (audio hiding inside an
+    mp4/m3u8 container, confirmed by a real ffprobe call the first time
+    extract_and_store() tried and failed against it -- see that column's
+    comment on the model). Without the second one, a page like this
+    stayed a "candidate" forever: it has no default frame (extraction
+    always fails) and no code path ever stopped offering it up again.
+
     Two ways to select rows, and the *filter* above always applies to
     both -- a page that already has a default frame is never returned,
     however it was asked for:
@@ -8847,13 +8918,7 @@ async def list_pages_missing_default_thumbnail(
             )
             .exists()
         )
-        stmt = select(
-            MeetingPage.id,
-            MeetingPage.slug,
-            MeetingPage.video_url,
-            MeetingPage.video_format,
-            MeetingPage.source_url_normalized,
-        ).where(
+        where_clauses = [
             MeetingPage.video_url.isnot(None),
             MeetingPage.video_url != "",
             or_(
@@ -8866,8 +8931,27 @@ async def list_pages_missing_default_thumbnail(
                 # read the same constant.
                 MeetingPage.video_format.notin_(sorted(IFRAME_EMBED_VIDEO_FORMATS)),
             ),
+            # mp3/wav: audio-only, URL-detectable, no probe needed --
+            # ffmpeg's `-frames:v 1` can only ever fail against these.
+            # Mirrors video_thumbnail.is_extractable()'s
+            # is_audio_only_format() check.
+            MeetingPage.video_format.notin_(sorted(AUDIO_ONLY_VIDEO_FORMATS)),
             ~has_default,
-        )
+        ]
+        # Audio hiding inside an mp4/m3u8 container -- not URL-detectable,
+        # only known once extract_and_store() has actually probed it (see
+        # MeetingPage.no_video_stream_confirmed_at's comment). Gated
+        # behind the feature-detect so this query still works against a
+        # database whose migration hasn't run yet.
+        if await _no_video_stream_confirmed_available(session):
+            where_clauses.append(MeetingPage.no_video_stream_confirmed_at.is_(None))
+        stmt = select(
+            MeetingPage.id,
+            MeetingPage.slug,
+            MeetingPage.video_url,
+            MeetingPage.video_format,
+            MeetingPage.source_url_normalized,
+        ).where(*where_clauses)
         if slugs is not None:
             stmt = stmt.where(MeetingPage.slug.in_(list(slugs)))
         else:
