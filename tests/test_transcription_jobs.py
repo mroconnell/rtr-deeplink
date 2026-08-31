@@ -2178,6 +2178,62 @@ async def test_list_transcription_backlog_candidates_includes_meeting_page_id():
     assert match["meeting_page_id"] == page_id
 
 
+async def test_list_transcription_backlog_candidates_includes_garbled_and_granicus_truncated_pages():
+    # BACKLOG.md's "stale archived transcripts have no automated refresh
+    # path" entry claims 31 real pages (20 garbled + 11 Granicus-
+    # truncation-marked) are "permanently unrefreshable under today's
+    # queue logic". Verifying that claim: list_transcription_backlog_
+    # candidates() is NOT platform-restricted (unlike list_youtube_pages_
+    # missing_transcripts(), which is YouTube-only) and already applies
+    # the same _has_good_transcript() gate the garbled/hallucinated and
+    # Granicus-36k-truncation tests above confirm treats both markers as
+    # "not good" -- so both marker types already resurface here today,
+    # feeding scripts/transcribe_backlog_locally.py's real refresh path
+    # (a fresh Whisper transcription from raw audio, which structurally
+    # bypasses Granicus's own vendor-side 36,000-line cap rather than
+    # re-hitting it). No code change was needed for this half of the
+    # entry -- this test exists to keep that claim honest going forward.
+    garbled_url = "https://example.granicus.com/player/clip/refresh-path-garbled"
+    truncated_url = "https://example.granicus.com/player/clip/refresh-path-truncated"
+
+    async def _page_with_warning(eid: str, url: str, warning: str):
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:{eid}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": f"City of {eid}",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [{"start": 0, "end": 1, "text": "words words words"}],
+                "agenda_items": [],
+                "transcript_language": "en",
+                "transcript_warnings": [warning],
+            },
+            url,
+        )
+        return (await crud.lookup_page_for_url(url))["slug"]
+
+    garbled_slug = await _page_with_warning(
+        "refresh-path-garbled",
+        garbled_url,
+        "This transcript looks garbled at the source.",
+    )
+    truncated_slug = await _page_with_warning(
+        "refresh-path-truncated",
+        truncated_url,
+        "This transcript may be cut off — it hit exactly 36,000 lines, "
+        "a known limit in Granicus's own captioning for very long meetings.",
+    )
+
+    candidates = await crud.list_transcription_backlog_candidates(limit=5000)
+    slugs = {c["slug"] for c in candidates}
+    assert garbled_slug in slugs
+    assert truncated_slug in slugs
+
+
 async def test_probe_failure_recording_removes_candidate_from_next_backlog_call():
     """The actual regression: before WO-83, a batch of all-failing
     candidates (the client-side ffprobe skip, never recorded anywhere)
