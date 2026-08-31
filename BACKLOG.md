@@ -58,15 +58,14 @@ Standing decisions — do NOT re-raise  (5)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (4)
   Confirmations nobody has actually watched happen  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
   Production actions only Ryan should take  (1)
     [HUMAN] Click Validate Fix in Search Console — the 2026-08-30
-  Decisions about already-live content  (2)
+  Decisions about already-live content  (1)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
-    [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (28)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
@@ -354,17 +353,6 @@ convenient.
   (`scripts/transcribe_backlog_locally.py` never touches
   `transcription_jobs`, so a job-record-based list misses it by
   construction) — not started.
-
-- **[HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
-  been fired end to end.** The code path exists
-  (`archive_client.delete_account_data()` → bearer-gated
-  `/internal/account/delete-data` → row delete) and has unit coverage,
-  but no real Clerk account has been deleted via the UserButton flow to
-  confirm the webhook fires and rows disappear. User's decision: don't
-  block merge on this — a real deletion request would be handled by hand
-  (direct DB delete) until this automation is exercised for real. Worth
-  closing before this phase is treated as a finished right-to-deletion
-  story.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 

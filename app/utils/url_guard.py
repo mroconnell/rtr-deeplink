@@ -101,7 +101,13 @@ async def check_destination(url: str) -> None:
         loop = asyncio.get_event_loop()
         try:
             raw_ips = await loop.run_in_executor(None, _resolve_hostname, hostname)
-        except socket.gaierror as e:
+        except (socket.gaierror, UnicodeError) as e:
+            # UnicodeError alongside gaierror: getaddrinfo()'s IDNA
+            # encoding raises this (not gaierror) for a hostname with a
+            # single DNS label over 63 octets -- confirmed live via
+            # Sentry PYTHON-FASTAPI-15, a 74-character slug-shaped string
+            # sent to /api/refresh-archived-page, which 500'd instead of
+            # getting this same clean rejection.
             raise BlockedURLError("Couldn't resolve that host.") from e
         if not raw_ips:
             raise BlockedURLError("Couldn't resolve that host.")
