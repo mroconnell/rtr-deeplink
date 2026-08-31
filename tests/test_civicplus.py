@@ -71,6 +71,25 @@ async def test_real_durham_listing_page_parses_correctly():
     )
     assert clip_3313["title"] == "Joint City County Meeting"
     assert clip_3313["date"] == "2026-06-09"
+    # Real td.downloads shape for this exact row, confirmed live: an
+    # ?html=true rendition, a bare-PDF rendition, and a ?packet=true
+    # rendition -- agenda_link prefers HTML, packet_link is the
+    # deliberately separate, much larger document.
+    assert clip_3313["agenda_link"] == (
+        "https://nc-durham.civicplus.com/AgendaCenter/ViewFile/Agenda/"
+        "_06092026-3475?html=true"
+    )
+    assert clip_3313["packet_link"] == (
+        "https://nc-durham.civicplus.com/AgendaCenter/ViewFile/Agenda/"
+        "_06092026-3475?packet=true"
+    )
+
+    # Row 3554 (Aug 20, 2026 work session) has no video link at all, so
+    # it's correctly excluded from `candidates` entirely -- confirming
+    # this doesn't crash on a video-less row that still has real
+    # agenda/packet links, since _find_video_rows() never gets far
+    # enough to extract them for a skipped row.
+    assert not any(c["date"] == "2026-08-20" for c in candidates)
 
 
 async def test_listing_with_single_video_delegates_to_granicus():
@@ -95,6 +114,17 @@ async def test_listing_with_single_video_delegates_to_granicus():
 
     assert result.platform == "granicus"
     assert result.external_id == "granicus:westlakevillage.granicus.com:1201"
+    # agenda_link/packet_link come from THIS row's own td.downloads, not
+    # from whatever the delegated Granicus page happened to find --
+    # confirms the threading in resolve() survives resolve_via_platform().
+    assert result.agenda_link == (
+        "https://example.civicplus.com/AgendaCenter/ViewFile/Agenda/"
+        "_04082026-1001?html=true"
+    )
+    assert result.packet_link == (
+        "https://example.civicplus.com/AgendaCenter/ViewFile/Agenda/"
+        "_04082026-1001?packet=true"
+    )
 
 
 async def test_no_video_rows_returns_warning():

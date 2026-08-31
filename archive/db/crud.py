@@ -603,6 +603,7 @@ async def _find_or_create_page(
             agenda_items=payload.get("agenda_items") or [],
             video_warnings=payload.get("video_warnings") or [],
             agenda_link=payload.get("agenda_link"),
+            packet_link=payload.get("packet_link"),
         )
         # Set only when both true, never as a constructor kwarg: an
         # unset attribute is omitted from the INSERT and the column's
@@ -673,6 +674,7 @@ async def _find_or_create_page(
         if payload.get("video_warnings"):
             page.video_warnings = payload["video_warnings"]
         page.agenda_link = payload.get("agenda_link") or page.agenda_link
+        page.packet_link = payload.get("packet_link") or page.packet_link
         # Truthy-gated, i.e. this flag can be *set* by a re-ingest but
         # never cleared by one -- same shape as agenda_items /
         # video_warnings just above, and for the same concrete reason,
@@ -3308,6 +3310,7 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "agenda_items": page.agenda_items or [],
             "video_warnings": page.video_warnings or [],
             "agenda_link": page.agenda_link,
+            "packet_link": page.packet_link,
             "source_url": page.source_url_normalized,
             "versions": [
                 {

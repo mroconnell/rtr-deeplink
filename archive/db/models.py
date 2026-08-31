@@ -83,6 +83,15 @@ class MeetingPage(Base):
     # point, corrected the same day this column was added.
     video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Mirrors ResolvedMeeting.packet_link (app/platforms/models.py,
+    # 2026-08-31): the fuller "packet" rendition of the agenda (agenda
+    # plus every staff report), when a platform distinguishes it from
+    # `agenda_link` as a separate document. Deliberately its own column,
+    # not folded into `agenda_link` -- see that field's own comment for
+    # why (a packet can run to tens of megabytes, so it needs a plain
+    # outbound link rather than an inline viewer). Null on every platform
+    # that doesn't distinguish a packet, which is most of them.
+    packet_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Mirrors ResolvedMeeting.best_effort (app/platforms/models.py): True
     # when the resolve behind this page came from generic_fallback.py's
