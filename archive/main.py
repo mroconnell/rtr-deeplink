@@ -1180,6 +1180,62 @@ async def internal_low_trust_pages_mark_reviewed(
     return result
 
 
+@app.post("/internal/jurisdiction/override")
+async def internal_jurisdiction_override(
+    ids: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Write a caller-supplied jurisdiction string directly onto specific
+    pages -- the one place in this repo that trusts a client-supplied
+    jurisdiction value at all, rather than recomputing one via
+    finalize_jurisdiction(). Every other jurisdiction write endpoint here
+    (POST /internal/jurisdiction/backfill-apply above) deliberately never
+    accepts one, for good reason -- but that leaves no way to fix a case
+    finalize_jurisdiction() can't reach on its own: several strings that
+    already independently validate but should read as one canonical form
+    (see BACKLOG.md's Santa Clara entry), or the low-trust queue's
+    missing "review -> repair" path (BACKLOG.md's Trust & safety
+    section).
+
+    `ids` is REQUIRED, comma-separated `meeting_page_id`s, same parse as
+    /internal/low-trust-pages/mark-reviewed's `ids`. `jurisdiction` is
+    REQUIRED and applied identically to every id -- call this once per
+    distinct canonical string, not once with a mixed batch.
+
+    Writes `jurisdiction_confidence="manual_override"` alongside the
+    string, which `_find_or_create_page()`'s re-ingest path specifically
+    checks for and skips overwriting -- see crud.override_jurisdiction()'s
+    own docstring for why a manual fix needs that guard to actually
+    stick. Also stamps `reviewed_at` when available, since an explicit
+    override is definitionally a human having looked at the row.
+
+    dry_run defaults to true, matching every other write endpoint here.
+    Idempotent: an id already carrying this exact string and confidence
+    tier is reported under `already_overridden`, not re-written.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        parsed = _parse_id_filter(ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "ids must be comma-separated integers"}, status_code=400
+        )
+
+    if jurisdiction is None:
+        return JSONResponse({"detail": "jurisdiction is required"}, status_code=400)
+
+    try:
+        return await crud.override_jurisdiction(
+            ids=parsed or set(), jurisdiction=jurisdiction, dry_run=dry_run
+        )
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+
 @app.post("/internal/jurisdiction/backfill-apply")
 async def internal_jurisdiction_backfill_apply(
     dry_run: bool = True,

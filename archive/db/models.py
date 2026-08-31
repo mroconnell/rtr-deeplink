@@ -60,8 +60,10 @@ class MeetingPage(Base):
     # every page where no split applied, which is most of them.
     # jurisdiction_confidence is one of finalize_jurisdiction()'s
     # JurisdictionResult.confidence values ("authoritative"/"validated"/
-    # "repaired"/"fallback"/"unverified"/"blank") -- a plain string
-    # column, not an enum, so a new confidence tier never needs a
+    # "repaired"/"fallback"/"unverified"/"blank"), or "manual_override"
+    # -- the one tier finalize_jurisdiction() itself never produces,
+    # written only by POST /internal/jurisdiction/override. A plain
+    # string column, not an enum, so a new confidence tier never needs a
     # migration to add.
     meeting_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(

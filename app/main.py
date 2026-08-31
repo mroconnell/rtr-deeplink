@@ -1398,7 +1398,7 @@ async def _probe_meeting_duration(
 
 
 @app.post("/api/transcription/check-feasibility")
-@limiter.limit("5/hour")
+@limiter.limit("5/hour", exempt_when=lambda request: bool(get_clerk_user_id(request)))
 async def transcription_check_feasibility(
     request: Request, req: TranscriptionFeasibilityRequest
 ):
@@ -1454,7 +1454,7 @@ class TranscriptionSubmitRequest(BaseModel):
 
 
 @app.post("/api/transcription/submit")
-@limiter.limit("5/hour")
+@limiter.limit("5/hour", exempt_when=lambda request: bool(get_clerk_user_id(request)))
 async def transcription_submit(request: Request, req: TranscriptionSubmitRequest):
     """Re-runs the entire feasibility check server-side rather than trusting
     a client-supplied "it passed" flag -- this is the step that actually
