@@ -14,7 +14,7 @@ alembic>=1.13
 clerk-backend-api>=6.0
 # Error monitoring (2026-08-16, WO-7): no-op when SENTRY_DSN unset, same
 # degrade pattern as Clerk above -- see archive/main.py's _init_sentry().
-sentry-sdk>=2.0
+sentry-sdk>=2.68.1
 # Jurisdiction repair (2026-08-23, WO-47): the archive's ingest-time
 # finalize_jurisdiction() shares app/utils/jurisdiction_enrich.py with
 # the resolver, and every wordninja-backed tier in it (the validated
