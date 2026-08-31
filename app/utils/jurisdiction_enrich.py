@@ -723,6 +723,24 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # subdomain-parsing ran (or matching it) stayed at bare "Beaumont"
     # with no state, unrepairable by a bulk recompute until now.
     "pub-beaumontab.escribemeetings.com": KnownJurisdiction("Beaumont", "city", "AB"),
+    # Oakville ON and Courtenay BC -- same recompute-backfill gap Milton
+    # closes above, found 2026-08-30/31 fixing BACKLOG.md's "Missing
+    # County/province suffix" entry: `_table_lookup("Oakville")` alone is
+    # genuinely ambiguous (IA/ON/WA all real), and "Courtenay" is a real
+    # BC city with no state-resolvable signal in the bare name either, so
+    # a bulk recompute kept re-validating the already-repaired bare names
+    # without ever attaching a province. Confirmed real via each page's
+    # own live content, not the name alone: `pub-oakville`'s page reads
+    # "Town of Oakville" with `oakville.ca` links throughout; `pub-
+    # courtenay`'s page names "CVRD Civic Room, ... Courtenay" (Comox
+    # Valley Regional District, BC) -- and, incidentally, is also the
+    # real source of the original bug: it contains a delegation item from
+    # "the City of Burlington, Ontario," which is what leaked into these
+    # two rows' stored jurisdiction as bare "Burlington" in the first
+    # place, later hand-repaired to the bare city name without a
+    # province.
+    "pub-oakville.escribemeetings.com": KnownJurisdiction("Oakville", "city", "ON"),
+    "pub-courtenay.escribemeetings.com": KnownJurisdiction("Courtenay", "city", "BC"),
     # Hyland "OnBase Agenda Online" -- confirmed live 2026-08-16, none of
     # the 3 known customer domains carries reliable in-page jurisdiction
     # text (Maricopa/Tucson have none at all; Sacramento's happens to sit

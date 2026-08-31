@@ -1503,11 +1503,19 @@ def test_extract_jurisdiction_chain_courtenay_bc_not_burlington():
         html=html,
         url="https://pub-courtenay.escribemeetings.com/Meeting.aspx?Id=1",
     )
-    # Ambiguous (BC AND a real North Dakota place both named Courtenay,
+    # "Courtenay" alone is ambiguous (BC AND a real North Dakota place,
     # confirmed via `_table_lookup("Courtenay") == ("place", ["BC",
-    # "ND"])`) -- correctly returned bare, no guessed province, same
-    # "decline rather than guess" policy this module uses everywhere else.
-    assert result == "Courtenay"
+    # "ND"])`), so this used to correctly return bare, no guessed
+    # province -- until 2026-08-31, when `pub-courtenay.escribemeetings.
+    # com` was added to `_KNOWN_DOMAINS` as a real, hand-verified
+    # exception (fetched live: the real page names "CVRD Civic Room, ...
+    # Courtenay" -- Comox Valley Regional District, BC -- and even
+    # contains a delegation item from "the City of Burlington, Ontario,"
+    # which is exactly what leaked into two real production rows as bare
+    # "Burlington" in the first place; see BACKLOG_DONE.md). A known,
+    # confirmed domain now correctly wins over the generic ambiguity
+    # guard, same as Milton/Beaumont above.
+    assert result == "Courtenay, BC"
 
 
 def test_extract_jurisdiction_chain_victorville_not_san_bernardino_county():
