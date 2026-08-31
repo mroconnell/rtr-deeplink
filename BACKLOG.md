@@ -67,7 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -93,7 +93,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (14)
+  Jurisdiction extraction & backfill  (13)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
@@ -102,7 +102,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
-    [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
     [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
     [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
@@ -1100,65 +1099,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   not designed yet, since the real jurisdiction text sits in a
   different place per entity type.
 
-- **[JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
-  structural fix for the SLC/Holladay false-positive — only patched for
-  that one confirmed domain.** SLC's own bug is fixed via a known-domain
-  override (see `BACKLOG_DONE.md`'s Standing decisions archive), but an
-  unscoped body-text search
-  still can't structurally tell a genuine page header from an
-  agenda-item mention (confirmed against OKC, Thousand Oaks, SLC — none
-  separate cleanly by character position, and a bold-tag rule would fix
-  OKC/SLC but miss Thousand Oaks's plain-prose header). **It DID recur —
-  twice — found 2026-08-23 via Google's crawl of /state/california
-  (WO-47)**: `ccta.primegov.com` (the Contra Costa Transportation
-  Authority — the search stored an agenda item, "City of Hercules GMP
-  Compliance Checklist", as the jurisdiction, and a second CCTA page as
-  "City of Richmond") and `cityoflancasterca.primegov.com` (stored a
-  department, "City of Lancaster Community Development Department").
-  Both got authoritative `_KNOWN_DOMAINS` entries per the standing
-  per-incident-override approach, and the three bad rows were repaired
-  via the recompute backfill.
-
-  **The `lasvegas.primegov.com` name-tail-overrun shape is now fixed —
-  2026-08-28, but at the shared `finalize_jurisdiction()` layer, not in
-  `primegov.py` itself.** `_extract_jurisdiction()` still returns the
-  same raw `'City of Las Vegas Internet Address'` from the same
-  boilerplate footer (`"City of Las Vegas Internet Address:
-  www.lasvegasnevada.gov"`) — that part of the adapter is unchanged and
-  still over-runs past the real place name. What changed is
-  `jurisdiction_enrich._looks_like_bleed()` (see `BACKLOG_DONE.md`):
-  every real ingest already runs the raw value through
-  `finalize_jurisdiction()`, and its `_trim_repair()` already found the
-  correct literal prefix ("City of Las Vegas") — it just used to decline
-  trimming because the 2-word discarded tail ("Internet Address") didn't
-  register as bleed. Confirmed live:
-  `finalize_jurisdiction('City of Las Vegas Internet Address',
-  netloc='lasvegas.primegov.com')` now returns `'City of Las Vegas'` at
-  `confidence='repaired'`. Page **2041** (which carries the old bad
-  value) is a recompute-backfill candidate now that this is fixed.
-
-  **`lacity.primegov.com`'s coin-flip problem — fixed 2026-08-30, via a
-  domain override, not another text-extraction heuristic.** Root cause
-  actually confirmed this time by fetching both real pages live rather
-  than guessing at a third positional/regex rule: meeting 157675 is a
-  full City Council meeting with a real "Los Angeles City Council
-  Agenda" letterhead `_COUNCIL_HEADER_RE` matches; meeting 156963 is a
-  **committee** meeting (`<title>Housing and Homelessness Committee -
-  8/5/2026...`) whose entire real letterhead is just the committee name
-  and date — no "City of"/"Los Angeles City Council" phrase anywhere on
-  the page at all. Unlike the OKC/Thousand-Oaks/SLC/Bedford shape (a
-  *wrong* match winning over the *real* one), this is a genuine absence
-  on committee pages — no amount of smarter text-extraction recovers
-  text that isn't there. Fix: `lacity.primegov.com` added to
-  `jurisdiction_enrich._KNOWN_DOMAINS` as an authoritative override
-  (same mechanism already proven for `slc.primegov.com`/
-  `ccta.primegov.com`/`cityoflancasterca.primegov.com` above) — the
-  domain is confirmed single-tenant, so applying it unconditionally is
-  safe, and it produces the identical correct answer on the
-  already-working 157675 too (verified against both real, live-fetched
-  pages, not just a fixture). Page **2033** (`NULL`) and page **2041**
-  (the Las Vegas name-tail-overrun row above) are now both
-  recompute-backfill candidates.
 
 - **[NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
   missing a jurisdiction," even though the real numbers are now known.**

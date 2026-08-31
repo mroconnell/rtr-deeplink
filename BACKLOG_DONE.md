@@ -18,6 +18,39 @@ CMS-title strings), and page `1447` (Loganville GA) was already correct
 The Kansas City pair (`154`/`155`) remains open as its own live entry —
 a genuinely harder KS/MO-span case, not a deploy dependency.
 
+## PrimeGov `_extract_jurisdiction()` false-positive recurrences — all confirmed fixed via per-domain overrides, 2 pages repaired [Done 2026-08-30]
+
+PrimeGov's unscoped body-text search for a jurisdiction header can't
+structurally tell a genuine page header from an agenda-item/department
+mention (confirmed against OKC, Thousand Oaks, SLC — no single
+positional/bold-tag rule fixes all three without breaking another). The
+approach settled on instead: fix each confirmed real recurrence via an
+authoritative `jurisdiction_enrich._KNOWN_DOMAINS` override once it's
+single-tenant-confirmed, rather than chasing a general structural parser.
+Four more real recurrences found and fixed this way in 2026-08:
+`ccta.primegov.com` (Contra Costa Transportation Authority — was storing
+agenda items "City of Hercules GMP Compliance Checklist"/"City of
+Richmond"), `cityoflancasterca.primegov.com` (was storing a department
+name), `lasvegas.primegov.com` (fixed at the shared
+`finalize_jurisdiction()`/`_trim_repair()` layer, not in `primegov.py` —
+a boilerplate footer tail, "Internet Address", wasn't registering as
+bleed), and `lacity.primegov.com` (a genuine absence, not a false
+positive: committee meeting pages there carry no "City of"/council-header
+text anywhere at all, confirmed by fetching both a working City Council
+page and a broken committee page live — domain override is correct here
+since no text-extraction fix can recover text that isn't on the page).
+
+Two pages were left as named recompute-backfill candidates once these
+fixes shipped; both resolved 2026-08-30: page **2041** (Las Vegas
+name-tail row) was already correct on re-check (`bleed-backfill-
+candidates` returned 0 changes — current already matched repaired). Page
+**2033** (`meetingTemplateId=156963`, the LA Housing and Homelessness
+Committee page, `jurisdiction` was `NULL`) needed a full re-resolve, not
+a recompute (a `NULL` jurisdiction has no stored string to recompute
+from) — `scripts/backfill_archived_pages.py --url-contains
+"meetingTemplateId=156963"` (dry-run reviewed, then applied) pushed
+`jurisdiction='City of Los Angeles, CA'` for real.
+
 ## ProudCity's other "no video found" tenants checked for the BoxCast link shape — none found [Investigated 2026-08-30]
 
 Only Wilmington, OH was confirmed carrying `videoStyle === 'external'`'s
