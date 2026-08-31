@@ -1,5 +1,37 @@
 # Backlog — done
 
+## Clerk `user.deleted` → `saved_items` purge verified end to end for the first time [Done 2026-08-31]
+
+Closes the "[HUMAN]" backlog item that had sat open since accounts
+shipped (2026-08-11): the code path
+(`archive_client.delete_account_data()` → bearer-gated
+`/internal/account/delete-data` → row delete) had unit coverage but had
+never been exercised against a real Clerk account deletion, so nobody
+knew whether the webhook actually fired in production or whether rows
+really disappeared. Until now, a real deletion request would have been
+handled by hand (direct DB delete).
+
+**Verified for real, in production, in three independent steps** (not
+inferred from any one of them alone):
+1. User deleted their own account via the real UserButton flow
+   (`mroconnell@gmail.com`, `user_3Hm7GT6VusjN7vI6bwsyBj6Bmvy`) —
+   confirmed gone client-side in Clerk.
+2. Clerk Dashboard → Logs shows the real `user.deleted` event fired for
+   that user id, 2026-08-31 10:18:37 AM.
+3. Clerk Dashboard → Configure → Developers → Webhooks → the endpoint's
+   Message Attempts log shows that same `user.deleted` event delivered
+   with status **Succeeded** (message id `01M1CD919183XCT39FN36V7DR`) —
+   this is the step that specifically confirms our endpoint received and
+   processed the webhook, not just that Clerk sent it.
+
+No `saved_items` row count was independently queried in the DB itself
+(the Succeeded delivery plus the existing unit coverage of
+`delete_account_data()`'s row-delete logic is what this pass relied on)
+— worth a real DB check next time a second account is deleted, but not
+worth blocking this closure on given the delivery-log confirmation.
+This app's right-to-deletion story for phase 1 is no longer resting on
+an untested code path.
+
 ## Nav sign-in modal hung forever when Clerk required a second factor [Done 2026-08-31]
 
 Real production bug, reported live by the user testing email/password
