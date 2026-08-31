@@ -172,17 +172,16 @@ under everything else. This repo extracts and fixes just that part.
   than deriving one. Same root cause as the multi-session working-tree
   rule below — concurrent sessions can't infer shared state from a
   snapshot of it.
-- **An open backlog entry carries the *conclusion*; the investigation
-  that produced it goes in `BACKLOG_DONE.md`.** `BACKLOG.md` is read
-  before deciding what to build, so an entry earns its length only with
-  what a builder needs: what's wrong, what to do, what to watch out for.
-  The reasoning is genuinely valuable — that's why this repo keeps it —
-  but its home is `BACKLOG_DONE.md`, with the live entry pointing there
-  in one line. **A `Ship next` item should rarely need 50 lines.** If the
-  evidence really is that long, split it: put the investigation in
-  `BACKLOG_DONE.md` under a `[Investigated YYYY-MM-DD]` marker (not
-  `[Done]` — nothing shipped), and leave the live entry saying what to
-  build and why it's worth building.
+- **An open backlog entry carries the *conclusion*, in a fixed 5-field
+  template — the investigation goes in `BACKLOG_DONE.md`, or, for the
+  rare still-open one, `docs/investigations/`.** `BACKLOG.md`'s own
+  header (read before filing any entry) carries the canonical field list
+  — Issue, Impact, Next action, Constraint, History — plus the
+  overwrite-don't-append rule and when an entry should split rather than
+  keep accumulating; that's the source of truth, this bullet doesn't
+  duplicate it. `BACKLOG.md` is read before deciding what to build, so an
+  entry earns its length only with what a builder needs *now* — not a
+  log of what previous sessions already tried.
   **This is measured, not a style preference.** WO-41's compaction took
   `BACKLOG.md` to **2,227** lines on the morning of 2026-08-22. By that
   afternoon it stood at **2,399** on `main`, and a single session of
@@ -192,8 +191,12 @@ under everything else. This repo extracts and fixes just that part.
   whose *content* was fine and whose findings were worth keeping. That is exactly how the file reached 4,300 lines
   before, and no amount of care about individual entries prevents it,
   because each one looks justified on its own. The TOC protocol above
-  makes a long file survivable to *navigate*; it does nothing about a
-  long file being slow to *decide* from.
+  makes a long file survivable to *navigate*; the 5-field template plus
+  `docs/investigations/` (both adopted 2026-08-31 after a user review
+  flagged entries reading like investigation journals — the YouTube
+  429-block entry, condensed from ~40 lines to 6 with its history moved
+  to `docs/investigations/youtube_429_block.md`, was the first case) is
+  what keeps a long file survivable to *decide from* on top of that.
 - **New bugs/gaps found while working go in `BACKLOG.md`**, not just
   mentioned in conversation — it's the durable record. `BACKLOG.md` holds
   only live/open items, kept short on purpose; once an item is actually
