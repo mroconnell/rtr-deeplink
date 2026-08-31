@@ -2098,3 +2098,135 @@ async def test_list_recent_transcription_failures_covers_both_failure_classes():
         (0, 1),
         (1, 5),
     }
+
+
+# --- WO-83: list_transcription_backlog_candidates() carries meeting_page_id,
+# and a recorded probe failure removes a candidate from the next call ------
+#
+# See BACKLOG.md's "hourly transcription top-up driver has been creating
+# zero jobs" entry: scripts/bulk_queue_transcription_backlog.py's own
+# client-side ffprobe-feasibility skip used to happen before any
+# TranscriptionJob row existed for the candidate, so
+# crud._in_auto_transcription_cooldown() never engaged and the same
+# archive-stream.granicus.com candidates were handed back out identically
+# forever. The fix records the failure via
+# crud.create_failed_auto_transcription_job() (through the new
+# /internal/transcription/record-probe-failure route) -- these two tests
+# prove that mechanism actually works end-to-end at the crud layer.
+
+
+async def test_list_transcription_backlog_candidates_includes_meeting_page_id():
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    url = "https://example.granicus.com/player/clip/backlog-page-id"
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": "granicus:backlog-page-id",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        page_id = page.id
+
+    candidates = await crud.list_transcription_backlog_candidates()
+    match = next(c for c in candidates if c["slug"] == slug)
+    assert match["meeting_page_id"] == page_id
+
+
+async def test_probe_failure_recording_removes_candidate_from_next_backlog_call():
+    """The actual regression: before WO-83, a batch of all-failing
+    candidates (the client-side ffprobe skip, never recorded anywhere)
+    starved out every candidate behind them, forever -- the exact same
+    pages came back from list_transcription_backlog_candidates() on every
+    subsequent call. Simulates what the fixed
+    scripts/bulk_queue_transcription_backlog.py now does for each
+    infeasible candidate (record a probe failure via
+    create_failed_auto_transcription_job(), the same call the new
+    /internal/transcription/record-probe-failure route makes), then
+    proves those specific candidates are excluded from the very next
+    call -- i.e. a subsequent run can no longer be starved by the same
+    always-failing candidates."""
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    urls = [
+        f"https://archive-stream.granicus.com/player/clip/probe-fail-{i}"
+        for i in range(3)
+    ]
+    page_ids = []
+    for i, url in enumerate(urls):
+        await crud.ingest_resolution(
+            {
+                "platform": "granicus",
+                "source_url": url,
+                "external_id": f"granicus:probe-fail-{i}",
+                "title": "T",
+                "date": "2026-01-01",
+                "jurisdiction": "City of Test",
+                "video_url": "https://example.com/v.m3u8",
+                "video_format": "m3u8",
+                "segments": [],
+                "agenda_items": [],
+                "transcript_language": None,
+                "transcript_warnings": [],
+            },
+            url,
+        )
+        slug = (await crud.lookup_page_for_url(url))["slug"]
+        async with async_session() as session:
+            page = (
+                (
+                    await session.execute(
+                        select(MeetingPage).where(MeetingPage.slug == slug)
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            page_ids.append(page.id)
+
+    # Sanity check: all three are real candidates right now, before any
+    # failure has been recorded against them.
+    candidates_before = await crud.list_transcription_backlog_candidates(limit=5000)
+    ids_before = {c["meeting_page_id"] for c in candidates_before}
+    for pid in page_ids:
+        assert pid in ids_before
+
+    # Simulate the fixed driver script recording a probe failure for each
+    # (the identical "ffprobe couldn't read the media" reason seen live).
+    for pid in page_ids:
+        await crud.create_failed_auto_transcription_job(
+            meeting_page_id=pid,
+            requester_email="auto@example.com",
+            error_message="ffprobe couldn't read the media",
+        )
+
+    # None of the three should be handed back out anymore -- they're all
+    # freshly in cooldown, which is exactly what lets a subsequent hourly
+    # run reach further into the backlog instead of grinding the same
+    # candidates in place.
+    candidates_after = await crud.list_transcription_backlog_candidates(limit=5000)
+    ids_after = {c["meeting_page_id"] for c in candidates_after}
+    for pid in page_ids:
+        assert pid not in ids_after

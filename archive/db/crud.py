@@ -1219,6 +1219,22 @@ async def list_transcription_backlog_candidates(
     revisit at real scale" reasoning as find_auto_transcription_candidate()
     and list_pages()'s own keyword search -- this is a manually-invoked
     local batch tool, not a hot request path.
+
+    Each candidate carries `meeting_page_id` (WO-83, 2026-08-30) so a
+    caller whose own feasibility check fails on a candidate -- e.g.
+    scripts/bulk_queue_transcription_backlog.py's client-side ffprobe
+    probe, which runs entirely before any TranscriptionJob row would
+    otherwise exist for that page -- can record that failure via
+    create_failed_auto_transcription_job() and let
+    _in_auto_transcription_cooldown() actually apply its escalating
+    backoff. Without this, a page whose probe fails outside this
+    function has zero TranscriptionJob history, is never in cooldown,
+    and is handed back out by every future call to this function
+    identically forever -- confirmed live as the root cause of
+    BACKLOG.md's "hourly transcription top-up driver has been creating
+    zero jobs" entry (25+ hours sampled, 8/8 candidates every single run
+    were the same archive-stream.granicus.com clips failing "ffprobe
+    couldn't read the media", a known origin 504).
     """
     async with async_session() as session:
         pages = (
@@ -1239,6 +1255,7 @@ async def list_transcription_backlog_candidates(
                 continue
             candidates.append(
                 {
+                    "meeting_page_id": page.id,
                     "slug": page.slug,
                     "title": page.title,
                     "platform": page.platform,
