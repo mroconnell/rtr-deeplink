@@ -67,7 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (4)
   Decisions about already-live content  (1)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (28)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (26)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -83,9 +83,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (28)
     [JUST-DO-IT] ~10 OnBase/Hyland-family pages still resolve with no
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (4)
-    [JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
-    [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
+  Jurisdiction extraction & backfill  (2)
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
   Adapter & platform gaps  (13)
@@ -686,36 +684,6 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   match at all — no further lever on file beyond the WAF itself.
 
 ### Jurisdiction extraction & backfill
-
-- **[JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
-  action, not a human product decision — the write path now exists.**
-  `POST /internal/jurisdiction/override` (PR #638, merged 2026-08-31 —
-  see `BACKLOG_DONE.md` for how this reconciled with a duplicate
-  version independently built the same day) takes comma-separated
-  `ids` + an explicit string and tags the rows `manual_override`,
-  protected from being silently reverted on a later re-ingest.
-  Canonical form already decided (2026-08-23): `Santa Clara County, CA`
-  for the county rows. Applying it to the 4 Santa Clara rows + the VTA
-  is a one-off `dry_run=false` call, findable via the new
-  `GET /internal/jurisdiction/search?q=santa+clara` — not yet made:
-  neither endpoint is deployed yet (production is still on an earlier
-  commit as of this writing).
-
-- **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
-  City" → "Kansas City") — check `source_url_normalized` before
-  concluding this is undecidable.** `kansascity.legistar.com`/
-  `kansascity.granicus.com` is a confirmed-live, Kansas-City-**MO**
-  -specific tenant (`app/platforms/granicus_channel.py`), and no Kansas
-  City, KS tenant is registered anywhere in this repo. If rows 154/155's
-  source URL is on that domain, this resolves via a `_KNOWN_DOMAINS`
-  entry or the `override` endpoint above rather than being genuinely
-  ambiguous — not yet checked against the actual stored URL (needs a
-  deploy + `GET /internal/jurisdiction/search`). If the source is
-  something else entirely, the case stays genuinely undecidable as
-  before. (The other 5 pages this entry originally covered — Oxford
-  County ON, Breckenridge TX, Eustis FL, Hendersonville NC, Loganville
-  GA — were confirmed deployed and applied 2026-08-30, see
-  `BACKLOG_DONE.md`.)
 
 **2026-08-30 production write, for context**: 98 real jurisdiction
 corrections were applied directly to already-published pages this
