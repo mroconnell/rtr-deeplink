@@ -1,5 +1,39 @@
 # Backlog — done
 
+## Phase 4: caught UnicodeError alongside gaierror in check_destination() (PR #642) [Done 2026-08-31]
+
+Small, well-scoped fix promoted straight from `CLAUDE_INBOX_TRIAGE.md`'s
+2026-08-31 daily triage run and built directly rather than left for a
+promotion-only entry, since the root cause and fix location were already
+exact. `getaddrinfo()`'s IDNA encoding raises `UnicodeError`, not
+`socket.gaierror`, for a hostname with a single DNS label over 63
+octets — `check_destination()`'s `except socket.gaierror` clause
+(`app/utils/url_guard.py:104`) didn't catch it, so it propagated
+unhandled into a 500 instead of the intended clean
+`BlockedURLError("Couldn't resolve that host.")`.
+
+**Real-world confirmation**: Sentry `PYTHON-FASTAPI-15` (2026-08-30
+19:46:52 UTC, `handled=no`, `/api/refresh-archived-page`) — a
+74-character slug-shaped string
+(`anchorage-ak-2026-07-02-amats-technical-advisory-committee-placeholder`)
+sent as the `url` param, most likely an external client testing
+slug-shaped strings against the endpoint rather than a real broken
+`source_url`. Reproduced directly against the real stdlib resolver
+locally before writing the fix: `socket.getaddrinfo()` on that exact
+hostname raises `UnicodeError: encoding with 'idna' codec failed
+(UnicodeError: label too long)`.
+
+**Fix**: added `UnicodeError` to the `except` clause alongside
+`socket.gaierror`, same clean `BlockedURLError` message. New tests
+reproduce the failure two ways — a monkeypatch unit test, and a second
+test that calls `check_destination()` with the exact real hostname from
+the Sentry report through the real, unmocked stdlib resolver (no network
+call actually happens; IDNA encoding fails client-side before any socket
+call). Both promoted items from that day's triage run (this one and
+Phase 3/4's Search Console `uploadDate`/`startDate` promotion) were
+deleted from `CLAUDE_INBOX_TRIAGE.md` per that file's own promotion
+convention once acted on.
+
 ## Phase 4: fixed the real Chula Vista garbled-marker false positive (PR #641) [Done 2026-08-31]
 
 Built in an isolated worktree (`claude/phase4-garbled-marker-fix`, off
