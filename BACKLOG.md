@@ -81,7 +81,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (29)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
-    [JUST-DO-IT] ~9 OnBase/Hyland-family pages still resolve with no
+    [JUST-DO-IT] ~10 OnBase/Hyland-family pages still resolve with no
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   Jurisdiction extraction & backfill  (5)
@@ -628,22 +628,12 @@ answer will be in the line — a 404, 429, connection reset, and
 429s, the fix is host-aware pacing (already deprioritised for symptom A
 on the evidence there, but this is the half it could genuinely fit).
 
-- **[JUST-DO-IT] ~9 OnBase/Hyland-family pages still resolve with no
-  video — Sarasota's repoint is built and ready to run, the other 2 need
-  a code integration, not just a repoint.** Full investigation and
-  repoint method: `BACKLOG_DONE.md`. Real population: 31 pages across 25
-  tenants. `egenda.scgov.net` is **Sarasota County, FL** (not Santa
-  Cruz) — `scripts/repoint_page.py` (built 2026-08-31, generalizes the
-  Santa Barbara/Pittsburg method into a reusable script) is ready to
-  point the archived page `sarasota-county-fl-2026-08-25-bcc-regular`
-  (old: `egenda.scgov.net...id=1968`) at the real Granicus clip
-  (`sarasotacounty.granicus.com`, clip 6960, joined via Granicus's own
-  listing page) — video only, not captions (clip 6960's own
-  `captions.vtt` is confirmed blank live; the "4,172 real captions"
-  figure from the original investigation was a different clip). Not yet
-  executed against production — `python scripts/repoint_page.py --dry-run
-  <old_url> <new_url>` first, per that script's own usage.
-  `meetings.muni.org` (Anchorage AK) and `ecm.cityofsantacruz.com`
+- **[JUST-DO-IT] ~10 OnBase/Hyland-family pages still resolve with no
+  video — the other 2 named tenants need a code integration, not just a
+  repoint.** Full investigation and repoint method: `BACKLOG_DONE.md`.
+  Real population: 31 pages across 25 tenants (Sarasota's repoint,
+  closed 2026-08-31, brought the open count down by one). `meetings.
+  muni.org` (Anchorage AK) and `ecm.cityofsantacruz.com`
   (Santa Cruz CA) each have real video on their own YouTube channel
   (`@moameetings`, `youtube.com/ctvsantacruz` — 5,695 real captions
   confirmed live for Santa Cruz), but `hyland.py` doesn't call

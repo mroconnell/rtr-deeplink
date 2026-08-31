@@ -58,7 +58,7 @@ investigation) can reach to trigger it from. Correctly left unbuilt —
 this is a real access wall, not a scoped code gap; see BACKLOG.md's
 short live note.
 
-## Sarasota County, FL: OnBase→Granicus repoint script built, not yet run [Done 2026-08-31, execution pending]
+## Sarasota County, FL: OnBase→Granicus repoint built and executed [Done 2026-08-31]
 
 `egenda.scgov.net` confirmed live to be Sarasota County, FL (not Santa
 Cruz as an earlier entry said) — its real archived page is
@@ -88,14 +88,17 @@ Barbara/Pittsburg method into a reusable script (resolve new url → POST
 (`tests/test_repoint_page.py`), mocking the resolver/ingest network
 calls with the real Sarasota URLs/values above.
 
-**Not executed against production** — a real data mutation, deliberately
-left for an explicit go-ahead:
+**Executed against production 2026-08-31** (`--dry-run` confirmed the
+payload first, then run for real, per explicit go-ahead):
 ```
 python scripts/repoint_page.py \
   "https://egenda.scgov.net/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=1968" \
   "https://sarasotacounty.granicus.com/player/clip/6960?view_id=52"
 ```
-(`--dry-run` first, per the script's own usage.)
+Result: `status: repointed`, `created: False` (updated the existing page
+in place, same slug, no duplicate). Verified live afterward: `https://
+redtaperecordings.com/m/sarasota-county-fl-2026-08-25-bcc-regular` now
+serves the real Granicus video and "Sarasota County, FL" throughout.
 
 ## Town Hall Streams: starting population already queued, verified against a much larger fresh candidate pool [Closed 2026-08-31]
 
