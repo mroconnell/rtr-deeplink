@@ -172,6 +172,11 @@ CANARY_URLS: dict[str, list[str]] = {
     # confirmed-live tenants: real populated WebVTT captions *and* a real
     # agenda PDF on the same event.
     "suiteone": ["https://holladayut.suiteonemedia.com/event/?id=2652"],
+    # Tampa, FL City Council -- a real 8/20/2026 evening meeting,
+    # confirmed live 2026-08-30 (WO-73): real paired video plus 713 real
+    # timestamped closed-captioning segments. See tampa.py's own module
+    # docstring.
+    "tampa": ["https://apps.tampagov.net/cttv_cc_webapp/Agenda.aspx?pkey=2698"],
     "telvue": [
         "https://videoplayer.telvue.com/player/w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP/media/1040134"
     ],

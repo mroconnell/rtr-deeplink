@@ -883,6 +883,11 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "onlinedocs.akronohio.gov": KnownJurisdiction("Akron", "city", "OH"),
     "onbaseep22.mesacounty.us": KnownJurisdiction("Mesa", "county", "CO"),
     "tampagov.hylandcloud.com": KnownJurisdiction("Tampa", "city", "FL"),
+    # Tampa City Council's own "CTTV" closed-captioning transcript webapp
+    # -- a different domain from the Hyland agenda host above, same city
+    # (WO-73, 2026-08-30). See app/platforms/tampa.py's own module
+    # docstring for the real page structure confirmed live.
+    "apps.tampagov.net": KnownJurisdiction("Tampa", "city", "FL"),
     "agendaonline.mymanatee.org": KnownJurisdiction("Manatee", "county", "FL"),
     # Two of the 6 real CivicClerk residuals from the 2026-08-29 sweep
     # (BACKLOG.md's "CivicClerk residuals after the 2026-08-29 sweep"
