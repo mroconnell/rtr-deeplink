@@ -199,12 +199,32 @@ _CHALLENGE_BODY_MAX_BYTES = 2048
 # Empty-evidence retry gate: the resolve found literally nothing AND the
 # page's visible text is near-empty -- the client-rendered-shell shape.
 # Threshold tuned against the real Tucson Hyland capture (153 chars of
-# visible text). Deliberately does NOT catch PBC's SharePoint shell (6KB
-# of real nav/chrome text, measured 2026-08-14): firing on every
-# evidence-less page that still has real text would make an enabled flag
-# pay a >=4s browser fetch on ordinary no-video pages -- PBC stays a
-# documented gap, see BACKLOG.md.
+# visible text). Deliberately does NOT catch a SharePoint shell like Palm
+# Beach County FL's (`discover.pbc.gov/countycommissioners/Pages/
+# bcc-meeting-videos.aspx`, ~6.2KB of real nav/chrome text, measured live
+# 2026-08-14 and re-confirmed 2026-08-31): firing on every evidence-less
+# page that still has real text would make an enabled flag pay a >=4s
+# browser fetch on ordinary no-video pages. `_looks_like_sharepoint_
+# shell()` below is the separate, narrower trigger that catches this
+# shape instead, on a real SharePoint fingerprint rather than a wider
+# text-length threshold.
 _EMPTY_SHELL_TEXT_MAX_CHARS = 500
+
+# On-premise SharePoint (2013/2016/2019 -- the `/_layouts/15/` path
+# confirms the version) unconditionally injects `_spPageContextInfo` as a
+# global JS variable on every server-rendered page, and links its own
+# chrome/nav assets through `/_layouts/15/...` -- both confirmed live
+# 2026-08-31 against Palm Beach County FL's real page (71 occurrences of
+# `/_layouts/15` alone). Neither string has any known reason to appear on
+# a non-SharePoint government page, so this is a narrow, low-false-
+# positive fingerprint, not a guess -- confirmed absent from every other
+# real fixture already checked into `tests/fixtures/generic_fallback/`
+# (Maricopa, OCFL, Sacramento, Seattle, Sebastopol, Tarrant, Tucson, both
+# Wayne County captures). A page carrying either marker is real
+# SharePoint chrome even when its visible text is well over the
+# `_EMPTY_SHELL_TEXT_MAX_CHARS` threshold above -- PBC's own shell reads
+# ~6.2KB of real nav text, all of it chrome, none of it meeting content.
+_SHAREPOINT_MARKERS = ("_spPageContextInfo", "/_layouts/15")
 
 
 def _headless_escalation_enabled() -> bool:
@@ -367,20 +387,36 @@ class GenericFallbackAssetFinder(AssetFinder):
 
         # Empty-evidence retry (escalation trigger c): the plain fetch
         # succeeded but produced literally nothing AND the page reads as a
-        # client-rendered shell (Tucson Hyland's confirmed shape). One
-        # browser attempt per resolve, total -- never after an already-
-        # escalated fetch.
-        if (
-            not escalated
-            and _headless_escalation_enabled()
-            and self._is_empty_evidence(resolved)
-            and self._looks_like_empty_shell(html)
-        ):
-            rendered = await self._try_browser_fetch(url)
-            if rendered is not None:
-                re_resolved = await self._resolve_from_html(url, rendered)
-                if not self._is_empty_evidence(re_resolved):
-                    return re_resolved
+        # near-empty client-rendered shell (Tucson Hyland's confirmed
+        # shape). One browser attempt per resolve, total -- never after an
+        # already-escalated fetch.
+        #
+        # SharePoint-shell retry (escalation trigger d, 2026-08-31): a
+        # separate condition, not a wider version of trigger c. Palm Beach
+        # County FL's real SharePoint chrome shell carries a genuine
+        # server-rendered <title> (its own page name, e.g. "BCC Meeting
+        # Videos") even though the page has zero video -- so gating this
+        # on `_is_empty_evidence()` the same way trigger c does would
+        # never fire, since a real title alone already satisfies that
+        # check (confirmed live 2026-08-31: PBC's fixture resolves with
+        # `title` set and everything else empty). `_has_no_video_
+        # evidence()` below is the narrower check this trigger actually
+        # needs -- ignoring `title` the same way `_is_empty_evidence()`
+        # already deliberately ignores `agenda_link` (see that method's
+        # own docstring for the matching reasoning).
+        if not escalated and _headless_escalation_enabled():
+            should_escalate = (
+                self._is_empty_evidence(resolved) and self._looks_like_empty_shell(html)
+            ) or (
+                self._has_no_video_evidence(resolved)
+                and self._looks_like_sharepoint_shell(html)
+            )
+            if should_escalate:
+                rendered = await self._try_browser_fetch(url)
+                if rendered is not None:
+                    re_resolved = await self._resolve_from_html(url, rendered)
+                    if not self._is_empty_evidence(re_resolved):
+                        return re_resolved
         return resolved
 
     async def _resolve_from_html(self, url: str, html: str) -> ResolvedMeeting:
@@ -605,9 +641,32 @@ class GenericFallbackAssetFinder(AssetFinder):
         )
 
     @staticmethod
+    def _has_no_video_evidence(resolved: ResolvedMeeting) -> bool:
+        """The SharePoint-shell trigger's own evidence gate -- deliberately
+        narrower than `_is_empty_evidence()`, which also counts `title`.
+        A real SharePoint page's <title> is server-rendered chrome (the
+        page's own name, e.g. Palm Beach County's "BCC Meeting Videos"),
+        present on every real load regardless of whether a video was
+        found -- counting it here would veto escalation on exactly the
+        page this trigger exists for (confirmed live 2026-08-31)."""
+        return not any((resolved.video_url, resolved.video_link, resolved.segments))
+
+    @staticmethod
     def _looks_like_empty_shell(html: str) -> bool:
         text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
         return len(text) <= _EMPTY_SHELL_TEXT_MAX_CHARS
+
+    @staticmethod
+    def _looks_like_sharepoint_shell(html: str) -> bool:
+        """A real, on-premise SharePoint fingerprint (see
+        `_SHAREPOINT_MARKERS`'s own comment) -- catches Palm Beach County
+        FL's JS-rendered shell, which `_looks_like_empty_shell()` above
+        deliberately does not (its ~6.2KB of real nav/chrome text sits
+        well over that trigger's threshold). A separate check from
+        `_looks_like_empty_shell()` rather than a wider version of it, so
+        an ordinary text-bearing page some other platform serves still
+        doesn't pay a browser fetch just for being long."""
+        return any(marker in html for marker in _SHAREPOINT_MARKERS)
 
     @staticmethod
     def _find_youtube_video_id(html: str) -> Optional[str]:
