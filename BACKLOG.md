@@ -1813,7 +1813,7 @@ Area jurisdictions** and extracts their text. It has no accounts, saved
 searches, query language or email delivery, and should never grow its own —
 this repo has all four. The ingest gate already accepts a video-less page
 (`result.segments or result.agenda_items or result.agenda_link or
-result.video_url`, [app/main.py:709](app/main.py:709)); agenda **text** is the
+result.video_url`, [app/main.py:744](app/main.py:744)); agenda **text** is the
 only thing it cannot carry. So this work is a prerequisite for that
 integration and independently worth doing for the archive's own pages.
 
@@ -1864,7 +1864,7 @@ implementation of piece 2, and every claim in it is measured, not assumed:**
 
 **One design mismatch to plan for, not code around.** The saved-search alert
 cursor is `created_after` — *archive* time, when a page was ingested
-([archive/db/crud.py:3534](archive/db/crud.py:3534)). Agenda events are
+([archive/db/crud.py:3994](archive/db/crud.py:3994)). Agenda events are
 different: a first agenda appearing, and an amendment to one already seen.
 `rtr-upcoming` classifies exactly that (`initial` / `amendment` / `reissued` /
 `alternate`) and `created_after` cannot express it.
@@ -2254,7 +2254,11 @@ real work on shipped code rather than a plan.
   unreliable live (full saga in `BACKLOG_DONE.md`'s accounts phase-1
   entry) — a plain link to a dedicated `/sign-in` page is probably the
   safer default given that history, rather than reaching for the modal
-  again.
+  again. **Noted 2026-08-31 so it isn't rediscovered**: `transcription_
+  submit` now threads `clerk_verified=bool(get_clerk_user_id(request))`
+  through — but that only skips a newsletter-confirmation step
+  server-side, not the rate limit itself; the limit is still
+  unconditional and there's still no sign-in prompt in the 429 path.
 
 ### Email, ops tooling & internal reporting
 
