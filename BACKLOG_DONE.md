@@ -1,6 +1,6 @@
 # Backlog — done
 
-## Town Hall Streams: starting population already queued, verified against a much larger fresh candidate pool [Investigated 2026-08-31]
+## Town Hall Streams: starting population already queued, verified against a much larger fresh candidate pool [Closed 2026-08-31]
 
 Asked to determine the tier (1: has segments at ingest; 2: host provides
 captions after ingest, e.g. YouTube; 3: needs local Whisper) and act
@@ -59,6 +59,14 @@ roughly 12 days before this segment starts draining and ~15 days to
 clear it. Normal, expected behavior of the existing, deliberately-paced
 mechanism (see BACKLOG.md's "Render pipeline minutes"/throughput
 history) — not a gap.
+
+**Closed out fully, no residual live entry** — the only other open
+question this entry ever carried (whether the transcript AJAX endpoint
+ever returns a real, non-empty response) is a pure watch-and-see with
+nothing to act on: `townhallstreams.py` already surfaces a
+`transcript_warnings` entry instead of silently dropping a positive
+response if one ever arrives, so a real example won't go unnoticed
+whenever it does. Nothing left to track here.
 
 ## Anchorage YouTube-bot-block example re-checked: mechanism already fixed, example itself stale [Investigated 2026-08-30, compacted 2026-08-31]
 

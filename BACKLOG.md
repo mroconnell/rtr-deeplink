@@ -68,7 +68,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (32)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (31)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -92,14 +92,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (32)
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
-  Adapter & platform gaps  (14)
+  Adapter & platform gaps  (13)
     [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
     [NEEDS-AUDIT] Anchorage bot-block-during-YouTube-delegation example
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
     [JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
-    [LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
     [LATER] `[EXAMPLE]` SuiteOne Media: unconfirmed CDX leads and
     [LATER] `[EXAMPLE]` Granicus's own captions.vtt appears to hard-cap
     [LATER] YouTube-backed meetings' transcripts run through
@@ -961,31 +960,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
      cross-tab date collisions found on the other three; Philadelphia is
      still the only confirmed real instance. A rule from n=1 would still
      be a guess.
-
-- **[LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
-  still unconfirmed-positive; the starting population is already queued
-  (found 2026-08-31, undocumented until now — not this session's work).**
-  Residual of the townhallstreams.com adapter build (see
-  `BACKLOG_DONE.md`). The transcript AJAX endpoint is empty on all real
-  samples checked — `townhallstreams.py` deliberately doesn't parse a
-  non-empty response (no confirmed format exists), only surfaces a
-  warning so a positive example won't go unnoticed. **Correction**: the
-  "88-id Wayback population... not yet ingested" framing here was stale.
-  `scripts/tier3_auto_transcription_queue.txt` already holds 124 real
-  townhallstreams URLs spanning 117 of the ~142 real towns (someone
-  already did this work; it just never got reflected here). A fresh,
-  independent 2026-08-31 investigation (see `BACKLOG_DONE.md`) found a
-  much larger real, verified candidate pool (36,037 real
-  `(location_id, id)` pairs across 142 towns) and cross-checked it
-  against the existing queue: **every one of the 110 independently
-  re-verified towns is already represented** — nothing new to add.
-  Confirmed live: **zero townhallstreams pages have actually reached
-  production yet** (no `/m/*` results for a townhallstreams-sourced
-  meeting) — the queue is FIFO, `scripts/feed_tier3_auto_transcription.py`
-  processes 12/6h across ALL platforms, and the first townhallstreams URL
-  sits at line 587 of 1188 — roughly a 12-day wait before this segment
-  starts draining, ~15 days to clear it, nothing stuck or broken. No
-  action needed; it's already in motion.
 
 - **[LATER] `[EXAMPLE]` SuiteOne Media: unconfirmed CDX leads and
   PDF-transcript fallback (2026-08-21).** Residual of the
