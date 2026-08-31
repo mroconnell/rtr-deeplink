@@ -270,17 +270,28 @@ async def health():
     """Render gates deploys on this endpoint (render.yaml), so it has to be
     able to actually fail. During the 2026-08-09 incident the app was
     failing every query on a missing column and this would still have
-    reported "ok" -- a health check that can't fail isn't one. The count
-    query (rather than just SELECT 1) also catches a real table missing
-    or misnamed, which a bare connection check wouldn't."""
-    from sqlalchemy import func, select
+    reported "ok" -- a health check that can't fail isn't one.
+
+    Queries a real column on a real row (rather than a bare SELECT 1) so a
+    missing/misnamed table or column still fails this check, which a plain
+    connection check wouldn't -- that's the property the 2026-08-09
+    incident needs preserved. WO-80 (2026-08-30) replaced the original
+    `SELECT count(*)` with `SELECT id ... LIMIT 1`: MeetingPage had grown
+    to 3,455+ rows and Render probes this route ~30:1 against real traffic,
+    so the O(n) count risked stalling the single event loop long enough to
+    fail the probe under real load (candidate cause of the 2026-08-19/20
+    "HTTP health check failed" restarts -- see BACKLOG.md). LIMIT 1 still
+    touches the table (and the `id` column specifically, which the old
+    bare count() didn't), so it fails exactly the same way on a missing
+    table/column, just at O(1) instead of O(n)."""
+    from sqlalchemy import select
 
     from .db.engine import engine
     from .db.models import MeetingPage
 
     try:
         async with engine.connect() as conn:
-            await conn.execute(select(func.count()).select_from(MeetingPage))
+            await conn.execute(select(MeetingPage.id).limit(1))
     except Exception:
         logger.exception("Health check failed: database unreachable.")
         return JSONResponse(

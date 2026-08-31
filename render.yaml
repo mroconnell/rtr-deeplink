@@ -291,7 +291,21 @@ services:
     # schema in production. The worker (below) shares this DB and does
     # NOT run migrations -- one owner, no concurrent-upgrade race.
     preDeployCommand: cd archive && alembic upgrade head
-    startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT
+    # --workers 2 added WO-80 (2026-08-30): this ran a single uvicorn
+    # process before, so one slow request (a full crawl plus the
+    # expensive /internal/*-audit endpoints, per BACKLOG.md's
+    # "HTTP health check failed" entry) could starve /api/health on the
+    # same event loop and trigger a Render restart. Checked for
+    # single-process assumptions before adding this: archive/main.py's
+    # in-process state is all either DB-backed (SocialPost dedup for
+    # announce_new_page(), the ingest/transcript tables themselves) or a
+    # harmless per-process cache safe to duplicate across workers
+    # (_HOME_CACHE, _media_tools_cache -- each worker just probes/caches
+    # independently, no shared invariant broken). lifespan()'s
+    # init_models() is a no-op on Postgres (archive/db/engine.py), so two
+    # workers both calling it at startup is not a race. No scheduler, no
+    # in-process locks/queues found.
+    startCommand: uvicorn archive.main:app --host 0.0.0.0 --port $PORT --workers 2
     # This service started shelling out to ffmpeg on 2026-08-21 (WO-28,
     # meeting-card frame extraction) -- the first binary it has ever
     # needed. Its availability here is UNVERIFIED as of that change: the
