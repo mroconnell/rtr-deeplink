@@ -56,19 +56,15 @@ Standing decisions — do NOT re-raise  (3)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
-  Confirmations nobody has actually watched happen  (5)
-    [HUMAN] Moved out of Dormant 2026-08-30, code hypothesis
-    [HUMAN] One query settles whether a page can advertise a 404'ing
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+  Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (9)
+  Production actions only Ryan should take  (7)
     [HUMAN] Deploy resolver + Archive, then click Validate Fix in
-    [HUMAN] Two live pages for the same Kitchener meeting — pick one,
-    `[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
+    [NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
-    [HUMAN] Postgres Storage Autoscaling is off — decide whether to
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
@@ -312,38 +308,6 @@ of human step they need.
 
 ### Confirmations nobody has actually watched happen
 
-- **[HUMAN] Moved out of Dormant 2026-08-30, code hypothesis
-  disproven — `riversidecountyca.iqm2.com` stays `platform="unknown"`
-  despite `iqm2.py` clearly having an adapter for `iqm2.com` domains.**
-  Found 2026-08-16. Re-verified live 2026-08-30: `detect_platform()` run
-  locally against several real `riversidecountyca.iqm2.com` URLs
-  correctly returns `"iqm2"` every time — the code is provably correct
-  today. `/j/riverside-county-ca` shows only 2 archived meetings, neither
-  matching the original "real video, no transcript" page this entry is
-  about, so the bug (if it persists) is isolated to one specific stored
-  DB row, not the detection logic. Needs a Render-shell DB check of that
-  one row's actual stored platform value — a "confirm and check one row"
-  action, not a code fix.
-
-- **[HUMAN] One query settles whether a page can advertise a 404'ing
-  thumbnail — moved out of Dormant 2026-08-30, needs DB/Render-shell
-  access this session doesn't have.** `pages_with_thumbnails()` (the
-  existence check the state/hub cards and, since WO-48, `/meetings`
-  results use before emitting an `<img>`) returns a page if it has
-  *any* thumbnail row. The card route, on a `?t=` whose resolved offset
-  has no row, falls back to the page's **default** frame and 404s when
-  there isn't one — and `video_thumbnail.py`'s `is_default=timestamp is
-  None` means a warm triggered by a `?t=` request creates a
-  *non-default* row. So a page holding only non-default frames breaks
-  the "never advertise a URL that would 404" rule those call sites
-  exist to keep. **Probably unreachable** (ingest and every
-  `/m/{slug}` render queue a timestamp-less warm first, which creates a
-  default), but nobody has checked. Run from the Archive's Render
-  shell: `SELECT count(*) FROM meeting_pages p WHERE EXISTS
-  (non-default row) AND NOT EXISTS (is_default row)` — if it returns 0,
-  delete this entry; if not, the fix is for `pages_with_thumbnails()`
-  to require a default row rather than any row.
-
 - **[HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
   rebuild moved Google's indexing verdict — needs a Search Console
   export.** `STATE_HUB_PAGES.md` is the full reference for how
@@ -376,6 +340,12 @@ of human step they need.
   and state pages deliberately did **not** get the same reversal (a
   browsing reader has stated no intent), so those are not a control
   group — they are a different question.
+  **2026-08-30: `link_type`/`result_position` custom dimensions
+  registered in GA4 (they didn't exist before — reports couldn't have
+  broken this down even with data) and verified end-to-end via a live
+  test click, confirmed in Realtime with real parameter values.**
+  Measurement is now actually wired correctly; still just waiting on
+  real traffic volume from here, not blocked on anything else.
 
 Left open across `AUDIT_EXECUTION_BRIEF.md`'s Phase 1 and Waves 1-6, all
 code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
@@ -416,75 +386,41 @@ convenient.
   10%) is already correctly rendered live today and almost certainly
   just needs a fresh crawl. See `BACKLOG.md`'s Search Console entry and
   `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup for the full
-  numbers.
+  numbers. **Also riding along, merged 2026-08-30**: two more
+  `_SLUG_REDIRECTS` entries (Modesto's `2026-08-11-council-meeting`,
+  Riverside County's `meeting-4fefb4` — see `BACKLOG_DONE.md`), so their
+  old permalinks stay 404 until this deploy happens.
 
-- **[HUMAN] Two live pages for the same Kitchener meeting — pick one,
-  redirect the other.** Found 2026-08-30 verifying the forced-English
-  Kitchener re-transcription (see the repair entry's step 2 above):
-  `/m/kitchener-2026-05-05-heritage-kitchener-committee` (the original,
-  the one all prior backlog entries name) and
-  `/m/city-of-kitchener-on-2026-05-05-heritage-kitchener-committee`
-  (where the 2026-08-30 ingest landed) are **two separate rows, both
-  200, each with a self-referencing canonical** — a real duplicate for
-  search engines, not a `_SLUG_REDIRECTS` alias (`archive/main.py`'s
-  table has no kitchener pair). Both now serve full *English* AI
-  transcripts, but different ones — diffing the two `/transcript.txt`
-  downloads shows them identical for the first ~15 minutes then
-  diverging (different Whisper runs), so at some point the original
-  page ALSO got re-transcribed (plausibly a cloud worker's `tiny`
-  after its garbled default was cleaned; not verified). The 2026-08-30
-  version (504 segments, model `small`, forced `en`, version 3551 on
-  the new-slug page) is the deliberately-made one. **The action needs
-  the admin token**: decide which page survives (the new-slug one has
-  the better transcript; the old slug has the inbound-link history),
-  consolidate via the same reslug/`_SLUG_REDIRECTS` + deploy pattern
-  as the 2026-08-28 frozen-slug batch (precedent one entry down and in
-  `BACKLOG_DONE.md`), and check `/internal/admin/delete-pages`
-  (dry-run first) for whichever row is retired. Worth also asking *how*
-  a second row came to exist — the ingest was expected to match the
-  existing page by normalized source URL, and didn't; if slug-affecting
-  jurisdiction fixes change what a fresh resolve keys to, other
-  re-resolved pages could quietly duplicate the same way.
+- **[NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
+  from `/internal/admin/delete-pages` — root cause not yet known.**
+  Decision made 2026-08-30: keep the original
+  `kitchener-2026-05-05-heritage-kitchener-committee` (it has the real
+  agenda; the duplicate never got one — in-browser comparison confirmed
+  this directly), delete the duplicate
+  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` (full
+  background on how the duplicate arose and why this one was chosen —
+  the original has a real agenda, the duplicate doesn't — is in
+  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-30]` entry), then
+  redirect the old slug to the surviving one. Dry-run against
+  `/internal/admin/delete-pages` confirmed it targets exactly the right
+  single row (title, platform, source URL all match). **The real
+  (`dry_run=false`) call 500s** — plain "Internal Server Error," no JSON
+  body, so no exception detail from the response alone. Ruled out: this
+  is *not* the stale-deploy FK-violation bug from PR #577
+  (`delete_meeting_pages_by_slug()` missing thumbnail/social-post
+  cleanup) — that fix was already live (Archive redeployed 2026-08-30
+  2:30pm, well before this attempt) and code review of the current
+  function shows every FK-referencing table (`TranscriptionJob`,
+  `TranscriptVersion`, `MeetingPageUrlAlias`, `SavedItem`,
+  `MeetingPageThumbnail`, `SocialPost`) already being cleaned up in the
+  right order, plus `MeetingHighlight`'s DB-level `ON DELETE CASCADE`.
+  **Next step**: pull the real traceback from the Archive service's Logs
+  tab in Render (not the shell) at the timestamp of the failed request —
+  the generic 500 body doesn't carry it. Once the actual exception is
+  known this likely becomes a quick fix; don't guess further without it.
+  `_SLUG_REDIRECTS` entry for this pair is intentionally not yet added —
+  wait for the delete to actually succeed first.
 
-- **`[HUMAN]` One more frozen-slug page — `2026-08-11-council-meeting`
-  — jurisdiction root cause fixed and merged; only the reslug call
-  itself (needs the admin token) is left.** Residual from a batch of 5
-  frozen-fallback-slug pages found in the WO-63 Hyland sweep
-  (2026-08-25); the other 4 were reslugged 2026-08-28 (see
-  `BACKLOG_DONE.md`). Root cause found 2026-08-29 (see `BACKLOG_DONE.md`'s
-  matching entry): source URL is `https://agenda2.modestogov.com/
-  OnBaseAgendaOnlineCouncil/Meetings/ViewMeeting?doctype=1&id=2305` —
-  `agenda2.modestogov.com` is a real, second Modesto, CA subdomain that
-  wasn't in `jurisdiction_enrich.py`'s known-domains registry (only the
-  sibling `agenda.modestogov.com` was). Now registered and merged;
-  confirmed live that this page resolves with `jurisdiction="Modesto,
-  CA"` today. **What's left, from a Render shell** (`archive/main.py`'s
-  `internal_reslug_page()` takes `slug` in the body, `dry_run` as a
-  query param, and the same `ARCHIVE_INGEST_TOKEN` bearer auth every
-  other `/internal/*` route uses):
-  ```bash
-  # dry-run first
-  curl -s -X POST "$ARCHIVE_BASE_URL/internal/admin/reslug-page?dry_run=true" \
-    -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -H "Content-Type: application/json" \
-    -d '{"slug": "2026-08-11-council-meeting"}'
-  # then for real, once the preview looks right
-  curl -s -X POST "$ARCHIVE_BASE_URL/internal/admin/reslug-page?dry_run=false" \
-    -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -H "Content-Type: application/json" \
-    -d '{"slug": "2026-08-11-council-meeting"}'
-  ```
-  Then add the returned `{old_slug: new_slug}` pair to `archive/main.py`'s
-  `_SLUG_REDIRECTS` and deploy (same pattern as the other 4 — see
-  `BACKLOG_DONE.md`'s 2026-08-28 entry for the exact precedent).
-  **Incidental, not a defect:** 257 of the 2,383 `/m/` slugs contain no
-  ISO-format date, but spot-checking shows nearly all carry a date in
-  another shape (`6-16-25-bellefonte-borough…`, `apr-02-2020-…`), so
-  this is slug-format inconsistency rather than missing data. Noted only
-  so a future scan doesn't re-flag it as a bug.
-  **Still open, unrelated to the above**: the second boilerplate-shaped
-  slug found in the same 2026-08-22 scan
-  (`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`)
-  is a **Granicus vendor marketing event, not a government meeting** —
-  needs `/internal/admin/delete-pages` (dry_run first), not a reslug.
 - **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
   upgrade — evidence now leans toward "recurs," not "one-off"
   (investigated live 2026-08-29, see `BACKLOG_DONE.md`).** The
@@ -497,25 +433,6 @@ convenient.
   jump for this exact failure shape. Ryan's call: bump `render.yaml`'s
   `rtr-deeplink` block from `plan: starter` to `plan: standard`, or wait
   for a second occurrence.
-- **[HUMAN] Postgres Storage Autoscaling is off — decide whether to
-  enable it (found 2026-08-29, see `BACKLOG_DONE.md`).** The storage
-  plan is now a documented **5 GB** (Settings → Storage), closing the
-  "cap unknown" half of the WO-60 storage-alert residuals — the
-  `render.yaml` `basic-1gb` comment was always a RAM figure, never disk.
-  What's newly surfaced: **Storage Autoscaling is disabled**, so
-  crossing 90% full again (as already happened once, 2026-08-24) has no
-  automatic backstop — Render would otherwise auto-grow by 50% (rounded
-  to the next 5GB, max once per 12h). A "Disk size changed" event fired
-  2026-08-25 9:26 AM, meaning the disk has already been bumped by hand
-  once. Ryan's call: enable autoscaling, or keep manual control given
-  the WO-60 cap/cleanup is now in place.
-  Still outstanding, unrelated to the above: `scripts/analyze_db_storage.py`
-  only reads `rtr_archive`'s size — `GET /internal/db-size` (WO-61)
-  reports every database on the shared server (including
-  `rtr_deeplink_db`) and needs no shell:
-  ```
-  curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"
-  ```
 - **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
   duplication — the apply ran 2026-08-22 and rate-limited on exactly
   those.** 14 of 25 rewritten and verified live; **every non-YouTube
