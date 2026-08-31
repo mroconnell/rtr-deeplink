@@ -825,6 +825,1473 @@ worth blocking this closure on given the delivery-log confirmation.
 This app's right-to-deletion story for phase 1 is no longer resting on
 an untested code path.
 
+
+## BACKLOG.md retrofitted to the 5-field entry template (full-file dry run, applied for real) [Done 2026-08-31]
+
+Full-file pass applying the entry-format convention adopted earlier the
+same day (see this file's "Phase 4" entries below for that adoption and
+the two demo entries) to every remaining section of `BACKLOG.md`. Run
+first as an actual dry run in an isolated worktree
+(`/home/user/rtr-deeplink-backlog-dryrun`, never pushed) via 10 parallel
+agents, one per section, each rewriting its section's entries into
+Issue/Impact/Next-action/Constraint/History and moving finished
+investigation detail here. The first pass came back nearly flat
+(2,414 → 2,397 lines, −0.7%) despite real per-chunk compaction, because
+several sections applied "split when bundled" too liberally — splitting
+single-topic entries into 2-3 siblings whenever a sub-fact had a
+slightly different next action, which cancelled out the sections that
+compacted well. Worst offender: Trust (132 → 167 lines, 7 → 11 entries)
+from splitting `best_effort`'s three known gaps into three headings, two
+of which had no real next action at all.
+
+**Fixed by tightening the convention itself** (see `BACKLOG.md`'s own
+header) rather than hand-patching the output: (1) no field is required —
+omit one rather than filling it with "none"/"n/a," which removes the
+pressure to give a fact its own heading just so it has somewhere to put
+an empty Next action; (2) split only on a genuinely different fix, tested
+as "would fixing one half leave the other half's Next action unchanged?"
+— not on a different facet of the same feature. Re-verified every
+flagged split against this test rather than reverting blindly: the
+`best_effort` trio collapsed from 3 headings to 2 (the third,
+`jurisdiction_confidence IS NULL`'s exclusion, had no next action at all
+and moved to Standing Decisions, where it actually belongs per this
+file's own routing rule — not because it needed compacting, but because
+it was mis-sectioned); the low-trust-queue split held (two real,
+independent fixes); Open Bugs' Search Console and "two residual gaps"
+splits held (each half has a different, or a genuinely absent, next
+action); Roadmap 2's growth turned out not to be over-splitting at all —
+entry count barely moved (18 → 17) — just real per-entry template
+overhead on already-distinct proposals, left as-is.
+
+**Result**: 2,414 → ~2,396 lines net at the top level (still close to
+flat — the entry count still grew from ~92 to ~103, and TOC size tracks
+entry count directly), but real qualitative change underneath: every
+entry now follows one scannable shape, 517 lines of real investigation
+detail moved out to this file (added below, by section), and a second
+`docs/investigations/` file (`agenda_text_versioned_asset.md`) was
+spun out for the big Roadmap agenda-text proposal's trap list, matching
+the YouTube 429 entry's pattern. The honest lesson, now written into the
+convention itself: this format's win is signal-to-noise per entry, not
+whole-file line count — a real reduction needs the split rule actively
+enforced, not just adopted.
+
+No new material needed archiving here.
+
+Every fact trimmed out of this chunk's entries during retrofitting was
+either kept in the compacted entry itself (numbers, dates, WO/PR
+references, file paths) or already had an explicit "full detail in
+`BACKLOG_DONE.md`" pointer in the source text before this pass (the
+partial-transcript-backfill numbers, and the repetition-loop repair's
+WO-84/WO-87 bug history). Nothing here was dropped without a home.
+## IQM2 (9.5%) and the /j//state/ hub-page fix (6.5%) deployed for the Search Console watch-page gap [Done 2026-08-30]
+
+Built, tested, and deployed the evening of 2026-08-30 as part of the
+Search Console "video isn't on a watch page" investigation (see this
+file's `[Investigated 2026-08-30]` entry for the same underlying
+investigation and its GSC export numbers); confirmed live 2026-08-31.
+Together these two categories account for 16% of the real failing
+population identified in a 1,000-row GSC export (real total 1,764 rows,
+flat since 2026-08-24) — IQM2 alone is 9.5%, the `/j/`/`/state/` hub-page
+fix another 6.5%. The only remaining step is non-code: clicking Validate
+Fix in Search Console, tracked in `BACKLOG.md`'s "Needs a human" section
+(now actionable, not deploy-pending).
+
+## eScribe/isilive Search Console gap traced to a display artifact, not a real bug [Investigated 2026-08-30]
+
+10.1% of the failing population in the same GSC export. A scary-looking
+newline in Google's raw export data was traced back to a display artifact
+in how Search Console renders the export, not an actual malformed URL —
+today's live URL is correctly encoded and fully reachable. No code fix
+needed; resolving this is waiting on Google's next recrawl of these
+pages, not on any change in this repo.
+## 28 IQM2 retired-tenant queue rows: repeat probe agrees with original finding [Investigated 2026-08-31]
+
+Split out of the tier-3 queue repair (2026-08-22, #308) — distinct from the
+52 *truncated* rows that PR fixed: these URLs are structurally correct and
+the tenant is simply gone (the Accela/IQM2 sunset). Deliberately left in
+place at the time — a single probe cannot distinguish a retired tenant from
+a transient outage, and 16% of the IQM2 block was too much to drop on one
+measurement. This population is exactly what wildcard DNS makes hard to
+judge: a dead IQM2 tenant still answers, with the generic 4,562-byte
+"Accela Meeting Portal" body.
+
+**Repeat probe done, 2026-08-31 (a different day, as asked for): 27 of 28
+confirmed identically dead.** All 27 return the exact same 4,498-byte
+generic "Accela Meeting Portal" error page as the original probe
+(`woodbuffalocn` needed a longer timeout to get past a slow TLS handshake,
+then matched too) — real, if not conclusive, evidence toward "genuinely
+retired" over "transient outage." One tenant, `pec`, shows a **different**
+failure signature: a connection-level timeout (no TLS handshake even
+started within 8s), not a resolving-but-generic-error response — worth
+treating separately from the other 27, since that's consistent with an
+infrastructure problem rather than a retired tenant serving IQM2's own
+fallback page.
+
+Still not acted on (no rows dropped) — this is stronger evidence, not a
+decision to remove; that's Ryan's call to make now that two probes on
+different days agree (see live `BACKLOG.md` entry for the still-open
+decision).
+
+**The tenants**: 26 confirmed both times — `losangelescountyca`,
+`santaclaracountyca`, `northbrookil`, `mchenrycountyil`,
+`sheboygancountywi`, `renocitynv`, `slcgov`, `portagecountyoh`, `gilroyca`,
+`hanfordca`, `pekinil`, `psrcwa`, `tehamacountyca`, `vilascountywi`,
+`adelantoca`, `brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
+`currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
+`hyattsvillecitymd`, `ledyardct`, `shawneecityks`; `woodbuffalocn`
+confirmed on the slower retry; `pec` is the one distinct case.
+
+## Swagit multi-clip meetings: cloud worker fix (WO-79) [Done 2026-08-30]
+
+Real, confirmed shape found across 3 tenants — Yolo County CA, White
+Plains NY, Apple Valley MN — none of which has a single combined
+recording at the source; Swagit's own template has no full-agenda video.
+Per Ryan's explicit direction (never split a meeting across N separate
+transcript pages), `swagit.py` now surfaces every real clip as
+`ResolvedMeeting.video_segments`, a new `probe_multi_clip_chunk_plan()`
+builds a cumulative-offset chunk plan across them, and the cloud worker
+transcribes each clip individually and stitches the results into one
+meeting-relative transcript using the existing `shift_segments()`
+shift-and-merge approach.
+
+**Still open** (see live `BACKLOG.md` entry): the local script
+(`scripts/transcribe_backlog_locally.py`) doesn't consume
+`video_segments`/`chunk_plan` yet; chunk-plan jobs skip the live
+per-chunk re-resolve the ordinary path uses to guard against stale URLs
+(real but unobserved risk in every confirmed sample so far); no
+sub-chunking of an individual very-long clip (no confirmed real case
+needs it yet); re-running the fixed resolver against the original
+43-URL 2026-08-18 sweep to size how many are genuinely multi-segment,
+and a broader live Swagit audit, are both still open too.
+
+## High Plains Water District audit: same-symptom URLs since resolved or not applicable [Investigated 2026-08-27]
+
+Found during the same 2026-08-27 audit of local-Whisper run logs that
+surfaced the High Plains Water District zero-segment case (see live
+`BACKLOG.md` entry — `high-plains-underground-water-conservation-district-no-1-2022-11-08-board-of-dir`,
+`https://hpwd.granicus.com/player/clip/44?view_id=1`).
+
+The identical "transcription produced no usable segments" symptom hit two
+other real URLs in that same audit, both since self-resolved (now show
+real segment counts on a live check), so they're not carried forward as
+open: `branchburg-2025-carols-by-candlelight` (Granicus) and eScribe's
+`pub-scrd.escribemeetings.com` `2025-10-23-committee-of-the-whole`.
+
+A fourth, `st-2025-12-16-st-louis-park-high-school-wind-ensemble-concert-dec-11-2025`
+(Cablecast), is a school concert broadcast, not a government meeting —
+zero segments is arguably the correct outcome there, not a bug.
+No content was moved out of this chunk.
+
+Every real fact in the original 10 entries (specific numbers, dates,
+hostnames/URLs, tenant and jurisdiction names, IP addresses, measured
+counts and percentages) was preserved inline in the retrofitted 5-field
+entries in `D-OpenBugs-3.md`, using the format's own allowance for a
+field to wrap to a second (or third) line when it genuinely needs to.
+None of the entries in this chunk were finished/closed work — all ten
+are still-open items (`[NEEDS-AUDIT]`/`[WAIT]`/`[LATER]`) — so there was
+no completed-investigation narrative to relocate into a
+`BACKLOG_DONE.md`-style section. Where an entry already pointed at
+existing `BACKLOG_DONE.md` history (the OnBase/Hyland entry's "Four
+archived pages..." entry, the 50-largest-cities audit's per-tenant
+history, the GovAccess fuzzy-match investigation) or an external doc
+(`ENUMERATION_METHODS.md` §35), that pointer was kept as the entry's
+**History** field rather than duplicated here.
+## Census-table baseline validation of all 649 archived jurisdictions (2026-08-15, re-checked 2026-08-30) [Investigated 2026-08-30]
+
+Full numbers from the original 2026-08-15 sweep, moved out of the live
+`BACKLOG.md` entry to keep it scannable — the live entry now just points
+here.
+
+**Baseline counts (649 archived jurisdictions)**: 510 valid as-is, 73
+reachable by longest-valid-prefix trim, 44 not in the Census/StatsCan
+table, 22 blank.
+
+The trim bucket (73 rows) splits cleanly on a tail-sanity check: 16 true
+bleed cases (every one a correct repair) vs. 57 legitimate long entities
+where trimming would *destroy* a correct name — so trim must always be
+gated on bleed signals, never applied bare.
+
+**Correction, 2026-08-30**: an earlier version of this entry named
+Sarasota/Hollywood/Hampton as three bleed cases the current signals miss,
+with only Sarasota marked closed — that framing was already stale when
+written. `BACKLOG_DONE.md`'s 2026-08-17 "Jurisdiction-bleed, confirmed
+cross-platform" entry shows all three were in fact repaired together via
+the existing `_MIN_BLEED_WORD_RUN=4` signal, no truncation detector
+needed. Reproduced live 2026-08-30:
+
+- `finalize_jurisdiction('Hampton Zoning Ordinance Regarding Standa')` →
+  `Hampton` (repaired).
+- `finalize_jurisdiction('Sarasota Legacy Business PLEDGE OF')` →
+  `Sarasota, FL` (repaired).
+
+Every other finding from this audit is closed (full history was already
+in `BACKLOG_DONE.md` prior to this compaction). Regenerate
+`baseline_validation.csv` via the script logged in
+`JURISDICTION_METADATA_PLAN.md`'s workstream 1 before re-running any of
+this — it no longer exists in any scratchpad.
+
+**What's still genuinely open** (kept as a live `BACKLOG.md` entry, not
+here): a mid-word-truncation signal (tails ending "the Tex", "servic",
+"Standa" — the regex's own 40-char cap cutting words in half) — motivated
+by one real title-side instance ("...Exhibit 1 was adde"), but the three
+jurisdiction-side examples originally cited (Sarasota/Hollywood/Hampton)
+are moot per the correction above, so no jurisdiction-side example
+currently motivates building it.
+
+---
+
+## 2026-08-30 production write: 98 jurisdiction corrections applied directly to published pages [Done 2026-08-30]
+
+Context note moved here from the live `BACKLOG.md` "Jurisdiction
+extraction & backfill" section — applies broadly across that section's
+entries, not to any one of them specifically.
+
+98 real jurisdiction corrections were applied directly to already-published
+pages in one session, across 6 rounds:
+
+1. 40 confirmed via a text/confidence-tier heuristic.
+2. 5 more on review.
+3. 20 more via real visual verification against the source page's own
+   letterhead/seal/agenda content.
+4. 5 more in a follow-up pass on rows an earlier batch had accidentally
+   skipped.
+5. 6 more re-verified correct after the 2026-08-30 deploy landed
+   WO-68/WO-76's fixes.
+6. 18 more from a fresh batch of candidates that only became correct — or
+   only appeared at all — once WO-69's eScribe fixes deployed.
+
+Plus 4 more (Oxford County ON, Breckenridge TX, Eustis FL, Hendersonville
+NC) once WO-77/WO-78's fixes deployed.
+## City-YouTube-channel fallback: canary coverage, date corroboration, bot-block warning pass-through [Done 2026-08-29]
+
+Closed as part of WO-30's city-YouTube-channel fallback follow-up work
+(PR #496/#510): adapter-canary coverage for the fallback path, YouTube
+date corroboration, and bot-block warning pass-through were all shipped
+2026-08-29. Moved out of the open "Residual gaps left behind by WO-30"
+BACKLOG.md entry 2026-08-31 — it was fully done, not a residual, and had
+been sitting alongside two genuinely still-open items (the ~400-entry
+channel-listing cap, and the duplicate-posted-meeting decline case) under
+one heading.
+
+## Four-platform no-jurisdiction population: number history through 2026-08-30 [Investigated 2026-08-30]
+
+Tracks the full sequence of measurements behind the live "Cablecast,
+TelVue, Swagit, and YouTube still account for most no-jurisdiction pages"
+BACKLOG.md entry, kept here since the live entry only needs the current
+number.
+
+**2026-08-21 (original, WO-38)**: `/internal/low-trust-pages` against
+production found 474 total no-jurisdiction pages. Per-platform breakdown:
+eScribe 117, Cablecast 104, YouTube 78, Swagit 72 (371 of 474 on just
+these four), versus Granicus 34, IQM2 33, CivicClerk 24, unknown 7,
+ChampDS 4, TelVue 1.
+
+**2026-08-29, commit `731da71`** ("Cablecast: fall back to validated
+subdomain for jurisdiction #536"), landed *after* an earlier note in this
+entry had already claimed "real per-platform scoping done 2026-08-29" —
+that earlier note was itself superseded by this same commit. Its own
+fresh audit found the qualifying population had already shrunk to 269
+pages (a ~43% drop from 474), with Cablecast alone at 101 of those 269.
+The commit then recovered 23 of Cablecast's 101 via a subdomain-
+validation fallback (`cablecast.py:589-602`, confirmed live in code
+2026-08-30) — directly contradicting an earlier framing of the Cablecast
+gap as "blocked on a real multi-word-city customer turning up, don't
+widen speculatively."
+
+**2026-08-30, re-derived via `GET /internal/low-trust-pages`**: 631 total
+low-trust pages, 236 with no jurisdiction at all (this reflected
+pre-2026-08-30-fixes state, since none of that night's merged WOs were
+deployed yet). Breakdown: Cablecast 101 (unchanged — still needing the
+same per-row audit `731da71` did for the 23 it already recovered), TelVue
+50 (up from 46, expected — active ingestion), Swagit 32, YouTube 18,
+eScribe 12, Vimeo 10, CivicClerk 7, unknown 4, Castus 1, TownHallStreams
+1.
+
+**2026-08-31, `GET /internal/jurisdiction/missing` built and run for the
+first time**: 245 total (down from 269) — Cablecast 101 (unchanged),
+TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10, CivicClerk 7,
+unknown 4, TownHallStreams 1, Castus 1. This new endpoint is the
+recommended tool for current numbers going forward, in place of
+re-deriving them from `/internal/low-trust-pages`.
+
+**Standing conclusions carried into the live entry**: eScribe and Swagit
+both turned out narrower in scope than their original 2026-08-21 framing
+(see their own corrected entries elsewhere in "Platform & jurisdiction
+coverage"). YouTube is still structurally not fixable in the general case
+(`uploader` is a channel name, not a government field). Cablecast's
+101-page per-row audit is the one concrete follow-up left.
+## Pipeline minutes -- detail moved out of the retrofitted BACKLOG.md entry [Investigated 2026-08-31]
+
+(For the "`[JUST-DO-IT]` Render *pipeline minutes*" entry — this is the
+measurement detail that no longer fits the 5-field template but is real
+and worth keeping.)
+
+**Two rounds of `buildFilter` cuts, measured:**
+- Round 1 (queue-file fix): -31% build volume.
+- Round 2 (2026-08-22, allow-lists instead of deny-lists of docs in all
+  four `render.yaml` `buildFilter` blocks): **1,211 → 926 builds per
+  fortnight (-24%)**, on top of round 1.
+
+**Why it ran out again anyway, 2026-08-25 — two reasons neither round of
+filtering could have caught:**
+
+1. **The arithmetic only ever counted four services. There were six.**
+   Every measurement in the pipeline-minutes entry and its
+   `BACKLOG_DONE.md` twin said "four services" — but
+   `rtr-deeplink-staging` and `rtr-deeplink-archive-staging` existed too,
+   created in the Render dashboard and therefore **not in `render.yaml`
+   at all**, meaning they had **no `buildFilter`** and rebuilt on *every*
+   push. Measured over the 24 hours to 2026-08-25: **21 commits to
+   `main`, 13 of which built nothing but staging** — docs, backlog files,
+   and the queue-advance workflows' own auto-merged PRs, all correctly
+   skipped by the four production allow-lists and all fully paid for
+   twice by staging. Rough tally: ~42 staging builds against ≤32
+   production ones. The two services quietly undid a large share of both
+   filtering rounds for weeks. **Ryan disabled their auto-deploy on
+   2026-08-25.** Durable lesson: a service outside the blueprint has no
+   build filter, and nothing in this repo will ever tell you it exists.
+
+2. **Build volume scales with merge count, and nothing capped that.**
+   Filtering reduces builds *per merge*; it does nothing about merging
+   seven times in one evening (which happened 2026-08-25). Addressed by
+   `autoDeploy: false` on all four services plus a CLAUDE.md convention on
+   batching merges and asking for deploys — WO-59, `BACKLOG_DONE.md`.
+
+**Confirmed-usage caveats worth keeping:** the earlier 812/1,000 figure
+was a build *count*, not build *minutes* — Render bills minutes, and
+nobody has read per-service durations off the dashboard yet (this is now
+the entry's own "Next action"). A filtering saving only lands on pushes
+that touch one service's tree, so it decays as PRs get broader. The
+1,001/1,000 figure confirmed 2026-08-29 came in ahead of (i.e. worse
+than) the ~1,145 month-end projection the entry used to carry.
+
+---
+
+## Granicus `chunklist.m3u8` timeout -- detail moved out [Investigated 2026-08-31]
+
+**Two earlier theories, now understood (kept for anyone who rediscovers
+the same symptoms and starts re-litigating root cause):**
+- An earlier theory of a CloudFront IP block was a self-inflicted missing
+  `Referer` header in ad hoc testing — not a real block.
+- An earlier "generic source flakiness" theory was correct that the
+  failure isn't IP-specific, but didn't identify the actual mechanism
+  (the real 504 after a multi-minute hang, only visible past our own
+  120s timeout).
+
+**Evidence the failure sometimes clears on its own vs. sometimes doesn't
+(real, if partial, good news):**
+- King County clip 11547 failed identically on two earlier attempts over
+  about a day, then resolved cleanly on a later retest with a real
+  duration — consistent with an on-demand rehydration/cold-storage delay
+  on Granicus's own archival backend.
+- Fountain Valley CA clip 607, by contrast, failed the same way on
+  *every* attempt across at least 4 tries over an hour — consistent with
+  that specific asset being genuinely broken/gone at the source (matching
+  its already-known history as a real edge case, per CLAUDE.md).
+
+**Implication for anyone hitting a fresh "ffmpeg timed out" on Granicus**:
+don't assume an immediate retry fixes it — cold-storage cases may need
+hours, dead assets may never succeed.
+
+---
+
+## Same-host pulls / flat timeout split -- measurement detail moved out [Investigated 2026-08-31]
+
+WO-40 (2026-08-21) tested "workers hammer one host across consecutive
+jobs, so round-robin the queue by host" against **all 514 production
+jobs** and falsified it:
+- `same_host_different_job` failure pairs within 10 minutes: **0**.
+- Chunk 0 is 3-4x more failure-prone per attempt than any later chunk —
+  the opposite of what an accumulating-rate-limit theory predicts.
+
+No queue reprioritization was built as a result. Full numbers live behind
+the `GET /internal/transcription-failure-analysis` endpoint and in
+`BACKLOG_DONE.md`.
+
+Sizing measurement for the flat-timeout entry: **2 of 218** terminal job
+failures are timeouts (129 are "No usable audio or video source was
+found" — that's where the volume actually is). A second, throughput-
+focused measurement on 2026-08-22 found 106 timeout failures across 18
+jobs in two days — ~3.5 hours of retry (106 × 120s) against ~96
+worker-hours available over the same window, about **4%**. Timeouts are
+not what caps real output at ~35 jobs/day.
+
+---
+
+## Search Console "Reasons preventing indexing" -- detail moved out [Investigated 2026-08-31]
+
+Ryan supplied three real Soft 404 URLs on 2026-08-25, which resolved that
+category.
+
+**Soft 404 root cause (WO-62):** `/m/fairview-tn-2025-10-02-regular-
+meeting` held only an `agenda_link`, which `_is_empty_page_condition()`
+counted as content — so a page whose whole body was two apologies and one
+outbound link was indexed and sitemapped. `agenda_link` no longer counts
+as content for that check. The other two Soft-404 URLs are covered by the
+Granicus `[NEEDS-AUDIT]` entry (they were unrelated to this template bug).
+
+**"Not found (404)" category correction (as of the 2026-08-29 re-check):**
+this entry used to claim `_SLUG_REDIRECTS` was empty and that the
+`welcome-to-clerkbase` reslug had never been run — both were wrong by
+2026-08-29. `_SLUG_REDIRECTS` (`archive/main.py`) now holds several real
+mappings (see `BACKLOG_DONE.md`'s "Five frozen-slug pages reslugged"
+entry, 2026-08-28, `welcome-to-clerkbase` included), so a frozen-slug
+rename leaving a dangling permalink is no longer a live candidate for a
+real 404 in this category. The residual bug this surfaced instead: a
+reslugged old URL was never sending a real 301 either — it was serving
+200 with a different canonical the whole time. That was fixed
+2026-08-31 (see `BACKLOG_DONE.md`).
+
+---
+
+## `/coverage` QA surface -- detail moved out [Investigated 2026-08-31]
+
+The two literal-date-as-jurisdiction rows this entry originally flagged
+as still-live are gone as of a 2026-08-21 re-scan — most likely
+incidentally closed by WO-14's bleed fix, never independently
+root-caused since the original URLs were never recorded.
+No content needed to be moved out of this chunk.
+
+Every real fact in the original "Trust, safety & data quality" section
+(numbers, dates, file:line/endpoint references, named entities) fit inside
+the compacted 5-field entries in `H-Trust.md`, and every entry's History
+field already points at existing `BACKLOG_DONE.md` build writeups (WO-21,
+WO-38, Bluesky auto-posting, the Chula Vista garbled-marker fix) or
+`TRUST_THREAT_MODEL.md` rather than needing a new `BACKLOG_DONE.md`
+section of its own.
+### YouTube Atom-feed polling — design reasoning preserved from Roadmap compaction (2026-08-31)
+
+Not itself a "done" item — this is supporting design reasoning moved out
+of the live `BACKLOG.md` "YouTube Atom-feed polling" Roadmap entry during
+the 2026-08-31 5-field retrofit, so it isn't lost. Paste under this
+entry's own history section (or a real `docs/investigations/` file) once
+the feature is actually built or investigated further.
+
+**Why route the re-resolve through the existing page's own URL instead of
+writing the Atom match's data directly onto it**: doing it this way means
+the Atom feed is only ever a *scheduling* input — "check this page again
+now" — and every actual claim about which video belongs to which meeting
+still goes through the same adapter logic this app already trusts, with
+all its existing confirmation/decline behavior intact. Writing the Atom
+entry's title/date/video-id straight onto the page would instead be a
+second, independent matching path with its own confidence question —
+exactly the risk `FEED_CITIES.md` already flags as unresolved for its
+bigger version of this idea (synthesizing a page from two separate feeds
+with no existing page to anchor to). This version sidesteps that risk
+entirely by only ever re-triggering resolution on a page that already
+exists, so it's a real, much narrower subset of that open question — worth
+building on its own without waiting for `FEED_CITIES.md` to be decided.
+
+**On "switching" a meeting from Upcoming to Past — turns out there's no
+switch to build.** `meeting_date_status()` (`archive/utils/date_status.py`)
+already derives the "Upcoming"/"Recent" pill purely by comparing the
+stored meeting date against today at render time — there's no stored
+status field to flip, so a meeting already reads as no-longer-upcoming the
+instant its date passes, transcript or not (`UPCOMING` requires
+`meeting_date > today`, full stop). What a proactive re-resolve actually
+needs to change is narrower than "switch the state": just get
+`video_url`/the transcript attached before the *next* visitor happens to
+trigger the existing passive re-check
+(`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, currently 1 hour — `app/main.py`).
+So the real win isn't a new state machine, it's making an existing
+transcript-less page's *next* re-check happen on a schedule tied to "the
+city just posted something," instead of waiting on both the passive hourly
+cadence and a human visit lining up.
+
+**What this doesn't fix**: the caption fetch itself still goes through
+yt-dlp at resolve time, which is the exact path hitting the real,
+currently-unresolved Render IP block (see the "bulk re-resolve gets this
+IP blocked by YouTube" entry under **Reliability, ops & cost**, now
+updated with real scale: 184 real jurisdictions' captions ride through
+that same call). Polling the Atom feed changes *when* a re-resolve is
+triggered, not what happens once it runs — a blocked IP still fails the
+actual attach. Also scoped narrowly on purpose: only four cities have a
+curated channel id today; broadening this beyond the existing last-resort
+fallback list is a separate, real cost (see the curated map's own
+docstring for why it's a hand-verified map, not a search).
+## Archive-side data-quality tool for poorly-ingested URLs/tenants — done, no public page needed [Done 2026-08-31]
+
+Split out of a "public data-quality page" ask, 2026-08-31: Ryan's call was
+that what's actually wanted is an internal tool for cleaning up
+poorly-ingested URLs/tenants, and it's fine for that to live outside the
+public site. `GET /internal/jurisdiction/missing` (built 2026-08-31) plus
+the existing `GET /internal/low-trust-pages` already cover this — both
+admin-token-gated, both already return real per-page reasons (no
+jurisdiction, `best_effort`, unverified confidence). No new code needed.
+
+## PDF agenda inline viewer shipped [Done 2026-08-31]
+
+The cheap half of "PDF agenda text-extraction for a searchable preview":
+a plain `<iframe>` next to `agenda_link` now renders inline, zero backend
+change. The fallback link was kept alongside it since some government
+hosts may refuse framing — that framing-refusal risk itself is
+unverified live, only checked from this session's sandbox, worth a real
+browser check. Real text-extraction for a searchable preview (needing
+`pypdf`/`pdfplumber`, neither in `requirements.txt`, plus a new storage
+column) remains a separate, bigger, unbuilt ask — see the live
+`BACKLOG.md` entry.
+
+## Transcript version picker analytics shipped [Done 2026-08-31]
+
+Split out of the `source="deduped"` work. All three events shipped
+exactly as scoped: `transcript_version_change` fires inline in the
+template's `onchange` (submit stays inline too, so navigation never
+depends on an external file loading); `transcript_version_available`
+(now carrying the `label_ambiguous` param, computed client-side) and
+`transcript_version_viewed` fire on load from `meeting_page.js`. Read the
+numbers with a caveat: a low `transcript_version_change` rate could mean
+readers can't tell two identically-rendering options apart, not that
+they don't want alternates — `label_ambiguous` is exactly the segmenting
+signal for that. (The option-label improvement itself — adding a date to
+each label — is still open, see the live `BACKLOG.md` entry.)
+
+## Transcription rate limit no longer applies to signed-in users [Done 2026-08-31]
+
+Both `@limiter.limit("5/hour")` decorators (`app/main.py`'s
+`transcription_check_feasibility`/`transcription_submit`) now carry
+`exempt_when=lambda request: bool(get_clerk_user_id(request))` —
+confirmed live that slowapi 0.1.10 genuinely supports this kwarg,
+settling a previously-open "not confirmed which slowapi actually
+supports" question. The rate-limit copy rewrite was already fixed
+2026-08-16 (separately from this change). Still open: the 429 UI path
+for signed-out visitors — see the live `BACKLOG.md` entry.
+
+## Two static Contact `mailto:` links and `about.html`'s address fixed to `ally@redtaperecordings.com` [Done 2026-08-16]
+
+Part of the user-facing email-address consolidation requested 2026-08-12
+(after `ally@`/`ryan@redtaperecordings.com` forwarding was set up). The
+two static `mailto:` Contact links and the `ryan@how-to-adu.com` address
+on `about.html` were both repointed. Remaining config values
+(`RESEND_REPLY_TO_ADDRESS`, `DAILY_REPORT_EMAIL_TO`,
+`YOUTUBE_FETCH_REPORT_EMAIL`) are tracked as still-open in the live
+`BACKLOG.md` entry.
+
+## "Which Ryan address" resolved: `ally@redtaperecordings.com` for all operator/ops reporting [Done 2026-08-22]
+
+Requested-report work (a 6-hourly operator email report to
+`ryan@redtaperecordings.com`, requested 2026-08-16) was partially
+superseded 2026-08-21 by a shipped daily worker report (`GET
+/internal/send-worker-daily-report`) whose recipient was whatever
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` was set to — not yet a resolved
+answer to "which Ryan address." Three addresses were in play
+(`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`, `DAILY_REPORT_EMAIL_TO`'s
+`ryan@how-to-adu.com` default, and the requested
+`ryan@redtaperecordings.com`); resolved 2026-08-22:
+`ally@redtaperecordings.com` is the answer for all of them, and all
+operator/ops reporting consolidates there.
+
+Two things to get right when applying it, still relevant to any future
+change touching these addresses: (1) `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`
+is set per-service in the Render dashboard, so changing it means touching
+it on **both** `rtr-transcription-worker` and `rtr-transcription-worker-2`
+— those two services differ in *exactly* that variable by design (see
+`render.yaml`'s comment on the second block), so any change must not
+collapse the distinction they exist to maintain. (2)
+`ryan@ally.redtaperecordings.com` is the Resend *sending* subdomain, not
+this recipient — they look nearly identical in a config diff, and mixing
+them up would silently break either delivery or reporting. Confirm
+`ally@redtaperecordings.com` receives mail before switching anything
+over.
+
+## BACKLOG.md retrofitted to the 5-field entry template (full-file dry run, applied for real) [Done 2026-08-31]
+
+Full-file pass applying the entry-format convention adopted earlier the
+same day (see this file's "Phase 4" entries below for that adoption and
+the two demo entries) to every remaining section of `BACKLOG.md`. Run
+first as an actual dry run in an isolated worktree
+(`/home/user/rtr-deeplink-backlog-dryrun`, never pushed) via 10 parallel
+agents, one per section, each rewriting its section's entries into
+Issue/Impact/Next-action/Constraint/History and moving finished
+investigation detail here. The first pass came back nearly flat
+(2,414 → 2,397 lines, −0.7%) despite real per-chunk compaction, because
+several sections applied "split when bundled" too liberally — splitting
+single-topic entries into 2-3 siblings whenever a sub-fact had a
+slightly different next action, which cancelled out the sections that
+compacted well. Worst offender: Trust (132 → 167 lines, 7 → 11 entries)
+from splitting `best_effort`'s three known gaps into three headings, two
+of which had no real next action at all.
+
+**Fixed by tightening the convention itself** (see `BACKLOG.md`'s own
+header) rather than hand-patching the output: (1) no field is required —
+omit one rather than filling it with "none"/"n/a," which removes the
+pressure to give a fact its own heading just so it has somewhere to put
+an empty Next action; (2) split only on a genuinely different fix, tested
+as "would fixing one half leave the other half's Next action unchanged?"
+— not on a different facet of the same feature. Re-verified every
+flagged split against this test rather than reverting blindly: the
+`best_effort` trio collapsed from 3 headings to 2 (the third,
+`jurisdiction_confidence IS NULL`'s exclusion, had no next action at all
+and moved to Standing Decisions, where it actually belongs per this
+file's own routing rule — not because it needed compacting, but because
+it was mis-sectioned); the low-trust-queue split held (two real,
+independent fixes); Open Bugs' Search Console and "two residual gaps"
+splits held (each half has a different, or a genuinely absent, next
+action); Roadmap 2's growth turned out not to be over-splitting at all —
+entry count barely moved (18 → 17) — just real per-entry template
+overhead on already-distinct proposals, left as-is.
+
+**Result**: 2,414 → ~2,396 lines net at the top level (still close to
+flat — the entry count still grew from ~92 to ~103, and TOC size tracks
+entry count directly), but real qualitative change underneath: every
+entry now follows one scannable shape, 517 lines of real investigation
+detail moved out to this file (added below, by section), and a second
+`docs/investigations/` file (`agenda_text_versioned_asset.md`) was
+spun out for the big Roadmap agenda-text proposal's trap list, matching
+the YouTube 429 entry's pattern. The honest lesson, now written into the
+convention itself: this format's win is signal-to-noise per entry, not
+whole-file line count — a real reduction needs the split rule actively
+enforced, not just adopted.
+
+No new material needed archiving here.
+
+Every fact trimmed out of this chunk's entries during retrofitting was
+either kept in the compacted entry itself (numbers, dates, WO/PR
+references, file paths) or already had an explicit "full detail in
+`BACKLOG_DONE.md`" pointer in the source text before this pass (the
+partial-transcript-backfill numbers, and the repetition-loop repair's
+WO-84/WO-87 bug history). Nothing here was dropped without a home.
+## IQM2 (9.5%) and the /j//state/ hub-page fix (6.5%) deployed for the Search Console watch-page gap [Done 2026-08-30]
+
+Built, tested, and deployed the evening of 2026-08-30 as part of the
+Search Console "video isn't on a watch page" investigation (see this
+file's `[Investigated 2026-08-30]` entry for the same underlying
+investigation and its GSC export numbers); confirmed live 2026-08-31.
+Together these two categories account for 16% of the real failing
+population identified in a 1,000-row GSC export (real total 1,764 rows,
+flat since 2026-08-24) — IQM2 alone is 9.5%, the `/j/`/`/state/` hub-page
+fix another 6.5%. The only remaining step is non-code: clicking Validate
+Fix in Search Console, tracked in `BACKLOG.md`'s "Needs a human" section
+(now actionable, not deploy-pending).
+
+## eScribe/isilive Search Console gap traced to a display artifact, not a real bug [Investigated 2026-08-30]
+
+10.1% of the failing population in the same GSC export. A scary-looking
+newline in Google's raw export data was traced back to a display artifact
+in how Search Console renders the export, not an actual malformed URL —
+today's live URL is correctly encoded and fully reachable. No code fix
+needed; resolving this is waiting on Google's next recrawl of these
+pages, not on any change in this repo.
+## 28 IQM2 retired-tenant queue rows: repeat probe agrees with original finding [Investigated 2026-08-31]
+
+Split out of the tier-3 queue repair (2026-08-22, #308) — distinct from the
+52 *truncated* rows that PR fixed: these URLs are structurally correct and
+the tenant is simply gone (the Accela/IQM2 sunset). Deliberately left in
+place at the time — a single probe cannot distinguish a retired tenant from
+a transient outage, and 16% of the IQM2 block was too much to drop on one
+measurement. This population is exactly what wildcard DNS makes hard to
+judge: a dead IQM2 tenant still answers, with the generic 4,562-byte
+"Accela Meeting Portal" body.
+
+**Repeat probe done, 2026-08-31 (a different day, as asked for): 27 of 28
+confirmed identically dead.** All 27 return the exact same 4,498-byte
+generic "Accela Meeting Portal" error page as the original probe
+(`woodbuffalocn` needed a longer timeout to get past a slow TLS handshake,
+then matched too) — real, if not conclusive, evidence toward "genuinely
+retired" over "transient outage." One tenant, `pec`, shows a **different**
+failure signature: a connection-level timeout (no TLS handshake even
+started within 8s), not a resolving-but-generic-error response — worth
+treating separately from the other 27, since that's consistent with an
+infrastructure problem rather than a retired tenant serving IQM2's own
+fallback page.
+
+Still not acted on (no rows dropped) — this is stronger evidence, not a
+decision to remove; that's Ryan's call to make now that two probes on
+different days agree (see live `BACKLOG.md` entry for the still-open
+decision).
+
+**The tenants**: 26 confirmed both times — `losangelescountyca`,
+`santaclaracountyca`, `northbrookil`, `mchenrycountyil`,
+`sheboygancountywi`, `renocitynv`, `slcgov`, `portagecountyoh`, `gilroyca`,
+`hanfordca`, `pekinil`, `psrcwa`, `tehamacountyca`, `vilascountywi`,
+`adelantoca`, `brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
+`currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
+`hyattsvillecitymd`, `ledyardct`, `shawneecityks`; `woodbuffalocn`
+confirmed on the slower retry; `pec` is the one distinct case.
+
+## Swagit multi-clip meetings: cloud worker fix (WO-79) [Done 2026-08-30]
+
+Real, confirmed shape found across 3 tenants — Yolo County CA, White
+Plains NY, Apple Valley MN — none of which has a single combined
+recording at the source; Swagit's own template has no full-agenda video.
+Per Ryan's explicit direction (never split a meeting across N separate
+transcript pages), `swagit.py` now surfaces every real clip as
+`ResolvedMeeting.video_segments`, a new `probe_multi_clip_chunk_plan()`
+builds a cumulative-offset chunk plan across them, and the cloud worker
+transcribes each clip individually and stitches the results into one
+meeting-relative transcript using the existing `shift_segments()`
+shift-and-merge approach.
+
+**Still open** (see live `BACKLOG.md` entry): the local script
+(`scripts/transcribe_backlog_locally.py`) doesn't consume
+`video_segments`/`chunk_plan` yet; chunk-plan jobs skip the live
+per-chunk re-resolve the ordinary path uses to guard against stale URLs
+(real but unobserved risk in every confirmed sample so far); no
+sub-chunking of an individual very-long clip (no confirmed real case
+needs it yet); re-running the fixed resolver against the original
+43-URL 2026-08-18 sweep to size how many are genuinely multi-segment,
+and a broader live Swagit audit, are both still open too.
+
+## High Plains Water District audit: same-symptom URLs since resolved or not applicable [Investigated 2026-08-27]
+
+Found during the same 2026-08-27 audit of local-Whisper run logs that
+surfaced the High Plains Water District zero-segment case (see live
+`BACKLOG.md` entry — `high-plains-underground-water-conservation-district-no-1-2022-11-08-board-of-dir`,
+`https://hpwd.granicus.com/player/clip/44?view_id=1`).
+
+The identical "transcription produced no usable segments" symptom hit two
+other real URLs in that same audit, both since self-resolved (now show
+real segment counts on a live check), so they're not carried forward as
+open: `branchburg-2025-carols-by-candlelight` (Granicus) and eScribe's
+`pub-scrd.escribemeetings.com` `2025-10-23-committee-of-the-whole`.
+
+A fourth, `st-2025-12-16-st-louis-park-high-school-wind-ensemble-concert-dec-11-2025`
+(Cablecast), is a school concert broadcast, not a government meeting —
+zero segments is arguably the correct outcome there, not a bug.
+No content was moved out of this chunk.
+
+Every real fact in the original 10 entries (specific numbers, dates,
+hostnames/URLs, tenant and jurisdiction names, IP addresses, measured
+counts and percentages) was preserved inline in the retrofitted 5-field
+entries in `D-OpenBugs-3.md`, using the format's own allowance for a
+field to wrap to a second (or third) line when it genuinely needs to.
+None of the entries in this chunk were finished/closed work — all ten
+are still-open items (`[NEEDS-AUDIT]`/`[WAIT]`/`[LATER]`) — so there was
+no completed-investigation narrative to relocate into a
+`BACKLOG_DONE.md`-style section. Where an entry already pointed at
+existing `BACKLOG_DONE.md` history (the OnBase/Hyland entry's "Four
+archived pages..." entry, the 50-largest-cities audit's per-tenant
+history, the GovAccess fuzzy-match investigation) or an external doc
+(`ENUMERATION_METHODS.md` §35), that pointer was kept as the entry's
+**History** field rather than duplicated here.
+## Census-table baseline validation of all 649 archived jurisdictions (2026-08-15, re-checked 2026-08-30) [Investigated 2026-08-30]
+
+Full numbers from the original 2026-08-15 sweep, moved out of the live
+`BACKLOG.md` entry to keep it scannable — the live entry now just points
+here.
+
+**Baseline counts (649 archived jurisdictions)**: 510 valid as-is, 73
+reachable by longest-valid-prefix trim, 44 not in the Census/StatsCan
+table, 22 blank.
+
+The trim bucket (73 rows) splits cleanly on a tail-sanity check: 16 true
+bleed cases (every one a correct repair) vs. 57 legitimate long entities
+where trimming would *destroy* a correct name — so trim must always be
+gated on bleed signals, never applied bare.
+
+**Correction, 2026-08-30**: an earlier version of this entry named
+Sarasota/Hollywood/Hampton as three bleed cases the current signals miss,
+with only Sarasota marked closed — that framing was already stale when
+written. `BACKLOG_DONE.md`'s 2026-08-17 "Jurisdiction-bleed, confirmed
+cross-platform" entry shows all three were in fact repaired together via
+the existing `_MIN_BLEED_WORD_RUN=4` signal, no truncation detector
+needed. Reproduced live 2026-08-30:
+
+- `finalize_jurisdiction('Hampton Zoning Ordinance Regarding Standa')` →
+  `Hampton` (repaired).
+- `finalize_jurisdiction('Sarasota Legacy Business PLEDGE OF')` →
+  `Sarasota, FL` (repaired).
+
+Every other finding from this audit is closed (full history was already
+in `BACKLOG_DONE.md` prior to this compaction). Regenerate
+`baseline_validation.csv` via the script logged in
+`JURISDICTION_METADATA_PLAN.md`'s workstream 1 before re-running any of
+this — it no longer exists in any scratchpad.
+
+**What's still genuinely open** (kept as a live `BACKLOG.md` entry, not
+here): a mid-word-truncation signal (tails ending "the Tex", "servic",
+"Standa" — the regex's own 40-char cap cutting words in half) — motivated
+by one real title-side instance ("...Exhibit 1 was adde"), but the three
+jurisdiction-side examples originally cited (Sarasota/Hollywood/Hampton)
+are moot per the correction above, so no jurisdiction-side example
+currently motivates building it.
+
+---
+
+## 2026-08-30 production write: 98 jurisdiction corrections applied directly to published pages [Done 2026-08-30]
+
+Context note moved here from the live `BACKLOG.md` "Jurisdiction
+extraction & backfill" section — applies broadly across that section's
+entries, not to any one of them specifically.
+
+98 real jurisdiction corrections were applied directly to already-published
+pages in one session, across 6 rounds:
+
+1. 40 confirmed via a text/confidence-tier heuristic.
+2. 5 more on review.
+3. 20 more via real visual verification against the source page's own
+   letterhead/seal/agenda content.
+4. 5 more in a follow-up pass on rows an earlier batch had accidentally
+   skipped.
+5. 6 more re-verified correct after the 2026-08-30 deploy landed
+   WO-68/WO-76's fixes.
+6. 18 more from a fresh batch of candidates that only became correct — or
+   only appeared at all — once WO-69's eScribe fixes deployed.
+
+Plus 4 more (Oxford County ON, Breckenridge TX, Eustis FL, Hendersonville
+NC) once WO-77/WO-78's fixes deployed.
+## City-YouTube-channel fallback: canary coverage, date corroboration, bot-block warning pass-through [Done 2026-08-29]
+
+Closed as part of WO-30's city-YouTube-channel fallback follow-up work
+(PR #496/#510): adapter-canary coverage for the fallback path, YouTube
+date corroboration, and bot-block warning pass-through were all shipped
+2026-08-29. Moved out of the open "Residual gaps left behind by WO-30"
+BACKLOG.md entry 2026-08-31 — it was fully done, not a residual, and had
+been sitting alongside two genuinely still-open items (the ~400-entry
+channel-listing cap, and the duplicate-posted-meeting decline case) under
+one heading.
+
+## Four-platform no-jurisdiction population: number history through 2026-08-30 [Investigated 2026-08-30]
+
+Tracks the full sequence of measurements behind the live "Cablecast,
+TelVue, Swagit, and YouTube still account for most no-jurisdiction pages"
+BACKLOG.md entry, kept here since the live entry only needs the current
+number.
+
+**2026-08-21 (original, WO-38)**: `/internal/low-trust-pages` against
+production found 474 total no-jurisdiction pages. Per-platform breakdown:
+eScribe 117, Cablecast 104, YouTube 78, Swagit 72 (371 of 474 on just
+these four), versus Granicus 34, IQM2 33, CivicClerk 24, unknown 7,
+ChampDS 4, TelVue 1.
+
+**2026-08-29, commit `731da71`** ("Cablecast: fall back to validated
+subdomain for jurisdiction #536"), landed *after* an earlier note in this
+entry had already claimed "real per-platform scoping done 2026-08-29" —
+that earlier note was itself superseded by this same commit. Its own
+fresh audit found the qualifying population had already shrunk to 269
+pages (a ~43% drop from 474), with Cablecast alone at 101 of those 269.
+The commit then recovered 23 of Cablecast's 101 via a subdomain-
+validation fallback (`cablecast.py:589-602`, confirmed live in code
+2026-08-30) — directly contradicting an earlier framing of the Cablecast
+gap as "blocked on a real multi-word-city customer turning up, don't
+widen speculatively."
+
+**2026-08-30, re-derived via `GET /internal/low-trust-pages`**: 631 total
+low-trust pages, 236 with no jurisdiction at all (this reflected
+pre-2026-08-30-fixes state, since none of that night's merged WOs were
+deployed yet). Breakdown: Cablecast 101 (unchanged — still needing the
+same per-row audit `731da71` did for the 23 it already recovered), TelVue
+50 (up from 46, expected — active ingestion), Swagit 32, YouTube 18,
+eScribe 12, Vimeo 10, CivicClerk 7, unknown 4, Castus 1, TownHallStreams
+1.
+
+**2026-08-31, `GET /internal/jurisdiction/missing` built and run for the
+first time**: 245 total (down from 269) — Cablecast 101 (unchanged),
+TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10, CivicClerk 7,
+unknown 4, TownHallStreams 1, Castus 1. This new endpoint is the
+recommended tool for current numbers going forward, in place of
+re-deriving them from `/internal/low-trust-pages`.
+
+**Standing conclusions carried into the live entry**: eScribe and Swagit
+both turned out narrower in scope than their original 2026-08-21 framing
+(see their own corrected entries elsewhere in "Platform & jurisdiction
+coverage"). YouTube is still structurally not fixable in the general case
+(`uploader` is a channel name, not a government field). Cablecast's
+101-page per-row audit is the one concrete follow-up left.
+## Pipeline minutes -- detail moved out of the retrofitted BACKLOG.md entry [Investigated 2026-08-31]
+
+(For the "`[JUST-DO-IT]` Render *pipeline minutes*" entry — this is the
+measurement detail that no longer fits the 5-field template but is real
+and worth keeping.)
+
+**Two rounds of `buildFilter` cuts, measured:**
+- Round 1 (queue-file fix): -31% build volume.
+- Round 2 (2026-08-22, allow-lists instead of deny-lists of docs in all
+  four `render.yaml` `buildFilter` blocks): **1,211 → 926 builds per
+  fortnight (-24%)**, on top of round 1.
+
+**Why it ran out again anyway, 2026-08-25 — two reasons neither round of
+filtering could have caught:**
+
+1. **The arithmetic only ever counted four services. There were six.**
+   Every measurement in the pipeline-minutes entry and its
+   `BACKLOG_DONE.md` twin said "four services" — but
+   `rtr-deeplink-staging` and `rtr-deeplink-archive-staging` existed too,
+   created in the Render dashboard and therefore **not in `render.yaml`
+   at all**, meaning they had **no `buildFilter`** and rebuilt on *every*
+   push. Measured over the 24 hours to 2026-08-25: **21 commits to
+   `main`, 13 of which built nothing but staging** — docs, backlog files,
+   and the queue-advance workflows' own auto-merged PRs, all correctly
+   skipped by the four production allow-lists and all fully paid for
+   twice by staging. Rough tally: ~42 staging builds against ≤32
+   production ones. The two services quietly undid a large share of both
+   filtering rounds for weeks. **Ryan disabled their auto-deploy on
+   2026-08-25.** Durable lesson: a service outside the blueprint has no
+   build filter, and nothing in this repo will ever tell you it exists.
+
+2. **Build volume scales with merge count, and nothing capped that.**
+   Filtering reduces builds *per merge*; it does nothing about merging
+   seven times in one evening (which happened 2026-08-25). Addressed by
+   `autoDeploy: false` on all four services plus a CLAUDE.md convention on
+   batching merges and asking for deploys — WO-59, `BACKLOG_DONE.md`.
+
+**Confirmed-usage caveats worth keeping:** the earlier 812/1,000 figure
+was a build *count*, not build *minutes* — Render bills minutes, and
+nobody has read per-service durations off the dashboard yet (this is now
+the entry's own "Next action"). A filtering saving only lands on pushes
+that touch one service's tree, so it decays as PRs get broader. The
+1,001/1,000 figure confirmed 2026-08-29 came in ahead of (i.e. worse
+than) the ~1,145 month-end projection the entry used to carry.
+
+---
+
+## Granicus `chunklist.m3u8` timeout -- detail moved out [Investigated 2026-08-31]
+
+**Two earlier theories, now understood (kept for anyone who rediscovers
+the same symptoms and starts re-litigating root cause):**
+- An earlier theory of a CloudFront IP block was a self-inflicted missing
+  `Referer` header in ad hoc testing — not a real block.
+- An earlier "generic source flakiness" theory was correct that the
+  failure isn't IP-specific, but didn't identify the actual mechanism
+  (the real 504 after a multi-minute hang, only visible past our own
+  120s timeout).
+
+**Evidence the failure sometimes clears on its own vs. sometimes doesn't
+(real, if partial, good news):**
+- King County clip 11547 failed identically on two earlier attempts over
+  about a day, then resolved cleanly on a later retest with a real
+  duration — consistent with an on-demand rehydration/cold-storage delay
+  on Granicus's own archival backend.
+- Fountain Valley CA clip 607, by contrast, failed the same way on
+  *every* attempt across at least 4 tries over an hour — consistent with
+  that specific asset being genuinely broken/gone at the source (matching
+  its already-known history as a real edge case, per CLAUDE.md).
+
+**Implication for anyone hitting a fresh "ffmpeg timed out" on Granicus**:
+don't assume an immediate retry fixes it — cold-storage cases may need
+hours, dead assets may never succeed.
+
+---
+
+## Same-host pulls / flat timeout split -- measurement detail moved out [Investigated 2026-08-31]
+
+WO-40 (2026-08-21) tested "workers hammer one host across consecutive
+jobs, so round-robin the queue by host" against **all 514 production
+jobs** and falsified it:
+- `same_host_different_job` failure pairs within 10 minutes: **0**.
+- Chunk 0 is 3-4x more failure-prone per attempt than any later chunk —
+  the opposite of what an accumulating-rate-limit theory predicts.
+
+No queue reprioritization was built as a result. Full numbers live behind
+the `GET /internal/transcription-failure-analysis` endpoint and in
+`BACKLOG_DONE.md`.
+
+Sizing measurement for the flat-timeout entry: **2 of 218** terminal job
+failures are timeouts (129 are "No usable audio or video source was
+found" — that's where the volume actually is). A second, throughput-
+focused measurement on 2026-08-22 found 106 timeout failures across 18
+jobs in two days — ~3.5 hours of retry (106 × 120s) against ~96
+worker-hours available over the same window, about **4%**. Timeouts are
+not what caps real output at ~35 jobs/day.
+
+---
+
+## Search Console "Reasons preventing indexing" -- detail moved out [Investigated 2026-08-31]
+
+Ryan supplied three real Soft 404 URLs on 2026-08-25, which resolved that
+category.
+
+**Soft 404 root cause (WO-62):** `/m/fairview-tn-2025-10-02-regular-
+meeting` held only an `agenda_link`, which `_is_empty_page_condition()`
+counted as content — so a page whose whole body was two apologies and one
+outbound link was indexed and sitemapped. `agenda_link` no longer counts
+as content for that check. The other two Soft-404 URLs are covered by the
+Granicus `[NEEDS-AUDIT]` entry (they were unrelated to this template bug).
+
+**"Not found (404)" category correction (as of the 2026-08-29 re-check):**
+this entry used to claim `_SLUG_REDIRECTS` was empty and that the
+`welcome-to-clerkbase` reslug had never been run — both were wrong by
+2026-08-29. `_SLUG_REDIRECTS` (`archive/main.py`) now holds several real
+mappings (see `BACKLOG_DONE.md`'s "Five frozen-slug pages reslugged"
+entry, 2026-08-28, `welcome-to-clerkbase` included), so a frozen-slug
+rename leaving a dangling permalink is no longer a live candidate for a
+real 404 in this category. The residual bug this surfaced instead: a
+reslugged old URL was never sending a real 301 either — it was serving
+200 with a different canonical the whole time. That was fixed
+2026-08-31 (see `BACKLOG_DONE.md`).
+
+---
+
+## `/coverage` QA surface -- detail moved out [Investigated 2026-08-31]
+
+The two literal-date-as-jurisdiction rows this entry originally flagged
+as still-live are gone as of a 2026-08-21 re-scan — most likely
+incidentally closed by WO-14's bleed fix, never independently
+root-caused since the original URLs were never recorded.
+No content needed to be moved out of this chunk.
+
+Every real fact in the original "Trust, safety & data quality" section
+(numbers, dates, file:line/endpoint references, named entities) fit inside
+the compacted 5-field entries in `H-Trust.md`, and every entry's History
+field already points at existing `BACKLOG_DONE.md` build writeups (WO-21,
+WO-38, Bluesky auto-posting, the Chula Vista garbled-marker fix) or
+`TRUST_THREAT_MODEL.md` rather than needing a new `BACKLOG_DONE.md`
+section of its own.
+### YouTube Atom-feed polling — design reasoning preserved from Roadmap compaction (2026-08-31)
+
+Not itself a "done" item — this is supporting design reasoning moved out
+of the live `BACKLOG.md` "YouTube Atom-feed polling" Roadmap entry during
+the 2026-08-31 5-field retrofit, so it isn't lost. Paste under this
+entry's own history section (or a real `docs/investigations/` file) once
+the feature is actually built or investigated further.
+
+**Why route the re-resolve through the existing page's own URL instead of
+writing the Atom match's data directly onto it**: doing it this way means
+the Atom feed is only ever a *scheduling* input — "check this page again
+now" — and every actual claim about which video belongs to which meeting
+still goes through the same adapter logic this app already trusts, with
+all its existing confirmation/decline behavior intact. Writing the Atom
+entry's title/date/video-id straight onto the page would instead be a
+second, independent matching path with its own confidence question —
+exactly the risk `FEED_CITIES.md` already flags as unresolved for its
+bigger version of this idea (synthesizing a page from two separate feeds
+with no existing page to anchor to). This version sidesteps that risk
+entirely by only ever re-triggering resolution on a page that already
+exists, so it's a real, much narrower subset of that open question — worth
+building on its own without waiting for `FEED_CITIES.md` to be decided.
+
+**On "switching" a meeting from Upcoming to Past — turns out there's no
+switch to build.** `meeting_date_status()` (`archive/utils/date_status.py`)
+already derives the "Upcoming"/"Recent" pill purely by comparing the
+stored meeting date against today at render time — there's no stored
+status field to flip, so a meeting already reads as no-longer-upcoming the
+instant its date passes, transcript or not (`UPCOMING` requires
+`meeting_date > today`, full stop). What a proactive re-resolve actually
+needs to change is narrower than "switch the state": just get
+`video_url`/the transcript attached before the *next* visitor happens to
+trigger the existing passive re-check
+(`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, currently 1 hour — `app/main.py`).
+So the real win isn't a new state machine, it's making an existing
+transcript-less page's *next* re-check happen on a schedule tied to "the
+city just posted something," instead of waiting on both the passive hourly
+cadence and a human visit lining up.
+
+**What this doesn't fix**: the caption fetch itself still goes through
+yt-dlp at resolve time, which is the exact path hitting the real,
+currently-unresolved Render IP block (see the "bulk re-resolve gets this
+IP blocked by YouTube" entry under **Reliability, ops & cost**, now
+updated with real scale: 184 real jurisdictions' captions ride through
+that same call). Polling the Atom feed changes *when* a re-resolve is
+triggered, not what happens once it runs — a blocked IP still fails the
+actual attach. Also scoped narrowly on purpose: only four cities have a
+curated channel id today; broadening this beyond the existing last-resort
+fallback list is a separate, real cost (see the curated map's own
+docstring for why it's a hand-verified map, not a search).
+## Archive-side data-quality tool for poorly-ingested URLs/tenants — done, no public page needed [Done 2026-08-31]
+
+Split out of a "public data-quality page" ask, 2026-08-31: Ryan's call was
+that what's actually wanted is an internal tool for cleaning up
+poorly-ingested URLs/tenants, and it's fine for that to live outside the
+public site. `GET /internal/jurisdiction/missing` (built 2026-08-31) plus
+the existing `GET /internal/low-trust-pages` already cover this — both
+admin-token-gated, both already return real per-page reasons (no
+jurisdiction, `best_effort`, unverified confidence). No new code needed.
+
+## PDF agenda inline viewer shipped [Done 2026-08-31]
+
+The cheap half of "PDF agenda text-extraction for a searchable preview":
+a plain `<iframe>` next to `agenda_link` now renders inline, zero backend
+change. The fallback link was kept alongside it since some government
+hosts may refuse framing — that framing-refusal risk itself is
+unverified live, only checked from this session's sandbox, worth a real
+browser check. Real text-extraction for a searchable preview (needing
+`pypdf`/`pdfplumber`, neither in `requirements.txt`, plus a new storage
+column) remains a separate, bigger, unbuilt ask — see the live
+`BACKLOG.md` entry.
+
+## Transcript version picker analytics shipped [Done 2026-08-31]
+
+Split out of the `source="deduped"` work. All three events shipped
+exactly as scoped: `transcript_version_change` fires inline in the
+template's `onchange` (submit stays inline too, so navigation never
+depends on an external file loading); `transcript_version_available`
+(now carrying the `label_ambiguous` param, computed client-side) and
+`transcript_version_viewed` fire on load from `meeting_page.js`. Read the
+numbers with a caveat: a low `transcript_version_change` rate could mean
+readers can't tell two identically-rendering options apart, not that
+they don't want alternates — `label_ambiguous` is exactly the segmenting
+signal for that. (The option-label improvement itself — adding a date to
+each label — is still open, see the live `BACKLOG.md` entry.)
+
+## Transcription rate limit no longer applies to signed-in users [Done 2026-08-31]
+
+Both `@limiter.limit("5/hour")` decorators (`app/main.py`'s
+`transcription_check_feasibility`/`transcription_submit`) now carry
+`exempt_when=lambda request: bool(get_clerk_user_id(request))` —
+confirmed live that slowapi 0.1.10 genuinely supports this kwarg,
+settling a previously-open "not confirmed which slowapi actually
+supports" question. The rate-limit copy rewrite was already fixed
+2026-08-16 (separately from this change). Still open: the 429 UI path
+for signed-out visitors — see the live `BACKLOG.md` entry.
+
+## Two static Contact `mailto:` links and `about.html`'s address fixed to `ally@redtaperecordings.com` [Done 2026-08-16]
+
+Part of the user-facing email-address consolidation requested 2026-08-12
+(after `ally@`/`ryan@redtaperecordings.com` forwarding was set up). The
+two static `mailto:` Contact links and the `ryan@how-to-adu.com` address
+on `about.html` were both repointed. Remaining config values
+(`RESEND_REPLY_TO_ADDRESS`, `DAILY_REPORT_EMAIL_TO`,
+`YOUTUBE_FETCH_REPORT_EMAIL`) are tracked as still-open in the live
+`BACKLOG.md` entry.
+
+## "Which Ryan address" resolved: `ally@redtaperecordings.com` for all operator/ops reporting [Done 2026-08-22]
+
+Requested-report work (a 6-hourly operator email report to
+`ryan@redtaperecordings.com`, requested 2026-08-16) was partially
+superseded 2026-08-21 by a shipped daily worker report (`GET
+/internal/send-worker-daily-report`) whose recipient was whatever
+`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` was set to — not yet a resolved
+answer to "which Ryan address." Three addresses were in play
+(`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`, `DAILY_REPORT_EMAIL_TO`'s
+`ryan@how-to-adu.com` default, and the requested
+`ryan@redtaperecordings.com`); resolved 2026-08-22:
+`ally@redtaperecordings.com` is the answer for all of them, and all
+operator/ops reporting consolidates there.
+
+Two things to get right when applying it, still relevant to any future
+change touching these addresses: (1) `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`
+is set per-service in the Render dashboard, so changing it means touching
+it on **both** `rtr-transcription-worker` and `rtr-transcription-worker-2`
+— those two services differ in *exactly* that variable by design (see
+`render.yaml`'s comment on the second block), so any change must not
+collapse the distinction they exist to maintain. (2)
+`ryan@ally.redtaperecordings.com` is the Resend *sending* subdomain, not
+this recipient — they look nearly identical in a config diff, and mixing
+them up would silently break either delivery or reporting. Confirm
+`ally@redtaperecordings.com` receives mail before switching anything
+over.
+
+## Phase 4: caught UnicodeError alongside gaierror in check_destination() (PR #642) [Done 2026-08-31]
+
+Small, well-scoped fix promoted straight from `CLAUDE_INBOX_TRIAGE.md`'s
+2026-08-31 daily triage run and built directly rather than left for a
+promotion-only entry, since the root cause and fix location were already
+exact. `getaddrinfo()`'s IDNA encoding raises `UnicodeError`, not
+`socket.gaierror`, for a hostname with a single DNS label over 63
+octets — `check_destination()`'s `except socket.gaierror` clause
+(`app/utils/url_guard.py:104`) didn't catch it, so it propagated
+unhandled into a 500 instead of the intended clean
+`BlockedURLError("Couldn't resolve that host.")`.
+
+**Real-world confirmation**: Sentry `PYTHON-FASTAPI-15` (2026-08-30
+19:46:52 UTC, `handled=no`, `/api/refresh-archived-page`) — a
+74-character slug-shaped string
+(`anchorage-ak-2026-07-02-amats-technical-advisory-committee-placeholder`)
+sent as the `url` param, most likely an external client testing
+slug-shaped strings against the endpoint rather than a real broken
+`source_url`. Reproduced directly against the real stdlib resolver
+locally before writing the fix: `socket.getaddrinfo()` on that exact
+hostname raises `UnicodeError: encoding with 'idna' codec failed
+(UnicodeError: label too long)`.
+
+**Fix**: added `UnicodeError` to the `except` clause alongside
+`socket.gaierror`, same clean `BlockedURLError` message. New tests
+reproduce the failure two ways — a monkeypatch unit test, and a second
+test that calls `check_destination()` with the exact real hostname from
+the Sentry report through the real, unmocked stdlib resolver (no network
+call actually happens; IDNA encoding fails client-side before any socket
+call). Both promoted items from that day's triage run (this one and
+Phase 3/4's Search Console `uploadDate`/`startDate` promotion) were
+deleted from `CLAUDE_INBOX_TRIAGE.md` per that file's own promotion
+convention once acted on.
+
+## Phase 4: fixed the real Chula Vista garbled-marker false positive (PR #641) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase4-garbled-marker-fix`, off
+`main`) as part of a deep audit pass on BACKLOG.md's Reliability/Trust
+sections — five parallel research agents re-verified 17 entries against
+current code; one (this one) had enough real signal to fix outright
+rather than just re-verify.
+
+**Root cause, confirmed live.** `is_likely_garbled()`'s word tokenizer
+(`app/utils/vtt_parser.py`) was ASCII-only (`[A-Za-z0-9']+`), so any
+accented character split a real word into spurious 1-2 letter junk
+fragments — "sesión" tokenized as "sesi" + "n". `_COMMON_SHORT_WORDS`
+(the allowlist for legitimately-short real words) had no Spanish entries
+either, so real short Spanish words ("la", "de", "y") were also counted
+as junk. This session fetched the real, live Chula Vista CA transcript
+(2026-05-19 city council meeting, eScribe version 816) directly from its
+public `/m/{slug}/transcript.txt` export on redtaperecordings.com (not
+summarized — `curl`'d raw, 167,279 bytes, matching the BACKLOG.md entry's
+"165K chars" claim) and ran the actual heuristic against it: **35.6%
+junk, against a 6% threshold** — a real, live-confirmed false positive
+on real, coherent Spanish (city council roll call, an EMS Week
+proclamation, real public comment about a police department
+controversy), not a hypothetical one.
+
+**Fix**: a Unicode-letter-aware tokenizer (`[^\W\d_]+(?:'[^\W\d_]+)*` —
+keeps accented characters inside a word, and keeps apostrophe-joined
+contractions like "don't" as one token instead of splitting off a
+spurious "t") plus a new `_COMMON_SHORT_WORDS_ES` allowlist, gated on a
+new optional `lang` parameter the caller passes through. Deliberately
+**not** a blanket "skip on non-English" bypass — Fountain Valley's real
+genuinely-garbled case (BACKLOG_DONE.md's original write-up) is itself
+non-English-detected (misdetected as Portuguese), so silencing on
+language alone would have hidden that true positive too. Verified this
+directly: a synthetic genuinely-garbled Spanish sample (`la`/`el`/`de`
+mixed with real junk fragments) is still correctly flagged even with
+`lang="es"`. All 9 platform-adapter call sites (ca_legislature, castus,
+civicclerk, escribe, granicus, suiteone, telvue, viebit, youtube) already
+had the detected language in local scope right before calling
+`is_likely_garbled()`, so this was a signature addition, not new
+plumbing.
+
+**Verification, in order of how much of it is real data**: (1) the real
+Chula Vista transcript, re-run against the fix — 2.97% junk with
+`lang="es"`, correctly not flagged (new fixture
+`tests/fixtures/escribe/chula_vista_public_comments_transcript_excerpt.txt`,
+a real 25,000-char excerpt, not synthetic); (2) the existing real/
+synthetic Alexandria VA and Cincinnati OH garbled-transcript regression
+tests, confirmed still correctly flagged (57.5% and 39.9% junk
+respectively — the fix doesn't blind genuine-corruption detection); (3) a
+new contraction-heavy clean-English sample, confirmed the apostrophe
+handling doesn't inflate false positives on ordinary English. All four
+CI gates green (2307 passed, 16 skipped; ruff check/format clean; alembic
+check clean, no schema change).
+
+**What's still open**: the code fix doesn't retroactively clear the
+marker already stored on Chula Vista's real page row — per this repo's
+marker-gating convention, that needs an actual redeploy + re-resolve.
+See the residual entry left in BACKLOG.md's Trust & safety section.
+
+## Phase 3 (small version): resolve-time agenda_link + packet_link for CivicPlus and CivicClerk (PR #640) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase3-agenda-extraction`, off
+`main`) same day as Phase 1, after Ryan explicitly chose the small version
+of the "Agenda text as a first-class, versioned asset" Roadmap entry over
+the big one: "we definitely don't need nightly sweeps. We might want
+versioning but I'm also okay with just replacing agendas... maybe a link
+to the packet on the original source when we happen to have it? Or a
+section lower on the page just for the packet?" All four CI gates green
+locally before push (ruff check, ruff format, pytest — 2304 passed, 16
+skipped, alembic check x2 against fresh migration-built SQLite), plus the
+JS suite (56 passed). CI green on GitHub, squash-merged same day, no
+review comments.
+
+Found by comparing rtr-deeplink's own adapters against `rtr-upcoming` (a
+sister project, cloned locally to `/home/user/rtr-upcoming` this session,
+solving agenda-text extraction for a different job — finding agendas for
+jurisdictions with no video URL at all). Its
+`UPCOMING_AGENDAS_FIELD_GUIDE.md` (read in full, 1,585 lines) documents
+extensively measured per-vendor extraction lessons; two of its findings
+pointed directly at real, unclaimed data in this repo's own adapters —
+both fields already fetched, neither ever surfaced.
+
+**CivicPlus** (`app/platforms/civicplus.py`): each meeting row's own
+`td.downloads` cell offers up to three renditions — `?html=true`, a bare
+PDF, and `?packet=true` (agenda plus every staff report) — confirmed on
+the real, already-in-repo Durham NC fixture. Distinguished by the href's
+query string, since two different links both carry `class="pdf"`. New
+`_extract_agenda_and_packet_links()` prefers the HTML rendition for
+`agenda_link`, falls back to the bare PDF, and separately captures
+`packet_link`; threaded through the existing Granicus delegation the same
+way `legistar.py`'s own `agenda_link` already survives its delegation.
+
+**CivicClerk** (`app/platforms/civicclerk.py`): already fetches `event`,
+which carries `publishedFiles` — vendor-typed entries (`"Agenda"`,
+`"Agenda Packet"`, `"Minutes"`, `"Other"`), confirmed real on three
+different live fixtures (Clovis CA event20, Emporia KS, Kaysville UT
+event823 — the last has an `agenda_link` but no `"Agenda Packet"` type,
+confirming the field is genuinely optional rather than always paired).
+Previously `publishedFiles` was mined only for plaintext to help guess
+jurisdiction; new `_published_file_url()` now also sets
+`agenda_link`/`packet_link` directly from the same already-fetched data —
+zero extra network calls. `_fetch_agenda_text` changed from `@staticmethod`
+to `@classmethod` to reuse the same helper.
+
+**New field, threaded end to end.** `ResolvedMeeting.packet_link:
+Optional[str]` (`app/platforms/models.py`) → new nullable
+`meeting_pages.packet_link` column (migration `1b74c98d2d57`, chained
+after Phase 1's `1e6107751720` "scraped"→"sourced" rename) →
+`IngestRequest.packet_link` → `crud.py` create/update branches and
+`get_page_by_slug()` → `meeting_page.html`, rendered as a plain outbound
+link ("Full agenda packet") below the agenda section — deliberately never
+folded into `agenda_link`'s inline iframe (Phase 1, PR #638) since
+`rtr-upcoming` measured a real 90 MB packet and an iframe of that size
+would be a bad reader experience. Only shown when `packet_link` differs
+from `agenda_link`, so a platform setting both to the same URL doesn't
+render a confusing duplicate.
+
+**Verification**: `tests/test_packet_link.py` (new, 4 tests: renders as
+plain link, absent when unset, deduped when identical to `agenda_link`,
+queryable via `get_page_by_slug`) plus extended assertions on the existing
+real-fixture tests (`test_civicplus.py`'s Durham NC and Granicus-delegation
+cases, `test_civicclerk.py`'s Clovis and Kaysville cases) rather than new
+synthetic-only coverage, since real fixture data for both new fields was
+already confirmed present. Not verified: live rendering on a real
+production page — this session has no browser/deploy access; worth a real
+check once deployed.
+
+**What's still open**: this is resolve-time linking only. The Roadmap
+entry's actual ask — a versioned child table mirroring `TranscriptVersion`
+(agendas get amended, transcripts don't), full-text extraction across all
+~23 adapters, diffing between versions, and search-corpus inclusion — is
+unchanged and was deliberately not attempted this session; see
+[AGENDA_TEXT_BIG_VERSION_BRIEF.md](AGENDA_TEXT_BIG_VERSION_BRIEF.md) for
+what a first shippable slice of that bigger version could look like,
+brought to Ryan to decide rather than pre-decided.
+
+## Phase 1: six small backlog fixes shipped and merged (PR #638) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase1-small-fixes`, off `main`)
+specifically to avoid colliding with a concurrent session working Open
+Bugs in its own worktree. All four CI gates green locally before each
+push (ruff check, ruff format, pytest -- 2300 passed, alembic check x2
+against fresh migration-built SQLite), plus the JS suite (56 passed).
+Squash-merged same day, CI green, no conflicts, no review comments (no
+"Claude Approvals" check configured on this repo).
+
+**1. CI ffprobe regression, fixed.** The entry this closes is the one
+filed earlier the same day under "Reliability, ops & cost" (the
+`bulk-queue-transcription-backlog.yml` "0 created, 8 skipped" masking
+WO-83's cooldown fix). Added an explicit `sudo apt-get install -y
+ffmpeg` step before `pip install -r requirements.txt`. Checked the two
+sibling workflows (`feed-tier3-transcription.yml`/
+`feed-granicus-transcription.yml`) for the same exposure while in
+there: neither actually calls `ffprobe` (confirmed via import/grep --
+`feed_tier3_auto_transcription.py` imports from `scripts.bulk_ingest`,
+which never touches `media_probe`; `feed_granicus_auto_transcription.py`
+just shells out to `bulk_ingest.py`), so no fix needed there.
+
+**2. Rate limit: signed-in Clerk users exempted.** `app/main.py`'s two
+`@limiter.limit("5/hour")` transcription endpoints now carry
+`exempt_when=lambda request: bool(get_clerk_user_id(request))`
+(confirmed slowapi 0.1.10 genuinely supports this kwarg, resolving the
+"not confirmed which slowapi actually supports" open question). Closes
+half of the matching Roadmap entry -- the other half (a sign-in prompt
+in the 429 UI path, instead of just exempting signed-in users) is still
+open, narrowed in place.
+
+**3. Transcript version-picker analytics, shipped.** All three events
+BACKLOG.md's entry specified: `transcript_version_change` fires inline
+in `meeting_page.html`'s `onchange`, immediately before
+`this.form.submit()`; `transcript_version_available` (with a
+`label_ambiguous` param, computed client-side by comparing every
+option's rendered text) and `transcript_version_viewed` (`is_default`)
+both fire on load from `meeting_page.js`. Zero schema change --
+`?version=`/`is_default` were already available. 5 new JS tests
+(`tests_js/meeting_page_events.test.js`) covering the load-time events,
+the label-collision case, a non-default selection, and the
+single-version (`#versionSelect` absent) case. Closes the "no
+analytics" half of that Roadmap entry; the "real option labels" half
+(date vs. free-text label column) is still open.
+
+**4. Inline PDF agenda viewer, cheapest version shipped.** A plain
+`<iframe class="agenda-inline-frame">` alongside the existing
+`agenda_link` anchor in `meeting_page.html` (kept as a fallback -- some
+government hosts will refuse framing via X-Frame-Options/CSP,
+unverifiable server-side and untested live from this sandbox). Fixed
+480px height, not an aspect ratio -- a document's real shape varies too
+much to guess at. Closes the cheap half of the matching Roadmap entry;
+real text-extraction for a searchable preview is still a separate,
+bigger ask (needs `pypdf`/`pdfplumber`, neither in `requirements.txt`).
+
+**5. Jurisdiction-override admin endpoint, built.** New `POST
+/internal/jurisdiction/override` (`archive/main.py` +
+`crud.override_jurisdiction()`), token-gated, `dry_run=True` default,
+same id-batch/idempotent shape as `mark_low_trust_pages_reviewed()`.
+Writes an explicit caller-supplied jurisdiction string plus a new
+`jurisdiction_confidence="manual_override"` tier -- the one tier
+`finalize_jurisdiction()` itself never produces. **Also fixes a
+re-ingest overwrite gotcha found while scoping this**:
+`_find_or_create_page()`'s truthy-gated `page.jurisdiction = jurisdiction
+or page.jurisdiction` now skips entirely when
+`jurisdiction_confidence == "manual_override"`, so a manual fix
+survives the next passive re-check instead of drifting back on the next
+re-resolve -- confirmed by a real regression test
+(`test_override_survives_a_later_re_ingest`, with a matching control
+test proving the guard doesn't freeze ordinary jurisdiction updates).
+12 new tests (`tests/test_jurisdiction_override.py`), all synthetic
+`", ZZ"` jurisdictions per this file's own convention (the shared
+session-scoped test DB means a real US state/county string would bump
+a real state-page ranking count -- hit this live once, see the
+`test_state_page_lists_states_jurisdictions` collision this avoided).
+**Not yet applied to real data**: this session has no admin token, so
+nobody has actually called it against Santa Clara's rows or piloted the
+low-trust-queue repair flow yet -- that's still open, now genuinely
+unblocked rather than blocked on missing capability.
+
+**6. `TranscriptVersion.source` "scraped"→"sourced" rename, done in
+full.** `models.py`'s default, a new Alembic migration
+(`1e6107751720`, data-only -- `String(20)` already fit either value)
+backfilling every existing row, every literal-value reference across
+`crud.py`/`main.py`/two scripts/one template comment, and two internal
+variable/label names (`has_scraped_transcript`→`has_sourced_transcript`,
+`any_scraped_version`→`any_sourced_version`) that were vestiges of the
+old name. Left every generic English use of the word "scraped"
+(describing the scraping *action*, not the field's value) alone --
+only the literal token was ever in scope. Migration applies cleanly
+with zero autogenerate drift afterward. Closes the matching `[EASY]`
+Roadmap entry outright.
+
+## "Open bugs" second re-verification pass (day after the first): 43 entries checked via 6 parallel agents, small drift found and corrected, four verbose entries compacted [Investigated 2026-08-31]
+
+Second re-verification pass on `BACKLOG.md`'s "Open bugs" section
+(43 entries as of today — down from 61 the day before, after the
+2026-08-30 pass below closed/corrected several), same method: parallel
+agents auditing each chunk against live code, `git log`, and this file,
+per CLAUDE.md's "a backlog entry is a lead, not a spec" rule. This
+session has **no production DB, admin-token, or Render-shell access**
+(confirmed: no `.env` in this remote environment, no other local session
+reachable to borrow credentials from) — verification was code/git/public-
+web only; anything needing live production data is flagged in place
+rather than guessed at.
+
+**Result**: given the section had just been through the same pass the
+day before, most of it (roughly 35 of 43 entries) held up exactly as
+written — expected, not a null result. What changed:
+
+- **Derry NH TelVue jurisdiction** — the entry read as "page not found";
+  in fact Derry NH was ingested that same night (see this file's "TelVue:
+  10 of 12" entry) and the real gap is a missing
+  `_KNOWN_ORG_TOKEN_JURISDICTIONS` entry, not a missing page. Corrected
+  in place.
+- **Stale archived transcripts** — the entry claimed no automated refresh
+  path exists at all; WO-15 (2026-08-16, well before this entry was
+  "moved out of Dormant" 2026-08-30) already built both a public manual
+  refresh button (`POST /api/refresh-archived-page`) and a broadened
+  YouTube auto-requeue for garbled transcripts. Narrowed the live entry
+  to the real residual: non-YouTube (Granicus-truncation) pages only.
+- **WO-34 roll-up calibration gap** — the existing-corpus backfill (10
+  affected pages) is done (2026-08-30, see this file's roll-up dedupe
+  entry); the entry hadn't been updated to say so. Narrowed to the real
+  residual: `_looks_like_rollup()`'s threshold itself was never widened,
+  so a fresh resolve with the same shape still won't auto-dedupe.
+- **Sustained YouTube IP block** — added the one clearance data point
+  already on record (the same 10 blocked slugs resolved cleanly 8 days
+  later) without overclaiming it settles pacing/IP-specificity.
+- **`GET /internal/jurisdiction/missing`** — this entry's own "proposed
+  above, still doesn't exist" tail is now stale; the endpoint was built
+  today (see the entry directly below) with fresh numbers (245, down
+  from 269). Replaced the speculative framing with a pointer to it.
+- **Philadelphia Aug 6 `_pick()` gap, TelVue CDX batch-2, Tarrant County
+  TechShare.AgendaManagement, Anchorage AK YouTube bot-block, ProudCity
+  residuals** — five entries whose investigation narrative was already
+  fully accurate but had grown long enough to duplicate detail this file
+  already preserves elsewhere (WO-77–82, WO-74, the Tarrant discovery,
+  PR #496, and the ProudCity build entry, respectively). Compacted each
+  to a conclusion-plus-pointer in `BACKLOG.md`; the trimmed prose is
+  recoverable from this file's own entries and from git history, not
+  reproduced here verbatim.
+- **WO-30 city-YouTube-channel residuals, item 3** — was sitting in
+  BACKLOG.md as a struck-through-but-still-present closed item (adapter-
+  canary coverage, YouTube date corroboration, bot-block warning
+  pass-through — all closed 2026-08-29, PR #496/#510). Fully done, not a
+  residual of the still-open items 1-2 alongside it; removed from the
+  open list, recorded here instead.
+
+**Everything else (roughly 35 of 43) held up under direct
+re-verification** — no material drift in the one day since the prior
+pass. Two structural findings worth carrying forward: (1) this backlog
+gets triaged often enough now that a same-week re-check mostly confirms
+rather than finds new drift — the highest-value next targets are
+sections that *haven't* had this treatment yet (Roadmap & strategy,
+Reliability/ops/cost, Trust & safety, Needs a human, Standing decisions,
+Parked). (2) A handful of entries (ChampDS symptom B, the 50-largest-
+cities residuals, several `[NEEDS-AUDIT]` jurisdiction items) are
+genuinely blocked on production DB/admin-token/dashboard access this
+remote session doesn't have — correctly left as-is rather than guessed
+at.
+
 ## Nav sign-in modal hung forever when Clerk required a second factor [Done 2026-08-31]
 
 Real production bug, reported live by the user testing email/password
