@@ -1658,6 +1658,7 @@ async def _proxy_to_archive(
     query_string: str,
     cookie_header: Optional[str] = None,
     extra_headers: Optional[dict] = None,
+    allow_redirects: bool = True,
 ) -> Response:
     """Reverse-proxies a GET request to the Archive service so its permanent
     pages are reachable at redtaperecordings.com/m/{slug} instead of a
@@ -1671,10 +1672,17 @@ async def _proxy_to_archive(
     account_saved below) -- passing it lets Archive verify the visitor's
     Clerk session itself with one local check, no separate internal HTTP
     round-trip needed (see app/utils/clerk_auth.py / archive/utils/clerk_auth.py).
+
+    allow_redirects: see archive_client.proxy_get()'s docstring. Only
+    archive_meeting_page's bare-slug case passes False.
     """
     try:
         session, response = await archive_client.proxy_get(
-            internal_path, query_string, cookie_header, extra_headers
+            internal_path,
+            query_string,
+            cookie_header,
+            extra_headers,
+            allow_redirects=allow_redirects,
         )
     except Exception:
         logger.exception("Archive proxy request failed for %s", internal_path)
@@ -1722,11 +1730,20 @@ async def archive_meeting_page(path: str, request: Request):
     # services every time. Harmless for the HTML pages this same route
     # serves: they emit no ETag, so the header simply never matches.
     conditional = request.headers.get("if-none-match")
+    # This one route fans into three Archive routes: /m/{slug} (the page,
+    # which may 301 via _SLUG_REDIRECTS), /m/{slug}/card.jpg (may 302 to
+    # a YouTube thumbnail -- that one must stay auto-followed so an <img>/
+    # og:image consumer gets real bytes, not a redirect), and
+    # /m/{slug}/transcript.{ext}. Only the bare-slug case (no "/" left in
+    # path) should forward Archive's redirect as a real redirect instead
+    # of silently following it -- see archive_client.proxy_get()'s
+    # docstring for why this matters (found 2026-08-31).
     return await _proxy_to_archive(
         f"m/{path}",
         str(request.query_params),
         request.headers.get("cookie"),
         {"If-None-Match": conditional} if conditional else None,
+        allow_redirects="/" in path,
     )
 
 

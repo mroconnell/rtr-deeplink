@@ -138,7 +138,7 @@ def test_proxy_forwards_cookie_only_to_auth_aware_routes(monkeypatch):
     captured = []
 
     async def _fake_proxy_get(
-        path, query_string, cookie_header=None, extra_headers=None
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
     ):
         captured.append((path, cookie_header))
 

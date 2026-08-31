@@ -435,6 +435,7 @@ async def proxy_get(
     query_string: str,
     cookie_header: Optional[str] = None,
     extra_headers: Optional[dict] = None,
+    allow_redirects: bool = True,
 ):
     """Forward a GET request to the Archive service and return the raw
     aiohttp response (caller streams it back to the client). Raises on
@@ -455,6 +456,18 @@ async def proxy_get(
     refetch would re-stream the full image through two services. Kept as
     an explicit opt-in per call site rather than a blanket
     forward-everything, matching how cookie_header is already handled.
+
+    allow_redirects defaults True (aiohttp's own default) because most
+    proxied routes want that -- /m/{slug}/card.jpg's YouTube-backed 302
+    (archive/main.py) must resolve to real image bytes here, not a
+    redirect response, since a browser <img>/og:image consumer won't
+    follow a cross-origin redirect the way a normal navigation does.
+    Pass False for a route where the *client* needs to see the redirect
+    itself -- see archive_meeting_page's bare-slug case in app/main.py,
+    where Archive's real 301 for a reslugged page (_SLUG_REDIRECTS) was
+    being silently followed here and served to the public/Googlebot as a
+    200, defeating the entire point of a permanent redirect (found
+    2026-08-31: every `_SLUG_REDIRECTS` entry ever shipped was affected).
     """
     base = _base_url()
     if not base:
@@ -471,7 +484,9 @@ async def proxy_get(
         headers["Cookie"] = cookie_header
     session = aiohttp.ClientSession(timeout=PROXY_TIMEOUT)
     try:
-        response = await session.get(url, headers=headers or None)
+        response = await session.get(
+            url, headers=headers or None, allow_redirects=allow_redirects
+        )
     except Exception:
         # session.get() itself can raise (timeout, connection reset, DNS
         # failure) before headers ever come back -- if we don't close the

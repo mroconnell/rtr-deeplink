@@ -41,7 +41,7 @@ class _RaisingSession:
     def __init__(self, *args, **kwargs):
         self.closed = False
 
-    async def get(self, url, headers=None):
+    async def get(self, url, headers=None, allow_redirects=True):
         raise aiohttp.ClientConnectionError("simulated connection failure")
 
     async def close(self):
@@ -111,7 +111,11 @@ async def test_proxy_to_archive_stream_cut_short_ends_cleanly(monkeypatch):
     )
 
     async def _fake_proxy_get(
-        internal_path, query_string, cookie_header=None, extra_headers=None
+        internal_path,
+        query_string,
+        cookie_header=None,
+        extra_headers=None,
+        allow_redirects=True,
     ):
         return fake_session, fake_response
 
@@ -128,7 +132,11 @@ async def test_proxy_to_archive_stream_completes_normally(monkeypatch):
     fake_response = _FakeResponse(chunks=[b"hello ", b"world"], error=None)
 
     async def _fake_proxy_get(
-        internal_path, query_string, cookie_header=None, extra_headers=None
+        internal_path,
+        query_string,
+        cookie_header=None,
+        extra_headers=None,
+        allow_redirects=True,
     ):
         return fake_session, fake_response
 
@@ -159,7 +167,7 @@ def test_m_route_forwards_if_none_match_but_static_does_not(monkeypatch):
     captured = []
 
     async def _fake_proxy_get(
-        path, query_string, cookie_header=None, extra_headers=None
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
     ):
         captured.append((path, extra_headers))
 
@@ -184,6 +192,80 @@ def test_m_route_forwards_if_none_match_but_static_does_not(monkeypatch):
     # No header on the request -> nothing invented.
     assert captured[1] == ("m/some-slug", None)
     assert captured[2] == ("static/style.css", None)
+
+
+# --- a real 301 for a reslugged page must reach the client, not get -----
+# --- silently followed (found 2026-08-31) --------------------------------
+#
+# aiohttp.ClientSession.get() defaults allow_redirects=True, so Archive's
+# real 301 for a _SLUG_REDIRECTS entry (archive/main.py) was being
+# followed internally by proxy_get() and served to the public/Googlebot
+# as a 200 -- every _SLUG_REDIRECTS entry ever shipped never actually
+# sent a real redirect to the outside world. /m/{slug}/card.jpg's own
+# YouTube 302 must keep the opposite behavior: a browser <img>/og:image
+# consumer needs real bytes back, not a redirect response.
+
+
+def test_bare_slug_disables_redirect_following_but_card_jpg_does_not(monkeypatch):
+    captured_allow_redirects = {}
+
+    async def _fake_proxy_get(
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
+    ):
+        captured_allow_redirects[path] = allow_redirects
+
+        class _FakeResponse:
+            status = 301
+            headers = {"Location": "/m/the-real-slug"}
+            content = _EmptyChunkIter()
+
+        class _FakeSession:
+            async def close(self):
+                pass
+
+        return _FakeSession(), _FakeResponse()
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    # follow_redirects=False: the thing under test is what allow_redirects
+    # this app passes to proxy_get(), not whether the test client itself
+    # chases a 301 -- the fake always returns the same 301 regardless of
+    # target, so a redirect-following client would loop forever.
+    app_client.get("/m/old-slug", follow_redirects=False)
+    app_client.get("/m/old-slug/card.jpg", follow_redirects=False)
+    app_client.get("/m/old-slug/transcript.txt", follow_redirects=False)
+
+    assert captured_allow_redirects["m/old-slug"] is False
+    assert captured_allow_redirects["m/old-slug/card.jpg"] is True
+    assert captured_allow_redirects["m/old-slug/transcript.txt"] is True
+
+
+async def test_proxy_get_forwards_allow_redirects_to_aiohttp(monkeypatch):
+    monkeypatch.setenv("ARCHIVE_BASE_URL", "https://archive.example.test")
+    captured = {}
+
+    class _FakeResponse:
+        status = 301
+        headers = {"Location": "/m/the-real-slug"}
+
+    class _FakeSession:
+        async def get(self, url, headers=None, allow_redirects=True):
+            captured["allow_redirects"] = allow_redirects
+            return _FakeResponse()
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(
+        archive_client.aiohttp, "ClientSession", lambda *a, **k: _FakeSession()
+    )
+
+    session, response = await archive_client.proxy_get(
+        "m/old-slug", "", allow_redirects=False
+    )
+    assert captured["allow_redirects"] is False
+    assert response.status == 301
+    await session.close()
 
 
 # --- a schemeless ARCHIVE_BASE_URL is a config error, not a request ------
