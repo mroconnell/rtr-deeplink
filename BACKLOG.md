@@ -83,17 +83,17 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (36)
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
-  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
+  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (3)
+    [JUST-DO-IT] Tucson, AZ
+    [JUST-DO-IT] Omaha, NE
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (8)
-    [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
+  Jurisdiction extraction & backfill  (6)
+    [HUMAN] Derry, NH's TelVue org token found — needs a scoping
     [JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
-    [LATER] Domain guesser matched a same-named US state's real portal
-    [LATER] ~25 smaller consolidated city-county governments still need
   Adapter & platform gaps  (15)
     [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
@@ -696,39 +696,33 @@ Full per-tenant history (what closed, when, and why) moved to
 closed. Distinct from the "no domain found yet" jurisdiction-coverage
 work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
-- **Tucson, AZ** — confirmed still real, re-checked against the live
-  archive 2026-08-30: the one archived Tucson page
-  (`tucson-az-2026-08-05-regular-meeting`, source
-  `tucsonaz.hylandcloud.com`) genuinely has no video. Real
-  video/audio+minutes live on a separate city YouTube channel/page not
-  yet wired to `youtube_channel.py` (which today only covers Legistar
-  netlocs). Same shape as the Columbus OH fix (WO-72) — a real,
-  buildable fallback entry once a channel ID is confirmed.
-- **Atlanta, GA** — re-checked against the live archive 2026-08-30: 14
-  real meeting links now archived (up from "at least one"), but the
-  working ones found are sourced from **IQM2**
+- **[JUST-DO-IT] Tucson, AZ** — real channel confirmed 2026-08-31:
+  **@CityofTucson**, channel ID `UC2-H8TgM1ODhDxjRto0L8cg`, verified
+  posting real Mayor & Council meeting recordings (e.g. the Jan 22, 2025
+  meeting confirmed on this exact channel ID). Tucson's one archived page
+  (`tucsonaz.hylandcloud.com`, Hyland) genuinely has no video — ready to
+  wire in as a `hyland.py` YouTube fallback (same shape as WO-72's
+  Columbus OH fix), just needs the netloc-keyed mapping built.
+- **Atlanta, GA** — the working archived pages are sourced from IQM2
   (`atlantacityga.iqm2.com`), not ChampDS — Atlanta apparently runs both
   systems for different bodies. The original ChampDS gap is unconfirmed
-  either way without the user's specific failing URL; not chased
-  further without it.
-- **Omaha, NE** — confirmed still zero archived pages, re-checked
-  2026-08-30 (`/api/jurisdictions?q=omaha` returns no matches). Live
-  video only at `citycouncil.cityofomaha.org` during scheduled meeting
-  times, no archive; the "past videos" link routes to
-  `cityclerk.cityofomaha.org`, which is Cloudflare-protected and
-  returned inconsistent results live 2026-08-30 (sometimes a JS
-  challenge shell, sometimes a plain 403). Genuinely needs real
-  investigation, not a quick fix.
-- **Virginia Beach, VA** — the `onboardgov.virginiabeach.gov` SPA gap
-  is real, but **less urgent than framed**: re-checked against the live
-  archive 2026-08-30, Virginia Beach already has a real, working City
-  Council meeting page (`virginia-2026-08-18-city-council-meeting-8-18
-  -2026`) sourced from **Cablecast** (`virginiabeach.cablecast.tv`), an
-  already-supported platform — its jurisdiction was corrected from bare
-  "Virginia" to "Virginia Beach, VA" earlier tonight. If Cablecast
-  covers Council meetings going forward, the OnBoardGOV SPA investigation
-  may not be worth the headless-browser cost at all — worth confirming
-  Cablecast's real coverage before investing in the SPA gap.
+  either way without the user's specific failing URL; not chased further
+  without it.
+- **[JUST-DO-IT] Omaha, NE** — real alternate video source found
+  2026-08-31: Douglas Omaha Technology Commission's YouTube channel,
+  **@DOTComm2013**, channel ID `UCBJ5WE5dI3_GIBLoUNEgBXQ`, has a real,
+  current "Omaha City Council" playlist (most recent upload 13 days old
+  as of the check). `citycouncil.cityofomaha.org` (live-only) and
+  `cityclerk.cityofomaha.org` (still Cloudflare-gated, confirmed
+  unchanged) are dead ends as before — this is a genuinely different,
+  previously-undocumented path. Ready to wire in as a `youtube_channel.py`
+  fallback.
+- **Virginia Beach, VA — resolved, not just less urgent.** Confirmed
+  live 2026-08-31: `virginiabeach.cablecast.tv` has real, ongoing weekly
+  City Council coverage (checked 4 consecutive weeks through 9/1/2026,
+  several with captions) — the OnBoardGOV SPA investigation isn't worth
+  building. (Incidentally found the CSV's own example URL for this
+  tenant had gone stale — Cablecast recycles show IDs — refreshed it.)
 
 - **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   NEEDS-AUDIT there, misfiled), compacted the same day — Granicus's
@@ -757,16 +751,16 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
 ### Jurisdiction extraction & backfill
 
-- **[NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
-  session — the one residual of an otherwise-closed title-parsing gap.**
-  WO-67 (2026-08-30, see `BACKLOG_DONE.md`) fixed the title-parsing gap
-  this entry originally described (Leominster MA, Royal Oak MI, Summit
-  NJ, Luverne MN, and Albany NY all now resolve correctly) and added
-  confirmed org-token jurisdictions for Leominster/Royal Oak/Luverne.
-  Derry NH's live page was searched for via `/meetings?q=`, the TelVue
-  queue file, and the sitemap, with no match found — needs a fresh
-  search for its real published slug before it can be fixed the same
-  way.
+- **[HUMAN] Derry, NH's TelVue org token found — needs a scoping
+  decision, not more searching.** Found and verified live 2026-08-31:
+  org token `CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l`, real active Town
+  Council/Planning Board/Conservation Commission series, content current
+  through 08/04/26. **Not logged to `jurisdiction_coverage.csv` — Derry,
+  NH has no row in that file at all.** NH's population there appears
+  limited to the state's 13 legally-chartered cities + counties (23 rows
+  total, all "city"/"County" suffix, zero "town" suffix); Derry is a
+  "town" under NH law. Unclear whether that's deliberate scoping or a
+  real gap — needs a decision before adding a row and wiring this up.
 
 - **[JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
   action, not a human product decision — the write path now exists.**
@@ -872,31 +866,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   re-running any of this — it no longer exists in any scratchpad.
 
 
-- **[LATER] Domain guesser matched a same-named US state's real portal
-  instead of the county's — fixed at the source, 6 wrong rows reverted,
-  2026-08-21.** `find_gov_domains.py`'s unqualified `{bare_name}.gov`
-  candidate systematically collides with a state's own portal whenever a
-  county's bare name (after stripping "County"/"Parish") is itself a
-  full state name. 6 rows in `jurisdiction_coverage.csv` had a wrong
-  domain from this (Delaware County PA/OH/IN, Oklahoma/Utah/Nevada
-  County). All 6 reverted to blank; root cause fixed in
-  `find_gov_domains.py` (skip the unqualified candidate when the bare
-  name is a US state name). No real domain re-found for these 6 yet —
-  lower priority given the small population, open if revisited.
-
-- **[LATER] ~25 smaller consolidated city-county governments still need
-  a real domain — 13 of ~38 already done, see `BACKLOG_DONE.md`,
-  2026-08-20/21.** A consolidated city-county's real domain often shares
-  no text with the county's own Census name (Marion County IN's real
-  domain is `indy.gov`). 13 of ~38 found and verified nationally
-  (Indianapolis, Nashville, Louisville, Columbus GA, Lexington,
-  Jacksonville, Athens GA, Augusta, Kansas City KS, East Baton Rouge, New
-  Orleans). San Francisco County CA and Denver County CO were never part
-  of this gap (their Census name matches the consolidated city already).
-  **Still open**: the smaller/harder-to-verify remainder — Anaconda/Deer
-  Lodge County MT, Butte/Silver Bow County MT, Houma/Terrebonne Parish
-  LA, Hartsville/Trousdale County TN, Lynchburg/Moore County TN, and
-  several small Georgia ones.
 
 ### Adapter & platform gaps
 
@@ -931,13 +900,24 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   resolved correctly with no code change. **None of the 23 have been
   ingested into production** — that's a separate step needing explicit
   sign-off before creating new public content, deliberately not done as
-  part of the code fix. **~127 tokens from the 150-genuinely-untouched
-  pool remain unclassified/unverified** (150 total − 23 verified this
-  round, tracking `likely_civic` classification gaps too) — still a real
-  queue, just not the specific "112" this entry originally claimed. The
-  `collapse=urlkey:64` trick remains the reusable method for finishing
-  this properly (and plausibly generalizes to other CDX-blocked
-  platforms).
+  part of the code fix. The `collapse=urlkey:64` trick remains the
+  reusable method for finishing this properly (and plausibly generalizes
+  to other CDX-blocked platforms). **Remaining 127-token pool fully
+  classified 2026-08-31** (reproduced the batch-2 method exactly,
+  confirmed the 127 count): 16 `likely_civic`, 8 `vod_not_enabled` (real,
+  terminal — VOD not enabled on that account), 36 `fetch_error` (mostly
+  real dead/retired tokens), 66 `unclear`, 1 `likely_sports_or_school`.
+  4 of the 16 civic tokens spot-verified via a real `resolve()` call: 2
+  are real active civic channels with jurisdiction still unidentified
+  (worth a fresh ID pass), 1 is confirmed stale (Egg Harbor Township NJ,
+  superseded by YouTube), 1 is confirmed empty/live-only (New Castle
+  County DE — not a fix for that county's existing gap). Also surfaced a
+  real jurisdiction-guess bug in `telvue.py`: guessed "Building" as a
+  place name from a "Building Commission Meeting" title. 12 of the 16
+  civic tokens and the 66 unclear/1 sports tokens still need manual
+  verification — reproduction script and full classification output
+  saved to this session's scratchpad, not yet copied into
+  `~/Documents/rtr-business/research/cc_scan_data/`.
 
 - **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
   custom "Agenda Management System" agenda-item extraction is more
@@ -1023,11 +1003,18 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   pushed as agenda-only, already in `PROUDCITY_KNOWN_DOMAINS`;
   Effingham/George West confirmed no active "meeting" post type).
   **Genuinely still open**: Charlotte TX and Brazos Valley COG (too
-  ambiguous to guess a domain, never chased — this part of the original
-  framing was accurate); Lafayette CA and Talent OR remain
-  Cloudflare-gated (`www.cityoftalent.org` still 403s live as of
-  2026-08-30). Low priority — the adapter and known-domains list already
-  cover the real yield from this round.
+  ambiguous to guess a domain, never chased). Talent OR reconfirmed
+  genuinely Cloudflare-gated 2026-08-31 (plain-HTTP 403 unchanged).
+  **Lafayette CA's "Cloudflare-gated" framing here was itself stale** —
+  per `BACKLOG_DONE.md`'s own 2026-08-26 finding it's Akamai, already
+  solved via header-spoofing, and the real blocker is no active
+  "meeting" post type, not reachability; this entry just hadn't been
+  corrected to match. Holyoke's specific 429'd meeting URL still isn't
+  identified (checked 2026-08-31 via the WP REST API, which doesn't
+  expose a video-URL field) — whether it's recovered by now still needs
+  that URL, not just "retry once time has passed." Low priority — the
+  adapter and known-domains list already cover the real yield from this
+  round.
 
 - **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
   channel fallback (2026-08-21) — two real ones open, none blocking.**

@@ -82,6 +82,34 @@ confidently either direction; closed out rather than left open with
 nothing to act on. Revisit only if a second, clearer truncation example
 turns up.
 
+## Domain guesser's 6 wrong-domain rows re-found, and 8 consolidated city-county domains found [Done 2026-08-31]
+
+**Domain guesser's 6 rows** (Delaware County PA/OH/IN, Oklahoma/Utah/
+Nevada County — reverted to blank 2026-08-21 after the guesser's
+US-state-name collision bug was fixed at the source): all 6 re-found
+and verified live 2026-08-31 (real official county sites, confirmed via
+page content, not directory/chamber pages) — Delaware County PA
+`delcopa.gov`, OH `co.delaware.oh.us`, IN `delawarecounty.in.gov`,
+Oklahoma County OK `oklahomacounty.org`, Utah County UT
+`utahcounty.gov`, Nevada County CA `nevadacountyca.gov`. Logged to
+`~/Documents/rtr-business/research/jurisdiction_coverage.csv` (domain
+field only — no platform/video enumeration done yet).
+
+**Consolidated city-county governments**, the remainder of the ~38-total
+population (13 already done 2026-08-20/21): all 8 remaining ones
+re-found and verified live 2026-08-31 — Anaconda-Deer Lodge County MT
+`adlc.us`, Butte-Silver Bow MT `co.silverbow.mt.us`, Terrebonne Parish
+LA (Houma) `tpcg.org`, Hartsville/Trousdale County TN
+`trousdalecountytn.gov`, Lynchburg/Moore County TN
+`metromoorecounty.org`, plus 3 small Georgia consolidations not
+previously named — Cusseta-Chattahoochee County `ugoccc.com`,
+Georgetown-Quitman County `gqc-ga.org`, Webster County (Preston)
+`webstercountyga.org`. This closes the population — all ~38 consolidated
+city-counties now have a real, verified domain. Logged to the same CSV.
+
+CSV integrity checked before/after (27,649 rows, 13 columns, zero
+malformed rows); backup at `jurisdiction_coverage.csv.bak_20260831`.
+
 ## SLC `_nearest_topic_text()` "Meeting Highlights" promo-box gap fixed [Done 2026-08-31]
 
 Real gap: SLC's "Meeting Highlights" promo box (confirmed live on
