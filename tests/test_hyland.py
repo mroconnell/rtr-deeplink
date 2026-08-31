@@ -1,5 +1,8 @@
+import json
+
 import yt_dlp
 
+from app.platforms import youtube_channel
 from app.platforms.hyland import (
     _AGENDA_ITEM_NEW_RE,
     _AGENDA_ITEM_RE,
@@ -39,13 +42,54 @@ CONCORD_AGENDA_A_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Meet
 CONCORD_AGENDA_B_URL = "https://stream2.ci.concord.ca.us/OnBaseAgendaOnline/Documents/ViewAgenda?meetingId=1413&type=agenda&doctype=1"
 
 
-async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
-    # Tucson's OnBase instance never has video (confirmed across 2
-    # independent meeting ids) -- but unlike BACKLOG.md's earlier
-    # conclusion, title/date ARE real and statically fetchable from the
-    # ViewMeetingAgenda AJAX endpoint once the real `type` value
-    # (matching `doctype`, not the page's own literal `AGENDATYPEVALUE`
-    # JS placeholder) is substituted.
+def _tucson_channel_entries():
+    return json.loads(load_fixture("youtube_channel", "tucson_channel_listing.json"))[
+        "entries"
+    ]
+
+
+def _stub_tucson_channel(monkeypatch, entries=None, atom_published_date=None):
+    # Same pattern test_legistar.py's WO-30 tests use -- see that file's
+    # own `_stub_channel()`. yt-dlp itself is never invoked in tests;
+    # `_list_channel` is stubbed directly.
+    monkeypatch.setattr(
+        youtube_channel,
+        "_list_channel",
+        lambda channel_id: list(
+            entries if entries is not None else _tucson_channel_entries()
+        ),
+    )
+
+    async def _fake_atom_fetch(channel_id, video_id):
+        return atom_published_date
+
+    monkeypatch.setattr(youtube_channel, "_fetch_atom_published_date", _fake_atom_fetch)
+
+
+def _stub_tucson_youtube(
+    monkeypatch, title="Tucson Mayor and City Council Meetings  AUG 05, 2026"
+):
+    def _fake_extract_info(video_id):
+        return {
+            "title": title,
+            "uploader": "CityofTucson",
+            "release_date": "20260805",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+
+async def test_resolve_tucson_no_video_ever_falls_back_to_youtube_channel(monkeypatch):
+    # Tucson's OnBase instance never has video of its own (confirmed
+    # across 2 independent meeting ids) -- but title/date ARE real and
+    # statically fetchable from the ViewMeetingAgenda AJAX endpoint once
+    # the real `type` value (matching `doctype`, not the page's own
+    # literal `AGENDATYPEVALUE` JS placeholder) is substituted. WO-89
+    # (2026-08-31): once title/date are known, the real recording is
+    # findable on the city's own YouTube channel -- confirmed live via a
+    # real yt-dlp channel listing, "Tucson Mayor and City Council
+    # Meetings  AUG 05, 2026" = youtube.com/watch?v=4_0s3wCtRCA. This
+    # fixture is that real, captured listing (merged /videos + /streams).
     html = load_fixture("hyland", "tucson_view_meeting.html")
     agenda_html = load_fixture("hyland", "tucson_view_meeting_agenda.html")
     routes = {
@@ -54,28 +98,76 @@ async def test_resolve_tucson_no_video_ever_falls_back_to_agenda_link():
             status=200, text=agenda_html, url=TUCSON_AGENDA_URL
         ),
     }
+    _stub_tucson_channel(monkeypatch)
+    _stub_tucson_youtube(monkeypatch)
 
     with mock_session(routes):
         result = await HylandAssetFinder().resolve(TUCSON_URL)
 
     assert result.platform == "hyland"
+    # Real title/date/jurisdiction still come from this adapter's own
+    # extraction, not YouTube's -- delegation is for video (+ transcript,
+    # when there is one) only, matching every other delegator in this
+    # codebase (see the Anchorage YouTube-embed test below).
     assert result.title == "REGULAR MEETING"
     assert result.date == "2026-08-05"
     assert result.jurisdiction == "Tucson, AZ"
-    assert result.video_url is None
-    assert result.video_format is None
-    assert result.video_warnings == ["No video found on this page."]
-    # No video means no itemEventPoints, so nothing to join agenda items
-    # against for *timestamps* -- but the agenda itself is real and fully
-    # parseable, and until WO-63 all 27 items were discarded on that
-    # basis, leaving a page holding nothing at all. They now come back
-    # untimed (start=0), in document order, which is agenda order.
+    assert result.video_url == "https://www.youtube.com/embed/4_0s3wCtRCA"
+    assert result.video_format == "youtube"
+    # Provenance said plainly, same wording legistar.py's identical
+    # fallback uses -- this page has no video link of its own at all, so
+    # a reader needs to know where the match came from.
+    warning = result.video_warnings[0]
+    assert "CityofTucson" in warning
+    assert "Tucson Mayor and City Council Meetings  AUG 05, 2026" in warning
+    assert "not linked from the meeting page" in warning
+    # No itemEventPoints on this page (it has no video of its own), so
+    # nothing to join agenda items against for *timestamps* -- but the
+    # agenda itself is real and fully parseable, and until WO-63 all 27
+    # items were discarded on that basis, leaving a page holding nothing
+    # at all. They still come back untimed (start=0), in document order.
     assert len(result.agenda_items) == 27
     assert all(item.start == 0 for item in result.agenda_items)
     assert all(item.text for item in result.agenda_items)
     # Nulled once real items exist -- hyland.py's pre-existing rule
     # against surfacing a redundant link to the document just parsed.
     assert result.agenda_link is None
+
+
+async def test_resolve_tucson_declines_when_channel_has_no_match_that_day(monkeypatch):
+    # Real "no video found" behavior must survive for a Tucson meeting
+    # date the channel simply doesn't have (e.g. older than the channel
+    # listing's window, or a body the channel never posts) -- declining is
+    # the honest outcome, not a guess.
+    html = load_fixture("hyland", "tucson_view_meeting.html")
+    agenda_html = load_fixture("hyland", "tucson_view_meeting_agenda.html")
+    routes = {
+        TUCSON_URL: FakeResponse(status=200, text=html, url=TUCSON_URL),
+        TUCSON_AGENDA_URL: FakeResponse(
+            status=200, text=agenda_html, url=TUCSON_AGENDA_URL
+        ),
+    }
+    # No entry for 2026-08-05 at all.
+    _stub_tucson_channel(
+        monkeypatch,
+        entries=[
+            {
+                "id": "330FT-o60Xg",
+                "title": "Tucson Mayor and City Council Meetings  July 21, 2026",
+                "duration": 25292,
+                "live_status": "was_live",
+            }
+        ],
+    )
+
+    with mock_session(routes):
+        result = await HylandAssetFinder().resolve(TUCSON_URL)
+
+    assert result.platform == "hyland"
+    assert result.video_url is None
+    assert result.video_warnings == ["No video found on this page."]
+    # Untimed agenda still comes through independent of the video outcome.
+    assert len(result.agenda_items) == 27
 
 
 async def test_resolve_agenda_fetch_failure_is_logged(caplog):

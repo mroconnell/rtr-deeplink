@@ -295,6 +295,79 @@ def test_columbus_declines_a_single_word_body():
 
 
 # --------------------------------------------------------------------
+# Tucson -- WO-89, 2026-08-31. Not a Legistar tenant at all: the one
+# archived Tucson page is a Hyland/OnBase-family page
+# (tucsonaz.hylandcloud.com) that genuinely has no video anywhere on it
+# (confirmed live -- see hyland.py's own module docstring). Its real
+# recording sits, unlinked, on the city's own YouTube channel, confirmed
+# live 2026-08-31 via a real yt-dlp flat listing (merged /videos +
+# /streams) of youtube.com/channel/UC2-H8TgM1ODhDxjRto0L8cg
+# ("CityofTucson"). `tucson_channel_listing.json` is that real capture.
+#
+# Tucson's own page title is just "REGULAR MEETING" -- one significant
+# token after generic-token stripping, one short of find_matches()'s
+# two-token floor -- so it can never be searched on directly. That's what
+# `ChannelFallback.fixed_meeting_title` is for: Tucson's registry entry
+# fixes the search string to "Tucson Mayor and City Council Meeting"
+# instead, a fact confirmed by the tenant's own site nav (a "mayorcouncil"
+# link) and every real video on its channel being titled "Tucson Mayor
+# and City Council Meetings ...".
+# --------------------------------------------------------------------
+
+
+def test_tucson_fixed_title_matches_the_known_recording():
+    # find_matches()/_pick() are the pure layer -- exercised here with the
+    # SAME fixed string the registry substitutes for Tucson's own generic
+    # page title (see test_tucson_channel_match_overrides_the_generic_page_title
+    # below for proof the override itself is wired up).
+    assert (
+        _match("tucson", "Tucson Mayor and City Council Meeting", "2026-08-05")["id"]
+        == "4_0s3wCtRCA"
+    )
+
+
+def test_tucson_matches_a_different_real_meeting_date():
+    # Same fixed search title, a different real date on the channel --
+    # checks the date half of the match isn't accidentally hardcoded.
+    assert (
+        _match("tucson", "Tucson Mayor and City Council Meeting", "2026-07-21")["id"]
+        == "330FT-o60Xg"
+    )
+
+
+def test_tucson_declines_a_date_the_channel_has_nothing_for():
+    # No Tucson Mayor & Council video exists for this real date in the
+    # captured window -- declining is the honest outcome.
+    assert (
+        _match("tucson", "Tucson Mayor and City Council Meeting", "2026-01-01") is None
+    )
+
+
+async def test_tucson_channel_match_overrides_the_generic_page_title(monkeypatch):
+    # find_channel_match() is what actually runs in production, and it's
+    # given Tucson's own real page title ("REGULAR MEETING" -- one
+    # significant token, one short of find_matches()'s two-token floor).
+    # This proves ChannelFallback.fixed_meeting_title actually substitutes
+    # a real, matchable string before find_matches() ever sees it, rather
+    # than relying on the caller to already know to skip the page's title.
+    entries = [e for e in _entries("tucson") if yc.is_publishable(e)]
+    monkeypatch.setattr(yc, "_list_channel", lambda channel_id: entries)
+
+    async def _no_atom_corroboration(channel_id, video_id):
+        return None
+
+    monkeypatch.setattr(yc, "_fetch_atom_published_date", _no_atom_corroboration)
+
+    match = await yc.find_channel_match(
+        "tucsonaz.hylandcloud.com", "REGULAR MEETING", "2026-08-05"
+    )
+
+    assert match is not None
+    assert match.video_id == "4_0s3wCtRCA"
+    assert match.channel_name == "CityofTucson"
+
+
+# --------------------------------------------------------------------
 # The second, independent date check
 # --------------------------------------------------------------------
 
@@ -324,15 +397,20 @@ def test_video_date_check_accepts_a_missing_date():
     assert yc.video_date_is_plausible("2026-07-01", None)
 
 
-def test_only_the_five_confirmed_tenants_have_a_channel():
+def test_only_the_six_confirmed_tenants_have_a_channel():
     # The registry is deliberately a short, human-verified list -- every
-    # other Legistar instance keeps the pre-existing "no video found"
-    # behavior untouched.
+    # other Legistar/Hyland instance keeps the pre-existing "no video
+    # found" behavior untouched. Tucson (WO-89) is the first non-Legistar
+    # entry -- confirms the registry generalizes to any meeting-system
+    # netloc, not just Legistar's.
     assert yc.has_channel_fallback("phoenix.legistar.com")
     assert yc.has_channel_fallback("PHILA.LEGISTAR.COM")
     assert yc.has_channel_fallback("columbus.legistar.com")
+    assert yc.has_channel_fallback("tucsonaz.hylandcloud.com")
+    assert yc.has_channel_fallback("TUCSONAZ.HYLANDCLOUD.COM")
     assert not yc.has_channel_fallback("charlottenc.legistar.com")
     assert not yc.has_channel_fallback("legistar.council.nyc.gov")
+    assert not yc.has_channel_fallback("mccobagenda.databankcloud.com")
 
 
 async def test_find_channel_match_logs_a_listing_failure(monkeypatch, caplog):

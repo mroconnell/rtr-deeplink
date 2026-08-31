@@ -1,6 +1,6 @@
 """Find a meeting's real recording on a city's own YouTube channel, for
-the confirmed case where the meeting-management system (Legistar) hosts
-no video at all (WO-30, built 2026-08-21).
+the confirmed case where the meeting-management system hosts no video at
+all (WO-30, built 2026-08-21).
 
 Why this exists
 ---------------
@@ -8,7 +8,11 @@ Five large US cities run a Legistar instance whose video column is
 *structurally* empty -- not "empty for this meeting," empty for every
 meeting -- while the real recordings sit, public and unlinked, on the
 city's own YouTube channel. Confirmed live 2026-08-21 (2026-08-30 for
-Columbus) against real pages/APIs, not assumed:
+Columbus) against real pages/APIs, not assumed. Nothing about the
+matching machinery below is actually Legistar-specific -- it keys purely
+off a meeting-system netloc, a title, and a date -- which is what let
+Tucson, AZ's Hyland/OnBase tenant join the registry on 2026-08-31 (WO-89,
+see its own entry below) with no new mechanism, only a new entry:
 
 - **Phoenix, AZ** (`phoenix.legistar.com`): every MeetingDetail page
   server-renders `<a class="videolink" ...>Not Available</a>` with no
@@ -100,6 +104,18 @@ class ChannelFallback:
 
     channel_id: str  # the stable UC... id, not a handle -- see below
     channel_name: str  # exactly as YouTube reports it, for the provenance warning
+    # Some tenants' own meeting title is too generic to ever clear
+    # find_matches()'s two-significant-token floor -- confirmed real on
+    # Tucson's Hyland/OnBase page (WO-89, 2026-08-31): its <h1> reads just
+    # "REGULAR MEETING" ({"regular"} after generic-token stripping, one
+    # token short), even though the tenant is genuinely single-body (its
+    # own nav carries a "mayorcouncil" link, and every real video on its
+    # channel is titled "Tucson Mayor and City Council Meetings ..."). Set
+    # this to search on a fixed real body name instead of whatever the
+    # source page calls the meeting -- it REPLACES the caller-supplied
+    # title outright rather than combining with it, since the page's own
+    # title carries no usable signal here at all.
+    fixed_meeting_title: Optional[str] = None
 
 
 # Curated, human-verified, and deliberately in code -- same precedent as
@@ -179,6 +195,25 @@ _CHANNEL_FALLBACKS: Dict[str, ChannelFallback] = {
     # field.
     "columbus.legistar.com": ChannelFallback(
         "UCfttJJ9T5_1W1JewiTJqzqA", "City of Columbus"
+    ),
+    # Tucson, AZ (WO-89, 2026-08-31). Not a Legistar tenant -- this
+    # registry turns out to have nothing Legistar-specific in it at all,
+    # so a Hyland/OnBase netloc slots in the same way. The one archived
+    # Tucson page (tucsonaz.hylandcloud.com, id=1956, doctype=2,
+    # "REGULAR MEETING" on 2026-08-05) genuinely has no video of any kind
+    # in its own page (confirmed live -- hyland.py's module docstring:
+    # "Tucson never has video, confirmed across 2 independent meeting
+    # ids"). The real recording sits on the city's own channel instead:
+    # confirmed live 2026-08-31 via a real yt-dlp flat listing of both
+    # channel tabs -- "Tucson Mayor and City Council Meetings  AUG 05,
+    # 2026" = youtube.com/watch?v=4_0s3wCtRCA, under the /streams tab
+    # (a past livestream, live_status "was_live", same shape as most of
+    # Phoenix's), on the real "CityofTucson" channel whose channel_id is
+    # this one.
+    "tucsonaz.hylandcloud.com": ChannelFallback(
+        "UC2-H8TgM1ODhDxjRto0L8cg",
+        "CityofTucson",
+        fixed_meeting_title="Tucson Mayor and City Council Meeting",
     ),
 }
 
@@ -624,7 +659,13 @@ async def find_channel_match(
     video found" outcome, so every uncertain path here declines into it.
     """
     fallback = _CHANNEL_FALLBACKS.get((netloc or "").lower().lstrip("."))
-    if not fallback or not meeting_title or not meeting_date:
+    if not fallback or not meeting_date:
+        return None
+    # A fixed override replaces the caller's title outright -- see
+    # ChannelFallback.fixed_meeting_title's own comment (Tucson's own page
+    # title is too generic to search on at all).
+    search_title = fallback.fixed_meeting_title or meeting_title
+    if not search_title:
         return None
     try:
         target = datetime.strptime(meeting_date, "%Y-%m-%d").date()
@@ -645,7 +686,7 @@ async def find_channel_match(
         return None
 
     matches = [
-        e for e in find_matches(entries, meeting_title, target) if is_publishable(e)
+        e for e in find_matches(entries, search_title, target) if is_publishable(e)
     ]
     chosen = _pick(matches)
     if not chosen:
