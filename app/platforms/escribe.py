@@ -383,14 +383,14 @@ class EscribeAssetFinder(AssetFinder):
                 match = no_prefix_match
         if not match:
             return None
-        label = match.group(1).replace("-", "")
         # Real bug fixed 2026-08-16 (WO-14, BACKLOG.md): this used to be a
         # bare `.replace("-", " ").title()`, which only helps a subdomain
-        # with literal hyphens -- every real customer confirmed live is one
-        # concatenated word ("cityofgainesville", "thunderbay", "portmoody"),
-        # so a multi-word city collapsed into one mashed-together word
-        # ("Thunderbay", "Portmoody" instead of "Thunder Bay"/"Port Moody").
-        # wordninja-split the same way Granicus's _humanize_subdomain() does.
+        # with literal hyphens -- every real customer confirmed live at the
+        # time was one concatenated word ("cityofgainesville", "thunderbay",
+        # "portmoody"), so a multi-word city collapsed into one mashed-
+        # together word ("Thunderbay", "Portmoody" instead of "Thunder
+        # Bay"/"Port Moody"). wordninja-split the same way Granicus's
+        # _humanize_subdomain() does.
         #
         # Was deliberately NOT gated on Census-table validation at first --
         # eScribe serves real Canadian customers the then-US-only Census
@@ -406,17 +406,42 @@ class EscribeAssetFinder(AssetFinder):
         # uses (`jurisdiction_enrich.validated_label_extract()`), rather
         # than reimplementing wordninja-split-and-guess locally -- declining
         # (returning None) on a subdomain that doesn't validate rather than
-        # asserting a wrong name. Known, honestly-flagged residual gap,
-        # corrected 2026-08-29 (the table gap below was fixed 2026-08-21;
-        # this comment hadn't been updated to say so): Durham Region, Peel
-        # Region and Region of Waterloo are all in the StatsCan table now
-        # (`build_canada_regional_municipalities()`) and validate correctly
-        # from their real glued-subdomain form. Chatham-Kent, Arran-Elderslie
-        # and The Blue Mountains are ALSO already in the table -- the
-        # remaining gap for those three is the label matcher's own hyphen
-        # handling declining a real, present row, not a missing table row
-        # -- see BACKLOG.md's "Ontario regional municipality" entry.
-        return jurisdiction_enrich.validated_label_extract(label)
+        # asserting a wrong name.
+        #
+        # The label's own hyphens, when it has any, are now passed through
+        # unchanged rather than stripped first (fixed 2026-08-31 -- the gap
+        # BACKLOG.md called "the label matcher's own hyphen handling
+        # declining a real, present row"). This used to unconditionally
+        # `.replace("-", "")` before ever calling the validator, on the
+        # theory that a real eScribe subdomain's hyphen is just another
+        # character wordninja can re-derive after concatenation -- true for
+        # Chatham-Kent/Arran-Elderslie/The Blue Mountains (all three
+        # resolve correctly either way, since "chatham"/"kent"/"arran"/
+        # "elderslie" each happen to be single tokens in wordninja's own
+        # dictionary), but confirmed FALSE 2026-08-31 on a fourth real live
+        # tenant: pub-strathroy-caradoc.escribemeetings.com. Stripped and
+        # concatenated, `wordninja.split("strathroycaradoc")` returns
+        # `['strath', 'roy', 'cara', 'doc']` -- four garbage fragments,
+        # since neither "strathroy" nor "caradoc" is a token wordninja's
+        # dictionary can segment out (concatenated OR still hyphenated:
+        # `wordninja.split("strathroy-caradoc")` produces the identical
+        # garbage, since wordninja treats a hyphen as just another
+        # character to cost-minimize over, not an inherent word boundary --
+        # preserving it doesn't help wordninja's own tiers here). What DOES
+        # help is that `validated_label_extract()`'s own tier 1 checks the
+        # raw label against the table BEFORE wordninja ever runs, and the
+        # table's real row is spelled with the identical hyphen
+        # ("Strathroy-Caradoc, ON") -- so the subdomain's own hyphen is a
+        # strictly more direct, more reliable boundary signal than asking
+        # wordninja to reconstruct what the URL already told us. Verified
+        # this is a pure improvement, not just a fix for the one new case:
+        # every one of this function's existing real/synthetic test cases
+        # (cityofgainesville, portmoody, thunderbay, delta, chatham-kent,
+        # arranelderslie, bluemountains, townofbonnyville, simi-valley,
+        # perryga, milton) resolves identically whether or not the label's
+        # hyphens are stripped first -- Strathroy-Caradoc is the only one
+        # that differs, and only the hyphen-preserved form gets it right.
+        return jurisdiction_enrich.validated_label_extract(match.group(1))
 
     @staticmethod
     def _extract_agenda_items(
