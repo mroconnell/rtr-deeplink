@@ -8,6 +8,7 @@ from app.platforms.swagit import (
     _is_swagit_events_template_dead_candidate,
     _parse_swagit_playlist_entries,
     _parse_swagit_transcript_download,
+    _playlist_entries_to_video_segments,
 )
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -582,6 +583,26 @@ async def test_resolve_warns_when_meeting_has_multiple_playlist_segments():
         for w in result.video_warnings
     )
 
+    # WO-79: unlike the old (pre-stitching) behavior, the adapter now also
+    # surfaces the full real per-clip list so the transcription pipeline
+    # can stitch a whole-meeting transcript across all 3 -- ordered by
+    # each entry's own real `seq` (6, 13, 51), matching array order here
+    # since the real fixture happens to already be seq-ascending.
+    assert [s.seq for s in result.video_segments] == [6, 13, 51]
+    assert [s.title for s in result.video_segments] == [
+        "9:00 A.M. CALL TO ORDER",
+        "CONSENT AGENDA",
+        "INTRODUCTIONS & HONORARY RESOLUTIONS",
+    ]
+    assert result.video_segments[0].url == (
+        "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo"
+        "/archive/2024/05/07/05072024-532.360.mp4/playlist.m3u8"
+    )
+    assert result.video_segments[2].url == (
+        "https://archive-stream.granicus.com/OnDemand/_definst_/mp4:swagitVideo"
+        "/archive/2024/05/07/05072024-536.360.mp4/playlist.m3u8"
+    )
+
 
 async def test_resolve_no_multi_segment_warning_for_a_single_segment_meeting():
     # BASE_HTML's own playlist has exactly one entry -- the common,
@@ -592,6 +613,42 @@ async def test_resolve_no_multi_segment_warning_for_a_single_segment_meeting():
         result = await SwagitAssetFinder().resolve(PAGE_URL)
 
     assert not any("separate" in w for w in result.video_warnings)
+    assert result.video_segments == []
+
+
+def test_playlist_entries_to_video_segments_orders_by_real_seq_not_array_order():
+    # Synthetic re-ordering of the same real Yolo County entries used
+    # above (WO-79) -- deliberately shuffled out of seq order here to
+    # confirm sorting keys off the real `seq` field, not array position
+    # (this repo's convention: the payload SHAPE is real/fixture-derived,
+    # only the array order is rearranged for this one assertion).
+    entries = [
+        {"seq": 51, "title": " C", "file": "https://x/c.m3u8"},
+        {"seq": 6, "title": " A", "file": "https://x/a.m3u8"},
+        {"seq": 13, "title": " B", "file": "https://x/b.m3u8"},
+    ]
+    segments = _playlist_entries_to_video_segments(entries)
+    assert [s.seq for s in segments] == [6, 13, 51]
+    assert [s.title for s in segments] == ["A", "B", "C"]
+
+
+def test_playlist_entries_to_video_segments_falls_back_to_dfile_and_skips_neither():
+    # Defensive-only cases -- no real Swagit entry checked so far has ever
+    # lacked `file`, but this confirms the fallback chain doesn't crash or
+    # silently drop a real clip when it exists.
+    entries = [
+        {
+            "seq": 1,
+            "title": "Has file",
+            "file": "https://x/a.m3u8",
+            "dfile": "https://x/a.mp4",
+        },
+        {"seq": 2, "title": "Only dfile", "dfile": "https://x/b.mp4"},
+        {"seq": 3, "title": "Neither"},
+    ]
+    segments = _playlist_entries_to_video_segments(entries)
+    assert [s.url for s in segments] == ["https://x/a.m3u8", "https://x/b.mp4"]
+    assert [s.seq for s in segments] == [1, 2]
 
 
 def test_parse_swagit_playlist_entries_returns_none_when_absent():

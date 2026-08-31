@@ -477,3 +477,102 @@ def test_granicus_gets_the_smaller_chunk_size():
 def test_other_platforms_keep_the_default_chunk_size():
     for platform in ("civicclerk", "escribe", "youtube", "unknown", ""):
         assert chunk_size_seconds_for_platform(platform) == 900
+
+
+# --- probe_multi_clip_chunk_plan() (WO-79) ----------------------------------
+#
+# Real, confirmed shape (Yolo County CA clip 324107, White Plains NY clip
+# 292830, Apple Valley MN): some Swagit meetings publish N separate real
+# per-agenda-item video files with no single combined recording. This
+# builds the per-clip chunk plan (cumulative meeting-relative offsets) the
+# transcription pipeline stitches from -- see app/platforms/swagit.py and
+# worker/main.py's process_next_chunk(). Probing itself is just probe_duration()
+# per clip, already covered above -- these tests are synthetic over a fake
+# probe_duration, exercising only the ordering/cumulative-offset/
+# all-or-nothing logic that's new here.
+
+
+def _video_segment(url, *, seq, title=None):
+    from app.platforms.models import VideoSegment
+
+    return VideoSegment(url=url, title=title, seq=seq)
+
+
+async def test_probe_multi_clip_chunk_plan_orders_by_seq_and_accumulates_offsets(
+    monkeypatch,
+):
+    segments = [
+        _video_segment("https://x/c.m3u8", seq=51, title="Third"),
+        _video_segment("https://x/a.m3u8", seq=6, title="First"),
+        _video_segment("https://x/b.m3u8", seq=13, title="Second"),
+    ]
+    durations = {
+        "https://x/a.m3u8": 120.0,
+        "https://x/b.m3u8": 300.0,
+        "https://x/c.m3u8": 45.0,
+    }
+
+    async def _probe(url, *, source_page_url):
+        assert source_page_url == "https://example.new.swagit.com/videos/1"
+        return durations[url]
+
+    monkeypatch.setattr(media_probe, "probe_duration", _probe)
+
+    plan = await media_probe.probe_multi_clip_chunk_plan(
+        segments, source_page_url="https://example.new.swagit.com/videos/1"
+    )
+
+    assert plan == [
+        {
+            "media_url": "https://x/a.m3u8",
+            "start": 0.0,
+            "duration": 120.0,
+            "title": "First",
+            "seq": 6,
+        },
+        {
+            "media_url": "https://x/b.m3u8",
+            "start": 120.0,
+            "duration": 300.0,
+            "title": "Second",
+            "seq": 13,
+        },
+        {
+            "media_url": "https://x/c.m3u8",
+            "start": 420.0,
+            "duration": 45.0,
+            "title": "Third",
+            "seq": 51,
+        },
+    ]
+
+
+async def test_probe_multi_clip_chunk_plan_is_all_or_nothing_on_a_failed_clip(
+    monkeypatch,
+):
+    """A partial plan would silently understate the meeting's real
+    duration with no way to tell which clip went missing -- see the
+    function's own docstring. One bad clip abandons the whole plan."""
+    from app.platforms.media_probe import probe_multi_clip_chunk_plan
+
+    segments = [
+        _video_segment("https://x/a.m3u8", seq=1),
+        _video_segment("https://x/b.m3u8", seq=2),
+    ]
+
+    async def _probe(url, *, source_page_url):
+        return 120.0 if url == "https://x/a.m3u8" else None
+
+    monkeypatch.setattr(media_probe, "probe_duration", _probe)
+
+    plan = await probe_multi_clip_chunk_plan(segments, source_page_url="https://x/")
+    assert plan is None
+
+
+async def test_probe_multi_clip_chunk_plan_returns_none_for_a_single_segment():
+    from app.platforms.media_probe import probe_multi_clip_chunk_plan
+
+    plan = await probe_multi_clip_chunk_plan(
+        [_video_segment("https://x/a.m3u8", seq=1)], source_page_url="https://x/"
+    )
+    assert plan is None

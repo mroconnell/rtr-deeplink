@@ -26,8 +26,10 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 from urllib.parse import urlparse
+
+from .models import VideoSegment
 
 logger = logging.getLogger("rtr_deeplink.media_probe")
 
@@ -216,6 +218,79 @@ async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[fl
         return float(duration)
     except (KeyError, ValueError, json.JSONDecodeError):
         return None
+
+
+async def probe_multi_clip_chunk_plan(
+    video_segments: Sequence[VideoSegment], *, source_page_url: str
+) -> Optional[list[dict]]:
+    """Real per-clip durations and meeting-relative cumulative offsets for
+    a meeting whose adapter found more than one real video file that
+    together make up the whole thing, with no single combined recording
+    available (WO-79; `ResolvedMeeting.video_segments`, confirmed so far
+    for some Swagit tenants -- see swagit.py). Ordered by each clip's own
+    `seq` field (the source's real ordering), not array order.
+
+    Returns a "chunk plan" -- one dict per clip, `{"media_url", "start",
+    "duration", "title", "seq"}`, `start` being that clip's cumulative
+    offset from the start of the meeting -- for the transcription
+    pipeline to use INSTEAD OF the usual fixed chunk_size_seconds windows
+    (see worker/main.py's `process_next_chunk()`): each clip becomes
+    exactly one chunk, its own real duration as the natural chunk
+    boundary, per Ryan's explicit fix direction (BACKLOG.md). Whatever a
+    chunk's transcription produces gets shifted by that same `start` via
+    `worker/segment_utils.shift_segments()` -- the identical mechanism
+    already used to stitch ordinary 900s-window chunks into one
+    meeting-relative transcript, just keyed off per-clip boundaries here
+    instead.
+
+    All-or-nothing: returns None the moment ANY clip fails to probe
+    (unreachable, ffprobe error, non-positive duration) -- a partial plan
+    would silently understate the meeting's real duration with no way to
+    tell which clip went missing, so a caller falls back to the ordinary
+    single-first-clip probe/transcribe path (the pre-WO-79 behavior,
+    still honest about the gap via `video_warnings`) rather than risking
+    a wrong total. Also returns None for 0 or 1 segments -- callers
+    should only reach for this when len(video_segments) > 1, but this is
+    defensive rather than assuming that's always checked first.
+
+    Known limitation, not yet hit by any confirmed real clip: this does
+    NOT further sub-split an individual clip that turns out to be very
+    long, unlike the ordinary fixed-window path's chunk_size_seconds cap
+    -- ffmpeg extraction of a single very long clip could in principle
+    exceed the worker's per-subprocess timeout (media_probe.py's
+    _SUBPROCESS_TIMEOUT_SECONDS) on a slow source. Every confirmed real
+    case so far (Yolo County CA, White Plains NY, Apple Valley MN) has
+    short, per-agenda-item clips, so this hasn't been observed -- if a
+    future tenant's meeting hits it, that's a real BACKLOG.md follow-up,
+    not a hypothetical one to guard against here without a live example.
+    """
+    if len(video_segments) < 2:
+        return None
+    ordered = sorted(video_segments, key=lambda s: (s.seq is None, s.seq))
+    plan: list[dict] = []
+    cursor = 0.0
+    for seg in ordered:
+        duration = await probe_duration(seg.url, source_page_url=source_page_url)
+        if duration is None or duration <= 0:
+            logger.warning(
+                "Multi-clip chunk-plan probing failed for %s (clip %s, seq %s) "
+                "-- abandoning the whole plan, caller falls back to single-clip",
+                source_page_url,
+                seg.url,
+                seg.seq,
+            )
+            return None
+        plan.append(
+            {
+                "media_url": seg.url,
+                "start": cursor,
+                "duration": duration,
+                "title": seg.title,
+                "seq": seg.seq,
+            }
+        )
+        cursor += duration
+    return plan
 
 
 async def _mean_volume_db(path: Path) -> tuple[bool, Optional[float]]:

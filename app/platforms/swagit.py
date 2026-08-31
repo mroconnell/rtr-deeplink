@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from .base import AssetFinder
 from .media_scan import is_hls_url, scan_media_urls, media_type
-from .models import ResolvedMeeting, TranscriptSegment
+from .models import ResolvedMeeting, TranscriptSegment, VideoSegment
 from ..utils import jurisdiction_enrich
 
 logger = logging.getLogger("rtr_deeplink.swagit")
@@ -188,6 +188,43 @@ def _parse_swagit_playlist_entries(html: str) -> Optional[List[dict]]:
     except (ValueError, TypeError):
         return None
     return data if isinstance(data, list) else None
+
+
+def _playlist_entries_to_video_segments(entries: List[dict]) -> List[VideoSegment]:
+    """Real per-clip {url, title, seq} from a parsed jwplayer playlist
+    (WO-79) -- one VideoSegment per entry, ordered by the entry's own
+    real `seq` field (Swagit's own agenda-item ordering, confirmed on
+    Yolo County CA/White Plains NY to be ascending but not contiguous,
+    e.g. 6/13/51 -- so this sorts by it rather than trusting array order
+    to already match).
+
+    Prefers each entry's own `file` (the same HLS .m3u8-on-archive-
+    stream.granicus.com shape `resolve()`'s own candidate scan prefers
+    for the single-video case) and falls back to `dfile` (mp4) only when
+    `file` is absent -- not yet observed on any real entry checked, kept
+    defensive since a missing `file` on some future tenant is plausible
+    even though no confirmed case exists yet. An entry with neither is
+    skipped outright (also never observed) rather than emitting a
+    VideoSegment with no playable URL.
+    """
+    segments: List[VideoSegment] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        url = entry.get("file") or entry.get("dfile")
+        if not url:
+            continue
+        title_raw = entry.get("title")
+        seq = entry.get("seq")
+        segments.append(
+            VideoSegment(
+                url=url,
+                title=title_raw.strip() if isinstance(title_raw, str) else None,
+                seq=seq if isinstance(seq, int) else None,
+            )
+        )
+    segments.sort(key=lambda s: (s.seq is None, s.seq))
+    return segments
 
 
 def _is_swagit_events_template_dead_candidate(url: str) -> bool:
@@ -452,19 +489,29 @@ class SwagitAssetFinder(AssetFinder):
             else:
                 video_warnings.append("No playable video found on this page.")
 
-        # Real, confirmed-live structural gap (BACKLOG.md): some Swagit
-        # customers don't publish one continuous recording per meeting --
-        # the real jwplayer playlist has a separate file per agenda item
-        # (confirmed live against Yolo County CA clip 324107, 12 entries,
-        # and White Plains NY clip 292830, 5 entries). Whichever candidate
-        # won video selection above is only the first of these, so both
-        # its own runtime and any transcript built from it cover only a
-        # fraction of the real meeting -- silently reporting that as if
-        # it were the whole thing is actively misleading (a 2-minute
-        # duration for a multi-hour meeting), not just an honest gap.
-        # Not attempting to concatenate the segments into one virtual
-        # timeline here -- that's a real design decision (stitch vs. treat
-        # each as its own unit) this entry deliberately leaves open.
+        video_segments: List[VideoSegment] = []
+
+        # Real, confirmed-live structural gap (BACKLOG.md, WO-79): some
+        # Swagit customers don't publish one continuous recording per
+        # meeting -- the real jwplayer playlist has a separate file per
+        # agenda item (confirmed live against Yolo County CA clip 324107,
+        # 12 entries; White Plains NY clip 292830, 5 entries; Apple
+        # Valley MN, a third confirmed case). Whichever candidate won
+        # video selection above is only the first of these, so its own
+        # runtime alone would be actively misleading if presented as the
+        # whole meeting (a 2-minute duration for a multi-hour meeting).
+        # video_url/video_format above are left unchanged (still the
+        # first segment, for a normal single-<video>-player page load) --
+        # `video_segments` below is what the on-demand transcription
+        # pipeline (app/main.py, worker/main.py) uses to actually stitch
+        # a full, meeting-relative transcript across all N clips rather
+        # than silently transcribing only the first one. No known
+        # "combined full meeting" file/link has ever been found on any of
+        # these real pages (checked live 2026-08-29 -- no
+        # full/complete/download-style alternate link, no stated total
+        # duration anywhere in the markup) -- if a future tenant's page
+        # does expose one, detecting and preferring it belongs here,
+        # alongside this same len(playlist_entries) > 1 check.
         if video_url:
             playlist_entries = _parse_swagit_playlist_entries(html)
             if playlist_entries and len(playlist_entries) > 1:
@@ -472,9 +519,10 @@ class SwagitAssetFinder(AssetFinder):
                     f"This meeting is split into {len(playlist_entries)} separate "
                     "video segments on Swagit's own page (one per agenda item), "
                     "not a single continuous recording -- only the first segment "
-                    "is shown above, so the video and any transcript cover only "
-                    "part of the meeting."
+                    "is shown above; the transcript, when requested, covers the "
+                    "whole meeting by transcribing and stitching all segments."
                 )
+                video_segments = _playlist_entries_to_video_segments(playlist_entries)
 
         segments: List[TranscriptSegment] = []
 
@@ -649,6 +697,7 @@ class SwagitAssetFinder(AssetFinder):
             jurisdiction=jurisdiction,
             video_url=video_url,
             video_format=video_format,
+            video_segments=video_segments,
             segments=segments,
             agenda_items=agenda_items,
             transcript_language=transcript_language,

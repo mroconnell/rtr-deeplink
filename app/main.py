@@ -69,6 +69,7 @@ from .platforms.media_probe import (
     chunk_size_seconds_for_platform,
     is_plausible_meeting_duration,
     probe_duration,
+    probe_multi_clip_chunk_plan,
 )
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
@@ -1364,6 +1365,38 @@ def _unreadable_media_message(result: ResolvedMeeting, requested_platform: str) 
     return "We found a media source but couldn't read it -- it may be unavailable."
 
 
+async def _probe_meeting_duration(
+    result: ResolvedMeeting, *, source_page_url: str
+) -> tuple[Optional[float], Optional[list]]:
+    """(duration_seconds, chunk_plan) for a freshly-resolved meeting --
+    shared by check-feasibility and submit below so a multi-clip Swagit
+    meeting (WO-79; `result.video_segments`, see swagit.py) reports its
+    real WHOLE-meeting duration and gets a real per-clip chunk plan in
+    both places, not just at actual submit time.
+
+    The common case (0 or 1 video_segments -- every other platform, and
+    an ordinary single-video Swagit meeting) returns
+    (probe_duration(result.video_url), None) exactly as both callers did
+    before this existed.
+
+    Falls back to that same single-clip probe if the multi-clip plan
+    can't be built (see probe_multi_clip_chunk_plan()'s own
+    "all-or-nothing" docstring) -- a probe failure on one clip must not
+    turn an otherwise-transcribable meeting into a hard error.
+    """
+    chunk_plan = None
+    if len(result.video_segments) > 1:
+        chunk_plan = await probe_multi_clip_chunk_plan(
+            result.video_segments, source_page_url=source_page_url
+        )
+        if chunk_plan:
+            return chunk_plan[-1]["start"] + chunk_plan[-1]["duration"], chunk_plan
+    if not result.video_url:
+        return None, None
+    duration = await probe_duration(result.video_url, source_page_url=source_page_url)
+    return duration, None
+
+
 @app.post("/api/transcription/check-feasibility")
 @limiter.limit("5/hour")
 async def transcription_check_feasibility(
@@ -1396,7 +1429,9 @@ async def transcription_check_feasibility(
             "message": "No usable audio or video source was found for this meeting.",
         }
 
-    duration = await probe_duration(result.video_url, source_page_url=req.url)
+    duration, _chunk_plan = await _probe_meeting_duration(
+        result, source_page_url=req.url
+    )
     if duration is None:
         return {"ok": False, "message": _unreadable_media_message(result, platform)}
     if not is_plausible_meeting_duration(duration):
@@ -1464,7 +1499,9 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
             status_code=400,
         )
 
-    duration = await probe_duration(result.video_url, source_page_url=req.url)
+    duration, chunk_plan = await _probe_meeting_duration(
+        result, source_page_url=req.url
+    )
     if duration is None or not is_plausible_meeting_duration(duration):
         return JSONResponse(
             {
@@ -1484,6 +1521,7 @@ async def transcription_submit(request: Request, req: TranscriptionSubmitRequest
         probed_duration_seconds=duration,
         chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),
         clerk_verified=bool(get_clerk_user_id(request)),
+        chunk_plan=chunk_plan,
     )
     if job is None:
         return JSONResponse(

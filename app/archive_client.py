@@ -230,6 +230,7 @@ async def request_transcription_job(
     probed_duration_seconds: float,
     chunk_size_seconds: int,
     clerk_verified: bool = False,
+    chunk_plan: Optional[list[dict]] = None,
 ) -> Optional[dict]:
     """Ask the Archive to create (or return the existing active) on-demand
     transcription job for this meeting. Returns None if the Archive is
@@ -243,6 +244,12 @@ async def request_transcription_job(
     confirm-by-email step for an already-signed-in visitor the same way
     an existing newsletter subscriber's email already does (user request
     2026-08-11).
+
+    chunk_plan (WO-79, optional): a per-clip chunk plan from
+    app/platforms/media_probe.py's probe_multi_clip_chunk_plan(), for a
+    meeting split across several real video files with no single
+    combined recording (some Swagit tenants). None (the default)
+    preserves every existing caller's behavior exactly.
     """
     base = _base_url()
     if not base:
@@ -257,6 +264,7 @@ async def request_transcription_job(
         "probed_duration_seconds": probed_duration_seconds,
         "chunk_size_seconds": chunk_size_seconds,
         "clerk_verified": clerk_verified,
+        "chunk_plan": chunk_plan,
     }
     try:
         async with aiohttp.ClientSession() as session:
