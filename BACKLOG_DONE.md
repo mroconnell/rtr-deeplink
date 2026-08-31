@@ -30,9 +30,14 @@ tests caused it. Fixed by using an obviously-synthetic jurisdiction
 string instead, since only non-null-ness matters for that test, not
 real-place validity. Full suite green (2286 passed).
 
-**The 269-of-3,406 numbers from 2026-08-29 are now stale** (several
-platforms fixed since) -- see the live `BACKLOG.md` "Ship next" entry
-for the exact curl to re-derive fresh ones once this deploys.
+**Deployed and re-run for real, 2026-08-31**: total dropped from the
+stale 269 (2026-08-29) to **245**. Fresh per-platform breakdown:
+Cablecast 101 (unchanged — still the same per-row-audit gap tracked
+elsewhere), TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10,
+CivicClerk 7, unknown 4, TownHallStreams 1, Castus 1. No new live entry
+needed — the numbers were purely informational, and the endpoint itself
+is now the durable answer; re-run the same curl whenever fresh numbers
+are needed instead of re-deriving by hand.
 
 ## CivicClerk's `mediaStreamPath` relative-path bug fixed (WO-88), kaysville-ut pushed to transcription [Done 2026-08-31]
 
@@ -110,11 +115,11 @@ not just suffixing it). Updated
 directly asserted the old ambiguous-decline behavior as correct (it was,
 until this domain was confirmed) — full suite green (2280 passed).
 
-**Not yet applied to production** — the code fix has to deploy before
-`POST /internal/jurisdiction/backfill-apply` (which always recomputes
-via the live `finalize_jurisdiction()`) can pick it up. See the live
-`BACKLOG.md` "Ship next" entry for the exact dry-run/apply commands for
-ids 698 and 1056.
+**Applied to production and verified live, 2026-08-31.** Dry-run
+against the deployed code confirmed the exact expected diff for both
+rows; the real (`dry_run=false`) call returned `"applied_count":2`.
+Confirmed on the live site: `/m/burlington-2021-06-21-council` now
+renders "Council — Oakville, ON (Canada) (2021-06-21)".
 
 ## `hallucination-candidates` event-loop-blocking outage: root-caused and fixed (WO-87) [Done 2026-08-31]
 

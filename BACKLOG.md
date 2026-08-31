@@ -54,9 +54,7 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
-  [JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
-  [JUST-DO-IT] Once deployed, re-run the missing-jurisdiction sweep
+Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
   Confirmations nobody has actually watched happen  (2)
@@ -258,24 +256,6 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
-- **[JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
-  pick up Oakville/Courtenay's province.** Code fix merged 2026-08-31
-  (see `BACKLOG_DONE.md`) — `pub-oakville.escribemeetings.com`/
-  `pub-courtenay.escribemeetings.com` are now confirmed `_KNOWN_DOMAINS`
-  entries. Can't apply to production until the fix deploys (`finalize_
-  jurisdiction()` runs against whatever code is live). Dry-run first:
-  `curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
-  "$ARCHIVE_BASE_URL/internal/jurisdiction/backfill-apply?dry_run=true&only_ids=698,1056"`
-  — confirm it shows "Oakville, ON"/"Courtenay, BC", then `dry_run=false`.
-
-- **[JUST-DO-IT] Once deployed, re-run the missing-jurisdiction sweep
-  with the new endpoint for fresh per-platform numbers.** `GET
-  /internal/jurisdiction/missing` now exists (see `BACKLOG_DONE.md`) —
-  the 269-of-3,406 count from 2026-08-29 is stale (several platforms
-  fixed since). `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
-  "$ARCHIVE_BASE_URL/internal/jurisdiction/missing"` gives real current
-  counts + a sample of slugs per platform to start the next research
-  pass from, no DB script needed.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
