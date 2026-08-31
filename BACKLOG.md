@@ -73,7 +73,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -103,13 +103,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (17)
+  Jurisdiction extraction & backfill  (16)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
-    [HUMAN] 5 already-published pages need a production deploy before
     [NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-    [NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
+    [NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -1571,24 +1570,9 @@ registry).
   entry is only for fixing the suffix gap itself, not for the specific
   rows above (already resolved).
 
-- **[HUMAN] 5 already-published pages need a production deploy before
-  their jurisdiction can be corrected — code fixed and merged
-  2026-08-30 (WO-76), just not live yet.** Pages `1151`/`703` (real:
-  **Chester County, PA**), `1439` (real: **Douglas, MI**), `2095`
-  (real: **Colorado**, the state legislature), and `2471` (real: **Lake
-  Washington School District, WA**) were all visually confirmed wrong
-  against their real source pages, and WO-76 root-caused and fixed the
-  underlying code (3 structural fixes, 1 targeted `_KNOWN_DOMAINS`
-  override — see `BACKLOG_DONE.md` for the full per-case reasoning).
-  `POST /internal/jurisdiction/backfill-apply` recomputes from live
-  deployed code, so these 4 pages will keep computing their old wrong
-  values until the next deploy runs — re-run `GET /internal/
-  jurisdiction/bleed-backfill-candidates` (filtered to these 4 ids)
-  and apply once deployed.
-
 - **[NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-  ME") needs its province corrected to ON, found after WO-76 was
-  already dispatched so not covered by that fix.** Visually confirmed:
+  ME") needs its province corrected to ON — confirmed still wrong
+  post-deploy 2026-08-30, WO-76 didn't cover it.** Visually confirmed:
   the real source, `pub-oxfordcounty.escribemeetings.com`, is
   unambiguously **Oxford County, Ontario** (`www.oxfordcounty.ca`,
   dozens of real by-laws naming its constituent lower-tier
@@ -1599,24 +1583,33 @@ registry).
   different countries/states) — likely fixable the same way, not
   attempted here.
 
-- **[NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
-  trio (`154`/`155`/`169`/`341`) and 4 more rows
-  (`1435`/`1441`/`1442`/`1447`, Breckenridge/Eustis/Hendersonville/
-  Loganville) are held back pending a production deploy, not a data
-  problem.** These depend on WO-68's and WO-70's fixes (state-suffix
-  attachment for consolidated governments; explicit-claimed-state
-  resolution), both merged to `main` 2026-08-30 but not yet deployed —
-  `GET /internal/jurisdiction/bleed-backfill-candidates` still computes
-  their pre-fix values live. Re-run the audit after the next deploy;
-  these should mostly resolve on their own.
+- **[NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
+  comma-separated claimed state ("X, State") — a real, distinct
+  no-comma shape still drops the state entirely, confirmed live
+  post-deploy 2026-08-30.** 4 real pages (`1435` "City of Breckenridge
+  **Texas** Meetings", `1441` "City of Eustis **Florida** Meetings",
+  `1442` "City of Hendersonville **North Carolina** Meetings", `1447`
+  "Loganville **Georgia** Meetings") all name their own state directly
+  in the raw text, no comma — WO-70's fix doesn't recognize this shape,
+  so the repair strips "Meetings"/the state name entirely rather than
+  attaching a proper suffix, actually a small regression versus the
+  current (also-imperfect) stored value, which at least has the state
+  spelled out somewhere in the text. Not applied. The Kansas City pair
+  (`154`/`155`, "City of Kansas City" → "Kansas City") is a genuinely
+  different, harder case — Kansas City spans two states (KS/MO) with no
+  single correct answer from this data alone — left open, not a deploy
+  dependency.
 
-**2026-08-30 production write, for context**: 70 real jurisdiction
+**2026-08-30 production write, for context**: 94 real jurisdiction
 corrections were applied directly to already-published pages this
-session (40 confirmed via a text/confidence-tier heuristic, 5 more on
-review, 20 more via real visual verification against the source
-page's own letterhead/seal/agenda content — not just title-matching, 5
-more in a follow-up pass on rows an earlier batch had accidentally
-skipped). Full detail in `BACKLOG_DONE.md`.
+session across 5 rounds (40 confirmed via a text/confidence-tier
+heuristic, 5 more on review, 20 more via real visual verification
+against the source page's own letterhead/seal/agenda content, 5 more
+in a follow-up pass on rows an earlier batch had accidentally skipped,
+6 more re-verified correct after the 2026-08-30 deploy landed WO-68/
+WO-76's fixes, and 18 more from a fresh batch of candidates that only
+became correct — or only appeared at all — once WO-69's eScribe fixes
+deployed). Full detail in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
   narrowed 2026-08-18: "Meeting"/"Attachments" tails are fixed (a
