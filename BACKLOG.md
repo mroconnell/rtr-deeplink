@@ -69,7 +69,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -83,16 +83,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (7)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (6)
     `[LATER]` Recover, rather than just decline, a domain-privacy-
     `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
     `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
     `[LATER]` A real, new video platform found: Midpen Media Center
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-    `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
-  `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
+  `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
@@ -193,7 +192,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (18)
+Dormant — needs a real example first `[LATER]`  (19)
   Captions — formats and sources with no confirmed positive example  (6)
     [LATER] ChampDS real captions confirmed to exist for at least one
     [LATER] TTML/DFXP/ITT caption parsing (`vtt_parser.py`'s
@@ -201,7 +200,8 @@ Dormant — needs a real example first `[LATER]`  (18)
     [LATER] SCC/STL captions are detected but not readable at all
     [LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar
     [LATER] YouTube/PrimeGov: non-English captions untested
-  Per-tenant and per-adapter cases waiting on a second example  (5)
+  Per-tenant and per-adapter cases waiting on a second example  (6)
+    [LATER] [EXAMPLE] Cablecast's cross-host migration alias gap —
     [LATER] `generic_fallback.py`'s YouTube-embed branch had no
     [LATER] Legistar's own MeetingDetail.aspx page carries real
     [LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting
@@ -946,18 +946,6 @@ actionability sections above.
   currently marked "no video found" for the same shape on a future
   re-resolve.
 
-- **`[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
-  `coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`
-  — is the one piece of the Coralville, IA triplicate still open.** Full
-  original investigation and the 2026-08-29 cleanup (the 3 already-
-  archived duplicate pages resolved to 1; `external_id` now prevents
-  *future* same-host scheme/query duplicates) are in `BACKLOG_DONE.md`.
-  What's left is real but not actionable yet: host-namespacing can't
-  collapse a genuine cross-host migration, and there's only one
-  confirmed example so far — needs either a second migrated Cablecast
-  tenant to confirm the pattern before building a domain-alias table, or
-  a manual merge if/when a second real case turns up.
-
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
   local-Whisper batch with "no usable audio/video source on re-resolve."
@@ -985,39 +973,21 @@ timestamps from the same API's `LocalIndexPoints` field — see
 `BACKLOG_DONE.md` for the real mapping found (`RelatedItem` against the
 document's own real `AgendaHeading`/`AgendaItem` HTML anchors).
 
-### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
+### `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred
 
-**Symptom A (the `ffmpeg timed out after 120s` cluster) was fixed
-2026-08-25** by pulling a progressive source's whole audio once per job
-instead of seeking per chunk — full measurement, including the ChampDS
-seek-cost model that forced the design, in `BACKLOG_DONE.md`'s "ChampDS
-charges for every seek". That fix landed in the cloud worker only;
-`scripts/transcribe_backlog_locally.py` did not get it until WO-64
-(2026-08-27, see `BACKLOG_DONE.md`) after the exact same symptom took out
-5 of 5 ChampDS meetings in one local run. Both paths now share one
-`should_cache_whole_audio()` gate in `app/platforms/media_probe.py`. This
-entry keeps only the half that is still open.
-
-**Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
-for this meeting".** Untouched by the above and still unexplained; a fast
-non-200 from the JSON API really could be a per-IP limit. This is the
-half the 2026-08-22 rate-limiting conclusion legitimately covers.
-
-**Instrumented 2026-08-25 — the next occurrence should explain itself.**
-`_fetch_json()` used to collapse timeout / non-200 / connection error /
-malformed body into a bare `return None` with *no logging at all*, which
-is why this survived two investigations: diagnosing it required
-re-curling the API by hand afterwards. It now returns a real reason and
-the caller logs it, so a 404 (meeting gone), a 429 (per-IP limit), a
-connection reset and a 200-that-is-not-JSON are all distinguishable from
-the logs alone. The reader-facing sentence is deliberately unchanged.
-
-**So there is nothing to build here until it fires again.** Next time a
-ChampDS resolve fails, grep the resolver logs for
-`ChampDS API fetch failed` and the answer will be in the line. If it
-turns out to be 429s, the fix is host-aware pacing (already deprioritised
-for symptom A on the evidence there, but this is the half it could
-genuinely fit).
+Symptom A (the timeout cluster) is fully fixed — full history moved to
+`BACKLOG_DONE.md`. **Symptom B — instant 0.2s failures with "Could not
+reach the ChampDS API for this meeting" — is still unexplained**, and
+there is genuinely nothing to build until it fires again: `_fetch_json()`
+was instrumented 2026-08-25 (previously collapsed timeout/non-200/
+connection-error/malformed-body into a bare `return None` with no
+logging at all, which is why this survived two prior investigations).
+It now logs a real reason, so next time a ChampDS resolve fails this
+way, grep the resolver logs for `ChampDS API fetch failed` and the
+answer will be in the line — a 404, 429, connection reset, and
+200-that-isn't-JSON are all now distinguishable. If it turns out to be
+429s, the fix is host-aware pacing (already deprioritised for symptom A
+on the evidence there, but this is the half it could genuinely fit).
 
 - **[NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   video, each needing its own per-tenant "where does this jurisdiction
@@ -2958,6 +2928,18 @@ means somebody found the example, not that somebody decided to guess.
   Genuinely still no on-platform example.
 
 ### Per-tenant and per-adapter cases waiting on a second example
+
+- **[LATER] [EXAMPLE] Cablecast's cross-host migration alias gap —
+  `coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`.**
+  Re-filed here 2026-08-30 (was sitting in Adapter & platform gaps,
+  which no longer fit once the actual Coralville duplicate pages were
+  merged 2026-08-29 — see `BACKLOG_DONE.md`). What's left is purely
+  forward-looking: host-namespacing (the `external_id` fix that
+  prevents *future* same-host duplicates) can't and shouldn't try to
+  collapse a genuine cross-host migration, and there's only one
+  confirmed example so far. Needs a second migrated Cablecast tenant to
+  confirm this is a real pattern before building a domain-alias table —
+  not a live duplicate-page problem anymore.
 
 - **[LATER] `generic_fallback.py`'s YouTube-embed branch had no
   page-level metadata backfill (CRRMA's "Untitled meeting") — fixed
