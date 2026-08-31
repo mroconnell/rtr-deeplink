@@ -66,7 +66,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (44)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -80,9 +80,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (44)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (3)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-    `[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
@@ -728,22 +727,6 @@ actionability sections above.
   it, per this repo's own convention — worth revisiting if a second
   real example turns up.
 
-- **`[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
-  video platform found chasing a user-reported discrepancy; at least
-  Palo Alto's real PrimeGov video isn't on YouTube/Swagit/Granicus at
-  all.** Confirmed live (browser, not just raw HTML): the source page
-  itself never publishes a direct per-meeting video link, only a bare
-  YouTube channel link and a bare Midpen homepage link mentioned in
-  prose. `isShowVideoIcon` (a real PrimeGov API field) already
-  corroborates "this meeting has video" without resolving it (shipped
-  2026-08-29, see `BACKLOG_DONE.md`). Full discovery detail:
-  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §47. Not
-  built: a dedicated Midpen adapter, or a fallback that resolves the
-  bare YouTube channel link into a specific video by title/date match
-  (same technique `youtube_channel.py` already uses) — real, un-scoped
-  adapter-build work, not a same-session fix. Worth checking whether
-  other PrimeGov tenants besides Palo Alto also route through Midpen
-  before building anything.
 
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
