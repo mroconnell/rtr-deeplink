@@ -67,9 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (39)
-  [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
-  [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (36)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -87,13 +85,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (39)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (9)
+  Jurisdiction extraction & backfill  (8)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
-    [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
+    [JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
-    [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
@@ -375,38 +372,6 @@ Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
 coverage** instead.
 
-- **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
-  `_nearest_topic_text()` silently drops one real item per page it's
-  been checked against.** A page's single "highlight" story uses a
-  different HTML shape (a promo box, topic text in a preceding heading)
-  than the plain pattern other items use, confirmed live. Safe failure
-  mode (silently skipped, not garbage), but a real known gap — fixing it
-  means walking up to a preceding heading when same-container text comes
-  back empty, deliberately not attempted given the risk of a fragile
-  heuristic on a differently-shaped page. Not waiting on an example —
-  the gap is already confirmed and understood; it needs a real design
-  decision about how much heuristic fragility is acceptable.
-
-- **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
-  current number — stale archived transcripts have no automated refresh
-  path.** Real gap confirmed 2026-08-12 fixing the Minneapolis ALL-CAPS
-  report. Everything needed to *manually* fix one specific page exists,
-  but nothing automated ever refreshes a page that already has a
-  transcript, however bad: re-submitting an already-archived URL through
-  the public `/api/resolve` flow short-circuits to the existing page
-  before any live resolve starts (only `/admin/recheck-archive-page` or
-  the passive 30-day cycle force a refresh); `scripts/
-  fetch_youtube_transcripts.py`'s queue only ever returns pages with *no*
-  default transcript at all, so an existing-but-bad transcript never
-  qualifies as "wanted" and the daily script will never re-fetch it.
-  **Real current scale, checked 2026-08-30 via
-  `/internal/transcript-quality-audit`**: of 3,455 total pages, **20
-  carry the garbled-transcript marker and 11 carry the Granicus-
-  truncation marker — 31 pages total, permanently unrefreshable under
-  today's queue logic** (bounded, not a scale emergency, just a real
-  design gap). Needs a decision: should the queue also surface these 31
-  low-quality-flagged pages, and/or should `/admin/recheck-archive-page`
-  trigger this script's refresh path for one page on demand?
 
 - **[NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   91% of the real failing population is now explained; ~65% of it is
@@ -803,34 +768,31 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   search for its real published slug before it can be fixed the same
   way.
 
-- **[HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
-  canonical-form choice applied — no existing admin endpoint can write
-  it.** Residual of WO-47 (full row/cause detail in `BACKLOG_DONE.md`'s
-  2026-08-29 "needs a human" review entry, which also closed the
-  Redding/Healdsburg/Arcata/Paso Robles half of this same original
-  entry via `POST /internal/jurisdiction/backfill-apply`). Real, newly
-  confirmed gap: `County of Santa Clara, CA` / `The County of Santa
-  Clara, CA` / `Santa Clara County, CA` / `County of Santa Clara Office`
-  all independently validate today, so `finalize_jurisdiction()`'s
-  recompute makes zero changes to any of them (confirmed live,
-  current==repaired on every one) — `backfill-apply` only ever
-  recomputes via that function, and no admin endpoint accepts an
-  explicit caller-supplied jurisdiction string. Canonical form already
-  decided (2026-08-23): `Santa Clara County, CA` for the county rows,
-  consistent with every other county in the archive. City of Santa
-  Clara and the VTA also still need their `", CA"` suffixes added (same
-  "no write path exists" blocker). Needs either a small new admin
-  capability (an explicit-string override endpoint, scoped tightly) or
-  a deliberate one-off decision to bypass `finalize_jurisdiction()` for
-  this one case — a product/engineering call, not a token-access one.
+- **[JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
+  action, not a human product decision — the write path now exists.**
+  `POST /internal/jurisdiction/set-explicit` (built 2026-08-31, see
+  `BACKLOG_DONE.md`) takes an explicit caller-supplied string and tags
+  the row `manual_override`, protected from being silently reverted on
+  a later re-ingest. Canonical form already decided (2026-08-23):
+  `Santa Clara County, CA` for the county rows. Applying it to the 4
+  Santa Clara rows + the VTA is a one-off `dry_run=false` call — not yet
+  made, since the endpoint was deliberately left unexercised against
+  production pending sign-off.
 
 - **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
-  City" → "Kansas City") stays open** — a genuinely different, harder
-  case (KS/MO span, no single correct answer from this data alone), not
-  a deploy dependency. (The other 5 pages this entry originally covered
-  — Oxford County ON, Breckenridge TX, Eustis FL, Hendersonville NC,
-  Loganville GA — were confirmed deployed and applied 2026-08-30, see
-  `BACKLOG_DONE.md`.)
+  City" → "Kansas City") — check `source_url_normalized` before
+  concluding this is undecidable.** `kansascity.legistar.com`/
+  `kansascity.granicus.com` is a confirmed-live, Kansas-City-**MO**
+  -specific tenant (`app/platforms/granicus_channel.py`), and no Kansas
+  City, KS tenant is registered anywhere in this repo. If rows 154/155's
+  source URL is on that domain, this resolves via a `_KNOWN_DOMAINS`
+  entry or the new `set-explicit` endpoint above rather than being
+  genuinely ambiguous — not yet checked against the actual stored URL
+  (needs production DB/API access). If the source is something else
+  entirely, the case stays genuinely undecidable as before. (The other 5
+  pages this entry originally covered — Oxford County ON, Breckenridge
+  TX, Eustis FL, Hendersonville NC, Loganville GA — were confirmed
+  deployed and applied 2026-08-30, see `BACKLOG_DONE.md`.)
 
 **2026-08-30 production write, for context**: 98 real jurisdiction
 corrections were applied directly to already-published pages this
@@ -878,18 +840,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   different place per entity type.
 
 
-- **[NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
-  product decision, not a data fix — the one residual of the closed
-  "eScribe residuals" entry (WO-69, 2026-08-30, see `BACKLOG_DONE.md` —
-  11 of 12 fixed).** Lloydminster is a real, active city (confirmed live
-  — a real Council/committee portal) that literally straddles the AB/SK
-  border. Census/StatsCan stores it as "Lloydminster (Part)" once per
-  province, and both rows are correctly filtered out as junk by the
-  existing `(Part)`-stripping logic (correct behavior for OTHER `(Part)`
-  rows that really are junk, e.g. First Nations reserve fragments with
-  trailing numbers). Recovering it needs a decision on which province to
-  show, or a way to represent "spans two provinces" — deliberately left
-  unregistered rather than guessed.
 
 - **[NEEDS-AUDIT] Census-table baseline validation of all 649 archived
   jurisdictions (2026-08-15) — re-checked 2026-08-30, all three named

@@ -82,6 +82,111 @@ confidently either direction; closed out rather than left open with
 nothing to act on. Revisit only if a second, clearer truncation example
 turns up.
 
+## SLC `_nearest_topic_text()` "Meeting Highlights" promo-box gap fixed [Done 2026-08-31]
+
+Real gap: SLC's "Meeting Highlights" promo box (confirmed live on
+`slc.gov/council/march-3-2026-meeting-recap/`) puts its `<a>Watch the
+Briefing</a>` inside its own `<div class="wp-block-button">` with no
+topic text of its own — the real topic ("Fraud Risk Assessment for Salt
+Lake City") is a preceding `<h3>` sibling, not in the link's own
+container, so `_nearest_topic_text()` (`app/platforms/slc.py:126`)
+silently skipped that one item per page.
+
+**Fixed**: falls back to `a.find_previous(re.compile(r"^h[1-6]$"))` —
+the nearest preceding heading in document order — but ONLY when the
+primary same-container lookup returns empty, so a real result is never
+overridden; worst case stays "silently skip," never "confidently
+wrong." 3 new tests in `tests/test_slc.py` (11 total passed), one using
+a realistic fixture mirroring the real page structure. `ruff` clean.
+
+## Stale archived transcripts: refresh path already exists — entry's premise was stale [Investigated 2026-08-31, no code change needed]
+
+Re-verified against current code rather than building anything new:
+- `list_youtube_pages_missing_transcripts()` (`archive/db/crud.py`)
+  already includes garbled-marked pages (WO-15, 2026-08-16) —
+  `tests/test_transcript_wanted.py::test_wanted_includes_youtube_page_with_garbled_transcript`
+  already covers it.
+- `list_transcription_backlog_candidates()` is not platform-restricted
+  and shares the same `_has_good_transcript()` gate, which already
+  includes `_GRANICUS_TRUNCATION_MARKER` (added 2026-08-23) — so the 11
+  Granicus-truncated pages already resurface here and feed
+  `scripts/transcribe_backlog_locally.py`'s real Whisper re-transcription,
+  which structurally bypasses Granicus's vendor-side 36,000-line cap
+  rather than re-hitting it.
+- `/api/refresh-archived-page` (public, rate-limited, WO-15) and
+  `/admin/recheck-archive-page` (`app/main.py:2094`) both already force
+  an on-demand refresh for one page, bypassing the `/api/resolve`
+  short-circuit the original entry described.
+
+New regression test added since no existing test exercised the queue
+function itself with both marker types together:
+`tests/test_transcription_jobs.py::test_list_transcription_backlog_candidates_includes_garbled_and_granicus_truncated_pages`.
+65 tests passed across the affected files.
+
+## `POST /internal/jurisdiction/set-explicit` built — the missing admin write path for jurisdiction overrides [Done 2026-08-31]
+
+Residual of WO-47's Santa Clara review (2026-08-29): 4 Santa Clara
+strings and the VTA all independently validate under
+`finalize_jurisdiction()` today, so `backfill-apply`'s recompute-only
+write makes zero changes to any of them, and no endpoint accepted an
+explicit caller-supplied string.
+
+**Built**: `POST /internal/jurisdiction/set-explicit` (`archive/main.py`,
+right after `/internal/jurisdiction/backfill-apply`), same
+`_token_ok()` gate, `dry_run` defaults true, idempotent. Body:
+`{meeting_page_id, jurisdiction}`. Delegates to new
+`crud.set_explicit_jurisdiction()`, which writes `jurisdiction` + a new
+`manual_override` confidence tier (plain `String(20)` value, no
+migration needed — confirmed via `alembic check`, no schema drift).
+Validation via `crud.validate_explicit_jurisdiction()` is deliberately
+lighter than `finalize_jurisdiction()`'s full place-name validation —
+non-empty + ≤200 chars — that's the whole point of the endpoint.
+
+**Real bug caught and fixed proactively while building this**:
+`_find_or_create_page()`'s existing-page branch refreshes
+`jurisdiction`/`jurisdiction_confidence` on every re-ingest whenever the
+fresh resolve produces a truthy jurisdiction, which real adapters
+always do — without a guard, a manual override would be silently
+reverted on the very next passive `ARCHIVE_RECHECK_AFTER` hit, "Refresh
+this page" click, admin recheck, or backfill sweep, making the endpoint
+a one-time cosmetic fix rather than a real one. Added a guard: when
+`page.jurisdiction_confidence == "manual_override"`, the refresh is
+skipped. Covered by `test_manual_override_survives_a_later_reingest`.
+
+15 new tests (`tests/test_jurisdiction_set_explicit.py`), full suite
+2309 passed with no regressions from the `_find_or_create_page` change.
+**Not called against production** — built and tested only. Applying it
+to Santa Clara's actual 4 rows + the VTA is a deliberate follow-up
+`dry_run=false` call, not done here.
+
+## Lloydminster (AB/SK) registered as a known jurisdiction [Done 2026-08-31]
+
+Residual of the WO-69 eScribe fixes (11 of 12 fixed 2026-08-30):
+Lloydminster literally straddles the AB/SK border, and Census/StatsCan
+stores it as "Lloydminster (Part)" once per province — both rows
+correctly filtered out as junk by the existing `(Part)`-stripping logic
+(correct behavior for genuinely-junk `(Part)` rows elsewhere, e.g.
+First Nations reserve fragments), which meant no validation tier in
+`finalize_jurisdiction()` could ever resolve it.
+
+**Verified the display form is real, not invented**: fetched
+`lloydminster.ca` live — its own news releases use exactly the dateline
+"Lloydminster, AB/SK" (e.g. "Trail rehabilitation underway at Bud Miller
+All Seasons Park," Aug 19, 2026). Confirmed via Wikipedia that
+Lloydminster is incorporated by both Alberta and Saskatchewan as one
+municipal government.
+
+**Built**: added `"pub-lloydminster.escribemeetings.com":
+KnownJurisdiction("Lloydminster", "city", "AB/SK")` to `_KNOWN_DOMAINS`
+(`app/utils/jurisdiction_enrich.py`, tagged WO-89). `state="AB/SK"` is a
+deliberate one-off exception to the usual two-letter-code convention,
+documented inline — resolves automatically via `finalize_jurisdiction()`'s
+existing domain-fallback path, no adapter or DB change needed, reaches
+an already-archived page on its next re-ingest/recheck. New test
+`test_known_domains_lloydminster_resolves_via_fallback_when_unindexed`
+(`tests/test_jurisdiction_enrich.py`); 176 tests passed across the
+affected files.
+
 ## Swagit multi-clip meetings: local-script path ported to match the WO-79 cloud-worker fix [Done 2026-08-31]
 
 WO-79 (2026-08-30) fixed multi-clip Swagit meetings (3 confirmed
