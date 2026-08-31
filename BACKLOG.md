@@ -67,7 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (49)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (47)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -85,12 +85,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (49)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
-  CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
-  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
-    [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
+  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   Jurisdiction extraction & backfill  (13)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
@@ -788,21 +786,6 @@ actionability sections above.
   server appears to be down, not a bug in this repo — worth a quick
   re-check before assuming it is still down if this URL comes up again.
 
-### CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed 2026-08-30, see `BACKLOG_DONE.md`
-
-Real second URL shape now handled by `civicweb.py` — a direct
-`{tenant}.civicweb.net/document/{id}/` link (also reachable via a
-`/filepro/document/{id}/{title}.html` alias) resolves real YouTube video
-via a second, richer unauthenticated API
-(`/api/geteventwithindexpoints/{meetingId}`). Found via a Wayback
-Machine CDX search for the `media=true` query flag (Common Crawl doesn't
-index civicweb.net past robots.txt/homepage — confirmed empirically);
-108 distinct real tenants confirmed carrying this shape, 3 verified
-live end-to-end. Also now builds real `agenda_items` deep-link
-timestamps from the same API's `LocalIndexPoints` field — see
-`BACKLOG_DONE.md` for the real mapping found (`RelatedItem` against the
-document's own real `AgendaHeading`/`AgendaItem` HTML anchors).
-
 ### `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred
 
 Symptom A (the timeout cluster) is fully fixed — full history moved to
@@ -899,39 +882,6 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   covers Council meetings going forward, the OnBoardGOV SPA investigation
   may not be worth the headless-browser cost at all — worth confirming
   Cablecast's real coverage before investing in the SPA gap.
-
-- **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  NEEDS-AUDIT there, misfiled) — the underlying methodology point still
-  holds (a single-meeting check can miss real video elsewhere on the
-  same portal), but both original examples were re-checked 2026-08-30
-  and neither reproduces as a live bug.** Found 2026-08-28, in direct
-  response to a user question about whether a single-meeting check could
-  be missing video that exists elsewhere on the same portal.
-  **Cambridge, MA**: not an IQM2 adapter bug — the city migrated off
-  IQM2 to PrimeGov (`cambridgema.primegov.com`, delegated to Swagit) in
-  January 2026; the old IQM2 portal now says so directly ("the City has
-  transitioned to a new Agenda and Meeting Management system") and its
-  old meeting pages are genuinely empty, not mis-parsed. A real
-  Cambridge meeting resolves fully today via the PrimeGov URL (full
-  video, agenda, transcript) — this tenant is already named as solved in
-  `primegov.py`'s own module docstring. No adapter fix needed; just a
-  stale canonical source URL if one is recorded anywhere.
-  **Watsonville, CA (eScribe)**: does not reproduce on any real archived
-  meeting — 2 real past meetings (different URL shapes) both resolved
-  fully with video, agenda, and date. The original `title`/`date`/
-  `video_url`-all-`None` result only reproduces on a genuinely
-  unpublished future meeting, where the raw eScribe page itself is
-  near-empty — correct fallback behavior, not a parser bug. Likely the
-  original check hit an unpublished meeting ID by mistake.
-  **What to build, if this is picked up again**: for any jurisdiction
-  marked `no-video-found` in `jurisdiction_coverage.csv`'s live
-  `reject_reason` column (the tracking half of this finding is already
-  built — see `BACKLOG_DONE.md`), check at least 2-3 real meetings
-  before concluding no video exists — ideally one clearly labeled as the
-  main Council/Board/Commission meeting, not whatever the regex happened
-  to find first. No longer urgent given neither original example held up,
-  but the general risk (checking only the first meeting found) is still
-  real.
 
 - **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   NEEDS-AUDIT there, misfiled), compacted the same day — Granicus's
