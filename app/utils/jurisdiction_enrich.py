@@ -2008,6 +2008,55 @@ def _subdomain_override(
     return f"{hint}{final_suffix}"
 
 
+def _claimed_state_from_bleed_tail(repaired_name: str, tail: str) -> Optional[str]:
+    """A state/province code, only when the text `_trim_repair()` is about
+    to DISCARD as bleed for `repaired_name` itself spells out a real
+    state/province name for that exact name -- the same underlying shape
+    `resolve_claimed_state()` (WO-70, 2026-08-30) was built for, just
+    glued directly onto the name with no comma rather than following one:
+    "City of Breckenridge Texas Meetings" rather than "City of Medina,
+    Minnesota".
+
+    Real, confirmed-live gap this closes (WO-78, 2026-08-30): 4 real pages
+    -- Breckenridge TX (`1435`), Eustis FL (`1441`), Hendersonville NC
+    (`1442`), Loganville GA (`1447`) -- all nationally-ambiguous names
+    (Breckenridge is also real in CO; Eustis in ME; Hendersonville in TN;
+    Loganville has more than one real instance), each with a trailing
+    "<State> Meetings"/"<State> <Province-shaped words> Meetings" tail.
+    `_looks_like_bleed()` correctly recognizes that tail as bleed (its
+    last word, "meetings", is a known junk tail word -- see
+    `_KNOWN_JUNK_TAIL_WORDS`) and `_trim_repair()` correctly finds the
+    real name underneath, but the ambiguous name alone can't resolve a
+    state via `_fill_missing_state()`'s plain `resolve_state()` call, so
+    the state was silently dropped even though it was sitting right there
+    in the discarded text -- worse than the untouched raw value, which at
+    least had the state SOMEWHERE, unparsed.
+
+    Tries the tail's leading two words before its leading one word (a
+    two-word state/province name -- "North Carolina", "South Dakota",
+    "British Columbia" -- must be tried first, or a one-word match on just
+    "North"/"South"/"British" would shadow it and this would never see
+    the real two-word name at all). Delegates the actual "is this text a
+    real state name, and is it genuinely one of `repaired_name`'s own
+    real states" check to `resolve_claimed_state()` itself rather than
+    reimplementing it -- this function's only job is picking which
+    leading slice of the tail to offer it. Returns None when neither
+    slice is a real state/province name for `repaired_name`'s type, which
+    is the ordinary case: real bleed prose ("Attachments", "Live Stream",
+    "Committee of the Whole Agenda Thursday") is never a real state name,
+    so this can't misfire on it.
+    """
+    words = [w.strip(".,;:") for w in tail.split()]
+    for length in (2, 1):
+        if length > len(words):
+            continue
+        candidate = " ".join(words[:length])
+        resolved = resolve_claimed_state(repaired_name, candidate)
+        if resolved:
+            return resolved
+    return None
+
+
 def finalize_jurisdiction(
     raw_jurisdiction: Optional[str], *, netloc: Optional[str] = None
 ) -> JurisdictionResult:
@@ -2200,8 +2249,23 @@ def finalize_jurisdiction(
             # Override rejected as an impossible pairing (see
             # `_subdomain_override()`) -- fall through to the plain trim
             # result, the pre-cross-check behavior.
+        final_suffix = _fill_missing_state(repaired_name, suffix, netloc)
+        if not final_suffix:
+            # `_fill_missing_state()` only ever returns "" here when there
+            # was no state suffix already in the raw text AND
+            # `resolve_state()`'s plain name lookup declined (ambiguous or
+            # unknown) -- exactly the case where the state `_trim_repair()`
+            # just discarded as bleed might still be recoverable, if that
+            # discarded tail itself spelled the state out. See
+            # `_claimed_state_from_bleed_tail()`'s own docstring for the 4
+            # real, confirmed pages (WO-78, 2026-08-30) this recovers.
+            repaired_tokens = repaired_name.split()
+            tail = " ".join(base.split()[len(repaired_tokens) :])
+            claimed_state = _claimed_state_from_bleed_tail(repaired_name, tail)
+            if claimed_state:
+                final_suffix = f", {claimed_state}"
         return JurisdictionResult(
-            f"{repaired_name}{_fill_missing_state(repaired_name, suffix, netloc)}",
+            f"{repaired_name}{final_suffix}",
             None,
             "repaired",
         )

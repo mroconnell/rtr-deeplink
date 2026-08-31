@@ -2479,3 +2479,112 @@ def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
     )
     assert result_already_wrong.jurisdiction == "Oxford County, ON"
     assert result_already_wrong.confidence == "authoritative"
+
+
+# --- WO-78, 2026-08-30: a real, DIFFERENT-shaped version of WO-70's
+# problem, found post-deploy in the same night's bleed-backfill-candidates
+# audit. WO-70 fixed a claimed state in a COMMA-separated position
+# ("City of Medina, Minnesota"); these 4 real pages spell the state out
+# WITH NO COMMA, glued directly onto the name and followed by a trailing
+# "Meetings" suffix -- "City of Breckenridge Texas Meetings". All 4 names
+# are nationally ambiguous on their own (Breckenridge also real in CO,
+# Eustis also in ME, Hendersonville also in TN, Loganville has more than
+# one real instance), which is exactly why the state needs to be trusted
+# rather than derived from the bare name alone. Confirmed live: before
+# this fix, `finalize_jurisdiction()`'s bleed-tail trim repair
+# (`_trim_repair()`) correctly found the real name underneath but then
+# silently dropped the state entirely (e.g. "City of Breckenridge Texas
+# Meetings" -> "City of Breckenridge", no state) -- an actual regression
+# versus the untouched raw value, which at least had the state somewhere
+# in the raw text. `_claimed_state_from_bleed_tail()` recovers it by
+# offering the discarded tail's leading words to `resolve_claimed_state()`
+# (the same WO-70 function, reused rather than reimplemented) instead of
+# just throwing them away.
+
+
+def test_finalize_jurisdiction_recovers_spelled_out_state_glued_before_meetings_suffix():
+    # The 4 real pages themselves (page ids 1435, 1441, 1442, 1447 per the
+    # bleed-backfill-candidates audit), each confirmed nationally ambiguous
+    # on the bare name alone.
+    cases = [
+        ("City of Breckenridge Texas Meetings", "City of Breckenridge, TX"),
+        ("City of Eustis Florida Meetings", "City of Eustis, FL"),
+        (
+            "City of Hendersonville North Carolina Meetings",
+            "City of Hendersonville, NC",
+        ),
+        ("Loganville Georgia Meetings", "Loganville, GA"),
+    ]
+    for raw, expected in cases:
+        result = je.finalize_jurisdiction(raw)
+        assert result.jurisdiction == expected, raw
+        assert result.confidence == "repaired", raw
+
+
+def test_finalize_jurisdiction_glued_state_recovery_declines_a_wrong_state():
+    # Sanity check on the recovery mechanism itself: Ohio is genuinely not
+    # one of Breckenridge's real states (only CO and TX are, per
+    # places.csv), so this must NOT falsely accept it just because it's
+    # sitting in the same tail position a real claimed state would occupy.
+    # Falls back to the pre-fix behavior (state dropped, not guessed).
+    result = je.finalize_jurisdiction("City of Breckenridge Ohio Meetings")
+    assert result.jurisdiction == "City of Breckenridge"
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_glued_state_recovery_does_not_regress_unambiguous_names():
+    # No-regression check on the cases that already worked correctly
+    # BEFORE this fix, confirmed live the same night: Bel Aire, KS and
+    # Dripping Springs, TX are both nationally UNAMBIGUOUS on the bare
+    # name alone, so they already resolved their state via
+    # `_fill_missing_state()`'s plain `resolve_state()` call -- this fix
+    # only ever runs when that call comes back empty, so these must
+    # produce byte-identical output to before.
+    bel_aire = je.finalize_jurisdiction("City of Bel Aire Kansas Meetings")
+    assert bel_aire.jurisdiction == "City of Bel Aire, KS"
+    assert bel_aire.confidence == "repaired"
+
+    dripping_springs = je.finalize_jurisdiction(
+        "City of Dripping Springs Texas Meetings"
+    )
+    assert dripping_springs.jurisdiction == "City of Dripping Springs, TX"
+    assert dripping_springs.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_glued_state_recovery_does_not_regress_real_bleed():
+    # No-regression check against `_trim_repair()`'s own two documented
+    # real bleed-collision cases (see its docstring): neither tail
+    # contains anything resembling a real state/province name, so
+    # `_claimed_state_from_bleed_tail()` must decline both, same as
+    # before this fix existed.
+    richmond_hill = je.finalize_jurisdiction("Richmond Hill Single Source Award")
+    assert richmond_hill.jurisdiction == "Richmond Hill Single Source Award"
+    assert richmond_hill.confidence == "unverified"
+
+    east_bay = je.finalize_jurisdiction("East Bay Regional Park District, CA")
+    assert east_bay.jurisdiction == "East Bay Regional Park District, CA"
+    assert east_bay.confidence == "unverified"
+
+
+def test_claimed_state_from_bleed_tail_prefers_two_word_state_names():
+    # "North Carolina" must resolve as the two-word state name it is, not
+    # get shadowed by a one-word "North" match tried first (there is no
+    # real "North" state, but this pins the intended try-order directly
+    # rather than only asserting it indirectly through Hendersonville
+    # above).
+    assert (
+        je._claimed_state_from_bleed_tail(
+            "City of Hendersonville", "North Carolina Meetings"
+        )
+        == "NC"
+    )
+
+
+def test_claimed_state_from_bleed_tail_declines_ordinary_bleed_prose():
+    assert (
+        je._claimed_state_from_bleed_tail("Richmond Hill", "Single Source Award")
+        is None
+    )
+    assert (
+        je._claimed_state_from_bleed_tail("East Bay", "Regional Park District") is None
+    )
