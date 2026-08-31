@@ -2434,3 +2434,48 @@ def test_known_domains_lake_washington_school_district_beats_nd_township_collisi
     # domain's own text/subdomain validation is confirmed unreliable, the
     # same "authoritative" bar every other entry in this table meets.
     assert je._table_lookup("Lake Washington") == ("subdivision", ["ND"])
+
+
+def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
+    # WO-77 (2026-08-30): real production bug found by a jurisdiction-
+    # repair audit -- page 808 (slug
+    # "woodstock-2026-07-08-council-meeting-oxford-county", source
+    # pub-oxfordcounty.escribemeetings.com) had its stored "City of
+    # Woodstock" computed a repair of "Oxford County, ME", visually
+    # confirmed WRONG. The real source is Oxford County, ONTARIO (confirmed
+    # live: page header "COUNTY OF OXFORD COUNCIL", address "21 Reeve
+    # Street, Woodstock", real site www.oxfordcounty.ca, real by-laws
+    # naming its own constituent lower-tier municipalities including "City
+    # of Woodstock" -- Woodstock is Oxford County's own county seat, which
+    # is why "Woodstock" appears in this page's slug/title at all).
+    #
+    # Unlike the Douglas MI case (Case 2 above), this ISN'T a genuine
+    # two-candidate collision this module's own tables already contain --
+    # Oxford County, ME is the ONLY "Oxford County" row `counties.csv`
+    # carries (Canadian "counties" aren't census subdivisions, so
+    # build_canada_places()'s Level-4 SGC import never reaches them, and
+    # this repo has no separate Canadian-counties table). So the subdomain
+    # hint validates only against the US county table, with no
+    # `hint_state` for `_subdomain_override()` to disagree with -- WO-76's
+    # own hint_state mechanism can't reach this shape at all.
+    assert je._table_lookup("Oxford County") == ("county", ["ME"])
+    assert je._validated_label_extract_with_state("pub-oxfordcounty") == (
+        "Oxford County",
+        None,
+    )
+    # Reproduces the exact real bug: before this fix, finalizing either the
+    # original stored text or the already-mis-repaired value against this
+    # netloc both produced "Oxford County, ME".
+    result = je.finalize_jurisdiction(
+        "City of Woodstock", netloc="pub-oxfordcounty.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Oxford County, ON"
+    assert result.confidence == "authoritative"
+    # Idempotent against the already-wrongly-repaired stored value too --
+    # this is what a backfill-apply re-finalize of the real archived row
+    # needs to self-correct.
+    result_already_wrong = je.finalize_jurisdiction(
+        "Oxford County, ME", netloc="pub-oxfordcounty.escribemeetings.com"
+    )
+    assert result_already_wrong.jurisdiction == "Oxford County, ON"
+    assert result_already_wrong.confidence == "authoritative"

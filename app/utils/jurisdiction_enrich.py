@@ -1063,6 +1063,51 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "lwsd.granicus.com": KnownJurisdiction(
         "Lake Washington School District", "district", "WA", strength="authoritative"
     ),
+    # Oxford County, ON (WO-77, 2026-08-30) -- same "real place name
+    # collides across two countries" shape as the Douglas MI case above,
+    # but structurally different: there ISN'T a genuine two-candidate
+    # collision inside this module's own tables to disambiguate between.
+    # Oxford County, ME is the ONLY "Oxford County" row `counties.csv`
+    # carries at all -- Oxford County, ON (a real upper-tier Ontario
+    # county, confirmed live via `pub-oxfordcounty.escribemeetings.com`'s
+    # own page: header "COUNTY OF OXFORD COUNCIL", address "21 Reeve
+    # Street, Woodstock", real site www.oxfordcounty.ca, and real by-laws
+    # naming its constituent lower-tier municipalities "Township of
+    # Zorra", "Township of Blandford-Blenheim", "Town of Ingersoll", and
+    # "City of Woodstock" -- Woodstock is Oxford County's own county seat,
+    # which is why "Woodstock" appears in this archived page's own
+    # slug/title) has no row in ANY table this module loads: Canadian
+    # "counties" aren't census subdivisions (so build_canada_places()'s
+    # Level-4 SGC import never reaches them, same gap
+    # build_canada_regional_municipalities()'s own module comment already
+    # documents for Ontario's regional municipalities -- Oxford just isn't
+    # one of the three, Durham/Peel/Waterloo, confirmed live as customers
+    # there), and this repo has no Canadian-counties table at all. So
+    # `_validated_label_extract_with_state("pub-oxfordcounty")` validates
+    # ONLY against the US county table (tier 2, spaced "Oxford County"),
+    # returns a bare hint with no `hint_state` (the label itself spells
+    # out no province code the way "douglas-mi" does), and
+    # `_subdomain_override()`'s own `_fill_missing_state()` call then
+    # confidently -- and uniquely, since ME is the only candidate that
+    # exists -- resolves the missing state to ME. No disagreeing
+    # `hint_state` exists to override it with, unlike Douglas MI, so
+    # WO-76's own mechanism can't reach this case: the fix has to supply
+    # the missing Canadian county as an independent fact instead of
+    # correcting between two already-present candidates. Not generalized
+    # into `counties.csv`/`build_jurisdiction_data.py` for the same
+    # "verify before generalizing" reason `_ONTARIO_REGIONAL_
+    # MUNICIPALITIES`'s own comment gives: this is the one real confirmed
+    # Canadian county-shaped eScribe tenant found so far, and adding a
+    # broader Canadian-counties table needs the same kind of grep-the-
+    # real-downloaded-source-file confirmation that comment describes,
+    # not a guess at which other Ontario counties might also need it.
+    # "authoritative" since the page's own repaired jurisdiction (a real,
+    # confirmed-live production row) is confidently wrong -- "Oxford
+    # County, ME" -- not merely missing, same bar every other
+    # authoritative entry in this table meets.
+    "pub-oxfordcounty.escribemeetings.com": KnownJurisdiction(
+        "Oxford County", "county", "ON", strength="authoritative"
+    ),
 }
 
 
