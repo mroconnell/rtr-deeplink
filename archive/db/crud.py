@@ -2481,6 +2481,92 @@ async def list_low_trust_pages(
         }
 
 
+_MISSING_JURISDICTION_SAMPLE_SIZE = 5
+_MISSING_JURISDICTION_MAX_SAMPLE_SIZE = 50
+
+
+async def get_missing_jurisdiction_summary(
+    *, sample_size: int = _MISSING_JURISDICTION_SAMPLE_SIZE
+) -> dict:
+    """Read-only audit summary backing GET /internal/jurisdiction/missing
+    (archive/main.py) -- the opposite question from get_jurisdiction_
+    coverage() and every existing `/internal/*` jurisdiction endpoint,
+    which all query `WHERE jurisdiction IS NOT NULL` by construction
+    (built to answer "did you cover my city," not "what's missing").
+
+    Real gap this closes (BACKLOG.md, found during the 2026-08-29 Vimeo
+    audit): finding "which pages have no jurisdiction" meant a one-off DB
+    script or manually paging `/meetings`, even though the counts
+    themselves (269 of 3,406 pages at the time) were already known --
+    nothing repeatable existed. Grouped by platform with a capped sample
+    of slugs per platform, same shape the original manual sweep needed,
+    so the next one is self-serve.
+
+    Never writes anything -- same read-only-audit role as
+    list_low_trust_pages()/list_jurisdiction_bleed_backfill_candidates()
+    above, just answering IS NULL instead of an existing value's
+    quality. `sample_size` (capped at
+    `_MISSING_JURISDICTION_MAX_SAMPLE_SIZE`) bounds how many slugs come
+    back per platform -- the point is a representative starting sample
+    for research, not a full dump (that's what a filtered `/meetings`
+    call or a direct DB query is for).
+    """
+    sample_size = max(1, min(int(sample_size), _MISSING_JURISDICTION_MAX_SAMPLE_SIZE))
+
+    async with async_session() as session:
+        total = (
+            await session.execute(
+                select(func.count())
+                .select_from(MeetingPage)
+                .where(MeetingPage.jurisdiction.is_(None))
+            )
+        ).scalar_one()
+
+        platform_counts = (
+            await session.execute(
+                select(MeetingPage.platform, func.count())
+                .where(MeetingPage.jurisdiction.is_(None))
+                .group_by(MeetingPage.platform)
+                .order_by(func.count().desc())
+            )
+        ).all()
+
+        by_platform = []
+        for platform, count in platform_counts:
+            sample_slugs = (
+                (
+                    await session.execute(
+                        select(MeetingPage.slug)
+                        .where(
+                            MeetingPage.jurisdiction.is_(None),
+                            MeetingPage.platform == platform,
+                        )
+                        # Newest first -- a research sample is most useful
+                        # pointed at what the pipeline published most
+                        # recently, same reasoning list_low_trust_pages()
+                        # uses for its own default ordering.
+                        .order_by(MeetingPage.created_at.desc())
+                        .limit(sample_size)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            by_platform.append(
+                {
+                    "platform": platform,
+                    "count": count,
+                    "sample_slugs": list(sample_slugs),
+                }
+            )
+
+        return {
+            "total_missing": total,
+            "sample_size": sample_size,
+            "by_platform": by_platform,
+        }
+
+
 async def mark_low_trust_pages_reviewed(
     *,
     ids: Set[int],

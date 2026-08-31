@@ -1,5 +1,39 @@
 # Backlog — done
 
+## New GET /internal/jurisdiction/missing endpoint — answers "which pages have no jurisdiction," grouped by platform [Done 2026-08-31]
+
+Real gap: every existing jurisdiction audit endpoint
+(`get_jurisdiction_coverage()`, `list_jurisdiction_bleed_backfill_
+candidates()`) queries `WHERE jurisdiction IS NOT NULL` by construction
+-- built to answer "did you cover my city," not "what's missing." The
+2026-08-29 Vimeo audit that first sized this gap (269 of 3,406 archived
+pages had no jurisdiction, broken down by platform) had to fall back to
+manually paging `/meetings` before real DB access made a one-off query
+possible -- nothing repeatable existed for the next sweep.
+
+**Built**: `crud.get_missing_jurisdiction_summary()` + `GET /internal/
+jurisdiction/missing` (`archive/main.py`), same admin-token-gated,
+read-only-audit pattern as `list_low_trust_pages()`/`get_jurisdiction_
+coverage()`. Two queries: a `GROUP BY platform` count, then a
+`sample_size`-capped (default 5, max 50) sample of slugs per platform,
+newest first. Never writes anything.
+
+Regression tests: `tests/test_jurisdiction_missing_endpoint.py` (auth,
+grouping, exclusion of pages that DO have a jurisdiction, sample-size
+honoring/capping, response shape). **One real shared-DB collision found
+and fixed while writing these**: an early draft used a real jurisdiction
+string ("Dublin, CA") for the "should be excluded" test case, which
+collided with `test_state_pages.py`'s own Dublin CA fixture and broke
+`test_state_page_lists_states_jurisdictions` by inflating a count that
+test depends on being exact -- confirmed by bisecting which of 4 new
+tests caused it. Fixed by using an obviously-synthetic jurisdiction
+string instead, since only non-null-ness matters for that test, not
+real-place validity. Full suite green (2286 passed).
+
+**The 269-of-3,406 numbers from 2026-08-29 are now stale** (several
+platforms fixed since) -- see the live `BACKLOG.md` "Ship next" entry
+for the exact curl to re-derive fresh ones once this deploys.
+
 ## Oakville ON / Courtenay BC: the other half of the province-dropping gap, and the original bug's real source found [Done 2026-08-31]
 
 Second half of BACKLOG.md's "Missing County/province suffix" entry.

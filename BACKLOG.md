@@ -54,8 +54,9 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
   [JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
+  [JUST-DO-IT] Once deployed, re-run the missing-jurisdiction sweep
   [EASY] CivicClerk's `mediaStreamPath` fallback is a relative path,…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
@@ -68,7 +69,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (45)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (44)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -91,14 +92,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (45)
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (11)
+  Jurisdiction extraction & backfill  (10)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
-    [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
     [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
     [LATER] Domain guesser matched a same-named US state's real portal
@@ -268,6 +268,15 @@ so that work reads together.
   `curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
   "$ARCHIVE_BASE_URL/internal/jurisdiction/backfill-apply?dry_run=true&only_ids=698,1056"`
   — confirm it shows "Oakville, ON"/"Courtenay, BC", then `dry_run=false`.
+
+- **[JUST-DO-IT] Once deployed, re-run the missing-jurisdiction sweep
+  with the new endpoint for fresh per-platform numbers.** `GET
+  /internal/jurisdiction/missing` now exists (see `BACKLOG_DONE.md`) —
+  the 269-of-3,406 count from 2026-08-29 is stale (several platforms
+  fixed since). `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
+  "$ARCHIVE_BASE_URL/internal/jurisdiction/missing"` gives real current
+  counts + a sample of slugs per platform to start the next research
+  pass from, no DB script needed.
 
 - **[EASY] CivicClerk's `mediaStreamPath` fallback is a relative path, used
   as if it were absolute — confirmed live 2026-08-30 (WO-85), one real
@@ -1017,34 +1026,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   not designed yet, since the real jurisdiction text sits in a
   different place per entity type.
 
-
-- **[NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
-  missing a jurisdiction," even though the real numbers are now known.**
-  The 2026-08-29 Vimeo audit above started by manually paging
-  `/meetings?page=N`; once real DB access was available the same day, a
-  direct query gave the actual counts: **269 of 3,406 archived pages**
-  have no jurisdiction, by platform: Cablecast 101 (fixed, see this
-  file's Cablecast entry), TelVue 46 (2 fixed one-off, rest need
-  per-org-token research — see telvue.py's own `_KNOWN_ORG_TOKEN_
-  JURISDICTIONS` comment), Swagit 39 (already its own entry above —
-  structurally harder, not a quick fix), Hyland 18 (fixed — see
-  `BACKLOG_DONE.md`), CivicClerk 17 (10 already fixed by refreshing
-  stale rows against already-shipped code; residuals below), YouTube 18
-  (mostly failed resolves with no title at all — overlaps the tracked
-  YouTube IP-block issue, not a jurisdiction bug), eScribe 14 (2 fixed —
-  see `BACKLOG_DONE.md`; residuals below), Vimeo 10 (residual after
-  `BACKLOG_DONE.md`'s fixes — 2 have no place signal at all, 1 resolves
-  but stays state-ambiguous), plus 6 across unknown/castus/
-  townhallstreams (not investigated). What's still missing: a real,
-  repeatable *endpoint* for this — `/meetings` has no
-  `has_jurisdiction=false` filter, and the read-only `/internal/*` audit
-  endpoints (e.g. `get_jurisdiction_coverage()`) all query `WHERE
-  jurisdiction IS NOT NULL`, built for the opposite question. A `GET
-  /internal/jurisdiction/missing`-shaped endpoint (same dry-run-first,
-  admin-token-gated pattern as the bleed-backfill endpoints already in
-  `archive/main.py`), grouped by platform with a capped sample of slugs
-  per platform, would make the next sweep self-serve instead of needing
-  a one-off DB script.
 
 - **[NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
   product decision, not a data fix — the one residual of the closed
