@@ -474,68 +474,6 @@ outright. **Open question for Ryan**: worth confirming whether
 if not — no code change needed, this is a "ship what's already on `main`"
 gap, not a new fix to build.
 
-**One new, Confirmed-via-code bug: `check_destination()` doesn't catch
-`UnicodeError`, so a malformed hostname 500s instead of being cleanly
-rejected.** Surfaced by Sentry **PYTHON-FASTAPI-15** (`UnicodeError: label
-too long`, 2026-08-30 19:46:52 UTC, `handled=no`, `/api/refresh-archived-page`,
-`url=https://redtaperecordings.com/api/refresh-archived-page`,
-`browser=curl 8.7.1` — the request shape strongly suggests a direct API
-probe, not a real click through `meeting_page.js`'s `wireRefreshPageButton()`,
-which always sends `page.source_url` verbatim). The submitted `url` was
-`https://anchorage-ak-2026-07-02-amats-technical-advisory-committee-placeholder`
-— note the real Anchorage AMATS slug (`BACKLOG.md`'s existing
-`[NEEDS-AUDIT]` entry) is `anchorage-ak-2026-07-02-amats-technical-advisory-committee`,
-*without* the `-placeholder` suffix, and that exact slug 404s live on the
-site today — so this looks like an external client testing slug-shaped
-strings against the endpoint, not a real broken `source_url` on a real
-page. Traced in `app/utils/url_guard.py:83-108`: `check_scheme()` accepts
-any `scheme://hostname`, then `check_destination()` tries
-`ipaddress.ip_address(hostname)` (fails, not an IP), falls through to
-`_resolve_hostname()` → `socket.getaddrinfo()`. When `hostname` has a
-single DNS label over 63 octets (as this 74-character slug-shaped string
-does), `getaddrinfo()`'s IDNA encoding raises `UnicodeError`, not
-`socket.gaierror` — and the `except socket.gaierror` clause at line 104
-doesn't catch it, so it propagates unhandled into a 500 instead of the
-intended clean `BlockedURLError("Couldn't resolve that host.")`.
-**Impact**: every caller of `check_destination()` is affected in
-principle — `/api/refresh-archived-page` (25/hour rate-limited, so low
-volume even if hit repeatedly), the generic-fallback resolve path
-(`app/main.py:568`), and `headless_browser.py`'s per-redirect-hop guard —
-though only a hostname-shaped string long enough to break IDNA encoding
-triggers it, so real-world hit rate is probably low; still, a 500 where a
-clean rejection is intended is a real bug, and it's on a public,
-unauthenticated endpoint. **Fix, sized small**: add `UnicodeError` to the
-`except` clause alongside `socket.gaierror` in `check_destination()`
-(`app/utils/url_guard.py:104`), same clean `BlockedURLError` message.
-
-**One new, Confirmed-via-code finding: new Search Console "Missing field"
-structured-data flags are a likely side effect of the earlier "invalid
-datetime value" fix, and this repo already has the tool to size it.**
-Two new alerts today: Videos structured data "Missing field 'uploadDate'"
-and Events structured data "Missing field 'startDate'" (both
-2026-08-31 08:27 UTC) — a different flag from the already-`[WAIT]`
-`thumbnailUrl` entry in `BACKLOG.md`'s Search Console section. Traced in
-`archive/templates/meeting_page.html:128-138` and `:208-209`: both
-`uploadDate` and `startDate` are gated on `{% if iso_date %}` and emitted
-*only* when present — a deliberate 2026-08-21 fix (per the template's own
-comment) for a companion "invalid datetime value" flag, which used to
-concatenate an unvalidated free-string date straight into the JSON-LD.
-The trade-off that fix made explicit in code but not in `BACKLOG.md`: a
-page whose `page.date` is null or unparseable now emits *neither* field
-at all, rather than a bad one — trading "invalid" for "missing," which is
-exactly today's new flag. **Unconfirmed** how many real pages this
-affects — `archive/main.py:959` already has a purpose-built endpoint for
-exactly this question, `GET /internal/date-format-audit` (built, per its
-own docstring, to settle "how big is this really" for this same
-`iso_date` gate), but it needs the `ARCHIVE_INGEST_TOKEN` bearer token
-this Routine deliberately doesn't have access to. **Open question /
-follow-up for a session with that token**: run
-`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/date-format-audit"`
-to get the real count of null/unparseable-date pages, which is exactly
-the scope this new flag needs before it's worth building anything further
-(a backfill, a per-adapter date-capture fix, or just accepting the gap on
-however few pages have it).
-
 **One item worth recording so it doesn't get re-flagged, not a
 finding**: the GitHub secret-scanning alert ("Possible valid secrets
 detected," Google API Key, `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103`,

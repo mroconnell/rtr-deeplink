@@ -116,7 +116,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
-Reliability, ops & cost  (10)
+Reliability, ops & cost  (11)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
   Media-source reliability  (2)
@@ -127,9 +127,10 @@ Reliability, ops & cost  (10)
     [NEEDS-AUDIT] Re-derived 2026-08-31: backlog keeps shrinking.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (2)
+  Search Console, structured data & SEO plumbing  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
     [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
+    [NEEDS-AUDIT] New Search Console "Missing field" flags (Videos
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
@@ -1420,6 +1421,17 @@ connection-level timeout so this pattern stops being rediscovered from
 scratch; not worth raising the timeout to match Granicus's own gateway
 timeout blindly, per the current default noted above.
 
+**Related fix landed 2026-08-30, doesn't close this.** WO-83 (`2857d53`,
+#609) confirmed this exact failure mode is still live in production — the
+same 8 `archive-stream.granicus.com` candidates (known origin 504,
+"ffprobe couldn't read the media") were being re-selected identically for
+25+ hours — and fixed the *downstream symptom*: the backlog driver now
+records probe-only feasibility failures so cooldown actually engages
+instead of looping on the same dead candidates forever. It did not touch
+the root 504/timeout issue described above, nor add the
+real-5XX-vs-ordinary-timeout logging distinction called for two
+paragraphs up. Both remain open.
+
 #### `[NEEDS-AUDIT]` A single job still makes N consecutive same-host pulls, and the 120s ffmpeg timeout is fixed
 
 The residual after WO-40 measured the failure pattern (2026-08-21). WO-40
@@ -1473,7 +1485,7 @@ top-up driver has been creating zero jobs" under **Transcription queue
   `while True:` until the surrounding block exits, and the block it wraps
   ends in `engine.transcribe_chunk()` →
   `asyncio.to_thread(self._transcribe_sync, ...)`
-  (`worker/transcription_engine.py:187`) with **no `wait_for` and no
+  (`worker/transcription_engine.py:200`) with **no `wait_for` and no
   timeout**. ffmpeg is bounded (2 × `_SUBPROCESS_TIMEOUT_SECONDS`);
   faster-whisper is not. So if a transcription call ever wedges, the
   heartbeat keeps the claim fresh indefinitely, `STALE_CLAIM_AFTER` never
@@ -1511,10 +1523,14 @@ top-up driver has been creating zero jobs" under **Transcription queue
   2026-08-30) — steady real output. `tier3_queue_remaining` is **1227**
   (was 1289, then 1,317) — also declining now, not just flat.
   `jobs_completed_last_24h: 38`. These are all pre-WO-83-effect numbers
-  (or too early to tell) — re-derive again once the entry above confirms
-  the top-up driver is actually creating jobs, and re-derive whether
-  tier-3/Granicus-feed rate cuts are still warranted at that point rather
-  than assuming they still are.
+  (or too early to tell) — re-derive again once a post-fix
+  `bulk-queue-transcription-backlog.yml` run shows "N created" with N > 0
+  (the ffprobe-missing-on-runner regression that was masking this as "0
+  created, 8 skipped" was found and fixed 2026-08-31, see
+  `BACKLOG_DONE.md`'s "CI ffprobe regression, fixed" — the entry that
+  used to sit directly above this one before that fix moved it out), and
+  re-derive whether tier-3/Granicus-feed rate cuts are still warranted at
+  that point rather than assuming they still are.
 
 - **[LATER] `list_transcription_backlog_candidates()` still does a real
   N+1 query pattern, found 2026-08-21.** Unlike
@@ -1598,21 +1614,51 @@ top-up driver has been creating zero jobs" under **Transcription queue
   'thumbnailUrl'" — Validation still reads "Not Started," nobody has
   asked Google to re-verify yet. Nothing to build.
 
+- **[NEEDS-AUDIT] New Search Console "Missing field" flags (Videos
+  `uploadDate`, Events `startDate`, both 2026-08-31) are the likely,
+  known trade-off of the 2026-08-21 datetime-validation fix — promoted
+  from `CLAUDE_INBOX_TRIAGE.md`.** A different flag from the
+  `thumbnailUrl` entry above. `archive/templates/meeting_page.html:
+  128-138` and `:208-209` gate both fields on `{% if iso_date %}`,
+  emitting *only* when present — a deliberate 2026-08-21 fix (per the
+  template's own comment) for a companion "invalid datetime value" flag
+  that used to concatenate an unvalidated free-string date straight into
+  the JSON-LD. The trade-off that fix made in code but never wrote down:
+  a page whose `page.date` is null or unparseable now emits *neither*
+  field, trading "invalid" for "missing" — exactly today's new flag.
+  **Unconfirmed how many real pages this affects.**
+  `GET /internal/date-format-audit` (`archive/main.py:959`) already
+  exists, built per its own docstring to answer exactly this ("how big is
+  this really" for the `iso_date` gate), but needs the
+  `ARCHIVE_INGEST_TOKEN` bearer token — this session doesn't have one
+  either. **Next step for a session with that token**:
+  `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
+  "$ARCHIVE_BASE_URL/internal/date-format-audit"` to get the real
+  null/unparseable-date page count before deciding whether this is worth
+  a backfill, a per-adapter date-capture fix, or just accepting the gap.
+
 ### `/coverage` as a QA surface
 
 - **[JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
   real, useful place to spot resolver bugs by eyeballing outliers —
   confirmed by actually doing it, 2026-08-15.** A single pass over all
-  501 rows surfaced several real bugs in one session (wordninja-acronym
-  examples, a second adapter with the same unbounded-regex bug already
-  known on Granicus, a genuine wrong-title/wrong-jurisdiction mismatch).
-  Worth treating this kind of scan as a repeatable practice after any
-  batch of new adapter/jurisdiction work — cheap, and every hit so far
-  has been a real, previously-undocumented bug, not noise. (The two
-  literal-date-as-jurisdiction rows this entry originally flagged as
-  still-live are gone as of a 2026-08-21 re-scan — most likely
-  incidentally closed by WO-14's bleed fix, never independently
-  root-caused since the original URLs were never recorded.)
+  501 rows (2026-08-15) surfaced several real bugs in one session
+  (wordninja-acronym examples, a second adapter with the same
+  unbounded-regex bug already known on Granicus, a genuine
+  wrong-title/wrong-jurisdiction mismatch). Worth treating this kind of
+  scan as a repeatable practice after any batch of new adapter/
+  jurisdiction work — cheap, and every hit so far has been a real,
+  previously-undocumented bug, not noise. (The two literal-date-as-
+  jurisdiction rows this entry originally flagged as still-live are gone
+  as of a 2026-08-21 re-scan — most likely incidentally closed by WO-14's
+  bleed fix, never independently root-caused since the original URLs were
+  never recorded.) **The 501-row count is already stale**: a follow-up
+  full-production scan days later (WO-16, see `BACKLOG_DONE.md`) found
+  843 rows — roughly double within a week. No rescan has been logged
+  since; substantial jurisdiction work has landed in the ten days since
+  (Oakville/Courtenay fix, leading-"The" gap, subdomain-override repair,
+  a missing-jurisdiction sweep, WO-88's CivicClerk fix) without a fresh
+  eyeball pass over the table — due for one.
 
 ## Trust, safety & data quality
 
