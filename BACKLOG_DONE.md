@@ -1,5 +1,66 @@
 # Backlog — done
 
+## Repetition-loop transcript-defect repair run: 14/14 repaired, 0 failed [Done 2026-08-31]
+
+Second half of the WO-84/WO-87 repair effort (seam-duplication half —
+111/111 pages — already closed; see that entry). With WO-87 deployed,
+ran `scripts/repair_repetition_loops.py` for real for the first time.
+
+**Dry run**: scanned 18 default-version candidates from `GET
+/internal/transcription/hallucination-candidates`, found confirmed
+repetition loops in 14 — real repeated cues like "Testing one, two,
+three." (Napa County, 15 copies over 30–485s), a bare "." (Rochester MN,
+15 copies), "I'm in jail." (Roanoke County, 11 copies). Report written to
+`scripts/repetition_loop_report.json`.
+
+**Worth noting**: the live entry this resolves had estimated ~74
+candidates; only 18 were actually in the current candidate pool. Ryan
+confirmed this gap is explained by yesterday's (2026-08-30) fixes
+already having shrunk the population — not re-derived independently in
+this session, just noting it here so a future reader doesn't need to
+re-ask the same question.
+
+**Applied**: `--apply --from-report scripts/repetition_loop_report.json`
+repaired all 14 — each kept its run's first cue and dropped the rest
+(counts ranged from 5 dropped/2726 kept on Teton County ID to 15
+dropped/2100 kept on Napa County), new default version created per page
+(old version still reachable via `?version=`), **0 failed/skipped**.
+
+Residual work this run doesn't cover is filed as its own live entry in
+`BACKLOG.md`.
+
+## `thumbnailUrl` "Videos" structured-data flag: cleared, Affected items now 0 [Done 2026-08-31]
+
+Resolves `BACKLOG.md`'s matching `[WAIT]` entry. Root cause was already
+corrected and confirmed 2026-08-29 (the flagged page, Lynchburg VA, had
+a real live `thumbnailUrl`) — the only thing outstanding was Google
+re-verifying it. Ryan checked Search Console's Videos structured-data
+report 2026-08-31 for the "Missing field 'thumbnailUrl'" issue: **Affected
+items now reads 0**, with the trend graph showing the count drop from 1
+down to 0 in the last few days — cleared on its own via Google's normal
+recrawl cycle, no explicit Validate Fix click needed. Nothing left to do.
+
+## `/meetings` result link order: decided — keep headline→deep-link, "Play from 0:00"→meeting page [Investigated 2026-08-31]
+
+Resolves `BACKLOG.md`'s matching "Needs a human" entry. Background: the
+2026-08-24 PR made the row's headline open the matched deep link and
+"Play from 0:00" open the whole meeting (Ryan's call at the time,
+reasoning that someone who typed a topic wants the topic), and added a
+GA4 `search_result_click` event carrying `link_type`
+(`deep_link` / `meeting_page`) and `result_position` so the question
+could eventually be answered from real data instead of taste. The event
+itself was verified working end-to-end 2026-08-30 (custom dimensions
+registered, confirmed in Realtime with real parameter values).
+
+**2026-08-31: Ryan reviewed the real click data and decided to keep the
+current order as-is.** No code change. Worth remembering if this ever
+gets re-litigated: a headline is a far bigger click target than a small
+link three lines down, so part of any split favoring it is just Fitts's
+law, not necessarily intent — and the home/state page featured cards
+deliberately did **not** get the same reversal (a browsing reader has
+stated no intent), so they were never a valid control group for this
+question.
+
 ## Tucson, AZ: YouTube-channel video fallback built and tested [Done 2026-08-31]
 
 Tucson's one archived page (`tucsonaz.hylandcloud.com`, Hyland) had no

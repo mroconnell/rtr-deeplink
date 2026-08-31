@@ -113,14 +113,11 @@ Standing decisions — do NOT re-raise  (6)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (4)
-  Confirmations nobody has actually watched happen  (2)
-    [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub…
-    [HUMAN] Decide the /meetings result link order from real click data,…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Production actions only Ryan should take  (1)
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
   Decisions about already-live content  (1)
-    [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect…
+    [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
@@ -178,7 +175,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (12)
+Reliability, ops & cost  (11)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
@@ -190,9 +187,8 @@ Reliability, ops & cost  (12)
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (3)
+  Search Console, structured data & SEO plumbing  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-    [WAIT] `thumbnailUrl` "Videos" structured-data flag — fixed, only the
     [NEEDS-AUDIT] New "Missing field" flags — Videos `uploadDate`, Events
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
@@ -349,49 +345,6 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-### Confirmations nobody has actually watched happen
-
-- **[HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub rebuild moved Google's indexing verdict.**
-  - **Issue**: no Search Console data yet on whether the 2026-08-23
-    `/state/*`/`/j/*` rebuild changed Google's indexing verdict.
-  - **Impact**: can't tell if the rebuild worked, or tune these surfaces
-    further, without this data.
-  - **Next action**: pull a Search Console export at least a few weeks
-    out from the 2026-08-23 rebuild date, and measure against the
-    **3.6× (`/j/`) and 3.1× (`/state/`) over-representation figures** —
-    not the raw non-indexed count, which moves with corpus growth and
-    can't answer this on its own. Nothing to change in code meanwhile.
-  - **Constraint**: read `STATE_HUB_PAGES.md` before touching `/state/*`
-    or `/j/*` — the full reasoning, tried-and-rejected list with
-    measurements, tuning table, and future-work ranking live there.
-  - **History**: `BACKLOG_DONE.md` keeps the original investigation.
-    Separate, still-open engineering residuals this rebuild left behind
-    are filed under Open bugs, not blocked on this dashboard step.
-
-- **[HUMAN] Decide the /meetings result link order from real click data, not from taste.**
-  - **Issue**: the row's headline link now opens the matched segment
-    and "Play from 0:00" below opens the whole meeting (Ryan's call,
-    2026-08-24) — untested against real user behavior.
-  - **Impact**: the current order could be wrong for how people actually
-    use search results; no evidence behind the choice yet.
-  - **Next action**: once there's enough traffic to be meaningful, read
-    GA4's `search_result_click` event (`link_type`:
-    `deep_link`/`meeting_page`, `result_position`) and keep or flip the
-    order. Two confounds to weigh when reading it: the headline is a
-    much bigger click target (partly just Fitts's law), and the
-    home/state page featured cards deliberately did *not* get the same
-    reversal, so they aren't a control group — different question.
-  - **History**: the event has fired since 2026-08-24; its custom
-    dimensions (`link_type`/`result_position`) were registered in GA4
-    and verified end-to-end via a live test click on 2026-08-30 —
-    measurement is confirmed wired correctly, just waiting on real
-    traffic volume.
-
-Left open across `AUDIT_EXECUTION_BRIEF.md`'s Phase 1 and Waves 1-6, all
-code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
-ops audit execution" entry). None blocks anything else; do whenever
-convenient.
-
 ### Production actions only Ryan should take
 
 - **[HUMAN] Click Validate Fix in Search Console for the reslug fix.**
@@ -409,32 +362,25 @@ convenient.
 
 ### Decisions about already-live content
 
-- **[JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect population in stored segments — blocked on deploy, not code.**
-  - **Issue**: `scripts/repair_repetition_loops.py` (~74 candidates) is
-    built and CI-tested but has never completed a run against
-    production.
-  - **Impact**: ~74 pages carry repetition-loop transcript defects that
-    can be repaired in place instead of needing a full re-transcribe.
-  - **Next action**: once the WO-87 fix (merged to `main` 2026-08-31,
-    not yet deployed — `asyncio.to_thread()` plus
-    `CANDIDATE_PAGE_SIZE` dropped 500 → 25) is deployed, run
-    `scripts/repair_repetition_loops.py --dry-run`, review the report,
-    then apply. Still open after that: (1) trim the 3 remaining
-    hallucinated-default transcripts that aren't Kitchener (e.g.
-    Sacramento — Kitchener itself was re-transcribed 2026-08-30); (2)
-    put anything the repair can't fix on the re-transcription report —
-    not started; (3) extend the repair to the local-batch population by
+- **[NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population — residual work after the 2026-08-31 repair run.**
+  - **Issue**: `scripts/repair_repetition_loops.py` ran for real
+    2026-08-31 once WO-87 deployed — 14 of 18 scanned candidates had
+    confirmed loops, all 14 repaired, 0 failed. Both halves of this
+    defect population (seam-duplication, 111/111; repetition-loop,
+    14/14) are now done.
+  - **Impact**: three residual sub-tasks not covered by that run.
+  - **Next action**: (1) trim the 3 remaining hallucinated-default
+    transcripts that aren't Kitchener (e.g. Sacramento — Kitchener
+    itself was re-transcribed 2026-08-30) — not started; (2) put
+    anything the repair can't fix on the re-transcription report — not
+    started; (3) extend the repair to the local-batch population by
     scanning stored segments instead of job records, since
     `scripts/transcribe_backlog_locally.py` never touches
     `transcription_jobs` — not started.
-  - **Constraint**: don't run this before the WO-87 deploy lands — its
-    predecessor (`limit=500`) triggered a full-service outage,
-    `detect_hallucination_warnings()` blocking the worker's event loop
-    for 128s+ and failing Render's health check.
-  - **History**: the seam-duplication half of this same defect
-    population is already done (111/111 pages repaired live). Full bug
-    history — the unbounded-`limit` query fix and the WO-87 event-loop
-    fix — is in `BACKLOG_DONE.md`, WO-84 and WO-87.
+  - **History**: full run detail (per-page drop counts, the 18-vs-~74
+    candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
+    unbounded-`limit` query fix and the WO-87 event-loop fix — is also
+    there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
@@ -1637,25 +1583,11 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `agenda_link`-only page), "Five frozen-slug pages reslugged"
     (2026-08-28), and the 2026-08-31 redirect fix.
 
-- **[WAIT] `thumbnailUrl` "Videos" structured-data flag — fixed, only the
-  validation click is left.**
-  - **Issue**: Search Console flagged "Missing field 'thumbnailUrl'" on
-    the Videos structured-data report, for Lynchburg's meeting page (not
-    San Carlos, as an earlier unverified guess had it).
-  - **Impact**: none currently — root cause corrected and confirmed fixed
-    2026-08-29; `thumbnailUrl` is already correctly populated and live on
-    the page.
-  - **Next action**: open Search Console's Videos structured-data report
-    and click **VALIDATE FIX** — validation still reads "Not Started,"
-    nobody has asked Google to re-verify yet.
-  - **History**: `BACKLOG_DONE.md` (root-cause correction and fix,
-    2026-08-29).
-
 - **[NEEDS-AUDIT] New "Missing field" flags — Videos `uploadDate`, Events
   `startDate` (both 2026-08-31) — likely trade-off of the 2026-08-21
   datetime-validation fix.**
   - **Issue**: promoted from `CLAUDE_INBOX_TRIAGE.md`; a different flag
-    from the `thumbnailUrl` entry above.
+    from the now-closed `thumbnailUrl` entry (see `BACKLOG_DONE.md`).
     `archive/templates/meeting_page.html:128-138` and `:208-209` gate
     both fields on `{% if iso_date %}`, emitting only when present — a
     deliberate 2026-08-21 fix (per the template's own comment) for a
