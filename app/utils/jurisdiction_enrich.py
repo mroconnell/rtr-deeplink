@@ -2107,6 +2107,148 @@ _PROVINCE_ABBREVIATIONS_LOWER = {
     "yt",
 }
 
+# Full state/province names -> the SAME 2-letter code stored in
+# `_STATE_ABBREVIATIONS_LOWER`/`_PROVINCE_ABBREVIATIONS_LOWER` above --
+# needed by `resolve_claimed_state()` below because a free-text account/
+# channel name that already names its own state spells it out in full
+# ("Village of Angel Fire, New Mexico", "City of Medina, Minnesota"),
+# never abbreviated -- confirmed real, see that function's own docstring.
+# Standard USPS/Canada Post full names, public factual data, not derived
+# from any adapter-specific sample.
+_STATE_NAME_TO_ABBR_LOWER = {
+    "alabama": "al",
+    "alaska": "ak",
+    "arizona": "az",
+    "arkansas": "ar",
+    "california": "ca",
+    "colorado": "co",
+    "connecticut": "ct",
+    "delaware": "de",
+    "florida": "fl",
+    "georgia": "ga",
+    "hawaii": "hi",
+    "idaho": "id",
+    "illinois": "il",
+    "indiana": "in",
+    "iowa": "ia",
+    "kansas": "ks",
+    "kentucky": "ky",
+    "louisiana": "la",
+    "maine": "me",
+    "maryland": "md",
+    "massachusetts": "ma",
+    "michigan": "mi",
+    "minnesota": "mn",
+    "mississippi": "ms",
+    "missouri": "mo",
+    "montana": "mt",
+    "nebraska": "ne",
+    "nevada": "nv",
+    "new hampshire": "nh",
+    "new jersey": "nj",
+    "new mexico": "nm",
+    "new york": "ny",
+    "north carolina": "nc",
+    "north dakota": "nd",
+    "ohio": "oh",
+    "oklahoma": "ok",
+    "oregon": "or",
+    "pennsylvania": "pa",
+    "rhode island": "ri",
+    "south carolina": "sc",
+    "south dakota": "sd",
+    "tennessee": "tn",
+    "texas": "tx",
+    "utah": "ut",
+    "vermont": "vt",
+    "virginia": "va",
+    "washington": "wa",
+    "west virginia": "wv",
+    "wisconsin": "wi",
+    "wyoming": "wy",
+    "district of columbia": "dc",
+}
+_PROVINCE_NAME_TO_ABBR_LOWER = {
+    "alberta": "ab",
+    "british columbia": "bc",
+    "manitoba": "mb",
+    "new brunswick": "nb",
+    "newfoundland and labrador": "nl",
+    "nova scotia": "ns",
+    "ontario": "on",
+    "prince edward island": "pe",
+    "quebec": "qc",
+    "québec": "qc",
+    "saskatchewan": "sk",
+    "northwest territories": "nt",
+    "nunavut": "nu",
+    "yukon": "yt",
+}
+
+
+def resolve_claimed_state(name: str, claimed_state: str) -> Optional[str]:
+    """A state/province code, only when `claimed_state` (as typed -- a
+    two-letter USPS/Canada Post code OR a full spelled-out name, e.g.
+    "Minnesota" or "MN") is genuinely a MEMBER of `name`'s real state
+    list -- checked against the same `_PLACE_STATES`/`_COUNTY_STATES`
+    tables `lookup_city_state()`/`lookup_county_state()` already use.
+
+    Built for BACKLOG.md's "[NEEDS-AUDIT] A name that's already
+    'X, State'-shaped..." entry (WO-70, 2026-08-30, confirmed live via
+    Vimeo account "City of Medina, Minnesota"): a source text that
+    already names its own state directly shouldn't be declined just
+    because the bare name alone ("Medina") is nationally ambiguous (real
+    in MN/ND/OH/TN/WA/NY per `places.csv`) -- `lookup_city_state
+    ("Medina")` correctly returns None for THAT query (see its own
+    docstring: an ambiguous bare name is a real "don't guess" case), but
+    the source text here isn't actually ambiguous, it states the answer.
+    This function answers a different, narrower question: not "is this
+    name unambiguous on its own" but "is this SPECIFIC claimed state one
+    of the name's real states" -- strictly additive to the existing
+    lookups, since it only ever accepts a (name, state) pair that's
+    already a real row in the Census/StatsCan data; it never invents or
+    guesses a state the data doesn't list.
+
+    Type (county vs. place) is read from `name` itself, the same way
+    `enrich_jurisdiction_text()` already does (`_TYPE_HINT_RE`) -- only
+    the matching table is ever checked, deliberately NOT both. Real
+    false-accept this guards against, confirmed via `counties.csv`:
+    "Medina County" is real in OH *and TX*, so checking the county table
+    unconditionally would wrongly validate "City of Medina, Texas" off
+    the back of a real COUNTY that happens to share the name -- no real
+    *city* named Medina exists in Texas (confirmed: `places.csv` has no
+    TX row for "Medina" at all). Restricting to the type `name` itself
+    claims avoids that cross-type false accept, the identical reasoning
+    `resolve_state()`'s own `jurisdiction_type` parameter documents.
+
+    Returns None when `name` isn't real in any state/province of its own
+    claimed type, when `claimed_state` isn't a real state/province name
+    or code at all, or when `name` IS real somewhere but never in the
+    claimed state (e.g. `resolve_claimed_state("Medina", "Texas")` --
+    confirmed None, since Texas isn't one of Medina city's 6 real
+    states).
+    """
+    claimed = claimed_state.strip().lower().rstrip(".")
+    if (
+        claimed in _STATE_ABBREVIATIONS_LOWER
+        or claimed in _PROVINCE_ABBREVIATIONS_LOWER
+    ):
+        abbr = claimed.upper()
+    else:
+        abbr_lower = _STATE_NAME_TO_ABBR_LOWER.get(
+            claimed
+        ) or _PROVINCE_NAME_TO_ABBR_LOWER.get(claimed)
+        if not abbr_lower:
+            return None
+        abbr = abbr_lower.upper()
+    jurisdiction_type = "county" if _TYPE_HINT_RE.search(name) else "city"
+    table = _COUNTY_STATES if jurisdiction_type == "county" else _PLACE_STATES
+    for candidate in _normalize_candidates(name):
+        states = table.get(candidate)
+        if states and abbr in states:
+            return abbr
+    return None
+
 
 def _stoprule_extract(page_text: str) -> Optional[str]:
     """ "City/County/Town of X" walk over rendered page text that stops at

@@ -441,12 +441,41 @@ class VimeoAssetFinder(AssetFinder):
         remaining category this can't reach at all: a glued abbreviation
         ("UMTownship") with no generic split/validate path to its real
         name.
+
+        An account name already shaped "X, State" (e.g. "City of Medina,
+        Minnesota") is checked directly, the same way `youtube.py`'s
+        `_jurisdiction()` comma-branch does -- real only if the part
+        before the comma independently validates as a real place/county
+        on its own, OR the part after the comma is itself a real state/
+        province that genuinely lists the name
+        (`jurisdiction_enrich.resolve_claimed_state()`, added WO-70
+        2026-08-30 for BACKLOG.md's "already 'X, State'-shaped" entry --
+        "Medina" alone is ambiguous across 6 states, but this exact
+        account name already names the real one). Added here to mirror
+        `youtube.py`, which this docstring already said `_jurisdiction()`
+        was "the direct model" for -- before this, Vimeo had no
+        comma-handling at all and a comma-shaped account name fell
+        through to the glued-label path below, which isn't built for
+        spaces/commas and declines.
         """
         raw_author = ((oembed or {}).get("author_name") or "").strip()
         if not raw_author:
             return None
         if raw_author in _KNOWN_ACCOUNT_JURISDICTIONS:
             return _KNOWN_ACCOUNT_JURISDICTIONS[raw_author]
+        if "," in raw_author:
+            base = raw_author.split(",", 1)[0].strip()
+            claimed_state = raw_author.split(",", 1)[1].strip()
+            if (
+                jurisdiction_enrich.lookup_city_state(base)
+                or jurisdiction_enrich.lookup_county_state(base)
+                or jurisdiction_enrich.is_literal_known_place(base)
+                or jurisdiction_enrich.resolve_claimed_state(base, claimed_state)
+            ):
+                return jurisdiction_enrich.enrich_jurisdiction_text(
+                    raw_author, netloc="vimeo.com"
+                )
+            return None
         author = jurisdiction_enrich.strip_institutional_suffix(raw_author)
         label = jurisdiction_enrich.validated_label_extract(author)
         if not label:

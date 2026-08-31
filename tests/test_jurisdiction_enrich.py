@@ -2075,3 +2075,63 @@ def test_strip_institutional_suffix_confirmed_real_vimeo_youtube_names():
     # "Schools" alone must not strip "Public" out from under "Public
     # Schools" -- the longer phrase has to win.
     assert "Public" not in je.strip_institutional_suffix("Hopkins Public Schools")
+
+
+# resolve_claimed_state() -- WO-70, 2026-08-30, fixing BACKLOG.md's
+# "[NEEDS-AUDIT] A name that's already 'X, State'-shaped..." entry. Real,
+# confirmed example: Vimeo account "City of Medina, Minnesota"
+# (vimeo.com/user23531710, confirmed live 2026-08-30) -- "Medina" alone is
+# real in 6 states per places.csv (MN, ND, OH, TN, WA, NY), so
+# lookup_city_state("Medina") correctly stays ambiguous, but the source
+# text already names its own state directly, which this function checks
+# for instead of requiring the bare name to be globally unambiguous first.
+
+
+def test_resolve_claimed_state_accepts_a_real_member_of_an_ambiguous_names_state_list():
+    # Both the bare name and the "City of"-prefixed form; both the full
+    # spelled-out state name (what a real free-text account name actually
+    # contains) and the two-letter abbreviation.
+    assert je.resolve_claimed_state("Medina", "Minnesota") == "MN"
+    assert je.resolve_claimed_state("City of Medina", "Minnesota") == "MN"
+    assert je.resolve_claimed_state("Medina", "MN") == "MN"
+    assert je.resolve_claimed_state("Medina", "minnesota") == "MN"
+
+
+def test_resolve_claimed_state_declines_a_state_the_real_data_doesnt_list():
+    # Confirmed via places.csv: Texas is NOT one of Medina's real states
+    # as an incorporated PLACE -- must not accept it just because the
+    # name is real somewhere.
+    assert je.resolve_claimed_state("Medina", "Texas") is None
+    assert je.resolve_claimed_state("City of Medina", "Texas") is None
+
+
+def test_resolve_claimed_state_is_type_scoped_to_avoid_a_cross_type_false_accept():
+    # Real, confirmed trap: "Medina County" IS real in Texas (per
+    # counties.csv, alongside OH) even though no real incorporated PLACE
+    # named Medina exists there. A "County of"/"...County"-shaped claim
+    # must check the county table and accept Texas; a bare/"City of"
+    # claim must check the place table and decline it -- never borrow the
+    # county table's answer for a city-shaped claim, or vice versa.
+    assert je.resolve_claimed_state("Medina County", "Texas") == "TX"
+    assert je.resolve_claimed_state("County of Medina", "Texas") == "TX"
+    assert je.resolve_claimed_state("Medina", "Texas") is None
+    assert je.resolve_claimed_state("City of Medina", "Texas") is None
+
+
+def test_resolve_claimed_state_declines_when_the_name_isnt_real_at_all():
+    assert je.resolve_claimed_state("Not A Real Place Zzyzx", "Minnesota") is None
+
+
+def test_resolve_claimed_state_declines_when_the_claimed_state_isnt_real():
+    assert je.resolve_claimed_state("Medina", "Not A State") is None
+    assert je.resolve_claimed_state("Medina", "") is None
+
+
+def test_resolve_claimed_state_does_not_regress_an_unambiguous_name():
+    # No-regression check: an unambiguous name's already-correct state
+    # still resolves via this function too, same as lookup_city_state()
+    # already does on its own -- "Fresno" is a real, unambiguous city, the
+    # same confirmed-unambiguous real example already used in
+    # tests/test_civicclerk.py.
+    assert je.resolve_claimed_state("Fresno", "California") == "CA"
+    assert je.resolve_claimed_state("Fresno", "CA") == "CA"
