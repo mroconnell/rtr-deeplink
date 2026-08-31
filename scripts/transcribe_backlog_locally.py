@@ -171,6 +171,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
 from app.platforms.media_probe import (
+    chunk_size_seconds_for_platform,
     extract_chunk_audio,
     extract_full_audio,
     is_plausible_meeting_duration,
@@ -231,17 +232,20 @@ INGEST_TIMEOUT = aiohttp.ClientTimeout(
 # basic courtesy to the source sites.
 REQUEST_DELAY_SECONDS = 2.0
 
-# Matches app/platforms/media_probe.py's chunk_size_seconds_for_platform()
-# default -- duplicated rather than imported since this is a single
-# global value for the whole run (chosen once in main(), before any
-# candidate page or its platform is known), not resolved per meeting the
-# way the two real job-creation paths (app/main.py, worker/main.py) do.
-# A Granicus meeting run through this script therefore doesn't get that
-# function's smaller 300s Granicus chunk size automatically -- see
-# BACKLOG.md for this residual gap. Kept at 900 here for a different
-# reason than the worker's own real one anyway (RAM headroom, irrelevant
-# on this Mac) -- see the module docstring above for why this exists at
-# all.
+# The whisper-engine fallback default when neither --chunk-seconds nor a
+# platform-specific override applies -- matches app/platforms/media_probe.py's
+# chunk_size_seconds_for_platform() own _DEFAULT_CHUNK_SIZE_SECONDS. As of
+# WO-75 (2026-08-30) this script calls that shared function per-meeting, in
+# process_one(), once each candidate's real platform is known -- the same
+# per-page resolution the two real job-creation paths (app/main.py,
+# worker/main.py) already do -- so a Granicus meeting run through this
+# script now gets that function's smaller 300s Granicus chunk size
+# automatically, closing the gap BACKLOG.md previously tracked here. This
+# constant now only matters as the value shown in --chunk-seconds' own
+# --help text and the "Run started" log line; the real per-meeting decision
+# lives in process_one(). Kept at 900 for a different reason than the
+# worker's own real one anyway (RAM headroom, irrelevant on this Mac) --
+# see the module docstring above for why this exists at all.
 CHUNK_SIZE_SECONDS = 900
 
 # Default --chunk-seconds for --engine gemini, deliberately much smaller
@@ -1192,19 +1196,56 @@ async def transcribe_meeting(
     }
 
 
+def _resolve_chunk_seconds(
+    *, override: Optional[int], engine_kind: str, platform: str
+) -> int:
+    """Decides the chunk size (seconds) for one specific meeting, now that
+    its real platform is known -- the per-page hook WO-75 (2026-08-30)
+    added so this script's chunking finally matches the two real
+    job-creation paths (app/main.py, worker/main.py), both of which call
+    chunk_size_seconds_for_platform() once the resolved platform is known
+    rather than picking one value for a whole run. See CHUNK_SIZE_SECONDS'
+    own comment above for what this replaces.
+
+    Precedence, highest first:
+      1. `override` (--chunk-seconds) -- an explicit operator choice always
+         wins, whatever the platform turns out to be. Preserves this flag's
+         original behavior exactly; it was already the top precedence
+         before this change, just applied once globally instead of per-page.
+      2. `engine_kind == "gemini"` -- GEMINI_DEFAULT_CHUNK_SECONDS. Gemini's
+         small default is about the free-tier tokens-per-minute budget (see
+         that constant's own comment), a concern that has nothing to do
+         with Granicus's cold-CDN-fill timeout, so it stays a flat default
+         rather than going through chunk_size_seconds_for_platform().
+      3. Otherwise -- chunk_size_seconds_for_platform(platform), the same
+         shared function app/main.py and worker/main.py already call.
+    """
+    if override is not None:
+        return override
+    if engine_kind == "gemini":
+        return GEMINI_DEFAULT_CHUNK_SECONDS
+    return chunk_size_seconds_for_platform(platform)
+
+
 async def process_one(
     session: aiohttp.ClientSession,
     engine,
     page: dict,
     *,
     dry_run: bool,
-    chunk_size_seconds: int,
+    chunk_seconds_override: Optional[int],
+    engine_kind: str = "whisper",
     promote: bool = False,
     resume: bool = True,
     chunk_cooldown_seconds: float = 0.0,
     thermal_poll_seconds: float = 30.0,
 ) -> dict:
     """Returns {"slug", "status": "ingested"|"skipped"|"failed", "detail"}.
+
+    `chunk_seconds_override`/`engine_kind`: see _resolve_chunk_seconds() --
+    the actual chunk size used is decided here, per meeting, once this
+    page's real platform is known (via the same fresh detect_platform()
+    call already made below), not once for the whole run.
 
     `promote`: after a successful ingest, if response["version_id"] is not
     None (it's None only when this push produced literally no segments --
@@ -1251,10 +1292,14 @@ async def process_one(
     # meetings from every unattended (non --url) run. main()'s --url path
     # already does this fresh lookup; this brings the default candidate-list
     # path in line with it.
+    platform = detect_platform(page["source_url_normalized"])
+    chunk_size_seconds = _resolve_chunk_seconds(
+        override=chunk_seconds_override, engine_kind=engine_kind, platform=platform
+    )
     result = await transcribe_meeting(
         engine,
         page["source_url_normalized"],
-        detect_platform(page["source_url_normalized"]),
+        platform,
         chunk_size_seconds=chunk_size_seconds,
         resume=resume,
         chunk_cooldown_seconds=chunk_cooldown_seconds,
@@ -1403,12 +1448,17 @@ async def main() -> None:
         "--chunk-seconds",
         type=int,
         default=None,
-        help=f"Seconds of audio per extraction call. Default {CHUNK_SIZE_SECONDS} for "
-        "--engine whisper (see module docstring for why this isn't just 'the whole meeting at "
-        f"once' locally); default {GEMINI_DEFAULT_CHUNK_SECONDS} for --engine gemini -- a "
+        help="Seconds of audio per extraction call, applied to every meeting this run "
+        "processes regardless of its platform -- an explicit override that always wins over "
+        "the defaults below (see _resolve_chunk_seconds()). Without this flag, --engine whisper "
+        f"now picks a per-meeting default via the same chunk_size_seconds_for_platform() "
+        f"app/main.py and worker/main.py already use: {CHUNK_SIZE_SECONDS}s for most platforms, "
+        "300s for Granicus specifically (a cold-CDN-fill timeout risk at 900s, see that "
+        "function's own comment -- WO-75, 2026-08-30). --engine gemini ignores platform "
+        f"entirely and always defaults to {GEMINI_DEFAULT_CHUNK_SECONDS}s -- a "
         f"{CHUNK_SIZE_SECONDS}s chunk alone is {CHUNK_SIZE_SECONDS * 25} estimated input tokens, "
-        "well over the free tier's entire 10000-tokens/minute budget in one call, so Gemini "
-        "gets a smaller default independent of the Whisper-sized constant above.",
+        "well over the free tier's entire 10000-tokens/minute budget in one call, a concern "
+        "unrelated to Granicus's CDN timeout so it isn't platform-dependent.",
     )
     parser.add_argument(
         "--promote",
@@ -1477,13 +1527,21 @@ async def main() -> None:
         )
         sys.exit(1)
 
-    chunk_seconds = args.chunk_seconds
-    if chunk_seconds is None:
-        chunk_seconds = (
-            GEMINI_DEFAULT_CHUNK_SECONDS
+    # No longer resolved to one value here -- as of WO-75 (2026-08-30) each
+    # meeting gets its own chunk size in process_one(), via
+    # _resolve_chunk_seconds(), once that meeting's real platform is known.
+    # args.chunk_seconds (None unless --chunk-seconds was passed) is just
+    # passed through as the override every meeting checks first.
+    chunk_seconds_display = (
+        f"{args.chunk_seconds} (explicit --chunk-seconds override)"
+        if args.chunk_seconds is not None
+        else (
+            f"{GEMINI_DEFAULT_CHUNK_SECONDS} (--engine gemini default)"
             if args.engine == "gemini"
-            else CHUNK_SIZE_SECONDS
+            else f"per-platform default via chunk_size_seconds_for_platform() "
+            f"(usually {CHUNK_SIZE_SECONDS}, 300 for Granicus)"
         )
+    )
 
     if args.engine == "gemini":
         if args.model_size is not None:
@@ -1528,7 +1586,7 @@ async def main() -> None:
         args.limit if args.limit is not None else "(none -- full backlog)",
         args.newest_first,
         args.dry_run,
-        chunk_seconds,
+        chunk_seconds_display,
         args.promote,
         not args.no_resume,
         args.url or "(oldest-first backlog queue)",
@@ -1633,7 +1691,8 @@ async def main() -> None:
                     engine,
                     page,
                     dry_run=args.dry_run,
-                    chunk_size_seconds=chunk_seconds,
+                    chunk_seconds_override=args.chunk_seconds,
+                    engine_kind=args.engine,
                     promote=args.promote,
                     resume=not args.no_resume,
                     chunk_cooldown_seconds=args.chunk_cooldown_seconds,

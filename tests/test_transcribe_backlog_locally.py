@@ -420,7 +420,7 @@ async def test_process_one_detects_platform_fresh_not_from_stale_page_field(
     }
 
     await tbl.process_one(
-        None, _FakeEngine(), page, dry_run=True, chunk_size_seconds=900
+        None, _FakeEngine(), page, dry_run=True, chunk_seconds_override=900
     )
     assert seen_platforms[0] == "proudcity"
 
@@ -649,6 +649,141 @@ async def test_no_resume_ignores_an_existing_checkpoint(local_media):
     assert result["ok"] is True
     assert engine.chunks_transcribed == 2  # both chunks, checkpoint ignored
     assert not any(s["text"] == "stale" for s in result["segments"])
+
+
+# --- per-meeting chunk-size decision (WO-75, 2026-08-30) -------------------
+#
+# Closes BACKLOG.md's "[NEEDS-AUDIT] scripts/transcribe_backlog_locally.py
+# doesn't get the [Granicus 300s-chunk fix] automatically" entry: this
+# script previously picked one chunk_seconds value once in main(), before
+# any candidate page (or its platform) was known, so a Granicus meeting run
+# through it never got app/platforms/media_probe.py's
+# chunk_size_seconds_for_platform()'s smaller 300s Granicus default the way
+# app/main.py and worker/main.py's real job-creation paths already do.
+# _resolve_chunk_seconds() is the new per-page hook -- these tests are
+# SYNTHETIC (no live source involved, just the decision function and
+# process_one()'s wiring to it) since chunk_size_seconds_for_platform()
+# itself already has real-measured backing (see its own module comment in
+# media_probe.py) -- what's actually new and worth testing here is only the
+# *per-meeting* plumbing, not the underlying 300s/900s values.
+
+_REAL_GRANICUS_URL = "https://cityoftacoma.granicus.com/player/clip/7460"
+
+
+def test_resolve_chunk_seconds_uses_granicus_default_for_whisper():
+    """No --chunk-seconds override, whisper engine, Granicus platform -->
+    the smaller 300s default from chunk_size_seconds_for_platform(), same
+    as app/main.py and worker/main.py already get."""
+    assert (
+        tbl._resolve_chunk_seconds(
+            override=None, engine_kind="whisper", platform="granicus"
+        )
+        == 300
+    )
+
+
+def test_resolve_chunk_seconds_uses_900_default_for_other_platforms():
+    """Every non-Granicus platform still gets the ordinary 900s default via
+    the same shared function -- confirms this isn't a Granicus-only special
+    case bolted on beside chunk_size_seconds_for_platform() instead of
+    calling it."""
+    assert (
+        tbl._resolve_chunk_seconds(
+            override=None, engine_kind="whisper", platform="escribe"
+        )
+        == tbl.CHUNK_SIZE_SECONDS
+        == 900
+    )
+
+
+def test_resolve_chunk_seconds_explicit_override_wins_even_for_granicus():
+    """--chunk-seconds must still be able to force a specific value that
+    takes precedence over the per-platform default -- the exact behavior
+    this change was told to preserve, exercised against the one platform
+    where the default now differs from the flat 900s constant."""
+    assert (
+        tbl._resolve_chunk_seconds(
+            override=123, engine_kind="whisper", platform="granicus"
+        )
+        == 123
+    )
+
+
+def test_resolve_chunk_seconds_gemini_default_ignores_platform():
+    """Gemini's small default is about the free-tier tokens/minute budget,
+    not Granicus's CDN-timeout risk -- it must stay flat across platforms,
+    including Granicus, rather than going through
+    chunk_size_seconds_for_platform()."""
+    assert (
+        tbl._resolve_chunk_seconds(
+            override=None, engine_kind="gemini", platform="granicus"
+        )
+        == tbl.GEMINI_DEFAULT_CHUNK_SECONDS
+        == 180
+    )
+
+
+def test_resolve_chunk_seconds_explicit_override_wins_for_gemini_too():
+    assert (
+        tbl._resolve_chunk_seconds(
+            override=42, engine_kind="gemini", platform="granicus"
+        )
+        == 42
+    )
+
+
+async def test_process_one_picks_the_granicus_chunk_size_per_page(local_media):
+    """End-to-end through process_one(): a real Granicus URL (Tacoma WA,
+    from CLAUDE.md's own sample list), no --chunk-seconds passed, must
+    reach transcribe_meeting() with chunk_size_seconds=300 -- the actual
+    fix, not just the helper function in isolation. Captures the call
+    instead of letting a real chunked transcription run."""
+    captured = {}
+
+    async def _fake_transcribe_meeting(engine, source_url, platform, **kwargs):
+        captured["platform"] = platform
+        captured["chunk_size_seconds"] = kwargs.get("chunk_size_seconds")
+        return {"ok": False, "reason": "captured before any real work"}
+
+    local_media.setattr(tbl, "transcribe_meeting", _fake_transcribe_meeting)
+
+    page = {
+        "slug": "tacoma-wa-council",
+        "platform": "granicus",
+        "source_url_normalized": _REAL_GRANICUS_URL,
+        "video_url": None,
+        "video_format": None,
+    }
+    result = await tbl.process_one(
+        None, _FakeEngine(), page, dry_run=True, chunk_seconds_override=None
+    )
+    assert captured["platform"] == "granicus"
+    assert captured["chunk_size_seconds"] == 300
+    assert result["status"] == "skipped"
+
+
+async def test_process_one_override_beats_the_granicus_default(local_media):
+    """--chunk-seconds must still win over the new per-platform default,
+    even on the one platform where that default is no longer 900."""
+    captured = {}
+
+    async def _fake_transcribe_meeting(engine, source_url, platform, **kwargs):
+        captured["chunk_size_seconds"] = kwargs.get("chunk_size_seconds")
+        return {"ok": False, "reason": "captured before any real work"}
+
+    local_media.setattr(tbl, "transcribe_meeting", _fake_transcribe_meeting)
+
+    page = {
+        "slug": "tacoma-wa-council",
+        "platform": "granicus",
+        "source_url_normalized": _REAL_GRANICUS_URL,
+        "video_url": None,
+        "video_format": None,
+    }
+    await tbl.process_one(
+        None, _FakeEngine(), page, dry_run=True, chunk_seconds_override=77
+    )
+    assert captured["chunk_size_seconds"] == 77
 
 
 def test_a_checkpoint_from_a_different_chunking_is_refused(local_media):
