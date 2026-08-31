@@ -114,7 +114,21 @@ services:
     # actually fixed if it turns out to be the real one, just no longer
     # ugly. `runtime: docker` (like worker/'s own Dockerfile) is the real
     # fallback if a plain binary download isn't enough -- see BACKLOG.md.
-    buildCommand: pip install -r requirements.txt && playwright install chromium
+    # Root-caused 2026-08-31 via `render logs` + the local venv's own
+    # playwright/driver/package/browsers.json: `playwright install chromium`
+    # installs only the browser literally named "chromium" -- it does NOT
+    # pull `chromium-headless-shell`, a separate named browser in
+    # Playwright's own registry that `installByDefault: true` only covers
+    # for a bare no-argument `playwright install`. `_get_browser()` launches
+    # with `headless=True`, which Playwright 1.62 serves via that shell
+    # binary, not the full chromium binary -- so every headless-gated
+    # resolve was hitting `Executable doesn't exist at .../
+    # chromium_headless_shell-1234/...`, confirmed recurring in production
+    # logs across many separate process starts, and the runtime self-heal
+    # in headless_browser.py was "succeeding" while installing the same
+    # incomplete set, so it never actually fixed anything. Naming both
+    # browsers explicitly is the fix.
+    buildCommand: pip install -r requirements.txt && playwright install chromium chromium-headless-shell
     # --proxy-headers --forwarded-allow-ips='*' makes uvicorn trust Render's
     # X-Forwarded-For so request.client.host (and therefore per-IP rate
     # limiting on /api/resolve, see app/main.py) reflects the real caller

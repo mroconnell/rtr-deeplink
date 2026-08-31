@@ -49,10 +49,11 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (3)
+Standing decisions — do NOT re-raise  (4)
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -66,18 +67,17 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (39)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
-  [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
-  The retry papers over an unexplained asyncio/subprocess hang, and…
-  28 well-formed IQM2 queue rows point at retired tenants…
+  The retry papers over an unexplained asyncio/subprocess hang, and…  (1)
+    [LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
@@ -85,15 +85,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
-  `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (10)
+  Jurisdiction extraction & backfill  (9)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
-    [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
@@ -102,7 +100,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
   Adapter & platform gaps  (15)
     [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
-    [NEEDS-AUDIT] A real YouTube-backed meeting resolved as video-less
+    [NEEDS-AUDIT] Anchorage bot-block-during-YouTube-delegation example
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
     [NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
@@ -246,6 +244,20 @@ General principle and good/bad examples now in `CLAUDE.md` — we query
 sites politely and don't defeat a host's own access controls. Hit live
 on Spokane WA building the Vimeo adapter (WO-29); that adapter ships
 video-only rather than going near it.
+
+### Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more short real meetings
+
+Moved from Open bugs 2026-08-31 — this was already a settled "don't
+touch it" finding, not an open question. WO-46 moved the floor 300s →
+60s off real measured data. That recovered three of four confirmed-real
+short meetings, but a real County Council special meeting (53s,
+`berkeleycountysc.iqm2.com` MeetingID=4203) sits three seconds above a
+confirmed ad (50s, `gnat.cablecast.tv/.../13707`) — the two classes are
+interleaved right at the floor, so a smaller number buys nothing.
+Berkeley County stays an accepted miss. Separating them for real needs a
+different signal entirely (`meeting_body`, real-agenda presence, page
+framing) — worth building only if the daily failure digest (WO-46) shows
+this class is actually common; as of 2026-08-31 it's one known case.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -396,34 +408,6 @@ coverage** instead.
   low-quality-flagged pages, and/or should `/admin/recheck-archive-page`
   trigger this script's refresh path for one page on demand?
 
-- **[NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
-  mystery recurred 2026-08-30** — during that day's four-service
-  redeploy, a service log showed the exact documented failure shape
-  (`BrowserType.launch: Executable doesn't exist at /opt/render/.cache/
-  ms-playwright/chromium_headless_shell-1234/...`), the same error
-  `app/platforms/headless_browser.py`'s own docstring records from
-  2026-08-09 with root cause explicitly unconfirmed. New data points:
-  (1) it happens even though the resolver's `buildCommand` runs
-  `playwright install chromium` — the missing piece is specifically the
-  `chromium_headless_shell` variant that playwright 1.62's headless
-  launches use, so the build step may be installing full chromium but
-  not the headless shell, or the build-time cache isn't the runtime
-  cache; (2) the pasted log had `/api/health` polls (both services
-  serve that route) and startup continuing normally afterwards, so
-  `_get_browser()`'s in-process self-heal (`playwright install
-  chromium`, once, then retry) likely absorbed it — at the cost of a
-  browser download on the first Cloudflare-gated resolve after every
-  deploy. **To settle it (needs the dashboard):** read the resolver's
-  actual build log for the `playwright install chromium` step's output
-  (does it list `chromium_headless_shell`?), then hit a known
-  headless-gated resolve (Minneapolis LIMS / Wayne County MI) and
-  confirm it works without a mid-request download. If the build step
-  genuinely skips the headless shell, the fix is likely
-  `playwright install chromium --with-shell` or pinning
-  `PLAYWRIGHT_BROWSERS_PATH` into the project dir — but confirm from
-  the build log first, per the docstring's own advice, rather than
-  guessing a fourth time.
-
 - **[NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   91% of the real failing population is now explained; ~65% of it is
   third-party infrastructure this app's code cannot fix.** Full
@@ -559,9 +543,8 @@ coverage** instead.
   isn't enough to safely generalize a matching-logic change) applies
   directly. Worth building a real tie-break rule once a second
   Philadelphia (or other curated-fallback city) case of the same shape
-  turns up. Albuquerque still not re-checked — its Legistar calendar
-  page's current HTML didn't match the same link-scraping shape used
-  for the other three cities; needs a fresh look at the page structure.
+  turns up. Albuquerque re-checked 2026-08-31 and confirmed working
+  correctly on a fresh real example — see `BACKLOG_DONE.md`.
 
 
 - **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -628,65 +611,25 @@ it deliberately does not explain two things, and both are still open:
    real 404 for the captured case. `MEDIA_ATTEMPTS` is a named constant
    precisely so this can be tuned once the answer is known.
 
-### 28 well-formed IQM2 queue rows point at retired tenants `[NEEDS-AUDIT]` `[WAIT]`
+- **[LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
+  27 other retired tenants already removed from the queue.** Two probes
+  on different days agreed 27 of 28 flagged tenants were identically
+  dead and those rows were removed 2026-08-31 (see `BACKLOG_DONE.md`).
+  `pec` alone showed a different failure signature — a connection-level
+  timeout, not the generic "Accela Meeting Portal" error page — which is
+  more consistent with an infrastructure problem than a retired tenant.
+  Left in the queue; worth a quick fresh probe before assuming either
+  way.
 
-**Split out of the tier-3 queue repair (2026-08-22, #308 — see
-`BACKLOG_DONE.md`).** Distinct from the 52 *truncated* rows that PR
-fixed: these URLs are structurally correct and the tenant is simply gone
-(the Accela/IQM2 sunset). Deliberately **left in place** — a single
-probe cannot distinguish a retired tenant from a transient outage, and
-16% of the IQM2 block is too much to drop on one measurement. Note this
-is exactly the population that wildcard DNS makes hard to judge: a dead
-IQM2 tenant still answers, with the generic 4,562-byte "Accela Meeting
-Portal" body.
-
-**Repeat probe done, 2026-08-31 (a different day, as asked for): 27 of
-28 confirmed identically dead.** All 27 return the exact same
-4,498-byte generic "Accela Meeting Portal" error page as the original
-probe (`woodbuffalocn` needed a longer timeout to get past a slow TLS
-handshake, then matched too) — real, if not conclusive, evidence toward
-"genuinely retired" over "transient outage." One tenant, `pec`, shows a
-**different** failure signature: a connection-level timeout (no TLS
-handshake even started within 8s), not a resolving-but-generic-error
-response — worth treating separately from the other 27, since that's
-consistent with an infrastructure problem rather than a retired tenant
-serving IQM2's own fallback page. Still not acted on (no rows dropped) —
-this is stronger evidence, not a decision to remove; that's Ryan's call
-to make now that two probes on different days agree. The tenants: 26
-confirmed both times — `losangelescountyca`, `santaclaracountyca`,
-`northbrookil`, `mchenrycountyil`, `sheboygancountywi`, `renocitynv`,
-`slcgov`, `portagecountyoh`, `gilroyca`, `hanfordca`, `pekinil`,
-`psrcwa`, `tehamacountyca`, `vilascountywi`, `adelantoca`,
-`brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
-`currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
-`hyattsvillecitymd`, `ledyardct`, `shawneecityks`; `woodbuffalocn`
-confirmed on the slower retry; `pec` is the one distinct case.
-
-### Swagit multi-clip meetings: cloud worker fixed (WO-79), local script still needs the same fix `[NEEDS-AUDIT]`
-
-**Closed for the cloud worker path, 2026-08-30 (WO-79) — see
-`BACKLOG_DONE.md` for the full build.** Real, confirmed shape (3
-tenants: Yolo County CA, White Plains NY, Apple Valley MN — no single
-combined recording exists at the source for any of them, Swagit's own
-template has no full-agenda video). Per Ryan's explicit direction —
-never split a meeting across N separate transcript pages — `swagit.py`
-now surfaces every real clip as `ResolvedMeeting.video_segments`, a new
-`probe_multi_clip_chunk_plan()` builds a cumulative-offset chunk plan
-across them, and the cloud worker transcribes each clip individually
-and stitches the results into one meeting-relative transcript using
-the existing `shift_segments()` shift-and-merge approach.
-
-**Still open**: `scripts/transcribe_backlog_locally.py` (the separate
-local-Whisper path) doesn't consume `video_segments`/`chunk_plan` yet —
-per this repo's "two independent transcription paths" convention, this
-needs its own port, not assumed to come along for free. Also open: a
-chunk-plan job skips the live per-chunk re-resolve the ordinary path
-uses to guard against stale URLs (real but unobserved risk in every
-confirmed sample so far), and no sub-chunking of an individual
-very-long clip (no confirmed real case needs it yet). Re-running the
-fixed resolver against the original 43-URL 2026-08-18 sweep to size how
-many are genuinely multi-segment, and a broader live Swagit audit, are
-both still open too.
+- **[LATER] Swagit multi-clip meetings: both transcription paths now
+  handle it (WO-79 + 2026-08-31 local-script port); two small residuals
+  remain, neither blocking.** Full build history in `BACKLOG_DONE.md`.
+  Still open in both paths: no live per-chunk re-resolve for a
+  chunk-plan job (real but unobserved staleness risk), and no
+  sub-chunking of an individual very-long clip (no confirmed real case
+  needs it yet). Re-running the fixed resolver against the original
+  43-URL 2026-08-18 sweep to size how many are genuinely multi-segment,
+  and a broader live Swagit audit, are both still open too.
 
 ### `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to zero usable segments
 
@@ -780,29 +723,6 @@ on the evidence there, but this is the half it could genuinely fit).
   (`egenda.scgov.net`, `meetings.muni.org`, `ecm.cityofsantacruz.com`).
   Video presence is not caption presence either — only 1 of the 31 pages
   has real captions, so repointing buys a video, not a transcript.
-
-### `[NEEDS-AUDIT]` Duration alone cannot separate a very short real meeting from an ad
-
-Recorded 2026-08-23 (WO-46) so the next person doesn't try to fix it by
-moving the number again. `MIN_PLAUSIBLE_MEETING_SECONDS` moved 300s → 60s
-off real measured data (see that constant's own comment for the full
-table). That recovered three of four confirmed-real short meetings, but
-the fourth is unreachable by any threshold:
-
-```
- 53s  berkeleycountysc.iqm2.com MeetingID=4203   real County Council special mtg
- 50s  gnat.cablecast.tv/.../13707                an ad
-```
-
-Three seconds apart, opposite answers. Berkeley County stays skipped and
-that is an accepted miss, not an oversight — **do not lower the floor
-further to catch it**, because 60s already sits just above a confirmed ad
-and below it the two classes are interleaved.
-
-Separating them needs a different signal, not a smaller number:
-`meeting_body`, whether the page carries a real agenda, or the page's own
-framing. Not worth building for one known case; worth revisiting if the
-daily failure digest (WO-46) shows this class is actually common.
 
 ### Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
 
@@ -936,20 +856,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   `_MIN_BLEED_WORD_RUN` would also wrongly trim real long names like
   "Lake Washington School District" → "Lake"). Closable the moment a
   second real example turns up.
-
-- **[NEEDS-AUDIT] One likely truncation case found in the same sweep —
-  the opposite failure from bleed (losing real characters, not gaining
-  fake ones), though a real alternative explanation surfaced 2026-08-30
-  and wasn't checked at the time.** A bare "Pitt" appears as its own
-  jurisdiction value, separate from a correct "Pittsburg, CA" elsewhere —
-  originally read as "Pittsburg, CA" chopped off mid-word. **Re-checked
-  2026-08-30**: "Pitt" independently validates in the Census table —
-  `_table_lookup('Pitt')` → Pitt County, NC is real — so the bare value
-  could simply be a legitimate (if incompletely typed, missing "County"/
-  state) resolution to a real place, unrelated to any truncation bug.
-  Only one example either way; not enough to root-cause confidently.
-  Worth watching for a second example before building a truncation fix
-  off this one case specifically.
 
 - **[NEEDS-AUDIT] Swagit still resolves every special-purpose entity
   (school district, MPO, transit/utility authority, state agency) with
@@ -1112,41 +1018,15 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   Jurisdiction extraction (never set today, even though the h1-assembled
   title text already contains it) is still separately open too.
 
-- **[NEEDS-AUDIT] A real YouTube-backed meeting resolved as video-less
-  because Render's IP was bot-blocked — seen live, twice (2026-08-25).
-  Re-checked 2026-08-30: the central mechanism doesn't reproduce as
-  originally described.** Both WO-63 sweep runs printed, mid-resolve:
-  `ERROR: [youtube] 92SgT7nRbKw: Sign in to confirm you're not a bot.`
-  Read as `hyland.py:187-196`'s YouTube delegation on
-  `anchorage-ak-2026-07-02-amats-technical-advisory-committee`, where
-  `extract_video_id()` had found a real embed that then got blocked
-  fetching it. **Re-tested live 2026-08-30** via the public
-  `/api/refresh-archived-page` endpoint against the real source
-  (`meetings.muni.org/agendaonline/Meetings/ViewMeeting?doctype=1&id=
-  5990`): today's result is the *generic* "No video found on this
-  page." message (`hyland.py:252`), not the bot-block-specific message
-  `youtube.py:131-134` emits — and a raw fetch of the source page's
-  static HTML contains zero YouTube references at all. Per `youtube.py:
-  87-134`'s graceful-degradation handling (commit `b097608`,
-  2026-08-09, 16 days *before* this entry was written), when
-  `extract_video_id()` *does* find a real ID, `resolve_video_id()`
-  already returns a real playable `video_url` even when yt-dlp itself
-  is bot-blocked — only captions/metadata are lost, not the video. So
-  `hyland.py`'s `if not video_url:` guard only fires when no embed was
-  found at all, not "found then blocked" — the entry's central
-  mechanism was already wrong as of the fix that landed 16 days before
-  it was written. **Still real and worth keeping**: PR #496
-  (`c15740b`, 2026-08-29) already addressed the entry's own "record the
-  failure distinguishably" ask by copying `youtube_delegated.
-  video_warnings` through (`hyland.py:200-205`) — this entry hadn't
-  been updated to note that either. **What's actually still open**: why
-  this specific Anchorage page has no YouTube embed in its fetched HTML
-  today (a source-side change, or the original observation was itself a
-  transient artifact) is unconfirmed — worth a fresh live example if
-  the bot-block-during-delegation shape is seen again, since the
-  underlying code path (block happens after a real ID is found) is
-  real and already handled correctly; only this specific example no
-  longer demonstrates it.
+- **[NEEDS-AUDIT] Anchorage bot-block-during-YouTube-delegation example
+  is stale; the underlying code path is confirmed already correct.**
+  `hyland.py`'s YouTube delegation already returns a real playable
+  `video_url` even when yt-dlp itself is bot-blocked (only captions/
+  metadata are lost) — confirmed live 2026-08-30, full trace in
+  `BACKLOG_DONE.md`. What's still open: the original Anchorage page no
+  longer has a YouTube embed at all today (source-side change or a
+  transient artifact originally), so a fresh live example is needed if
+  this shape is seen again — not a code fix.
 
 - **[NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
   same single blocker, and it is still unsolved (residual of WO-29).**
@@ -1165,21 +1045,14 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   transcript without playing the entire video — not a shortcut.
 
 - **[NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have nowhere
-  honest to go (residual of WO-29).** `agenda.groups[].items[]` is
-  genuinely rich (matter title, type, record number, action, vote) but
-  carries **no time offsets at all** — confirmed against the real
-  fixture. Unlike LIMS/Hyland/IQM2 there's nothing to join against a
-  video position, so populating `agenda_items` would mean inventing
-  timestamps. The adapter surfaces the real agenda PDF as `agenda_link`
-  instead — a working link, no clickable items. Making the item text
-  visible needs a new untimestamped-agenda-text field on
-  `ResolvedMeeting`, a matching Archive column + migration, and template
-  work — a real, scoped follow-up, deliberately not smuggled into WO-29.
-  Worth checking whether any other platform has the same shape first.
-  **Chicago is one instance of a general gap** — see "Roadmap & strategy"'s
-  "Agenda text as a first-class, versioned asset", which scopes the model,
-  the resolver/adapter work and the display together. Do not build a
-  Chicago-shaped fix for it.
+  honest to go, and this is one instance of a general gap — do not build
+  a Chicago-shaped fix for it.** `agenda.groups[].items[]` is genuinely
+  rich but carries no time offsets to join against a video position
+  (confirmed against the real fixture), so the adapter surfaces the real
+  agenda PDF as `agenda_link` instead of clickable items. See "Roadmap &
+  strategy"'s "Agenda text as a first-class, versioned asset," which
+  scopes the model/adapter/display work together across every platform
+  with this shape.
 
 - **[NEEDS-AUDIT] ProudCity residuals — the adapter shipped and pushed
   ~18 real tenants (2026-08-26). Re-checked 2026-08-30 against
@@ -1208,6 +1081,8 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
 
 - **[JUST-DO-IT] Residual gaps left behind by WO-30's city-YouTube-
   channel fallback (2026-08-21) — two real ones open, none blocking.**
+  (A third item, adapter-canary coverage, closed 2026-08-29 — see
+  `BACKLOG_DONE.md`.)
   1. **The channel listing only goes back ~400 entries per tab**, since
      yt-dlp's channel extraction is not lazy (`playlistend` is the only
      bound; 34s for a full channel vs. ~6s for 400 entries). On
@@ -1218,43 +1093,12 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   2. **A city that posts the same meeting twice declines** — e.g.
      Philadelphia's 2026-08-06 Committee on Education exists both as a
      `/streams` archive and a `/videos` re-upload, and nothing says which
-     is canonical, so `_pick()` declines. Declining is the correct
-     posture as built; a real disambiguation rule would recover a
-     handful of meetings per city but needs more real examples first.
-     **Checked live 2026-08-30, specifically for more examples, before
-     attempting a third try at this general shape of problem** (two
-     prior PrimeGov position/style heuristics for an adjacent
-     jurisdiction-extraction bug were reverted for exactly this reason —
-     see this file's PrimeGov entry): pulled both real channel tabs
-     (`videos`/`streams`) for all four cities this fallback covers
-     (Phoenix, Baltimore, Albuquerque, Philadelphia) and checked for a
-     date appearing on **both tabs** — the literal Philadelphia
-     `/streams`-archive-vs-`/videos`-re-upload shape. **Zero cross-tab
-     date collisions found on any of the other three cities**; the
-     original Philadelphia case is still the only confirmed real
-     instance of this specific pattern. (A broader within-`videos`-tab
-     same-date scan mostly surfaces genuinely *different* meetings that
-     happen to share a date — e.g. two different committees both meeting
-     on 2026-04-27 — which `_candidates()`'s own body-token-containment
-     filter already keeps apart correctly; that's not this bug and isn't
-     evidence for or against it.) Still nothing to build — a rule from
-     n=1 would still be a guess — but the caution is now backed by an
-     actual search across the full deployed population, not just an
-     assumption, and the apparent rarity (1 confirmed instance across 4
-     cities, ~1,600 combined listing entries) is itself worth knowing
-     when weighing whether this is worth building at all.
-  3. ~~No adapter-canary coverage for this path specifically~~ —
-     **closed 2026-08-29** (PR #496, undocumented until now): `CANARY_URLS`
-     (`scripts/adapter_canary.py`) now holds a list of URLs per platform
-     instead of exactly one, and a second, Phoenix-specific `legistar`
-     canary URL exercises this channel-fallback path specifically. Also
-     landed in the same PR, undocumented until this correction: YouTube's
-     public Atom feed now corroborates a matched video's date
-     (`youtube_channel.py`, this file previously described this as an
-     open `[JUST-DO-IT]` `[EASY]` item — it wasn't, see
-     `BACKLOG_DONE.md`), and `hyland.py`/`civicclerk.py` (PR #496/#510)
-     now both copy a YouTube delegation's bot-block `video_warnings`
-     through instead of silently dropping them.
+     is canonical, so `_pick()` declines. Correct posture as built.
+     Checked live 2026-08-30 across all four fallback cities specifically
+     for more examples (full method in `BACKLOG_DONE.md`) — zero
+     cross-tab date collisions found on the other three; Philadelphia is
+     still the only confirmed real instance. A rule from n=1 would still
+     be a guess.
 
 - **[LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
   still unconfirmed-positive; 88-id Wayback population not yet ingested

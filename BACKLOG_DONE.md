@@ -1,5 +1,193 @@
 # Backlog — done
 
+## Anchorage YouTube-bot-block example re-checked: mechanism already fixed, example itself stale [Investigated 2026-08-30, compacted 2026-08-31]
+
+Original finding (2026-08-25, WO-63 sweep): `ERROR: [youtube] 92SgT7nRbKw:
+Sign in to confirm you're not a bot.` printed mid-resolve on
+`anchorage-ak-2026-07-02-amats-technical-advisory-committee`, read as
+`hyland.py`'s YouTube delegation finding a real embed and then getting
+blocked fetching it — i.e. losing the whole video, not just captions.
+
+Re-tested live 2026-08-30 via the public `/api/refresh-archived-page`
+endpoint against the real source
+(`meetings.muni.org/agendaonline/Meetings/ViewMeeting?doctype=1&id=5990`):
+today's result is the *generic* "No video found on this page." message
+(`hyland.py:252`), not the bot-block-specific message `youtube.py:
+131-134` emits — a raw fetch of the source page's static HTML contains
+zero YouTube references at all today. Per `youtube.py:87-134`'s
+graceful-degradation handling (commit `b097608`, 2026-08-09 — 16 days
+*before* the original entry was written), when `extract_video_id()`
+*does* find a real ID, `resolve_video_id()` already returns a real
+playable `video_url` even when yt-dlp itself is bot-blocked — only
+captions/metadata are lost, not the video. So `hyland.py`'s `if not
+video_url:` guard only fires when no embed was found at all, not "found
+then blocked" — the original entry's central mechanism was already wrong
+as of a fix that predated it. Separately, PR #496 (`c15740b`,
+2026-08-29) already copies `youtube_delegated.video_warnings` through
+(`hyland.py:200-205`) so a bot-block-during-delegation IS recorded
+distinguishably when it does happen — the original entry's "record the
+failure distinguishably" ask was also already done.
+
+What's still open, moved back to a short live BACKLOG.md note: why this
+specific Anchorage page's fetched HTML has no YouTube embed today
+(source-side change vs. a transient artifact in the original
+observation) is unconfirmed — worth a fresh live example if the
+bot-block-during-delegation shape is seen again, since the underlying
+code path is real and already handled correctly; only this specific
+example no longer demonstrates it.
+
+## WO-30 city-YouTube-channel fallback: canary coverage closed, duplicate-post cross-tab check done [Done/Investigated 2026-08-31 compaction — work itself landed 2026-08-29/30]
+
+**Adapter-canary coverage, closed 2026-08-29 (PR #496, undocumented
+until this compaction)**: `CANARY_URLS` (`scripts/adapter_canary.py`)
+now holds a list of URLs per platform instead of exactly one, and a
+second, Phoenix-specific `legistar` canary URL exercises this
+channel-fallback path specifically. Also landed in the same PR,
+undocumented until this correction: YouTube's public Atom feed now
+corroborates a matched video's date (`youtube_channel.py` — BACKLOG.md
+previously described this as an open `[JUST-DO-IT]` `[EASY]` item, it
+wasn't), and `hyland.py`/`civicclerk.py` (PR #496/#510) now both copy a
+YouTube delegation's bot-block `video_warnings` through instead of
+silently dropping them.
+
+**Duplicate-post-declines-to-pick cross-tab check, 2026-08-30**: before
+attempting a third try at a disambiguation rule for "same meeting posted
+to both `/videos` and `/streams` tabs" (two prior PrimeGov position/
+style heuristics for an adjacent jurisdiction-extraction bug were
+reverted for exactly this reason — see this file's PrimeGov entries),
+pulled both real channel tabs for all four fallback cities (Phoenix,
+Baltimore, Albuquerque, Philadelphia) and checked for a date appearing
+on both tabs — the literal Philadelphia `/streams`-archive-vs-`/videos`
+-re-upload shape. Zero cross-tab date collisions found on any of the
+other three cities; Philadelphia's 2026-08-06 Committee on Education is
+still the only confirmed real instance of this pattern. (A broader
+within-`videos`-tab same-date scan mostly surfaces genuinely different
+meetings that happen to share a date — e.g. two different committees
+both meeting on 2026-04-27 — which `_candidates()`'s own body-token-
+containment filter already keeps apart correctly; not this bug, not
+evidence for or against it.) Still nothing to build — a rule from n=1
+would still be a guess — but the caution is now backed by an actual
+search across the full deployed population (~1,600 combined listing
+entries), not just an assumption.
+
+## Bare "Pitt" jurisdiction value: likely not a truncation bug [Investigated 2026-08-31]
+
+Originally read as "Pittsburg, CA" chopped off mid-word by a truncation
+bug (the opposite failure from bleed). Re-checked 2026-08-30: "Pitt"
+independently validates in the Census table (`_table_lookup('Pitt')` →
+Pitt County, NC is real), so the bare value is more likely a legitimate,
+if incompletely typed, resolution to a real place — unrelated to any
+truncation bug. Only one example either way, not enough to root-cause
+confidently either direction; closed out rather than left open with
+nothing to act on. Revisit only if a second, clearer truncation example
+turns up.
+
+## Swagit multi-clip meetings: local-script path ported to match the WO-79 cloud-worker fix [Done 2026-08-31]
+
+WO-79 (2026-08-30) fixed multi-clip Swagit meetings (3 confirmed
+tenants: Yolo County CA, White Plains NY, Apple Valley MN — no single
+combined recording exists at the source for any of them) for the cloud
+worker only: `swagit.py` surfaces every real clip as
+`ResolvedMeeting.video_segments`, `probe_multi_clip_chunk_plan()`
+(`app/platforms/media_probe.py`) builds a cumulative-offset chunk plan,
+and `worker/main.py` transcribes each clip individually and stitches
+results with `shift_segments()`. Per this repo's "two independent
+transcription paths" convention, `scripts/transcribe_backlog_locally.py`
+needed its own port, not assumed to come along free.
+
+**Ported 2026-08-31**: `transcribe_meeting()` now calls
+`probe_multi_clip_chunk_plan()` when a meeting has more than one
+`video_segments` entry, falling back to the existing single-clip
+`probe_duration()` path otherwise; the main chunk loop branches per-chunk
+between the fixed-window logic and the chunk-plan's per-clip
+media_url/offset; `should_cache_whole_audio()` is short-circuited for a
+chunk-plan meeting (different clips are different files, matching the
+worker); and `merge_chunk_segments(all_segments, shift_segments(...))`
+replaces the old plain shift for the final stitch.
+
+**Verified against real data, not synthetic**: reused the same real
+Yolo County CA Swagit fixture (`tests/test_swagit.py`'s `YOLO_URL`/
+`YOLO_MULTI_SEGMENT_HTML`, 3 real clips seq 6/13/51) already used to test
+the WO-79 worker path. New test
+`test_transcribe_meeting_stitches_a_real_multi_clip_swagit_meeting`
+(`tests/test_transcribe_backlog_locally.py`) resolves that fixture via
+`SwagitAssetFinder()`, feeds the real `video_segments` through
+`transcribe_meeting()`, and asserts 3 chunks each extracted from their
+own real clip URL, `extract_full_audio()`/whole-audio caching never
+invoked, and the stitched output lands at meeting-relative offsets
+`[0.0, 120.0, 420.0]`. Full suite: `ruff check`/`ruff format --check`
+clean, `python -m pytest` 2290 passed (15 pre-existing skips,
+unrelated), `alembic check` clean for both services (no schema touched).
+
+**Still open, unchanged by this fix, in both paths**: no live
+per-chunk re-resolve for a chunk-plan job, and no sub-chunking of an
+individual very-long clip — see the short live BACKLOG.md note.
+Committed on branch `worktree-agent-af391a64df1c859ad`
+(`/Users/mroconnell/Documents/rtr-deeplink/.claude/worktrees/agent-af391a64df1c859ad`,
+commit `0d88366`) — not yet merged.
+
+## Recurring Playwright `chromium_headless_shell` missing-binary failure, root-caused and fixed [Done 2026-08-31]
+
+The 2026-08-09/2026-08-30 mystery (`BrowserType.launch: Executable
+doesn't exist at .../chromium_headless_shell-1234/...`), fully
+root-caused without dashboard access: `render logs -r
+srv-d9qhdobm8hqs738fgkog --text "chromium_headless_shell,playwright
+install"` showed the failure recurring on **every single** headless-gated
+resolve across many separate process starts, 2026-08-31 -- not the
+occasional/self-healing failure the open entry assumed. Crucially, the
+runtime self-heal (`_install_chromium()` in `headless_browser.py`) was
+logging "Runtime playwright install succeeded" and then failing to
+launch anyway, immediately after, every time.
+
+Root cause, confirmed via the local venv's own
+`playwright/driver/package/browsers.json`: `chromium-headless-shell` is
+a browser **named separately** from `chromium` in Playwright 1.62's own
+registry (`installByDefault: true`, but that flag only governs a
+bare `playwright install` with no arguments). `render.yaml`'s
+`buildCommand` ran `playwright install chromium` -- scoped to the one
+named browser -- so it never pulled the shell binary that
+`playwright.chromium.launch(headless=True)` actually needs on this
+Playwright version. The runtime self-heal called the identical
+scoped-to-"chromium" install, so it "succeeded" while leaving the real
+missing binary still missing, every time.
+
+**Fixed**: both `render.yaml`'s `buildCommand` and
+`headless_browser.py`'s `_install_chromium()` now name both browsers
+explicitly (`playwright install chromium chromium-headless-shell`).
+Verified: `ruff check`/`ruff format --check` clean, `python -m pytest -k
+"headless or playwright"` (8 tests) green. Needs a deploy to take effect
+-- see WO-59's manual-deploy convention.
+
+## 27 of 28 IQM2 tier-3 queue rows confirmed dead, removed [Done 2026-08-31]
+
+The open entry's own repeat probe (2026-08-31, a different day from the
+original) had already confirmed 27 of 28 IQM2 tenants identically dead
+(same generic 4,498-byte "Accela Meeting Portal" error) across two
+independent days -- strong enough evidence to act on, so removed the 27
+confirmed-dead rows from `scripts/tier3_auto_transcription_queue.txt`
+directly (1215 → 1188 lines). Left `pec`'s single row in place --
+distinct failure signature (connection-level timeout, no TLS handshake),
+consistent with an infrastructure problem rather than a retired tenant,
+worth treating separately rather than assuming it's the same as the
+other 27.
+
+## Albuquerque committee-meeting YouTube fallback re-verified with a fresh real example [Done 2026-08-31]
+
+Residual of the Philadelphia `_pick()` tie-break investigation
+(2026-08-30): Albuquerque was the one city not re-checked because its
+Legistar *calendar page* HTML didn't match the link-scraping method used
+for Phoenix/Baltimore/Philadelphia. Re-checked 2026-08-31 using
+`webapi.legistar.com/v1/cabq/events` instead (Legistar's own API, more
+reliable than scraping the calendar grid anyway) -- confirmed a real,
+current committee meeting with no Legistar video (`EventVideoPath`/
+`EventMedia` both null): "Finance & Government Operations Committee",
+2026-08-24. Checked the real YouTube channel already registered for
+`cabq.legistar.com` (`UCEqpcP42AmnpJPyuOy1jASQ`, "GOV TV - Boards &
+Commission Meetings") via its public Atom feed: "Finance and Government
+Operations Committee Meeting - August 24, 2026" is there, published the
+next day. The existing fallback logic is working correctly on a fresh,
+current real example -- no bug found, nothing to build.
+
 ## New GET /internal/jurisdiction/missing endpoint — answers "which pages have no jurisdiction," grouped by platform [Done 2026-08-31]
 
 Real gap: every existing jurisdiction audit endpoint
