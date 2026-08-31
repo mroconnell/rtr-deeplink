@@ -121,7 +121,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (47)
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
   Media-source reliability  (2)
@@ -133,10 +133,9 @@ Reliability, ops & cost  (14)
     [NEEDS-AUDIT] Re-derived 2026-08-31: backlog keeps shrinking.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (5)
+  Search Console, structured data & SEO plumbing  (4)
     [NEEDS-AUDIT] Two Soft 404 pages that are NOT thin — root cause
     [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-    [NEEDS-AUDIT] Every `_SLUG_REDIRECTS` entry ever shipped was serving
     [WAIT] Search Console "Page indexed without content"
     [WAIT] `thumbnailUrl` "Videos" structured-data flag — root cause
   `/coverage` as a QA surface  (1)
@@ -1805,43 +1804,6 @@ top-up driver has been creating zero jobs" under **Transcription queue
     different canonical the whole time. Fixed 2026-08-31 (see
     `BACKLOG_DONE.md`); worth re-checking whether any of these old
     permalinks show up newly as 301s in a future Search Console export.
-
-- **[NEEDS-AUDIT] Every `_SLUG_REDIRECTS` entry ever shipped was serving
-  200, not a real 301, to the public internet — root cause confirmed and
-  fixed 2026-08-31, not yet independently re-verified post-deploy.**
-  `archive/main.py`'s `/m/{slug}` route does issue a real 301 for a
-  reslugged page — confirmed by hitting the Archive service directly
-  (bypassing the resolver): `curl -D- "$ARCHIVE_BASE_URL/m/meeting"`
-  returns a genuine `301` with `Location: /m/tucson-az-2026-08-05-regular-meeting`.
-  But `redtaperecordings.com/m/meeting` (the public URL, proxied through
-  the resolver) returns **200** with the target page's content —
-  `aiohttp.ClientSession.get()` defaults `allow_redirects=True`, so
-  `app/archive_client.py`'s `proxy_get()` was silently following
-  Archive's 301 internally and streaming the *followed* response back to
-  the client. The canonical tag is correct either way (it's baked into
-  the served HTML), so a human visitor and even a careful manual check
-  both look fine — this is why it survived multiple redirect-shipping
-  rounds (at least 9 `_SLUG_REDIRECTS` entries across 2026-08-28 through
-  2026-08-30) without being caught. The difference matters for SEO: a
-  200-with-different-canonical and a real 301 are different signals to
-  Google, and this may be a contributing (previously unidentified) cause
-  of the "Duplicate, Google chose different canonical than user" and
-  "Alternate page with proper canonical tag" categories two entries up.
-  **Fixed**: `proxy_get()`/`_proxy_to_archive()` both take a new
-  `allow_redirects` param (default `True`, preserving every other
-  route's behavior — `/m/{slug}/card.jpg`'s YouTube 302 genuinely needs
-  auto-follow, since a browser `<img>`/`og:image` consumer needs real
-  image bytes back, not a redirect). `archive_meeting_page` (the one
-  route in `app/main.py` that fans into all three of Archive's `/m/*`
-  routes) passes `allow_redirects=False` only for the bare-slug case
-  (`"/" in path`), leaving `/m/{slug}/card.jpg` and
-  `/m/{slug}/transcript.{ext}` untouched. Regression tests added
-  (`tests/test_archive_proxy_error_handling.py`) proving both the
-  bare-slug and card.jpg cases get the right value. **Not yet verified
-  live post-deploy** — once this ships, re-check `curl -D-
-  https://redtaperecordings.com/m/meeting` actually returns a 301, and
-  consider asking Google to re-crawl a couple of the affected old
-  permalinks.
 
 - **[WAIT] Search Console "Page indexed without content"
   (`/m/welcome-to-clerkbase`) — Request Indexing sent 2026-08-29 (see

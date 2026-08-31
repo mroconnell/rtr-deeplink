@@ -1,5 +1,42 @@
 # Backlog — done
 
+## `_SLUG_REDIRECTS` now sends a real 301 to the public internet — deployed and verified live [Done 2026-08-31]
+
+Root cause: `aiohttp.ClientSession.get()` defaults `allow_redirects=True`,
+so `app/archive_client.py`'s `proxy_get()` was silently following
+Archive's real 301 for a reslugged page (`_SLUG_REDIRECTS`,
+`archive/main.py`) and streaming the *followed* 200 response back to the
+public client — every reslugged page's old permalink served 200 with a
+correct canonical tag, never an actual redirect, since the feature
+shipped 2026-08-28. Confirmed via `curl` against the Archive service
+directly (real 301) vs. `redtaperecordings.com` (200) before the fix.
+
+**Fixed**: `proxy_get()`/`_proxy_to_archive()` take a new
+`allow_redirects` param (default `True`, unchanged for every other
+route — `/m/{slug}/card.jpg`'s YouTube 302 needs auto-follow, since a
+browser `<img>`/`og:image` consumer needs real image bytes back, not a
+redirect). `archive_meeting_page` passes `allow_redirects=False` only
+for the bare-slug case. Regression tests in
+`tests/test_archive_proxy_error_handling.py`.
+
+**Verified live 2026-08-31, post-deploy**:
+```
+curl -D- https://redtaperecordings.com/m/meeting
+HTTP/2 301
+location: /m/tucson-az-2026-08-05-regular-meeting
+
+curl -D- https://redtaperecordings.com/m/2026-08-11-council-meeting
+HTTP/2 301
+location: /m/modesto-ca-2026-08-11-council-meeting
+
+curl https://redtaperecordings.com/m/meeting/card.jpg
+200, image/jpeg -- card.jpg's auto-follow behavior confirmed unaffected.
+```
+
+Worth asking Google to re-crawl a couple of the affected old permalinks
+now that they send a real 301, though that's optional follow-through,
+not a blocker.
+
 ## 5 jurisdiction fixes unblocked by the WO-77/WO-78 deploy — 4 applied, 1 already correct [Done 2026-08-30]
 
 WO-77 (Oxford County ON `_KNOWN_DOMAINS` override) and WO-78
