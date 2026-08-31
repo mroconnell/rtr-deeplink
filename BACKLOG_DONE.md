@@ -82,6 +82,118 @@ confidently either direction; closed out rather than left open with
 nothing to act on. Revisit only if a second, clearer truncation example
 turns up.
 
+## WO-34's >>/» double-emission roll-up cluster: confirmed already handled, hardened with regression tests [Done 2026-08-31]
+
+The open entry claimed 10 of 26 affected pages (a real cluster: every
+one a YouTube auto-caption track behind CivicWeb/Municode emitting each
+speaker-change line twice, once as `>>` and once as `»`) scored
+0.202-0.244, below what the entry's prose called "WO-34's 0.401 roll-up
+floor," and left open whether `_looks_like_rollup()` needed widening or
+a separate dedicated detector.
+
+**Investigated against real data before building anything**: found the
+real 2026-08-30 production dry-run report
+(`scripts/rollup_dedupe_report.json`, in the main checkout, not this
+worktree) with the actual before/after text for all 8 affected pages
+(e.g. `town-of-rye-2026-07-21-...`, ratio 0.2163). Fed the real captured
+"before" text straight through the current `dedupe_rollup_cues()`/
+`_looks_like_rollup()` and got output matching the report's own "after"
+text exactly — **the existing detector and dedupe logic already handle
+this shape correctly**. The real gate is `_ROLLUP_PAIR_RATIO_MIN = 0.20`
+(not the "0.401" the entry's prose implied), and the cluster's
+0.2023-0.2445 scores clear it with margin. Independently live-fetched 4
+more real CivicWeb/Municode YouTube auto-caption tracks (Dallas County
+TX, ACHD Idaho, Des Moines WA, Walton County GA) to confirm the
+underlying platform/caption shape is real; none hit this narrow
+duplicate-pair pattern, consistent with it being a small cluster, not
+universal.
+
+**Deliberately did not build the separate detector the task asked
+for** — real data contradicted the premise it was needed, and building
+one anyway would have added unverified surface area for a gap that
+doesn't exist in the code today. Per this repo's "verify before
+building" convention, hardened instead: a code comment in
+`vtt_parser.py` documenting the real cluster and its thin ~0.002 margin
+above the gate, plus two new regression tests using the real captured
+production text
+(`test_looks_like_rollup_flags_real_corpus_scale_youtube_double_marker_cluster`,
+`test_dedupe_rollup_cues_collapses_real_youtube_double_marker_duplicate_pairs`
+in `tests/test_vtt_parser.py`) as a tripwire against a future threshold
+change silently breaking this. 108 tests passed.
+
+The `--min-retained` measured constant from this same investigation
+(0.066 real floor, not Tacoma's 0.117) moved into Standing decisions.
+
+## Swagit blank-jurisdiction gap for special-purpose entities fixed via `_KNOWN_DOMAINS`, no adapter change [Done 2026-08-31]
+
+Live-fetched all three originally-named tenants and confirmed the
+diagnosis: none of ERCOT/DFPS/Santa Clara County Office of Education's
+real page titles has a trailing ", {2-letter state}" for `swagit.py`'s
+`_extract_metadata()` regex to match. Rather than a new Swagit-specific
+table, found the existing precedent this repo already uses for exactly
+this shape — the shared, netloc-keyed `jurisdiction_enrich._KNOWN_DOMAINS`
+registry (already used for Water Replenishment District, Toronto and
+Region Conservation Authority, Riverside County Sheriff's Department,
+etc.), consulted by `finalize_jurisdiction()` at Archive ingest time.
+Registering a domain here needs zero adapter code changes.
+
+**Registered 5 real tenants**, 3 confirmed as named + 2 more found live
+while researching: `ercot.new.swagit.com` (Electric Reliability Council
+of Texas), `dfps.new.swagit.com` (Texas Dept of Family and Protective
+Services), `sccoe.new.swagit.com` (Santa Clara County Office of
+Education), `browardmpo.new.swagit.com` (Broward Metropolitan Planning
+Organization), `viametrotransit.new.swagit.com` (VIA Metropolitan
+Transit, San Antonio TX) — each cross-checked against its real official
+name via a live fetch + independent web search. 188 tests passed
+(`tests/test_jurisdiction_enrich.py`, `tests/test_swagit.py`).
+
+The broader non-Census-entity table (school districts, MPOs generally)
+remains parked as before — see the "[PARK] MPO / transit-authority /
+utility-district name table" entry; this only closes the specific named
+gap.
+
+## eScribe hyphen-matcher gap: stale for its 3 named examples, but the underlying bug was real — fixed against a 4th live tenant [Done 2026-08-31]
+
+The open entry's 3 named examples (Chatham-Kent, Arran-Elderslie, The
+Blue Mountains) turned out to already resolve correctly on `main` —
+3 other jurisdiction-fix PRs merged the same day (2026-08-31, including
+one literally titled "Fix leading-'The' jurisdiction gap") had already
+covered them. A live instance of this repo's own "a backlog entry is a
+lead, not a spec" pattern.
+
+Searching for other real hyphenated-name eScribe tenants found
+`pub-strathroy-caradoc.escribemeetings.com` (a real Ontario
+municipality, confirmed via web search and a direct fetch) still
+resolving to `None` today. **Root cause, precisely identified**:
+`EscribeAssetFinder._jurisdiction_from_subdomain()` stripped the
+hyphen (`label.replace("-", "")`) before calling
+`validated_label_extract()`. For "strathroy-caradoc" this produced
+"strathroycaradoc", which `wordninja.split()` garbles to `['strath',
+'roy', 'cara', 'doc']` — unlike Chatham-Kent/Arran-Elderslie, which
+only survived the strip because each half happens to be a single
+wordninja-dictionary token on its own. Confirmed the fix (pass the
+label through with its real hyphen intact) is a strict improvement: ran
+all 11 of the function's existing real/synthetic test-case subdomains
+through both the old and new code paths — identical results on all 11,
+only Strathroy-Caradoc newly resolves correctly (the Census/StatsCan
+table's own row is spelled with the identical hyphen, checked by
+`validated_label_extract()`'s tier 1 before wordninja ever runs).
+
+**Fixed**: `app/platforms/escribe.py`'s
+`_jurisdiction_from_subdomain()` now passes the raw hyphenated label
+through directly. New test case added to the existing
+`test_jurisdiction_from_subdomain_splits_concatenated_multiword_names`
+in `tests/test_escribe.py`. 177 tests passed.
+
+**Residual**: could not get the exact current count of "12 eScribe
+pages with no jurisdiction" (`GET /internal/low-trust-pages` needs
+production access not available in that task's worktree) to confirm how
+many of the current 12 are this same shape versus something else (most
+likely: already-fixed-in-code pages whose stored Archive row hasn't
+been re-resolved yet — a backfill gap, not a code gap). Re-run
+`/internal/low-trust-pages?reason=unverified_jurisdiction&platform=escribe`
+once deployed for a real current count.
+
 ## Domain guesser's 6 wrong-domain rows re-found, and 8 consolidated city-county domains found [Done 2026-08-31]
 
 **Domain guesser's 6 rows** (Delaware County PA/OH/IN, Oklahoma/Utah/

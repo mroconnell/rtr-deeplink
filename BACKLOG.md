@@ -49,10 +49,11 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (4)
+Standing decisions — do NOT re-raise  (5)
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
@@ -67,13 +68,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (36)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (34)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
   [NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
-  WO-34's roll-up calibration gap is real at corpus scale — a second,…
   The retry papers over an unexplained asyncio/subprocess hang, and…  (2)
     [LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
     [LATER] Swagit multi-clip meetings: both transcription paths now
@@ -87,12 +87,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (36)
     [JUST-DO-IT] Tucson, AZ
     [JUST-DO-IT] Omaha, NE
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (6)
+  Jurisdiction extraction & backfill  (5)
     [HUMAN] Derry, NH's TelVue org token found — needs a scoping
     [JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
-    [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
   Adapter & platform gaps  (15)
     [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
@@ -241,6 +240,13 @@ General principle and good/bad examples now in `CLAUDE.md` — we query
 sites politely and don't defeat a host's own access controls. Hit live
 on Spokane WA building the Vimeo adapter (WO-29); that adapter ships
 video-only rather than going near it.
+
+### Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
+
+Moved from Open bugs 2026-08-31. Real observed floor is **0.066**
+(Delray Beach FL, Marco Island FL), not Tacoma's 0.117 as earlier
+measurements suggested. The 0.05 default has a small but genuine margin
+above that — don't lower it further without a new real measurement.
 
 ### Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more short real meetings
 
@@ -526,33 +532,6 @@ coverage** instead.
   `probe_duration()` deltas across live HLS and direct-file jobs before
   picking one. Not observed in production yet.
 
-### WO-34's roll-up calibration gap is real at corpus scale — a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
-
-**Found by the corpus-wide dry run, 2026-08-22 (#310 — see
-`BACKLOG_DONE.md`).** WO-34 documented a calibration gap in
-`_looks_like_rollup()` and left it open because no real example sat in
-it. It is no longer empty: **10 of the 26 affected pages score
-0.202-0.244**, below WO-34's 0.401 roll-up floor.
-
-They are a **coherent cluster, not noise**: every one is a YouTube
-auto-caption track behind CivicWeb/Municode that emits each
-speaker-change line *twice*, once as `>>` and once as `»` — the fold
-case `vtt_parser.py`'s own comment block already names. They retain
-~0.80 of characters, against ~0.07-0.12 for the Granicus ticker shape,
-so this is a **real but structurally different and much smaller
-defect**, and treating both with one threshold is what hides it.
-
-Not settled: whether `_looks_like_rollup()` should be widened to score
-this shape confidently, or whether the `>>`/`»` double-emission deserves
-its own detector and its own dedupe path. The dry-run report splits the
-bands and both rewrite by default, with `--min-ratio 0.40` restricting
-to the confident band — a workaround, not an answer.
-
-**One measured constant worth not breaking**: `--min-retained`'s real
-observed floor is **0.066** (Delray Beach FL, Marco Island FL), not
-Tacoma's 0.117. The 0.05 default has a small but genuine margin. Don't
-lower it.
-
 ### The retry papers over an unexplained asyncio/subprocess hang, and Brookhaven's CDN is still unexplained `[NEEDS-AUDIT]`
 
 **Split out of the `transcribe_backlog_locally.py` retry work
@@ -812,26 +791,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   `_MIN_BLEED_WORD_RUN` would also wrongly trim real long names like
   "Lake Washington School District" → "Lake"). Closable the moment a
   second real example turns up.
-
-- **[NEEDS-AUDIT] Swagit still resolves every special-purpose entity
-  (school district, MPO, transit/utility authority, state agency) with
-  a blank jurisdiction.** Corrected 2026-08-29: the original "no
-  fallback at all" framing (2026-08-15) is stale — `resolve()`
-  ([swagit.py:373-375](app/platforms/swagit.py:373), corrected
-  2026-08-30 — line drifted from an earlier edit) now falls back to
-  `jurisdiction_enrich.extract_jurisdiction_chain()`, but re-resolving
-  fresh real meetings from the same three named tenants (ERCOT, DFPS,
-  Santa Clara County Office of Education) confirms the chain still
-  doesn't recover any of them — the gap is real, not stale, just
-  differently caused now: none of these titles has a "City/County/Town
-  of X" phrase, and none of the three subdomains validates against the
-  Census/StatsCan tables. Same structural "no national table for
-  non-Census entities" problem as the 4-platform sizing entry below.
-  Full re-verification detail (URLs used, exact outcome) in
-  `BACKLOG_DONE.md`'s 2026-08-29 entry. 16 real examples of the
-  blank-jurisdiction gap turned up in one `/meetings` pass (2026-08-15);
-  not designed yet, since the real jurisdiction text sits in a
-  different place per entity type.
 
 
 
@@ -1121,14 +1080,14 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   the same kind of per-row audit `731da71` did for the 23 it already
   recovered), TelVue 50 (up from 46, expected — active ingestion),
   Swagit 32, YouTube 18, eScribe 12, Vimeo 10, CivicClerk 7, unknown 4,
-  Castus 1, TownHallStreams 1. eScribe's hyphen-matcher gap remains the
-  one clean, scoped next action; Swagit and YouTube still need a
-  structural answer (a non-Census entity table, and channel-name
-  validation) neither of which exists yet. `GET /internal/jurisdiction/
-  missing` (proposed above) still doesn't exist — confirmed live, a
-  real 404 — though `/internal/low-trust-pages` already returns each
-  page's `jurisdiction` field directly, so a `has_jurisdiction=false`
-  query param might be a smaller lift than a whole new endpoint.
+  Castus 1, TownHallStreams 1. eScribe's hyphen-matcher gap fixed
+  2026-08-31 (see `BACKLOG_DONE.md`) and Swagit's 3 named tenants fixed
+  the same day; Swagit and YouTube still need a structural answer for
+  the rest (a non-Census entity table, and channel-name validation)
+  neither of which exists yet. `GET /internal/jurisdiction/missing` now
+  exists (built 2026-08-31, see `BACKLOG_DONE.md`) — re-run it for a
+  fresh per-platform count once tonight's fixes deploy, rather than
+  reusing these pre-deploy numbers.
 
 - **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — ChampDS's `MediaInfo.
   VOD2` HLS case (the majority of real customers) still has no playable
