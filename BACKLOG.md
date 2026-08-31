@@ -116,15 +116,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (43)
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
-Reliability, ops & cost  (11)
+Reliability, ops & cost  (10)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
   Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
-  Transcription queue & workers  (5)
+  Transcription queue & workers  (4)
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
-    [NEEDS-AUDIT] The hourly transcription top-up driver still logs "0
     [NEEDS-AUDIT] Re-derived 2026-08-31: backlog keeps shrinking.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
@@ -1506,35 +1505,6 @@ top-up driver has been creating zero jobs" under **Transcription queue
   catch one job wedged while the rest of the pool keeps moving, which the
   pool-wide check can't see. From the outside a wedged job and a slow one
   are indistinguishable, which is the actual problem.
-
-- **[NEEDS-AUDIT] The hourly transcription top-up driver still logs "0
-  created, 8 skipped" after WO-83 deployed — but for a new, different,
-  real reason found live 2026-08-31: GitHub's `ubuntu-latest` runner no
-  longer has `ffprobe` on PATH, contradicting this workflow's own
-  header comment.** WO-83 (PR #609, merged 2026-08-30 22:41) fixed the
-  cooldown-loop bug it targeted, but its effect can't be observed —
-  checked both runs since deploy live via the GitHub Actions API
-  (`bulk-queue-transcription-backlog.yml`, run #132 at 2026-08-31 05:43
-  and run #133 at 13:59, both "top-up" job logs): both show `FileNotFoundError:
-  [Errno 2] No such file or directory: 'ffprobe'` from
-  `media_probe.py:probe_duration()`, caught and misreported as `SKIPPED:
-  ffprobe couldn't read the media` for every one of the 8 candidates —
-  `RUN COMPLETE: 0 created, 8 skipped` both times. This is a real
-  environment regression, not the old cooldown bug: the workflow file's
-  own comment ("ubuntu-latest, which already has ffmpeg/ffprobe on
-  PATH") is no longer true for whatever runner image GitHub is currently
-  serving. **Real consequence, worth prioritizing over other reads of
-  this entry**: WO-83's fix is fully masked — every candidate still
-  fails before cooldown logic ever runs, and each failure records a
-  `TranscriptionJob` failure row via WO-83's own new path, so a probe
-  failure caused purely by a missing binary is now escalating the same
-  cooldown backoff (1 day, doubling to 30) a real dead host would get,
-  for candidates that may be perfectly fine. Fix: add an explicit
-  `ffmpeg`/`ffprobe` install step to
-  `.github/workflows/bulk-queue-transcription-backlog.yml` (matching
-  whatever `feed-tier3-transcription.yml`/`feed-granicus-transcription.yml`
-  do, if they still have it — worth checking those two for the same
-  regression) rather than relying on the runner image shipping it.
 
 - **[NEEDS-AUDIT] Re-derived 2026-08-31: backlog keeps shrinking.**
   Live-checked `GET /internal/transcription-queue-stats`:

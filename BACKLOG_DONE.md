@@ -1,5 +1,98 @@
 # Backlog — done
 
+## Phase 1: six small backlog fixes shipped and merged (PR #638) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase1-small-fixes`, off `main`)
+specifically to avoid colliding with a concurrent session working Open
+Bugs in its own worktree. All four CI gates green locally before each
+push (ruff check, ruff format, pytest -- 2300 passed, alembic check x2
+against fresh migration-built SQLite), plus the JS suite (56 passed).
+Squash-merged same day, CI green, no conflicts, no review comments (no
+"Claude Approvals" check configured on this repo).
+
+**1. CI ffprobe regression, fixed.** The entry this closes is the one
+filed earlier the same day under "Reliability, ops & cost" (the
+`bulk-queue-transcription-backlog.yml` "0 created, 8 skipped" masking
+WO-83's cooldown fix). Added an explicit `sudo apt-get install -y
+ffmpeg` step before `pip install -r requirements.txt`. Checked the two
+sibling workflows (`feed-tier3-transcription.yml`/
+`feed-granicus-transcription.yml`) for the same exposure while in
+there: neither actually calls `ffprobe` (confirmed via import/grep --
+`feed_tier3_auto_transcription.py` imports from `scripts.bulk_ingest`,
+which never touches `media_probe`; `feed_granicus_auto_transcription.py`
+just shells out to `bulk_ingest.py`), so no fix needed there.
+
+**2. Rate limit: signed-in Clerk users exempted.** `app/main.py`'s two
+`@limiter.limit("5/hour")` transcription endpoints now carry
+`exempt_when=lambda request: bool(get_clerk_user_id(request))`
+(confirmed slowapi 0.1.10 genuinely supports this kwarg, resolving the
+"not confirmed which slowapi actually supports" open question). Closes
+half of the matching Roadmap entry -- the other half (a sign-in prompt
+in the 429 UI path, instead of just exempting signed-in users) is still
+open, narrowed in place.
+
+**3. Transcript version-picker analytics, shipped.** All three events
+BACKLOG.md's entry specified: `transcript_version_change` fires inline
+in `meeting_page.html`'s `onchange`, immediately before
+`this.form.submit()`; `transcript_version_available` (with a
+`label_ambiguous` param, computed client-side by comparing every
+option's rendered text) and `transcript_version_viewed` (`is_default`)
+both fire on load from `meeting_page.js`. Zero schema change --
+`?version=`/`is_default` were already available. 5 new JS tests
+(`tests_js/meeting_page_events.test.js`) covering the load-time events,
+the label-collision case, a non-default selection, and the
+single-version (`#versionSelect` absent) case. Closes the "no
+analytics" half of that Roadmap entry; the "real option labels" half
+(date vs. free-text label column) is still open.
+
+**4. Inline PDF agenda viewer, cheapest version shipped.** A plain
+`<iframe class="agenda-inline-frame">` alongside the existing
+`agenda_link` anchor in `meeting_page.html` (kept as a fallback -- some
+government hosts will refuse framing via X-Frame-Options/CSP,
+unverifiable server-side and untested live from this sandbox). Fixed
+480px height, not an aspect ratio -- a document's real shape varies too
+much to guess at. Closes the cheap half of the matching Roadmap entry;
+real text-extraction for a searchable preview is still a separate,
+bigger ask (needs `pypdf`/`pdfplumber`, neither in `requirements.txt`).
+
+**5. Jurisdiction-override admin endpoint, built.** New `POST
+/internal/jurisdiction/override` (`archive/main.py` +
+`crud.override_jurisdiction()`), token-gated, `dry_run=True` default,
+same id-batch/idempotent shape as `mark_low_trust_pages_reviewed()`.
+Writes an explicit caller-supplied jurisdiction string plus a new
+`jurisdiction_confidence="manual_override"` tier -- the one tier
+`finalize_jurisdiction()` itself never produces. **Also fixes a
+re-ingest overwrite gotcha found while scoping this**:
+`_find_or_create_page()`'s truthy-gated `page.jurisdiction = jurisdiction
+or page.jurisdiction` now skips entirely when
+`jurisdiction_confidence == "manual_override"`, so a manual fix
+survives the next passive re-check instead of drifting back on the next
+re-resolve -- confirmed by a real regression test
+(`test_override_survives_a_later_re_ingest`, with a matching control
+test proving the guard doesn't freeze ordinary jurisdiction updates).
+12 new tests (`tests/test_jurisdiction_override.py`), all synthetic
+`", ZZ"` jurisdictions per this file's own convention (the shared
+session-scoped test DB means a real US state/county string would bump
+a real state-page ranking count -- hit this live once, see the
+`test_state_page_lists_states_jurisdictions` collision this avoided).
+**Not yet applied to real data**: this session has no admin token, so
+nobody has actually called it against Santa Clara's rows or piloted the
+low-trust-queue repair flow yet -- that's still open, now genuinely
+unblocked rather than blocked on missing capability.
+
+**6. `TranscriptVersion.source` "scraped"→"sourced" rename, done in
+full.** `models.py`'s default, a new Alembic migration
+(`1e6107751720`, data-only -- `String(20)` already fit either value)
+backfilling every existing row, every literal-value reference across
+`crud.py`/`main.py`/two scripts/one template comment, and two internal
+variable/label names (`has_scraped_transcript`→`has_sourced_transcript`,
+`any_scraped_version`→`any_sourced_version`) that were vestiges of the
+old name. Left every generic English use of the word "scraped"
+(describing the scraping *action*, not the field's value) alone --
+only the literal token was ever in scope. Migration applies cleanly
+with zero autogenerate drift afterward. Closes the matching `[EASY]`
+Roadmap entry outright.
+
 ## "Open bugs" second re-verification pass (day after the first): 43 entries checked via 6 parallel agents, small drift found and corrected, four verbose entries compacted [Investigated 2026-08-31]
 
 Second re-verification pass on `BACKLOG.md`'s "Open bugs" section
