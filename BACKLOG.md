@@ -144,7 +144,7 @@ Trust, safety & data quality  (7)
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
     [NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (23)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
@@ -156,19 +156,18 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (23)
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
     [IMPROVEMENT-ROUND] `[BIG]` Video highlight clips + algorithmic
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
-    [IMPROVEMENT-ROUND] PDF agenda links are never rendered inline or
+    [IMPROVEMENT-ROUND] PDF agenda text-extraction for a searchable
     [IMPROVEMENT-ROUND] Design reference for the cassette-reel button
-  Search & metadata quality  (6)
+  Search & metadata quality  (5)
     [IMPROVEMENT-ROUND] Tune `_VOCAB_SIMILARITY_THRESHOLD`
     [IMPROVEMENT-ROUND] Audit per-adapter coverage of `meeting_body`,
     [IMPROVEMENT-ROUND] Once `meeting_body` has real, strategic coverage
-    [IMPROVEMENT-ROUND] Transcript version picker: real option labels,
-    [IMPROVEMENT-ROUND] `[EASY]` The internal `TranscriptVersion.source`
+    [IMPROVEMENT-ROUND] Transcript version picker: real option labels
     [IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
   Transcription quality & cost  (3)
     [IMPROVEMENT-ROUND] Moved out of Dormant 2026-08-30 — hallucinated-
     [IMPROVEMENT-ROUND] Per-meeting `initial_prompt` seeded with real
-    [IMPROVEMENT-ROUND] The transcription-request rate limit's copy is
+    [IMPROVEMENT-ROUND] The transcription-request rate limit no longer
   Email, ops tooling & internal reporting  (3)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
@@ -1662,12 +1661,16 @@ sum to more than 604) — real, sustained volume as the corpus grows, and
 measurement, isn't anymore). Re-derive again before quoting any of these
 numbers; they move with every ingest. Three residuals:
 
-- **It's a data-quality queue, not a trust queue, today.** Those 470
-  rows are real live pages with real video whose jurisdiction couldn't be
+- **It's a data-quality queue, not a trust queue, today.** Those rows
+  are real live pages with real video whose jurisdiction couldn't be
   determined — not suspected spoofs. Marking one reviewed records that a
-  human looked; it doesn't fix the missing jurisdiction, and there's no
-  repair path from the queue. A "review → correct the jurisdiction"
-  write is the obvious next slice, deliberately not built here.
+  human looked; it doesn't by itself fix the missing jurisdiction — but
+  a real repair write now exists: `POST /internal/jurisdiction/override`
+  (built 2026-08-31, see `BACKLOG_DONE.md`) writes an explicit
+  jurisdiction string directly and stamps `reviewed_at` in the same
+  call. **Not yet wired into a "review → repair" workflow or applied to
+  any real row** — the endpoint exists, nobody with an admin token has
+  used it yet.
 - **A review doesn't expire when the page changes.** `reviewed_at`
   survives a later re-ingest, so a page reviewed today and re-resolved
   tomorrow with different content still reads as reviewed. Comparing
@@ -2074,14 +2077,15 @@ real work on shipped code rather than a plan.
   or ffmpeg's `drawtext`) this repo doesn't have, and font
   rendering/wrapping is a real design problem. Storage/route/cache
   headers/targeting all carry over unchanged if it happens.
-- **[IMPROVEMENT-ROUND] PDF agenda links are never rendered inline or
-  text-extracted for preview — a real product question, not yet a
-  scoped bug.** Today any agenda PDF is shown only as a plain outbound
-  link. Two distinct asks if scoped: an inline PDF viewer (cheapest via
-  `<iframe>`, zero backend change, no searchability), or real
-  text-extraction for a searchable preview (needs `pypdf`/`pdfplumber`,
-  neither in `requirements.txt`, and a new storage column). Not
-  investigated further — logged as a real gap, not designed.
+- **[IMPROVEMENT-ROUND] PDF agenda text-extraction for a searchable
+  preview — the cheap inline-viewer half shipped 2026-08-31.** A plain
+  `<iframe>` next to `agenda_link` now renders inline (zero backend
+  change, the fallback link kept alongside it since some government
+  hosts may refuse framing — unverified live from this session's
+  sandbox, worth a real browser check). **Still open**: real
+  text-extraction for a searchable preview needs `pypdf`/`pdfplumber`
+  (neither in `requirements.txt`) and a new storage column — a bigger,
+  separate ask, not investigated further.
 - **[IMPROVEMENT-ROUND] Design reference for the cassette-reel button
   animation, flagged 2026-08-16** — the user likes the "Install GitHub
   App" button's animation on Sentry's onboarding page
@@ -2136,70 +2140,33 @@ real work on shipped code rather than a plan.
   jurisdiction/agenda/transcript text but has no `meeting_body`-aware
   filter or facet. Low value until coverage is broad enough to actually
   narrow a real result set.
-- **[IMPROVEMENT-ROUND] Transcript version picker: real option labels,
-  and no analytics on it at all (2026-08-22, user's call to defer).**
-  Two halves, both deliberately split out of the `source="deduped"` work
-  (see `BACKLOG_DONE.md`) rather than built with it.
+- **[IMPROVEMENT-ROUND] Transcript version picker: real option labels
+  still open; analytics shipped 2026-08-31.** Split out of the
+  `source="deduped"` work (see `BACKLOG_DONE.md`).
 
-  **(1) Labels.** `meeting_page.html`'s picker renders each option as
-  `{{ v.language|language_name }} ({{ v.source|source_label }})`, which
-  distinguishes versions only by language and provenance. That was
-  built for the real case it shipped against — Spanish captions vs. an
-  English AI transcript. `source="deduped"` buys one more axis, but two
-  versions sharing a language *and* a source still render identically.
-  Ryan's call 2026-08-22: the UI is "fine enough" for now, ship the
-  transcripts first. A date is the cheapest real fix (`TranscriptVersion`
-  already carries a timestamp, no schema change); a free-text label
-  column would read better and needs a migration.
+  **Labels — still open.** `meeting_page.html`'s picker renders each
+  option as `{{ v.language|language_name }} ({{ v.source|source_label }})`,
+  which distinguishes versions only by language and provenance. That
+  was built for the real case it shipped against — Spanish captions vs.
+  an English AI transcript. `source="deduped"` buys one more axis, but
+  two versions sharing a language *and* a source still render
+  identically. Ryan's call 2026-08-22: the UI is "fine enough" for now,
+  ship the transcripts first. A date is the cheapest real fix
+  (`TranscriptVersion` already carries a timestamp, no schema change); a
+  free-text label column would read better and needs a migration.
 
-  **(2) No analytics.** Confirmed by grep 2026-08-22: the picker has
-  **zero** `trackEvent` calls, so there is no evidence about whether it
-  is ever seen or used. Three events worth having, in the house
-  `verb_noun` + small-params style (`video_play`, `save_meeting
-  {action}`, `resolve_result {status, platform}`):
-  - `transcript_version_available { count, active_source }` on load when
-    the picker renders. Answers "does anyone even see this?" — today it
-    only renders when `page.versions|length > 1`, a small population.
-  - `transcript_version_change { count, from_source, to_source }` on
-    selection.
-  - `transcript_version_viewed { is_default }` on load, read off the
-    `?version=` query param — a reliable denominator, since the picker
-    does a full page reload and a `change` event can be lost racing
-    navigation.
-
-  **Where the calls go — decided 2026-08-22, favouring reliability over
-  tidiness.** The `change` event fires **inline in the template**,
-  immediately before the existing `onchange="this.form.submit()"`, and
-  **the submit stays inline**: navigation must never depend on an
-  external JS file having loaded, and `window.trackEvent` is defined
-  synchronously in `base.html`'s `<head>` (with a no-op stub when
-  `GA_MEASUREMENT_ID` is unset), so an inline call is always safe. The
-  two *observational* load-time events go in `meeting_page.js` with the
-  other `trackEvent` calls — nothing user-facing waits on them. Leave
-  the `<noscript>` submit button alone; it is the no-JS path.
-
-  **Read the numbers with this caveat**, which is why it is written here
-  rather than discovered later: while both options render as
-  "English (sourced)", a low `transcript_version_change` rate means
-  readers could not tell the options apart, **not** that they don't want
-  alternate transcripts. Worth emitting a `label_ambiguous` param when
-  two options render identically, so that population can be segmented
-  out. Landing the events *before* the next batch of deduped versions
-  also gives a clean before/after on the availability count.
-
-- **[IMPROVEMENT-ROUND] `[EASY]` The internal `TranscriptVersion.source`
-  token is still the word "scraped" (raised 2026-08-22).** Ryan's
-  reaction on seeing it: "we should never say scraped — always sourced."
-  **No reader has ever seen it** — confirmed by grep the same day: every
-  template use of `.source` is a logic comparison, and the only render
-  path is `main.py`'s `source_label` filter, which has always mapped it
-  to "sourced". So this is a naming cleanup, not a user-facing bug. The
-  reason it wasn't done in the same pass: renaming the stored value is
-  an `UPDATE` over every `transcript_versions` row plus ~20 code sites,
-  which is exactly the migration the user ruled out for that PR. Do it
-  as its own change, with the data update and the code sites in one
-  deploy, or not at all — a half-renamed corpus is worse than either
-  end state.
+  **Analytics — done, full writeup in `BACKLOG_DONE.md`.** All three
+  events shipped exactly as scoped: `transcript_version_change` fires
+  inline in the template's `onchange` (submit stays inline too, so
+  navigation never depends on an external file loading);
+  `transcript_version_available` (now carrying the `label_ambiguous`
+  param this entry called for, computed client-side) and
+  `transcript_version_viewed` fire on load from `meeting_page.js`. Read
+  the numbers with the same caveat this entry originally flagged: a low
+  `transcript_version_change` rate could mean readers can't tell two
+  identically-rendering options apart, not that they don't want
+  alternates — `label_ambiguous` is exactly the segmenting signal for
+  that.
 
 - **[IMPROVEMENT-ROUND] A demoted `TranscriptVersion`'s text is still
   invisible to external search.** The in-app half (this site's own
@@ -2245,32 +2212,26 @@ real work on shipped code rather than a plan.
   per-meeting names list needs care not to dilute or overflow it, and
   would need a real before/after check against a meeting with known
   misspelled names before assuming it helps.
-- **[IMPROVEMENT-ROUND] The transcription-request rate limit's copy is
-  unfriendly and misses an account-creation opportunity — and logged-in
-  users shouldn't be rate-limited at all, flagged 2026-08-15.** The copy
-  rewrite is **fixed** (2026-08-16). Still open: signed-in users should
-  never hit this limit, and a signed-out visitor who hits it should be
-  prompted to sign in instead of just told to wait. **Confirmed root
-  cause**: the rate limit (`Limiter(key_func=get_remote_address)`,
-  `@limiter.limit("5/hour")` on both transcription endpoints) has zero
-  concept of accounts. The building block already exists nearby
-  (`get_clerk_user_id(request)`, already used by the save-meeting routes
-  right below these two) — cheap to check. **Not yet solved**: slowapi's
-  `@limiter.limit(...)` applies unconditionally at decoration time;
-  there's no existing pattern here for a per-request conditional bypass
-  (slowapi's own `exempt_when`, or restructuring the check into the
-  function body) — not confirmed which slowapi actually supports.
-  **Worth reading before building**: this exact UI spot already tried an
-  inline sign-in shortcut (a Clerk modal button) and **removed it
-  entirely** after three rounds of Clerk's redirect options proved
-  unreliable live (full saga in `BACKLOG_DONE.md`'s accounts phase-1
-  entry) — a plain link to a dedicated `/sign-in` page is probably the
-  safer default given that history, rather than reaching for the modal
-  again. **Noted 2026-08-31 so it isn't rediscovered**: `transcription_
-  submit` now threads `clerk_verified=bool(get_clerk_user_id(request))`
-  through — but that only skips a newsletter-confirmation step
-  server-side, not the rate limit itself; the limit is still
-  unconditional and there's still no sign-in prompt in the 429 path.
+- **[IMPROVEMENT-ROUND] The transcription-request rate limit no longer
+  applies to signed-in users (fixed 2026-08-31) — the copy rewrite was
+  already fixed 2026-08-16; the one thing still open is the 429 UI
+  path.** Both `@limiter.limit("5/hour")` decorators
+  (`app/main.py`'s `transcription_check_feasibility`/
+  `transcription_submit`) now carry `exempt_when=lambda request:
+  bool(get_clerk_user_id(request))` — confirmed live that slowapi 0.1.10
+  genuinely supports this kwarg, settling the "not confirmed which
+  slowapi actually supports" question this entry used to carry. **Still
+  open**: a signed-out visitor who hits the limit still isn't prompted
+  to sign in, just told to wait — worth reading before building it:
+  this exact UI spot already tried an inline sign-in shortcut (a Clerk
+  modal button) and **removed it entirely** after three rounds of
+  Clerk's redirect options proved unreliable live (full saga in
+  `BACKLOG_DONE.md`'s accounts phase-1 entry) — a plain link to a
+  dedicated `/sign-in` page is probably the safer default given that
+  history, rather than reaching for the modal again. `transcription_
+  submit`'s separate `clerk_verified=bool(get_clerk_user_id(request))`
+  plumbing (2026-08-22) still only skips a newsletter-confirmation step,
+  unrelated to this rate limit.
 
 ### Email, ops tooling & internal reporting
 
