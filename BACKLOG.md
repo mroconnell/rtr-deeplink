@@ -77,7 +77,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (56)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -107,11 +107,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (56)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (15)
+  Jurisdiction extraction & backfill  (17)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
-    [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
-    [JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
+    [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
+    [HUMAN] 5 already-published pages need a production deploy before
+    [NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
+    [NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -1630,48 +1632,74 @@ registry).
   a deliberate one-off decision to bypass `finalize_jurisdiction()` for
   this one case — a product/engineering call, not a token-access one.
 
-- **[NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
-  deliberately NOT applied in WO-47's write — several are confidently
-  wrong, and a recurring shape needs a real fix before any bulk apply.**
-  WO-47 applied only the candidates its own code changes introduced
-  (plus 882, independently re-resolve-verified). The 51 that predate it
-  (they've accumulated since WO-22's "candidates dropped to 0" run as
-  code and data moved) split roughly into: (a) **wrong-direction
-  repairs** — e.g. `289` "Los Angeles County, CA" → "Culver City, CA",
-  `331` "City of South Miami, FL" → "Key West City, FL", `808` "City of
-  Woodstock" (Ontario) → "Oxford County, ME", `703`/`1151` "West
-  Chester, PA" (a real borough) → "Chester, PA", `1439` "City of the
-  Village, OK" → "Douglas, OK"; (b) **right-government,
-  wrong-form county repairs** — `713`/`1182` "Toledo, OH" → "Lucas, OH",
-  `705`/`1136` "Pensacola, FL" → "Escambia, FL", `1299` "Flemington,
-  NJ" → "Hunterdon, NJ", `1913`/`1914`/`2207` — the county is correct
-  but the repaired string drops the "County" word entirely (the
-  subdomain-override path has no county-typing; compare WO-47's
-  page-text county-retype, which only runs at resolve time); (c)
-  **plausibly correct but unverified** — Peel Region constituents
-  (`679`/`864`/`658`), Virginia Beach (`1604`/`1605`/`1271`),
-  county-seat cases (`711` Tavares→Lake County, `718` Faribault→Rice
-  County, `1766` Lovington→Lea County, `1646`, `1359`, `653`, `893`,
-  `1040`, `1056`, `2018`), `1649` Visalia→Tulare County (the exact
-  repair the separate Tulare County/Visalia entry below has been
-  waiting on — verifying and applying that one id likely closes that
-  entry too), and the long-standing held-back consolidated
-  city-county trio (`154`/`155`/`169`/`341`). Fixing (b) structurally —
-  give `_subdomain_override()`/trim the same "{name} County" typing the
-  chain's retype has — would convert most of (b) into safe candidates;
-  (a) needs per-row source-page verification before anything is
-  written. Run `GET /internal/jurisdiction/bleed-backfill-candidates`
-  for the current list; ids above are from WO-47's 2026-08-23 audit.
+- **[NEEDS-AUDIT] Missing "County"/province suffix on certain repair
+  paths — a real, recurring formatting gap found verifying the
+  bleed-backfill queue 2026-08-30, root cause not yet fixed.** Two
+  distinct repair code paths produce a bare place name where a
+  suffix is needed: (1) the subdomain-override path (e.g. `713`
+  "Toledo, OH" → "Lucas, OH", `2207` "Goldendale, WA" → "Klickitat,
+  WA", `705`/`1136` "Pensacola, FL" → "Escambia, FL" — all
+  visually confirmed correct in *direction* against real source-page
+  county seals/letterhead, all missing the word "County") — matches
+  WO-47's original observation that this path has no county-typing;
+  (2) a different, generic bleed-repair path that recovers a
+  correspondence-leaked city name but doesn't reattach a
+  province/state (`698` "Burlington" → "Oakville" should be "Oakville,
+  ON"; `1056` "City of Burlington" → "Courtenay" should be "Courtenay,
+  BC", confirmed via a real council-resolution reference on the
+  source page). All 20 real, visually-confirmed-correct pages from
+  this pass (including these 6 imperfect ones) have already been
+  applied to production via `POST /internal/jurisdiction/backfill-apply`
+  as a strict improvement over the wrong city name they replaced — this
+  entry is only for fixing the suffix gap itself, not for the specific
+  rows above (already resolved).
 
-- **[JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
-  "San Jose" jurisdiction names are a recompute-backfill candidate.**
-  Residual of WO-22 (full investigation, including the 76-row production
-  write and the 3-example Ashland/Milton/San Jose closure, moved to
-  `BACKLOG_DONE.md` 2026-08-30 — see that entry for how each name was
-  confirmed real via a live source, and the `_KNOWN_DOMAINS` entries
-  added for all three). Needs identifying the specific page IDs in
-  production and running `POST /internal/jurisdiction/backfill-apply`
-  against them — a production write, not attempted here.
+- **[HUMAN] 5 already-published pages need a production deploy before
+  their jurisdiction can be corrected — code fixed and merged
+  2026-08-30 (WO-76), just not live yet.** Pages `1151`/`703` (real:
+  **Chester County, PA**), `1439` (real: **Douglas, MI**), `2095`
+  (real: **Colorado**, the state legislature), and `2471` (real: **Lake
+  Washington School District, WA**) were all visually confirmed wrong
+  against their real source pages, and WO-76 root-caused and fixed the
+  underlying code (3 structural fixes, 1 targeted `_KNOWN_DOMAINS`
+  override — see `BACKLOG_DONE.md` for the full per-case reasoning).
+  `POST /internal/jurisdiction/backfill-apply` recomputes from live
+  deployed code, so these 4 pages will keep computing their old wrong
+  values until the next deploy runs — re-run `GET /internal/
+  jurisdiction/bleed-backfill-candidates` (filtered to these 4 ids)
+  and apply once deployed.
+
+- **[NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
+  ME") needs its province corrected to ON, found after WO-76 was
+  already dispatched so not covered by that fix.** Visually confirmed:
+  the real source, `pub-oxfordcounty.escribemeetings.com`, is
+  unambiguously **Oxford County, Ontario** (`www.oxfordcounty.ca`,
+  dozens of real by-laws naming its constituent lower-tier
+  municipalities including "City of Woodstock," its own county seat) —
+  not Oxford County, Maine. The repair direction (county, not city) is
+  right; only the state/province code is wrong. Same general shape as
+  WO-76's Douglas/MI case (a real place name colliding across two
+  different countries/states) — likely fixable the same way, not
+  attempted here.
+
+- **[NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
+  trio (`154`/`155`/`169`/`341`) and 4 more rows
+  (`1435`/`1441`/`1442`/`1447`, Breckenridge/Eustis/Hendersonville/
+  Loganville) are held back pending a production deploy, not a data
+  problem.** These depend on WO-68's and WO-70's fixes (state-suffix
+  attachment for consolidated governments; explicit-claimed-state
+  resolution), both merged to `main` 2026-08-30 but not yet deployed —
+  `GET /internal/jurisdiction/bleed-backfill-candidates` still computes
+  their pre-fix values live. Re-run the audit after the next deploy;
+  these should mostly resolve on their own.
+
+**2026-08-30 production write, for context**: 70 real jurisdiction
+corrections were applied directly to already-published pages this
+session (40 confirmed via a text/confidence-tier heuristic, 5 more on
+review, 20 more via real visual verification against the source
+page's own letterhead/seal/agenda content — not just title-matching, 5
+more in a follow-up pass on rows an earlier batch had accidentally
+skipped). Full detail in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
   narrowed 2026-08-18: "Meeting"/"Attachments" tails are fixed (a
@@ -2207,14 +2235,22 @@ registry).
   turned out narrower than their original framing (see the corrected
   `[NEEDS-AUDIT]` entries for each above) — that part still holds.
   **YouTube** is still structurally not fixable in the general case
-  (`uploader` is a channel name, not a government field). The current
-  real count (how many low-trust pages remain today, post-Cablecast-fix)
-  needs `/internal/low-trust-pages` with an admin token to re-derive —
-  not done here. eScribe's hyphen-matcher gap remains the one clean,
-  scoped next action; Swagit and YouTube still need a structural answer
-  (a non-Census entity table, and channel-name validation) neither of
-  which exists yet; Cablecast's remaining ~78 rows need the same kind
-  of audit `731da71` just did for the 23 it already recovered.
+  (`uploader` is a channel name, not a government field). **Re-derived
+  for real 2026-08-30** via `GET /internal/low-trust-pages` against
+  production (631 total low-trust pages; 236 with no jurisdiction at
+  all — reflects pre-tonight's-fixes state, since none of tonight's
+  merged WOs are deployed yet): Cablecast 101 (unchanged — still needs
+  the same kind of per-row audit `731da71` did for the 23 it already
+  recovered), TelVue 50 (up from 46, expected — active ingestion),
+  Swagit 32, YouTube 18, eScribe 12, Vimeo 10, CivicClerk 7, unknown 4,
+  Castus 1, TownHallStreams 1. eScribe's hyphen-matcher gap remains the
+  one clean, scoped next action; Swagit and YouTube still need a
+  structural answer (a non-Census entity table, and channel-name
+  validation) neither of which exists yet. `GET /internal/jurisdiction/
+  missing` (proposed above) still doesn't exist — confirmed live, a
+  real 404 — though `/internal/low-trust-pages` already returns each
+  page's `jurisdiction` field directly, so a `has_jurisdiction=false`
+  query param might be a smaller lift than a whole new endpoint.
 
 - **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — ChampDS's `MediaInfo.
   VOD2` HLS case (the majority of real customers) still has no playable
