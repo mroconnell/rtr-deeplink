@@ -635,6 +635,54 @@ async def internal_transcription_backlog(
     return {"pages": await crud.list_transcription_backlog_candidates(limit=limit)}
 
 
+class TranscriptionRecordProbeFailureRequest(BaseModel):
+    meeting_page_id: int
+    requester_email: str
+    error_message: str
+
+
+@app.post("/internal/transcription/record-probe-failure")
+async def internal_transcription_record_probe_failure(
+    req: TranscriptionRecordProbeFailureRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """Records a caller's own client-side feasibility-probe failure (an
+    ffprobe/resolve failure discovered by the caller BEFORE any
+    TranscriptionJob row exists to record a failure against) as a real
+    'failed' TranscriptionJob row -- crud.create_failed_auto_transcription_
+    job(), the exact same function worker/main.py's own
+    maybe_generate_auto_job()/_fail() already uses for an identical
+    situation in its own single-candidate idle-time path. This is what
+    lets crud._in_auto_transcription_cooldown()'s escalating backoff
+    apply to a candidate whose probe fails: without a TranscriptionJob
+    row, that candidate has zero history, is never in cooldown, and gets
+    handed back out by /internal/transcription-backlog identically
+    forever (WO-83, BACKLOG.md's "hourly transcription top-up driver has
+    been creating zero jobs" entry -- 25+ hours sampled, 8/8 archive-
+    stream.granicus.com candidates every single hourly run, "ffprobe
+    couldn't read the media" every time, and the driver never advanced
+    past them).
+
+    The one real caller today is
+    scripts/bulk_queue_transcription_backlog.py's own client-side
+    feasibility check -- it mirrors worker/main.py's
+    maybe_generate_auto_job(), but has to reach this over HTTP since that
+    script isn't in-process with this database. `meeting_page_id` comes
+    straight from GET /internal/transcription-backlog's own response
+    (each candidate now carries it -- see
+    list_transcription_backlog_candidates()'s docstring), so this route
+    doesn't need to re-resolve or re-look-up the page itself.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.create_failed_auto_transcription_job(
+        meeting_page_id=req.meeting_page_id,
+        requester_email=req.requester_email,
+        error_message=req.error_message,
+    )
+
+
 async def _tier3_queue_remaining() -> int:
     """The tier-3 discovery queue's remaining depth, as of the last real
     feed run -- sourced from the database (crud.read_tier3_queue_remaining(),

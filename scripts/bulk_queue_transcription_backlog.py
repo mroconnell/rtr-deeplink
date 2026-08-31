@@ -84,6 +84,27 @@ email is reused for the same "real person's address as a lightweight
 activity digest, not a dedicated no-reply mailbox" reasoning
 worker/main.py's own AUTO_TRANSCRIPTION_REQUESTER_EMAIL comment already
 documents, not a new convention).
+
+WO-83 (2026-08-30): a candidate whose feasibility check below fails now
+has that failure RECORDED via /internal/transcription/record-probe-
+failure (crud.create_failed_auto_transcription_job() under the hood),
+not just skipped and forgotten. Root cause of BACKLOG.md's "hourly
+transcription top-up driver has been creating zero jobs" entry: this
+script's own client-side ffprobe-feasibility skip happens BEFORE any
+TranscriptionJob row exists for the candidate, so
+crud._in_auto_transcription_cooldown() (which only ever looks at
+TranscriptionJob history) never engaged -- the same 8
+archive-stream.granicus.com candidates, all hitting the platform's known
+origin 504 ("ffprobe couldn't read the media"), got re-selected and
+re-skipped identically on every single hourly run, forever, blocking
+this driver from ever reaching further into the backlog to find real
+probeable work. Recording the failure the same way worker/main.py's own
+maybe_generate_auto_job() already does for its single-candidate idle-time
+path lets the escalating cooldown (1 day, doubling to a 30-day cap --
+see AUTO_TRANSCRIPTION_BASE_COOLDOWN) actually apply, so each hourly run
+now grinds a little further into a dense bad-host band instead of
+grinding the same 8 candidates in place. Not done in --dry-run mode,
+consistent with --dry-run creating no other rows either.
 """
 
 import argparse
@@ -264,6 +285,59 @@ async def _create_job(
     )
 
 
+async def _record_probe_failure(
+    session: aiohttp.ClientSession, page: dict, reason: str, requester_email: str
+) -> None:
+    """Records this candidate's client-side feasibility-probe failure as a
+    real 'failed' TranscriptionJob row, via the new
+    /internal/transcription/record-probe-failure route (crud.
+    create_failed_auto_transcription_job() under the hood) -- see this
+    module's own docstring (WO-83) for why this matters: without it,
+    crud._in_auto_transcription_cooldown() never engages for a candidate
+    whose probe fails here, and it gets re-selected identically forever.
+
+    `meeting_page_id` comes from the candidate dict GET
+    /internal/transcription-backlog already returns (see
+    list_transcription_backlog_candidates()'s docstring) -- no separate
+    lookup needed. Missing it (an older Archive deploy that hasn't picked
+    up that field yet) is treated as a no-op rather than a malformed
+    request; a deploy-ordering gap here just means this run's candidate
+    gets retried next run instead of entering cooldown a run early, not a
+    crash.
+
+    Best-effort: any failure recording the failure is logged and
+    swallowed rather than raised. The downside of losing one record-
+    probe-failure call (this candidate just gets re-tried next run
+    instead of resting in cooldown until tomorrow) is far smaller than
+    aborting the whole batch over a bookkeeping call that was never the
+    actual point of this run.
+    """
+    meeting_page_id = page.get("meeting_page_id")
+    if meeting_page_id is None:
+        return
+    try:
+        await _request_json(
+            session,
+            "POST",
+            f"{_base_url()}/internal/transcription/record-probe-failure",
+            label=f"record probe failure for {page.get('slug', '?')}",
+            json={
+                "meeting_page_id": meeting_page_id,
+                "requester_email": requester_email,
+                "error_message": reason,
+            },
+            headers=_headers(),
+            timeout=REQUEST_TIMEOUT,
+        )
+    except Exception as e:
+        logger.warning(
+            "  Could not record probe failure for %s (will just be retried "
+            "next run instead of entering a cooldown): %s",
+            page.get("slug", "?"),
+            str(e)[:200],
+        )
+
+
 async def _check_feasible(page: dict) -> dict:
     """Same feasibility gate worker/main.py's own maybe_generate_auto_job()
     already applies -- re-resolve fresh, probe real duration, reject an
@@ -315,6 +389,79 @@ async def _check_feasible(page: dict) -> dict:
         }
 
     return {"ok": True, "result": result, "duration": duration}
+
+
+_OUTCOME_CREATED = "created"
+_OUTCOME_SKIPPED = "skipped"
+_OUTCOME_CAPPED = "capped"
+# The create-job HTTP call itself failed (network/5xx after retries, or a
+# real 4xx) -- distinct from _OUTCOME_SKIPPED (an infeasible candidate)
+# so main() can keep its pre-existing behavior of not counting this
+# against either counter, same as before this function was split out.
+_OUTCOME_CREATE_FAILED = "create_failed"
+
+
+async def _process_candidate(
+    session: aiohttp.ClientSession,
+    page: dict,
+    *,
+    requester_email: str,
+    dry_run: bool,
+) -> str:
+    """Runs the feasibility check for one candidate and, depending on the
+    result, either creates a real PRIORITY_LOW job, records a probe
+    failure (see _record_probe_failure()'s docstring -- WO-83), or (dry
+    run) just reports what it would have done. Returns one of the
+    _OUTCOME_* constants above for main()'s counters and stop-the-batch
+    decision.
+
+    Split out from main()'s loop specifically so this per-candidate
+    decision is unit-testable without a real aiohttp session, env vars,
+    or a running Archive -- see tests/test_bulk_queue_transcription_
+    backlog.py.
+    """
+    slug = page.get("slug", "?")
+    feasible = await _check_feasible(page)
+    if not feasible["ok"]:
+        logger.info("  SKIPPED: %s", feasible["reason"])
+        if not dry_run:
+            await _record_probe_failure(
+                session, page, feasible["reason"], requester_email
+            )
+        return _OUTCOME_SKIPPED
+
+    if dry_run:
+        logger.info(
+            "  [dry-run] would create a PRIORITY_LOW job (duration=%.0fs)",
+            feasible["duration"],
+        )
+        return _OUTCOME_SKIPPED
+
+    result = feasible["result"]
+    try:
+        response = await _create_job(
+            session,
+            payload=result.model_dump(),
+            source_url=page["source_url_normalized"],
+            requester_email=requester_email,
+            media_url=result.video_url,
+            media_kind=_auto_media_kind(result.video_format),
+            duration=feasible["duration"],
+        )
+    except Exception as e:
+        logger.error("  FAILED to create job: %s", e)
+        return _OUTCOME_CREATE_FAILED
+
+    if response.get("error") == "too_many_active_jobs":
+        logger.info(
+            "  STOPPING: too_many_active_jobs -- headroom under "
+            "MAX_CONCURRENT_TRANSCRIPTION_JOBS is already used up "
+            "(real concurrent usage, or a previous run's jobs still in flight)."
+        )
+        return _OUTCOME_CAPPED
+
+    logger.info("  CREATED job %s for %s", response.get("job_id"), slug)
+    return _OUTCOME_CREATED
 
 
 async def main() -> None:
@@ -391,51 +538,27 @@ async def main() -> None:
             slug = page.get("slug", "?")
             logger.info("Candidate %d/%d: %s", i + 1, len(pages), slug)
 
-            feasible = await _check_feasible(page)
-            if not feasible["ok"]:
-                skipped += 1
-                logger.info("  SKIPPED: %s", feasible["reason"])
-                continue
-
-            if args.dry_run:
-                logger.info(
-                    "  [dry-run] would create a PRIORITY_LOW job (duration=%.0fs)",
-                    feasible["duration"],
-                )
-                continue
-
-            result = feasible["result"]
-            try:
-                response = await _create_job(
-                    session,
-                    payload=result.model_dump(),
-                    source_url=page["source_url_normalized"],
-                    requester_email=requester_email,
-                    media_url=result.video_url,
-                    media_kind=_auto_media_kind(result.video_format),
-                    duration=feasible["duration"],
-                )
-            except Exception as e:
-                logger.error("  FAILED to create job: %s", e)
-                continue
-
-            if response.get("error") == "too_many_active_jobs":
-                capped += 1
-                logger.info(
-                    "  STOPPING: too_many_active_jobs -- headroom under "
-                    "MAX_CONCURRENT_TRANSCRIPTION_JOBS is already used up "
-                    "(real concurrent usage, or a previous run's jobs still in flight)."
-                )
-                break
-
-            created += 1
-            logger.info("  CREATED job %s for %s", response.get("job_id"), slug)
-            logger.info(
-                "Progress so far: %d created, %d skipped (of %d candidates)",
-                created,
-                skipped,
-                len(pages),
+            outcome = await _process_candidate(
+                session, page, requester_email=requester_email, dry_run=args.dry_run
             )
+
+            if outcome == _OUTCOME_CREATED:
+                created += 1
+                logger.info(
+                    "Progress so far: %d created, %d skipped (of %d candidates)",
+                    created,
+                    skipped,
+                    len(pages),
+                )
+            elif outcome == _OUTCOME_CAPPED:
+                capped += 1
+                break
+            elif outcome == _OUTCOME_SKIPPED:
+                skipped += 1
+            # _OUTCOME_CREATE_FAILED: matches the pre-refactor behavior of
+            # not counting a create-job HTTP failure against either
+            # counter -- it's a real error already logged by
+            # _process_candidate, not a feasibility skip.
 
         logger.info(
             "RUN COMPLETE: %d created, %d skipped, capped=%s (of %d candidates).",
