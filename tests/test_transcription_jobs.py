@@ -713,14 +713,17 @@ async def test_list_hallucination_candidate_transcript_versions_filters_correctl
 
 async def test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged():
     # Regression test for the 2026-08-21 502 fix (BACKLOG_DONE.md): the
-    # previous version of list_hallucination_candidate_transcript_versions()
+    # original version of list_hallucination_candidate_transcript_versions()
     # pulled every source=="transcribed" row's full `segments` in one
-    # unbounded query. The rewrite bounds only the NOT-yet-flagged
-    # population (limit/after_id) since that's the big, actively-growing
-    # side -- the small already-flagged population is still returned in
-    # full regardless of `limit`, since it's cheap and never grows fast
-    # (see the function's own docstring). This exercises both halves of
-    # that claim against the real DB, not just by reading the SQL.
+    # unbounded query. That rewrite bounded only the NOT-yet-flagged
+    # population (limit/after_id), on the assumption the already-flagged
+    # population would stay small and cheap -- confirmed wrong live
+    # 2026-08-30 (a plain call 502'd at Render's own proxy timeout), so the
+    # flagged branch is now ALSO bounded by the same limit/after_id (see
+    # test_hallucination_candidates_limit_bounds_flagged_scan_too below for
+    # a case with more than `limit` flagged rows). This test's flagged
+    # population is just one row, so it appears on every page below either
+    # way; what it actually exercises is unflagged keyset pagination.
     anchor_url = "https://example.granicus.com/player/clip/tj-halluc-page-anchor"
     anchor_result = await crud.ingest_resolution(
         {
@@ -816,6 +819,86 @@ async def test_hallucination_candidates_limit_bounds_unflagged_scan_not_flagged(
     )
     page2_ids = {row["version_id"] for row in page2}
     assert page2_ids == {unflagged_ids[2], flagged_id}
+
+
+async def test_hallucination_candidates_limit_bounds_flagged_scan_too():
+    # Confirmed live 2026-08-30: with more already-flagged rows than the
+    # caller's `limit`, the unbounded flagged_query pulled every one of
+    # their full `segments` blobs and re-ran detection over all of them in
+    # a single request -- a plain call (even limit=1) took 150s+ and
+    # 502'd at Render's own proxy timeout, because the "small, slow-growing
+    # set" assumption in the function's own docstring no longer held.
+    # Creates 3 already-flagged rows and asserts a limit=2 call returns at
+    # most 2 of them, keyset-paginating the same as the unflagged branch.
+    anchor_url = "https://example.granicus.com/player/clip/tj-halluc-flagged-anchor"
+    anchor_result = await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": anchor_url,
+            "external_id": "granicus:tj-halluc-flagged-anchor",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://example.com/v.m3u8",
+            "video_format": "m3u8",
+            "segments": [{"start": 0.0, "end": 1.0, "text": "anchor", "speaker": None}],
+            "agenda_items": [],
+            "transcript_language": "en",
+            "transcript_warnings": [],
+            "source": "transcribed",
+        },
+        anchor_url,
+    )
+    after_id = anchor_result["version_id"]
+
+    hallucinated_segments = [
+        {
+            "start": 0.0,
+            "end": 30.0,
+            "text": "Public comment, motion, second, aye, nay, abstain,",
+            "speaker": None,
+        },
+    ] + [
+        {
+            "start": 240.0 + i * 10,
+            "end": 250.0 + i * 10,
+            "text": "So, we are going to take a look at what we are going to do.",
+            "speaker": None,
+        }
+        for i in range(44)
+    ]
+
+    flagged_ids = []
+    for n in range(3):
+        flagged_url = f"https://example.granicus.com/player/clip/tj-halluc-flagged-{n}"
+        flagged_job = await crud.create_transcription_job(
+            payload=_payload(f"granicus:tj-halluc-flagged-{n}", flagged_url),
+            input_url_normalized=flagged_url,
+            requester_email=f"halluc-flagged-{n}@example.com",
+            media_url="https://example.com/v.m3u8",
+            media_kind="video",
+            probed_duration_seconds=900,
+            chunk_size_seconds=900,
+            skip_confirmation=True,
+        )
+        claim = await crud.claim_next_chunk()
+        assert claim["job_id"] == flagged_job["job_id"]
+        flagged_result = await crud.report_chunk_result(
+            flagged_job["job_id"], success=True, shifted_segments=hallucinated_segments
+        )
+        flagged_ids.append(flagged_result["transcript_version_id"])
+
+    page1 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=after_id
+    )
+    page1_ids = {row["version_id"] for row in page1}
+    assert page1_ids == {flagged_ids[0], flagged_ids[1]}
+
+    page2 = await crud.list_hallucination_candidate_transcript_versions(
+        limit=2, after_id=flagged_ids[1]
+    )
+    page2_ids = {row["version_id"] for row in page2}
+    assert page2_ids == {flagged_ids[2]}
 
 
 async def test_hallucination_candidates_null_transcript_warnings_still_scanned():

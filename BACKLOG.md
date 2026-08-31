@@ -57,19 +57,18 @@ Standing decisions — do NOT re-raise  (3)
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
   [JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Confirmations nobody has actually watched happen  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
-  Production actions only Ryan should take  (3)
+  Production actions only Ryan should take  (2)
     [HUMAN] Click Validate Fix in Search Console once tonight's
-    [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
-    [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
+    [NEEDS-AUDIT] `hpsb` was refused by the roll-up dedup's safety
   Decisions about already-live content  (2)
-    [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
+    [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -95,7 +94,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (15)
+  Jurisdiction extraction & backfill  (14)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
@@ -107,7 +106,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
     [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
     [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
-    [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
@@ -136,8 +134,8 @@ Reliability, ops & cost  (13)
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (5)
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
-    [NEEDS-AUDIT] The hourly transcription top-up driver has been
-    [NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
+    [JUST-DO-IT] The hourly transcription top-up driver's dead-candidate
+    [NEEDS-AUDIT] Re-derived 2026-08-30: the backlog is actually
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
   Search Console, structured data & SEO plumbing  (4)
@@ -189,29 +187,6 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
-
-Dormant — needs a real example first `[LATER]`  (18)
-  Captions — formats and sources with no confirmed positive example  (6)
-    [LATER] ChampDS real captions confirmed to exist for at least one
-    [LATER] TTML/DFXP/ITT caption parsing (`vtt_parser.py`'s
-    [LATER] SBV/SUB/SMI/SAMI/plain-.txt captions get a generic
-    [LATER] SCC/STL captions are detected but not readable at all
-    [LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar
-    [LATER] YouTube/PrimeGov: non-English captions untested
-  Per-tenant and per-adapter cases waiting on a second example  (5)
-    [LATER] `generic_fallback.py`'s YouTube-embed branch had no
-    [LATER] Legistar's own MeetingDetail.aspx page carries real
-    [LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting
-    [LATER] `[EXAMPLE]` Perry GA's eScribe host
-    [LATER] Swagit custom-domain embeds unverified
-  Platform discovery & enumeration — leads not yet chased  (7)
-    [LATER] Collect custom-domain examples for popular platforms as
-    [LATER] New platform-vendor gaps found 2026-08-11, via a Wave 2
-    [LATER] Residuals from the 2026-08-14 generic-fallback rebuild
-    [LATER] Vimeo's real-world prevalence among small local governments
-    [LATER] Direct-to-YouTube may be the single largest video source
-    [LATER] A *sparse* loop of 5-11 cues is still missed
-    [LATER] Six meeting/CMS platforms don't wildcard their DNS —
 
 Parked deliberately — allowed back `[PARK]`  (3)
   [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction
@@ -367,77 +342,43 @@ convenient.
   expect this to clear 100% (full numbers and why in
   `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup).
 
-- **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
-  upgrade — evidence now leans toward "recurs," not "one-off"
-  (investigated live 2026-08-29, see `BACKLOG_DONE.md`).** The
-  2026-08-26T01:13:58Z auto-restart's memory graph shows the instance
-  sitting sustained near ~90% of its 512MB limit *before* a sharp
-  concurrent-load spike tipped it over, then climbing straight back to
-  ~90% within minutes post-restart — not a one-off blip from a healthy
-  baseline. `rtr-deeplink` is still the only one of the four Render
-  services on `plan: starter`; the other three already made this exact
-  jump for this exact failure shape. Ryan's call: bump `render.yaml`'s
-  `rtr-deeplink` block from `plan: starter` to `plan: standard`, or wait
-  for a second occurrence.
-- **[HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
-  duplication — the apply ran 2026-08-22 and rate-limited on exactly
-  those.** 14 of 25 rewritten and verified live; **every non-YouTube
-  page succeeded** (11 granicus, 2 civicclerk, 1 escribe) and **every
-  YouTube-backed page failed** with `HTTP Error 429: Too Many Requests`,
-  a perfect split. Nothing was written for the 10 — they failed at the
-  resolve step, before any push, so their transcripts are untouched.
-  Root cause in its own entry under **Open bugs** (moved there
-  2026-08-29 — it's an unresolved question, not a settled fix), and it
-  is *not* simple rate limiting: **a retry at `--resolve-delay 60` after nine
-  idle minutes failed identically on all 10**, first request included.
-  The IP is blocked, not throttled, so pacing alone will not clear it.
-  Wait hours, not minutes, then retry — and note the state file records
-  a failure as `done`, so a plain re-run **skips** them:
-  `--reset-state` re-attempts everything (the 14 already-clean pages are
-  then refused harmlessly by the gates), or name the outstanding pages
-  with repeated `--slug`. The
-  outstanding 10 are 8 of the borderline `»` band plus Santa Clara and
-  Hawaiian Gardens — i.e. almost exactly the less-certain population,
-  which is worth knowing before reading their results.
-
-  **Separately, `hpsb` was refused by the safety gate, correctly** —
-  "fresh resolve produced no segments". `pub-hpsb.escribemeetings.com`
-  now returns no captions for that meeting, so the gate declined to
-  overwrite a real transcript with an empty one rather than treating a
-  vanished source as an improvement. Its low detector score was never
-  the `»` bug. Whether those captions are gone permanently or the
-  meeting was re-published is unanswered; a second look decides whether
-  this is a dead source or a transient.
-
-  **What landed, verified live in the browser** (Tacoma and Marco
-  Island, the latter being the lowest retention ratio at 0.066 and so
-  the riskiest): picker reads "English (de-duplicated)" against
-  "English (sourced)", the third-party disclaimer renders, the AI
-  disclaimer correctly does not, and old versions remain reachable
-  (Marco Island's v369 alongside the new v1944). One thing checked
-  rather than assumed: Marco Island's transcript opens with `?` marks,
-  which are in the *original source captions* and were themselves
-  rolling up (`?` -> `? ?` -> `? ? ?`); the fix collapsed them correctly
-  and real content starts at 0:39.
+- **[NEEDS-AUDIT] `hpsb` was refused by the roll-up dedup's safety
+  gate, correctly** — "fresh resolve produced no segments".
+  `pub-hpsb.escribemeetings.com` now returns no captions for that
+  meeting, so the gate declined to overwrite a real transcript with an
+  empty one rather than treating a vanished source as an improvement.
+  Whether those captions are gone permanently or the meeting was
+  re-published is unanswered; a second look decides whether this is a
+  dead source or a transient. (The 10 YouTube-backed pages this same
+  apply run originally rate-limited on are now fixed — see
+  `BACKLOG_DONE.md`.)
 
 ### Decisions about already-live content
 
-- **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
-  populations *in stored segments*, don't bulk re-transcribe.** Full
-  decision reasoning and the two repair scripts' design are in
-  `BACKLOG_DONE.md`'s matching entry — both `scripts/
-  repair_seam_duplication.py` (118 seam-duplication candidates) and
-  `scripts/repair_repetition_loops.py` (74 repetition-loop transcripts)
-  are **built and CI-tested but never run against production**. What's
-  still open: (1) run both scripts' `--dry-run`, review the reports,
-  then apply; (2) trim the 3 remaining hallucinated-default transcripts
-  that aren't Kitchener (Sacramento etc. — Kitchener itself was
-  re-transcribed 2026-08-30, see `BACKLOG_DONE.md`; its duplicate-page
-  fallout is its own "Needs a human" entry); (3) re-transcription on
-  report for anything the repair can't fix — not started; (4) extend
-  the repair to the local-batch population by scanning stored segments
-  instead of job records (`scripts/transcribe_backlog_locally.py` never
-  touches `transcription_jobs`, so a job-record-based list misses it by
+- **[JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
+  population *in stored segments*, don't bulk re-transcribe — blocked
+  on tonight's deploy, not on code.** The seam-duplication half is done
+  (111/111 pages repaired live, see `BACKLOG_DONE.md`). The
+  repetition-loop half (`scripts/repair_repetition_loops.py`, ~74
+  candidates) is built and CI-tested but has never completed a run: its
+  first call to `GET /internal/transcription/hallucination-candidates`
+  502'd at Render's own proxy timeout on every attempt (confirmed
+  2026-08-30 — even `limit=1` took 150s+, because the endpoint's
+  already-flagged branch had no `limit`/`after_id` bound at all, on a
+  now-false "stays small" assumption). Root-caused and fixed in
+  `archive/db/crud.py`'s `list_hallucination_candidate_transcript_
+  versions()` (bounded the flagged branch the same way as the unflagged
+  one) — merged to `main` 2026-08-30 but **not yet deployed**. Once
+  deployed: run `scripts/repair_repetition_loops.py --dry-run`, review
+  the report, then apply. Still open after that: (1) trim the 3
+  remaining hallucinated-default transcripts that aren't Kitchener
+  (Sacramento etc. — Kitchener itself was re-transcribed 2026-08-30, see
+  `BACKLOG_DONE.md`; its duplicate-page fallout is its own "Needs a
+  human" entry); (2) re-transcription on report for anything the repair
+  can't fix — not started; (3) extend the repair to the local-batch
+  population by scanning stored segments instead of job records
+  (`scripts/transcribe_backlog_locally.py` never touches
+  `transcription_jobs`, so a job-record-based list misses it by
   construction) — not started.
 
 - **[HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -1287,16 +1228,6 @@ deployed). Full detail in `BACKLOG_DONE.md`.
   show, or a way to represent "spans two provinces" — deliberately left
   unregistered rather than guessed.
 
-- **[LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
-  fallback is unconfirmed against any real second customer.** WO-19
-  built a full adapter — jurisdiction on the one real confirmed customer
-  (Billings MT, "comm7tv") comes from cross-checking a destinyhosted.com
-  hyperlink in that meeting's own agenda items, not the tenant slug
-  (which is opaque branding on this one sample). The slug-based fallback
-  is real, generic Census-backed logic for a hypothetical future tenant
-  with no destinyhosted agenda link at all — untested against a real
-  second customer. Revisit once one is found.
-
 - **[NEEDS-AUDIT] Census-table baseline validation of all 649 archived
   jurisdictions (2026-08-15) — re-checked 2026-08-30, all three named
   jurisdiction-side examples turned out already fixed; only a
@@ -1887,59 +1818,34 @@ top-up driver has been creating zero jobs" under **Transcription queue
   pool-wide check can't see. From the outside a wedged job and a slow one
   are indistinguishable, which is the actual problem.
 
-- **[NEEDS-AUDIT] The hourly transcription top-up driver has been
-  creating zero jobs — measured 2026-08-22, at least 25 hours of it.**
-  `bulk-queue-transcription-backlog.yml` exists to keep both cloud
-  workers supplied. Five runs sampled across 2026-08-21T18:59Z →
-  2026-08-22T19:39Z each logged **"0 created, 8 skipped, capped=False
-  (of 8 candidates)"**, and in every sampled run all 8 candidates were
-  `archive-stream.granicus.com` HLS URLs failing "ffprobe couldn't read
-  the media" — the known Granicus origin 504 (see "Some old/archived
-  Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own
-  origin" above). Corroborated by `active_jobs: 1` against the script's
-  own cap of 15: **the workers are idle, not slow**, and the ~35
-  jobs/day being completed come entirely from `worker/main.py`'s own
-  idle-time `maybe_generate_auto_job()` trickle. This is the single
-  highest-leverage thing in this section — it is the reason the archive
-  gains pages ~4x faster than it transcribes them, and it costs real
-  paid worker time sitting idle.
-  Likely mechanism, **not yet confirmed**:
-  `list_transcription_backlog_candidates()` is oldest-archived-first,
-  and the oldest slice of the backlog is a dense band of Granicus
-  archive clips with this exact failure, so the driver grinds through
-  them 8 an hour and never reaches probeable candidates. The candidate
-  list did advance between runs (alphabetically, `cathedralcity…` →
-  `chesapeake…`), so it is not stuck on a fixed 8 — what has not been
-  checked is whether `_in_auto_transcription_cooldown()` can ever apply
-  here at all, given the skip happens client-side in the script before
-  any `TranscriptionJob` row exists to record a failure against. Check
-  that before designing a fix. Plausible directions, in rough order of
-  cheapness: skip `archive-stream.granicus.com` candidates whose probe
-  has already failed N times; interleave the candidate order by media
-  host so one bad host cannot monopolize a batch; or raise `BATCH_SIZE`
-  so a run that skips 8 still tries others. Do **not** reach for
-  `_SUBPROCESS_TIMEOUT_SECONDS` — the current default (see the Granicus
-  `chunklist.m3u8` entry above) argues against it, and the 504 arrives at
-  4-6 minutes regardless.
+- **[JUST-DO-IT] The hourly transcription top-up driver's dead-candidate
+  loop — root cause CONFIRMED 2026-08-30, fix in progress (WO-83).**
+  `bulk-queue-transcription-backlog.yml` kept logging "0 created, 8
+  skipped" because its 8 candidates were consistently
+  `archive-stream.granicus.com` URLs failing a known Granicus-origin
+  504. **Confirmed live against the real code tonight**:
+  `_in_auto_transcription_cooldown()` (`archive/db/crud.py`) derives its
+  verdict purely from `TranscriptionJob` rows, but the driver's
+  client-side ffprobe-failure skip never creates one — so these
+  candidates can never enter cooldown and get re-selected, re-skipped,
+  forever, on every single hourly run. A fix agent is implementing this
+  (see WO-83, conductor to merge once ready).
 
-- **[NEEDS-AUDIT] Even after the 2026-08-22 rate cut, inflow still
-  exceeds transcription output.** The tier-3 feed went 48/6h → 12/6h
-  that day (48/day; full measurements in `BACKLOG_DONE.md`'s "Tier-3
-  feed rate lowered back to 12/6h"), but
-  `feed_granicus_auto_transcription.py` contributes another 12/6h, so
-  combined inflow is **~96/day** against measured output of **~55-60/day**
-  (35 cloud jobs + 15-25 local Whisper). The untranscribed count — 781
-  of 2,403 pages, 478 of 1,577 jurisdictions with none at all, both
-  measured 2026-08-22 — therefore still grows, roughly 4x slower than
-  before. Dials, in order of honesty: (1) **fix the dead top-up driver
-  above** — that raises real output rather than lowering supply, and is
-  the only one of these that actually helps; (2) drop tier-3 to 6/6h
-  (24/day) to balance inflow against output outright, at the cost of
-  ~55 days rather than ~27 to drain the remaining 1,317-entry queue;
-  (3) reduce the Granicus feed the same way. Lowering supply is a
-  holding action; do not repeat it a third time without first re-curling
-  `/internal/transcription-queue-stats` to check whether output has
-  moved.
+- **[NEEDS-AUDIT] Re-derived 2026-08-30: the backlog is actually
+  shrinking, not growing as this entry originally claimed — worth a
+  fresh measurement once WO-83 deploys.** Live-checked `GET /internal/
+  transcription-queue-stats` (previously "not done here"):
+  `backlog_no_transcript` is **562** today, down from the 781 measured
+  2026-08-22 — real, sustained output despite the dead top-up driver,
+  likely `worker/main.py`'s own idle-time trickle plus the local-Whisper
+  script outpacing inflow more than this entry assumed.
+  `tier3_queue_remaining` is 1289 (was 1,317) — barely moved, consistent
+  with continued TelVue/eScribe ingestion refilling it about as fast as
+  it drains. `jobs_completed_last_24h: 39`. Re-check after WO-83 deploys
+  and the top-up driver starts actually creating jobs — real output
+  should jump, and it's worth re-deriving whether tier-3/Granicus-feed
+  rate cuts are still warranted at that point rather than assuming they
+  still are.
 
 - **[LATER] `list_transcription_backlog_candidates()` still does a real
   N+1 query pattern, found 2026-08-21.** Unlike
@@ -2096,11 +2002,12 @@ social auto-posting, and `GET /internal/low-trust-pages` (full build in
 
 WO-38 (2026-08-21) gave `GET /internal/low-trust-pages` a memory
 (`reviewed_at`, `?unreviewed=true`, `?reason=`, a mark-reviewed endpoint
-— see `BACKLOG_DONE.md`). Calling it against production settled what's
-*in* it: 474 rows, of which **470 are `unverified_jurisdiction`, 7
-`unknown_platform`, zero `best_effort`.** (The per-platform breakdown
-behind that 470 is its own entry under "Platform & jurisdiction
-coverage" above.) Three residuals:
+— see `BACKLOG_DONE.md`). **Re-derived live 2026-08-30** (was 474 rows
+at last count): **631 rows today**, of which **575 `unverified_
+jurisdiction`, 59 `best_effort`, 14 `unknown_platform`** — a real,
+sustained increase in volume as the corpus has grown, and `best_effort`
+is no longer zero (was true at the original 2026-08-21 measurement,
+isn't anymore). Three residuals:
 
 - **It's a data-quality queue, not a trust queue, today.** Those 470
   rows are real live pages with real video whose jurisdiction couldn't be
@@ -2743,389 +2650,6 @@ real work on shipped code rather than a plan.
   `archive/utils/email.py`'s existing single-recipient Resend-send
   helper. Not started — a scoped feature request, not yet designed in
   full.
-
-## Dormant — needs a real example first `[LATER]`
-
-Long by design, and safe to skip. Nothing here can be built honestly
-until a real example turns up. An entry leaving this section usually
-means somebody found the example, not that somebody decided to guess.
-
-### Captions — formats and sources with no confirmed positive example
-
-- **[LATER] ChampDS real captions confirmed to exist for at least one
-  customer — but the URL to actually fetch them is still unknown
-  (2026-08-16).** `champds.py`'s docstring said `MediaInfo.Captions` was
-  empty on all 6 original customers checked; a fresh 61-URL enumeration
-  found 1 (`play.champds.com/atlantaga/event/1077`) with real populated
-  `Captions` metadata — a positive example finally exists. But the URL
-  to fetch it is unconfirmed: the raw MediaPath 404s under every
-  plausible host prefix, no caption references exist anywhere in the
-  event page's own JS, and the confirmed-working `DOWNLOAD-MEDIA`
-  endpoint's `type` parameter returns 501 for every plausible caption
-  type value tried. **Confirmed live in-browser**: the champds.com
-  frontend genuinely never wires up captions at all — playing the video
-  and clicking the player's own "Captions" menu fires no caption network
-  request, and `textTracks.length === 0` with zero `<track>` elements in
-  the DOM. `MediaInfo.Captions` is real API data the current frontend
-  simply doesn't consume — building around it now would mean guessing a
-  URL nobody has confirmed works. **Re-checked 2026-08-30, still
-  dormant**: pulled the real `cds.event.js`/`cds.common.js` frontend
-  source directly (not just in-browser behavior) — zero caption/vtt/srt/
-  track references anywhere in either file, and `help.champds.com` has
-  no captioning documentation. Only remaining path is direct vendor
-  support.
-- **[LATER] TTML/DFXP/ITT caption parsing (`vtt_parser.py`'s
-  `parse_ttml()`) is spec-verified only, not sample-verified.** No
-  CivicClerk/Granicus/Swagit/CA Legislature sample has ever actually used
-  TTML/DFXP/ITT (every real populated caption seen so far is VTT or
-  SRT). Handles clock-time and offset-time; frame-based/tick-based are
-  explicitly unsupported. If a real sample turns up, verify against it.
-- **[LATER] SBV/SUB/SMI/SAMI/plain-.txt captions get a generic
-  best-effort text fallback (`strip_unknown_caption_markup()`), not real
-  per-format parsing.** No per-line timing, since these formats were
-  never actually observed either — exists so real caption text isn't
-  silently dropped (per-line clickability isn't required; `t=`
-  deep-linking never depended on transcript timing). Wired into
-  Granicus, CA Legislature, Swagit, CivicClerk. Worth a real structured
-  parser if any of these turns out to be common on a real platform.
-- **[LATER] SCC/STL captions are detected but not readable at all** —
-  both binary/encoded formats needing real codec-level decoding, so they
-  surface as a direct link rather than attempted content. Genuinely
-  low-probability for a small city's captioning vendor; not worth
-  building unless a real example turns up.
-- **[LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar
-  listings** — user's instinct that a calendar row might expose a direct
-  caption file link more reliable than the destination video page's own.
-  Checked Maricopa AZ, Westlake Village CA, San Diego city/county, both
-  Berkeley Legistar calendars — none had one. **Re-checked 2026-08-30
-  against 4 more real hosts** (Lake County IL, Chapel Hill NC, Naperville
-  IL, Saint Paul MN — 8 real hosts checked total now): the only
-  "caption" text present on any of them is Legistar's own boilerplate
-  UI filter-tooltip string, not a real link. Genuinely still nothing
-  found on 8 real hosts — a real negative now, not just unexplored.
-- **[LATER] YouTube/PrimeGov: non-English captions untested**, and
-  whether the manual-vs-auto-generated coverage gap seen on the one real
-  LA sample is typical or specific to that video is unknown. **Both
-  known leads independently confirmed real 2026-08-30** (previously only
-  "reported," neither ever directly fetched): Riverside County CA's
-  Spanish meeting-video page (`rivcocob.org/board-supervisors-meeting-
-  videos-spanish`) is real and indexed (direct fetch 403s — same
-  Cloudflare gate as the rest of `rivco*.org`, see the platform-discovery
-  entry above — but search-engine snippets confirm real content); it
-  reads as live-interpretation audio/video, not a PrimeGov-native caption
-  track, and no PrimeGov URL surfaced for Riverside specifically.
-  Virginia Beach's Internet Archive mirror is directly confirmed: `archive.
-  org/metadata/covbva-City_Council_Meeting_3_3_2026` lists both
-  `.en.asr.srt` and `.es.asr.srt` files; the Spanish one was fetched
-  directly and is genuine Spanish ASR text ("Quiero dar la bienvenida a
-  todos..."). Both leads are real, but neither is on-platform
-  (YouTube/PrimeGov itself) — a fresh search for a native PrimeGov/
-  YouTube non-English example (LA City, Santa Ana) found only more
-  live-interpretation-service mentions, no confirmed caption track.
-  Genuinely still no on-platform example.
-
-### Per-tenant and per-adapter cases waiting on a second example
-
-- **[LATER] `generic_fallback.py`'s YouTube-embed branch had no
-  page-level metadata backfill (CRRMA's "Untitled meeting") — fixed
-  2026-08-13, full detail in `BACKLOG_DONE.md`.** A separate bug
-  surfaced re-verifying it live: `YouTubeAssetFinder.resolve_video_id()`
-  unconditionally sets `jurisdiction=info.get("uploader")` (a channel
-  name) whenever yt-dlp succeeds, and every delegating caller has to
-  know to override it or the channel name leaks through as a fake
-  jurisdiction. **Audited every direct delegator 2026-08-13**: PrimeGov,
-  LIMS, `slc.py`, generic_fallback, and CivicWeb are all now safe.
-  **Still genuinely unconfirmed**: `legistar.py`'s primary delegation
-  path only overrides jurisdiction via `resolved.jurisdiction or
-  page_info[...]` — matters only if a Legistar video link ever resolves
-  directly to a bare YouTube URL with a raw-filename-shaped title.
-  **Re-checked 2026-08-30 against all 19 known real Legistar hosts**
-  (`hosts_legistar.txt`): every populated video link across 17 responsive
-  hosts is a hardcoded `Video.aspx?Mode=Granicus&ID1=...` — the vendor
-  mode is baked into the tenant's own markup. The only two hosts using a
-  direct `href` instead (Seattle → seattlechannel.org, Lake County →
-  cablecast.tv) point to already-adapted platforms, not bare YouTube. A
-  real, thorough negative now, not just unexplored — genuinely no example
-  of this combination exists across every known Legistar host.
-
-  **Still open, a real UI/copy question**: what should render when
-  metadata truly can't be found by any method? Today's convention is a
-  bare "Untitled meeting." User's suggestion: something like "Temporary
-  Name: meeting-732f78" that signals incompleteness rather than reading
-  as broken. **Checked against the one real remaining "Untitled meeting"
-  page in the Archive** (Tucson AZ/Hyland) before building anything — it
-  disproves that a looser best-effort regex would help in general: that
-  page's raw HTML has no usable static text anywhere (everything renders
-  client-side via AJAX), so only a real headless-browser fetch or the
-  plain placeholder would help. A second real example
-  (cityofsebastopol.gov) later confirmed the looser-regex idea is real
-  for a *different* failure shape (static text present, just not
-  `<title>`-pipe shaped) — title/jurisdiction extraction there is
-  **fixed** (2026-08-13); Vimeo video playback on that same page is
-  **fixed** as of WO-29 (2026-08-21), resolving through the platform
-  delegation path with a real embedded, seekable video plus agenda PDF.
-
-- **[LATER] Legistar's own MeetingDetail.aspx page carries real
-  metadata `LegistarAssetFinder` never scrapes — confirmed live
-  2026-08-12** (a real Mesa, AZ meeting). The "Published agenda" link is
-  **fixed** (2026-08-13, `_extract_agenda_link()`, applied regardless of
-  title quality). "Meeting location" moved to Ship next 2026-08-30 — see
-  below, real examples found. The third item on this page (a real
-  "Meeting Items" table) is a **standing decision**, not an open TODO —
-  see the top of this file.
-
-- **[LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting
-  recaps) — built and shipped 2026-08-09, see `BACKLOG_DONE.md`. One
-  real follow-up still genuinely open**: not yet checked whether "LIMS"
-  (the underlying product) is white-labeled and used by other cities
-  under different domains. **Partial lead found 2026-08-30, not
-  confirmed**: DC Council runs its own `lims.dccouncil.gov`
-  ("DC Legislation Information Management System"), and DataNet Systems
-  (dnscorp.com) explicitly sells a "LIMS" product used by DC Council —
-  but a direct page-structure comparison to Minneapolis's LIMS wasn't
-  possible (both sites block non-browser fetches). "LIMS" also reads as
-  a generic industry term (multiple unrelated vendors sell distinctly-
-  branded "LIMS" products), so name-matching alone doesn't prove shared
-  code. Worth a real headless-browser structural comparison by a future
-  session; not confirmed either way yet. (The SLC extraction gap and the
-  Tier 2/3 design questions this entry used to also track have been
-  split out — see Open bugs and this file's own compaction note in
-  `BACKLOG_DONE.md`.)
-
-- **[LATER] `[EXAMPLE]` Perry GA's eScribe host
-  (`pub-perryga.escribemeetings.com`) no longer resolves — DNS/
-  connection failure, confirmed 2026-08-22 (WO-43 / #307).** It is cited
-  in `escribe.py:52,137` as *the* confirmed real beneficiary of the
-  backstop pointer tier, so that citation now has no live URL behind it.
-  The code isn't wrong; the evidence for it has gone dead. **Re-checked
-  2026-08-30 against all 5 other known-working eScribe hosts** (Calgary,
-  Kitchener, Watsonville, Boulder County, Saskatoon): every one has a
-  real, populated `#isi_player[data-client_id]` div — none falls into
-  the no-player backstop-pointer tier `escribe.py` uses for Perry GA. A
-  real, thorough negative now: none of the known-good eScribe customers
-  are a substitute citation. A genuinely new eScribe customer exercising
-  that specific no-player shape would need to be found.
-
-- **[LATER] Swagit custom-domain embeds unverified** (e.g.
-  `dublin.ca.gov/swagit-video-player?video_id=...`). `detect_platform`
-  recognizes the shape, but the one sample URL 404s — parsing has only
-  been verified against real `*.swagit.com` domains. **Re-checked live
-  2026-08-11**: a broad survey of large-city Swagit usage found plenty
-  of fresh `*.swagit.com` samples but zero working examples of this
-  specific custom-domain shape anywhere. **Re-checked again 2026-08-30**:
-  Dublin, CA's real current watch page
-  (`dublin.ca.gov/watchmeetings`) embeds Swagit via a plain iframe to
-  `dublinca.new.swagit.com/views/876/` today — a different shape than
-  the `swagit-video-player?video_id=` URL this entry describes, so even
-  the original example may no longer reflect how Dublin's page actually
-  works. Targeted searches for the literal `swagit-video-player?video_id=`
-  pattern found zero live matches anywhere. Genuinely still open, and
-  worth re-deriving from a fresh Dublin, CA check rather than the
-  original (possibly stale) example next time this is picked up.
-
-### Platform discovery & enumeration — leads not yet chased
-
-
-- **[LATER] Collect custom-domain examples for popular platforms as
-  they're found, into the shared "Watchdog Sample meetings" sheet** —
-  not a code change, a standing habit. Log each new custom domain/
-  unusual URL shape as it's found and only build a general detection
-  rule once several real examples exist to generalize from.
-
-- **[LATER] New platform-vendor gaps found 2026-08-11, via a Wave 2
-  survey of the largest US cities/counties** (full data in an artifact,
-  not saved in-repo):
-  - **Cablecast** — confirmed as the actual video host for Charlotte NC
-    (965k, delegated from Legistar) and Detroit MI (649k, delegated from
-    both Legistar and eScribe). **Built 2026-08-12** — `CablecastAssetFinder`
-    live for both, including real `vodTranscripts` extraction.
-  - ~~IQM2~~ **Built 2026-08-14** — confirmed live: video delegates to a
-    real Granicus HLS URL, real per-item timestamped agenda data.
-    Santa Clara County's earlier apparent video-population gap
-    **resolved 2026-08-14, no code change needed** — checking a real
-    Board of Supervisors meeting specifically showed it works exactly
-    like Atlanta's; smaller commissions on that instance apparently
-    just don't always get video attached.
-  - ~~CivicWeb (iCompass, a Diligent brand)~~ **Built 2026-08-12** —
-    `app/platforms/civicweb.py`, confirmed live against Dallas County TX
-    (2.6M), jurisdiction enrichment wired in, re-verified live again
-    2026-08-13 with no regression.
-  - ~~A new, unified Granicus product
-    (`webcontent.granicusops.com`)~~ **Re-checked live 2026-08-12: real
-    risk to the video path not reproduced.** Both sample cities'
-    current Legistar video links still redirect cleanly through the
-    classic Granicus chain, no `webcontent.granicusops.com` in it.
-    Separately confirmed what that host actually is: an S3-backed PDF/
-    document CDN, not a video-player product — not fully closed (a
-    genuinely different Granicus product, seen via search but not
-    confirmed live, could still exist), but no longer an active,
-    unaddressed threat to the two sampled cities.
-  - **A "decoupled transcript service" pattern** — a real transcript
-    hosted entirely separately from the video, found independently
-    twice: Tampa FL's own "CTTV" webapp (a third-party mirror already
-    builds a synced, clickable version worth studying) and a "Transcript
-    Room" service Philadelphia's Legistar pages link out to. Not a
-    vendor to build one adapter for — a shape worth keeping in mind if
-    either city becomes a real target.
-  - **Maricopa County, AZ — a real correction to a standing assumption**:
-    `maricopa.legistar.com` is **not** the county's Board of
-    Supervisors system — it's the small City of Maricopa's calendar. The
-    county's real system is a CivicPlus AgendaCenter page linking
-    directly to YouTube. If anything special-cases Maricopa as Legistar,
-    it's wrong.
-  - **Tarrant County, TX** (2.1M) — confirmed migrated off Granicus to a
-    direct YouTube channel; the old Granicus archive is explicitly
-    marked "(NOT IN USE)" on the site itself. Same shape as Long Beach's
-    and Santa Clara County's platform flips — worth remembering a city's
-    platform isn't assumed stable once confirmed once.
-  - **Riverside County, CA** (2.5M) — the Cloudflare challenge is now
-    **confirmed solved**, but a real new blocker replaces it. `rivco*.org`
-    domains 403 non-browser fetches behind a real Cloudflare `Just a
-    moment...` JS challenge (ruled out as a plain UA/header mismatch
-    2026-08-26). **2026-08-30: `headless_browser.py`'s real fetch
-    mechanism, run directly against `rivcocob.org/board-supervisors-
-    streaming-video`, gets past the challenge cleanly** — 98KB of real,
-    fully-rendered Drupal HTML, no challenge markers, containing a real
-    video embed. `rivcotv.org` renders the same way (note: `www.rivcocob.
-    org` has no DNS record at all — NXDOMAIN, a separate gotcha, use the
-    bare domain). **But the embedded video is hosted on Livestream.com —
-    a genuinely new video host with zero support anywhere in this repo**
-    (`git grep -i "livestream.com" -- '*.py'` returns nothing). A real
-    Riverside County adapter needs a new asset resolver for Livestream.
-    com, not just the existing headless-browser fetch — the Cloudflare
-    problem this entry was tracking is solved, but building the adapter
-    is now blocked on a different, unstarted piece of work.
-  - **Broward County, FL — closed 2026-08-30, no gap, `granicus.py`
-    already handles this correctly.** The two-tier captions UI (a live
-    CC toggle plus a separate "enhanced" captions link) is real, but
-    confirmed **live-meeting-only**: the "Captioned" column with its
-    WATCH link only exists in the page's upcoming/in-progress meetings
-    table, and the player's own JS gates the custom CC overlay
-    explicitly on live status (`if (captionsEnabled && granicusCaptions
-    && isLive) { addGranicusCaptions(...) }`, confirmed by reading the
-    real player page source). For an archived clip there is exactly one
-    real caption asset — `/videos/{id}/captions.vtt`, embedded directly
-    in the player's flowplayer config — the exact same path
-    `granicus.py:534-537` already guesses unconditionally. Fetched and
-    confirmed real (a genuine 5,939-line English transcript). No code
-    change needed.
-
-- **[LATER] Residuals from the 2026-08-14 generic-fallback rebuild**
-  (the build itself is in `BACKLOG_DONE.md`):
-  - **Orange County FL — multi-part meetings get only their first
-    part.** The real page is a video.js playlist of 8 mp4 parts, each
-    with its own real .vtt captions; the rebuilt fallback deterministically
-    picks part AA (live-verified: real video + 1,098 caption segments).
-    Surfacing the *other* parts needs a real multi-part UI/model
-    decision — no other multi-part example confirmed yet. **Re-checked
-    2026-08-30, real effort, still nothing**: the source page is still
-    live and still genuinely uses this shape; three separate searches
-    for another government using a similar video.js multi-part playlist
-    found nothing, and both tangential leads on file (Sierra County CA,
-    Clay County FL) were checked directly and ruled out (no
-    video.js/playlist markers on one, WAF-blocked on the other). Jurisdiction
-    for this domain is **fixed** (2026-08-16, registered in
-    `_KNOWN_DOMAINS`).
-  - **Palm Beach County FL — a JS-rendered SharePoint page the
-    empty-shell escalation deliberately does NOT catch.** The shell
-    carries ~6KB of real nav/chrome text, so the near-empty-text
-    escalation trigger (tuned to Tucson's 153-char shell) never fires —
-    widening it would make every enabled fetch pay a ≥4s browser cost on
-    ordinary no-video pages. Needs its own trigger idea. The connected,
-    more important bug the user flagged — the "Request Transcript from
-    Audio" CTA rendering even when no video was found at all — is
-    **fixed** (2026-08-15, two separate bugs: the CTA's own gate, and a
-    warning-text auto-link with no null guard that would have thrown a
-    JS error on click even after the first fix).
-  - ~~Video-only best-effort results are never archived~~ **Stale —
-    corrected 2026-08-21 (WO-21).** The push gate was widened by PR #204
-    (2026-08-19) to include `video_url`; this doc-drift is left here
-    (rather than deleted) because the widened gate is the direct
-    upstream cause of the trust gap WO-21 then had to close.
-  - **Backstop expansion candidates**: `scan_page_for_video_evidence()`
-    is wired into eScribe only. Each further adapter opt-in needs its
-    own real no-video example plus a wrong-video risk check (Cablecast's
-    related-shows carousel is the confirmed shape that must never get a
-    blanket second pass).
-  - **Unconfirmed-shape extensions awaiting a real example**:
-    `youtube-nocookie.com` embeds and HTML-escaped `&amp;v=` watch URLs
-    (shipped), and the curated-pointer host list (Vimeo only until
-    another unsupported video host shows up on a real page).
-  - Sacramento's doubled meeting title is a **standing decision**, not a
-    bug — see top of this file.
-
-- **[LATER] Vimeo's real-world prevalence among small local governments
-  is still an extrapolation, not a count.** The adapter got built anyway
-  (WO-29), so this is now a question of how much it's worth: 6/200
-  fingerprint hits in the dotgov coverage-map sample, extrapolated to
-  ~290 jurisdictions nationally, unreplaced by a real number from the
-  full ~9,766-row run. The one part of the original sizing question that
-  came back "no": Vimeo's oEmbed doesn't expose captions at all (see the
-  Vimeo captions/audio entry under **Platform & jurisdiction coverage**).
-
-- **[LATER] Direct-to-YouTube may be the single largest video source
-  among small US local governments, ahead of Granicus — a
-  resolver-prioritization signal, not a code change by itself
-  (2026-08-18).** A 200-row dotgov coverage-map checkpoint: `youtube`
-  hits (18) already ahead of Granicus's 14, in a sample skewed toward
-  small rural counties. If the full run confirms this nationally, this
-  project's "Tier 2" YouTube-delegating platforms may be the *primary*
-  channel for small-government video, not a fallback behind
-  dedicated-vendor platforms. Worth weighing once the full run's real
-  number lands, not acted on from this sample alone.
-
-- **[LATER] A *sparse* loop of 5-11 cues is still missed** — the
-  residual gap between WO-36's two rules (the tiled rule needs coverage
-  `>= 0.9`, the absolute rule needs `>= 12` cues). Deliberate: the
-  304-transcript corpus had no example of that shape, and lowering the
-  absolute threshold into the 8-9 range would catch real decoder
-  stutters that must stay clean (Blackford County IN's `"mo."` x8,
-  Creve Coeur MO's `"it's mine."` x9, both real speech). Worth revisiting
-  only with a real example; a cadence-regularity signal (real loops sit
-  at exact-second intervals, real speech doesn't) is the most promising
-  next discriminator. See `BACKLOG_DONE.md`'s WO-36 entry for
-  measurements.
-
-
-
-
-- **[LATER] Six meeting/CMS platforms don't wildcard their DNS —
-  `primegov.com`, `escribemeetings.com`, `civicplus.com`,
-  `boarddocs.com`, `civicweb.net`, `cablecast.tv` — meaning their entire
-  customer base is enumerable by DNS alone against a census place list,
-  with zero HTTP and zero rate-limit exposure.** Confirmed empirically
-  2026-08-28 by the same parallel-session toolkit (`ENUMERATION_METHODS.
-  md` §32): a nonsense subdomain on any of these six returns `NXDOMAIN`,
-  while the same test against `granicus.com`/`legistar.com`/`iqm2.com`/
-  `civicclerk.com`/`novusagenda.com`/`municipalcodeonline.com`/
-  `swagit.com`/`agendasuite.org` resolves to a real catch-all server
-  regardless — so DNS existence can only ever confirm a tenant on the
-  first six. **The stated blocker was wrong — checked 2026-08-30, a
-  usable place list already exists in this repo, no external data
-  needed**: `app/utils/jurisdiction_data/places.csv`, 24,499 US/Canada
-  place names. **Piloted 20 random names against
-  `pub-{name}.escribemeetings.com`: 0/20 hits** — not a disproof of the
-  method, just an underpowered test of it. eScribe's real naming
-  convention isn't fully predictable from the place name alone (Essex
-  County ON's real tenant is `coe-pub`, not `pub-essexcounty`), so a
-  real run needs the full 24,499-name list (not a 20-name sample) and
-  several naming-variant patterns tried per candidate (`pub-{name}`,
-  `{name}-pub`, `{name}`, `{state}-{name}`, etc.), plus likely a
-  Canadian-municipality list merged in given eScribe's real customer
-  base skews Canadian. DNS lookups are fast and free (20 took under a
-  second), so the real cost is candidate-list breadth, not query volume
-  — this is now genuinely ready to run at real scale, just needs
-  someone to do it. Also worth adding when this gets picked up:
-  nine vendor signatures found by clustering real CNAME targets that
-  aren't in this project's current detection list —
-  `granicusgovaccess.net` (see the entry above), `civicplus.io`,
-  `civiclive.com`, `revizesites.com`, `opencities.com`,
-  `municodeweb.com`, `municipalcms.com`/`.cloud`, `getstreamline.net`,
-  `apptegy.net`. Most of these (Revize, OpenCities, Apptegy, Municode,
-  MunicipalCMS, Streamline) are general government CMS platforms with no
-  known video shape of their own, so they'd need the same "check the
-  CMS's own outbound links" treatment already established for CivicPlus,
-  not a new dedicated adapter.
 
 ## Parked deliberately — allowed back `[PARK]`
 

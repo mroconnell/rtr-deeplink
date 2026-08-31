@@ -16,3 +16,7 @@ scripts/meeting_card_backfill_state.json
 # run against production, not repo content.
 scripts/rollup_dedupe_report.json
 scripts/rollup_dedupe_state.json
+# Same reasoning, for scripts/repair_seam_duplication.py and
+# scripts/repair_repetition_loops.py's own run artifacts.
+scripts/seam_duplication_report.json
+scripts/repetition_loop_report.json

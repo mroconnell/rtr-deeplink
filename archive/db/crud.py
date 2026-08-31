@@ -2032,15 +2032,22 @@ async def list_hallucination_candidate_transcript_versions(
     elimination has to be data-shaped instead:
 
     - Rows that ALREADY carry the hallucination marker in stored
-      transcript_warnings are a small, slow-growing set (only real
-      hallucination-loop transcripts get flagged, by this same check,
-      at ingest/finalize time -- see _has_real_warning_free_transcript()).
+      transcript_warnings were assumed to stay a small, slow-growing set
+      (only real hallucination-loop transcripts get flagged, by this same
+      check, at ingest/finalize time -- see
+      _has_real_warning_free_transcript()). Confirmed wrong live
+      2026-08-30: with this branch left unbounded, a plain call (even
+      `limit=1`) took 150s+ and 502'd at Render's own proxy timeout --
+      the already-flagged population had grown past "small" in practice.
       Selected via the same cast(...).like() text-match
       _good_default_transcript_exists() already uses, so this branch never
-      touches `segments` at the SQL level; segments is then pulled ONLY
-      for this small already-flagged set (still re-run through detection
-      below, so a row that stops tripping the check under updated
-      detection logic falls back out rather than reporting stale state).
+      touches `segments` at the SQL level in its WHERE clause; segments is
+      then pulled for whichever already-flagged rows the query returns
+      (still re-run through detection below, so a row that stops tripping
+      the check under updated detection logic falls back out rather than
+      reporting stale state). Now bounded by the same `limit`+`after_id`
+      keyset pagination as the unflagged branch below, rather than trusting
+      the population to stay small.
     - Rows NOT yet flagged are the big, actively-growing population (every
       clean "transcribed" version, plus any pre-2026-08-16 hallucinated one
       that was never caught) -- this is what made the previous version
@@ -2111,7 +2118,9 @@ async def list_hallucination_candidate_transcript_versions(
             unflagged_query = unflagged_query.where(TranscriptVersion.id > after_id)
 
         flagged_rows = (
-            await session.execute(flagged_query.order_by(TranscriptVersion.id.asc()))
+            await session.execute(
+                flagged_query.order_by(TranscriptVersion.id.asc()).limit(limit)
+            )
         ).all()
         unflagged_rows = (
             await session.execute(
