@@ -1,6 +1,6 @@
 import yt_dlp
 
-from app.platforms.civicclerk import CivicClerkAssetFinder
+from app.platforms.civicclerk import CivicClerkAssetFinder, _reconstruct_cdn_stream_url
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
@@ -195,6 +195,62 @@ async def test_resolve_real_event_with_populated_srt_captions():
     assert len(result.agenda_items) == 26
     # Spot-check real content, not just counts.
     assert result.segments[3].text == "Meeting to order."
+
+
+async def test_resolve_reconstructs_video_url_from_relative_media_stream_path():
+    # Real kaysvilleut.api.civicclerk.com event 823, fetched live
+    # 2026-08-31 (WO-88, see BACKLOG_DONE.md) -- media.videoUrl is "",
+    # so the chain used to fall through to event.mediaStreamPath
+    # unmodified: "stream/KAYSVILLEUT/87a33df6-4669-4c97-a6fe-
+    # 3e5c25fadd0f.mp3", a relative CDN path with no scheme/host, which
+    # ffprobe/ffmpeg can never open. _reconstruct_cdn_stream_url() turns
+    # that into the real, live-confirmed absolute URL below (a real 200,
+    # 101999092 bytes, application/octet-stream). Also confirms the
+    # reconstructed URL wins over media.externalVideoUrl (a real but
+    # unplayable docpop.aspx viewer link this fixture also carries) --
+    # the direct media file is always preferable when both exist.
+    url = "https://kaysvilleut.portal.civicclerk.com/event/823/media"
+    event_json = load_fixture("civicclerk", "kaysvilleut_event823.json")
+    media_json = load_fixture("civicclerk", "kaysvilleut_media823.json")
+
+    routes = {
+        "https://kaysvilleut.api.civicclerk.com/v1/Events/823": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://kaysvilleut.api.civicclerk.com/v1/EventsMedia/823": FakeResponse(
+            status=200, text=media_json
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert (
+        result.video_url
+        == "https://cpmedia.azureedge.net/kaysvilleut/87a33df6-4669-4c97-a6fe-3e5c25fadd0f.mp3"
+    )
+    assert result.video_format == "mp3"
+    assert result.video_warnings == []
+
+
+def test_reconstruct_cdn_stream_url_edge_cases():
+    # The real shape: "stream/{TENANT}/{filename}" -> lowercase the
+    # tenant segment, drop the "stream/" prefix, prefix the CDN host.
+    assert (
+        _reconstruct_cdn_stream_url("stream/KAYSVILLEUT/abc-123.mp3")
+        == "https://cpmedia.azureedge.net/kaysvilleut/abc-123.mp3"
+    )
+    # Already absolute -- returned unchanged, never double-prefixed.
+    assert (
+        _reconstruct_cdn_stream_url("https://cpmedia.azureedge.net/x/y.mp4")
+        == "https://cpmedia.azureedge.net/x/y.mp4"
+    )
+    # Empty/falsy -- None, not a broken URL.
+    assert _reconstruct_cdn_stream_url("") is None
+    # No "/" at all after stripping "stream/" -- unfamiliar shape,
+    # decline rather than guess.
+    assert _reconstruct_cdn_stream_url("stream/justafilename.mp3") is None
+    assert _reconstruct_cdn_stream_url("nofolder.mp3") is None
 
 
 async def test_resolve_caption_fetch_failure_is_logged(caplog):
