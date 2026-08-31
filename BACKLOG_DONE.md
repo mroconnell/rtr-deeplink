@@ -1,5 +1,69 @@
 # Backlog — done
 
+## Nav sign-in modal hung forever when Clerk required a second factor [Done 2026-08-31]
+
+Real production bug, reported live by the user testing email/password
+sign-in ("not Google") on redtaperecordings.com: the nav's "Sign in /
+Register" link opens Clerk's `openSignIn()` modal, which showed the
+password form fine but then hung on a spinner **indefinitely** after
+submit — never completed, never errored.
+
+**Root cause, confirmed via the user's own DevTools, not guessed:**
+Network tab showed the actual `POST /v1/client/sign_ins` succeeding
+(200 OK, 461ms) with `Set-Cookie` for `__session`/`__client_uat` present
+— so Clerk's backend did its job. The response body (captured from the
+user's Network tab) showed `"status": "needs_second_factor"`,
+`first_factor_verification` already `"verified"`, and
+`"client_trust_state": "new"` — this wasn't opted-in per-user MFA (the
+Clerk Dashboard's Multi-factor page had every strategy off, and the
+user's own Settings tab showed "Bypass Device Trust" as the only
+relevant per-user toggle, not a way to disable it instance-wide). It's
+**Client Trust**, Clerk's anti-credential-stuffing feature that's
+default-on for every instance on every plan (confirmed via Clerk's own
+docs/changelog): password sign-in from a device Clerk hasn't seen before
+automatically demands an email-code second factor.
+
+The console showed exactly why the UI never advanced to that step:
+`Blocked aria-hidden on an element because its descendant retained
+focus`, naming `<div class="cl-modalContent">` as the focused element and
+`<div class="cl-modalBackdrop" aria-hidden="true">` as the ancestor. The
+modal's Radix-based dialog tries to `aria-hide` its backdrop as part of
+the password→second-factor step transition, while focus is still
+retained on the now-`disabled` password input inside it. The browser
+correctly refuses (per spec — an aria-hidden ancestor can't contain the
+focused element), and the transition to the second-factor UI silently
+never happens: no error, no timeout, no code ever gets emailed. Because
+Client Trust only fires for a genuinely new device, this never surfaced
+in ordinary repeat-testing from the same browser — only Google OAuth
+(no password/2FA chain at all, pure redirect) had been tested
+repeatedly before this.
+
+**Fix**: `shared_static/clerk_nav.js`'s `#clerk-sign-in-link` click
+handler no longer calls `window.Clerk.openSignIn()` (the modal). It now
+just calls `markSignInReturnUrl()` and lets the anchor's real
+`href="/sign-in"` navigate there — the existing standalone, non-modal
+`/sign-in` page (WO-65, `mountSignIn()`) that until now only existed as
+a landing spot for Clerk's own cross-links. That page has no modal/
+backdrop element at all, so there's nothing for Clerk to `aria-hide`
+mid-transition — this fixes the hang regardless of whether Client Trust
+or real per-user MFA is what triggers the second factor, rather than
+depending on a fix to Clerk's own dialog component. `app/templates/
+base.html` and `archive/templates/base.html` both changed the link's
+`href` from `#` to `/sign-in` to match (previously `e.preventDefault()`
+meant the href was never actually followed).
+
+Both nav templates' server-rendered markup is asserted in
+`tests/test_accounts_anonymous_regression.py` (both the hidden/signed-in
+and visible/signed-out states) and `tests/test_auth_pages.py`'s
+docstring was updated — it previously asserted the modal "was never
+affected" by the /sign-up /sign-in 404 bug this same pair of routes was
+originally built for; that claim is no longer true; the two pages are
+now the app's only sign-in/sign-up UI. Full suite green (2289 passed,
+15 skipped) plus a live local-server check (fake Clerk key, since no
+real key is available in this worktree): clicking the nav link in a real
+browser navigated to `GET /sign-in → 200 OK` and updated the tab title,
+confirming the click handler and href both work end to end.
+
 ## New GET /internal/jurisdiction/missing endpoint — answers "which pages have no jurisdiction," grouped by platform [Done 2026-08-31]
 
 Real gap: every existing jurisdiction audit endpoint
