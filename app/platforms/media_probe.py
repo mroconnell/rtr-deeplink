@@ -220,6 +220,72 @@ async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[fl
         return None
 
 
+async def probe_has_video_stream(
+    media_url: str, *, source_page_url: str
+) -> Optional[bool]:
+    """Whether `media_url` has at least one real video stream ffmpeg could
+    pull a frame from -- True, False, or None when the probe itself
+    couldn't tell (unreachable, ffprobe not installed, malformed output).
+    None is deliberately distinct from False: a probe *failure* says
+    nothing about whether a video stream exists, so a caller must not
+    treat it as "confirmed audio-only" the way it treats False.
+
+    Built for archive/utils/video_thumbnail.py's extract_and_store(),
+    which calls this once a plain `-frames:v 1` extraction has already
+    failed, to tell apart two very different reasons: a source that is
+    genuinely audio-only (BACKLOG_DONE.md's 2026-08-30 "19 audio-only
+    meetings" entry -- real examples include audio hiding inside an
+    mp4/m3u8 container on Granicus/IQM2, indistinguishable from a real
+    video file by URL or `video_format` alone) versus a transient failure
+    (timeout, HTTP error, a genuinely broken stream) that's worth retrying
+    later. Only the first case should ever be treated as permanent.
+
+    A second, separate ffprobe call rather than folding this into
+    probe_duration()'s existing one: probe_duration() is a much
+    higher-traffic function (every transcription feasibility check, not
+    just thumbnails) and changing its return shape would ripple through
+    every one of those callers for a question only the thumbnail path
+    ever needs to ask.
+    """
+    try:
+        returncode, stdout, stderr = await _run(
+            "ffprobe",
+            "-v",
+            "error",
+            "-headers",
+            realistic_headers(source_page_url),
+            "-select_streams",
+            "v",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "json",
+            "-i",
+            media_url,
+        )
+    except (FileNotFoundError, asyncio.TimeoutError):
+        logger.exception(
+            "ffprobe unavailable or timed out probing for a video stream in %s",
+            media_url,
+        )
+        return None
+
+    if returncode != 0:
+        logger.warning(
+            "ffprobe failed (%s) probing for a video stream in %s: %s",
+            returncode,
+            media_url,
+            stderr.decode(errors="replace")[:500],
+        )
+        return None
+
+    try:
+        streams = json.loads(stdout)["streams"]
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return None
+    return len(streams) > 0
+
+
 async def probe_multi_clip_chunk_plan(
     video_segments: Sequence[VideoSegment], *, source_page_url: str
 ) -> Optional[list[dict]]:

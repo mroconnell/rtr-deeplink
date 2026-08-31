@@ -382,6 +382,89 @@ question — this is one data point (8 days) on one specific block, not
 a controlled measurement — but the specific 10-page residual this
 entry tracked is fully closed.
 
+## 19 audio-only meetings: is_extractable() no-video-stream case + 2 of 4 pushed to transcription [Done 2026-08-30]
+
+WO-85, closing the "19 audio-only meetings can never have a card"
+`[JUST-DO-IT]` entry. Two independent pieces.
+
+**Piece 1: `is_extractable()`/the candidate query now permanently exclude
+audio-only sources, both the URL-detectable half and the probe-only
+half.** `archive/utils/video_thumbnail.is_extractable()` (was a pure,
+sync, no-I/O function checking only iframe-embed formats) gained two
+things: `video_formats.is_audio_only_format()` (new `mp3`/`wav`
+constant, mirroring `is_iframe_embed_format()`) catches the
+URL-detectable case with zero probing, and a new
+`known_no_video_stream` kwarg lets a caller that already has a probed
+answer skip straight to False. The harder half — audio hiding *inside*
+an mp4/m3u8 container on Granicus/IQM2, indistinguishable from real
+video by URL/format alone — needed a real probe: new
+`app/platforms/media_probe.probe_has_video_stream()` (`ffprobe
+-select_streams v -show_entries stream=codec_type`), called once by
+`video_thumbnail.extract_and_store()` the first time a plain frame
+extraction fails. When it confirms zero video streams, the result is
+persisted to a new nullable `MeetingPage.no_video_stream_confirmed_at`
+column (migration `c5d0e3a7f9b1`, same deploy-safe shape as
+`reviewed_at`/`best_effort` — nullable, no default, `deferred=True`,
+feature-detected via `crud._no_video_stream_confirmed_available()`) so
+neither `extract_and_store()` (checks the flag before doing any work) nor
+`crud.list_pages_missing_default_thumbnail()` (SQL-level `WHERE
+no_video_stream_confirmed_at IS NULL`, mirroring the existing
+iframe-embed exclusion) ever offers the page as a candidate again.
+Regression coverage: `tests/test_iframe_embed_gate.py` (format
+constant + SQL candidate-query exclusion, both halves),
+`tests/test_meeting_card_thumbnails.py` (`is_extractable()`'s new
+branches, `extract_and_store()`'s persist-then-short-circuit flow, and
+that a probe *failure* — None, not False — never gets permanently
+blacklisted), `tests/test_media_probe.py` (`probe_has_video_stream()`
+against real-shaped ffprobe JSON: a populated `streams` array, an empty
+one, and a probe failure). All four CI gates pass (ruff check, ruff
+format, `pytest` — 2260 passed, 15 skipped — and `alembic check` for
+both `archive/` and `app/` against a freshly migration-built SQLite).
+
+**Piece 2: re-verified the 4 named slugs against production, pushed the
+2 that were still genuinely stuck.** The entry's slugs were truncated
+prefixes, not exact — resolved via `GET /internal/pages/all-urls` to
+their real slugs, then `GET /internal/lookup?normalized_url=` for each
+one's real, current `has_transcript` state (per this repo's "a backlog
+entry is a lead, not a spec" rule):
+
+* `wawona-ca-2023-08-11-wawona-town-planning-advisory-committee-
+  august-11-2023` — confirmed audio-only (`video_format=mp3`, real
+  `cpmedia.azureedge.net` URL), no transcript, genuinely feasible on a
+  fresh resolve + real ffprobe (16108s). Pushed via `POST /internal/
+  transcription/create-job` (same feasibility gate and call shape as
+  `scripts/bulk_queue_transcription_backlog.py`'s `_check_feasible()`/
+  `_create_job()`, reused directly rather than reimplemented) →
+  **job_id 1292, queued, 18 chunks.**
+* `layton-ut-2025-02-20-city-council-meeting-3rd-thurs` — same shape,
+  7713s, feasible. **job_id 1293, queued, 9 chunks.**
+* `newport-or-2024-05-15-board-of-commissioners-meeting` — **the entry
+  was stale**: `has_transcript` is already `True` (`updated_at`
+  2026-08-25, five days after this entry was written). Not pushed;
+  nothing to do.
+* `kaysville-ut-2023-04-28-city-council-work-session` — still has no
+  transcript, and is NOT in `/internal/transcription-backlog`'s
+  candidate list at all (in escalating-failure cooldown). A fresh
+  resolve explained why: this event's CivicClerk API response has
+  `EventsMedia.videoUrl` empty, so the adapter's fallback chain picks
+  `Events.mediaStreamPath` instead — which is a **relative path**, not
+  a URL, and was never being joined against a base. ffprobe fails
+  outright (`No such file or directory`) every time this page's
+  transcription is attempted, which is the actual root cause of the
+  cooldown. Confirmed the real fix separately (reconstructing
+  `https://cpmedia.azureedge.net/{subdomain.lower()}/{guid}.mp3` from
+  the relative path returns a real 200, 101999092 bytes) but did NOT
+  apply it here — out of WO-85's scope, and this repo's adapter-fix
+  convention wants it verified against more than one real event first.
+  Filed as a fresh, already-verified `[EASY]` `BACKLOG.md` entry rather
+  than folded into this one, so the next session can build it directly
+  without re-deriving the diagnosis.
+
+`ARCHIVE_INGEST_TOKEN`/`ARCHIVE_BASE_URL` loaded from the repo's `.env`
+via an explicit `dotenv_path` per CLAUDE.md, never printed; the
+investigation and push scripts lived in the scratchpad, not the repo,
+and were deleted after the run.
+
 ## The 50 largest US cities — per-tenant status, mostly closed [Done, various 2026-08-14 through 2026-08-30]
 
 Distinct from the "no domain found yet" jurisdiction-coverage work

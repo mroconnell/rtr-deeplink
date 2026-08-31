@@ -152,6 +152,43 @@ class MeetingPage(Base):
         DateTime(timezone=True), nullable=True, deferred=True
     )
 
+    # When video_thumbnail.extract_and_store() confirmed via ffprobe that
+    # this page's video_url has no video stream at all -- audio hiding
+    # inside an mp4/m3u8 container (Granicus/IQM2), invisible to the
+    # video_format/URL checks in video_formats.AUDIO_ONLY_VIDEO_FORMATS
+    # and video_thumbnail.is_extractable(), only detectable by actually
+    # probing the stream. NULL until that happens.
+    #
+    # Added 2026-08-30 (WO-85) for BACKLOG_DONE.md's "19 audio-only
+    # meetings can never have a card" entry: without this, a page like
+    # this failed thumbnail extraction on *every* backfill sweep forever
+    # -- extract_and_store()'s existing cooldown (_failed_at) is in-memory
+    # and per-process, so it resets on every deploy and every sweep pays
+    # for the same doomed ffmpeg attempt again. Once set, both
+    # crud.list_pages_missing_default_thumbnail() (the backfill sweep's
+    # candidate query) and is_extractable()'s `known_no_video_stream`
+    # kwarg treat the page as permanently non-extractable.
+    #
+    # A timestamp, not a boolean, for the same reason as reviewed_at
+    # above: NULL is the only "never probed" state, and *when* it was
+    # confirmed is worth keeping in case a page's video ever legitimately
+    # changes (a jurisdiction re-uploads with a real video stream) and the
+    # marker needs to be understood as stale rather than wrong.
+    #
+    # Same three deploy-safety choices as best_effort/reviewed_at above
+    # (CLAUDE.md's Alembic bullet):
+    #   * nullable with no server_default and no Python-side `default=`
+    #     -- an ORM insert never names the column, so ingest keeps
+    #     working against a database whose migration hasn't run yet.
+    #   * deferred=True -- keeps it out of every plain
+    #     `select(MeetingPage)`; the only readers select it explicitly.
+    #   * crud._no_video_stream_confirmed_available() gates every read
+    #     and write, same _meeting_pages_column_available() helper
+    #     best_effort/reviewed_at already share.
+    no_video_stream_confirmed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, deferred=True
+    )
+
     # Precomputed, lowercased title+jurisdiction+agenda+all-transcript-
     # versions text (archive/utils/search.py's compute_search_corpus()) --
     # written by crud.ingest_resolution() on every ingest. Nullable because

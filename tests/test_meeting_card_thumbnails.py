@@ -134,6 +134,43 @@ def test_is_extractable_skips_youtube_and_missing_video():
     assert not is_extractable("", None)
 
 
+def test_is_extractable_skips_url_detectable_audio_only_formats():
+    # WO-85 (BACKLOG_DONE.md's 2026-08-30 "19 audio-only meetings" entry).
+    # civicclerk.py sets video_format from the raw file extension it
+    # found (ext in ("mp4", "mp3", "m3u8", "wav")) -- cpmedia.azureedge.net
+    # is CivicClerk's real media host (see tests/test_civicclerk.py), and
+    # a page whose source is literally an .mp3/.wav URL there can never
+    # produce a video frame, no probe needed to know that.
+    assert not is_extractable(
+        "https://cpmedia.azureedge.net/example/f32a4ab02f.mp3", "mp3"
+    )
+    assert not is_extractable(
+        "https://cpmedia.azureedge.net/example/f32a4ab02f.wav", "wav"
+    )
+    # An mp4/m3u8 URL is unaffected -- most of them are real video, and
+    # this check is about the *format*, not the container extension.
+    assert is_extractable("https://cpmedia.azureedge.net/example/b.mp4", "mp4")
+
+
+def test_is_extractable_respects_a_confirmed_probe_result():
+    # The other half of the same gap: audio hiding *inside* an mp4/m3u8
+    # container (Granicus/IQM2), which looks identical to a real video
+    # file by URL/video_format alone -- only detectable by actually
+    # probing the stream (see extract_and_store() below). Once that probe
+    # has run and confirmed the answer, a caller passes it in here rather
+    # than is_extractable() re-probing (it never does I/O on its own).
+    assert not is_extractable(
+        "https://archive-stream.granicus.com/x/audio-only.m3u8",
+        "m3u8",
+        known_no_video_stream=True,
+    )
+    assert is_extractable(
+        "https://archive-stream.granicus.com/x/y.m3u8",
+        "m3u8",
+        known_no_video_stream=False,
+    )
+
+
 # --- Clip endOffset resolution ------------------------------------------
 
 
@@ -610,6 +647,24 @@ _GRANICUS_M3U8 = "https://archive-stream.granicus.com/x/y.m3u8"
 _GRANICUS_PAGE = "https://example.granicus.com/player/clip/1"
 
 
+@pytest.fixture(autouse=True)
+def _no_real_stream_probe(monkeypatch):
+    """probe_has_video_stream() (WO-85) is a second real network call
+    extract_and_store() makes after any extract_frame() failure, to tell
+    a genuinely audio-only source apart from a transient one. Default it
+    to None (probe inconclusive -- "don't know," not "confirmed
+    audio-only") so the ordinary-failure tests below, which predate this
+    branch and don't care about it, keep observing exactly the behavior
+    they're testing rather than making a real ffprobe/network call. Tests
+    that DO care about the audio-only branch override this explicitly,
+    the same way they already override media_probe.extract_frame."""
+
+    async def _unknown(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(media_probe, "probe_has_video_stream", _unknown)
+
+
 @pytest.fixture
 def clean_extraction_state():
     """extract_and_store()'s two module-level dicts are process-wide by
@@ -720,6 +775,101 @@ async def test_the_cooldown_is_reported_as_a_skip_not_a_failure(
     # The two reasons must not be confusable -- a caller decides whether
     # to blacklist the page on exactly this difference.
     assert second.reason != first.reason
+
+
+async def test_a_confirmed_audio_only_source_is_persisted_and_never_retried(
+    monkeypatch, clean_extraction_state
+):
+    # WO-85. First attempt: ffmpeg fails (no video stream to grab a frame
+    # from, the real symptom on Granicus/IQM2 sources whose audio hides
+    # inside an mp4/m3u8 container), and the follow-up ffprobe call
+    # confirms there is genuinely no video stream. That must be persisted
+    # -- not just cooled down for 6h the way an ordinary failure is --
+    # because no future ffmpeg attempt against this URL could ever
+    # succeed.
+    #
+    # A real MeetingPage row is required here (unlike the fake page_ids
+    # elsewhere in this file): mark_no_video_stream_confirmed() is a real
+    # UPDATE against meeting_pages, which is correctly a no-op for a
+    # page_id that was never actually ingested.
+    made = await _make_m3u8_page("confirmed-audio-only")
+    page_id = made["page_id"]
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning(
+            (False, "ffmpeg exited 1: Output file does not contain any stream")
+        ),
+    )
+
+    async def _confirmed_no_video(*_args, **_kwargs):
+        return False
+
+    monkeypatch.setattr(media_probe, "probe_has_video_stream", _confirmed_no_video)
+
+    first = await real_extract_and_store(
+        page_id=page_id,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+    assert first.offset is None
+    assert first.skipped is False  # a real attempt was made
+    assert first.reason == video_thumbnail.FAIL_NO_VIDEO_STREAM_CONFIRMED
+
+    # The confirmation is durable, not the in-memory 6h cooldown -- so a
+    # second call (simulating the *next* sweep, possibly after a redeploy
+    # that would have cleared _failed_at) still knows the answer, and
+    # crucially never touches ffmpeg or ffprobe again.
+    video_thumbnail._failed_at.clear()
+    video_thumbnail._inflight.clear()
+    extract_calls = []
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning((True, None), calls=extract_calls),
+    )
+
+    second = await real_extract_and_store(
+        page_id=page_id,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+    assert second.skipped is True
+    assert second.reason == video_thumbnail.SKIP_NO_VIDEO_STREAM
+    assert extract_calls == []  # ffmpeg was never even invoked
+
+
+async def test_a_probe_failure_does_not_get_permanently_blacklisted(
+    monkeypatch, clean_extraction_state
+):
+    # The other side of the same branch: probe_has_video_stream() returned
+    # None (inconclusive -- unreachable, timed out, malformed output), not
+    # False. That must NOT be written as a confirmed audio-only source --
+    # doing so would permanently blacklist a page over what might be a
+    # transient CDN hiccup, on the strength of a fact that was never
+    # actually established.
+    page_id = 910011
+    monkeypatch.setattr(
+        media_probe,
+        "extract_frame",
+        _extract_frame_returning((False, "ffmpeg timed out after 45s")),
+    )
+
+    async def _inconclusive(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(media_probe, "probe_has_video_stream", _inconclusive)
+
+    outcome = await real_extract_and_store(
+        page_id=page_id,
+        video_url=_GRANICUS_M3U8,
+        source_page_url=_GRANICUS_PAGE,
+        timestamp=982,
+    )
+    assert outcome.reason == "ffmpeg timed out after 45s"
+    assert await crud.is_no_video_stream_confirmed(page_id) is False
 
 
 async def test_an_in_flight_duplicate_is_reported_as_a_skip(
