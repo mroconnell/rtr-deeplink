@@ -54,10 +54,9 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
   [JUST-DO-IT] Once deployed, re-run the missing-jurisdiction sweep
-  [EASY] CivicClerk's `mediaStreamPath` fallback is a relative path,…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
   Confirmations nobody has actually watched happen  (2)
@@ -277,33 +276,6 @@ so that work reads together.
   "$ARCHIVE_BASE_URL/internal/jurisdiction/missing"` gives real current
   counts + a sample of slugs per platform to start the next research
   pass from, no DB script needed.
-
-- **[EASY] CivicClerk's `mediaStreamPath` fallback is a relative path, used
-  as if it were absolute — confirmed live 2026-08-30 (WO-85), one real
-  stuck page.** `app/platforms/civicclerk.py`'s video_url chain
-  (`media.get("videoUrl") or event.get("mediaStreamPath") or
-  event.get("mediaSourcePathMp4")`) falls through to `mediaStreamPath`
-  when `videoUrl` is empty — real on kaysville-ut-2023-04-28-city-council-
-  work-session (event 823): `media.videoUrl` is `""`, so it falls to
-  `event.mediaStreamPath = "stream/KAYSVILLEUT/87a33df6-4669-4c97-a6fe-
-  3e5c25fadd0f.mp3"`, a **relative** path (not a URL — no scheme, no
-  host), used unmodified as `ResolvedMeeting.video_url`. ffprobe/ffmpeg
-  can never open it, which is why this page has sat in
-  `_in_auto_transcription_cooldown()` failing repeatedly. **Fix
-  confirmed live**: prefixing `https://cpmedia.azureedge.net/` +
-  lowercasing the subdomain segment + dropping the `stream/` prefix
-  reconstructs the exact same absolute URL wawona/layton-ut's `videoUrl`
-  already returns for their own events (`https://cpmedia.azureedge.net/
-  {subdomain.lower()}/{guid}.{ext}`) — `HEAD` on the reconstructed
-  `https://cpmedia.azureedge.net/kaysvilleut/87a33df6-4669-4c97-a6fe-
-  3e5c25fadd0f.mp3` returns a real 200, 101999092 bytes,
-  `application/octet-stream`. Needs the standard adapter-fix treatment
-  (verify against a couple more real `mediaStreamPath`-only events before
-  assuming the transform generalizes, add a fixture-backed regression
-  test per CLAUDE.md's synthetic-test convention) rather than a blind
-  one-line patch. Once fixed, push kaysville-ut-2023-04-28-city-council-
-  work-session through the same `/internal/transcription/create-job`
-  path WO-85 already used for its two siblings (see BACKLOG_DONE.md).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 

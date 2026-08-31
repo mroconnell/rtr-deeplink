@@ -49,6 +49,46 @@ _COUNTY_BODY_EVENT_RE = re.compile(
 )
 
 
+# `mediaStreamPath`/`mediaSourcePathMp4` are a relative CDN path, not a
+# URL -- confirmed live 2026-08-30/31 (WO-85/WO-88) on a real stuck page,
+# kaysville-ut-2023-04-28-city-council-work-session (event 823):
+# `media.videoUrl` was `""`, so the chain fell through to
+# `event.mediaStreamPath = "stream/KAYSVILLEUT/87a33df6-4669-4c97-a6fe-
+# 3e5c25fadd0f.mp3"` (no scheme, no host) and used it unmodified as
+# `video_url` -- ffprobe/ffmpeg can never open that, which is why this
+# page sat failing in `_in_auto_transcription_cooldown()` repeatedly.
+# Reconstructing `https://cpmedia.azureedge.net/{tenant.lower()}/
+# {filename}` (strip a leading "stream/", lowercase the tenant segment,
+# keep the filename as-is) produces the exact same absolute URL shape
+# two OTHER real events already return directly via `videoUrl` --
+# wawona-ca-2023-08-11 and layton-ut-2025-02-20 (WO-85, see
+# BACKLOG_DONE.md) both have a real, already-absolute
+# `https://cpmedia.azureedge.net/{subdomain}/{guid}.{ext}` `videoUrl` on
+# the same CDN host, confirming this naming convention is genuine and
+# shared, not something invented for kaysville alone. `HEAD`-equivalent
+# fetch on the reconstructed kaysville URL returns a real 200 (101999092
+# bytes, application/octet-stream), confirmed live. A full sweep of
+# every other already-archived CivicClerk page (all 407, 2026-08-31)
+# found no second real event using this specific fallback field --
+# kaysville is the only one -- so this is the one confirmed-real
+# example the transform is built from; the CDN-naming-convention match
+# above is what gives confidence it generalizes rather than a second
+# mediaStreamPath sample.
+def _reconstruct_cdn_stream_url(path: str) -> Optional[str]:
+    if not path or "://" in path:
+        # Already absolute (or empty) -- nothing to reconstruct.
+        return path or None
+    remainder = path[len("stream/") :] if path.startswith("stream/") else path
+    if "/" not in remainder:
+        # Not the "{tenant}/{filename}" shape this transform is built
+        # for -- decline rather than guess at an unfamiliar layout.
+        return None
+    tenant, _, rest = remainder.partition("/")
+    if not tenant or not rest:
+        return None
+    return f"https://cpmedia.azureedge.net/{tenant.lower()}/{rest}"
+
+
 class CivicClerkAssetFinder(AssetFinder):
     """Resolves video + transcript/chapters for a CivicClerk meeting page.
 
@@ -164,10 +204,8 @@ class CivicClerkAssetFinder(AssetFinder):
                         page_text=agenda_text, html="", url=url
                     )
 
-            video_url = (
-                media.get("videoUrl")
-                or event.get("mediaStreamPath")
-                or event.get("mediaSourcePathMp4")
+            video_url = media.get("videoUrl") or _reconstruct_cdn_stream_url(
+                event.get("mediaStreamPath") or event.get("mediaSourcePathMp4") or ""
             )
             if not video_url:
                 video_url = media.get("externalVideoUrl") or event.get(

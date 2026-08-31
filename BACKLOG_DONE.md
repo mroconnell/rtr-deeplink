@@ -34,6 +34,50 @@ real-place validity. Full suite green (2286 passed).
 platforms fixed since) -- see the live `BACKLOG.md` "Ship next" entry
 for the exact curl to re-derive fresh ones once this deploys.
 
+## CivicClerk's `mediaStreamPath` relative-path bug fixed (WO-88), kaysville-ut pushed to transcription [Done 2026-08-31]
+
+Closes the `[EASY]` entry WO-85 filed 2026-08-30. `app/platforms/
+civicclerk.py`'s video_url chain fell through to `event.mediaStreamPath`/
+`mediaSourcePathMp4` unmodified when `media.videoUrl` was empty --
+confirmed real on `kaysville-ut-2023-04-28-city-council-work-session`
+(event 823): `mediaStreamPath` was `"stream/KAYSVILLEUT/87a33df6-4669-
+4c97-a6fe-3e5c25fadd0f.mp3"`, a relative path with no scheme/host, used
+unmodified as `video_url` -- ffprobe/ffmpeg can never open it, which is
+why this page sat failing in `_in_auto_transcription_cooldown()`
+repeatedly.
+
+Fix: new `_reconstruct_cdn_stream_url()` strips a leading `"stream/"`,
+lowercases the tenant segment, and prefixes `https://cpmedia.azureedge
+.net/` -- confirmed live, `HEAD`-equivalent fetch on the reconstructed
+URL returns a real 200 (101999092 bytes, `application/octet-stream`).
+Ran the "verify against a couple more real events" step per CLAUDE.md's
+convention before shipping: a live sweep of all 407 already-archived
+CivicClerk pages found no *second* real event using this specific
+fallback field (kaysville is the only one in the corpus), but two OTHER
+real events -- wawona-ca-2023-08-11 and layton-ut-2025-02-20 (WO-85) --
+already return the identical CDN naming convention
+(`{subdomain}/{guid}.{ext}`) directly via their own `videoUrl`, which is
+what gives confidence the reconstruction is a real, shared naming
+convention rather than something invented for kaysville alone.
+
+Added real-fixture regression coverage (`tests/test_civicclerk.py`,
+fixtures fetched live 2026-08-31): one exercising the full `resolve()`
+path against real kaysville event/media JSON (also confirms the
+reconstructed CDN URL correctly wins over `media.externalVideoUrl`, a
+real but unplayable docpop.aspx viewer link this event also carries),
+one exercising `_reconstruct_cdn_stream_url()`'s edge cases directly
+(already-absolute input, empty, unfamiliar shape with no `/`).
+
+Pushed the real page through transcription: `kaysville-ut-2023-04-28-
+city-council-work-session` isn't currently in `GET /internal/
+transcription-backlog`'s candidate list (almost certainly in cooldown
+from its own prior probe failures, now that WO-83's cooldown-recording
+fix is live) -- called `scripts/bulk_queue_transcription_backlog.py`'s
+own `_process_candidate()` directly against a hand-built candidate dict
+rather than waiting out the cooldown, since the actual root cause is now
+fixed. Dry run confirmed feasible (duration 12600s, matches the real
+event's `durationMin: 12599`); real run created job **1308**.
+
 ## Oakville ON / Courtenay BC: the other half of the province-dropping gap, and the original bug's real source found [Done 2026-08-31]
 
 Second half of BACKLOG.md's "Missing County/province suffix" entry.
