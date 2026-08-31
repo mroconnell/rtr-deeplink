@@ -54,7 +54,8 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+  [JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
   [EASY] CivicClerk's `mediaStreamPath` fallback is a relative path,…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
@@ -67,7 +68,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (46)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (45)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -90,10 +91,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (46)
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (12)
+  Jurisdiction extraction & backfill  (11)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
-    [NEEDS-AUDIT] Generic bleed-repair path recovers a correspondence-
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -258,6 +258,16 @@ video-only rather than going near it.
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
+
+- **[JUST-DO-IT] Once deployed, run `backfill-apply` for ids 698/1056 to
+  pick up Oakville/Courtenay's province.** Code fix merged 2026-08-31
+  (see `BACKLOG_DONE.md`) — `pub-oakville.escribemeetings.com`/
+  `pub-courtenay.escribemeetings.com` are now confirmed `_KNOWN_DOMAINS`
+  entries. Can't apply to production until the fix deploys (`finalize_
+  jurisdiction()` runs against whatever code is live). Dry-run first:
+  `curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN"
+  "$ARCHIVE_BASE_URL/internal/jurisdiction/backfill-apply?dry_run=true&only_ids=698,1056"`
+  — confirm it shows "Oakville, ON"/"Courtenay, BC", then `dry_run=false`.
 
 - **[EASY] CivicClerk's `mediaStreamPath` fallback is a relative path, used
   as if it were absolute — confirmed live 2026-08-30 (WO-85), one real
@@ -939,18 +949,6 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   capability (an explicit-string override endpoint, scoped tightly) or
   a deliberate one-off decision to bypass `finalize_jurisdiction()` for
   this one case — a product/engineering call, not a token-access one.
-
-- **[NEEDS-AUDIT] Generic bleed-repair path recovers a correspondence-
-  leaked city name but doesn't reattach a province/state — the still-open
-  half of a two-part formatting gap (the subdomain-override half was
-  fixed 2026-08-31, see `BACKLOG_DONE.md`).** `698` "Burlington" →
-  "Oakville" should be "Oakville, ON"; `1056` "City of Burlington" →
-  "Courtenay" should be "Courtenay, BC" (confirmed via a real
-  council-resolution reference on the source page). Both rows already
-  applied to production via `POST /internal/jurisdiction/backfill-apply`
-  as a strict improvement over the wrong city name they replaced — this
-  entry is only for fixing the suffix gap itself, not for these specific
-  rows (already resolved, just missing their province).
 
 - **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
   City" → "Kansas City") stays open** — a genuinely different, harder

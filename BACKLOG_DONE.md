@@ -1,5 +1,43 @@
 # Backlog — done
 
+## Oakville ON / Courtenay BC: the other half of the province-dropping gap, and the original bug's real source found [Done 2026-08-31]
+
+Second half of BACKLOG.md's "Missing County/province suffix" entry.
+Real production rows `698` ("Burlington" → repaired to bare "Oakville")
+and `1056` ("City of Burlington" → repaired to bare "Courtenay") were
+both missing their province after an earlier hand-repair — traced to a
+genuine gap: `_table_lookup("Oakville")` is nationally ambiguous
+(IA/ON/WA all real), and "Courtenay" collides with a real North Dakota
+place, so `finalize_jurisdiction()`'s ordinary ambiguity-decline policy
+correctly refused to guess a province for either, even on the
+already-corrected bare name.
+
+**Found the original bug's real source while verifying live**: fetching
+`pub-courtenay.escribemeetings.com`'s real page directly shows why
+"Burlington" leaked into these rows in the first place — the page
+contains a real delegation item, "Mayor Marianne Meed Ward - City of
+Burlington, Ontario," an unrelated correspondence reference on a
+Courtenay, BC council meeting page. `pub-oakville.escribemeetings.com`
+confirmed the same way: real page text reads "Town of Oakville" with
+`oakville.ca` links throughout.
+
+**Fixed**: both subdomains added to `_KNOWN_DOMAINS`
+(`app/utils/jurisdiction_enrich.py`), the same hand-verified-exception
+pattern already used for Milton/Beaumont — a confirmed real domain now
+correctly overrides the generic ambiguity guard.
+`finalize_jurisdiction("Burlington", netloc="pub-courtenay.escribemeetings.com")`
+now returns `"Courtenay, BC"` directly (renaming the wrong stored value,
+not just suffixing it). Updated
+`test_extract_jurisdiction_chain_courtenay_bc_not_burlington`, which had
+directly asserted the old ambiguous-decline behavior as correct (it was,
+until this domain was confirmed) — full suite green (2280 passed).
+
+**Not yet applied to production** — the code fix has to deploy before
+`POST /internal/jurisdiction/backfill-apply` (which always recomputes
+via the live `finalize_jurisdiction()`) can pick it up. See the live
+`BACKLOG.md` "Ship next" entry for the exact dry-run/apply commands for
+ids 698 and 1056.
+
 ## Subdomain-override repair path now reattaches the real county type word [Done 2026-08-31]
 
 Half of BACKLOG.md's "Missing 'County'/province suffix on certain repair
