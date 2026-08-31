@@ -1078,6 +1078,32 @@ async def internal_low_trust_pages(
         )
 
 
+@app.get("/internal/jurisdiction/missing")
+async def internal_jurisdiction_missing(
+    sample_size: int = 5,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only audit summary: every archived page with no jurisdiction
+    at all, grouped by platform with a capped sample of slugs per
+    platform. The opposite question from every other jurisdiction
+    endpoint in this file (get_jurisdiction_coverage(),
+    list_jurisdiction_bleed_backfill_candidates()), which all query
+    `WHERE jurisdiction IS NOT NULL` by construction.
+
+    Real gap this closes (BACKLOG.md, found during the 2026-08-29 Vimeo
+    audit): the per-platform counts (269 of 3,406 pages at the time) were
+    only ever pulled via a one-off DB query or by manually paging
+    `/meetings`, with nothing repeatable to run the next sweep against.
+    `sample_size` (default 5, capped at 50 --
+    see crud._MISSING_JURISDICTION_MAX_SAMPLE_SIZE) bounds how many
+    slugs come back per platform; this is a research starting point, not
+    a full export.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.get_missing_jurisdiction_summary(sample_size=sample_size)
+
+
 @app.post("/internal/low-trust-pages/mark-reviewed")
 async def internal_low_trust_pages_mark_reviewed(
     ids: Optional[str] = None,
