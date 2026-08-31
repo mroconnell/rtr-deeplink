@@ -116,7 +116,7 @@ python-dotenv==1.2.3
     #   uvicorn
 pyyaml==6.0.3
     # via uvicorn
-sentry-sdk==2.68.0
+sentry-sdk==2.68.1
     # via -r requirements.in
 six==1.17.0
     # via
