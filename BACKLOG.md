@@ -494,112 +494,22 @@ convenient.
 ### Decisions about already-live content
 
 - **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
-  populations *in stored segments*, don't bulk re-transcribe — decided
-  by Ryan 2026-08-22.** This supersedes three separate `[HUMAN]`
-  entries that each asked "re-transcribe all / a subset / on report
-  only". **That framing was wrong**, and the reasoning is worth keeping
-  because it applies to any future defect of this kind:
-
-  - **Seam duplication (118 candidates) was a *stitching* bug, not a
-    transcription bug.** The individual chunks were correct; the worker
-    joined them wrong. Everything needed to repair it is already in the
-    stored segments. Re-running Whisper would spend the app's single
-    most expensive operation to reproduce chunks that were never wrong.
-  - **Repetition loops (74, i.e. 24% of 304 real `source=="transcribed"`
-    transcripts) come from the *audio* — silence, music, a recess.**
-    Re-running the same model on the same audio reproduces the same
-    loop. WO-36's detector already knows exactly where each run is;
-    collapsing it in stored segments is the fix.
-  - **Only the 4 confirmed hallucinated defaults need a real re-run**,
-    and only one of them fully: **Kitchener** is garbage end-to-end and
-    should be re-transcribed with a **forced `en` language hint** — its
-    real defect was language misdetection, which WO-34's whole-transcript
-    language voting now prevents going forward. The other three just
-    need the bad stretch **trimmed** (Sacramento, for instance, recovers
-    cleanly at ~6:30).
-
-  **The cost check that settles it**: bulk re-transcribing ~190 meetings
-  at a typical 2-4 hours each is **500+ hours of audio** through the
-  worker — days of wall-clock on the $25/mo instance — to produce output
-  that would be mostly identical to what's already stored.
-
-  **The work, in order:**
-  1. **Seam-duplication repair script — built 2026-08-30, not yet run
-     against production.** `scripts/repair_seam_duplication.py`
-     (dry-run report → `--apply`, same shape as
-     `scripts/dedupe_rollup_transcripts.py`). Reconstructs each seam's
-     approximate boundary from the completed job's own `total_chunks`/
-     `chunk_size_seconds` (`worker/segment_utils.chunk_start()`), then
-     hands a windowed slice of the flat stored segments to the exact
-     same, already-shipped `count_seam_overlap_segments()` the live
-     prevention path uses — no new detection logic, no source fetch, no
-     compute. Applying writes through a generic admin route,
-     `POST /internal/transcript-version/drop-segments`
-     (`crud.create_segment_drop_version()` — deliberately not named
-     after seam-dup specifically, see below), which never destroys
-     history (old version stays reachable via `?version=`) and refuses
-     on a stale `expected_srt_hash` rather than risking a silent
-     overwrite of a page that changed since the dry run. Full test
-     coverage including the real Boulder County fixture; all four CI
-     gates pass. **Still needed before this is actually useful**: run
-     `--dry-run` against production, review the report, then Ryan runs
-     `--apply --from-report ...` — none of that has happened yet, this
-     is the tool only.
-  1b. **Repetition-loop collapse — design settled and built 2026-08-30.**
-      Design call: keep the run's first cue, drop the rest, never shift
-      any other segment's timestamps (the dropped span reverts to
-      unlabeled silence, which — per WO-36's own finding — is almost
-      always what it factually was). `scripts/repair_repetition_loops.py`
-      reuses WO-36's own per-run rules unmodified (`_repetition_runs()`/
-      `_run_span_and_coverage()` from `worker/segment_utils.py`, same
-      tiled-block/long-sparse-run thresholds), just applied to find
-      *every* qualifying run in a transcript instead of short-circuiting
-      on the first one. Candidates come from the existing
-      `GET /internal/transcription/hallucination-candidates` audit,
-      filtered to default versions only. Applies through the same
-      generic `drop-segments` route seam-dup uses — that route was
-      renamed from the seam-dup-specific name it shipped with, once it
-      became clear both defects reduce to the identical "drop N
-      segments, keep the rest" operation. Full test coverage against the
-      real Haines City (tiled block) and Halifax (long sparse run)
-      fixtures already in `tests/fixtures/hallucination_runs/`, plus the
-      real stutter/roll-call fixtures confirming no false positives; all
-      four CI gates pass. Same "tool only, nothing run against
-      production yet" state as step 1.
-  2. **Re-transcribe Kitchener only** (local script, forced English) —
-     **Kitchener half done 2026-08-30**: run locally with the
-     `--language en` flag added for exactly this (PR #560; forcing was
-     impossible before — neither the script nor `FasterWhisperEngine`
-     accepted a language), model `small`, 6 minutes wall-clock (the
-     meeting is ~47 min, not the 2-4 hr typical). 504 real English
-     segments ingested and promoted (version 3551) — verified live:
-     coherent English end-to-end, zero Welsh script, zero
-     `Ff.`/`w`-run loops. **But the ingest landed on a page whose slug
-     is `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee`,
-     and the original `kitchener-2026-05-05-heritage-kitchener-
-     committee` page is a separate, still-live row** — see the new
-     duplicate-page entry under "Needs a human". **Trimming the other
-     three (Sacramento etc.) is still not started.**
-  3. **Re-transcription on report** for anything the repair can't fix.
-     Not started.
-  4. **Extend the repair to the uncounted local-batch population by
-     scanning stored segments, not job records.** This is the part the
-     old framing couldn't reach at all:
-     `scripts/transcribe_backlog_locally.py`'s local-Mac runs never
-     touch `transcription_jobs`, so any job-record-based list misses
-     them by construction. Scanning segments makes that population
-     visible for free. Not started.
-
-  **Knock-on:** this makes the reader-facing low-confidence flag
-  (currently in `CLAUDE_BACKLOG.md`) *less* urgent — the visible damage
-  gets **repaired** rather than labelled. Worth re-reading that idea
-  after the repair lands rather than building it first.
-
-  Source detail for all three populations — the confirmed 4 with their
-  individual symptoms, the 118-candidate endpoint
-  (`GET /internal/transcription/completed-multichunk`), and the 74/304
-  measurement — is preserved in `BACKLOG_DONE.md`'s matching WO-36 and
-  seam-duplication entries.
+  populations *in stored segments*, don't bulk re-transcribe.** Full
+  decision reasoning and the two repair scripts' design are in
+  `BACKLOG_DONE.md`'s matching entry — both `scripts/
+  repair_seam_duplication.py` (118 seam-duplication candidates) and
+  `scripts/repair_repetition_loops.py` (74 repetition-loop transcripts)
+  are **built and CI-tested but never run against production**. What's
+  still open: (1) run both scripts' `--dry-run`, review the reports,
+  then apply; (2) trim the 3 remaining hallucinated-default transcripts
+  that aren't Kitchener (Sacramento etc. — Kitchener itself was
+  re-transcribed 2026-08-30, see `BACKLOG_DONE.md`; its duplicate-page
+  fallout is its own "Needs a human" entry); (3) re-transcription on
+  report for anything the repair can't fix — not started; (4) extend
+  the repair to the local-batch population by scanning stored segments
+  instead of job records (`scripts/transcribe_backlog_locally.py` never
+  touches `transcription_jobs`, so a job-record-based list misses it by
+  construction) — not started.
 
 - **[HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
   been fired end to end.** The code path exists
