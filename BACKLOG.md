@@ -97,7 +97,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
-  The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
+  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   Jurisdiction extraction & backfill  (15)
@@ -1120,75 +1120,46 @@ Separating them needs a different signal, not a smaller number:
 framing. Not worth building for one known case; worth revisiting if the
 daily failure digest (WO-46) shows this class is actually common.
 
-### The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`
+### Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
 
-Distinct from the "no domain found yet" jurisdiction-coverage work
-(`~/Documents/rtr-business/research/jurisdiction_coverage.csv`) — these
-cities' government video/meeting URLs are already known, but our
-platform can't turn them into a working page yet, either because the
-site shape isn't one of our adapters' patterns, or a *supported*
-platform's tenant has a real, tenant-specific quirk.
+Full per-tenant history (what closed, when, and why) moved to
+`BACKLOG_DONE.md` — this entry keeps only the tenants that never
+closed. Distinct from the "no domain found yet" jurisdiction-coverage
+work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
-**Closed since the list was made** (kept struck for context, not
-repeated in detail — see `BACKLOG_DONE.md` for each build):
-Phoenix AZ and Philadelphia PA (both built 2026-08-21, WO-30, via a new
-curated city→YouTube-channel adapter), El Paso TX (mostly closed WO-29 —
-all 13 per-body Vimeo showcases resolve; the `elpasotexas.gov/videos`
-index itself still has no adapter), Chicago IL (closed by the same PR,
-`app/platforms/chicago_elms.py`), Seattle WA (`app/platforms/
-seattlechannel.py`, built 2026-08-14), Baltimore MD (built 2026-08-21
-via the same city-YouTube-channel fallback — 29 of 53 real events
-2026-05-01..2026-08-20 now match a real CharmTV recording).
-
-**Corrected, not actually gaps**: Portland OR resolves fine through
-`generic_fallback.py` (a stale negative resolve-cache was the real bug,
-fixed 2026-08-12) — genuinely still open is that no Portland page has
-been archived yet. Tucson AZ's Hyland agenda/video-seek pages do resolve
-(shipped 2026-08-16); the real remaining gap is narrower — Tucson's
-Hyland pages carry no video at all, and the real video/audio+minutes
-live on a separate city YouTube channel/page not yet wired to
-`youtube_channel.py` (which today only covers Legistar netlocs).
-
-**Genuinely still open — supported platform, tenant-specific gap:**
-Atlanta GA (ChampDS; live-verified to have at least one working page, so
-narrower than "not working" — recheck against the user's specific
-failing URL), Omaha NE (video/minutes on separate unpaired pages — live
-video only at `citycouncil.cityofomaha.org` during scheduled meeting
-times, no archive; the "past videos" link routes to
-`cityclerk.cityofomaha.org`, which is Cloudflare-protected and returned
-inconsistent results live 2026-08-30, sometimes a JS challenge shell,
-sometimes a plain "not available in your region" 403 — genuinely needs
-real investigation, not a quick fix), Virginia Beach VA
-(`onboardgov.virginiabeach.gov`
--- triaged 2026-08-29: not simply a white-labeled ClerkBase/ClerkHQ
-instance despite sharing `cdn.clerkbase.com` assets — confirmed live it
-carries none of `clerkbase.py`'s expected `window.autoOpenDocUrl`/
-`window.clientSite` JS variables at all, and the page has no server-
-rendered content to scrape (a fully client-rendered SPA, "OnBoardGOV" —
-likely a separate product line from the same vendor, not the meeting-
-agenda tool this adapter already covers). Needs a real headless-browser
-investigation before any adapter work, not a quick domain-list addition),
-Kansas City MO (root-caused and fixed 2026-08-29 — see `BACKLOG_DONE.md`:
-recent meetings for Council and other frequently-meeting bodies now
-resolve real video via a new Granicus ViewPublisher RSS fallback; an
-infrequent body's older meeting can still miss if it's aged out of that
-feed's real ~8-month/100-item coverage), Austin TX and San Antonio TX
-(confirmed live with real transcripts as of the 2026-08-21 `/coverage`
-re-check).
-
-**Closed 2026-08-30** (full detail in `BACKLOG_DONE.md`): Columbus OH
-(WO-72 — added to the same city-YouTube-channel fallback already proven
-for Phoenix/Philadelphia/Baltimore/Albuquerque), Tampa FL (WO-73 — new
-`app/platforms/tampa.py` adapter; the "transcripts posted separately,
-need matching" framing was stale, each transcript page already embeds
-its own paired video), Detroit MI (Cablecast — re-checked live, both
-real URL shapes resolve fully; the "not working well" user flag doesn't
-reproduce today), NYC Legistar (`legistar.council.nyc.gov` resolves a
-real meeting end-to-end with video, correct jurisdiction, and a full
-transcript — the "not yet re-checked" framing below was stale), and the
-Ringwood/NYC Viebit mis-tag (WO-71 — `ViebitAssetFinder` had a hardcoded
-NYC-only jurisdiction; now derives it per-tenant via the known-domain
-registry).
+- **Tucson, AZ** — confirmed still real, re-checked against the live
+  archive 2026-08-30: the one archived Tucson page
+  (`tucson-az-2026-08-05-regular-meeting`, source
+  `tucsonaz.hylandcloud.com`) genuinely has no video. Real
+  video/audio+minutes live on a separate city YouTube channel/page not
+  yet wired to `youtube_channel.py` (which today only covers Legistar
+  netlocs). Same shape as the Columbus OH fix (WO-72) — a real,
+  buildable fallback entry once a channel ID is confirmed.
+- **Atlanta, GA** — re-checked against the live archive 2026-08-30: 14
+  real meeting links now archived (up from "at least one"), but the
+  working ones found are sourced from **IQM2**
+  (`atlantacityga.iqm2.com`), not ChampDS — Atlanta apparently runs both
+  systems for different bodies. The original ChampDS gap is unconfirmed
+  either way without the user's specific failing URL; not chased
+  further without it.
+- **Omaha, NE** — confirmed still zero archived pages, re-checked
+  2026-08-30 (`/api/jurisdictions?q=omaha` returns no matches). Live
+  video only at `citycouncil.cityofomaha.org` during scheduled meeting
+  times, no archive; the "past videos" link routes to
+  `cityclerk.cityofomaha.org`, which is Cloudflare-protected and
+  returned inconsistent results live 2026-08-30 (sometimes a JS
+  challenge shell, sometimes a plain 403). Genuinely needs real
+  investigation, not a quick fix.
+- **Virginia Beach, VA** — the `onboardgov.virginiabeach.gov` SPA gap
+  is real, but **less urgent than framed**: re-checked against the live
+  archive 2026-08-30, Virginia Beach already has a real, working City
+  Council meeting page (`virginia-2026-08-18-city-council-meeting-8-18
+  -2026`) sourced from **Cablecast** (`virginiabeach.cablecast.tv`), an
+  already-supported platform — its jurisdiction was corrected from bare
+  "Virginia" to "Virginia Beach, VA" earlier tonight. If Cablecast
+  covers Council meetings going forward, the OnBoardGOV SPA investigation
+  may not be worth the headless-browser cost at all — worth confirming
+  Cablecast's real coverage before investing in the SPA gap.
 
 - **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   NEEDS-AUDIT there, misfiled) — the underlying methodology point still
