@@ -917,6 +917,97 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "cosumnescommunityservices.portal.civicclerk.com": KnownJurisdiction(
         "Cosumnes Community Services District", "district", "CA"
     ),
+    # WO-69 (2026-08-30) batch: 10 of the 12 "eScribe residuals after the
+    # 2026-08-29 sweep" (BACKLOG.md) domains -- each confirmed live via
+    # the org's own filestream documents or live meeting-list pages,
+    # not guessed from the acronym alone. `pub-lloydminster` is
+    # deliberately left unregistered (needs a real product decision on
+    # the AB/SK border, not a data fix) and `pub-stthomas` is registered
+    # below since the bare name is a genuine 3-way MO/ND/ON collision
+    # (confirmed via `lookup_city_state("St. Thomas")` returning None).
+    # All plain "fallback" strength (not "authoritative"): none of these
+    # has a confirmed-wrong existing extraction to override (the bar
+    # `KnownJurisdiction.strength`'s own docstring sets for that tier) --
+    # `finalize_jurisdiction()`'s own registry-consultation branches
+    # already supply the full name whenever nothing else validates
+    # (blank extraction, or an acronym subdomain that declines), which is
+    # the expected case for every acronym/institutional domain below.
+    #
+    # Surrey Schools (School District 36) -- real Surrey, BC school board
+    # meetings; "Surrey, BC" is an approximation since the district also
+    # serves White Rock and Barnston Island, same "closest general
+    # jurisdiction" convention as every other district-shaped entry here.
+    "pub-surreyschools.escribemeetings.com": KnownJurisdiction("Surrey", "city", "BC"),
+    # Horry County Schools, SC -- wordninja mangles "horrycountyschools"
+    # to ['horr','y','county','schools'] even after any generic
+    # institutional-suffix strip, so a direct override is the only real
+    # fix (see BACKLOG.md's own note on this).
+    "pub-horrycountyschools.escribemeetings.com": KnownJurisdiction(
+        "Horry County", "county", "SC"
+    ),
+    # Toronto and Region Conservation Authority, ON -- a real special-
+    # purpose conservation authority, not a single municipality.
+    "pub-trca.escribemeetings.com": KnownJurisdiction(
+        "Toronto and Region Conservation Authority", "authority", "ON"
+    ),
+    # Regional District of Central Okanagan, BC -- a real BC regional
+    # district (the "Type of Name" municipal shape doesn't apply to it,
+    # same as every other "district"-typed entry here).
+    "pub-rdco.escribemeetings.com": KnownJurisdiction(
+        "Regional District of Central Okanagan", "district", "BC"
+    ),
+    # Sunshine Coast Regional District, BC.
+    "pub-scrd.escribemeetings.com": KnownJurisdiction(
+        "Sunshine Coast Regional District", "district", "BC"
+    ),
+    # Thunder Bay District Health Unit, ON -- a real public health unit,
+    # NOT the same tenant as the separate, already-real
+    # `pub-thunderbay.escribemeetings.com` (City of Thunder Bay itself).
+    "pub-tbdhu.escribemeetings.com": KnownJurisdiction(
+        "Thunder Bay District Health Unit", "health unit", "ON"
+    ),
+    # Resort Municipality of Whistler, BC -- typed "city" and named
+    # "Whistler" rather than the literal legal name, matching this file's
+    # own general-purpose-municipal-typed-as-"city" convention (see
+    # Milton/Orion Township above: KnownJurisdiction.type only ever
+    # distinguishes which lookup table, never a government's literal
+    # legal designation).
+    "pub-rmow.escribemeetings.com": KnownJurisdiction("Whistler", "city", "BC"),
+    # Township of Ashfield-Colborne-Wawanosh, ON -- typed "city" for the
+    # same reason as Whistler/Milton above (the only other ON entry in
+    # this file, Milton, sets this convention).
+    "pub-acwtownship.escribemeetings.com": KnownJurisdiction(
+        "Ashfield-Colborne-Wawanosh", "city", "ON"
+    ),
+    # Hamilton Public Library, ON -- confirmed live 2026-08-30 to be the
+    # library board's OWN meetings (its committee list shows "Hamilton
+    # Public Library Board," "Regular Board Meeting," held at "Central
+    # Library, Board Room"), NOT City of Hamilton council carried on the
+    # library's channel -- BACKLOG.md's own entry flagged this as the
+    # open, unconfirmed question; now resolved. "library" is a new type
+    # value here (the type field is free descriptive text for a
+    # special-purpose entity, same as "authority"/"district"/"health
+    # unit" above -- no enum to extend).
+    "pub-hpl.escribemeetings.com": KnownJurisdiction(
+        "Hamilton Public Library", "library", "ON"
+    ),
+    # St. Thomas, ON -- "St. Thomas" is a genuine 3-way collision (MO, ND,
+    # ON all have a real "St. Thomas" -- confirmed via
+    # `lookup_city_state("St. Thomas")` returning None), so the general
+    # wordninja/Census-table path can never resolve this on its own; a
+    # manual override is the right fix, not a gap in that path.
+    "pub-stthomas.escribemeetings.com": KnownJurisdiction("St. Thomas", "city", "ON"),
+    # Toronto Catholic District School Board, ON -- the one confirmed
+    # real eScribe tenant whose domain carries NO "pub-" prefix at all
+    # (confirmed live 2026-08-30: `tcdsbpublishing.escribemeetings.com`
+    # returns 200 with real content; `pub-tcdsbpublishing...` times out).
+    # See escribe.py's `_NO_PREFIX_SUBDOMAINS` for why this domain's own
+    # subdomain-fallback extraction needed a narrow, allowlisted fix
+    # rather than a general "pub-" made optional -- this registry entry
+    # supplies the name regardless of whether that fallback ever fires.
+    "tcdsbpublishing.escribemeetings.com": KnownJurisdiction(
+        "Toronto Catholic District School Board", "school board", "ON"
+    ),
 }
 
 

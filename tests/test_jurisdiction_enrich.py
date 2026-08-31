@@ -295,6 +295,104 @@ def test_lookup_by_domain_resolves_special_districts_not_a_single_city():
     )
 
 
+def test_lookup_by_domain_resolves_wo69_escribe_residuals_2026_08_30():
+    # WO-69 (2026-08-30): 11 of the 12 "eScribe residuals after the
+    # 2026-08-29 sweep" (BACKLOG.md) domains, each confirmed live via the
+    # org's own filestream documents or live meeting-list pages.
+    # `pub-lloydminster` is deliberately NOT registered here -- see
+    # BACKLOG.md's own note on why (a real AB/SK border product
+    # decision, not a data gap).
+    cases = {
+        # Surrey, BC school board -- "Surrey, BC" is a deliberate
+        # approximation (the district also serves White Rock/Barnston
+        # Island), same convention as every other district-shaped entry.
+        "pub-surreyschools.escribemeetings.com": je.KnownJurisdiction(
+            "Surrey", "city", "BC"
+        ),
+        # wordninja mangles "horrycountyschools" to
+        # ['horr','y','county','schools'] even after a generic
+        # institutional-suffix strip -- confirmed needs a direct override.
+        "pub-horrycountyschools.escribemeetings.com": je.KnownJurisdiction(
+            "Horry County", "county", "SC"
+        ),
+        "pub-trca.escribemeetings.com": je.KnownJurisdiction(
+            "Toronto and Region Conservation Authority", "authority", "ON"
+        ),
+        "pub-rdco.escribemeetings.com": je.KnownJurisdiction(
+            "Regional District of Central Okanagan", "district", "BC"
+        ),
+        "pub-scrd.escribemeetings.com": je.KnownJurisdiction(
+            "Sunshine Coast Regional District", "district", "BC"
+        ),
+        # NOT the same tenant as the separate, already-real
+        # pub-thunderbay.escribemeetings.com (City of Thunder Bay).
+        "pub-tbdhu.escribemeetings.com": je.KnownJurisdiction(
+            "Thunder Bay District Health Unit", "health unit", "ON"
+        ),
+        # Resort Municipality of Whistler, BC -- named "Whistler" and
+        # typed "city" rather than the literal legal name, matching this
+        # file's general-purpose-municipal-typed-as-"city" convention.
+        "pub-rmow.escribemeetings.com": je.KnownJurisdiction("Whistler", "city", "BC"),
+        "pub-acwtownship.escribemeetings.com": je.KnownJurisdiction(
+            "Ashfield-Colborne-Wawanosh", "city", "ON"
+        ),
+        # Confirmed live 2026-08-30 to be the library board's OWN
+        # meetings ("Hamilton Public Library Board," "Regular Board
+        # Meeting," "Central Library, Board Room"), NOT City of Hamilton
+        # council carried on the library's channel.
+        "pub-hpl.escribemeetings.com": je.KnownJurisdiction(
+            "Hamilton Public Library", "library", "ON"
+        ),
+        # "St. Thomas" is a genuine 3-way collision (MO/ND/ON) -- see the
+        # dedicated test below for the collision itself.
+        "pub-stthomas.escribemeetings.com": je.KnownJurisdiction(
+            "St. Thomas", "city", "ON"
+        ),
+        # The one confirmed real eScribe tenant with NO "pub-" prefix at
+        # all -- see tests/test_escribe.py for the subdomain-regex side
+        # of this fix.
+        "tcdsbpublishing.escribemeetings.com": je.KnownJurisdiction(
+            "Toronto Catholic District School Board", "school board", "ON"
+        ),
+    }
+    for domain, expected in cases.items():
+        assert je.lookup_by_domain(domain) == expected, domain
+    # Lloydminster genuinely straddles AB/SK -- left open on purpose.
+    assert je.lookup_by_domain("pub-lloydminster.escribemeetings.com") is None
+
+
+def test_lookup_city_state_returns_none_for_st_thomas_three_way_collision():
+    # "St. Thomas" is real in MO, ND, AND ON -- confirmed via
+    # app/utils/jurisdiction_data, live 2026-08-30 -- so the general
+    # wordninja/Census-table path can never resolve
+    # pub-stthomas.escribemeetings.com on its own; this is why that
+    # domain needs the manual override registered above rather than
+    # relying on the shared lookup.
+    assert je.lookup_city_state("St. Thomas") is None
+    assert je.lookup_city_state("St Thomas") is None
+
+
+def test_finalize_jurisdiction_wo69_fallback_domains_supply_the_full_name():
+    # End to end through finalize_jurisdiction() -- the same function the
+    # ingest path and the recompute-backfill endpoints call -- for a
+    # representative few of the WO-69 batch above: a blank extraction
+    # (the expected common case for an acronym subdomain that never
+    # validates) gets the full registered name, not just a state fill.
+    result = je.finalize_jurisdiction(None, netloc="pub-trca.escribemeetings.com")
+    assert result.jurisdiction == "Toronto and Region Conservation Authority, ON"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(None, netloc="pub-hpl.escribemeetings.com")
+    assert result.jurisdiction == "Hamilton Public Library, ON"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(
+        None, netloc="tcdsbpublishing.escribemeetings.com"
+    )
+    assert result.jurisdiction == "Toronto Catholic District School Board, ON"
+    assert result.confidence == "fallback"
+
+
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.
