@@ -69,7 +69,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -83,12 +83,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (6)
-    `[LATER]` Recover, rather than just decline, a domain-privacy-
-    `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
-    `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
-    `[LATER]` A real, new video platform found: Midpen Media Center
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (4)
+    `[LATER]` Recover a domain-privacy-blocked Vimeo video by forwarding
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
+    `[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
@@ -793,143 +791,49 @@ Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
 
-- **`[LATER]` Recover, rather than just decline, a domain-privacy-
-  blocked Vimeo video by forwarding the real origin domain as
-  `Referer`.** `app/platforms/vimeo.py`'s `resolve_video_id()` now
-  correctly declines (`video_url=None`, no title, an honest warning)
-  when Vimeo's oEmbed response carries a non-200 `domain_status_code`
-  — see `BACKLOG_DONE.md`'s 2026-08-29 Vimeo-dorking entry for the bug
-  this closed. That's the correctness fix; it does not recover anything
-  that could otherwise have played. A confirmed real path exists to do
-  better for videos found via dorking specifically: every Vimeo URL
-  found that way (`ENUMERATION_METHODS.md` §46) is already known to
-  have come from a real `.gov`-adjacent origin page at discovery time,
-  and Vimeo's own restriction is scoped to a domain allowlist — so
-  passing that real origin domain through as `Referer` on the oEmbed
-  (and embed) request would likely unblock some fraction of these
-  rather than just declining them. Should reuse the existing
-  `jurisdiction_hint` mechanism (`app/platforms/base.py`'s
-  `CalendarPageError`), generalized to carry an origin domain rather
-  than only a jurisdiction string, so the plumbing isn't invented twice.
-  Not yet attempted — unverified how large that recoverable fraction
-  actually is, since `Referer` can be spoofed by any client (this app
-  included) but Vimeo's check might key on more than just that header.
-
-- **`[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
-  school-district agenda platform, weak for video but a strong,
-  unclaimed lead for `rtr-upcoming` specifically, 2026-08-29.** Checked
-  11 real districts (Fremont/Palo Alto/Paramount/Santa Barbara/Santa
-  Ana USD CA, Green Bay APSD WI, Great Neck UFSD NY, Portland Public
-  Schools ME, Downingtown ASD PA, Robbinsville PSD NJ, Gobles PSD MI —
-  full writeup `ENUMERATION_METHODS.md` §43). One shared hostname,
-  tenant in the URL *path* (`go.boarddocs.com/{state}/{district}/
-  Board.nsf/Public`), not a subdomain — DNS enumeration doesn't apply;
-  the real discovery lever is a Common Crawl full-corpus search for the
-  literal path string, same technique as tonight's ChampDS/TelVue work,
-  not run yet. Real, unauthenticated JSON meetings-list API confirmed
-  live (`BD-GETMeetingsListForSEO`, just needs a same-origin `Referer`
-  header) — no video field, but real structured per-meeting data
-  `rtr-upcoming` doesn't have from this vendor today. Per-meeting detail
-  API (`BD-GetMeeting`/`BD-GetAgenda`/`BD-GetAgendaItem`) confirmed to
-  exist via real network traffic but its POST body shape wasn't
-  captured — needs one more observed real browser request. **Video**:
-  real but tier-dependent and never a clean per-meeting URL — all 3
-  LT-tier districts checked had zero video; only 1 of 10 overall
-  (Santa Barbara USD) had a real structured link, and even that's a
-  whole-school-year YouTube playlist needing date-matching, not a
-  direct URL. Not worth a `rtr-deeplink` video adapter on this
-  evidence; worth real interest for `rtr-upcoming`'s agenda side.
-
-- **`[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
-  CT-log toolkit are CMS wrappers, not adapter targets — but 2 are
-  worth reconsidering as discovery funnels into already-supported
-  platforms, 2026-08-29.** Full writeup `ENUMERATION_METHODS.md` §44.
-  `civicplus.io`, `civiclive.com`, `revizesites.com`, `opencities.com`,
-  `municodeweb.com`, `municipalcms.com`/`.cloud`, `getstreamline.net`,
-  `apptegy.net` — all general municipal website CMS platforms, none
-  host video themselves, real examples checked link out to YouTube/
-  Vimeo/Granicus (already-supported platforms) where a link-out could
-  be confirmed at all. **Two worth a second look, not as adapters but
-  as tenant-list-based discovery channels**: `municodeweb.com` (real
-  confirmed example, Corvallis OR, links to a Vimeo channel — directly
-  relevant to this file's own unexplored "Vimeo's real-world prevalence
-  among small local governments" lead, since Vimeo has no
-  tenant-subdomain structure of its own to enumerate against) and
-  `opencities.com` (now owned by Granicus itself — unconfirmed with a
-  real example, but a real cross-sell relationship worth checking
-  before dismissing). **The more durable insight**: going through a
-  CMS vendor's own tenant list at all is the *narrower* version of the
-  real signal — a full-corpus search (Common Crawl, same technique as
-  tonight's §37-42 work) for a literal string like `"vimeo.com/
-  channels/"` combined with a governance phrase, zero host restriction,
-  would catch a Municode-hosted city AND a CivicPlus-hosted city AND a
-  custom-built city site all in one pass, strictly more coverage than
-  enumerating any single CMS vendor first. Not run yet — a real,
-  concrete next step if the Vimeo-prevalence lead gets picked up.
-
-- **`[LATER]` A real, new video platform found: Midpen Media Center
-  (`midpenmedia.org`) — at least Palo Alto's real PrimeGov video isn't
-  on YouTube/Swagit/Granicus at all.** Found 2026-08-28 chasing a real
-  discrepancy: the user confirmed two specific Palo Alto meetings
-  (`cityofpaloalto.primegov.com/Portal/Meeting?meetingTemplateId=18785`
-  and `=20733`) have real video, but this repo's PrimeGov adapter found
-  none on either — not a false negative in the sense of the video being
-  present and unextracted; checked the actual rendered page (browser,
-  not just raw HTML) and confirmed **no specific video URL is present
-  on the page at all**, only a bare YouTube *channel* link
-  (`youtube.com/c/cityofpaloalto`) and a bare
-  `midpenmedia.org` homepage link, both mentioned in prose ("broadcast
-  on Cable TV Channel 76, live on YouTube ..., and streamed to Midpen
-  Media Center ..."). Same bare-link-only shape confirmed on Palo
-  Alto's own city-clerk agenda page
-  (`paloalto.gov/Events-Directory/City-Clerk/2026/082426-City-Council-
-  Meeting`) — not a PrimeGov-specific gap, the source itself just
-  doesn't publish a direct per-meeting video link anywhere upstream.
-  **`isShowVideoIcon`** (a real field on PrimeGov's
-  `ListArchivedMeetings` API response, 114/158 of Palo Alto's 2026
-  meetings have it true) is a confirmed-live, genuine "this meeting has
-  video" signal — **now checked, 2026-08-29** (see `BACKLOG_DONE.md`):
-  when the tenant API confirms a meeting has video but `videoUrl` itself
-  is blank (exactly the Midpen shape), the page now reports an honest
-  "has a recording, but we could not find a playable link" instead of
-  the flat no-video message a genuinely agenda-only meeting gets. Only
-  ever corroborates that *a* video exists — it does not resolve Midpen
-  playback itself. **Not built**: a Midpen
-  Media Center adapter, or a fallback that resolves a bare YouTube
-  channel link into a specific video (e.g. searching the channel for a
-  title/date match) — either is real, un-scoped adapter-build work per
-  this file's own "test against a real live URL first" convention, not
-  a same-session fix. Worth checking whether other PrimeGov tenants
-  besides Palo Alto also route through Midpen (a real community media
-  nonprofit likely serving multiple Peninsula-area cities, not just
-  one) before building anything, the same way any new platform gets
-  scoped here.
+- **`[LATER]` Recover a domain-privacy-blocked Vimeo video by forwarding
+  the real origin domain as `Referer` on the oEmbed request.**
+  `app/platforms/vimeo.py`'s `resolve_video_id()` already declines
+  correctly on a non-200 `domain_status_code` (see `BACKLOG_DONE.md`'s
+  2026-08-29 Vimeo-dorking entry) — this is the recovery half, not yet
+  built. Every Vimeo URL found via dorking is already known to have a
+  real `.gov`-adjacent origin page at discovery time, and Vimeo's
+  restriction is a domain allowlist, so passing that real origin through
+  as `Referer` would likely unblock some fraction rather than just
+  declining them. Full discovery reasoning and the reuse-`jurisdiction_
+  hint` design sketch: `~/Documents/rtr-business/research/
+  ENUMERATION_METHODS.md` §46. Not yet attempted — unverified how large
+  the recoverable fraction actually is.
 
 - **`[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   resolve a same-named-in-two-countries subdomain to the wrong country's
-  real place — confirmed once on eScribe, no second Granicus case found
-  on a real live spot-check (2026-08-28).** Original find: `pub-
-  richmond.escribemeetings.com` resolved to "Richmond, CA" when the real
-  customer is almost certainly Richmond, BC (`ENUMERATION_METHODS.md`
-  §35). This function is shared by `granicus.py`'s
-  `_humanize_subdomain()`, so the same failure shape is structurally
-  possible there — checked live against the 5 candidate names named
-  here (Richmond, London, Windsor, Cambridge, Victoria): only
-  `richmond.granicus.com` and `victoria.granicus.com` are real,
-  registered tenants (the other 3 404); `richmond.granicus.com` exposes
-  no public content page to check further (root redirects straight to
-  the internal MediaManager staff login); `victoria.granicus.com`'s real
-  content page identifies itself as **"Victoria, MN"** in its own page
-  title — not a same-name collision in practice, since the real
-  extraction path would find that title text before ever falling back to
-  `_humanize_subdomain()`'s subdomain guess (confirmed:
-  `_humanize_subdomain()` alone returns bare `'Victoria'`, no state —
-  the page's own title is what actually disambiguates it, upstream of
-  this function). **No second live Granicus collision found this
-  session** — leaving open rather than building speculative
-  disambiguation logic with only one confirmed case behind it, per this
-  repo's own convention. Worth re-checking if a second real example
-  turns up during a future Granicus enumeration pass.
+  real place — confirmed once (eScribe's `pub-richmond.escribemeetings
+  .com` → "Richmond, CA" when the real customer is Richmond, BC), no
+  second case found live-checking Granicus's own shared
+  `_humanize_subdomain()`.** Full discovery detail and the Granicus
+  re-check (5 candidate names, only 2 real tenants, neither a live
+  collision in practice): `~/Documents/rtr-business/research/
+  ENUMERATION_METHODS.md` §35. Leaving open rather than building
+  speculative disambiguation logic with only one confirmed case behind
+  it, per this repo's own convention — worth revisiting if a second
+  real example turns up.
+
+- **`[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
+  video platform found chasing a user-reported discrepancy; at least
+  Palo Alto's real PrimeGov video isn't on YouTube/Swagit/Granicus at
+  all.** Confirmed live (browser, not just raw HTML): the source page
+  itself never publishes a direct per-meeting video link, only a bare
+  YouTube channel link and a bare Midpen homepage link mentioned in
+  prose. `isShowVideoIcon` (a real PrimeGov API field) already
+  corroborates "this meeting has video" without resolving it (shipped
+  2026-08-29, see `BACKLOG_DONE.md`). Full discovery detail:
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §47. Not
+  built: a dedicated Midpen adapter, or a fallback that resolves the
+  bare YouTube channel link into a specific video by title/date match
+  (same technique `youtube_channel.py` already uses) — real, un-scoped
+  adapter-build work, not a same-session fix. Worth checking whether
+  other PrimeGov tenants besides Palo Alto also route through Midpen
+  before building anything.
 
 - **ProudCity's BoxCast delegation only helps tenants using the
   confirmed `boxcast.tv/channel/{id}` link shape — check the rest of
