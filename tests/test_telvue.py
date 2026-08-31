@@ -160,6 +160,88 @@ async def test_resolve_falls_back_to_known_org_token_for_talk_show_titled_meetin
     assert result.jurisdiction == "Piscataway, NJ"
 
 
+async def test_resolve_falls_back_to_known_org_token_for_leominster():
+    # Real case, found 2026-08-30 (WO-67) auditing the same TelVue batch
+    # that surfaced the colon-date/"Common Council" gaps: real raw title
+    # is a bare "Monday, August 24, 2026" (/m/monday-august-24-2026), no
+    # body-suffix phrase for _guess_jurisdiction() to key on. Real
+    # org-logo alt text confirmed live, "Leominster TV (MA) - Leominster
+    # Access TV - organization logo" -- the state IS present but
+    # parenthesized ("(MA)"), a shape the general org-logo parser
+    # doesn't accept (only a trailing bare 2-letter abbreviation), so
+    # only the known-org-token map closes this one.
+    url = "https://videoplayer.telvue.com/player/m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT/media/1034895"
+    html = (
+        "<html><head><title>Monday, August 24, 2026</title></head><body>"
+        '<img id="org-logo" alt="Leominster TV (MA) - Leominster Access TV '
+        '- organization logo" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Monday, August 24, 2026", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Leominster, MA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_royal_oak():
+    # Real case, found 2026-08-30 (WO-67), same batch/shape as Leominster
+    # above: real raw title is a bare "City Commission (2026-08-24)"
+    # (/m/2026-08-24-city-commission). Real org-logo alt text confirmed
+    # live, "City of Royal Oak Michigan - Royal Oak VOD Player -
+    # organization logo" -- the state is spelled out in full
+    # ("Michigan") rather than a 2-letter abbreviation, which the general
+    # org-logo parser's state check doesn't recognize, so only the
+    # known-org-token map closes this one.
+    url = "https://videoplayer.telvue.com/player/aOt1iJYvW4IQawSCE8Goebgvo0CdBFwN/media/884230"
+    html = (
+        "<html><head><title>City Commission (2026-08-24)</title></head><body>"
+        '<img id="org-logo" alt="City of Royal Oak Michigan - Royal Oak VOD '
+        'Player - organization logo" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Commission (2026-08-24)", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Royal Oak, MI"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_luverne():
+    # Real case, found 2026-08-30 (WO-67), same batch/shape as Leominster/
+    # Royal Oak above: real raw title is a bare "City Council Meeting
+    # (2026-08-25)" (/m/2026-08-25-city-council-meeting). Real org-logo
+    # alt text confirmed live, "City of Luverne - LuvTV VOD Player -
+    # organization logo", has no state anywhere (same shape as Auburn
+    # Hills/Nashua/Piscataway), so the general org-logo parser correctly
+    # declines -- only the known-org-token map closes this one.
+    # "Luverne" is nationally ambiguous (real places in MN and AL);
+    # confirmed MN specifically via cityofluverne.org/luvtv.
+    url = (
+        "https://videoplayer.telvue.com/player/yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC/media/1"
+    )
+    html = (
+        "<html><head><title>City Council Meeting (2026-08-25)</title></head><body>"
+        '<img id="org-logo" alt="City of Luverne - LuvTV VOD Player - '
+        'organization logo" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Council Meeting (2026-08-25)", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Luverne, MN"
+
+
 async def test_resolve_unknown_org_token_has_no_jurisdiction():
     url = "https://videoplayer.telvue.com/player/someOtherOrgToken123/media/1"
     html = (
@@ -347,15 +429,22 @@ def test_guess_jurisdiction_rejects_bare_governance_body_titles():
         )
         is None
     )
-    # A real city name merged with an adjacent modifier word ("Summit, NJ"
-    # + "Planning") is rejected too, same reasoning -- no reliable way to
-    # separate the real name from the modifier without a validated match,
-    # and declining beats guessing wrong.
+    # Was: "Summit Planning Board Meeting: June 29, 2026" -> None, on the
+    # reasoning that a city name merged with an adjacent modifier word
+    # ("Summit" + "Planning") can't be reliably separated without a
+    # validated match. WO-67 (2026-08-30) corrected this: Summit, NJ's
+    # real title has exactly this shape (confirmed live,
+    # /m/summit-planning-board-meeting-august-17-2026, real raw title
+    # "Summit Planning Board Meeting: August 17, 2026"), and "Planning
+    # Board" is itself a real, common governing-body name (same as
+    # "Select Board"/"Zoning Board" above) -- giving it its own
+    # alternative in _BODY_SUFFIX_RE resolves the ambiguity the same way
+    # those two did, rather than needing a validated lookup.
     assert (
         TelvueAssetFinder._guess_jurisdiction(
             "Summit Planning Board Meeting: June 29, 2026"
         )
-        is None
+        == "Summit"
     )
     # Confirms the Natick fix still works: a real city name adjacent to
     # "Select" is preserved, only a *trailing* stopword is checked.
@@ -406,6 +495,52 @@ def test_guess_jurisdiction_handles_planning_and_environmental_commission():
             "Vail Planning and Environmental Commission"
         )
         == "Vail"
+    )
+
+
+async def test_split_title_date_handles_colon_separator():
+    # Real bug, confirmed live 2026-08-30 (WO-67): Summit, NJ's real raw
+    # title uses a colon, not the dash every prior sample used --
+    # "Summit Planning Board Meeting: August 17, 2026" (fetched live from
+    # /m/summit-planning-board-meeting-august-17-2026). Before this fix
+    # _TITLE_DATE_RE only matched a trailing "- Month DD, YYYY" shape, so
+    # the whole string reached _guess_jurisdiction() with the date still
+    # attached and the page resolved with a blank jurisdiction.
+    title, date = TelvueAssetFinder._split_title_date(
+        "Summit Planning Board Meeting: August 17, 2026"
+    )
+    assert title == "Summit Planning Board Meeting"
+    assert date == "2026-08-17"
+
+
+def test_guess_jurisdiction_handles_planning_board():
+    # Real bug, confirmed live 2026-08-30 (WO-67), same shape as the
+    # Select Board / Zoning Board fixes above: once the colon-date fix
+    # strips the trailing date, Summit, NJ's real title is "Summit
+    # Planning Board Meeting" -- without its own alternative this matched
+    # bare "Board" first, capturing "Summit Planning" (rejected outright
+    # by the "planning" stopword below, so the meeting resolved with no
+    # jurisdiction at all rather than a wrong one).
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Summit Planning Board Meeting")
+        == "Summit"
+    )
+
+
+def test_guess_jurisdiction_handles_common_council():
+    # Real bug, confirmed live 2026-08-30 (WO-67): Albany, NY's real raw
+    # title is "Albany Common Council 08 03 26" (fetched live from
+    # /m/albany-common-albany-common-council-08-03-26, no dash/colon
+    # date suffix for _TITLE_DATE_RE to strip at all, so the whole string
+    # reaches _guess_jurisdiction() as-is). "Common Council" is Albany's
+    # real governing-body name; without its own alternative this matched
+    # bare "Council" first, capturing "Albany Common" -- a confident WRONG
+    # answer (reads like a plausible place name on its own), not just a
+    # missed one, same failure family as the Natick/Newmarket/Vail cases
+    # above.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Albany Common Council 08 03 26")
+        == "Albany"
     )
 
 

@@ -56,7 +56,17 @@ TARGET_LANGUAGE = "en"
 # governance-body-name suffix. Unconfirmed against multiple real
 # customers; may need a real per-customer jurisdiction map later the way
 # some other adapters already have.
-_TITLE_DATE_RE = re.compile(r"^(.*?)\s*-\s*([A-Za-z]+ \d{1,2},? \d{4})$")
+# WO-67, 2026-08-30: the separator before the trailing date was always a
+# dash in every sample seen until the 2026-08-30 TelVue batch surfaced a
+# real colon-separated title -- Summit, NJ's own real title is "Summit
+# Planning Board Meeting: August 17, 2026" (confirmed live,
+# /m/summit-planning-board-meeting-august-17-2026). A dash-only pattern
+# never strips this, so the whole string (colon-date included) used to
+# reach _BODY_SUFFIX_RE below, same "date never gets separated from the
+# body" failure family as the leading-date bug documented on
+# _LEADING_DATE_RE just below. `[-:]` covers both separators without
+# widening what counts as "a date" on either side.
+_TITLE_DATE_RE = re.compile(r"^(.*?)\s*[-:]\s*([A-Za-z]+ \d{1,2},? \d{4})$")
 # A LEADING numeric date (unlike _TITLE_DATE_RE's trailing "- Month DD,
 # YYYY" shape) is never itself part of the jurisdiction name -- real
 # case, confirmed live 2026-08-29 via the Common Crawl sweep: titles like
@@ -86,7 +96,21 @@ _BODY_SUFFIX_RE = re.compile(
     # starting one word earlier, not because alternation order breaks
     # ties at the same position (it doesn't -- position is what
     # matters here).
-    r"^(.*?)\s+(City Council|Council|Planning and Environmental Commission|Planning Commission|Commission|Select Board|Zoning Board|Board|Committee|Authority|District)\b",
+    #
+    # Two more real cases, same shape, both WO-67 (2026-08-30):
+    # "Planning Board" -- Summit, NJ's real title, once the colon-date
+    # fix above strips the trailing date, is "Summit Planning Board
+    # Meeting". Without its own alternative this matched bare "Board"
+    # first, capturing "Summit Planning" (which the "planning" stopword
+    # below then rejected outright, so the meeting resolved with NO
+    # jurisdiction rather than a wrong one -- still a bug, just a
+    # quieter one). "Common Council" -- Albany, NY's real governing-body
+    # name, confirmed live via "Albany Common Council 08 03 26"
+    # (/m/albany-common-albany-common-council-08-03-26); without its own
+    # alternative this matched bare "Council" first, capturing "Albany
+    # Common" -- a CONFIDENT WRONG answer, not just a missed one, since
+    # "Albany Common" reads like a plausible place name on its own.
+    r"^(.*?)\s+(City Council|Common Council|Council|Planning and Environmental Commission|Planning Commission|Planning Board|Select Board|Zoning Board|Board|Committee|Commission|Authority|District)\b",
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
@@ -311,6 +335,43 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # unambiguous via `jurisdiction_enrich`'s own county-subdivisions
     # table: real, single-state NJ township, no collision.
     "Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY": "Piscataway, NJ",
+    # WO-67, 2026-08-30: found auditing the same 2026-08-30 TelVue batch
+    # that surfaced the colon-date and "Common Council" gaps above.
+    # Real title is a bare "Monday, August 24, 2026" (/m/monday-
+    # august-24-2026) -- no body-suffix phrase at all, so the title
+    # guess never runs. Confirmed via this org's own real `id="org-logo"`
+    # alt text, "Leominster TV (MA) - Leominster Access TV -
+    # organization logo" -- the state IS present here but in parens
+    # ("(MA)"), a shape `_reduce_org_logo_piece()` doesn't parse (it only
+    # accepts a trailing bare 2-letter abbreviation), so the org-logo
+    # fallback also declines on this one without this registry entry.
+    # Independently confirmed via leominster.tv / Mass Access's own
+    # directory listing for "Leominster Access Television (LTV)".
+    "m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT": "Leominster, MA",
+    # WO-67, 2026-08-30: same batch, same shape -- real title is a bare
+    # "City Commission (2026-08-24)" (/m/2026-08-24-city-commission), no
+    # body-suffix phrase for the title guess to run against. Confirmed
+    # via this org's own real `id="org-logo"` alt text, "City of Royal
+    # Oak Michigan - Royal Oak VOD Player - organization logo" -- the
+    # state is spelled out in full ("Michigan") rather than as a 2-letter
+    # abbreviation, which `_reduce_org_logo_piece()`'s state check
+    # doesn't recognize (it only matches entries in
+    # `US_STATE_ABBREVIATIONS`), so the org-logo fallback also declines
+    # on this one without this registry entry. "Royal Oak" is otherwise
+    # unambiguous in the Census place table (only one real match, MI).
+    "aOt1iJYvW4IQawSCE8Goebgvo0CdBFwN": "Royal Oak, MI",
+    # WO-67, 2026-08-30: same batch, same shape -- real title is a bare
+    # "City Council Meeting (2026-08-25)" (/m/2026-08-25-city-council-
+    # meeting), no body-suffix phrase for the title guess to run against.
+    # This org's own real `id="org-logo"` alt text, "City of Luverne -
+    # LuvTV VOD Player - organization logo", has no state anywhere (same
+    # shape as Auburn Hills/Nashua/Piscataway above), so the general
+    # org-logo parser correctly declines. "Luverne" is nationally
+    # ambiguous (real places in MN and AL per the Census table) --
+    # confirmed specifically MN via cityofluverne.org/luvtv, the City of
+    # Luverne, Minnesota's own page for this exact "LuvTV" public-access
+    # channel.
+    "yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC": "Luverne, MN",
 }
 
 
