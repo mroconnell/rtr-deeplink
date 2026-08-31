@@ -803,7 +803,7 @@ class GranicusAssetFinder(AssetFinder):
                         transcript_warnings.append(
                             f"Multiple caption tracks found ({other_langs}); none matched '{TARGET_LANGUAGE}'."
                         )
-                    if is_likely_garbled(cues):
+                    if is_likely_garbled(cues, lang=lang):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
                             "bug on our end) — treat it as approximate. You can request "

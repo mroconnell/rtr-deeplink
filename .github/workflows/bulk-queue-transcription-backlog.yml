@@ -21,12 +21,18 @@
 # a too_many_active_jobs response, so this naturally self-limits rather
 # than piling up an ever-growing queue.
 #
-# Runs on GitHub's own runners (ubuntu-latest, which already has
-# ffmpeg/ffprobe on PATH for the script's probe_duration() calls) -- same
-# reasoning as feed-tier3-transcription.yml/feed-granicus-transcription.yml
-# for why no residential-IP requirement applies here (YouTube-backed
-# candidates are skipped by this script directly, same reasoning as
+# Runs on GitHub's own runners (ubuntu-latest) -- same reasoning as
+# feed-tier3-transcription.yml/feed-granicus-transcription.yml for why no
+# residential-IP requirement applies here (YouTube-backed candidates are
+# skipped by this script directly, same reasoning as
 # scripts/transcribe_backlog_locally.py's own YouTube pre-filter).
+#
+# ffmpeg/ffprobe are NOT preinstalled on ubuntu-latest -- confirmed live
+# 2026-08-31 (BACKLOG_DONE.md): every hourly run was failing every
+# candidate with FileNotFoundError, misreported as "ffprobe couldn't read
+# the media", masking WO-83's cooldown fix entirely. The explicit install
+# step below is load-bearing, not decorative -- don't remove it on the
+# assumption the runner image ships it.
 #
 # Tied to the backlog catch-up window this second worker exists for --
 # revisit (reduce cadence, or disable) once BACKLOG.md's ~1600+ backlog
@@ -59,6 +65,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install ffmpeg (ffprobe)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: pip install -r requirements.txt

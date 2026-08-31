@@ -306,7 +306,7 @@ class CivicClerkAssetFinder(AssetFinder):
                             f"These captions appear to be in '{lang}', not '{TARGET_LANGUAGE}' — "
                             "no matching-language track was found for this meeting."
                         )
-                    if is_likely_garbled(cues):
+                    if is_likely_garbled(cues, lang=lang):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
                             "bug on our end) — treat it as approximate. You can request "
@@ -358,6 +358,15 @@ class CivicClerkAssetFinder(AssetFinder):
                 transcript_language = youtube_delegated.transcript_language
                 transcript_warnings = list(youtube_delegated.transcript_warnings)
 
+        # Real gap found 2026-08-31: this adapter already fetches `event`
+        # (which carries publishedFiles) but never set agenda_link at
+        # all -- readers got no agenda document link whatsoever, despite
+        # the data sitting right here. Direct publishedFiles URLs, not
+        # the plaintext-conversion path _fetch_agenda_text() uses (that
+        # one exists purely to mine text for jurisdiction guessing).
+        agenda_link = self._published_file_url(event, "Agenda")
+        packet_link = self._published_file_url(event, "Agenda Packet")
+
         # Agenda is fetched independently of whether a real transcript was
         # found -- useful navigation context either way, not just a
         # fallback. Kept in its own field, never folded into `segments`.
@@ -399,6 +408,8 @@ class CivicClerkAssetFinder(AssetFinder):
             video_format=video_format,
             segments=segments,
             agenda_items=agenda_items,
+            agenda_link=agenda_link,
+            packet_link=packet_link,
             transcript_language=transcript_language,
             alternate_transcripts=alternate_transcripts,
             video_warnings=video_warnings,
@@ -481,8 +492,31 @@ class CivicClerkAssetFinder(AssetFinder):
         return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
+    def _published_file_url(event: dict, file_type: str) -> Optional[str]:
+        """The direct, vendor-typed file URL for a `publishedFiles` entry
+        of the given `type` ("Agenda", "Agenda Packet", "Minutes", ...),
+        or None when no such entry exists. Vendor-typed, so it needs no
+        content-sniffing or viewer-page disambiguation to trust -- this
+        is the field CivicClerk's own frontend uses to label a document,
+        confirmed the reliable one live 2026-08-26: the event's own
+        `agendaId`/`GetMeetingFile(fileId=agendaId,...)` path streams 0
+        bytes, a stale document, or another event's paperwork in real
+        confirmed cases; `publishedFiles` never has that problem, since
+        it's a direct file reference, not a derived id.
+        """
+        entry = next(
+            (
+                f
+                for f in (event.get("publishedFiles") or [])
+                if f.get("type") == file_type and f.get("url")
+            ),
+            None,
+        )
+        return entry["url"] if entry else None
+
+    @classmethod
     async def _fetch_agenda_text(
-        session: aiohttp.ClientSession, event: dict
+        cls, session: aiohttp.ClientSession, event: dict
     ) -> Optional[str]:
         """Best-effort plaintext of this event's real agenda file, when one
         exists -- never raises, returns None on any failure. `publishedFiles`
@@ -492,17 +526,10 @@ class CivicClerkAssetFinder(AssetFinder):
         (confirmed live on Los Altos Hills, CA, event 4567, fileId 8983) --
         fetched here as a second request, since the blob itself isn't JSON.
         """
-        agenda_file = next(
-            (
-                f
-                for f in (event.get("publishedFiles") or [])
-                if f.get("type") == "Agenda" and f.get("url")
-            ),
-            None,
-        )
-        if not agenda_file:
+        agenda_url = cls._published_file_url(event, "Agenda")
+        if not agenda_url:
             return None
-        plaintext_url = agenda_file["url"].replace("plainText=false", "plainText=true")
+        plaintext_url = agenda_url.replace("plainText=false", "plainText=true")
         try:
             async with session.get(
                 plaintext_url, timeout=aiohttp.ClientTimeout(total=20)

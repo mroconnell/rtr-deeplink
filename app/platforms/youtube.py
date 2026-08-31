@@ -189,7 +189,7 @@ class YouTubeAssetFinder(AssetFinder):
                         "transcript — expect occasional errors, especially with names "
                         "and technical terms."
                     )
-                if is_likely_garbled(cues):
+                if is_likely_garbled(cues, lang=lang):
                     transcript_warnings.append(
                         "This transcript looks garbled at the source (not a parsing "
                         "bug on our end) — treat it as approximate."

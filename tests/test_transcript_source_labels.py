@@ -1,11 +1,14 @@
 """`TranscriptVersion.source` as both provenance and the version picker's
 display label (user's call, 2026-08-22 -- see models.py's docstring).
+The ingest default token itself was renamed "scraped" -> "sourced"
+2026-08-31 (Ryan's call -- "we should never say scraped, always
+sourced"); this file uses today's real value throughout.
 
 What's under test is the *fallback* shape of the two places that used to
-allowlist `source == "scraped"`:
+allowlist the ingest-default token by name:
 
   * meeting_page.html's non-AI disclaimer branch
-  * crud.py's `has_scraped_transcript` coverage predicate
+  * crud.py's `has_sourced_transcript` coverage predicate
 
 Both silently excluded any new source value. Adding "deduped"
 (scripts/dedupe_rollup_transcripts.py) would have rendered 23 real pages
@@ -63,7 +66,7 @@ async def _make_page(
 # --- the disclaimer must survive a re-label -----------------------------
 
 
-@pytest.mark.parametrize("source", [None, "scraped", "deduped"])
+@pytest.mark.parametrize("source", [None, "sourced", "deduped"])
 async def test_every_non_ai_source_still_gets_the_third_party_disclaimer(source):
     # `None` exercises the ingest default. "deduped" is the value that
     # broke the old allowlist. Any future value lands here too, which is
@@ -88,15 +91,16 @@ async def test_transcribed_still_gets_the_ai_disclaimer_and_not_the_other():
 
 def test_source_label_maps_every_internal_token_a_reader_can_reach():
     label = archive.main.templates.env.filters["source_label"]
-    # "scraped" is an internal token the user has never wanted shown --
-    # confirmed 2026-08-22 that it reaches no template except through
-    # this filter.
-    assert label("scraped") == "sourced"
-    # Distinct from "sourced" on purpose: the picker's option text is
+    # "sourced" is an internal token that also happens to be its own
+    # display label -- still listed explicitly in _SOURCE_LABELS rather
+    # than relying on the unmapped-fallback path (see that dict's own
+    # comment for why).
+    assert label("sourced") == "sourced"
+    # Distinct from "deduped" on purpose: the picker's option text is
     # language + source, so two same-language versions of one meeting
     # would otherwise both read "English (sourced)".
     assert label("deduped") == "de-duplicated"
-    assert label("scraped") != label("deduped")
+    assert label("sourced") != label("deduped")
 
 
 def test_source_label_falls_through_for_an_unmapped_token():
@@ -111,9 +115,9 @@ def test_source_label_falls_through_for_an_unmapped_token():
 # --- the coverage predicate -------------------------------------------
 
 
-@pytest.mark.parametrize("source", ["scraped", "deduped"])
+@pytest.mark.parametrize("source", ["sourced", "deduped"])
 async def test_any_non_ai_source_counts_as_an_instant_source_transcript(source):
-    # crud.py's has_scraped_transcript used to require source == "scraped"
+    # crud.py's has_sourced_transcript used to require source == "sourced"
     # exactly, so re-labeling a page's only version would have quietly
     # flipped /coverage's "Instant transcript" column to No for it.
     # A distinct jurisdiction per case because the coverage index is one

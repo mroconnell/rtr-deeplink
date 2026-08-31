@@ -203,7 +203,7 @@ WO34_SHIP_DATE = "2026-08-21"
 # only ever remove text.
 # TranscriptVersion.source for the rewritten version. A real provenance
 # value *and* the version picker's display token -- see this module's
-# push in rewrite_one() for why the ingest default "scraped" is wrong
+# push in rewrite_one() for why the ingest default "sourced" is wrong
 # here, and archive/main.py's _SOURCE_LABELS for how it renders.
 DEDUPED_SOURCE = "deduped"
 
@@ -990,10 +990,10 @@ async def rewrite_page(
     if not ok:
         return {"ok": False, "detail": f"refused: {reason}", "refused": True}
 
-    # source="deduped", not the ingest default "scraped": the text is the
+    # source="deduped", not the ingest default "sourced": the text is the
     # source's own captions with roll-up duplication removed, and the
     # version picker's option label is language + source, so two
-    # same-language "scraped" versions of one meeting would render as two
+    # same-language "sourced" versions of one meeting would render as two
     # identical "English (sourced)" entries a reader cannot choose
     # between. See archive/main.py's _SOURCE_LABELS and
     # archive/db/models.py's TranscriptVersion.source docstring.

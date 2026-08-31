@@ -652,7 +652,7 @@ class TelvueAssetFinder(AssetFinder):
                     if cues:
                         segments = [TranscriptSegment(**cue) for cue in cues]
                         transcript_language = TARGET_LANGUAGE
-                        if is_likely_garbled(cues):
+                        if is_likely_garbled(cues, lang=transcript_language):
                             transcript_warnings.append(
                                 "This transcript looks garbled at the source (not a parsing "
                                 "bug on our end) -- treat it as approximate. You can request "

@@ -168,13 +168,17 @@ templates.env.filters["warnings_html"] = lambda warnings: Markup(
 )
 templates.env.filters["language_name"] = language_display_name
 # TranscriptVersion.source values are internal tokens -- never shown
-# verbatim to a reader, who has no reason to know or care that "scraped"
+# verbatim to a reader, who has no reason to know or care that "sourced"
 # means "downloaded from the source site's own captions" versus
 # AI-transcribed. Every value a reader can reach needs an entry here;
 # anything unmapped falls through to its raw token, which is a bug, not a
-# design (see BACKLOG.md's version-picker entry).
+# design (see BACKLOG.md's version-picker entry). "sourced" maps to
+# itself -- the token and its display label were made to match on
+# purpose (renamed from "scraped" 2026-08-31), but the entry stays
+# explicit rather than relying on the unmapped-fallback path, since that
+# path is reserved for catching a genuine bug, not a real value.
 _SOURCE_LABELS = {
-    "scraped": "sourced",
+    "sourced": "sourced",
     # 2026-08-22: the same source captions with roll-up duplication
     # removed (scripts/dedupe_rollup_transcripts.py). Labeled distinctly
     # so the version picker can tell two same-language versions of the
@@ -1180,6 +1184,62 @@ async def internal_low_trust_pages_mark_reviewed(
     return result
 
 
+@app.post("/internal/jurisdiction/override")
+async def internal_jurisdiction_override(
+    ids: Optional[str] = None,
+    jurisdiction: Optional[str] = None,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Write a caller-supplied jurisdiction string directly onto specific
+    pages -- the one place in this repo that trusts a client-supplied
+    jurisdiction value at all, rather than recomputing one via
+    finalize_jurisdiction(). Every other jurisdiction write endpoint here
+    (POST /internal/jurisdiction/backfill-apply above) deliberately never
+    accepts one, for good reason -- but that leaves no way to fix a case
+    finalize_jurisdiction() can't reach on its own: several strings that
+    already independently validate but should read as one canonical form
+    (see BACKLOG.md's Santa Clara entry), or the low-trust queue's
+    missing "review -> repair" path (BACKLOG.md's Trust & safety
+    section).
+
+    `ids` is REQUIRED, comma-separated `meeting_page_id`s, same parse as
+    /internal/low-trust-pages/mark-reviewed's `ids`. `jurisdiction` is
+    REQUIRED and applied identically to every id -- call this once per
+    distinct canonical string, not once with a mixed batch.
+
+    Writes `jurisdiction_confidence="manual_override"` alongside the
+    string, which `_find_or_create_page()`'s re-ingest path specifically
+    checks for and skips overwriting -- see crud.override_jurisdiction()'s
+    own docstring for why a manual fix needs that guard to actually
+    stick. Also stamps `reviewed_at` when available, since an explicit
+    override is definitionally a human having looked at the row.
+
+    dry_run defaults to true, matching every other write endpoint here.
+    Idempotent: an id already carrying this exact string and confidence
+    tier is reported under `already_overridden`, not re-written.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        parsed = _parse_id_filter(ids)
+    except ValueError:
+        return JSONResponse(
+            {"detail": "ids must be comma-separated integers"}, status_code=400
+        )
+
+    if jurisdiction is None:
+        return JSONResponse({"detail": "jurisdiction is required"}, status_code=400)
+
+    try:
+        return await crud.override_jurisdiction(
+            ids=parsed or set(), jurisdiction=jurisdiction, dry_run=dry_run
+        )
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+
 @app.post("/internal/jurisdiction/backfill-apply")
 async def internal_jurisdiction_backfill_apply(
     dry_run: bool = True,
@@ -1234,72 +1294,14 @@ async def internal_jurisdiction_backfill_apply(
     )
 
 
-class SetExplicitJurisdictionRequest(BaseModel):
-    meeting_page_id: int
-    jurisdiction: str
-
-
-@app.post("/internal/jurisdiction/set-explicit")
-async def internal_jurisdiction_set_explicit(
-    req: SetExplicitJurisdictionRequest,
-    dry_run: bool = True,
-    authorization: Optional[str] = Header(None),
-):
-    """Explicit, one-row jurisdiction override -- the write path
-    /internal/jurisdiction/backfill-apply above can't provide, since that
-    endpoint only ever recomputes via finalize_jurisdiction() and never
-    accepts a caller-supplied string. Built for BACKLOG.md's Santa Clara
-    canonical-form entry: `County of Santa Clara, CA` / `The County of
-    Santa Clara, CA` / `Santa Clara County, CA` / `County of Santa Clara
-    Office` all independently validate today, so finalize_jurisdiction()'s
-    recompute makes zero changes to any of them -- there was no way to
-    move any of the four to the decided canonical form
-    (`Santa Clara County, CA`) without a real write path.
-
-    Same admin-token gate as every other /internal/* route
-    (_token_ok()). Takes exactly one `meeting_page_id` + the replacement
-    `jurisdiction` string in the POST body -- see
-    crud.validate_explicit_jurisdiction() for the (deliberately light)
-    sanity check applied before it's written, and
-    crud.set_explicit_jurisdiction()'s own docstring for why this
-    bypasses finalize_jurisdiction() entirely rather than re-deriving.
-    Written rows are tagged with the `manual_override` confidence tier,
-    distinct from every tier finalize_jurisdiction() itself can produce,
-    so a manually-set row stays identifiable to any later backfill sweep.
-
-    dry_run defaults to true (this file's existing read-only-first
-    convention -- see /internal/jurisdiction/backfill-apply above) and
-    returns the before/after diff it *would* write without touching the
-    database; pass `?dry_run=false` to commit. Idempotent: calling again
-    with the same jurisdiction string reports `changed: false` rather
-    than erroring or re-writing.
-    """
-    if not _token_ok(authorization):
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
-
-    try:
-        jurisdiction = crud.validate_explicit_jurisdiction(req.jurisdiction)
-    except ValueError as exc:
-        return JSONResponse({"detail": str(exc)}, status_code=400)
-
-    result = await crud.set_explicit_jurisdiction(
-        meeting_page_id=req.meeting_page_id,
-        jurisdiction=jurisdiction,
-        dry_run=dry_run,
-    )
-    if result.get("error") == "not_found":
-        return JSONResponse(result, status_code=404)
-    return result
-
-
 @app.get("/internal/jurisdiction/search")
 async def internal_jurisdiction_search(
     q: str,
     limit: int = 20,
     authorization: Optional[str] = Header(None),
 ):
-    """Read-only companion to POST /internal/jurisdiction/set-explicit
-    above -- that endpoint takes a `meeting_page_id`, and nothing in this
+    """Read-only companion to POST /internal/jurisdiction/override above
+    -- that endpoint takes comma-separated `ids`, and nothing in this
     file could answer "what id is the row whose jurisdiction reads X"
     without direct DB access. A substring ILIKE match against the stored
     `jurisdiction` column (same idiom `/api/jurisdictions` uses, but
@@ -1460,6 +1462,10 @@ class IngestRequest(BaseModel):
     # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).
     video_warnings: List[str] = []
     agenda_link: Optional[str] = None
+    # Mirrors ResolvedMeeting.packet_link (app/platforms/models.py,
+    # 2026-08-31) -- same silent-drop failure shape as every field above
+    # until its matching MeetingPage column/IngestRequest field exists.
+    packet_link: Optional[str] = None
     # Also mirrors ResolvedMeeting -- and was also silently dropped by
     # Pydantic on every single ingest until 2026-08-21 (WO-21), the exact
     # same failure shape as video_warnings/agenda_link above. The
@@ -1487,11 +1493,11 @@ class IngestRequest(BaseModel):
     input_url_normalized: str
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
-    # call simply omits it and gets the "scraped" default crud.
+    # call simply omits it and gets the "sourced" default crud.
     # ingest_resolution() already applied before this field existed.
     # scripts/transcribe_backlog_locally.py is the one real caller that
     # sets this to "transcribed" -- see that function's own docstring for
-    # why mislabeling self-transcribed content as "scraped" would be a
+    # why mislabeling self-transcribed content as "sourced" would be a
     # real problem (losing the AI-transcript disclaimer), not a cosmetic
     # one.
     source: Optional[str] = None

@@ -181,7 +181,7 @@ class ViebitAssetFinder(AssetFinder):
                             f"These captions appear to be in '{transcript_language}', not "
                             f"'{TARGET_LANGUAGE}'."
                         )
-                    if is_likely_garbled(cues):
+                    if is_likely_garbled(cues, lang=transcript_language):
                         transcript_warnings.append(
                             "This transcript looks garbled at the source (not a parsing "
                             "bug on our end) -- treat it as approximate."

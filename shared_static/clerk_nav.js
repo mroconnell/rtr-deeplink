@@ -271,25 +271,44 @@
     const signInLink = document.getElementById("clerk-sign-in-link");
     if (signInLink) {
       signInLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        // Real bug fixed 2026-08-11: the global signInForceRedirectUrl
-        // passed to Clerk.load() above wasn't enough on its own -- still
-        // dropped the visitor on the homepage after a real sign-in on
-        // staging, confirmed live (not a caching false-alarm; the fixed
-        // code was verified actually deployed). Clerk's docs distinguish
-        // a global default (Clerk.load()'s signInForceRedirectUrl) from
-        // this call's own forceRedirectUrl (SignInProps) -- passing it
-        // explicitly here is the more direct, per-call guarantee.
+        // Real bug found 2026-08-31: Clerk's openSignIn() *modal* (used
+        // here until this fix) has no recovery path when a step
+        // transition inside it fails. Confirmed live: password-strategy
+        // sign-in from a browser/device Clerk hasn't seen before trips
+        // "Client Trust" -- Clerk's anti-credential-stuffing check, on by
+        // default for every instance, not something this repo opted
+        // into (see the SignIn attempt response's own
+        // "client_trust_state": "new" field) -- which demands an
+        // email-code second factor. The modal's Radix-based dialog tries
+        // to aria-hide its backdrop as part of that step transition while
+        // focus is still retained on the (now `disabled`) password input
+        // inside it; the browser correctly refuses ("Blocked aria-hidden
+        // on an element because its descendant retained focus", caught
+        // live in DevTools) and the transition to the second-factor UI
+        // never happens. No error, no timeout -- the spinner just spins
+        // forever. Because Client Trust only fires for a genuinely new
+        // device, this never showed up in ordinary repeat-testing from
+        // the same browser.
         //
-        // Still not enough on its own even combined with the above (see
-        // maybeForceSignInReturn() above) -- markSignInReturnUrl() is the
-        // real, deterministic fix; forceRedirectUrl is left in place too
-        // since it's harmless and documented-correct even though it
-        // hasn't been sufficient alone in this environment.
+        // The standalone /sign-in page (mounted below via mountSignIn(),
+        // WO-65) has no modal/backdrop at all, so there's nothing for
+        // Clerk to aria-hide mid-transition -- confirmed live this
+        // sidesteps the hang. Routing the nav link there instead of
+        // through openSignIn() fixes this regardless of whether Client
+        // Trust (or real per-user MFA, same code path) ends up requiring
+        // a second factor, rather than depending on a fix to Clerk's own
+        // dialog component.
+        //
+        // markSignInReturnUrl() (real, deterministic fix from 2026-08-11,
+        // see maybeForceSignInReturn() above) still has to fire here and
+        // not just rely on /sign-in's own default landing page --
+        // without it, standaloneAuthDestination() has nothing stashed and
+        // sends the visitor to /account/saved instead of back to
+        // whatever page they clicked "Sign in" from. Not preventDefault()
+        // -- the href="/sign-in" navigation is now the real mechanism,
+        // this just needs to win the race against it, which a synchronous
+        // sessionStorage write always does.
         markSignInReturnUrl();
-        if (window.Clerk && typeof window.Clerk.openSignIn === "function") {
-          window.Clerk.openSignIn({ forceRedirectUrl: window.location.href });
-        }
       });
     }
     // Inline sign-in mount point (used by saved_items.html's logged-out

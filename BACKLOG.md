@@ -723,14 +723,17 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
 - **[JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
   action, not a human product decision — the write path now exists.**
-  `POST /internal/jurisdiction/set-explicit` (built 2026-08-31, see
-  `BACKLOG_DONE.md`) takes an explicit caller-supplied string and tags
-  the row `manual_override`, protected from being silently reverted on
-  a later re-ingest. Canonical form already decided (2026-08-23):
-  `Santa Clara County, CA` for the county rows. Applying it to the 4
-  Santa Clara rows + the VTA is a one-off `dry_run=false` call — not yet
-  made, since the endpoint was deliberately left unexercised against
-  production pending sign-off.
+  `POST /internal/jurisdiction/override` (PR #638, merged 2026-08-31 —
+  see `BACKLOG_DONE.md` for how this reconciled with a duplicate
+  version independently built the same day) takes comma-separated
+  `ids` + an explicit string and tags the rows `manual_override`,
+  protected from being silently reverted on a later re-ingest.
+  Canonical form already decided (2026-08-23): `Santa Clara County, CA`
+  for the county rows. Applying it to the 4 Santa Clara rows + the VTA
+  is a one-off `dry_run=false` call, findable via the new
+  `GET /internal/jurisdiction/search?q=santa+clara` — not yet made:
+  neither endpoint is deployed yet (production is still on an earlier
+  commit as of this writing).
 
 - **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
   City" → "Kansas City") — check `source_url_normalized` before
@@ -739,13 +742,14 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   -specific tenant (`app/platforms/granicus_channel.py`), and no Kansas
   City, KS tenant is registered anywhere in this repo. If rows 154/155's
   source URL is on that domain, this resolves via a `_KNOWN_DOMAINS`
-  entry or the new `set-explicit` endpoint above rather than being
-  genuinely ambiguous — not yet checked against the actual stored URL
-  (needs production DB/API access). If the source is something else
-  entirely, the case stays genuinely undecidable as before. (The other 5
-  pages this entry originally covered — Oxford County ON, Breckenridge
-  TX, Eustis FL, Hendersonville NC, Loganville GA — were confirmed
-  deployed and applied 2026-08-30, see `BACKLOG_DONE.md`.)
+  entry or the `override` endpoint above rather than being genuinely
+  ambiguous — not yet checked against the actual stored URL (needs a
+  deploy + `GET /internal/jurisdiction/search`). If the source is
+  something else entirely, the case stays genuinely undecidable as
+  before. (The other 5 pages this entry originally covered — Oxford
+  County ON, Breckenridge TX, Eustis FL, Hendersonville NC, Loganville
+  GA — were confirmed deployed and applied 2026-08-30, see
+  `BACKLOG_DONE.md`.)
 
 **2026-08-30 production write, for context**: 98 real jurisdiction
 corrections were applied directly to already-published pages this

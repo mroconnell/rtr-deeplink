@@ -142,3 +142,104 @@ describe('meeting_page.js GA events', () => {
     }
   });
 });
+
+// Transcript version-picker analytics (BACKLOG.md, 2026-08-22 entry --
+// "the picker has zero trackEvent calls, so there is no evidence about
+// whether it is ever seen or used"). #versionSelect only renders when
+// page.versions|length > 1 (meeting_page.html), so its absence is the
+// real single-version case, not a bug -- covered below too.
+async function makeVersionPickerPage({ optionsHtml, dataset } = {}) {
+  const opts = optionsHtml || [
+    '<option value="1" data-source="sourced" selected>English (sourced)</option>',
+    '<option value="2" data-source="whisper">English (auto-generated)</option>',
+  ].join('');
+  const attrs = Object.assign(
+    { activeSource: 'sourced', versionCount: '2', isDefault: 'true' },
+    dataset
+  );
+  const dom = new JSDOM(
+    `<!DOCTYPE html><html><body>
+      <form method="get" class="version-picker">
+        <select id="versionSelect" name="version"
+                data-active-source="${attrs.activeSource}"
+                data-version-count="${attrs.versionCount}"
+                data-is-default="${attrs.isDefault}">
+          ${opts}
+        </select>
+      </form>
+    </body></html>`,
+    { url: 'https://example.test/m/x', runScripts: 'dangerously' }
+  );
+  const { window } = dom;
+  const events = [];
+  window.trackEvent = (name, params) => events.push({ name, params });
+  const s = window.document.createElement('script');
+  s.textContent = MEETING_PAGE_SRC;
+  window.document.head.appendChild(s);
+  await flush();
+  return { window, events };
+}
+
+describe('meeting_page.js transcript version-picker analytics', () => {
+  test('transcript_version_available and transcript_version_viewed fire once on load', async () => {
+    // Compare extracted values, not whole objects: params are created
+    // inside the jsdom window (a different realm), so deepEqual's
+    // prototype check fails on structurally identical objects -- same
+    // gotcha the save_meeting test above already documents.
+    const { events } = await makeVersionPickerPage();
+    const available = events.filter((e) => e.name === 'transcript_version_available');
+    assert.equal(available.length, 1);
+    assert.deepEqual(
+      [available[0].params.count, available[0].params.active_source, available[0].params.label_ambiguous],
+      [2, 'sourced', false]
+    );
+    const viewed = events.filter((e) => e.name === 'transcript_version_viewed');
+    assert.equal(viewed.length, 1);
+    assert.equal(viewed[0].params.is_default, true);
+  });
+
+  test('label_ambiguous is true when two options render identical text', async () => {
+    const dupeOptions = [
+      '<option value="1" data-source="sourced" selected>English (sourced)</option>',
+      '<option value="2" data-source="deduped">English (sourced)</option>',
+    ].join('');
+    const { events } = await makeVersionPickerPage({ optionsHtml: dupeOptions });
+    const available = events.find((e) => e.name === 'transcript_version_available');
+    assert.equal(available.params.label_ambiguous, true);
+  });
+
+  test('is_default reflects a non-default selection', async () => {
+    const { events } = await makeVersionPickerPage({ dataset: { isDefault: 'false' } });
+    const viewed = events.find((e) => e.name === 'transcript_version_viewed');
+    assert.equal(viewed.params.is_default, false);
+  });
+
+  test('no #versionSelect (single-version page) fires nothing, not an error', async () => {
+    const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+      url: 'https://example.test/m/x',
+      runScripts: 'dangerously',
+    });
+    const { window } = dom;
+    const events = [];
+    window.trackEvent = (name, params) => events.push({ name, params });
+    const s = window.document.createElement('script');
+    s.textContent = MEETING_PAGE_SRC;
+    window.document.head.appendChild(s);
+    await flush();
+    assert.equal(events.length, 0);
+  });
+
+  test('transcript_version_change is wired inline in the template, not this file', () => {
+    // Per BACKLOG.md's own decision: navigation must never depend on this
+    // file loading, so the change event fires inline in meeting_page.html's
+    // onchange, immediately before the existing this.form.submit(). Pin
+    // that the inline call exists in the template rather than assuming
+    // meeting_page.js emits it.
+    const templateSrc = fs.readFileSync(
+      path.join(__dirname, '..', 'archive', 'templates', 'meeting_page.html'),
+      'utf8'
+    );
+    assert.ok(templateSrc.includes("trackEvent('transcript_version_change'"));
+    assert.ok(!MEETING_PAGE_SRC.includes("trackEvent('transcript_version_change'"));
+  });
+});

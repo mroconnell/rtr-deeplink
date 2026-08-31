@@ -465,7 +465,7 @@ function itself with both marker types together:
 `tests/test_transcription_jobs.py::test_list_transcription_backlog_candidates_includes_garbled_and_granicus_truncated_pages`.
 65 tests passed across the affected files.
 
-## `POST /internal/jurisdiction/set-explicit` built — the missing admin write path for jurisdiction overrides [Done 2026-08-31]
+## Jurisdiction override write path: built independently, then reconciled with a concurrent session's better version [Done/Superseded 2026-08-31]
 
 Residual of WO-47's Santa Clara review (2026-08-29): 4 Santa Clara
 strings and the VTA all independently validate under
@@ -473,33 +473,39 @@ strings and the VTA all independently validate under
 write makes zero changes to any of them, and no endpoint accepted an
 explicit caller-supplied string.
 
-**Built**: `POST /internal/jurisdiction/set-explicit` (`archive/main.py`,
-right after `/internal/jurisdiction/backfill-apply`), same
-`_token_ok()` gate, `dry_run` defaults true, idempotent. Body:
-`{meeting_page_id, jurisdiction}`. Delegates to new
-`crud.set_explicit_jurisdiction()`, which writes `jurisdiction` + a new
-`manual_override` confidence tier (plain `String(20)` value, no
-migration needed — confirmed via `alembic check`, no schema drift).
-Validation via `crud.validate_explicit_jurisdiction()` is deliberately
-lighter than `finalize_jurisdiction()`'s full place-name validation —
-non-empty + ≤200 chars — that's the whole point of the endpoint.
+Built `POST /internal/jurisdiction/set-explicit` (one row per call) and
+`crud.set_explicit_jurisdiction()`/`validate_explicit_jurisdiction()`,
+plus (independently, same real bug, same fix) a guard in
+`_find_or_create_page()` so a manual override survives a later
+re-ingest instead of being silently reverted on the next passive
+`ARCHIVE_RECHECK_AFTER` hit, "Refresh this page" click, admin recheck,
+or backfill sweep.
 
-**Real bug caught and fixed proactively while building this**:
-`_find_or_create_page()`'s existing-page branch refreshes
-`jurisdiction`/`jurisdiction_confidence` on every re-ingest whenever the
-fresh resolve produces a truthy jurisdiction, which real adapters
-always do — without a guard, a manual override would be silently
-reverted on the very next passive `ARCHIVE_RECHECK_AFTER` hit, "Refresh
-this page" click, admin recheck, or backfill sweep, making the endpoint
-a one-time cosmetic fix rather than a real one. Added a guard: when
-`page.jurisdiction_confidence == "manual_override"`, the refresh is
-skipped. Covered by `test_manual_override_survives_a_later_reingest`.
+**Superseded on merge**: another concurrent session (PR #638, merged to
+`main` while this one was in progress — see CLAUDE.md's multi-session
+convention) had independently built the same capability, better scoped
+— `POST /internal/jurisdiction/override` (`crud.override_jurisdiction()`)
+takes **comma-separated `ids`**, applying one jurisdiction string to a
+whole batch in one call (exactly what Santa Clara's 4-6 rows need),
+tags the same `manual_override` confidence tier, adds the identical
+re-ingest guard, and *additionally* stamps `reviewed_at`. Reconciling
+the merge: dropped this session's `set_explicit_jurisdiction()`/
+`validate_explicit_jurisdiction()`/`SetExplicitJurisdictionRequest` and
+the redundant `_find_or_create_page()` guard entirely in favor of
+`main`'s version — real convergent duplicate work, not a design
+disagreement, so no reason to keep both.
 
-15 new tests (`tests/test_jurisdiction_set_explicit.py`), full suite
-2309 passed with no regressions from the `_find_or_create_page` change.
-**Not called against production** — built and tested only. Applying it
-to Santa Clara's actual 4 rows + the VTA is a deliberate follow-up
-`dry_run=false` call, not done here.
+**What did survive**: `GET /internal/jurisdiction/search`
+(`crud.search_pages_by_jurisdiction_text()`) — the read-only,
+admin-token-gated, id-returning ILIKE-substring lookup `override`'s own
+`ids`-only interface still doesn't provide, and `main`'s PR didn't add
+one either. Genuinely additive, not duplicated. 5 tests
+(`tests/test_jurisdiction_search.py`, `test_jurisdiction_set_explicit.py`
+deleted). Full suite green after reconciliation.
+
+**Still not called against production** — applying `/internal/jurisdiction/
+override` to Santa Clara's actual rows is a deliberate follow-up call,
+not done here; see BACKLOG.md's Santa Clara entry for what's left.
 
 ## Lloydminster (AB/SK) registered as a known jurisdiction [Done 2026-08-31]
 
@@ -634,6 +640,70 @@ Commission Meetings") via its public Atom feed: "Finance and Government
 Operations Committee Meeting - August 24, 2026" is there, published the
 next day. The existing fallback logic is working correctly on a fresh,
 current real example -- no bug found, nothing to build.
+
+## Nav sign-in modal hung forever when Clerk required a second factor [Done 2026-08-31]
+
+Real production bug, reported live by the user testing email/password
+sign-in ("not Google") on redtaperecordings.com: the nav's "Sign in /
+Register" link opens Clerk's `openSignIn()` modal, which showed the
+password form fine but then hung on a spinner **indefinitely** after
+submit — never completed, never errored.
+
+**Root cause, confirmed via the user's own DevTools, not guessed:**
+Network tab showed the actual `POST /v1/client/sign_ins` succeeding
+(200 OK, 461ms) with `Set-Cookie` for `__session`/`__client_uat` present
+— so Clerk's backend did its job. The response body (captured from the
+user's Network tab) showed `"status": "needs_second_factor"`,
+`first_factor_verification` already `"verified"`, and
+`"client_trust_state": "new"` — this wasn't opted-in per-user MFA (the
+Clerk Dashboard's Multi-factor page had every strategy off, and the
+user's own Settings tab showed "Bypass Device Trust" as the only
+relevant per-user toggle, not a way to disable it instance-wide). It's
+**Client Trust**, Clerk's anti-credential-stuffing feature that's
+default-on for every instance on every plan (confirmed via Clerk's own
+docs/changelog): password sign-in from a device Clerk hasn't seen before
+automatically demands an email-code second factor.
+
+The console showed exactly why the UI never advanced to that step:
+`Blocked aria-hidden on an element because its descendant retained
+focus`, naming `<div class="cl-modalContent">` as the focused element and
+`<div class="cl-modalBackdrop" aria-hidden="true">` as the ancestor. The
+modal's Radix-based dialog tries to `aria-hide` its backdrop as part of
+the password→second-factor step transition, while focus is still
+retained on the now-`disabled` password input inside it. The browser
+correctly refuses (per spec — an aria-hidden ancestor can't contain the
+focused element), and the transition to the second-factor UI silently
+never happens: no error, no timeout, no code ever gets emailed. Because
+Client Trust only fires for a genuinely new device, this never surfaced
+in ordinary repeat-testing from the same browser — only Google OAuth
+(no password/2FA chain at all, pure redirect) had been tested
+repeatedly before this.
+
+**Fix**: `shared_static/clerk_nav.js`'s `#clerk-sign-in-link` click
+handler no longer calls `window.Clerk.openSignIn()` (the modal). It now
+just calls `markSignInReturnUrl()` and lets the anchor's real
+`href="/sign-in"` navigate there — the existing standalone, non-modal
+`/sign-in` page (WO-65, `mountSignIn()`) that until now only existed as
+a landing spot for Clerk's own cross-links. That page has no modal/
+backdrop element at all, so there's nothing for Clerk to `aria-hide`
+mid-transition — this fixes the hang regardless of whether Client Trust
+or real per-user MFA is what triggers the second factor, rather than
+depending on a fix to Clerk's own dialog component. `app/templates/
+base.html` and `archive/templates/base.html` both changed the link's
+`href` from `#` to `/sign-in` to match (previously `e.preventDefault()`
+meant the href was never actually followed).
+
+Both nav templates' server-rendered markup is asserted in
+`tests/test_accounts_anonymous_regression.py` (both the hidden/signed-in
+and visible/signed-out states) and `tests/test_auth_pages.py`'s
+docstring was updated — it previously asserted the modal "was never
+affected" by the /sign-up /sign-in 404 bug this same pair of routes was
+originally built for; that claim is no longer true; the two pages are
+now the app's only sign-in/sign-up UI. Full suite green (2289 passed,
+15 skipped) plus a live local-server check (fake Clerk key, since no
+real key is available in this worktree): clicking the nav link in a real
+browser navigated to `GET /sign-in → 200 OK` and updated the tab title,
+confirming the click handler and href both work end to end.
 
 ## New GET /internal/jurisdiction/missing endpoint — answers "which pages have no jurisdiction," grouped by platform [Done 2026-08-31]
 

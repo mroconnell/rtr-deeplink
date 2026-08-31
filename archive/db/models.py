@@ -60,8 +60,10 @@ class MeetingPage(Base):
     # every page where no split applied, which is most of them.
     # jurisdiction_confidence is one of finalize_jurisdiction()'s
     # JurisdictionResult.confidence values ("authoritative"/"validated"/
-    # "repaired"/"fallback"/"unverified"/"blank") -- a plain string
-    # column, not an enum, so a new confidence tier never needs a
+    # "repaired"/"fallback"/"unverified"/"blank"), or "manual_override"
+    # -- the one tier finalize_jurisdiction() itself never produces,
+    # written only by POST /internal/jurisdiction/override. A plain
+    # string column, not an enum, so a new confidence tier never needs a
     # migration to add.
     meeting_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(
@@ -81,6 +83,15 @@ class MeetingPage(Base):
     # point, corrected the same day this column was added.
     video_warnings: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     agenda_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Mirrors ResolvedMeeting.packet_link (app/platforms/models.py,
+    # 2026-08-31): the fuller "packet" rendition of the agenda (agenda
+    # plus every staff report), when a platform distinguishes it from
+    # `agenda_link` as a separate document. Deliberately its own column,
+    # not folded into `agenda_link` -- see that field's own comment for
+    # why (a packet can run to tens of megabytes, so it needs a plain
+    # outbound link rather than an inline viewer). Null on every platform
+    # that doesn't distinguish a packet, which is most of them.
+    packet_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Mirrors ResolvedMeeting.best_effort (app/platforms/models.py): True
     # when the resolve behind this page came from generic_fallback.py's
@@ -320,6 +331,14 @@ class TranscriptVersion(Base):
     # explicit call, 2026-08-22, over adding a separate label column and
     # the migration that needs.
     #
+    # The default value is literally "sourced" (renamed from "scraped"
+    # 2026-08-31, Ryan's call -- "we should never say scraped, always
+    # sourced"; see BACKLOG_DONE.md's matching entry for the full
+    # rename, including the one-time data migration every existing row
+    # needed). No reader has ever seen the raw token either way -- the
+    # rename was purely so the *internal* name stopped disagreeing with
+    # what it displays as.
+    #
     # Two consequences worth knowing before adding a value here:
     #   1. Add it to _SOURCE_LABELS, or the raw token leaks to a reader.
     #   2. Only "transcribed" means AI-generated. Everything else is
@@ -329,7 +348,7 @@ class TranscriptVersion(Base):
     #
     # Plain String(20), no enum or CHECK, so a new value needs no
     # migration -- but it does need both of the above.
-    source: Mapped[str] = mapped_column(String(20), nullable=False, default="scraped")
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="sourced")
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     segments: Mapped[list] = mapped_column(JSON, nullable=False)

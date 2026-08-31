@@ -42,7 +42,7 @@ just gets deduped, not double-versioned. Pushes with `"source":
 "transcribed"` explicitly (see IngestRequest.source and
 crud.ingest_resolution()'s own docstring in archive/main.py /
 archive/db/crud.py) -- omitting it would silently mislabel this as a
-"scraped" (i.e. authoritative-government-caption) version, losing the
+"sourced" (i.e. authoritative-government-caption) version, losing the
 real AI-transcript disclaimer meeting_page.html already renders for
 source=="transcribed" content. That disclaimer matters more here than
 for the worker's own output, not less: this script deliberately favors
