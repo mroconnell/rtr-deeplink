@@ -236,7 +236,7 @@ requests==2.34.2
     #   pip-audit
 rich==15.0.0
     # via pip-audit
-ruff==0.16.4
+ruff==0.16.5
     # via -r requirements-dev.in
 sentry-sdk==2.68.0
     # via -r requirements.txt
@@ -319,6 +319,8 @@ yarl==1.24.5
     # via
     #   -r requirements.txt
     #   aiohttp
+yt-dlp==2026.8.19
+    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
