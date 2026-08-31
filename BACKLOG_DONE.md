@@ -97,7 +97,7 @@ time: `scripts/analyze_db_storage.py` only reads `rtr_archive`'s size;
 server (including `rtr_deeplink_db`) and needs no shell —
 `curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"`.
 
-## Bleed-backfill queue: 70 real jurisdiction corrections applied to production, verified via real source pages not just text-matching, plus root-cause fixes for the 4 that were genuinely wrong [Done 2026-08-30]
+## Bleed-backfill queue: 94 real jurisdiction corrections applied to production, verified via real source pages not just text-matching, plus root-cause fixes for the 4 that were genuinely wrong [Done 2026-08-30]
 
 Closes the "51 pre-existing recompute-backfill candidates" entry left
 open since WO-47 (2026-08-23) specifically because it wasn't uniformly
@@ -244,6 +244,38 @@ deployed code, so it needs a deploy before it will compute the
 corrected values for those specific rows. Oxford County (`808`, needs
 its province corrected from ME to ON) was found too late for WO-76 to
 cover — left open in BACKLOG.md as a residual.
+
+**Round 5 — post-deploy re-audit (24 more, 94 total).** Once the user
+deployed WO-67 through WO-76, re-ran the candidate audit to confirm the
+fixes actually took effect and apply what was now correct. Confirmed
+live: page `2095` ("Colorado") is no longer even a candidate — stays
+bare "Colorado" with no wrong state appended, `resolve_state()`'s guard
+working as intended. Applied 6 immediately-resolved rows (Chester
+County PA ×2, Douglas MI, Lake Washington School District WA,
+Louisville KY ×2 — all now computing exactly the values WO-76 predicted).
+Deploying WO-69 also surfaced **18 brand-new candidates** that hadn't
+existed in the pre-deploy audit at all: 7 are the eScribe known-domain
+fixes taking effect for real pages (Horry County Schools, Sunshine
+Coast Regional District, Whistler/RMOW, Ashfield-Colborne-Wawanosh,
+Thunder Bay District Health Unit, Surrey Schools, Hamilton Public
+Library), 1 a cosmetic Tampa state-suffix add, and 10 more real
+"Board of Supervisors"/"Board of Commissioners"/"County Council"
+county-pattern pages matching the exact shape that had verified
+correct 9-for-9 in Round 3 — applied on the strength of that pattern
+plus each one's own explicit title, except 2 (`Independence, KS` →
+`Montgomery County, KS`, titled only "One Time Event," no confirming
+signal) which got an extra live domain check first: the real source is
+`montgomerycoks.portal.civicclerk.com` — the subdomain itself spells
+out "Montgomery Co(unty) KS," confirming the repair before applying.
+**Also confirmed real and left open**: the Breckenridge/Eustis/
+Hendersonville/Loganville group (`1435`/`1441`/`1442`/`1447`) is a
+genuinely different, still-unfixed bug from what WO-70 covers —
+`resolve_claimed_state()` only recognizes a comma-separated claimed
+state ("X, State"), not these pages' no-comma shape ("City of
+Breckenridge Texas Meetings"), so they keep dropping the state entirely
+instead of attaching it; new BACKLOG.md entry filed. Kansas City
+(`154`/`155`) stays open too — a genuine KS/MO ambiguity, not a code
+bug.
 
 **Also pulled while read access was open**: current real `/internal/
 low-trust-pages` counts (631 total, 236 with no jurisdiction at all —

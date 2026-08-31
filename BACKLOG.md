@@ -56,24 +56,23 @@ Standing decisions — do NOT re-raise  (3)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (7)
+  Production actions only Ryan should take  (6)
     [HUMAN] Deploy resolver + Archive, then click Validate Fix in
     [NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
-    [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -103,13 +102,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (17)
+  Jurisdiction extraction & backfill  (16)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
-    [HUMAN] 5 already-published pages need a production deploy before
     [NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-    [NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
+    [NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -527,33 +525,6 @@ convenient.
   4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
   `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
   transcription queue.
-- **[HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
-  cause established 2026-08-22, only the cleanup action is left.** The
-  resolver's `rtr_deeplink_db` also holds a full set of Archive-shaped
-  tables (`meeting_pages`, `transcript_versions`, …) containing 4 demo
-  rows dated 2026-08-12, entirely separate from the real Archive data in
-  `rtr_archive`. Cause: a local Archive run pointed at the resolver's
-  database on 2026-08-12, before any of the guards that would now
-  prevent this existed — `create_all()` ran unconditionally on Postgres
-  until 2026-08-17, and the `EXPECTED_DB_HOST` assertion also landed
-  after — combined with `load_dotenv()`'s documented cwd-walk behavior
-  silently supplying the wrong `DATABASE_URL`. Full commit timeline in
-  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-22]` entry.
-
-  **Decided 2026-08-22: drop them, with a backup first.** The tables'
-  continued existence is now the actual hazard — `create_all()` no
-  longer creates tables on Postgres, so a future mis-pointed local run
-  would fail loudly everywhere *except* `rtr_deeplink_db`, where the
-  tables already exist and a write would silently succeed. Ryan runs
-  this — a destructive production action, stays `[HUMAN]` until done:
-  1. Take a PITR marker/backup of `rtr_deeplink_db` first.
-  2. Confirm the 4 rows are the demo data and nothing references those
-     tables — check the live table list, not just `app/db/models.py`.
-  3. Drop the Archive-shaped tables from `rtr_deeplink_db` **only** —
-     never `rtr_archive`, which has identical table names and the real
-     corpus. Double-check the connection target immediately before
-     executing, not just when opening the session.
-
 ### Decisions about already-live content
 
 - **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
@@ -1571,24 +1542,9 @@ registry).
   entry is only for fixing the suffix gap itself, not for the specific
   rows above (already resolved).
 
-- **[HUMAN] 5 already-published pages need a production deploy before
-  their jurisdiction can be corrected — code fixed and merged
-  2026-08-30 (WO-76), just not live yet.** Pages `1151`/`703` (real:
-  **Chester County, PA**), `1439` (real: **Douglas, MI**), `2095`
-  (real: **Colorado**, the state legislature), and `2471` (real: **Lake
-  Washington School District, WA**) were all visually confirmed wrong
-  against their real source pages, and WO-76 root-caused and fixed the
-  underlying code (3 structural fixes, 1 targeted `_KNOWN_DOMAINS`
-  override — see `BACKLOG_DONE.md` for the full per-case reasoning).
-  `POST /internal/jurisdiction/backfill-apply` recomputes from live
-  deployed code, so these 4 pages will keep computing their old wrong
-  values until the next deploy runs — re-run `GET /internal/
-  jurisdiction/bleed-backfill-candidates` (filtered to these 4 ids)
-  and apply once deployed.
-
 - **[NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-  ME") needs its province corrected to ON, found after WO-76 was
-  already dispatched so not covered by that fix.** Visually confirmed:
+  ME") needs its province corrected to ON — confirmed still wrong
+  post-deploy 2026-08-30, WO-76 didn't cover it.** Visually confirmed:
   the real source, `pub-oxfordcounty.escribemeetings.com`, is
   unambiguously **Oxford County, Ontario** (`www.oxfordcounty.ca`,
   dozens of real by-laws naming its constituent lower-tier
@@ -1599,24 +1555,33 @@ registry).
   different countries/states) — likely fixable the same way, not
   attempted here.
 
-- **[NEEDS-AUDIT] The Kansas City/Louisville consolidated-government
-  trio (`154`/`155`/`169`/`341`) and 4 more rows
-  (`1435`/`1441`/`1442`/`1447`, Breckenridge/Eustis/Hendersonville/
-  Loganville) are held back pending a production deploy, not a data
-  problem.** These depend on WO-68's and WO-70's fixes (state-suffix
-  attachment for consolidated governments; explicit-claimed-state
-  resolution), both merged to `main` 2026-08-30 but not yet deployed —
-  `GET /internal/jurisdiction/bleed-backfill-candidates` still computes
-  their pre-fix values live. Re-run the audit after the next deploy;
-  these should mostly resolve on their own.
+- **[NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
+  comma-separated claimed state ("X, State") — a real, distinct
+  no-comma shape still drops the state entirely, confirmed live
+  post-deploy 2026-08-30.** 4 real pages (`1435` "City of Breckenridge
+  **Texas** Meetings", `1441` "City of Eustis **Florida** Meetings",
+  `1442` "City of Hendersonville **North Carolina** Meetings", `1447`
+  "Loganville **Georgia** Meetings") all name their own state directly
+  in the raw text, no comma — WO-70's fix doesn't recognize this shape,
+  so the repair strips "Meetings"/the state name entirely rather than
+  attaching a proper suffix, actually a small regression versus the
+  current (also-imperfect) stored value, which at least has the state
+  spelled out somewhere in the text. Not applied. The Kansas City pair
+  (`154`/`155`, "City of Kansas City" → "Kansas City") is a genuinely
+  different, harder case — Kansas City spans two states (KS/MO) with no
+  single correct answer from this data alone — left open, not a deploy
+  dependency.
 
-**2026-08-30 production write, for context**: 70 real jurisdiction
+**2026-08-30 production write, for context**: 94 real jurisdiction
 corrections were applied directly to already-published pages this
-session (40 confirmed via a text/confidence-tier heuristic, 5 more on
-review, 20 more via real visual verification against the source
-page's own letterhead/seal/agenda content — not just title-matching, 5
-more in a follow-up pass on rows an earlier batch had accidentally
-skipped). Full detail in `BACKLOG_DONE.md`.
+session across 5 rounds (40 confirmed via a text/confidence-tier
+heuristic, 5 more on review, 20 more via real visual verification
+against the source page's own letterhead/seal/agenda content, 5 more
+in a follow-up pass on rows an earlier batch had accidentally skipped,
+6 more re-verified correct after the 2026-08-30 deploy landed WO-68/
+WO-76's fixes, and 18 more from a fresh batch of candidates that only
+became correct — or only appeared at all — once WO-69's eScribe fixes
+deployed). Full detail in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
   narrowed 2026-08-18: "Meeting"/"Attachments" tails are fixed (a
