@@ -1847,11 +1847,19 @@ async def subscribe(request: Request):
 # /sign-in *on this origin*. Neither path existed until WO-65, so the
 # inline sign-in form on /account/saved dead-ended in a 404 -- confirmed
 # live 2026-08-28, the rendered link's href really was
-# https://redtaperecordings.com/sign-up. The nav's modal (openSignIn)
-# was never affected: it uses Clerk's virtual router, so its own link is
-# the sentinel "CLERK-ROUTER/VIRTUAL/sign-up" and switches views inside
-# the modal without navigating anywhere -- verified live in the same
-# pass, and deliberately left alone here rather than "fixed" too.
+# https://redtaperecordings.com/sign-up. At the time, the nav's modal
+# (openSignIn) was left alone: it uses Clerk's virtual router, so its own
+# link is the sentinel "CLERK-ROUTER/VIRTUAL/sign-up" and switches views
+# inside the modal without navigating anywhere.
+#
+# That modal turned out to have its own real bug (found 2026-08-31, see
+# shared_static/clerk_nav.js's click handler on #clerk-sign-in-link for
+# the full writeup): a second-factor step (Clerk's default-on Client
+# Trust check, or real per-user MFA) never renders inside it, so the nav
+# link now navigates here instead of opening the modal at all -- these
+# two mounted (non-modal) pages are the *only* sign-in/sign-up UI left in
+# the app as of that fix, not just the fallback for Clerk's own
+# cross-links anymore.
 #
 # Both routes live on the resolver even though the form that links to
 # them is served by the Archive (/account/saved is proxied through

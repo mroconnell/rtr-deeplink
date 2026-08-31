@@ -101,7 +101,7 @@ def test_nav_shows_signed_in_state_immediately_when_active_account_present(monke
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
     assert (
-        '<a class="nav-link" href="#" id="clerk-sign-in-link" hidden>Sign in / Register</a>'
+        '<a class="nav-link" href="/sign-in" id="clerk-sign-in-link" hidden>Sign in / Register</a>'
         in response.text
     )
     assert '<span id="clerk-user-button"></span>' in response.text
@@ -121,7 +121,7 @@ def test_nav_shows_signed_out_state_when_no_active_account(monkeypatch):
     response = archive_client_.get("/account/saved")
     assert response.status_code == 200
     assert (
-        '<a class="nav-link" href="#" id="clerk-sign-in-link">Sign in / Register</a>'
+        '<a class="nav-link" href="/sign-in" id="clerk-sign-in-link">Sign in / Register</a>'
         in response.text
     )
     assert '<span id="clerk-user-button" hidden></span>' in response.text

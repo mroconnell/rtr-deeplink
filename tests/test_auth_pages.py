@@ -11,11 +11,18 @@ has the mirror-image link ("Have an account? Sign in" at `signInUrl`,
 default /sign-in), which is why both halves are needed rather than just
 the one the bug report named.
 
-The nav's *modal* (Clerk.openSignIn) was never affected -- it uses
-Clerk's virtual router, so its own link renders as the sentinel
+At the time, the nav's *modal* (Clerk.openSignIn) was left alone -- it
+uses Clerk's virtual router, so its own link renders as the sentinel
 "CLERK-ROUTER/VIRTUAL/sign-up" and switches views inside the modal
-without navigating. Verified live in the same pass, and deliberately
-left alone.
+without navigating. Verified live in the same pass.
+
+That modal turned out to have its own real bug (found 2026-08-31): a
+second-factor step (Clerk's default-on Client Trust check, or real
+per-user MFA) never renders inside it -- see shared_static/clerk_nav.js's
+click handler on #clerk-sign-in-link for the full writeup. The nav link
+now navigates to this /sign-in page instead of opening the modal, so
+this page is the only sign-in UI left in the app, not just Clerk's own
+fallback destination for its cross-links.
 
 These are route/markup-level assertions only. Whether Clerk's own
 component renders inside the mount div is a client-side concern with no
