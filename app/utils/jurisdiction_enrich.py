@@ -2947,6 +2947,19 @@ def _validated_label_extract_with_state(
     glued = "".join(words).capitalize()
     if len(glued) >= 3 and _table_lookup(glued):
         return glued, stripped_state
+    # A real, if small, leading-article gap: 17 real Census/StatsCan place
+    # and county-subdivision names start with "The " ("The Blue Mountains,
+    # ON", "The Colony city, TX", "The Dalles city, OR", among others,
+    # confirmed via a plain grep across places.csv/county_subdivisions.csv
+    # 2026-08-31) -- but a subdomain almost never spells out "the" (nobody
+    # registers "pub-thebluemountains"), so the plain `spaced` candidate
+    # above can never match these even though the table entry is real.
+    # Found chasing BACKLOG.md's Blue Mountains entry, which had
+    # misdiagnosed this as a hyphen-formatting gap (it isn't -- "Blue
+    # Mountains" alone doesn't validate at all, hyphenated or not; only
+    # prepending "The" does).
+    if _table_lookup(f"The {spaced}"):
+        return f"The {spaced}", stripped_state
 
     # Tier 4: trailing connector word, type word re-attached (see docstring).
     if len(words) > 1 and words[-1].lower() in _TRAILING_TYPE_WORDS:

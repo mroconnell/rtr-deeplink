@@ -67,7 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (47)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (46)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -90,13 +90,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (47)
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (13)
+  Jurisdiction extraction & backfill  (12)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
-    [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
@@ -995,36 +994,6 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
   `_MIN_BLEED_WORD_RUN` would also wrongly trim real long names like
   "Lake Washington School District" → "Lake"). Closable the moment a
   second real example turns up.
-
-- **[NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
-  2026-08-18: a handful of real, currently-correct eScribe customer
-  names would decline to blank on a FUTURE re-resolve.** Confirmed via a
-  full sweep of all 176 eScribe + 253 Granicus subdomains in production:
-  **Lloydminster** (AB/SK) is an unambiguous real place still missing
-  from the table. **Paso Robles closed 2026-08-23 (WO-47)**: the Census
-  gazetteer names it "El Paso de Robles (Paso Robles) city", and
-  `_load_name_state_table()` now indexes parenthetical alternate names
-  (junk parentheticals like "(Part)"/"(balance)" filtered), so both
-  "Paso Robles" and "El Paso de Robles" resolve to CA — the same fix
-  that corrected the two "City of Ventura, IA" misattributions ("San
-  Buenaventura (Ventura)" was equally invisible). Ontario's "regional
-  municipality"
-  entities — **Durham / Peel / Region of Waterloo** — were partially
-  fixed 2026-08-21 (`build_canada_regional_municipalities()` adds these
-  3 confirmed-in-production customers, grounded in StatsCan's SGC 2021
-  structure plus a 2019 provincial review; the other 5 real Ontario
-  regional municipalities that review names aren't added since no
-  customer for those is confirmed live yet). **Re-verified 2026-08-30:
-  Chatham-Kent and Arran-Elderslie are already fixed** — folded into the
-  eScribe-residuals fix below (a hyphen-joined wordninja tier), confirmed
-  live: `validated_label_extract('pub-chatham-kent')` → `'Chatham-Kent'`,
-  `validated_label_extract('pub-arranelderslie')` → `'Arran-Elderslie'`.
-  This entry hadn't been updated when that fix landed. **Only Blue
-  Mountains is still genuinely open** (`pub-bluemountains.
-  escribemeetings.com`, confirmed live: `validated_label_extract` still
-  returns `None`) — a real Ontario municipality lost purely on a
-  hyphen-formatting mismatch. Scope note: this can't retroactively fix an
-  already-published page — only a future new meeting or explicit re-feed.
 
 - **[NEEDS-AUDIT] One likely truncation case found in the same sweep —
   the opposite failure from bleed (losing real characters, not gaining
