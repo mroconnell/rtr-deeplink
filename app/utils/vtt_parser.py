@@ -384,6 +384,26 @@ _TAG_RE = re.compile(r"<[^>]+>")
 #    '»' in one cue and '>>' in the next. Case-sensitive comparison drops the
 #    real Antioch CivicClerk track's roll-up ratio from 0.451 to 0.111 --
 #    under the gate, i.e. the bug silently stays unfixed.
+#  * A fifth real shape sits much closer to this gate than any of the four
+#    above, and is worth knowing about before ever raising
+#    _ROLLUP_PAIR_RATIO_MIN. The 2026-08-30 production sweep
+#    (scripts/dedupe_rollup_transcripts.py, real Archive pages -- see
+#    scripts/rollup_dedupe_report.json) found 8 real pages, every one a
+#    YouTube auto-caption track behind a CivicWeb or Municode portal, that
+#    emit each speaker-change *line* twice in a row -- once as '>>', once
+#    already-folded to '»' -- with no scrolling/growing window around it
+#    (unlike the classic YouTube shape above). No new logic was needed:
+#    the same fold this bullet's comparison already does collapses the
+#    duplicate pair correctly (see
+#    test_dedupe_rollup_cues_collapses_real_youtube_double_marker_duplicate_pairs
+#    in tests/test_vtt_parser.py). But because the duplication is only two
+#    lines at a time rather than a whole scrolling window, these pages
+#    score just 0.2023-0.2445 -- confirmed real, confirmed clearing this
+#    gate, but with a margin under 0.005 at the low end, nothing like the
+#    four shapes' 0.048-vs-0.401 gap. Moving this threshold up even
+#    slightly to quiet a false positive elsewhere would silently stop
+#    catching this real cluster with no test failure anywhere else to
+#    catch it -- the two tests named above are what would catch it.
 _ROLLUP_MIN_OVERLAP_CHARS = 4
 _ROLLUP_MIN_PAIRS = 2
 _ROLLUP_PAIR_RATIO_MIN = 0.20
