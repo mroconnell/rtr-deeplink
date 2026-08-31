@@ -520,6 +520,21 @@
       <iframe class="agenda-inline-frame" src="{{ page.agenda_link }}" title="Meeting agenda document" loading="lazy" referrerpolicy="no-referrer"></iframe>
       {% endif %}
       {% endif %}
+      {#- packet_link (2026-08-31): the fuller agenda-plus-every-staff-
+         report rendition, only ever set when a platform distinguishes
+         it as a genuinely separate document (confirmed so far:
+         CivicPlus's own ?packet=true link, CivicClerk's vendor-typed
+         "Agenda Packet" publishedFiles entry). Deliberately a plain
+         outbound link, never the inline iframe agenda_link gets --
+         a packet can run into the tens of megabytes (a sister project
+         solving the same problem measured a real 90 MB one), so
+         framing it inline would be a bad default. Only shown when it's
+         a genuinely different document from agenda_link -- some
+         adapters could plausibly set both to the same URL, and showing
+         two identical links would just be confusing. #}
+      {% if page.packet_link and page.packet_link != page.agenda_link %}
+      <p class="source-guess">Full agenda packet (agenda plus every staff report and attachment): <a href="{{ page.packet_link }}" target="_blank" rel="noopener noreferrer">{{ page.packet_link }}</a></p>
+      {% endif %}
       {% if page.agenda_items %}
       {% if unreliable_timestamps %}
       <p class="subtitle">This source doesn't provide real per-item timestamps, so these agenda items aren't clickable.</p>

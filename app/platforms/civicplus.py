@@ -115,6 +115,15 @@ class CivicPlusAssetFinder(AssetFinder):
         result = await resolve_via_platform(candidates[0]["url"])
         if subdomain_jurisdiction:
             result.jurisdiction = subdomain_jurisdiction
+        # agenda_link/packet_link come from this row's OWN td.downloads,
+        # not from whatever resolve_via_platform() found on the delegated
+        # video platform's page -- Granicus/YouTube know nothing about
+        # CivicPlus's own agenda documents. Truthy-gated the same way
+        # legistar.py's delegation already threads its own agenda_link
+        # through, in case a future resolve_via_platform() target ever
+        # sets one of its own.
+        result.agenda_link = result.agenda_link or candidates[0].get("agenda_link")
+        result.packet_link = result.packet_link or candidates[0].get("packet_link")
         return result
 
     @staticmethod
@@ -177,14 +186,58 @@ class CivicPlusAssetFinder(AssetFinder):
                     strong.get_text(" ", strip=True)
                 ) or strong.get_text(" ", strip=True)
 
+            agenda_link, packet_link = self._extract_agenda_and_packet_links(
+                row, page_url
+            )
             candidates.append(
                 {
                     "title": title,
                     "date": date,
                     "url": urljoin(page_url, video_link["href"]),
+                    "agenda_link": agenda_link,
+                    "packet_link": packet_link,
                 }
             )
         return candidates
+
+    @staticmethod
+    def _extract_agenda_and_packet_links(
+        row, page_url: str
+    ) -> tuple[Optional[str], Optional[str]]:
+        """A `td.downloads` cell offers the same agenda in up to three
+        non-interchangeable renditions -- confirmed live on
+        nc-durham.civicplus.com, 2026-08-31 (`tests/fixtures/civicplus/
+        durham_agendacenter_citycouncil.html`): `?html=true` (an HTML
+        rendition of the plain agenda), a bare PDF link with no query
+        string (the same plain agenda as a PDF), and `?packet=true` (the
+        agenda plus every staff report -- a much larger, different
+        document). Distinguished by the href's own query string, not the
+        `a.pdf`/`a.html` class alone, since two different links both
+        carry `class="pdf"`.
+
+        Prefers the HTML rendition for `agenda_link` when present (same
+        size, no PDF-plugin dependency for the inline viewer) with the
+        bare-PDF link as fallback; `packet_link` is a separate field
+        entirely, never conflated with the plain agenda -- a packet can
+        run into the tens of megabytes and is not a drop-in replacement.
+        Returns (None, None) for a row with no downloads cell at all
+        (confirmed real: minutes-only rows, not every row has one).
+        """
+        downloads_cell = row.find("td", class_="downloads")
+        if not downloads_cell:
+            return None, None
+        html_link = None
+        pdf_link = None
+        packet_link = None
+        for a in downloads_cell.find_all("a", href=True):
+            href = a["href"]
+            if "packet=true" in href:
+                packet_link = urljoin(page_url, href)
+            elif "html=true" in href:
+                html_link = urljoin(page_url, href)
+            else:
+                pdf_link = urljoin(page_url, href)
+        return html_link or pdf_link, packet_link
 
     @staticmethod
     def _parse_date(text: str) -> Optional[str]:

@@ -1441,6 +1441,10 @@ class IngestRequest(BaseModel):
     # no matching columns (fixed 2026-08-10, see BACKLOG_DONE.md).
     video_warnings: List[str] = []
     agenda_link: Optional[str] = None
+    # Mirrors ResolvedMeeting.packet_link (app/platforms/models.py,
+    # 2026-08-31) -- same silent-drop failure shape as every field above
+    # until its matching MeetingPage column/IngestRequest field exists.
+    packet_link: Optional[str] = None
     # Also mirrors ResolvedMeeting -- and was also silently dropped by
     # Pydantic on every single ingest until 2026-08-21 (WO-21), the exact
     # same failure shape as video_warnings/agenda_link above. The

@@ -45,6 +45,18 @@ async def test_resolve_real_event_with_video_and_agenda_bookmarks():
     # unverified path per BACKLOG.md, not silently treated as success.
     assert result.segments == []
     assert any("no caption" in w.lower() for w in result.transcript_warnings)
+    # Real gap found + fixed 2026-08-31: this event's own publishedFiles
+    # (already fetched, previously used only for jurisdiction-guessing
+    # plaintext) carries both a vendor-typed "Agenda" and "Agenda Packet"
+    # entry -- confirmed real on this exact fixture, fileId 1555/1557.
+    assert result.agenda_link == (
+        "https://clovisca.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFile(fileId=1555,plainText=false)"
+    )
+    assert result.packet_link == (
+        "https://clovisca.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFile(fileId=1557,plainText=false)"
+    )
 
 
 async def test_resolve_event_with_external_video_and_no_bookmarks(monkeypatch):
@@ -231,6 +243,15 @@ async def test_resolve_reconstructs_video_url_from_relative_media_stream_path():
     )
     assert result.video_format == "mp3"
     assert result.video_warnings == []
+    # Same real fixture's publishedFiles has "Agenda" and "Minutes" but no
+    # "Agenda Packet" entry -- confirms agenda_link is still populated and
+    # packet_link correctly comes back None rather than guessing, when a
+    # tenant genuinely doesn't publish a separate packet for this event.
+    assert result.agenda_link == (
+        "https://kaysvilleut.api.civicclerk.com/v1/Meetings/"
+        "GetMeetingFile(fileId=1556,plainText=false)"
+    )
+    assert result.packet_link is None
 
 
 def test_reconstruct_cdn_stream_url_edge_cases():
