@@ -64,6 +64,73 @@ principle but no longer urgent given neither original example held up.
 50-largest-cities audit" entry — Tucson AZ, Atlanta GA, Omaha NE, and
 Virginia Beach VA are the real tenant-specific gaps that never closed.
 
+## Render health-check gate: checked, left deliberately unproven [Investigated 2026-08-22]
+
+WO-6's 503 logic is unit-tested; the open question was whether a real
+Render deploy has ever been stopped by it. **Answer: no.** The Events
+tabs for `rtr-deeplink`, `rtr-deeplink-archive` and
+`rtr-transcription-worker` show no deploy blocked with health-check
+wording — the only failed deploys are the 2026-08-19 pipeline-minutes
+blocks (see the matching entry under **Reliability, ops & cost**
+elsewhere in this file). **That's ambiguous evidence and should be read
+as such**: it is equally consistent with "the gate works and no
+unhealthy build was ever shipped" and with "the gate is miswired and
+would never fire." Distinguishing them means deliberately deploying a
+build whose `/api/health` reports unhealthy, which costs a real outage
+window on a live public site to prove a config line.
+**Decision: leave it unproven.** The cheap opportunity is
+opportunistic — next time a deploy genuinely breaks `/api/health`,
+check the Events tab before rolling back and record whether Render
+caught it. No live entry needed; nothing here is pending.
+
+Also closed in the same pass: the four `/m/*` GA events firing nowhere
+— fixed 2026-08-22 (`GA_MEASUREMENT_ID` declared on the Archive too, was
+resolver-only, confirmed in-browser; see this file's "GA events on
+`/m/*` pages" entry). GA internal-traffic setup and cross-domain linking
+done 2026-08-29.
+
+## Meeting-card backfill: both follow-ups done, retry premise disproven, two residuals split out [Done 2026-08-22]
+
+Original sweep stored **973 / 1,152 (~84%)**, leaving 179 failed slugs
+with no recorded reason. Both follow-ups have now run:
+
+**(1) Failure-reason plumbing — done** (WO-42, #305).
+`extract_and_store()` returns a reason, the endpoint reports it per
+slug, and the script buckets by reason as well as host. It also fixed a
+real latent bug the retry would have hit: the sweep recorded *skips*
+(in-flight, cooldown, queue-full) as permanently stuck.
+
+**(2) The retry — run 2026-08-22, 1h50m, 117 stored / 301 attempted
+(39%).** But the interesting number is the diff against the original
+179: **3 recovered, 176 still stuck, 8 newly stuck.** These are not
+transient CDN flakes that a later retry clears — they are persistent,
+and one bug is 60% of them. The "delete the state file and try again in
+a few days" advice this entry used to carry is **retired**: it was
+tested and bought 3 pages out of 179. The 117 stored were almost all
+pages never attempted before (the Archive went 973 → 1,090 cards).
+
+Final failure profile, 184 stuck:
+
+```
+109  wrote no frame (107 of them Cablecast)   22  HTTP 404
+ 21  timed out                                19  audio-only source
+ 10  HTTP 403                                  3  other
+```
+
+By host: `mediahttp.iqm2.com` 28, `play.champds.com` 17,
+`archive-stream.granicus.com` 6, `cpmedia.azureedge.net` 6, then a long
+tail of small Cablecast tenants at 3-4 each. **Cablecast is 60% of the
+failures but never tops the host list** — it is spread across ~35
+tenants, which is precisely the shape host-grouping alone hides and the
+reason the per-reason plumbing was worth building.
+
+Two residuals split out at the time, both now resolved: the Cablecast
+HLS-seek defect was fixed the next day (WO-45, 2026-08-23, "wrote no
+frame" was the exact symptom — see this file's WO-45 entry), and the 19
+audio-only pages are `BACKLOG.md`'s Ship next section (re-tagged
+`[JUST-DO-IT]` 2026-08-30, since neither remaining action there needs
+Ryan).
+
 ## Three code-side fixes + three slug redirects, shipping in the 2026-08-30 evening deploy [Done 2026-08-30]
 
 Deploy scheduled for tonight (Ryan's plan, confirmed 2026-08-30) — noted

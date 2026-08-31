@@ -54,19 +54,17 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
+  [JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Confirmations nobody has actually watched happen  (3)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+  Confirmations nobody has actually watched happen  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
-    [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (5)
+  Production actions only Ryan should take  (3)
     [HUMAN] Click Validate Fix in Search Console once tonight's
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
-    [HUMAN] Meeting-card backfill: both follow-ups are done, and the
-    [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -295,6 +293,23 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
+  them have no transcript either (found 2026-08-22, re-tagged from
+  `[HUMAN]` 2026-08-30 — neither remaining action needs Ryan).**
+  Thumbnail extraction needs a *video* stream; transcription only needs
+  audio. These recordings are audio-only (some literally `.mp3` URLs on
+  `cpmedia.azureedge.net`, others audio inside a video container on
+  Granicus/IQM2 — invisible to any URL or `video_format` check, only
+  detectable by probing), so they will fail thumbnail extraction on
+  every sweep forever while being perfectly good transcription sources.
+  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
+  transcripts. Two actions, neither urgent: teach `is_extractable()` a
+  no-video-stream case so they stop being retried (needs a probe, so it
+  belongs at extraction time, not in the candidate query), and push the
+  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
+  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
+  transcription queue.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -347,29 +362,6 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
-- **[HUMAN] Render's health-check gate has never blocked a deploy —
-  checked 2026-08-22, and not worth forcing.** WO-6's 503 logic is
-  unit-tested; the open question was whether a real Render deploy has
-  ever been stopped by it. **Answer: no.** The Events tabs for
-  `rtr-deeplink`, `rtr-deeplink-archive` and `rtr-transcription-worker`
-  show no deploy blocked with health-check wording — the only failed
-  deploys are the 2026-08-19 pipeline-minutes blocks (own entry under
-  **Reliability, ops & cost**). **That's ambiguous evidence and should
-  be read as such**: it is equally consistent with "the gate works and
-  no unhealthy build was ever shipped" and with "the gate is miswired
-  and would never fire." Distinguishing them means deliberately
-  deploying a build whose `/api/health` reports unhealthy, which costs a
-  real outage window on a live public site to prove a config line.
-  **Recommendation: leave it unproven.** The cheap opportunity is
-  opportunistic — next time a deploy genuinely breaks `/api/health`,
-  check the Events tab before rolling back and record whether Render
-  caught it. Kept here only so nobody re-runs the same passive check
-  expecting a different answer.
-~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
-  2026-08-22** — `GA_MEASUREMENT_ID` is now declared on the Archive too
-  (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
-  events on `/m/*` pages" entry. GA internal-traffic setup and
-  cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 ### Production actions only Ryan should take
 
 - **[HUMAN] Click Validate Fix in Search Console once tonight's
@@ -431,59 +423,6 @@ convenient.
   rolling up (`?` -> `? ?` -> `? ? ?`); the fix collapsed them correctly
   and real content starts at 0:39.
 
-- **[HUMAN] Meeting-card backfill: both follow-ups are done, and the
-  retry premise turned out to be wrong (closed out 2026-08-22).** The
-  original sweep stored **973 / 1,152 (~84%)**, leaving 179 failed slugs
-  with no recorded reason. Both follow-ups have now run:
-
-  **(1) Failure-reason plumbing — done** (WO-42, #305).
-  `extract_and_store()` returns a reason, the endpoint reports it per
-  slug, and the script buckets by reason as well as host. It also fixed
-  a real latent bug the retry would have hit: the sweep recorded *skips*
-  (in-flight, cooldown, queue-full) as permanently stuck.
-
-  **(2) The retry — run 2026-08-22, 1h50m, 117 stored / 301 attempted
-  (39%).** But the interesting number is the diff against the original
-  179: **3 recovered, 176 still stuck, 8 newly stuck.** These are not
-  transient CDN flakes that a later retry clears — they are persistent,
-  and one bug is 60% of them. The "delete the state file and try again
-  in a few days" advice this entry used to carry is **retired**: it was
-  tested and bought 3 pages out of 179. The 117 stored were almost all
-  pages never attempted before (the Archive went 973 → 1,090 cards).
-
-  Final failure profile, 184 stuck:
-
-  ```
-  109  wrote no frame (107 of them Cablecast)   22  HTTP 404
-   21  timed out                                19  audio-only source
-   10  HTTP 403                                  3  other
-  ```
-
-  By host: `mediahttp.iqm2.com` 28, `play.champds.com` 17,
-  `archive-stream.granicus.com` 6, `cpmedia.azureedge.net` 6, then a
-  long tail of small Cablecast tenants at 3-4 each. **Cablecast is 60%
-  of the failures but never tops the host list** — it is spread across
-  ~35 tenants, which is precisely the shape host-grouping alone hides
-  and the reason the per-reason plumbing was worth building.
-
-  Two residuals split out below: the Cablecast HLS-seek defect, and the
-  audio-only pages.
-
-- **[HUMAN] 19 audio-only meetings can never have a card — but 4 of them
-  have no transcript either (found 2026-08-22).** Thumbnail extraction
-  needs a *video* stream; transcription only needs audio. These
-  recordings are audio-only (some literally `.mp3` URLs on
-  `cpmedia.azureedge.net`, others audio inside a video container on
-  Granicus/IQM2 — invisible to any URL or `video_format` check, only
-  detectable by probing), so they will fail thumbnail extraction on
-  every sweep forever while being perfectly good transcription sources.
-  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
-  transcripts. Two actions, neither urgent: teach `is_extractable()` a
-  no-video-stream case so they stop being retried (needs a probe, so it
-  belongs at extraction time, not in the candidate query), and push the
-  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
-  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
-  transcription queue.
 ### Decisions about already-live content
 
 - **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
