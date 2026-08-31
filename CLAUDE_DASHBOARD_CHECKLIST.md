@@ -5,7 +5,10 @@ items (scope: "Needs a human" section + the Search Console/SEO subsection
 only — platform/jurisdiction coverage items are out of scope for this
 routine). 5 items, all Search Console, all under a minute each. Every item
 below was re-checked against `git log` / `BACKLOG_DONE.md` this morning and
-still looked open.
+still looked open. **Items 3 and 4 have since been worked through live
+with Ryan and are done** — left in place below with their resolution
+noted, rather than deleted, so the file still explains what was checked
+and why.
 
 ## 1. Validate Fix — thumbnailUrl "Videos" structured data
 
@@ -33,30 +36,35 @@ CivicClerk's `cpmedia.azureedge.net` serves video as
 `Content-Disposition: attachment` (13.4%). A partial clear is the expected
 good outcome, not a sign the fix didn't work.
 
-## 3. Check recrawl — two Soft 404 pages that aren't actually thin
+## 3. DONE 2026-08-31 — two Soft 404 pages: recrawl cleared both
 
-**Step 1 — Search Console → URL Inspection.** Check these two URLs
-(Request Indexing was sent for both 2026-08-29):
-- `/m/beaufort-board-of-education-academics-committee`
-- `/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
+`/m/beaufort-board-of-education-academics-committee` and
+`/m/city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm`
+both now show clean Page indexing (✅) in URL Inspection — no Soft 404
+flag on either. Ryan pasted the actual crawled HTML for both: real,
+coherent `VideoObject`/`Event` JSON-LD and a genuine transcript on each
+(Beaufort: ~1,394 real transcript segments, a real June 17 board
+meeting — not garbled, correcting an earlier BACKLOG.md claim that both
+were). A recrawl clearing an unchanged page favors the transient
+truncated-proxy-bug theory over "Google judged it genuinely low-value."
+Full write-up: `BACKLOG_DONE.md`'s "Two Soft 404 pages" entry.
 
-If the recrawl has landed, open **View Crawled Page** on either one — that's
-the one check that tells apart a truncated-proxy response bug from Google
-genuinely judging the content low-value (two different bugs, different
-fixes). If it's still "pending"/not yet recrawled, nothing to do — check
-again in a few days. If the Soft 404 flag has cleared on its own without
-you needing to open View Crawled Page, that weakly favors the
-truncated-proxy theory (a genuine low-value judgment wouldn't change from
-an identical re-fetch) — worth a one-line note back in BACKLOG.md either
-way.
+**Separate finding surfaced while checking this**: Beaufort's URL
+Inspection still shows Events: 1 invalid / Videos: 1 invalid (a
+different report — rich-results validity, not indexing). Traced to the
+already-known Granicus-blocks-Googlebot's-User-Agent issue from item #2
+above (the Granicus media stream itself fails Googlebot's fetch, visible
+in the page's "Page resources couldn't be loaded" panel) — not a new
+bug, not actionable in code.
 
-## 4. Check recrawl — "Page indexed without content" (welcome-to-clerkbase)
+## 4. DONE 2026-08-31 — "Page indexed without content" (welcome-to-clerkbase) cleared
 
-**Step 1 — Search Console → Indexing → Pages → "Page indexed without
-content".** Look for `/m/welcome-to-clerkbase` (Request Indexing sent
-2026-08-29). If it's cleared, nothing further to do — close the BACKLOG.md
-entry. If it's still flagged, leave it; still genuinely waiting on
-Google's own recrawl timeline.
+Ryan pasted the Enhancements "Detected items" view for this URL: the
+real meeting behind its frozen slug ("February 7, 2022 - Regular Village
+Council Meeting," Yellow Springs OH) shows "Crawled successfully," only
+6 non-critical optional-field warnings (organizer, eventStatus, endDate,
+offers, performer, address). Content is present — the flag has cleared.
+Full write-up: `BACKLOG_DONE.md`'s matching entry.
 
 ## 5. Get the URL list — "Not found (404)"
 
