@@ -54,24 +54,22 @@ Standing decisions — do NOT re-raise  (3)
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
+  [JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Confirmations nobody has actually watched happen  (3)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+  Confirmations nobody has actually watched happen  (2)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
-    [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (5)
+  Production actions only Ryan should take  (3)
     [HUMAN] Click Validate Fix in Search Console once tonight's
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
-    [HUMAN] Meeting-card backfill: both follow-ups are done, and the
-    [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -85,16 +83,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (7)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (6)
     `[LATER]` Recover, rather than just decline, a domain-privacy-
     `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
     `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
     `[LATER]` A real, new video platform found: Midpen Media Center
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
-    `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
-  `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
+  `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (2)
@@ -295,6 +292,23 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] 19 audio-only meetings can never have a card — but 4 of
+  them have no transcript either (found 2026-08-22, re-tagged from
+  `[HUMAN]` 2026-08-30 — neither remaining action needs Ryan).**
+  Thumbnail extraction needs a *video* stream; transcription only needs
+  audio. These recordings are audio-only (some literally `.mp3` URLs on
+  `cpmedia.azureedge.net`, others audio inside a video container on
+  Granicus/IQM2 — invisible to any URL or `video_format` check, only
+  detectable by probing), so they will fail thumbnail extraction on
+  every sweep forever while being perfectly good transcription sources.
+  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
+  transcripts. Two actions, neither urgent: teach `is_extractable()` a
+  no-video-stream case so they stop being retried (needs a probe, so it
+  belongs at extraction time, not in the candidate query), and push the
+  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
+  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
+  transcription queue.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -347,29 +361,6 @@ code-complete and merged (full detail in `BACKLOG_DONE.md`'s "Reliability/
 ops audit execution" entry). None blocks anything else; do whenever
 convenient.
 
-- **[HUMAN] Render's health-check gate has never blocked a deploy —
-  checked 2026-08-22, and not worth forcing.** WO-6's 503 logic is
-  unit-tested; the open question was whether a real Render deploy has
-  ever been stopped by it. **Answer: no.** The Events tabs for
-  `rtr-deeplink`, `rtr-deeplink-archive` and `rtr-transcription-worker`
-  show no deploy blocked with health-check wording — the only failed
-  deploys are the 2026-08-19 pipeline-minutes blocks (own entry under
-  **Reliability, ops & cost**). **That's ambiguous evidence and should
-  be read as such**: it is equally consistent with "the gate works and
-  no unhealthy build was ever shipped" and with "the gate is miswired
-  and would never fire." Distinguishing them means deliberately
-  deploying a build whose `/api/health` reports unhealthy, which costs a
-  real outage window on a live public site to prove a config line.
-  **Recommendation: leave it unproven.** The cheap opportunity is
-  opportunistic — next time a deploy genuinely breaks `/api/health`,
-  check the Events tab before rolling back and record whether Render
-  caught it. Kept here only so nobody re-runs the same passive check
-  expecting a different answer.
-~~The four `/m/*` events were firing nowhere~~ **Fixed and verified
-  2026-08-22** — `GA_MEASUREMENT_ID` is now declared on the Archive too
-  (was resolver-only), confirmed in-browser. See `BACKLOG_DONE.md`'s "GA
-  events on `/m/*` pages" entry. GA internal-traffic setup and
-  cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 ### Production actions only Ryan should take
 
 - **[HUMAN] Click Validate Fix in Search Console once tonight's
@@ -431,59 +422,6 @@ convenient.
   rolling up (`?` -> `? ?` -> `? ? ?`); the fix collapsed them correctly
   and real content starts at 0:39.
 
-- **[HUMAN] Meeting-card backfill: both follow-ups are done, and the
-  retry premise turned out to be wrong (closed out 2026-08-22).** The
-  original sweep stored **973 / 1,152 (~84%)**, leaving 179 failed slugs
-  with no recorded reason. Both follow-ups have now run:
-
-  **(1) Failure-reason plumbing — done** (WO-42, #305).
-  `extract_and_store()` returns a reason, the endpoint reports it per
-  slug, and the script buckets by reason as well as host. It also fixed
-  a real latent bug the retry would have hit: the sweep recorded *skips*
-  (in-flight, cooldown, queue-full) as permanently stuck.
-
-  **(2) The retry — run 2026-08-22, 1h50m, 117 stored / 301 attempted
-  (39%).** But the interesting number is the diff against the original
-  179: **3 recovered, 176 still stuck, 8 newly stuck.** These are not
-  transient CDN flakes that a later retry clears — they are persistent,
-  and one bug is 60% of them. The "delete the state file and try again
-  in a few days" advice this entry used to carry is **retired**: it was
-  tested and bought 3 pages out of 179. The 117 stored were almost all
-  pages never attempted before (the Archive went 973 → 1,090 cards).
-
-  Final failure profile, 184 stuck:
-
-  ```
-  109  wrote no frame (107 of them Cablecast)   22  HTTP 404
-   21  timed out                                19  audio-only source
-   10  HTTP 403                                  3  other
-  ```
-
-  By host: `mediahttp.iqm2.com` 28, `play.champds.com` 17,
-  `archive-stream.granicus.com` 6, `cpmedia.azureedge.net` 6, then a
-  long tail of small Cablecast tenants at 3-4 each. **Cablecast is 60%
-  of the failures but never tops the host list** — it is spread across
-  ~35 tenants, which is precisely the shape host-grouping alone hides
-  and the reason the per-reason plumbing was worth building.
-
-  Two residuals split out below: the Cablecast HLS-seek defect, and the
-  audio-only pages.
-
-- **[HUMAN] 19 audio-only meetings can never have a card — but 4 of them
-  have no transcript either (found 2026-08-22).** Thumbnail extraction
-  needs a *video* stream; transcription only needs audio. These
-  recordings are audio-only (some literally `.mp3` URLs on
-  `cpmedia.azureedge.net`, others audio inside a video container on
-  Granicus/IQM2 — invisible to any URL or `video_format` check, only
-  detectable by probing), so they will fail thumbnail extraction on
-  every sweep forever while being perfectly good transcription sources.
-  **Confirmed**: of the 7 URL-detectable ones, 3 already serve real
-  transcripts. Two actions, neither urgent: teach `is_extractable()` a
-  no-video-stream case so they stop being retried (needs a probe, so it
-  belongs at extraction time, not in the candidate query), and push the
-  4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
-  `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
-  transcription queue.
 ### Decisions about already-live content
 
 - **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
@@ -993,31 +931,13 @@ actionability sections above.
   repo's own convention. Worth re-checking if a second real example
   turns up during a future Granicus enumeration pass.
 
-- **ProudCity's BoxCast delegation — closed 2026-08-29, see
-  `BACKLOG_DONE.md`.** `app/platforms/boxcast.py` now resolves a
-  `boxcast.tv/channel/{id}` link (ProudCity's real `videoStyle ===
-  'external'` shape) to a real, working, unauthenticated signed HLS
-  manifest, date-matched against the meeting's own date via a real public
-  BoxCast REST API — no headless browser or `blob:`-URL reverse-
-  engineering needed, confirmed live across 3 independent real government
-  tenants. Residual, genuinely open: this only helps tenants that already
-  route through the confirmed `boxcast.tv/channel/{id}` link shape (so
-  far only Wilmington, OH confirmed among this app's own known ProudCity
-  tenants) — worth checking the other `PROUDCITY_KNOWN_DOMAINS` entries
-  currently marked "no video found" for the same shape on a future
-  re-resolve.
-
-- **`[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
-  `coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`
-  — is the one piece of the Coralville, IA triplicate still open.** Full
-  original investigation and the 2026-08-29 cleanup (the 3 already-
-  archived duplicate pages resolved to 1; `external_id` now prevents
-  *future* same-host scheme/query duplicates) are in `BACKLOG_DONE.md`.
-  What's left is real but not actionable yet: host-namespacing can't
-  collapse a genuine cross-host migration, and there's only one
-  confirmed example so far — needs either a second migrated Cablecast
-  tenant to confirm the pattern before building a domain-alias table, or
-  a manual merge if/when a second real case turns up.
+- **ProudCity's BoxCast delegation only helps tenants using the
+  confirmed `boxcast.tv/channel/{id}` link shape — check the rest of
+  `PROUDCITY_KNOWN_DOMAINS`.** The adapter itself is built and done (see
+  `BACKLOG_DONE.md`); so far only Wilmington, OH is confirmed among this
+  app's own known ProudCity tenants. Worth checking the other
+  `PROUDCITY_KNOWN_DOMAINS` entries currently marked "no video found"
+  for the same link shape on a future re-resolve.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
@@ -1046,39 +966,21 @@ timestamps from the same API's `LocalIndexPoints` field — see
 `BACKLOG_DONE.md` for the real mapping found (`RelatedItem` against the
 document's own real `AgendaHeading`/`AgendaItem` HTML anchors).
 
-### `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the JSON API
+### `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred
 
-**Symptom A (the `ffmpeg timed out after 120s` cluster) was fixed
-2026-08-25** by pulling a progressive source's whole audio once per job
-instead of seeking per chunk — full measurement, including the ChampDS
-seek-cost model that forced the design, in `BACKLOG_DONE.md`'s "ChampDS
-charges for every seek". That fix landed in the cloud worker only;
-`scripts/transcribe_backlog_locally.py` did not get it until WO-64
-(2026-08-27, see `BACKLOG_DONE.md`) after the exact same symptom took out
-5 of 5 ChampDS meetings in one local run. Both paths now share one
-`should_cache_whole_audio()` gate in `app/platforms/media_probe.py`. This
-entry keeps only the half that is still open.
-
-**Symptom B — instant 0.2s failures with "Could not reach the ChampDS API
-for this meeting".** Untouched by the above and still unexplained; a fast
-non-200 from the JSON API really could be a per-IP limit. This is the
-half the 2026-08-22 rate-limiting conclusion legitimately covers.
-
-**Instrumented 2026-08-25 — the next occurrence should explain itself.**
-`_fetch_json()` used to collapse timeout / non-200 / connection error /
-malformed body into a bare `return None` with *no logging at all*, which
-is why this survived two investigations: diagnosing it required
-re-curling the API by hand afterwards. It now returns a real reason and
-the caller logs it, so a 404 (meeting gone), a 429 (per-IP limit), a
-connection reset and a 200-that-is-not-JSON are all distinguishable from
-the logs alone. The reader-facing sentence is deliberately unchanged.
-
-**So there is nothing to build here until it fires again.** Next time a
-ChampDS resolve fails, grep the resolver logs for
-`ChampDS API fetch failed` and the answer will be in the line. If it
-turns out to be 429s, the fix is host-aware pacing (already deprioritised
-for symptom A on the evidence there, but this is the half it could
-genuinely fit).
+Symptom A (the timeout cluster) is fully fixed — full history moved to
+`BACKLOG_DONE.md`. **Symptom B — instant 0.2s failures with "Could not
+reach the ChampDS API for this meeting" — is still unexplained**, and
+there is genuinely nothing to build until it fires again: `_fetch_json()`
+was instrumented 2026-08-25 (previously collapsed timeout/non-200/
+connection-error/malformed-body into a bare `return None` with no
+logging at all, which is why this survived two prior investigations).
+It now logs a real reason, so next time a ChampDS resolve fails this
+way, grep the resolver logs for `ChampDS API fetch failed` and the
+answer will be in the line — a 404, 429, connection reset, and
+200-that-isn't-JSON are all now distinguishable. If it turns out to be
+429s, the fix is host-aware pacing (already deprioritised for symptom A
+on the evidence there, but this is the half it could genuinely fit).
 
 - **[NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   video, each needing its own per-tenant "where does this jurisdiction
