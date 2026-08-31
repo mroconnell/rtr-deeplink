@@ -1,5 +1,74 @@
 # Backlog — done
 
+## "Open bugs" second re-verification pass (day after the first): 43 entries checked via 6 parallel agents, small drift found and corrected, four verbose entries compacted [Investigated 2026-08-31]
+
+Second re-verification pass on `BACKLOG.md`'s "Open bugs" section
+(43 entries as of today — down from 61 the day before, after the
+2026-08-30 pass below closed/corrected several), same method: parallel
+agents auditing each chunk against live code, `git log`, and this file,
+per CLAUDE.md's "a backlog entry is a lead, not a spec" rule. This
+session has **no production DB, admin-token, or Render-shell access**
+(confirmed: no `.env` in this remote environment, no other local session
+reachable to borrow credentials from) — verification was code/git/public-
+web only; anything needing live production data is flagged in place
+rather than guessed at.
+
+**Result**: given the section had just been through the same pass the
+day before, most of it (roughly 35 of 43 entries) held up exactly as
+written — expected, not a null result. What changed:
+
+- **Derry NH TelVue jurisdiction** — the entry read as "page not found";
+  in fact Derry NH was ingested that same night (see this file's "TelVue:
+  10 of 12" entry) and the real gap is a missing
+  `_KNOWN_ORG_TOKEN_JURISDICTIONS` entry, not a missing page. Corrected
+  in place.
+- **Stale archived transcripts** — the entry claimed no automated refresh
+  path exists at all; WO-15 (2026-08-16, well before this entry was
+  "moved out of Dormant" 2026-08-30) already built both a public manual
+  refresh button (`POST /api/refresh-archived-page`) and a broadened
+  YouTube auto-requeue for garbled transcripts. Narrowed the live entry
+  to the real residual: non-YouTube (Granicus-truncation) pages only.
+- **WO-34 roll-up calibration gap** — the existing-corpus backfill (10
+  affected pages) is done (2026-08-30, see this file's roll-up dedupe
+  entry); the entry hadn't been updated to say so. Narrowed to the real
+  residual: `_looks_like_rollup()`'s threshold itself was never widened,
+  so a fresh resolve with the same shape still won't auto-dedupe.
+- **Sustained YouTube IP block** — added the one clearance data point
+  already on record (the same 10 blocked slugs resolved cleanly 8 days
+  later) without overclaiming it settles pacing/IP-specificity.
+- **`GET /internal/jurisdiction/missing`** — this entry's own "proposed
+  above, still doesn't exist" tail is now stale; the endpoint was built
+  today (see the entry directly below) with fresh numbers (245, down
+  from 269). Replaced the speculative framing with a pointer to it.
+- **Philadelphia Aug 6 `_pick()` gap, TelVue CDX batch-2, Tarrant County
+  TechShare.AgendaManagement, Anchorage AK YouTube bot-block, ProudCity
+  residuals** — five entries whose investigation narrative was already
+  fully accurate but had grown long enough to duplicate detail this file
+  already preserves elsewhere (WO-77–82, WO-74, the Tarrant discovery,
+  PR #496, and the ProudCity build entry, respectively). Compacted each
+  to a conclusion-plus-pointer in `BACKLOG.md`; the trimmed prose is
+  recoverable from this file's own entries and from git history, not
+  reproduced here verbatim.
+- **WO-30 city-YouTube-channel residuals, item 3** — was sitting in
+  BACKLOG.md as a struck-through-but-still-present closed item (adapter-
+  canary coverage, YouTube date corroboration, bot-block warning
+  pass-through — all closed 2026-08-29, PR #496/#510). Fully done, not a
+  residual of the still-open items 1-2 alongside it; removed from the
+  open list, recorded here instead.
+
+**Everything else (roughly 35 of 43) held up under direct
+re-verification** — no material drift in the one day since the prior
+pass. Two structural findings worth carrying forward: (1) this backlog
+gets triaged often enough now that a same-week re-check mostly confirms
+rather than finds new drift — the highest-value next targets are
+sections that *haven't* had this treatment yet (Roadmap & strategy,
+Reliability/ops/cost, Trust & safety, Needs a human, Standing decisions,
+Parked). (2) A handful of entries (ChampDS symptom B, the 50-largest-
+cities residuals, several `[NEEDS-AUDIT]` jurisdiction items) are
+genuinely blocked on production DB/admin-token/dashboard access this
+remote session doesn't have — correctly left as-is rather than guessed
+at.
+
 ## New GET /internal/jurisdiction/missing endpoint — answers "which pages have no jurisdiction," grouped by platform [Done 2026-08-31]
 
 Real gap: every existing jurisdiction audit endpoint
