@@ -93,6 +93,22 @@ def _content_hash(segments: list) -> str:
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
+# Distinct from every tier finalize_jurisdiction() itself can produce
+# (authoritative/validated/repaired/fallback/unverified/blank -- see
+# MeetingPage.jurisdiction_confidence's own comment for the full ladder)
+# -- set only by set_explicit_jurisdiction() (POST /internal/jurisdiction/
+# set-explicit), a human-authored one-off decision, never by any
+# automatic resolve. Referenced in two places: _find_or_create_page()
+# below, so a re-ingest (a passive ARCHIVE_RECHECK_AFTER hit, a "Refresh
+# this page" click, an admin recheck, a corpus-wide backfill sweep) never
+# silently overwrites a manual override back to whatever
+# finalize_jurisdiction() derives from the page's own text/subdomain --
+# without that guard this tier would be a one-time cosmetic fix that
+# reverts on the next routine recheck, not a real override -- and
+# set_explicit_jurisdiction() itself, which writes it.
+_MANUAL_OVERRIDE_CONFIDENCE = "manual_override"
+
+
 # Substring shared with app/db/outcomes.py's _GARBLED_MARKER -- keep them
 # matching if either message ever changes (see CLAUDE.md's note on that
 # file about why this isn't accidental duplication).
@@ -636,14 +652,25 @@ async def _find_or_create_page(
         page.platform = payload.get("platform") or page.platform
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
-        page.jurisdiction = jurisdiction or page.jurisdiction
-        # meeting_body/jurisdiction_confidence only refresh alongside a
-        # real new jurisdiction value -- same truthy-gated pattern as
-        # jurisdiction itself just above, so a later resolve with no
-        # jurisdiction at all can't silently wipe a previously-split body.
-        if jurisdiction:
-            page.meeting_body = jx_result.meeting_body
-            page.jurisdiction_confidence = jx_result.confidence
+        # A manual_override row (set_explicit_jurisdiction(), POST
+        # /internal/jurisdiction/set-explicit) is a real human decision,
+        # not something any automatic resolve should ever silently
+        # revert -- without this guard, the next passive
+        # ARCHIVE_RECHECK_AFTER hit, "Refresh this page" click, admin
+        # recheck, or corpus-wide backfill sweep would overwrite it right
+        # back to whatever finalize_jurisdiction() derives from the
+        # page's own text/subdomain, making the override a one-time
+        # cosmetic fix rather than a real one.
+        if page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+            page.jurisdiction = jurisdiction or page.jurisdiction
+            # meeting_body/jurisdiction_confidence only refresh alongside
+            # a real new jurisdiction value -- same truthy-gated pattern
+            # as jurisdiction itself just above, so a later resolve with
+            # no jurisdiction at all can't silently wipe a previously-
+            # split body.
+            if jurisdiction:
+                page.meeting_body = jx_result.meeting_body
+                page.jurisdiction_confidence = jx_result.confidence
         # Truthy-gated like every other refresh field above: an adapter
         # that names the governing body itself overrides both the stored
         # value and the jurisdiction-split fallback just applied, but a
@@ -2868,6 +2895,112 @@ async def apply_jurisdiction_bleed_backfill(
             "applied_count": len(changes),
             "skipped_by_filter": skipped_by_filter,
             "changes": changes,
+        }
+
+
+# Sanity bound for POST /internal/jurisdiction/set-explicit's caller-
+# supplied string -- generous relative to any real jurisdiction string in
+# the corpus (the longest today is nowhere close), just enough to catch a
+# obviously-wrong paste (e.g. an entire paragraph) before it lands in a
+# column read by every public page.
+_MAX_EXPLICIT_JURISDICTION_LENGTH = 200
+
+
+def validate_explicit_jurisdiction(raw: str) -> str:
+    """Lightweight sanity check for set_explicit_jurisdiction()'s
+    caller-supplied string -- deliberately NOT a re-run through
+    finalize_jurisdiction()'s full place-name validation (app/utils/
+    jurisdiction_enrich.py). The whole reason this endpoint exists is for
+    a jurisdiction finalize_jurisdiction() already can't move any
+    further -- either because several candidate strings are all
+    independently already-valid (Santa Clara's four `", CA"` variants,
+    where finalize_jurisdiction()'s own recompute makes zero changes to
+    any of them) or because the answer is a real product decision no
+    generic validation logic can make on its own (the same shape as
+    Lloydminster spanning AB/SK -- that particular case ended up fixed
+    via a `_KNOWN_DOMAINS` registry entry instead, app/utils/
+    jurisdiction_enrich.py, since it's a genuine per-domain fact rather
+    than a one-off row edit, but this endpoint exists for the cases that
+    aren't) -- so gating this behind that same validation would defeat
+    the endpoint's purpose. Just catches an obvious mistake: empty/
+    whitespace-only, or
+    unreasonably long. Raises ValueError with a caller-facing message on
+    failure; returns the stripped string on success.
+    """
+    value = raw.strip()
+    if not value:
+        raise ValueError("jurisdiction must not be empty")
+    if len(value) > _MAX_EXPLICIT_JURISDICTION_LENGTH:
+        raise ValueError(
+            "jurisdiction must be at most "
+            f"{_MAX_EXPLICIT_JURISDICTION_LENGTH} characters"
+        )
+    return value
+
+
+async def set_explicit_jurisdiction(
+    *, meeting_page_id: int, jurisdiction: str, dry_run: bool = True
+) -> dict:
+    """Write path for POST /internal/jurisdiction/set-explicit -- the
+    missing "no write path exists" piece BACKLOG.md's Santa Clara
+    canonical-form entry needed (the Lloydminster entry raised the same
+    "no write path exists" problem, but ended up fixed via a
+    `_KNOWN_DOMAINS` registry entry instead -- see
+    validate_explicit_jurisdiction()'s own docstring). Every other
+    jurisdiction write in this file
+    (apply_jurisdiction_bleed_backfill above) only ever RE-DERIVES a
+    value by re-running finalize_jurisdiction() on a row's own stored
+    inputs -- which is exactly why those two cases were stuck: Santa
+    Clara's four already-valid strings all independently pass validation
+    today, so the recompute makes zero changes to any of them, and no
+    endpoint accepted an explicit caller-supplied replacement.
+
+    Bypasses finalize_jurisdiction() entirely: the caller's string is
+    validated by validate_explicit_jurisdiction() (deliberately lighter
+    than full place-name validation -- see that function's own
+    docstring) and written as-is, tagged with the distinct
+    "manual_override" confidence tier rather than any tier
+    finalize_jurisdiction() itself produces.
+
+    Scoped to exactly one row per call (unlike backfill-apply's batch
+    only_ids/exclude_ids) -- an explicit human-authored string is a
+    one-off decision by construction, not a class of rows a heuristic
+    recomputed. dry_run=True (the default) returns the before/after diff
+    without writing, matching this file's existing read-only-first
+    convention. Idempotent: calling again with the same jurisdiction
+    string reports `changed: false` rather than erroring or re-writing.
+    """
+    async with async_session() as session:
+        page = await session.get(MeetingPage, meeting_page_id)
+        if page is None:
+            return {
+                "error": "not_found",
+                "meeting_page_id": meeting_page_id,
+                "dry_run": dry_run,
+            }
+
+        before = {
+            "jurisdiction": page.jurisdiction,
+            "jurisdiction_confidence": page.jurisdiction_confidence,
+        }
+        after = {
+            "jurisdiction": jurisdiction,
+            "jurisdiction_confidence": _MANUAL_OVERRIDE_CONFIDENCE,
+        }
+        changed = before != after
+
+        if not dry_run and changed:
+            page.jurisdiction = jurisdiction
+            page.jurisdiction_confidence = _MANUAL_OVERRIDE_CONFIDENCE
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "meeting_page_id": meeting_page_id,
+            "slug": page.slug,
+            "changed": changed,
+            "before": before,
+            "after": after,
         }
 
 

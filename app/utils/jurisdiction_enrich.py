@@ -1172,6 +1172,37 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "pub-oxfordcounty.escribemeetings.com": KnownJurisdiction(
         "Oxford County", "county", "ON", strength="authoritative"
     ),
+    # Lloydminster, AB/SK (WO-89, 2026-08-31) -- BACKLOG.md's "Lloydminster
+    # jurisdiction (spans AB/SK)" entry. Lloydminster is a real, active
+    # city incorporated by BOTH Alberta and Saskatchewan as a single city
+    # with a single municipal administration (confirmed live via its own
+    # Wikipedia infobox and lloydminster.ca) -- it literally straddles the
+    # AB/SK border, unlike every other cross-jurisdiction case this table
+    # handles (a name that merely collides between two unrelated places).
+    # Census/StatsCan stores it as "Lloydminster (Part)" once per
+    # province, and `_PAREN_JUNK_RE` above correctly filters "(Part)" as
+    # junk rather than an alternate name -- so "Lloydminster" is never
+    # indexed as a table key under either province, and no amount of
+    # text/subdomain-validation machinery in `finalize_jurisdiction()`
+    # can ever resolve it: every validation tier declines and it falls
+    # through to this table's own final fallback (see that function's
+    # last `if known:` check). "Lloydminster, AB/SK" (no province
+    # ordering preference, no "City of" prefix) is confirmed live, real,
+    # natural self-styling, not invented formatting -- the City of
+    # Lloydminster's own news releases use exactly this dateline (e.g.
+    # "Lloydminster, AB/SK – Asphalt trail rehabilitation is scheduled to
+    # begin...", lloydminster.ca, confirmed live 2026-08-31). `state` is
+    # therefore the literal display string "AB/SK", not a real two-letter
+    # province code -- a deliberate, one-off exception to this table's
+    # usual convention, matching the one real way this city's own
+    # government represents itself. `type="city"` is Lloydminster's real
+    # legal designation; the "fallback"/"" branches that apply here format
+    # as `f"{name}, {state}"` directly and never consult `type` for
+    # display, so this choice is inert for formatting but keeps the field
+    # semantically honest.
+    "pub-lloydminster.escribemeetings.com": KnownJurisdiction(
+        "Lloydminster", "city", "AB/SK"
+    ),
 }
 
 

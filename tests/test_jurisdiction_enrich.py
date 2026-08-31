@@ -357,8 +357,14 @@ def test_lookup_by_domain_resolves_wo69_escribe_residuals_2026_08_30():
     }
     for domain, expected in cases.items():
         assert je.lookup_by_domain(domain) == expected, domain
-    # Lloydminster genuinely straddles AB/SK -- left open on purpose.
-    assert je.lookup_by_domain("pub-lloydminster.escribemeetings.com") is None
+    # Lloydminster genuinely straddles AB/SK -- registered WO-89
+    # (2026-08-31, BACKLOG.md's "Lloydminster jurisdiction" entry) as
+    # "Lloydminster, AB/SK", not left unregistered any more -- see the
+    # dedicated test_known_domains_lloydminster_resolves_via_fallback_
+    # when_unindexed() below for the full reasoning.
+    assert je.lookup_by_domain("pub-lloydminster.escribemeetings.com") == (
+        je.KnownJurisdiction("Lloydminster", "city", "AB/SK")
+    )
 
 
 def test_lookup_city_state_returns_none_for_st_thomas_three_way_collision():
@@ -2529,6 +2535,45 @@ def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
     )
     assert result_already_wrong.jurisdiction == "Oxford County, ON"
     assert result_already_wrong.confidence == "authoritative"
+
+
+def test_known_domains_lloydminster_resolves_via_fallback_when_unindexed():
+    # WO-89 (2026-08-31): BACKLOG.md's "Lloydminster jurisdiction (spans
+    # AB/SK)" entry. Lloydminster is a real city incorporated by BOTH
+    # Alberta and Saskatchewan as one municipal government -- Census/
+    # StatsCan stores it as "Lloydminster (Part)" once per province, and
+    # `_PAREN_JUNK_RE` correctly filters "(Part)" as junk rather than an
+    # alternate name, so "Lloydminster" is never indexed as a table key
+    # under either province (confirmed: no entry for it in the loaded
+    # place table). Every validation tier in finalize_jurisdiction()
+    # therefore declines regardless of what raw text was extracted, and
+    # this domain's own registry entry is the only way it resolves at
+    # all -- via the function's final `if known:` fallback, not any
+    # table match.
+    assert je._table_lookup("Lloydminster") is None
+
+    # Case 1: escribe.py's own extraction found nothing at all (the real
+    # gap this entry described -- the "(Part)" rows filtered out as
+    # junk).
+    empty_result = je.finalize_jurisdiction(
+        None, netloc="pub-lloydminster.escribemeetings.com"
+    )
+    assert empty_result.jurisdiction == "Lloydminster, AB/SK"
+    assert empty_result.confidence == "fallback"
+
+    # Case 2: extraction found the bare name -- still falls through every
+    # validation tier (none resolves "Lloydminster" at all) to the same
+    # domain fallback, not a guessed state.
+    bare_result = je.finalize_jurisdiction(
+        "Lloydminster", netloc="pub-lloydminster.escribemeetings.com"
+    )
+    assert bare_result.jurisdiction == "Lloydminster, AB/SK"
+    assert bare_result.confidence == "fallback"
+
+    # Real, natural self-styling confirmed live 2026-08-31 (lloydminster.ca's
+    # own news releases dateline as "Lloydminster, AB/SK -- ..."), not "City
+    # of Lloydminster, AB/SK" -- no governance-prefix word should appear.
+    assert "City of" not in bare_result.jurisdiction
 
 
 # --- WO-78, 2026-08-30: a real, DIFFERENT-shaped version of WO-70's

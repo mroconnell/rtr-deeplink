@@ -1234,6 +1234,64 @@ async def internal_jurisdiction_backfill_apply(
     )
 
 
+class SetExplicitJurisdictionRequest(BaseModel):
+    meeting_page_id: int
+    jurisdiction: str
+
+
+@app.post("/internal/jurisdiction/set-explicit")
+async def internal_jurisdiction_set_explicit(
+    req: SetExplicitJurisdictionRequest,
+    dry_run: bool = True,
+    authorization: Optional[str] = Header(None),
+):
+    """Explicit, one-row jurisdiction override -- the write path
+    /internal/jurisdiction/backfill-apply above can't provide, since that
+    endpoint only ever recomputes via finalize_jurisdiction() and never
+    accepts a caller-supplied string. Built for BACKLOG.md's Santa Clara
+    canonical-form entry: `County of Santa Clara, CA` / `The County of
+    Santa Clara, CA` / `Santa Clara County, CA` / `County of Santa Clara
+    Office` all independently validate today, so finalize_jurisdiction()'s
+    recompute makes zero changes to any of them -- there was no way to
+    move any of the four to the decided canonical form
+    (`Santa Clara County, CA`) without a real write path.
+
+    Same admin-token gate as every other /internal/* route
+    (_token_ok()). Takes exactly one `meeting_page_id` + the replacement
+    `jurisdiction` string in the POST body -- see
+    crud.validate_explicit_jurisdiction() for the (deliberately light)
+    sanity check applied before it's written, and
+    crud.set_explicit_jurisdiction()'s own docstring for why this
+    bypasses finalize_jurisdiction() entirely rather than re-deriving.
+    Written rows are tagged with the `manual_override` confidence tier,
+    distinct from every tier finalize_jurisdiction() itself can produce,
+    so a manually-set row stays identifiable to any later backfill sweep.
+
+    dry_run defaults to true (this file's existing read-only-first
+    convention -- see /internal/jurisdiction/backfill-apply above) and
+    returns the before/after diff it *would* write without touching the
+    database; pass `?dry_run=false` to commit. Idempotent: calling again
+    with the same jurisdiction string reports `changed: false` rather
+    than erroring or re-writing.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    try:
+        jurisdiction = crud.validate_explicit_jurisdiction(req.jurisdiction)
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    result = await crud.set_explicit_jurisdiction(
+        meeting_page_id=req.meeting_page_id,
+        jurisdiction=jurisdiction,
+        dry_run=dry_run,
+    )
+    if result.get("error") == "not_found":
+        return JSONResponse(result, status_code=404)
+    return result
+
+
 @app.get("/internal/pages/http-scheme-candidates")
 async def internal_http_scheme_candidates(authorization: Optional[str] = Header(None)):
     """Read-only audit: every archived page whose `source_url_normalized`
