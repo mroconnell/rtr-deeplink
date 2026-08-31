@@ -62,7 +62,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
   Production actions only Ryan should take  (1)
-    [HUMAN] Click Validate Fix in Search Console once tonight's
+    [HUMAN] Click Validate Fix in Search Console — the 2026-08-30
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -344,11 +344,12 @@ convenient.
 
 ### Production actions only Ryan should take
 
-- **[HUMAN] Click Validate Fix in Search Console once tonight's
-  (2026-08-30) Archive/resolver deploy completes.** The code side is
-  done and riding along in that deploy — see `BACKLOG_DONE.md`. Don't
-  expect this to clear 100% (full numbers and why in
-  `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup).
+- **[HUMAN] Click Validate Fix in Search Console — the 2026-08-30
+  evening deploy has happened (confirmed live 2026-08-31: reslugged
+  pages serve real content), so this is actionable now, not "once it
+  completes."** The code side is done and already deployed — see
+  `BACKLOG_DONE.md`. Don't expect this to clear 100% (full numbers and
+  why in `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup).
 
 ### Decisions about already-live content
 
@@ -476,8 +477,10 @@ coverage** instead.
   proxied-HTML bandwidth overage found elsewhere this session
   (`BACKLOG_DONE.md`'s `ARCHIVE_BASE_URL` entry).
   **Still genuinely open**: IQM2 (9.5%) and the `/j/`/`/state/` hub-page
-  fix (6.5%) are already built and tested, just need a deploy + a
-  Search Console Validate Fix click (see "Needs a human" below).
+  fix (6.5%) are built, tested, and **now deployed (2026-08-30 evening,
+  confirmed live 2026-08-31)** — only the Search Console Validate Fix
+  click is left (see "Needs a human" below, now actionable, not
+  deploy-pending).
   eScribe/isilive (10.1%) needs only a fresh recrawl, not code — traced
   a scary-looking newline in Google's raw export back to a display
   artifact, not a real bug; today's live URL is correctly encoded and
@@ -661,14 +664,27 @@ is exactly the population that wildcard DNS makes hard to judge: a dead
 IQM2 tenant still answers, with the generic 4,562-byte "Accela Meeting
 Portal" body.
 
-**Needs a repeat probe on a different day before anything is removed.**
-The tenants: `losangelescountyca`, `santaclaracountyca`, `northbrookil`,
-`mchenrycountyil`, `sheboygancountywi`, `renocitynv`, `slcgov`,
-`portagecountyoh`, `gilroyca`, `hanfordca`, `pekinil`, `psrcwa`,
-`tehamacountyca`, `vilascountywi`, `woodbuffalocn`, `adelantoca`,
+**Repeat probe done, 2026-08-31 (a different day, as asked for): 27 of
+28 confirmed identically dead.** All 27 return the exact same
+4,498-byte generic "Accela Meeting Portal" error page as the original
+probe (`woodbuffalocn` needed a longer timeout to get past a slow TLS
+handshake, then matched too) — real, if not conclusive, evidence toward
+"genuinely retired" over "transient outage." One tenant, `pec`, shows a
+**different** failure signature: a connection-level timeout (no TLS
+handshake even started within 8s), not a resolving-but-generic-error
+response — worth treating separately from the other 27, since that's
+consistent with an infrastructure problem rather than a retired tenant
+serving IQM2's own fallback page. Still not acted on (no rows dropped) —
+this is stronger evidence, not a decision to remove; that's Ryan's call
+to make now that two probes on different days agree. The tenants: 26
+confirmed both times — `losangelescountyca`, `santaclaracountyca`,
+`northbrookil`, `mchenrycountyil`, `sheboygancountywi`, `renocitynv`,
+`slcgov`, `portagecountyoh`, `gilroyca`, `hanfordca`, `pekinil`,
+`psrcwa`, `tehamacountyca`, `vilascountywi`, `adelantoca`,
 `brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
 `currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
-`hyattsvillecitymd`, `ledyardct`, `pec`, `shawneecityks`.
+`hyattsvillecitymd`, `ledyardct`, `shawneecityks`; `woodbuffalocn`
+confirmed on the slower retry; `pec` is the one distinct case.
 
 ### Swagit multi-clip meetings: cloud worker fixed (WO-79), local script still needs the same fix `[NEEDS-AUDIT]`
 
