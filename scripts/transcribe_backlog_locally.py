@@ -342,6 +342,16 @@ FAILED_INGEST_DIR = (
 # meeting that this script picks back up on the next run.
 PARTIAL_PROGRESS_DIR = FAILED_INGEST_DIR / "partial"
 
+# How old a file directly in FAILED_INGEST_DIR has to be before
+# _warn_about_stale_backups() calls it out at startup -- see that
+# function's own docstring (Gap 2, WO-82, 2026-08-30, see BACKLOG.md). No
+# tighter existing "how stale is stale" convention was found elsewhere in
+# this repo's scripts to match (scripts/inbox_triage_ledger.py's
+# LOOKBACK_DAYS/RETENTION_GRACE_DAYS govern a Gmail-dedupe window, a
+# different kind of staleness), so this uses the backlog entry's own
+# suggested threshold directly.
+STALE_BACKUP_THRESHOLD_SECONDS = 24 * 60 * 60
+
 
 class _RetryableHTTPError(Exception):
     """Raised internally by _request_json() for a 5xx response, so the same
@@ -450,11 +460,21 @@ def _save_local_backup(payload: dict, slug: str) -> Path:
     meeting -- is already done; the only thing actually lost by just
     logging FAILED and moving on to the next candidate would be that
     finished work, which is a much bigger loss than the network call that
-    failed. This is the exact same JSON body _ingest() POSTs (before
-    `input_url_normalized`/`source` are added -- see _ingest() -- so
-    recovering it later is a plain
+    failed. `payload` here must already be the exact, complete JSON body
+    _ingest() POSTs -- including `input_url_normalized`/`source`, both
+    added by process_one() *before* calling _ingest() (see its call site)
+    specifically so this backup is recoverable as-is. Recovering it later
+    is a plain
     `curl -X POST $ARCHIVE_BASE_URL/internal/ingest -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" -d @<path>`,
     not a re-transcription.
+
+    (Until WO-82, 2026-08-30: this was called with the payload *before*
+    those two fields were added, which is why that curl command 422'd on
+    a real recovery attempt -- confirmed live recovering
+    chino-valley-az-2026-02-10-town-council-meeting, see BACKLOG.md's
+    matching entry. Moving the field-adding earlier, into process_one(),
+    was simpler than teaching this function -- or the recovery docs -- to
+    know about fields that are really process_one()'s business.)
     """
     FAILED_INGEST_DIR.mkdir(exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -462,6 +482,57 @@ def _save_local_backup(payload: dict, slug: str) -> Path:
     path = FAILED_INGEST_DIR / f"{ts}_{safe_slug}.json"
     path.write_text(json.dumps(payload, indent=2))
     return path
+
+
+def _warn_about_stale_backups(*, now: Optional[float] = None) -> None:
+    """Logs a clear, named warning for any file sitting directly in
+    FAILED_INGEST_DIR (local_transcription_backups/) older than
+    STALE_BACKUP_THRESHOLD_SECONDS. Called once at the top of every run.
+
+    Gap 2, WO-82 (2026-08-30, see BACKLOG.md): a file here is a *finished*
+    transcription -- real, possibly hours of local Whisper compute -- that
+    only failed to push to /internal/ingest (see _save_local_backup()).
+    Before this, nothing surfaced that one was sitting there; the real
+    chino-valley-az-2026-02-10-town-council-meeting backup went
+    unrecovered for 2 full days, found only because someone happened to
+    go looking in this gitignored directory. This makes that visible the
+    next time anyone runs this script instead of relying on that.
+
+    Deliberately just a log line -- no Sentry/inbox-triage integration.
+    That's a real possible follow-up (flagged in BACKLOG.md) but out of
+    scope here: this script runs interactively/unattended-but-watched on
+    someone's own Mac, not as a background service with an existing
+    alerting path the way the cloud worker does.
+
+    Only looks directly in FAILED_INGEST_DIR (`*.json` there), not
+    PARTIAL_PROGRESS_DIR underneath it -- a partial-progress checkpoint
+    sitting between runs is the resume mechanism working as intended (see
+    _save_partial_progress()), not an anomaly; a file directly in
+    FAILED_INGEST_DIR always is one.
+
+    `now` is injectable for tests; defaults to the real wall clock.
+    """
+    if not FAILED_INGEST_DIR.is_dir():
+        return
+    now = now if now is not None else time.time()
+    stale = []
+    for path in sorted(FAILED_INGEST_DIR.glob("*.json")):
+        try:
+            age_seconds = now - path.stat().st_mtime
+        except OSError:
+            continue
+        if age_seconds > STALE_BACKUP_THRESHOLD_SECONDS:
+            stale.append((path, age_seconds))
+    if not stale:
+        return
+    logger.warning(
+        "%d finished-but-unpushed transcription backup(s) in %s are more than a day old and "
+        "may still need manual recovery (see _save_local_backup()'s docstring for the recovery "
+        "command): %s",
+        len(stale),
+        FAILED_INGEST_DIR,
+        ", ".join(f"{p.name} ({age / 3600:.0f}h old)" for p, age in stale),
+    )
 
 
 def _partial_progress_path(source_url: str) -> Path:
@@ -806,17 +877,21 @@ async def _get_candidates(
     return pages
 
 
-async def _ingest(
-    session: aiohttp.ClientSession, payload: dict, input_url_normalized: str
-) -> dict:
-    body = dict(payload)
-    body["input_url_normalized"] = input_url_normalized
-    body["source"] = "transcribed"  # see module docstring -- never omit this
+async def _ingest(session: aiohttp.ClientSession, body: dict) -> dict:
+    """POSTs `body` to /internal/ingest as-is. `body` must already carry
+    `input_url_normalized` and `source` (see process_one()'s call site,
+    which adds both before calling this) -- this function no longer adds
+    them itself (WO-82, 2026-08-30), specifically so the exact dict passed
+    in here is also the exact dict _save_local_backup() writes to disk on
+    failure, making the documented recovery curl command actually work
+    against a real saved backup instead of 422ing on a payload that's
+    missing two required fields.
+    """
     return await _request_json(
         session,
         "POST",
         f"{_base_url()}/internal/ingest",
-        label=f"ingest push for {input_url_normalized}",
+        label=f"ingest push for {body.get('input_url_normalized', '?')}",
         json=body,
         headers=_headers(),
         timeout=INGEST_TIMEOUT,
@@ -1333,8 +1408,18 @@ async def process_one(
         "transcript_language": result["language"],
         "transcript_warnings": result["transcript_warnings"],
     }
+    # Built here, before the ingest call, rather than inside _ingest() --
+    # so that on a failure below, the exact dict handed to
+    # _save_local_backup() is already the complete POST body (WO-82,
+    # 2026-08-30: previously _ingest() added these two fields to its own
+    # local copy, so the backup written on failure was missing both, and
+    # the documented recovery curl command 422'd against a real saved
+    # backup -- see BACKLOG.md).
+    ingest_body = dict(payload)
+    ingest_body["input_url_normalized"] = page["source_url_normalized"]
+    ingest_body["source"] = "transcribed"  # see module docstring -- never omit this
     try:
-        response = await _ingest(session, payload, page["source_url_normalized"])
+        response = await _ingest(session, ingest_body)
     except Exception as e:
         # _ingest() already retried transient failures inside _request_json()
         # -- this only fires once those retries are exhausted, meaning the
@@ -1342,7 +1427,7 @@ async def process_one(
         # itself (the expensive part) already succeeded, so save it to disk
         # rather than just discarding it along with the "failed" result --
         # see _save_local_backup()'s docstring for how to recover it later.
-        backup_path = _save_local_backup(payload, slug)
+        backup_path = _save_local_backup(ingest_body, slug)
         raise RuntimeError(
             f"{e} -- transcription itself succeeded ({len(result['segments'])} segments, "
             f"language={result['language']}); saved locally to {backup_path} so it isn't "
@@ -1526,6 +1611,14 @@ async def main() -> None:
             "ARCHIVE_INGEST_TOKEN is not set (check the repo's .env). Stopping."
         )
         sys.exit(1)
+
+    # Gap 2, WO-82 (2026-08-30, see BACKLOG.md): surface any already-saved
+    # failed-ingest backup before doing anything else, so a leftover finished
+    # transcription doesn't sit unnoticed the way chino-valley-az-2026-02-10
+    # did for 2 real days. Checked this early (before model loading, which
+    # can itself take a while) so it's visible fast even if the rest of the
+    # run is interrupted or still warming up.
+    _warn_about_stale_backups()
 
     # No longer resolved to one value here -- as of WO-75 (2026-08-30) each
     # meeting gets its own chunk size in process_one(), via
