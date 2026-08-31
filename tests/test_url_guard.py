@@ -150,6 +150,34 @@ async def test_dns_failure_raises_a_clean_error(monkeypatch):
         await check_destination("http://this-host-does-not-resolve.invalid/")
 
 
+async def test_dns_failure_raises_a_clean_error_for_unicode_error(monkeypatch):
+    # getaddrinfo()'s IDNA encoding raises UnicodeError, not gaierror, for
+    # a hostname with a single DNS label over 63 octets -- confirmed live
+    # via Sentry PYTHON-FASTAPI-15 (2026-08-30), a slug-shaped string sent
+    # to /api/refresh-archived-page that 500'd instead of getting this
+    # same clean rejection, before this was added to the except clause.
+    def _raise(hostname):
+        raise UnicodeError(
+            "encoding with 'idna' codec failed (UnicodeError: label too long)"
+        )
+
+    monkeypatch.setattr(url_guard, "_resolve_hostname", _raise)
+    with pytest.raises(BlockedURLError):
+        await check_destination("http://this-host-does-not-resolve.invalid/")
+
+
+async def test_dns_failure_raises_a_clean_error_for_a_real_overlong_label():
+    # Same as above but through the real stdlib resolver, no mocking --
+    # the exact real hostname from PYTHON-FASTAPI-15 (74 chars, a single
+    # label with no dots), confirmed to raise UnicodeError from a real
+    # socket.getaddrinfo() call, not a synthetic stand-in for one.
+    overlong_hostname = (
+        "anchorage-ak-2026-07-02-amats-technical-advisory-committee-placeholder"
+    )
+    with pytest.raises(BlockedURLError):
+        await check_destination(f"http://{overlong_hostname}/")
+
+
 # --- guarded_get: redirect-hop re-validation --------------------------------
 # The case the brief calls out as "the one people forget": a URL that
 # passes the guard can still 302 to a private one, and re-checking only
