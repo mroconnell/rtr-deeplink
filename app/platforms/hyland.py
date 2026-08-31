@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 
+from . import youtube_channel
 from .base import AssetFinder
 from .media_scan import is_hls_url, media_type, scan_media_urls
 from .models import ResolvedMeeting, TranscriptSegment
@@ -104,6 +105,15 @@ logger = logging.getLogger("rtr_deeplink.hyland")
 # large majority of confirmed customers so far) and falls back to Version
 # B only when that yields no title, confirmed safe since Version A pages
 # never redirect to /Error/NotFound (a Version-B-only failure mode).
+#
+# A customer whose page carries genuinely no video at all -- neither a
+# direct media file nor a YouTube embed, e.g. Tucson's real, confirmed-
+# video-less pages -- gets one more fallback once title/date are known:
+# `youtube_channel.py`'s registry/matcher (built for the identical
+# Legistar-side gap, WO-30/WO-72), which turns out to have nothing
+# Legistar-specific in it at all -- see `_try_channel_fallback()` below
+# and youtube_channel.py's own registry entry for Tucson (WO-89,
+# 2026-08-31) for the real evidence.
 
 TARGET_LANGUAGE = "en"
 
@@ -248,6 +258,24 @@ class HylandAssetFinder(AssetFinder):
                 else f"{known.name}, {known.state}"
             )
 
+        if not video_url and title and date:
+            # Last resort, only for the handful of registered tenants
+            # (see youtube_channel.py's _CHANNEL_FALLBACKS) whose page
+            # genuinely has no video anywhere -- has_channel_fallback()
+            # makes this a no-op for every other Hyland customer. Runs
+            # only once title/date are known, since the matcher needs
+            # both.
+            channel_delegated = await self._try_channel_fallback(
+                parsed.netloc, title, date, url
+            )
+            if channel_delegated:
+                video_url = channel_delegated.video_url
+                video_format = channel_delegated.video_format
+                segments = channel_delegated.segments
+                transcript_language = channel_delegated.transcript_language
+                transcript_warnings = list(channel_delegated.transcript_warnings)
+                video_warnings.extend(channel_delegated.video_warnings)
+
         if not video_url:
             video_warnings.append("No video found on this page.")
 
@@ -267,6 +295,55 @@ class HylandAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    async def _try_channel_fallback(
+        netloc: str, title: str, date: str, source_url: str
+    ) -> Optional[ResolvedMeeting]:
+        """Last resort for a Hyland/OnBase tenant whose page carries no
+        video of any kind -- confirmed real on Tucson, AZ (WO-89,
+        2026-08-31): the recording sits on the city's own YouTube channel
+        instead, findable via the same registry/matcher `legistar.py`
+        already built for the identical gap on Legistar (WO-30/WO-72) --
+        see `youtube_channel.py`'s module docstring for the matching
+        rules and the real evidence behind each registered tenant.
+
+        Guarded on `has_channel_fallback()`, so this is a no-op for every
+        Hyland customer not in that registry. Every uncertain path
+        returns None, landing back on the pre-existing "No video found on
+        this page." message.
+        """
+        if not youtube_channel.has_channel_fallback(netloc):
+            return None
+        match = await youtube_channel.find_channel_match(netloc, title, date)
+        if not match:
+            return None
+        resolved = await YouTubeAssetFinder.resolve_video_id(
+            match.video_id, source_url=source_url
+        )
+        # Second, independent date check against the video's own metadata
+        # (see youtube_channel.video_date_is_plausible's own docstring) --
+        # find_channel_match() already required the title's date to match
+        # exactly, but this catches a wrong-year title typo or similar.
+        if not youtube_channel.video_date_is_plausible(
+            date, match.atom_published_date or resolved.date
+        ):
+            return None
+
+        # Provenance, said plainly and up front -- same reasoning and same
+        # exact wording as legistar.py's identical fallback
+        # (_try_known_channel_video): NOT best_effort (this page parsed
+        # cleanly; it's specifically the video that came from elsewhere),
+        # a video_warning instead, inserted first so it renders right next
+        # to the player.
+        resolved.video_warnings.insert(
+            0,
+            "This meeting page has no video on it. We matched this recording from "
+            f"{match.channel_name}'s own YouTube channel by meeting name and date "
+            f'("{match.video_title}") — it is not linked from the meeting page '
+            "itself, so double-check it is the meeting you expected.",
+        )
+        return resolved
 
     @staticmethod
     def _param(params: dict, key: str) -> Optional[str]:

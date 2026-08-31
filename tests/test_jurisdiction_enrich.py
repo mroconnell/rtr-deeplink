@@ -357,8 +357,14 @@ def test_lookup_by_domain_resolves_wo69_escribe_residuals_2026_08_30():
     }
     for domain, expected in cases.items():
         assert je.lookup_by_domain(domain) == expected, domain
-    # Lloydminster genuinely straddles AB/SK -- left open on purpose.
-    assert je.lookup_by_domain("pub-lloydminster.escribemeetings.com") is None
+    # Lloydminster genuinely straddles AB/SK -- registered WO-89
+    # (2026-08-31, BACKLOG.md's "Lloydminster jurisdiction" entry) as
+    # "Lloydminster, AB/SK", not left unregistered any more -- see the
+    # dedicated test_known_domains_lloydminster_resolves_via_fallback_
+    # when_unindexed() below for the full reasoning.
+    assert je.lookup_by_domain("pub-lloydminster.escribemeetings.com") == (
+        je.KnownJurisdiction("Lloydminster", "city", "AB/SK")
+    )
 
 
 def test_lookup_city_state_returns_none_for_st_thomas_three_way_collision():
@@ -390,6 +396,82 @@ def test_finalize_jurisdiction_wo69_fallback_domains_supply_the_full_name():
         None, netloc="tcdsbpublishing.escribemeetings.com"
     )
     assert result.jurisdiction == "Toronto Catholic District School Board, ON"
+    assert result.confidence == "fallback"
+
+
+def test_lookup_by_domain_resolves_swagit_special_purpose_entities_2026_08_31():
+    # BACKLOG.md's "Swagit still resolves every special-purpose entity...
+    # with a blank jurisdiction" entry -- swagit.py's own `_extract_
+    # metadata()` only matches a "... - City, ST"-shaped <title>, and none
+    # of these five real tenants' titles has one (each confirmed live
+    # 2026-08-31 via a direct fetch of a real meeting page's own <title>).
+    # Same "fallback" strength as the WO-69 block above: `resolve()`
+    # returns a blank jurisdiction for all five today, not a confirmed-
+    # wrong one.
+    cases = {
+        # ercot.new.swagit.com/videos/377620: "Mar 10, 2026 Batch Study
+        # Process for Large Load Interconnections Workshop #4 - ERCOT -
+        # Electric Reliability Council of Texas". Statewide electric-grid
+        # authority, not tied to one city/county.
+        "ercot.new.swagit.com": je.KnownJurisdiction(
+            "Electric Reliability Council of Texas", "authority", "TX"
+        ),
+        # dfps.new.swagit.com/videos/345687: "Jun 13, 2025 DFPS Council
+        # Meeting - Texas Dept of Family and Protective Services".
+        # Statewide state agency.
+        "dfps.new.swagit.com": je.KnownJurisdiction(
+            "Texas Department of Family and Protective Services",
+            "department",
+            "TX",
+        ),
+        # sccoe.new.swagit.com/videos/315560: "Sep 18, 2024 County Board
+        # of Education - Santa Clara County Office of Education". A real
+        # county-level education agency, not the county government
+        # itself -- same distinction as riversidesheriff's "department"
+        # entry above.
+        "sccoe.new.swagit.com": je.KnownJurisdiction(
+            "Santa Clara County Office of Education", "office", "CA"
+        ),
+        # browardmpo.new.swagit.com/videos/359517: "Oct 30, 2025 MPO
+        # Board Meeting - Broward MPO" -- also the real page
+        # extract_jurisdiction_chain()'s own docstring names as the
+        # Broward-MPO body-text false-positive case. browardmpo.org's own
+        # official name is "Broward Metropolitan Planning Organization",
+        # Fort Lauderdale, Broward County, FL.
+        "browardmpo.new.swagit.com": je.KnownJurisdiction(
+            "Broward Metropolitan Planning Organization", "mpo", "FL"
+        ),
+        # viametrotransit.new.swagit.com/videos/376227: "Feb 24, 2026 VIA
+        # / ATD Board of Trustees Meeting - VIA Metropolitan Transit" --
+        # San Antonio, TX's transit authority.
+        "viametrotransit.new.swagit.com": je.KnownJurisdiction(
+            "VIA Metropolitan Transit", "authority", "TX"
+        ),
+    }
+    for domain, expected in cases.items():
+        assert je.lookup_by_domain(domain) == expected, domain
+
+
+def test_finalize_jurisdiction_swagit_special_purpose_domains_supply_the_full_name():
+    # End to end through finalize_jurisdiction() -- the same function
+    # archive/db/crud.py's _find_or_create_page() calls at ingest time --
+    # for three of the five domains above: a blank raw_jurisdiction (what
+    # SwagitAssetFinder.resolve() actually returns for these titles, see
+    # test_resolve_leaves_jurisdiction_blank_for_special_purpose_entities_
+    # today in tests/test_swagit.py) gets the full registered name, not
+    # just a state fill.
+    result = je.finalize_jurisdiction(None, netloc="ercot.new.swagit.com")
+    assert result.jurisdiction == "Electric Reliability Council of Texas, TX"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(None, netloc="dfps.new.swagit.com")
+    assert (
+        result.jurisdiction == "Texas Department of Family and Protective Services, TX"
+    )
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(None, netloc="sccoe.new.swagit.com")
+    assert result.jurisdiction == "Santa Clara County Office of Education, CA"
     assert result.confidence == "fallback"
 
 
@@ -2529,6 +2611,45 @@ def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
     )
     assert result_already_wrong.jurisdiction == "Oxford County, ON"
     assert result_already_wrong.confidence == "authoritative"
+
+
+def test_known_domains_lloydminster_resolves_via_fallback_when_unindexed():
+    # WO-89 (2026-08-31): BACKLOG.md's "Lloydminster jurisdiction (spans
+    # AB/SK)" entry. Lloydminster is a real city incorporated by BOTH
+    # Alberta and Saskatchewan as one municipal government -- Census/
+    # StatsCan stores it as "Lloydminster (Part)" once per province, and
+    # `_PAREN_JUNK_RE` correctly filters "(Part)" as junk rather than an
+    # alternate name, so "Lloydminster" is never indexed as a table key
+    # under either province (confirmed: no entry for it in the loaded
+    # place table). Every validation tier in finalize_jurisdiction()
+    # therefore declines regardless of what raw text was extracted, and
+    # this domain's own registry entry is the only way it resolves at
+    # all -- via the function's final `if known:` fallback, not any
+    # table match.
+    assert je._table_lookup("Lloydminster") is None
+
+    # Case 1: escribe.py's own extraction found nothing at all (the real
+    # gap this entry described -- the "(Part)" rows filtered out as
+    # junk).
+    empty_result = je.finalize_jurisdiction(
+        None, netloc="pub-lloydminster.escribemeetings.com"
+    )
+    assert empty_result.jurisdiction == "Lloydminster, AB/SK"
+    assert empty_result.confidence == "fallback"
+
+    # Case 2: extraction found the bare name -- still falls through every
+    # validation tier (none resolves "Lloydminster" at all) to the same
+    # domain fallback, not a guessed state.
+    bare_result = je.finalize_jurisdiction(
+        "Lloydminster", netloc="pub-lloydminster.escribemeetings.com"
+    )
+    assert bare_result.jurisdiction == "Lloydminster, AB/SK"
+    assert bare_result.confidence == "fallback"
+
+    # Real, natural self-styling confirmed live 2026-08-31 (lloydminster.ca's
+    # own news releases dateline as "Lloydminster, AB/SK -- ..."), not "City
+    # of Lloydminster, AB/SK" -- no governance-prefix word should appear.
+    assert "City of" not in bare_result.jurisdiction
 
 
 # --- WO-78, 2026-08-30: a real, DIFFERENT-shaped version of WO-70's

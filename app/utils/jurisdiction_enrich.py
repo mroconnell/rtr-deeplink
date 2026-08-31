@@ -1172,6 +1172,103 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "pub-oxfordcounty.escribemeetings.com": KnownJurisdiction(
         "Oxford County", "county", "ON", strength="authoritative"
     ),
+    # Lloydminster, AB/SK (WO-89, 2026-08-31) -- BACKLOG.md's "Lloydminster
+    # jurisdiction (spans AB/SK)" entry. Lloydminster is a real, active
+    # city incorporated by BOTH Alberta and Saskatchewan as a single city
+    # with a single municipal administration (confirmed live via its own
+    # Wikipedia infobox and lloydminster.ca) -- it literally straddles the
+    # AB/SK border, unlike every other cross-jurisdiction case this table
+    # handles (a name that merely collides between two unrelated places).
+    # Census/StatsCan stores it as "Lloydminster (Part)" once per
+    # province, and `_PAREN_JUNK_RE` above correctly filters "(Part)" as
+    # junk rather than an alternate name -- so "Lloydminster" is never
+    # indexed as a table key under either province, and no amount of
+    # text/subdomain-validation machinery in `finalize_jurisdiction()`
+    # can ever resolve it: every validation tier declines and it falls
+    # through to this table's own final fallback (see that function's
+    # last `if known:` check). "Lloydminster, AB/SK" (no province
+    # ordering preference, no "City of" prefix) is confirmed live, real,
+    # natural self-styling, not invented formatting -- the City of
+    # Lloydminster's own news releases use exactly this dateline (e.g.
+    # "Lloydminster, AB/SK – Asphalt trail rehabilitation is scheduled to
+    # begin...", lloydminster.ca, confirmed live 2026-08-31). `state` is
+    # therefore the literal display string "AB/SK", not a real two-letter
+    # province code -- a deliberate, one-off exception to this table's
+    # usual convention, matching the one real way this city's own
+    # government represents itself. `type="city"` is Lloydminster's real
+    # legal designation; the "fallback"/"" branches that apply here format
+    # as `f"{name}, {state}"` directly and never consult `type` for
+    # display, so this choice is inert for formatting but keeps the field
+    # semantically honest.
+    "pub-lloydminster.escribemeetings.com": KnownJurisdiction(
+        "Lloydminster", "city", "AB/SK"
+    ),
+    # BACKLOG.md's "Swagit still resolves every special-purpose entity...
+    # with a blank jurisdiction" entry: none of these titles has a
+    # "City/County/Town of X" phrase for swagit.py's own `_extract_
+    # metadata()` regex to match (it requires a trailing ", {2-letter
+    # state}"), and none of the three subdomains validates against the
+    # Census/StatsCan tables `_validated_subdomain_extract()` checks --
+    # same "no national table for non-Census entities" gap the MPO/
+    # transit-authority/utility-district PARK entry in BACKLOG.md already
+    # names (Contra Costa Transportation Authority/Toronto and Region
+    # Conservation Authority above are the same shape on other
+    # platforms). All plain "fallback" strength, same reasoning as the
+    # WO-69 eScribe-residuals block above: `resolve()` returns a blank
+    # jurisdiction today (not a confirmed-wrong one), and
+    # `finalize_jurisdiction()`'s own `if not raw_jurisdiction: ... known
+    # ...` branch already supplies the full name once one exists here --
+    # no change needed in swagit.py itself.
+    #
+    # ERCOT (Electric Reliability Council of Texas) -- confirmed live
+    # 2026-08-31 via ercot.new.swagit.com/videos/377620 ("Mar 10, 2026
+    # Batch Study Process for Large Load Interconnections Workshop #4 -
+    # ERCOT - Electric Reliability Council of Texas"): the real `<title>`
+    # ends in the entity's own full name, not a city/state. A statewide
+    # electric-grid reliability authority, not tied to one city or
+    # county -- same "closest general jurisdiction" convention as
+    # `agendas.wrd.org`/`records.jcsd.us` above, except the closest real
+    # jurisdiction here is the state itself.
+    "ercot.new.swagit.com": KnownJurisdiction(
+        "Electric Reliability Council of Texas", "authority", "TX"
+    ),
+    # Texas Department of Family and Protective Services -- confirmed
+    # live 2026-08-31 via dfps.new.swagit.com/videos/345687 ("Jun 13,
+    # 2025 DFPS Council Meeting - Texas Dept of Family and Protective
+    # Services"). A statewide state agency, same reasoning as ERCOT
+    # above.
+    "dfps.new.swagit.com": KnownJurisdiction(
+        "Texas Department of Family and Protective Services", "department", "TX"
+    ),
+    # Santa Clara County Office of Education -- confirmed live 2026-08-31
+    # via sccoe.new.swagit.com/videos/315560 ("Sep 18, 2024 County Board
+    # of Education - Santa Clara County Office of Education"). A real
+    # county-level education agency, not the county government itself
+    # (same "office"/"department" distinction as
+    # `riversidesheriff.portal.civicclerk.com` above) -- "Santa Clara
+    # County" is real and unambiguous in the Census county table.
+    "sccoe.new.swagit.com": KnownJurisdiction(
+        "Santa Clara County Office of Education", "office", "CA"
+    ),
+    # Two more real special-purpose Swagit tenants confirmed live
+    # 2026-08-31 while verifying the three above (not from the original
+    # 2026-08-15 audit's 16, independently found): Broward MPO
+    # (browardmpo.new.swagit.com/videos/359517, "Oct 30, 2025 MPO Board
+    # Meeting - Broward MPO" -- also the real page
+    # `extract_jurisdiction_chain()`'s own docstring already names as the
+    # Broward-MPO false-positive case; browardmpo.org's own official name
+    # is "Broward Metropolitan Planning Organization", headquartered in
+    # Fort Lauderdale, Broward County, FL) and VIA Metropolitan Transit
+    # (viametrotransit.new.swagit.com/videos/376227, "Feb 24, 2026 VIA /
+    # ATD Board of Trustees Meeting - VIA Metropolitan Transit" -- San
+    # Antonio, TX's transit authority, real official name confirmed via
+    # Wikipedia).
+    "browardmpo.new.swagit.com": KnownJurisdiction(
+        "Broward Metropolitan Planning Organization", "mpo", "FL"
+    ),
+    "viametrotransit.new.swagit.com": KnownJurisdiction(
+        "VIA Metropolitan Transit", "authority", "TX"
+    ),
 }
 
 

@@ -108,8 +108,47 @@ already knows its own portal domain. A bare `vimeo.com/...` URL with no
 known origin (a cold user paste) still has no hint to give -- that's the
 separate, not-yet-built scrape-the-`<title>`-tag fallback noted in
 BACKLOG.md, out of scope here.
+
+## Captions ARE server-reachable after all, via the headless browser (2026-08-31)
+
+The "what a plain HTTP client cannot get" section above is still true for
+a *plain* `aiohttp` request, but it's no longer the full story. Real
+experiment against Salisbury NC's `1212025580` (the same real, populated-
+caption sample the section above names): navigating
+`headless_browser.py`'s existing Cloudflare-bypass Chromium fetch
+(originally built for Minneapolis LIMS/SLC, see that module's docstring)
+straight to `player.vimeo.com/video/{id}/config` still fails -- it renders
+Vimeo's own "Sorry, we're having a little trouble" `PrivacyError` page,
+not JSON, even from a real browser context. But navigating that same
+fetch to the **player page itself**
+(`player.vimeo.com/video/{id}[?h=...]`, i.e. this module's own
+`embed_url()`) succeeds, and the rendered DOM contains a real
+`<track kind="subtitles" src="https://captions.vimeo.com/captions/
+{id}.vtt?expires=...&sig=...">` element with a genuine signed caption
+URL -- confirmed live, HTTP 200, a real ~2h03m/~2200-cue English
+transcript, no browser needed for that second hop (the signed URL itself
+is a plain, unauthenticated `aiohttp` GET once obtained). `/config` was
+never actually necessary -- the player page already renders the one
+piece `/config` would have carried.
+
+`_fetch_captions_via_headless_browser()` below does exactly this: render
+the player page, pull the first `<track kind="subtitles"|"captions">`
+off it with BeautifulSoup, fetch that URL with the module's existing
+`_fetch()`, and parse it through the shared `vtt_parser` pipeline every
+other adapter uses. It is purely additive -- any failure (Playwright
+unavailable, a genuine Cloudflare human-verification challenge, no
+`<track>` found, the signed fetch itself failing) falls back to the
+prior video-only behavior with `_NO_CAPTIONS_WARNING`, exactly as before
+this was added. The real, accepted cost is a headless Chromium
+render on every single-video Vimeo resolve (a few seconds, on top of the
+~1-2s cold-launch the first time) purely to reach captions, since video +
+metadata already come for free from oEmbed -- worth it because an
+approximate transcript is one of this app's two core value props (see
+CLAUDE.md's "why this exists"), and because the failure mode is silent
+degradation, never a broken resolve.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -120,9 +159,15 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .base import AssetFinder, CalendarCandidate, CalendarPageError
-from .models import ResolvedMeeting
+from .headless_browser import HeadlessBrowserUnavailable, fetch_via_browser
+from .models import ResolvedMeeting, TranscriptSegment
 from ..utils import jurisdiction_enrich
 from ..utils.url_guard import guarded_get, read_capped_text
+from ..utils.vtt_parser import (
+    detect_language_from_texts,
+    is_likely_garbled,
+    parse_captions_by_extension,
+)
 
 logger = logging.getLogger("rtr_deeplink.vimeo")
 
@@ -343,6 +388,22 @@ def canonical_video_url(video_id: str, privacy_hash: Optional[str] = None) -> st
     return f"{base}/{privacy_hash}" if privacy_hash else base
 
 
+def _extract_caption_track(html: str) -> Optional[Tuple[str, str]]:
+    """`(caption_url, srclang)` for the first real `<track kind="subtitles">`
+    or `<track kind="captions">` in a headless-rendered Vimeo player page,
+    or None. Confirmed live only one track exists on the one real sample
+    checked (Salisbury NC, `srclang="en-x-autogen"`) -- reads generically
+    off the DOM with BeautifulSoup rather than assuming that shape holds
+    everywhere."""
+    soup = BeautifulSoup(html, "html.parser")
+    for track in soup.find_all("track"):
+        kind = (track.get("kind") or "").strip().lower()
+        src = (track.get("src") or "").strip()
+        if kind in ("subtitles", "captions") and src:
+            return src, (track.get("srclang") or "").strip()
+    return None
+
+
 def _date_from_title(title: Optional[str]) -> Optional[str]:
     if not title:
         return None
@@ -486,7 +547,84 @@ class VimeoAssetFinder(AssetFinder):
                 "We couldn't read this video's details from Vimeo, but the player "
                 "above should still work."
             ]
+
+        # See this module's docstring, "Captions ARE server-reachable after
+        # all" (2026-08-31): a headless-browser render of the player page
+        # itself (not /config, which still fails even there) carries a
+        # real signed caption URL in its DOM. Purely additive -- any
+        # failure here (Playwright unavailable, no <track>, a Cloudflare
+        # challenge, the signed fetch itself failing) leaves the video-only
+        # `_NO_CAPTIONS_WARNING` set above untouched.
+        cues, caption_language = await cls._fetch_captions_via_headless_browser(
+            video_id, privacy_hash
+        )
+        if cues:
+            resolved.segments = [TranscriptSegment(**cue) for cue in cues]
+            resolved.transcript_language = caption_language
+            resolved.transcript_warnings = []
+            if caption_language and caption_language != "en":
+                resolved.transcript_warnings.append(
+                    f"These captions appear to be in '{caption_language}', not "
+                    "'en' -- no matching-language track was found for this meeting."
+                )
+            if is_likely_garbled(cues):
+                resolved.transcript_warnings.append(
+                    "This transcript looks garbled at the source (not a parsing "
+                    "bug on our end) -- treat it as approximate."
+                )
         return resolved
+
+    @classmethod
+    async def _fetch_captions_via_headless_browser(
+        cls, video_id: str, privacy_hash: Optional[str]
+    ) -> Tuple[Optional[List[dict]], Optional[str]]:
+        """`(cues, language)` for the real signed caption track a headless
+        render of the player page exposes (see this module's docstring),
+        or `(None, None)` on any failure -- never raises, so a caller can
+        always fall back to the video-only warning. `language` prefers the
+        real detected language of the cue text (same
+        `detect_language_from_texts()` every other adapter uses) over the
+        track's own `srclang`, which on the one real sample checked reads
+        "en-x-autogen" (a BCP-47 auto-generated-caption tag, not a plain
+        ISO 639-1 code) rather than a clean "en"."""
+        try:
+            html = await asyncio.wait_for(
+                fetch_via_browser(embed_url(video_id, privacy_hash)), timeout=30
+            )
+        except HeadlessBrowserUnavailable:
+            return None, None
+        except asyncio.TimeoutError:
+            # `fetch_via_browser()`'s own `page.goto()` already has a 20s
+            # timeout, but that only bounds page navigation -- the shared
+            # module-level browser launch/reuse in headless_browser.py has
+            # no timeout of its own, and a stuck launch (confirmed live:
+            # reusing a browser bound to a since-closed event loop) hangs
+            # indefinitely rather than raising. This outer bound makes
+            # "no captions" a guaranteed worst case instead of a hung
+            # request -- never worse than the video-only fallback below.
+            logger.warning("Vimeo headless caption fetch timed out for %s", video_id)
+            return None, None
+        except Exception:
+            logger.warning(
+                "Vimeo headless caption fetch failed for %s", video_id, exc_info=True
+            )
+            return None, None
+
+        track = _extract_caption_track(html)
+        if track is None:
+            return None, None
+        caption_url, srclang = track
+
+        body = await cls._fetch(caption_url)
+        if not body:
+            return None, None
+        cues, _fallback_text = parse_captions_by_extension(caption_url, body)
+        if not cues:
+            return None, None
+        language = detect_language_from_texts(c.get("text") for c in cues) or (
+            srclang.split("-")[0].lower() if srclang else None
+        )
+        return cues, language
 
     @staticmethod
     def _upload_date(oembed: Optional[dict]) -> Optional[str]:

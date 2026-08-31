@@ -103,11 +103,13 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (4)
+Standing decisions — do NOT re-raise  (6)
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
+  Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
+  Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -120,7 +122,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (4)
   Decisions about already-live content  (1)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
   [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
@@ -133,25 +135,22 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
-  Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…
-  28 well-formed IQM2 queue rows point at retired tenants…
-  Swagit multi-clip meetings: local script still needs the cloud…
+  Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
+    [LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
+  `[LATER]` Swagit multi-clip meetings: both transcription paths now…
   High Plains Water District (Granicus) transcribed to zero usable…
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can…
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely…
   ChampDS symptom B — instant 0.2s failures from the JSON API,…
-  ~12 OnBase/Hyland-family pages still resolve with no video…
+  `[JUST-DO-IT]` ~10 OnBase/Hyland-family pages still resolve with no…
   Duration alone cannot separate a very short real meeting from an ad…
-  Tucson, AZ's one archived page has no video (50-largest-cities audit)…
-  Atlanta, GA's original ChampDS gap is unconfirmed (50-largest-cities…
-  Omaha, NE has zero archived pages (50-largest-cities audit)…
-  Virginia Beach, VA's OnBoardGOV SPA gap is real but less urgent than…
+  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
   Jurisdiction extraction & backfill  (10)
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
-    `[HUMAN]` Santa Clara's already-valid jurisdiction strings need a
-    `[NEEDS-AUDIT]` Kansas City pair (`154`/`155`) has no single correct
+    `[JUST-DO-IT]` Santa Clara's 4 jurisdiction strings need an admin…
+    `[NEEDS-AUDIT]` The Kansas City pair (`154`/`155`, "City of Kansas…
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
@@ -160,14 +159,14 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
   Adapter & platform gaps  (18)
-    [JUST-DO-IT] TelVue CDX enumeration solved; ~127 tokens still…
+    [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Anchorage AK's original "bot-blocked YouTube…
     [NEEDS-AUDIT] Vimeo captions and Whisper-fallback audio are blocked…
     [NEEDS-AUDIT] Chicago ELMS's 473 real agenda items have no time…
     [NEEDS-AUDIT] ProudCity: Holyoke MA's YouTube 429 recovery status is…
-    [NEEDS-AUDIT] ProudCity: four tenants remain unpushed (two…
+    [NEEDS-AUDIT] ProudCity: two tenants remain unpushed (undiscovered…
     [JUST-DO-IT] City-YouTube-channel fallback: listings only reach ~400…
     [JUST-DO-IT] City-YouTube-channel fallback: duplicate-posted meetings…
     [LATER] `[EXAMPLE]` Town Hall Streams: transcript endpoint…
@@ -176,7 +175,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
     [LATER] YouTube Whisper fallback for videos with no captions at all…
     [IMPROVEMENT-ROUND] Cablecast, TelVue, Swagit, and YouTube still…
     [NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no…
-    [NEEDS-AUDIT] Palm Beach County FL's JS-rendered SharePoint page…
+    [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
 Reliability, ops & cost  (12)
@@ -315,6 +314,27 @@ General principle and good/bad examples now in `CLAUDE.md` — we query
 sites politely and don't defeat a host's own access controls. Hit live
 on Spokane WA building the Vimeo adapter (WO-29); that adapter ships
 video-only rather than going near it.
+
+### Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
+
+Moved from Open bugs 2026-08-31. Real observed floor is **0.066**
+(Delray Beach FL, Marco Island FL), not Tacoma's 0.117 as earlier
+measurements suggested. The 0.05 default has a small but genuine margin
+above that — don't lower it further without a new real measurement.
+
+### Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more short real meetings
+
+Moved from Open bugs 2026-08-31 — this was already a settled "don't
+touch it" finding, not an open question. WO-46 moved the floor 300s →
+60s off real measured data. That recovered three of four confirmed-real
+short meetings, but a real County Council special meeting (53s,
+`berkeleycountysc.iqm2.com` MeetingID=4203) sits three seconds above a
+confirmed ad (50s, `gnat.cablecast.tv/.../13707`) — the two classes are
+interleaved right at the floor, so a smaller number buys nothing.
+Berkeley County stays an accepted miss. Separating them for real needs a
+different signal entirely (`meeting_body`, real-agenda presence, page
+framing) — worth building only if the daily failure digest (WO-46) shows
+this class is actually common; as of 2026-08-31 it's one known case.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
@@ -512,7 +532,12 @@ coverage** instead.
     2026-08-31 — only a Search Console Validate Fix click remains, tracked
     under "Needs a human". eScribe/isilive (10.1%) needs only a fresh
     Google recrawl, not code — traced to a display artifact, not a real
-    bug.
+    bug. The same Granicus block also shows up as Events/Videos
+    rich-result "invalid item" flags in URL Inspection, not just the
+    watch-page issue — its "Page resources couldn't be loaded" panel
+    shows the same Granicus media stream failing Googlebot's fetch
+    ("Other error"), matching the 403-to-Googlebot finding above; not a
+    new bug, another symptom of the same one.
 
 - **[NEEDS-AUDIT] Search Console "video isn't on a watch page" — Cablecast
   and the long tail remain unexplained.**
@@ -585,16 +610,14 @@ coverage** instead.
     (durations differing ~18 min) and correctly decline rather than
     guess.
   - **Impact**: that Philadelphia Aug 6 meeting can't be auto-matched.
-    Albuquerque is also still unchecked — its Legistar calendar page's
-    current HTML doesn't match the link-scraping shape used for the other
-    three cities.
   - **Next action**: needs a second same-shape ambiguous-match case before
     a tie-break rule is trustworthy — this repo's own WO-34 lesson (a
     single case isn't enough to safely generalize a matching-logic
-    change) applies directly; separately, take a fresh look at
-    Albuquerque's Legistar calendar page structure.
+    change) applies directly.
   - **History**: full diagnosis in `BACKLOG_DONE.md`'s WO-77–82 entry
-    (2026-08-30); this entry compacted 2026-08-31.
+    (2026-08-30); this entry compacted 2026-08-31. Albuquerque re-checked
+    2026-08-31 and confirmed working correctly on a fresh real example —
+    see `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A chunk truncated only at its tail still passes the
   decodability guard.**
@@ -665,7 +688,16 @@ coverage** instead.
 - **History**: split out of the retry work, `BACKLOG_DONE.md` #305/#306
   (2026-08-22).
 
-### 28 well-formed IQM2 queue rows point at retired tenants `[NEEDS-AUDIT]` `[WAIT]`
+- **[LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
+  the same connection-level timeout (10s, no TLS handshake), now 3 for
+  3.** Two prior probes on different days agreed 27 of 28 flagged
+  tenants were identically dead and those rows were removed 2026-08-31
+  (see `BACKLOG_DONE.md`). `pec` alone has never once returned the
+  generic "Accela Meeting Portal" error page the other 27 share — every
+  check is a bare connection timeout, which reads more like a real
+  outage or firewall than a retired tenant serving a fallback page.
+  Still not conclusive (never resolved even once), but the pattern is
+  now 3-for-3 consistent. Left in the queue.
 
 - **Issue**: 28 structurally-correct IQM2 queue rows resolve to tenants
   that appear to be retired (the Accela/IQM2 sunset) rather than
@@ -685,27 +717,20 @@ coverage** instead.
   (2026-08-22); repeat probe and full tenant list [Investigated
   2026-08-31].
 
-### Swagit multi-clip meetings: local script still needs the cloud worker's fix (WO-79) `[NEEDS-AUDIT]`
+### `[LATER]` Swagit multi-clip meetings: both transcription paths now handle it, two small residuals remain
 
-- **Issue**: `scripts/transcribe_backlog_locally.py` doesn't consume
-  `video_segments`/`chunk_plan`, so it can't stitch a Swagit multi-clip
-  meeting the way the cloud worker now does after WO-79 (2026-08-30).
-- **Impact**: local-Whisper runs against Swagit tenants with no single
-  combined source recording (confirmed: Yolo County CA, White Plains NY,
-  Apple Valley MN) still can't produce one meeting-relative transcript.
-- **Next action**: port the cloud worker's `probe_multi_clip_chunk_plan()`
-  + `shift_segments()` stitch approach into the local script, per this
-  repo's "two independent transcription paths" convention; also re-run
-  the fixed resolver against the original 43-URL 2026-08-18 sweep to size
-  how many are genuinely multi-segment, and do a broader live Swagit
-  audit.
-- **Constraint**: even the cloud-worker path has two known unhandled
-  edges — chunk-plan jobs skip the live per-chunk re-resolve the
-  ordinary path uses to guard against stale URLs, and there's no
-  sub-chunking for an individual very-long clip yet — neither has a
-  confirmed real case forcing it.
-- **History**: `BACKLOG_DONE.md` — WO-79 (2026-08-30) built the cloud
-  worker fix.
+- **Issue**: two known, unconfirmed-as-real gaps left after both paths
+  shipped multi-clip handling (cloud worker WO-79 2026-08-30, local
+  script 2026-08-31): a chunk-plan job skips the live per-chunk
+  re-resolve the ordinary path uses to guard against stale URLs, and
+  there's no sub-chunking for an individual very-long clip.
+- **Impact**: neither has a confirmed real case forcing it yet — real but
+  unobserved staleness risk, not an active bug.
+- **Next action**: none until a real case turns up; separately, re-run the
+  fixed resolver against the original 43-URL 2026-08-18 sweep to size how
+  many are genuinely multi-segment, and do a broader live Swagit audit.
+- **History**: `BACKLOG_DONE.md` — WO-79 (cloud worker) and the
+  2026-08-31 local-script port.
 
 ### High Plains Water District (Granicus) transcribed to zero usable segments `[NEEDS-AUDIT]`
 
@@ -779,26 +804,25 @@ actionability sections above.
   this is the half it could genuinely fit.
 - **History**: symptom A's full history is in `BACKLOG_DONE.md`.
 
-### ~12 OnBase/Hyland-family pages still resolve with no video `[NEEDS-AUDIT]`
+### `[JUST-DO-IT]` ~10 OnBase/Hyland-family pages still resolve with no video — 2 named tenants now have a confirmed fix path
 
-- **Issue**: ~12 OnBase/Hyland-family tenant pages still resolve with no
-  video, each needing its own per-tenant "where does this jurisdiction
-  actually put video" hunt.
-- **Impact**: real population is 31 pages across 25 OnBase/Hyland-family
+- **Issue**: real population is 31 pages across 25 OnBase/Hyland-family
   tenants (matched on the `OnBaseAgendaOnline`/`agendaonline` URL *path*,
-  not a vendor-name grep, which misses most of the platform) — 17 with no
-  video, 4 already fixed (Santa Barbara/Pittsburg), leaving ~12 open and
-  growing: 3 new tenants surfaced in a single day via WO-46's daily
-  failure digest (`egenda.scgov.net`, `meetings.muni.org`,
-  `ecm.cityofsantacruz.com`). Video presence isn't caption presence
-  either — only 1 of the 31 pages has real captions, so repointing buys a
-  video, not a transcript.
-- **Next action**: work the per-tenant hunt using the repoint method
-  already proven on the 3 fixed pages.
-- **History**: full investigation, the working repoint method, and the 3
-  fixed pages are in `BACKLOG_DONE.md`'s "Four archived pages pointed at
-  agenda systems with no video" entry — this entry is only the residual
-  left open.
+  not a vendor-name grep). `meetings.muni.org` (Anchorage AK,
+  `@moameetings`) and `ecm.cityofsantacruz.com` (Santa Cruz CA,
+  `youtube.com/ctvsantacruz` — 5,695 real captions confirmed live) each
+  have real video on their own YouTube channel, but `hyland.py` doesn't
+  call `youtube_channel.py`'s fallback at all today.
+- **Impact**: Sarasota's repoint (closed 2026-08-31) brought the open
+  count down by one, to ~10. Video presence isn't caption presence
+  either — most of the 31 pages have no real captions even once video is
+  found, so repointing usually buys a video, not a transcript.
+- **Next action**: wire Anchorage/Santa Cruz through the same
+  date-matching join Legistar cities needed for their YouTube-channel
+  fallback (not a trivial repoint); work the remaining per-tenant hunt
+  using the repoint method already proven on the fixed pages.
+- **History**: full investigation, the working repoint method, and the
+  fixed pages are in `BACKLOG_DONE.md`'s OnBase/Hyland entries.
 
 ### Duration alone cannot separate a very short real meeting from an ad `[NEEDS-AUDIT]`
 
@@ -821,63 +845,41 @@ actionability sections above.
   `MIN_PLAUSIBLE_MEETING_SECONDS`'s own code comment for the full
   measured table.
 
-### Tucson, AZ's one archived page has no video (50-largest-cities audit) `[NEEDS-AUDIT]`
+### Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
 
-- **Issue**: Tucson AZ's one archived page
-  (`tucson-az-2026-08-05-regular-meeting`, source
-  `tucsonaz.hylandcloud.com`) genuinely has no video — confirmed real,
-  re-checked against the live archive 2026-08-30.
-- **Impact**: no video/transcript for this Tucson meeting; real
-  video/audio+minutes exist on a separate city YouTube channel/page not
-  yet wired to `youtube_channel.py`, which today only covers Legistar
-  netlocs.
-- **Next action**: same shape as the Columbus OH fix (WO-72) — a real,
-  buildable fallback entry once a channel ID is confirmed.
-- **History**: full per-tenant audit history in `BACKLOG_DONE.md`.
+Full per-tenant history (what closed, when, and why) moved to
+`BACKLOG_DONE.md` — this entry keeps only the tenants that never
+closed. Distinct from the "no domain found yet" jurisdiction-coverage
+work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
+Tucson AZ is done (YouTube-channel fallback shipped 2026-08-31,
+`youtube_channel.py` generalized to accept a Hyland netloc — see
+`BACKLOG_DONE.md`); Atlanta's original ChampDS gap is also closed —
+every re-check found the same thing (works via IQM2, no ChampDS URL
+ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
-### Atlanta, GA's original ChampDS gap is unconfirmed (50-largest-cities audit) `[NEEDS-AUDIT]`
-
-- **Issue**: Atlanta's originally reported ChampDS gap can't be confirmed
+- **Omaha, NE — the real blocker is worse than framed: the whole domain
+  is Akamai-gated, not just one page.** Re-checked 2026-08-31:
+  `citycouncil.cityofomaha.org`, `cityclerk.cityofomaha.org`, and even
+  bare `www.cityofomaha.org` all return a flat `403 AkamaiGHost "Access
+  Denied"` regardless of client (tried a full Chrome UA+Referer+
+  Accept-Language, and Googlebot's UA — no difference; same from `curl`
+  and a real browser). A real per-date URL shape does exist
+  (`citycouncil.cityofomaha.org/.../icalrepeat.detail/{YYYY}/{MM}/{DD}/
+  {id}/-/city-council-meeting`, found via Wayback CDX) but is
+  unreachable to fetch or verify by any client available here, so
+  there's nothing to wire a date-match against. **@DOTComm2013**
+  (`UCBJ5WE5dI3_GIBLoUNEgBXQ`) is still confirmed real and current
+  ("Omaha City Council" playlist) — the channel-side fact holds — but
+  there's no page this app can reach to trigger the fallback from. Not
+  a code gap; a real access wall, same category as the GovAccess
+  Granicus WAF entry below. Virginia Beach VA, previously listed here
+  too, is resolved (`virginiabeach.cablecast.tv` has real, ongoing
+  weekly Council coverage, confirmed live 2026-08-31 across 4
+  consecutive weeks) — see `BACKLOG_DONE.md`.
   either way — re-checked against the live archive 2026-08-30, 14 real
   meeting links are now archived (up from "at least one"), but the
   working ones found are sourced from IQM2 (`atlantacityga.iqm2.com`),
   not ChampDS.
-- **Impact**: Atlanta apparently runs both IQM2 and ChampDS for different
-  bodies, so the original ChampDS-specific gap is unverified.
-- **Next action**: get the user's specific failing ChampDS URL for
-  Atlanta before chasing further — not otherwise actionable.
-- **History**: full per-tenant audit history in `BACKLOG_DONE.md`.
-
-### Omaha, NE has zero archived pages (50-largest-cities audit) `[NEEDS-AUDIT]`
-
-- **Issue**: Omaha NE still has zero archived pages — confirmed
-  2026-08-30 (`/api/jurisdictions?q=omaha` returns no matches).
-- **Impact**: no coverage for Omaha at all. Live video exists only at
-  `citycouncil.cityofomaha.org` during scheduled meeting times, with no
-  archive; the "past videos" link routes to `cityclerk.cityofomaha.org`,
-  which is Cloudflare-protected and returned inconsistent results live
-  2026-08-30 (sometimes a JS challenge shell, sometimes a plain 403).
-- **Next action**: genuinely needs real investigation, not a quick fix —
-  find a path past `cityclerk.cityofomaha.org`'s Cloudflare protection or
-  another source entirely.
-- **History**: full per-tenant audit history in `BACKLOG_DONE.md`.
-
-### Virginia Beach, VA's OnBoardGOV SPA gap is real but less urgent than framed (50-largest-cities audit) `[NEEDS-AUDIT]`
-
-- **Issue**: the `onboardgov.virginiabeach.gov` SPA gap is real, but
-  Virginia Beach already has a real, working City Council meeting page
-  (`virginia-2026-08-18-city-council-meeting-8-18-2026`) sourced from
-  Cablecast (`virginiabeach.cablecast.tv`, an already-supported
-  platform) — confirmed against the live archive 2026-08-30; its
-  jurisdiction was also corrected from bare "Virginia" to "Virginia
-  Beach, VA" the same night.
-- **Impact**: if Cablecast keeps covering Council meetings going forward,
-  the OnBoardGOV SPA investigation may not be worth the headless-browser
-  cost at all.
-- **Next action**: confirm Cablecast's real ongoing Council-meeting
-  coverage before investing in the SPA gap.
-- **History**: full per-tenant audit history in `BACKLOG_DONE.md`.
-
 ### Granicus's GovAccess CMS product is undetected and blocked by Akamai's WAF `[NEEDS-AUDIT]`
 
 - **Issue**: Granicus's "GovAccess CMS" product (CNAMEs through
@@ -924,44 +926,42 @@ actionability sections above.
     of that fix; it surfaced as a "real bug found along the way" note in
     `BACKLOG_DONE.md`'s "TelVue: 10 of 12" entry (2026-08-30).
 
-- **`[HUMAN]` Santa Clara's already-valid jurisdiction strings need a
-  canonical form applied.**
-  - **Issue**: four independently-valid Santa Clara jurisdiction strings —
-    `County of Santa Clara, CA`, `The County of Santa Clara, CA`, `Santa
-    Clara County, CA`, `County of Santa Clara Office` — all pass
-    validation as-is, so `finalize_jurisdiction()`'s recompute makes zero
-    changes to any of them (confirmed live, current==repaired on every
-    one). City of Santa Clara and the VTA also need `", CA"` suffixes
-    added.
+- **`[JUST-DO-IT]` Santa Clara's 4 jurisdiction strings need an admin action — two independently-built write paths now exist.**
+  - **Issue**: `County of Santa Clara, CA`/`The County of Santa Clara,
+    CA`/`Santa Clara County, CA`/`County of Santa Clara Office` are all
+    valid-as-is, so `finalize_jurisdiction()`'s recompute makes zero
+    changes to any of them; City of Santa Clara and the VTA also need
+    `", CA"` suffixes. Two admin endpoints for exactly this were built
+    independently the same day (2026-08-31): `POST
+    /internal/jurisdiction/override` (this session, PR #638) and `POST
+    /internal/jurisdiction/set-explicit` (the concurrent local-agent
+    session, both tag rows `manual_override` and protect against a
+    later re-ingest reverting them) — see `BACKLOG_DONE.md` for how
+    these two reconcile.
   - **Impact**: 4+ Santa Clara-area pages carry inconsistent jurisdiction
-    strings instead of the decided canonical form, and no existing admin
-    endpoint can write an explicit override — `POST
-    /internal/jurisdiction/backfill-apply` only ever recomputes via
-    `finalize_jurisdiction()`.
-  - **Next action**: build a small new admin capability (an
-    explicit-string override endpoint, scoped tightly), or make a
-    deliberate one-off decision to bypass `finalize_jurisdiction()` for
-    this case.
-  - **Constraint**: canonical form already decided (2026-08-23): `Santa
-    Clara County, CA` for the county rows, consistent with every other
-    county in the archive. This is a product/engineering call, not a
-    token-access one.
-  - **History**: split out of WO-47, which closed the
-    Redding/Healdsburg/Arcata/Paso Robles half of the same original entry
-    via `backfill-apply` — see `BACKLOG_DONE.md`'s 2026-08-29 "needs a
-    human" review entry for full row/cause detail, and its 2026-08-30
-    production-write entry (98 real jurisdiction corrections applied
-    across 6 rounds) for the broader cleanup this fell out of.
+    strings instead of the decided canonical form.
+  - **Next action**: apply the canonical form (`Santa Clara County, CA`
+    for the county rows, decided 2026-08-23) to the 4 Santa Clara rows +
+    the VTA via either endpoint, findable via `GET
+    /internal/jurisdiction/search?q=santa+clara` — not yet made.
+  - **History**: split out of WO-47 (`BACKLOG_DONE.md`'s 2026-08-29
+    "needs a human" review entry and 2026-08-30 production-write entry).
 
-- **`[NEEDS-AUDIT]` Kansas City pair (`154`/`155`) has no single correct
-  jurisdiction.**
-  - **Issue**: pages `154`/`155` ("City of Kansas City" → "Kansas City")
-    span the KS/MO state line, so there's no single correct jurisdiction
-    string derivable from this data alone.
-  - **Impact**: 2 pages show an ambiguous jurisdiction with no clean fix.
-  - **Next action**: needs a product decision on how to represent a
-    cross-state-line "Kansas City" (pick one state, or a dual-state
-    representation) before any code change.
+- **`[NEEDS-AUDIT]` The Kansas City pair (`154`/`155`, "City of Kansas City" → "Kansas City") — check `source_url_normalized` before concluding this is undecidable.**
+  - **Issue**: `kansascity.legistar.com`/`kansascity.granicus.com` is a
+    confirmed-live, Kansas-City-**MO**-specific tenant
+    (`app/platforms/granicus_channel.py`), and no Kansas City, KS tenant
+    is registered anywhere in this repo — if rows 154/155's source URL
+    is on that domain, this isn't actually ambiguous.
+  - **Impact**: 2 pages show an ambiguous jurisdiction with no clean fix
+    — or don't, pending the check below.
+  - **Next action**: check the actual stored `source_url_normalized` for
+    both rows (via `GET /internal/jurisdiction/search`, not yet
+    deployed); if it's on the MO domain, resolve via a `_KNOWN_DOMAINS`
+    entry or the override endpoints above. Only if the source is
+    something else entirely does this stay genuinely undecidable,
+    needing a product decision on how to represent a cross-state-line
+    name.
   - **History**: the other 5 pages this entry originally covered — Oxford
     County ON, Breckenridge TX, Eustis FL, Hendersonville NC, Loganville
     GA — were confirmed deployed and applied 2026-08-30; see
@@ -1097,21 +1097,37 @@ actionability sections above.
   - **History**: `BACKLOG_DONE.md`, 2026-08-20/21.
 ### Adapter & platform gaps
 
-- **[JUST-DO-IT] TelVue CDX enumeration solved; ~127 tokens still unclassified, 23 verified but unpublished.**
-  - **Issue**: `collapse=urlkey:64` now returns the complete 313-org-token
-    TelVue CDX set in one uncapped query, but ~127 tokens remain
-    unclassified, and 23 already-verified real tokens (out of the last
-    150 untouched ones checked; 16 of those 23 needed a
+- **[JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token pool now classified; real remaining work is verification + sign-off, not discovery.**
+  - **Issue**: `collapse=urlkey:64` returns the complete 313-org-token
+    TelVue CDX set in one uncapped query (302 unrecognized by this
+    project). All previously-unclassified tokens are now classified
+    (2026-08-31, reproduced the batch-2 method exactly): of the 150
+    genuinely-untouched tokens, 33 were `likely_civic`, 23
+    independently cross-verified as real; of the remaining 127, 16
+    `likely_civic`, 8 `vod_not_enabled` (real, terminal), 36
+    `fetch_error` (mostly real dead/retired tokens), 66 `unclear`, 1
+    `likely_sports_or_school`. 4 of those 16 spot-verified via a real
+    `resolve()` call: 2 real active civic channels with jurisdiction
+    still unidentified, 1 confirmed stale (Egg Harbor Township NJ,
+    superseded by YouTube), 1 confirmed empty/live-only (New Castle
+    County DE).
+  - **Impact**: 23 already-verified real jurisdictions (16 needed a
     jurisdiction-parsing fix, shipped as WO-74) haven't been ingested
-    into production.
-  - **Impact**: real TelVue-hosted jurisdictions stay unpublished until
-    classified and signed off.
-  - **Next action**: classify the remaining ~127 tokens, then get
-    explicit sign-off before ingesting the 23 already-verified tokens as
-    new public content.
+    into production; 12 of the 16 remaining civic tokens plus the 66
+    unclear/1 sports tokens still need manual verification.
+  - **Next action**: get explicit sign-off before ingesting the 23
+    already-verified tokens as new public content; separately, verify
+    the remaining ~79 unclassified-but-promising tokens (reproduction
+    script and full classification output are in this session's
+    scratchpad, not yet copied to
+    `~/Documents/rtr-business/research/cc_scan_data/`).
   - **Constraint**: no ingestion of the 23 without explicit sign-off.
   - **History**: `BACKLOG_DONE.md` (full batch history, per-token
-    verification, and the "~112 remaining" figure's correction).
+    verification, WO-74's jurisdiction-parsing fix including a real
+    wrong-state collision, and the "~112 remaining" figure's
+    correction — it never traced to a real artifact). Also surfaced a
+    real jurisdiction-guess bug in `telvue.py`: guessed "Building" as a
+    place name from a "Building Commission Meeting" title.
 
 - **[NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement) agenda-item extraction needs a scoping decision.**
   - **Issue**: the one known sample's accordion markup and a second real
@@ -1195,23 +1211,29 @@ actionability sections above.
 - **[NEEDS-AUDIT] ProudCity: Holyoke MA's YouTube 429 recovery status is unchecked.**
   - **Issue**: Holyoke MA's ProudCity push hit a real YouTube 429; a
     same-session retry ~40 minutes later failed a second time, confirming
-    this needs real hours to pass, not a quick retry — which specific
-    meeting hit the 429 wasn't recorded.
+    this needs real hours to pass, not a quick retry.
   - **Impact**: Holyoke's meeting isn't pushed.
   - **Next action**: do a fresh check now that more time has passed,
     rather than assuming it's recovered.
+  - **Constraint**: the specific meeting that hit the 429 still isn't
+    identified — checked 2026-08-31 via the WP REST API, which doesn't
+    expose a video-URL field, so a fresh check needs that URL first, not
+    just "retry once time has passed."
   - **History**: `BACKLOG_DONE.md` (ProudCity adapter shipped, ~18 real
     tenants pushed 2026-08-26).
 
-- **[NEEDS-AUDIT] ProudCity: four tenants remain unpushed (two undiscovered domains, two Cloudflare-gated).**
+- **[NEEDS-AUDIT] ProudCity: two tenants remain unpushed (undiscovered domain), one Cloudflare-gated.**
   - **Issue**: Charlotte TX and Brazos Valley COG are too ambiguous to
-    guess a domain for and have never been chased. Lafayette CA and
-    Talent OR remain Cloudflare-gated (`www.cityoftalent.org` still 403s
-    live as of 2026-08-30).
+    guess a domain for and have never been chased. Talent OR remains
+    Cloudflare-gated, reconfirmed 2026-08-31 (`www.cityoftalent.org`
+    still 403s plain-HTTP). Lafayette CA is **not** actually
+    Cloudflare-gated — that framing was stale; it's Akamai, already
+    solved via header-spoofing, and its real blocker is no active
+    "meeting" post type, not reachability.
   - **Impact**: low priority — the adapter and known-domains list already
-    cover the real yield from this round; these four stay unpushed.
+    cover the real yield from this round; these tenants stay unpushed.
   - **Next action**: none scheduled. If pursued: Charlotte TX/Brazos
-    Valley COG need a real domain lead first; Lafayette/Talent need the
+    Valley COG need a real domain lead first; Talent needs the
     Cloudflare-challenge question resolved (see Standing decisions).
   - **History**: `BACKLOG_DONE.md` (ProudCity build; Franklin Township
     NJ, Effingham IL, and George West TX were chased and resolved by
@@ -1321,15 +1343,17 @@ actionability sections above.
     (built 2026-08-31): **245** total no-jurisdiction pages — Cablecast
     101, TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10,
     CivicClerk 7, unknown 4, TownHallStreams 1, Castus 1.
-  - **Next action**: Cablecast's 101-page per-row audit is the one
-    concrete, scoped follow-up (commit `731da71` already recovered 23 of
-    a prior 101 via a subdomain-validation fallback at
+  - **Next action**: re-run `GET /internal/jurisdiction/missing` before
+    trusting the 245 figure — eScribe's hyphen-matcher gap and 5 more
+    Swagit special-purpose tenants were both fixed 2026-08-31, after this
+    count was taken, so both numbers are likely already lower.
+    Cablecast's 101-page per-row audit is the one concrete, scoped
+    follow-up regardless (commit `731da71` already recovered 23 of a
+    prior 101 via a subdomain-validation fallback at
     `cablecast.py:589-602`, so a similar per-row pass on the current 101
     is plausible). YouTube has no structural fix (`uploader` is a channel
-    name, not a government field). Swagit needs a non-Census entity
-    table; eScribe needs its hyphen-matcher gap closed (see that
-    platform's own corrected entry elsewhere in "Platform & jurisdiction
-    coverage").
+    name, not a government field); Swagit still needs a non-Census entity
+    table for the tenants beyond the 5 now registered.
   - **Constraint**: use `GET /internal/jurisdiction/missing` directly for
     current numbers — don't re-derive from `/internal/low-trust-pages`.
   - **History**: `BACKLOG_DONE.md` (WO-38's original 2026-08-21 audit and
@@ -1355,18 +1379,20 @@ actionability sections above.
   - **History**: `BACKLOG_DONE.md` (video-indexing investigation); moved
     out of Dormant 2026-08-30.
 
-- **[NEEDS-AUDIT] Palm Beach County FL's JS-rendered SharePoint page evades the empty-shell escalation trigger.**
-  - **Issue**: the page's shell carries ~6KB of real nav/chrome text, so
-    the near-empty-text escalation trigger (tuned to Tucson's 153-char
-    shell) never fires.
-  - **Impact**: this JS-rendered SharePoint page never gets the
-    headless-browser escalation it needs.
-  - **Next action**: build a SharePoint-specific fingerprint, or a
-    different heuristic than raw text length — not a wider version of the
-    existing trigger, which would make every enabled fetch pay a ≥4s
-    browser cost on ordinary no-video pages.
-  - **History**: `BACKLOG_DONE.md` (2026-08-14 generic-fallback rebuild);
-    moved out of Dormant 2026-08-30.
+- **[NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates correctly; the real video is still unreachable behind client-side JS.**
+  - **Issue**: escalation itself is fixed (a SharePoint-specific
+    `_spPageContextInfo`/`_layouts/15` fingerprint trigger shipped
+    2026-08-31), but the real video — a plain-fetchable Wowza HLS
+    manifest at `pbcmedia.pbcgov.org:1936/vod/_definst_/mp4:
+    {videoid}.mp4/playlist.m3u8`, confirmed live via network capture,
+    where `{videoid}` is literally the page's own query param — never
+    appears in the DOM (rendered or raw), only constructed by client JS.
+  - **Impact**: `media_scan.scan_media_urls()` still can't find the video
+    even after escalation succeeds.
+  - **Next action**: a PBC-specific URL-construction rule (derive the
+    manifest URL directly from `videoid`) is the next real, scoped step.
+  - **History**: `BACKLOG_DONE.md` (2026-08-14 generic-fallback rebuild,
+    2026-08-31 SharePoint fingerprint trigger).
 
 - **[LATER] `elpasotexas.gov/videos/` has no adapter of its own.**
   - **Issue**: pasting that URL lands in `generic_fallback.py` instead of

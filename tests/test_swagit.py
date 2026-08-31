@@ -148,6 +148,42 @@ async def test_resolve_falls_back_to_validated_subdomain_when_body_has_no_city_p
     assert result.jurisdiction == "Galesburg"
 
 
+async def test_resolve_leaves_jurisdiction_blank_for_special_purpose_entities_today():
+    # BACKLOG.md's "Swagit still resolves every special-purpose entity
+    # (school district, MPO, transit/utility authority, state agency)
+    # with a blank jurisdiction" entry. Real, confirmed-live <title>
+    # (fetched 2026-08-31 from ercot.new.swagit.com/videos/377620): no
+    # "... - City, ST" shape for _extract_metadata()'s regex, and
+    # "ercot" is an acronym subdomain that validates against neither the
+    # Census place nor county table, so extract_jurisdiction_chain()'s
+    # own subdomain tier declines too (same as Galesburg above, just with
+    # zero candidates instead of an ambiguous one). This is expected,
+    # documented behavior, not the bug itself: the actual fix is a
+    # registry entry in jurisdiction_enrich._KNOWN_DOMAINS (see
+    # test_lookup_by_domain_resolves_swagit_special_purpose_entities_2026_08_31
+    # and test_finalize_jurisdiction_swagit_special_purpose_domains_supply_the_full_name
+    # in tests/test_jurisdiction_enrich.py), consulted only at Archive
+    # ingest time (archive/db/crud.py's _find_or_create_page(), via
+    # finalize_jurisdiction()) -- same architecture as every other
+    # special-purpose _KNOWN_DOMAINS entry in this codebase (Water
+    # Replenishment District, Toronto and Region Conservation Authority,
+    # etc.), not something swagit.py itself needs to change.
+    url = "https://ercot.new.swagit.com/videos/377620"
+    html = (
+        "<html><head><title>Mar 10, 2026 Batch Study Process for Large "
+        "Load Interconnections Workshop #4 - ERCOT - Electric "
+        "Reliability Council of Texas</title></head><body>"
+        '<script>var playlist = [{"file": "https://archive-stream.granicus.com/x/playlist.m3u8"}];</script>'
+        "</body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await SwagitAssetFinder().resolve(url)
+
+    assert result.jurisdiction is None
+
+
 def test_group_word_fragments_merges_real_dublin_example():
     # Real bug (2026-08-08): Swagit's #transcript-fragments emits one
     # TranscriptSegment per word with start == end (a true instant) --

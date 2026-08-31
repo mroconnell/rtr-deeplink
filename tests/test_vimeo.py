@@ -43,11 +43,19 @@ the full investigation:
   investigation, including the Harpswell ME case that did NOT recover
   with the expected domain and needed a different real one).
 
-What is NOT tested here, deliberately, because it does not work: caption
-fetching. `player.vimeo.com/video/{id}/config` 403s every non-browser
-client, so there is no positive server-side example to build a parser
-against (see CLAUDE.md's "don't claim a caption/data path works without a
-positive example"). The adapter is video-only and says so in a warning.
+- `player_salisbury_1212025580.html` -- a real, unmodified headless-
+  Chromium capture of the player page itself
+  (`player.vimeo.com/video/1212025580`), taken live 2026-08-31, carrying
+  a genuine signed `<track kind="subtitles" src="https://captions.vimeo
+  .com/...">`. `captions_salisbury_314604795.vtt` is the real caption
+  file that signed URL pointed to at capture time (~2210 cues, a real
+  2h03m meeting) -- both together are the positive example that unlocked
+  server-side caption fetching (see vimeo.py's own docstring, "Captions
+  ARE server-reachable after all"). `player.vimeo.com/video/{id}/config`
+  itself still 403s/PrivacyErrors even from a real headless browser
+  (confirmed live) -- the fix was never about reaching `/config`, it was
+  reading the same signed URL straight off the rendered player page's DOM
+  instead.
 """
 
 from unittest import mock
@@ -56,6 +64,7 @@ import aiohttp
 import pytest
 
 from app.platforms.base import CalendarPageError, detect_platform
+from app.platforms.headless_browser import HeadlessBrowserUnavailable
 from app.platforms.vimeo import (
     VimeoAssetFinder,
     embed_url,
@@ -76,6 +85,25 @@ def _fake_public_dns(monkeypatch):
     monkeypatch.setattr(
         url_guard, "_resolve_hostname", lambda hostname: ["93.184.216.34"]
     )
+
+
+@pytest.fixture(autouse=True)
+def _no_headless_captions(monkeypatch):
+    """The real, additive headless-browser caption fetch added 2026-08-31
+    (see vimeo.py's own docstring, "Captions ARE server-reachable after
+    all") launches a real Chromium unless mocked -- this autouse fixture
+    keeps every other test in this suite exactly as it was (network-free,
+    video-only, `_NO_CAPTIONS_WARNING` still set) by simulating the
+    browser being unavailable, the same clean failure mode a real
+    Playwright-less environment produces.
+    `test_resolve_fetches_real_captions_via_headless_browser` below
+    overrides this within its own test body to exercise the real positive
+    path against a real captured fixture."""
+
+    async def _unavailable(url, **kwargs):
+        raise HeadlessBrowserUnavailable("no headless browser in tests")
+
+    monkeypatch.setattr("app.platforms.vimeo.fetch_via_browser", _unavailable)
 
 
 def _oembed_route(target: str, fixture: str) -> dict:
@@ -343,6 +371,67 @@ async def test_resolve_still_yields_a_playable_embed_when_oembed_is_unreachable(
     assert result.video_url == "https://player.vimeo.com/video/1212025580"
     assert result.title is None
     assert any("should still work" in w for w in result.video_warnings)
+
+
+async def test_resolve_fetches_real_captions_via_headless_browser():
+    # Real, additive fix (2026-08-31): navigating headless_browser.py's
+    # existing Cloudflare-bypass Chromium fetch to the player page itself
+    # (not /config, which still fails there -- confirmed live) renders a
+    # real `<track kind="subtitles" src="https://captions.vimeo.com/...">`
+    # with a genuine signed caption URL. `player_salisbury_1212025580.html`
+    # and `captions_salisbury_314604795.vtt` are both real, unmodified
+    # captures taken live 2026-08-31 of Salisbury NC's 1212025580 -- the
+    # same real 7/21/2026 City Council meeting the oEmbed fixtures above
+    # are from, and the one this whole investigation names as having a
+    # real, populated English track. The signed URL's own `expires=` query
+    # param is a Unix timestamp for 2026-08-31 23:12 UTC (computed via
+    # `datetime.utcfromtimestamp`), i.e. it was already expired by the
+    # time this test was written -- harmless to keep in the fixture, same
+    # reasoning as `showcase_crrma.html`'s own already-expired JWT.
+    url = "https://vimeo.com/1212025580"
+    player_html = load_fixture("vimeo", "player_salisbury_1212025580.html")
+    caption_url = (
+        "https://captions.vimeo.com/captions/314604795.vtt"
+        "?expires=1788217973&sig=f1ebb8b30fd11e977375b7b4a5de62641846d6fe"
+    )
+    caption_vtt = load_fixture("vimeo", "captions_salisbury_314604795.vtt")
+
+    async def _fake_fetch_via_browser(fetch_url, **kwargs):
+        assert fetch_url == "https://player.vimeo.com/video/1212025580"
+        return player_html
+
+    with mock.patch("app.platforms.vimeo.fetch_via_browser", _fake_fetch_via_browser):
+        routes = {
+            **_oembed_route(url, "oembed_salisbury_1212025580.json"),
+            caption_url: FakeResponse(status=200, text=caption_vtt, url=caption_url),
+        }
+        with mock_session(routes):
+            result = await VimeoAssetFinder().resolve(url)
+
+    assert result.video_url == "https://player.vimeo.com/video/1212025580"
+    assert len(result.segments) > 2000  # real capture has ~2210 cues
+    assert result.segments[0].text == "Talk to her about."
+    assert result.transcript_language == "en"
+    # The real fix replaces the video-only warning entirely, since a real
+    # transcript now exists.
+    assert not any(
+        "doesn't hand out caption files" in w for w in result.transcript_warnings
+    )
+
+
+async def test_resolve_falls_back_to_video_only_when_headless_browser_unavailable():
+    # The default/autouse _no_headless_captions fixture already covers
+    # this for every other test -- this one asserts it explicitly so the
+    # fallback behavior itself is a named, visible regression test rather
+    # than an incidental side effect of the fixture.
+    url = "https://vimeo.com/1212025580"
+    with mock_session(_oembed_route(url, "oembed_salisbury_1212025580.json")):
+        result = await VimeoAssetFinder().resolve(url)
+
+    assert result.segments == []
+    assert any(
+        "doesn't hand out caption files" in w for w in result.transcript_warnings
+    )
 
 
 async def test_resolve_reports_a_non_video_vimeo_url_honestly():

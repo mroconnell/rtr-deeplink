@@ -54,6 +54,26 @@ def _fake_public_dns(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _no_headless_captions(monkeypatch):
+    """Every `.resolve()` here delegates to `VimeoAssetFinder.
+    resolve_video_id()`, which (as of 2026-08-31, see vimeo.py's own
+    docstring) unconditionally attempts a real headless-browser caption
+    fetch -- see test_vimeo.py's identical fixture for the full
+    reasoning. Without this, these tests launch a real Chromium and, in
+    at least one real environment, hang indefinitely rather than failing
+    fast (confirmed live -- the module-level browser/event-loop reuse in
+    `headless_browser.py` doesn't survive a fresh per-test event loop
+    cleanly). Keeps this suite exactly as it was before that change:
+    network-free, video-only."""
+    from app.platforms.headless_browser import HeadlessBrowserUnavailable
+
+    async def _unavailable(url, **kwargs):
+        raise HeadlessBrowserUnavailable("no headless browser in tests")
+
+    monkeypatch.setattr("app.platforms.vimeo.fetch_via_browser", _unavailable)
+
+
 def _routes(meeting_id: str, fixture: str, *, oembed: str = None) -> dict:
     api_url = API + meeting_id
     routes = {

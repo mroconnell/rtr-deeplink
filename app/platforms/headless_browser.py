@@ -125,20 +125,34 @@ class HeadlessBrowserUnavailable(Exception):
 
 
 def _install_chromium() -> bool:
-    """Runs `playwright install chromium` in-process, once. Real download
-    (tens of seconds to a couple minutes depending on network), so this is
-    a last-resort self-heal for a build step that didn't work, not a
-    substitute for fixing that build step. Returns whether it succeeded."""
+    """Runs `playwright install chromium chromium-headless-shell` in-process,
+    once. Real download (tens of seconds to a couple minutes depending on
+    network), so this is a last-resort self-heal for a build step that
+    didn't work, not a substitute for fixing that build step. Must name
+    both browsers -- `playwright install chromium` alone does not pull
+    `chromium-headless-shell`, which is what `launch(headless=True)`
+    actually needs (root-caused 2026-08-31, see render.yaml's matching
+    comment); installing "chromium" alone here used to "succeed" while
+    leaving the real missing binary still missing. Returns whether it
+    succeeded."""
     global _install_attempted
     if _install_attempted:
         return False
     _install_attempted = True
     logger.warning(
-        "Chromium binary missing -- attempting a runtime `playwright install chromium`."
+        "Chromium binary missing -- attempting a runtime "
+        "`playwright install chromium chromium-headless-shell`."
     )
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium"],
+            [
+                sys.executable,
+                "-m",
+                "playwright",
+                "install",
+                "chromium",
+                "chromium-headless-shell",
+            ],
             capture_output=True,
             text=True,
             timeout=300,

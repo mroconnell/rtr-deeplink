@@ -3001,6 +3001,44 @@ async def apply_jurisdiction_bleed_backfill(
         }
 
 
+async def search_pages_by_jurisdiction_text(q: str, limit: int = 20) -> list[dict]:
+    """Bounded free-text lookup for GET /internal/jurisdiction/search --
+    the read companion POST /internal/jurisdiction/override needed: that
+    write endpoint takes comma-separated `ids`, but nothing in this file
+    could answer "what's the id for the Santa Clara row whose
+    jurisdiction reads X" without direct DB access. Same ILIKE-substring
+    idiom `search_jurisdictions()`/`list_pages()` already use for their
+    own jurisdiction filters -- this is the admin-token-gated,
+    id-returning counterpart to the public, name-only
+    `search_jurisdictions()`.
+
+    SQL-`LIMIT`-capped at `limit` (default 20, same default order of
+    magnitude as `search_jurisdictions()`) so a broad query can't scan or
+    return the full archive -- this is a lookup aid for a human about to
+    make one explicit write, not a bulk export."""
+    limit = max(1, min(limit, 100))
+    pattern = f"%{q}%"
+    async with async_session() as session:
+        result = await session.execute(
+            select(MeetingPage)
+            .where(MeetingPage.jurisdiction.ilike(pattern))
+            .order_by(MeetingPage.id)
+            .limit(limit)
+        )
+        rows = result.scalars().all()
+    return [
+        {
+            "id": row.id,
+            "slug": row.slug,
+            "jurisdiction": row.jurisdiction,
+            "jurisdiction_confidence": row.jurisdiction_confidence,
+            "source_url_normalized": row.source_url_normalized,
+            "title": row.title,
+        }
+        for row in rows
+    ]
+
+
 async def list_http_scheme_backfill_candidates() -> dict:
     """Read-only audit for a real gap found 2026-08-30: `normalize_url()`
     was fixed (commit 6b47794, "collapse http/https identity") to always

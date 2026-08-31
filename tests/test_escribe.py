@@ -563,6 +563,21 @@ def test_jurisdiction_from_subdomain_splits_concatenated_multiword_names():
         # hyphen-joined candidate.
         ("pub-chatham-kent.escribemeetings.com", "Chatham-Kent"),
         ("pub-arranelderslie.escribemeetings.com", "Arran-Elderslie"),
+        # Real gap found 2026-08-31 auditing eScribe pages with no
+        # jurisdiction (BACKLOG.md's "eScribe hyphen-matcher gap"): unlike
+        # Chatham-Kent/Arran-Elderslie above, this real Ontario
+        # municipality's subdomain does NOT survive the strip-then-
+        # wordninja path at all -- `wordninja.split("strathroycaradoc")`
+        # returns `['strath', 'roy', 'cara', 'doc']`, since neither
+        # "strathroy" nor "caradoc" is a token wordninja's own dictionary
+        # can segment (confirmed live via wordninja itself, not just this
+        # function). Fixed by passing the subdomain's own real hyphen
+        # through unchanged instead of stripping it first -- the table's
+        # own row is spelled with the identical hyphen
+        # ("Strathroy-Caradoc, ON"), so `validated_label_extract()`'s tier
+        # 1 (a raw-label table check, before wordninja ever runs) now
+        # catches it directly.
+        ("pub-strathroy-caradoc.escribemeetings.com", "Strathroy-Caradoc"),
     ]
     for netloc, expected in cases:
         assert (
