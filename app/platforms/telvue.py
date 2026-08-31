@@ -387,6 +387,20 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # Luverne, Minnesota's own page for this exact "LuvTV" public-access
     # channel.
     "yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC": "Luverne, MN",
+    # WO-89, 2026-08-31: found live (org token from the site's own home
+    # page, real active Town Council/Planning Board/Conservation
+    # Commission series). This org's own real `id="org-logo"` alt text,
+    # "Derry CAM - Derry Gov. VOD - organization logo", has no state
+    # anywhere (same shape as Luverne above), so the general org-logo
+    # parser correctly declines. A bare title/name guess here is actively
+    # DANGEROUS, not just unhelpful: `jurisdiction_enrich._table_lookup
+    # ("Derry")` resolves to Derry, PA (a real borough) -- NH's own Derry
+    # never surfaces as a candidate at that tier, confirmed live -- so
+    # without this registry entry, a naive fallback wouldn't just fail to
+    # find a state, it would confidently return the WRONG one. Confirmed
+    # NH via derrynh.org, the town's own real municipal site (confirmed
+    # live, 301 to its real homepage).
+    "CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l": "Derry, NH",
     # WO-74, 2026-08-30: the 16 entries below all come from a second CDX
     # `collapse=urlkey:64` enumeration pass (see
     # ~/Documents/rtr-business/research/cc_scan_data/

@@ -68,7 +68,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (29)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (28)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -84,8 +84,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (29)
     [JUST-DO-IT] ~10 OnBase/Hyland-family pages still resolve with no
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (5)
-    [HUMAN] Derry, NH's TelVue org token found — needs a scoping
+  Jurisdiction extraction & backfill  (4)
     [JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
@@ -650,11 +649,6 @@ Full per-tenant history (what closed, when, and why) moved to
 closed. Distinct from the "no domain found yet" jurisdiction-coverage
 work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
-- **Atlanta, GA** — the working archived pages are sourced from IQM2
-  (`atlantacityga.iqm2.com`), not ChampDS — Atlanta apparently runs both
-  systems for different bodies. The original ChampDS gap is unconfirmed
-  either way without the user's specific failing URL; not chased further
-  without it.
 - **Omaha, NE — the real blocker is worse than framed: the whole domain
   is Akamai-gated, not just one page.** Re-checked 2026-08-31:
   `citycouncil.cityofomaha.org`, `cityclerk.cityofomaha.org`, and even
@@ -704,17 +698,6 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   match at all — no further lever on file beyond the WAF itself.
 
 ### Jurisdiction extraction & backfill
-
-- **[HUMAN] Derry, NH's TelVue org token found — needs a scoping
-  decision, not more searching.** Found and verified live 2026-08-31:
-  org token `CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l`, real active Town
-  Council/Planning Board/Conservation Commission series, content current
-  through 08/04/26. **Not logged to `jurisdiction_coverage.csv` — Derry,
-  NH has no row in that file at all.** NH's population there appears
-  limited to the state's 13 legally-chartered cities + counties (23 rows
-  total, all "city"/"County" suffix, zero "town" suffix); Derry is a
-  "town" under NH law. Unclear whether that's deliberate scoping or a
-  real gap — needs a decision before adding a row and wiring this up.
 
 - **[JUST-DO-IT] Santa Clara's 4 jurisdiction strings need an admin
   action, not a human product decision — the write path now exists.**

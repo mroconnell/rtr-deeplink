@@ -58,6 +58,58 @@ investigation) can reach to trigger it from. Correctly left unbuilt —
 this is a real access wall, not a scoped code gap; see BACKLOG.md's
 short live note.
 
+## Derry, NH registered — NH towns confirmed in scope for jurisdiction_coverage.csv, not deliberately excluded [Done 2026-08-31]
+
+The open entry found Derry NH's real TelVue org token but couldn't add
+a row: `jurisdiction_coverage.csv`'s NH population was limited to the
+state's 13 legally-chartered cities + counties, zero towns, and it
+wasn't clear whether that was deliberate scoping. Confirmed by explicit
+direction: NH towns belong in the population, this was a real gap, not
+a decision.
+
+**Added**: `Derry town,New Hampshire,United States,34317,derrynh.org,,
+https://videoplayer.telvue.com/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/
+media/865668,True,,,telvue,False,` to
+`~/Documents/rtr-business/research/jurisdiction_coverage.csv` (real
+population confirmed via Wikipedia's 2020 Census figure;
+`transcribed=False` since real caption content for this specific
+meeting hasn't been verified, only that real video exists).
+
+**Wired up in code**: registered `CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l` →
+`"Derry, NH"` in `app/platforms/telvue.py`'s
+`_KNOWN_ORG_TOKEN_JURISDICTIONS`, same pattern as WO-67's Leominster/
+Royal Oak/Luverne entries. **Confirmed this is more than a convenience
+fix**: live-checked `jurisdiction_enrich._table_lookup("Derry")` and it
+resolves to Derry, PA (a real borough) — NH's own Derry never surfaces
+as a candidate at that lookup tier — so without this registry entry, a
+bare-name fallback wouldn't just miss a state, it would confidently
+return the *wrong* one, the same "wrong-STATE collision" shape already
+seen elsewhere (Rome GA → Rome City IN). Real org-logo alt text
+("Derry CAM - Derry Gov. VOD - organization logo") confirmed live has
+no state either, so the general org-logo parser correctly declines on
+its own. New regression test
+`test_resolve_falls_back_to_known_org_token_for_derry`
+(`tests/test_telvue.py`) using the real fixture shape; 60 tests pass in
+that file, full suite 2349 passed. Not yet deployed.
+
+## Atlanta, GA ChampDS gap closed — never had a real example behind it [Closed 2026-08-31]
+
+Every re-check of this claim, going back through the full history
+(the original "50 largest US cities" audit, the 2026-08-30 WO-67/75
+parallel sweep, and this session), found the same thing: Atlanta's
+working archived pages are sourced from IQM2 (`atlantacityga.iqm2.com`),
+and no specific failing ChampDS URL was ever recorded anywhere — not in
+this repo, not in `~/Documents/rtr-business/research/
+jurisdiction_coverage.csv` (which shows Atlanta on IQM2 only, no ChampDS
+reference at all). The claim traces to a manually-researched table of
+the 50 largest cities kept outside this repo (the same kind of table
+that caught a real bug once — the Charlotte/Detroit mis-attribution,
+see this file's own entry) but that specific freeform note isn't
+findable as a file today. Closed per explicit direction rather than
+left open indefinitely on a claim nothing can locate or reproduce — if
+a real broken Atlanta URL turns up again, it can be reopened with an
+actual example.
+
 ## Sarasota County, FL: OnBase→Granicus repoint built and executed [Done 2026-08-31]
 
 `egenda.scgov.net` confirmed live to be Sarasota County, FL (not Santa

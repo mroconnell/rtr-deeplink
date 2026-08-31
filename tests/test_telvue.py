@@ -242,6 +242,35 @@ async def test_resolve_falls_back_to_known_org_token_for_luverne():
     assert result.jurisdiction == "Luverne, MN"
 
 
+async def test_resolve_falls_back_to_known_org_token_for_derry():
+    # Real case, found 2026-08-31 (WO-89): org token from the site's own
+    # real home-page listing (Town Council/Planning Board/Conservation
+    # Commission series, real and active). Real org-logo alt text
+    # confirmed live, "Derry CAM - Derry Gov. VOD - organization logo",
+    # has no state anywhere (same shape as Luverne above), so the general
+    # org-logo parser correctly declines. This one is more than just
+    # unhelpful without the registry entry: `jurisdiction_enrich.
+    # _table_lookup("Derry")` resolves to Derry, PA (a real borough) --
+    # NH's own Derry never surfaces at that tier -- so a bare-name
+    # fallback would confidently return the wrong state, not just miss
+    # one. Confirmed NH via derrynh.org, the town's own real site.
+    url = "https://videoplayer.telvue.com/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/865668"
+    html = (
+        "<html><head><title>Town Council - 04/02/24</title></head><body>"
+        '<img id="org-logo" alt="Derry CAM - Derry Gov. VOD - '
+        'organization logo" />'
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Town Council - 04/02/24", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Derry, NH"
+
+
 async def test_resolve_unknown_org_token_has_no_jurisdiction():
     url = "https://videoplayer.telvue.com/player/someOtherOrgToken123/media/1"
     html = (
