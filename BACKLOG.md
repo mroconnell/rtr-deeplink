@@ -97,7 +97,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
-    [HUMAN] 5 more pages need a deploy before their jurisdiction can be
+    [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -1003,34 +1003,26 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   entry is only for fixing the suffix gap itself, not for the specific
   rows above (already resolved).
 
-- **[HUMAN] 5 more pages need a deploy before their jurisdiction can be
-  corrected — both root causes fixed and merged 2026-08-30 (WO-77,
-  WO-78), just not live yet.** Page `808` (real: **Oxford County, ON**
-  — Canadian counties aren't in this module's US county gazetteer at
-  all, so there was no second candidate to disambiguate against; fixed
-  via a targeted `_KNOWN_DOMAINS` override, same bar as WO-76's Lake
-  Washington entry) and pages `1435`/`1441`/`1442`/`1447`
-  (Breckenridge TX/Eustis FL/Hendersonville NC/Loganville GA — the
-  trim-repair path was discarding a state name sitting right in the
-  text it trims instead of using it; fixed by reusing WO-70's
-  `resolve_claimed_state()` from the generic trim-repair path, not just
-  the comma-separated case it originally covered). Re-run `GET
-  /internal/jurisdiction/bleed-backfill-candidates` (filtered to these
-  5 ids) and apply once deployed. The Kansas City pair (`154`/`155`,
-  "City of Kansas City" → "Kansas City") stays open — a genuinely
-  different, harder case (KS/MO span, no single correct answer from
-  this data alone), not a deploy dependency.
+- **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
+  City" → "Kansas City") stays open** — a genuinely different, harder
+  case (KS/MO span, no single correct answer from this data alone), not
+  a deploy dependency. (The other 5 pages this entry originally covered
+  — Oxford County ON, Breckenridge TX, Eustis FL, Hendersonville NC,
+  Loganville GA — were confirmed deployed and applied 2026-08-30, see
+  `BACKLOG_DONE.md`.)
 
-**2026-08-30 production write, for context**: 94 real jurisdiction
+**2026-08-30 production write, for context**: 98 real jurisdiction
 corrections were applied directly to already-published pages this
-session across 5 rounds (40 confirmed via a text/confidence-tier
+session across 6 rounds (40 confirmed via a text/confidence-tier
 heuristic, 5 more on review, 20 more via real visual verification
 against the source page's own letterhead/seal/agenda content, 5 more
 in a follow-up pass on rows an earlier batch had accidentally skipped,
 6 more re-verified correct after the 2026-08-30 deploy landed WO-68/
-WO-76's fixes, and 18 more from a fresh batch of candidates that only
+WO-76's fixes, 18 more from a fresh batch of candidates that only
 became correct — or only appeared at all — once WO-69's eScribe fixes
-deployed). Full detail in `BACKLOG_DONE.md`.
+deployed, and 4 more — Oxford County ON, Breckenridge TX, Eustis FL,
+Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
+`BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
   narrowed 2026-08-18: "Meeting"/"Attachments" tails are fixed (a

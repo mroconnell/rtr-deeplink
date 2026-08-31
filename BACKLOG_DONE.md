@@ -1,5 +1,23 @@
 # Backlog — done
 
+## 5 jurisdiction fixes unblocked by the WO-77/WO-78 deploy — 4 applied, 1 already correct [Done 2026-08-30]
+
+WO-77 (Oxford County ON `_KNOWN_DOMAINS` override) and WO-78
+(`resolve_claimed_state()` reused by the generic trim-repair path) merged
+2026-08-30 but needed a deploy before their fixes could reach already-
+published pages. Confirmed the deploy landed and the fixes are live by
+re-querying `GET /internal/jurisdiction/bleed-backfill-candidates` for
+the 5 affected page ids: page `808` now proposes `Oxford County, ON`
+(authoritative, was `City of Woodstock`/validated), pages `1435`/`1441`/
+`1442` (Breckenridge TX / Eustis FL / Hendersonville NC) now propose
+their correct `City of X, ST` form (repaired, were bare unverified
+CMS-title strings), and page `1447` (Loganville GA) was already correct
+(current == repaired, no-op). Applied the real 4 via `POST
+/internal/jurisdiction/backfill-apply?only_ids=808,1435,1441,1442,1447`
+(dry-run reviewed first, then `dry_run=false`) — all 4 confirmed written.
+The Kansas City pair (`154`/`155`) remains open as its own live entry —
+a genuinely harder KS/MO-span case, not a deploy dependency.
+
 ## ProudCity's other "no video found" tenants checked for the BoxCast link shape — none found [Investigated 2026-08-30]
 
 Only Wilmington, OH was confirmed carrying `videoStyle === 'external'`'s
