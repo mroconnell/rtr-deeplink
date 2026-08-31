@@ -2775,15 +2775,20 @@ the first-vs-second URL pair above is a genuine cross-host migration
 (`coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`),
 which host-namespacing can't and shouldn't try to collapse — that needs
 either a confirmed domain-alias table entry (once a second migrated
-Cablecast tenant confirms this isn't a one-off) or a manual merge. Also
-not done: cleaning up the 3 already-archived Coralville rows themselves
-— this fix only prevents *future* duplicates, it doesn't retroactively
-merge existing ones. No page-merge/dedupe script exists in `scripts/`;
-the existing `POST /internal/admin/delete-pages` endpoint can remove the
-2 duplicates once the most complete of the 3 (by transcript/segment
-completeness) is picked as canonical, but that pick-and-delete pass
-needs a session with the admin token, not done here. See `BACKLOG.md`'s
-matching residual entry.
+Cablecast tenant confirms this isn't a one-off) or a manual merge.
+
+**Both remaining pieces closed 2026-08-29/2026-08-30 — nothing live left
+for this page.** The 3 existing duplicate rows were merged the same day
+(see this file's "2 production writes applied" entry — `POST
+/internal/admin/delete-pages` kept the canonical
+`cityofcoralvilleiowa.cablecast.tv` page, deleted the other 2). The
+domain-alias table itself is a standing decision, not an open task:
+build one only if a second migrated Cablecast tenant ever confirms this
+is a real recurring pattern, not before — a single one-off doesn't
+justify general infrastructure. Re-check this file (search for
+"cablecast" + "migration") before building it, in case a second case
+already surfaced and got recorded here without anyone connecting it
+back to this one.
 
 ## PrimeGov: surface a known-but-unresolved video via `isShowVideoIcon` instead of a flat "no video found" [Done 2026-08-29]
 

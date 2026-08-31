@@ -192,7 +192,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
     [IMPROVEMENT-ROUND] Audit every user-facing email address and
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours to
 
-Dormant — needs a real example first `[LATER]`  (19)
+Dormant — needs a real example first `[LATER]`  (18)
   Captions — formats and sources with no confirmed positive example  (6)
     [LATER] ChampDS real captions confirmed to exist for at least one
     [LATER] TTML/DFXP/ITT caption parsing (`vtt_parser.py`'s
@@ -200,8 +200,7 @@ Dormant — needs a real example first `[LATER]`  (19)
     [LATER] SCC/STL captions are detected but not readable at all
     [LATER] Row-level CC/SRT files in Legistar/CivicPlus calendar
     [LATER] YouTube/PrimeGov: non-English captions untested
-  Per-tenant and per-adapter cases waiting on a second example  (6)
-    [LATER] [EXAMPLE] Cablecast's cross-host migration alias gap —
+  Per-tenant and per-adapter cases waiting on a second example  (5)
     [LATER] `generic_fallback.py`'s YouTube-embed branch had no
     [LATER] Legistar's own MeetingDetail.aspx page carries real
     [LATER] Headless-browser adapters (Minneapolis LIMS, SLC meeting
@@ -932,19 +931,13 @@ actionability sections above.
   repo's own convention. Worth re-checking if a second real example
   turns up during a future Granicus enumeration pass.
 
-- **ProudCity's BoxCast delegation — closed 2026-08-29, see
-  `BACKLOG_DONE.md`.** `app/platforms/boxcast.py` now resolves a
-  `boxcast.tv/channel/{id}` link (ProudCity's real `videoStyle ===
-  'external'` shape) to a real, working, unauthenticated signed HLS
-  manifest, date-matched against the meeting's own date via a real public
-  BoxCast REST API — no headless browser or `blob:`-URL reverse-
-  engineering needed, confirmed live across 3 independent real government
-  tenants. Residual, genuinely open: this only helps tenants that already
-  route through the confirmed `boxcast.tv/channel/{id}` link shape (so
-  far only Wilmington, OH confirmed among this app's own known ProudCity
-  tenants) — worth checking the other `PROUDCITY_KNOWN_DOMAINS` entries
-  currently marked "no video found" for the same shape on a future
-  re-resolve.
+- **ProudCity's BoxCast delegation only helps tenants using the
+  confirmed `boxcast.tv/channel/{id}` link shape — check the rest of
+  `PROUDCITY_KNOWN_DOMAINS`.** The adapter itself is built and done (see
+  `BACKLOG_DONE.md`); so far only Wilmington, OH is confirmed among this
+  app's own known ProudCity tenants. Worth checking the other
+  `PROUDCITY_KNOWN_DOMAINS` entries currently marked "no video found"
+  for the same link shape on a future re-resolve.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
@@ -2928,18 +2921,6 @@ means somebody found the example, not that somebody decided to guess.
   Genuinely still no on-platform example.
 
 ### Per-tenant and per-adapter cases waiting on a second example
-
-- **[LATER] [EXAMPLE] Cablecast's cross-host migration alias gap —
-  `coralvision.cablecast.tv:8080` → `cityofcoralvilleiowa.cablecast.tv`.**
-  Re-filed here 2026-08-30 (was sitting in Adapter & platform gaps,
-  which no longer fit once the actual Coralville duplicate pages were
-  merged 2026-08-29 — see `BACKLOG_DONE.md`). What's left is purely
-  forward-looking: host-namespacing (the `external_id` fix that
-  prevents *future* same-host duplicates) can't and shouldn't try to
-  collapse a genuine cross-host migration, and there's only one
-  confirmed example so far. Needs a second migrated Cablecast tenant to
-  confirm this is a real pattern before building a domain-alias table —
-  not a live duplicate-page problem anymore.
 
 - **[LATER] `generic_fallback.py`'s YouTube-embed branch had no
   page-level metadata backfill (CRRMA's "Untitled meeting") — fixed
