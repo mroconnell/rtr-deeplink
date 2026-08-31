@@ -1,5 +1,43 @@
 # Backlog — done
 
+## Subdomain-override repair path now reattaches the real county type word [Done 2026-08-31]
+
+Half of BACKLOG.md's "Missing 'County'/province suffix on certain repair
+paths" entry (found 2026-08-30 verifying the bleed-backfill queue): the
+subdomain-override path (`_subdomain_override()`,
+`app/utils/jurisdiction_enrich.py`) was producing "Lucas, OH" instead of
+"Lucas County, OH" for real subdomain-derived county repairs (also seen
+for Klickitat WA, Escambia FL) — all three already applied to production
+via `POST /internal/jurisdiction/backfill-apply`, this entry is only
+about the formatting gap itself.
+
+**Root cause**: `_table_lookup()`'s own normalization strips a county's
+trailing type word ("County"/"Parish"/etc.) to build its lookup key
+("Lucas County, OH" is stored/matched as "lucas"), and nothing in
+`_subdomain_override()` ever reattached it before assembling the final
+string.
+
+**Fixed with real data, not a blind "County" guess**: a bare "County"
+default would be wrong for real rows — of ~3,221 US counties, 2,999 use
+"County" but 64 use "Parish" (Louisiana), 78 "Municipio" (Puerto Rico),
+17 "Borough" (mostly Alaska), 9 "Region", 2 "Municipality". New
+`_load_county_type_words()` builds a `(normalized_name, state) -> real
+type word` reverse-lookup from `counties.csv` directly (the same file
+`_COUNTY_STATES` already loads, just capturing what
+`_normalize_name()` discards), and `_county_type_suffix()` splices the
+correct word in at each of `_subdomain_override()`'s three return
+points. Verified: `Lucas/OH` → "Lucas County, OH", `Acadia/LA` →
+"Acadia Parish, LA" (not "Acadia County, LA"), and a real city like
+`Modesto/CA` is left alone (additive, not a blanket suffix).
+
+Regression tests:
+`test_subdomain_override_reattaches_the_real_county_type_word`
+(`tests/test_jurisdiction_enrich.py`). Full suite green (2278 passed).
+
+**Still open, a different bug**: the generic bleed-repair path (not
+`_subdomain_override()`) has its own, separate province/state-dropping
+gap — see the live `BACKLOG.md` entry, not touched by this fix.
+
 ## `_SLUG_REDIRECTS` now sends a real 301 to the public internet — deployed and verified live [Done 2026-08-31]
 
 Root cause: `aiohttp.ClientSession.get()` defaults `allow_redirects=True`,

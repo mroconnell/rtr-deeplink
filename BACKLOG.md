@@ -93,7 +93,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (46)
   Jurisdiction extraction & backfill  (12)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
-    [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
+    [NEEDS-AUDIT] Generic bleed-repair path recovers a correspondence-
     [NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -940,27 +940,17 @@ work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
   a deliberate one-off decision to bypass `finalize_jurisdiction()` for
   this one case — a product/engineering call, not a token-access one.
 
-- **[NEEDS-AUDIT] Missing "County"/province suffix on certain repair
-  paths — a real, recurring formatting gap found verifying the
-  bleed-backfill queue 2026-08-30, root cause not yet fixed.** Two
-  distinct repair code paths produce a bare place name where a
-  suffix is needed: (1) the subdomain-override path (e.g. `713`
-  "Toledo, OH" → "Lucas, OH", `2207` "Goldendale, WA" → "Klickitat,
-  WA", `705`/`1136` "Pensacola, FL" → "Escambia, FL" — all
-  visually confirmed correct in *direction* against real source-page
-  county seals/letterhead, all missing the word "County") — matches
-  WO-47's original observation that this path has no county-typing;
-  (2) a different, generic bleed-repair path that recovers a
-  correspondence-leaked city name but doesn't reattach a
-  province/state (`698` "Burlington" → "Oakville" should be "Oakville,
-  ON"; `1056` "City of Burlington" → "Courtenay" should be "Courtenay,
-  BC", confirmed via a real council-resolution reference on the
-  source page). All 20 real, visually-confirmed-correct pages from
-  this pass (including these 6 imperfect ones) have already been
+- **[NEEDS-AUDIT] Generic bleed-repair path recovers a correspondence-
+  leaked city name but doesn't reattach a province/state — the still-open
+  half of a two-part formatting gap (the subdomain-override half was
+  fixed 2026-08-31, see `BACKLOG_DONE.md`).** `698` "Burlington" →
+  "Oakville" should be "Oakville, ON"; `1056` "City of Burlington" →
+  "Courtenay" should be "Courtenay, BC" (confirmed via a real
+  council-resolution reference on the source page). Both rows already
   applied to production via `POST /internal/jurisdiction/backfill-apply`
   as a strict improvement over the wrong city name they replaced — this
-  entry is only for fixing the suffix gap itself, not for the specific
-  rows above (already resolved).
+  entry is only for fixing the suffix gap itself, not for these specific
+  rows (already resolved, just missing their province).
 
 - **[NEEDS-AUDIT] The Kansas City pair (`154`/`155`, "City of Kansas
   City" → "Kansas City") stays open** — a genuinely different, harder
