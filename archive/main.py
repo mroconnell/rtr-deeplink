@@ -1913,6 +1913,18 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # resolve that predated that metadata. No adapter/registry bug here,
     # just the reslug.
     "meeting-4fefb4": "riverside-county-ca-2026-08-12-rctc-gm-riverside-county-transportation-commissio",
+    # 2026-08-30: two separate MeetingPage rows exist for the same real
+    # Kitchener, ON meeting (Heritage Kitchener Committee, 2026-05-05) --
+    # the 2026-08-30 forced-English re-transcription ingest didn't match
+    # the existing page by source URL and created a second row instead of
+    # updating the first. Kept the original (has the real agenda; the
+    # duplicate never got one). This redirect alone solves the
+    # reader/search-engine-facing problem regardless of whether the
+    # duplicate row itself is ever deleted -- the check below runs before
+    # the row is looked up. Deleting the duplicate row hit an
+    # unexplained, reproducible 500 from /internal/admin/delete-pages;
+    # not worth blocking this fix on that. See BACKLOG.md/BACKLOG_DONE.md.
+    "city-of-kitchener-on-2026-05-05-heritage-kitchener-committee": "kitchener-2026-05-05-heritage-kitchener-committee",
 }
 
 
