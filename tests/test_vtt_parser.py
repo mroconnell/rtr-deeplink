@@ -3,6 +3,9 @@ import re
 from langdetect import detect as _detect_language
 
 from app.utils.vtt_parser import (
+    _is_rollup_pair,
+    _looks_like_rollup,
+    _rollup_lines,
     decode_vtt_bytes,
     dedupe_rollup_cues,
     detect_language_from_texts,
@@ -931,6 +934,126 @@ def test_dedupe_rollup_cues_real_escribe_single_word_rollup_fixture():
         "of our national anthem.",
         "[o canada playing, instrumental]",
     ]
+
+
+def test_looks_like_rollup_flags_real_corpus_scale_youtube_double_marker_cluster():
+    # BACKLOG.md's WO-34 follow-up: the 2026-08-30 production sweep
+    # (scripts/dedupe_rollup_transcripts.py, report saved at
+    # scripts/rollup_dedupe_report.json -- real Archive pages, not a
+    # fixture built from prose) found a fifth real roll-up shape distinct
+    # from the four WO-34 fixtures above: a YouTube auto-caption track
+    # behind a CivicWeb or Municode portal that emits each speaker-change
+    # *line* twice in immediate succession -- once with the raw ">>"
+    # marker, once with the "»" our own normalize_speaker_change_marker()
+    # already folds it to (see that function's docstring) -- with no
+    # scrolling/growing window around it, unlike the classic YouTube shape
+    # test_dedupe_rollup_cues_real_youtube_autocaption_fixture already
+    # pins. That makes it a much smaller defect: this cluster retains
+    # ~0.80 of its characters against ~0.07-0.12 for the Granicus ticker
+    # shape, and its 8 real affected pages score 0.2023-0.2445 -- close to
+    # but still above _ROLLUP_PAIR_RATIO_MIN's 0.20 gate, a far thinner
+    # margin than WO-34's original 0.048-vs-0.401 gap.
+    #
+    # This excerpt is the real captured "before" text for
+    # town-of-rye-2026-07-21-rye-town-park-commission-21-jul-2026
+    # (townofryeny.civicweb.net), exactly as the sweep's dry run recorded
+    # it -- cue timestamps aren't preserved by that report (it only
+    # samples 8 lines of text), so they're synthesized here as sequential
+    # integers; only the text is real. The full real page (not reproduced
+    # here) is ~250 lines and scores 0.2163 end to end; this 8-line
+    # excerpt is denser in duplicate pairs than the full page average (2
+    # of its 7 adjacent pairs overlap, against roughly 1 in 5 site-wide),
+    # so its own ratio runs higher -- the assertion below only pins that
+    # it clears the gate with real margin to spare while staying well
+    # under the classic shapes' 0.401+ "confident" band, not that it
+    # reproduces the exact site-wide number.
+    texts = [
+        "Ready.",
+        "Do you have this on your system?",
+        "Once",
+        ">> What's that?",
+        "» What's that?",
+        ">> My board is the old one.",
+        "» My board is the old one.",
+        ">> Welcome everybody to the Rye Town Park",
+    ]
+    cues = [
+        {"start": float(i), "end": float(i + 1), "text": t} for i, t in enumerate(texts)
+    ]
+
+    ratio = _rollup_ratio(cues)
+    assert 0.20 <= ratio < 0.401
+    assert _looks_like_rollup(_rollup_lines(cues))
+
+
+def _rollup_ratio(cues):
+    """Local re-implementation of scripts/dedupe_rollup_transcripts.py's
+    rollup_ratio(), which isn't importable here without pulling in that
+    script's own module-level aiohttp/argparse setup. Deliberately mirrors
+    it exactly (same _is_rollup_pair-based loop) so this test's number
+    means the same thing as the one the production sweep reported."""
+    pairs = hits = 0
+    previous = None
+    for _cue, line, _is_last in _rollup_lines(cues):
+        words = line.split()
+        if previous is not None:
+            pairs += 1
+            if _is_rollup_pair(previous, words):
+                hits += 1
+        previous = words
+    return hits / pairs if pairs else 0.0
+
+
+def test_dedupe_rollup_cues_collapses_real_youtube_double_marker_duplicate_pairs():
+    # Same real cluster as the test above, verifying dedupe_rollup_cues()'s
+    # actual output against the production sweep's own recorded "after"
+    # text for townofryeny.civicweb.net (CivicWeb/YouTube, confirmed live
+    # via scripts/dedupe_rollup_transcripts.py's --apply gate, which only
+    # ever promotes a rewrite that itself no longer scores as roll-up).
+    # This is the regression guard: today's code already collapses this
+    # shape correctly (the fold in _fold_words handles ">>"/"»"
+    # generically, the same mechanism the classic YouTube fixture above
+    # exercises at a bigger scale) -- there is no separate detector to
+    # build here, only this test to keep it that way.
+    rye_texts = [
+        "Ready.",
+        "Do you have this on your system?",
+        "Once",
+        ">> What's that?",
+        "» What's that?",
+        ">> My board is the old one.",
+        "» My board is the old one.",
+        ">> Welcome everybody to the Rye Town Park",
+    ]
+    rye_cues = [
+        {"start": float(i), "end": float(i + 1), "text": t}
+        for i, t in enumerate(rye_texts)
+    ]
+    assert [c["text"] for c in dedupe_rollup_cues(rye_cues)] == [
+        "Ready.",
+        "Do you have this on your system?",
+        "Once",
+        ">> What's that?",
+        ">> My board is the old one.",
+        ">> Welcome everybody to the Rye Town Park",
+    ]
+
+    # Second real tenant (wcwd.civicweb.net, real ratio 0.2445), at the
+    # pair level rather than the whole-page gate: this 8-line sample has
+    # only one duplicate pair in it (the report only saves an 8-line
+    # excerpt per page, not the full ~250-line track), which on its own
+    # scores 0.14 -- under the gate on this short a sample even though the
+    # real full page clears it. That is expected, not a bug: the gate is a
+    # whole-track statistic, and an isolated short excerpt is exactly what
+    # loses that statistical power (see this file's real Tacoma/Antioch/
+    # Essex fixtures above, which are all much longer for the same
+    # reason). What *is* real and testable from this excerpt alone is that
+    # the fold recognizes the ">>"/"»" pair as a repeat, which is the
+    # specific mechanism this cluster depends on.
+    assert _is_rollup_pair(
+        ">> Do I need to do that again?".split(),
+        "» Do I need to do that again?".split(),
+    )
 
 
 def test_parse_captions_by_extension_dedupes_rollup_captions():

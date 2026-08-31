@@ -176,6 +176,7 @@ from app.platforms.media_probe import (
     extract_full_audio,
     is_plausible_meeting_duration,
     probe_duration,
+    probe_multi_clip_chunk_plan,
     should_cache_whole_audio,
     slice_cached_audio,
 )  # noqa: E402
@@ -942,6 +943,24 @@ async def transcribe_meeting(
     its own docstring), collecting every chunk's segments into one
     full-meeting-relative list.
 
+    **WO-79 port (2026-08-31)**: when the fresh resolve finds more than one
+    real `video_segments` entry -- some Swagit meetings with no single
+    combined recording at the source, see app/platforms/swagit.py and
+    media_probe.probe_multi_clip_chunk_plan()'s own docstring -- this calls
+    that same function to build a per-clip chunk plan (real per-clip
+    durations, cumulative meeting-relative offsets) and treats each clip as
+    exactly one chunk, identical to worker/main.py's process_next_chunk()
+    (per this repo's "two independent transcription paths" convention --
+    CLAUDE.md -- the cloud worker's own WO-79 fix doesn't reach this script
+    on its own). All-or-nothing, same as the worker: if any one clip fails
+    to probe, this falls back to the ordinary single-clip probe/transcribe
+    path below rather than risking a partial, understated duration. Two
+    residuals explicitly NOT handled here, same as the worker (see
+    BACKLOG.md): no live per-chunk re-resolve for a chunk-plan meeting (the
+    frozen per-clip URLs from this one resolve are used directly), and no
+    further sub-chunking of an individual clip that turns out to be very
+    long.
+
     **Two kinds of resilience, both added 2026-08-22 after ten-plus
     confirmed real cases** (BACKLOG.md's own entry, and MEDIA_ATTEMPTS'
     comment above, have the specifics):
@@ -1029,18 +1048,51 @@ async def transcribe_meeting(
             "extraction",
         }
 
-    duration = await retry_async(
-        lambda: probe_duration(result.video_url, source_page_url=source_url),
-        label=f"ffprobe of {result.video_url}",
-        attempts=MEDIA_ATTEMPTS,
-        base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
-        max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
-        logger=logger,
-        # probe_duration() never raises -- it returns None for every
-        # failure, including the 120s subprocess timeout that is the whole
-        # reason this retry exists.
-        retryable_failure=lambda d: None if d is not None else "ffprobe read nothing",
-    )
+    # WO-79 port (this repo's "two independent transcription paths"
+    # convention -- CLAUDE.md -- the cloud worker's own fix for this
+    # doesn't reach this script automatically): a meeting split into
+    # several real per-clip files with no single combined recording at
+    # the source (some Swagit tenants -- see app/platforms/swagit.py,
+    # media_probe.probe_multi_clip_chunk_plan()'s own docstring) gets a
+    # per-clip chunk plan instead of a duration probe of just the first
+    # clip, so the eventual transcript covers the WHOLE meeting rather
+    # than one clip's worth of it. Same all-or-nothing contract as the
+    # worker: probe_multi_clip_chunk_plan() returns None (not a partial
+    # plan) the moment any one clip fails to probe, and this falls back
+    # to the ordinary single-clip probe/transcribe path below exactly
+    # like worker/main.py's auto-generation path does.
+    chunk_plan: Optional[list] = None
+    duration: Optional[float] = None
+    if len(result.video_segments) > 1:
+        chunk_plan = await retry_async(
+            lambda: probe_multi_clip_chunk_plan(
+                result.video_segments, source_page_url=source_url
+            ),
+            label=f"multi-clip chunk-plan probe of {source_url}",
+            attempts=MEDIA_ATTEMPTS,
+            base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+            max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            retryable_failure=lambda p: None if p else "clip probe(s) failed",
+        )
+        if chunk_plan:
+            duration = chunk_plan[-1]["start"] + chunk_plan[-1]["duration"]
+
+    if duration is None:
+        duration = await retry_async(
+            lambda: probe_duration(result.video_url, source_page_url=source_url),
+            label=f"ffprobe of {result.video_url}",
+            attempts=MEDIA_ATTEMPTS,
+            base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+            max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            # probe_duration() never raises -- it returns None for every
+            # failure, including the 120s subprocess timeout that is the
+            # whole reason this retry exists.
+            retryable_failure=lambda d: (
+                None if d is not None else "ffprobe read nothing"
+            ),
+        )
     if duration is None:
         return {
             "ok": False,
@@ -1052,7 +1104,9 @@ async def transcribe_meeting(
             "reason": f"implausible duration ({duration:.0f}s) -- not a real meeting recording",
         }
 
-    total_chunks = chunk_count(duration, chunk_size_seconds)
+    total_chunks = (
+        len(chunk_plan) if chunk_plan else chunk_count(duration, chunk_size_seconds)
+    )
     all_segments: list = []
     first_chunk = 0
     if resume:
@@ -1120,11 +1174,23 @@ async def transcribe_meeting(
     # _FULL_AUDIO_TIMEOUT_SECONDS on every remaining chunk for no gain --
     # the worker only avoids that cost by luck, since a fresh poll after
     # a failure typically lands on the same still-failing state anyway).
-    use_whole_audio_cache = should_cache_whole_audio(result.video_url, total_chunks)
+    # WO-79 port: never cache-whole-audio for a chunk_plan meeting, even if
+    # a future clip's media_url weren't HLS -- that cache is keyed only by
+    # this meeting's single video_url and assumes every chunk is a
+    # different OFFSET into the SAME underlying file. A chunk_plan
+    # meeting's chunks are different CLIPS (different media_url each), so
+    # reusing one meeting-wide cache across them would silently transcribe
+    # the wrong clip's audio for every chunk after the first -- identical
+    # reasoning to worker/main.py's process_next_chunk() (see its own
+    # comment, and tests/test_worker_multi_clip_chunk_plan.py's
+    # test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_job).
+    use_whole_audio_cache = (not chunk_plan) and should_cache_whole_audio(
+        result.video_url, total_chunks
+    )
     whole_audio_cache_failed = False
 
     async def _extract_chunk(
-        cache_path: Path, start: float, dur: float, out_path: Path
+        media_url: str, cache_path: Path, start: float, dur: float, out_path: Path
     ):
         nonlocal whole_audio_cache_failed
         if use_whole_audio_cache and not whole_audio_cache_failed:
@@ -1134,7 +1200,7 @@ async def transcribe_meeting(
                     "instead of seeking per chunk"
                 )
                 ok, reason = await extract_full_audio(
-                    result.video_url, source_page_url=source_url, out_path=cache_path
+                    media_url, source_page_url=source_url, out_path=cache_path
                 )
                 if not ok:
                     cache_path.unlink(missing_ok=True)
@@ -1145,7 +1211,7 @@ async def transcribe_meeting(
                         reason,
                     )
                     return await extract_chunk_audio(
-                        result.video_url,
+                        media_url,
                         start=start,
                         duration=dur,
                         source_page_url=source_url,
@@ -1160,7 +1226,7 @@ async def transcribe_meeting(
                 cache_path, start=start, duration=dur, out_path=out_path
             )
         return await extract_chunk_audio(
-            result.video_url,
+            media_url,
             start=start,
             duration=dur,
             source_page_url=source_url,
@@ -1174,11 +1240,33 @@ async def transcribe_meeting(
             for idx in range(first_chunk, total_chunks):
                 chunk_wall_start = time.time()
                 chunk_mono_start = time.monotonic()
-                start = chunk_start(idx, chunk_size_seconds)
-                dur = chunk_duration(idx, chunk_size_seconds, duration)
+                if chunk_plan:
+                    # WO-79 port: this meeting's chunks are real per-clip
+                    # boundaries, not the usual fixed chunk_size_seconds
+                    # windows -- idx maps directly onto chunk_plan[idx],
+                    # whose own `start` is already this clip's cumulative
+                    # MEETING-relative offset (used below for
+                    # shift_segments(), not the extraction's own start,
+                    # which is always 0.0 -- a whole-clip chunk always
+                    # extracts from the start of that clip's own file).
+                    # Identical split to worker/main.py's
+                    # process_next_chunk() -- see
+                    # tests/test_worker_multi_clip_chunk_plan.py.
+                    entry = chunk_plan[idx]
+                    chunk_media_url = entry["media_url"]
+                    start = 0.0
+                    dur = entry["duration"]
+                    meeting_offset = entry["start"]
+                else:
+                    chunk_media_url = result.video_url
+                    start = chunk_start(idx, chunk_size_seconds)
+                    dur = chunk_duration(idx, chunk_size_seconds, duration)
+                    meeting_offset = start
                 audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
                 extracted, extraction_error = await retry_async(
-                    lambda: _extract_chunk(whole_audio_path, start, dur, audio_path),
+                    lambda: _extract_chunk(
+                        chunk_media_url, whole_audio_path, start, dur, audio_path
+                    ),
                     label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
                     attempts=MEDIA_ATTEMPTS,
                     base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
@@ -1200,10 +1288,12 @@ async def transcribe_meeting(
                 # nearest preceding HLS segment boundary, not the exact
                 # requested second; confirmed live 2026-08-16 against this same
                 # backlog, Boulder County CO -- see worker/segment_utils.py's
-                # "Seam-duplication dedup" note and BACKLOG_DONE.md).
+                # "Seam-duplication dedup" note and BACKLOG_DONE.md). Shifted
+                # by meeting_offset, not `start` -- these are deliberately
+                # different values for a chunk_plan meeting (see above).
                 before = len(all_segments)
                 all_segments = merge_chunk_segments(
-                    all_segments, shift_segments(raw_segments, start)
+                    all_segments, shift_segments(raw_segments, meeting_offset)
                 )
                 chunks_done = idx + 1
                 dropped = before + len(raw_segments) - len(all_segments)

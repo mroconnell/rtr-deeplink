@@ -42,6 +42,36 @@ NO_VIDEO_HTML = (
     "<html><head><title>Some Page</title></head><body>No video here.</body></html>"
 )
 
+# Real page shape for the "Meeting Highlights" promo box, confirmed live
+# 2026-08-31 against slc.gov/council/march-3-2026-meeting-recap/ itself
+# (via javascript_tool outerHTML dump): the "Watch the Briefing" button
+# sits in its own `wp-block-button` div with no topic text of its own,
+# while the real topic ("Fraud Risk Assessment for Salt Lake City") is a
+# preceding <h3>, not inside the button's own container -- the real,
+# previously-unhandled gap _nearest_topic_text()'s heading fallback exists
+# for (BACKLOG.md "SLC nearest_topic_text gap" entry).
+HIGHLIGHT_HTML = f"""
+<html><head><title>March 3, 2026 Meeting Recap | City Council Office</title></head>
+<body>
+<article>
+<h2>Meeting Highlights</h2>
+<h3>Fraud Risk Assessment for Salt Lake City</h3>
+<p>The Council received the annual fraud risk assessment, with the city
+earning a high score of 375 out of 395 points.</p>
+<div class="wp-block-buttons">
+<div class="wp-block-button"><a href="https://www.slc.gov/Finance/report-fraud-waste-or-abuse/">Learn More</a></div>
+<div class="wp-block-button"><a href="https://www.youtube.com/live/{REAL_VIDEO_ID}?t=2455s">Watch the Briefing</a></div>
+</div>
+<h3>Briefings</h3>
+<p>The Council was briefed on the following items during the work session:</p>
+<ul>
+<li>Proposals that would expand the actions a land use applicant can take.
+(<a href="https://www.youtube.com/live/{REAL_VIDEO_ID}?t=1086s">Watch</a>)</li>
+</ul>
+</article>
+</body></html>
+"""
+
 
 def _fake_extract_info(video_id):
     return {
@@ -154,3 +184,54 @@ def test_extract_timestamp_handles_both_formats():
         SlcAssetFinder._extract_timestamp("https://youtube.com/live/x?t=1441") == 1441.0
     )
     assert SlcAssetFinder._extract_timestamp("https://youtube.com/live/x") is None
+
+
+async def test_resolve_falls_back_to_preceding_heading_for_highlight_promo_box(
+    monkeypatch,
+):
+    # The real gap this fallback fixes: a "Meeting Highlights" promo-box
+    # button (own container has no topic text -- just "Learn More"/"Watch
+    # the Briefing") used to be silently dropped. The real topic lives in
+    # a preceding <h3> instead.
+    async def _highlight_html(url, **kwargs):
+        return HIGHLIGHT_HTML
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+    monkeypatch.setattr("app.platforms.slc.fetch_via_browser", _highlight_html)
+
+    result = await SlcAssetFinder().resolve(MEETING_URL)
+
+    texts_by_start = {item.start: item.text for item in result.agenda_items}
+    assert len(texts_by_start) == 2
+    assert texts_by_start[2455.0] == "Fraud Risk Assessment for Salt Lake City"
+    assert texts_by_start[1086.0].startswith("Proposals")
+
+
+def test_nearest_topic_text_uses_heading_fallback_only_when_container_is_empty():
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(HIGHLIGHT_HTML, "html.parser")
+    links = soup.find_all("a", href=True)
+    highlight_link = next(a for a in links if "Watch the Briefing" in a.get_text())
+    briefing_link = next(a for a in links if a.get_text(strip=True) == "Watch")
+
+    # Empty same-container text -> falls back to the nearest preceding
+    # heading.
+    assert (
+        SlcAssetFinder._nearest_topic_text(highlight_link)
+        == "Fraud Risk Assessment for Salt Lake City"
+    )
+    # Real same-container text still wins outright -- the fallback never
+    # overrides a real result.
+    assert SlcAssetFinder._nearest_topic_text(briefing_link).startswith("Proposals")
+
+
+def test_nearest_topic_text_returns_none_when_no_heading_precedes_it():
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(
+        '<div><a href="https://youtube.com/live/x?t=5">Watch</a></div>',
+        "html.parser",
+    )
+    link = soup.find("a")
+    assert SlcAssetFinder._nearest_topic_text(link) is None

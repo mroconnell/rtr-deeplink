@@ -843,12 +843,27 @@ SEBASTOPOL_OEMBED_JSON = (
 
 
 @pytest.fixture
-def _register_vimeo():
+def _register_vimeo(monkeypatch):
     """Tier 3 delegation goes through `base.get_finder()`, which only
     knows about platforms someone has registered -- same explicit,
     per-test registration the Legistar/CivicPlus/PrimeGov delegation
     tests use, rather than relying on another test file happening to
-    have called `register_all_finders()` first."""
+    have called `register_all_finders()` first.
+
+    Also mocks out Vimeo's own real headless-browser caption fetch (see
+    vimeo.py's docstring, "Captions ARE server-reachable after all,"
+    2026-08-31) -- `resolve_video_id()` attempts it unconditionally, and
+    without this the delegation test below launches a real Chromium
+    against a real Vimeo video, breaking this suite's own stated
+    "network-free" invariant and risking the same hang
+    `test_chicago_elms.py`'s identical fixture documents. Same pattern as
+    test_vimeo.py's `_no_headless_captions`."""
+    from app.platforms.headless_browser import HeadlessBrowserUnavailable
+
+    async def _unavailable(url, **kwargs):
+        raise HeadlessBrowserUnavailable("no headless browser in tests")
+
+    monkeypatch.setattr("app.platforms.vimeo.fetch_via_browser", _unavailable)
     register(VimeoAssetFinder())
 
 
@@ -1101,6 +1116,97 @@ async def test_empty_shell_trigger_skips_pages_with_real_text(monkeypatch):
 
     with mock_session(routes):
         result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert calls == []
+    assert result.video_url is None
+
+
+# --- SharePoint-shell trigger (2026-08-31): Palm Beach County FL's real
+# JS-rendered page carries ~6.2KB of real nav/chrome text -- well over
+# _EMPTY_SHELL_TEXT_MAX_CHARS -- so the empty-shell trigger above never
+# fires for it. `palm_beach_bcc_meeting_videos.html` is a real, unmodified
+# capture taken live 2026-08-31 from
+# discover.pbc.gov/countycommissioners/Pages/bcc-meeting-videos.aspx
+# (the real source behind the archived page BACKLOG_DONE.md's "Request
+# Transcript from Audio" entry names, /m/meeting-890af1). ---
+
+PBC_URL = "https://discover.pbc.gov/countycommissioners/Pages/bcc-meeting-videos.aspx"
+
+
+def test_sharepoint_shell_detected_on_real_palm_beach_capture():
+    html = load_fixture("generic_fallback", "palm_beach_bcc_meeting_videos.html")
+    assert GenericFallbackAssetFinder._looks_like_sharepoint_shell(html)
+    # The real capture is well over the near-empty-text threshold, so the
+    # OLDER trigger alone would never have caught this page -- confirming
+    # the two triggers are genuinely independent, not a redundant pair.
+    assert not GenericFallbackAssetFinder._looks_like_empty_shell(html)
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        # Spot check: every other real capture already in this suite,
+        # none of them SharePoint, must not false-positive.
+        "maricopa_viewmeeting_4694.html",
+        "ocfl_meetings_2069.html",
+        "sacramento_viewmeeting_10231.html",
+        "seattle_videos_x189286.html",
+        "sebastopol_event_page.html",
+        "tarrant_gethtmlagenda_21849bbe.html",
+        "tucson_viewmeeting_1956.html",
+        "wayne_county_commission_2026-01-08.html",
+    ],
+)
+def test_sharepoint_shell_not_detected_on_other_real_pages(fixture_name):
+    html = load_fixture("generic_fallback", fixture_name)
+    assert not GenericFallbackAssetFinder._looks_like_sharepoint_shell(html)
+
+
+async def test_sharepoint_shell_trigger_fires_on_real_palm_beach_shape(monkeypatch):
+    # Trigger (d): a 200 with zero evidence and a real SharePoint
+    # fingerprint (regardless of visible-text length) -> one browser
+    # attempt, whose rendered HTML is re-diagnosed -- same shape as the
+    # Tucson empty-shell trigger, different gate.
+    monkeypatch.setenv("GENERIC_FALLBACK_HEADLESS", "1")
+    shell = load_fixture("generic_fallback", "palm_beach_bcc_meeting_videos.html")
+    rendered = (
+        "<html><head><title>BCC Meeting Videos - Palm Beach County</title></head>"
+        "<body><video src='https://example-cdn.pbc.gov/bcc/20260707.mp4'></video></body></html>"
+    )
+
+    async def _fake_browser(url):
+        assert url == PBC_URL
+        return rendered
+
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
+    routes = {PBC_URL: FakeResponse(status=200, text=shell, url=PBC_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PBC_URL)
+
+    assert result.video_url == "https://example-cdn.pbc.gov/bcc/20260707.mp4"
+
+
+async def test_sharepoint_shell_trigger_never_fires_when_disabled(monkeypatch):
+    # Same env-gate discipline as every other escalation trigger: off by
+    # default, browser never touched.
+    monkeypatch.delenv("GENERIC_FALLBACK_HEADLESS", raising=False)
+    calls = []
+
+    async def _fake_browser(url):
+        calls.append(url)
+        return "<html>should never be used</html>"
+
+    monkeypatch.setattr(
+        GenericFallbackAssetFinder, "_try_browser_fetch", staticmethod(_fake_browser)
+    )
+    shell = load_fixture("generic_fallback", "palm_beach_bcc_meeting_videos.html")
+    routes = {PBC_URL: FakeResponse(status=200, text=shell, url=PBC_URL)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PBC_URL)
 
     assert calls == []
     assert result.video_url is None

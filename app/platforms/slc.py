@@ -124,19 +124,39 @@ class SlcAssetFinder(AssetFinder):
 
     @staticmethod
     def _nearest_topic_text(a) -> Optional[str]:
+        text = None
         container = a.find_parent(["p", "li", "div"])
-        if container is None:
+        if container is not None:
+            # get_text(" ", strip=True)'s separator only applies between
+            # separate tags -- a single text node's own internal newlines
+            # (real word-wrapped source HTML, confirmed on real SLC pages)
+            # survive as literal "\n" otherwise. Collapse all internal
+            # whitespace runs to one space.
+            raw = " ".join(container.get_text(" ", strip=True).split())
+            # Strip the link's own visible text ("Watch"/"Watch the
+            # Briefing") and the parenthesized wrapper real pages use
+            # ("...(Watch)").
+            raw = re.sub(
+                r"\(?\s*Watch(?:\s+the\s+Briefing)?\s*\)?\s*$", "", raw
+            ).strip()
+            text = raw or None
+        if text:
+            return text
+        # Fallback for the "Meeting Highlights" promo-box shape, confirmed
+        # live on slc.gov: the button lives in its own `wp-block-button`
+        # div with no topic text of its own (e.g. a bare "Watch the
+        # Briefing" button), and the real topic sits in a preceding
+        # <h1>-<h6> instead (e.g. "Fraud Risk Assessment for Salt Lake
+        # City"), not in the same container as the link. Only reached
+        # when the primary, same-container lookup came back empty -- this
+        # never overrides a real result, so the worst case this can
+        # produce stays "silently skip" (heading missing too), never
+        # "confidently wrong" (a real topic getting replaced).
+        heading = a.find_previous(re.compile(r"^h[1-6]$"))
+        if heading is None:
             return None
-        # get_text(" ", strip=True)'s separator only applies between
-        # separate tags -- a single text node's own internal newlines
-        # (real word-wrapped source HTML, confirmed on real SLC pages)
-        # survive as literal "\n" otherwise. Collapse all internal
-        # whitespace runs to one space.
-        text = " ".join(container.get_text(" ", strip=True).split())
-        # Strip the link's own visible text ("Watch"/"Watch the Briefing")
-        # and the parenthesized wrapper real pages use ("...(Watch)").
-        text = re.sub(r"\(?\s*Watch(?:\s+the\s+Briefing)?\s*\)?\s*$", "", text).strip()
-        return text or None
+        heading_text = " ".join(heading.get_text(" ", strip=True).split())
+        return heading_text or None
 
     @staticmethod
     def _extract_date(soup: BeautifulSoup) -> Optional[str]:
