@@ -1,5 +1,99 @@
 # Backlog — done
 
+## WO-77 through WO-82: Oxford County/no-comma-state fixes, Archive health-check O(1), Swagit multi-clip stitching, local-backup recovery fix [Done 2026-08-30]
+
+A second parallel-agent wave the same night as the earlier WO-67 through
+WO-76 sweep, working through more of `BACKLOG.md`'s `[NEEDS-AUDIT]`
+section. All PRs (#595, #596, #597, #598, #599) squash-merged to `main`,
+full suite green afterward (2246 passed, 15 skipped). Not yet deployed.
+
+**WO-77 — Oxford County ON mis-resolving to Oxford County ME.** Real
+bug found auditing the bleed-backfill queue: page 808's real source
+(`pub-oxfordcounty.escribemeetings.com`) is unambiguously Oxford
+County, Ontario (confirmed live: page header "COUNTY OF OXFORD
+COUNCIL," `www.oxfordcounty.ca`, real by-laws naming Woodstock as its
+own county seat), but resolved to Oxford County, Maine. Root cause
+different from WO-76's Douglas/MI case: this isn't a two-candidate
+collision the existing tables could disambiguate — Canadian counties
+aren't in this module's US county gazetteer at all, so Maine was the
+*only* candidate. Fixed via a targeted `_KNOWN_DOMAINS` override (same
+evidence bar as WO-76's Lake Washington entry), not a general
+Canadian-counties table addition (only one real confirmed case exists).
+
+**WO-78 — a discarded bleed tail was throwing away a real claimed
+state.** 4 real pages (Breckenridge TX, Eustis FL, Hendersonville NC,
+Loganville GA) spell their state out directly in the raw text with no
+comma ("City of Breckenridge Texas Meetings") — a different shape from
+WO-70's comma-separated case. `_trim_repair()` correctly found the real
+name underneath but then silently dropped the state entirely instead of
+using it — a real regression versus the untouched raw value. Fixed by
+reusing WO-70's `resolve_claimed_state()` from the generic trim-repair
+path (previously only wired into `youtube.py`/`vimeo.py`'s comma
+branches), guarded to only fire when the plain ambiguous-name lookup
+already declined. Confirmed no regression on already-working unambiguous
+cases (Bel Aire KS, Dripping Springs TX) or `_trim_repair()`'s own
+documented real-bleed guards.
+
+**WO-79 — Swagit multi-clip meetings stitched into one transcript.**
+The big build of this wave: some Swagit tenants (confirmed on 3 real
+customers — Yolo County CA, White Plains NY, Apple Valley MN) publish a
+meeting as N separate per-agenda-item clips with no single combined
+recording at the source at all. Per Ryan's explicit direction — the
+reader-facing output must always be one concatenated transcript, never
+split across N pages — built: `ResolvedMeeting.video_segments` (the
+real per-clip list), `media_probe.probe_multi_clip_chunk_plan()` (probes
+each clip's real duration, builds a cumulative-offset chunk plan,
+all-or-nothing on any probe failure), a new nullable
+`TranscriptionJob.chunk_plan` JSON column (migration `b4d9e2a6c7f8`, NULL
+for every ordinary job, no backfill needed), and worker changes so
+`process_next_chunk()`/`maybe_generate_auto_job()` consume a chunk plan
+directly — one chunk per real clip, shifted by its own cumulative offset
+via the existing `shift_segments()`. Verified with real ffprobe against
+all 3 confirmed tenants (Yolo County: 12 clips, ~255 min real total,
+previously only 124.5s was ever reported). Deliberately left open: the
+separate local-Whisper script doesn't consume this yet (this repo's "two
+independent transcription paths" convention), a chunk-plan job skips the
+live per-chunk re-resolve the ordinary path uses against stale URLs (a
+real but unobserved risk in every confirmed sample), and no sub-chunking
+of an individual very-long clip.
+
+**WO-80 — Archive health-check O(n) query.** Confirmed the standing
+hypothesis was real: `/api/health` ran a genuine `SELECT count(*) FROM
+meeting_page` on every Render probe (now 3,455+ rows and growing, probed
+roughly 30:1 against real traffic) — the suspected cause of two real
+"HTTP health check failed" restarts (2026-08-19, 2026-08-20). Replaced
+with `select(MeetingPage.id).limit(1)`, which preserves (and slightly
+strengthens) the original guarantee of failing on a missing/misnamed
+table while dropping the cost to O(1). Also added `--workers 2` to the
+Archive's `startCommand` after checking for single-process assumptions
+(none found — all in-process state is either DB-backed or a harmless
+per-worker cache). New regression test asserts the actual SQL sent
+contains no `count(`.
+
+**WO-82 — local transcription backup recovery, two real gaps closed.**
+Found recovering a real stuck payload that sat unrecovered for 2 days
+(`chino-valley-az-2026-02-10-town-council-meeting`). Gap 1:
+`_save_local_backup()` saved the payload *before* `input_url_normalized`/
+`source` were added by `_ingest()`, so the documented recovery `curl`
+command would 422 on a real attempt — fixed by building the complete
+ingest body once in `process_one()` before both the POST and the backup
+save, so what's saved is exactly what was sent. Gap 2: nothing surfaced
+that a recoverable payload was sitting there at all — added a
+startup-time scan that warns about any backup file older than 1 day.
+
+**Research: Philadelphia's Aug 5/Aug 6 YouTube-fallback misses, fully
+diagnosed.** Aug 5: genuine content gap, no recording exists on the real
+channel as of the check — confirmed via a full listing search across
+both `/videos` and `/streams` tabs. Aug 6: the video exists on both tabs
+under overlapping-but-different titles (`5LZqoNDRMYk` "Committee on
+Education 08-06-26," `UIL3tpBcfFY` "Philadelphia City Council Committee
+on Education 8-6-26," durations differing by ~18 minutes) — `_pick()`'s
+only ambiguity tie-break is the "(Part N)" identical-token-set case, and
+these two titles' token sets genuinely differ, so it correctly declines
+rather than guessing. Deliberately not fixed from one example (matches
+this repo's WO-34 lesson) — needs a second real case before a tie-break
+rule can be trusted.
+
 ## Riverside County IQM2 `platform="unknown"` bug: confirmed disproven via direct DB query, zero action needed [Investigated 2026-08-30]
 
 Live-verified via a direct query on the Archive's Render shell:

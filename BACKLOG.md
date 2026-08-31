@@ -72,22 +72,21 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
-  [NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
-  [NEEDS-AUDIT] Render "HTTP health check failed" on
+  [NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
   The retry papers over an unexplained asyncio/subprocess hang, and…
   28 well-formed IQM2 queue rows point at retired tenants…
-  Some Swagit meetings have no single "whole meeting" video file, and…
+  Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  `[NEEDS-AUDIT]` A saved failed-ingest payload sat unrecovered for 2…  (7)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (7)
     `[LATER]` Recover, rather than just decline, a domain-privacy-
     `[LATER]` BoardDocs (`go.boarddocs.com`) — real, primarily K-12
     `[LATER]` The 8 unmatched CNAME vendor signatures from the 2026-08-28
@@ -102,12 +101,11 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
   The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (16)
+  Jurisdiction extraction & backfill  (15)
     [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] Missing "County"/province suffix on certain repair
-    [NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-    [NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
+    [HUMAN] 5 more pages need a deploy before their jurisdiction can be
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
@@ -802,74 +800,37 @@ coverage** instead.
   someone who can test from Render's own IP rather than a residential
   one.
 
-- **[NEEDS-AUDIT] `youtube_channel.py`'s curated fallback health-checked
-  2026-08-26 — two real, live findings, root cause not chased yet.**
-  Ran a real recent meeting through the actual resolver for each of the
-  4 curated cities (Phoenix, Philadelphia, Baltimore, Albuquerque), as a
-  follow-up to the ProudCity work's "curated domain lists can go stale"
-  lesson. (1) **A real crash on Phoenix**: a matched fallback video
-  (`uLzcNgtnyQ4`, correctly found by title+date) failed with `[youtube]
-  uLzcNgtnyQ4: This live event has ended` — yt-dlp's extraction path for
-  a livestream that ended but hasn't finished processing into a normal
-  VOD, a shape this module's error handling doesn't account for.
-  **Confirmed transient, 2026-08-29**: re-ran `yt-dlp` directly against
-  the same video id three days later — it now extracts cleanly (real
-  title, `live_status=was_live`, `availability=public`, a plausible
-  8878s/~2.5hr duration). No code change needed for this half; a genuine
-  gap would be worth adding a clearer transient-vs-permanent distinction
-  to this module's error handling, but there's no confirmed real case of
-  the *permanent* form to build that against yet. (2) **Two real,
-  past Philadelphia meetings (Aug 5 and Aug 6, 2026) found zero fallback
-  match at all** — "No video link found," not even an attempted-but-
-  missed warning — despite both predating today by three weeks.
-  **Content gap ruled out for at least one of the two, 2026-08-29**: a
-  flat listing of Philadelphia City Council's real channel
-  (`UC9bXJCRFPLxMhT22nZ7t8XA`) has a real, current
-  "Committee on Education 08-06-26" upload — so the video exists; a
-  fallback match failing to find it points at the title/date matching
-  logic, not missing content. (Philadelphia's calendar page itself
-  wouldn't render the real August rows for this check — likely paginated
-  or month-scoped server-side, not a plain GET — so which specific
-  Legistar meeting title this needed to match against, and why the
-  matcher missed it, is still not diagnosed; the Aug 5 case is unchecked
-  either way.) **One real positive finding, not a bug**: one Baltimore
-  meeting resolved with a real video found directly on its own Legistar
-  page (empty `video_warnings`, no fallback needed) — the city may have
-  started adding some real video links since this fallback was built,
-  which would be a good thing (a shrinking, not growing, reliance on the
-  fallback) rather than a regression. Albuquerque not re-checked this
-  round — its Legistar calendar page's current HTML didn't match the
-  same link-scraping shape used for the other three; needs a fresh look
-  at the page structure before it can be re-verified the same way.
-
-- **[NEEDS-AUDIT] Render "HTTP health check failed" on
-  `rtr-deeplink-archive` (2026-08-19, 2026-08-20) — a real candidate
-  diagnosis, not yet confirmed.** Promoted from `CLAUDE_INBOX_TRIAGE.md`;
-  distinct from the 2026-08-17 memory-driven instability cluster — this
-  is a graceful `SIGTERM` shutdown with zero errors, not a kill. Both
-  windows show a systematic crawl (`/m/`, `/j/`, `/meetings`, both
-  `transcript.txt`/`transcript.srt` per meeting) hitting from one
-  upstream IP — the resolver's public proxy, not real users (see the
-  double-billing entry under **Ship next**).
-
-  **Candidate diagnosis**: the Archive runs a single uvicorn process
-  with no `--workers`, and `/api/health` itself runs an O(n) `SELECT
-  count(*)` on `MeetingPage` (1,200+ rows and growing) on every probe —
-  Render probes roughly 30:1 against real traffic. Under genuine load (a
-  full crawl, plus two expensive internal audit endpoints hit right
-  before the 08-20 shutdown), the count query can stall the single event
-  loop long enough that the health probe times out and Render restarts
-  the instance. **Not yet established**: the probe rate is inferred from
-  log line density, not measured, and nothing has timed the count query
-  in production — this is a strong hypothesis, not a diagnosis. Full log
-  analysis in `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-22]`
-  entry.
-
-  **Fix shape, if it holds**: `select(MeetingPage.id).limit(1)`
-  preserves the health check's documented intent (still fails on a
-  missing/misnamed table — the property the 2026-08-09 incident's own
-  docstring guards against) at O(1) instead of O(n). Separately worth
-  considering: `--workers 2` so one slow request can't starve the probe.
+- **[NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
+  — a real `_pick()` ambiguity gap, correct policy still unclear from
+  one example; Aug 5 confirmed a genuine content gap, not a bug.**
+  Follow-up to the 2026-08-26 curated-fallback health check (Phoenix's
+  livestream-crash half already resolved as transient, no code change
+  needed). Philadelphia's real Legistar calendar names the two meetings:
+  "Committee on Legislative Oversight" (Aug 5) and "Committee on
+  Education" (Aug 6). **Aug 5**: searched the real channel
+  (`UC9bXJCRFPLxMhT22nZ7t8XA`, both `/videos` and `/streams` tabs, 400
+  entries each) for anything matching — nothing found; the most recent
+  "Committee on Legislative Oversight" upload is from June 5, 2026.
+  Genuine content gap, no fix possible. **Aug 6**: the real video exists
+  — **twice**, once per tab (`5LZqoNDRMYk` "Committee on Education
+  08-06-26" on `/videos`, 16089s; `UIL3tpBcfFY` "Philadelphia City
+  Council Committee on Education 8-6-26" on `/streams`, 15007s,
+  `live_status=was_live`). `find_matches()` correctly finds both as
+  candidates; `_pick()` declines because its only tie-break for >1 match
+  is the "(Part N)" case (identical token sets), and these two titles'
+  token sets genuinely differ (`{committee, education}` vs.
+  `{philadelphia, city, council, committee, education}`) — so it's not
+  a body/date-matching bug, it's a missing tie-break rule for "same
+  meeting posted to both tabs with an overlapping-but-different title."
+  **Deliberately not fixed from this one example**: the two durations
+  differ by ~18 minutes, so which one is "the right" recording isn't
+  obvious, and this repo's own WO-34 lesson (a single real example
+  isn't enough to safely generalize a matching-logic change) applies
+  directly. Worth building a real tie-break rule once a second
+  Philadelphia (or other curated-fallback city) case of the same shape
+  turns up. Albuquerque still not re-checked — its Legistar calendar
+  page's current HTML didn't match the same link-scraping shape used
+  for the other three cities; needs a fresh look at the page structure.
 
 
 - **[NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
@@ -957,72 +918,31 @@ The tenants: `losangelescountyca`, `santaclaracountyca`, `northbrookil`,
 `currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
 `hyattsvillecitymd`, `ledyardct`, `pec`, `shawneecityks`.
 
-### Some Swagit meetings have no single "whole meeting" video file, and the design decision is still open `[NEEDS-AUDIT]`
+### Swagit multi-clip meetings: cloud worker fixed (WO-79), local script still needs the same fix `[NEEDS-AUDIT]`
 
-**The "not yet answered" question is now answered: confirmed real, no
-single full recording exists at the source for these customers.**
-Re-fetched Yolo County CA clip 324107 and White Plains NY clip 292830
-live (2026-08-29) and read their real jwplayer `playlist` JSON directly
-(12 and 5 entries respectively) — checked the whole page for any
-"full"/"complete"/download-style alternate link or a stated total
-duration anywhere in the markup; found nothing. Swagit's own template
-has no full-agenda video, only the per-item clips already known. So this
-genuinely is how these customers' pages work, not a hidden gap in what
-this session checked before.
+**Closed for the cloud worker path, 2026-08-30 (WO-79) — see
+`BACKLOG_DONE.md` for the full build.** Real, confirmed shape (3
+tenants: Yolo County CA, White Plains NY, Apple Valley MN — no single
+combined recording exists at the source for any of them, Swagit's own
+template has no full-agenda video). Per Ryan's explicit direction —
+never split a meeting across N separate transcript pages — `swagit.py`
+now surfaces every real clip as `ResolvedMeeting.video_segments`, a new
+`probe_multi_clip_chunk_plan()` builds a cumulative-offset chunk plan
+across them, and the cloud worker transcribes each clip individually
+and stitches the results into one meeting-relative transcript using
+the existing `shift_segments()` shift-and-merge approach.
 
-**What's still not built, and still needs a real product decision**:
-concatenate all N clips into one virtual timeline before chunking, or
-treat each clip as its own transcribed unit and stitch results together
-using Swagit's own seq/title ordering. Building either without deciding
-which would be guessing — left for a human call, same as the entry
-always said.
-
-**What ships now instead**: a small, honest, additive fix so this stops
-being *silent*. `swagit.py` only ever regex-scanned the raw HTML for
-media-looking URLs (`media_scan.scan_media_urls()`), with no idea how
-many segments they belonged to — a chaptered meeting's 2-minute first
-clip silently reported as if it were the whole thing. Added
-`_parse_swagit_playlist_entries()`, which parses the real jwplayer
-`playlist: [...]` JSON blob as structured data (a hand-rolled
-bracket-depth scanner, not a regex, since a real agenda-item title can
-itself contain `[`/`]`); when it finds more than one entry, `resolve()`
-now adds a clear `video_warnings` message naming the real segment count
-and saying the video/transcript covers only part of the meeting, instead
-of staying silent. Video selection itself is unchanged (still the first
-segment) — this doesn't attempt to solve the open design question, just
-stops hiding the gap. Verified against both real tenants' actual fetched
-HTML, not just the synthetic test fixtures (which reuse real, trimmed
-playlist JSON from the Yolo County fetch, per this repo's synthetic-test
-convention). All four CI gates clean.
-
-Re-running the fixed resolver against all 43 URLs from the original
-2026-08-18 sweep (14 plausible single-file, 29 suspiciously short) to
-size how many are genuinely multi-segment vs. something else, and a
-broader live audit across Swagit generally, are still open — worth doing
-once the concatenate-vs-stitch decision is made, so the audit answers a
-question that's actually actionable.
-
-**A second confirmed instance, 2026-08-23**: Apple Valley, MN
-(`applevalleymn.new.swagit.com/videos/11022016-1218`) hit this same
-pattern during a local-Whisper batch, skipped as an implausible-duration
-(156s) short clip. Ryan checked the real page directly: it genuinely is
-split into multiple shorter per-agenda-item videos, not a broken or
-missing recording — "there are multiple videos." Doesn't settle the
-"not yet answered" question above (still unconfirmed whether a combined
-full-session file exists anywhere for this customer), but does confirm
-the pattern is real on a second, unrelated Swagit tenant, not a Yolo
-County-only oddity.
-
-**Fix direction, per Ryan**: the reader-facing output must always be
-one concatenated transcript for the whole meeting — never split across
-N separate per-clip pages/transcripts. Check for a combined long-video
-file first if one exists; if not, resolve each agenda-item video and
-transcribe it individually (using each clip as a natural pre-chunk
-boundary, rather than this app's own arbitrary 900s windows), then
-stitch the results into one meeting-relative transcript using Swagit's
-own seq/title ordering for offsets — the same shift-and-merge approach
-`worker/segment_utils.py` already uses across ordinary chunk boundaries,
-just with per-clip boundaries instead of per-900s ones.
+**Still open**: `scripts/transcribe_backlog_locally.py` (the separate
+local-Whisper path) doesn't consume `video_segments`/`chunk_plan` yet —
+per this repo's "two independent transcription paths" convention, this
+needs its own port, not assumed to come along for free. Also open: a
+chunk-plan job skips the live per-chunk re-resolve the ordinary path
+uses to guard against stale URLs (real but unobserved risk in every
+confirmed sample so far), and no sub-chunking of an individual
+very-long clip (no confirmed real case needs it yet). Re-running the
+fixed resolver against the original 43-URL 2026-08-18 sweep to size how
+many are genuinely multi-segment, and a broader live Swagit audit, are
+both still open too.
 
 ### `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to zero usable segments
 
@@ -1051,36 +971,7 @@ carried forward as open: `branchburg-2025-carols-by-candlelight`
 (Cablecast), is a school concert broadcast, not a government meeting —
 zero segments is arguably the correct outcome there, not a bug.
 
-### `[NEEDS-AUDIT]` A saved failed-ingest payload sat unrecovered for 2 days, and the recovery doc understates what it takes
-
-`chino-valley-az-2026-02-10-town-council-meeting`
-(`https://chinovalleyaz.portal.civicclerk.com/event/6568/media?fbclid=...`)
-finished a full local Whisper transcription (1320 segments) on
-2026-08-25 09:15 but `/internal/ingest` returned HTTP 500 on all 6
-retries — real production behavior the retry system's own design
-anticipated (see `BACKLOG_DONE.md`'s local-script retry/checkpoint
-entry), which is why the finished payload was written to
-`local_transcription_backups/20260825_091547_chino-valley-az-2026-02-10-
-town-council-meeting.json` instead of being discarded. Nobody had
-pushed it back — recovered manually this session (2026-08-27, now live
-at `/m/chino-valley-az-2026-02-10-town-council-meeting`) and it went
-through on the very first attempt, suggesting the original 500s were a
-transient Archive-side blip around that timestamp, not something wrong
-with this specific payload or its unusually long `fbclid`-tracking-
-parameter-laden source URL.
-
-Two real gaps this surfaced, neither acted on: (1) **the recovery isn't
-actually the plain `curl -X POST ... -d @<path>` `_save_local_backup()`'s
-own docstring describes** — the saved JSON is `_ingest()`'s payload
-*before* `input_url_normalized`/`source` are added, so a literal copy-
-paste of that curl command would 422 on a real recovery attempt; the doc
-comment needs those two fields added back in, or the saved file needs to
-already include them. (2) **nothing surfaces that a recoverable payload
-is sitting in `local_transcription_backups/` at all** — it only came up
-because this session went looking; a Sentry/inbox-triage check for files
-in that directory older than a day (or a plain startup-time log line
-when the local script finds pre-existing ones) would close the actual
-"we lose it" risk rather than relying on someone remembering to check.
+### Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`
 
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
@@ -1535,35 +1426,23 @@ registry).
   entry is only for fixing the suffix gap itself, not for the specific
   rows above (already resolved).
 
-- **[NEEDS-AUDIT] Page `808` ("City of Woodstock" → "Oxford County,
-  ME") needs its province corrected to ON — confirmed still wrong
-  post-deploy 2026-08-30, WO-76 didn't cover it.** Visually confirmed:
-  the real source, `pub-oxfordcounty.escribemeetings.com`, is
-  unambiguously **Oxford County, Ontario** (`www.oxfordcounty.ca`,
-  dozens of real by-laws naming its constituent lower-tier
-  municipalities including "City of Woodstock," its own county seat) —
-  not Oxford County, Maine. The repair direction (county, not city) is
-  right; only the state/province code is wrong. Same general shape as
-  WO-76's Douglas/MI case (a real place name colliding across two
-  different countries/states) — likely fixable the same way, not
-  attempted here.
-
-- **[NEEDS-AUDIT] `resolve_claimed_state()` (WO-70) only handles a
-  comma-separated claimed state ("X, State") — a real, distinct
-  no-comma shape still drops the state entirely, confirmed live
-  post-deploy 2026-08-30.** 4 real pages (`1435` "City of Breckenridge
-  **Texas** Meetings", `1441` "City of Eustis **Florida** Meetings",
-  `1442` "City of Hendersonville **North Carolina** Meetings", `1447`
-  "Loganville **Georgia** Meetings") all name their own state directly
-  in the raw text, no comma — WO-70's fix doesn't recognize this shape,
-  so the repair strips "Meetings"/the state name entirely rather than
-  attaching a proper suffix, actually a small regression versus the
-  current (also-imperfect) stored value, which at least has the state
-  spelled out somewhere in the text. Not applied. The Kansas City pair
-  (`154`/`155`, "City of Kansas City" → "Kansas City") is a genuinely
-  different, harder case — Kansas City spans two states (KS/MO) with no
-  single correct answer from this data alone — left open, not a deploy
-  dependency.
+- **[HUMAN] 5 more pages need a deploy before their jurisdiction can be
+  corrected — both root causes fixed and merged 2026-08-30 (WO-77,
+  WO-78), just not live yet.** Page `808` (real: **Oxford County, ON**
+  — Canadian counties aren't in this module's US county gazetteer at
+  all, so there was no second candidate to disambiguate against; fixed
+  via a targeted `_KNOWN_DOMAINS` override, same bar as WO-76's Lake
+  Washington entry) and pages `1435`/`1441`/`1442`/`1447`
+  (Breckenridge TX/Eustis FL/Hendersonville NC/Loganville GA — the
+  trim-repair path was discarding a state name sitting right in the
+  text it trims instead of using it; fixed by reusing WO-70's
+  `resolve_claimed_state()` from the generic trim-repair path, not just
+  the comma-separated case it originally covered). Re-run `GET
+  /internal/jurisdiction/bleed-backfill-candidates` (filtered to these
+  5 ids) and apply once deployed. The Kansas City pair (`154`/`155`,
+  "City of Kansas City" → "Kansas City") stays open — a genuinely
+  different, harder case (KS/MO span, no single correct answer from
+  this data alone), not a deploy dependency.
 
 **2026-08-30 production write, for context**: 94 real jurisdiction
 corrections were applied directly to already-published pages this
