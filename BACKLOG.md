@@ -76,9 +76,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (39)
   [NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   WO-34's roll-up calibration gap is real at corpus scale — a second,…
-  The retry papers over an unexplained asyncio/subprocess hang, and…  (1)
+  The retry papers over an unexplained asyncio/subprocess hang, and…  (2)
     [LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
-  Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
+    [LATER] Swagit multi-clip meetings: both transcription paths now
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
