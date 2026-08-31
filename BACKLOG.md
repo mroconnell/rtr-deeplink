@@ -145,17 +145,16 @@ Trust, safety & data quality  (7)
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
     [NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (23)
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
     [IMPROVEMENT-ROUND] `[BIG]` "Feed cities" — should this app ever
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (8)
+  Growth, audience & discoverability  (7)
     [IMPROVEMENT-ROUND] Moved out of Dormant 2026-08-30 — the ~21,331
     [IMPROVEMENT-ROUND] Proactive transcription crawler — re-prioritized
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
-    [NEEDS-AUDIT] Companion "known gaps" page — same table shape as
     [IMPROVEMENT-ROUND] `[BIG]` Video highlight clips + algorithmic
     [IMPROVEMENT-ROUND] A generated, branded share card would beat a raw
     [IMPROVEMENT-ROUND] PDF agenda links are never rendered inline or
@@ -2053,15 +2052,44 @@ real work on shipped code rather than a plan.
   per-job compute cost means unmetered batch access could get expensive
   fast — rate-limiting or account-gating this is worth deciding before
   shipping.
-- **[NEEDS-AUDIT] Companion "known gaps" page — same table shape as
-  `/coverage`, listing jurisdictions/platforms that don't resolve
-  cleanly yet.** Turns "it didn't work" into a visible, honest roadmap
-  and a natural intake signal. Partially self-populating from the same
-  `meeting_resolutions` log `/coverage` reads from. Real open question:
-  distinguishing "actively being worked on" from "just hasn't been
-  tried" probably needs a manual status field, not pure log-derivation.
-  Could ship after or alongside `/coverage`, reusing its table
-  component.
+- **Split 2026-08-31 into two real, differently-scoped things this entry
+  had conflated — a public page turned out not to be the actual ask.**
+  - **Archive-side data-quality tool: done, no public page needed.**
+    Ryan's call: what's actually wanted is an internal tool for cleaning
+    up poorly-ingested URLs/tenants, and it's fine for that to live
+    outside the public site. `GET /internal/jurisdiction/missing`
+    (built 2026-08-31) plus the existing `GET /internal/low-trust-pages`
+    already cover this — both admin-token-gated, both already return
+    real per-page reasons (no jurisdiction, `best_effort`, unverified
+    confidence). No new code needed.
+  - **`[NEEDS-AUDIT]` CLI enumeration using `meeting_resolutions`
+    failures — partially confirmed, can't finish verifying from this
+    session.** The real ask: a list of jurisdictions not yet ingested at
+    all, to drive the (mostly CLI-driven, not website-driven)
+    enumeration effort. `GET /admin/log` (the **resolver's** own
+    admin-token-gated endpoint, `app/main.py`, not an Archive route) already
+    exposes exactly this — `url`/`platform`/`outcome`/`created_at` per
+    logged resolve attempt, `?format=csv` supported, with `outcome`
+    real-classified into `resolve_failed`/`calendar_page`/
+    `unsupported_platform`/`archive_redirect` buckets
+    (`app/db/outcomes.py`'s `classify_outcome()`) — not just
+    raised-or-didn't. Confirmed live in code 2026-08-31, so the
+    mechanism itself isn't a gap. **Real limitation found**: capped at
+    1000 most-recent rows (`crud.list_resolutions()`), no failure-only
+    or date-range filter — today's usage is "pull the CSV, filter
+    client-side," not a purpose-built enumeration query. **Genuinely
+    unconfirmed**: whether any current enumeration script actually
+    calls this — no `scripts/` file in this repo references
+    `MeetingResolution`, and the real enumeration tooling
+    (`find_vendor_hosts.py`-style scripts, CDX passes) lives in
+    `~/Documents/rtr-business`, which isn't a GitHub repo this session
+    could reach to check (confirmed via `list_repos`, not found) or to
+    write `ENUMERATION_METHODS.md`'s documentation update into. Needs a
+    session with access to that workspace to close out: confirm
+    whether it's already wired in, and if so document `/admin/log`'s
+    real shape/limits there; if not, that's a small real integration
+    (or widen `/admin/log` with a `?status=resolve_failed`-style filter
+    first, given the 1000-row cap).
 - **[IMPROVEMENT-ROUND] `[BIG]` Video highlight clips + algorithmic
   feed** — distant future. Flagged tension: this app's "never host
   video, only embed" principle directly conflicts with hosting/serving
