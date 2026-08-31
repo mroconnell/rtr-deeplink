@@ -25,6 +25,67 @@ Remaining post-deploy step (clicking Validate Fix in Search Console) is
 still a live `BACKLOG.md` entry — the deploy alone doesn't complete
 that, it just makes it worth doing.
 
+## Transcript-defect repair: don't bulk re-transcribe, repair in stored segments instead — decision, seam-dup tool, Kitchener re-transcribed [Done 2026-08-22 / 2026-08-30]
+
+**Decision (Ryan, 2026-08-22), superseding three separate `[HUMAN]`
+entries that each asked "re-transcribe all / a subset / on report
+only"** — that framing was wrong, and the reasoning applies to any
+future defect of this kind:
+- **Seam duplication (118 candidates) was a *stitching* bug, not a
+  transcription bug.** The individual chunks were correct; the worker
+  joined them wrong. Everything needed to repair it is already in the
+  stored segments. Re-running Whisper would spend the app's single most
+  expensive operation to reproduce chunks that were never wrong.
+- **Repetition loops (74, 24% of 304 real `source=="transcribed"`
+  transcripts) come from the *audio* itself** — silence, music, a
+  recess. Re-running the same model on the same audio reproduces the
+  same loop. WO-36's detector already knows exactly where each run is;
+  collapsing it in stored segments is the fix.
+- **Only the 4 confirmed hallucinated defaults need a real re-run**,
+  and only one of them fully: Kitchener was garbage end-to-end from a
+  language-misdetection defect WO-34's whole-transcript language voting
+  now prevents going forward; the other three just need the bad stretch
+  trimmed (Sacramento, for instance, recovers cleanly at ~6:30).
+- **The cost check that settled it**: bulk re-transcribing ~190
+  meetings at a typical 2-4 hours each is 500+ hours of audio through
+  the worker — days of wall-clock on the $25/mo instance — to produce
+  output that would be mostly identical to what's already stored.
+
+**Seam-duplication repair script, built 2026-08-30**:
+`scripts/repair_seam_duplication.py` (dry-run report → `--apply`, same
+shape as `scripts/dedupe_rollup_transcripts.py`). Reconstructs each
+seam's approximate boundary from the completed job's own
+`total_chunks`/`chunk_size_seconds` (`worker/segment_utils.chunk_
+start()`), then hands a windowed slice of the flat stored segments to
+the exact same, already-shipped `count_seam_overlap_segments()` the
+live prevention path uses — no new detection logic, no source fetch,
+no compute. Applies through the same generic `POST /internal/
+transcript-version/drop-segments` route the repetition-loop tool uses
+(see that tool's own entry below for the route's shared design) — never
+destroys history (old version stays reachable via `?version=`), refuses
+on a stale `expected_srt_hash` rather than risking a silent overwrite
+of a page that changed since the dry run. Full test coverage including
+the real Boulder County fixture; all four CI gates pass. Not yet run
+against production — see `BACKLOG.md`'s live entry for what's still
+open.
+
+**Kitchener re-transcribed, 2026-08-30**: run locally with a
+`--language en` flag added for exactly this (PR #560 — forcing was
+impossible before; neither the script nor `FasterWhisperEngine` accepted
+a language), model `small`, 6 minutes wall-clock (the meeting is ~47
+min, not the 2-4 hr typical). 504 real English segments ingested and
+promoted (version 3551) — verified live: coherent English end-to-end,
+zero Welsh script, zero `Ff.`/`w`-run loops. The ingest landed on a page
+whose slug differs from the original still-live row, leaving a real
+duplicate-page fallout — see `BACKLOG_DONE.md`'s "Kitchener duplicate-
+page" entry above for that investigation, and `BACKLOG.md`'s "Needs a
+human" section for the still-open pick-one-page decision.
+
+Source detail for all three populations — the confirmed 4 with their
+individual symptoms, the 118-candidate endpoint (`GET /internal/
+transcription/completed-multichunk`), and the 74/304 measurement — is
+in this file's matching WO-36 and seam-duplication entries.
+
 ## WO-77 through WO-82: Oxford County/no-comma-state fixes, Archive health-check O(1), Swagit multi-clip stitching, local-backup recovery fix [Done 2026-08-30]
 
 A second parallel-agent wave the same night as the earlier WO-67 through
