@@ -1,6 +1,103 @@
 # Backlog — done
 
-## Bleed-backfill queue: 70 real jurisdiction corrections applied to production, verified via real source pages not just text-matching, plus root-cause fixes for the 4 that were genuinely wrong [Done 2026-08-30]
+## Riverside County IQM2 `platform="unknown"` bug: confirmed disproven via direct DB query, zero action needed [Investigated 2026-08-30]
+
+Live-verified via a direct query on the Archive's Render shell:
+`SELECT slug, platform FROM meeting_pages WHERE source_url_normalized
+ILIKE '%riversidecountyca.iqm2.com%'` returned 2 rows
+(`riverside-county-ca-2019-08-06-board-of-supervisors-regular-meeting`
+and `meeting-4fefb4`, both `platform="iqm2"`) — neither shows
+`"unknown"`. Confirms `detect_platform()`'s own code-level correctness
+(already re-verified locally the same day) all the way down to the
+stored rows themselves; the original 2026-08-16 report doesn't
+reproduce against anything currently in the database. See the separate
+entry above (`IQM2 Riverside County CA title/jurisdiction bug`) for the
+real, unrelated slug defect this query incidentally surfaced on
+`meeting-4fefb4`.
+
+## Thumbnail-404 risk on `pages_with_thumbnails()`: confirmed unreachable, entry deleted per its own instructions [Investigated 2026-08-30]
+
+The entry's own text said to delete it if this returned 0. Ran from the
+Archive's Render shell:
+```sql
+SELECT count(*) FROM meeting_pages p
+WHERE EXISTS (SELECT 1 FROM meeting_page_thumbnails t WHERE t.meeting_page_id = p.id AND t.is_default = false)
+  AND NOT EXISTS (SELECT 1 FROM meeting_page_thumbnails t WHERE t.meeting_page_id = p.id AND t.is_default = true);
+```
+Returned `0`. Confirms every page's ingest/render path really does
+always queue a timestamp-less default warm before any `?t=`-triggered
+one can exist, so `pages_with_thumbnails()`'s "any row" check never
+actually diverges from "has a default row" in practice. No code change.
+
+## Modesto frozen-slug page reslugged; Granicus vendor-marketing duplicate deleted [Done 2026-08-30]
+
+Last two residuals of the WO-63 Hyland-sweep frozen-slug batch
+(2026-08-25) and the 2026-08-22 boilerplate-slug scan, both closed via
+the existing admin endpoints:
+
+- **`2026-08-11-council-meeting` → `modesto-ca-2026-08-11-council-meeting`.**
+  Root cause (missing `agenda2.modestogov.com` domain registration) was
+  already fixed and merged 2026-08-29; this was just the reslug call,
+  dry-run confirmed then executed for real via
+  `POST /internal/admin/reslug-page`. Redirect added to
+  `archive/main.py`'s `_SLUG_REDIRECTS`. Pending deploy.
+- **`granicus-digital-communications-summit-2017-04-13-granicus-digital-communication`
+  deleted outright** (`"deleted":1`) via `POST /internal/admin/delete-pages`,
+  dry-run first. Confirmed via the dry-run response this was exactly the
+  one page expected — a 2017 Granicus vendor marketing event
+  (`dccomm17.granicus.com`), not a government meeting.
+
+## Kitchener duplicate-page: how it arose, and which page to keep [Investigated 2026-08-30]
+
+Found verifying the forced-English Kitchener re-transcription (see the
+seam-duplication/repetition-loop repair entry's step 2): the 2026-08-30
+re-transcription ingest landed on a *new* page,
+`/m/city-of-kitchener-on-2026-05-05-heritage-kitchener-committee`,
+rather than updating the existing
+`/m/kitchener-2026-05-05-heritage-kitchener-committee` — two separate
+`meeting_pages` rows, both live 200s with self-referencing canonicals,
+for the same real meeting (Kitchener, ON's Heritage Kitchener Committee,
+2026-05-05, source `pub-kitchener.escribemeetings.com`). The ingest was
+expected to match the existing page by normalized source URL and didn't;
+worth asking *how* if it recurs — if slug-affecting jurisdiction fixes
+change what a fresh resolve keys to, other re-resolved pages could
+quietly duplicate the same way.
+
+Both pages now serve full *English* AI transcripts, but different ones —
+diffing the two `/transcript.txt` downloads showed them identical for
+the first ~15 minutes then diverging (different Whisper runs), meaning
+the *original* page also got re-transcribed independently at some point
+(plausibly a cloud worker `tiny` run after its garbled default was
+cleaned; never confirmed). The 2026-08-30 version (504 segments, model
+`small`, forced `en`, version 3551) is the deliberately-made one.
+
+**Which page to keep, decided by in-browser comparison rather than
+guessing from the transcript diff**: the original page renders a real
+5-item Agenda section (Commencement, Disclosure of Pecuniary Interest,
+Heritage Consultation Memo for Victoria Park, Bill 23 Municipal Heritage
+Register Review, Adjournment); the new-slug page has no Agenda section
+at all — the template jumps straight from video controls to Transcript.
+Since both transcripts are already good enough that the difference
+between them doesn't matter, the agenda was the deciding factor: **keep
+the original slug, delete the duplicate.** Live entry with current
+status (blocked on a real 500 from the delete endpoint) is in
+`BACKLOG.md`.
+
+## Postgres Storage Autoscaling enabled [Done 2026-08-30]
+
+Found disabled 2026-08-29 (see the matching entry below); Ryan's call
+2026-08-30 was to turn it on rather than keep manual control, given it's
+a bounded backstop (50% growth, rounded to the next 5GB, max once per
+12h) on top of WO-60's existing cleanup/alerting, not a replacement for
+it. Confirmed enabled via a Render dashboard screenshot. No code change
+— this is a Render account setting, not anything in `render.yaml`.
+Unrelated reference kept here since it was noted alongside this at the
+time: `scripts/analyze_db_storage.py` only reads `rtr_archive`'s size;
+`GET /internal/db-size` (WO-61) reports every database on the shared
+server (including `rtr_deeplink_db`) and needs no shell —
+`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/db-size"`.
+
+## Bleed-backfill queue: 94 real jurisdiction corrections applied to production, verified via real source pages not just text-matching, plus root-cause fixes for the 4 that were genuinely wrong [Done 2026-08-30]
 
 Closes the "51 pre-existing recompute-backfill candidates" entry left
 open since WO-47 (2026-08-23) specifically because it wasn't uniformly
@@ -147,6 +244,38 @@ deployed code, so it needs a deploy before it will compute the
 corrected values for those specific rows. Oxford County (`808`, needs
 its province corrected from ME to ON) was found too late for WO-76 to
 cover — left open in BACKLOG.md as a residual.
+
+**Round 5 — post-deploy re-audit (24 more, 94 total).** Once the user
+deployed WO-67 through WO-76, re-ran the candidate audit to confirm the
+fixes actually took effect and apply what was now correct. Confirmed
+live: page `2095` ("Colorado") is no longer even a candidate — stays
+bare "Colorado" with no wrong state appended, `resolve_state()`'s guard
+working as intended. Applied 6 immediately-resolved rows (Chester
+County PA ×2, Douglas MI, Lake Washington School District WA,
+Louisville KY ×2 — all now computing exactly the values WO-76 predicted).
+Deploying WO-69 also surfaced **18 brand-new candidates** that hadn't
+existed in the pre-deploy audit at all: 7 are the eScribe known-domain
+fixes taking effect for real pages (Horry County Schools, Sunshine
+Coast Regional District, Whistler/RMOW, Ashfield-Colborne-Wawanosh,
+Thunder Bay District Health Unit, Surrey Schools, Hamilton Public
+Library), 1 a cosmetic Tampa state-suffix add, and 10 more real
+"Board of Supervisors"/"Board of Commissioners"/"County Council"
+county-pattern pages matching the exact shape that had verified
+correct 9-for-9 in Round 3 — applied on the strength of that pattern
+plus each one's own explicit title, except 2 (`Independence, KS` →
+`Montgomery County, KS`, titled only "One Time Event," no confirming
+signal) which got an extra live domain check first: the real source is
+`montgomerycoks.portal.civicclerk.com` — the subdomain itself spells
+out "Montgomery Co(unty) KS," confirming the repair before applying.
+**Also confirmed real and left open**: the Breckenridge/Eustis/
+Hendersonville/Loganville group (`1435`/`1441`/`1442`/`1447`) is a
+genuinely different, still-unfixed bug from what WO-70 covers —
+`resolve_claimed_state()` only recognizes a comma-separated claimed
+state ("X, State"), not these pages' no-comma shape ("City of
+Breckenridge Texas Meetings"), so they keep dropping the state entirely
+instead of attaching it; new BACKLOG.md entry filed. Kansas City
+(`154`/`155`) stays open too — a genuine KS/MO ambiguity, not a code
+bug.
 
 **Also pulled while read access was open**: current real `/internal/
 low-trust-pages` counts (631 total, 236 with no jurisdiction at all —
@@ -681,6 +810,19 @@ production."
 Regular Meeting"), jurisdiction "Riverside County, CA," date, and
 transcript access — not "Untitled meeting." The stale-page theory is
 confirmed correct. No admin recheck, no code change, nothing left to do.
+
+**Correction, same day:** "nothing left to do" was wrong about the slug
+specifically — this check verified the page's *content* fields but never
+looked at its *URL*, which was still the frozen fallback `meeting-4fefb4`
+(same shape as the batch of frozen-slug pages elsewhere in this file:
+`build_base_slug()` froze a fallback slug from a first resolve that
+predated the real title/jurisdiction/date, and nothing ever reslugs a
+page after its metadata later fills in). Found while re-verifying the
+separate `riversidecountyca.iqm2.com` platform-detection entry below —
+reslugged via `/internal/admin/reslug-page` to
+`riverside-county-ca-2026-08-12-rctc-gm-riverside-county-transportation-commissio`,
+redirect added to `archive/main.py`'s `_SLUG_REDIRECTS`. Pending deploy
+(see the standing "Deploy resolver + Archive" entry in `BACKLOG.md`).
 
 ## CivicClerk's populated-captions gap closed — two real fields confirmed on two real customers, no code change needed [Investigated 2026-08-30]
 

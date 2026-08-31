@@ -1888,6 +1888,20 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # _BODY_SUFFIX_RE gap) landed -- see BACKLOG_DONE.md.
     "needham-al-needham-select-board-8-11-26": "needham-ma-needham-select-board-8-11-26",
     "vail-vail-planning-and-environmental-commission": "vail-co-vail-planning-and-environmental-commission",
+    # 2026-08-30: 5th of the frozen-fallback-slug batch found in the
+    # WO-63 Hyland sweep (2026-08-25) -- source URL is
+    # agenda2.modestogov.com, a second Modesto, CA subdomain missing from
+    # jurisdiction_enrich.py's known-domains registry (only the sibling
+    # agenda.modestogov.com was present). Registry fix merged and live;
+    # this is just the reslug. See BACKLOG_DONE.md.
+    "2026-08-11-council-meeting": "modesto-ca-2026-08-11-council-meeting",
+    # 2026-08-30: a 6th frozen-fallback slug, found separately (not part
+    # of the WO-63 batch) while checking the Riverside County IQM2
+    # platform-detection entry -- jurisdiction/title/date were already
+    # correct on this row, only the slug was frozen from an earlier
+    # resolve that predated that metadata. No adapter/registry bug here,
+    # just the reslug.
+    "meeting-4fefb4": "riverside-county-ca-2026-08-12-rctc-gm-riverside-county-transportation-commissio",
 }
 
 
