@@ -392,3 +392,169 @@ route around this filter-config failure too.
 
 Ledger: 14 new message IDs recorded (128 → 142 kept), 0 pruned this run
 (all still inside the 30-day + 7-day-grace retention window).
+
+## 2026-08-31
+
+Reviewed 21 new messages under `label:rtr-claude newer_than:30d` (43
+candidates, 22 already ledgered). Skipped as purely informational: one
+more transcription-worker daily report; "We're validating your Video
+indexing issue fixes" (Search Console's own recrawl-in-progress notice,
+nothing to act on until it resolves); Ryan's own reply/forward of the
+GitHub secrets email (his sent copy of the same alert handled below, not
+a new signal). Skipped as duplicates of already-tracked patterns: another
+"Server failure detected on `test-redtaperecordings`" (2026-08-30 22:13
+UTC, "Exited with status 3" — same 10th+ occurrence noted since
+2026-08-19, still no new signal); a GitHub Actions "PR run failed: Test"
+email for a non-`main` feature branch (out of scope per this Routine's
+own rules — that branch has its own merge gate); the "Adapter health
+canary: All jobs have failed" run (2026-08-30 18:30 UTC, run
+[33328195501](https://github.com/mroconnell/rtr-deeplink/actions/runs/33328195501))
+— confirmed via its own job logs to be the exact same still-open Phoenix
+Legistar 410 (`ID=1425831`) flagged in the 2026-08-30 section above, 28/29
+platforms otherwise healthy, no new signal.
+
+**Two updates to already-open, not-yet-promoted findings from prior
+sections (not new entries — same root cause, new evidence):**
+
+- **East Lansing MI `auto_aresample_0` ffmpeg filter error (2026-08-30
+  finding #2) has now reproduced a second time, ruling out a one-off.**
+  Job 1294 (2026-08-31 06:42 UTC) hit the *exact* same source
+  (`eastlansing.granicus.com/player/clip/1211?view_id=2`), same chunk (1),
+  same three-times-identical error text ("Failed to configure output pad
+  on auto_aresample_0" / "Error reinitializing filters!" / exit 234) as
+  job 1238 two days earlier. This is now a confirmed-deterministic failure
+  on this specific source/chunk, not a transient one — strengthens the
+  case for the follow-up investigation already proposed (run ffmpeg
+  directly against the real source at the chunk-1 offset).
+- **The `slice_cached_audio()` missing-decodability-guard gap (2026-08-29
+  finding #1, WO-54/58) has a third real occurrence, on a third distinct
+  source.** Job 1259 (Falls Church VA, Granicus,
+  `fallschurch-va.granicus.com/player/clip/3403`, 2026-08-30 18:13 UTC)
+  gave up at chunk 14/15 with the identical "ffmpeg reported success but
+  the output file isn't decodable (likely truncated/corrupt)" message,
+  three times in a row — the same guard-bypass signature as San Diego
+  (Granicus) and College Station TX (CivicClerk). Confirms the gap isn't
+  tied to one platform or one source; worth weighting that when this
+  finding is promoted.
+
+**One finding worth flagging prominently: two Archive fixes already
+merged to `main` on 2026-08-30 look undeployed, and today's alerts are
+consistent with them still causing live production errors.** `main`
+carries `0bcc184` (WO-80, `/api/health`'s `SELECT count(*) FROM
+meeting_page)` → O(1) `LIMIT 1`, merged 2026-08-30, `BACKLOG_DONE.md`'s
+own write-up says "Not yet deployed" as of that entry) and `adc65a1`
+(`delete_meeting_pages_by_slug()` now cleans up `SocialPost` rows before
+deleting a page, merged 2026-08-30 13:28 PDT, PR #577). Both are pure
+application-code fixes (no migration), so only a redeploy of the Archive
+service is needed. Today's alerts line up with both gaps still being
+live: two more "Server failure detected on `rtr-deeplink-archive`" emails
+(2026-08-31 05:15 and 12:48 UTC, "HTTP health check failed" — the exact
+symptom WO-80 fixes) and two new Sentry issues that are the two fixes'
+own failure modes verbatim — **PYTHON-FASTAPI-17** (`ClientConnectorError:
+Cannot connect to host rtr-deeplink-archive:10000`, 2026-08-31 05:14:50
+UTC, real production traffic: `/j/belvedere-ca`, 58 seconds *before* the
+first Render alert above — consistent with the health-check timeout
+itself being the outage) and **PYTHON-FASTAPI-16** (`ForeignKeyViolationError`
+on `meeting_pages`/`social_posts`, 2026-08-31 03:12:52 UTC, at
+`/internal/admin/delete-pages`, page id 3495 — the exact shape `adc65a1`
+already fixes; current `archive/db/crud.py:8367-8377` confirmed to
+already delete `social_posts` rows before the page). **Confirmed via
+code** that both fixes exist on `main`; **Unconfirmed** whether the
+Archive service has actually been redeployed since 2026-08-30 13:28 PDT
+(Render's dashboard isn't reachable from this Routine, and per this
+repo's own "deploys are manual, never assume production runs `main`"
+convention this has to be checked, not assumed) — but the timing of both
+new alerts, well after both fixes landed, is exactly what "still on the
+old build" would look like. **Impact**: the health-check gap causes
+periodic real Archive unavailability (confirmed reaching real proxied
+traffic, not just Render's own probe); the FK gap causes any future
+`/internal/admin/delete-pages` call on a page with social posts to fail
+outright. **Open question for Ryan**: worth confirming whether
+`rtr-deeplink-archive` has deployed since 2026-08-30, and triggering one
+if not — no code change needed, this is a "ship what's already on `main`"
+gap, not a new fix to build.
+
+**One new, Confirmed-via-code bug: `check_destination()` doesn't catch
+`UnicodeError`, so a malformed hostname 500s instead of being cleanly
+rejected.** Surfaced by Sentry **PYTHON-FASTAPI-15** (`UnicodeError: label
+too long`, 2026-08-30 19:46:52 UTC, `handled=no`, `/api/refresh-archived-page`,
+`url=https://redtaperecordings.com/api/refresh-archived-page`,
+`browser=curl 8.7.1` — the request shape strongly suggests a direct API
+probe, not a real click through `meeting_page.js`'s `wireRefreshPageButton()`,
+which always sends `page.source_url` verbatim). The submitted `url` was
+`https://anchorage-ak-2026-07-02-amats-technical-advisory-committee-placeholder`
+— note the real Anchorage AMATS slug (`BACKLOG.md`'s existing
+`[NEEDS-AUDIT]` entry) is `anchorage-ak-2026-07-02-amats-technical-advisory-committee`,
+*without* the `-placeholder` suffix, and that exact slug 404s live on the
+site today — so this looks like an external client testing slug-shaped
+strings against the endpoint, not a real broken `source_url` on a real
+page. Traced in `app/utils/url_guard.py:83-108`: `check_scheme()` accepts
+any `scheme://hostname`, then `check_destination()` tries
+`ipaddress.ip_address(hostname)` (fails, not an IP), falls through to
+`_resolve_hostname()` → `socket.getaddrinfo()`. When `hostname` has a
+single DNS label over 63 octets (as this 74-character slug-shaped string
+does), `getaddrinfo()`'s IDNA encoding raises `UnicodeError`, not
+`socket.gaierror` — and the `except socket.gaierror` clause at line 104
+doesn't catch it, so it propagates unhandled into a 500 instead of the
+intended clean `BlockedURLError("Couldn't resolve that host.")`.
+**Impact**: every caller of `check_destination()` is affected in
+principle — `/api/refresh-archived-page` (25/hour rate-limited, so low
+volume even if hit repeatedly), the generic-fallback resolve path
+(`app/main.py:568`), and `headless_browser.py`'s per-redirect-hop guard —
+though only a hostname-shaped string long enough to break IDNA encoding
+triggers it, so real-world hit rate is probably low; still, a 500 where a
+clean rejection is intended is a real bug, and it's on a public,
+unauthenticated endpoint. **Fix, sized small**: add `UnicodeError` to the
+`except` clause alongside `socket.gaierror` in `check_destination()`
+(`app/utils/url_guard.py:104`), same clean `BlockedURLError` message.
+
+**One new, Confirmed-via-code finding: new Search Console "Missing field"
+structured-data flags are a likely side effect of the earlier "invalid
+datetime value" fix, and this repo already has the tool to size it.**
+Two new alerts today: Videos structured data "Missing field 'uploadDate'"
+and Events structured data "Missing field 'startDate'" (both
+2026-08-31 08:27 UTC) — a different flag from the already-`[WAIT]`
+`thumbnailUrl` entry in `BACKLOG.md`'s Search Console section. Traced in
+`archive/templates/meeting_page.html:128-138` and `:208-209`: both
+`uploadDate` and `startDate` are gated on `{% if iso_date %}` and emitted
+*only* when present — a deliberate 2026-08-21 fix (per the template's own
+comment) for a companion "invalid datetime value" flag, which used to
+concatenate an unvalidated free-string date straight into the JSON-LD.
+The trade-off that fix made explicit in code but not in `BACKLOG.md`: a
+page whose `page.date` is null or unparseable now emits *neither* field
+at all, rather than a bad one — trading "invalid" for "missing," which is
+exactly today's new flag. **Unconfirmed** how many real pages this
+affects — `archive/main.py:959` already has a purpose-built endpoint for
+exactly this question, `GET /internal/date-format-audit` (built, per its
+own docstring, to settle "how big is this really" for this same
+`iso_date` gate), but it needs the `ARCHIVE_INGEST_TOKEN` bearer token
+this Routine deliberately doesn't have access to. **Open question /
+follow-up for a session with that token**: run
+`curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" "$ARCHIVE_BASE_URL/internal/date-format-audit"`
+to get the real count of null/unparseable-date pages, which is exactly
+the scope this new flag needs before it's worth building anything further
+(a backfill, a per-adapter date-capture fix, or just accepting the gap on
+however few pages have it).
+
+**One item worth recording so it doesn't get re-flagged, not a
+finding**: the GitHub secret-scanning alert ("Possible valid secrets
+detected," Google API Key, `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103`,
+commit `a28a1795`) is very likely a false positive, not a real leaked
+credential of this app's. **Confirmed via the alert's own content**: the
+key is a `GoogleMapsKey` embedded in a real, live-fetched HTML fixture
+(Durham NC's own CivicPlus AgendaCenter page — exactly the "real fixture
+from a real live page" this repo's testing convention requires), i.e.
+it's *Durham's own* public Google Maps embed key on *their* government
+website, not an RTR credential — and the alert's own "Public leaks"
+section lists the identical key already present in five other unrelated
+public repositories that scraped the same Durham page (city-scrapers-pitt,
+city-scrapers, civic-scraper, etc.), confirming it was already public
+before this repo's fixture ever captured it. Nothing to rotate on this
+app's side — there's no RTR secret here to revoke. **Open action for
+Ryan** (this Routine holds no GitHub write access beyond what's already
+granted, and dismissing a secret-scanning alert is a judgment call, not
+a code fix): dismiss the alert in GitHub's Security tab with reason "Used
+in tests" so it stops showing as "Action needed."
+
+Ledger: 21 new message IDs recorded (142 → 163 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).
