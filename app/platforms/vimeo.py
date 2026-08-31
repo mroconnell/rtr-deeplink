@@ -67,6 +67,47 @@ whose Vimeo `getTextTracks()` reports a populated "English
 can still turn them on inside the embedded player itself. On-demand
 Whisper transcription is blocked by the *same* wall, not a separate one
 (`probe_duration()` needs a real media file); see BACKLOG.md.
+
+## `domain_hint` -- recovering a domain-privacy-blocked video (WO-86, 2026-08-30)
+
+The `domain_status_code`-blocked case above (a video whose owner
+restricted embedding/metadata to specific domains) is often
+*recoverable*, not a hard wall: Vimeo's restriction is a domain
+**allowlist**, and the oEmbed endpoint honors a `Referer` header --
+confirmed live 2026-08-30 by re-testing both real videos from that
+section's own investigation, still blocked as of that date. Sending
+`Referer: https://www.corvallisoregon.gov/` against Corvallis OR's
+`1220285695` flips `domain_status_code` from `403` to `200` and returns
+full metadata (title, author, duration); an unrelated Referer (or none)
+leaves it `403`. Harpswell ME's `1131371113` needed a genuinely
+different origin than the task's own premise assumed: it turned out NOT
+to be a select-board meeting at all -- the real content is "Elijah
+Kellogg Church 26Oct2025", a church service carried on the same
+community-access Vimeo account (`vimeo.com/harpswelltv`) that also
+carries the town's real government meetings. `harpswell.maine.gov` as
+Referer does nothing; `https://harpswelltv.org/` (the community TV
+nonprofit's own site, found by following the church's own "watch past
+services" link, not the town government's site) is what actually
+unblocks it. Two things follow: (1) the fix genuinely works -- both real
+403s recovered; (2) the hint has to be *the real page that actually
+links to this specific video*, not a plausible-sounding jurisdiction
+guess -- a wrong Referer is silently a no-op (confirmed: it behaves
+identically to no Referer at all, never worse), so there's no harm in
+trying one, but only the *correct* origin recovers anything.
+
+Confirmed harmless on an unrestricted video too (Salisbury NC
+`1212025580` with an unrelated Referer still returns full metadata,
+`domain_status_code: None`), so `domain_hint` is always safe to pass
+when the caller has one -- no need to first probe without it and retry
+only on failure. `resolve_video_id()` and `resolve()` both take it as an
+optional keyword, following `base.py`'s
+`CalendarPageError.jurisdiction_hint` precedent (a known-good signal
+from the caller, carried through rather than discarded). Today's one
+real caller with a known origin domain is `chicago_elms.py`, which
+already knows its own portal domain. A bare `vimeo.com/...` URL with no
+known origin (a cold user paste) still has no hint to give -- that's the
+separate, not-yet-built scrape-the-`<title>`-tag fallback noted in
+BACKLOG.md, out of scope here.
 """
 
 import json
@@ -214,6 +255,29 @@ _KNOWN_ACCOUNT_JURISDICTIONS = {
 }
 
 
+def _referer_from_domain_hint(domain_hint: Optional[str]) -> Optional[str]:
+    """Normalize a `domain_hint` (a bare domain like "corvallisoregon.gov"
+    or a full page URL like "https://www.corvallisoregon.gov/mc/page/...")
+    down to the bare origin Vimeo's oEmbed endpoint checks against a
+    video's domain allowlist. Confirmed live 2026-08-30 that only the
+    origin matters, not the path -- `https://www.corvallisoregon.gov/`
+    and the real meeting-materials page URL both unblocked the same
+    video. Returns None for anything that doesn't parse to a real host,
+    so a caller can pass a `domain_hint` unconditionally without an extra
+    validity check of its own."""
+    if not domain_hint:
+        return None
+    domain_hint = domain_hint.strip()
+    if not domain_hint:
+        return None
+    if "://" not in domain_hint:
+        domain_hint = "https://" + domain_hint
+    parsed = urlparse(domain_hint)
+    if not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}/"
+
+
 def is_vimeo_host(netloc: str) -> bool:
     netloc = netloc.lower().split(":")[0]
     return netloc in ("vimeo.com", "www.vimeo.com", "player.vimeo.com")
@@ -313,7 +377,9 @@ class VimeoAssetFinder(AssetFinder):
 
     platform_name = "vimeo"
 
-    async def resolve(self, url: str) -> ResolvedMeeting:
+    async def resolve(
+        self, url: str, *, domain_hint: Optional[str] = None
+    ) -> ResolvedMeeting:
         if is_vimeo_listing(url):
             candidates = await self._listing_candidates(url)
             if candidates:
@@ -341,7 +407,10 @@ class VimeoAssetFinder(AssetFinder):
 
         video_id, privacy_hash = parsed
         return await self.resolve_video_id(
-            video_id, privacy_hash=privacy_hash, source_url=url
+            video_id,
+            privacy_hash=privacy_hash,
+            source_url=url,
+            domain_hint=domain_hint,
         )
 
     @classmethod
@@ -351,13 +420,22 @@ class VimeoAssetFinder(AssetFinder):
         *,
         privacy_hash: Optional[str] = None,
         source_url: Optional[str] = None,
+        domain_hint: Optional[str] = None,
     ) -> ResolvedMeeting:
         """Shared entry point for platforms that WRAP Vimeo rather than
         being Vimeo -- today `chicago_elms.py`, which has a real Vimeo
         `videoLink` from its own API and wants the original ELMS URL kept
         as `source_url` (the PrimeGov/CivicWeb delegation pattern, see
-        CLAUDE.md)."""
-        oembed = await cls._fetch_oembed(video_id, privacy_hash)
+        CLAUDE.md).
+
+        `domain_hint` -- the real page/domain known to link to this
+        specific video, if the caller has one -- is sent as the oEmbed
+        fetch's `Referer` header, which can recover a domain-privacy-
+        blocked video (see this module's own docstring, WO-86). Safe to
+        pass unconditionally: confirmed live it's a no-op both on an
+        unrestricted video and when it names the wrong domain for a
+        blocked one -- never worse than omitting it."""
+        oembed = await cls._fetch_oembed(video_id, privacy_hash, domain_hint)
 
         # `domain_status_code` is present (and non-200) on a real oEmbed
         # 200 response whenever the video owner has restricted *both*
@@ -491,10 +569,16 @@ class VimeoAssetFinder(AssetFinder):
 
     @classmethod
     async def _fetch_oembed(
-        cls, video_id: str, privacy_hash: Optional[str]
+        cls,
+        video_id: str,
+        privacy_hash: Optional[str],
+        domain_hint: Optional[str] = None,
     ) -> Optional[dict]:
         target = canonical_video_url(video_id, privacy_hash)
-        body = await cls._fetch(_OEMBED_ENDPOINT + quote(target, safe=""))
+        referer = _referer_from_domain_hint(domain_hint)
+        body = await cls._fetch(
+            _OEMBED_ENDPOINT + quote(target, safe=""), referer=referer
+        )
         if not body:
             return None
         try:
@@ -569,11 +653,15 @@ class VimeoAssetFinder(AssetFinder):
                     yield from cls._iter_video_objects(value)
 
     @staticmethod
-    async def _fetch(url: str) -> Optional[str]:
+    async def _fetch(url: str, referer: Optional[str] = None) -> Optional[str]:
         try:
             async with aiohttp.ClientSession(headers={"User-Agent": _UA}) as session:
+                extra_headers = {"Referer": referer} if referer else None
                 async with guarded_get(
-                    session, url, timeout=aiohttp.ClientTimeout(total=20)
+                    session,
+                    url,
+                    timeout=aiohttp.ClientTimeout(total=20),
+                    headers=extra_headers,
                 ) as response:
                     if response.status != 200:
                         logger.warning(

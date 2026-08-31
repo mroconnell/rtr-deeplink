@@ -122,8 +122,18 @@ class ChicagoElmsAssetFinder(AssetFinder):
         vimeo_parsed = self._first_vimeo_video(payload.get("videoLink"))
         if vimeo_parsed:
             video_id, privacy_hash = vimeo_parsed
+            # `url` is this portal's own real domain
+            # (`chicityclerkelms.chicago.gov`) -- pass it as the Vimeo
+            # oEmbed Referer so a video whose owner later restricts it to
+            # specific domains (see vimeo.py's `domain_hint`, WO-86) has a
+            # real chance of recovering rather than declining outright.
+            # No Chicago video has needed this yet, but it's confirmed
+            # harmless to send unconditionally.
             resolved = await VimeoAssetFinder.resolve_video_id(
-                video_id, privacy_hash=privacy_hash, source_url=url
+                video_id,
+                privacy_hash=privacy_hash,
+                source_url=url,
+                domain_hint=urlparse(url).netloc,
             )
             # Delegation keeps the original ELMS URL as source_url (the
             # PrimeGov/CivicWeb pattern), but everything else below comes

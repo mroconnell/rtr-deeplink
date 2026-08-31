@@ -67,7 +67,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (49)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -81,8 +81,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (4)
-    `[LATER]` Recover a domain-privacy-blocked Vimeo video by forwarding
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (3)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
@@ -718,20 +717,6 @@ zero segments is arguably the correct outcome there, not a bug.
 Everything adapter-, tenant-, or jurisdiction-extraction-shaped, kept
 together on purpose. Tags are inline here rather than hoisted into the
 actionability sections above.
-
-- **`[LATER]` Recover a domain-privacy-blocked Vimeo video by forwarding
-  the real origin domain as `Referer` on the oEmbed request.**
-  `app/platforms/vimeo.py`'s `resolve_video_id()` already declines
-  correctly on a non-200 `domain_status_code` (see `BACKLOG_DONE.md`'s
-  2026-08-29 Vimeo-dorking entry) — this is the recovery half, not yet
-  built. Every Vimeo URL found via dorking is already known to have a
-  real `.gov`-adjacent origin page at discovery time, and Vimeo's
-  restriction is a domain allowlist, so passing that real origin through
-  as `Referer` would likely unblock some fraction rather than just
-  declining them. Full discovery reasoning and the reuse-`jurisdiction_
-  hint` design sketch: `~/Documents/rtr-business/research/
-  ENUMERATION_METHODS.md` §46. Not yet attempted — unverified how large
-  the recoverable fraction actually is.
 
 - **`[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
   resolve a same-named-in-two-countries subdomain to the wrong country's
