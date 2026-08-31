@@ -1,5 +1,30 @@
 # Backlog — done
 
+## Three code-side fixes + three slug redirects, shipping in the 2026-08-30 evening deploy [Done 2026-08-30]
+
+Deploy scheduled for tonight (Ryan's plan, confirmed 2026-08-30) — noted
+here as done on the strength of that plan, not independently
+re-verified live by this session after the fact. If something looks off
+post-deploy, re-check rather than trusting this entry blindly.
+
+Bundled into that one Archive/resolver deploy:
+- **IQM2's `video_format` bug** — hardcoded `"m3u8"` regardless of the
+  real file extension, fixed 2026-08-29.
+- **`/j/*`/`/state/*` hub pages' `VideoObject`→`CreativeWork` retype** —
+  these pages don't host a single embeddable video and shouldn't claim
+  to; fixed 2026-08-29.
+- **Three `_SLUG_REDIRECTS` entries**: Modesto's
+  `2026-08-11-council-meeting` → `modesto-ca-2026-08-11-council-meeting`,
+  Riverside County's `meeting-4fefb4` →
+  `riverside-county-ca-2026-08-12-rctc-gm-riverside-county-transportation-commissio`,
+  and the Kitchener duplicate
+  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` →
+  `kitchener-2026-05-05-heritage-kitchener-committee`.
+
+Remaining post-deploy step (clicking Validate Fix in Search Console) is
+still a live `BACKLOG.md` entry — the deploy alone doesn't complete
+that, it just makes it worth doing.
+
 ## WO-77 through WO-82: Oxford County/no-comma-state fixes, Archive health-check O(1), Swagit multi-clip stitching, local-backup recovery fix [Done 2026-08-30]
 
 A second parallel-agent wave the same night as the earlier WO-67 through

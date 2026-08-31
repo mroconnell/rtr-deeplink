@@ -56,14 +56,13 @@ Standing decisions — do NOT re-raise  (3)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (6)
-    [HUMAN] Deploy resolver + Archive, then click Validate Fix in
-    [LATER] Kitchener duplicate-page: reader-facing problem already
+  Production actions only Ryan should take  (5)
+    [HUMAN] Click Validate Fix in Search Console once tonight's
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
@@ -373,42 +372,18 @@ convenient.
   cross-domain linking done 2026-08-29 — see `BACKLOG_DONE.md`.
 ### Production actions only Ryan should take
 
-- **[HUMAN] Deploy resolver + Archive, then click Validate Fix in
-  Search Console — clears ~26% of the "video isn't on a watch page"
-  count with zero further code work.** Two real fixes (IQM2's
-  `video_format` bug, the `/j/`/`/state/` `VideoObject`→`CreativeWork`
-  retype — 16% of the failing population combined) are merged and
-  tested but not yet deployed; a third population (eScribe/isilive,
-  10%) is already correctly rendered live today and almost certainly
-  just needs a fresh crawl. See `BACKLOG.md`'s Search Console entry and
+- **[HUMAN] Click Validate Fix in Search Console once tonight's
+  (2026-08-30) Archive/resolver deploy completes** — clears ~26% of the
+  "video isn't on a watch page" count with zero further code work. The
+  code side (IQM2's `video_format` fix, the `/j/`/`/state/`
+  `VideoObject`→`CreativeWork` retype, plus the Modesto/Riverside
+  County/Kitchener `_SLUG_REDIRECTS` entries) is done and riding along
+  in that deploy — see `BACKLOG_DONE.md`. This is just the remaining
+  post-deploy dashboard step; a third population (eScribe/isilive, 10%)
+  needs only a fresh recrawl, not this click, and ~65% (Granicus,
+  CivicClerk's Azure CDN) isn't fixable in this app's code at all — see
   `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup for the full
-  numbers. **Also riding along, merged 2026-08-30**: two more
-  `_SLUG_REDIRECTS` entries (Modesto's `2026-08-11-council-meeting`,
-  Riverside County's `meeting-4fefb4` — see `BACKLOG_DONE.md`), so their
-  old permalinks stay 404 until this deploy happens.
-
-- **[LATER] Kitchener duplicate-page: reader-facing problem already
-  solved by a redirect; the leftover DB row is a real, unexplained bug
-  but not worth blocking on.** Two rows existed for the same real
-  meeting — kept `kitchener-2026-05-05-heritage-kitchener-committee`
-  (has the real agenda), added a `_SLUG_REDIRECTS` entry sending
-  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` to it.
-  Full background in `BACKLOG_DONE.md`'s matching
-  `[Investigated 2026-08-30]` entry. **The redirect alone fixes the
-  actual problem** (two live URLs for one meeting) regardless of whether
-  the duplicate row is ever deleted — `archive/main.py`'s
-  `_SLUG_REDIRECTS` check runs on the slug string before the row is
-  even queried. Deleting the duplicate row hit a real, reproducible 500
-  from `/internal/admin/delete-pages` (confirmed via direct curl, not a
-  fluke) with no obvious cause: a full row-count check across all 7
-  tables with a FK into `meeting_pages` showed nothing unusual (0 jobs,
-  0 saved items, exactly 1 each of transcript_versions/
-  meeting_page_url_aliases/meeting_page_thumbnails/social_posts/
-  meeting_highlights — the normal shape). Chasing this further needs a
-  real Render Logs traceback, which is real engineering time for a
-  cosmetic-only residual (one unreachable duplicate row, now
-  unreachable *because* the redirect exists) — not worth it unless the
-  same 500 recurs on a page that actually matters.
+  numbers, and don't expect this to clear 100%.
 
 - **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
   upgrade — evidence now leans toward "recurs," not "one-off"
