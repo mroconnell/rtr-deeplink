@@ -37,6 +37,48 @@ Worth asking Google to re-crawl a couple of the affected old permalinks
 now that they send a real 301, though that's optional follow-through,
 not a blocker.
 
+## StatsCan/Census table completeness gap: fully closed — a leading-"The" gap fixed, misdiagnosed as a hyphen mismatch [Done 2026-08-31]
+
+Surfaced 2026-08-18 via a full sweep of all 176 eScribe + 253 Granicus
+subdomains in production. All pieces now resolved:
+
+- **Paso Robles** (WO-47, 2026-08-23): Census gazetteer names it "El
+  Paso de Robles (Paso Robles) city" — `_load_name_state_table()` now
+  indexes parenthetical alternate names, so both forms resolve to CA.
+- **Durham / Peel / Region of Waterloo** (2026-08-21):
+  `build_canada_regional_municipalities()` adds these 3
+  confirmed-in-production Ontario regional municipalities.
+- **Chatham-Kent / Arran-Elderslie** (folded into the eScribe-residuals
+  hyphen-joined-wordninja-tier fix): `validated_label_extract
+  ('pub-chatham-kent')` → `'Chatham-Kent'`,
+  `validated_label_extract('pub-arranelderslie')` → `'Arran-Elderslie'`.
+- **Blue Mountains** (2026-08-31) — **the live entry's own diagnosis was
+  wrong**: it called this "a hyphen-formatting mismatch," but
+  `_table_lookup('Blue Mountains')` returns `None` regardless of
+  hyphenation — the real StatsCan key is **"The Blue Mountains"**, a
+  leading-article mismatch, not a hyphen one. A subdomain never spells
+  out "the" (`pub-bluemountains`, never `pub-thebluemountains`), so no
+  existing tier ever tried prepending it. Grounded in real data before
+  fixing generically, not guessed from one case: a grep across
+  `places.csv`/`county_subdivisions.csv` found **17 real Census places
+  nationally start with "The "** ("The Colony city, TX", "The Dalles
+  city, OR", "The Plains town, VA," etc.), so `_validated_label_extract_
+  with_state()` now tries a `"The {spaced}"` candidate as part of its
+  existing tier chain. Regression tests:
+  `test_validated_label_extract_resolves_leading_the_places`
+  (`tests/test_jurisdiction_enrich.py`) — confirms both
+  `pub-bluemountains` → `"The Blue Mountains"` and `pub-thecolony` →
+  `"The Colony"`. Full suite green (2277 passed).
+
+**Lloydminster** (AB/SK) was also named in the original entry as
+missing from the table, but it's a distinct, harder problem (spans two
+provinces, needs a product decision on which to show) with its own live
+`BACKLOG.md` entry — not folded in here.
+
+**Scope note carried over**: none of this retroactively fixes an
+already-published page — only a future new meeting or explicit re-feed
+picks up the corrected jurisdiction.
+
 ## 5 jurisdiction fixes unblocked by the WO-77/WO-78 deploy — 4 applied, 1 already correct [Done 2026-08-30]
 
 WO-77 (Oxford County ON `_KNOWN_DOMAINS` override) and WO-78

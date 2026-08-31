@@ -1749,6 +1749,22 @@ def test_validated_label_extract_resolves_hyphenated_ontario_municipalities():
     assert je.validated_label_extract("pub-arranelderslie") == "Arran-Elderslie"
 
 
+def test_validated_label_extract_resolves_leading_the_places():
+    # Real gap found 2026-08-31 re-checking BACKLOG.md's Blue Mountains
+    # entry, which had misdiagnosed this as a hyphen-formatting mismatch
+    # (it isn't -- "Blue Mountains" alone doesn't validate at all,
+    # hyphenated or not). The real Census/StatsCan key is "The Blue
+    # Mountains", and a subdomain never spells out "the" ("pub-
+    # bluemountains", not "pub-thebluemountains"), so no existing tier
+    # ever tried prepending it. 17 real places/county-subdivisions
+    # nationally start with "The " (confirmed via grep across
+    # places.csv/county_subdivisions.csv), so this is a real, grounded
+    # pattern, not a one-off guess -- "The Colony, TX" is a second real
+    # example.
+    assert je.validated_label_extract("pub-bluemountains") == "The Blue Mountains"
+    assert je.validated_label_extract("pub-thecolony") == "The Colony"
+
+
 # --- WO-22, 2026-08-21: the subdomain cross-check above (PR #254) turned
 # out to override an otherwise-validated jurisdiction with ANY subdomain
 # label that happens to validate, with no check that the label is
