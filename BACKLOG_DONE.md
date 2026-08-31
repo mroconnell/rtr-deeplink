@@ -1,5 +1,213 @@
 # Backlog — done
 
+## Parallel-agent jurisdiction sweep: 9 WOs merged (WO-67 through WO-75), 2 platform gaps closed, ~50 largest cities' status re-verified [Done 2026-08-30]
+
+A single evening's wave of research + fix agents run in parallel worktrees
+(each isolated, rebased and CI-verified before merge), working through a
+big chunk of `BACKLOG.md`'s "Jurisdiction extraction & backfill" and "The
+50 largest US cities" sections plus a couple of adjacent items. All nine
+PRs (#580-#588) squash-merged to `main`, full suite green afterward (2209
+passed, 15 skipped). Not yet deployed — see this repo's own "Deploys are
+manual" convention.
+
+**WO-67 — TelVue title-parsing gap.** `_TITLE_DATE_RE` only stripped a
+trailing dash-separated date; a real live page (Summit, NJ, "Summit
+Planning Board Meeting: August 17, 2026") used a colon instead, so the
+date never got separated from the body and the jurisdiction guess came
+back blank. Fixed (`[-:]` now matches either separator). Separately,
+`_BODY_SUFFIX_RE` had no "Common Council" alternative, so Albany, NY's
+real title ("Albany Common Council 08 03 26") mis-captured as "Albany
+Common" — a confidently WRONG answer, not just missing. Fixing the colon
+case alone wasn't enough for Summit either: once the date strips, "Summit
+Planning Board Meeting" still matched bare "Board" first and got
+rejected by the "planning" stopword — needed its own "Planning Board"
+alternative too, found only by tracing the regex against the real
+post-fix string. 3 more real tenants (Leominster MA, Royal Oak MI,
+Luverne MN) added to `_KNOWN_ORG_TOKEN_JURISDICTIONS`, each independently
+confirmed via the org's own real page text (an org-logo alt-text
+parenthesized-state shape and a spelled-out-state shape the general
+parser doesn't handle). Derry NH's page couldn't be located this session
+— split back out as its own small open entry.
+
+**WO-68 — CivicClerk wordninja tiers + a real state-suffix-drop bug.**
+Two new tiers in `jurisdiction_enrich.py`'s
+`_validated_label_extract_with_state()`: tier 6 handles a `twp`
+abbreviation glued mid-string with no separator (`macombtwpmi` → Macomb
+Township, MI; `southorangetwpnj` → South Orange Village Township, NJ —
+the real Census name adds "Village" the subdomain drops, found via a
+prefix match against the subdivision table filtered to the label's own
+state); tier 7 strips a trailing state code AND a trailing "co" (county)
+abbreviation from the raw label and checks the bare remainder directly
+against the county table (`lenaweecomi` → Lenawee County, MI — wordninja
+can't segment "lenawee" at all). `riversidesheriff.portal.civicclerk.com`
+and `cosumnescommunityservices.portal.civicclerk.com` confirmed real via
+live browser fetch + independent second source, added to
+`_KNOWN_DOMAINS`. `fsusga.portal.civicclerk.com` confirmed to be Florida
+State University's SGA, not a government — `jurisdiction=None` is
+correct, a regression test now guards against "fixing" it by mistake.
+**Bonus find while verifying**: `Jefferson County` → `Louisville` /
+`Davidson County` → `Nashville` consolidated-government repairs were
+silently dropping their state suffix, because the hint alone
+("Louisville"/"Nashville") is itself nationally ambiguous and
+`_fill_missing_state()` returned nothing — `_subdomain_override()` now
+also tries the pre-override text's own unambiguous state, then
+hint+base joined by `/` or `-` (the two real ways Census spells a
+consolidated government name).
+
+**WO-69 — 11 confirmed eScribe known-domain registrations.** Surrey
+Schools, Horry County Schools, Toronto and Region Conservation
+Authority, Regional District of Central Okanagan, Sunshine Coast
+Regional District, Thunder Bay District Health Unit, Resort Municipality
+of Whistler, Ashfield-Colborne-Wawanosh Township, Hamilton Public
+Library (confirmed these are the library board's OWN meetings, not City
+of Hamilton council carried on the library's channel), St. Thomas ON (a
+genuine 3-way MO/ND/ON collision the general path can never resolve),
+and Toronto Catholic District School Board — the one confirmed eScribe
+tenant with NO `pub-` prefix at all. Fixed via a narrow explicit
+allowlist (`_NO_PREFIX_SUBDOMAINS`) rather than making the `pub-` prefix
+generally optional, since other real no-prefix eScribe tenants already
+exist in the codebase and a blind regex widen risked a real regression.
+`pub-lloydminster` deliberately left open — see `BACKLOG.md`'s residual
+entry.
+
+**WO-70 — explicit-claimed-state jurisdiction gap.** A name already
+shaped "X, State" with an explicit spelled-out state (Vimeo account
+"City of Medina, Minnesota") was declining because the bare name alone
+is nationally ambiguous (Medina is real in 6 states). New
+`resolve_claimed_state(name, claimed_state)` checks whether the claimed
+state is genuinely a member of the name's real state list instead of
+requiring global unambiguity first — type-scoped (place vs. county) to
+avoid a real cross-type false-accept found while building it: "Medina
+County" is real in TX, but no incorporated city named Medina exists
+there, so an unscoped check would have wrongly validated "City of
+Medina, Texas". Wired into `youtube.py`'s existing comma-branch and a
+new comma-branch added to `vimeo.py` (which had none before).
+
+**WO-71 — Viebit jurisdiction mis-tagging.** `ViebitAssetFinder` had a
+hardcoded `_JURISDICTION = "New York City, NY"` applied to every
+`*.viebit.com` URL. A real second tenant, `ringwoodtv.viebit.com`
+(confirmed via `ringwoodnj.net`, the Borough of Ringwood NJ's own site,
+naming this exact channel "Ringwood TV"), was getting mis-tagged as NYC.
+`resolve()` now branches on the real fetched netloc — `councilnyc.
+viebit.com` keeps the hardcoded NYC value, anything else is looked up
+via the known-domain registry (same pattern `cablecast.py` already uses
+for its own multi-tenant disambiguation), and an unrecognized netloc
+gets `None` rather than a guess.
+
+**WO-72 — Columbus, OH added to the YouTube-channel fallback.**
+`columbus.legistar.com` has a real Legistar instance with no video link
+on its meeting pages (same precondition as Phoenix/Philadelphia/
+Baltimore); a real matching city YouTube channel exists
+(`youtube.com/cityofcolumbus`, confirmed via yt-dlp). Added to
+`youtube_channel.py`'s fallback dict. End-to-end resolve confirmed live:
+a real 8/24/2026 Council meeting now matches its real video by date and
+pulls 3701 real caption segments.
+
+**WO-73 — new Tampa, FL adapter.** The backlog's framing ("transcripts
+posted separately at apps.tampagov.net, need matching back to the
+meeting") was stale: live verification found each transcript detail
+page (`Agenda.aspx?pkey=N`) already embeds its own paired YouTube video
+directly, so the 2,611-row paginated ASP.NET RadGrid never needs
+walking — no headless browser needed. New `app/platforms/tampa.py`
+delegates video to `YouTubeAssetFinder` and uses the page's own real
+per-utterance timestamped closed captioning for the transcript — real
+quality win confirmed directly: for the same video, YouTube's own
+auto-captions were almost entirely `[Music]`/filler (2714 near-useless
+segments) vs. 218 clean, accurate segments with real speaker names from
+Tampa's own transcript. Tested against 4 real meetings spanning
+different timestamp formats and edge cases.
+
+**WO-74 — 16 of a 23-jurisdiction TelVue batch-2 fixed.** A parallel
+research pass (below) verified 23 new real TelVue org tokens; 16 resolve
+today with a missing or WRONG jurisdiction. Recounted directly from the
+research data rather than trusting its own "17" headline (off by one —
+the doc separately mis-stated "three tokens... resolved correctly" while
+listing four). Most needed only a registry entry, but 3 needed a real
+parsing fix, since a dict-only entry doesn't fire when the title guess
+is truthy-but-wrong rather than empty: **Rome, GA resolved as "Rome
+City, IN"** (a real, unrelated Indiana town) — a genuine wrong-STATE
+collision, fixed by adding "City Commission" as its own `_BODY_SUFFIX_RE`
+alternative so the guess becomes bare "Rome" and the registry supplies
+the state; Truckee, CA had a cosmetic extra word ("Truckee Town, CA"),
+fixed via a "Town Council" alternative; Long Hill Township, NJ had a
+real source-side typo ("LHT - Planing Board Mtg") storing the literal
+initialism, fixed by generalizing the existing bare-initialism reject to
+also decline a short all-caps acronym followed by " - ". Plus 2 stopword
+additions (Orange CT's "Zoning", Tewksbury MA's "Conservation"). No
+production ingestion performed for any of the 23 — that's a separate
+step needing explicit sign-off, independent of the code fix.
+
+**WO-75 — `transcribe_backlog_locally.py` per-meeting chunk sizing.**
+The script picked one `chunk_seconds` value once per run, before any
+page's platform was known, unlike `app/main.py`/`worker/main.py` which
+already call `media_probe.py`'s `chunk_size_seconds_for_platform()` per
+job. New `_resolve_chunk_seconds()` helper called from `process_one()`
+right after `detect_platform()`, same per-page hook the production
+paths use. `--chunk-seconds` CLI override still wins unconditionally,
+verified even against Granicus.
+
+**Research: 50 largest US cities, live re-verification of 9 items.**
+Ringwood/NYC Viebit mis-tag (root cause, fixed above as WO-71). Cambridge,
+MA: not an IQM2 bug — the city migrated to PrimeGov in January 2026, the
+old IQM2 portal says so directly, and a real Cambridge meeting resolves
+fully via the new PrimeGov URL. Watsonville, CA: the original total-parse
+-failure report doesn't reproduce on any real archived meeting; only an
+unpublished future meeting produces it (correct fallback behavior, not a
+bug) — likely the original check hit the wrong meeting ID. Atlanta GA
+(ChampDS): confirmed still works, no specific failing URL found or
+named. Omaha NE: confirmed still genuinely split (live-only Council
+video, a Cloudflare-gated separate archive site). Tampa FL: closed
+(WO-73). Detroit MI (Cablecast): confirmed still works, both real URL
+shapes resolve fully — the "not working well" user flag doesn't
+reproduce today. Columbus OH: closed (WO-72). NYC Legistar
+(`legistar.council.nyc.gov`): confirmed already works end-to-end (video,
+jurisdiction, transcript) — the "not yet re-checked" framing was stale.
+
+**Research: Tulare County/Visalia — the residual "no known real hosting
+domain" half of an older fix, closed.** `tularecounty.legistar.com`
+turned out to be dead — Legistar's wildcard DNS returns HTTP 200 with
+literal "Invalid parameters!" for ANY subdomain, real or not, confirmed
+by comparing against a deliberately made-up random subdomain (identical
+response) and a real customer (different, real content). Tulare
+County's actual platform is PrimeGov (`tularecounty.primegov.com`,
+confirmed via the county's own site naming it as the vendor, and via
+live-fetched real Board of Supervisors meetings with real 2026 YouTube
+videos). The existing subdomain cross-check already resolves it
+correctly end-to-end — verified by running the real (unpatched)
+`PrimeGovAssetFinder._extract_jurisdiction()` against the real fetched
+page, which actually produced a *worse* false positive ("City of
+Laurel, CA," from a lawsuit citation buried in a closed-session agenda
+item) than the originally-reported "Visalia" misattribution, and
+confirming `finalize_jurisdiction()` still correctly overrides it to
+"Tulare County, CA" via the netloc cross-check.
+
+**Research: TelVue CDX batch-2 — 23 more real jurisdictions verified,
+with a correction to the record.** The prior "~112 remaining candidates"
+figure turned out to have no backing data file anywhere in
+`~/Documents/rtr-business/research/` — every existing file there
+predates the `collapse=urlkey:64` breakthrough. Reproducing the CDX
+query directly and cross-referencing against everything already known
+left 150 genuinely untouched tokens; live-classifying all 150 found 33
+`likely_civic`, of which 23 were independently cross-verified as real
+(second-source confirmation + a live `resolve()` run against the real
+adapter). 16 of the 23 needed a jurisdiction fix, shipped as WO-74
+above; the other 7 (Bowie MD, Galloway Township NJ, Brentwood TN,
+Cumberland ME, Trempealeau County WI, Troy MI, Holliston MA) already
+resolve correctly today. Findings written to
+`~/Documents/rtr-business/research/cc_scan_data/telvue_batch2_verified.json`
+and a companion methodology doc. None of the 23 ingested into
+production. ~127 tokens from the 150-untouched pool remain unclassified
+— see `BACKLOG.md`'s corrected TelVue CDX entry.
+
+**Research: eScribe residuals, all 12 confirmed real (11 fixed as WO-69
+above, 1 — Lloydminster — needs a product decision).** Each of the 12
+confirmed via the org's own filestream documents or live meeting-list
+pages, not guessed from the acronym alone — full per-domain evidence in
+the WO-69 entry above. One correction found beyond the original list:
+Toronto Catholic District School Board's real domain
+(`tcdsbpublishing.escribemeetings.com`) carries no `pub-` prefix at all,
+which `escribe.py`'s `_SUBDOMAIN_RE` didn't handle before WO-69.
+
 ## http/https normalization backfill: 261 stale rows fixed, 3 real duplicate pairs merged, a cascade-delete gap found and fixed along the way [Done 2026-08-30]
 
 Started as a two-URL mystery: refreshing two Cablecast pages via
