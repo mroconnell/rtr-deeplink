@@ -399,6 +399,82 @@ def test_finalize_jurisdiction_wo69_fallback_domains_supply_the_full_name():
     assert result.confidence == "fallback"
 
 
+def test_lookup_by_domain_resolves_swagit_special_purpose_entities_2026_08_31():
+    # BACKLOG.md's "Swagit still resolves every special-purpose entity...
+    # with a blank jurisdiction" entry -- swagit.py's own `_extract_
+    # metadata()` only matches a "... - City, ST"-shaped <title>, and none
+    # of these five real tenants' titles has one (each confirmed live
+    # 2026-08-31 via a direct fetch of a real meeting page's own <title>).
+    # Same "fallback" strength as the WO-69 block above: `resolve()`
+    # returns a blank jurisdiction for all five today, not a confirmed-
+    # wrong one.
+    cases = {
+        # ercot.new.swagit.com/videos/377620: "Mar 10, 2026 Batch Study
+        # Process for Large Load Interconnections Workshop #4 - ERCOT -
+        # Electric Reliability Council of Texas". Statewide electric-grid
+        # authority, not tied to one city/county.
+        "ercot.new.swagit.com": je.KnownJurisdiction(
+            "Electric Reliability Council of Texas", "authority", "TX"
+        ),
+        # dfps.new.swagit.com/videos/345687: "Jun 13, 2025 DFPS Council
+        # Meeting - Texas Dept of Family and Protective Services".
+        # Statewide state agency.
+        "dfps.new.swagit.com": je.KnownJurisdiction(
+            "Texas Department of Family and Protective Services",
+            "department",
+            "TX",
+        ),
+        # sccoe.new.swagit.com/videos/315560: "Sep 18, 2024 County Board
+        # of Education - Santa Clara County Office of Education". A real
+        # county-level education agency, not the county government
+        # itself -- same distinction as riversidesheriff's "department"
+        # entry above.
+        "sccoe.new.swagit.com": je.KnownJurisdiction(
+            "Santa Clara County Office of Education", "office", "CA"
+        ),
+        # browardmpo.new.swagit.com/videos/359517: "Oct 30, 2025 MPO
+        # Board Meeting - Broward MPO" -- also the real page
+        # extract_jurisdiction_chain()'s own docstring names as the
+        # Broward-MPO body-text false-positive case. browardmpo.org's own
+        # official name is "Broward Metropolitan Planning Organization",
+        # Fort Lauderdale, Broward County, FL.
+        "browardmpo.new.swagit.com": je.KnownJurisdiction(
+            "Broward Metropolitan Planning Organization", "mpo", "FL"
+        ),
+        # viametrotransit.new.swagit.com/videos/376227: "Feb 24, 2026 VIA
+        # / ATD Board of Trustees Meeting - VIA Metropolitan Transit" --
+        # San Antonio, TX's transit authority.
+        "viametrotransit.new.swagit.com": je.KnownJurisdiction(
+            "VIA Metropolitan Transit", "authority", "TX"
+        ),
+    }
+    for domain, expected in cases.items():
+        assert je.lookup_by_domain(domain) == expected, domain
+
+
+def test_finalize_jurisdiction_swagit_special_purpose_domains_supply_the_full_name():
+    # End to end through finalize_jurisdiction() -- the same function
+    # archive/db/crud.py's _find_or_create_page() calls at ingest time --
+    # for three of the five domains above: a blank raw_jurisdiction (what
+    # SwagitAssetFinder.resolve() actually returns for these titles, see
+    # test_resolve_leaves_jurisdiction_blank_for_special_purpose_entities_
+    # today in tests/test_swagit.py) gets the full registered name, not
+    # just a state fill.
+    result = je.finalize_jurisdiction(None, netloc="ercot.new.swagit.com")
+    assert result.jurisdiction == "Electric Reliability Council of Texas, TX"
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(None, netloc="dfps.new.swagit.com")
+    assert (
+        result.jurisdiction == "Texas Department of Family and Protective Services, TX"
+    )
+    assert result.confidence == "fallback"
+
+    result = je.finalize_jurisdiction(None, netloc="sccoe.new.swagit.com")
+    assert result.jurisdiction == "Santa Clara County Office of Education, CA"
+    assert result.confidence == "fallback"
+
+
 def test_resolve_state_prefers_a_confirmed_domain_over_an_ambiguous_name():
     # "Detroit" alone is unresolvable (real collision, see above) -- the
     # confirmed domain is what actually makes this resolve.
