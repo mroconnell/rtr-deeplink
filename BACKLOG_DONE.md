@@ -89,6 +89,82 @@ candidate this entry named
 is a genuinely different, newer meeting with no captions generated yet
 (agenda-only), unrelated to the roll-up dedup gate.
 
+## Domain-privacy-blocked Vimeo video recovered via `Referer` domain hint (WO-86) [Done 2026-08-30]
+
+Built the recovery half of the 2026-08-29 Vimeo `domain_status_code`
+fix (that entry declined a blocked video cleanly; this one tries to
+un-block it first) — closes the `[LATER]` entry this replaces in
+`BACKLOG.md`'s "Adapter, tenant & jurisdiction-extraction odds and
+ends" section. Full design reasoning already existed in
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §46 before
+this session started; this entry is the live verification and build.
+
+**Re-verified both real test cases live before building anything**:
+Vimeo's oEmbed API still returns `domain_status_code: 403` today for
+Corvallis OR (`1220285695`) and Harpswell ME (`1131371113`) — both
+confirmed blocked 2026-08-29, still blocked 2026-08-30.
+
+**The Referer fix genuinely works — confirmed on a real case, not just
+in theory.** Corvallis's real origin domain
+(`www.corvallisoregon.gov`, found via its own Vimeo channel's JSON-LD
+listing, which names the video "08/20/2026 City Council Work Session"
+and is linked from `corvallisoregon.gov`'s meetings pages) sent as the
+oEmbed request's `Referer` header flips `domain_status_code` from `403`
+to `200` and returns full metadata (title, author, 7727s duration). An
+unrelated Referer (or none) leaves it `403` — confirmed side by side,
+so this is genuinely the domain match doing the work, not any Referer
+at all. Also confirmed harmless on an already-unrestricted video
+(Salisbury NC `1212025580` with an unrelated Referer: still full
+metadata, `domain_status_code: None`) — so the hint is safe to send
+unconditionally, no need to probe without it first and retry only on
+failure.
+
+**Harpswell's case surfaced a real correction to the task's own
+premise, not just a build detail**: `1131371113` is NOT a select-board
+meeting — it's "Elijah Kellogg Church 26Oct2025", a church service
+carried on the same community-access Vimeo account
+(`vimeo.com/harpswelltv`) that also carries the town's actual
+government meetings (confirmed via the video's own `<title>`/`og:title`
+and the channel's JSON-LD). `harpswell.maine.gov` as Referer does
+nothing for it. The domain that actually unblocks it is
+`https://harpswelltv.org/` — the community TV nonprofit's own site
+(found by following the church's own "watch past services" link, not
+a town-government page) — confirmed live: `403` → `200` with full
+metadata. This matters for the design, not just as trivia: **the hint
+has to be the real page that actually links to this specific video**,
+not a plausible jurisdiction guess — a "close enough" domain (the
+town's own site, for a video that happens to live on the town's
+community-TV channel) is silently a no-op, confirmed to behave
+identically to sending no Referer at all, never worse or different.
+
+**Shipped**: `app/platforms/vimeo.py`'s `resolve_video_id()` and
+`resolve()` both take an optional `domain_hint` keyword (following
+`base.py`'s `CalendarPageError.jurisdiction_hint` precedent — a
+known-good signal from the caller, carried through rather than
+discarded), normalized to a bare origin (`_referer_from_domain_hint()`)
+and sent as the oEmbed fetch's `Referer` header via a new `referer`
+parameter on `_fetch()`/`_fetch_oembed()`. `chicago_elms.py` — today's
+one real caller with a known origin domain — now passes its own portal
+domain (`urlparse(url).netloc`, i.e. `chicityclerkelms.chicago.gov`)
+unconditionally; no Chicago video has needed it yet, but it's confirmed
+harmless to send regardless. Regression tests added to
+`tests/test_vimeo.py` against two real fixtures: the existing 403
+capture plus a new unmodified 200-recovered capture taken live
+2026-08-30 (`oembed_corvallis_1220285695_domain_recovered.json`) — one
+test asserts the `Referer` header is actually sent (a fixture-body
+assertion alone can't prove that, since the test mock replies the same
+regardless of headers), one asserts the recovered metadata comes
+through end to end. All 4 CI gates green.
+
+**Explicitly out of scope, per the original design sketch**: a bare
+`vimeo.com/...` URL pasted with no known origin (a cold user paste, or
+an Archive record with no linking page recorded) still has no hint to
+give. Recovering that case would need scraping the public page's own
+`<title>` tag as a separate fallback — not attempted here, and not
+re-opened as a live `BACKLOG.md` entry since nothing new was learned
+about it this session beyond what the original design sketch already
+said.
+
 ## `hallucination-candidates` 502 root-caused and fixed: flagged branch was still unbounded [Done 2026-08-30]
 
 Blocked running `scripts/repair_repetition_loops.py` (the repetition-loop

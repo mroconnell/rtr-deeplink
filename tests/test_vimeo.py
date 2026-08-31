@@ -33,6 +33,15 @@ the full investigation:
   in a real browser -- so `domain_status_code` is the one reliable
   signal that separates a genuinely broken embed from an oEmbed call
   that merely couldn't reach extra metadata.
+- `oembed_corvallis_1220285695_domain_recovered.json` -- the SAME real
+  video, re-fetched live 2026-08-30 with `Referer: https://
+  www.corvallisoregon.gov/` -- Corvallis's own real domain. Unmodified
+  capture: `domain_status_code` is `200` and every metadata field is
+  populated (title, author, duration), confirming the domain-allowlist
+  Referer fix actually recovers a real blocked video, not just a
+  theoretical one (WO-86, see vimeo.py's own docstring for the full
+  investigation, including the Harpswell ME case that did NOT recover
+  with the expected domain and needed a different real one).
 
 What is NOT tested here, deliberately, because it does not work: caption
 fetching. `player.vimeo.com/video/{id}/config` 403s every non-browser
@@ -41,6 +50,9 @@ against (see CLAUDE.md's "don't claim a caption/data path works without a
 positive example"). The adapter is video-only and says so in a warning.
 """
 
+from unittest import mock
+
+import aiohttp
 import pytest
 
 from app.platforms.base import CalendarPageError, detect_platform
@@ -269,6 +281,54 @@ async def test_resolve_declines_a_domain_privacy_blocked_video():
     assert result.title is None
     assert result.jurisdiction is None
     assert any("privacy settings" in w for w in result.video_warnings)
+
+
+async def test_resolve_video_id_sends_domain_hint_as_referer_header():
+    # WO-86: the oEmbed fetch must actually carry `domain_hint` as a
+    # Referer header, not just accept the parameter and drop it --
+    # that's the one thing a fixture-based response-body assertion can't
+    # prove, since the mock returns the same body regardless of headers.
+    captured_kwargs = {}
+
+    def fake_get(self, req_url, **kwargs):
+        captured_kwargs.update(kwargs)
+        return FakeResponse(
+            status=200,
+            text=load_fixture(
+                "vimeo", "oembed_corvallis_1220285695_domain_recovered.json"
+            ),
+            url=str(req_url),
+        )
+
+    with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
+        await VimeoAssetFinder.resolve_video_id(
+            "1220285695", domain_hint="www.corvallisoregon.gov"
+        )
+
+    assert captured_kwargs.get("headers") == {
+        "Referer": "https://www.corvallisoregon.gov/"
+    }
+
+
+async def test_resolve_video_id_recovers_a_domain_blocked_video_with_correct_domain_hint():
+    # The real, live-verified case this whole feature exists for (WO-86):
+    # Corvallis OR's 1220285695 is genuinely privacy-blocked (see the
+    # test above this one), but re-fetching with its own real domain as
+    # Referer recovers full metadata -- confirmed live 2026-08-30, see
+    # oembed_corvallis_1220285695_domain_recovered.json's own comment.
+    with mock_session(
+        _oembed_route(
+            "https://vimeo.com/1220285695",
+            "oembed_corvallis_1220285695_domain_recovered.json",
+        )
+    ):
+        result = await VimeoAssetFinder.resolve_video_id(
+            "1220285695", domain_hint="www.corvallisoregon.gov"
+        )
+
+    assert result.video_url == "https://player.vimeo.com/video/1220285695"
+    assert result.title == "08/20/2026 City Council Work Session"
+    assert not any("privacy settings" in w for w in result.video_warnings)
 
 
 async def test_resolve_still_yields_a_playable_embed_when_oembed_is_unreachable():
