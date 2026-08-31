@@ -93,6 +93,46 @@ async def test_jurisdiction_from_subdomain_used_only_as_fallback():
     )
 
 
+async def test_jurisdiction_from_subdomain_no_prefix_allowlist():
+    # WO-69 (2026-08-30): tcdsbpublishing.escribemeetings.com is the one
+    # confirmed real eScribe tenant with no "pub-" prefix at all
+    # (confirmed live: the bare domain returns 200 with real content, the
+    # "pub-" prefixed guess times out). "tcdsbpublishing" doesn't itself
+    # validate against the Census/StatsCan tables (it's an institutional
+    # acronym, not a place name), so this correctly returns None here --
+    # jurisdiction_enrich._KNOWN_DOMAINS is what actually supplies
+    # "Toronto Catholic District School Board, ON" for this domain, at
+    # ingest time (see tests/test_jurisdiction_enrich.py).
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://tcdsbpublishing.escribemeetings.com/Meeting.aspx?Id=1"
+        )
+        is None
+    )
+    # Deliberately narrow: a real, different eScribe tenant that ALSO
+    # lacks the "pub-" prefix (confirmed real via
+    # scripts/tier3_auto_transcription_queue.txt) must NOT start being
+    # subdomain-guessed just because the allowlist exists -- widening
+    # `_SUBDOMAIN_RE` generally would also start guessing
+    # richmond.escribemeetings.com, a real, separate tenant from
+    # pub-richmond.escribemeetings.com that BACKLOG.md's own
+    # `[NEEDS-AUDIT]` entry already flags as resolving to the wrong
+    # country when guessed. Not in the allowlist, so still None.
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://richmond.escribemeetings.com/Meeting.aspx?Id=1"
+        )
+        is None
+    )
+    # The ordinary "pub-" case must keep working unchanged.
+    assert (
+        EscribeAssetFinder._jurisdiction_from_subdomain(
+            "https://pub-milton.escribemeetings.com/Meeting.aspx?Id=1"
+        )
+        == "Milton"
+    )
+
+
 async def test_extract_agenda_items_handles_missing_bookmarks_array():
     html = (
         "<html><body><div class='AgendaItem'><div class='AgendaItemTitle'>"

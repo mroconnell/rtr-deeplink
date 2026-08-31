@@ -38,6 +38,27 @@ _SELECT_ITEM_ID_RE = re.compile(r"SelectItem\((\d+)")
 # against the real Bakersfield sample this was built from.
 _BOOKMARKS_ARRAY_RE = re.compile(r"Bookmarks\s*:\s*(\[.*?\])\s*,", re.S)
 _SUBDOMAIN_RE = re.compile(r"pub-([a-z0-9-]+)\.escribemeetings\.com")
+# A handful of real eScribe tenants exist WITHOUT the "pub-" prefix (real,
+# confirmed via scripts/tier3_auto_transcription_queue.txt:
+# hamilton.escribemeetings.com, brantford.escribemeetings.com,
+# tdsb.escribemeetings.com, bouldercounty.escribemeetings.com,
+# kingsville-pub.escribemeetings.com) -- but making `_SUBDOMAIN_RE`'s
+# "pub-" prefix generally optional would also start subdomain-guessing
+# jurisdiction for EVERY one of those, including
+# `richmond.escribemeetings.com` (a real, separate tenant from
+# `pub-richmond.escribemeetings.com`, which BACKLOG.md's own
+# `[NEEDS-AUDIT]` entry already flags as resolving to the wrong country
+# -- Richmond, CA guessed instead of the real Richmond, BC customer).
+# Widening the regex generally would apply that same guess to a SECOND
+# domain instead of fixing the first. So this is a narrow, explicit
+# allowlist for the one domain confirmed 2026-08-30 (WO-69) to need the
+# no-prefix match -- tcdsbpublishing.escribemeetings.com (Toronto
+# Catholic District School Board) -- rather than a general "pub-" made
+# optional. Every domain in this allowlist is also registered in
+# `jurisdiction_enrich._KNOWN_DOMAINS` directly, so this fallback path is
+# a belt-and-suspenders extra, not this domain's only source of truth.
+_NO_PREFIX_SUBDOMAIN_RE = re.compile(r"([a-z0-9-]+)\.escribemeetings\.com")
+_NO_PREFIX_SUBDOMAINS = {"tcdsbpublishing"}
 
 
 class EscribeAssetFinder(AssetFinder):
@@ -351,7 +372,15 @@ class EscribeAssetFinder(AssetFinder):
 
     @staticmethod
     def _jurisdiction_from_subdomain(url: str) -> Optional[str]:
-        match = _SUBDOMAIN_RE.match(urlparse(url).netloc.lower())
+        netloc = urlparse(url).netloc.lower()
+        match = _SUBDOMAIN_RE.match(netloc)
+        if not match:
+            # See `_NO_PREFIX_SUBDOMAINS`'s own comment above -- a narrow,
+            # explicit allowlist for the rare real tenant with no "pub-"
+            # prefix at all, not a general widen of `_SUBDOMAIN_RE`.
+            no_prefix_match = _NO_PREFIX_SUBDOMAIN_RE.match(netloc)
+            if no_prefix_match and no_prefix_match.group(1) in _NO_PREFIX_SUBDOMAINS:
+                match = no_prefix_match
         if not match:
             return None
         label = match.group(1).replace("-", "")
