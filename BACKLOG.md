@@ -63,7 +63,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
     [HUMAN] Render's health-check gate has never blocked a deploy —
   Production actions only Ryan should take  (6)
     [HUMAN] Deploy resolver + Archive, then click Validate Fix in
-    [NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
+    [LATER] Kitchener duplicate-page: reader-facing problem already
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
@@ -389,35 +389,28 @@ convenient.
   Riverside County's `meeting-4fefb4` — see `BACKLOG_DONE.md`), so their
   old permalinks stay 404 until this deploy happens.
 
-- **[NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
-  from `/internal/admin/delete-pages` — root cause not yet known.**
-  Decision made 2026-08-30: keep the original
-  `kitchener-2026-05-05-heritage-kitchener-committee` (it has the real
-  agenda; the duplicate never got one — in-browser comparison confirmed
-  this directly), delete the duplicate
-  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` (full
-  background on how the duplicate arose and why this one was chosen —
-  the original has a real agenda, the duplicate doesn't — is in
-  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-30]` entry), then
-  redirect the old slug to the surviving one. Dry-run against
-  `/internal/admin/delete-pages` confirmed it targets exactly the right
-  single row (title, platform, source URL all match). **The real
-  (`dry_run=false`) call 500s** — plain "Internal Server Error," no JSON
-  body, so no exception detail from the response alone. Ruled out: this
-  is *not* the stale-deploy FK-violation bug from PR #577
-  (`delete_meeting_pages_by_slug()` missing thumbnail/social-post
-  cleanup) — that fix was already live (Archive redeployed 2026-08-30
-  2:30pm, well before this attempt) and code review of the current
-  function shows every FK-referencing table (`TranscriptionJob`,
-  `TranscriptVersion`, `MeetingPageUrlAlias`, `SavedItem`,
-  `MeetingPageThumbnail`, `SocialPost`) already being cleaned up in the
-  right order, plus `MeetingHighlight`'s DB-level `ON DELETE CASCADE`.
-  **Next step**: pull the real traceback from the Archive service's Logs
-  tab in Render (not the shell) at the timestamp of the failed request —
-  the generic 500 body doesn't carry it. Once the actual exception is
-  known this likely becomes a quick fix; don't guess further without it.
-  `_SLUG_REDIRECTS` entry for this pair is intentionally not yet added —
-  wait for the delete to actually succeed first.
+- **[LATER] Kitchener duplicate-page: reader-facing problem already
+  solved by a redirect; the leftover DB row is a real, unexplained bug
+  but not worth blocking on.** Two rows existed for the same real
+  meeting — kept `kitchener-2026-05-05-heritage-kitchener-committee`
+  (has the real agenda), added a `_SLUG_REDIRECTS` entry sending
+  `city-of-kitchener-on-2026-05-05-heritage-kitchener-committee` to it.
+  Full background in `BACKLOG_DONE.md`'s matching
+  `[Investigated 2026-08-30]` entry. **The redirect alone fixes the
+  actual problem** (two live URLs for one meeting) regardless of whether
+  the duplicate row is ever deleted — `archive/main.py`'s
+  `_SLUG_REDIRECTS` check runs on the slug string before the row is
+  even queried. Deleting the duplicate row hit a real, reproducible 500
+  from `/internal/admin/delete-pages` (confirmed via direct curl, not a
+  fluke) with no obvious cause: a full row-count check across all 7
+  tables with a FK into `meeting_pages` showed nothing unusual (0 jobs,
+  0 saved items, exactly 1 each of transcript_versions/
+  meeting_page_url_aliases/meeting_page_thumbnails/social_posts/
+  meeting_highlights — the normal shape). Chasing this further needs a
+  real Render Logs traceback, which is real engineering time for a
+  cosmetic-only residual (one unreachable duplicate row, now
+  unreachable *because* the redirect exists) — not worth it unless the
+  same 500 recurs on a page that actually matters.
 
 - **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
   upgrade — evidence now leans toward "recurs," not "one-off"

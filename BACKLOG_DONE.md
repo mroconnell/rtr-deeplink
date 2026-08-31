@@ -79,9 +79,27 @@ Register Review, Adjournment); the new-slug page has no Agenda section
 at all — the template jumps straight from video controls to Transcript.
 Since both transcripts are already good enough that the difference
 between them doesn't matter, the agenda was the deciding factor: **keep
-the original slug, delete the duplicate.** Live entry with current
-status (blocked on a real 500 from the delete endpoint) is in
-`BACKLOG.md`.
+the original slug, delete the duplicate.**
+
+**Outcome, 2026-08-30: redirect shipped, row deletion deferred.**
+`_SLUG_REDIRECTS` entry added sending the duplicate slug to the
+original — this alone fixes the reader/search-engine-facing problem,
+since that check runs on the slug string before the row is even
+queried, independent of whether the duplicate row still exists.
+Deleting the row itself hit a real, reproducible 500 from
+`/internal/admin/delete-pages` (confirmed via direct curl outside the
+Render shell too, so not shell-specific) with no obvious cause — a
+row-count check across all 7 tables with a FK into `meeting_pages`
+showed nothing unusual (0 transcription_jobs, 0 saved_items, exactly 1
+each of transcript_versions/meeting_page_url_aliases/
+meeting_page_thumbnails/social_posts/meeting_highlights). A
+warm-thumbnail-race theory was raised and disproved: the page's
+`card.jpg` already returned a real 200 before any of today's page
+views, so the warm-on-first-view path (which only fires when zero
+thumbnails exist) was never triggered. Real root cause needs a Render
+Logs traceback, which the cosmetic-only remaining gap (one now-
+unreachable duplicate row) doesn't justify chasing further — see the
+live `[LATER]` entry in `BACKLOG.md`.
 
 ## Postgres Storage Autoscaling enabled [Done 2026-08-30]
 
