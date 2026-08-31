@@ -77,7 +77,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (16)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (56)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -104,33 +104,27 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
   `[JUST-DO-IT]` ChampDS symptom B — instant 0.2s failures from the…  (1)
     [NEEDS-AUDIT] ~12 OnBase/Hyland-family pages still resolve with no
   `[NEEDS-AUDIT]` Duration alone cannot separate a very short real…
-  The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (3)
-    [NEEDS-AUDIT] A real, previously undocumented jurisdiction
+  The 50 largest US cities — per-tenant status `[NEEDS-AUDIT]`  (2)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  Jurisdiction extraction & backfill  (20)
-    [NEEDS-AUDIT] Real bug found 2026-08-30 ingesting TelVue's newly-
+  Jurisdiction extraction & backfill  (15)
+    [NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
     [HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
     [NEEDS-AUDIT] 51 pre-existing recompute-backfill candidates were
     [JUST-DO-IT] Two existing pages carrying bare "Ashland"/"Milton"/
-    [NEEDS-AUDIT] Consolidated city-county repairs silently drop the
     [NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
     [NEEDS-AUDIT] StatsCan/Census table completeness gap, surfaced
     [NEEDS-AUDIT] One likely truncation case found in the same sweep —
     [NEEDS-AUDIT] Swagit still resolves every special-purpose entity
     [JUST-DO-IT] PrimeGov's `_extract_jurisdiction()` still has no real
-    [NEEDS-AUDIT] A name that's already "X, State"-shaped with an
     [NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
-    [NEEDS-AUDIT] A fresh TelVue batch (2026-08-30) landed with several
-    [NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
-    [NEEDS-AUDIT] eScribe residuals after the 2026-08-29 sweep (2 of 14
+    [NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
     [LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
     [NEEDS-AUDIT] Census-table baseline validation of all 649 archived
-    [NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
     [LATER] Domain guesser matched a same-named US state's real portal
     [LATER] ~25 smaller consolidated city-county governments still need
   Adapter & platform gaps  (15)
-    [JUST-DO-IT] Moved out of Dormant 2026-08-30 — TelVue's CDX
+    [JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
     [NEEDS-AUDIT] A real YouTube-backed meeting resolved as video-less
     [NEEDS-AUDIT] Vimeo captions and on-demand Whisper audio are the
@@ -146,11 +140,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
     [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Palm Beach County FL
     [LATER] `elpasotexas.gov/videos/` itself has no adapter
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     `[LATER]` Tighten the two workers to their real import surface.
-  Media-source reliability  (3)
-    [NEEDS-AUDIT] `scripts/transcribe_backlog_locally.py` doesn't get the
+  Media-source reliability  (2)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive same-host…
   Transcription queue & workers  (5)
@@ -1507,9 +1500,14 @@ live on a separate city YouTube channel/page not yet wired to
 **Genuinely still open — supported platform, tenant-specific gap:**
 Atlanta GA (ChampDS; live-verified to have at least one working page, so
 narrower than "not working" — recheck against the user's specific
-failing URL), Omaha NE (video/minutes on separate unpaired pages), Tampa
-FL (transcripts posted separately at `apps.tampagov.net`, need matching
-back to the meeting), Virginia Beach VA (`onboardgov.virginiabeach.gov`
+failing URL), Omaha NE (video/minutes on separate unpaired pages — live
+video only at `citycouncil.cityofomaha.org` during scheduled meeting
+times, no archive; the "past videos" link routes to
+`cityclerk.cityofomaha.org`, which is Cloudflare-protected and returned
+inconsistent results live 2026-08-30, sometimes a JS challenge shell,
+sometimes a plain "not available in your region" 403 — genuinely needs
+real investigation, not a quick fix), Virginia Beach VA
+(`onboardgov.virginiabeach.gov`
 -- triaged 2026-08-29: not simply a white-labeled ClerkBase/ClerkHQ
 instance despite sharing `cdn.clerkbase.com` assets — confirmed live it
 carries none of `clerkbase.py`'s expected `window.autoOpenDocUrl`/
@@ -1522,55 +1520,56 @@ Kansas City MO (root-caused and fixed 2026-08-29 — see `BACKLOG_DONE.md`:
 recent meetings for Council and other frequently-meeting bodies now
 resolve real video via a new Granicus ViewPublisher RSS fallback; an
 infrequent body's older meeting can still miss if it's aged out of that
-feed's real ~8-month/100-item coverage), Detroit MI (Cablecast,
-user-flagged "not working well," independent of the already-fixed
-Charlotte/Detroit mis-attribution — worth a live recheck), Austin TX and San Antonio TX
-and Columbus OH (Austin and San Antonio confirmed live with real
-transcripts as of the 2026-08-21 `/coverage` re-check; Columbus OH is
-still genuinely absent).
+feed's real ~8-month/100-item coverage), Austin TX and San Antonio TX
+(confirmed live with real transcripts as of the 2026-08-21 `/coverage`
+re-check).
 
-**Not yet re-checked**: New York City — `legistar.council.nyc.gov` is
-the real calendar; the Archive's 2 old Viebit clips under a
-`councilnyc.viebit.com` tenant do carry a jurisdiction today (correction
-from a live check), but the Legistar calendar itself is still untried.
-
-- **[NEEDS-AUDIT] A real, previously undocumented jurisdiction
-  mis-attribution, found incidentally 2026-08-30 auditing the NYC row
-  above — not investigated further, flagged for a future pass.**
-  `/m/new-york-ny-2026-08-19-8-18-26-council-meeting-mp4` is
-  jurisdiction-tagged "New York, NY," but its real source is
-  `ringwoodtv.viebit.com` — Ringwood, NJ, an apparently unrelated Viebit
-  tenant. Distinct from the 2 real `councilnyc.viebit.com` NYC clips
-  named above. Root cause unknown; worth checking whether other
-  Ringwood-sourced pages share the same mis-tag.
+**Closed 2026-08-30** (full detail in `BACKLOG_DONE.md`): Columbus OH
+(WO-72 — added to the same city-YouTube-channel fallback already proven
+for Phoenix/Philadelphia/Baltimore/Albuquerque), Tampa FL (WO-73 — new
+`app/platforms/tampa.py` adapter; the "transcripts posted separately,
+need matching" framing was stale, each transcript page already embeds
+its own paired video), Detroit MI (Cablecast — re-checked live, both
+real URL shapes resolve fully; the "not working well" user flag doesn't
+reproduce today), NYC Legistar (`legistar.council.nyc.gov` resolves a
+real meeting end-to-end with video, correct jurisdiction, and a full
+transcript — the "not yet re-checked" framing below was stale), and the
+Ringwood/NYC Viebit mis-tag (WO-71 — `ViebitAssetFinder` had a hardcoded
+NYC-only jurisdiction; now derives it per-tenant via the known-domain
+registry).
 
 - **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
-  NEEDS-AUDIT there, misfiled) — every "no video" verdict this week
-  (and likely earlier) came from checking exactly one meeting per
-  jurisdiction; real, confirmed false negatives found by checking
-  more.** Found 2026-08-28, in direct response to a user question about
-  whether a single-meeting check could be missing video that exists
-  elsewhere on the same portal. It can: re-checking Cambridge, MA (IQM2)
-  across all 4 meetings listed on its portal homepage, the actual "City
-  Council Regular Meeting" itself (not just the subcommittee meeting
-  originally checked) still came back with no video — suspicious for a
-  city this size, a possible real IQM2 video-detection gap, not
-  confirmed either way. Worse, re-checking Watsonville, CA (eScribe) —
-  tried standalone, not part of a batch, to rule out rate-limiting —
-  came back with `title`, `date`, AND `video_url` all `None`, meaning
-  the adapter failed to parse that meeting page at all rather than
-  correctly finding no video. Neither case was caught during the
-  original passes because each only ever tried one meeting ID per
-  jurisdiction, usually just the first one found on a portal's
-  homepage — not the specific "Council"/"Board" regular-session meeting
-  most likely to actually have video, and never a second meeting to rule
-  out a fluke. **What to build**: for any jurisdiction marked
-  `no-video-found` in `jurisdiction_coverage.csv`'s live `reject_reason`
-  column (the tracking half of this finding is already built — see
-  `BACKLOG_DONE.md`), check at least 2-3 real meetings before concluding
-  no video exists — ideally one clearly labeled as the main
-  Council/Board/Commission meeting, not whatever the regex happened to
-  find first.
+  NEEDS-AUDIT there, misfiled) — the underlying methodology point still
+  holds (a single-meeting check can miss real video elsewhere on the
+  same portal), but both original examples were re-checked 2026-08-30
+  and neither reproduces as a live bug.** Found 2026-08-28, in direct
+  response to a user question about whether a single-meeting check could
+  be missing video that exists elsewhere on the same portal.
+  **Cambridge, MA**: not an IQM2 adapter bug — the city migrated off
+  IQM2 to PrimeGov (`cambridgema.primegov.com`, delegated to Swagit) in
+  January 2026; the old IQM2 portal now says so directly ("the City has
+  transitioned to a new Agenda and Meeting Management system") and its
+  old meeting pages are genuinely empty, not mis-parsed. A real
+  Cambridge meeting resolves fully today via the PrimeGov URL (full
+  video, agenda, transcript) — this tenant is already named as solved in
+  `primegov.py`'s own module docstring. No adapter fix needed; just a
+  stale canonical source URL if one is recorded anywhere.
+  **Watsonville, CA (eScribe)**: does not reproduce on any real archived
+  meeting — 2 real past meetings (different URL shapes) both resolved
+  fully with video, agenda, and date. The original `title`/`date`/
+  `video_url`-all-`None` result only reproduces on a genuinely
+  unpublished future meeting, where the raw eScribe page itself is
+  near-empty — correct fallback behavior, not a parser bug. Likely the
+  original check hit an unpublished meeting ID by mistake.
+  **What to build, if this is picked up again**: for any jurisdiction
+  marked `no-video-found` in `jurisdiction_coverage.csv`'s live
+  `reject_reason` column (the tracking half of this finding is already
+  built — see `BACKLOG_DONE.md`), check at least 2-3 real meetings
+  before concluding no video exists — ideally one clearly labeled as the
+  main Council/Board/Commission meeting, not whatever the regex happened
+  to find first. No longer urgent given neither original example held up,
+  but the general risk (checking only the first meeting found) is still
+  real.
 
 - **[NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   NEEDS-AUDIT there, misfiled), compacted the same day — Granicus's
@@ -1599,24 +1598,16 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Jurisdiction extraction & backfill
 
-- **[NEEDS-AUDIT] Real bug found 2026-08-30 ingesting TelVue's newly-
-  enumerated queue — several real tenants resolve with no city/state
-  anywhere in the page title, a TelVue-adapter title-parsing gap.**
-  Ingesting 10 new real TelVue jurisdictions (see `BACKLOG_DONE.md`'s
-  TelVue enumeration entry) surfaced a real title-extraction quirk:
-  Leominster MA, Royal Oak MI, Summit NJ, Luverne MN, Derry NH, and
-  Albany NY all came back from `resolve()` with either an empty or a
-  garbled `jurisdiction` field (e.g. Kalamazoo MI's raw field was `"City
-  of Kalamazoo - August 19, 2026 Environmental Concerns"`, Albany's was
-  `"Albany Common"`). Confirmed live 2026-08-30 on the actual published
-  pages: `/m/monday-august-24-2026`, `/m/2026-08-24-city-commission`,
-  `/m/summit-planning-board-meeting-august-17-2026`, and
-  `/m/2026-08-25-city-council-meeting` all carry zero city/state text
-  anywhere in their `<title>` (just a bare meeting-type + date). Archive
-  enrichment recovers a correct city for some (Kalamazoo's page title
-  correctly shows "Kalamazoo, MI") but not these. Needs a real look at
-  `app/platforms/telvue.py`'s `_guess_jurisdiction()`/title-parsing logic
-  against these specific real page titles.
+- **[NEEDS-AUDIT] Derry, NH's TelVue page could not be located this
+  session — the one residual of an otherwise-closed title-parsing gap.**
+  WO-67 (2026-08-30, see `BACKLOG_DONE.md`) fixed the title-parsing gap
+  this entry originally described (Leominster MA, Royal Oak MI, Summit
+  NJ, Luverne MN, and Albany NY all now resolve correctly) and added
+  confirmed org-token jurisdictions for Leominster/Royal Oak/Luverne.
+  Derry NH's live page was searched for via `/meetings?q=`, the TelVue
+  queue file, and the sitemap, with no match found — needs a fresh
+  search for its real published slug before it can be fixed the same
+  way.
 
 - **[HUMAN] Santa Clara's 4 already-valid jurisdiction strings need a
   canonical-form choice applied — no existing admin endpoint can write
@@ -1681,15 +1672,6 @@ from a live check), but the Legistar calendar itself is still untried.
   added for all three). Needs identifying the specific page IDs in
   production and running `POST /internal/jurisdiction/backfill-apply`
   against them — a production write, not attempted here.
-
-- **[NEEDS-AUDIT] Consolidated city-county repairs silently drop the
-  state suffix instead of adding one — held back from the 2026-08-21
-  backfill write, never diagnosed.** Three real candidates: `Jefferson
-  County` → `Louisville`, `Davidson County` → `Nashville`, `Louisville /
-  Jefferson County Metro` → `Louisville`. Inconsistent with the adjacent
-  `Nashville-Davidson County, TN` → `Nashville, TN` case, which gets a
-  correct suffix through the same code path. Needs the same live-source
-  investigation the Clearwater case above got.
 
 - **[NEEDS-AUDIT] Jurisdiction-bleed fix's single-word-tail gap,
   narrowed 2026-08-18: "Meeting"/"Attachments" tails are fixed (a
@@ -1827,30 +1809,6 @@ from a live check), but the Legistar calendar itself is still untried.
   (the Las Vegas name-tail-overrun row above) are now both
   recompute-backfill candidates.
 
-- **[NEEDS-AUDIT] A name that's already "X, State"-shaped with an
-  explicit, spelled-out state still declines when the bare name alone
-  is nationally ambiguous — found 2026-08-29 auditing the Vimeo batch
-  (see `BACKLOG_DONE.md`'s matching entry for everything that pass DID
-  fix).** Real example: Vimeo account "City of Medina, Minnesota" —
-  "Medina" alone is real in 6 states (MN/ND/OH/TN/WA/NY per
-  `places.csv`), so `lookup_city_state("City of Medina")` correctly
-  returns `None` for ambiguity even though the source text isn't
-  actually ambiguous at all; it names the state directly. `youtube.py`'s
-  comma-branch (`_jurisdiction()`) has the identical requirement —
-  "independently validates as a real place *on its own*" — so it would
-  decline the same input too, not just Vimeo's simpler non-comma path.
-  Real, safe fix shape: when a claimed state is given directly (a
-  governance-type prefix + a full US state/province name after a
-  comma), check that the claimed state is a MEMBER of the name's real
-  state list (`"MN" in _PLACE_STATES.get("medina", [])`) rather than
-  requiring the name be globally unambiguous first — strictly safer
-  than the current check (never accepts a state the real data doesn't
-  actually list), and would recover this and any structurally identical
-  case. Not attempted here: touches a shared, heavily-used function
-  (`resolve_state()`/`lookup_city_state()`), and `vimeo.py` doesn't even
-  have `youtube.py`'s comma-branch yet — worth its own careful pass with
-  fresh test coverage, not tacked onto an already-large session.
-
 - **[NEEDS-AUDIT] No admin *endpoint* exists for "which pages are
   missing a jurisdiction," even though the real numbers are now known.**
   The 2026-08-29 Vimeo audit above started by manually paging
@@ -1879,94 +1837,18 @@ from a live check), but the Legistar calendar itself is still untried.
   per platform, would make the next sweep self-serve instead of needing
   a one-off DB script.
 
-- **[NEEDS-AUDIT] A fresh TelVue batch (2026-08-30) landed with several
-  jurisdiction-less/mis-parsed pages, surfacing two real title shapes
-  `_guess_jurisdiction()` still can't handle.** Not from `rtr-discovery`
-  (checked its `ledger.db` directly — no matching tenants or titles) and
-  not from `scripts/tier3_auto_transcription_queue.txt` (that queue
-  requests transcription for already-ingested pages, it doesn't create
-  new ones) — this looks like a manual `bulk_ingest.py` pass against the
-  same known TelVue org-token list that queue file already carries
-  (confirmed: the new pages' org tokens, e.g.
-  `5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq` and
-  `bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA`, already appear there against older
-  media IDs — these are the same orgs' newest uploads). Two new real
-  failure shapes, both live on `/meetings` right now: (1)
-  `/m/summit-planning-board-meeting-august-17-2026` — title "Summit
-  Planning Board Meeting: August 17, 2026" declines entirely (blank
-  jurisdiction) because `_TITLE_DATE_RE` only strips a trailing
-  dash-separated `"- Month DD, YYYY"`; this title uses a colon, so the
-  date never gets stripped and `_BODY_SUFFIX_RE`'s search over the whole
-  string doesn't land on a clean capture. (2)
-  `/m/albany-common-albany-common-council-08-03-26` — title "Albany
-  Common Council 08 03 26" mis-parses to jurisdiction "Albany Common"
-  (confidently wrong, not just missing): "Common Council" (Albany, NY's
-  real governing-body name) isn't one of `_BODY_SUFFIX_RE`'s listed
-  multi-word phrases, so it falls through to bare `Council`, capturing
-  "Albany Common" instead of "Albany" — same failure shape as the
-  Natick/Newmarket/Vail cases already documented in that regex's own
-  comments, just with "Common Council" as the new offending phrase.
-  Neither fixed here — flagging so whoever next tackles the "TelVue 46"
-  residual above has two concrete, currently-live repro cases instead of
-  needing to re-find them.
-
-- **[NEEDS-AUDIT] CivicClerk residuals after the 2026-08-29 sweep (10 of
-  17 already fixed by refreshing stale rows — see `BACKLOG_DONE.md`).**
-  6 genuinely still fail live against current code:
-  `fsusga.portal.civicclerk.com` is Florida State University's Student
-  Government Association ("SGA Election Executive Branch Debate") — not
-  a real local-government jurisdiction at all, so `jurisdiction=None` is
-  actually CORRECT here, not a bug; worth noting only because it means
-  CivicClerk's tenant base isn't purely municipal/county governments,
-  which future enumeration passes should keep in mind.
-  `macombtwpmi`/`southorangetwpnj` (Macomb Township MI, South Orange
-  Township NJ) both fail because wordninja can't segment a "twp"
-  abbreviation glued mid-string ("macombtwpmi" → `['ma','com','btw',
-  'pm','i']`, garbage) — a real, consistent 2-example shape
-  (`{name}twp{state}`) but only 2 examples, and the marker sits BETWEEN
-  name and state rather than at either end like every existing tier in
-  `_validated_label_extract_with_state()` expects, so it needs a new
-  tier shape, not a tweak to an existing one. `lenaweecomi` (Lenawee
-  County, MI) fails because "lenawee" isn't a wordninja dictionary word
-  and no existing tier tries "trailing state code AND trailing county
-  abbreviation both stripped from the raw label." `riversidesheriff` and
-  `cosumnescommunityservices` (Cosumnes Community Services District, CA)
-  are real special-purpose entities needing individual research the way
-  Hyland's JCSD/WRD entries were confirmed, not attempted yet.
-
-- **[NEEDS-AUDIT] eScribe residuals after the 2026-08-29 sweep (2 of 14
-  fixed — Chatham-Kent/Arran-Elderslie, see `BACKLOG_DONE.md`).** The
-  other 12 are all acronym or glued-institutional-suffix subdomains,
-  each needing individual confirmation:
-  `surreyschools`/`horrycountyschools` are the SAME institutional-suffix
-  shape `jurisdiction_enrich.strip_institutional_suffix()` already
-  handles for Vimeo/YouTube's free-text account names (real: Surrey, BC
-  wordninja-splits cleanly to `['surrey','schools']`), but that function
-  only strips a SPACED trailing phrase — these are GLUED subdomain
-  labels, a different shape needing the strip applied to the
-  wordninja-split word list itself, not the raw string; only 2 examples
-  so far (Horry's own "horrycountyschools" mangles further, splitting to
-  `['horr','y','county','schools']`, so fixing the suffix alone
-  wouldn't even recover it). `trca` (Toronto and Region Conservation
-  Authority), `tcdsbpublishing` (Toronto Catholic District School
-  Board), `rdco` (Regional District of Central Okanagan, BC), `scrd`
-  (Sunshine Coast Regional District, BC), `tbdhu` (Thunder Bay District
-  Health Unit, ON), `rmow` (Resort Municipality of Whistler, BC),
-  `acwtownship` — all real Canadian special-purpose entities/acronyms
-  plausible from general knowledge but NOT individually confirmed live
-  this session (unlike Hyland's JCSD/WRD, which were). `pub-hpl`'s real
-  video filename ("hamiltonpl") suggests Hamilton Public Library, ON —
-  if these are actually City of Hamilton council meetings carried on the
-  library's channel, jurisdiction should be Hamilton, ON, but that
-  inference isn't confirmed. `pub-stthomas` (St. Thomas, ON, plausible
-  but unconfirmed). `pub-lloydminster`: Lloydminster is a real city that
-  literally straddles the AB/SK border — the Census/StatsCan table
-  stores it as "Lloydminster (Part)" once per province (both filtered
-  out as junk by the existing `(Part)`-stripping logic, which is correct
-  for OTHER `(Part)` rows that really are junk, e.g. First Nations
-  reserve fragments with trailing numbers) — recovering it needs an
-  actual product decision (which province to show, or a way to
-  represent "spans two provinces"), not just a data fix.
+- **[NEEDS-AUDIT] `pub-lloydminster.escribemeetings.com` needs a real
+  product decision, not a data fix — the one residual of the closed
+  "eScribe residuals" entry (WO-69, 2026-08-30, see `BACKLOG_DONE.md` —
+  11 of 12 fixed).** Lloydminster is a real, active city (confirmed live
+  — a real Council/committee portal) that literally straddles the AB/SK
+  border. Census/StatsCan stores it as "Lloydminster (Part)" once per
+  province, and both rows are correctly filtered out as junk by the
+  existing `(Part)`-stripping logic (correct behavior for OTHER `(Part)`
+  rows that really are junk, e.g. First Nations reserve fragments with
+  trailing numbers). Recovering it needs a decision on which province to
+  show, or a way to represent "spans two provinces" — deliberately left
+  unregistered rather than guessed.
 
 - **[LATER] `[EXAMPLE]` Castus (`castus.py`) tenant-slug jurisdiction
   fallback is unconfirmed against any real second customer.** WO-19
@@ -2008,25 +1890,6 @@ from a live check), but the Legistar calendar itself is still untried.
   logged in `JURISDICTION_METADATA_PLAN.md`'s workstream 1 before
   re-running any of this — it no longer exists in any scratchpad.
 
-- **[NEEDS-AUDIT] Tulare County/Visalia jurisdiction misattribution —
-  not confirmed fixed, no known real hosting domain found.** Residual
-  from `BACKLOG_DONE.md`'s "Jurisdiction misattribution" entry: of 4
-  real instances investigated, 3 were fixed, but "Tulare County
-  misattributed to Visalia" wasn't. The cross-check fix engages only
-  when the page's own URL carries a subdomain that independently
-  validates against Census tables — no such domain has been found for
-  Tulare County (checked live: `tularecounty.granicus.com`,
-  `tulare.granicus.com`, `tularecounty.civicweb.net` all dead;
-  `tularecounty.swagit.com` 404s; `tularecounty.legistar.com` resolves
-  but wasn't investigated further). The separate wordninja
-  mis-segmentation gap (`tularecounty` → `['tul', 'are', 'county']`) is
-  **fixed as of WO-22** — `_validated_label_extract()`'s tier 4 now
-  strips a trailing "county" and re-attaches it, unit-tested. Entry
-  stays open for the half that still blocks it: no real, live Tulare
-  County meeting-hosting subdomain is known to run the cross-check
-  against. Next step: find the real originating URL (check
-  `tularecounty.legistar.com` first) and confirm the cross-check covers
-  it once known.
 
 - **[LATER] Domain guesser matched a same-named US state's real portal
   instead of the county's — fixed at the source, 6 wrong rows reverted,
@@ -2056,9 +1919,10 @@ from a live check), but the Legistar calendar itself is still untried.
 
 ### Adapter & platform gaps
 
-- **[JUST-DO-IT] Moved out of Dormant 2026-08-30 — TelVue's CDX
-  enumeration blocker is solved, and there's a real, verified queue of
-  ~112 more candidate jurisdictions ready to work through.** The
+- **[JUST-DO-IT] TelVue's CDX enumeration blocker is solved, and a
+  second verified batch of 23 more real jurisdictions has since landed
+  — corrected 2026-08-30, the original "~112 remaining" figure had no
+  backing data file anywhere and was a prose-only headline.** The
   original 2026-08-16 pass only found a handful of hosts via web search
   (one real jurisdiction ingested: Fitchburg, MA) because a systematic
   CDX pass hit a 200k-row cap with an opaque pagination token. **Solved
@@ -2066,19 +1930,33 @@ from a live check), but the Legistar calendar itself is still untried.
   fixed URL prefix length + a 32-char org token) collapses every
   query-string/media-id variant down to one row per org, returning the
   **complete** set in a single uncapped query — 681 rows → **313 unique
-  TelVue org tokens, 302 unrecognized by this project**. Live-fetched
-  all 302 `/home` pages (260 responded 200); **124 have real
-  government-meeting-shaped video titles** ("City Council," "Select
-  Board," "Board of Education," etc.). **12 independently cross-verified
-  as real** (org name/city confirmed via a second source, live meeting
-  page fetched, same `Player.setupData['playlist']` JSON structure the
-  adapter already parses): Winchester MA, Derry NH, Pierre SD, Guttenberg
-  IA, Aiken SC, Kalamazoo MI (+ Comstock Township MI, same tenant),
-  Leominster MA, Royal Oak MI, Albany NY, Summit NJ, Cleveland OH,
-  Luverne MN. **112 more candidates remain unverified but real-looking**
-  — enough for a dedicated ingestion session, not a one-off fix. The
-  `collapse=urlkey:64` trick is the reusable method for finishing this
-  properly (and plausibly generalizes to other CDX-blocked platforms).
+  TelVue org tokens, 302 unrecognized by this project**. A first batch
+  of **12** was independently cross-verified and ingested the same night
+  (see `BACKLOG_DONE.md`'s TelVue enumeration entry). **A later pass the
+  same day found that "~112 more candidates" claim didn't trace to any
+  real artifact** — every existing file in
+  `~/Documents/rtr-business/research/` predates the `collapse=urlkey:64`
+  breakthrough. Reproducing the CDX query directly and cross-referencing
+  against everything already ingested/known left **150 tokens genuinely
+  untouched**; live-fetching and classifying all 150 found **33
+  `likely_civic`**, of which **23 were independently cross-verified as
+  real** (second-source confirmation + a live `resolve()` run against
+  the real adapter) — see
+  `~/Documents/rtr-business/research/cc_scan_data/telvue_batch2_verified.json`
+  and its companion methodology doc for the full per-token detail. Of
+  those 23: 16 needed a jurisdiction-parsing fix, now shipped (WO-74,
+  2026-08-30, see `BACKLOG_DONE.md` — includes a real wrong-STATE
+  collision, Rome GA resolving as "Rome City, IN"); the other 7 already
+  resolved correctly with no code change. **None of the 23 have been
+  ingested into production** — that's a separate step needing explicit
+  sign-off before creating new public content, deliberately not done as
+  part of the code fix. **~127 tokens from the 150-genuinely-untouched
+  pool remain unclassified/unverified** (150 total − 23 verified this
+  round, tracking `likely_civic` classification gaps too) — still a real
+  queue, just not the specific "112" this entry originally claimed. The
+  `collapse=urlkey:64` trick remains the reusable method for finishing
+  this properly (and plausibly generalizes to other CDX-blocked
+  platforms).
 
 - **[NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — Tarrant County TX's
   custom "Agenda Management System" agenda-item extraction is more
@@ -2431,29 +2309,6 @@ pushes that touch one service's tree, so it decays as PRs get broader.
   Only worth doing with a CI guard asserting the two stay in sync.
 
 ### Media-source reliability
-
-- **[NEEDS-AUDIT] `scripts/transcribe_backlog_locally.py` doesn't get the
-  2026-08-29 Granicus 300s-chunk fix automatically — a real gap, not yet
-  confirmed as a real failure.** `app/main.py` and `worker/main.py` (the
-  two real production job-creation paths) and
-  `scripts/bulk_queue_transcription_backlog.py` (the unattended bulk
-  queuer) all now call `app/platforms/media_probe.py`'s new
-  `chunk_size_seconds_for_platform()`, which gives Granicus 300s instead
-  of the 900s every other platform still gets (see `BACKLOG_DONE.md`).
-  `transcribe_backlog_locally.py` picks one `chunk_seconds` value **once
-  per run**, before any candidate page (or its platform) is known, then
-  reuses it across every meeting the run processes — there's no per-page
-  hook to slot the new function into without restructuring that loop.
-  The same shared 120s ffmpeg subprocess timeout this fix responds to
-  does apply locally too (confirmed in that script's own module
-  docstring), so a local run against a Granicus source could in
-  principle hit the identical timeout — but no one has actually observed
-  that locally yet (this script wasn't part of the 24/24 real
-  measurements the fix is based on), so treat this as an unconfirmed
-  risk, not a live bug. If it does bite: `--chunk-seconds 300` on the CLI
-  works today as a manual per-run workaround; the real fix would be
-  moving the chunk-size decision into `process_one()` (where
-  `detect_platform()` already runs per page) instead of `main()`.
 
 #### `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8` genuinely times out at Granicus's own origin (real 504, not a rate limit)
 
