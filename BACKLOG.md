@@ -143,7 +143,7 @@ Trust, safety & data quality  (7)
   `[HUMAN]` Fake/spoofed "government" content — real gaps,…  (3)
     [LATER] Prompt injection: not a live product risk today, because no
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
-    [NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
+    [NEEDS-AUDIT] The Chula Vista garbled-marker false positive is fixed
 
 Roadmap & strategy `[IMPROVEMENT-ROUND]`  (22)
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -1774,27 +1774,23 @@ fix.
   `platform == "unknown"` 2026-08-21, WO-21); the rest are
   unsequenced. Ryan's call on what, if anything, to build next.
 
-- **[NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
-  Fountain Valley instance — re-verified live 2026-08-31, claim doesn't
-  hold up.** Chula Vista Public Comments 2026-05-19 (eScribe, version
-  816, `?version=816`) does carry the "no matching-language track found"
-  warning and the garbled-at-source marker, confirmed live. But **the
-  stored Spanish text itself is coherent, accurate Spanish, not
-  garbled** — read in full at the start, middle, and end (165K chars):
-  it's a real, if informally transcribed, account of the same meeting
-  (e.g. the Spanish text's proclamation-for-a-retiring-DEA-chemist
-  passage matches the English agenda item almost word for word; the
-  closing public-comment section is coherent political discourse about
-  a real police department controversy). This isn't Fountain Valley's
-  shape (language misdetected as Portuguese, producing genuine
-  nonsense) — it looks like real bilingual source captions that the
-  garbled-detection heuristic false-flagged. Worth checking whether
-  `_GARBLED_MARKER`'s detection logic has a real false-positive problem
-  on genuine bilingual content, and whether this page's marker should be
-  cleared (it currently defaults to the English-transcribed version
-  anyway, so no reader is served this flagged version by default — but
-  per this repo's own marker-gating convention, a marked page stays
-  permanently un-re-transcribable until checked).
+- **[NEEDS-AUDIT] The Chula Vista garbled-marker false positive is fixed
+  in code (PR #641, 2026-08-31, see `BACKLOG_DONE.md`) but the
+  already-stored page still carries the stale marker until it's
+  redeployed and re-resolved.** `is_likely_garbled()`'s tokenizer no
+  longer false-flags real bilingual (Spanish) transcripts — see
+  `BACKLOG_DONE.md` for the fix detail and live verification against the
+  real Chula Vista transcript. Per this repo's own marker-gating
+  convention, a page marked garbled stays permanently un-re-transcribable
+  until it's actually re-checked — the code fix alone doesn't retroactively
+  clear Chula Vista Public Comments 2026-05-19's (eScribe, version 816)
+  already-stored marker. **Residual, needs the deploy + a re-resolve**:
+  once `rtr-deeplink` (the resolver) is redeployed with this fix, hit
+  `/api/refresh-archived-page` for that meeting's `source_url` (or wait
+  for its natural next re-check) so the fixed heuristic re-runs and clears
+  the stale marker. Low urgency — the page already defaults to its
+  English-transcribed version, so no reader is currently served the
+  flagged Spanish one.
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
 

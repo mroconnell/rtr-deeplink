@@ -1,5 +1,64 @@
 # Backlog — done
 
+## Phase 4: fixed the real Chula Vista garbled-marker false positive (PR #641) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase4-garbled-marker-fix`, off
+`main`) as part of a deep audit pass on BACKLOG.md's Reliability/Trust
+sections — five parallel research agents re-verified 17 entries against
+current code; one (this one) had enough real signal to fix outright
+rather than just re-verify.
+
+**Root cause, confirmed live.** `is_likely_garbled()`'s word tokenizer
+(`app/utils/vtt_parser.py`) was ASCII-only (`[A-Za-z0-9']+`), so any
+accented character split a real word into spurious 1-2 letter junk
+fragments — "sesión" tokenized as "sesi" + "n". `_COMMON_SHORT_WORDS`
+(the allowlist for legitimately-short real words) had no Spanish entries
+either, so real short Spanish words ("la", "de", "y") were also counted
+as junk. This session fetched the real, live Chula Vista CA transcript
+(2026-05-19 city council meeting, eScribe version 816) directly from its
+public `/m/{slug}/transcript.txt` export on redtaperecordings.com (not
+summarized — `curl`'d raw, 167,279 bytes, matching the BACKLOG.md entry's
+"165K chars" claim) and ran the actual heuristic against it: **35.6%
+junk, against a 6% threshold** — a real, live-confirmed false positive
+on real, coherent Spanish (city council roll call, an EMS Week
+proclamation, real public comment about a police department
+controversy), not a hypothetical one.
+
+**Fix**: a Unicode-letter-aware tokenizer (`[^\W\d_]+(?:'[^\W\d_]+)*` —
+keeps accented characters inside a word, and keeps apostrophe-joined
+contractions like "don't" as one token instead of splitting off a
+spurious "t") plus a new `_COMMON_SHORT_WORDS_ES` allowlist, gated on a
+new optional `lang` parameter the caller passes through. Deliberately
+**not** a blanket "skip on non-English" bypass — Fountain Valley's real
+genuinely-garbled case (BACKLOG_DONE.md's original write-up) is itself
+non-English-detected (misdetected as Portuguese), so silencing on
+language alone would have hidden that true positive too. Verified this
+directly: a synthetic genuinely-garbled Spanish sample (`la`/`el`/`de`
+mixed with real junk fragments) is still correctly flagged even with
+`lang="es"`. All 9 platform-adapter call sites (ca_legislature, castus,
+civicclerk, escribe, granicus, suiteone, telvue, viebit, youtube) already
+had the detected language in local scope right before calling
+`is_likely_garbled()`, so this was a signature addition, not new
+plumbing.
+
+**Verification, in order of how much of it is real data**: (1) the real
+Chula Vista transcript, re-run against the fix — 2.97% junk with
+`lang="es"`, correctly not flagged (new fixture
+`tests/fixtures/escribe/chula_vista_public_comments_transcript_excerpt.txt`,
+a real 25,000-char excerpt, not synthetic); (2) the existing real/
+synthetic Alexandria VA and Cincinnati OH garbled-transcript regression
+tests, confirmed still correctly flagged (57.5% and 39.9% junk
+respectively — the fix doesn't blind genuine-corruption detection); (3) a
+new contraction-heavy clean-English sample, confirmed the apostrophe
+handling doesn't inflate false positives on ordinary English. All four
+CI gates green (2307 passed, 16 skipped; ruff check/format clean; alembic
+check clean, no schema change).
+
+**What's still open**: the code fix doesn't retroactively clear the
+marker already stored on Chula Vista's real page row — per this repo's
+marker-gating convention, that needs an actual redeploy + re-resolve.
+See the residual entry left in BACKLOG.md's Trust & safety section.
+
 ## Phase 3 (small version): resolve-time agenda_link + packet_link for CivicPlus and CivicClerk (PR #640) [Done 2026-08-31]
 
 Built in an isolated worktree (`claude/phase3-agenda-extraction`, off
