@@ -1276,6 +1276,32 @@ def test_subdomain_override_keeps_the_state_for_a_consolidated_government_rename
     )
 
 
+def test_subdomain_override_reattaches_the_real_county_type_word():
+    # Real, recurring formatting gap found 2026-08-30 verifying the
+    # bleed-backfill queue (BACKLOG.md's "Missing 'County'/province
+    # suffix on certain repair paths" entry): a bare county-table name
+    # resolved through `_subdomain_override()` read "Lucas, OH" instead
+    # of "Lucas County, OH" (also seen for Klickitat WA, Escambia FL) --
+    # `_table_lookup()`'s own normalization strips the type word to build
+    # its key, and nothing reattached it. A blind "County" guess would be
+    # wrong for real rows: Louisiana uses "Parish", not "County".
+    assert je._subdomain_override("Lucas", "", None, hint_state="OH") == (
+        "Lucas County, OH"
+    )
+    assert je._subdomain_override("Klickitat", "", None, hint_state="WA") == (
+        "Klickitat County, WA"
+    )
+    assert je._subdomain_override("Escambia", "", None, hint_state="FL") == (
+        "Escambia County, FL"
+    )
+    assert je._subdomain_override("Acadia", "", None, hint_state="LA") == (
+        "Acadia Parish, LA"
+    )
+    # A real city (not a bare county-table name) must be left alone --
+    # this is additive, not a blanket suffix.
+    assert je._subdomain_override("Modesto", "", None, hint_state="CA") == "Modesto, CA"
+
+
 def test_finalize_jurisdiction_consolidated_government_repair_keeps_state():
     # End-to-end version of the fix above, through `finalize_jurisdiction()`.
     # The netlocs are synthetic (not confirmed real Louisville/Nashville

@@ -247,6 +247,52 @@ def _load_zcta_table(
 
 
 _COUNTY_STATES = _load_name_state_table("counties.csv")
+
+
+def _load_county_type_words(filename: str) -> Dict[Tuple[str, str], str]:
+    """(normalized_name, state) -> the real trailing type word from the
+    raw CSV row ("County"/"Parish"/"Borough"/"Municipio"/etc., as
+    Census/StatsCan itself writes it), which `_load_name_state_table()`'s
+    own `_normalize_name()` strips off to build its lookup key. A repair
+    path that resolves a bare county name back to its state needs this to
+    reattach the correct word -- real gap found 2026-08-30 auditing the
+    bleed-backfill queue: `_subdomain_override()` was producing "Lucas,
+    OH" instead of "Lucas County, OH" for real subdomain-derived county
+    repairs (also seen for Klickitat WA, Escambia FL). A blind "County"
+    guess would be wrong for real rows -- 2999 of ~3221 US counties use
+    "County", but 64 use "Parish" (Louisiana), 78 "Municipio" (Puerto
+    Rico), 17 "Borough" (mostly Alaska), 9 "Region", 2 "Municipality" --
+    so this looks up the real word per row rather than assuming."""
+    table: Dict[Tuple[str, str], str] = {}
+    path = _DATA_DIR / filename
+    if not path.exists():
+        return table
+    with open(path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            m = _TRAILING_TYPE_RE.search(row["name"])
+            if not m:
+                continue
+            key = (_normalize_name(row["name"]), row["state"])
+            table.setdefault(key, m.group(0).strip().capitalize())
+    return table
+
+
+_COUNTY_TYPE_WORDS = _load_county_type_words("counties.csv")
+
+
+def _county_type_suffix(hint: str, state_code: str) -> str:
+    """The type-word suffix (" County"/" Parish"/etc.) to splice between a
+    bare county-table name and its state suffix, or "" when `hint` isn't
+    a bare county-table name
+    needing one (already carries its own type word, matched the place
+    table instead, or `state_code` doesn't narrow to a known row) -- see
+    `_load_county_type_words()` for why this can't just assume "County".
+    Callers splice it in unconditionally: f"{hint}{_county_type_suffix(...)}{suffix}".
+    """
+    word = _COUNTY_TYPE_WORDS.get((hint.strip().lower(), state_code.strip().upper()))
+    return f" {word}" if word else ""
+
+
 _PLACE_STATES = _load_name_state_table("places.csv")
 # WO-16 (BACKLOG.md, 2026-08-16): townships/county subdivisions (Upper
 # Providence PA, Greenburgh NY, Upper Dublin PA -- all confirmed real,
@@ -1996,15 +2042,17 @@ def _subdomain_override(
         code = final_suffix.lstrip(", ").strip().upper()
         if hit and code not in {s.upper() for s in hit[1]}:
             return None
-        return f"{hint}{final_suffix}"
+        return f"{hint}{_county_type_suffix(hint, code)}{final_suffix}"
     if base:
         base_hit = _table_lookup(base)
         if base_hit and len(set(base_hit[1])) == 1:
-            return f"{hint}, {base_hit[1][0]}"
+            state = base_hit[1][0]
+            return f"{hint}{_county_type_suffix(hint, state)}, {state}"
         for combined in (f"{hint}/{base}", f"{hint}-{base}"):
             combo_hit = _table_lookup(combined)
             if combo_hit and len(set(combo_hit[1])) == 1:
-                return f"{hint}, {combo_hit[1][0]}"
+                state = combo_hit[1][0]
+                return f"{hint}{_county_type_suffix(hint, state)}, {state}"
     return f"{hint}{final_suffix}"
 
 
