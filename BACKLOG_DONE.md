@@ -1,5 +1,21 @@
 # Backlog — done
 
+## ProudCity's other "no video found" tenants checked for the BoxCast link shape — none found [Investigated 2026-08-30]
+
+Only Wilmington, OH was confirmed carrying `videoStyle === 'external'`'s
+BoxCast channel link (`app/platforms/proudcity.py`'s own comment on that
+field). Checked the other 6 `PROUDCITY_KNOWN_DOMAINS` tenants marked "no
+video found on the meeting checked" for the same shape: re-resolved each
+one's already-archived meeting page (`johnsoncitytx.org`,
+`hellamtownship.gov`, `mckenziecountynd.gov`, `alvordtx.gov`,
+`cherrytownship.com`, `franklin-twp.org`) — all still `video_url: None`,
+"No video found for this meeting." — then also fetched each tenant's live
+`/meetings/` index page directly and grepped for `boxcast` case-
+insensitively — zero matches on any of the 6. No code change; these
+tenants genuinely don't carry the BoxCast link shape today. Worth another
+look only if a future re-resolve sweep or a user report suggests one of
+them has since added video.
+
 ## `hpsb` roll-up dedup refusal was transient, not a dead source [Investigated 2026-08-30]
 
 An earlier apply run of `scripts/dedupe_rollup_transcripts.py` had refused

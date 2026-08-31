@@ -764,13 +764,6 @@ actionability sections above.
   other PrimeGov tenants besides Palo Alto also route through Midpen
   before building anything.
 
-- **ProudCity's BoxCast delegation only helps tenants using the
-  confirmed `boxcast.tv/channel/{id}` link shape — check the rest of
-  `PROUDCITY_KNOWN_DOMAINS`.** The adapter itself is built and done (see
-  `BACKLOG_DONE.md`); so far only Wilmington, OH is confirmed among this
-  app's own known ProudCity tenants. Worth checking the other
-  `PROUDCITY_KNOWN_DOMAINS` entries currently marked "no video found"
-  for the same link shape on a future re-resolve.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   unreachable, jurisdiction unknown.** Skipped during a 2026-08-23
