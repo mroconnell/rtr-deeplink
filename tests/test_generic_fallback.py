@@ -843,12 +843,27 @@ SEBASTOPOL_OEMBED_JSON = (
 
 
 @pytest.fixture
-def _register_vimeo():
+def _register_vimeo(monkeypatch):
     """Tier 3 delegation goes through `base.get_finder()`, which only
     knows about platforms someone has registered -- same explicit,
     per-test registration the Legistar/CivicPlus/PrimeGov delegation
     tests use, rather than relying on another test file happening to
-    have called `register_all_finders()` first."""
+    have called `register_all_finders()` first.
+
+    Also mocks out Vimeo's own real headless-browser caption fetch (see
+    vimeo.py's docstring, "Captions ARE server-reachable after all,"
+    2026-08-31) -- `resolve_video_id()` attempts it unconditionally, and
+    without this the delegation test below launches a real Chromium
+    against a real Vimeo video, breaking this suite's own stated
+    "network-free" invariant and risking the same hang
+    `test_chicago_elms.py`'s identical fixture documents. Same pattern as
+    test_vimeo.py's `_no_headless_captions`."""
+    from app.platforms.headless_browser import HeadlessBrowserUnavailable
+
+    async def _unavailable(url, **kwargs):
+        raise HeadlessBrowserUnavailable("no headless browser in tests")
+
+    monkeypatch.setattr("app.platforms.vimeo.fetch_via_browser", _unavailable)
     register(VimeoAssetFinder())
 
 

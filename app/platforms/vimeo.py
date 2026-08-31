@@ -148,6 +148,7 @@ CLAUDE.md's "why this exists"), and because the failure mode is silent
 degradation, never a broken resolve.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -587,8 +588,21 @@ class VimeoAssetFinder(AssetFinder):
         "en-x-autogen" (a BCP-47 auto-generated-caption tag, not a plain
         ISO 639-1 code) rather than a clean "en"."""
         try:
-            html = await fetch_via_browser(embed_url(video_id, privacy_hash))
+            html = await asyncio.wait_for(
+                fetch_via_browser(embed_url(video_id, privacy_hash)), timeout=30
+            )
         except HeadlessBrowserUnavailable:
+            return None, None
+        except asyncio.TimeoutError:
+            # `fetch_via_browser()`'s own `page.goto()` already has a 20s
+            # timeout, but that only bounds page navigation -- the shared
+            # module-level browser launch/reuse in headless_browser.py has
+            # no timeout of its own, and a stuck launch (confirmed live:
+            # reusing a browser bound to a since-closed event loop) hangs
+            # indefinitely rather than raising. This outer bound makes
+            # "no captions" a guaranteed worst case instead of a hung
+            # request -- never worse than the video-only fallback below.
+            logger.warning("Vimeo headless caption fetch timed out for %s", video_id)
             return None, None
         except Exception:
             logger.warning(

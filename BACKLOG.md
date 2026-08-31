@@ -75,7 +75,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (32)
   [NEEDS-AUDIT] Philadelphia's Aug 6 meeting fully diagnosed 2026-08-30
   [NEEDS-AUDIT] A chunk truncated only at its *tail* still passes the
   The retry papers over an unexplained asyncio/subprocess hang, and…  (2)
-    [LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
+    [LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
     [LATER] Swagit multi-clip meetings: both transcription paths now
   Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
@@ -561,15 +561,16 @@ it deliberately does not explain two things, and both are still open:
    real 404 for the captured case. `MEDIA_ATTEMPTS` is a named constant
    precisely so this can be tuned once the answer is known.
 
-- **[LATER] `pec.iqm2.com` (IQM2) needs its own check, separate from the
-  27 other retired tenants already removed from the queue.** Two probes
-  on different days agreed 27 of 28 flagged tenants were identically
-  dead and those rows were removed 2026-08-31 (see `BACKLOG_DONE.md`).
-  `pec` alone showed a different failure signature — a connection-level
-  timeout, not the generic "Accela Meeting Portal" error page — which is
-  more consistent with an infrastructure problem than a retired tenant.
-  Left in the queue; worth a quick fresh probe before assuming either
-  way.
+- **[LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
+  the same connection-level timeout (10s, no TLS handshake), now 3 for
+  3.** Two prior probes on different days agreed 27 of 28 flagged
+  tenants were identically dead and those rows were removed 2026-08-31
+  (see `BACKLOG_DONE.md`). `pec` alone has never once returned the
+  generic "Accela Meeting Portal" error page the other 27 share — every
+  check is a bare connection timeout, which reads more like a real
+  outage or firewall than a retired tenant serving a fallback page.
+  Still not conclusive (never resolved even once), but the pattern is
+  now 3-for-3 consistent. Left in the queue.
 
 - **[LATER] Swagit multi-clip meetings: both transcription paths now
   handle it (WO-79 + 2026-08-31 local-script port); two small residuals
