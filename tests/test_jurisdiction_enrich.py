@@ -2233,3 +2233,204 @@ def test_resolve_claimed_state_does_not_regress_an_unambiguous_name():
     # tests/test_civicclerk.py.
     assert je.resolve_claimed_state("Fresno", "California") == "CA"
     assert je.resolve_claimed_state("Fresno", "CA") == "CA"
+
+
+# --- WO-76, 2026-08-30: a tonight's bleed-backfill audit against the real
+# production database found 4 real, already-published pages where the
+# automated repair computed a confidently WRONG jurisdiction, each verified
+# against the page's own real source (letterhead/header/domain) before this
+# investigation started -- see BACKLOG_DONE.md for the full writeup. Two
+# root causes get a real structural fix here (Cases 1 and 3); the other two
+# get a narrow, evidence-backed `_KNOWN_DOMAINS` override, per this
+# investigation's own explicit finding that a general fix isn't buildable
+# from one example each (Cases 2's underlying "obscure coincidental table
+# collision" shape is closed by real subdomain-state evidence instead, and
+# Case 4 genuinely has no general fix available yet).
+
+
+def test_validated_label_extract_tier7_beats_a_place_table_collision():
+    # Case 1 (WO-76): chestercopa.portal.civicclerk.com is Chester County,
+    # PA -- confirmed live, the tenant's own page header reads "Chester
+    # County, PA - Agendas & Minutes". "Chester" is ALSO a real place in
+    # its own right in several states (`_table_lookup("Chester")` returns
+    # the PLACE table, not county -- confirmed: AR/GA/IA/IL/MT/NE/NJ/NS/
+    # NY/PA/SC/TX/WV), which is exactly why the pre-fix tier 7 (gated on
+    # `_table_lookup(bare)[0] == "county"`) never fired for this label: the
+    # place-table hit always won first. Checking `_COUNTY_STATES` directly
+    # (cross-validated against the specific extracted state) sidesteps
+    # that precedence entirely.
+    assert je._table_lookup("Chester")[0] == "place"
+    assert "PA" in je._COUNTY_STATES.get("chester", [])
+    assert je.validated_label_extract_with_state("chestercopa") == (
+        "Chester County",
+        "PA",
+    )
+
+
+def test_validated_label_extract_tier7_runs_before_tier5s_co_state_collision():
+    # Direct unit test of the precedence bug itself: before this fix, tier
+    # 5's own recursive retry on "chesterco" (after stripping the outer
+    # "pa") independently stripped its OWN trailing "co" as if it were the
+    # Colorado state abbreviation ("co" IS a real state code, not just the
+    # "county" abbreviation convention this label was actually using),
+    # succeeding early with the wrong pair ("Chester", "CO") before tier 7
+    # -- previously positioned after tiers 5 and 6 -- ever ran. Confirms
+    # tier 7 now wins outright.
+    import wordninja
+
+    assert wordninja.split("chesterco") == ["chester", "co"]
+    assert "co" in je._STATE_ABBREVIATIONS_LOWER  # the collision tier 7 fixes
+    result = je.validated_label_extract_with_state("chestercopa")
+    assert result == ("Chester County", "PA")
+    assert result[1] != "CO"
+
+
+def test_finalize_jurisdiction_repairs_chestercopa_to_chester_county_not_chester():
+    # End-to-end version of Case 1, matching the real archived rows this
+    # investigation found (meeting_page_id 1151 and 703): the stored value
+    # "West Chester, PA" -- itself a real, correct borough inside Chester
+    # County, PA -- disagreed with the (pre-fix, wrong) subdomain hint
+    # "Chester" and got "repaired" to the confidently wrong "Chester, PA"
+    # by the subdomain cross-check. Post-fix, the subdomain hint itself is
+    # correct ("Chester County"), so the override lands on the right name.
+    result = je.finalize_jurisdiction(
+        "West Chester, PA", netloc="chestercopa.portal.civicclerk.com"
+    )
+    assert result.jurisdiction == "Chester County, PA"
+    assert result.confidence == "repaired"
+
+
+def test_validated_label_extract_tier7_reorder_does_not_regress_tier5_or_tier6():
+    # Regression control for moving tier 7 before tiers 5/6: none of the
+    # already-covered tier 5/6 real subdomains end in "co" right before
+    # their trailing state code, so tier 7's own guard (`remainder.
+    # endswith("co")`) never fires for them and the reorder is a no-op.
+    assert je.validated_label_extract_with_state("stmarysga") == ("St Marys", "GA")
+    assert je.validated_label_extract_with_state("camaswa") == ("Camas", "WA")
+    assert je.validated_label_extract_with_state("macombtwpmi") == (
+        "Macomb Township",
+        "MI",
+    )
+    assert je.validated_label_extract_with_state("southorangetwpnj") == (
+        "South Orange Village Township",
+        "NJ",
+    )
+    # And the original tier 7 case (a bare name with NO place-table
+    # collision at all) still resolves exactly as before.
+    assert je.validated_label_extract_with_state("lenaweecomi") == (
+        "Lenawee County",
+        "MI",
+    )
+
+
+def test_subdomain_override_prefers_a_self_declared_subdomain_state():
+    # Case 2 (WO-76): douglas-mi.municodemeetings.com's real self-branding
+    # is "City of the Village of Douglas Michigan Meetings" (confirmed
+    # live, this exact tenant's own `<title>`/`og:site_name`). The
+    # ALREADY-STORED row (meeting_page_id 1439) was "City of the Village,
+    # OK" -- the product of an earlier, unrelated extraction bug that
+    # landed on a real but totally unrelated Oklahoma place ("The Village,
+    # OK", a real OKC suburb). Renaming to the subdomain-derived "Douglas"
+    # passes the existing impossible-pairing guard on its own (Douglas is
+    # ALSO real, if tiny, in Oklahoma -- confirmed via `_table_lookup`
+    # below), so the stale "OK" suffix used to ride along unchanged. The
+    # subdomain label itself spells out the real state directly
+    # ("douglas-mi" -> "MI"); `hint_state` lets that self-declared signal
+    # win over the untrustworthy pre-existing suffix.
+    assert je._table_lookup("Douglas") == (
+        "place",
+        ["AL", "AZ", "GA", "MI", "NB", "ND", "NE", "OK", "WY"],
+    )
+    assert je.validated_label_extract_with_state("douglas-mi") == ("Douglas", "MI")
+    assert (
+        je._subdomain_override("Douglas", ", OK", None, hint_state="MI")
+        == "Douglas, MI"
+    )
+    # Control: an agreeing hint_state changes nothing (pure no-op).
+    assert (
+        je._subdomain_override("Douglas", ", MI", None, hint_state="MI")
+        == "Douglas, MI"
+    )
+    # Control: no hint_state at all falls back to the pre-WO-76 behavior
+    # (existing suffix wins unconditionally).
+    assert je._subdomain_override("Douglas", ", OK", None) == "Douglas, OK"
+
+
+def test_finalize_jurisdiction_repairs_douglas_mi_not_the_village_ok_stale_state():
+    # End-to-end version of Case 2, matching the real archived row
+    # (meeting_page_id 1439) this investigation found.
+    result = je.finalize_jurisdiction(
+        "City of the Village, OK", netloc="douglas-mi.municodemeetings.com"
+    )
+    assert result.jurisdiction == "Douglas, MI"
+    assert result.confidence == "repaired"
+
+
+def test_subdomain_override_hint_state_does_not_regress_consolidated_government_rename():
+    # Regression control: the Louisville/Nashville consolidated-government
+    # rename (WO-68) never derives a `hint_state` at all (neither
+    # "louisville" nor "nashville" ends in a literal state-code suffix on
+    # its own subdomain), so this fix is a pure no-op for that case.
+    assert (
+        je._subdomain_override("Louisville", "", None, base="Jefferson County")
+        == "Louisville, KY"
+    )
+    assert (
+        je._subdomain_override("Nashville", "", None, base="Davidson County")
+        == "Nashville, TN"
+    )
+
+
+def test_resolve_state_declines_to_append_a_state_to_a_bare_state_name():
+    # Case 3 (WO-76): "Colorado" is both a real US state name AND, per the
+    # Census county_subdivisions gazetteer, a real but tiny, obscure
+    # Kansas township ("Colorado township, KS") -- confirmed directly in
+    # `county_subdivisions.csv`. Before this fix, `lookup_city_state()`'s
+    # own WO-16 subdivision fallback picked the Kansas township and
+    # `resolve_state()` silently attached ", KS" to a name that already
+    # names a top-level jurisdiction.
+    assert je._SUBDIVISION_STATES.get("colorado") == ["KS"]
+    assert je.resolve_state("Colorado", "city") is None
+    assert je.resolve_state("Ontario", "city") is None  # a real province name too
+    # Control: a genuinely different, real ambiguous city name (not a
+    # state/province name) still resolves via the normal path, unaffected.
+    assert je.resolve_state("Washington County", "county") is None  # still ambiguous
+    assert je.resolve_state("Sonoma County", "county") == "CA"  # unaffected
+
+
+def test_finalize_jurisdiction_leaves_a_bare_state_name_alone():
+    # End-to-end version of Case 3, matching the real archived row
+    # (meeting_page_id 2095) this investigation found: coloradoga.
+    # granicus.com is the real Colorado General Assembly (its own page
+    # header: "Colorado General Assembly", confirmed live). The stored
+    # value "Colorado" is already correct and complete on its own -- no
+    # state suffix should ever be appended to it.
+    result = je.finalize_jurisdiction("Colorado", netloc="coloradoga.granicus.com")
+    assert result.jurisdiction == "Colorado"
+    assert result.confidence == "validated"
+
+
+def test_known_domains_lake_washington_school_district_beats_nd_township_collision():
+    # Case 4 (WO-76): lwsd.granicus.com is the real Lake Washington School
+    # District, WA (confirmed live: its real ViewPublisher meeting page
+    # body text names "Lake Washington School District"; the district's
+    # own site, www.lwsd.org, confirms it). "Lake Washington" bare
+    # validates as a real but tiny, obscure North Dakota township
+    # (`county_subdivisions.csv`: "Lake Washington township, ND") -- the
+    # same "obscure subdivision-table collision" shape as Case 3, but with
+    # no real state-name signal available (a school district isn't a
+    # state) and no independent subdomain-derived signal to cross-check
+    # against ("lwsd" itself doesn't validate against any tier). No
+    # general table of US school districts exists in this module, so this
+    # is a targeted, evidence-backed registry override, not a structural
+    # fix.
+    assert je._SUBDIVISION_STATES.get("lake washington") == ["ND"]
+    assert je.validated_label_extract_with_state("lwsd") is None
+    result = je.finalize_jurisdiction("Lake Washington", netloc="lwsd.granicus.com")
+    assert result.jurisdiction == "Lake Washington School District, WA"
+    assert result.confidence == "authoritative"
+    # The override wins even over a raw_jurisdiction the module would
+    # otherwise have happily validated whole (as the ND township) -- this
+    # domain's own text/subdomain validation is confirmed unreliable, the
+    # same "authoritative" bar every other entry in this table meets.
+    assert je._table_lookup("Lake Washington") == ("subdivision", ["ND"])

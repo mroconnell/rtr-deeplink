@@ -1035,6 +1035,34 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # only ever selects which lookup table matters, never a government's
     # literal legal designation.
     "ringwoodtv.viebit.com": KnownJurisdiction("Ringwood", "city", "NJ"),
+    # Lake Washington School District, WA (WO-76, 2026-08-30) --
+    # lwsd.granicus.com's real meeting pages are branded "Lake Washington
+    # School District" (confirmed live: fetched a real ViewPublisher page,
+    # `<title>Dr. Kimball's Messages</title>`, whose own body text names
+    # "Lake Washington School District"; the district's real site,
+    # www.lwsd.org, confirms it), NOT the city of Lake Washington itself --
+    # there is no such city. "Lake Washington" bare validates as a
+    # different, real but tiny and obscure Census county SUBDIVISION
+    # ("Lake Washington township, ND" -- confirmed via
+    # `county_subdivisions.csv`), which is what the module's own text/
+    # subdivision-fallback validation used to (wrongly) repair a bare
+    # "Lake Washington" into: "Lake Washington, ND". No general table of
+    # US school districts exists in this module (same documented gap as
+    # Swagit's own school-district coverage elsewhere in this repo) and
+    # `lwsd` itself is a bare acronym `_validated_label_extract_with_state()`
+    # can't validate on its own (confirmed: no tier resolves it), so
+    # there's no independent subdomain-derived signal to cross-check
+    # against either -- unlike Case 1/2 of the same investigation, this is
+    # a targeted, evidence-backed override, not a structural fix (see
+    # WO-76's own writeup for why a general "prefer the well-known
+    # special-purpose entity over an obscure subdivision-table collision"
+    # mechanism isn't buildable from one example). "authoritative" since
+    # the bare-name validation this domain would otherwise produce is
+    # confirmed wrong, not merely missing -- same bar every other
+    # authoritative entry in this table meets.
+    "lwsd.granicus.com": KnownJurisdiction(
+        "Lake Washington School District", "district", "WA", strength="authoritative"
+    ),
 }
 
 
@@ -1100,6 +1128,37 @@ def resolve_state(
         known = lookup_by_domain(netloc)
         if known and known.type == jurisdiction_type:
             return known.state
+
+    # A bare name that IS ITSELF a full US state/Canadian province name
+    # (e.g. "Colorado", "Ontario") never needs -- or gets -- a state
+    # appended: it already names the top-level jurisdiction, so there is
+    # nothing to look up. Real, confirmed-live bug this prevents (WO-76,
+    # 2026-08-30): a bare "Colorado" (this app's own stored jurisdiction
+    # for coloradoga.granicus.com, the real Colorado General Assembly --
+    # its own page header literally reads "Colorado General Assembly")
+    # has no entry in `_PLACE_STATES` but DOES coincidentally match
+    # `_COUNTY_STATES` ("Colorado County, TX") and, via `lookup_city_
+    # state()`'s own WO-16 subdivision fallback (see that function's
+    # docstring), `_SUBDIVISION_STATES` ("Colorado township, KS" -- real,
+    # but a tiny, obscure Kansas township, not remotely what a page about
+    # the state legislature means). Without this guard, `name_lookup()`
+    # below picks the Kansas township and silently attaches ", KS" --
+    # not just probably wrong but geographically incoherent, since a US
+    # state is never a constituent part of a member place/county/
+    # subdivision of a DIFFERENT state. There is no real government at any
+    # level that legitimately needs a two-letter state suffix glued onto a
+    # bare state/province name, so this guard is general and safe, not a
+    # one-off patch for Colorado alone -- it protects any other state name
+    # that happens to also collide with some obscure place/county/
+    # subdivision elsewhere (plausible; not separately audited one by
+    # one) for free. `_STATE_NAME_TO_ABBR_LOWER`/`_PROVINCE_NAME_TO_ABBR_
+    # LOWER` (defined further down this module) are the same tables
+    # `resolve_claimed_state()` already trusts for "does the source text
+    # name a real state/province" -- reused here, not duplicated.
+    if name and name.strip().lower() in _STATE_NAME_TO_ABBR_LOWER:
+        return None
+    if name and name.strip().lower() in _PROVINCE_NAME_TO_ABBR_LOWER:
+        return None
 
     name_lookup = (
         lookup_county_state if jurisdiction_type == "county" else lookup_city_state
@@ -1782,6 +1841,7 @@ def _subdomain_override(
     netloc: Optional[str],
     *,
     base: Optional[str] = None,
+    hint_state: Optional[str] = None,
 ) -> Optional[str]:
     """The finished "<subdomain hint><state suffix>" string to override a
     disagreeing text-derived jurisdiction with -- or None when that
@@ -1854,8 +1914,38 @@ def _subdomain_override(
     trusts elsewhere, not a new heuristic; the ambiguity guard above is
     skipped for this path on purpose, since a combined-key or already-
     unambiguous-`base` match is stronger evidence than the guard exists
-    to check for."""
+    to check for.
+
+    `hint_state` (added WO-76, 2026-08-30) is the 2-letter state/province
+    code the caller's OWN subdomain-derived hint already carries, when the
+    subdomain label itself spelled one out (e.g. `_validated_label_extract_
+    with_state()`'s tier 2/5/6/7 stripping a literal trailing "-mi"/"wa"/
+    etc. off the raw label) -- distinct from `existing_suffix`, which is
+    whatever state (right or wrong) survived from the page's own TEXT.
+    `_fill_missing_state()` above never overrides an existing suffix by
+    design, which is correct when that suffix is trustworthy but wrong
+    when it isn't: real, confirmed-live case (WO-76) --
+    `douglas-mi.municodemeetings.com`'s real self-branding is "City of the
+    Village of Douglas, Michigan" (its own real page title, confirmed
+    live), but the ALREADY-STORED value on this row was the product of an
+    earlier, separate extraction bug and read "City of the Village, OK" --
+    a real but totally unrelated Oklahoma place. Renaming to the correct
+    "Douglas" via the hint alone still passed the ambiguity guard above
+    (Douglas is ALSO real, if tiny and obscure, in Oklahoma -- `_table_
+    lookup("Douglas")` includes both MI and OK), so the wrong stored "OK"
+    suffix rode along unchanged, producing the equally-wrong "Douglas, OK".
+    The subdomain's own label -- "douglas-mi" -- already spells out the
+    correct state directly, the same "the source names its own state, so
+    don't guess past it" precedent `resolve_claimed_state()` established
+    for page text. When `hint_state` disagrees with whatever suffix would
+    otherwise be used, it wins: it's independent, first-party evidence (the
+    customer's own domain), not another parse of the same text that may
+    have already produced the wrong state alongside the wrong name. Only
+    consulted when it actually disagrees -- an agreeing `hint_state` is a
+    no-op, so this never changes any already-correct outcome."""
     final_suffix = _fill_missing_state(hint, existing_suffix, netloc)
+    if hint_state and final_suffix.lstrip(", ").strip().upper() != hint_state.upper():
+        final_suffix = f", {hint_state.upper()}"
     if final_suffix:
         hit = _table_lookup(hint)
         code = final_suffix.lstrip(", ").strip().upper()
@@ -1943,8 +2033,9 @@ def finalize_jurisdiction(
             return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
         return JurisdictionResult(raw_jurisdiction, None, "blank")
 
-    subdomain_hint = (
-        _validated_subdomain_extract_from_netloc(netloc) if netloc else None
+    subdomain_hit = _validated_subdomain_hint_with_state(netloc) if netloc else None
+    subdomain_hint, subdomain_hint_state = (
+        subdomain_hit if subdomain_hit else (None, None)
     )
     subdomain_hint_key = _base_name_key(subdomain_hint) if subdomain_hint else None
 
@@ -1971,7 +2062,13 @@ def finalize_jurisdiction(
 
     if _table_lookup(base):
         if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
-            override = _subdomain_override(subdomain_hint, suffix, netloc, base=base)
+            override = _subdomain_override(
+                subdomain_hint,
+                suffix,
+                netloc,
+                base=base,
+                hint_state=subdomain_hint_state,
+            )
             if override:
                 return JurisdictionResult(override, None, "repaired")
         # Vendor-branding "X City" that isn't the place's real name --
@@ -2046,7 +2143,13 @@ def finalize_jurisdiction(
     if trimmed:
         repaired_name, _table = trimmed
         if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
-            override = _subdomain_override(subdomain_hint, suffix, netloc, base=base)
+            override = _subdomain_override(
+                subdomain_hint,
+                suffix,
+                netloc,
+                base=base,
+                hint_state=subdomain_hint_state,
+            )
             if override:
                 return JurisdictionResult(override, None, "repaired")
             # Override rejected as an impossible pairing (see
@@ -2574,7 +2677,13 @@ def _validated_label_extract_with_state(
     Seven tiers, tried in order, first hit wins (the first five were the
     original design; tiers 6 and 7 were added 2026-08-30, WO-68, for two
     CivicClerk subdomain shapes wordninja can't segment at all -- see
-    each tier's own comment below):
+    each tier's own comment below). Listed here in DEFINITION order
+    (1-2-3-4-5-6-7), which is no longer strictly the RUNTIME order: as of
+    WO-76 (2026-08-30), tier 7 actually runs before tiers 5 and 6 -- see
+    tier 7's own comment in the code for why (tier 5's blind recursive
+    strip can accidentally "succeed" on the exact shape tier 7 exists to
+    handle, via the "co" state/county-abbreviation collision, before tier
+    7 ever gets a turn if it runs later):
 
     1. The raw label unsplit (and a digit-stripped variant) -- fixes
        Galesburg: wordninja's own split ("Gales Burg") never validates,
@@ -2639,11 +2748,18 @@ def _validated_label_extract_with_state(
        tried at the outermost call, same gating as tier 5.
     7. A trailing state code AND a trailing "co" (county) abbreviation,
        both stripped off the RAW label, with the bare remainder checked
-       directly against the county table -- for a county name wordninja
-       itself can't segment (e.g. CivicClerk's real "lenaweecomi",
-       Lenawee County MI: "lenawee" isn't an English dictionary word, so
-       no amount of wordninja splitting recovers it). Also only tried at
-       the outermost call.
+       directly against the COUNTY table (cross-validated against the
+       specific extracted state, not a bare national-uniqueness check) --
+       for a county name wordninja itself can't segment (e.g. CivicClerk's
+       real "lenaweecomi", Lenawee County MI: "lenawee" isn't an English
+       dictionary word) or whose bare name is ALSO a real place elsewhere
+       (e.g. "chestercopa", Chester County PA: "Chester" is also a real
+       place in several states, which is exactly why this tier checks
+       `_COUNTY_STATES` directly rather than the type-agnostic
+       `_table_lookup()` -- see the code's own comment, WO-76, for the
+       real case and the precedence fix that goes with it). Also only
+       tried at the outermost call, and -- as of WO-76 -- BEFORE tiers 5
+       and 6, not after; see the code comment for why the order matters.
 
     State/province is otherwise deliberately left to the caller's own
     `enrich_jurisdiction_text()` pass (URL callers) or its own suffix
@@ -2732,6 +2848,63 @@ def _validated_label_extract_with_state(
         if len(glued_body) >= 3 and _table_lookup(typed):
             return typed, stripped_state
 
+    # Tier 7 (tried here, BEFORE tier 5, as of WO-76 2026-08-30 -- see the
+    # precedence note in its own comment below): trailing state code AND a
+    # trailing "co" (county) abbreviation, both stripped off the RAW label,
+    # with the bare remainder checked directly against the COUNTY table --
+    # for a name wordninja itself can't segment into anything usable. Real
+    # gap: CivicClerk's "lenaweecomi" (Lenawee County, MI) -- "lenawee"
+    # isn't an English dictionary word, so wordninja never recovers it even
+    # after tier 5's own trailing-state strip (confirmed live:
+    # `wordninja.split("lenaweeco") == ['lena','we','eco']`, garbage).
+    # Trying the bare remainder directly against `_COUNTY_STATES` sidesteps
+    # wordninja entirely, and -- as of the WO-76 fix -- is checked and
+    # cross-validated against the SAME table `resolve_claimed_state()`
+    # already trusts for this exact "does this specific state belong to
+    # this specific name" question, rather than the general, type-agnostic
+    # `_table_lookup()` (place table checked before county, so a bare name
+    # that is ALSO a real place anywhere would win first and silently mask
+    # a real county match here).
+    #
+    # Real, confirmed-live case this precision fixes (WO-76, 2026-08-30):
+    # `chestercopa.portal.civicclerk.com` is Chester County, PA (its own
+    # page header: "Chester County, PA - Agendas & Minutes"). "Chester" is
+    # ALSO a real, unrelated place in its own right (PA, SC, and more --
+    # `_table_lookup("Chester")` returns the PLACE table, not county), so
+    # the old `hit[0] == "county"` gate declined every time -- it can only
+    # ever fire when the bare name has NO place-table entry at all
+    # anywhere, exactly like "Lenawee" but unlike "Chester". Checking
+    # `_COUNTY_STATES` directly and requiring only that the SPECIFIC
+    # extracted state (here "PA") be one of the name's real county states
+    # sidesteps the place-vs-county precedence entirely -- correct even
+    # when, as here, the bare name is nationally ambiguous as a place too.
+    #
+    # Precedence: this tier must run BEFORE tier 5's blind recursive
+    # trailing-strip, not after -- real bug found investigating the same
+    # `chestercopa` case. Tier 5's own recursive retry on "chesterco"
+    # (after stripping "pa") independently strips ITS OWN trailing "co" as
+    # if it were the Colorado state abbreviation (co IS a real state code,
+    # not just the county-abbreviation convention this tier exists for),
+    # succeeding early with the wrong pair ("Chester", "CO") before this
+    # tier -- previously positioned after tier 5 and 6 -- ever got a
+    # chance to run at all. Moving it earlier lets the more specific,
+    # better-evidenced "trailing state + trailing county-abbreviation"
+    # shape win over tier 5's generic, coincidence-prone strip whenever
+    # both could apply; verified this reordering doesn't change any
+    # already-passing tier 5/6 case (neither camaswa/stmarysga nor
+    # macombtwpmi/southorangetwpnj ends in "co" before their trailing
+    # state code, so this tier's own guard never fires for them).
+    if _allow_state_strip and len(label) >= 7:
+        lower_label = label.lower()
+        tail = lower_label[-2:]
+        if tail in _STATE_ABBREVIATIONS_LOWER or tail in _PROVINCE_ABBREVIATIONS_LOWER:
+            remainder = lower_label[:-2]
+            if remainder.endswith("co") and len(remainder) - 2 >= 3:
+                bare = remainder[:-2]
+                county_states = _COUNTY_STATES.get(bare)
+                if county_states and tail.upper() in county_states:
+                    return f"{bare.title()} County", tail.upper()
+
     # Tier 5: trailing state/province code stripped off the RAW label,
     # before wordninja ever sees it (see docstring). Length floor keeps the
     # same >= 3-letter guarantee the tiers above run on.
@@ -2756,33 +2929,26 @@ def _validated_label_extract_with_state(
         if twp_hit:
             return twp_hit
 
-    # Tier 7: trailing state code AND a trailing "co" (county)
-    # abbreviation, both stripped off the RAW label, with the bare
-    # remainder checked directly against the county table -- for a name
-    # wordninja itself can't segment into anything usable. Real gap:
-    # CivicClerk's "lenaweecomi" (Lenawee County, MI) -- "lenawee" isn't
-    # an English dictionary word, so wordninja never recovers it even
-    # after tier 5's own trailing-state strip (confirmed live:
-    # `wordninja.split("lenaweeco") == ['lena','we','eco']`, garbage).
-    # Trying the bare remainder directly against `_COUNTY_STATES` (via
-    # `_table_lookup()`, which also tries the abbreviation/saint/okina
-    # secondary candidates) sidesteps wordninja entirely. Only accepted
-    # when the match came from the county table specifically -- "co" is
-    # stripped ON THE ASSUMPTION it's the county abbreviation, so a hit
-    # that's really a place/subdivision match would be coincidental, not
-    # a confirmation of that assumption.
-    if _allow_state_strip and len(label) >= 7:
-        lower_label = label.lower()
-        tail = lower_label[-2:]
-        if tail in _STATE_ABBREVIATIONS_LOWER or tail in _PROVINCE_ABBREVIATIONS_LOWER:
-            remainder = lower_label[:-2]
-            if remainder.endswith("co") and len(remainder) - 2 >= 3:
-                bare = remainder[:-2]
-                hit = _table_lookup(bare)
-                if hit and hit[0] == "county":
-                    return f"{bare.title()} County", tail.upper()
-
     return None
+
+
+def _validated_subdomain_hint_with_state(
+    netloc: str,
+) -> Optional[Tuple[str, Optional[str]]]:
+    """(name, state) for `netloc`'s own subdomain label, same host-parsing
+    as `_validated_subdomain_extract_from_netloc()` below but keeping the
+    state `_validated_label_extract_with_state()` derived, when the label
+    itself spelled one out (e.g. "douglas-mi" -> ("Douglas", "MI")) --
+    needed by `finalize_jurisdiction()`'s call into `_subdomain_override()`
+    (see that function's own `hint_state` parameter/docstring, WO-76,
+    2026-08-30) as a stronger, self-declared state signal than whatever
+    (possibly wrong) suffix survived from the page's own text. Declines the
+    same way (bare domain, "www" subdomain) as the name-only variant."""
+    host = netloc.lower()
+    parts = host.split(".")
+    if len(parts) <= 2 or parts[0] == "www":
+        return None
+    return _validated_label_extract_with_state(parts[0])
 
 
 def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
@@ -2793,12 +2959,11 @@ def _validated_subdomain_extract_from_netloc(netloc: str) -> Optional[str]:
     chain picks the wrong government for a two-tier regional site") so
     `finalize_jurisdiction()` can compute the same subdomain-derived
     cross-check candidate it already has `netloc` for, without
-    constructing a throwaway URL just to re-parse it back apart."""
-    host = netloc.lower()
-    parts = host.split(".")
-    if len(parts) <= 2 or parts[0] == "www":
-        return None
-    return _validated_label_extract(parts[0])
+    constructing a throwaway URL just to re-parse it back apart. Thin
+    wrapper around `_validated_subdomain_hint_with_state()` that drops the
+    state, for the many callers that only want the name."""
+    hint = _validated_subdomain_hint_with_state(netloc)
+    return hint[0] if hint else None
 
 
 def _validated_subdomain_extract(url: str) -> Optional[str]:
