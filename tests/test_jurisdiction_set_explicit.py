@@ -273,3 +273,83 @@ def test_set_explicit_route_returns_404_for_missing_page():
         headers={"Authorization": "Bearer test-token"},
     )
     assert response.status_code == 404
+
+
+# --- GET /internal/jurisdiction/search -------------------------------------
+# The read-only companion set-explicit needed: it takes a meeting_page_id,
+# and nothing else in this file could answer "what id is the row whose
+# jurisdiction reads X" without direct DB access.
+
+
+async def test_jurisdiction_search_finds_by_substring():
+    page = await _seed_page(
+        "escribe:search-substring",
+        "https://pub-santaclara.escribemeetings.com/search-substring",
+        "County of Santa Clara Office",
+    )
+    response = client.get(
+        "/internal/jurisdiction/search",
+        params={"q": "Santa Clara Office"},
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    matches = response.json()["matches"]
+    ids = [m["id"] for m in matches]
+    assert page["id"] in ids
+    hit = next(m for m in matches if m["id"] == page["id"])
+    assert hit["jurisdiction"] == "County of Santa Clara Office"
+    assert hit["slug"] == page["slug"]
+    assert hit["source_url_normalized"]
+
+
+async def test_jurisdiction_search_is_case_insensitive():
+    page = await _seed_page(
+        "escribe:search-case",
+        "https://pub-santaclara.escribemeetings.com/search-case",
+        "Santa Clara County, CA",
+    )
+    response = client.get(
+        "/internal/jurisdiction/search",
+        params={"q": "santa clara county"},
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    ids = [m["id"] for m in response.json()["matches"]]
+    assert page["id"] in ids
+
+
+def test_jurisdiction_search_rejects_missing_token():
+    response = client.get("/internal/jurisdiction/search", params={"q": "santa clara"})
+    assert response.status_code == 404
+
+
+def test_jurisdiction_search_rejects_wrong_token():
+    response = client.get(
+        "/internal/jurisdiction/search",
+        params={"q": "santa clara"},
+        headers={"Authorization": "Bearer wrong"},
+    )
+    assert response.status_code == 404
+
+
+def test_jurisdiction_search_requires_q():
+    response = client.get(
+        "/internal/jurisdiction/search", headers={"Authorization": "Bearer test-token"}
+    )
+    assert response.status_code in (400, 422)
+
+
+async def test_jurisdiction_search_respects_limit():
+    for i in range(5):
+        await _seed_page(
+            f"escribe:search-limit-{i}",
+            f"https://pub-somecity.escribemeetings.com/search-limit-{i}",
+            "City of Some Limit Town, CA",
+        )
+    response = client.get(
+        "/internal/jurisdiction/search",
+        params={"q": "Some Limit Town", "limit": 2},
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["matches"]) == 2

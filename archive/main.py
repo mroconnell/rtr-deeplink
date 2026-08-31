@@ -1292,6 +1292,27 @@ async def internal_jurisdiction_set_explicit(
     return result
 
 
+@app.get("/internal/jurisdiction/search")
+async def internal_jurisdiction_search(
+    q: str,
+    limit: int = 20,
+    authorization: Optional[str] = Header(None),
+):
+    """Read-only companion to POST /internal/jurisdiction/set-explicit
+    above -- that endpoint takes a `meeting_page_id`, and nothing in this
+    file could answer "what id is the row whose jurisdiction reads X"
+    without direct DB access. A substring ILIKE match against the stored
+    `jurisdiction` column (same idiom `/api/jurisdictions` uses, but
+    admin-token-gated and returning ids/source URLs, not just display
+    names). Never writes anything. `limit` capped at 100 server-side."""
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if not q:
+        return JSONResponse({"detail": "q is required"}, status_code=400)
+
+    return {"matches": await crud.search_pages_by_jurisdiction_text(q, limit=limit)}
+
+
 @app.get("/internal/pages/http-scheme-candidates")
 async def internal_http_scheme_candidates(authorization: Optional[str] = Header(None)):
     """Read-only audit: every archived page whose `source_url_normalized`
