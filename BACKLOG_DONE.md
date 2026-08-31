@@ -1,5 +1,69 @@
 # Backlog — done
 
+## The 50 largest US cities — per-tenant status, mostly closed [Done, various 2026-08-14 through 2026-08-30]
+
+Distinct from the "no domain found yet" jurisdiction-coverage work
+(`~/Documents/rtr-business/research/jurisdiction_coverage.csv`) — these
+cities' government video/meeting URLs were already known, the question
+was whether this platform could turn them into a working page. Full
+per-tenant history, since most of the list closed over several
+sessions:
+
+**Closed since the list was made**: Phoenix AZ and Philadelphia PA
+(both built 2026-08-21, WO-30, via a new curated city→YouTube-channel
+adapter), El Paso TX (mostly closed WO-29 — all 13 per-body Vimeo
+showcases resolve; the `elpasotexas.gov/videos` index itself still has
+no adapter — see the residual note below), Chicago IL (closed by the
+same PR, `app/platforms/chicago_elms.py`), Seattle WA
+(`app/platforms/seattlechannel.py`, built 2026-08-14), Baltimore MD
+(built 2026-08-21 via the same city-YouTube-channel fallback — 29 of 53
+real events 2026-05-01..2026-08-20 now match a real CharmTV recording).
+
+**Corrected, not actually gaps**: Portland OR resolves fine through
+`generic_fallback.py` (a stale negative resolve-cache was the real bug,
+fixed 2026-08-12) — no Portland page had been archived yet as of this
+writing, a real but trivial residual (just needs a URL ingested, not a
+code fix). Tucson AZ's Hyland agenda/video-seek pages do resolve
+(shipped 2026-08-16); the real remaining gap — Tucson's Hyland pages
+carry no video at all, and the real video/audio+minutes live on a
+separate city YouTube channel/page not yet wired to `youtube_channel.py`
+— is carried forward as a live entry (see `BACKLOG.md`).
+
+**Tenant-specific gaps closed 2026-08-30**: Columbus OH (WO-72 — added
+to the same city-YouTube-channel fallback already proven for
+Phoenix/Philadelphia/Baltimore/Albuquerque), Tampa FL (WO-73 — new
+`app/platforms/tampa.py` adapter; the "transcripts posted separately,
+need matching" framing was stale, each transcript page already embeds
+its own paired video), Detroit MI (Cablecast — re-checked live, both
+real URL shapes resolve fully; a "not working well" user flag didn't
+reproduce), NYC Legistar (`legistar.council.nyc.gov` resolves a real
+meeting end-to-end with video, correct jurisdiction, and a full
+transcript — an older "not yet re-checked" framing was stale), and the
+Ringwood/NYC Viebit mis-tag (WO-71 — `ViebitAssetFinder` had a
+hardcoded NYC-only jurisdiction; now derives it per-tenant via the
+known-domain registry). Kansas City MO root-caused and fixed
+2026-08-29: recent meetings for Council and other frequently-meeting
+bodies now resolve real video via a new Granicus ViewPublisher RSS
+fallback — an infrequent body's much older meeting can still miss if
+it's aged out of that feed's real ~8-month/100-item coverage, a narrow
+accepted limitation, not tracked further. Austin TX and San Antonio TX
+confirmed live with real transcripts as of the 2026-08-21 `/coverage`
+re-check.
+
+**Methodology finding, closed**: a 2026-08-28 investigation into
+whether a single-meeting check could miss real video elsewhere on the
+same portal re-checked both original examples 2026-08-30 and neither
+reproduced — Cambridge, MA had migrated off IQM2 to PrimeGov (not an
+adapter bug), and Watsonville, CA's eScribe failure only reproduced on
+a genuinely unpublished future meeting (correct fallback behavior). The
+underlying methodology point (check 2-3 real meetings, not just the
+first one found, before concluding no video exists) is still valid in
+principle but no longer urgent given neither original example held up.
+
+**What's still open**: see `BACKLOG.md`'s "Residual gaps from the
+50-largest-cities audit" entry — Tucson AZ, Atlanta GA, Omaha NE, and
+Virginia Beach VA are the real tenant-specific gaps that never closed.
+
 ## Three code-side fixes + three slug redirects, shipping in the 2026-08-30 evening deploy [Done 2026-08-30]
 
 Deploy scheduled for tonight (Ryan's plan, confirmed 2026-08-30) — noted
