@@ -1764,6 +1764,22 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 Three linked pieces. None of them is Chicago-specific; Chicago ELMS is one
 instance of the gap, not the reason for it.
 
+**The small, non-versioned slice of piece 2 shipped 2026-08-31 (PR #640) —
+this entry is still open for everything else.** Ryan's explicit call: no
+nightly sweep, no versioning, no diffing, just a better link at resolve
+time. CivicPlus and CivicClerk previously shipped no `agenda_link` at all
+despite already fetching the data — CivicPlus's `td.downloads` cell (up to
+three renditions: `?html=true`, bare PDF, `?packet=true`, distinguished by
+href query string, confirmed on the real Durham NC fixture) and
+CivicClerk's `event["publishedFiles"]` (vendor-typed `"Agenda"`/`"Agenda
+Packet"` entries, confirmed on Clovis CA and Emporia KS fixtures) both now
+set `agenda_link`, and a new `ResolvedMeeting.packet_link` field threads
+through the Archive (new `meeting_pages.packet_link` column, rendered as a
+plain outbound link below the agenda section, only when it differs from
+`agenda_link` — see `BACKLOG_DONE.md` for detail). This is resolve-time
+linking only; the model/versioning/diffing/every-other-adapter work below
+is unchanged and still needs a real decision before it's built.
+
 **1. The data model.** `MeetingPage` has no agenda text at all today, and the
 two fields that look like it are not it:
 

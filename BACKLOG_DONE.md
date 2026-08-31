@@ -1,5 +1,82 @@
 # Backlog — done
 
+## Phase 3 (small version): resolve-time agenda_link + packet_link for CivicPlus and CivicClerk (PR #640) [Done 2026-08-31]
+
+Built in an isolated worktree (`claude/phase3-agenda-extraction`, off
+`main`) same day as Phase 1, after Ryan explicitly chose the small version
+of the "Agenda text as a first-class, versioned asset" Roadmap entry over
+the big one: "we definitely don't need nightly sweeps. We might want
+versioning but I'm also okay with just replacing agendas... maybe a link
+to the packet on the original source when we happen to have it? Or a
+section lower on the page just for the packet?" All four CI gates green
+locally before push (ruff check, ruff format, pytest — 2304 passed, 16
+skipped, alembic check x2 against fresh migration-built SQLite), plus the
+JS suite (56 passed). CI green on GitHub, squash-merged same day, no
+review comments.
+
+Found by comparing rtr-deeplink's own adapters against `rtr-upcoming` (a
+sister project, cloned locally to `/home/user/rtr-upcoming` this session,
+solving agenda-text extraction for a different job — finding agendas for
+jurisdictions with no video URL at all). Its
+`UPCOMING_AGENDAS_FIELD_GUIDE.md` (read in full, 1,585 lines) documents
+extensively measured per-vendor extraction lessons; two of its findings
+pointed directly at real, unclaimed data in this repo's own adapters —
+both fields already fetched, neither ever surfaced.
+
+**CivicPlus** (`app/platforms/civicplus.py`): each meeting row's own
+`td.downloads` cell offers up to three renditions — `?html=true`, a bare
+PDF, and `?packet=true` (agenda plus every staff report) — confirmed on
+the real, already-in-repo Durham NC fixture. Distinguished by the href's
+query string, since two different links both carry `class="pdf"`. New
+`_extract_agenda_and_packet_links()` prefers the HTML rendition for
+`agenda_link`, falls back to the bare PDF, and separately captures
+`packet_link`; threaded through the existing Granicus delegation the same
+way `legistar.py`'s own `agenda_link` already survives its delegation.
+
+**CivicClerk** (`app/platforms/civicclerk.py`): already fetches `event`,
+which carries `publishedFiles` — vendor-typed entries (`"Agenda"`,
+`"Agenda Packet"`, `"Minutes"`, `"Other"`), confirmed real on three
+different live fixtures (Clovis CA event20, Emporia KS, Kaysville UT
+event823 — the last has an `agenda_link` but no `"Agenda Packet"` type,
+confirming the field is genuinely optional rather than always paired).
+Previously `publishedFiles` was mined only for plaintext to help guess
+jurisdiction; new `_published_file_url()` now also sets
+`agenda_link`/`packet_link` directly from the same already-fetched data —
+zero extra network calls. `_fetch_agenda_text` changed from `@staticmethod`
+to `@classmethod` to reuse the same helper.
+
+**New field, threaded end to end.** `ResolvedMeeting.packet_link:
+Optional[str]` (`app/platforms/models.py`) → new nullable
+`meeting_pages.packet_link` column (migration `1b74c98d2d57`, chained
+after Phase 1's `1e6107751720` "scraped"→"sourced" rename) →
+`IngestRequest.packet_link` → `crud.py` create/update branches and
+`get_page_by_slug()` → `meeting_page.html`, rendered as a plain outbound
+link ("Full agenda packet") below the agenda section — deliberately never
+folded into `agenda_link`'s inline iframe (Phase 1, PR #638) since
+`rtr-upcoming` measured a real 90 MB packet and an iframe of that size
+would be a bad reader experience. Only shown when `packet_link` differs
+from `agenda_link`, so a platform setting both to the same URL doesn't
+render a confusing duplicate.
+
+**Verification**: `tests/test_packet_link.py` (new, 4 tests: renders as
+plain link, absent when unset, deduped when identical to `agenda_link`,
+queryable via `get_page_by_slug`) plus extended assertions on the existing
+real-fixture tests (`test_civicplus.py`'s Durham NC and Granicus-delegation
+cases, `test_civicclerk.py`'s Clovis and Kaysville cases) rather than new
+synthetic-only coverage, since real fixture data for both new fields was
+already confirmed present. Not verified: live rendering on a real
+production page — this session has no browser/deploy access; worth a real
+check once deployed.
+
+**What's still open**: this is resolve-time linking only. The Roadmap
+entry's actual ask — a versioned child table mirroring `TranscriptVersion`
+(agendas get amended, transcripts don't), full-text extraction across all
+~23 adapters, diffing between versions, and search-corpus inclusion — is
+unchanged and was deliberately not attempted this session; see
+[AGENDA_TEXT_BIG_VERSION_BRIEF.md](AGENDA_TEXT_BIG_VERSION_BRIEF.md) for
+what a first shippable slice of that bigger version could look like,
+brought to Ryan to decide rather than pre-decided.
+
 ## Phase 1: six small backlog fixes shipped and merged (PR #638) [Done 2026-08-31]
 
 Built in an isolated worktree (`claude/phase1-small-fixes`, off `main`)
