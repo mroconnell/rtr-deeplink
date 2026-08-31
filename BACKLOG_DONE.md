@@ -1,5 +1,160 @@
 # Backlog — done
 
+## Bleed-backfill queue: 70 real jurisdiction corrections applied to production, verified via real source pages not just text-matching, plus root-cause fixes for the 4 that were genuinely wrong [Done 2026-08-30]
+
+Closes the "51 pre-existing recompute-backfill candidates" entry left
+open since WO-47 (2026-08-23) specifically because it wasn't uniformly
+safe — several were confidently wrong and the whole set needed
+per-row judgment before any bulk write.
+
+**Read access**: this session already had `DATABASE_URL` (production
+Postgres) and `ARCHIVE_INGEST_TOKEN` locally in `.env` from prior work —
+used via `python-dotenv` loaded at runtime, token never printed, exactly
+this repo's own documented safe pattern for handling `.env` secrets.
+Used only to call already-built, read-only/dry-run-first `/internal/*`
+endpoints against the live Archive service (`GET
+/internal/jurisdiction/bleed-backfill-candidates`, `GET
+/internal/low-trust-pages`) and, after review, the write counterpart
+(`POST /internal/jurisdiction/backfill-apply`) — never a raw bulk
+`DATABASE_URL` scan, which this repo's Standing decisions correctly
+keep off-limits for an interactive session.
+
+**Round 1 — text/confidence-tier triage (40 applied).** The live
+candidate queue had grown from WO-47's "51" to 82 real changes (9 days
+of new ingestion). Wrote a heuristic (core-name match after stripping
+governance prefixes/"Meetings" suffixes/state suffixes) to separate
+cosmetic-only repairs (state suffix added, "City of" dropped, `conf=
+validated`/`authoritative`) from name-substitution repairs, cross-
+checked against WO-47's own prior wrong-direction findings. Excluded on
+review: the Kansas City/Louisville consolidated-government trio (state-
+dropping, depends on tonight's undeployed WO-68 fix), "Colorado, KS" and
+"Lake Washington, ND" (bare common-word names far more likely to mean
+the state/the famous WA lake), and 4 rows (Breckenridge/Eustis/
+Hendersonville/Loganville) that were dropping an already-present state
+name instead of attaching it (depends on tonight's undeployed WO-70
+fix). Dry-run confirmed the exact expected diff before writing; applied
+for real, re-queried to confirm 82 → 42.
+
+**Round 2 — 5 more on reflection (45 total).** Re-reviewing the
+excluded set found 2 punctuation-regex misses (`Ft. Myers, FL.` → `Ft
+Myers, FL`, `Mt. Juliet, TN` → `Mt Juliet City, TN`) and 3 with
+independent confirmation: the Arran-Elderslie pair (a fix already
+proven correct and live in code, just never backfilled onto these
+rows), and **page 1649, `City of Visalia, CA` → `Tulare County, CA`** —
+the exact row the long-open Tulare County/Visalia entry (see this
+file's earlier entry) had been waiting on, now closed for real, backed
+by the title itself: "Board of Supervisors Meeting" (a county body, not
+a city council).
+
+**Round 3 — real visual verification via 3 parallel agents (20 more,
+65 total).** For the remaining 37, spun up 3 research-only agents (no
+code/DB access, browser + WebFetch only) to fetch each real source page
+and look for actual letterhead/seal/agenda-body self-identification —
+not a title/slug heuristic — before writing anything more to already-
+published, publicly visible pages. Real findings, not just
+confirmations:
+- **8 of 11 "suspected wrong" repairs turned out correct** — the
+  *original* tag was usually the bug: a different city's name leaking
+  in from a correspondence/delegation item on the real meeting's own
+  agenda (e.g. Peterborough's council meeting mentions "City of
+  Peterborough" in an unrelated letter *sent to* Blind River, ON's own
+  council — the source page's actual letterhead is Blind River's).
+- **3 confirmed wrong, with the real answer found**: pages
+  1151/703 ("West Chester, PA"→"Chester, PA") are actually **Chester
+  County, PA**'s own Commissioners/Board of Elections
+  (`chestercopa.portal.civicclerk.com`, header "Chester County, PA -
+  Agendas & Minutes") — neither the current nor computed-repair value
+  was right. Page 1439 ("City of the Village, OK"→"Douglas, OK") is
+  actually **Douglas, MI** ("City of the Village of Douglas, MI" is its
+  real legal name — `douglas-mi.municodemeetings.com`).
+- **2 more confirmed wrong on the deliberately-extra-scrutinized bare
+  common-word names**: "Colorado" is really the **Colorado state
+  legislature** (its General Assembly's Joint Education Committee,
+  `coloradoga.granicus.com`), not "Colorado, KS." "Lake Washington" is
+  really **Lake Washington School District, WA** (the real, well-known
+  district near the actual Lake Washington, `lwsd.granicus.com`/
+  `www.lwsd.org`), not North Dakota.
+- **9 county-commissioner-body repairs all confirmed correct** by real
+  county seals/letterhead (Peel Region×3, Bedford OH, Rice County MN,
+  Lucas County OH, Klickitat County WA, Tarrant County TX, Lake County
+  FL) — 3 of these (Lucas, Klickitat, plus 2 Escambia rows found in the
+  same pass) are missing the word "County" in the computed repair
+  string, a real, separate formatting gap (see this file's own open
+  entry) — applied anyway as a strict improvement over the wrong city
+  name they replaced.
+- None of the 5 confirmed-wrong repairs were applied — left open as
+  new BACKLOG.md entries with the real correct answer already found,
+  needing a manual `_KNOWN_DOMAINS`-style fix rather than a blind
+  bulk-apply.
+
+**Round 4 — the 4 remaining unchecked candidates (5 more applied, 70
+total), plus WO-76's root-cause fixes for the 4 confirmed-wrong ones.**
+A follow-up agent pass checked the 4 rows an earlier batching mistake
+had dropped: `337` (County of Loudoun, VA → Leesburg, VA — confirmed
+correct, a real Leesburg Town Council agenda item just referenced the
+county in one funding-request line), `1313` (City of Foley → Baldwin
+County — confirmed correct direction, real source references "Baldwin
+County Courthouse in Bay Minette," AL's real county seat; applied
+without a state suffix, same missing-suffix gap as the other county
+cases), `658` (Vaughan, ON → Caledon, ON — confirmed correct, the
+source page's own staff report explicitly names Caledon and Vaughan as
+two separate municipalities), and `808` (City of Woodstock → "Oxford
+County, ME" — confirmed correct in DIRECTION but WRONG in value: the
+real source, `pub-oxfordcounty.escribemeetings.com`, is unambiguously
+**Oxford County, Ontario** — `www.oxfordcounty.ca`, dozens of by-laws
+naming its real constituent lower-tier municipalities including "City
+of Woodstock," its own county seat — not Oxford County, Maine; this
+one was NOT applied, since applying would have written a real wrong
+value). Also caught and fixed 2 non-idempotent cosmetic re-repairs the
+audit surfaced on re-query (`Malibu City, CA`→`Malibu, CA`, `Key West
+City, FL`→`Key West, FL`).
+
+**WO-76 (2026-08-30) then root-caused all 4 originally-confirmed-wrong
+repairs** (not Oxford County, found after WO-76 was already dispatched
+— still open, see BACKLOG.md) via actual code tracing, not guessing:
+- **Chester County, PA**: tier 7's county check used a type-agnostic
+  table lookup, so "Chester" (also a real place name elsewhere) always
+  lost to the place table before the county tier got a turn — and tier
+  5's blind recursive strip independently misread `chesterco`'s
+  trailing "co" as the Colorado state abbreviation, succeeding even
+  earlier. Fixed: tier 7 now checks the county table directly
+  (cross-validated against the extracted state), and runs before tier 5.
+- **Douglas, MI**: the subdomain hint correctly renamed a stale wrong
+  value ("City of the Village, OK," an older unrelated bug) to
+  "Douglas," but the wrong existing "OK" suffix rode along unchanged.
+  Fixed: `_subdomain_override()` now accepts a `hint_state` (populated
+  when the subdomain label itself spells out a state, e.g. `douglas-mi`
+  → `MI`) that wins when it disagrees with an untrustworthy existing
+  suffix.
+- **Colorado**: a bare state/province name fell through to an obscure
+  subdivision-table collision ("Colorado township, KS") and got a
+  wrong state appended. Fixed: `resolve_state()` now declines to ever
+  append a state to a bare full state/province name — general, not
+  Colorado-specific.
+- **Lake Washington School District, WA**: same obscure-collision
+  shape, but no state-name signal and no independent subdomain hint
+  exists to cross-check against, and no general school-district table
+  exists in this module. Given a well-evidenced, targeted
+  `_KNOWN_DOMAINS` override instead of forcing a general fix from one
+  example.
+
+12 new regression tests added, all four CI gates green (2219 passed).
+**Not yet deployed** — the fix is merged to `main` but the 4
+already-published pages (1151, 703, 1439, 2095, 2471) still carry
+their old wrong values in production until the next deploy runs;
+`POST /internal/jurisdiction/backfill-apply` recomputes from live
+deployed code, so it needs a deploy before it will compute the
+corrected values for those specific rows. Oxford County (`808`, needs
+its province corrected from ME to ON) was found too late for WO-76 to
+cover — left open in BACKLOG.md as a residual.
+
+**Also pulled while read access was open**: current real `/internal/
+low-trust-pages` counts (631 total, 236 with no jurisdiction at all —
+correcting BACKLOG.md's stale "474 → 269" figures) and confirmed `GET
+/internal/jurisdiction/missing` genuinely doesn't exist yet (a real
+404, not an auth failure) — both folded into the relevant BACKLOG.md
+entries.
+
 ## Parallel-agent jurisdiction sweep: 9 WOs merged (WO-67 through WO-75), 2 platform gaps closed, ~50 largest cities' status re-verified [Done 2026-08-30]
 
 A single evening's wave of research + fix agents run in parallel worktrees
