@@ -5,6 +5,8 @@ mocked. Each test uses its own unique external_id/source_url so tests can
 run in any order without colliding (the fixture DB isn't reset per-test).
 """
 
+import asyncio
+
 from archive.db import crud
 
 
@@ -899,6 +901,29 @@ async def test_hallucination_candidates_limit_bounds_flagged_scan_too():
     )
     page2_ids = {row["version_id"] for row in page2}
     assert page2_ids == {flagged_ids[2]}
+
+
+async def test_hallucination_candidates_scores_in_a_worker_thread(monkeypatch):
+    # Regression test for the 2026-08-31 full-service-outage incident
+    # (WO-87, BACKLOG_DONE.md): running detect_hallucination_warnings()
+    # synchronously inside this async function blocked the whole uvicorn
+    # worker's event loop for 128s+ against a real limit=500 call, which
+    # made Render's own health check fail and restart the service. Rather
+    # than re-creating that timing live in a test, this confirms the
+    # architectural fix is actually wired up: the CPU-bound scoring step
+    # goes through asyncio.to_thread(), not a bare synchronous call.
+    calls = []
+    real_to_thread = asyncio.to_thread
+
+    async def spy_to_thread(func, *args, **kwargs):
+        calls.append(func)
+        return await real_to_thread(func, *args, **kwargs)
+
+    monkeypatch.setattr(crud.asyncio, "to_thread", spy_to_thread)
+
+    await crud.list_hallucination_candidate_transcript_versions(limit=1)
+
+    assert calls == [crud._score_hallucination_candidate_rows]
 
 
 async def test_hallucination_candidates_null_transcript_warnings_still_scanned():

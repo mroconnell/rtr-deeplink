@@ -364,19 +364,22 @@ convenient.
   on tonight's deploy, not on code.** The seam-duplication half is done
   (111/111 pages repaired live, see `BACKLOG_DONE.md`). The
   repetition-loop half (`scripts/repair_repetition_loops.py`, ~74
-  candidates) is built and CI-tested but has never completed a run: its
-  first call to `GET /internal/transcription/hallucination-candidates`
-  502'd at Render's own proxy timeout on every attempt (confirmed
-  2026-08-30 — even `limit=1` took 150s+, because the endpoint's
-  already-flagged branch had no `limit`/`after_id` bound at all, on a
-  now-false "stays small" assumption). Root-caused and fixed in
-  `archive/db/crud.py`'s `list_hallucination_candidate_transcript_
-  versions()` (bounded the flagged branch the same way as the unflagged
-  one) — merged to `main` 2026-08-30 but **not yet deployed**. Once
-  deployed: run `scripts/repair_repetition_loops.py --dry-run`, review
-  the report, then apply. Still open after that: (1) trim the 3
-  remaining hallucinated-default transcripts that aren't Kitchener
-  (Sacramento etc. — Kitchener itself was re-transcribed 2026-08-30, see
+  candidates) is built and CI-tested but has never completed a run.
+  Two distinct bugs found and fixed on `GET /internal/transcription/
+  hallucination-candidates` chasing this (full detail in
+  `BACKLOG_DONE.md`, WO-84 and WO-87): (1) the already-flagged query
+  branch had no `limit` bound at all — fixed 2026-08-30, deployed and
+  confirmed live 2026-08-31 (`limit=1` now returns in under a second);
+  (2) the script's real `limit=500` then triggered a full-service
+  outage — `detect_hallucination_warnings()` ran synchronously inside
+  the async handler, blocking the whole worker's event loop for 128s+
+  and failing Render's health check. Fixed via `asyncio.to_thread()`
+  (WO-87) and the script's `CANDIDATE_PAGE_SIZE` dropped 500 → 25 —
+  merged to `main` 2026-08-31 but **not yet deployed**. Once deployed:
+  run `scripts/repair_repetition_loops.py --dry-run`, review the
+  report, then apply. Still open after that: (1) trim the 3 remaining
+  hallucinated-default transcripts that aren't Kitchener (Sacramento
+  etc. — Kitchener itself was re-transcribed 2026-08-30, see
   `BACKLOG_DONE.md`; its duplicate-page fallout is its own "Needs a
   human" entry); (2) re-transcription on report for anything the repair
   can't fix — not started; (3) extend the repair to the local-batch
