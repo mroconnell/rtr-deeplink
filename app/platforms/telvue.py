@@ -110,7 +110,22 @@ _BODY_SUFFIX_RE = re.compile(
     # alternative this matched bare "Council" first, capturing "Albany
     # Common" -- a CONFIDENT WRONG answer, not just a missed one, since
     # "Albany Common" reads like a plausible place name on its own.
-    r"^(.*?)\s+(City Council|Common Council|Council|Planning and Environmental Commission|Planning Commission|Planning Board|Select Board|Zoning Board|Board|Committee|Commission|Authority|District)\b",
+    #
+    # Two more, WO-74 (2026-08-30 CDX batch-2 verification): "City
+    # Commission" -- Rome, GA's real title "Rome City Commission
+    # Meeting: August 24th, 2026" matched bare "Commission" first,
+    # capturing "Rome City" -- which enrich_jurisdiction_text() then
+    # resolves to "Rome City, IN" (a real, tiny, unrelated Indiana town
+    # that happens to share the literal string "Rome City") -- a
+    # CONFIDENT WRONG answer and a genuine wrong-state collision, not
+    # just a missed one, same failure family as the Newmarket/Needham
+    # entries in _KNOWN_ORG_TOKEN_JURISDICTIONS below. "Town Council" --
+    # Truckee, CA's real title "Truckee Town Council, August 11, 2026"
+    # matched bare "Council" first, capturing "Truckee Town" instead of
+    # "Truckee" -- cosmetic (enrich_jurisdiction_text("Truckee") already
+    # resolves unambiguously via the Census table), but the same
+    # "generic word survives into the captured name" shape.
+    r"^(.*?)\s+(City Council|Common Council|Town Council|Council|Planning and Environmental Commission|Planning Commission|City Commission|Planning Board|Select Board|Zoning Board|Board|Committee|Commission|Authority|District)\b",
     re.I,
 )
 _VOICE_TAG_RE = re.compile(r"<[^>]+>")
@@ -372,6 +387,167 @@ _KNOWN_ORG_TOKEN_JURISDICTIONS = {
     # Luverne, Minnesota's own page for this exact "LuvTV" public-access
     # channel.
     "yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC": "Luverne, MN",
+    # WO-74, 2026-08-30: the 16 entries below all come from a second CDX
+    # `collapse=urlkey:64` enumeration pass (see
+    # ~/Documents/rtr-business/research/cc_scan_data/
+    # telvue_batch2_verified.json and _methodology.md for the full
+    # per-token evidence -- second independent source URL + a live
+    # resolve() check for every one). 23 org tokens were verified real in
+    # that pass; 16 of them (not the research doc's own headline "17" --
+    # re-derived directly from its `resolve_check.jurisdiction_bug` field,
+    # see this WO's own report) resolve today with either a missing or a
+    # wrong jurisdiction. None of these 16 jurisdictions are ingested into
+    # Archive as of this WO -- this dict entry only fixes what a *future*
+    # resolve/ingest of them would produce.
+    #
+    # Orange, CT: real title "Zoning Board of Appeals - Monday, November
+    # 3, 2025" has no city prefix at all -- before this WO, the
+    # leftmost-match search captured "Zoning" (the modifier before bare
+    # "Board") as the jurisdiction, a confident wrong answer. Fixed by
+    # adding "zoning" to _guess_jurisdiction()'s last-word stopword list
+    # (same fix category as "conservation" below), which makes the guess
+    # correctly come up empty so this registry entry applies via the
+    # "if not jurisdiction" branch. Confirmed via orange-ct.gov's own
+    # "Orange Government Access Television (OGAT)" page (Board of
+    # Selectmen / Planning & Zoning coverage).
+    "BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT": "Orange, CT",
+    # Marlboro Township, NJ: real title "council 8-20-26 1" is bare,
+    # lowercase, no city prefix -- the title-guess regex never matches at
+    # all (no whitespace precedes "council" at the start of the string),
+    # so the guess is already empty; this registry entry supplies the
+    # jurisdiction outright. Confirmed via marlboro-nj.gov's own
+    # "Marlboro TV" streaming page (Optimum 77 / FiOS 44).
+    "1VSAEpYHq96Q6serFVh1RRX5Y_XOzuSA": "Marlboro Township, NJ",
+    # Oradell, NJ: real titles are cryptic lowercase abbreviations ("mc
+    # 8 25 26f hd" = Mayor & Council, "zb"/"pb" for Zoning/Planning
+    # Board) with no city name and no recognizable body-suffix phrase --
+    # the title guess never matches. Confirmed via oradell.org's own
+    # "OPTV (Oradell Public Television)" page. Real 2785-segment
+    # transcript exists on the sample checked (tier1-worthy once
+    # ingested).
+    "1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU": "Oradell, NJ",
+    # Miami Beach, FL: real title "Board of Adjustment Meeting: October
+    # 11, 2024" has no city name anywhere -- the title guess correctly
+    # comes up empty (no prefix before "Board"). Confirmed via
+    # miamibeachfl.gov's own "MBTV" page (Commission/committee/Board of
+    # Adjustment coverage).
+    "0cCY8Wm5F5ODnSOeAaE0k0Lxsinvidcb": "Miami Beach, FL",
+    # Berkley, MI: real title "Planning Commission" is bare, no city
+    # name -- the title guess correctly comes up empty ("planning" is
+    # already a last-word stopword). Confirmed via berkleymi.gov's own
+    # WBRK-station page (City Council / Planning Commission coverage).
+    # A distinct org token from the earlier-known Oakland-County
+    # multi-city token Hejq7tDUseFZXc46e8pIxdl8NpmSEupd (a different,
+    # CMNtv-run tenant that also happens to cover Berkley) -- not a
+    # duplicate entry.
+    "EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O": "Berkley, MI",
+    # Truckee, CA: real title "Truckee Town Council, August 11, 2026"
+    # used to resolve "Truckee Town, CA" (an extra "Town" word) instead
+    # of "Truckee, CA" -- fixed by adding "Town Council" as its own
+    # _BODY_SUFFIX_RE alternative (parallel to the existing "City
+    # Council"/"Common Council" entries), so the guess is now the
+    # correct bare "Truckee", which already enriches to "Truckee, CA" via
+    # the Census table on its own. This registry entry is belt-and-
+    # suspenders, same reasoning as the Vail/Irondequoit entries above.
+    # Confirmed via townoftruckee.com's own Town Council page.
+    "EdhI2xtM1vAxHWMytVkqEFJ6vUupMLaS": "Truckee, CA",
+    # Savannah, GA: real title "Savannah City Council 2/8/24" guesses the
+    # correct bare "Savannah" but with no state -- a state fill, same
+    # shape as the Ashland/OR and Stoneham/MA entries above, not an
+    # override. Confirmed via savannahga.gov's own "Savannah Government
+    # Television (SGTV)" and Council-Meeting-Schedule pages. Real
+    # 2372-segment transcript on the sample checked (tier1-worthy once
+    # ingested).
+    "KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV": "Savannah, GA",
+    # Madison, NH: the specific sample checked ("A Brief History of
+    # Atkinson Park, Madison, NH") happened to be a non-meeting local-
+    # history video with no body-suffix phrase, so the title guess comes
+    # up empty; real dated meeting titles on the same channel ("Madison
+    # Board of Selectmen - August 4, 2026") guess correctly to bare
+    # "Madison" and are fixed the same way via the state-fill branch.
+    # This org's own org-logo alt text is empty, so only this registry
+    # entry closes the gap. Confirmed via madison-nh.org's own Board of
+    # Selectmen page and vdoe-nh.org (an independent, unrelated village
+    # district inside the town) both naming "Madison TV".
+    "YhjrGzjr53TBI-xqCQGATh6xTOfUjhiy": "Madison, NH",
+    # Tewksbury, MA: real title "Conservation Commission" is bare, no
+    # city prefix -- before this WO, this matched bare "Commission",
+    # capturing "Conservation" as the jurisdiction. Fixed by adding
+    # "conservation" to _guess_jurisdiction()'s last-word stopword list
+    # (same category as "zoning" above), so the guess now correctly comes
+    # up empty. Confirmed via tewksbury-ma.gov's own Telemedia Department
+    # and Select Board pages; this org's own org-logo alt text is empty,
+    # so only this registry entry closes the gap.
+    "eUhghhtERCG4gx5ywQy9U8mv66_FACrU": "Tewksbury, MA",
+    # Gardner, MA: real title "Planning Board" is bare, no city name --
+    # the title guess correctly comes up empty ("planning" is already a
+    # last-word stopword). Confirmed via gardner-ma.gov's own "Gardner
+    # Educational Television (GETV, Channel 8)" page (City Council /
+    # School Committee / Planning & Zoning coverage).
+    "f8r896ULmGZtrF3mCzOdRbTTP_Wnx2Q1": "Gardner, MA",
+    # Stoughton, WI: real title "City Council 7/28/26" is bare, no city
+    # name -- the title guess correctly comes up empty ("City" alone is
+    # already an explicit reject). Confirmed specifically as the
+    # Wisconsin city (not Stoughton, MA, which has no "City of"
+    # government) via cityofstoughton.com and wsto.tv, both describing
+    # WSTO's GOV channel as run by City of Stoughton IT/Media Services.
+    # Real 3068-segment transcript on the sample checked (tier1-worthy
+    # once ingested).
+    "fSUt1ChllWIwWn_g28Mu3g-avz7I94a_": "Stoughton, WI",
+    # Rome, GA (Rome-Floyd County joint government): REAL BUG, not just a
+    # missing value. Real title "Rome City Commission Meeting: August
+    # 24th, 2026" used to resolve to "Rome City, IN" -- enrich_
+    # jurisdiction_text() treating the captured name "Rome City" (from
+    # the title guess matching bare "Commission" and pulling in "City" as
+    # part of the name) as the real, small Indiana town of that literal
+    # name, a genuine wrong-STATE collision, same failure family as the
+    # existing Newmarket/Needham entries above. Fixed by adding "City
+    # Commission" as its own _BODY_SUFFIX_RE alternative (parallel to the
+    # existing "City Council" entry), so the guess is now the correct
+    # bare "Rome" -- this registry entry then corrects the state via the
+    # base-name-match branch (enrich_jurisdiction_text("Rome") stays bare
+    # with no state on its own, so the registry supplies "GA"). Confirmed
+    # via romefloyd.com/rome/commission and floydcountyga.gov -- this
+    # tenant covers both a Rome City Commission and a Floyd County Board
+    # of Commissioners under one org token; "Rome, GA" is used here since
+    # the sample checked was a City Commission meeting specifically.
+    "iOiDZeQipT8NNECGBd7HJNiDkuPUTlCw": "Rome, GA",
+    # Walpole, MA: real title "School Committee" is bare, no city name --
+    # the title guess correctly comes up empty ("school" is already a
+    # last-word stopword). Confirmed via walpole-ma.gov and
+    # walpole.k12.ma.us, both independently confirming Walpole Media
+    # broadcasts Select Board / School Committee meetings. Real
+    # 1432-segment transcript on the sample checked (tier1-worthy once
+    # ingested).
+    "uZcpghEaKQJJjrP2iCkoRSkyKbNZPvO-": "Walpole, MA",
+    # Long Hill Township, NJ: real title "LHT - Planing Board Mtg:
+    # 8-11-26" (a real source typo, "Planing" for "Planning") used to
+    # resolve the literal "LHT - Planing" as the jurisdiction -- the
+    # leading "LHT" acronym-dash prefix is the same unreliable shape as
+    # the existing bare "WB"/"MCS" initialism reject just above, just
+    # with a dash-separated continuation instead of standing alone.
+    # Fixed by declining any name starting with a short (2-5 letter)
+    # all-caps acronym followed by " - " in _guess_jurisdiction(), so the
+    # guess now correctly comes up empty. Confirmed via longhillnj.gov's
+    # own Planning Board and Zoning Board of Adjustment pages, and this
+    # channel's own real "Long Hill Township Memorial Day Parade" video
+    # title spelling the name out in full.
+    "ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk": "Long Hill Township, NJ",
+    # Wilbraham, MA: real title "Select Board - 08-17-2026" is bare, no
+    # city name -- the title guess correctly comes up empty ("select" is
+    # already a last-word stopword). Confirmed via wilbraham-ma.gov's own
+    # Broadband Advisory Committee and Select Board pages.
+    "wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc": "Wilbraham, MA",
+    # Pipestone, MN: real title "Pipestone City Council Meeting 7.6"
+    # guesses the correct bare "Pipestone" but with no state -- a state
+    # fill, same shape as the Ashland/OR and Savannah/GA entries above.
+    # Confirmed via progressivepipestone.com's own City Council page and
+    # independent YouTube uploads of the same real meetings. Caution:
+    # this tenant's catalog is dominated by unrelated school sports/
+    # on-demand content (RTR/Edgerton/SWC high schools) -- use a real
+    # dated council-meeting media id for any future ingest, not this
+    # token's first/generic sample.
+    "qDzDQ8k2993lxm2IqCNZjdoqxagPQUa_": "Pipestone, MN",
 }
 
 
@@ -606,7 +782,26 @@ class TelvueAssetFinder(AssetFinder):
         # is a meeting-type modifier ("Regular Meeting", "Regular Session"),
         # never a real place name, same governance-generic shape as the
         # three words already here.
-        if last_word in {"select", "planning", "school", "regular"}:
+        # "zoning"/"conservation" added WO-74 (2026-08-30, CDX batch-2
+        # verification): Orange, CT's real "Zoning Board of Appeals -
+        # Monday, November 3, 2025" and Tewksbury, MA's real
+        # "Conservation Commission" are both BARE (no city prefix at
+        # all), so the leftmost-match search matches "Board"/"Commission"
+        # with "Zoning"/"Conservation" as group(1) -- neither is a real
+        # jurisdiction name, same governance-generic shape as the four
+        # words already here. Yes, this can also reject a real prefixed
+        # name in an unconfirmed case ("Wayland Conservation Commission"
+        # -> last word "conservation" -> rejected even though "Wayland"
+        # was recoverable) -- same accepted tradeoff as "select"/
+        # "planning"/"school" above, not a new one.
+        if last_word in {
+            "select",
+            "planning",
+            "school",
+            "regular",
+            "zoning",
+            "conservation",
+        }:
             return None
         # Real bug, confirmed live 2026-08-29 auditing archived pages
         # missing a jurisdiction: two real, independent titles ("WB Board
@@ -622,6 +817,17 @@ class TelvueAssetFinder(AssetFinder):
         # keyed on shape (short + all-caps) rather than a specific word
         # list, since an initialism could be anything.
         if len(name) <= 3 and name.isupper():
+            return None
+        # WO-74 (2026-08-30): Long Hill Township, NJ's real title "LHT -
+        # Planing Board Mtg: 8-11-26" (a real source typo, "Planing" for
+        # "Planning") matches this regex with name="LHT - Planing" -- the
+        # leading "LHT" acronym is the same shape as the bare "WB"/"MCS"
+        # initialisms just above, just with a dash-separated continuation
+        # instead of standing alone, so the len<=3-and-upper check above
+        # doesn't catch it. No real US/CA jurisdiction name is written as
+        # a short all-caps acronym followed by " - ", so this declines on
+        # shape, same reasoning as the bare-initialism check.
+        if re.match(r"^[A-Z]{2,5}\s*-\s", name):
             return None
         return name
 

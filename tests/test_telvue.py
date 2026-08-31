@@ -362,6 +362,357 @@ async def test_resolve_uses_known_org_token_when_org_logo_alt_text_declines():
     assert result.jurisdiction == "Auburn Hills, MI"
 
 
+# WO-74, 2026-08-30: 16 real org tokens from a second CDX
+# `collapse=urlkey:64` enumeration pass (see
+# ~/Documents/rtr-business/research/cc_scan_data/telvue_batch2_verified.json
+# and _methodology.md), each independently second-source-confirmed and
+# resolve()-checked against the real, unmodified adapter before this WO.
+# Every title/date/org-token/media-id below is copied verbatim from that
+# research file's own `resolve_check`/`sample_media_url` fields, not
+# invented -- these are synthetic HTML pages (per this repo's convention,
+# exercising one already-real-verified logic branch), built from a real
+# confirmed shape, not fabricated data.
+
+
+async def test_resolve_falls_back_to_known_org_token_for_orange_ct():
+    # Real title "Zoning Board of Appeals - Monday, November 3, 2025" has
+    # no city prefix -- before WO-74 this matched bare "Board", capturing
+    # "Zoning" as the jurisdiction. Fixed by adding "zoning" to
+    # _guess_jurisdiction()'s last-word stopword list.
+    url = "https://videoplayer.telvue.com/player/BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT/media/993225"
+    html = (
+        "<html><head><title>Zoning Board of Appeals - Monday, November 3, "
+        "2025</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Zoning Board of Appeals - Monday, November 3, 2025", '
+        '"file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Orange, CT"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_marlboro_township():
+    # Real title "council 8-20-26 1" is bare, lowercase, no city prefix --
+    # the title guess never matches at all.
+    url = "https://videoplayer.telvue.com/player/1VSAEpYHq96Q6serFVh1RRX5Y_XOzuSA/media/1042012"
+    html = (
+        "<html><head><title>council 8-20-26 1</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "council 8-20-26 1", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Marlboro Township, NJ"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_oradell():
+    # Real title "mc 8 25 26f hd" is a cryptic lowercase abbreviation
+    # ("mc" = Mayor & Council) with no city name.
+    url = "https://videoplayer.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/media/1042640"
+    html = (
+        "<html><head><title>mc 8 25 26f hd</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "mc 8 25 26f hd", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Oradell, NJ"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_miami_beach():
+    # Real title "Board of Adjustment Meeting: October 11, 2024" has no
+    # city name anywhere.
+    url = "https://videoplayer.telvue.com/player/0cCY8Wm5F5ODnSOeAaE0k0Lxsinvidcb/media/911387"
+    html = (
+        "<html><head><title>Board of Adjustment Meeting: October 11, "
+        "2024</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Board of Adjustment Meeting: October 11, 2024", '
+        '"file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Miami Beach, FL"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_berkley_mi():
+    # Real title "Planning Commission" is bare, no city name. Distinct
+    # org token from the earlier-known Oakland-County multi-city token
+    # Hejq7tDUseFZXc46e8pIxdl8NpmSEupd -- a different (CMNtv) tenant that
+    # also happens to cover Berkley.
+    url = "https://videoplayer.telvue.com/player/EJtfn8ouxWiUp9uEPl2tc6q8wbMfpV1O/media/1042603"
+    html = (
+        "<html><head><title>Planning Commission</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Planning Commission", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Berkley, MI"
+
+
+async def test_resolve_fixes_truckee_extra_town_word():
+    # Real title "Truckee Town Council, August 11, 2026" used to resolve
+    # "Truckee Town, CA" (extra "Town" word) instead of "Truckee, CA" --
+    # fixed by adding "Town Council" as its own _BODY_SUFFIX_RE
+    # alternative (parallel to "City Council"), so the guess is now bare
+    # "Truckee", which already enriches correctly via the Census table.
+    url = "https://videoplayer.telvue.com/player/EdhI2xtM1vAxHWMytVkqEFJ6vUupMLaS/media/1040083"
+    html = (
+        "<html><head><title>Truckee Town Council, August 11, 2026"
+        "</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Truckee Town Council, August 11, 2026", "file": null, '
+        '"tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Truckee, CA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_savannah():
+    # Real title "Savannah City Council 2/8/24" guesses the correct bare
+    # "Savannah" but with no state -- a state fill, same shape as the
+    # Ashland/OR entry above.
+    url = "https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/media/861081"
+    html = (
+        "<html><head><title>Savannah City Council 2/8/24</title></head>"
+        "<body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Savannah City Council 2/8/24", "file": null, '
+        '"tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Savannah, GA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_madison_nh():
+    # The real sample checked ("A Brief History of Atkinson Park,
+    # Madison, NH") is a non-meeting local-history video with no
+    # body-suffix phrase, so the title guess comes up empty even though
+    # the title text itself names the town -- _guess_jurisdiction() only
+    # parses body-suffix shapes, not arbitrary place mentions. This org's
+    # own org-logo alt text is empty, so only the registry entry closes
+    # the gap.
+    url = "https://videoplayer.telvue.com/player/YhjrGzjr53TBI-xqCQGATh6xTOfUjhiy/media/1041526"
+    html = (
+        "<html><head><title>A Brief History of Atkinson Park, Madison, "
+        "NH</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "A Brief History of Atkinson Park, Madison, NH", '
+        '"file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Madison, NH"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_tewksbury():
+    # Real title "Conservation Commission" is bare, no city prefix --
+    # before WO-74 this matched bare "Commission", capturing
+    # "Conservation" as the jurisdiction. Fixed by adding "conservation"
+    # to _guess_jurisdiction()'s last-word stopword list.
+    url = "https://videoplayer.telvue.com/player/eUhghhtERCG4gx5ywQy9U8mv66_FACrU/media/1040356"
+    html = (
+        "<html><head><title>Conservation Commission</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Conservation Commission", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Tewksbury, MA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_gardner_ma():
+    # Real title "Planning Board" is bare, no city name.
+    url = "https://videoplayer.telvue.com/player/f8r896ULmGZtrF3mCzOdRbTTP_Wnx2Q1/media/1039988"
+    html = (
+        "<html><head><title>Planning Board</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Planning Board", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Gardner, MA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_stoughton_wi():
+    # Real title "City Council 7/28/26" is bare, no city name. Confirmed
+    # specifically as the Wisconsin city (not Stoughton, MA, which has no
+    # "City of" government) via cityofstoughton.com and wsto.tv.
+    url = "https://videoplayer.telvue.com/player/fSUt1ChllWIwWn_g28Mu3g-avz7I94a_/media/1039958"
+    html = (
+        "<html><head><title>City Council 7/28/26</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "City Council 7/28/26", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Stoughton, WI"
+
+
+async def test_resolve_fixes_rome_ga_wrong_state_collision():
+    # REAL BUG, not just a missing value: real title "Rome City
+    # Commission Meeting: August 24th, 2026" used to resolve to "Rome
+    # City, IN" -- enrich_jurisdiction_text() treating the captured name
+    # "Rome City" (title guess matching bare "Commission" and pulling in
+    # "City" as part of the name) as the real, small Indiana town of that
+    # literal name. This asserts the FIXED value, not just a
+    # missing-then-present check, since the old behavior was a confident
+    # WRONG answer. Fixed by adding "City Commission" as its own
+    # _BODY_SUFFIX_RE alternative (parallel to "City Council"), so the
+    # guess is now bare "Rome" -- the registry entry then supplies the
+    # state via the base-name-match branch. Confirmed via
+    # romefloyd.com/rome/commission and floydcountyga.gov.
+    url = "https://videoplayer.telvue.com/player/iOiDZeQipT8NNECGBd7HJNiDkuPUTlCw/media/1042473"
+    html = (
+        "<html><head><title>Rome City Commission Meeting: August 24th, "
+        "2026</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Rome City Commission Meeting: August 24th, 2026", '
+        '"file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    # The old, wrong behavior -- guarded explicitly so a regression in
+    # either the regex fix or the registry entry is caught, not just a
+    # "not None" check.
+    assert result.jurisdiction != "Rome City, IN"
+    assert result.jurisdiction == "Rome, GA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_walpole_ma():
+    # Real title "School Committee" is bare, no city name.
+    url = "https://videoplayer.telvue.com/player/uZcpghEaKQJJjrP2iCkoRSkyKbNZPvO-/media/1013923"
+    html = (
+        "<html><head><title>School Committee</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "School Committee", "file": null, "tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Walpole, MA"
+
+
+async def test_resolve_fixes_long_hill_township_acronym_prefix():
+    # Real title "LHT - Planing Board Mtg: 8-11-26" (a real source typo,
+    # "Planing" for "Planning") used to resolve the literal "LHT -
+    # Planing" as the jurisdiction. Fixed by declining any name starting
+    # with a short (2-5 letter) all-caps acronym followed by " - " in
+    # _guess_jurisdiction(), same shape as the existing bare "WB"/"MCS"
+    # initialism reject.
+    url = "https://videoplayer.telvue.com/player/ydrTBZKBSaGNTnGcCEGmbeMYupgFhhCk/media/1040015"
+    html = (
+        "<html><head><title>LHT - Planing Board Mtg: 8-11-26"
+        "</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "LHT - Planing Board Mtg: 8-11-26", "file": null, '
+        '"tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction != "LHT - Planing"
+    assert result.jurisdiction == "Long Hill Township, NJ"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_wilbraham_ma():
+    # Real title "Select Board - 08-17-2026" is bare, no city name.
+    url = "https://videoplayer.telvue.com/player/wCwBAXHtGCN-aqYz22Xuje-5ELUZawSc/media/1040989"
+    html = (
+        "<html><head><title>Select Board - 08-17-2026</title></head>"
+        "<body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Select Board - 08-17-2026", "file": null, '
+        '"tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Wilbraham, MA"
+
+
+async def test_resolve_falls_back_to_known_org_token_for_pipestone_mn():
+    # Real title "Pipestone City Council Meeting 7.6" guesses the correct
+    # bare "Pipestone" but with no state -- a state fill, same shape as
+    # the Ashland/OR and Savannah/GA entries above.
+    url = "https://videoplayer.telvue.com/player/qDzDQ8k2993lxm2IqCNZjdoqxagPQUa_/media/1035486"
+    html = (
+        "<html><head><title>Pipestone City Council Meeting 7.6"
+        "</title></head><body>"
+        "<script>Player.setupData['playlist'] = ["
+        '{"title": "Pipestone City Council Meeting 7.6", "file": null, '
+        '"tracks": []}'
+        "];</script></body></html>"
+    )
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await TelvueAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Pipestone, MN"
+
+
 async def test_split_title_date_handles_missing_date():
     title, date = TelvueAssetFinder._split_title_date("Untitled Meeting")
     assert title == "Untitled Meeting"
@@ -750,3 +1101,66 @@ def test_guess_jurisdiction_rejects_short_allcaps_initialisms():
     # guard is keyed on length + case, not a blanket rejection of any
     # short-looking prefix.
     assert TelvueAssetFinder._guess_jurisdiction("Delta Board Meeting") == "Delta"
+
+
+def test_guess_jurisdiction_rejects_bare_zoning_and_conservation():
+    # WO-74, 2026-08-30: real bare titles from the CDX batch-2 pass --
+    # Orange, CT's "Zoning Board of Appeals - Monday, November 3, 2025"
+    # and Tewksbury, MA's "Conservation Commission" -- both have no city
+    # prefix, so the leftmost-match search used to capture the modifier
+    # word ("Zoning"/"Conservation") as the jurisdiction. Same
+    # governance-generic shape as the existing select/planning/school/
+    # regular stopwords.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "Zoning Board of Appeals - Monday, November 3, 2025"
+        )
+        is None
+    )
+    assert TelvueAssetFinder._guess_jurisdiction("Conservation Commission") is None
+
+
+def test_guess_jurisdiction_handles_city_commission():
+    # WO-74, 2026-08-30: same shape as the existing "City Council" fix --
+    # Rome, GA's real "Rome City Commission Meeting: August 24th, 2026"
+    # used to match bare "Commission", capturing "Rome City" (which
+    # enrich_jurisdiction_text() then resolved to the wrong "Rome City,
+    # IN"). "City Commission" as its own _BODY_SUFFIX_RE alternative
+    # correctly captures just "Rome".
+    assert (
+        TelvueAssetFinder._guess_jurisdiction(
+            "Rome City Commission Meeting: August 24th, 2026"
+        )
+        == "Rome"
+    )
+
+
+def test_guess_jurisdiction_handles_town_council():
+    # WO-74, 2026-08-30: same shape as City Commission above -- Truckee,
+    # CA's real "Truckee Town Council, August 11, 2026" used to match
+    # bare "Council", capturing "Truckee Town" instead of "Truckee".
+    # "Town Council" as its own _BODY_SUFFIX_RE alternative fixes it.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Truckee Town Council, August 11, 2026")
+        == "Truckee"
+    )
+
+
+def test_guess_jurisdiction_rejects_acronym_dash_prefix():
+    # WO-74, 2026-08-30: Long Hill Township, NJ's real "LHT - Planing
+    # Board Mtg: 8-11-26" (a real source typo, "Planing" for "Planning")
+    # used to store the literal "LHT - Planing" as the jurisdiction. The
+    # leading short all-caps acronym followed by " - " is the same
+    # unreliable shape as the existing bare "WB"/"MCS" initialism reject,
+    # just with a dash-separated continuation.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("LHT - Planing Board Mtg: 8-11-26")
+        is None
+    )
+    # A real, longer prefix that happens to contain a dash must still
+    # pass through -- this guard is keyed on a SHORT leading acronym
+    # specifically, not any name containing a dash.
+    assert (
+        TelvueAssetFinder._guess_jurisdiction("Winston-Salem Board Meeting")
+        == "Winston-Salem"
+    )
