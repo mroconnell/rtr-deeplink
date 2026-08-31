@@ -9,6 +9,7 @@ import aiohttp
 
 from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
+from ..utils import jurisdiction_enrich
 from ..utils.vtt_parser import (
     decode_vtt_bytes,
     dedupe_rollup_cues,
@@ -88,21 +89,40 @@ class ViebitAssetFinder(AssetFinder):
     page). Rather than leave it blank or let a Legistar-delegated resolve
     fall back to the calendar row's legislative-body name ("New York City
     Council" -- a real body name, not the city+state format other
-    platforms use, e.g. Swagit's `f"{city}, {state}"`), hardcode
-    `_JURISDICTION` below: Viebit is confirmed used only by NYC Council
-    (see ViebitAssetFinder's own class name/history), so there's no other
-    real jurisdiction this could be yet. Matches this repo's "narrow fix
-    until real examples exist" convention -- revisit if a second,
-    non-NYC Viebit sample ever turns up. `date` comes from `dateCreated`,
-    a Unix upload timestamp like YouTube's `upload_date` -- same real
-    caveat: it's when the file was processed, not necessarily the exact
-    meeting date.
+    platforms use, e.g. Swagit's `f"{city}, {state}"`), `councilnyc.
+    viebit.com` specifically resolves to a hardcoded `_NYC_JURISDICTION`.
+
+    **WO-71 (2026-08-30) fixed a real mis-tagging bug**: this used to be a
+    single class-wide `_JURISDICTION` constant applied unconditionally to
+    every Viebit URL, on the assumption (stated here until this fix) that
+    Viebit was an NYC Council-only platform. That assumption was wrong --
+    Viebit is a multi-tenant product like Cablecast/CivicClerk/etc, not a
+    single-customer one, and BACKLOG.md's "A real, previously undocumented
+    jurisdiction" entry found a real archived page whose actual source was
+    `ringwoodtv.viebit.com` (Ringwood, NJ -- confirmed live via
+    ringwoodnj.net linking that exact channel as "Ringwood TV") stored as
+    "New York City, NY". `resolve()` now branches on the fetched URL's own
+    netloc (after any redirect chain, same as `_build_embed_url()` already
+    does): only `councilnyc.viebit.com` -- the one Viebit tenant actually
+    confirmed to be NYC Council -- gets the hardcoded jurisdiction; any
+    other netloc is looked up in `jurisdiction_enrich`'s `_KNOWN_DOMAINS`
+    registry (the same confirmed-domain pattern `cablecast.py`'s
+    CablecastPublicSite path already uses to disambiguate its own
+    similarly-shaped multi-tenant portals), and a netloc with no registry
+    entry gets `jurisdiction=None` rather than a guess -- matches this
+    repo's "don't claim a data path works without a positive example"
+    convention. `date` comes from `dateCreated`, a Unix upload timestamp
+    like YouTube's `upload_date` -- same real caveat: it's when the file
+    was processed, not necessarily the exact meeting date.
     """
 
     platform_name = "viebit"
-    # See the jurisdiction paragraph above -- confirmed single-jurisdiction
-    # platform, not a generalizable "extract the city" rule.
-    _JURISDICTION = "New York City, NY"
+    # The one Viebit tenant actually confirmed to be NYC Council -- see the
+    # WO-71 paragraph above. Any other netloc is resolved via
+    # jurisdiction_enrich's domain registry instead (see `_resolve_
+    # jurisdiction()` below), never this constant.
+    _NYC_NETLOC = "councilnyc.viebit.com"
+    _NYC_JURISDICTION = "New York City, NY"
 
     def __init__(self):
         self.headers = {
@@ -120,18 +140,22 @@ class ViebitAssetFinder(AssetFinder):
                 response.raise_for_status()
                 html = await response.text()
 
+            fetched_url = str(response.url)
+            jurisdiction = self._resolve_jurisdiction(fetched_url)
+
             config = self._extract_page_config(html)
             if not config:
                 return ResolvedMeeting(
                     platform=self.platform_name,
                     source_url=url,
+                    jurisdiction=jurisdiction,
                     video_warnings=[
                         "Could not find Viebit's video configuration on this page."
                     ],
                 )
 
             video = config.get("video") or {}
-            video_url = self._build_embed_url(str(response.url), video.get("id"))
+            video_url = self._build_embed_url(fetched_url, video.get("id"))
             title = video.get("title")
             date = self._format_date(video.get("dateCreated"))
 
@@ -169,7 +193,7 @@ class ViebitAssetFinder(AssetFinder):
             platform=self.platform_name,
             source_url=url,
             title=title,
-            jurisdiction=self._JURISDICTION,
+            jurisdiction=jurisdiction,
             date=date,
             video_url=video_url,
             video_format="viebit" if video_url else None,
@@ -177,6 +201,21 @@ class ViebitAssetFinder(AssetFinder):
             transcript_language=transcript_language,
             transcript_warnings=transcript_warnings,
         )
+
+    @staticmethod
+    def _resolve_jurisdiction(fetched_url: str) -> Optional[str]:
+        """See the WO-71 paragraph in this class's own docstring. Reads the
+        netloc off the FETCHED url (post-redirect -- a Legistar delegation's
+        redirect chain may land the request on a different host than the
+        one originally pasted, same reasoning `_build_embed_url()` already
+        documents), not the original `url` argument to `resolve()`."""
+        netloc = urlparse(fetched_url).netloc.lower()
+        if netloc == ViebitAssetFinder._NYC_NETLOC:
+            return ViebitAssetFinder._NYC_JURISDICTION
+        known = jurisdiction_enrich.lookup_by_domain(netloc)
+        if known:
+            return f"{known.name}, {known.state}"
+        return None
 
     @staticmethod
     def _extract_page_config(html: str) -> Optional[dict]:
