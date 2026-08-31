@@ -796,6 +796,26 @@ function wireSourceDisclaimerPointer() {
   });
 }
 
+function wireVersionAnalytics() {
+  // Both events are load-time observations, not interactions -- the
+  // change event itself fires inline in the picker's own onchange
+  // (meeting_page.html), since navigation must never depend on this
+  // file having loaded. A page with only one version never renders
+  // #versionSelect at all, so this naturally covers that population too.
+  const select = document.getElementById('versionSelect');
+  if (!select) return;
+  const labels = Array.from(select.options).map((o) => o.textContent);
+  const labelAmbiguous = new Set(labels).size < labels.length;
+  trackEvent('transcript_version_available', {
+    count: Number(select.dataset.versionCount || '0'),
+    active_source: select.dataset.activeSource || '',
+    label_ambiguous: labelAmbiguous,
+  });
+  trackEvent('transcript_version_viewed', {
+    is_default: select.dataset.isDefault === 'true',
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   segments = Array.from(document.querySelectorAll('.transcript-section .transcript-segment[data-start]')).map(
     (el) => ({ start: Number(el.dataset.start || '0') })
@@ -808,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wireTranscribeInlineTriggers();
   wireSourceDisclaimerPointer();
   wireSaveMeetingButton();
+  wireVersionAnalytics();
   wireRefreshPageButton();
 
   const wrapper = document.getElementById('videoWrapper');

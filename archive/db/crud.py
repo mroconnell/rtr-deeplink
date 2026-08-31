@@ -636,12 +636,19 @@ async def _find_or_create_page(
         page.platform = payload.get("platform") or page.platform
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
-        page.jurisdiction = jurisdiction or page.jurisdiction
+        # A manual override (POST /internal/jurisdiction/override) is
+        # deliberately never overwritten by a passive re-ingest -- a
+        # human already looked at this specific row, and an ordinary
+        # re-resolve's recomputed jurisdiction is exactly the guess the
+        # override was written to correct. Only another explicit
+        # override call can move it off this tier.
+        if page.jurisdiction_confidence != "manual_override":
+            page.jurisdiction = jurisdiction or page.jurisdiction
         # meeting_body/jurisdiction_confidence only refresh alongside a
         # real new jurisdiction value -- same truthy-gated pattern as
         # jurisdiction itself just above, so a later resolve with no
         # jurisdiction at all can't silently wipe a previously-split body.
-        if jurisdiction:
+        if jurisdiction and page.jurisdiction_confidence != "manual_override":
             page.meeting_body = jx_result.meeting_body
             page.jurisdiction_confidence = jx_result.confidence
         # Truthy-gated like every other refresh field above: an adapter
@@ -910,12 +917,12 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     agenda_items, transcript_language, transcript_warnings, best_effort.
     `source` is an
     optional extra key (not part of ResolvedMeeting itself -- Archive-only)
-    defaulting to "scraped" when absent, same as every existing caller
+    defaulting to "sourced" when absent, same as every existing caller
     (the resolver's own push, bulk_ingest.py, fetch_youtube_transcripts.py
     all omit it). scripts/transcribe_backlog_locally.py is the one real
     caller that sets it to "transcribed" explicitly -- without this,
     locally-Whisper-transcribed content pushed through this same endpoint
-    would silently get labeled "scraped" (a real government caption),
+    would silently get labeled "sourced" (a real government caption),
     losing the meeting_page.html disclaimer and other source=="transcribed"
     -gated behavior real self-transcribed content already gets when the
     worker writes it directly (see report_chunk_result() below) -- a
@@ -932,7 +939,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
     """
     segments = payload.get("segments") or []
     agenda_items = payload.get("agenda_items") or []
-    source = payload.get("source") or "scraped"
+    source = payload.get("source") or "sourced"
 
     # Systemic backstop for a real, confirmed-twice failure shape (see
     # suspicious_source.py's own module docstring): a vendor's own
@@ -995,7 +1002,7 @@ async def ingest_resolution(payload: dict[str, Any], input_url_normalized: str) 
             # Dedup is scoped to the same `source` value too -- otherwise
             # a "transcribed" push could never dedup against an earlier
             # identical "transcribed" push (it would only ever check
-            # against "scraped" rows), creating a fresh duplicate version
+            # against "sourced" rows), creating a fresh duplicate version
             # every time the same meeting gets re-transcribed with the
             # same result.
             duplicate = (
@@ -2119,11 +2126,11 @@ async def list_hallucination_candidate_transcript_versions(
     row was ever re-evaluated). See BACKLOG.md's phase-cancellation write-up
     -- this was flagged there as open/not yet built.
 
-    source=="transcribed" (not "scraped") covers both real populations the
+    source=="transcribed" (not "sourced") covers both real populations the
     brief calls out: the cloud worker's report_chunk_result() and
     scripts/transcribe_backlog_locally.py's local-Mac runs both set this
     exact value (see ingest_resolution()'s own docstring on why the script
-    sets it explicitly) -- a plain "scraped" caption was never run through
+    sets it explicitly) -- a plain "sourced" caption was never run through
     Whisper at all, so it isn't a candidate for a Whisper-hallucination
     symptom in the first place. Left-joins TranscriptionJob on
     transcript_version_id to label which real path produced each version:
@@ -2707,6 +2714,127 @@ async def mark_low_trust_pages_reviewed(
             "would_update": len(changed),
             "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
             "already_reviewed": sorted(already, key=lambda e: e["meeting_page_id"]),
+            "missing_ids": sorted(ids - found),
+        }
+
+
+# The one jurisdiction_confidence tier finalize_jurisdiction() itself
+# never produces -- see MeetingPage.jurisdiction_confidence's own
+# comment for the full ladder.
+_MANUAL_OVERRIDE_CONFIDENCE = "manual_override"
+_JURISDICTION_OVERRIDE_MAX_IDS = 1000
+
+
+async def override_jurisdiction(
+    *,
+    ids: Set[int],
+    jurisdiction: str,
+    dry_run: bool = True,
+) -> dict:
+    """Write counterpart to no existing GET -- the one place in this repo
+    that writes a caller-supplied jurisdiction string directly, rather
+    than recomputing one via finalize_jurisdiction(). Exists for the
+    cases finalize_jurisdiction() can't reach on its own: several
+    already-valid strings that should all read as one canonical form
+    (Santa Clara's "County of Santa Clara, CA" / "The County of Santa
+    Clara, CA" / "Santa Clara County, CA" / "County of Santa Clara
+    Office" -- finalize_jurisdiction() makes zero changes to any of
+    them, since each independently validates already), and the
+    low-trust queue's "review -> repair" gap (BACKLOG.md's Trust &
+    safety section, "reviewing a row doesn't repair it").
+
+    Same id-driven, dry-run-first, idempotent shape as
+    mark_low_trust_pages_reviewed() above (no "override everything"
+    mode -- a caller-supplied string applied blindly to an unbounded set
+    is exactly the mistake this endpoint's narrow scope exists to
+    prevent). `jurisdiction` is REQUIRED and applied identically to
+    every id in the batch -- the real use case (several rows needing the
+    same canonical form) is a batch of one string, not N different ones;
+    call it once per distinct string.
+
+    Writes jurisdiction_confidence="manual_override" alongside the
+    string. _find_or_create_page()'s re-ingest path checks for exactly
+    this tier and skips its own truthy-gated jurisdiction overwrite when
+    it's set, so a manual fix survives the next passive re-check instead
+    of drifting back on the next re-resolve. Also stamps reviewed_at
+    when that column is available (degrades gracefully otherwise, same
+    _reviewed_at_available() gate as mark_low_trust_pages_reviewed()
+    above) -- an explicit override is definitionally a human having
+    looked at the row, so it should also drop out of the low-trust
+    queue's unreviewed view.
+
+    Idempotent: an id already carrying this exact jurisdiction string
+    AND jurisdiction_confidence="manual_override" is reported under
+    already_overridden and left untouched; anything else (a different
+    string, or the same string not yet tagged manual_override) is
+    reported under changed with its before/after values.
+    """
+    ids = {int(i) for i in ids}
+    if not ids:
+        raise ValueError("ids is required and must contain at least one id")
+    if len(ids) > _JURISDICTION_OVERRIDE_MAX_IDS:
+        raise ValueError(f"at most {_JURISDICTION_OVERRIDE_MAX_IDS} ids per call")
+    jurisdiction = jurisdiction.strip()
+    if not jurisdiction:
+        raise ValueError("jurisdiction is required and must be non-blank")
+
+    async with async_session() as session:
+        reviewed_at_available = await _reviewed_at_available(session)
+        select_cols = [
+            MeetingPage.id,
+            MeetingPage.slug,
+            MeetingPage.jurisdiction,
+            MeetingPage.jurisdiction_confidence,
+        ]
+        rows = (
+            await session.execute(select(*select_cols).where(MeetingPage.id.in_(ids)))
+        ).all()
+
+        found = {row[0] for row in rows}
+        changed = []
+        already = []
+        for page_id, slug, current_jurisdiction, current_confidence in rows:
+            entry = {
+                "meeting_page_id": page_id,
+                "slug": slug,
+                "jurisdiction_before": current_jurisdiction,
+                "jurisdiction_confidence_before": current_confidence,
+            }
+            if (
+                current_jurisdiction == jurisdiction
+                and current_confidence == _MANUAL_OVERRIDE_CONFIDENCE
+            ):
+                already.append(entry)
+            else:
+                entry["jurisdiction_after"] = jurisdiction
+                entry["jurisdiction_confidence_after"] = _MANUAL_OVERRIDE_CONFIDENCE
+                changed.append(entry)
+
+        if changed and not dry_run:
+            values = {
+                "jurisdiction": jurisdiction,
+                "jurisdiction_confidence": _MANUAL_OVERRIDE_CONFIDENCE,
+            }
+            if reviewed_at_available:
+                values["reviewed_at"] = datetime.now(timezone.utc)
+            await session.execute(
+                update(MeetingPage)
+                .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
+                .values(**values)
+            )
+            await session.commit()
+
+        return {
+            "dry_run": dry_run,
+            "jurisdiction": jurisdiction,
+            "reviewed_at_stamped": bool(
+                reviewed_at_available and changed and not dry_run
+            ),
+            "requested": sorted(ids),
+            "updated": len(changed) if not dry_run else 0,
+            "would_update": len(changed),
+            "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
+            "already_overridden": sorted(already, key=lambda e: e["meeting_page_id"]),
             "missing_ids": sorted(ids - found),
         }
 
@@ -4992,12 +5120,12 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
     TranscriptVersion.segments, the heavy JSON column -- see
     MeetingPage.search_corpus's own docstring on why that matters at this
     table's real production scale) via an EXISTS subquery for "a real
-    source-provided (source='scraped') transcript exists on ANY version of
+    source-provided (source='sourced') transcript exists on ANY version of
     this page" (not just the default one -- a page's default can be
     promoted to a later 'transcribed' version via
     manually_promote_transcript_version() without deleting the original
-    scraped one, so checking only the default would wrongly say "no" for
-    a page that still has a real scraped transcript sitting non-default),
+    sourced one, so checking only the default would wrongly say "no" for
+    a page that still has a real sourced transcript sitting non-default),
     plus a plain outerjoin on the default version for the outcome-bucket
     fields (content_hash/transcript_warnings/language), which are always
     about "what does /m/{slug} show by default right now."
@@ -5007,18 +5135,18 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
     # below already outerjoins TranscriptVersion (the default version), so
     # without the alias SQLAlchemy auto-correlates that join away too,
     # leaving this subquery with no FROM at all.
-    any_scraped_version = aliased(TranscriptVersion)
-    has_scraped_transcript = (
-        select(any_scraped_version.id)
+    any_sourced_version = aliased(TranscriptVersion)
+    has_sourced_transcript = (
+        select(any_sourced_version.id)
         .where(
-            any_scraped_version.meeting_page_id == MeetingPage.id,
-            # Not `== "scraped"`: any non-AI source counts as a real
+            any_sourced_version.meeting_page_id == MeetingPage.id,
+            # Not `== "sourced"`: any non-AI source counts as a real
             # source-provided transcript, so a page whose only version was
             # re-labeled (e.g. "deduped", 2026-08-22) keeps counting here.
             # Same allowlist-to-fallback fix as meeting_page.html's
             # disclaimer branch.
-            any_scraped_version.source != "transcribed",
-            any_scraped_version.content_hash != _EMPTY_CONTENT_HASH,
+            any_sourced_version.source != "transcribed",
+            any_sourced_version.content_hash != _EMPTY_CONTENT_HASH,
         )
         .correlate(MeetingPage)
         .exists()
@@ -5035,7 +5163,7 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
                 MeetingPage.video_format,
                 MeetingPage.agenda_items,
                 MeetingPage.updated_at,
-                has_scraped_transcript.label("has_scraped_transcript"),
+                has_sourced_transcript.label("has_sourced_transcript"),
                 TranscriptVersion.content_hash,
                 TranscriptVersion.transcript_warnings,
                 TranscriptVersion.language,
@@ -5062,7 +5190,7 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
         video_format,
         agenda_items,
         updated_at,
-        has_scraped,
+        has_sourced,
         content_hash,
         transcript_warnings,
         language,
@@ -5083,7 +5211,7 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
                 "title": title,
                 "video_embeds": video_url is not None,
                 "agenda_embedded": bool(agenda_items),
-                "instant_transcript": bool(has_scraped),
+                "instant_transcript": bool(has_sourced),
                 # Mirrors app/main.py's own _unreadable_media_message()
                 # reasoning: a video_format=="youtube" result is
                 # structurally unprobeable by ffprobe (an iframe-embed
