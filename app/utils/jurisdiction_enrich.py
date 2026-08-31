@@ -884,6 +884,39 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "onbaseep22.mesacounty.us": KnownJurisdiction("Mesa", "county", "CO"),
     "tampagov.hylandcloud.com": KnownJurisdiction("Tampa", "city", "FL"),
     "agendaonline.mymanatee.org": KnownJurisdiction("Manatee", "county", "FL"),
+    # Two of the 6 real CivicClerk residuals from the 2026-08-29 sweep
+    # (BACKLOG.md's "CivicClerk residuals after the 2026-08-29 sweep"
+    # entry) needing individual research rather than a general tier, the
+    # same "Hyland JCSD/WRD" precedent as the two special districts
+    # above -- both confirmed live 2026-08-30 via a real browser fetch of
+    # the tenant's own CivicClerk portal (a client-rendered SPA -- see
+    # civicclerk.py's own module docstring -- so a plain HTTP fetch alone
+    # shows no jurisdiction text; the rendered event list does).
+    # riversidesheriff.portal.civicclerk.com's real event titles ("We Are
+    # RSO", "Critical Incident Videos" under a "Sheriff's Department
+    # General" category) confirm this is the Riverside County Sheriff's
+    # Department (RSO) -- riversidesheriff.org, its own official site,
+    # names it "Riverside County Sheriff, CA"; Wikipedia gives the full
+    # legal name "Riverside County Sheriff's Department." Not a city or
+    # county general government itself (hence the "department" type,
+    # like the special-district entries above -- neither participates in
+    # `resolve_state()`'s city/county lookup), but Riverside County
+    # itself is real and unambiguous in CA.
+    "riversidesheriff.portal.civicclerk.com": KnownJurisdiction(
+        "Riverside County Sheriff's Department", "department", "CA"
+    ),
+    # cosumnescommunityservices.portal.civicclerk.com is the Cosumnes
+    # Community Services District, a real special district (emergency
+    # medical, fire protection, parks and recreation) serving over
+    # 221,000 south Sacramento County, CA residents across Elk Grove and
+    # Galt -- confirmed via its own official site, cosumnescsd.gov
+    # ("Cosumnes CSD | Elk Grove & Galt, CA"), which also names this
+    # exact CivicClerk portal URL as its own agenda source. Not tied to
+    # one single city (same reasoning as `agendas.wrd.org` above), so
+    # registered directly rather than as a per-city resolution.
+    "cosumnescommunityservices.portal.civicclerk.com": KnownJurisdiction(
+        "Cosumnes Community Services District", "district", "CA"
+    ),
 }
 
 
@@ -1626,7 +1659,11 @@ def _fill_missing_state(name: str, existing_suffix: str, netloc: Optional[str]) 
 
 
 def _subdomain_override(
-    hint: str, existing_suffix: str, netloc: Optional[str]
+    hint: str,
+    existing_suffix: str,
+    netloc: Optional[str],
+    *,
+    base: Optional[str] = None,
 ) -> Optional[str]:
     """The finished "<subdomain hint><state suffix>" string to override a
     disagreeing text-derived jurisdiction with -- or None when that
@@ -1671,13 +1708,50 @@ def _subdomain_override(
     `_GENERIC_SUBDOMAIN_WORDS`, which declines website words as labels
     before they ever become a hint; this guard is the general one, since
     no stoplist can enumerate every acronym-shaped collision like "bart".
-    """
+
+    `base` (the pre-override text-derived value, when the caller has one)
+    is an extra fallback for the state, tried only when `_fill_missing_
+    state()` above comes up with nothing at all. Real bug fixed
+    2026-08-30 (WO-68, BACKLOG.md's "Consolidated city-county repairs
+    silently drop the state suffix" entry): a hint can legitimately
+    rename a text-derived value into a real, shorter consolidated-
+    government name -- "Jefferson County" -> "Louisville", "Davidson
+    County" -> "Nashville" -- but the hint alone is often nationally
+    ambiguous on its own (plain "Louisville"/"Nashville" both collide
+    with several unrelated real places, confirmed live: neither's own
+    `_table_lookup()` states include KY/TN at all, since the real
+    consolidated government is stored under its OWN combined key, not
+    under the bare city name), so `_fill_missing_state()` silently
+    resolves to "" and the override used to drop the state entirely
+    instead of adding one. Two more real, live-confirmed lookups recover
+    it: `base` on its own is sometimes already unambiguous (`_table_
+    lookup("Louisville / Jefferson County Metro")` -> KY alone, since the
+    combined-candidate matching `_table_lookup_strength()` already does
+    for a direct-text match applies here too), and when it isn't (a bare
+    "Davidson County" is genuinely ambiguous NC/TN on its own), joining
+    `hint` and `base` the same two ways a real Census consolidated-
+    government name can be spelled -- slash ("Louisville/Jefferson
+    County" -> KY) or hyphen ("Nashville-Davidson County" -> TN) --
+    resolves it. Both are literal reuses of matching this module already
+    trusts elsewhere, not a new heuristic; the ambiguity guard above is
+    skipped for this path on purpose, since a combined-key or already-
+    unambiguous-`base` match is stronger evidence than the guard exists
+    to check for."""
     final_suffix = _fill_missing_state(hint, existing_suffix, netloc)
     if final_suffix:
         hit = _table_lookup(hint)
         code = final_suffix.lstrip(", ").strip().upper()
         if hit and code not in {s.upper() for s in hit[1]}:
             return None
+        return f"{hint}{final_suffix}"
+    if base:
+        base_hit = _table_lookup(base)
+        if base_hit and len(set(base_hit[1])) == 1:
+            return f"{hint}, {base_hit[1][0]}"
+        for combined in (f"{hint}/{base}", f"{hint}-{base}"):
+            combo_hit = _table_lookup(combined)
+            if combo_hit and len(set(combo_hit[1])) == 1:
+                return f"{hint}, {combo_hit[1][0]}"
     return f"{hint}{final_suffix}"
 
 
@@ -1779,7 +1853,7 @@ def finalize_jurisdiction(
 
     if _table_lookup(base):
         if subdomain_hint_key and _base_name_key(base) != subdomain_hint_key:
-            override = _subdomain_override(subdomain_hint, suffix, netloc)
+            override = _subdomain_override(subdomain_hint, suffix, netloc, base=base)
             if override:
                 return JurisdictionResult(override, None, "repaired")
         # Vendor-branding "X City" that isn't the place's real name --
@@ -1854,7 +1928,7 @@ def finalize_jurisdiction(
     if trimmed:
         repaired_name, _table = trimmed
         if subdomain_hint_key and _base_name_key(repaired_name) != subdomain_hint_key:
-            override = _subdomain_override(subdomain_hint, suffix, netloc)
+            override = _subdomain_override(subdomain_hint, suffix, netloc, base=base)
             if override:
                 return JurisdictionResult(override, None, "repaired")
             # Override rejected as an impossible pairing (see
@@ -2153,6 +2227,65 @@ def _validated_label_extract(label: str) -> Optional[str]:
     return hit[0] if hit else None
 
 
+# Tier 6 (see `_validated_label_extract_with_state()`'s docstring): a
+# "twp" (township) abbreviation GLUED directly between a name and a
+# trailing 2-letter state code, with no separator on either side -- e.g.
+# CivicClerk's real `macombtwpmi` (Macomb Township, MI) and
+# `southorangetwpnj` (South Orange Township, NJ) subdomains, confirmed
+# live 2026-08-30 (BACKLOG.md's "CivicClerk residuals after the
+# 2026-08-29 sweep" entry). Structurally different from every tier
+# above: the type-word marker sits BETWEEN the name and state rather
+# than at either end, so neither tier 2's leading/trailing strip nor
+# tier 5's raw trailing-state strip can ever find it on their own --
+# confirmed live: wordninja mangles both the raw label AND the tier-5
+# state-stripped remainder into garbage (`wordninja.split("macombtwpmi")
+# == ['ma','com','btw','pm','i']`; `wordninja.split("macombtwp") ==
+# ['m','acomb','t','wp']` -- "macomb" alone doesn't even survive
+# wordninja's own dictionary segmentation). Runs on the RAW label,
+# before wordninja, same as tier 5.
+_TWP_GLUED_RE = re.compile(r"^(?P<name>[a-z]{3,})twp(?P<state>[a-z]{2})$")
+
+
+def _twp_glued_extract(label: str) -> Optional[Tuple[str, str]]:
+    """(name, state) for a `_TWP_GLUED_RE` match, or None -- see that
+    regex's own comment for the shape this handles.
+
+    Matched against `_SUBDIVISION_STATES` by PREFIX rather than an exact
+    key, filtered to the extracted state first -- the one deliberate
+    looseness in this whole function, and needed because the real
+    Census/StatsCan row for South Orange is "South Orange Village
+    township, NJ" (confirmed live via `grep` on `county_subdivisions.
+    csv`): the subdomain's own informal glued name ("southorange") drops
+    the "Village" the official name carries, so an EXACT candidate
+    ("South Orange Township") never validates. Filtering to the state
+    extracted from the label itself first -- the same self-declared
+    signal tier 5 already trusts without cross-checking -- keeps this
+    safe: within one state, only accepted when the prefix match is
+    UNIQUE, so a state with more than one real subdivision sharing that
+    prefix declines rather than guessing which one. Macomb's own case
+    doesn't need the looseness (the real key IS exactly "macomb"), but
+    the prefix check subsumes an exact match for free."""
+    m = _TWP_GLUED_RE.match(label.lower())
+    if not m:
+        return None
+    state = m.group("state").upper()
+    if (
+        state.lower() not in _STATE_ABBREVIATIONS_LOWER
+        and state.lower() not in _PROVINCE_ABBREVIATIONS_LOWER
+    ):
+        return None
+    glued_name = m.group("name")
+    matches = {
+        key
+        for key, states in _SUBDIVISION_STATES.items()
+        if state in states and key.replace(" ", "").startswith(glued_name)
+    }
+    if len(matches) != 1:
+        return None
+    display = " ".join(w.capitalize() for w in next(iter(matches)).split())
+    return f"{display} Township", state
+
+
 def _validated_label_extract_with_state(
     label: str, *, _allow_state_strip: bool = True
 ) -> Optional[Tuple[str, Optional[str]]]:
@@ -2178,7 +2311,10 @@ def _validated_label_extract_with_state(
     WORDS`) is declined up front, before any tier runs -- see that
     constant's own comment for the real confirmed cases.
 
-    Five tiers, tried in order, first hit wins:
+    Seven tiers, tried in order, first hit wins (the first five were the
+    original design; tiers 6 and 7 were added 2026-08-30, WO-68, for two
+    CivicClerk subdomain shapes wordninja can't segment at all -- see
+    each tier's own comment below):
 
     1. The raw label unsplit (and a digit-stripped variant) -- fixes
        Galesburg: wordninja's own split ("Gales Burg") never validates,
@@ -2235,6 +2371,19 @@ def _validated_label_extract_with_state(
        end in state-code-shaped letters ("oakland" -> "nd", "tacoma" ->
        "ma") validates whole at tier 1 and never reaches here. Retried
        exactly once (`_allow_state_strip`), never recursively.
+    6. A "twp" (township) abbreviation glued directly between the name
+       and a trailing state code, with no separator either side -- see
+       `_twp_glued_extract()`'s own comment for the shape (e.g.
+       CivicClerk's real "macombtwpmi") and why it needs a prefix match
+       against the subdivision table rather than an exact one. Only
+       tried at the outermost call, same gating as tier 5.
+    7. A trailing state code AND a trailing "co" (county) abbreviation,
+       both stripped off the RAW label, with the bare remainder checked
+       directly against the county table -- for a county name wordninja
+       itself can't segment (e.g. CivicClerk's real "lenaweecomi",
+       Lenawee County MI: "lenawee" isn't an English dictionary word, so
+       no amount of wordninja splitting recovers it). Also only tried at
+       the outermost call.
 
     State/province is otherwise deliberately left to the caller's own
     `enrich_jurisdiction_text()` pass (URL callers) or its own suffix
@@ -2334,6 +2483,45 @@ def _validated_label_extract_with_state(
             )
             if retry:
                 return retry[0], retry[1] or tail.upper()
+
+    # Tier 6: a "twp" abbreviation glued between the name and the state
+    # (see `_twp_glued_extract()`'s own comment for the exact shape and
+    # the real CivicClerk subdomains this was built from, 2026-08-30).
+    # Tried on the RAW label, gated the same way tier 5 is -- only at the
+    # outermost call, never during tier 5's own recursive retry, since by
+    # the time that retry runs the trailing state is already gone from
+    # `label` and this pattern can no longer match anyway.
+    if _allow_state_strip:
+        twp_hit = _twp_glued_extract(label)
+        if twp_hit:
+            return twp_hit
+
+    # Tier 7: trailing state code AND a trailing "co" (county)
+    # abbreviation, both stripped off the RAW label, with the bare
+    # remainder checked directly against the county table -- for a name
+    # wordninja itself can't segment into anything usable. Real gap:
+    # CivicClerk's "lenaweecomi" (Lenawee County, MI) -- "lenawee" isn't
+    # an English dictionary word, so wordninja never recovers it even
+    # after tier 5's own trailing-state strip (confirmed live:
+    # `wordninja.split("lenaweeco") == ['lena','we','eco']`, garbage).
+    # Trying the bare remainder directly against `_COUNTY_STATES` (via
+    # `_table_lookup()`, which also tries the abbreviation/saint/okina
+    # secondary candidates) sidesteps wordninja entirely. Only accepted
+    # when the match came from the county table specifically -- "co" is
+    # stripped ON THE ASSUMPTION it's the county abbreviation, so a hit
+    # that's really a place/subdivision match would be coincidental, not
+    # a confirmation of that assumption.
+    if _allow_state_strip and len(label) >= 7:
+        lower_label = label.lower()
+        tail = lower_label[-2:]
+        if tail in _STATE_ABBREVIATIONS_LOWER or tail in _PROVINCE_ABBREVIATIONS_LOWER:
+            remainder = lower_label[:-2]
+            if remainder.endswith("co") and len(remainder) - 2 >= 3:
+                bare = remainder[:-2]
+                hit = _table_lookup(bare)
+                if hit and hit[0] == "county":
+                    return f"{bare.title()} County", tail.upper()
+
     return None
 
 

@@ -1132,6 +1132,79 @@ def test_finalize_jurisdiction_resolves_a_real_consolidated_government_page_spel
     assert result.confidence == "validated"
 
 
+def test_subdomain_override_keeps_the_state_for_a_consolidated_government_rename():
+    # Real bug (WO-68, 2026-08-30, BACKLOG.md's "Consolidated city-county
+    # repairs silently drop the state suffix" entry): when a subdomain
+    # hint renames a bare, state-less text-derived value into a real,
+    # shorter consolidated-government name ("Jefferson County" ->
+    # "Louisville", "Davidson County" -> "Nashville"), the hint alone is
+    # itself nationally ambiguous -- confirmed live, neither's own
+    # `_table_lookup()` states include KY/TN at all, since the real
+    # consolidated government is stored under its own combined key, not
+    # under the bare city name -- so `_fill_missing_state()` used to
+    # resolve to "" and the override dropped the state entirely instead
+    # of adding one. `_subdomain_override()` is exercised directly here
+    # (not via `finalize_jurisdiction()`) so the fix is pinned at its
+    # actual source rather than through several layers of dispatch.
+    assert je._table_lookup("Louisville")[1] == [
+        "AL",
+        "CO",
+        "GA",
+        "IL",
+        "KS",
+        "MS",
+        "NE",
+        "OH",
+        "TN",
+    ]
+    assert "KY" not in je._table_lookup("Louisville")[1]
+    assert (
+        je._subdomain_override("Louisville", "", None, base="Jefferson County")
+        == "Louisville, KY"
+    )
+    assert (
+        je._subdomain_override("Nashville", "", None, base="Davidson County")
+        == "Nashville, TN"
+    )
+    # `base` already resolving unambiguously on its own (no hint/base
+    # combination needed) is the other real recovered case: the raw text
+    # "Louisville / Jefferson County Metro" validates directly to KY via
+    # the existing consolidated-government candidate matching.
+    assert (
+        je._subdomain_override(
+            "Louisville", "", None, base="Louisville / Jefferson County Metro"
+        )
+        == "Louisville, KY"
+    )
+
+
+def test_finalize_jurisdiction_consolidated_government_repair_keeps_state():
+    # End-to-end version of the fix above, through `finalize_jurisdiction()`.
+    # The netlocs are synthetic (not confirmed real Louisville/Nashville
+    # subdomains, and not registered in `_KNOWN_DOMAINS`) -- chosen only
+    # for the real subdomain-label SHAPE (`_validated_subdomain_
+    # extract_from_netloc()` on a bare "louisville"/"nashville" label,
+    # already covered by real data elsewhere in this file) that produces
+    # the disagreeing subdomain hint this bug needs to reproduce.
+    result = je.finalize_jurisdiction(
+        "Jefferson County", netloc="louisville.granicus.com"
+    )
+    assert result.jurisdiction == "Louisville, KY"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Davidson County", netloc="nashville.granicus.com"
+    )
+    assert result.jurisdiction == "Nashville, TN"
+    assert result.confidence == "repaired"
+
+    result = je.finalize_jurisdiction(
+        "Louisville / Jefferson County Metro", netloc="louisville.granicus.com"
+    )
+    assert result.jurisdiction == "Louisville, KY"
+    assert result.confidence == "repaired"
+
+
 def test_finalize_jurisdiction_protects_a_real_special_district_entity_suffix():
     # Real, confirmed residual gap as of the first bleed-signal fix: the
     # longest real prefix ("St. Johns", a real place) has a tail ("River
@@ -1696,6 +1769,126 @@ def test_validated_label_extract_strips_trailing_county_and_reattaches_it():
     assert wordninja.split("pitkincounty") == ["pit", "kin", "county"]
     assert je._table_lookup("Pitkin") == ("place", ["CO"])
     assert je.validated_label_extract("pitkincounty") == "Pitkin County"
+
+
+# --- Tier 6: "twp" glued between name and state (WO-68, 2026-08-30) ---
+# Real CivicClerk subdomains from BACKLOG.md's "CivicClerk residuals
+# after the 2026-08-29 sweep" entry -- wordninja-tier fixes, not
+# researched-entity additions (contrast with the Riverside Sheriff/
+# Cosumnes CSD tests near the bottom of this file, which ARE registry
+# additions).
+
+
+def test_validated_label_extract_handles_twp_glued_between_name_and_state():
+    # macombtwpmi.portal.civicclerk.com is Macomb Township, MI -- real,
+    # confirmed live via civicclerk.py's own subdomain. wordninja mangles
+    # both the raw label and the tier-5 state-stripped remainder into
+    # garbage, so no earlier tier can ever reach it.
+    import wordninja
+
+    assert wordninja.split("macombtwpmi") == ["ma", "com", "btw", "pm", "i"]
+    assert wordninja.split("macombtwp") == ["m", "acomb", "t", "wp"]
+    assert je.validated_label_extract_with_state("macombtwpmi") == (
+        "Macomb Township",
+        "MI",
+    )
+
+
+def test_validated_label_extract_handles_twp_glued_name_needing_prefix_match():
+    # southorangetwpnj is South Orange Township, NJ -- but the real
+    # Census/StatsCan row (confirmed directly in county_subdivisions.csv)
+    # is "South Orange Village township, NJ": the subdomain's own
+    # informal name drops "Village", so an EXACT candidate ("South
+    # Orange Township") never validates and this needs the tier's
+    # state-filtered prefix match instead.
+    assert je._table_lookup("South Orange Township") is None
+    assert je._table_lookup("South Orange Village Township") == (
+        "subdivision",
+        ["NJ"],
+    )
+    assert je.validated_label_extract_with_state("southorangetwpnj") == (
+        "South Orange Village Township",
+        "NJ",
+    )
+
+
+def test_twp_tier_declines_without_a_valid_state_code():
+    # A label that merely happens to contain "twp" but has no real
+    # trailing state/province code must not fire -- guards against the
+    # tier matching on coincidence.
+    assert je._twp_glued_extract("macombtwpxx") is None
+    assert je._twp_glued_extract("notwpstate") is None
+
+
+# --- Tier 7: trailing state + trailing "co" county abbreviation
+# (WO-68, 2026-08-30) ---
+
+
+def test_validated_label_extract_strips_trailing_state_and_county_abbreviation():
+    # lenaweecomi.portal.civicclerk.com is Lenawee County, MI -- real,
+    # confirmed live. "lenawee" isn't an English dictionary word, so
+    # wordninja can't recover it even after tier 5's own trailing-state
+    # strip; the bare remainder has to be checked directly against the
+    # county table instead.
+    import wordninja
+
+    assert wordninja.split("lenaweeco") == ["lena", "we", "eco"]
+    assert je._table_lookup("Lenawee") == ("county", ["MI"])
+    assert je.validated_label_extract_with_state("lenaweecomi") == (
+        "Lenawee County",
+        "MI",
+    )
+
+
+def test_fsusga_is_correctly_unresolved_not_a_government():
+    # fsusga.portal.civicclerk.com is Florida State University's Student
+    # Government Association ("SGA Election Executive Branch Debate") --
+    # confirmed via web search, NOT a real local-government jurisdiction.
+    # `jurisdiction=None` here is correct behavior, not a bug -- this
+    # test exists so nobody "fixes" it later.
+    assert je.validated_label_extract_with_state("fsusga") is None
+
+
+# --- Riverside Sheriff / Cosumnes CSD: researched-entity registry
+# additions (WO-68, 2026-08-30), NOT wordninja-tier fixes ---
+
+
+def test_riverside_sheriff_registered_as_known_domain():
+    # riversidesheriff.portal.civicclerk.com -- confirmed live via a real
+    # browser fetch of the tenant's own CivicClerk portal (a
+    # client-rendered SPA, so a plain HTTP fetch shows no jurisdiction
+    # text -- see civicclerk.py's module docstring): real event titles
+    # ("We Are RSO", "Critical Incident Videos" under "Sheriff's
+    # Department General") confirm the Riverside County Sheriff's
+    # Department, CA (riversidesheriff.org's own site: "Riverside County
+    # Sheriff, CA"; Wikipedia's full legal name: "Riverside County
+    # Sheriff's Department").
+    known = je.lookup_by_domain("riversidesheriff.portal.civicclerk.com")
+    assert known is not None
+    assert known.name == "Riverside County Sheriff's Department"
+    assert known.state == "CA"
+    assert (
+        je.known_jurisdiction_display("riversidesheriff.portal.civicclerk.com")
+        == "Riverside County Sheriff's Department, CA"
+    )
+
+
+def test_cosumnes_csd_registered_as_known_domain():
+    # cosumnescommunityservices.portal.civicclerk.com -- confirmed via
+    # cosumnescsd.gov, the district's own official site ("Cosumnes CSD |
+    # Elk Grove & Galt, CA"), which names this exact CivicClerk portal
+    # URL as its own agenda source. A real special district (emergency
+    # medical, fire protection, parks/recreation) serving south
+    # Sacramento County, CA -- not tied to one single city, same
+    # reasoning as the existing Water Replenishment District entry.
+    known = je.lookup_by_domain("cosumnescommunityservices.portal.civicclerk.com")
+    assert known is not None
+    assert known.name == "Cosumnes Community Services District"
+    assert known.state == "CA"
+    assert (
+        je.known_jurisdiction_display("cosumnescommunityservices.portal.civicclerk.com")
+        == "Cosumnes Community Services District, CA"
+    )
 
 
 # --- Parenthetical alternate names in the Census gazetteer (2026-08-23) ---
