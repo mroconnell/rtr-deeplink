@@ -295,3 +295,107 @@ async def test_auto_generation_still_records_a_permanently_unreadable_source(
     assert await worker.main.maybe_generate_auto_job() is True
     assert len(probes) == worker.main.AUTO_GENERATION_ATTEMPTS
     assert "couldn't read it" in recorded["error_message"]
+
+
+# --- WO-79: a multi-clip Swagit meeting gets a real per-clip chunk plan ----
+
+
+async def test_auto_generation_builds_a_chunk_plan_for_a_multi_clip_meeting(
+    monkeypatch,
+):
+    """A meeting with more than one real video_segment (some Swagit
+    tenants -- no single combined recording, see swagit.py) must probe
+    EVERY clip and submit the real summed total duration, not just the
+    first clip's -- the whole point of WO-79 being that the auto-
+    generated transcript covers the whole meeting."""
+    created = _retrying_worker(monkeypatch)
+    from app.platforms.models import ResolvedMeeting, VideoSegment
+
+    class _Finder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="swagit",
+                source_url=url,
+                video_url="https://x/a.m3u8",
+                video_format="m3u8",
+                video_segments=[
+                    VideoSegment(url="https://x/a.m3u8", seq=6, title="First"),
+                    VideoSegment(url="https://x/b.m3u8", seq=13, title="Second"),
+                ],
+            )
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
+
+    async def _plan(video_segments, *, source_page_url):
+        return [
+            {
+                "media_url": "https://x/a.m3u8",
+                "start": 0.0,
+                "duration": 120.0,
+                "title": "First",
+                "seq": 6,
+            },
+            {
+                "media_url": "https://x/b.m3u8",
+                "start": 120.0,
+                "duration": 300.0,
+                "title": "Second",
+                "seq": 13,
+            },
+        ]
+
+    monkeypatch.setattr(worker.main, "probe_multi_clip_chunk_plan", _plan)
+
+    async def _fail_if_called(video_url, *, source_page_url):
+        raise AssertionError(
+            "a successful multi-clip plan must skip the single-clip probe_duration() "
+            "fallback entirely"
+        )
+
+    monkeypatch.setattr(worker.main, "probe_duration", _fail_if_called)
+
+    assert await worker.main.maybe_generate_auto_job() is True
+    assert created["probed_duration_seconds"] == 420.0  # 120 + 300, not just 120
+    assert created["chunk_plan"][0]["media_url"] == "https://x/a.m3u8"
+    assert created["chunk_plan"][1]["start"] == 120.0
+
+
+async def test_auto_generation_falls_back_to_single_clip_when_plan_probe_fails(
+    monkeypatch,
+):
+    """probe_multi_clip_chunk_plan() is all-or-nothing (see its own
+    docstring) -- when it returns None (one clip failed to probe), this
+    must fall back to the ordinary single-first-clip path rather than
+    treating the whole candidate as infeasible."""
+    created = _retrying_worker(monkeypatch)
+    from app.platforms.models import ResolvedMeeting, VideoSegment
+
+    class _Finder:
+        async def resolve(self, url):
+            return ResolvedMeeting(
+                platform="swagit",
+                source_url=url,
+                video_url="https://x/a.m3u8",
+                video_format="m3u8",
+                video_segments=[
+                    VideoSegment(url="https://x/a.m3u8", seq=6),
+                    VideoSegment(url="https://x/b.m3u8", seq=13),
+                ],
+            )
+
+    monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
+
+    async def _plan(video_segments, *, source_page_url):
+        return None
+
+    monkeypatch.setattr(worker.main, "probe_multi_clip_chunk_plan", _plan)
+
+    async def _probe(video_url, *, source_page_url):
+        assert video_url == "https://x/a.m3u8"
+        return 120.0
+
+    monkeypatch.setattr(worker.main, "probe_duration", _probe)
+
+    assert await worker.main.maybe_generate_auto_job() is True
+    assert created["probed_duration_seconds"] == 120.0
+    assert created["chunk_plan"] is None

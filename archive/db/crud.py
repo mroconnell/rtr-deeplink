@@ -7167,6 +7167,7 @@ async def create_transcription_job(
     chunk_size_seconds: int,
     skip_confirmation: bool,
     priority: int = PRIORITY_MEDIUM,
+    chunk_plan: Optional[list[dict]] = None,
 ) -> dict:
     """Find-or-create the MeetingPage (a request can be the very first thing
     that ever creates a permanent page for a meeting -- the ephemeral
@@ -7180,6 +7181,16 @@ async def create_transcription_job(
     `priority` defaults to PRIORITY_MEDIUM (every real user-submitted
     request) -- worker/main.py's auto-generation path is the one real
     caller that passes PRIORITY_LOW instead.
+
+    `chunk_plan` (WO-79, optional): a per-clip chunk plan from
+    app/platforms/media_probe.py's probe_multi_clip_chunk_plan(), for a
+    meeting whose adapter found more than one real video file with no
+    combined recording available (see TranscriptionJob.chunk_plan's own
+    docstring). When given (and non-empty), `total_chunks` is
+    `len(chunk_plan)` instead of the usual ceil(duration/chunk_size)
+    windowing -- the caller is responsible for having already probed
+    each clip and set `probed_duration_seconds` to their real summed
+    total, same as it always sets that field from a real probe.
 
     Also opportunistically flags the page's *existing* default transcript
     if it looks truncated early against this freshly-probed duration (see
@@ -7240,7 +7251,11 @@ async def create_transcription_job(
             await session.commit()
             return {"error": "too_many_active_jobs", "slug": page.slug}
 
-        total_chunks = math.ceil(probed_duration_seconds / chunk_size_seconds)
+        total_chunks = (
+            len(chunk_plan)
+            if chunk_plan
+            else math.ceil(probed_duration_seconds / chunk_size_seconds)
+        )
         job = TranscriptionJob(
             meeting_page_id=page.id,
             requester_email=requester_email,
@@ -7252,6 +7267,7 @@ async def create_transcription_job(
             chunk_size_seconds=chunk_size_seconds,
             total_chunks=total_chunks,
             priority=priority,
+            chunk_plan=chunk_plan or None,
         )
         session.add(job)
         await session.commit()
@@ -7532,6 +7548,12 @@ async def claim_next_chunk() -> Optional[dict]:
             "total_chunks": job.total_chunks,
             "chunk_size_seconds": job.chunk_size_seconds,
             "probed_duration_seconds": job.probed_duration_seconds,
+            # WO-79: None for every ordinary single-video job -- see
+            # TranscriptionJob.chunk_plan's own docstring and
+            # worker/main.py's process_next_chunk() for the caller that
+            # uses this instead of chunk_size_seconds-windowed math when
+            # it's set.
+            "chunk_plan": job.chunk_plan,
             # Every segment persisted by a prior chunk of this same job --
             # the worker needs this to detect a seam-duplicate at this
             # chunk's own boundary (worker/segment_utils.py's

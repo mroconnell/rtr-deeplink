@@ -143,6 +143,85 @@ async def test_claim_next_chunk_prefers_higher_priority_over_older_job():
     await _drain_job(old_job["job_id"], old_job["total_chunks"])
 
 
+# --- WO-79: a per-clip chunk_plan overrides the usual duration/chunk_size ---
+# windowing math -- a meeting split into several real video files with no
+# single combined recording (some Swagit tenants -- see
+# app/platforms/swagit.py, app/platforms/media_probe.py's
+# probe_multi_clip_chunk_plan()) gets exactly one chunk per real clip.
+
+
+async def test_create_transcription_job_with_chunk_plan_sets_total_chunks_from_it():
+    url = "https://yolocountyca.new.swagit.com/videos/tj-chunkplan-1"
+    plan = [
+        {
+            "media_url": "https://x/a.m3u8",
+            "start": 0.0,
+            "duration": 120.0,
+            "title": "First",
+            "seq": 6,
+        },
+        {
+            "media_url": "https://x/b.m3u8",
+            "start": 120.0,
+            "duration": 300.0,
+            "title": "Second",
+            "seq": 13,
+        },
+        {
+            "media_url": "https://x/c.m3u8",
+            "start": 420.0,
+            "duration": 45.0,
+            "title": "Third",
+            "seq": 51,
+        },
+    ]
+    job = await crud.create_transcription_job(
+        payload=_payload("swagit:tj-chunkplan-1", url),
+        input_url_normalized=url,
+        requester_email="chunkplan@example.com",
+        media_url="https://x/a.m3u8",  # frozen first-clip URL, same as swagit.py's video_url
+        media_kind="video",
+        # The real SUMMED total (0+120, 120+300, 420+45 -> 465), not just
+        # the first clip's own duration -- callers (app/main.py,
+        # worker/main.py) are responsible for this, same as they always
+        # were for the ordinary single-probe case.
+        probed_duration_seconds=465.0,
+        chunk_size_seconds=900,  # unused when chunk_plan is set, still stored
+        skip_confirmation=True,
+        chunk_plan=plan,
+    )
+
+    # 3 real clips, NOT ceil(465 / 900) == 1 -- the whole point of a
+    # chunk_plan is to override that windowing.
+    assert job["total_chunks"] == 3
+
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+    assert claim["chunk_plan"] == plan
+    assert claim["chunk_index"] == 0
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=[])
+
+    await _drain_job(job["job_id"], job["total_chunks"] - 1)
+
+
+async def test_claim_next_chunk_returns_none_chunk_plan_for_an_ordinary_job():
+    url = "https://example.granicus.com/player/clip/tj-chunkplan-none"
+    job = await crud.create_transcription_job(
+        payload=_payload("granicus:tj-chunkplan-none", url),
+        input_url_normalized=url,
+        requester_email="a@example.com",
+        media_url="https://example.com/v.m3u8",
+        media_kind="video",
+        probed_duration_seconds=600,
+        chunk_size_seconds=900,
+        skip_confirmation=True,
+    )
+    claim = await crud.claim_next_chunk()
+    assert claim["job_id"] == job["job_id"]
+    assert claim["chunk_plan"] is None
+    await crud.report_chunk_result(job["job_id"], success=True, shifted_segments=[])
+
+
 def test_claim_next_chunk_locks_for_update_skip_locked_on_postgres_only():
     # Real fix, 2026-08-20: claim_next_chunk() used to be a plain
     # SELECT-then-UPDATE, safe for exactly one worker process (its own

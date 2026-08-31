@@ -1437,6 +1437,19 @@ class ResolvedMeetingIn(BaseModel):
     best_effort: bool = False
 
 
+class ChunkPlanEntryIn(BaseModel):
+    """One entry of a WO-79 per-clip chunk plan -- see
+    app/platforms/media_probe.py's probe_multi_clip_chunk_plan() for how
+    this is built and archive/db/models.py's
+    TranscriptionJob.chunk_plan for how the worker consumes it."""
+
+    media_url: str
+    start: float
+    duration: float
+    title: Optional[str] = None
+    seq: Optional[int] = None
+
+
 class TranscriptionCreateJobRequest(BaseModel):
     payload: ResolvedMeetingIn
     input_url_normalized: str
@@ -1468,6 +1481,14 @@ class TranscriptionCreateJobRequest(BaseModel):
     # actually exist today so this internal, token-gated route can't be
     # used to sneak a job in above PRIORITY_MEDIUM.
     priority: Optional[int] = None
+    # WO-79: a per-clip chunk plan (app/platforms/media_probe.py's
+    # probe_multi_clip_chunk_plan()) for a meeting split across several
+    # real video files with no single combined recording (some Swagit
+    # tenants -- see swagit.py). None (the default) for every ordinary
+    # single-video meeting -- passed straight through to
+    # crud.create_transcription_job(), see TranscriptionJob.chunk_plan's
+    # own docstring for what it changes.
+    chunk_plan: Optional[List[ChunkPlanEntryIn]] = None
 
     @field_validator("priority")
     @classmethod
@@ -1500,6 +1521,7 @@ async def internal_transcription_create_job(
         probed_duration_seconds=req.probed_duration_seconds,
         chunk_size_seconds=req.chunk_size_seconds,
         skip_confirmation=skip_confirmation,
+        chunk_plan=[e.model_dump() for e in req.chunk_plan] if req.chunk_plan else None,
         **({"priority": req.priority} if req.priority is not None else {}),
     )
 

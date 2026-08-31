@@ -59,6 +59,7 @@ from app.platforms.media_probe import (
     extract_full_audio,
     is_plausible_meeting_duration,
     probe_duration,
+    probe_multi_clip_chunk_plan,
     should_cache_whole_audio,
     slice_cached_audio,
 )
@@ -203,17 +204,48 @@ async def maybe_generate_auto_job() -> bool:
         await _fail("No usable audio or video source was found.")
         return True
 
-    duration = await retry_async(
-        lambda: probe_duration(result.video_url, source_page_url=source_url),
-        label=f"auto-generation ffprobe of {result.video_url}",
-        attempts=AUTO_GENERATION_ATTEMPTS,
-        base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
-        max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
-        logger=logger,
-        # probe_duration() never raises -- None covers every failure,
-        # including the 120s subprocess timeout this retry is aimed at.
-        retryable_failure=lambda d: None if d is not None else "ffprobe read nothing",
-    )
+    # WO-79: a meeting split into several real per-clip files with no
+    # single combined recording (some Swagit tenants -- see
+    # app/platforms/swagit.py, app/platforms/media_probe.py's
+    # probe_multi_clip_chunk_plan()) gets a per-clip chunk plan instead
+    # of a duration probe of just the first clip -- the whole point being
+    # that the eventual transcript covers the WHOLE meeting, not a
+    # fraction of it. Same retry policy as the ordinary single-probe
+    # below, for the same reason (this only runs when idle, so a few
+    # seconds of backoff here is free). Falls back to the ordinary
+    # single-clip path (unchanged) if the plan can't be built -- see that
+    # function's own "all-or-nothing" docstring.
+    chunk_plan: Optional[list] = None
+    duration: Optional[float] = None
+    if len(result.video_segments) > 1:
+        chunk_plan = await retry_async(
+            lambda: probe_multi_clip_chunk_plan(
+                result.video_segments, source_page_url=source_url
+            ),
+            label=f"auto-generation multi-clip chunk-plan probe of {source_url}",
+            attempts=AUTO_GENERATION_ATTEMPTS,
+            base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
+            max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            retryable_failure=lambda p: None if p else "clip probe(s) failed",
+        )
+        if chunk_plan:
+            duration = chunk_plan[-1]["start"] + chunk_plan[-1]["duration"]
+
+    if duration is None:
+        duration = await retry_async(
+            lambda: probe_duration(result.video_url, source_page_url=source_url),
+            label=f"auto-generation ffprobe of {result.video_url}",
+            attempts=AUTO_GENERATION_ATTEMPTS,
+            base_delay=AUTO_GENERATION_RETRY_BASE_DELAY_SECONDS,
+            max_delay=AUTO_GENERATION_RETRY_MAX_DELAY_SECONDS,
+            logger=logger,
+            # probe_duration() never raises -- None covers every failure,
+            # including the 120s subprocess timeout this retry is aimed at.
+            retryable_failure=lambda d: (
+                None if d is not None else "ffprobe read nothing"
+            ),
+        )
     if duration is None:
         await _fail("Found a media source but couldn't read it.")
         return True
@@ -231,6 +263,7 @@ async def maybe_generate_auto_job() -> bool:
         chunk_size_seconds=chunk_size_seconds_for_platform(result.platform),
         skip_confirmation=True,
         priority=crud.PRIORITY_LOW,
+        chunk_plan=chunk_plan,
     )
     logger.info("Auto-generation: created job %s for %s", job.get("job_id"), slug)
     return True
@@ -384,29 +417,60 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
 
     logger.info("Claimed job %s: chunk %s/%s", job_id, chunk_index + 1, total_chunks)
 
-    start = chunk_start(chunk_index, chunk_size)
-    duration = chunk_duration(chunk_index, chunk_size, total_duration)
+    chunk_plan = claim.get("chunk_plan")
+    if chunk_plan:
+        # WO-79: this job's chunks are real per-clip boundaries (some
+        # Swagit meetings with no single combined recording -- see
+        # archive/db/models.py's TranscriptionJob.chunk_plan docstring),
+        # not the usual fixed chunk_size_seconds windows -- chunk_index
+        # maps directly onto chunk_plan[chunk_index], whose own `start`
+        # is already this clip's cumulative MEETING-relative offset (used
+        # below for shift_segments -- see that function's own docstring).
+        # Extraction itself is unaffected: start=0/duration=the clip's
+        # own full length, same extract_chunk_audio() call as any other
+        # chunk, just against that clip's own file.
+        #
+        # Deliberately skips the live re-resolve-and-refresh below: doing
+        # that safely for a specific clip would mean re-resolving the
+        # whole meeting AND re-matching this clip by its own `seq` (the
+        # single-video case only ever needs to refresh one URL) -- out of
+        # scope for this pass (see BACKLOG.md/WO-79's own PR notes). The
+        # frozen per-clip URL is used directly; every confirmed real
+        # tenant's clip URLs are the same non-signed
+        # archive-stream.granicus.com shape the ordinary single-video
+        # Swagit path already uses without a staleness problem, so this
+        # is a real but so-far-unobserved risk, not a known-broken
+        # shortcut.
+        entry = chunk_plan[chunk_index]
+        media_url = entry["media_url"]
+        start = 0.0
+        duration = entry["duration"]
+        meeting_offset = entry["start"]
+    else:
+        start = chunk_start(chunk_index, chunk_size)
+        duration = chunk_duration(chunk_index, chunk_size, total_duration)
+        meeting_offset = start
 
-    # Re-resolve fresh rather than trusting the media_url frozen at submit
-    # time -- HLS/signed URLs can go stale over a job that sits queued a
-    # while or runs long. Falls back to the frozen URL if the re-resolve
-    # itself fails (still worth trying the extraction rather than giving
-    # up the chunk outright).
-    media_url = claim["media_url"]
-    try:
-        finder = get_finder(platform)
-        result = await finder.resolve(source_url)
-        if result.video_url:
-            media_url = result.video_url
-    except UnsupportedPlatformError:
-        pass
-    except Exception:
-        logger.warning(
-            "Fresh re-resolve failed for job %s chunk %s, falling back to the frozen media_url",
-            job_id,
-            chunk_index,
-            exc_info=True,
-        )
+        # Re-resolve fresh rather than trusting the media_url frozen at
+        # submit time -- HLS/signed URLs can go stale over a job that
+        # sits queued a while or runs long. Falls back to the frozen URL
+        # if the re-resolve itself fails (still worth trying the
+        # extraction rather than giving up the chunk outright).
+        media_url = claim["media_url"]
+        try:
+            finder = get_finder(platform)
+            result = await finder.resolve(source_url)
+            if result.video_url:
+                media_url = result.video_url
+        except UnsupportedPlatformError:
+            pass
+        except Exception:
+            logger.warning(
+                "Fresh re-resolve failed for job %s chunk %s, falling back to the frozen media_url",
+                job_id,
+                chunk_index,
+                exc_info=True,
+            )
 
     # Both halves below can legitimately outlast STALE_CLAIM_AFTER on a
     # slow source -- WO-54's whole-file pull alone gets its own 360s
@@ -426,7 +490,16 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
             # meeting's audio is pulled once and every chunk is then a local
             # slice. HLS keeps the per-chunk path, where fetching is already
             # minimal.
-            if should_cache_whole_audio(media_url, total_chunks):
+            #
+            # WO-79: never cache-whole-audio for a chunk_plan job, even if
+            # a future clip's media_url weren't HLS -- that cache is keyed
+            # only by job_id and assumes every chunk of a job is a
+            # different OFFSET into the SAME underlying file. A chunk_plan
+            # job's chunks are different CLIPS (different media_url each),
+            # so reusing one job-wide cache across them would silently
+            # transcribe the wrong clip's audio for every chunk after the
+            # first.
+            if not chunk_plan and should_cache_whole_audio(media_url, total_chunks):
                 extracted, extraction_error = await _chunk_audio_via_cache(
                     job_id=job_id,
                     media_url=media_url,
@@ -499,7 +572,11 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
                 await _handle_job_failure_result(job_id, failure_result)
                 return True
 
-    shifted = shift_segments(raw_segments, start)
+    # meeting_offset == start for an ordinary fixed-window chunk, and a
+    # chunk_plan entry's own cumulative meeting-relative offset for a
+    # WO-79 multi-clip chunk (see the branch above) -- shift_segments()
+    # itself is unaware of the distinction, same call either way.
+    shifted = shift_segments(raw_segments, meeting_offset)
     # Detect a real seam-duplicate against what the previous chunk already
     # persisted -- confirmed live 2026-08-16 (Boulder County, CO, see
     # worker/segment_utils.py's own "Seam-duplication dedup" note and

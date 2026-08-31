@@ -12,6 +12,21 @@ class TranscriptSegment(BaseModel):
     speaker: Optional[str] = None
 
 
+class VideoSegment(BaseModel):
+    """One playable video file that covers only PART of a meeting -- e.g.
+    a Swagit per-agenda-item clip when no single whole-meeting recording
+    exists at the source (WO-79; see swagit.py's
+    `_parse_swagit_playlist_entries` docstring for the confirmed real
+    cases: Yolo County CA, White Plains NY, Apple Valley MN). `seq` is
+    the source platform's own real ordering field (Swagit's jwplayer
+    playlist `seq`) -- meeting-relative order should be derived from it,
+    not from array/document order, which isn't guaranteed to match."""
+
+    url: str
+    title: Optional[str] = None
+    seq: Optional[int] = None
+
+
 class AlternateTranscript(BaseModel):
     """A caption track that was found and fetched but not chosen as the
     primary transcript (see `ResolvedMeeting.alternate_transcripts`) --
@@ -101,6 +116,19 @@ class ResolvedMeeting(BaseModel):
     # so proceed with caution").
     video_link: Optional[str] = None
     video_link_recognized: bool = False
+    # Populated only when an adapter found more than one real video file
+    # that together make up the WHOLE meeting, in meeting-relative order,
+    # with no single combined recording available at the source (WO-79;
+    # confirmed so far: some Swagit tenants, see swagit.py). Empty for
+    # every ordinary single-video meeting -- video_url/video_format above
+    # still carry the first segment for basic playback either way, so no
+    # other platform or existing caller of this field is affected. The
+    # on-demand transcription pipeline (app/main.py's submit/feasibility
+    # routes, worker/main.py's auto-generation) uses this to build a
+    # per-clip chunk plan instead of the usual fixed chunk_size_seconds
+    # windows -- see app/platforms/media_probe.py's
+    # `probe_multi_clip_chunk_plan()`.
+    video_segments: List[VideoSegment] = []
     transcript_language: Optional[str] = (
         None  # ISO 639-1 code detected from actual caption text
     )

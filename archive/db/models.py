@@ -420,6 +420,20 @@ class TranscriptionJob(Base):
     chunk_size_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     total_chunks: Mapped[int] = mapped_column(Integer, nullable=False)
     chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # NULL for every ordinary single-video job (the overwhelming majority
+    # -- unaffected). Set only for a WO-79 multi-clip meeting (some Swagit
+    # tenants -- see app/platforms/swagit.py/media_probe.py's
+    # probe_multi_clip_chunk_plan()): one dict per real source clip,
+    # `{"media_url", "start", "duration", "title", "seq"}`, `start` being
+    # that clip's cumulative meeting-relative offset. When set, each
+    # chunk_index (0..total_chunks-1, total_chunks == len(chunk_plan))
+    # maps directly to chunk_plan[chunk_index] instead of the usual
+    # chunk_size_seconds-windowed math -- see worker/main.py's
+    # process_next_chunk(). chunk_size_seconds/probed_duration_seconds
+    # above are still populated for such a job (chunk_size_seconds to a
+    # real platform-typical value, unused; probed_duration_seconds to the
+    # real summed total) so no other reporting code needs a null-check.
+    chunk_plan: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     # Already timestamp-shifted (worker/segment_utils.shift_segments) to be
     # full-meeting-relative, same {start,end,text,speaker} shape as
     # TranscriptVersion.segments -- written there directly on completion,
