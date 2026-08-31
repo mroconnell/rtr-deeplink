@@ -4,11 +4,11 @@ no video at all (WO-30, built 2026-08-21).
 
 Why this exists
 ---------------
-Four large US cities run a Legistar instance whose video column is
+Five large US cities run a Legistar instance whose video column is
 *structurally* empty -- not "empty for this meeting," empty for every
 meeting -- while the real recordings sit, public and unlinked, on the
-city's own YouTube channel. Confirmed live 2026-08-21 against real
-pages/APIs, not assumed:
+city's own YouTube channel. Confirmed live 2026-08-21 (2026-08-30 for
+Columbus) against real pages/APIs, not assumed:
 
 - **Phoenix, AZ** (`phoenix.legistar.com`): every MeetingDetail page
   server-renders `<a class="videolink" ...>Not Available</a>` with no
@@ -27,6 +27,11 @@ pages/APIs, not assumed:
   Granicus video link, only the committee meetings don't. (BACKLOG.md's
   original survey entry described the whole instance as video-less; that
   turned out to be too broad, corrected there.)
+- **Columbus, OH** (`columbus.legistar.com`, added 2026-08-30, WO-72): no
+  `a.videolink` anchor at all on a real meeting page
+  (MeetingDetail.aspx?ID=1436780, "Columbus City Council" on 8/24/2026) --
+  same shape as Philadelphia. The matching recording is a past livestream
+  on the city's own channel, published under its `/streams` tab.
 
 Why a scoped channel listing, not `ytsearch:`
 ---------------------------------------------
@@ -159,6 +164,21 @@ _CHANNEL_FALLBACKS: Dict[str, ChannelFallback] = {
     # Intergovernmental Legislative Relations) that render "Not Available".
     "cabq.legistar.com": ChannelFallback(
         "UCEqpcP42AmnpJPyuOy1jASQ", "GOV TV - Boards & Commission Meetings"
+    ),
+    # Columbus, OH (WO-72, 2026-08-30). Same precondition as Phoenix/
+    # Philadelphia/Baltimore above: a real past meeting
+    # (columbus.legistar.com/MeetingDetail.aspx?ID=1436780, "Columbus City
+    # Council" on 8/24/2026) renders no `a.videolink` anchor at all --
+    # confirmed live via a direct fetch of the page, not assumed. The
+    # matching recording sits on the city's own channel, under its
+    # `/streams` tab (a past livestream, `live_status: "was_live"`, same
+    # as most of Phoenix's): "Columbus City Council Meeting (8/24/26)" =
+    # youtube.com/watch?v=lJR39FcIhM8, whose own channel_id is this one --
+    # read off a real yt-dlp channel listing on 2026-08-30, matching the
+    # id independently confirmed via the same listing's `channel_id`
+    # field.
+    "columbus.legistar.com": ChannelFallback(
+        "UCfttJJ9T5_1W1JewiTJqzqA", "City of Columbus"
     ),
 }
 

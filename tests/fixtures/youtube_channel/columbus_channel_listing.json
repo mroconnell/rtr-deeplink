@@ -1,0 +1,1387 @@
+{
+ "channel_id": "UCfttJJ9T5_1W1JewiTJqzqA",
+ "channel_name": "City of Columbus",
+ "netloc": "columbus.legistar.com",
+ "entries": [
+  {
+   "id": "S-jZ5z14i2E",
+   "title": "Press Conference:  The Flats at Broad and Gould Groundbreaking",
+   "duration": 1706,
+   "live_status": null
+  },
+  {
+   "id": "K9U0hrhmuTU",
+   "title": "Columbus Metropolitan Club:  Who's Watching?  The Fight Over Flock Cameras",
+   "duration": 3573,
+   "live_status": null
+  },
+  {
+   "id": "wF3KyrBbGfA",
+   "title": "Press Conference: Council Structure and Reform 8/24/26",
+   "duration": 1058,
+   "live_status": null
+  },
+  {
+   "id": "Fh7QeftHxiA",
+   "title": "Conversations & Coffee: The Things That Hold Us",
+   "duration": 3531,
+   "live_status": null
+  },
+  {
+   "id": "JD0LESeL9ZQ",
+   "title": "Columbus Metropolitan Club: What Happens When Government Works Better for Everyone?",
+   "duration": 3462,
+   "live_status": null
+  },
+  {
+   "id": "hkA9-0MUi40",
+   "title": "Special Meeting: German Village Commission (08/05/26)",
+   "duration": 15264,
+   "live_status": null
+  },
+  {
+   "id": "haWq1Qv53SM",
+   "title": "Columbus Metropolitan Club: Designing a Democracy for the Next 250 Years",
+   "duration": 3580,
+   "live_status": null
+  },
+  {
+   "id": "9vSLjwmGx4A",
+   "title": "Press Conference: Severe Weather Response 8/12/26",
+   "duration": 1906,
+   "live_status": null
+  },
+  {
+   "id": "K--KDvmaNDY",
+   "title": "Building a Better Columbus with HUD Funding",
+   "duration": 425,
+   "live_status": null
+  },
+  {
+   "id": "1SPC_dcpYkY",
+   "title": "Columbus Metropolitan Club: Ohio Women, Public Memory, and the New Statehouse Monument",
+   "duration": 3343,
+   "live_status": null
+  },
+  {
+   "id": "tWHT2FySg7Q",
+   "title": "Board of Zoning Adjustment 7/28/26",
+   "duration": 5448,
+   "live_status": null
+  },
+  {
+   "id": "czkjQLBaHKE",
+   "title": "Ohio Ethics Law Training for City of Columbus Partners",
+   "duration": 5299,
+   "live_status": null
+  },
+  {
+   "id": "KSRpgXnyPrc",
+   "title": "Columbus Pay Transparency \u2014 What Employers Need to Know (Salary Range Posting Starts Jan 1, 2027)",
+   "duration": 61,
+   "live_status": null
+  },
+  {
+   "id": "JgVKIBNBae4",
+   "title": "Conversations & Coffee: Pleinly Speaking",
+   "duration": 3458,
+   "live_status": null
+  },
+  {
+   "id": "tBUWzeky0jw",
+   "title": "Columbus Metropolitan Club: Racing to Build a New Midwest",
+   "duration": 3566,
+   "live_status": null
+  },
+  {
+   "id": "0Cv-rEhM7zw",
+   "title": "Press Conference:  North 4th Street Protected Bike Lane Opening",
+   "duration": 597,
+   "live_status": null
+  },
+  {
+   "id": "9qGibkdv-fU",
+   "title": "Conversations & Coffee: Ohio En Plein Air Society: Urban Scenes",
+   "duration": 3534,
+   "live_status": null
+  },
+  {
+   "id": "dBtZ0RCpjF8",
+   "title": "City Chat: Festival Latino 2026",
+   "duration": 502,
+   "live_status": null
+  },
+  {
+   "id": "KhRQSesmYlg",
+   "title": "Columbus Metropolitan Club: The Power of Showing Up: A New Case for Engagement",
+   "duration": 3540,
+   "live_status": null
+  },
+  {
+   "id": "OJPrV-8Ehzo",
+   "title": "Columbus Metropolitan Club: The Airport Advantage: Building Central Ohio\u2019s Next Economy",
+   "duration": 3488,
+   "live_status": null
+  },
+  {
+   "id": "r9FwgCoGXHg",
+   "title": "Glenwood Park Clean Up 2026",
+   "duration": 62,
+   "live_status": null
+  },
+  {
+   "id": "V5wvdwPw6lY",
+   "title": "Clean & Safe Corridors Initiative Refugee Road",
+   "duration": 125,
+   "live_status": null
+  },
+  {
+   "id": "BFrt6iahKGw",
+   "title": "Columbus Metropolitan Club: A Bigger Central Ohio Will Need a Bigger Safety Net",
+   "duration": 3561,
+   "live_status": null
+  },
+  {
+   "id": "NCnH8TYhBC8",
+   "title": "Press Conference: Clean & Safe Corridors Initiative Northland",
+   "duration": 1097,
+   "live_status": null
+  },
+  {
+   "id": "oMSwIXtBKsY",
+   "title": "Music Columbus: The Deeptones",
+   "duration": 1682,
+   "live_status": null
+  },
+  {
+   "id": "9CgYA2xc0mA",
+   "title": "Music Columbus: Doctor Thunder Featuring the Doctor Thunder Quartet",
+   "duration": 3281,
+   "live_status": null
+  },
+  {
+   "id": "6bRVrQ4Wc7s",
+   "title": "Music Columbus: Earwig",
+   "duration": 2211,
+   "live_status": null
+  },
+  {
+   "id": "X1r3_rqIi7s",
+   "title": "Special Meeting: German Village Commission (07/01/26)",
+   "duration": 14576,
+   "live_status": null
+  },
+  {
+   "id": "yUsQAq-JnZY",
+   "title": "Special Meeting: Italian Village Commission (06/30/26)",
+   "duration": 4168,
+   "live_status": null
+  },
+  {
+   "id": "qF8fgIQ3HqM",
+   "title": "Southwest Parks Working Group Plan Released",
+   "duration": 88,
+   "live_status": null
+  },
+  {
+   "id": "gRPNuhUyLy8",
+   "title": "Fire Station 36 Grand Opening",
+   "duration": 94,
+   "live_status": null
+  },
+  {
+   "id": "G9-vhFmHQsI",
+   "title": "Red White & Boom 2026 Safety",
+   "duration": 76,
+   "live_status": null
+  },
+  {
+   "id": "O4Crzu-Nvgo",
+   "title": "Special Meeting: University Impact District Review Board (05/28/26)",
+   "duration": 7016,
+   "live_status": null
+  },
+  {
+   "id": "DTC1lKNnA40",
+   "title": "Special Meeting: Columbus Advisory Commission on Disability Issues June Meeting (2026)",
+   "duration": 4096,
+   "live_status": null
+  },
+  {
+   "id": "NveluUdfW7g",
+   "title": "CTV News Briefs:  Safe Streets 2026",
+   "duration": 92,
+   "live_status": null
+  },
+  {
+   "id": "h-BX3ISMZAo",
+   "title": "City Chat: The Columbus LGBTQ+ Affairs Commission",
+   "duration": 1415,
+   "live_status": null
+  },
+  {
+   "id": "ofkppMft5tE",
+   "title": "Conversations & Coffee: Why Do You Want to Do Art?",
+   "duration": 3470,
+   "live_status": null
+  },
+  {
+   "id": "aDgn45N3-A0",
+   "title": "Columbus Metropolitan Club: Mental Health, Loneliness, and the Courage to Show Up",
+   "duration": 3433,
+   "live_status": null
+  },
+  {
+   "id": "VlvpfsLzZhc",
+   "title": "2026 Juneteenth Celebration",
+   "duration": 76,
+   "live_status": null
+  },
+  {
+   "id": "bDvKCbUf0RU",
+   "title": "2026 Pride Lighting Ceremony",
+   "duration": 66,
+   "live_status": null
+  },
+  {
+   "id": "GdeAuGTOwdk",
+   "title": "Conversations & Coffee: Significance of Quilting in the African American Community",
+   "duration": 3391,
+   "live_status": null
+  },
+  {
+   "id": "tVPcA3T3JtI",
+   "title": "Columbus Metropolitan Club: Annual State of Nonprofits: The Future of Funding Good Work",
+   "duration": 3222,
+   "live_status": null
+  },
+  {
+   "id": "G01CVqCrZ28",
+   "title": "Special Meeting: Victorian Village Commission (06/10/26)",
+   "duration": 7928,
+   "live_status": null
+  },
+  {
+   "id": "LfM7QC3c9KE",
+   "title": "Special Meeting: Italian Village Commission (06/09/26)",
+   "duration": 3842,
+   "live_status": null
+  },
+  {
+   "id": "EyyCzmuKBWI",
+   "title": "Columbus Metropolitan Club: What Women's Pro Soccer Means for Columbus",
+   "duration": 3362,
+   "live_status": null
+  },
+  {
+   "id": "DVTazohiOYs",
+   "title": "Columbus City Council Meeting June 8, 2026",
+   "duration": 11173,
+   "live_status": null
+  },
+  {
+   "id": "2mNexS4FvIE",
+   "title": "City Chat: Inside CAPA\u2019s 57th Summer Movie Series",
+   "duration": 705,
+   "live_status": null
+  },
+  {
+   "id": "y5Xan42ju1w",
+   "title": "Conversations & Coffee: On the Road with Inga",
+   "duration": 3427,
+   "live_status": null
+  },
+  {
+   "id": "GaCoYOCPnYE",
+   "title": "Columbus Metropolitan Club: How Ohio's Medicaid Squeeze Could Impact Families",
+   "duration": 3523,
+   "live_status": null
+  },
+  {
+   "id": "7pZpFJRoFEk",
+   "title": "Commission on Black Girls",
+   "duration": 255,
+   "live_status": null
+  },
+  {
+   "id": "G5JSzlkAk2I",
+   "title": "Columbus Advisory Commission on Disability Issues May 2026 Meeting",
+   "duration": 4496,
+   "live_status": null
+  },
+  {
+   "id": "onoW8fYVU0Q",
+   "title": "Conversations & Coffee: Pandemic Portraits",
+   "duration": 3220,
+   "live_status": null
+  },
+  {
+   "id": "TqOFg5IJyY4",
+   "title": "City Chat: Bringing Transparency to Columbus Rental Housing",
+   "duration": 617,
+   "live_status": null
+  },
+  {
+   "id": "DXvoLSwlZ-E",
+   "title": "Columbus Metropolitan Club: A Conversation with Governor Mike DeWine",
+   "duration": 3508,
+   "live_status": null
+  },
+  {
+   "id": "7Qzzyf5DKW0",
+   "title": "Conversations & Coffee:  Staying in Place",
+   "duration": 2611,
+   "live_status": null
+  },
+  {
+   "id": "jsvTrzZCC60",
+   "title": "CTV News Brief: Clean & Safe Corridors",
+   "duration": 134,
+   "live_status": null
+  },
+  {
+   "id": "4YKLBXiu2sY",
+   "title": "Columbus Metropolitan Club: Turning AI Success into Columbus\u2019 Next Advantage",
+   "duration": 3353,
+   "live_status": null
+  },
+  {
+   "id": "o0pPMtCO1Us",
+   "title": "Building Futures From the Ground Up",
+   "duration": 114,
+   "live_status": null
+  },
+  {
+   "id": "lePZM6UAHgE",
+   "title": "Conversations & Coffee: The Art of Building Your Own Camera",
+   "duration": 3438,
+   "live_status": null
+  },
+  {
+   "id": "E0izpbKbqCU",
+   "title": "Columbus Metropolitan Club: Who Holds the Keys to Economic Mobility?",
+   "duration": 3546,
+   "live_status": null
+  },
+  {
+   "id": "B8KVQPIdcGw",
+   "title": "Columbus Advisory Commission on Disability Issues April 2026 Meeting",
+   "duration": 4461,
+   "live_status": null
+  },
+  {
+   "id": "_m01-cjLsYk",
+   "title": "Columbus Metropolitan Club: Life After Cars: Reimagining Cities for People",
+   "duration": 3492,
+   "live_status": null
+  },
+  {
+   "id": "dqRnK8JTMaU",
+   "title": "Conversations & Coffee: The Columbus Metro Railway Society at the Fran Ryan Center",
+   "duration": 3422,
+   "live_status": null
+  },
+  {
+   "id": "DLLaYzRZ3tQ",
+   "title": "Press Conference: Habitat for Humanity's Devon Triangle Groundbreaking",
+   "duration": 2306,
+   "live_status": null
+  },
+  {
+   "id": "FfvDTJTXPwE",
+   "title": "Columbus Metropolitan Club: Ohio\u2019s Data Center Debate",
+   "duration": 3556,
+   "live_status": null
+  },
+  {
+   "id": "i6ST08pkpW0",
+   "title": "Council Public Safety and Criminal Justice Committee: Short-Term Rentals (4/21/26)",
+   "duration": 5176,
+   "live_status": null
+  },
+  {
+   "id": "H_c3AUwdxes",
+   "title": "National Women's Soccer League Legislation Update 4/20/26",
+   "duration": 800,
+   "live_status": null
+  },
+  {
+   "id": "6cuh2mjutsU",
+   "title": "Conversations & Coffee: See Hear Feel - Paintings, Songs & Stories",
+   "duration": 3357,
+   "live_status": null
+  },
+  {
+   "id": "yz5RXSs3_rM",
+   "title": "Columbus Metropolitan Club: Older Adults Are Aging Right Into Homelessness",
+   "duration": 3538,
+   "live_status": null
+  },
+  {
+   "id": "BhI1WssvWLU",
+   "title": "Press Conference: Rental Registry",
+   "duration": 1761,
+   "live_status": null
+  },
+  {
+   "id": "R7_YH9K_RRg",
+   "title": "Mayor Ginther to Affirm Commitment to South Side Park Space",
+   "duration": 931,
+   "live_status": null
+  },
+  {
+   "id": "dJb_gkiKDQ4",
+   "title": "Conversations & Coffee: The Columbus Renaissance Man",
+   "duration": 3158,
+   "live_status": null
+  },
+  {
+   "id": "KnA6trDgMj4",
+   "title": "Columbus Water & Power Blueprint Columbus Hilltop 4 Pre-Construction Kickoff",
+   "duration": 3006,
+   "live_status": null
+  },
+  {
+   "id": "Pjkjn00Mpys",
+   "title": "Columbus Metropolitan Club: The Race for Ohio\u2019s Economic Future",
+   "duration": 3567,
+   "live_status": null
+  },
+  {
+   "id": "5T99NTY8YiY",
+   "title": "City Chat: Columbus Alternative Crisis Response",
+   "duration": 549,
+   "live_status": null
+  },
+  {
+   "id": "fQs3_KBqX1A",
+   "title": "Press Conference: National Women's Soccer Club In Columbus",
+   "duration": 1453,
+   "live_status": null
+  },
+  {
+   "id": "zQcdJ55-P5o",
+   "title": "Conversations & Coffee:  Extemporaneous Thoughts",
+   "duration": 3501,
+   "live_status": null
+  },
+  {
+   "id": "75hqfEZAKRA",
+   "title": "Columbus Metropolitan Club: Primal Intelligence: The Human Edge in an AI World",
+   "duration": 3422,
+   "live_status": null
+  },
+  {
+   "id": "pGoZZJPWv8o",
+   "title": "Women's History Month: A Woman's Work 2026",
+   "duration": 261,
+   "live_status": null
+  },
+  {
+   "id": "dqj6ezFeXUY",
+   "title": "Special Meeting: University Impact District Review Board (03/26/2026)",
+   "duration": 5043,
+   "live_status": null
+  },
+  {
+   "id": "yFnMF06i5m8",
+   "title": "Special Meeting: Columbus Advisory Commission on Disability Issues March Meeting (2026)",
+   "duration": 4823,
+   "live_status": null
+  },
+  {
+   "id": "ivItYaYbMqM",
+   "title": "Columbus Metropolitan Club: The War Within a War: Race, Vietnam, and America\u2019s Reckoning",
+   "duration": 3604,
+   "live_status": null
+  },
+  {
+   "id": "NiLHiqln98c",
+   "title": "Press Conference: Clean & Safe Corridors Kickoff",
+   "duration": 1347,
+   "live_status": null
+  },
+  {
+   "id": "qmP7Pzi_dXM",
+   "title": "MORPC State of the Region 2026",
+   "duration": 5610,
+   "live_status": null
+  },
+  {
+   "id": "M61v3bTCj2M",
+   "title": "Press Conference:  Columbus Grant Funding Recipients Announcement",
+   "duration": 1654,
+   "live_status": null
+  },
+  {
+   "id": "Mx9uP4Jd8AU",
+   "title": "Columbus Metropolitan Club: The Power of the Arts in a Changing City",
+   "duration": 3385,
+   "live_status": null
+  },
+  {
+   "id": "smJpWNzqfQo",
+   "title": "CTV News Brief: Habitat House Completion Event",
+   "duration": 122,
+   "live_status": null
+  },
+  {
+   "id": "JyF_ytkXt44",
+   "title": "Conversations & Coffee: Rise Up & Resist",
+   "duration": 3316,
+   "live_status": null
+  },
+  {
+   "id": "PpY0qbMadrg",
+   "title": "Columbus Metropolitan Club: When Staying in School Takes More Than School",
+   "duration": 3591,
+   "live_status": null
+  },
+  {
+   "id": "3qHctJX7QHY",
+   "title": "Filing Online with CRISP",
+   "duration": 39,
+   "live_status": null
+  },
+  {
+   "id": "SFEy9hKDAKE",
+   "title": "Filing Rules for Businesses",
+   "duration": 52,
+   "live_status": null
+  },
+  {
+   "id": "En5TrjVXQT4",
+   "title": "Do You Need to File a Return?",
+   "duration": 50,
+   "live_status": null
+  },
+  {
+   "id": "VNkXN1XcNX4",
+   "title": "When Your Employer Doesn\u2019t Withhold the Full Amount",
+   "duration": 35,
+   "live_status": null
+  },
+  {
+   "id": "C2DQfCJc9Nk",
+   "title": "How Tax Credits Work Between Cities",
+   "duration": 46,
+   "live_status": null
+  },
+  {
+   "id": "Ak_VnYrmkns",
+   "title": "What Does a 2.5% Municipal Income Tax Mean?",
+   "duration": 33,
+   "live_status": null
+  },
+  {
+   "id": "qn3mV19_4Tk",
+   "title": "Welcome to Columbus",
+   "duration": 51,
+   "live_status": null
+  },
+  {
+   "id": "gEAZRPVW7bk",
+   "title": "Community Spotlight: Lorenzo Brent | Columbus Urban League",
+   "duration": 125,
+   "live_status": null
+  },
+  {
+   "id": "VCAOAYC1cn0",
+   "title": "Community Spotlight: Alma Diaz | Alianza 614",
+   "duration": 140,
+   "live_status": null
+  },
+  {
+   "id": "DgWhR6_2qJo",
+   "title": "Community Spotlight: Chris Kelly | Legal Aid of Southeast and Central Ohio",
+   "duration": 101,
+   "live_status": null
+  },
+  {
+   "id": "67SJfH1JZ8g",
+   "title": "Columbus Collaborates",
+   "duration": 255,
+   "live_status": null
+  },
+  {
+   "id": "0HouZKqTlG0",
+   "title": "West Broad Transit-Oriented Development Plan Kickoff",
+   "duration": 2314,
+   "live_status": null
+  },
+  {
+   "id": "LoOdsCEOKpc",
+   "title": "Columbus City Council Irish Proclamation Day",
+   "duration": 3441,
+   "live_status": null
+  },
+  {
+   "id": "HgVWiANSyi0",
+   "title": "Conversations & Coffee:  The Stories Behind the Art",
+   "duration": 3413,
+   "live_status": null
+  },
+  {
+   "id": "_fACBMAhbKE",
+   "title": "Special Meeting: Columbus Advisory Commission on Disability Issues February Meeting (2026)",
+   "duration": 5137,
+   "live_status": null
+  },
+  {
+   "id": "wVhwJ-TjcrI",
+   "title": "Columbus Metropolitan Club: The Ambition Gap: Why Women Are Advancing Less",
+   "duration": 3185,
+   "live_status": null
+  },
+  {
+   "id": "GjE4uDkkw1c",
+   "title": "Conversations & Coffee: Titles, Text & Tough Love - ChatGPT as Your Studio Sidekick",
+   "duration": 2740,
+   "live_status": null
+  },
+  {
+   "id": "WtFRaTiZ8_M",
+   "title": "Citizens' Commission on Elected Officials Compensation 2/26/26",
+   "duration": 4504,
+   "live_status": null
+  },
+  {
+   "id": "-SZ_Gf9pdnw",
+   "title": "Columbus Metropolitan Club: Braids, Business, and Belonging: Black Hair and Identity in Columbus",
+   "duration": 3520,
+   "live_status": null
+  },
+  {
+   "id": "s_wrBho3HBs",
+   "title": "Columbus City Council Black History Month Celebration",
+   "duration": 6708,
+   "live_status": null
+  },
+  {
+   "id": "N5NiCFrslVA",
+   "title": "Conversations and Coffee: My Art Journey",
+   "duration": 2973,
+   "live_status": null
+  },
+  {
+   "id": "IGYmet_NV5E",
+   "title": "Columbus Metropolitan Club: What We Get Right - And Wrong - About Women's Health",
+   "duration": 3480,
+   "live_status": null
+  },
+  {
+   "id": "WJx9q96YZoE",
+   "title": "Columbus Division of Fire 36th Annual Awards Banquet",
+   "duration": 4109,
+   "live_status": null
+  },
+  {
+   "id": "u1nQoSa45n0",
+   "title": "Conversations & Coffee: Evolution as an Artist",
+   "duration": 3426,
+   "live_status": null
+  },
+  {
+   "id": "zDbbyrauRHY",
+   "title": "Columbus Metropolitan Club: The State of Child Care",
+   "duration": 3492,
+   "live_status": null
+  },
+  {
+   "id": "RvCZDHZNj8w",
+   "title": "Press Conference:  Celebrate America 250",
+   "duration": 1766,
+   "live_status": null
+  },
+  {
+   "id": "uUyjIUe5ip8",
+   "title": "Columbus Metropolitan Club: Cybersecurity in the Age of AI",
+   "duration": 3466,
+   "live_status": null
+  },
+  {
+   "id": "OviJE2J_y1c",
+   "title": "Our Columbus, Our Home.",
+   "duration": 121,
+   "live_status": null
+  },
+  {
+   "id": "2i64U9YyQ9k",
+   "title": "Special Meeting: German Village Commission (01/07/2026)",
+   "duration": 6385,
+   "live_status": null
+  },
+  {
+   "id": "ZcM8xr232cs",
+   "title": "Special Meeting: Victorian Village Commission (01/14/2026)",
+   "duration": 5150,
+   "live_status": null
+  },
+  {
+   "id": "L44Dzfoc24I",
+   "title": "Special Meeting: Italian Village Commission (01/13/2026)",
+   "duration": 3025,
+   "live_status": null
+  },
+  {
+   "id": "PlDGwU0-FNw",
+   "title": "Conversations & Coffee: Art Dominoes and Other Works",
+   "duration": 3501,
+   "live_status": null
+  },
+  {
+   "id": "HcR1ZiBRjMU",
+   "title": "Conversations & Coffee: How to Take Better Photos of Your Art",
+   "duration": 3504,
+   "live_status": null
+  },
+  {
+   "id": "jpi9VAD_e9k",
+   "title": "Columbus Metropolitan Club: Haitian Refugees and the Future of Immigration in Central Ohio",
+   "duration": 3469,
+   "live_status": null
+  },
+  {
+   "id": "5LjceP83UtY",
+   "title": "Department of Building and Zoning Services and Fort Hayes Career Center Partnership",
+   "duration": 136,
+   "live_status": null
+  },
+  {
+   "id": "KSw9nAJG8mQ",
+   "title": "Clean & Safe Corridors Initiative",
+   "duration": 118,
+   "live_status": null
+  },
+  {
+   "id": "uHnERmHvUBI",
+   "title": "Conversations & Coffee: Grandpa's Workshop",
+   "duration": 3517,
+   "live_status": null
+  },
+  {
+   "id": "AcW6k4c2FtA",
+   "title": "Columbus Metropolitan Club: Black Men in Central Ohio: Realities, Resilience, and the Road Ahead",
+   "duration": 3455,
+   "live_status": null
+  },
+  {
+   "id": "sDku_JYMhQ4",
+   "title": "Press Conference: Weinland Park Double Homicide Investigation Update.",
+   "duration": 707,
+   "live_status": null
+  },
+  {
+   "id": "K9_aKDteWsQ",
+   "title": "Press Conference: Nurse Health Care Navigation Line Service",
+   "duration": 1355,
+   "live_status": null
+  },
+  {
+   "id": "1ZVOSkcLyQE",
+   "title": "Development Commission Meeting: January 8, 2026",
+   "duration": 6408,
+   "live_status": null
+  },
+  {
+   "id": "jZ7xSx7lchU",
+   "title": "Columbus Metropolitan Club: Annual Blue Chip Economic Forecast",
+   "duration": 3447,
+   "live_status": null
+  },
+  {
+   "id": "wkfOTzDyZnk",
+   "title": "City of Columbus End of the Year Statement from Mayor Ginther & Police Chief Bryant",
+   "duration": 106,
+   "live_status": null
+  },
+  {
+   "id": "2H4mCpfYf0g",
+   "title": "Actor's Theatre's Shakespeare in the Park: A Midsummer's Night's Dream",
+   "duration": 7370,
+   "live_status": null
+  },
+  {
+   "id": "iwMf9-7FfRI",
+   "title": "EFRB December 2025 Hearing",
+   "duration": 3774,
+   "live_status": null
+  },
+  {
+   "id": "pvJLA5pCUgo",
+   "title": "Columbus is for All of Us - Spanish Captions",
+   "duration": 122,
+   "live_status": null
+  },
+  {
+   "id": "gv3k6nCQTEk",
+   "title": "Columbus is for All of Us - Somali Captions",
+   "duration": 121,
+   "live_status": null
+  },
+  {
+   "id": "TAfAdI5awAE",
+   "title": "Columbus is for All of Us",
+   "duration": 124,
+   "live_status": null
+  },
+  {
+   "id": "AlSJfXVfeWA",
+   "title": "Columbus Metropolitan Club:  Annual State of Downtown: Building a Safer, Stronger Downtown",
+   "duration": 3453,
+   "live_status": null
+  },
+  {
+   "id": "_cyWofK_w6Y",
+   "title": "Columbus Police PSA: Celebratory Gunfire",
+   "duration": 58,
+   "live_status": null
+  },
+  {
+   "id": "XT7nMcXOf64",
+   "title": "December 2025 Development Commission Meeting",
+   "duration": 9699,
+   "live_status": null
+  },
+  {
+   "id": "4Z_chkFqG_0",
+   "title": "Conversations & Coffee:  The Art of Theatre",
+   "duration": 2793,
+   "live_status": null
+  },
+  {
+   "id": "Q3tiFJEaSVs",
+   "title": "Columbus Metropolitan Club: Urban Power: How Cities Are Driving Ohio\u2019s Growth",
+   "duration": 3394,
+   "live_status": null
+  },
+  {
+   "id": "p2_DNQFjXy8",
+   "title": "How Your Food Scraps Can Boost Soil, Cut Waste & Save Money",
+   "duration": 31,
+   "live_status": null
+  },
+  {
+   "id": "68NkIIORIzA",
+   "title": "Turn Food Waste Into Something Good",
+   "duration": 31,
+   "live_status": null
+  },
+  {
+   "id": "pXPPBr54Pgo",
+   "title": "Turn Your Food Scraps into Fresh Food for Columbus! \u267b\ufe0f\ud83c\udf31",
+   "duration": 69,
+   "live_status": null
+  },
+  {
+   "id": "IwpQ6-3OqgQ",
+   "title": "Conversations & Coffee: The Art of Puppetry",
+   "duration": 3080,
+   "live_status": null
+  },
+  {
+   "id": "C66H9A8PWog",
+   "title": "Columbus Metropolitan Club: Creative Capital: How the Arts Power Community Infrastructure",
+   "duration": 3478,
+   "live_status": null
+  },
+  {
+   "id": "G1tge5F29bE",
+   "title": "City Chat: Columbus Police Holiday Safety",
+   "duration": 1493,
+   "live_status": null
+  },
+  {
+   "id": "qV0tHAcwU84",
+   "title": "Holiday Package Theft: A Felony Reminder",
+   "duration": 111,
+   "live_status": null
+  },
+  {
+   "id": "ISxzgz3Z3VI",
+   "title": "Waste Less, Help More: How Food Scraps Support Our Neighbors",
+   "duration": 31,
+   "live_status": null
+  },
+  {
+   "id": "kyS5yxyW10I",
+   "title": "Special Meeting: University Impact District Review Board (09/24/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "O5B20qta7WM",
+   "title": "Special Meeting: East Franklinton Review Board ()",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "0BdMZaly91k",
+   "title": "Special Meeting: Board of Zoning Adjustment (09/22/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "_6KFJBHztqo",
+   "title": "Special Meeting: Downtown Commission (09/22/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "p-r2A_2AY0c",
+   "title": "Special Meeting: Rocky Fork-Blacklick Accord Advisory Panel (09/17/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "7vGSTb2zl78",
+   "title": "Special Meeting: Historic Resources Commission (09/17/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "5qcW8OuncXs",
+   "title": "Special Meeting: Art Commission (09/16/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "Qs6g0ZlVUBE",
+   "title": "Special Meeting: Skilled Trades Review Board (09/16/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "Ap2ZJ0f-wSU",
+   "title": "Special Meeting: Graphics Commission (09/15/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "_jO7e9fAjkA",
+   "title": "Special Meeting: Building Commission (09/15/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "1C2Zd4KY88I",
+   "title": "Special Meeting: Property Maintenance Appeals Board (09/14/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "Xw0HMaMNibs",
+   "title": "Special Meeting: Development Commission (09/10/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "W1FRhmEeR78",
+   "title": "Special Meeting: Victorian Village Commission (09/09/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "UjLhrJgdZp4",
+   "title": "Special Meeting: Italian Village Commission (09/08/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "iIcJXr7lyck",
+   "title": "Special Meeting: German Village Commission (09/02/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "Dz0vQ235CRQ",
+   "title": "Special Meeting: Board of Review for General and HIC Contractors (09/02/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "yL4vOGq_LTM",
+   "title": "Special Meeting: Board of Review for Sign Erectors (09/01/2026)",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "JDImRQehmqk",
+   "title": "Press Conference:  Nurse Health Care Navigation Line",
+   "duration": null,
+   "live_status": "is_upcoming"
+  },
+  {
+   "id": "eC5sl1uJAzY",
+   "title": "ZONE IN PHASE II OVERVIEW \u2013 PROPOSED ZONING CODE & MAP: PUBLIC HEARING",
+   "duration": 7440,
+   "live_status": "was_live"
+  },
+  {
+   "id": "aM3-0aW0Tc0",
+   "title": "Blueprint Columbus Hilltop 1: Palmetto-Westgate Pervious Pavement Pre-Construction Meeting",
+   "duration": 4058,
+   "live_status": "was_live"
+  },
+  {
+   "id": "JBRBCujXzD8",
+   "title": "Special Meeting: Board of Zoning Adjustment (08/25/26)",
+   "duration": 5937,
+   "live_status": "was_live"
+  },
+  {
+   "id": "sZssvd87Ric",
+   "title": "Special Meeting: Downtown Commission (08/25/26)",
+   "duration": 1488,
+   "live_status": "was_live"
+  },
+  {
+   "id": "lJR39FcIhM8",
+   "title": "Columbus City Council Meeting (8/24/26)",
+   "duration": 9701,
+   "live_status": "was_live"
+  },
+  {
+   "id": "Ni-c5TH_WcI",
+   "title": "Press Conference: Columbus\u2019 Zoning Code Modernization Proposal",
+   "duration": 2262,
+   "live_status": "was_live"
+  },
+  {
+   "id": "0sVNe4nq3-Q",
+   "title": "Special Meeting: Graphics Commission (08/18/26)",
+   "duration": 2738,
+   "live_status": "was_live"
+  },
+  {
+   "id": "EpOBDtM1z5Y",
+   "title": "City Council Public Hearing: Council Structure and Election Reform",
+   "duration": 9808,
+   "live_status": "was_live"
+  },
+  {
+   "id": "FthZZ5oH9pU",
+   "title": "Press Conference: City Schools Response to Extreme Weather Aftermath",
+   "duration": 1536,
+   "live_status": "was_live"
+  },
+  {
+   "id": "l9w4dtEtf1E",
+   "title": "Columbus Division of Fire 124th Recruit Class Graduation Ceremony",
+   "duration": 3867,
+   "live_status": "was_live"
+  },
+  {
+   "id": "ms8zE29L8Ss",
+   "title": "Special Meeting: Development Commission (08/13/26)",
+   "duration": 3353,
+   "live_status": "was_live"
+  },
+  {
+   "id": "w1bkPLVcOLo",
+   "title": "Press Conference: Ongoing Extreme Weather Response Update",
+   "duration": 1442,
+   "live_status": "was_live"
+  },
+  {
+   "id": "lsNZnV4hdYQ",
+   "title": "Victorian Village Commission (08/12/26)",
+   "duration": 6906,
+   "live_status": "was_live"
+  },
+  {
+   "id": "xSZZa1B5y90",
+   "title": "Press Conference: Columbus Leaders Discuss Severe Weather",
+   "duration": 3236,
+   "live_status": "was_live"
+  },
+  {
+   "id": "9dpUcQ-qDsM",
+   "title": "Council Public Safety & Justice Committee: Flock Safety Cameras Audit Review",
+   "duration": 20631,
+   "live_status": "was_live"
+  },
+  {
+   "id": "82_yQiTNM_o",
+   "title": "Columbus Civilian Police Review Board Meeting #61.",
+   "duration": 6341,
+   "live_status": "was_live"
+  },
+  {
+   "id": "wc8qSju1DCY",
+   "title": "Special Meeting: Downtown Commission (07/28/26)",
+   "duration": 9143,
+   "live_status": "was_live"
+  },
+  {
+   "id": "xikXVvazMbk",
+   "title": "Special Meeting: University Impact District Review Board (07/23/26)",
+   "duration": 1418,
+   "live_status": "was_live"
+  },
+  {
+   "id": "073uVZavS1Q",
+   "title": "Council Public Utilities & Sustainability Committee: Data Center Policy",
+   "duration": 11907,
+   "live_status": "was_live"
+  },
+  {
+   "id": "eUwitMSb7nE",
+   "title": "Special Meeting: East Franklinton Review Board (07/22/26)",
+   "duration": 4191,
+   "live_status": "was_live"
+  },
+  {
+   "id": "oRcjutPOjS8",
+   "title": "Special Meeting: Graphics Commission (07/21/26)",
+   "duration": 5092,
+   "live_status": "was_live"
+  },
+  {
+   "id": "brGZS0hlXIU",
+   "title": "Special Meeting: Historic Resources Commission (07/16/26)",
+   "duration": 10648,
+   "live_status": "was_live"
+  },
+  {
+   "id": "iNthEFxUL1k",
+   "title": "Special Meeting: Art Commission (07/15/26)",
+   "duration": 3845,
+   "live_status": "was_live"
+  },
+  {
+   "id": "cUcMMu-kxns",
+   "title": "Special Meeting: Italian Village Commission (07/14/26)",
+   "duration": 5926,
+   "live_status": "was_live"
+  },
+  {
+   "id": "UN07kLiHfPs",
+   "title": "Columbus Division of Police 150th Recruit Class Graduation Ceremony",
+   "duration": 4218,
+   "live_status": "was_live"
+  },
+  {
+   "id": "QvWnb05wC4o",
+   "title": "Special Meeting: Development Commission (07/09/26)",
+   "duration": 1876,
+   "live_status": "was_live"
+  },
+  {
+   "id": "rLjhVndXcLk",
+   "title": "Press Conference: Launch of City First Participatory Budget",
+   "duration": 1723,
+   "live_status": "was_live"
+  },
+  {
+   "id": "kMsy-XMBpMU",
+   "title": "Special Meeting: Board of Zoning Adjustment (07/08/26)",
+   "duration": 9153,
+   "live_status": "was_live"
+  },
+  {
+   "id": "NSCtzoH3H9U",
+   "title": "Special Meeting: Victorian Village Commission (07/08/26)",
+   "duration": 6826,
+   "live_status": "was_live"
+  },
+  {
+   "id": "zkK09V76pN8",
+   "title": "Columbus Civilian Police Review Board Meeting #60",
+   "duration": 3763,
+   "live_status": "was_live"
+  },
+  {
+   "id": "m2UlEIgM4g4",
+   "title": "Columbus City Council Meeting (06/29/26)",
+   "duration": 29616,
+   "live_status": "was_live"
+  },
+  {
+   "id": "YcvDHFotyLc",
+   "title": "Press Conference: Council Outlines Key Legislation Ahead of Summer Recess",
+   "duration": 2140,
+   "live_status": "was_live"
+  },
+  {
+   "id": "8tUxYJRAb8w",
+   "title": "Council Public Safety & Criminal Justice Committee:  Division of Fire Apparatus Review",
+   "duration": 7543,
+   "live_status": "was_live"
+  },
+  {
+   "id": "dbOFbDmCWLw",
+   "title": "Council Workforce, Education & Labor Committee: Early Start Columbus Program Transfer",
+   "duration": 6478,
+   "live_status": "was_live"
+  },
+  {
+   "id": "cnqoc62i3UA",
+   "title": "Columbus City Council Meeting (6/22/26)",
+   "duration": 20385,
+   "live_status": "was_live"
+  },
+  {
+   "id": "VBwRzPx03W4",
+   "title": "Special Meeting: Historic Resources Commission (06/18/26)",
+   "duration": 9871,
+   "live_status": "was_live"
+  },
+  {
+   "id": "GQELAqf7x2Y",
+   "title": "Council Finance & Governance Committee: First Quarter Review",
+   "duration": 9289,
+   "live_status": "was_live"
+  },
+  {
+   "id": "_OkP5eukwdY",
+   "title": "Blueprint 10th Anniversary",
+   "duration": 1156,
+   "live_status": "was_live"
+  },
+  {
+   "id": "ZKRYwZH9_P8",
+   "title": "Special Meeting: Graphics Commission (06/16/26)",
+   "duration": 481,
+   "live_status": "was_live"
+  },
+  {
+   "id": "tjxL6n5btJc",
+   "title": "Press Conference: Fire Station 36 Grand Opening",
+   "duration": 1647,
+   "live_status": "was_live"
+  },
+  {
+   "id": "-Qw7lQJFMfk",
+   "title": "Juneteenth Illumination Ceremony",
+   "duration": 3907,
+   "live_status": "was_live"
+  },
+  {
+   "id": "RyS6TqgcsrI",
+   "title": "Columbus City Council & Columbus City Schools Joint Committee Hearing",
+   "duration": 7114,
+   "live_status": "was_live"
+  },
+  {
+   "id": "HiDi1AaE-5o",
+   "title": "Press Conference: Hoover Road Pedestrian Bridge Groundbreaking",
+   "duration": 1606,
+   "live_status": "was_live"
+  },
+  {
+   "id": "iVC7_KsHl8A",
+   "title": "Special Meeting: Development Commission (06/11/26)",
+   "duration": 5302,
+   "live_status": "was_live"
+  },
+  {
+   "id": "AAUuHc3xwpE",
+   "title": "Press Conference: Southwest Community Plan Announcement",
+   "duration": 2180,
+   "live_status": "was_live"
+  },
+  {
+   "id": "uTcFX3-vXYM",
+   "title": "2026 National Gun Violence Awareness Day Vigil",
+   "duration": 4309,
+   "live_status": "was_live"
+  },
+  {
+   "id": "39TR5k_9TVo",
+   "title": "Special Meeting: German Village Commission (06/03/26)",
+   "duration": 15319,
+   "live_status": "was_live"
+  },
+  {
+   "id": "4n7t_Ng1-sw",
+   "title": "Public Utilities & Sustainability Cmte: Columbus Water & Power's Community Assistance Program",
+   "duration": 4369,
+   "live_status": "was_live"
+  },
+  {
+   "id": "1oc22jsA15g",
+   "title": "Columbus Civilian Police Review Board Meeting #59",
+   "duration": 4675,
+   "live_status": "was_live"
+  },
+  {
+   "id": "f-UHsaTOIhI",
+   "title": "Pride Lighting Ceremony 2026",
+   "duration": 3381,
+   "live_status": "was_live"
+  },
+  {
+   "id": "pyTcWtHExis",
+   "title": "Columbus City Council Meeting (6/1/26)",
+   "duration": 11402,
+   "live_status": "was_live"
+  },
+  {
+   "id": "8n9yofIlFb4",
+   "title": "Press Conference: Clean & Safe Corridor Initiative 5/29/26",
+   "duration": 1179,
+   "live_status": "was_live"
+  },
+  {
+   "id": "5_BARRa6qjE",
+   "title": "Columbus Division of Fire Paramedic Graduation Ceremony",
+   "duration": 2757,
+   "live_status": "was_live"
+  },
+  {
+   "id": "cKzB0I1FdTU",
+   "title": "City of Columbus Africa Day 2026",
+   "duration": 3401,
+   "live_status": "was_live"
+  },
+  {
+   "id": "YUwVqJ2YcOM",
+   "title": "Summer Safety Initiative Announcement",
+   "duration": 2140,
+   "live_status": "was_live"
+  },
+  {
+   "id": "zVo9y1h8iwk",
+   "title": "Special Meeting: Board of Zoning Adjustment (05/26/26)",
+   "duration": 15211,
+   "live_status": "was_live"
+  },
+  {
+   "id": "-yJmG2f04uU",
+   "title": "Special Meeting: Downtown Commission (05/26/26)",
+   "duration": 3713,
+   "live_status": "was_live"
+  },
+  {
+   "id": "EiKDH53MMXE",
+   "title": "Memorial Day Service 2026",
+   "duration": 3158,
+   "live_status": "was_live"
+  },
+  {
+   "id": "OKfkNur8Q0Y",
+   "title": "Special Meeting: Historic Resources Commission (05/21/26)",
+   "duration": 5766,
+   "live_status": "was_live"
+  },
+  {
+   "id": "n4yFHVBBTwA",
+   "title": "Sawyer Tower Demolition Commemoration",
+   "duration": 1460,
+   "live_status": "was_live"
+  },
+  {
+   "id": "_Qscs4djr8w",
+   "title": "Special Meeting: Art Commission (05/20/26)",
+   "duration": 3319,
+   "live_status": "was_live"
+  },
+  {
+   "id": "qSW2upz70aA",
+   "title": "Special Meeting: Italian Village Commission (05/12/26)",
+   "duration": 7143,
+   "live_status": "was_live"
+  }
+ ]
+}

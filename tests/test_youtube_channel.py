@@ -5,10 +5,11 @@ The riskiest thing this repo does: a wrong match publishes some other
 meeting's video under a real government's name. So the fixtures here are
 **real, live-captured channel listings**, not invented ones --
 `tests/fixtures/youtube_channel/*.json` are the actual flat listings
-yt-dlp returned for all four confirmed channels on 2026-08-21 (id, title,
-duration and live_status, exactly the fields `extract_flat` provides),
-trimmed to the most recent N entries. Every assertion below names a real
-meeting on a real Legistar instance.
+yt-dlp returned for the confirmed channels (four on 2026-08-21, plus
+Columbus on 2026-08-30, WO-72) (id, title, duration and live_status,
+exactly the fields `extract_flat` provides), trimmed to the most recent N
+entries. Every assertion below names a real meeting on a real Legistar
+instance.
 
 Two of these cases have independently-known right answers, which is what
 makes them worth more than the rest:
@@ -246,6 +247,54 @@ def test_upcoming_livestream_is_never_matched():
 
 
 # --------------------------------------------------------------------
+# Columbus -- WO-72, 2026-08-30. Same precondition as Phoenix/
+# Philadelphia/Baltimore: no `a.videolink` anchor at all on a real
+# columbus.legistar.com meeting page (confirmed live via a direct fetch
+# of MeetingDetail.aspx?ID=1436780, "Columbus City Council" 8/24/2026).
+# `columbus_channel_listing.json` is a real, live-captured merged
+# `/videos` + `/streams` listing for youtube.com/cityofcolumbus
+# (channel_id UCfttJJ9T5_1W1JewiTJqzqA), captured 2026-08-30.
+# --------------------------------------------------------------------
+
+
+def test_columbus_finds_the_known_recording_for_the_known_meeting():
+    # columbus.legistar.com ID=1436780, "Columbus City Council" on
+    # 2026-08-24, whose page renders no `a.videolink` anchor at all
+    # (confirmed live). The matching video is a past livestream under the
+    # channel's `/streams` tab, "Columbus City Council Meeting (8/24/26)".
+    assert _match("columbus", "Columbus City Council", "2026-08-24")["id"] == (
+        "lJR39FcIhM8"
+    )
+
+
+def test_columbus_matches_a_different_date_for_the_same_body():
+    # Same body, a different real meeting three weeks earlier -- checks
+    # the date half of the match isn't accidentally hardcoded to one day.
+    assert _match("columbus", "Columbus City Council", "2026-06-08")["id"] == (
+        "DVTazohiOYs"
+    )
+
+
+def test_columbus_matches_a_non_council_body_the_same_channel_carries():
+    # "Special Meeting: German Village Commission (08/05/26)" -- a real,
+    # different Columbus body on the same channel, confirming the match
+    # isn't just "any Columbus City Council video, any date".
+    assert (
+        _match("columbus", "German Village Commission", "2026-08-05")["id"]
+        == "hkA9-0MUi40"
+    )
+
+
+def test_columbus_declines_a_single_word_body():
+    # "President" -- too weak a signal to attribute a recording to a
+    # government with, same rule as the Albuquerque case above. Not
+    # confirmed as a real cabq-style body name on this channel; this
+    # exercises the two-significant-token floor with a body name that
+    # simply isn't in the real listing at all, so it must always decline.
+    assert _match("columbus", "President", "2026-08-24") is None
+
+
+# --------------------------------------------------------------------
 # The second, independent date check
 # --------------------------------------------------------------------
 
@@ -275,12 +324,13 @@ def test_video_date_check_accepts_a_missing_date():
     assert yc.video_date_is_plausible("2026-07-01", None)
 
 
-def test_only_the_four_confirmed_tenants_have_a_channel():
+def test_only_the_five_confirmed_tenants_have_a_channel():
     # The registry is deliberately a short, human-verified list -- every
     # other Legistar instance keeps the pre-existing "no video found"
     # behavior untouched.
     assert yc.has_channel_fallback("phoenix.legistar.com")
     assert yc.has_channel_fallback("PHILA.LEGISTAR.COM")
+    assert yc.has_channel_fallback("columbus.legistar.com")
     assert not yc.has_channel_fallback("charlottenc.legistar.com")
     assert not yc.has_channel_fallback("legistar.council.nyc.gov")
 
