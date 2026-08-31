@@ -809,3 +809,123 @@ def test_a_checkpoint_from_a_different_chunking_is_refused(local_media):
     assert tbl._load_partial_progress(
         _REAL_ESCRIBE_URL, chunk_size_seconds=900, total_chunks=2, duration=2400.0
     ) == (0, [])
+
+
+# --- WO-82 (2026-08-30, see BACKLOG.md): the two gaps found recovering a
+# real stuck local-transcription payload --------------------------------
+#
+# chino-valley-az-2026-02-10-town-council-meeting finished a full local
+# Whisper transcription but /internal/ingest 500'd on every retry, so the
+# finished payload was written to local_transcription_backups/. Recovering
+# it manually surfaced two real, small gaps: (1) the payload
+# _save_local_backup() wrote was missing input_url_normalized/source
+# (added only to _ingest()'s own local copy at the time), so the
+# docstring's plain `curl -X POST ... -d @<path>` recovery command 422'd
+# against a real saved file; (2) nothing surfaced that the file was
+# sitting there at all -- it sat unrecovered for 2 real days.
+
+
+async def test_process_one_backup_on_ingest_failure_is_actually_recoverable(
+    local_media, counting_server, tmp_path
+):
+    """Gap 1. Confirms the JSON _save_local_backup() writes when
+    /internal/ingest fails is the *complete* POST body -- including
+    input_url_normalized and source -- not the pre-those-fields payload
+    _ingest() used to build internally. That's the difference between the
+    documented recovery curl command actually working and 422ing, which is
+    exactly what happened recovering the real chino-valley-az backup."""
+    counting_server.statuses = [500] * 10  # exhaust every retry attempt
+    local_media.setattr(
+        tbl, "_base_url", lambda: f"http://127.0.0.1:{counting_server.port}"
+    )
+    local_media.setattr(tbl, "_headers", lambda: {})
+    local_media.setattr(tbl, "FAILED_INGEST_DIR", tmp_path / "backups")
+    local_media.setattr(tbl, "get_finder", lambda platform: _AlwaysResolves())
+
+    async def _extract(*args, **kwargs):
+        return True, None
+
+    local_media.setattr(tbl, "extract_chunk_audio", _extract)
+
+    page = {
+        "slug": "chino-valley-az-2026-02-10-town-council-meeting",
+        "platform": "civicclerk",
+        "source_url_normalized": "https://chinovalleyaz.portal.civicclerk.com/event/6568/media",
+        "video_url": None,
+        "video_format": None,
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(RuntimeError, match="saved locally"):
+            await tbl.process_one(
+                session,
+                _FakeEngine(),
+                page,
+                dry_run=False,
+                chunk_seconds_override=900,
+            )
+
+    backups = list((tmp_path / "backups").glob("*.json"))
+    assert len(backups) == 1
+    saved = json.loads(backups[0].read_text())
+    # The two fields that were missing before WO-82's fix -- their presence
+    # is what makes `curl -X POST ... -d @<path>` recoverable as documented,
+    # instead of 422ing on a request FastAPI's IngestRequest model would
+    # reject as incomplete.
+    assert saved["input_url_normalized"] == page["source_url_normalized"]
+    assert saved["source"] == "transcribed"
+    # And it's still the real transcription content, not a stub.
+    assert saved["segments"]
+    assert saved["platform"] == "escribe"  # from _resolved()'s ResolvedMeeting
+
+
+def test_warn_about_stale_backups_flags_old_files(tmp_path, monkeypatch, caplog):
+    """Gap 2. A backup file older than STALE_BACKUP_THRESHOLD_SECONDS must
+    be named in a clear warning at startup -- the real chino-valley-az
+    backup sat unrecovered for 2 days precisely because nothing surfaced
+    it, and someone happened to go looking."""
+    import os
+    import time
+
+    backups_dir = tmp_path / "backups"
+    backups_dir.mkdir()
+    old_file = backups_dir / "20260825_091547_chino-valley-az-town-council.json"
+    old_file.write_text("{}")
+    old_mtime = time.time() - 3 * 24 * 60 * 60  # 3 days old
+    os.utime(old_file, (old_mtime, old_mtime))
+
+    monkeypatch.setattr(tbl, "FAILED_INGEST_DIR", backups_dir)
+    with caplog.at_level("WARNING", logger="rtr_transcribe_backlog"):
+        tbl._warn_about_stale_backups()
+
+    assert any(
+        "chino-valley-az-town-council" in record.message for record in caplog.records
+    )
+    assert any("1 finished-but-unpushed" in record.message for record in caplog.records)
+
+
+def test_warn_about_stale_backups_silent_when_none_are_old(
+    tmp_path, monkeypatch, caplog
+):
+    """A backup written moments ago (the normal, just-happened-once case)
+    must not spam a warning on every run -- only ones that have genuinely
+    sat past the threshold."""
+    backups_dir = tmp_path / "backups"
+    backups_dir.mkdir()
+    (backups_dir / "20260830_100000_some-meeting.json").write_text("{}")
+
+    monkeypatch.setattr(tbl, "FAILED_INGEST_DIR", backups_dir)
+    with caplog.at_level("WARNING", logger="rtr_transcribe_backlog"):
+        tbl._warn_about_stale_backups()
+    assert caplog.records == []
+
+
+def test_warn_about_stale_backups_handles_a_missing_directory(
+    tmp_path, monkeypatch, caplog
+):
+    """The common case -- this Mac has never had a failed ingest, so the
+    directory doesn't exist at all -- must not raise."""
+    monkeypatch.setattr(tbl, "FAILED_INGEST_DIR", tmp_path / "never-created")
+    with caplog.at_level("WARNING", logger="rtr_transcribe_backlog"):
+        tbl._warn_about_stale_backups()
+    assert caplog.records == []
