@@ -1008,6 +1008,28 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     "tcdsbpublishing.escribemeetings.com": KnownJurisdiction(
         "Toronto Catholic District School Board", "school board", "ON"
     ),
+    # Ringwood, NJ (ringwoodtv.viebit.com) -- WO-71, 2026-08-30. BACKLOG.md's
+    # "A real, previously undocumented jurisdiction" entry found a real
+    # redtaperecordings.com page (source: this exact host, confirmed live by
+    # fetching the page and following its "View original source" link) had
+    # been mis-tagged "New York City, NY" by viebit.py's old hardcoded
+    # single-jurisdiction assumption -- Viebit is a multi-tenant product,
+    # not an NYC-only one, and this is the second confirmed non-NYC tenant.
+    # "Ringwood" is nationally ambiguous -- also real as a town in OK and a
+    # village in IL (confirmed via app/utils/jurisdiction_data/places.csv),
+    # so a bare name lookup stays deliberately ambiguous; this domain is
+    # tied to one verified real instance instead: ringwoodnj.net (the
+    # Borough of Ringwood, NJ's own official site) links this exact Viebit
+    # channel as "Ringwood TV". `validated_subdomain_extract()` doesn't
+    # resolve this on its own -- the "ringwoodtv" label doesn't validate
+    # against the Census table via any tier (confirmed live) -- so a
+    # registry entry is the only real option here, same reasoning as
+    # dallascounty.civicweb.net above. Typed "city" (not "borough"), same
+    # convention as every other general-purpose-municipal-government entry
+    # in this table (see Orion Township, MI's own comment) -- `type` here
+    # only ever selects which lookup table matters, never a government's
+    # literal legal designation.
+    "ringwoodtv.viebit.com": KnownJurisdiction("Ringwood", "city", "NJ"),
 }
 
 

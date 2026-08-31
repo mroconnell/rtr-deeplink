@@ -81,6 +81,66 @@ async def test_resolve_missing_page_config_returns_warning_not_crash():
     assert any("could not find" in w.lower() for w in result.video_warnings)
 
 
+async def test_resolve_ringwood_nj_not_mistagged_as_nyc():
+    # WO-71 (2026-08-30) regression test. No real Ringwood Viebit page
+    # fixture has been captured yet (this is a synthetic pageConfig, same
+    # shape already confirmed real from the NYC fixture above -- see this
+    # repo's synthetic-test convention), but the facts pinned here are
+    # real: fetching https://redtaperecordings.com/m/new-york-ny-2026-08-19
+    # -8-18-26-council-meeting-mp4 live (2026-08-30) showed it was tagged
+    # "New York, NY" while its own "View original source" link points to
+    # https://ringwoodtv.viebit.com/watch?hash=Qb9n3sr6XRM44mOD -- and that
+    # host is confirmed to be the Borough of Ringwood, NJ's own official
+    # Viebit channel (ringwoodnj.net links it as "Ringwood TV"). Before this
+    # fix, ViebitAssetFinder hardcoded "New York City, NY" for every Viebit
+    # URL; this pins that a non-NYC tenant now resolves its own real
+    # jurisdiction via jurisdiction_enrich's domain registry instead.
+    url = "https://ringwoodtv.viebit.com/watch?hash=Qb9n3sr6XRM44mOD"
+    html = (
+        "<html><body><script>"
+        'var pageConfig = {"video":{"id":"y","title":"Council Meeting",'
+        '"dateCreated":1784734559,'
+        '"src":[{"storage":"https://vbfast-vod.viebit.com/otfp/y/",'
+        '"url":"video,master.m3u8?fmp4=1","type":"application/x-mpegurl"}],'
+        '"textTracks":[]},"hasAccess":true};'
+        "</script></body></html>"
+    )
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await ViebitAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Ringwood, NJ"
+    assert result.jurisdiction != "New York City, NY"
+
+
+async def test_resolve_unknown_viebit_tenant_leaves_jurisdiction_unset():
+    # No real example of a THIRD Viebit tenant (beyond councilnyc and
+    # ringwoodtv) has turned up yet. Per this repo's "don't claim a data
+    # path works without a positive example" convention, an unrecognized
+    # netloc must resolve with jurisdiction=None rather than either
+    # inheriting the old NYC hardcode (the WO-71 bug this fix closes) or
+    # guessing a jurisdiction from the subdomain text.
+    url = "https://someothertown.viebit.com/watch?hash=abc"
+    html = (
+        "<html><body><script>"
+        'var pageConfig = {"video":{"id":"z","title":"Meeting",'
+        '"dateCreated":1784734559,'
+        '"src":[{"storage":"https://vbfast-vod.viebit.com/otfp/z/",'
+        '"url":"video,master.m3u8?fmp4=1","type":"application/x-mpegurl"}],'
+        '"textTracks":[]},"hasAccess":true};'
+        "</script></body></html>"
+    )
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await ViebitAssetFinder().resolve(url)
+
+    assert result.jurisdiction is None
+
+
 async def test_resolve_no_caption_track_falls_back_to_warning():
     url = "https://councilnyc.viebit.com/vod/?v=nocaptions"
     html = (
