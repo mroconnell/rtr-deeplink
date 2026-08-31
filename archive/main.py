@@ -825,12 +825,14 @@ async def internal_transcription_hallucination_candidates(
     Rewritten 2026-08-21 -- this endpoint was confirmed live-502ing
     (see BACKLOG_DONE.md) because crud.list_hallucination_candidate_
     transcript_versions() pulled every source=="transcribed" row's full
-    segments JSON in one unbounded query. It now only pulls segments for
-    rows already carrying the hallucination marker (a small, trusted set)
-    plus up to `limit` not-yet-flagged rows (default 500) -- pass
-    `after_id` (the previous batch's max version_id) to page through the
-    rest, same keyset-pagination shape as other batch audit endpoints in
-    this file.
+    segments JSON in one unbounded query. It now pulls up to `limit` rows
+    (default 500) from EACH of the already-flagged and not-yet-flagged
+    populations -- pass `after_id` (the previous batch's max version_id)
+    to page through the rest, same keyset-pagination shape as other batch
+    audit endpoints in this file. (The already-flagged half was still
+    unbounded after that rewrite, on the assumption it would stay small;
+    confirmed wrong live 2026-08-30 -- see BACKLOG_DONE.md -- when it grew
+    past "small" and 502'd again on a plain call.)
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)

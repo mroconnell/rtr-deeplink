@@ -1,5 +1,222 @@
 # Backlog — done
 
+## `hallucination-candidates` 502 root-caused and fixed: flagged branch was still unbounded [Done 2026-08-30]
+
+Blocked running `scripts/repair_repetition_loops.py` (the repetition-loop
+half of the "repair the three already-live transcript-defect populations"
+decision — see this file's matching entries) for real: its first call to
+`GET /internal/transcription/hallucination-candidates` 502'd every time,
+even with `limit=1`. Re-verified the claim rather than assuming the
+script was broken (per this repo's own "re-derive the central claim"
+convention): a direct call with a 280s client timeout still got a 502
+after ~152s, which is Render's own proxy giving up, not a client
+timeout — so the endpoint itself was genuinely too slow, not flaky.
+
+Root cause, confirmed by reading `archive/db/crud.py`'s
+`list_hallucination_candidate_transcript_versions()`: this function's
+2026-08-21 rewrite (see that entry below) bounded only the NOT-yet-flagged
+branch with `limit`/`after_id`; the already-flagged branch was left
+unbounded on the stated assumption that "only real hallucination-loop
+transcripts get flagged... a small, slow-growing set." That assumption
+had become false in production — isolated with `after_id=999999999`
+(both branches empty, 0.2s) vs. `limit=1` with no `after_id` (still
+pulled the *entire* already-flagged population's full `segments` JSON and
+ran CPU-bound `detect_hallucination_warnings()` over every one, 16s and
+climbing with population size). Direct read access to the real production
+`DATABASE_URL` this session's `.env` normally uses for Postgres was ruled
+out as the diagnostic path here — a quick check showed it points at a
+near-empty 4-row local/dev database, not the real one backing
+`ARCHIVE_BASE_URL`, so all verification above went through the HTTP API
+instead, consistent with this repo's "never assume `.env`'s `DATABASE_URL`
+is the one you think it is" caution.
+
+Fix: applied the same `.limit(limit)` + `after_id` keyset bound to the
+flagged branch's query that the unflagged branch already had. Updated
+both the function's own docstring and the endpoint's docstring in
+`archive/main.py` to stop claiming the flagged set is small/unbounded.
+Added `test_hallucination_candidates_limit_bounds_flagged_scan_too`
+(`tests/test_transcription_jobs.py`) — creates 3 already-flagged rows and
+confirms a `limit=2` call only returns 2, paginating the rest via
+`after_id`, mirroring the existing unflagged-branch test. All 4 CI gates
+green. Merged to `main` but **not yet deployed** — the repetition-loop
+repair run itself is still blocked until tonight's deploy ships this fix;
+see the live "Decisions about already-live content" entry in
+`BACKLOG.md`.
+
+## Seam-duplication repair run for real: 111 of 118 candidate pages rewritten [Done 2026-08-30]
+
+The other half of the "repair the three already-live transcript-defect
+populations" decision (see this file's own matching entry) — the
+`scripts/repair_seam_duplication.py` tool was built and CI-tested
+2026-08-30 but never actually run against production. Ran it for real
+tonight using the already-configured `.env` credentials, no new access
+needed: dry-run probed the 118 candidates from `GET /internal/
+transcription/completed-multichunk`, confirmed **111 with real seam
+duplication**; `--apply --from-report` then rewrote all 111, **0
+failed, 0 refused by the safety gates**. Every old transcript version
+stays reachable at `?version=<old id>`, nothing deleted. The 7
+non-matching candidates were already clean (no seam overlap detected on
+re-probe).
+
+## Dormant backlog swept and condensed: nothing here is actionable without a real example, so it doesn't belong in the live file [Archived 2026-08-30]
+
+The old "Dormant — needs a real example first" section had grown to
+~365 lines by its own definition of "nothing actionable until an
+example turns up" — real, valuable reasoning, but reasoning for NOT
+acting, which the live file shouldn't keep paying context-budget rent
+on. Condensed here in one pass; nothing was lost, just compressed. Pull
+an item back to `BACKLOG.md` the moment a real example actually turns
+up for it — don't rebuild any of this reasoning from scratch first.
+
+**Captions, no confirmed positive example anywhere:** ChampDS's own
+frontend never wires up captions at all (confirmed via its real JS
+source, not just in-browser behavior) — `MediaInfo.Captions` is real
+API data nothing consumes; only a direct-vendor-support path remains.
+TTML/DFXP/ITT parsing is spec-verified only, no real sample has ever
+used it. SBV/SUB/SMI/SAMI/plain-.txt get a generic best-effort text
+fallback, no per-line timing, since none has been observed either. SCC/
+STL are detected but unreadable (binary, needs real codec decoding) —
+low-probability, not worth building blind. Row-level CC/SRT links in
+Legistar/CivicPlus calendar listings: checked 8 real hosts, a real
+thorough negative. YouTube/PrimeGov non-English captions: two real
+leads (Riverside County Spanish audio, Virginia Beach's Internet
+Archive `.es.asr.srt` mirror) are both real but neither is an
+on-platform (YouTube/PrimeGov-native) caption track — still no
+on-platform example.
+
+**Per-tenant/per-adapter cases, all resolved to "confirmed negative,
+nothing to build" or already fixed elsewhere:** the YouTube-embed
+jurisdiction-leak audit found every direct delegator safe except
+Legistar's primary path, re-checked against all 19 known real Legistar
+hosts — every populated video link is a hardcoded Granicus mode, a real
+thorough negative, no bare-YouTube example exists. The "Untitled
+meeting" placeholder-copy question stays open as a real but minor
+UI/copy call (no urgency). Legistar's own `MeetingDetail.aspx` extra
+metadata — "Published agenda" and "Meeting location" are both already
+shipped; the "Meeting Items" table is a standing decision not a TODO.
+Minneapolis LIMS white-labeling: a partial DC Council lead
+(`lims.dccouncil.gov`) found but unconfirmed (both sites block
+non-browser fetches, and "LIMS" is also a generic industry term) —
+worth a real headless-browser structural comparison if picked up again,
+not confirmed either way.
+
+**Perry GA's eScribe host (dead since 2026-08-22) needed a replacement
+citation for `escribe.py`'s "no player" backstop-pointer tier** — the
+original Vimeo-pointer sub-shape has a real, thorough negative now (a
+2026-08-30 scan of ~80 real eScribe tenants found zero exercising that
+specific sub-tier). A real, live, currently-confirmed replacement was
+found for the tier's YouTube branch instead: **Orinda, CA**
+(`pub-orinda.escribemeetings.com`, real page confirmed via a bare
+`var VideoId = '...'` JS assignment, cross-verified against YouTube's
+own oEmbed API — "Orinda City Council - July 7, 2026," exact date
+match). Not byte-identical to Perry GA's original sub-case, but a real,
+live citation for the same backstop code path — worth swapping into
+`escribe.py`'s comments in place of the dead Perry GA reference next
+time that file is touched.
+
+**Town Hall Streams: real mechanistic explanation found for why no
+positive transcript example will ever come from an archived meeting.**
+64 real samples (19+ towns, a 7-year date range, using a newly-found
+`town.php?id=` enumeration path) all returned empty. The transcript
+endpoint isn't a stored per-VOD asset — it's a live buffer of real-time
+ID3 metadata streamed during the actual broadcast (`jwplayer(...)
+.onMeta()` appending to a live `#autocc` div); once a meeting ends and
+becomes an archived VOD, there's nothing left in that buffer. A real
+positive example would require catching a town mid-live-broadcast, a
+fundamentally different and much harder thing to sample for than trying
+more archived `location_id`s — deprioritized accordingly. The 88-id
+Wayback population has now been walked, not just discovered.
+
+**SuiteOne Media: PDF-only-transcript case stays unconfirmed after a
+much wider search.** 4 new real tenants found (`socorronm`,
+`porthuenemeca`, `watkinsvillega`, `vermilionoh`, bringing the confirmed
+count to 10); 258 events sampled across all of them, plus a complete
+exhaustive scan of all 255 Pacific Grove events (the one tenant known
+to use the transcript-PDF feature at all) — the single already-known
+case (event 2099) remains the only "Transcript" PDF found anywhere on
+the platform, and it still sits alongside real VTT captions rather than
+being an only source. The 5 previously-dead CDX leads are still dead.
+JCG Technologies (SuiteOne's vendor) sells "Interactive Transcript" as
+a separate paid add-on from captioning — evidently rarely purchased
+among known tenants. Worth deprioritizing until more tenants surface.
+
+**Broader design questions, still real but genuinely product-scoped,
+not code-scoped:** multi-part meeting UI (Orange County FL's 8-part
+video.js playlist is the one confirmed real example; no second one
+found after 3 separate real searches); Palm Beach County FL's
+JS-rendered SharePoint shell needs its own escalation-trigger idea, not
+a widened existing one; `scan_page_for_video_evidence()`'s backstop
+tier is eScribe-only, each further adapter opt-in needs its own real
+no-video example; Vimeo's real-world small-government prevalence is
+still an extrapolation (~290 jurisdictions) never replaced by a full
+real count; direct-to-YouTube may be the single largest small-
+government video source ahead of Granicus, a resolver-prioritization
+signal worth weighing once a full real count exists, not acted on from
+one 200-row sample; a sparse 5-11-cue repetition loop is still missed
+by WO-36's two detection rules, deliberately, since the 304-transcript
+corpus had no real example of that shape and a real cadence-regularity
+signal is the most promising next discriminator if one turns up.
+
+**Platform discovery/enumeration leads** (DNS wildcard-free
+enumeration across 6 platforms, the 9 unmatched CNAME vendor
+signatures, custom-domain example collection as a standing habit) were
+moved to `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+instead of archived here — they're business-side discovery methodology
+work, not `rtr-deeplink` code tasks, per this repo's own
+code-vs-business separation convention.
+
+## Swagit custom-domain embeds: the original example shape was obsolete, the real pattern is likely already handled [Investigated 2026-08-30]
+
+The original entry waited on a live example of `dublin.ca.gov/swagit-
+video-player?video_id=...` — a query-param custom-domain embed shape,
+confirmed 404 since 2026-08-11, with a targeted 2026-08-30 web/live
+search finding **zero real customers anywhere** using that exact
+pattern. Confirmed obsolete, not just hard to find: checked 3
+independent real Swagit customers' own government pages directly
+(Dublin CA, Pinal County AZ, Beaumont TX) — all three use the same
+real pattern instead, a plain `<iframe src="https://{tenant}.swagit
+.com/...">` embedded directly on the city's own domain, no query-param
+wrapper at all.
+
+**This shape is likely already handled with zero code change.**
+`app/platforms/generic_fallback.py`'s `_try_delegate_to_known_platform()`
+(via `find_platform_link()`) already scans a page's `<iframe src>`
+tags and delegates to `SwagitAssetFinder` when it finds a real
+`swagit.com` domain — the same mechanism already confirmed live
+2026-08-10 for Austin TX's plain `<a href>` link to
+`austintx.swagit.com`. Not independently re-verified end-to-end against
+production this pass (submitting a real city watch-meetings URL would
+create a new live page, out of scope for a research-only check) —
+worth a quick live confirmation next time a Swagit-adjacent gap comes
+up, but no adapter-build work is expected to be needed.
+
+## Roll-up dedup: the last 10 YouTube-backed pages rewritten, the IP block cleared [Done 2026-08-30]
+
+Closes the residual left after the 2026-08-22 apply, which rewrote 14
+of 25 affected pages (all 11 Granicus/2 CivicClerk/1 eScribe) but hit
+`HTTP Error 429: Too Many Requests` on every one of the 10 YouTube-
+backed pages, including a cold retry after 9 idle minutes — a sustained
+IP-level block, not simple rate limiting (see `BACKLOG.md`'s still-open
+"Whether a sustained YouTube IP block ever clears" entry for the
+broader unresolved question this is one data point for).
+
+**Re-probed live 2026-08-30, 8 days after the block**, using
+`.env`'s already-configured `ARCHIVE_INGEST_TOKEN`/`ARCHIVE_BASE_URL`
+(no new access needed) against the exact 10 slugs from the original
+report: all 10 resolved cleanly, zero 429s. Ran `scripts/
+dedupe_rollup_transcripts.py --apply --from-report scripts/
+rollup_dedupe_report.json`: **10 rewritten, 0 refused by the safety
+gates, 0 failed, 92s elapsed.** Every old transcript version stays
+reachable at `?version=<old id>`, nothing deleted. Retention ratios
+ranged 0.51–0.85 (Santa Clara's ceremonial meeting the most
+duplicated, 0.51 retained — matches its known-worst-case billing among
+the original "borderline" band).
+
+Doesn't settle the general "does a YouTube IP block reliably clear"
+question — this is one data point (8 days) on one specific block, not
+a controlled measurement — but the specific 10-page residual this
+entry tracked is fully closed.
+
 ## The 50 largest US cities — per-tenant status, mostly closed [Done, various 2026-08-14 through 2026-08-30]
 
 Distinct from the "no domain found yet" jurisdiction-coverage work
@@ -2462,12 +2679,13 @@ pulled was the wrong window entirely. The right window
   oscillating near the ceiling repeatedly in one short window, not
   recovering to a healthy baseline.
 
-**Still needs Ryan's call, now with better evidence**: this pattern
-(sustained near-ceiling baseline + a sharp concurrent-load spike tipping
-it over + climbing right back to the ceiling) reads more like "recurs"
-than "isolated fluke." Live entry below carries the residual decision
-(bump `rtr-deeplink` from `plan: starter` to `plan: standard`, the same
-one-line change already applied to the other three services).
+**Decided, 2026-08-30: stay on `plan: starter`.** Ryan bumped
+`rtr-deeplink` to `plan: standard` (PR #593), then reverted it the same
+day (PR #594, "keep current plan, not upgrade") — the evidence above
+was real, but not enough to justify the cost given WO-80's O(n)→O(1)
+health-check fix landed the same night and may address the underlying
+memory-pressure trigger on its own. Worth revisiting if the same crash
+pattern recurs post-WO-80.
 
 **3. Archive instability, 2026-08-17, part (b) — fully closed.** The
 open question was what actually failed in PR #156's first prod

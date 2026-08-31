@@ -112,13 +112,34 @@ async def test_resolve_rejects_url_with_no_tenant_or_video_id():
 
 
 async def test_jurisdiction_from_tenant_slug_fallback_is_none_for_real_tenant():
-    """Synthetic case, not a second real customer: exercises the
-    tenant-slug fallback path directly (no destinyhosted hyperlink at
-    all in the agenda) using this adapter's own one real tenant slug,
-    "comm7tv" -- confirmed it does NOT parse as a place name (unlike a
-    hypothetical "cityofsomewhereca"), so the fallback should return
-    None rather than a wrong guess. No real Castus tenant whose slug
-    genuinely resolves through this path has been found yet -- see
-    castus.py's own docstring on `_jurisdiction_from_tenant_slug()`.
+    """Exercises the tenant-slug fallback path directly (no destinyhosted
+    hyperlink at all in the agenda) using this adapter's own real
+    Billings, MT tenant slug, "comm7tv" -- confirmed it does NOT parse as
+    a place name (unlike a hypothetical "cityofsomewhereca"), so the
+    fallback should return None rather than a wrong guess.
     """
     assert CastusAssetFinder._jurisdiction_from_tenant_slug("comm7tv") is None
+
+
+async def test_jurisdiction_from_tenant_slug_known_tenant_westford():
+    # A real second Castus customer confirmed 2026-08-30, "westfordcat"
+    # (Westford, MA) -- see castus.py's own comment on
+    # _KNOWN_TENANT_SLUG_JURISDICTIONS for the full investigation
+    # (confirmed via a live VIDEO_INFO_URL call, real content "Select
+    # Board Meeting - 8/25/2026"). This is the real customer that proved
+    # the generic fallback needed a curated entry: "cat" isn't a stripped
+    # branding suffix, and "Westford" is a genuine 6-state collision
+    # (MA/NY/VT/WI/MN/ND) the generic lookup correctly declines on its
+    # own, confirmed below.
+    assert (
+        CastusAssetFinder._jurisdiction_from_tenant_slug("westfordcat")
+        == "Westford, MA"
+    )
+
+
+async def test_jurisdiction_from_tenant_slug_declines_ambiguous_westford_without_curation():
+    # Confirms the generic fallback's own reasoning for why "westfordcat"
+    # needed a curated entry above: even with the "cat" suffix stripped,
+    # bare "Westford" is a real 6-state collision the generic
+    # Census-backed lookup correctly declines rather than guessing.
+    assert CastusAssetFinder._jurisdiction_from_tenant_slug("westford") is None

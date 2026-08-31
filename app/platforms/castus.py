@@ -128,6 +128,26 @@ _KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS = {
     "24568": "Billings, MT",
 }
 
+# A real second Castus customer confirmed 2026-08-30 with no destinyhosted
+# link at all ("westfordcat", real content: "Select Board Meeting -
+# 8/25/2026", confirmed via the same VIDEO_INFO_URL call resolve() makes,
+# a distinct internal channel id from Billings' -- a genuinely separate
+# tenant, not a duplicate). This is the first real exercise of the
+# tenant-slug fallback path (_jurisdiction_from_tenant_slug()), and it
+# fails there for two independently-confirmed reasons: (1) "cat"
+# (Community Access Television branding) isn't one of the branding
+# suffixes _jurisdiction_from_tenant_slug() strips, so "westfordcat" never
+# reduces to "westford"; (2) even stripped, "Westford" is a genuine
+# 6-state collision (MA/NY/VT/WI/MN/ND per jurisdiction_enrich's own
+# subdivision table), so the lookup correctly declines rather than
+# guessing wrong -- the fallback's own design already gets this right,
+# it just needs a curated answer for this specific tenant, the same
+# pattern _KNOWN_DESTINYHOSTED_TENANT_JURISDICTIONS above already
+# established for the destinyhosted-linked case.
+_KNOWN_TENANT_SLUG_JURISDICTIONS = {
+    "westfordcat": "Westford, MA",
+}
+
 
 class CastusAssetFinder(AssetFinder):
     """Resolves video + transcript for a Castus (cloud.castus.tv) meeting
@@ -356,16 +376,23 @@ class CastusAssetFinder(AssetFinder):
 
     @staticmethod
     def _jurisdiction_from_tenant_slug(tenant: str) -> Optional[str]:
-        """Best-effort only, unconfirmed against any real example -- this
-        adapter's one real customer ("comm7tv") doesn't parse as a place
-        name itself (its jurisdiction comes from the destinyhosted
-        hyperlink path above instead). Kept as a fallback for a future
-        tenant whose slug genuinely is place-shaped (e.g. a hypothetical
-        "cityofsomewhereca"), stripping a handful of common channel-
-        branding suffixes first so they don't defeat the lookup, then
-        deferring entirely to jurisdiction_enrich's own Census-backed
-        name tables rather than guessing.
+        """Confirmed live 2026-08-30 against a real second customer,
+        "westfordcat" (Westford, MA) -- Billings' own "comm7tv" doesn't
+        parse as a place name (its jurisdiction comes from the
+        destinyhosted hyperlink path above instead), so this path was
+        previously unexercised. First checks
+        `_KNOWN_TENANT_SLUG_JURISDICTIONS` for a curated answer (needed
+        for westfordcat: "cat" -- Community Access Television branding --
+        isn't a suffix this strips, and even stripped, "Westford" is a
+        genuine 6-state collision the generic lookup correctly declines
+        rather than guessing). Falls back to stripping a handful of
+        common channel-branding suffixes, then deferring entirely to
+        jurisdiction_enrich's own Census-backed name tables for a future
+        tenant whose slug is place-shaped and nationally unambiguous.
         """
+        known = _KNOWN_TENANT_SLUG_JURISDICTIONS.get(tenant.lower())
+        if known:
+            return known
         candidate = re.sub(
             r"(tv|gov|access|media|county|city)$", "", tenant, flags=re.I
         )
