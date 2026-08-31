@@ -224,6 +224,56 @@ def test_is_likely_garbled_false_below_min_sample_size():
     assert is_likely_garbled(cues) is False
 
 
+def test_is_likely_garbled_false_for_real_bilingual_chula_vista_transcript():
+    # Real bug, fixed 2026-08-31 (BACKLOG.md's "Likely a false-positive
+    # garbled-marker" entry): Chula Vista CA's 2026-05-19 city council
+    # meeting (eScribe, version 816) has a real, coherent Spanish
+    # transcript that the old ASCII-only word tokenizer false-flagged as
+    # garbled -- accented characters (sesión, está, día) split real words
+    # into spurious 1-2 letter fragments, and _COMMON_SHORT_WORDS had no
+    # Spanish entries either. This fixture is a real excerpt (first 25,000
+    # of ~165,000 chars, timestamps stripped) fetched live from the
+    # meeting's public /m/{slug}/transcript.txt export on
+    # redtaperecordings.com while building this fix -- not synthetic. The
+    # old tokenizer scored the full real transcript 35.6% junk (would
+    # false-flag; threshold is 6%); this fix brings it to well under
+    # threshold when the caller passes the already-detected lang="es".
+    text = load_fixture("escribe", "chula_vista_public_comments_transcript_excerpt.txt")
+    cues = [{"start": 0, "end": 1, "text": text}]
+    assert is_likely_garbled(cues, lang="es") is False
+
+
+def test_is_likely_garbled_still_true_for_genuinely_garbled_spanish():
+    # The lang="es" allowlist must not become a blanket bypass for
+    # non-English content -- Fountain Valley's real genuinely-garbled case
+    # is itself non-English-detected (misdetected as 'pt'), so a
+    # lang-based skip would have silenced that true positive too. This
+    # reuses the real Alexandria-shaped junk pattern (short 1-2 letter
+    # fragments well above threshold) with lang="es" passed, to confirm
+    # the allowlist addition alone doesn't blind detection of genuine
+    # corruption just because the caller detected a non-English language.
+    junk_words = ["tm", "Oa", "sd", "xr", "qp"] * 10
+    clean_words = ["la", "el", "de", "en", "es"] * 3
+    cues = [{"start": 0, "end": 1, "text": " ".join(junk_words + clean_words)}]
+    assert is_likely_garbled(cues, lang="es") is True
+
+
+def test_is_likely_garbled_unaffected_by_apostrophe_contractions():
+    # The tokenizer switched from an ASCII [A-Za-z0-9']+ char class to a
+    # Unicode-letter-aware one (for the Chula Vista fix above) that
+    # excludes digits/underscore rather than allow-listing ASCII letters --
+    # confirm contractions ("don't", "I'm", "can't") still count as one
+    # word each rather than splitting off a spurious 1-letter fragment
+    # ("t", "m") that would inflate the junk ratio on ordinary English.
+    text = (
+        "I'm not sure we'll finish tonight, but let's try. Councilmember, "
+        "don't forget to call the roll -- we can't start without it. "
+        "It's getting late and I think we're all ready to adjourn soon."
+    )
+    cues = [{"start": 0, "end": 1, "text": text * 5}]
+    assert is_likely_garbled(cues) is False
+
+
 def test_is_likely_garbled_true_for_clean_prefix_then_garbled_tail():
     # Real confirmed case (Cincinnati OH, "budget and finance committee"
     # 2023-02-13, see BACKLOG.md and vtt_parser.py's is_likely_garbled

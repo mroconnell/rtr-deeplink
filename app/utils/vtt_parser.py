@@ -771,6 +771,28 @@ _COMMON_SHORT_WORDS = {
     "am",
     "ok",
 }
+# Same idea as _COMMON_SHORT_WORDS, for Spanish -- only applied when the
+# caller already knows the track is Spanish (see the `lang` param below),
+# never as a blanket bypass. Real, confirmed-genuine Spanish short words
+# from the Chula Vista CA transcript this fixes (see docstring).
+_COMMON_SHORT_WORDS_ES = {
+    "la",
+    "el",
+    "de",
+    "en",
+    "y",
+    "se",
+    "su",
+    "mi",
+    "tu",
+    "un",
+    "lo",
+    "le",
+    "es",
+    "os",
+    "ya",
+    "eh",
+}
 _GARBLED_MIN_SAMPLE_WORDS = 40
 _GARBLED_JUNK_RATIO_MAX = 0.06
 # Four offsets across the transcript rather than just its start -- see the
@@ -779,7 +801,7 @@ _GARBLED_SAMPLE_OFFSETS = (0.0, 0.25, 0.5, 0.75)
 _GARBLED_SAMPLE_SLICE_CHARS = 1000
 
 
-def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
+def is_likely_garbled(cues: List[Dict[str, Any]], lang: Optional[str] = None) -> bool:
     """Heuristic quality check, not a guarantee -- flags a transcript as
     likely garbled at the source (as opposed to a parsing bug) so callers
     can warn the user rather than presenting it at face value.
@@ -802,6 +824,30 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
     sampling all four offsets gives ~42% (correctly flagged). Verified
     directly against this real transcript's text (fetched from the live,
     public `/m/{slug}/transcript.txt` export) while building this fix.
+
+    `lang` (2026-08-31, real Chula Vista CA false-positive fix): word
+    tokenizing used to be ASCII-only (`[A-Za-z0-9']+`), so any accented
+    character (a real Spanish transcript's á/é/í/ó/ú/ñ) split a real word
+    into fragments -- "sesión" tokenized as "sesi" + "n". That alone
+    manufactured a stream of spurious 1-2 letter "junk" out of ordinary
+    Spanish orthography, and _COMMON_SHORT_WORDS had no Spanish entries
+    either, so real short Spanish words ("la", "de", "y") were also
+    counted as junk. Verified live against Chula Vista's real, coherent
+    165K-char Spanish transcript (2026-05-19 city council meeting,
+    fetched from its public `/m/{slug}/transcript.txt` export while
+    building this fix): the old ASCII tokenizing scored it 35.6% junk
+    (would-be false-flagged, real threshold is 6%); switching to a
+    Unicode-letter-aware tokenizer plus this Spanish allowlist, gated on
+    the caller's already-detected `lang`, brings it to 2.97% (correctly
+    not flagged). Re-verified the existing Alexandria/Cincinnati real
+    garbled cases and a contraction-heavy clean English sample are
+    unaffected by the tokenizer change (see tests/test_vtt_parser.py).
+    Deliberately NOT a blanket "skip on non-English" bypass -- Fountain
+    Valley's real genuinely-garbled case is itself non-English-detected
+    (misdetected as Portuguese), so a lang-based skip would silence that
+    true positive too. Every current call site already has the detected
+    language in scope right before calling this (from `_detect_cue_
+    language`/`detect_language_from_texts`), so pass it through.
     """
     full_text = " ".join(c["text"] for c in cues)
     sample = "".join(
@@ -811,14 +857,19 @@ def is_likely_garbled(cues: List[Dict[str, Any]]) -> bool:
         ]
         for offset in _GARBLED_SAMPLE_OFFSETS
     )
-    words = re.findall(r"[A-Za-z0-9']+", sample)
-    alpha_words = [w for w in words if re.search(r"[A-Za-z]", w)]
+    # Unicode-letter runs, with an internal apostrophe kept inside the word
+    # (so "don't"/"it's" stay one token instead of splitting off a spurious
+    # 1-letter "t"/"s" fragment) -- \d/_ excluded so digits don't count as
+    # word characters, matching the old behavior of only tokenizing letters.
+    words = re.findall(r"[^\W\d_]+(?:'[^\W\d_]+)*", sample)
+    alpha_words = [w for w in words if re.search(r"[^\W\d_]", w)]
     if len(alpha_words) < _GARBLED_MIN_SAMPLE_WORDS:
         return False
 
-    junk = sum(
-        1 for w in alpha_words if len(w) <= 2 and w.lower() not in _COMMON_SHORT_WORDS
-    )
+    allowlist = _COMMON_SHORT_WORDS
+    if lang == "es":
+        allowlist = allowlist | _COMMON_SHORT_WORDS_ES
+    junk = sum(1 for w in alpha_words if len(w) <= 2 and w.lower() not in allowlist)
     return (junk / len(alpha_words)) > _GARBLED_JUNK_RATIO_MAX
 
 
