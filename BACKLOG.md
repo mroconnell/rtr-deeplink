@@ -68,7 +68,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
     [JUST-DO-IT] `[BIG]` Repair the repetition-loop transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (31)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (29)
   [NEEDS-AUDIT] Search Console "video isn't on a watch page" —
   [NEEDS-AUDIT] Two residual gaps deliberately left open by the
   [NEEDS-AUDIT] Whether a sustained YouTube IP block ever clears, and
@@ -81,10 +81,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (31)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
-    [JUST-DO-IT] ~12 OnBase/Hyland-family pages still resolve with no
-  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (3)
-    [JUST-DO-IT] Tucson, AZ
-    [JUST-DO-IT] Omaha, NE
+    [JUST-DO-IT] ~9 OnBase/Hyland-family pages still resolve with no
+  Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`  (1)
     [NEEDS-AUDIT] Relocated from Dormant 2026-08-30 (was already tagged
   Jurisdiction extraction & backfill  (5)
     [HUMAN] Derry, NH's TelVue org token found — needs a scoping
@@ -630,14 +628,21 @@ answer will be in the line — a 404, 429, connection reset, and
 429s, the fix is host-aware pacing (already deprioritised for symptom A
 on the evidence there, but this is the half it could genuinely fit).
 
-- **[JUST-DO-IT] ~12 OnBase/Hyland-family pages still resolve with no
-  video — the 3 newest tenants now have real, confirmed video sources.**
-  Full investigation and repoint method: `BACKLOG_DONE.md`. Real
-  population: 31 pages across 25 tenants, ~9 still genuinely open after
-  the 3 below. `egenda.scgov.net` is **Sarasota County, FL** (not Santa
-  Cruz), real video already on Granicus (4,172 real captions confirmed
-  live) — the easiest win, a pure OnBase-page↔Granicus-clip_id mapping,
-  same method as the closed Santa Barbara/Pittsburg cases.
+- **[JUST-DO-IT] ~9 OnBase/Hyland-family pages still resolve with no
+  video — Sarasota's repoint is built and ready to run, the other 2 need
+  a code integration, not just a repoint.** Full investigation and
+  repoint method: `BACKLOG_DONE.md`. Real population: 31 pages across 25
+  tenants. `egenda.scgov.net` is **Sarasota County, FL** (not Santa
+  Cruz) — `scripts/repoint_page.py` (built 2026-08-31, generalizes the
+  Santa Barbara/Pittsburg method into a reusable script) is ready to
+  point the archived page `sarasota-county-fl-2026-08-25-bcc-regular`
+  (old: `egenda.scgov.net...id=1968`) at the real Granicus clip
+  (`sarasotacounty.granicus.com`, clip 6960, joined via Granicus's own
+  listing page) — video only, not captions (clip 6960's own
+  `captions.vtt` is confirmed blank live; the "4,172 real captions"
+  figure from the original investigation was a different clip). Not yet
+  executed against production — `python scripts/repoint_page.py --dry-run
+  <old_url> <new_url>` first, per that script's own usage.
   `meetings.muni.org` (Anchorage AK) and `ecm.cityofsantacruz.com`
   (Santa Cruz CA) each have real video on their own YouTube channel
   (`@moameetings`, `youtube.com/ctvsantacruz` — 5,695 real captions
@@ -655,27 +660,27 @@ Full per-tenant history (what closed, when, and why) moved to
 closed. Distinct from the "no domain found yet" jurisdiction-coverage
 work (`~/Documents/rtr-business/research/jurisdiction_coverage.csv`).
 
-- **[JUST-DO-IT] Tucson, AZ** — real channel confirmed 2026-08-31:
-  **@CityofTucson**, channel ID `UC2-H8TgM1ODhDxjRto0L8cg`, verified
-  posting real Mayor & Council meeting recordings (e.g. the Jan 22, 2025
-  meeting confirmed on this exact channel ID). Tucson's one archived page
-  (`tucsonaz.hylandcloud.com`, Hyland) genuinely has no video — ready to
-  wire in as a `hyland.py` YouTube fallback (same shape as WO-72's
-  Columbus OH fix), just needs the netloc-keyed mapping built.
 - **Atlanta, GA** — the working archived pages are sourced from IQM2
   (`atlantacityga.iqm2.com`), not ChampDS — Atlanta apparently runs both
   systems for different bodies. The original ChampDS gap is unconfirmed
   either way without the user's specific failing URL; not chased further
   without it.
-- **[JUST-DO-IT] Omaha, NE** — real alternate video source found
-  2026-08-31: Douglas Omaha Technology Commission's YouTube channel,
-  **@DOTComm2013**, channel ID `UCBJ5WE5dI3_GIBLoUNEgBXQ`, has a real,
-  current "Omaha City Council" playlist (most recent upload 13 days old
-  as of the check). `citycouncil.cityofomaha.org` (live-only) and
-  `cityclerk.cityofomaha.org` (still Cloudflare-gated, confirmed
-  unchanged) are dead ends as before — this is a genuinely different,
-  previously-undocumented path. Ready to wire in as a `youtube_channel.py`
-  fallback.
+- **Omaha, NE — the real blocker is worse than framed: the whole domain
+  is Akamai-gated, not just one page.** Re-checked 2026-08-31:
+  `citycouncil.cityofomaha.org`, `cityclerk.cityofomaha.org`, and even
+  bare `www.cityofomaha.org` all return a flat `403 AkamaiGHost "Access
+  Denied"` regardless of client (tried a full Chrome UA+Referer+
+  Accept-Language, and Googlebot's UA — no difference; same from `curl`
+  and a real browser). A real per-date URL shape does exist
+  (`citycouncil.cityofomaha.org/.../icalrepeat.detail/{YYYY}/{MM}/{DD}/
+  {id}/-/city-council-meeting`, found via Wayback CDX) but is
+  unreachable to fetch or verify by any client available here, so
+  there's nothing to wire a date-match against. **@DOTComm2013**
+  (`UCBJ5WE5dI3_GIBLoUNEgBXQ`) is still confirmed real and current
+  ("Omaha City Council" playlist) — the channel-side fact holds — but
+  there's no page this app can reach to trigger the fallback from. Not
+  a code gap; a real access wall, same category as the GovAccess
+  Granicus WAF entry below.
 - **Virginia Beach, VA — resolved, not just less urgent.** Confirmed
   live 2026-08-31: `virginiabeach.cablecast.tv` has real, ongoing weekly
   City Council coverage (checked 4 consecutive weeks through 9/1/2026,

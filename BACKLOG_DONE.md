@@ -1,5 +1,102 @@
 # Backlog — done
 
+## Tucson, AZ: YouTube-channel video fallback built and tested [Done 2026-08-31]
+
+Tucson's one archived page (`tucsonaz.hylandcloud.com`, Hyland) had no
+video. Verified live: `youtube.com/channel/UC2-H8TgM1ODhDxjRto0L8cg`
+("CityofTucson") is real and current — flat-listed both `/videos` and
+`/streams` tabs via yt-dlp and found "Tucson Mayor and City Council
+Meetings AUG 05, 2026" = `4_0s3wCtRCA`, matching the one archived
+Tucson page's meeting date exactly (`tests/fixtures/hyland/
+tucson_view_meeting.html`, id=1956/doctype=2, 2026-08-05, "REGULAR
+MEETING").
+
+**Real finding along the way**: Tucson's own page title, "REGULAR
+MEETING," is only one significant token after generic-token
+stripping — one short of `find_matches()`'s two-token floor. Passing it
+straight through (as `legistar.py` does with Legistar body names) would
+always decline. Fixed by adding `ChannelFallback.fixed_meeting_title`
+to `youtube_channel.py` — an optional per-tenant override that replaces
+the caller's title outright; Tucson's registry entry sets it to "Tucson
+Mayor and City Council Meeting" (confirmed by the tenant's own
+"mayorcouncil" nav link and every real video title on the channel).
+
+**Built**: `ChannelFallback.fixed_meeting_title` field + Tucson registry
+entry (`app/platforms/youtube_channel.py`); `find_channel_match()` now
+uses `fallback.fixed_meeting_title or meeting_title`;
+`HylandAssetFinder._try_channel_fallback()` + its call site in
+`resolve()` (`app/platforms/hyland.py`), run once title/date are known
+and no video was found any other way. Real captured channel listing:
+`tests/fixtures/youtube_channel/tucson_channel_listing.json`. Tests:
+rewrote the Tucson "no video" test to assert the real match +
+provenance warning, added a decline case; 4 new `youtube_channel.py`
+tests including one proving the title override actually fires against
+the real generic page title. 94 relevant tests pass, full suite green.
+
+Not yet deployed.
+
+## Omaha, NE: domain-wide Akamai block confirmed — worse than the open entry's framing [Investigated 2026-08-31]
+
+The open entry described only `cityclerk.cityofomaha.org` as
+Cloudflare-gated. Re-checked live 2026-08-31: it's Akamai, not
+Cloudflare, and it covers the **entire** `cityofomaha.org` domain —
+`citycouncil.cityofomaha.org`, `cityclerk.cityofomaha.org`, and even
+bare `www.cityofomaha.org` all return a flat `403 AkamaiGHost "Access
+Denied"` regardless of client (a full Chrome UA+Referer+Accept-Language
+combo, Googlebot's UA, `curl`, and a real browser tool all got the
+identical result — no client-fingerprint workaround available).
+
+Found a real per-date URL shape via Wayback CDX
+(`citycouncil.cityofomaha.org/.../icalrepeat.detail/{YYYY}/{MM}/{DD}/
+{id}/-/city-council-meeting`) that would, in principle, be exactly what
+a channel-fallback join needs — but it's unreachable to fetch or verify
+by any client available here, same wall as everything else on the
+domain. Confirmed **@DOTComm2013** (`UCBJ5WE5dI3_GIBLoUNEgBXQ`) is still
+real and current, posting "Omaha City Council" videos — the channel
+side of the fix holds up fine, there's just no page this app (or this
+investigation) can reach to trigger it from. Correctly left unbuilt —
+this is a real access wall, not a scoped code gap; see BACKLOG.md's
+short live note.
+
+## Sarasota County, FL: OnBase→Granicus repoint script built, not yet run [Done 2026-08-31, execution pending]
+
+`egenda.scgov.net` confirmed live to be Sarasota County, FL (not Santa
+Cruz as an earlier entry said) — its real archived page is
+`sarasota-county-fl-2026-08-25-bcc-regular`, source `egenda.scgov.net/
+OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=1968`, confirmed
+video-less live. Fetched Sarasota's real Granicus listing
+(`sarasotacounty.granicus.com/ViewPublisher.php?view_id=52`) and found
+the row whose own "Agenda" link points at that exact same `id=1968`
+OnBase URL — same join method as the closed Santa Barbara/Pittsburg
+precedent. That row's clip_id is **6960** (caught and corrected a
+row-boundary misread of 6963 before building anything on it).
+
+**Correction to the original figure**: clip 6960 has real video
+(`archive-stream.granicus.com/.../sarasotacounty_63f788ae-....mp4/
+playlist.m3u8`) but **0 caption segments** —
+`sarasotacounty.granicus.com/videos/6960/captions.vtt` is genuinely
+blank (8 bytes, just `WEBVTT`), confirmed by direct fetch. The "4,172
+real caption segments" figure from the original investigation doesn't
+apply to this specific clip (a different clip, 6500, does have real
+populated captions, confirming it's not a site-wide Sarasota issue). A
+repoint today delivers real video only; captions would come later via
+the normal auto-transcription pipeline.
+
+**Built**: `scripts/repoint_page.py`, generalizing the one-off Santa
+Barbara/Pittsburg method into a reusable script (resolve new url → POST
+`/internal/ingest` with the old url as `input_url_normalized`). 5 tests
+(`tests/test_repoint_page.py`), mocking the resolver/ingest network
+calls with the real Sarasota URLs/values above.
+
+**Not executed against production** — a real data mutation, deliberately
+left for an explicit go-ahead:
+```
+python scripts/repoint_page.py \
+  "https://egenda.scgov.net/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=1968" \
+  "https://sarasotacounty.granicus.com/player/clip/6960?view_id=52"
+```
+(`--dry-run` first, per the script's own usage.)
+
 ## Town Hall Streams: starting population already queued, verified against a much larger fresh candidate pool [Closed 2026-08-31]
 
 Asked to determine the tier (1: has segments at ingest; 2: host provides
