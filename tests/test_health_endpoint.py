@@ -64,3 +64,43 @@ def test_archive_health_returns_503_when_db_unreachable(monkeypatch):
     response = archive_client_.get("/api/health")
     assert response.status_code == 503
     assert response.json()["status"] == "error"
+
+
+def test_archive_health_does_not_run_a_full_table_count(monkeypatch):
+    """WO-80 (2026-08-30): the health check used to run `SELECT count(*)
+    FROM meeting_page` on every probe -- an O(n) scan that Render calls
+    ~30:1 against real traffic, and MeetingPage had grown to 3,455+ rows
+    (BACKLOG.md's "HTTP health check failed" entry, candidate cause of the
+    2026-08-19/20 Render restarts). It was replaced with `SELECT id ...
+    LIMIT 1`. This test would fail if a future edit reintroduced a
+    `count(*)`/`func.count()` style query here -- it inspects the actual
+    SQL text SQLAlchemy sends to the DB, not just the response, so it
+    catches the query *shape* regressing even though a full count would
+    still return 200 on a small test DB.
+    """
+    from sqlalchemy import event
+
+    from archive.db.engine import engine as real_engine
+
+    captured_statements = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured_statements.append(statement)
+
+    event.listen(real_engine.sync_engine, "before_cursor_execute", _capture)
+    try:
+        response = archive_client_.get("/api/health")
+    finally:
+        event.remove(real_engine.sync_engine, "before_cursor_execute", _capture)
+
+    assert response.status_code == 200
+    health_statements = [s for s in captured_statements if "meeting_page" in s.lower()]
+    assert health_statements, "expected the health check to query meeting_page"
+    for statement in health_statements:
+        lowered = statement.lower()
+        assert "count(" not in lowered, (
+            f"health check ran a count() query again: {statement!r}"
+        )
+        assert "limit" in lowered, (
+            f"health check query is missing a LIMIT, so it's not bounded: {statement!r}"
+        )
