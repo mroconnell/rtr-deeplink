@@ -69,7 +69,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30 — SLC's
   [NEEDS-AUDIT] Moved out of Dormant 2026-08-30, sized with a real
   [NEEDS-AUDIT] `[LOGIN]` The 2026-08-09 missing-Playwright-binary
@@ -83,11 +83,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
   28 well-formed IQM2 queue rows point at retired tenants…
   Swagit multi-clip meetings: cloud worker fixed (WO-79), local script…
   `[NEEDS-AUDIT]` High Plains Water District (Granicus) transcribed to…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (5)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (4)
     `[LATER]` Recover a domain-privacy-blocked Vimeo video by forwarding
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can
     `[LATER]` Midpen Media Center (`midpenmedia.org`) — a real, new
-    `[LATER]` `[EXAMPLE]` Cablecast's cross-host migration alias gap —
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely
   CivicWeb's "iCompass"-branded `/document/{id}/` video widget — closed…
   `[WAIT]` ChampDS symptom B — instant 0.2s failures from the JSON API,…  (1)
