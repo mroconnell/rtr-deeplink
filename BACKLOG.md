@@ -963,14 +963,29 @@ Hendersonville NC — once WO-77/WO-78's fixes deployed). Full detail in
      be a guess.
 
 - **[LATER] `[EXAMPLE]` Town Hall Streams: real transcript endpoint
-  still unconfirmed-positive; 88-id Wayback population not yet ingested
-  (2026-08-20).** Residual of the townhallstreams.com adapter build (see
-  `BACKLOG_DONE.md`). The transcript AJAX endpoint is empty on all 7
-  real samples checked — `townhallstreams.py` deliberately doesn't parse
-  a non-empty response (no confirmed format exists), only surfaces a
-  warning so a positive example won't go unnoticed. A Wayback CDX scan
-  already surfaced 88 distinct `location_id` values (range 28–175) as a
-  cheap starting population to walk and bulk-ingest — not yet done.
+  still unconfirmed-positive; the starting population is already queued
+  (found 2026-08-31, undocumented until now — not this session's work).**
+  Residual of the townhallstreams.com adapter build (see
+  `BACKLOG_DONE.md`). The transcript AJAX endpoint is empty on all real
+  samples checked — `townhallstreams.py` deliberately doesn't parse a
+  non-empty response (no confirmed format exists), only surfaces a
+  warning so a positive example won't go unnoticed. **Correction**: the
+  "88-id Wayback population... not yet ingested" framing here was stale.
+  `scripts/tier3_auto_transcription_queue.txt` already holds 124 real
+  townhallstreams URLs spanning 117 of the ~142 real towns (someone
+  already did this work; it just never got reflected here). A fresh,
+  independent 2026-08-31 investigation (see `BACKLOG_DONE.md`) found a
+  much larger real, verified candidate pool (36,037 real
+  `(location_id, id)` pairs across 142 towns) and cross-checked it
+  against the existing queue: **every one of the 110 independently
+  re-verified towns is already represented** — nothing new to add.
+  Confirmed live: **zero townhallstreams pages have actually reached
+  production yet** (no `/m/*` results for a townhallstreams-sourced
+  meeting) — the queue is FIFO, `scripts/feed_tier3_auto_transcription.py`
+  processes 12/6h across ALL platforms, and the first townhallstreams URL
+  sits at line 587 of 1188 — roughly a 12-day wait before this segment
+  starts draining, ~15 days to clear it, nothing stuck or broken. No
+  action needed; it's already in motion.
 
 - **[LATER] `[EXAMPLE]` SuiteOne Media: unconfirmed CDX leads and
   PDF-transcript fallback (2026-08-21).** Residual of the

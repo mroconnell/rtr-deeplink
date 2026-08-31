@@ -1,5 +1,65 @@
 # Backlog — done
 
+## Town Hall Streams: starting population already queued, verified against a much larger fresh candidate pool [Investigated 2026-08-31]
+
+Asked to determine the tier (1: has segments at ingest; 2: host provides
+captions after ingest, e.g. YouTube; 3: needs local Whisper) and act
+accordingly. `townhallstreams.py`'s `resolve()` always sets `segments=[]`
+— the transcript AJAX endpoint has never returned a non-empty response on
+any real sample checked, and the code deliberately doesn't attempt to
+parse a hypothetical positive one. Video is the vendor's own CDN
+(`cdn.townhallstreams.com`, native m3u8, no auth gating), not
+YouTube-hosted. **Tier 3** — confirmed, not tier 1 or 2.
+
+Before queueing anything, found a much richer real candidate pool than
+the open entry's "88 location_ids" described:
+`~/Documents/rtr-business/research/TOWNHALLSTREAMS_FIRST_RUN.md`
+(2026-08-20, undocumented in `rtr-deeplink`'s own BACKLOG.md until this
+correction) already found the platform's own real listing endpoint
+(`town.php?id=X` / `/towns/{slug}`, plus a `<select name="town">`
+dropdown at the homepage listing all 142 real towns) and crawled it —
+**36,037 real `(location_id, id)` pairs across 142 towns**, far more
+reliable than CDX guessing since it comes from the vendor's own rendered
+"Previous Events" listing.
+
+Built a verification pass from that data (not this session's own
+scraping — reused the existing files): for each of the 142 towns, took
+the highest `id` (confirmed a global auto-increment across the whole
+platform, so higher = more recent) from the reliable
+`town.php_listing_crawl` source only (112 distinct towns; excluded the
+`wayback_cdx_only` rows, which were never individually re-verified) and
+live-fetched each candidate to confirm a real, non-test `mp4:` CDN path.
+**Caught real contamination this way**: the naive "just take the max id"
+approach picked a vendor test upload (`azure/.../Test_Me.mp4`,
+`location_id=179`, town name "Z Live Captions" — a sandbox tenant, not a
+real town) as one town's "most recent meeting." Verified all 112 with
+live HTTP fetches (real User-Agent, ~0.4s between requests, matching the
+research doc's own rate discipline), falling back to the next-newest id
+per town on a junk/empty match: **110 of 112 verified with real,
+current, non-test content**; 2 dropped (`azure` — a sandbox tenant with
+only one candidate, confirmed junk; `kennebunk_maine` — a real town
+whose top 5 candidate ids all returned `file: ""`, an empty CDN
+reference, not a "no such id" placeholder — a genuine but different
+failure mode, not chased further for one town).
+
+**Then found this was already done**: cross-checked the 110 verified
+`location_id`s against `scripts/tier3_auto_transcription_queue.txt` and
+found **117 distinct townhallstreams `location_id`s already queued**
+(124 URLs total) — zero of the 110 were missing. This population was
+already built by an earlier, undocumented action (not this session, not
+reflected anywhere in the live BACKLOG.md entry, which had said "not yet
+done"). Nothing added.
+
+**Confirmed the queue isn't stuck, just slow**: no townhallstreams page
+has reached production yet (`/meetings?q=townhallstreams` returns zero
+real `/m/*` results). `scripts/feed_tier3_auto_transcription.py`
+processes the queue strictly FIFO, 12 entries/6h across every platform
+combined — the first townhallstreams URL sits at line 587 of 1188, so
+roughly 12 days before this segment starts draining and ~15 days to
+clear it. Normal, expected behavior of the existing, deliberately-paced
+mechanism (see BACKLOG.md's "Render pipeline minutes"/throughput
+history) — not a gap.
+
 ## Anchorage YouTube-bot-block example re-checked: mechanism already fixed, example itself stale [Investigated 2026-08-30, compacted 2026-08-31]
 
 Original finding (2026-08-25, WO-63 sweep): `ERROR: [youtube] 92SgT7nRbKw:
