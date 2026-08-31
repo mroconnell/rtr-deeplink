@@ -314,6 +314,24 @@ async def test_resolve_raises_for_a_non_youtube_url():
         # A comma-shaped name whose base doesn't validate as a real place
         # -- the comma alone isn't enough to trust it.
         ("Some Random Channel, Not A Place", None),
+        # WO-70 (2026-08-30, BACKLOG.md's "already 'X, State'-shaped"
+        # entry): "Medina" alone is real in 6 states (MN, ND, OH, TN, WA,
+        # NY per places.csv), so it fails the base-validates-on-its-own
+        # branch above -- but the channel name already names its own
+        # state directly, and Minnesota genuinely is one of Medina's 6
+        # real states, so `resolve_claimed_state()` accepts it. Modeled
+        # on the real, confirmed-live Vimeo account "City of Medina,
+        # Minnesota" (vimeo.com/user23531710) -- YouTube itself has no
+        # confirmed real "Medina" channel yet, so this specific pairing
+        # is synthetic, built from that same real, verified place/state
+        # fact rather than an invented one.
+        ("City of Medina, Minnesota", "City of Medina, Minnesota"),
+        # Same bare name, an INCORRECT claimed state -- "Medina" is not a
+        # real incorporated place in Texas at all (confirmed: places.csv
+        # has no TX row for it; only Medina COUNTY is real there, per
+        # counties.csv). Must still decline, not false-accept off the
+        # back of the same-named county.
+        ("City of Medina, Texas", None),
         # Institutional-suffix reuse, added 2026-08-29: these are the
         # exact real account names that motivated
         # jurisdiction_enrich.strip_institutional_suffix() on the Vimeo

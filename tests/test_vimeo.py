@@ -472,3 +472,47 @@ def test_jurisdiction_known_account_map_covers_glued_abbreviations():
     assert (
         VimeoAssetFinder._jurisdiction({"author_name": "SHCTV15"}) == "South Hadley, MA"
     )
+
+
+def test_jurisdiction_resolves_an_already_state_shaped_ambiguous_name():
+    # Real account, confirmed live 2026-08-30 (vimeo.com/user23531710,
+    # "City of Medina, Minnesota's Videos on Vimeo") -- BACKLOG.md's
+    # "[NEEDS-AUDIT] A name that's already 'X, State'-shaped..." entry,
+    # fixed here (WO-70). "Medina" alone is real in 6 states (MN, ND, OH,
+    # TN, WA, NY per places.csv), so a bare lookup would stay ambiguous,
+    # but the account name already names its own state directly -- Vimeo
+    # had no comma-handling at all before this fix, so this used to fall
+    # through to the glued-label path (not built for spaces/commas) and
+    # decline outright.
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "City of Medina, Minnesota"})
+        == "City of Medina, Minnesota"
+    )
+
+
+def test_jurisdiction_declines_an_ambiguous_name_with_an_incorrect_claimed_state():
+    # "Medina" is not a real INCORPORATED PLACE in Texas at all (confirmed
+    # via places.csv -- only Medina COUNTY is real in Texas, per
+    # counties.csv). A "City of"-prefixed claim must be checked against
+    # the place table, not the county one, so this stays declined rather
+    # than false-accepting off the back of the same-named county -- the
+    # exact cross-type false accept `resolve_claimed_state()`'s own
+    # docstring calls out.
+    assert (
+        VimeoAssetFinder._jurisdiction({"author_name": "City of Medina, Texas"}) is None
+    )
+
+
+def test_jurisdiction_still_resolves_an_unambiguous_state_shaped_name():
+    # No-regression check: an already-"X, State"-shaped name that was
+    # ALREADY unambiguous on its own (no fix needed here) must still
+    # resolve the same way after this change -- "Sebastopol" alone is
+    # nationally unambiguous, so this exercises the pre-existing
+    # `lookup_city_state(base)` branch of the comma-check, not the new
+    # `resolve_claimed_state()` one.
+    assert (
+        VimeoAssetFinder._jurisdiction(
+            {"author_name": "City of Sebastopol, California"}
+        )
+        == "City of Sebastopol, California"
+    )

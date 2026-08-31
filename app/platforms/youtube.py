@@ -239,7 +239,14 @@ class YouTubeAssetFinder(AssetFinder):
         the part before the comma independently validates as a real place
         or county on its own (`lookup_city_state()`/`lookup_county_state()`,
         both of which already strip a leading "City of"/"Village of"/etc.
-        internally). Everything else goes through the glued-label path,
+        internally), OR the part AFTER the comma is itself a real state/
+        province that genuinely lists the name (`resolve_claimed_state()`,
+        added WO-70 2026-08-30 for BACKLOG.md's "already 'X, State'-shaped"
+        entry) -- e.g. "Village of Angel Fire, New Mexico" validates via
+        the first path (Angel Fire is nationally unambiguous), while
+        "City of Medina, Minnesota" needed the second (Medina alone is
+        ambiguous across 6 states, but the source text already names the
+        real one). Everything else goes through the glued-label path,
         same as Vimeo -- including the same confirmed-real institutional-
         suffix strip (`jurisdiction_enrich.strip_institutional_suffix()`,
         added 2026-08-29 for Vimeo's "Hopkins Public Schools"-shaped
@@ -256,10 +263,12 @@ class YouTubeAssetFinder(AssetFinder):
             return None
         if "," in name:
             base = name.split(",", 1)[0].strip()
+            claimed_state = name.split(",", 1)[1].strip()
             if (
                 jurisdiction_enrich.lookup_city_state(base)
                 or jurisdiction_enrich.lookup_county_state(base)
                 or jurisdiction_enrich.is_literal_known_place(base)
+                or jurisdiction_enrich.resolve_claimed_state(base, claimed_state)
             ):
                 return jurisdiction_enrich.enrich_jurisdiction_text(
                     name, netloc="youtube.com"
