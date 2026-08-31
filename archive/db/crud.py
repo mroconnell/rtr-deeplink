@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 import math
@@ -2058,6 +2059,52 @@ async def list_completed_multichunk_transcription_jobs() -> list[dict]:
         ]
 
 
+def _score_hallucination_candidate_rows(rows: Sequence[Any]) -> list[dict]:
+    """The CPU-bound half of list_hallucination_candidate_transcript_
+    versions() below, factored out so it can run in a worker thread
+    (via asyncio.to_thread) instead of the event loop -- see that
+    function's own docstring for why this matters. Plain sync function,
+    no I/O, safe to run off-thread.
+    """
+    candidates = []
+    for (
+        version_id,
+        meeting_page_id,
+        language,
+        is_default,
+        segments,
+        transcript_warnings,
+        created_at,
+        slug,
+        title,
+        job_id,
+    ) in rows:
+        warnings = detect_hallucination_warnings(segments or [])
+        if not warnings:
+            continue
+        already_flagged = any(
+            _HALLUCINATION_MARKER in w for w in (transcript_warnings or [])
+        )
+        candidates.append(
+            {
+                "version_id": version_id,
+                "meeting_page_id": meeting_page_id,
+                "slug": slug,
+                "title": title,
+                "language": language,
+                "is_default": is_default,
+                "segment_count": len(segments or []),
+                "already_flagged": already_flagged,
+                "produced_by": "cloud_worker" if job_id is not None else "local_script",
+                "job_id": job_id,
+                "created_at": created_at.isoformat() if created_at else None,
+            }
+        )
+
+    candidates.sort(key=lambda c: c["version_id"])
+    return candidates
+
+
 async def list_hallucination_candidate_transcript_versions(
     *, limit: int = 500, after_id: Optional[int] = None
 ) -> list[dict]:
@@ -2206,45 +2253,23 @@ async def list_hallucination_candidate_transcript_versions(
             )
         ).all()
 
-        candidates = []
-        for (
-            version_id,
-            meeting_page_id,
-            language,
-            is_default,
-            segments,
-            transcript_warnings,
-            created_at,
-            slug,
-            title,
-            job_id,
-        ) in [*flagged_rows, *unflagged_rows]:
-            warnings = detect_hallucination_warnings(segments or [])
-            if not warnings:
-                continue
-            already_flagged = any(
-                _HALLUCINATION_MARKER in w for w in (transcript_warnings or [])
-            )
-            candidates.append(
-                {
-                    "version_id": version_id,
-                    "meeting_page_id": meeting_page_id,
-                    "slug": slug,
-                    "title": title,
-                    "language": language,
-                    "is_default": is_default,
-                    "segment_count": len(segments or []),
-                    "already_flagged": already_flagged,
-                    "produced_by": "cloud_worker"
-                    if job_id is not None
-                    else "local_script",
-                    "job_id": job_id,
-                    "created_at": created_at.isoformat() if created_at else None,
-                }
-            )
-
-        candidates.sort(key=lambda c: c["version_id"])
-        return candidates
+    # Runs the CPU-bound detect_hallucination_warnings() loop in a worker
+    # thread (WO-87, 2026-08-31) -- confirmed live that running it inline
+    # here, synchronously inside this async route handler, blocks the
+    # whole uvicorn worker's event loop for the entire duration (128s+
+    # observed with limit=500 against real large transcripts), during
+    # which that worker can serve NO other request, including Render's
+    # own health check -- which then restarts the service, causing a real
+    # full-service outage from a single admin-authenticated call.
+    # asyncio.to_thread() moves the CPU work off the event loop so the
+    # rest of the service (and the resolver's own traffic, which proxies
+    # through this service) stays responsive while this runs. Done
+    # outside the `async with` block above so the DB session/connection
+    # is released back to the pool before the (possibly slow) CPU work
+    # starts, rather than held idle for its duration.
+    return await asyncio.to_thread(
+        _score_hallucination_candidate_rows, [*flagged_rows, *unflagged_rows]
+    )
 
 
 # The two jurisdiction_confidence tiers that mean "we never actually

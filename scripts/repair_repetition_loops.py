@@ -120,7 +120,15 @@ from worker.segment_utils import (  # noqa: E402
     _run_span_and_coverage,
 )
 
-CANDIDATE_PAGE_SIZE = 500
+# Lowered from 500 to 25, 2026-08-31 (WO-87): a real limit=500 call
+# against GET /internal/transcription/hallucination-candidates took
+# 128s+ (detect_hallucination_warnings() run synchronously over ~1,000
+# real rows' segments) and triggered a full-service outage -- see
+# BACKLOG_DONE.md for the incident and archive/db/crud.py's
+# asyncio.to_thread() fix, which stops a slow call from blocking every
+# OTHER request but doesn't make this call itself faster. Keep this
+# small until there's real timing data at a higher value post-fix.
+CANDIDATE_PAGE_SIZE = 25
 DEFAULT_PROBE_DELAY_SECONDS = 0.25
 DEFAULT_APPLY_DELAY_SECONDS = 1.0
 PROBE_TIMEOUT = aiohttp.ClientTimeout(total=60)

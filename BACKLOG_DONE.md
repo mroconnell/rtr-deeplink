@@ -72,6 +72,49 @@ via the live `finalize_jurisdiction()`) can pick it up. See the live
 `BACKLOG.md` "Ship next" entry for the exact dry-run/apply commands for
 ids 698 and 1056.
 
+## `hallucination-candidates` event-loop-blocking outage: root-caused and fixed (WO-87) [Done 2026-08-31]
+
+Second, distinct bug on this same endpoint, found while finally running
+`scripts/repair_repetition_loops.py` for real after the WO-84 502 fix
+(above) deployed 2026-08-31. `limit=1` confirmed the WO-84 fix works
+(returns in under a second), but the script's real default `limit=500`
+triggered a full-service outage: every endpoint, including trivial ones
+like `/internal/db-size`, started 502ing immediately, for a couple of
+minutes.
+
+First hypothesis (OOM) was wrong -- the user checked Render's own memory
+graph directly and memory stayed under 40% of the 2GB limit the whole
+time, no spike consistent with a kill. Real root cause, found by reading
+the code: `detect_hallucination_warnings()`
+(`archive/utils/transcription_quality.py:201`) is a plain synchronous
+function, called directly (no `asyncio.to_thread()`) inside the async
+route handler, over up to ~1,000 rows (500 flagged + 500 unflagged) each
+carrying potentially thousands of segments. That blocks the whole
+uvicorn worker's event loop for the entire computation (128s+ observed)
+-- during which that worker can serve *no* other request, including
+Render's own health check, which then restarts the service. A single
+admin-authenticated call degraded the whole Archive service (and by
+extension the public site, since the resolver proxies through it).
+
+Fixed both halves, per the user's explicit "do both" call: (1)
+`archive/db/crud.py`'s `list_hallucination_candidate_transcript_
+versions()` now runs the CPU-bound scoring loop (factored into a new
+`_score_hallucination_candidate_rows()`) via `asyncio.to_thread()`,
+outside the DB session block so the connection is released before the
+CPU work starts -- confirmed with a new regression test that spies on
+`asyncio.to_thread` and asserts it's actually called with that function.
+(2) `scripts/repair_repetition_loops.py`'s `CANDIDATE_PAGE_SIZE` dropped
+500 -> 25 -- the thread fix stops one slow call from blocking every
+*other* request, but doesn't make that one call itself faster, and 500
+rows' worth of real segments still risks exceeding Render's own proxy
+timeout on the calling request. 25 is a conservative starting point
+pending real timing data at a higher value once the thread fix is live;
+worth raising later if a session has time to measure it properly.
+
+Not yet re-run for real: the repetition-loop repair itself is still
+blocked until this fix deploys (same "merged, not deployed" gap as
+WO-84/85/86 above).
+
 ## Subdomain-override repair path now reattaches the real county type word [Done 2026-08-31]
 
 Half of BACKLOG.md's "Missing 'County'/province suffix on certain repair

@@ -881,6 +881,17 @@ async def internal_transcription_hallucination_candidates(
     unbounded after that rewrite, on the assumption it would stay small;
     confirmed wrong live 2026-08-30 -- see BACKLOG_DONE.md -- when it grew
     past "small" and 502'd again on a plain call.)
+
+    A second, distinct bug confirmed live 2026-08-31 (WO-87, see
+    BACKLOG_DONE.md): even bounded, a real `limit=500` call ran
+    detect_hallucination_warnings() synchronously over ~1,000 rows'
+    segments (up to `limit` from each population) inside this async
+    handler, blocking the whole uvicorn worker's event loop for 128s+ --
+    long enough that Render's own health check failed and restarted the
+    service, a full-service outage from one admin-authenticated call.
+    crud.list_hallucination_candidate_transcript_versions() now runs that
+    CPU-bound scoring in a worker thread (asyncio.to_thread()) so it can
+    no longer block the event loop, regardless of `limit`.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
