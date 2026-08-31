@@ -56,19 +56,18 @@ Standing decisions — do NOT re-raise  (3)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Confirmations nobody has actually watched happen  (3)
     [HUMAN] `[LOGIN]` `[WAIT]` Measure whether the 2026-08-23 state/hub
     [HUMAN] Decide the /meetings result link order from real click data,
     [HUMAN] Render's health-check gate has never blocked a deploy —
-  Production actions only Ryan should take  (7)
+  Production actions only Ryan should take  (6)
     [HUMAN] Deploy resolver + Archive, then click Validate Fix in
     [NEEDS-AUDIT] Kitchener duplicate-page cleanup blocked on a real 500
     [HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
     [HUMAN] `[WAIT]` 10 YouTube-backed pages still hold roll-up
     [HUMAN] Meeting-card backfill: both follow-ups are done, and the
     [HUMAN] 19 audio-only meetings can never have a card — but 4 of them
-    [HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
   Decisions about already-live content  (2)
     [JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect
     [HUMAN] The Clerk `user.deleted` → `saved_items` purge has never
@@ -526,33 +525,6 @@ convenient.
   4 untranscribed ones — `wawona-ca-2023-08-11`, `layton-ut-2025-02-20`,
   `newport-or-2024-05-15`, `kaysville-ut-2023-04-28` — toward the
   transcription queue.
-- **[HUMAN] Stray Archive-shaped tables in `rtr_deeplink_db` — root
-  cause established 2026-08-22, only the cleanup action is left.** The
-  resolver's `rtr_deeplink_db` also holds a full set of Archive-shaped
-  tables (`meeting_pages`, `transcript_versions`, …) containing 4 demo
-  rows dated 2026-08-12, entirely separate from the real Archive data in
-  `rtr_archive`. Cause: a local Archive run pointed at the resolver's
-  database on 2026-08-12, before any of the guards that would now
-  prevent this existed — `create_all()` ran unconditionally on Postgres
-  until 2026-08-17, and the `EXPECTED_DB_HOST` assertion also landed
-  after — combined with `load_dotenv()`'s documented cwd-walk behavior
-  silently supplying the wrong `DATABASE_URL`. Full commit timeline in
-  `BACKLOG_DONE.md`'s matching `[Investigated 2026-08-22]` entry.
-
-  **Decided 2026-08-22: drop them, with a backup first.** The tables'
-  continued existence is now the actual hazard — `create_all()` no
-  longer creates tables on Postgres, so a future mis-pointed local run
-  would fail loudly everywhere *except* `rtr_deeplink_db`, where the
-  tables already exist and a write would silently succeed. Ryan runs
-  this — a destructive production action, stays `[HUMAN]` until done:
-  1. Take a PITR marker/backup of `rtr_deeplink_db` first.
-  2. Confirm the 4 rows are the demo data and nothing references those
-     tables — check the live table list, not just `app/db/models.py`.
-  3. Drop the Archive-shaped tables from `rtr_deeplink_db` **only** —
-     never `rtr_archive`, which has identical table names and the real
-     corpus. Double-check the connection target immediately before
-     executing, not just when opening the session.
-
 ### Decisions about already-live content
 
 - **[JUST-DO-IT] `[BIG]` Repair the three already-live transcript-defect

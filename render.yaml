@@ -46,7 +46,7 @@ services:
     # purpose -- see the block comment above `services:` for the full
     # reasoning and for what an agent is expected to do about it.
     autoDeploy: false
-    plan: starter
+    plan: standard
     # Build filter, reworked 2026-08-22 (WO-44) from a deny-list of docs
     # into an ALLOW-list of the paths this service actually ships.
     #
