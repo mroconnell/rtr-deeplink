@@ -150,11 +150,11 @@ describe('meeting_page.js GA events', () => {
 // real single-version case, not a bug -- covered below too.
 async function makeVersionPickerPage({ optionsHtml, dataset } = {}) {
   const opts = optionsHtml || [
-    '<option value="1" data-source="scraped" selected>English (sourced)</option>',
+    '<option value="1" data-source="sourced" selected>English (sourced)</option>',
     '<option value="2" data-source="whisper">English (auto-generated)</option>',
   ].join('');
   const attrs = Object.assign(
-    { activeSource: 'scraped', versionCount: '2', isDefault: 'true' },
+    { activeSource: 'sourced', versionCount: '2', isDefault: 'true' },
     dataset
   );
   const dom = new JSDOM(
@@ -191,7 +191,7 @@ describe('meeting_page.js transcript version-picker analytics', () => {
     assert.equal(available.length, 1);
     assert.deepEqual(
       [available[0].params.count, available[0].params.active_source, available[0].params.label_ambiguous],
-      [2, 'scraped', false]
+      [2, 'sourced', false]
     );
     const viewed = events.filter((e) => e.name === 'transcript_version_viewed');
     assert.equal(viewed.length, 1);
@@ -200,7 +200,7 @@ describe('meeting_page.js transcript version-picker analytics', () => {
 
   test('label_ambiguous is true when two options render identical text', async () => {
     const dupeOptions = [
-      '<option value="1" data-source="scraped" selected>English (sourced)</option>',
+      '<option value="1" data-source="sourced" selected>English (sourced)</option>',
       '<option value="2" data-source="deduped">English (sourced)</option>',
     ].join('');
     const { events } = await makeVersionPickerPage({ optionsHtml: dupeOptions });

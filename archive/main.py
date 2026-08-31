@@ -168,13 +168,17 @@ templates.env.filters["warnings_html"] = lambda warnings: Markup(
 )
 templates.env.filters["language_name"] = language_display_name
 # TranscriptVersion.source values are internal tokens -- never shown
-# verbatim to a reader, who has no reason to know or care that "scraped"
+# verbatim to a reader, who has no reason to know or care that "sourced"
 # means "downloaded from the source site's own captions" versus
 # AI-transcribed. Every value a reader can reach needs an entry here;
 # anything unmapped falls through to its raw token, which is a bug, not a
-# design (see BACKLOG.md's version-picker entry).
+# design (see BACKLOG.md's version-picker entry). "sourced" maps to
+# itself -- the token and its display label were made to match on
+# purpose (renamed from "scraped" 2026-08-31), but the entry stays
+# explicit rather than relying on the unmapped-fallback path, since that
+# path is reserved for catching a genuine bug, not a real value.
 _SOURCE_LABELS = {
-    "scraped": "sourced",
+    "sourced": "sourced",
     # 2026-08-22: the same source captions with roll-up duplication
     # removed (scripts/dedupe_rollup_transcripts.py). Labeled distinctly
     # so the version picker can tell two same-language versions of the
@@ -1464,11 +1468,11 @@ class IngestRequest(BaseModel):
     input_url_normalized: str
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
-    # call simply omits it and gets the "scraped" default crud.
+    # call simply omits it and gets the "sourced" default crud.
     # ingest_resolution() already applied before this field existed.
     # scripts/transcribe_backlog_locally.py is the one real caller that
     # sets this to "transcribed" -- see that function's own docstring for
-    # why mislabeling self-transcribed content as "scraped" would be a
+    # why mislabeling self-transcribed content as "sourced" would be a
     # real problem (losing the AI-transcript disclaimer), not a cosmetic
     # one.
     source: Optional[str] = None

@@ -322,6 +322,14 @@ class TranscriptVersion(Base):
     # explicit call, 2026-08-22, over adding a separate label column and
     # the migration that needs.
     #
+    # The default value is literally "sourced" (renamed from "scraped"
+    # 2026-08-31, Ryan's call -- "we should never say scraped, always
+    # sourced"; see BACKLOG_DONE.md's matching entry for the full
+    # rename, including the one-time data migration every existing row
+    # needed). No reader has ever seen the raw token either way -- the
+    # rename was purely so the *internal* name stopped disagreeing with
+    # what it displays as.
+    #
     # Two consequences worth knowing before adding a value here:
     #   1. Add it to _SOURCE_LABELS, or the raw token leaks to a reader.
     #   2. Only "transcribed" means AI-generated. Everything else is
@@ -331,7 +339,7 @@ class TranscriptVersion(Base):
     #
     # Plain String(20), no enum or CHECK, so a new value needs no
     # migration -- but it does need both of the above.
-    source: Mapped[str] = mapped_column(String(20), nullable=False, default="scraped")
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="sourced")
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     segments: Mapped[list] = mapped_column(JSON, nullable=False)
