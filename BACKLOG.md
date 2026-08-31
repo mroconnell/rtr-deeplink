@@ -152,7 +152,7 @@ Trust, safety & data quality  (7)
   `[HUMAN]` Fake/spoofed "government" content — real gaps,…  (3)
     [LATER] Prompt injection: not a live product risk today, because no
     [HUMAN] `[BIG]` Fake/spoofed "government" pages and
-    [NEEDS-AUDIT] Second real instance of the Fountain Valley-shaped
+    [NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
 
 Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -1910,12 +1910,14 @@ social auto-posting, and `GET /internal/low-trust-pages` (full build in
 
 WO-38 (2026-08-21) gave `GET /internal/low-trust-pages` a memory
 (`reviewed_at`, `?unreviewed=true`, `?reason=`, a mark-reviewed endpoint
-— see `BACKLOG_DONE.md`). **Re-derived live 2026-08-30** (was 474 rows
-at last count): **631 rows today**, of which **575 `unverified_
-jurisdiction`, 59 `best_effort`, 14 `unknown_platform`** — a real,
-sustained increase in volume as the corpus has grown, and `best_effort`
-is no longer zero (was true at the original 2026-08-21 measurement,
-isn't anymore). Three residuals:
+— see `BACKLOG_DONE.md`). **Re-derived live 2026-08-31** (was 474 rows
+at last count, then 631 on 2026-08-30 — both now stale): **604 rows
+today**, of which **546 `unverified_jurisdiction`, 61 `best_effort`, 14
+`unknown_platform`** (reasons can overlap per page, which is why they
+sum to more than 604) — real, sustained volume as the corpus grows, and
+`best_effort` is no longer zero (was true at the original 2026-08-21
+measurement, isn't anymore). Re-derive again before quoting any of these
+numbers; they move with every ingest. Three residuals:
 
 - **It's a data-quality queue, not a trust queue, today.** Those 470
   rows are real live pages with real video whose jurisdiction couldn't be
@@ -1980,13 +1982,27 @@ fix.
   `platform == "unknown"` 2026-08-21, WO-21); the rest are
   unsequenced. Ryan's call on what, if anything, to build next.
 
-- **[NEEDS-AUDIT] Second real instance of the Fountain Valley-shaped
-  garbled/wrong-language pattern, found 2026-08-16.** Chula Vista Public
-  Comments 2026-05-19 (eScribe): tagged `es` with a "no matching-language
-  track found" warning plus the garbled-at-source marker, and the stored
-  Spanish text does read as garbled. Confirms this failure shape recurs
-  on a different real customer, not a one-off — not independently
-  re-verified against the live page.
+- **[NEEDS-AUDIT] Likely a false-positive garbled-marker, not a second
+  Fountain Valley instance — re-verified live 2026-08-31, claim doesn't
+  hold up.** Chula Vista Public Comments 2026-05-19 (eScribe, version
+  816, `?version=816`) does carry the "no matching-language track found"
+  warning and the garbled-at-source marker, confirmed live. But **the
+  stored Spanish text itself is coherent, accurate Spanish, not
+  garbled** — read in full at the start, middle, and end (165K chars):
+  it's a real, if informally transcribed, account of the same meeting
+  (e.g. the Spanish text's proclamation-for-a-retiring-DEA-chemist
+  passage matches the English agenda item almost word for word; the
+  closing public-comment section is coherent political discourse about
+  a real police department controversy). This isn't Fountain Valley's
+  shape (language misdetected as Portuguese, producing genuine
+  nonsense) — it looks like real bilingual source captions that the
+  garbled-detection heuristic false-flagged. Worth checking whether
+  `_GARBLED_MARKER`'s detection logic has a real false-positive problem
+  on genuine bilingual content, and whether this page's marker should be
+  cleared (it currently defaults to the English-transcribed version
+  anyway, so no reader is served this flagged version by default — but
+  per this repo's own marker-gating convention, a marked page stays
+  permanently un-re-transcribable until checked).
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
 
