@@ -373,17 +373,10 @@ convenient.
 ### Production actions only Ryan should take
 
 - **[HUMAN] Click Validate Fix in Search Console once tonight's
-  (2026-08-30) Archive/resolver deploy completes** — clears ~26% of the
-  "video isn't on a watch page" count with zero further code work. The
-  code side (IQM2's `video_format` fix, the `/j/`/`/state/`
-  `VideoObject`→`CreativeWork` retype, plus the Modesto/Riverside
-  County/Kitchener `_SLUG_REDIRECTS` entries) is done and riding along
-  in that deploy — see `BACKLOG_DONE.md`. This is just the remaining
-  post-deploy dashboard step; a third population (eScribe/isilive, 10%)
-  needs only a fresh recrawl, not this click, and ~65% (Granicus,
-  CivicClerk's Azure CDN) isn't fixable in this app's code at all — see
-  `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup for the full
-  numbers, and don't expect this to clear 100%.
+  (2026-08-30) Archive/resolver deploy completes.** The code side is
+  done and riding along in that deploy — see `BACKLOG_DONE.md`. Don't
+  expect this to clear 100% (full numbers and why in
+  `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup).
 
 - **[HUMAN] `rtr-deeplink` memory: decide on the `standard` plan
   upgrade — evidence now leans toward "recurs," not "one-off"
