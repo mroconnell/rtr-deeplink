@@ -92,6 +92,90 @@ async def test_real_durham_listing_page_parses_correctly():
     assert not any(c["date"] == "2026-08-20" for c in candidates)
 
 
+async def test_real_desoto_listing_page_finds_zero_video_candidates():
+    # Real, raw-saved live page -- ks-desoto.civicplus.com/AgendaCenter,
+    # fetched live 2026-09-01. This is the real regression case for the
+    # bug fixed alongside this test: `_find_video_rows()` used to accept
+    # any `td.media` link whose domain `detect_platform()` recognized,
+    # with no check that a YouTube-domain link was an actual single-video
+    # URL. Every `td.media` link on this real page is a YouTube channel
+    # (`/user/DeSotoKansas/live.`) or `@handle` (`@DeSotoKansas`) link --
+    # zero real single-meeting videos anywhere on the page (confirmed by
+    # inspecting the raw fixture directly). Before the fix, 12 of those
+    # channel/handle links passed the old filter and were returned as
+    # candidates; `CivicPlusAssetFinder().resolve()` raised
+    # `CalendarPageError` with a pick-list of 12 candidates that would
+    # *all* fail with `ValueError('Could not find a YouTube video ID in
+    # ...')` the moment anything tried to resolve one -- confirmed live
+    # via `resolve_via_platform()` before this fix landed. This is the
+    # "every candidate turns out to be a channel/playlist link" edge case:
+    # after the fix, the page should resolve like "no video found" (0
+    # candidates), not error.
+    #
+    # This exact tenant was one of 28 real jurisdictions a 2026-08-31 DNS
+    # enumeration dry run against 1,118 fresh CivicPlus tenants found
+    # failing with this error when picking the newest multi-candidate row
+    # -- see civicplus.py's `_is_real_video_link()` docstring.
+    url = "https://ks-desoto.civicplus.com/AgendaCenter"
+    html = load_fixture("civicplus", "ks_desoto_agendacenter.html")
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    assert result.video_url is None
+    assert result.video_warnings == ["No video link found on this CivicPlus page."]
+    assert result.jurisdiction == "Desoto, KS"
+
+
+async def test_youtube_channel_link_excluded_from_video_row_candidates():
+    # Synthetic, per this repo's convention: the payload shape (a
+    # tr.catAgendaRow/td.media row) is copied from the real, confirmed
+    # markup in durham_agendacenter_citycouncil.html and
+    # ks_desoto_agendacenter.html above, and the two URLs used are both
+    # real, independently-verified ones -- durham.granicus.com/player/
+    # clip/3313 (spot-checked live 2026-08-30, see the durham test above)
+    # and youtube.com/@DeSotoKansas (the real DeSoto, KS channel link
+    # confirmed live 2026-08-31 to have no video ID, see the test above)
+    # -- rather than an invented URL shape. Exercises the one case neither
+    # real fixture covers on its own: a channel-link row *and* a real
+    # single-video row on the same page, confirming the channel link is
+    # dropped rather than merely losing a tiebreak, and the real video
+    # still resolves as the sole remaining candidate.
+    html = """
+    <table>
+      <tr class="catAgendaRow">
+        <td><p><a>Newer Meeting (channel link only)</a></p></td>
+        <td class="media"><a href="https://www.youtube.com/@DeSotoKansas">Video</a></td>
+      </tr>
+      <tr class="catAgendaRow">
+        <td><p><a>Older Meeting (real video)</a></p></td>
+        <td class="media">
+          <a href="https://durham.granicus.com/player/clip/3313">Video</a>
+        </td>
+      </tr>
+    </table>
+    """
+    url = "https://example.civicplus.com/AgendaCenter"
+    granicus_url = "https://durham.granicus.com/player/clip/3313"
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+    }
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    # The channel link never became a candidate at all, so with exactly
+    # one real candidate left, resolve() delegates directly instead of
+    # raising CalendarPageError with a pick-list.
+    assert result.platform == "granicus"
+    assert result.source_url == granicus_url
+
+
 async def test_listing_with_single_video_delegates_to_granicus():
     url = "https://example.civicplus.com/AgendaCenter"
     html = load_fixture("civicplus", "agendacenter_single.html")

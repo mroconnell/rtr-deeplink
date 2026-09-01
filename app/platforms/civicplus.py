@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from .base import AssetFinder, CalendarPageError, detect_platform, resolve_via_platform
 from .granicus import US_STATE_ABBREVIATIONS
 from .models import ResolvedMeeting
+from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
 
 
@@ -162,7 +163,7 @@ class CivicPlusAssetFinder(AssetFinder):
                 (
                     a
                     for a in media_cell.find_all("a", href=True)
-                    if detect_platform(a["href"]) != "unknown"
+                    if self._is_real_video_link(a["href"])
                 ),
                 None,
             )
@@ -199,6 +200,47 @@ class CivicPlusAssetFinder(AssetFinder):
                 }
             )
         return candidates
+
+    @staticmethod
+    def _is_real_video_link(href: str) -> bool:
+        """`detect_platform() != "unknown"` alone isn't tight enough for a
+        `td.media` link: a YouTube-domain link passes it even when it's a
+        channel/playlist/`@handle`/`/user/` page, not a specific single
+        meeting video -- `resolve_via_platform()` only finds out later, via
+        `YouTubeAssetFinder` raising `ValueError('Could not find a YouTube
+        video ID in ...')`, which used to kill the whole pick even when
+        other real candidates existed on the same page.
+
+        Real, confirmed at scale, not just South Fulton GA's single
+        `/channel/...` instance noted in `rtr-business/research/
+        CIVICPLUS_FIRST_RUN.md`: a 2026-08-31 DNS enumeration dry run
+        against 1,118 fresh CivicPlus tenants found 28 real jurisdictions
+        where picking the newest multi-candidate row failed with exactly
+        this error -- every one YouTube-shaped (`playlist?list=`,
+        `/channel/UC...`, `@handle`, `/user/...`). ks-desoto.civicplus.com
+        is the starkest real case: all 12 of its `td.media` YouTube links
+        are `/user/DeSotoKansas/live.` or `@DeSotoKansas` -- zero real
+        single-video links on the whole page (see
+        `tests/fixtures/civicplus/ks_desoto_agendacenter.html`, a real,
+        raw-saved page, and `test_real_desoto_listing_page_finds_zero_
+        video_candidates` in `tests/test_civicplus.py`).
+
+        Reuses `YouTubeAssetFinder.extract_video_id()` (the same tighter,
+        video-ID-validated check `generic_fallback.py` and `legistar.py`
+        already use for this identical class of false positive -- see
+        `find_platform_link()`'s own docstring in `base.py`) rather than
+        writing a second, possibly-inconsistent regex here. A non-YouTube
+        link that already passed `detect_platform()` is trusted as-is --
+        this gap is specific to YouTube being a general-purpose host with
+        non-video URL shapes on the same domain, not a property every
+        platform shares.
+        """
+        platform = detect_platform(href)
+        if platform == "unknown":
+            return False
+        if platform == "youtube":
+            return YouTubeAssetFinder.extract_video_id(href) is not None
+        return True
 
     @staticmethod
     def _extract_agenda_and_packet_links(

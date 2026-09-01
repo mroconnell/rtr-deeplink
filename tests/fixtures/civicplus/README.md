@@ -28,3 +28,14 @@ citycouncil.html` is now the adapter's real, live-verified sample —
 see `test_real_durham_listing_page_parses_correctly` in
 `tests/test_civicplus.py` and the class docstring in
 `app/platforms/civicplus.py`.
+
+**2026-09-01: `ks_desoto_agendacenter.html`** — another real, raw-saved
+page (`ks-desoto.civicplus.com/AgendaCenter`, fetched live 2026-09-01,
+same `<script>`/`<style>`/comment stripping as Durham above). Every one
+of its 12 `td.media` links is a YouTube *channel* or `@handle` link
+(`/user/DeSotoKansas/live.`, `@DeSotoKansas`) — zero real single-meeting
+videos anywhere on the page. This is the regression fixture for the
+YouTube-channel-link bug fixed the same day: see `_is_real_video_link()`
+in `app/platforms/civicplus.py` and
+`test_real_desoto_listing_page_finds_zero_video_candidates` in
+`tests/test_civicplus.py`.
