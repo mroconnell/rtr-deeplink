@@ -51,6 +51,7 @@ email instead of the routine report.
 import argparse
 import asyncio
 import os
+import random
 import sys
 import time
 from datetime import datetime
@@ -80,10 +81,48 @@ from archive.utils.email import (
 # Gentler than bulk_ingest.py's 1.5s -- every request here hits YouTube
 # from the operator's own home IP, and youtube-transcript-api's docs warn
 # that too many requests get even residential IPs temporarily blocked.
-REQUEST_DELAY_SECONDS = 5.0
+# Jittered (see _jittered_delay()) rather than a flat sleep -- a perfectly
+# uniform cadence is itself a bot signal; a small random spread is free
+# politeness on top of the delay itself.
+REQUEST_DELAY_SECONDS = 6.0
+REQUEST_DELAY_JITTER_SECONDS = 2.0
 INGEST_TIMEOUT = aiohttp.ClientTimeout(
     total=65
 )  # matches archive_client.PUSH_TIMEOUT -- tolerates a Render cold start
+
+# --- Rate-limit / IP-block backoff -----------------------------------------
+# See docs/investigations/youtube_429_block.md (open as of 2026-08-31) before
+# changing any of this. That investigation found something materially
+# different from an ordinary rate limit: a burst of YouTube caption-fetch
+# calls earned a *sustained* IP-level block that outlived at least 9 minutes
+# of idling in one case, and took over a week to clear in another -- with a
+# separate isolated, cold, unhurried single request also 429ing on a
+# different day. In other words, this is not confirmed to be "wait a few
+# minutes and it clears" -- it might be, but nobody has verified that, and
+# the same doc explicitly warns: "Do not re-run a bulk YouTube sweep to test
+# this... running more only risks extending whatever is causing it."
+#
+# So the backoff here is deliberately short and bounded, not a long
+# retry-forever cooldown loop: two escalating retries of the *same* page
+# (30s, then 120s -- roughly 5x and 20x the base per-request delay), and if
+# a real block signal (see _is_rate_limit_signal() below) is still happening
+# after that, this stops the ENTIRE run and sends the existing failure-email
+# alert rather than parking on what might be a multi-day block. A human
+# checking that alert can decide whether/when to re-run -- this script
+# deliberately does not try to self-heal past this point, since more
+# automatic retrying is exactly the behavior the investigation above warns
+# against.
+#
+# Note this is a different code path (youtube-transcript-api, run from a
+# residential IP) than the yt-dlp-based 429s the investigation doc's
+# original 2026-08-22 finding hit (app/platforms/youtube.py's video
+# resolve()) -- this script's own module docstring already establishes that
+# youtube-transcript-api has worked reliably from a home connection since
+# 2026-08-10. But both ultimately talk to the same YouTube backend, so an
+# IP-level block triggered one way plausibly affects the other -- worth
+# real caution here even though no block has been confirmed via this
+# specific script yet.
+RATE_LIMIT_BACKOFF_SECONDS = [30.0, 120.0]
 
 # Not the Archive's own internal ARCHIVE_BASE_URL (its Render URL) --
 # emailed links need the real public domain, same distinction
@@ -105,6 +144,50 @@ def _base_url() -> str:
 def _headers() -> dict:
     token = os.environ.get("ARCHIVE_INGEST_TOKEN", "")
     return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def _jittered_delay(base: float = REQUEST_DELAY_SECONDS) -> float:
+    """`base` plus up to REQUEST_DELAY_JITTER_SECONDS of random spread, so
+    consecutive requests don't land at a perfectly uniform cadence."""
+    return base + random.uniform(0.0, REQUEST_DELAY_JITTER_SECONDS)
+
+
+def _progress_note(results: List[dict]) -> str:
+    """Short 'N ingested, M skipped, K failed so far' string for the abort
+    email when a rate-limit backoff exhausts mid-run -- so the alert says
+    how much of the run actually completed before it had to stop, not just
+    that it stopped."""
+    if not results:
+        return "No pages were processed before this."
+    ingested = sum(1 for r in results if r["status"] == "ingested")
+    skipped = sum(1 for r in results if r["status"] == "skipped")
+    failed = sum(1 for r in results if r["status"] == "failed")
+    return (
+        f"{ingested} ingested, {skipped} skipped, {failed} failed "
+        f"({len(results)} page(s) processed before stopping)."
+    )
+
+
+def _is_rate_limit_signal(exc: BaseException) -> bool:
+    """True for a real YouTube rate-limit/block signal, not an ordinary
+    per-video failure (private video, live-not-started, disabled captions,
+    removed) -- those are expected noise this queue surfaces regardless and
+    must NOT trigger backoff.
+
+    youtube-transcript-api's own `RequestBlocked` (parent of `IpBlocked`)
+    already covers every real case confirmed in its source
+    (_transcripts.py, this venv's installed copy): an HTTP 429 from
+    YouTube's own InnerTube endpoint, a recaptcha challenge page, and the
+    "Sign in to confirm you're not a bot" playability status all raise one
+    of these two -- so isinstance is a precise check here, not a guess, and
+    no separate string-matching (e.g. on "429" or "too many requests") is
+    needed on top of it. Matched by class name rather than a top-level
+    import so this module stays importable (and its pure functions
+    testable, per this file's own __main__ guard comment) without
+    youtube-transcript-api installed.
+    """
+    exc_type = type(exc)
+    return any(c.__name__ in ("RequestBlocked", "IpBlocked") for c in exc_type.__mro__)
 
 
 def snippets_to_segments(snippets) -> List[dict]:
@@ -389,17 +472,57 @@ async def main() -> None:
             # actual proof of that, not an estimate.
             run_start = time.monotonic()
             results = []
+            backoff_events = 0
             for i, page in enumerate(pages):
                 item_start = time.monotonic()
-                try:
-                    result = await process_one(session, page, dry_run=args.dry_run)
-                except Exception as e:
-                    await _notify_failure(
-                        args.dry_run,
-                        f"{type(e).__name__}: {str(e)[:300]} "
-                        "(An IP-level block means further requests would all fail too -- try again later.)",
-                    )
-                    sys.exit(1)
+                # Bounded retry of THIS SAME page on a real rate-limit/block
+                # signal -- see RATE_LIMIT_BACKOFF_SECONDS's own comment for
+                # why this is short and bounded rather than a long
+                # retry-forever cooldown loop (docs/investigations/
+                # youtube_429_block.md). block_attempt indexes into
+                # RATE_LIMIT_BACKOFF_SECONDS; once it runs out, the whole
+                # run stops (same as the previous unconditional-abort
+                # behavior this replaces), it just isn't the FIRST block
+                # signal that triggers it anymore.
+                block_attempt = 0
+                while True:
+                    try:
+                        result = await process_one(session, page, dry_run=args.dry_run)
+                        break
+                    except Exception as e:
+                        if not _is_rate_limit_signal(e):
+                            await _notify_failure(
+                                args.dry_run,
+                                f"{type(e).__name__}: {str(e)[:300]} "
+                                "(not a recognized rate-limit signal -- aborting rather than "
+                                "guessing at a backoff)",
+                            )
+                            sys.exit(1)
+                        if block_attempt >= len(RATE_LIMIT_BACKOFF_SECONDS):
+                            await _notify_failure(
+                                args.dry_run,
+                                f"{type(e).__name__}: {str(e)[:300]} -- still hitting a YouTube "
+                                f"rate-limit/block signal after {block_attempt} backoff retr"
+                                f"{'y' if block_attempt == 1 else 'ies'} on {page.get('slug', '?')}. "
+                                "Stopping the whole run here rather than continuing to retry -- "
+                                "see docs/investigations/youtube_429_block.md, this may be a "
+                                "sustained IP-level block that outlasts minutes (one confirmed "
+                                "case took over a week to clear), so keeping this run alive to "
+                                "poll it would itself be the kind of repeated hammering that "
+                                f"investigation warns against. {_progress_note(results)}",
+                            )
+                            sys.exit(1)
+                        delay = RATE_LIMIT_BACKOFF_SECONDS[block_attempt]
+                        block_attempt += 1
+                        backoff_events += 1
+                        print(
+                            f"[{datetime.now().strftime('%H:%M:%S')}] [BACKOFF ] "
+                            f"{page.get('slug', '?')}: {type(e).__name__} looks like a real "
+                            f"YouTube rate-limit/block signal (not an ordinary per-video "
+                            f"failure) -- backing off {delay:.0f}s before retrying this same "
+                            f"page (attempt {block_attempt}/{len(RATE_LIMIT_BACKOFF_SECONDS)})"
+                        )
+                        await asyncio.sleep(delay)
                 elapsed = time.monotonic() - item_start
                 results.append(result)
                 timestamp = datetime.now().strftime("%H:%M:%S")
@@ -408,9 +531,15 @@ async def main() -> None:
                     f"           {result['detail']}"
                 )
                 if i < len(pages) - 1:
-                    await asyncio.sleep(REQUEST_DELAY_SECONDS)
+                    await asyncio.sleep(_jittered_delay())
 
             total_elapsed = time.monotonic() - run_start
+            if backoff_events:
+                print(
+                    f"\n{backoff_events} rate-limit backoff event(s) occurred during this run "
+                    "(see BACKOFF lines above) -- the run still completed, but this is worth "
+                    "noting in docs/investigations/youtube_429_block.md if it happens again."
+                )
             ingested = [r for r in results if r["status"] == "ingested"]
             skipped = [r for r in results if r["status"] == "skipped"]
             failed = [r for r in results if r["status"] == "failed"]
