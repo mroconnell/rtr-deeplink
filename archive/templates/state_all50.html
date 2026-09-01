@@ -18,6 +18,23 @@
   <meta property="og:title" content="Public meetings from all 50 states">
   <meta property="og:description" content="Watch and search archived U.S. government meetings — city councils, county boards, and public agencies — with transcripts and deep links to specific moments.">
   <meta property="og:type" content="website">
+  {#- A real frame from one of the featured meetings on this page, when one
+     has a stored card (WO-90) -- see state_page.html's matching comment.
+     Falls back to the shared no-video-of-its-own placeholder only when
+     nothing in the pool has a card yet. #}
+  {% set _card = (featured | selectattr("card_url") | first) %}
+  {% set page_image_url = (public_base_url ~ _card.card_url) if (public_base_url and _card) else generic_card_image_url %}
+  {#- og:image:alt/twitter:image:alt (WO-91) -- see state_page.html's
+     matching comment, including why snippet_text is truncated here. #}
+  {% set page_image_alt = ("A photo of a meeting in " ~ _card.jurisdiction_display ~ " where people are talking about " ~ (_card.snippet_text|truncate(200))) if (public_base_url and _card) else generic_card_image_alt %}
+  {% if page_image_url %}
+  <meta property="og:image" content="{{ page_image_url }}">
+  <meta property="og:image:alt" content="{{ page_image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if page_image_url else 'summary' }}">
+  {% if page_image_url %}
+  <meta name="twitter:image:alt" content="{{ page_image_alt }}">
+  {% endif %}
   {% if public_base_url %}
   <script type="application/ld+json">
   {

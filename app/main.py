@@ -196,6 +196,22 @@ templates = Jinja2Templates(
 templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip(
     "/"
 )
+# Same generic-card global archive/main.py exposes, same reasoning (WO-90)
+# -- see that file's comment. Duplicated rather than imported across the
+# app/archive service boundary, per this repo's existing convention (see
+# archive/utils/clerk_auth.py's own header note).
+_GENERIC_CARD_SLUG = (
+    "city-of-indianapolis-in-2026-08-28-property-tax-assessment-board-of-appeals"
+)
+templates.env.globals["generic_card_image_url"] = (
+    f"{templates.env.globals['public_base_url']}/m/{_GENERIC_CARD_SLUG}/card.jpg"
+    if templates.env.globals["public_base_url"]
+    else ""
+)
+# Same generic-card-alt global archive/main.py exposes, same reasoning.
+templates.env.globals["generic_card_image_alt"] = (
+    "A photo of local officials seated at a public government meeting"
+)
 templates.env.globals["GA_MEASUREMENT_ID"] = os.environ.get("GA_MEASUREMENT_ID", "")
 templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
     "CLERK_PUBLISHABLE_KEY", ""
