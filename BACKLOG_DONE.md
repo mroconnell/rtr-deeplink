@@ -58,6 +58,44 @@ already-built mechanism used for prior jurisdiction-registry fixes, not
 new tooling; it wasn't run as part of this fix since it needs a deploy
 and the production admin token first.
 
+## Corpus expansion (discover meetings at already-covered tenants): handled by a sibling repo, not this one [Superseded 2026-08-31]
+
+Resolves `BACKLOG.md`'s "Corpus expansion — discover additional meetings
+from tenants already in the Archive" entry (the `CORPUS_EXPANSION_PLAN.md`
+design). Not built here, and shouldn't be: `~/Documents/rtr-discovery`, a
+standalone sibling repo built 2026-08-30, already implements this exact
+work — and is well ahead of what `CORPUS_EXPANSION_PLAN.md` originally
+scoped. As of 2026-08-31 it has 11 live-verified platform enumerators
+(the plan's 4 — Granicus, CivicClerk, PrimeGov, YouTube channel — plus
+CivicWeb, eScribe, Legistar, Swagit, IQM2, ProudCity, Cablecast),
+covering ~97% of the corpus's 2,163 seeded tenants, with a persistent
+SQLite ledger (resumable, dedupe-aware), round-robin ingest ordering, and
+**714 real candidates already `ingested`** into production. It imports
+this repo's own platform adapters, URL normalization, and jurisdiction
+machinery directly (`discovery/deeplink.py`) rather than duplicating
+them, and is HTTP-only against the Archive (`GET /internal/pages/all-urls`,
+`POST /internal/ingest`) — never a direct DB connection, matching this
+repo's own standing decision.
+
+**Found while confirming this** (2026-08-31): a real, live contamination
+bug in rtr-discovery's `youtube_channel` platform — its enumerator has no
+check that a candidate video is actually a meeting (only that it's
+publishable and has captions/jurisdiction), so 9 of 17 already-`ingested`
+candidates on that platform turned out to be non-meeting content (a
+national convention, a "Charm City Live" festival, a mayoral press
+availability, a parks news segment, a homebuying PSA, a ceremonial
+street-sign unveiling, a backpack-giveaway event, an HR profile video, an
+accessibility training video) — all 9 were live pages on
+redtaperecordings.com and have been deleted via this repo's own
+`POST /internal/admin/delete-pages`. The fix (a governing-body keyword
+check, same floor as this repo's own `app/platforms/granicus.py`
+`GOVERNING_BODY_KEYWORDS`) is documented in rtr-discovery's own
+`README.md` but not yet built there — tracked in that repo, not here.
+
+**`CORPUS_EXPANSION_PLAN.md` is now historical** — it records the design
+rtr-discovery went on to build (and exceed), kept for the sizing/
+reasoning, not as an open plan for this repo.
+
 ## Repetition-loop transcript-defect repair run: 14/14 repaired, 0 failed [Done 2026-08-31]
 
 Second half of the WO-84/WO-87 repair effort (seam-duplication half —
