@@ -70,8 +70,29 @@
      Absolute (public_base_url) for the same reason as canonical/og:url:
      a relative og:image is not reliably resolved by every scraper. #}
   {% set thumbnail_url = page.video_url|youtube_thumbnail_url or (public_base_url and card_available and (public_base_url ~ "/m/" ~ page.slug ~ "/card.jpg" ~ ("?t=" ~ card_t if card_t else ""))) or none %}
+  {#- Accessible text for the image above (WO-91), for a screen-reader user
+     who encounters the shared card on X/Bluesky/Facebook rather than this
+     page itself -- og:image:alt and twitter:image:alt are the standard
+     properties those read. Built from the same two facts the visible page
+     already leads with: real quote wins ("...where people are talking
+     about {quote}"), since highlight_description is only ever a real
+     transcript excerpt (never the generic fallback sentence `description`
+     falls back to above -- that isn't something "people are talking
+     about"). Degrades in the same order a page can be missing pieces:
+     quote+jurisdiction, quote alone, jurisdiction alone, plain. #}
+  {% set _jurisdiction_name = (page.jurisdiction|jurisdiction_display) if page.jurisdiction else none %}
+  {% if highlight_description and _jurisdiction_name %}
+  {% set image_alt = "A photo of a meeting in " ~ _jurisdiction_name ~ " where people are talking about " ~ highlight_description %}
+  {% elif highlight_description %}
+  {% set image_alt = "A photo of a public meeting where people are talking about " ~ highlight_description %}
+  {% elif _jurisdiction_name %}
+  {% set image_alt = "A photo of a public meeting in " ~ _jurisdiction_name %}
+  {% else %}
+  {% set image_alt = "A photo of a public meeting" %}
+  {% endif %}
   {% if thumbnail_url %}
   <meta property="og:image" content="{{ thumbnail_url }}">
+  <meta property="og:image:alt" content="{{ image_alt }}">
   {% endif %}
   {#- twitter:card is emitted unconditionally (fixed 2026-08-21) -- it used
      to sit inside the thumbnail guard above, so every non-YouTube page
@@ -84,6 +105,9 @@
      invalid, hence the branch rather than one fixed value. Matters more
      now that PR #266 auto-posts new pages to Bluesky/Mastodon. #}
   <meta name="twitter:card" content="{{ 'summary_large_image' if thumbnail_url else 'summary' }}">
+  {% if thumbnail_url %}
+  <meta name="twitter:image:alt" content="{{ image_alt }}">
+  {% endif %}
   {% if page.video_url %}
   {#- schema.org VideoObject for search-engine rich-result eligibility.
      contentUrl is used for a direct playable file (mp4/m3u8, this app's

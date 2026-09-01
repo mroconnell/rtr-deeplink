@@ -9,7 +9,22 @@
      canonicalize here, same pattern the state pages use: the variants
      add crawlable text without competing for the same query. -#}
   <link rel="canonical" href="{{ public_base_url }}/">
+  <meta property="og:url" content="{{ public_base_url }}/">
   {%- endif %}
+  {#- Highest-traffic page on the domain and, until now, no og:image at
+     all (WO-90). generic_card_image_url is the shared no-video-of-its-
+     own placeholder -- see archive/main.py's comment on the same global. #}
+  <meta property="og:title" content="Red Tape Recordings">
+  <meta property="og:description" content="Paste the URL of a public government meeting recording and get back the video and its transcript, side by side, with a URL you can share that lands someone at that exact moment.">
+  <meta property="og:type" content="website">
+  {% if generic_card_image_url %}
+  <meta property="og:image" content="{{ generic_card_image_url }}">
+  <meta property="og:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if generic_card_image_url else 'summary' }}">
+  {% if generic_card_image_url %}
+  <meta name="twitter:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
 {% endblock %}
 {#- Tightens the lookup box's top margin only when the feed is actually
    below it -- see .home-has-highlights in style.css. -#}
