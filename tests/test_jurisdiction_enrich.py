@@ -853,6 +853,31 @@ def test_finalize_jurisdiction_fallback_domain_fires_on_blank_or_unvalidated_ext
     assert result.confidence == "fallback"
 
 
+def test_finalize_jurisdiction_dc_granicus_authoritative_override():
+    # "District of Columbia" isn't in the Census places table (it's
+    # neither a city nor a county), so unlike an ordinary Granicus tenant
+    # its raw page-text extraction can never gain a ", DC" suffix on its
+    # own -- and the real, confirmed bug this closes is worse than just
+    # "no suffix": a second real dc.granicus.com page's differently-worded
+    # extraction ("Committee of the Whole - District of Columbia") got
+    # trimmed all the way down to the wrong, unrelated place "Columbia"
+    # by `_trim_repair()` before this override existed. Same authoritative
+    # shape as slc.primegov.com above.
+    result = je.finalize_jurisdiction("District of Columbia", netloc="dc.granicus.com")
+    assert result.jurisdiction == "Washington, DC"
+    assert result.confidence == "authoritative"
+
+    result = je.finalize_jurisdiction(
+        "Committee of the Whole - District of Columbia", netloc="dc.granicus.com"
+    )
+    assert result.jurisdiction == "Washington, DC"
+    assert result.confidence == "authoritative"
+
+    result = je.finalize_jurisdiction(None, netloc="dc.granicus.com")
+    assert result.jurisdiction == "Washington, DC"
+    assert result.confidence == "authoritative"
+
+
 def test_finalize_jurisdiction_does_not_consult_an_unregistered_domain():
     result = je.finalize_jurisdiction(
         "Some Unvalidatable Text", netloc="totally-unknown-host.example.com"
