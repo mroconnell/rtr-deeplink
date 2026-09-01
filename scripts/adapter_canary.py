@@ -220,6 +220,21 @@ CANARY_EXCLUSIONS: dict[str, str] = {
         "parsing break would surface there -- but as a destinyhosted "
         "failure, not a swagit one."
     ),
+    "civiclive": (
+        "No live CivicLive page has yet been found to produce "
+        "has_real_content()-shaped output -- see civiclive.py's own module "
+        "docstring for the full investigation. The one confirmed real "
+        "off-domain delegation (Auburn, WA's 'Agendas & Minutes' page "
+        "302-redirecting to auburnwa.portal.civicclerk.com) lands on "
+        "CivicClerk's bare portal HOME, not a specific meeting -- no "
+        "video_url/segments/agenda_link of its own, so it would false-alarm "
+        "here daily despite the adapter behaving correctly. No live tenant "
+        "has been found with a server-rendered, per-meeting embedded video "
+        "either (the real agenda/calendar tables are client-rendered and "
+        "invisible to a plain fetch on every tenant checked so far -- "
+        "Auburn, Escalon). Revisit if a real per-meeting-video CivicLive "
+        "sample ever turns up."
+    ),
 }
 
 

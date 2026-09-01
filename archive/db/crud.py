@@ -4279,6 +4279,17 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # because it genuinely is one shared platform across many cities,
     # which is what this table's rows mean.
     "vimeo": "Vimeo",
+    # CivicLive (Intrafinity, formerly West Corp) -- WO-92, 2026-09-01.
+    # Same shape as destinyhosted above: a real, shared 1000+-customer
+    # municipal CMS with no video product of its own, whose adapter
+    # delegates to GenericFallbackAssetFinder and only reassigns
+    # `resolved.platform = "civiclive"` when nothing deeper resolved (an
+    # off-domain redirect delegation, e.g. to CivicClerk, keeps THAT
+    # platform's own label instead -- see civiclive.py's own module
+    # docstring). A generic-fallback resolve can still carry a real
+    # agenda_link/video from the CivicLive page itself, so a "civiclive"
+    # row is genuinely pushable, not permanently exampleless.
+    "civiclive": "CivicLive",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a

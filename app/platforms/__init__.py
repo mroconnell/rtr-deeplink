@@ -18,6 +18,7 @@ def register_all_finders() -> None:
     from .civicclerk import CivicClerkAssetFinder
     from .destinyhosted import DestinyHostedAssetFinder
     from .civicweb import CivicWebAssetFinder
+    from .civiclive import CivicLiveAssetFinder
     from .civicplus import CivicPlusAssetFinder
     from .escribe import EscribeAssetFinder
     from .generic_fallback import GenericFallbackAssetFinder
@@ -49,6 +50,7 @@ def register_all_finders() -> None:
     register(CaliforniaLegislatureAssetFinder())
     register(LegistarAssetFinder())
     register(CivicPlusAssetFinder())
+    register(CivicLiveAssetFinder())
     register(YouTubeAssetFinder())
     register(PrimeGovAssetFinder())
     register(ViebitAssetFinder())

@@ -357,6 +357,27 @@ def detect_platform(url: str) -> str:
         # detail page, no cross-referencing against the paginated listing
         # grid needed).
         return "tampa"
+    if netloc.endswith(".hosted.civiclive.com") or netloc.endswith(
+        ".hosted2.civiclive.com"
+    ):
+        # CivicLive (Intrafinity, formerly West Corp) -- a real, distinct
+        # municipal CMS with 1000+ customers and no video product of its
+        # own, confirmed live 2026-09-01 (WO-92). Both `hosted` and
+        # `hosted2` are genuinely Cloudflare-wildcarded at the DNS/TLS
+        # level (a nonsense subdomain resolves to the same catch-all IPs
+        # and gets a real `*.hosted[2].civiclive.com` wildcard cert) --
+        # so unlike civicplus.com/primegov.com, subdomain existence alone
+        # never confirms a real tenant. `hosted.civiclive.com` degrades
+        # cleanly at the HTTP layer instead (a clean 404
+        # `errors/FileNotFound.aspx` for an unknown name); `hosted2.
+        # civiclive.com` returns a 200 either way, discriminated instead
+        # by a real, distinct ~24KB "Home - Intrafinity" default-tenant
+        # page vs. a real tenant's much larger page carrying a genuine
+        # "Powered by Civiclive" footer credit -- see civiclive.py's own
+        # module docstring for the full investigation this was built
+        # from, including why a third+ `hostedN` shape doesn't exist
+        # (hosted3-5 don't even resolve).
+        return "civiclive"
     if netloc in PROUDCITY_KNOWN_DOMAINS:
         # ProudCity (WordPress `wp-proud-meeting` plugin) -- no shared apex
         # domain across tenants (white-labeled onto each city's own
