@@ -1,9 +1,12 @@
 # Corpus expansion: discover and ingest new meetings from already-covered tenants
 
-**Status: planned, not built.** This document records the design so a
-future session (or a returning one) doesn't have to re-derive the sizing
-numbers or re-discover which platforms already support this. Nothing
-described here exists in code yet.
+**Status: historical — built, and exceeded, in a sibling repo.** As of
+2026-08-31 this work lives in `~/Documents/rtr-discovery`, a standalone
+repo that implements this design's 4 platforms plus 7 more (11 total,
+~97% of the corpus), with a persistent ledger and 714+ real production
+ingests — see `BACKLOG_DONE.md`'s "Corpus expansion" entry. This document
+is kept for the original sizing/reasoning, not as an open plan for this
+repo; don't build a rival implementation here.
 
 ## Why
 

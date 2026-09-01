@@ -207,17 +207,16 @@ Trust, safety & data quality  (9)
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (10)
+  Growth, audience & discoverability  (9)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
     `[IMPROVEMENT-ROUND]` YouTube Atom-feed polling as a narrower,…
-    `[IMPROVEMENT-ROUND]` Corpus expansion — discover additional meetings…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
     [IMPROVEMENT-ROUND] Whether the resolver's existing `GET /admin/log`
     [IMPROVEMENT-ROUND] `[BIG]` Video highlight clips + algorithmic
@@ -2033,23 +2032,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     compaction's done-additions file, pending a real `BACKLOG_DONE.md` or
     `docs/investigations/` entry once this is built.
 
-- **`[IMPROVEMENT-ROUND]` Corpus expansion — discover additional meetings from tenants already in the Archive — distinct from the new-tenant crawler above.**
-  - **Issue**: there's no way today to discover a tenant's meetings beyond
-    one already-known URL, for tenants already in the Archive (as opposed
-    to discovering brand-new tenants, which is what the crawler entry above
-    is about).
-  - **Impact**: real sizing pulled live from production — only 4 mechanisms
-    (Granicus RSS, CivicClerk Events API, PrimeGov `ListArchivedMeetings`,
-    YouTube channel listings) can list a tenant's meetings beyond one known
-    URL today, covering ~1,030 of ~2,358 tenants (~44%).
-  - **Next action**: see `CORPUS_EXPANSION_PLAN.md` — a sized-out design
-    exists, planned but not yet built. Duration filtering was already
-    ruled out (transcription is on-demand, not a batch queue, so it's not
-    a real cost lever); agenda-vs-transcript topic splitting is
-    deliberately left to `rtr-upcoming`, which will discover agendas
-    before video exists and filter on topic at that cheaper stage.
-  - **History**: `CORPUS_EXPANSION_PLAN.md` (planned, not built). Addendum
-    written 2026-08-30.
 - **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
   once instead of one at a time.**
   - **Issue**: no way to submit multiple meeting URLs in one request —
