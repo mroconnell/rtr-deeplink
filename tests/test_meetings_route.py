@@ -34,3 +34,38 @@ def test_meetings_page_still_accepts_real_true_values():
 def test_meetings_page_works_with_no_query_params_at_all():
     response = client.get("/meetings")
     assert response.status_code == 200
+
+
+async def test_pagination_link_preserves_explicit_has_transcript_false():
+    # Real bug fixed 2026-09-01, reported live in production: has_transcript
+    # is tri-state (None/True/False -- see _parse_optional_bool), but the
+    # pagination link builder used to gate on truthiness, so an explicit
+    # "?has_transcript=false" (meetings WITHOUT a transcript) looked
+    # identical to "unset" and silently dropped off the "Next" link,
+    # reverting page 2+ to the unfiltered list. The pagination nav only
+    # renders at all when `pages` is non-empty, and "Next" only when
+    # total_pages > 1, so this needs enough real, transcript-less rows in
+    # the test DB to actually produce a page-2 link -- 21 to exceed
+    # list_pages()'s default page_size of 20.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    async with async_session() as session:
+        for i in range(21):
+            session.add(
+                MeetingPage(
+                    slug=f"pagination-has-transcript-false-{i}",
+                    platform="youtube",
+                    external_id=f"pagination-has-transcript-false-{i}",
+                    source_url_normalized=(
+                        f"https://example.test/pagination-has-transcript-false-{i}"
+                    ),
+                    title="Pagination has_transcript=false probe",
+                    jurisdiction="Probeville, CA",
+                )
+            )
+        await session.commit()
+
+    response = client.get("/meetings?page=1&has_transcript=false")
+    assert response.status_code == 200
+    assert "has_transcript=false" in response.text
