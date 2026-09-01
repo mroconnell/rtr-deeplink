@@ -4370,6 +4370,21 @@ COVERAGE_EXCLUSIONS: dict[str, str] = {
         "in 'What about Platform XYZ?' prose and recoverable in the "
         "'Detail page' column via _wrapper_detail_label()."
     ),
+    "municode_meetings": (
+        "Same calendar/agenda-router shape as legistar/civicplus above -- "
+        "municode_meetings.py delegates via resolve_via_platform() (to "
+        "YouTube or Vimeo, confirmed both live) and returns the delegated "
+        "finder's own ResolvedMeeting as-is, so a successfully-ingested "
+        "page's MeetingPage.platform is 'youtube'/'vimeo', never "
+        "'municode_meetings'. Unlike primegov/civicweb, source_url is NOT "
+        "preserved as the original municodemeetings.com page (resolve() "
+        "calls resolve_via_platform() the same way civicplus.py does, not "
+        "YouTubeAssetFinder.resolve_video_id() directly with the original "
+        "URL the way primegov.py does), so it's not recoverable via "
+        "_wrapper_detail_label() either -- a row here could never have a "
+        "real example. Named in coverage.html's 'What about Platform "
+        "XYZ?' section."
+    ),
     "youtube": (
         "Deliberate product decision, not an oversight: a viewer already "
         "gets a good deep-linkable transcript straight from YouTube for a "

@@ -150,6 +150,16 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831",
     ],
     "lims": ["https://lims.minneapolismn.gov/MarkedAgenda/CI/6133"],
+    # Bristol, RI -- confirmed live 2026-09-01, a real, busy tenant
+    # homepage (25 meeting rows, 4 with a real populated video-link cell,
+    # each a relative link to a same-tenant detail page). Same shape as
+    # civicplus above: this is a category listing page, not a single-
+    # meeting URL (municodemeetings.com has no single-meeting URL shape
+    # of its own confirmed to be pasteable directly), so this always
+    # raises CalendarPageError, which _attempt_platform() already treats
+    # as a correct, expected outcome as long as real candidates come
+    # back.
+    "municode_meetings": ["https://bristol-ri.municodemeetings.com/"],
     # Eugene, OR -- the richest of tests/test_openmedia.py's three real
     # tenants (Goodyear AZ and Cortez CO are the other two, both also
     # live-verified 2026-08-21 if this one ever goes stale). open.media

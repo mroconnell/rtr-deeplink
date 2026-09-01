@@ -365,6 +365,17 @@ def detect_platform(url: str) -> str:
         # see proudcity.py's own module docstring for the full evidence
         # trail and BACKLOG_DONE.md's 2026-08-26 entry.
         return "proudcity"
+    if netloc.endswith("municodemeetings.com"):
+        # Municode Meetings -- a real, multi-tenant civic agenda/minutes
+        # CMS (Drupal-based, "MCC Portal"), confirmed live 2026-09-01
+        # across bristol-ri, hamburg-mi, and fairoaksranch-tx. Like
+        # Legistar/CivicPlus/CivicWeb, it's not a video host of its own --
+        # see municode_meetings.py's own module docstring for the real
+        # page structure (a Drupal Views meetings table on the tenant
+        # homepage, delegating to a meeting detail page's own
+        # `#mcc_agenda_video` iframe, confirmed both YouTube and Vimeo
+        # destinations).
+        return "municode_meetings"
     return "unknown"
 
 
