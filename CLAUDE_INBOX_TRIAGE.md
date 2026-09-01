@@ -496,3 +496,123 @@ in tests" so it stops showing as "Action needed."
 
 Ledger: 21 new message IDs recorded (142 → 163 kept), 0 pruned this run
 (all still inside the 30-day + 7-day-grace retention window).
+
+## 2026-09-01
+
+Reviewed 27 new messages under `label:rtr-claude newer_than:30d` (70
+candidates, 43 already ledgered). Skipped as purely informational: three
+YouTube transcript digests (58 added, none new, 1 added — all failures
+already-documented `TranscriptsDisabled` cases), a transcription-worker
+daily report, two UptimeRobot UP-resolution notices (paired with the DOWN
+incident written up below), a Dependabot PR comment (#631, not an alert),
+four Search Console "validating your fix" notices (recrawl in progress,
+nothing to act on), and Render's "70% of free build pipeline minutes
+used" notice (the exact, already-documented merge-volume risk `CLAUDE.md`
+already tracks and gives mitigation guidance for — no new code action).
+Skipped as out of scope: two GitHub Actions "PR run failed"/"Run failed"
+emails for non-`main` feature branches (`Queue 17 new CivicPlus tier-3
+video-only candidates`, `dns-sweep/civicplus-tier3-queue`) — each has its
+own merge gate. Skipped as duplicates of already-tracked patterns: another
+"Server failure detected on `test-redtaperecordings`" (status 3, Nth+
+occurrence, no new signal); the "Adapter health canary: All jobs have
+failed" run (2026-08-31 20:43 UTC, run
+[33437464134](https://github.com/mroconnell/rtr-deeplink/actions/runs/33437464134))
+— confirmed via its own job logs to be the exact same still-open Phoenix
+Legistar 410 (`ID=1425831`), 30/31 platforms otherwise healthy, no new
+signal; Sentry **PYTHON-FASTAPI-19** (`DBAPIError`/
+`ConnectionDoesNotExistError`, `archive.db.crud._refresh_meeting_highlight`,
+page id=4180) — confirmed via current code (`archive/db/crud.py:897-911`)
+that this is exactly the defensive `SAVEPOINT` + catch-all path the
+referenced "Stop a failed highlight write from losing a transcript"
+commit built on purpose: `handled=yes`, the outer ingest transaction and
+the transcript both survive, only the highlight snippet is missing until
+the next run — a transient Postgres connection blip working exactly as
+designed, not a bug; Sentry **PYTHON-FASTAPI-18** (`TimeoutError`,
+`app/platforms/media_probe.py:251` `probe_has_video_stream`, ffprobe
+timeout against a ChampDS source) — `handled=yes`, part of WO-85's
+intended `is_extractable()` no-video-stream degraded-logging path, not a
+new bug; "Some fixes failed for Video indexing issues" (Search Console) —
+same already-open `BACKLOG.md` `[NEEDS-AUDIT]` entries (Granicus/CivicClerk
+403-to-Googlebot confirmed, Cablecast/long-tail unexplained); Transcription
+job 1377 failed (Mansfield TX, CivicClerk, `mansfieldtx.portal.civicclerk.com/event/744/media`,
+chunk 1/6, `errno 1094995529` three times) — same `slice_cached_audio()`
+missing-decodability-guard gap (2026-08-29 finding #1, WO-54/58), now a
+5th real occurrence across a 4th distinct source; and Sentry
+**PYTHON-FASTAPI-1A** (`OSError: [Errno 92] Protocol not available` inside
+uvloop's `create_connection`, wrapped as `ClientConnectorError: Cannot
+connect to host rtr-deeplink-archive:10000`, `/m/{path:path}`) — a new
+specific errno, but the same broad "can't reach Archive" bucket as the
+still-open 2026-08-31 finding below about the Archive's WO-80/`adc65a1`
+fixes appearing undeployed; folded in as one more data point that Archive
+connectivity is still flaky as of 2026-09-01, not a separate entry.
+
+**Two new findings:**
+
+**1. Confirmed via code: WO-88's CivicClerk `mediaStreamPath`
+relative-path fix (merged 2026-08-31, `BACKLOG_DONE.md`) appears
+undeployed to the transcription worker service(s), not just possibly
+Archive.** Transcription job 1308 (`kaysville-ut-2023-04-28-city-council-work-session`,
+2026-08-31T13:14:37Z) failed 3/3 times on chunk 0/14 with `ffmpeg exited
+254: Error opening input: No such file or directory` against the literal
+path `stream/KAYSVILLEUT/87a33df6-4669-4c97-a6fe-3e5c25fadd0f.mp3` — the
+**exact same event/GUID** `app/platforms/civicclerk.py`'s own docstring
+(lines 52-76) and `BACKLOG_DONE.md`'s WO-88 write-up cite as the confirmed
+real example the fix (`_reconstruct_cdn_stream_url()`, line 77) was built
+and tested against, and the exact raw pre-fix symptom the fix exists to
+eliminate. `_reconstruct_cdn_stream_url("stream/KAYSVILLEUT/87a33df6-...
+.mp3")` on current code correctly returns
+`https://cpmedia.azureedge.net/kaysvilleut/87a33df6-...mp3` (confirmed
+live in the original fix per `BACKLOG_DONE.md`, and by re-reading the
+function's logic against this exact input) — so the only way job 1308
+could still see the raw relative path is if whatever process ran
+`finder.resolve()` for it was executing the pre-fix code. Traced in
+`worker/main.py:462`: the auto-transcription retry path calls
+`finder.resolve(source_url)` **in-process**, importing
+`app/platforms/civicclerk.py` directly rather than calling the deployed
+resolver's HTTP API — so this isn't explained by the resolver being
+stale, it requires the **worker service's own build** to predate the fix.
+`render.yaml` defines `rtr-transcription-worker`/`-2` as `type: worker`
+services with `autoDeploy: false`, same as every other service per
+`CLAUDE.md`'s "Deploys are manual" section — so this is a third,
+previously-undocumented instance of that exact gap (after the two Archive
+fixes flagged 2026-08-31), just on a service with no `/admin/schema-info`-
+style endpoint to check deploy state directly. **Impact**: at minimum,
+this one real page (`kaysville-ut-2023-04-28-city-council-work-session`)
+stays stuck failing/in cooldown indefinitely until a worker redeploy ships
+the fix that's already been sitting on `main` for a day; more generally,
+any other CivicClerk event that hits the same `mediaStreamPath`-only
+fallback will fail the same way until then. **Fix, sized trivial**:
+redeploy `rtr-transcription-worker` and `rtr-transcription-worker-2` — no
+code change needed. **Open question for Ryan**: confirm whether either
+worker service has deployed since 2026-08-31 13:14 UTC, and trigger one if
+not.
+
+**2. Unconfirmed root cause, but the pattern itself is now confirmed real
+and directly tied to measured production downtime for the first time:
+`rtr-deeplink` (the production resolver) SIGABRT (status 134) crash,
+first flagged 2026-08-30 as a single, self-recovered "open question," has
+now recurred at least 7 times** (2026-08-30 16:54 UTC; 2026-08-31 01:28,
+06:07, 12:26, 17:24 UTC; 2026-09-01 11:46 UTC — this run's new one) with
+identical "Exited with status 134" text every time, and this occurrence is
+the first with independent confirmation of real user-facing impact:
+UptimeRobot recorded **both** `redtaperecordings.com` and
+`rtr-deeplink.onrender.com/api/health/resolve-check` as **DOWN (HTTP
+502)** at 2026-09-01 11:57:22-23 UTC — 10-11 minutes after the 11:46:53
+crash alert — recovering by 12:07:31 UTC, a real outage of roughly 10
+minutes on the resolver's presumably-single instance. Root cause is still
+**Unconfirmed**: Render's dashboard/logs remain unreachable from this
+Routine, and nothing in this repo's own code obviously points to a cause
+(no `faulthandler`, no multi-worker uvicorn config, no explicit signal
+handling found in `app/`) — a SIGABRT from a CPython process most often
+means a native-extension fault, and this app's only C-extension
+dependencies are aiohttp/uvloop/asyncpg/PyAV, but that's a hypothesis, not
+a diagnosis. **Impact**: no longer a single blip — 7 occurrences in under
+44 hours, with at least one now measured at ~10 minutes of real downtime
+on `redtaperecordings.com` itself (not just an internal health check).
+**Open question for Ryan**: worth pulling Render's actual crash/exit logs
+around 2026-09-01 11:46:53 UTC (the freshest, so most likely still
+available) to get the real abort traceback, since this Routine has no way
+to reach that dashboard itself.
+
+Ledger: 27 new message IDs recorded (163 → 190 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).
