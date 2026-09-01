@@ -119,7 +119,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+  [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+  [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
   [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
@@ -387,7 +389,73 @@ of human step they need.
 
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
-coverage** instead.
+coverage** instead — that section name is currently stale (no `##
+Platform & jurisdiction coverage` heading actually exists in this file;
+its entries appear to have been folded in here at some point without the
+routing text above being updated) — worth a real fix the next time
+someone reorganizes this file, not attempted here since it's a bigger
+structural change than the two entries below.
+
+- **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+  on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
+  - **Issue**: `CivicPlusAssetFinder.resolve()` (`app/platforms/
+    civicplus.py:68`) calls `await response.text()` with no `encoding=`
+    argument and no fallback; a real CivicPlus `DocumentCenter` PDF-view
+    response came back non-UTF8 and raised a raw `UnicodeDecodeError:
+    'utf-8' codec can't decode byte 0xe2 in position 10: invalid
+    continuation byte`, confirmed live 2026-09-01 resolving
+    `https://ga-richmondhill2.civicplus.com/DocumentCenter/View/5032/
+    City-Charter-Updated-2021` (reached via `generic_fallback.py`
+    delegating a candidate link it found on `richmondhill-ga.gov/
+    agendacenter`).
+  - **Impact**: not a production crash today — both call sites that can
+    reach this (`/api/resolve`'s top-level `except Exception` in
+    `app/main.py`, and `generic_fallback._try_delegate_to_known_platform`'s
+    own `except Exception` swallow) already catch it gracefully. The real
+    cost is a silently-failed delegation attempt (logged as a `warning`,
+    not surfaced) on any CivicPlus tenant whose only outbound-link
+    candidate happens to be a non-UTF8 document view rather than a real
+    meeting page — an undercount in exactly the kind of has_video=yes
+    CivicPlus resolve this project is trying to get right (see the
+    §49/coverage_map.csv Phase 1 sweep, `~/Documents/rtr-business/
+    research/ENUMERATION_METHODS.md`).
+  - **Next action**: decode with `encoding=response.get_encoding()` (or
+    a `charset_normalizer`/`chardet` guess) falling back to `errors=
+    "replace"` rather than raising, the way a real browser would render
+    a mis-served page instead of refusing it outright; needs a second
+    real non-UTF8 CivicPlus sample beyond this one before generalizing
+    the fix, per this project's own "never build from one example" rule.
+  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
+    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
+    record of it).
+
+- **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
+  `ValueError` instead of a clean "not a specific video" message.**
+  - **Issue**: `YouTubeAssetFinder`'s `resolve_video_id()` (`app/
+    platforms/youtube.py:78`) raises `ValueError(f"Could not find a
+    YouTube video ID in {url}")` for a URL shaped like `/channel/<id>/
+    live` or a bare `/channel/<id>` with no parseable video ID. Confirmed
+    live 2026-09-01 against `https://www.youtube.com/channel/
+    UCWnFQlV4Fi0Pv5aqZy_fcPA/live` (Borough of Bernardsville, NJ) during
+    the §49 Phase 1 resolve sweep; a second, related shape (`Could not
+    find an event ID in URL path: /`) hit repeatedly on CivicClerk/
+    Legistar-style URLs missing their event id, same underlying pattern.
+  - **Impact**: not a production crash — `/api/resolve`'s top-level
+    `except Exception` (`app/main.py:677`) already turns this into a
+    `{"error": "resolve_failed", "message": "Could not find a YouTube
+    video ID in ..."}` response rather than a 500. The gap is message
+    quality: the surfaced text is a raw internal exception string, not
+    something a reader (or this project's own resolve-sweep tooling)
+    can tell apart from a genuine unexpected failure without string-
+    matching on "Could not find".
+  - **Next action**: decide whether this is worth a dedicated exception
+    type (e.g. `NotASingleVideoError`) that `/api/resolve` renders as a
+    distinct, friendlier `error` code — same shape as `CalendarPageError`
+    already gets — versus leaving it as-is since the generic
+    `resolve_failed` path already prevents a hard crash either way.
+  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
+    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
+    record of it).
 
 - **[NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   item per page.**
