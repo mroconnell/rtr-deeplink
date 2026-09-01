@@ -119,7 +119,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (51)
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
   [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
@@ -136,8 +136,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (50)
     [LATER] `pec.iqm2.com` (IQM2) — a third same-day probe still shows
   `[LATER]` Swagit multi-clip meetings: both transcription paths now…
   High Plains Water District (Granicus) transcribed to zero usable…
-  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (2)
+  Adapter, tenant & jurisdiction-extraction odds and ends `[LATER]`  (3)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can…
+    `[NEEDS-AUDIT]` CivicPlus's subdomain jurisdiction hint is lost…
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely…
   ChampDS symptom B — instant 0.2s failures from the JSON API,…
   `[JUST-DO-IT]` ~10 OnBase/Hyland-family pages still resolve with no…
@@ -716,6 +717,44 @@ actionability sections above.
     confirmed case, per this repo's convention.
   - **History**: full discovery detail and the Granicus re-check in
     `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §35.
+
+- **`[NEEDS-AUDIT]` CivicPlus's subdomain jurisdiction hint is lost whenever a multi-candidate pick is resolved or queued by its delegate URL, not the original AgendaCenter URL**
+  - **Issue**: `CivicPlusAssetFinder._jurisdiction_from_subdomain()`'s
+    authoritative `{state}-{name}.civicplus.com` hint is only applied
+    inside `resolve()`'s own single-candidate delegation branch. A
+    multi-candidate page raises `CalendarPageError` instead of
+    returning, so anything that picks a candidate and resolves it
+    directly via `resolve_via_platform(picked_url)` — `bulk_ingest.py`
+    can't do this at all (it just reports "calendar page, not a single
+    meeting" and fails), so this only happens in ad-hoc tooling like a
+    dry-run scanner — never applies the hint. The delegate platform's
+    own jurisdiction guess (channel name, page text) is used instead,
+    with the same wrong/blank-jurisdiction risk documented for every
+    other adapter's own guessing.
+  - **Impact**: confirmed live 2026-08-31 — 15 of 17 CivicPlus tier-3
+    queue entries added that day (multi-candidate picks, queued by their
+    delegate YouTube/Vimeo/Viebit/Cablecast/Granicus/CivicClerk URL) will
+    ingest with whatever jurisdiction the delegate derives on its own,
+    not CivicPlus's authoritative subdomain-derived one. Same
+    pre-existing limitation every other tier-3 queue entry from prior
+    platforms already has (the flat queue file format has no field for a
+    hint at all) — not a regression, but CivicPlus is the one platform
+    in this project that actually has a reliable hint available and
+    currently throws it away at exactly this step.
+  - **Next action**: nothing built yet. If this is worth fixing: either
+    give the tier-3 queue file (or the ingest payload generally) a way to
+    carry a jurisdiction override alongside a URL, or teach
+    `bulk_ingest.py`/the tier-3 feed script to re-derive and apply the
+    CivicPlus subdomain hint whenever the URL being ingested is known to
+    have come from a CivicPlus multi-candidate page.
+  - **Constraint**: don't build this speculatively — check how often the
+    delegate's own guess is actually wrong on a real sample of these 15
+    (and future ones) before deciding it's worth a queue-format change.
+  - **History**: found live 2026-08-31 while queueing PR
+    [#659](https://github.com/mroconnell/rtr-deeplink/pull/659) (CivicPlus
+    DNS enumeration sweep tier-3 candidates); see
+    `~/Documents/rtr-business/research/dns_sweep_2026-08-31/` for the full
+    scan data.
 
 - **`[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely unreachable, jurisdiction unknown**
   - **Issue**: `appalachian.cablecast.tv` (show/3841) times out at the TCP
