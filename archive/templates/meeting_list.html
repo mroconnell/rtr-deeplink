@@ -72,7 +72,7 @@
       <span id="saveSearchStatus" role="status"></span>
     </p>
     {% endif %}
-    <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda or has_transcript %} open{% endif %}>
+    <details class="meeting-filters"{% if jurisdiction or date_from or date_to or has_agenda is not none or has_transcript is not none %} open{% endif %}>
       <summary>Filters</summary>
       <form method="get" action="/meetings" class="meeting-filters-form">
         <input type="hidden" name="q" value="{{ q }}">
@@ -224,6 +224,14 @@
          empty-string fallbacks) fixes both that and a related bug: an
          unescaped q/jurisdiction/date value containing "&" or "#" would
          have silently corrupted the pagination link's other params. #}
+      {#- Second real bug, fixed 2026-09-01: has_agenda/has_transcript are
+         tri-state (None/True/False -- see _parse_optional_bool in
+         main.py), but this used to gate on the value being *truthy*, so
+         an explicit "?has_transcript=false" (filter to meetings WITHOUT
+         a transcript) was indistinguishable from "unset" and got dropped
+         from every pagination link, silently reverting page 2+ to the
+         unfiltered list. Gate on `is not none` and emit the real value
+         instead of hardcoding "true". #}
       {% set qs_parts = [] %}
       {% if q %}{% set _ = qs_parts.append("q=" + q|urlencode) %}{% endif %}
       {% if jurisdiction %}{% set _ = qs_parts.append("jurisdiction=" + jurisdiction|urlencode) %}{% endif %}
@@ -231,8 +239,8 @@
       {% if date_to %}{% set _ = qs_parts.append("date_to=" + date_to|urlencode) %}{% endif %}
       {% if fuzzy %}{% set _ = qs_parts.append("fuzzy=true") %}{% endif %}
       {% if sort_relevance %}{% set _ = qs_parts.append("sort=relevance") %}{% endif %}
-      {% if has_agenda %}{% set _ = qs_parts.append("has_agenda=true") %}{% endif %}
-      {% if has_transcript %}{% set _ = qs_parts.append("has_transcript=true") %}{% endif %}
+      {% if has_agenda is not none %}{% set _ = qs_parts.append("has_agenda=" + ("true" if has_agenda else "false")) %}{% endif %}
+      {% if has_transcript is not none %}{% set _ = qs_parts.append("has_transcript=" + ("true" if has_transcript else "false")) %}{% endif %}
       {% set qs = qs_parts|join("&") %}
       {% if page > 1 %}
       <a href="/meetings?page={{ page - 1 }}{% if qs %}&{{ qs }}{% endif %}">&larr; Previous</a>
