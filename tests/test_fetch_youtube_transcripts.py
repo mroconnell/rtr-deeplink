@@ -15,7 +15,11 @@ import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from fetch_youtube_transcripts import process_one, snippets_to_segments  # noqa: E402
+from fetch_youtube_transcripts import (  # noqa: E402
+    _is_rate_limit_signal,
+    process_one,
+    snippets_to_segments,
+)
 
 
 def _snippet(text, start, duration=2.0):
@@ -95,6 +99,39 @@ def test_pre_escaped_entity_in_snippet_gets_unescaped():
     # that general double-escaping fix was added there.
     segments = snippets_to_segments([_snippet("Smith &amp; Jones, LLC", 0.0)])
     assert segments[0]["text"] == "Smith & Jones, LLC"
+
+
+def test_is_rate_limit_signal_true_for_request_blocked_and_subclasses():
+    # Synthetic stand-ins for youtube-transcript-api's real exception
+    # classes (confirmed via this repo's installed copy,
+    # youtube_transcript_api/_errors.py: RequestBlocked's docstring is
+    # literally "YouTube is blocking requests from your IP", and IpBlocked
+    # subclasses it) -- matched by class name in the MRO specifically so
+    # this stays true without the library installed (see this module's own
+    # lazy-import convention), not because the real shape is in doubt.
+    class RequestBlocked(Exception):
+        pass
+
+    class IpBlocked(RequestBlocked):
+        pass
+
+    assert _is_rate_limit_signal(RequestBlocked("blocked"))
+    assert _is_rate_limit_signal(IpBlocked("blocked"))
+
+
+def test_is_rate_limit_signal_false_for_ordinary_per_video_failures():
+    # These are expected, routine noise this queue surfaces regardless
+    # (private video, disabled captions, video removed) -- must NOT trigger
+    # backoff, or a normal run with a few of these would falsely back off.
+    class TranscriptsDisabled(Exception):
+        pass
+
+    class VideoUnavailable(Exception):
+        pass
+
+    assert not _is_rate_limit_signal(TranscriptsDisabled("disabled"))
+    assert not _is_rate_limit_signal(VideoUnavailable("gone"))
+    assert not _is_rate_limit_signal(RuntimeError("ingest failed (500)"))
 
 
 class _FakePostResponse:
