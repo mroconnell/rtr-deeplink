@@ -585,6 +585,28 @@ _KNOWN_DOMAINS: Dict[str, KnownJurisdiction] = {
     # source here (see legistar.py's _extract_page_meeting_info()), not a
     # delegated platform's domain.
     "baltimore.legistar.com": KnownJurisdiction("Baltimore", "city", "MD"),
+    # "District of Columbia" isn't a Census `places.csv` row at all (it's
+    # sui generis, neither a city nor a county in that table), so a bare
+    # extraction of it can never validate or gain a ", DC" suffix through
+    # the normal text pipeline -- it just falls through
+    # `finalize_jurisdiction()` unchanged (no comma, so
+    # `state_abbr_from_jurisdiction()` can't group it under any /state/
+    # page, and neither /coverage's "Browse by state" nor a "Washington"/
+    # "DC" jurisdiction-filter search can find it). Confirmed live
+    # 2026-08-31: dc.granicus.com's real committee pages carry no stable
+    # "City of X"/"County of X" phrasing either -- one real page's own
+    # text extracted as literal "District of Columbia", but a second,
+    # differently-worded real page on the same domain mangled all the way
+    # down to the wrong, unrelated place "Columbia" (with no state) once
+    # `_trim_repair()` got hold of it -- so this is the same "page-text
+    # extraction confirmed unreliable" shape `slc.primegov.com` above
+    # documents, not just a missing-state fill. "Washington, DC" is the
+    # common, correct display form and slots into the existing "City, ST"
+    # convention (state_slug_from_abbr("DC") == "district-of-columbia",
+    # matching /state/district-of-columbia).
+    "dc.granicus.com": KnownJurisdiction(
+        "Washington", "city", "DC", strength="authoritative"
+    ),
     # Every real slc.primegov.com meeting checked resolves to Salt Lake
     # City itself -- confirmed by each meeting's own title ("Salt Lake
     # City Formal Meeting", "Salt Lake City Council Work Session"), even

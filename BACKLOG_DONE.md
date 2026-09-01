@@ -1,5 +1,63 @@
 # Backlog — done
 
+## District of Columbia: no `/state/` page, jurisdiction search missed it [Done 2026-08-31]
+
+Real user report: `/state/district-of-columbia` 404'd, and searching
+"Washington DC"/"DC" for jurisdiction turned up nothing — despite a real
+archived DC Council meeting (`dc.granicus.com`, confirmed live via
+`redtaperecordings.com/meeting?url=...dc.granicus.com%2Fplayer%2Fclip
+%2F10805...`).
+
+Root cause: "District of Columbia" isn't a Census `places.csv` row at
+all (neither a city nor a county), so `finalize_jurisdiction()`
+(`app/utils/jurisdiction_enrich.py`) could never append a ", DC" suffix
+to it through the normal text pipeline — the stored jurisdiction was the
+bare string `"District of Columbia"`, no comma, so
+`state_abbr_from_jurisdiction()` couldn't group it under any `/state/`
+page and a plain substring search for "Washington"/"DC" against the
+stored column never matched a comma-less string shaped that way either.
+Worse than a missing suffix: re-running `finalize_jurisdiction()` on a
+second real dc.granicus.com page's differently-worded extraction
+("Committee of the Whole - District of Columbia") mangled it all the
+way down to the wrong, unrelated place `"Columbia"` (no state at all)
+via `_trim_repair()` — the same "page-text extraction confirmed
+unreliable" shape `slc.primegov.com`'s registry entry already exists
+for, not just a fill-a-blank case.
+
+**Fixed**: added `dc.granicus.com` to `_KNOWN_DOMAINS` in
+`app/utils/jurisdiction_enrich.py` as an `authoritative` override to
+`KnownJurisdiction("Washington", "city", "DC")` — every dc.granicus.com
+page now always resolves to `"Washington, DC"` regardless of the page's
+own extracted text, matching the repo's existing "City, ST" convention
+(`state_slug_from_abbr("DC") == "district-of-columbia"`, so `/state/
+district-of-columbia` now resolves once this ships and gets backfilled).
+
+Separately, `archive/utils/jurisdiction_format.py`'s
+`jurisdiction_search_terms()`/`match_us_state_or_province()` only
+recognized the literal string `"district of columbia"` or a bare `"DC"`
+— not the actually-common "Washington DC"/"Washington, D.C." phrasing a
+real person types. Added a normalized (periods/commas stripped) alias
+check for "washington dc" in both functions, expanding to the `"DC"`
+term the same way a full state name already expands to its abbreviation.
+
+**Tests**: `test_finalize_jurisdiction_dc_granicus_authoritative_
+override` (`tests/test_jurisdiction_enrich.py`, covers the blank case,
+the plain extraction, and the exact mangling shape found live);
+`test_match_us_state_or_province_washington_dc_aliases` +
+`test_jurisdiction_search_terms_expands_washington_dc_aliases`
+(`tests/test_jurisdiction_format.py`). Full suite green (2354 passed),
+all four CI gates checked locally.
+
+**Not yet deployed, and the one already-archived DC page (jurisdiction
+currently stored as the bare `"District of Columbia"`) needs the
+existing `list_jurisdiction_bleed_backfill_candidates()`/
+`apply_jurisdiction_bleed_backfill()` admin-endpoint backfill
+(`scripts/backfill_jurisdiction_bleed.py`) run against production
+*after* this deploy** — it's the same generic, dry-run-first,
+already-built mechanism used for prior jurisdiction-registry fixes, not
+new tooling; it wasn't run as part of this fix since it needs a deploy
+and the production admin token first.
+
 ## Repetition-loop transcript-defect repair run: 14/14 repaired, 0 failed [Done 2026-08-31]
 
 Second half of the WO-84/WO-87 repair effort (seam-duplication half —

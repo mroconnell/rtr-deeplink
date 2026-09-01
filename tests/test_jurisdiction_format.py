@@ -304,3 +304,16 @@ def test_match_us_state_or_province_none_for_city_name():
     assert match_us_state_or_province("Napa") is None
     assert match_us_state_or_province("Calgary") is None
     assert match_us_state_or_province("") is None
+
+
+def test_match_us_state_or_province_washington_dc_aliases():
+    assert match_us_state_or_province("Washington DC") == "DC"
+    assert match_us_state_or_province("Washington, DC") == "DC"
+    assert match_us_state_or_province("washington dc") == "DC"
+    assert match_us_state_or_province("Washington D.C.") == "DC"
+
+
+def test_jurisdiction_search_terms_expands_washington_dc_aliases():
+    assert jurisdiction_search_terms("Washington DC") == ["Washington DC", "DC"]
+    assert jurisdiction_search_terms("Washington, DC") == ["Washington, DC", "DC"]
+    assert jurisdiction_search_terms("Washington D.C.") == ["Washington D.C.", "DC"]
