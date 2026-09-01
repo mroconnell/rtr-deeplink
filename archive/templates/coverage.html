@@ -4,6 +4,20 @@
   <meta name="description" content="Cities, counties, and states we've covered so far, with a real archived meeting as proof.">
   {% if public_base_url %}
   <link rel="canonical" href="{{ public_base_url }}/coverage">
+  <meta property="og:url" content="{{ public_base_url }}/coverage">
+  {% endif %}
+  {#- generic_card_image_url is the shared no-video-of-its-own placeholder
+     (WO-90, see archive/main.py). #}
+  <meta property="og:title" content="Coverage | Red Tape Recordings">
+  <meta property="og:description" content="Cities, counties, and states we've covered so far, with a real archived meeting as proof.">
+  <meta property="og:type" content="website">
+  {% if generic_card_image_url %}
+  <meta property="og:image" content="{{ generic_card_image_url }}">
+  <meta property="og:image:alt" content="{{ generic_card_image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if generic_card_image_url else 'summary' }}">
+  {% if generic_card_image_url %}
+  <meta name="twitter:image:alt" content="{{ generic_card_image_alt }}">
   {% endif %}
 {% endblock %}
 {% block content %}

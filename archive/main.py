@@ -145,6 +145,35 @@ templates = Jinja2Templates(
 templates.env.globals["public_base_url"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip(
     "/"
 )
+# og:image for pages that describe the whole site rather than one specific
+# meeting -- home, /meetings, /coverage, /state/*, /j/* (WO-90). None of
+# these has a video of its own to pull a frame from, and until now they
+# shipped no og:image at all, so a link to e.g. /meetings?q=... unfurled
+# with no thumbnail on X/Bluesky. Rather than a hand-made graphic, this
+# borrows one real, already-extracted frame that reads clearly as "a
+# government meeting" at thumbnail size -- a wide horseshoe-dais shot with
+# the city seal visible (Indianapolis's Property Tax Assessment Board of
+# Appeals, 2026-08-28) -- which keeps every og:image on the site a real
+# frame, never stock art, and needs no new static asset. Swap the slug
+# below if that page is ever deleted/repointed; nothing else references it.
+_GENERIC_CARD_SLUG = (
+    "city-of-indianapolis-in-2026-08-28-property-tax-assessment-board-of-appeals"
+)
+templates.env.globals["generic_card_image_url"] = (
+    f"{templates.env.globals['public_base_url']}/m/{_GENERIC_CARD_SLUG}/card.jpg"
+    if templates.env.globals["public_base_url"]
+    else ""
+)
+# og:image:alt/twitter:image:alt for the generic card above. Describes the
+# photo itself, not the page it's shown on -- the same image appears on
+# home, /meetings, /coverage and any state/hub page with no warmed
+# thumbnail of its own yet (see state_page.html/jurisdiction_page.html/
+# state_all50.html), so an alt text claiming a specific place or quote
+# would misdescribe the image on every page but the one it was extracted
+# from.
+templates.env.globals["generic_card_image_alt"] = (
+    "A photo of local officials seated at a public government meeting"
+)
 templates.env.globals["CLERK_PUBLISHABLE_KEY"] = os.environ.get(
     "CLERK_PUBLISHABLE_KEY", ""
 )

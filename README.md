@@ -1901,6 +1901,73 @@ this endpoint, and a service that serves every page but can't generate
 new thumbnails is healthy; those pages simply carry no `og:image`, which
 is exactly where they were before this feature.
 
+**Non-meeting pages get a card too (WO-90, 2026-08-31).** Everything above
+is about `/m/{slug}` — a page backed by one specific meeting's own video.
+The home page, `/meetings` (including every search result —
+`/meetings?q="Darth Vader"` unfurls the same as the bare page), `/coverage`,
+`/state/{slug}`, `/state/all-50` and `/j/{slug}` have no single video of
+their own, and until this shipped they had **no `og:image` at all** —
+confirmed live: a link to any of them unfurled with no thumbnail on
+X/Bluesky.
+
+* **Home and `/meetings`/`/coverage`** (no per-page pool of real meetings
+  to draw from) point `og:image`/`twitter:card` at one fixed, shared
+  frame — `templates.env.globals["generic_card_image_url"]`, set in both
+  `archive/main.py` and `app/main.py` next to `public_base_url` — a wide
+  horseshoe-dais shot with the city seal visible, picked because it reads
+  clearly as "a government meeting" at thumbnail size even out of context.
+  `/meetings`' own `og:title`/`og:description` deliberately stay generic
+  rather than reflecting `q` — `meeting_list.html`'s
+  `<link rel="canonical">` already collapses every filtered variant
+  (`q`, `jurisdiction`, `date_from`, ...) to the bare `/meetings` URL, so a
+  query-specific tag would describe a URL other than the one it's attached
+  to.
+* **`/state/{slug}`, `/state/all-50` and `/j/{slug}`** already compute a
+  `featured` list of real meetings from that state/jurisdiction for their
+  moments feed and JSON-LD `ItemList` (`_featured_entry()`'s `card_url`,
+  filled in by `_attach_thumbnails()` from a bulk `pages_with_thumbnails()`
+  check — the same real, already-extracted frame `/m/{slug}` itself would
+  advertise). The page-level `og:image` reuses that: the first featured
+  entry with a stored card, so a link to `/state/california` unfurls with
+  an actual California meeting, not an unrelated stock frame. Falls back
+  to the same shared `generic_card_image_url` only when nothing in that
+  page's own featured pool has a card yet (a brand-new state/hub with no
+  warmed thumbnails).
+
+Either way, every `og:image` on the site is a real archived frame, never
+stock art, and the shared fallback needs no new static asset.
+
+**Every `og:image` also carries `og:image:alt`/`twitter:image:alt`
+(WO-91, 2026-08-31).** Before this, no image on the site — the per-meeting
+frame on `/m/{slug}`, its `<img>` on the search-results/featured-meeting
+cards, or any of the WO-90 page-level images above — had alt text
+anywhere. The two on-page `<img>` uses stay `alt=""` on purpose (the
+enclosing link is `aria-hidden`/`tabindex="-1"`, and the real title +
+quote already sit right next to the image as text, so a screen reader
+skipping the redundant decorative image is correct, not a gap) — this is
+specifically about the meta tags social platforms read for a shared
+*link*, which had nothing at all. Same "real content, not a caption of the
+photo" shape as the description text:
+
+* `/m/{slug}` (`meeting_page.html`): `"A photo of a meeting in {jurisdiction}
+  where people are talking about {quote}"`, built from `highlight_description`
+  — the same real transcript excerpt the meta description already uses,
+  never the generic fallback sentence, since a templated page description
+  isn't something "people are talking about." Degrades to jurisdiction-only
+  or a plain sentence when either fact is missing.
+* `/state/{slug}`, `/state/all-50`, `/j/{slug}`: the same shape, built from
+  whichever featured entry supplied the dynamic image (its own
+  `jurisdiction_display`/`snippet_text`) — truncated to 200 chars first,
+  since `snippet_text` alone can run up to `highlights.MAX_CHARS` (420) and
+  the prefix would then risk pushing the combined alt text over
+  `twitter:image:alt`'s 420-char limit. Falls back to the fixed generic
+  description below when the image itself did.
+* The shared generic image (home, `/meetings`, `/coverage`, and any
+  state/hub page with no card of its own yet): a fixed, honest description
+  of the photo itself — `templates.env.globals["generic_card_image_alt"]`,
+  next to `generic_card_image_url` — deliberately not tied to the page's
+  own jurisdiction or quote, since the image doesn't depict either.
+
 ### Rewriting pre-WO-34 transcripts
 
 `dedupe_rollup_cues()` (see "Caption format handling" below) shipped

@@ -20,6 +20,35 @@
   <meta property="og:title" content="{{ name }} public meeting videos & transcripts">
   <meta property="og:description" content="Watch and search archived {{ name }} government meetings — city councils, county boards, and public agencies — with transcripts and deep links to specific moments.">
   <meta property="og:type" content="website">
+  {#- A real frame from one of this state's own featured meetings, when one
+     has a stored card (WO-90) -- featured is date-ordered, so this is
+     whichever of the newest cards actually has a thumbnail, not
+     necessarily the very first one. Falls back to the shared no-video-of-
+     its-own placeholder only when nothing in the pool has a card yet
+     (a brand-new state with no warmed thumbnails) -- see
+     archive/main.py's generic_card_image_url comment. #}
+  {% set _card = (featured | selectattr("card_url") | first) %}
+  {% set page_image_url = (public_base_url ~ _card.card_url) if (public_base_url and _card) else generic_card_image_url %}
+  {#- og:image:alt/twitter:image:alt (WO-91) -- describes the real meeting
+     depicted when _card is real (same "meeting in X where people are
+     talking about Y" shape as meeting_page.html), else the shared generic
+     description, since the fallback image isn't from this state at all.
+     _card.snippet_text is capped at highlights.MAX_CHARS (420) with no
+     margin for the "meeting in X..." prefix -- meeting_page.html's own
+     version reuses highlight_description, already trimmed to 200 chars
+     for the meta description, but featured cards were never trimmed for
+     that; truncate(200) here keeps the combined alt text safely under
+     twitter:image:alt's 420-char limit instead of risking it silently
+     getting cut off (or rejected) mid-quote by the platform instead. #}
+  {% set page_image_alt = ("A photo of a meeting in " ~ _card.jurisdiction_display ~ " where people are talking about " ~ (_card.snippet_text|truncate(200))) if (public_base_url and _card) else generic_card_image_alt %}
+  {% if page_image_url %}
+  <meta property="og:image" content="{{ page_image_url }}">
+  <meta property="og:image:alt" content="{{ page_image_alt }}">
+  {% endif %}
+  <meta name="twitter:card" content="{{ 'summary_large_image' if page_image_url else 'summary' }}">
+  {% if page_image_url %}
+  <meta name="twitter:image:alt" content="{{ page_image_alt }}">
+  {% endif %}
   {#- Structured data. BreadcrumbList states the Home > Coverage > State
      hierarchy the site already forms (the hubs carry the fourth level).
      The ItemList is real navigation content, not a video rich-result
