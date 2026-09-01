@@ -12,6 +12,7 @@ multi-word names -- see BACKLOG.md's fuller reasoning on why city/title
 casing is deliberately *not* touched here).
 """
 
+import re
 from typing import Optional
 
 from .slugify import slugify_text
@@ -225,6 +226,22 @@ def normalize_state_suffix(jurisdiction: Optional[str]) -> Optional[str]:
     return jurisdiction
 
 
+# "Washington DC"/"Washington, D.C."/"washington d.c." are the common
+# real-world names people type for the District -- confirmed real user
+# ask, 2026-08-31 -- but none of them are the literal string
+# "district of columbia" that US_STATE_NAME_TO_ABBR's lookup below
+# requires, and stored jurisdictions read "Washington, DC" (see
+# jurisdiction_enrich.py's dc.granicus.com override), which a plain
+# substring search for "Washington DC" (no comma) can never match either.
+# Normalizing out periods/commas before comparing catches every common
+# spelling without a combinatorial alias list.
+_DC_ALIAS_NORMALIZED = "washington dc"
+
+
+def _normalize_dc_alias(term: str) -> str:
+    return re.sub(r"[.,]", "", term).strip().lower()
+
+
 def jurisdiction_search_terms(term: str) -> list[str]:
     """Real search-side gap found 2026-08-14: /meetings' jurisdiction filter
     does a plain substring match against the *stored* column, which
@@ -244,6 +261,8 @@ def jurisdiction_search_terms(term: str) -> list[str]:
     California" for normalize_state_suffix to have touched).
     """
     stripped = term.strip()
+    if _normalize_dc_alias(stripped) == _DC_ALIAS_NORMALIZED:
+        return [term, "DC"]
     abbr = US_STATE_NAME_TO_ABBR.get(stripped.lower()) or CA_PROVINCE_NAME_TO_ABBR.get(
         stripped.lower()
     )
@@ -263,6 +282,8 @@ def match_us_state_or_province(term: str) -> Optional[str]:
     (which "California" would mostly miss, since stored jurisdictions
     hold the abbreviation -- see jurisdiction_search_terms() above)."""
     stripped = term.strip()
+    if _normalize_dc_alias(stripped) == _DC_ALIAS_NORMALIZED:
+        return "DC"
     abbr = US_STATE_NAME_TO_ABBR.get(stripped.lower()) or CA_PROVINCE_NAME_TO_ABBR.get(
         stripped.lower()
     )
