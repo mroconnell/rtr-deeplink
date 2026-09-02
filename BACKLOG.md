@@ -119,7 +119,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
@@ -160,8 +160,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (18)
+  Adapter & platform gaps  (20)
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
+    [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
+    [IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Anchorage AK's original "bot-blocked YouTube…
@@ -1290,6 +1292,74 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     correction — it never traced to a real artifact). Also surfaced a
     real jurisdiction-guess bug in `telvue.py`: guessed "Building" as a
     place name from a "Building Commission Meeting" title.
+
+- **[NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
+  real cities defeats title-only jurisdiction guessing.**
+  - **Issue**: org token `wuZKb9gwEY7sMACIIsr7VSJglB35kNZA`
+    (`videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/...`,
+    reached from `cityofpacifica.org/departments/live-video`'s "Videos"
+    tab, and via a real `u.peg.tv/s/htl405` share-link shortcut)
+    genuinely serves more than one real city's council/commission
+    meetings on the same channel — confirmed live 2026-09-02: a real
+    "Pacifica City Council - 8/24/26" title extracts `jurisdiction=
+    "Pacifica, CA"` correctly, but "Pacifica Special Meeting - 8/25/26"
+    (no body suffix to anchor on) and "HMB City Council - 9/1/26" (Half
+    Moon Bay, abbreviated — not a recognizable place name to any Census
+    lookup) both come back with `jurisdiction=None`. The existing
+    `_KNOWN_ORG_TOKEN_JURISDICTIONS` per-customer override map (this
+    same file) can't fix this org token the way it fixes a single-city
+    org, since a single override string would be wrong for whichever
+    city it doesn't match.
+  - **Impact**: real, playable meetings for this org resolve fine
+    (video found, tier 3 — see the 3 URLs just added to
+    `scripts/tier3_auto_transcription_queue.txt`) but land as
+    unverified-jurisdiction/low-trust pages once ingested.
+  - **Next action**: needs per-*meeting* (not per-org) jurisdiction
+    resolution for this token — e.g. a small keyword map ("HMB" → "Half
+    Moon Bay, CA", bare "Pacifica" already works) checked before falling
+    through to the org-level override, or a real per-meeting metadata
+    field on the page itself if one exists (not yet checked).
+  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+    not yet in `BACKLOG_DONE.md`.
+
+- **[IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
+  confirmed multi-tenant platform with no adapter yet.**
+  - **Issue**: `media.avcaptureall.cloud/meeting/{meetingId}` is a
+    Blazor WASM app (raw HTML has zero content — needs a real headless
+    browser fetch, the `lims.py`/`slc.py` pattern, not a Cloudflare
+    block) whose `<video>` element populates a real, plain,
+    unauthenticated, range-capable direct MP4 at
+    `download.avcaptureall.cloud/customer-{uuid}/meetings/{meetingId}/
+    {title}_{date}.mp4` once it loads, plus a real agenda PDF at a
+    sibling path under the same `customer-{uuid}/meetings/{meetingId}/`
+    prefix. Confirmed live 2026-09-02 against two independent real
+    customers: Suisun City, CA (`.../c9d1a041-ed11-4e78-a1b3-
+    fbd6c56b33da`) and Farmington, NM (`.../2fdf5914-d126-4dae-ae03-
+    28fb42fd6c05`, found via web search) — identical structure on both.
+    Zero captions/text tracks on either sample (AVCaptureAll's own
+    marketing claims closed-captioning as a feature, so it may exist on
+    some meetings, just not these two) — would ship video-only/tier 3
+    to start, same posture as Castus/ChampDS.
+  - **Impact**: unblocks Suisun City, CA (this project's own earlier
+    check found zero video on its Granicus tenant — real, still true,
+    the video was just never on that platform) and at least Farmington,
+    NM plus AVCaptureAll's other named clients (Great Falls, Jefferson
+    County, Marysville, Oregon City per a web search, none independently
+    verified yet).
+  - **Next action**: build `app/platforms/avcaptureall.py` following the
+    `lims.py`/`slc.py` headless-browser-fetch pattern — the DOM structure
+    (real `<video>` `src`/`currentSrc`, a `Title:`/`Scheduled:`/
+    `Published:`/`Location:`/`Department:` metadata block) is already
+    confirmed on both samples above. Register it in the canary + coverage
+    registries per this repo's standing dual-registry obligation for any
+    new platform.
+  - **Constraint**: needs the headless-browser fetch path
+    (`GENERIC_FALLBACK_HEADLESS`-style), not plain `aiohttp` — confirmed
+    live that raw HTML carries none of the real content.
+  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement) agenda-item extraction needs a scoping decision.**
   - **Issue**: the one known sample's accordion markup and a second real
