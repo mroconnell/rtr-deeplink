@@ -169,16 +169,21 @@ async def test_resolve_handles_page_fetch_failure_cleanly():
 async def test_resolve_logs_a_raised_page_fetch_exception(caplog):
     # 2026-08-28: _fetch_page()'s `except Exception: pass` used to be
     # silent -- unlike the 500-status case above (a real response, no
-    # exception raised), this is the actual raised-exception path
-    # (a body that fails to decode as text, same shape read_capped_text()
-    # itself would hit on a real malformed response).
-    routes = {
-        PAGE_URL: FakeResponse(
-            status=200,
-            text_raises=UnicodeDecodeError("utf-8", b"", 0, 1, "boom"),
-            url=PAGE_URL,
-        )
-    }
+    # exception raised), this is the actual raised-exception path. A
+    # connection-level failure (not a decode failure -- see
+    # test_resolve_finds_video_in_a_body_undecodable_as_utf8 below for
+    # why that no longer raises at all) is what real_fetch_page's `except
+    # Exception` still needs to catch and log rather than crash on.
+    class _RaisesConnectionError:
+        async def __aenter__(self):
+            import aiohttp
+
+            raise aiohttp.ClientConnectionError("boom")
+
+        async def __aexit__(self, *exc_info):
+            return False
+
+    routes = {PAGE_URL: _RaisesConnectionError()}
 
     with caplog.at_level("WARNING"):
         with mock_session(routes):
@@ -187,6 +192,32 @@ async def test_resolve_logs_a_raised_page_fetch_exception(caplog):
     assert result.video_url is None
     assert any("couldn't even load the page" in w for w in result.video_warnings)
     assert any("page fetch failed" in r.message for r in caplog.records)
+
+
+async def test_resolve_finds_video_in_a_body_undecodable_as_utf8():
+    # Real bug, confirmed live 2026-09-02: Corte Madera, CA's own
+    # AgendaCenter "Minutes" link is a raw PDF served with no charset in
+    # its Content-Type header, so aiohttp's own encoding guess is "utf-8"
+    # and that guess doesn't decode -- `read_capped_text()` (app/utils/
+    # url_guard.py) used to let `UnicodeDecodeError` propagate straight
+    # out of a bare `response.text()`, caught by _fetch_page()'s blanket
+    # `except Exception` and turned into "couldn't even load the page" --
+    # discarding a real, findable YouTube link embedded as plain readable
+    # ASCII inside the otherwise-binary PDF bytes. Confirmed on the real
+    # page that `errors="replace"` preserves that embedded ASCII text
+    # intact (only the surrounding invalid byte runs get replaced).
+    raw_body = (
+        b"%PDF-1.4 garbage \xff\xfe\x00\x01 more garbage "
+        b"https://www.youtube.com/watch?v=ja9HDKa1gI0 trailing \x80\x81 bytes"
+    )
+    routes = {
+        PAGE_URL: FakeResponse(status=200, raw=raw_body, url=PAGE_URL),
+    }
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(PAGE_URL)
+
+    assert result.video_url == "https://www.youtube.com/embed/ja9HDKa1gI0"
 
 
 async def test_resolve_finds_media_without_captions(monkeypatch):

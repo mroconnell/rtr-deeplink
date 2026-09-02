@@ -141,12 +141,35 @@ async def read_capped_text(response, max_bytes: int = MAX_RESPONSE_BYTES) -> str
     streaming abort (aiohttp's own `.text()` still buffers the response
     first); the per-request `ClientTimeout` already bounds worst-case
     latency, and this bounds worst-case memory for what gets returned/
-    parsed."""
+    parsed.
+
+    Decodes with a fallback, not a bare `.text()` -- confirmed live
+    2026-09-02 (Corte Madera, CA's own AgendaCenter "Minutes" link, a raw
+    PDF served with no charset in its Content-Type, so `get_encoding()`
+    guesses "utf-8" and that guess doesn't decode) that a real, otherwise-
+    fetchable page can be undecodable as its guessed encoding, which used
+    to raise `UnicodeDecodeError` and abort the whole fetch -- including
+    for callers like `generic_fallback.py` that only need to regex-scan
+    the text for a video/caption link, not parse it as real HTML.
+    `errors="replace"` on the second attempt swaps only the invalid byte
+    runs for U+FFFD, leaving any embedded readable ASCII (a literal
+    `https://youtu.be/...` string inside an otherwise-binary PDF,
+    confirmed on the same real page) intact and findable by a regex scan
+    -- the same "real, fetchable content, just not cleanly parseable"
+    posture this repo's Granicus agenda-fallback code already takes for a
+    raw-PDF redirect. Falls back to the fixed name `"utf-8"` (never
+    `response.get_encoding()` again) on that second attempt specifically
+    so an invalid/unrecognized guessed codec name can't raise a second,
+    unhandled `LookupError` -- `"utf-8"` with `errors="replace"` never
+    raises for any byte input."""
     _check_content_length(response, max_bytes)
-    body = await response.text()
-    if len(body.encode("utf-8", errors="ignore")) > max_bytes:
+    raw = await response.read()
+    if len(raw) > max_bytes:
         raise BlockedURLError("Response too large.")
-    return body
+    try:
+        return raw.decode(response.get_encoding())
+    except (UnicodeDecodeError, LookupError):
+        return raw.decode("utf-8", errors="replace")
 
 
 async def read_capped_bytes(response, max_bytes: int = MAX_RESPONSE_BYTES) -> bytes:

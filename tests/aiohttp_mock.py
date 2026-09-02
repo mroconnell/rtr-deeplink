@@ -24,11 +24,17 @@ class FakeResponse:
         url: str = None,
         text_raises: Exception = None,
         headers: dict = None,
+        encoding: str = "utf-8",
     ):
         self.status = status
         self._text = text
         self._raw = raw if raw is not None else text.encode("utf-8")
         self.url = url if url is not None else ""
+        # aiohttp's own guessed encoding (from Content-Type/chardet) --
+        # `read_capped_text()` (app/utils/url_guard.py) reads this after
+        # `.read()`, same as real aiohttp. Defaults to "utf-8" as real
+        # aiohttp does when nothing more specific is detectable.
+        self._encoding = encoding
         # Simulates a 200 response whose body isn't decodable as text (e.g.
         # a redirect straight to a binary PDF) -- real aiohttp raises
         # UnicodeDecodeError from .text() in that case, not from .get().
@@ -52,6 +58,9 @@ class FakeResponse:
 
     async def read(self):
         return self._raw
+
+    def get_encoding(self):
+        return self._encoding
 
     async def json(self, content_type=None):
         # `content_type` accepted (and ignored, same as real aiohttp when
