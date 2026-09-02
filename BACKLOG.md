@@ -2005,7 +2005,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   pages' `jurisdiction`, then re-check `/j/{slug}` hub grouping).
 - **Constraint**: don't hand-fix only Napa/Santa Clara/San Diego/Solano
   and call it done — all 13 listed above carry the same latent risk of
-  a future split.
+  a future split. `~/Documents/rtr-upcoming/scripts/check_county_naming.py`
+  solved the analogous problem in that sibling project (a jurisdiction
+  name is display copy, nothing validates it) with two independent
+  signals — vendor host/path containing "county", and real meeting
+  titles containing "Board of Supervisors" — worth reusing that same
+  detection shape here rather than inventing a new one.
 - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
   pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
   not yet in `BACKLOG_DONE.md`.
