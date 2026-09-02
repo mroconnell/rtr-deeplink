@@ -2026,6 +2026,14 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **Impact**: these 10 pages won't appear on any `/state/{slug}` or
   `/j/{slug}` hub (both require a recognized `", ST"` suffix), and land
   in `/internal/low-trust-pages`'s `unverified_jurisdiction` bucket.
+  **Patched live 2026-09-02** (real user report: pages visibly missing
+  jurisdiction in prod) via `POST /internal/jurisdiction/override` — all
+  10 page ids now carry `jurisdiction="Portola Valley, CA"` and
+  `jurisdiction_confidence="manual_override"`, confirmed rendering
+  correctly (state/hub links present) on `/m/2026-05-14-05-13-2026-town-
+  council-meeting`. This is a per-page patch, not a fix — the root cause
+  below is still open, and the next real YouTube ingest with this same
+  gap won't self-correct.
 - **Next action**: check what YouTube metadata (channel name/description,
   video description) is actually available for this channel and whether
   `youtube.py`'s jurisdiction extraction already tries it — video titles
