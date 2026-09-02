@@ -157,6 +157,53 @@ deliberately did **not** get the same reversal (a browsing reader has
 stated no intent), so they were never a valid control group for this
 question.
 
+## Santa Clara's 6 jurisdiction-string variants converged, live in production [Done 2026-08-31]
+
+Deploy landed (PR #643, then the merged PR #638's `POST /internal/
+jurisdiction/override` + this PR's `GET /internal/jurisdiction/search`
+both went live). Used `/internal/jurisdiction/search?q=santa+clara`
+against production to find every real row — turned up more than the
+"4 + VTA" originally scoped, since several variants had more than one
+archived meeting each:
+
+- 6 county-ish rows (ids 228, 309, 1008, 1641, 2049, 2777) spanning
+  "The County of Santa Clara, CA" / "County of Santa Clara, CA" /
+  "County of Santa Clara Office" → all converged to the decided
+  canonical form, `Santa Clara County, CA`
+- 1 city row (id 410), "City of Santa Clara" → `City of Santa Clara, CA`
+- 1 VTA row (id 2399), "Santa Clara Valley Transportation Authority" →
+  `Santa Clara Valley Transportation Authority, CA`
+
+Dry-run confirmed each batch first, then applied for real via
+`/internal/jurisdiction/override`. Verified live: `/j/santa-clara-county-ca`
+now lists all 6 county pages under one hub, and `/api/jurisdictions?q=
+santa+clara` returns exactly 3 clean, correctly-suffixed jurisdictions
+instead of 6 scattered variants.
+
+**Correction 2026-09-02 (added while merging this entry): that last
+check no longer holds.** A re-check the same day returned **5**
+variants, not 3 — `County of Santa Clara, CA` and a bare `City of Santa
+Clara` are both present again. The convergence itself was real and the
+20-page `Santa Clara County, CA` hub is intact; what this entry got
+wrong was treating a one-time row fix as durable. An override pins the
+rows it touches and establishes no canonical-form rule, so a variant can
+reappear. Tracked as a live entry in `BACKLOG.md` ("A jurisdiction
+override pins rows, not a canonical form").
+
+## Kansas City rows 154/155 fixed, confirmed not actually ambiguous [Done 2026-08-31]
+
+Checked live via the public `/j/kansas-city` hub and `/meetings` search
+before writing anything: all 3 real archived pages under both jurisdiction
+strings ("City of Kansas City" and the already-correct "Kansas City")
+trace to the same `kansascity.granicus.com` tenant — the confirmed
+Kansas-City-**MO**-specific one. Not a genuine KS/MO conflation, just an
+inconsistent string for the same real city. Matched the existing correct
+row's exact form (bare "Kansas City", no state suffix) rather than
+inventing a third variant, confirmed via that page's own `<title>` before
+writing. Applied via `POST /internal/jurisdiction/override?ids=154,155&
+jurisdiction=Kansas+City` (dry-run confirmed first). Verified live:
+`/j/kansas-city` now lists all 3 pages under one hub.
+
 ## Tucson, AZ: YouTube-channel video fallback built and tested [Done 2026-08-31]
 
 Tucson's one archived page (`tucsonaz.hylandcloud.com`, Hyland) had no

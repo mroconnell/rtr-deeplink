@@ -119,7 +119,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
@@ -147,10 +147,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (53)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (10)
+  Jurisdiction extraction & backfill  (9)
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
-    `[JUST-DO-IT]` Santa Clara's 4 jurisdiction strings need an admin…
-    `[NEEDS-AUDIT]` The Kansas City pair (`154`/`155`, "City of Kansas…
+    `[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical…
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
@@ -978,46 +977,36 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     of that fix; it surfaced as a "real bug found along the way" note in
     `BACKLOG_DONE.md`'s "TelVue: 10 of 12" entry (2026-08-30).
 
-- **`[JUST-DO-IT]` Santa Clara's 4 jurisdiction strings need an admin action — two independently-built write paths now exist.**
-  - **Issue**: `County of Santa Clara, CA`/`The County of Santa Clara,
-    CA`/`Santa Clara County, CA`/`County of Santa Clara Office` are all
-    valid-as-is, so `finalize_jurisdiction()`'s recompute makes zero
-    changes to any of them; City of Santa Clara and the VTA also need
-    `", CA"` suffixes. Two admin endpoints for exactly this were built
-    independently the same day (2026-08-31): `POST
-    /internal/jurisdiction/override` (this session, PR #638) and `POST
-    /internal/jurisdiction/set-explicit` (the concurrent local-agent
-    session, both tag rows `manual_override` and protect against a
-    later re-ingest reverting them) — see `BACKLOG_DONE.md` for how
-    these two reconcile.
-  - **Impact**: 4+ Santa Clara-area pages carry inconsistent jurisdiction
-    strings instead of the decided canonical form.
-  - **Next action**: apply the canonical form (`Santa Clara County, CA`
-    for the county rows, decided 2026-08-23) to the 4 Santa Clara rows +
-    the VTA via either endpoint, findable via `GET
-    /internal/jurisdiction/search?q=santa+clara` — not yet made.
-  - **History**: split out of WO-47 (`BACKLOG_DONE.md`'s 2026-08-29
-    "needs a human" review entry and 2026-08-30 production-write entry).
-
-- **`[NEEDS-AUDIT]` The Kansas City pair (`154`/`155`, "City of Kansas City" → "Kansas City") — check `source_url_normalized` before concluding this is undecidable.**
-  - **Issue**: `kansascity.legistar.com`/`kansascity.granicus.com` is a
-    confirmed-live, Kansas-City-**MO**-specific tenant
-    (`app/platforms/granicus_channel.py`), and no Kansas City, KS tenant
-    is registered anywhere in this repo — if rows 154/155's source URL
-    is on that domain, this isn't actually ambiguous.
-  - **Impact**: 2 pages show an ambiguous jurisdiction with no clean fix
-    — or don't, pending the check below.
-  - **Next action**: check the actual stored `source_url_normalized` for
-    both rows (via `GET /internal/jurisdiction/search`, not yet
-    deployed); if it's on the MO domain, resolve via a `_KNOWN_DOMAINS`
-    entry or the override endpoints above. Only if the source is
-    something else entirely does this stay genuinely undecidable,
-    needing a product decision on how to represent a cross-state-line
-    name.
-  - **History**: the other 5 pages this entry originally covered — Oxford
-    County ON, Breckenridge TX, Eustis FL, Hendersonville NC, Loganville
-    GA — were confirmed deployed and applied 2026-08-30; see
-    `BACKLOG_DONE.md`.
+- **`[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical form — Santa Clara has already re-fragmented in production.**
+  - **Issue**: `override_jurisdiction()` stamps the specific rows it
+    touches with `jurisdiction_confidence="manual_override"`, which
+    `_find_or_create_page()`'s re-ingest path respects — but it
+    establishes no canonical-form *rule*. Any row not carrying that tier
+    still gets its string from `finalize_jurisdiction()`, which by design
+    "makes zero changes" to an already-valid variant (its own docstring
+    names the Santa Clara variants as the example). So a variant string
+    can reappear.
+  - **Impact**: the 2026-08-31 convergence has partly undone itself.
+    Re-checked live 2026-09-02: `/api/jurisdictions?q=santa+clara`
+    returns **5** variants, not the 3 that entry verified — `County of
+    Santa Clara, CA` is back (1 page, `/j/county-of-santa-clara-ca`,
+    a 2024-04-15 meeting) alongside `Santa Clara County, CA` (20 pages),
+    and a bare `City of Santa Clara` (`/j/santa-clara`, holding a
+    2026-08-25 meeting) sits alongside `City of Santa Clara, CA`. The
+    same exposure applies to every override applied so far, not just
+    this one.
+  - **Next action**: first determine which it is — newly-ingested rows
+    written after the override, or rows the original batch missed (needs
+    `GET /internal/jurisdiction/search?q=santa+clara` with the admin
+    token; not determinable from the public API). Then decide between a
+    canonical-alias table consulted at ingest and a periodic
+    re-convergence sweep.
+  - **Constraint**: don't just re-run the override and call it closed —
+    that is exactly what happened on 2026-08-31, and the result had
+    re-fragmented within two days.
+  - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
+    variants converged" `[Done 2026-08-31]`, whose "exactly 3
+    jurisdictions" live check no longer holds.
 
 - **`[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
   CO.**
