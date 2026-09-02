@@ -1,6 +1,14 @@
+import ssl
+
+import aiohttp
+from aiohttp.client_reqrep import ConnectionKey
 from bs4 import BeautifulSoup
 
-from app.platforms.granicus import GranicusAssetFinder
+from app.platforms.granicus import (
+    GranicusAssetFinder,
+    _is_broken_s3_underscore_host,
+    _s3_path_style,
+)
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture, load_fixture_bytes
@@ -209,6 +217,110 @@ async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():
 
     assert result.agenda_items == []
     assert result.agenda_link == pdf_url
+
+
+def test_s3_path_style_only_rewrites_underscore_buckets():
+    # Real Benicia/Clayton case, confirmed live 2026-09-02: Granicus's
+    # shared agenda-attachment bucket name has an underscore, which is
+    # not a valid DNS label, so the wildcard *.s3.amazonaws.com cert never
+    # matches it.
+    assert (
+        _s3_path_style(
+            "https://granicus_production_attachments.s3.amazonaws.com/benicia/x.pdf"
+        )
+        == "https://s3.amazonaws.com/granicus_production_attachments/benicia/x.pdf"
+    )
+    assert _is_broken_s3_underscore_host(
+        "granicus_production_attachments.s3.amazonaws.com"
+    )
+    # An ordinary bucket name (no underscore) verifies fine as-is and must
+    # be left completely alone.
+    assert (
+        _s3_path_style("https://some-normal-bucket.s3.amazonaws.com/x.pdf")
+        == "https://some-normal-bucket.s3.amazonaws.com/x.pdf"
+    )
+    assert not _is_broken_s3_underscore_host("some-normal-bucket.s3.amazonaws.com")
+    assert not _is_broken_s3_underscore_host("napacity.granicus.com")
+
+
+async def test_agenda_viewer_s3_underscore_bucket_retries_via_path_style():
+    # Real Benicia clip 4808, fetched live 2026-09-02 -- AgendaViewer.php
+    # redirects straight to a virtual-hosted-style S3 URL for
+    # granicus_production_attachments (underscore in the bucket name), so
+    # aiohttp's own automatic redirect-following raises
+    # ClientConnectorCertificateError with a real "Hostname mismatch"
+    # before any response -- including the redirect's own Location header
+    # -- is available. Previously this was caught by _fetch_agenda_items'
+    # blanket `except Exception` and silently discarded a real, working
+    # agenda_link along with it (see BACKLOG_DONE.md). This exercises the
+    # fix directly: a plain GET raises the real exception shape, a retry
+    # GET with allow_redirects=False against the *original* URL (which
+    # itself verifies fine) recovers the real Location, and the retry
+    # against its path-style rewrite succeeds -- landing on the exact
+    # same "binary PDF, UnicodeDecodeError" outcome
+    # test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link
+    # already covers for Napa's differently-shaped redirect.
+    agenda_url = "https://benicia.granicus.com/AgendaViewer.php?clip_id=4808&embedded=1"
+    location = (
+        "https://granicus_production_attachments.s3.amazonaws.com"
+        "/benicia/18cba18a7f3a60ebd056f9a4bfbc3eb00.pdf"
+    )
+    retry_url = (
+        "https://s3.amazonaws.com/granicus_production_attachments"
+        "/benicia/18cba18a7f3a60ebd056f9a4bfbc3eb00.pdf"
+    )
+
+    class _RaisesCertError:
+        async def __aenter__(self):
+            key = ConnectionKey(
+                host="granicus_production_attachments.s3.amazonaws.com",
+                port=443,
+                is_ssl=True,
+                ssl=True,
+                proxy=None,
+                proxy_auth=None,
+                proxy_headers_hash=None,
+            )
+            raise aiohttp.ClientConnectorCertificateError(
+                key, ssl.SSLCertVerificationError("Hostname mismatch")
+            )
+
+        async def __aexit__(self, *exc_info):
+            return False
+
+    class _FakeSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs.get("allow_redirects", True)))
+            if url == agenda_url and kwargs.get("allow_redirects", True):
+                return _RaisesCertError()
+            if url == agenda_url and kwargs.get("allow_redirects") is False:
+                return FakeResponse(status=302, headers={"Location": location})
+            if url == retry_url:
+                return FakeResponse(
+                    status=200,
+                    url=retry_url,
+                    text_raises=UnicodeDecodeError(
+                        "utf-8", b"\xe2", 0, 1, "invalid continuation byte"
+                    ),
+                )
+            raise AssertionError(f"unexpected call: {url} {kwargs}")
+
+    session = _FakeSession()
+    status, final_url, html = await GranicusAssetFinder._fetch_agenda_html(
+        session, agenda_url
+    )
+
+    assert status == 200
+    assert final_url == retry_url
+    assert html is None
+    assert session.calls == [
+        (agenda_url, True),
+        (agenda_url, False),
+        (retry_url, True),
+    ]
 
 
 async def test_resolve_falls_back_to_docket_pdf_date_when_page_and_rss_have_none():

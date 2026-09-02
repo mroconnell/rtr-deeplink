@@ -1135,3 +1135,5 @@ https://norcrossga.portal.civicclerk.com/event/188/media
 https://palatineil.portal.civicclerk.com/event/1895/media
 https://parkcityut.portal.civicclerk.com/event/3936/media
 https://prescottaz.portal.civicclerk.com/event/3107/media
+https://indio.civicweb.net/Portal/MeetingInformation.aspx?Id=3782
+https://indio.civicweb.net/Portal/MeetingInformation.aspx?Id=3866

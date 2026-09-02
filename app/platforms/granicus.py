@@ -4,7 +4,7 @@ import random
 import re
 from datetime import date as _date, datetime, timedelta
 from typing import List, Optional, Dict, Tuple
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin
 
 import aiohttp
 import wordninja
@@ -83,6 +83,47 @@ _ACCESS_TAIL_RE = re.compile(
 def _strip_meeting_access_tail(title: str) -> str:
     stripped = _ACCESS_TAIL_RE.sub("", title).strip(" \t\r\n-–—:,")
     return stripped or title
+
+
+# AgendaViewer.php's agenda-attachment redirect lands, for at least Benicia
+# and Clayton (confirmed live 2026-09-02), on a *virtual-hosted-style* S3 URL
+# for a bucket whose name contains an underscore --
+# `granicus_production_attachments.s3.amazonaws.com`. An underscore is a
+# syntactically invalid DNS label, so AWS's own wildcard cert for
+# `*.s3.amazonaws.com` never matches it and the TLS handshake fails outright
+# (`ClientConnectorCertificateError: ... Hostname mismatch`) before any
+# response is ever received -- confirmed this isn't the local-venv trust-
+# store gap CLAUDE.md documents elsewhere (that's already handled via
+# SSL_CERT_FILE/certifi and would fail differently, with a "self-signed
+# certificate" style error, not a hostname mismatch against a real CA-issued
+# cert). *Path-style* addressing (`s3.amazonaws.com/{bucket}/{key}`) uses
+# AWS's real `s3.amazonaws.com` certificate instead and serves the identical
+# object -- confirmed live, byte-identical PDF, same Content-Length. This
+# bucket is shared across Granicus's whole customer base (it's Granicus's
+# own infra, not per-tenant), so the same silent failure very plausibly
+# affects every customer's agenda-attachment redirect, not just these two.
+_S3_UNDERSCORE_BUCKET_RE = re.compile(
+    r"^([a-z0-9][a-z0-9_.\-]*)\.s3\.amazonaws\.com$", re.IGNORECASE
+)
+
+
+def _is_broken_s3_underscore_host(host: str) -> bool:
+    match = _S3_UNDERSCORE_BUCKET_RE.match(host or "")
+    return bool(match and "_" in match.group(1))
+
+
+def _s3_path_style(url: str) -> str:
+    """Rewrites a virtual-hosted-style S3 URL to path-style, but only when
+    the bucket name actually contains an underscore -- the one confirmed
+    TLS-breaking case. Every other URL (including ordinary `*.s3.amazonaws.
+    com` hosts, which verify fine) is returned unchanged."""
+    parsed = urlparse(url)
+    if not _is_broken_s3_underscore_host(parsed.netloc):
+        return url
+    bucket = _S3_UNDERSCORE_BUCKET_RE.match(parsed.netloc).group(1)
+    return parsed._replace(
+        netloc="s3.amazonaws.com", path=f"/{bucket}{parsed.path}"
+    ).geturl()
 
 
 US_STATE_ABBREVIATIONS = {
@@ -950,6 +991,60 @@ class GranicusAssetFinder(AssetFinder):
         return parse_captions_by_extension(caption_url, content)
 
     @staticmethod
+    async def _fetch_agenda_html(
+        session: aiohttp.ClientSession, url: str
+    ) -> Tuple[int, Optional[str], Optional[str]]:
+        """GETs `url` the normal way -- aiohttp's own automatic redirect
+        following, unchanged from before -- and returns
+        (status, final_url, html). `html` is None when the body isn't
+        text-decodable (a real, expected outcome for a raw PDF redirect
+        target, not a failure -- see `_fetch_agenda_items`' docstring).
+
+        The one special case: when the redirect *target itself* fails TLS
+        verification because it's an S3 virtual-hosted bucket URL with an
+        underscore in the bucket name (`_S3_UNDERSCORE_BUCKET_RE`'s comment
+        above has the full story), aiohttp's automatic following raises
+        `ClientConnectorCertificateError` before any response -- including
+        the final redirect Location -- is available to inspect. So on
+        exactly that error, this re-fetches `url` once with
+        `allow_redirects=False` (safe -- `url` itself isn't the broken
+        host) purely to read the `Location` header, rewrites *that* to
+        path-style, and retries from there. Every other failure (a
+        different host, a different kind of error) just propagates
+        unchanged, exactly as a plain `session.get()` would have."""
+        try:
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                return await GranicusAssetFinder._read_agenda_response(response)
+        except aiohttp.ClientConnectorCertificateError as e:
+            if not _is_broken_s3_underscore_host(e.host):
+                raise
+            async with session.get(
+                url, timeout=aiohttp.ClientTimeout(total=15), allow_redirects=False
+            ) as first_hop:
+                location = first_hop.headers.get("Location")
+            if not location:
+                raise
+            retry_url = _s3_path_style(urljoin(url, location))
+            async with session.get(
+                retry_url, timeout=aiohttp.ClientTimeout(total=15)
+            ) as response:
+                return await GranicusAssetFinder._read_agenda_response(response)
+
+    @staticmethod
+    async def _read_agenda_response(
+        response: aiohttp.ClientResponse,
+    ) -> Tuple[int, Optional[str], Optional[str]]:
+        final_url = str(response.url)
+        if response.status != 200:
+            return response.status, final_url, None
+        try:
+            return 200, final_url, await response.text()
+        except (UnicodeDecodeError, LookupError):
+            return 200, final_url, None
+
+    @staticmethod
     async def _fetch_agenda_items(
         session: aiohttp.ClientSession, page_url: str, clip_id: str
     ) -> Tuple[List[Tuple[float, str]], Optional[str]]:
@@ -983,26 +1078,21 @@ class GranicusAssetFinder(AssetFinder):
         domain = urlparse(page_url).netloc
         agenda_url = f"https://{domain}/AgendaViewer.php?clip_id={clip_id}&embedded=1"
         try:
-            async with session.get(
-                agenda_url, timeout=aiohttp.ClientTimeout(total=15)
-            ) as response:
-                if response.status != 200:
-                    logger.warning(
-                        "Granicus agenda fetch got HTTP %s for %s",
-                        response.status,
-                        agenda_url,
-                    )
-                    return [], None
-                final_url = str(response.url)
-                try:
-                    html = await response.text()
-                except (UnicodeDecodeError, LookupError):
-                    return [], final_url
+            status, final_url, html = await GranicusAssetFinder._fetch_agenda_html(
+                session, agenda_url
+            )
         except Exception:
             logger.warning(
                 "Granicus agenda fetch failed for %s", agenda_url, exc_info=True
             )
             return [], None
+        if status != 200:
+            logger.warning(
+                "Granicus agenda fetch got HTTP %s for %s", status, agenda_url
+            )
+            return [], None
+        if html is None:
+            return [], final_url
 
         soup = BeautifulSoup(html, "html.parser")
         items = []
