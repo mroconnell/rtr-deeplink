@@ -1858,6 +1858,16 @@ async def subscribe(request: Request):
     return templates.TemplateResponse(request, "subscribe.html", {})
 
 
+# Linked from the footer of both services (app/templates/base.html and
+# archive/templates/base.html), so every page on the site reaches it.
+# Lives on the resolver because that's the service holding the public
+# origin -- the Archive is proxied through it (_proxy_to_archive), same
+# reasoning as /sign-in and /sign-up above.
+@app.get("/privacy")
+async def privacy(request: Request):
+    return templates.TemplateResponse(request, "privacy.html", {})
+
+
 # Clerk renders its own "No account? Sign up" / "Have an account? Sign
 # in" cross-links at signUpUrl/signInUrl, which default to /sign-up and
 # /sign-in *on this origin*. Neither path existed until WO-65, so the
