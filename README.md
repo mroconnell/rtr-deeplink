@@ -1077,6 +1077,20 @@ this went from a Python scan over transcript JSON (which OOM-crashed the
 Archive on common terms) through exact-mode, full-text, and fuzzy all
 becoming SQL-backed.
 
+**Bulk read-only export (`GET /internal/export/pages`, WO-93, 2026-09-01).**
+The one endpoint for pulling archived pages out in bulk over HTTP --
+metadata plus light per-version summaries (id, language, source,
+`segment_count` computed in SQL, warnings, content hash), and the default
+version's raw segments only when `include_segments=true`. Keyset-paginated
+(`after_id`/`limit`, `next_after_id` in the response), with `created_after`,
+`has_transcript` and `ids` filters, capped at 500 pages per request (100
+with segments). Token-gated like every other `/internal/*` route. Built for
+the data-product sample exports in `~/Documents/rtr-business/data-product/`
+so production is only ever read over HTTP, never through a database
+connection (`BACKLOG.md`'s standing decision); see
+`crud.list_pages_for_export()`'s docstring for the shape and the explicit
+column allowlist (never `search_corpus`, never any account/PII column).
+
 ## On-demand transcription
 
 Sometimes the government site's own captions are missing, garbled, or in

@@ -1192,6 +1192,193 @@ async def list_all_page_urls() -> list[dict]:
         ]
 
 
+# Every MeetingPage column a data-export consumer may see. Deliberately an
+# explicit allowlist rather than `select(MeetingPage)`: `search_corpus` is a
+# multi-hundred-KB derived blob per row that no export needs, and the
+# review/ops columns (reviewed_at, no_video_stream_confirmed_at) are
+# internal workflow state. Nothing here is account- or person-shaped --
+# see WO-93 / the data-product brief in rtr-business.
+_EXPORT_PAGE_COLUMNS = (
+    MeetingPage.id,
+    MeetingPage.slug,
+    MeetingPage.platform,
+    MeetingPage.external_id,
+    MeetingPage.source_url_normalized,
+    MeetingPage.title,
+    MeetingPage.date,
+    MeetingPage.jurisdiction,
+    MeetingPage.meeting_body,
+    MeetingPage.jurisdiction_confidence,
+    MeetingPage.video_url,
+    MeetingPage.video_format,
+    MeetingPage.agenda_items,
+    MeetingPage.video_warnings,
+    MeetingPage.agenda_link,
+    MeetingPage.packet_link,
+    MeetingPage.best_effort,
+    MeetingPage.created_at,
+    MeetingPage.updated_at,
+)
+
+
+async def list_pages_for_export(
+    *,
+    after_id: int = 0,
+    limit: int = 200,
+    include_segments: bool = False,
+    created_after: Optional[datetime] = None,
+    has_transcript: Optional[bool] = None,
+    ids: Optional[Sequence[int]] = None,
+) -> list[dict]:
+    """Keyset-paginated, read-only page export behind
+    GET /internal/export/pages (WO-93, 2026-09-01) -- the one bulk-read
+    surface for building flat-file data samples over HTTP, so nothing
+    outside this service ever needs a database connection (BACKLOG.md's
+    standing "production access is HTTP-only" decision).
+
+    Shape, per page: every column in _EXPORT_PAGE_COLUMNS, plus
+    `versions` (every TranscriptVersion on the page, LIGHT -- id, language,
+    source, is_default, segment_count, transcript_warnings, content_hash,
+    created_at; default first) and, only when `include_segments` is set,
+    `default_version_segments` (the default version's raw segments list).
+    The light shape never touches a `segments` blob: segment_count is
+    json_array_length() in SQL, so a 3-page metadata sweep of the whole
+    Archive stays cheap. With segments, the caller is expected to page in
+    small batches (the route caps `limit` at 100 in that mode).
+
+    Pagination is `id > after_id ORDER BY id LIMIT limit` -- stable under
+    concurrent ingests (a new page always has a higher id, so it lands at
+    the end rather than shifting an OFFSET), and every request is bounded,
+    which is what the standing decision above actually asks for.
+
+    `created_after` is inclusive on MeetingPage.created_at. `has_transcript`
+    True/False filters on the page's DEFAULT version having non-empty
+    segments (content_hash != _EMPTY_CONTENT_HASH); None applies no filter.
+    `ids` restricts the result to those page ids (still ordered and
+    paginated the same way) -- what lets a consumer select pages from the
+    light sweep and then fetch only *their* segments, instead of walking
+    every blob in the table to reach a subset.
+    """
+    default_version_with_content = (
+        select(TranscriptVersion.id)
+        .where(
+            TranscriptVersion.meeting_page_id == MeetingPage.id,
+            TranscriptVersion.is_default.is_(True),
+            TranscriptVersion.content_hash != _EMPTY_CONTENT_HASH,
+        )
+        .correlate(MeetingPage)
+        .exists()
+    )
+    conditions = [MeetingPage.id > after_id]
+    if ids is not None:
+        if not ids:
+            return []
+        conditions.append(MeetingPage.id.in_(list(ids)))
+    if created_after is not None:
+        conditions.append(MeetingPage.created_at >= created_after)
+    if has_transcript is True:
+        conditions.append(default_version_with_content)
+    elif has_transcript is False:
+        conditions.append(~default_version_with_content)
+
+    async with async_session() as session:
+        page_rows = (
+            await session.execute(
+                select(*_EXPORT_PAGE_COLUMNS)
+                .where(*conditions)
+                .order_by(MeetingPage.id.asc())
+                .limit(limit)
+            )
+        ).all()
+        if not page_rows:
+            return []
+        ids = [row.id for row in page_rows]
+
+        version_rows = (
+            await session.execute(
+                select(
+                    TranscriptVersion.id,
+                    TranscriptVersion.meeting_page_id,
+                    TranscriptVersion.language,
+                    TranscriptVersion.source,
+                    TranscriptVersion.is_default,
+                    TranscriptVersion.content_hash,
+                    TranscriptVersion.transcript_warnings,
+                    TranscriptVersion.created_at,
+                    func.json_array_length(TranscriptVersion.segments).label(
+                        "segment_count"
+                    ),
+                )
+                .where(TranscriptVersion.meeting_page_id.in_(ids))
+                .order_by(
+                    TranscriptVersion.meeting_page_id.asc(),
+                    TranscriptVersion.is_default.desc(),
+                    TranscriptVersion.created_at.asc(),
+                    TranscriptVersion.id.asc(),
+                )
+            )
+        ).all()
+
+        segments_by_page: dict[int, list] = {}
+        if include_segments:
+            segment_rows = (
+                await session.execute(
+                    select(
+                        TranscriptVersion.meeting_page_id, TranscriptVersion.segments
+                    ).where(
+                        TranscriptVersion.meeting_page_id.in_(ids),
+                        TranscriptVersion.is_default.is_(True),
+                    )
+                )
+            ).all()
+            for page_id, segments in segment_rows:
+                segments_by_page[page_id] = segments or []
+
+    versions_by_page: dict[int, list[dict]] = {}
+    for v in version_rows:
+        versions_by_page.setdefault(v.meeting_page_id, []).append(
+            {
+                "id": v.id,
+                "language": v.language,
+                "source": v.source,
+                "is_default": bool(v.is_default),
+                "segment_count": int(v.segment_count or 0),
+                "transcript_warnings": v.transcript_warnings or [],
+                "content_hash": v.content_hash,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+        )
+
+    result = []
+    for row in page_rows:
+        page = {
+            "id": row.id,
+            "slug": row.slug,
+            "platform": row.platform,
+            "external_id": row.external_id,
+            "source_url_normalized": row.source_url_normalized,
+            "title": row.title,
+            "date": row.date,
+            "jurisdiction": row.jurisdiction,
+            "meeting_body": row.meeting_body,
+            "jurisdiction_confidence": row.jurisdiction_confidence,
+            "video_url": row.video_url,
+            "video_format": row.video_format,
+            "agenda_items": row.agenda_items or [],
+            "video_warnings": row.video_warnings or [],
+            "agenda_link": row.agenda_link,
+            "packet_link": row.packet_link,
+            "best_effort": bool(row.best_effort),
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            "versions": versions_by_page.get(row.id, []),
+        }
+        if include_segments:
+            page["default_version_segments"] = segments_by_page.get(row.id, [])
+        result.append(page)
+    return result
+
+
 async def list_youtube_pages_missing_transcripts() -> list[dict]:
     """Every archived YouTube-backed meeting page with no *good* default
     transcript -- the "transcript wanted" queue consumed by
