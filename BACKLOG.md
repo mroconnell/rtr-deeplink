@@ -201,8 +201,10 @@ Reliability, ops & cost  (12)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (9)
+Trust, safety & data quality  (11)
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
+  `[NEEDS-AUDIT]` California county jurisdiction names split across two…
+  `[NEEDS-AUDIT]` YouTube-delegated ingests can land with…
   `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a…
   `[IMPROVEMENT-ROUND]` Low-trust queue rows have no repair workflow…
   `[IMPROVEMENT-ROUND]` A low-trust review doesn't expire when the page…
@@ -1966,6 +1968,68 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `scripts/backfill_archived_pages.py` (a re-resolve sweep) against
   whichever pages need real accuracy — it corrects them individually.
 - **History**: WO-21 (2026-08-21) build in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` California county jurisdiction names split across two conventions, fragmenting hub pages
+
+- **Issue**: some California county pages store `jurisdiction` as
+  `"County of {Name}, CA"` (a raw, unnormalized prefix form) instead of
+  this project's own majority convention, `"{Name} County, CA"`.
+  Confirmed live 2026-09-02 via `GET /internal/export/pages` (all 4,923
+  archived pages): 44 counties use the suffix form correctly, but 13 —
+  Fresno, Humboldt, Imperial, Marin, Monterey, Napa, Placer, Plumas, San
+  Bernardino, San Diego, San Mateo, Santa Clara, Solano — have at least
+  one page stored as `"County of {Name}, CA"`. `jurisdiction_enrich.py`'s
+  `_split_entity_prefix()` docstring already documents a "County of X"
+  → "X County" normalization step (built for a different case, stripping
+  it out of a body-name split like "Housing Authority of the County of
+  Santa Clara"), so the raw prefix form surviving into `jurisdiction`
+  itself suggests some resolve path (a Granicus RSS channel title taken
+  verbatim is the leading suspect, not yet confirmed) bypasses that
+  normalization rather than the normalization having a bug.
+- **Impact**: real, measured fragmentation for at least 3 counties — the
+  same government's pages split across two different `/j/{slug}` hubs,
+  invisible to each other: Santa Clara (7 pages under the correct suffix
+  form, 1 stranded under the prefix form), San Diego (2 vs 1), Solano (1
+  vs 1). Marin (3 pages) and San Mateo (3 pages) aren't fragmented yet
+  only because no suffix-form page exists for them yet — the next
+  Marin/San Mateo County resolve could create the same split. Originally
+  surfaced as a user report ("Napa County was already live in prod but
+  called 'County of Napa'") — Napa itself has only the prefix form so
+  isn't fragmented, but is the same underlying bug.
+- **Next action**: find the actual resolve path producing the raw
+  `"County of {Name}"` string (check Granicus's RSS-channel-title
+  jurisdiction source first, per `_split_entity_prefix()`'s own docstring
+  reasoning) and route it through the existing normalization instead of
+  bypassing it; separately, a one-time backfill/merge is needed for the
+  3 already-fragmented counties (re-resolve or hand-correct the stranded
+  pages' `jurisdiction`, then re-check `/j/{slug}` hub grouping).
+- **Constraint**: don't hand-fix only Napa/Santa Clara/San Diego/Solano
+  and call it done — all 13 listed above carry the same latent risk of
+  a future split.
+- **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+  pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+  not yet in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` YouTube-delegated ingests can land with `jurisdiction=None` when the channel doesn't self-identify
+
+- **Issue**: 10 real Portola Valley, CA Town Council meetings (direct
+  `youtu.be` links from `portolavalley.net/town-government/town-council/
+  minutes-and-agendas`, ingested 2026-09-02) all resolved with
+  `jurisdiction=None` — confirmed directly via `YouTubeAssetFinder.
+  resolve()`, not just observed on the rendered page. Real transcripts
+  (2,109-8,049 segments each) are present; only jurisdiction is missing.
+- **Impact**: these 10 pages won't appear on any `/state/{slug}` or
+  `/j/{slug}` hub (both require a recognized `", ST"` suffix), and land
+  in `/internal/low-trust-pages`'s `unverified_jurisdiction` bucket.
+- **Next action**: check what YouTube metadata (channel name/description,
+  video description) is actually available for this channel and whether
+  `youtube.py`'s jurisdiction extraction already tries it — video titles
+  here are bare dates ("08-26-2026 Town Council Meeting"), no city name
+  in the title itself, so a title-only guess was never going to work;
+  the channel-level metadata is the more promising signal, not yet
+  checked.
+- **History**: found live 2026-09-02 during the same corpus-expansion
+  pass as the entry above; not yet in `BACKLOG_DONE.md`.
 
 ### `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a full resolve from a partial push
 
