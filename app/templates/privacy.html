@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy | Red Tape Recordings{% endblock %}
+{% block meta %}
+  <meta name="description" content="How Red Tape Recordings handles public meeting records, account data, and the information you give us.">
+{% endblock %}
+{% block content %}
+  {#- Reuses the About page's .about-page container (app/static/style.css,
+     "About page" block): 640px max-width, 1.6 line-height, primary-colored
+     headings. No new CSS -- a policy page is the same read as /about.
+
+     NOT legal advice and not lawyer-reviewed. Every factual claim here was
+     checked against the code on 2026-09-02 (see the git history for this
+     file's PR for the per-claim verification). If you change what the app
+     collects, sends, or stores, change this page in the same PR. -#}
+  <main class="about-page">
+    <h1>Privacy Policy</h1>
+    <p class="about-lede">Last updated: September 2, 2026</p>
+
+    <h2>Why we exist</h2>
+    <p>Red Tape Recordings exists to make public government meetings easier to find, cite, and share. City councils, county boards, and planning commissions already publish their meetings — the problem is that a three-hour video with no transcript and no index is technically public and practically unreadable. We fetch what governments have already published and make it searchable and linkable down to the second. The content on this site is overwhelmingly public record, published by governments themselves.</p>
+    <p>This policy explains what we do with information — both the public records we republish and the much smaller amount of personal information you give us directly.</p>
+
+    <h2>Who we are</h2>
+    <p>This site is operated by How To ADU LLC, a California limited liability company doing business as Red Tape Recordings, in Napa, California.</p>
+    <p>You can reach us at <a href="mailto:ally@redtaperecordings.com">ally@redtaperecordings.com</a> for any question or request in this policy, including access and deletion requests.</p>
+    {#- TODO(ryan): a physical mailing address may be worth adding here.
+       Some state privacy statutes expect a non-email contact method for
+       rights requests. Left out rather than guessed at -- the code has no
+       mailing address in it anywhere. -#}
+
+    <h2>What this policy covers</h2>
+    <p>This policy covers redtaperecordings.com and the tools on it: the deep-link resolver, the meeting archive, search, accounts, saved-search alerts, on-demand transcription, and our update emails.</p>
+    <p>It does not cover the government websites and video platforms we link to. When you play a meeting video, it streams from the government's own source, and that provider's privacy policy applies to that playback — not ours.</p>
+
+    <h2>Public records we republish</h2>
+    <p>Most of what you see on this site is public record. We fetch and display video, captions, transcripts, agendas, agenda packets, and meeting metadata that governments publish on their own official portals.</p>
+    <p><strong>We never re-host video.</strong> Video always plays from the government's source. We link to it and index around it.</p>
+    <p>Agenda packets and public-comment letters sometimes contain personal information that members of the public disclosed to their government — names, addresses, and sometimes more. We republish those documents as the government published them. We do not add to them, enrich them, or combine them with other sources.</p>
+    <p>If you want a document reviewed or removed, email us at <a href="mailto:ally@redtaperecordings.com">ally@redtaperecordings.com</a>. We will review each request. This is a manual process handled by a person, so we can't promise a fixed turnaround, but we do read and respond to every request.</p>
+
+    <h2>Information we collect</h2>
+    <p>What we collect depends entirely on which features you use. Most of the site works without an account and without telling us who you are.</p>
+
+    <h3>Looking up a meeting</h3>
+    <p>You don't need an account to paste a meeting URL into our tool. When you do, we log the URL you submitted and what happened when we tried to resolve it: which platform it was, whether we found video, whether we found a transcript, how many caption segments it had, the detected language, any warnings, the meeting's title, date, and jurisdiction, how long the lookup took, when we first and last saw that URL, and how many times it has been requested.</p>
+    <p>We keep this for two reasons: so a repeat lookup of the same meeting is fast, and so we can see which platforms and jurisdictions are failing and fix them.</p>
+    <p><strong>These logs do not contain your IP address, your browser's user agent, a cookie, a session, or an account id.</strong> A resolve log records that a meeting URL was looked up — not who looked it up.</p>
+    <p>We do use your IP address to rate-limit lookups, so that one automated caller can't overwhelm us or the government site we're fetching from. That check happens in memory as the request is served and is not written to our database.</p>
+
+    <h3>Searching</h3>
+    <p>When you search the archive, we log the keyword, any jurisdiction filter, how many results came back, and the time. This tells us what people are actually looking for, so we can improve the archive's topic list and coverage.</p>
+    <p><strong>Search logs are deliberately identity-free</strong> — no IP address, no user id, no session, no user agent. On a site built for scrutinizing local government, a search log that could be tied to a named person is something we chose not to hold.</p>
+
+    <h3>Reporting a problem</h3>
+    <p>If you use the "report a problem" control on a meeting page, we store the meeting URL, the issue type you picked, and whatever you type into the details box, plus a timestamp. We don't collect your identity with it — but please don't type anything into that box you wouldn't want kept, since we keep what you send.</p>
+
+    <h3>Accounts</h3>
+    <p>Sign-in is handled by <a href="https://clerk.com" rel="noopener">Clerk</a>, a third-party identity provider. Clerk holds your account email address, your name, and your login credentials. We do not store your password, and it never passes through our systems.</p>
+    <p>Our own databases store only Clerk's opaque user id (a string like <code>user_2abc…</code>) plus the things you saved: your saved meetings and your saved searches. No email address, no name.</p>
+    <p>See <a href="https://clerk.com/legal/privacy" rel="noopener">Clerk's privacy policy</a> for how they handle the account data they hold.</p>
+
+    <h3>Saved-search alert emails</h3>
+    <p>If you save a search and turn on alerts, we email you when new meetings match it. We don't store your email address to do this — at send time we look up your account's primary email address from Clerk, send the message, and don't retain it. Delivery is through <a href="https://resend.com" rel="noopener">Resend</a>, our email provider.</p>
+    <p>Every alert email carries a one-click unsubscribe link for that specific saved search. Clicking it removes that saved search from your account, with no login step, using a signed link unique to that item. Our emails also carry a sitewide unsubscribe link that opts your address out of our mailing list entirely.</p>
+
+    <h3>On-demand transcription requests</h3>
+    <p>When a meeting has no usable captions, anyone can ask us to transcribe it — no account needed. We collect your email address and store it alongside the job, because we need it to send you a confirmation link and then to tell you when the transcript is ready or that we couldn't complete it.</p>
+    <p>To be straightforward about this: <strong>we do not currently delete that email address when the job finishes.</strong> It stays attached to the job record until you ask us to remove it. Your address is never shown publicly — our job-status responses strip it out before returning anything — but it is retained.</p>
+
+    <h3>"Get updates" signups</h3>
+    <p>If you sign up for updates, we store your email address as a contact in an audience list held by Resend, our email provider. We use it to send occasional updates about new features and tools.</p>
+    <p>Every email includes an unsubscribe link. Clicking it marks your address as unsubscribed with Resend immediately, with no login or confirmation step, and we send one final confirmation that you're unsubscribed.</p>
+
+    <h3>Analytics</h3>
+    <p>We use Google Analytics on this site to understand which pages and features get used. Google Analytics sets cookies in your browser and collects standard web analytics data, including your IP address, the pages you visit, and general information about your device and browser. We also send it a small number of events about how the meeting player is used — for example that a video was played, a transcript line was clicked, or a timestamped link was copied.</p>
+    <p>We use this in aggregate to improve the site. Google's handling of this data is governed by <a href="https://policies.google.com/privacy" rel="noopener">Google's privacy policy</a>. You can opt out of Google Analytics across all sites by installing <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">Google's opt-out browser add-on</a>, or by blocking analytics cookies in your browser or with an extension.</p>
+    {#- TODO(ryan): two GA details are dashboard-side and can't be read
+       from this repo -- whether IP anonymization is enabled on the GA
+       property, and the configured data-retention period. If either is
+       set to something specific, it's worth stating here. -#}
+
+    <h3>Error reporting</h3>
+    <p>We use <a href="https://sentry.io" rel="noopener">Sentry</a> to collect reports when something breaks. An error report can include technical details about the request that failed, such as the URL being processed and a stack trace. We have not enabled Sentry's option to attach personally identifying request data, and we don't use it for performance tracking. We use these reports only to find and fix bugs.</p>
+
+    <h3>Hosting and where data is processed</h3>
+    <p>Our applications and databases run on <a href="https://render.com" rel="noopener">Render</a>, in the United States. Email is sent through Resend and identity is handled by Clerk. Your data is processed in the United States.</p>
+
+    <h2>How we use it</h2>
+    <ul class="about-actions">
+      <li>To run the service — resolving meeting URLs, serving pages, and playing back the government's video and captions.</li>
+      <li>To make it faster, by caching what we've already resolved.</li>
+      <li>To send you what you asked for — a confirmation link, a transcript-ready notice, a saved-search alert, or a product update.</li>
+      <li>To find and fix problems, including which platforms and jurisdictions are failing.</li>
+      <li>To understand what people look for, so we can improve coverage and search.</li>
+      <li>To improve the service and build new features, including the uses described under "Data licensing and AI training" below.</li>
+      <li>To protect the service and the government sites we fetch from, including rate limiting.</li>
+    </ul>
+
+    <h2>Cookies and analytics</h2>
+    <p>Clerk sets session cookies when you're signed in. These are what keep you logged in; without them, accounts don't work.</p>
+    <p>Google Analytics sets analytics cookies, as described above.</p>
+    <p><strong>We do not use advertising cookies, and we do not run ads or ad networks on this site.</strong> We don't use cookies to build a profile of you across other websites.</p>
+
+    <h2>Who we share it with</h2>
+    <p>We don't sell or rent your personal information. We share it only with the service providers that make the site work:</p>
+    <ul class="about-actions">
+      <li><strong>Clerk</strong> — identity and sign-in.</li>
+      <li><strong>Resend</strong> — email delivery and our mailing list.</li>
+      <li><strong>Render</strong> — application and database hosting.</li>
+      <li><strong>Google Analytics</strong> — site analytics.</li>
+      <li><strong>Sentry</strong> — error reporting.</li>
+    </ul>
+    <p>We may also disclose information if we're legally required to — for example in response to a valid subpoena or court order — or where we need to in order to protect our rights, our users, or the public. If our business is sold or transferred, information may transfer with it.</p>
+
+    <h2>Public contributions</h2>
+    <p>When you request an on-demand transcription, the transcript we generate is added to that meeting's public page. Transcripts are public and are preserved indefinitely as part of the archive — that's the point of the archive.</p>
+    <p><strong>Transcripts are not publicly attributed to the person who requested them.</strong> Your email address is not shown on the page and is not included in the public data.</p>
+
+    <h2>Data licensing and AI training</h2>
+    <p>This section describes a deliberate choice, so we want to be plain about it.</p>
+    <p><strong>We may use the public-meeting content we collect</strong> — transcripts, captions, agendas, and meeting metadata — <strong>to improve the service, to train and evaluate speech-to-text and other models, and to license or sell datasets derived from these public records to third parties.</strong> This is public government record, and building a usable, licensable corpus out of it is part of how this service sustains itself.</p>
+    <p><strong>We do not sell or license our users' personal information.</strong> That means we do not sell, license, or share for money: your account information, your email address (whether you gave it to us for updates, for a transcription request, or through your account), your saved meetings, or your saved searches. None of that goes into any dataset we license, and none of it is for sale.</p>
+    <p>The distinction is between <em>the public record</em>, which we do commercialize, and <em>you</em>, which we do not.</p>
+
+    <h2>Your choices and rights</h2>
+    <p>You can ask us to access, correct, or delete the personal information we hold about you by emailing <a href="mailto:ally@redtaperecordings.com">ally@redtaperecordings.com</a>. We'll verify your request and respond.</p>
+    <p>Some things you can do directly:</p>
+    <ul class="about-actions">
+      <li><strong>Unsubscribe from emails</strong> — use the unsubscribe link in any email we send.</li>
+      <li><strong>Remove a saved search or saved meeting</strong> — unsave it from your account, or use the unsubscribe link in an alert email.</li>
+      <li><strong>Delete your account</strong> — deleting your account through the account menu removes your saved meetings and saved searches from our databases, and removes your account and its email from Clerk.</li>
+    </ul>
+    <p>Deleting your account does not automatically remove other information you may have given us separately — for example an email address you submitted for a transcription request, or an address on our updates list. To have those removed, email us and we'll handle it manually. There is no automated process that sweeps every system, so please ask and we'll do it.</p>
+
+    <h3>California residents</h3>
+    <p>If you're a California resident, the California Consumer Privacy Act gives you the right to know what personal information we collect about you and how we use and disclose it, the right to request deletion of that information, the right to request correction of inaccurate information, the right to opt out of the sale or sharing of your personal information, and the right not to be discriminated against for exercising any of these rights. We will not deny you service, charge you a different price, or give you a lower quality of service for making a request.</p>
+    <p><strong>We do not sell or share your personal information, and we have not sold or shared personal information in the preceding twelve months.</strong> As described above, we may license datasets derived from public government records — that is not a sale of your personal information.</p>
+    <p>Information that is lawfully made available from federal, state, or local government records is "publicly available information" under the CCPA, and publicly available information is excluded from the CCPA's definition of personal information. The great majority of the content on this site falls into that category.</p>
+    <p>To make a request, email <a href="mailto:ally@redtaperecordings.com">ally@redtaperecordings.com</a>. You may use an authorized agent; we may ask for proof of their authority and for information sufficient to verify your identity.</p>
+
+    <h2>Data retention and deletion</h2>
+    <p>Public-meeting content — transcripts, captions, agendas, and meeting metadata — is retained indefinitely. It is an archive; keeping it is the service.</p>
+    <p>For everything else, we should be honest that we do not currently run any automatic deletion schedule. Resolve logs, search logs, problem reports, transcription job records including the requester's email address, and mailing-list contacts are retained until you ask us to delete them, or until we no longer need them. If you want your information removed, email us and we'll remove it.</p>
+    <p>Unsubscribing from emails marks your address as unsubscribed so we stop sending to it; if you want the address deleted outright rather than suppressed, tell us and we'll delete it.</p>
+
+    <h2>Children</h2>
+    <p>This service is not directed to children under 13, and we don't knowingly collect personal information from them. If you believe a child has given us personal information, email us and we'll delete it.</p>
+
+    <h2>Security</h2>
+    <p>We take reasonable measures to protect the information we hold. The site is served over HTTPS. We deliberately keep very little personal information in the first place: passwords and account emails live with Clerk rather than with us, our own account records hold only an opaque identifier, and our search and resolve logs carry no identity at all. Storing less is the most reliable protection we can offer.</p>
+    <p>That said, no method of transmission or storage is completely secure, and we can't guarantee absolute security.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>We may update this policy as the service changes. When we do, we'll update the "last updated" date at the top of this page. If we make a material change to how we handle personal information, we'll note it here on the page.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about this policy, or a request about your information or a document on this site: <a href="mailto:ally@redtaperecordings.com">ally@redtaperecordings.com</a>.</p>
+
+    <p><em>This page was last reviewed on September 2, 2026. It is a plain-English description of our current practices, not legal advice.</em></p>
+  </main>
+{% endblock %}

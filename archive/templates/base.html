@@ -109,6 +109,13 @@
         <a href="/feed.xml">RSS Feed</a>
         <a href="/coverage">Coverage</a>
         <a href="mailto:ally@redtaperecordings.com">Contact</a>
+        {#- Relative, not absolute, in BOTH services' footers: the Archive
+           is served to the public through the resolver's own origin via
+           _proxy_to_archive() (app/main.py), which is why every other
+           link in this footer is relative too. The route itself lives on
+           the resolver. TODO(ryan): a /terms link goes next to this one
+           once Terms of Service exists -- deliberately not created here. -#}
+        <a href="/privacy">Privacy</a>
       </nav>
       <p class="footer-subscribe-prompt">Get notified about new features and tools for finding public meetings &mdash; <a href="/subscribe">sign up for updates</a>.</p>
     </div>

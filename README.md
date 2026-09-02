@@ -2380,6 +2380,10 @@ app/
   templates/index.html     URL input page
   templates/meeting.html   video + transcript page shell
   templates/about.html     about page
+  templates/privacy.html   privacy policy (/privacy) -- linked from
+                           the footer of BOTH services; the route
+                           lives here because the resolver holds the
+                           public origin
   static/player.js         all client-side behavior
   static/style.css
   static/manifest.json     PWA manifest (Add to Home Screen)
