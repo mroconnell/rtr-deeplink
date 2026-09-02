@@ -1219,8 +1219,10 @@ caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chu
 - **No full download** — reuses `extract_chunk_audio()`
   (`app/platforms/media_probe.py`) for direct remote extraction (an HTTP
   Range fetch for a direct file, just the covering `.ts` segments for
-  HLS), same as the worker. **Chunking is kept** (900 seconds, same as
-  the worker's own `AUTO_TRANSCRIPTION_CHUNK_SIZE_SECONDS`) for a
+  HLS), same as the worker. **Chunking is kept** (900 seconds — no longer
+  the same as the worker, which dropped to 450s in WO-94 for RAM reasons
+  that don't apply here; this script calls the shared
+  `chunk_size_seconds_for_platform()` with `memory_constrained=False`) for a
   different reason than the worker's real one — RAM isn't the local
   constraint — see the script's own module docstring: it bounds each
   individual `ffmpeg`/`ffprobe` call under `media_probe.py`'s shared

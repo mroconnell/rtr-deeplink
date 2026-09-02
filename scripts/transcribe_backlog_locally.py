@@ -56,9 +56,10 @@ exact thresholds) -- override with --model-size small|medium|large-v3|...
 any faster-whisper model_size string.
 
 **No chunk-size-driven memory concern locally** (unlike the worker, whose
-900s default chunk size exists specifically to keep faster-whisper's
+450s default chunk size exists specifically to keep faster-whisper's
 peak RSS under Render's 2GB ceiling -- see app/platforms/media_probe.py's
-chunk_size_seconds_for_platform()) -- this Mac has real RAM to spare.
+chunk_size_seconds_for_platform(), which this script therefore calls with
+`memory_constrained=False`) -- this Mac has real RAM to spare.
 Chunking is kept anyway (CHUNK_SIZE_SECONDS below, same 900s value, for
 every platform except Granicus -- see this script's own residual gap
 noted at that constant's definition) for a *different* reason: app/
@@ -235,7 +236,10 @@ REQUEST_DELAY_SECONDS = 2.0
 
 # The whisper-engine fallback default when neither --chunk-seconds nor a
 # platform-specific override applies -- matches app/platforms/media_probe.py's
-# chunk_size_seconds_for_platform() own _DEFAULT_CHUNK_SIZE_SECONDS. As of
+# chunk_size_seconds_for_platform() own _UNCONSTRAINED_DEFAULT_CHUNK_SIZE_
+# SECONDS, which is the branch this script takes (WO-94: the worker's own
+# non-Granicus default is 450s now, for RAM reasons that don't apply here --
+# see _chunk_seconds_for() below). As of
 # WO-75 (2026-08-30) this script calls that shared function per-meeting, in
 # process_one(), once each candidate's real platform is known -- the same
 # per-page resolution the two real job-creation paths (app/main.py,
@@ -1383,13 +1387,26 @@ def _resolve_chunk_seconds(
          with Granicus's cold-CDN-fill timeout, so it stays a flat default
          rather than going through chunk_size_seconds_for_platform().
       3. Otherwise -- chunk_size_seconds_for_platform(platform), the same
-         shared function app/main.py and worker/main.py already call.
+         shared function app/main.py and worker/main.py already call,
+         but with `memory_constrained=False` (WO-94, 2026-09-01).
+
+    **Why `memory_constrained=False` here specifically.** That function's
+    non-Granicus default dropped 900s -> 450s because faster-whisper's
+    real peak RSS at 900s (1588MB measured) no longer fits Render's 2GB
+    worker plan with usable margin. That is a constraint of where the
+    *cloud worker* runs Whisper, and it does not apply to this script,
+    which runs Whisper on this Mac -- see the module docstring's own "No
+    chunk-size-driven memory concern locally" note. Passing False keeps
+    the original 900s and therefore keeps this script's ffmpeg call count
+    per meeting where it was, while still inheriting the 300s Granicus
+    value, which is a subprocess-timeout constraint that applies here too
+    (that was WO-75's whole point, and this preserves it).
     """
     if override is not None:
         return override
     if engine_kind == "gemini":
         return GEMINI_DEFAULT_CHUNK_SECONDS
-    return chunk_size_seconds_for_platform(platform)
+    return chunk_size_seconds_for_platform(platform, memory_constrained=False)
 
 
 async def process_one(

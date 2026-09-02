@@ -177,14 +177,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (11)
+Reliability, ops & cost  (12)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
-  Transcription queue & workers  (4)
+  Transcription queue & workers  (5)
+    [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
     [LATER] `list_transcription_backlog_candidates()` still does a real
@@ -1554,6 +1555,42 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   pattern measurement this residual is drawn from.
 
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
+  records no failure, counts toward no retry cap, and silently discards
+  up to a chunk's worth of work.**
+  - **Issue**: a Render OOM kill terminates the worker process before
+    `report_chunk_result()` can run, so nothing is written to
+    `TranscriptionJob.failure_history`, `consecutive_chunk_failures`
+    never increments, and `MAX_CONSECUTIVE_CHUNK_FAILURES` is never
+    reached. `claimed_at` simply goes stale after `STALE_CLAIM_AFTER`
+    (5 min) and the same chunk is re-claimed as if nothing happened.
+  - **Impact**: OOMs are undetectable from the app's own data. Confirmed
+    2026-09-01: Render reported two "Ran out of memory (used over 2GB)"
+    kills on `rtr-transcription-worker-2`, while
+    `/internal/transcription-failure-analysis?days=1` showed 7 failures,
+    all ffmpeg timeouts, and zero trace of either kill. Every OOM also
+    throws away that chunk's work in progress — up to ~15 min at the
+    production pool's measured per-chunk pace — and a chunk that OOMs
+    deterministically will loop on that cycle indefinitely rather than
+    failing out. WO-94 removed the known trigger (chunk size 900s →
+    450s, peak RSS 1588MB → 977MB) but not the blind spot.
+  - **Next action**: detection before prevention, and the cheap version
+    is enough — the process is killed, so it cannot report anything
+    itself, but the *next* process can notice: on startup, look for a
+    job whose `claimed_at` went stale without `chunks_completed` moving,
+    and record that as a distinct outcome. That also covers the
+    heartbeat-wedge entry below, which is the same blind spot seen from
+    the other end.
+  - **Constraint**: must not conflate an OOM with an ordinary
+    crash/restart/deploy, all of which produce the same stale claim —
+    and must not re-introduce the duplicate-window corruption WO-57
+    shipped to stop. Detection only; do not shorten
+    `STALE_CLAIM_AFTER` to make OOMs surface faster.
+  - **History**: found 2026-09-01 while diagnosing the two live OOM
+    kills that produced WO-94. Related: the heartbeat/no-timeout entry
+    directly below (a wedged job, rather than a killed one, is the same
+    invisibility from the opposite direction).
 
 - **[NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
   has no timeout — together they can pin a job `in_progress` forever.**
