@@ -119,8 +119,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (52)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+  [NEEDS-AUDIT] The same YouTube video submitted via two different URL
+  [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
@@ -207,7 +209,8 @@ Trust, safety & data quality  (9)
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (24)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
+  `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
   Product direction & open strategic questions  (1)
@@ -427,6 +430,93 @@ structural change than the two entries below.
   - **History**: found during the §49 Phase 1 coverage_map.csv resolve
     sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
     record of it).
+
+- **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
+  forms creates two separate Archive pages instead of deduping.**
+  - **Issue**: Yamhill County, OR's real meeting video
+    (`youtube.com/live/3dVHe0r2utc`) was submitted twice during tonight's
+    tier1/2 ingest batch — once via the jurisdiction's plain
+    `AgendaCenter` URL (which delegates to the YouTube video), once via
+    the video's own direct YouTube URL. Both real-ingested successfully,
+    but instead of the second submission recognizing the same underlying
+    video and updating/reusing the existing page, it created a second,
+    separate `MeetingPage` with a different segment count (1,726 vs 757)
+    and a title/slug mismatch on the older of the two.
+  - **Impact**: two live pages for the same real meeting — confusing for
+    a reader who finds either one, and it undercounts real dedup
+    coverage the same way a naive per-URL cache key would (the two
+    submitted URLs are textually different even though they resolve to
+    the identical video). Segment-count divergence (1,726 vs 757) also
+    suggests the two ingests captured the transcript at different
+    completeness, worth checking which is the better version before any
+    fix consolidates them.
+  - **Next action**: dedup key should be the resolved video identity
+    (e.g. the YouTube video ID) rather than (or in addition to) the
+    submitted source URL, so a second submission that resolves to an
+    already-ingested video updates/merges rather than creating a new
+    page. Needs a decision on which of the two existing Yamhill County
+    pages to keep (or how to merge) before any fix ships, plus a
+    one-time cleanup pass for this specific pair via the existing
+    `POST /internal/admin/delete-pages` / reslug tooling.
+  - **History**: found during tonight's Track A tier1/2 ingest batch
+    (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
+    track_a_tier12_ingest_RESULTS.csv`), 2026-09-01 — not yet in
+    `BACKLOG_DONE.md`, this is the first record of it.
+
+- **[NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
+  exists anywhere in the resolve pipeline — the same root cause behind
+  the Yamhill duplicate above and several other real bugs from the same
+  night.**
+  - **Issue**: `app/platforms/base.py`'s `CalendarPageError` mechanism
+    already does real candidate-scanning inline inside `resolve()` for 5
+    platforms (`civicplus.py`, `legistar.py`, `municode_meetings.py`,
+    `tampa.py`, `vimeo.py`) — it finds every real meeting candidate on a
+    listing/calendar page, but the moment there's more than one, it
+    raises with the candidate list and stops. That's built entirely for
+    a human viewer to click on the frontend. There is no code path that
+    automatically picks a candidate for an unattended batch/ingestion
+    script. Confirmed live 2026-09-01 across two full sweeps
+    (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
+    track_a_tier12_ingest_RESULTS.csv` and
+    `track_a_964_resolve_known_url_RESULTS.csv`) and one enumeration
+    session's full read of all 7 `CalendarPageError`-using platform
+    files.
+  - **Impact**: real, repeated damage in a single night's tier1/2 ingest
+    batch alone — two fake pages ingested as real meetings (Chester
+    County SC's tourism promo, Douglas County WI's instructional video,
+    both from a bare "most recent" pick with no verification), 3 rows
+    that resolved to a different meeting than what was reviewed because
+    "most recent" is re-evaluated fresh every run with no stable
+    candidate list to point at, the Yamhill County OR duplicate-page bug
+    above, and 56 rows across two sweeps (5 + 51) that came back as
+    errors specifically because a guessed link landed on a tenant's
+    homepage rather than a specific meeting — a real candidate list was
+    never built for any of these, so nothing had anything to pick from.
+  - **Next action**: two real, independent fixes, either worth doing on
+    its own: (1) build an automated picker (title/date heuristics, or
+    "prefer the most recent title that looks like a real government
+    meeting") that consumes the same candidate list `CalendarPageError`
+    already produces for its 5 platforms, so a batch script gets a real
+    answer instead of either guessing outside this mechanism or failing;
+    (2) port the proactive per-tenant listing technique already
+    live-verified in the sibling `rtr-discovery` repo
+    (`~/Documents/rtr-discovery/discovery/enumerators/*.py` — 11
+    platforms: primegov, civicclerk, civicweb, escribe, legistar,
+    youtube_channel, granicus, swagit, iqm2, proudcity, cablecast) into
+    this project's own step 2, since the technique (call the tenant's
+    own listing API/feed) is proven and reusable even though that repo's
+    own job (adding depth to already-covered jurisdictions) is out of
+    scope here — only the technique transfers, not the depth-chasing
+    behavior. CivicPlus's own general listing (beyond the `/AgendaCenter`
+    direct check), TownHallStreams, BoardDocs, TelVue, ChampDS, and
+    CivicLive (beyond the reactive picker) still have nothing anywhere,
+    not even in `rtr-discovery`; Hyland is a confirmed dead end.
+  - **History**: found and written up during a long enumeration-strategy
+    session, 2026-09-01 — full detail in
+    `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s "Step
+    2's real weak spot" section (end of file) and its "5 Steps"/"Key
+    Scripts" intro. Not yet in `BACKLOG_DONE.md`, this is the first
+    record of it.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
@@ -1905,6 +1995,33 @@ transcription crawler) grows in a **separate app** ("the Archive"), not
 this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
+
+### `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube — investigate (added 2026-09-02)
+
+- **Issue**: every YouTube caption path in this repo (`app/platforms/youtube.py`
+  via `yt-dlp`, `scripts/fetch_youtube_transcripts.py` via `timedtext` /
+  `youtube-transcript-api`) uses YouTube's *internal* player endpoints
+  (InnerTube), which is why cloud IPs are refused and the daily fetch runs
+  from Ryan's Mac. None of it is the official YouTube Data API v3.
+- **Why it matters**: the data-product work (`rtr-business/data-product/`)
+  excludes every YouTube-sourced transcript from anything sold, because the
+  honest provenance sentence is "yt-dlp from a residential IP," not "the
+  government's portal via its public API." ~455 proven tenants (incl. ~203
+  CivicPlus) delegate to YouTube, so this exclusion roughly halves the
+  sellable roster.
+- **Decision wanted**: Ryan wants captions drawn through YouTube's official
+  API. Open question to settle before any build: the Data API v3's
+  `captions.download` is documented as requiring OAuth authorization from the
+  video's *owner* (the government's channel), while `captions.list` only
+  enumerates tracks. Determine (a) whether any official, ToS-compliant path
+  exists for third-party captions with an API key alone, (b) if not, whether a
+  per-government authorization (channel owner grants access) or a Public
+  Records Act request for caption files is the workable route for the fixed
+  roster, and (c) what quota/cost that implies. Report findings here; do not
+  change the current InnerTube path in the meantime.
+- Related: `rtr-business/data-product/RESEARCH_2026-09-01.md` (legal read,
+  2026-09-02 addendum) and `BRIEF_fresh_transcript_feed.md` (YouTube
+  exclusion rule).
 
 ### `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class, **versioned** asset — model, resolver, every adapter, and display
 
