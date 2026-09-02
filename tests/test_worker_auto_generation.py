@@ -214,9 +214,9 @@ async def test_auto_generation_retries_a_probe_that_fails_once(monkeypatch):
 async def test_auto_generation_gives_granicus_the_smaller_chunk_size(monkeypatch):
     # Real, measured 2026-08-25 (BACKLOG_DONE.md): 24/24 real Granicus
     # chunk failures were ffmpeg timeouts on cold CDN fill. Auto-generated
-    # jobs must get Granicus's 300s chunk size, not the 900s every other
-    # platform still gets -- see app/platforms/media_probe.py's
-    # chunk_size_seconds_for_platform().
+    # jobs must get Granicus's 300s chunk size, not the 450s every other
+    # platform gets under the worker's own memory constraint (WO-94) --
+    # see app/platforms/media_probe.py's chunk_size_seconds_for_platform().
     created = _retrying_worker(monkeypatch)
     from app.platforms.models import ResolvedMeeting
 

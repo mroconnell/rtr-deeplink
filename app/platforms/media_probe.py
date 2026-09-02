@@ -626,7 +626,43 @@ async def _extract_chunk_once(
 _FULL_AUDIO_TIMEOUT_SECONDS = 360
 
 
-_DEFAULT_CHUNK_SIZE_SECONDS = 900
+# The non-Granicus default for any caller whose Whisper work runs under
+# the cloud worker's 2GB Render plan. Measured 2026-09-01 (WO-94) with
+# the same method and the same real source as the original 2026-08-08
+# sizing curve in BACKLOG_DONE.md's "Render worker plan sizing" entry
+# (Fountain Valley Granicus clip 607, "tiny"/int8, one model per
+# process) -- but against the CURRENT engine settings, which that
+# original curve predates:
+#
+#     chunk    peak RSS
+#      300s      834MB
+#      450s      977MB
+#      900s     1588MB
+#      900s     1274MB   (word_timestamps=False -- what 900s was sized against)
+#
+# word_timestamps=True (added 2026-08-18, PR #216, to fix vad_filter's
+# own segment-merging bug) costs +314MB/+25% at 900s, and nobody
+# re-measured after it landed. That ate the ~600MB margin `standard`
+# (2GB) was chosen for: a fresh process leaves ~410MB at 900s, and the
+# real long-lived worker's steady-state baseline runs 400-600MB rather
+# than a fresh process's ~300MB, leaving effective headroom around
+# 200MB. Two real OOM kills on rtr-transcription-worker-2 on 2026-09-01
+# (Render: "Ran out of memory (used over 2GB)"), both while a 900s-chunk
+# job was claimed. 450s restores >1GB of margin for free. Upgrading the
+# plan instead was considered and declined -- 2 CPU/4GB is $85/mo
+# against $25/mo (checked live 2026-09-01), and the CPU half of that is
+# the expensive way to buy throughput next to another $25 worker.
+_WORKER_DEFAULT_CHUNK_SIZE_SECONDS = 450
+
+# What the non-Granicus default was before WO-94, and still is for a
+# caller that does NOT run under that 2GB ceiling -- today only
+# scripts/transcribe_backlog_locally.py, on a Mac with real RAM to spare
+# (see its own module docstring). Kept as its own constant rather than
+# deleted because the two values encode two genuinely different
+# constraints, and only one of them is about memory: fewer, larger
+# chunks means fewer ffmpeg calls per meeting, which is the better trade
+# wherever RAM isn't the binding limit.
+_UNCONSTRAINED_DEFAULT_CHUNK_SIZE_SECONDS = 900
 # Granicus-specific: measured 2026-08-25 (see BACKLOG_DONE.md's "Granicus
 # timeouts are a CDN cache-fill cost"). All Granicus tenants share one
 # media host (archive-stream.granicus.com, Wowza on-demand repackaging
@@ -645,15 +681,48 @@ _DEFAULT_CHUNK_SIZE_SECONDS = 900
 _GRANICUS_CHUNK_SIZE_SECONDS = 300
 
 
-def chunk_size_seconds_for_platform(platform: str) -> int:
+def chunk_size_seconds_for_platform(
+    platform: str, *, memory_constrained: bool = True
+) -> int:
     """The chunk size (seconds) to use when creating a transcription job
     for this platform -- shared by app/main.py's on-demand request path
     and worker/main.py's auto-generation path so both stay in sync (see
     each call site's own "must match" comment, which now points here
-    instead of duplicating the value)."""
+    instead of duplicating the value).
+
+    **Two independent constraints decide this, which is why there are two
+    non-Granicus defaults rather than one (WO-94, 2026-09-01):**
+
+    * Granicus's 300s is a *timeout* constraint -- the shared 120s
+      `_SUBPROCESS_TIMEOUT_SECONDS` bounds the ffmpeg fetch, not the
+      transcription -- so it binds every caller wherever the Whisper work
+      actually runs. `memory_constrained` deliberately does not affect
+      it.
+    * The non-Granicus default is a *memory* constraint, and binds only
+      where faster-whisper runs under the cloud worker's 2GB Render plan.
+      `memory_constrained=False` opts out and keeps the original 900s.
+
+    **"Creates the job" and "runs the transcription" are not the same
+    caller, and it's the second one this parameter is about.**
+    scripts/bulk_queue_transcription_backlog.py only ever writes queue
+    rows -- the Whisper work happens on whichever cloud worker later
+    claims the chunk -- so it is memory-constrained like any other job
+    creator and must NOT pass False. The one real caller that legitimately
+    does is scripts/transcribe_backlog_locally.py, which runs its own
+    Whisper on a Mac and never touches the worker.
+
+    Changing either value is safe against in-flight work and cannot move
+    an existing timestamp: the chosen value is frozen onto the
+    TranscriptionJob row at creation (see app/main.py's own comment above
+    its create-job call), and worker/main.py reads it back from the claim
+    rather than re-deriving it here, so every job stays internally
+    consistent with the size it was created under.
+    """
     if platform == "granicus":
         return _GRANICUS_CHUNK_SIZE_SECONDS
-    return _DEFAULT_CHUNK_SIZE_SECONDS
+    if memory_constrained:
+        return _WORKER_DEFAULT_CHUNK_SIZE_SECONDS
+    return _UNCONSTRAINED_DEFAULT_CHUNK_SIZE_SECONDS
 
 
 def is_hls(media_url: str) -> bool:

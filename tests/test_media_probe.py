@@ -463,21 +463,54 @@ async def test_extract_chunk_audio_does_not_retry_a_missing_ffmpeg(
     assert (ok, reason, len(calls)) == (False, "ffmpeg not found on PATH", 1)
 
 
-# --- chunk_size_seconds_for_platform(): Granicus gets a smaller chunk ----
-# Real, measured 2026-08-25 (BACKLOG_DONE.md): 24/24 real Granicus chunk
-# failures over 3 days were ffmpeg timeouts on cold CDN fill, the only
-# platform at 100%. 300s was chosen against the worst observed cold rate
-# (0.29 s/s) so a chunk still fits under the shared 120s subprocess
-# timeout; every other platform keeps the original 900s default.
+# --- chunk_size_seconds_for_platform(): two separate constraints ---------
+# Granicus's 300s is a TIMEOUT constraint, real and measured 2026-08-25
+# (BACKLOG_DONE.md): 24/24 real Granicus chunk failures over 3 days were
+# ffmpeg timeouts on cold CDN fill, the only platform at 100%. 300s was
+# chosen against the worst observed cold rate (0.29 s/s) so a chunk still
+# fits under the shared 120s subprocess timeout.
+#
+# The non-Granicus default is a MEMORY constraint, real and measured
+# 2026-09-01 (WO-94, see that function's own comment): 450s for a caller
+# running Whisper under the cloud worker's 2GB Render plan, still 900s for
+# one that isn't. The two must not collapse back into a single value --
+# that's what these tests pin.
 
 
 def test_granicus_gets_the_smaller_chunk_size():
     assert chunk_size_seconds_for_platform("granicus") == 300
 
 
-def test_other_platforms_keep_the_default_chunk_size():
+def test_granicus_timeout_constraint_ignores_memory_constrained():
+    """Granicus's 300s is about the 120s ffmpeg subprocess timeout, which
+    binds wherever the fetch runs -- so opting out of the memory
+    constraint must not widen it back to a size that times out."""
+    assert chunk_size_seconds_for_platform("granicus", memory_constrained=False) == 300
+
+
+def test_other_platforms_get_the_worker_safe_default():
     for platform in ("civicclerk", "escribe", "youtube", "unknown", ""):
-        assert chunk_size_seconds_for_platform(platform) == 900
+        assert chunk_size_seconds_for_platform(platform) == 450
+
+
+def test_memory_constrained_defaults_to_true():
+    """The default has to be the SAFE one: every job-creation path that
+    feeds the cloud worker (app/main.py, worker/main.py, and
+    scripts/bulk_queue_transcription_backlog.py, which only writes queue
+    rows the worker later executes) relies on not having to pass this."""
+    assert chunk_size_seconds_for_platform(
+        "civicclerk"
+    ) == chunk_size_seconds_for_platform("civicclerk", memory_constrained=True)
+
+
+def test_unconstrained_callers_keep_the_larger_default():
+    """scripts/transcribe_backlog_locally.py runs Whisper on a Mac, not
+    under the 2GB ceiling, so it keeps 900s and its original ffmpeg call
+    count per meeting."""
+    for platform in ("civicclerk", "escribe", "youtube", "unknown", ""):
+        assert (
+            chunk_size_seconds_for_platform(platform, memory_constrained=False) == 900
+        )
 
 
 # --- probe_multi_clip_chunk_plan() (WO-79) ----------------------------------
