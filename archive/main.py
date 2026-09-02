@@ -3,7 +3,7 @@ import os
 import secrets
 import time
 from contextlib import asynccontextmanager
-from datetime import timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Set
 from urllib.parse import quote
@@ -554,6 +554,72 @@ async def internal_all_page_urls(authorization: Optional[str] = Header(None)):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     return {"pages": await crud.list_all_page_urls()}
+
+
+@app.get("/internal/export/pages")
+async def internal_export_pages(
+    authorization: Optional[str] = Header(None),
+    after_id: int = 0,
+    limit: int = 200,
+    include_segments: bool = False,
+    created_after: Optional[str] = None,
+    has_transcript: Optional[str] = None,
+    ids: Optional[str] = None,
+):
+    """Read-only, keyset-paginated export of archived pages (metadata +
+    light version summaries; the default version's segments only with
+    `include_segments=true`) -- WO-93, the single bulk-read endpoint the
+    data-product sample exports use so production is only ever read over
+    HTTP (see crud.list_pages_for_export()'s docstring for the shape and
+    the pagination contract). Same 404-not-401 token posture as every
+    other /internal/* route. `limit` is capped at 500 without segments and
+    100 with them; `created_after` is ISO-8601 (a bare date means
+    midnight UTC); `has_transcript` is the same tolerant true/false string
+    /meetings accepts; `ids` is a comma-separated list of page ids (at
+    most 100) to restrict to. Response: {"pages": [...], "next_after_id":
+    int|null} -- pass next_after_id back as after_id until it comes back
+    null.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    since = None
+    if created_after:
+        try:
+            since = datetime.fromisoformat(created_after)
+        except ValueError:
+            return JSONResponse(
+                {"detail": "created_after must be an ISO-8601 date or datetime"},
+                status_code=400,
+            )
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+    id_filter = None
+    if ids is not None:
+        try:
+            id_filter = sorted(_parse_id_filter(ids) or set())
+        except ValueError:
+            return JSONResponse(
+                {"detail": "ids must be a comma-separated list of integers"},
+                status_code=400,
+            )
+        if len(id_filter) > 100:
+            return JSONResponse(
+                {"detail": "ids accepts at most 100 page ids per request"},
+                status_code=400,
+            )
+    cap = 100 if include_segments else 500
+    limit = max(1, min(limit, cap))
+    pages = await crud.list_pages_for_export(
+        after_id=max(0, after_id),
+        limit=limit,
+        include_segments=include_segments,
+        created_after=since,
+        has_transcript=_parse_optional_bool(has_transcript),
+        ids=id_filter,
+    )
+    next_after_id = pages[-1]["id"] if len(pages) == limit else None
+    return {"pages": pages, "next_after_id": next_after_id, "limit": limit}
 
 
 # The home-page payload, cached in-process. This is the busiest page on
