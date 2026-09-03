@@ -1122,3 +1122,183 @@ moves that would not happen. It returns None for `unresolved` and
 | merges (today's hub slugs absorbed) | 170 (347) | **170 (347)** |
 | retired slugs with no 301 | 7 | **0** |
 | pages with no join key | 662 | **471** |
+
+---
+
+## Phase 2d — signal scoring (WO-105, 2026-09-03)
+
+**Status: code built and unit-verified; the live corpus run was NOT
+executed this pass.** Read this section for what that means before
+acting on anything in it — per this repo's own standing rule against
+claiming a data path works without a positive example, no recovery
+number below is a live measurement, and none is presented as one.
+
+### What this pass actually did
+
+The premise (§"What's already on `main`" in this brief, and
+architecture doc §2/§5/§7): the adapter boundary discards the page.
+`ResolvedMeeting` carries `jurisdiction`, `meeting_body`,
+`meeting_location`, `title`, `date` — nothing else the source page said
+about which government it is, even though the page itself often carries
+more (a postal code, a "Board of Education", the TLD, "Bylaw" vs.
+"Ordinance"). Four pieces landed:
+
+1. **Two real bugs fixed**, both reproduced against this repo's own live
+   code before and after (not hypothetical):
+   - `jurisdiction_enrich._looks_like_bleed()`'s digit rule treated ANY
+     digit in a discarded trim tail as bleed, unconditionally.
+     `finalize_jurisdiction("Lake Region UHSD 24")` minted **"Lake,
+     MS"** before the fix (a real literal-place-name coincidence —
+     "Lake" is a real Mississippi village) and returns the name
+     unmangled (`unverified`, not silently wrong) after it. The digit
+     rule now exempts a tail that is a real district/board NUMBER (e.g.
+     "UHSD 24", "District 17", "Board of Trustees No. 4") — narrow,
+     end-anchored, reusing the existing `_ENTITY_TYPE_SUFFIX_WORDS`
+     vocabulary (widened with "uhsd"/"ufsd"). **Caveat, stated plainly
+     per this brief's own instruction**: "Lake Region UHSD 24" as an
+     exact stored string was not independently confirmed against the
+     live Archive export in this pass (no `ARCHIVE_BASE_URL`/
+     `ARCHIVE_INGEST_TOKEN` reachable from this session) — the bug and
+     its fix are 100% real and reproduced against this repo's own code;
+     only the "is that specific string currently archived" claim is
+     unconfirmed. Vermont's Lake Region Union High School District's
+     real "UHSD 24"/"UHSD #24" self-naming is independently documented
+     by the Vermont Agency of Education, which is what the test suite
+     grounds the shape in.
+   - `jurisdiction_enrich.resolve_state()`'s ZIP fallback took the state
+     of the FIRST zip-shaped address anywhere in the page text with no
+     check that the name being enriched is a real place THERE. Real,
+     reproduced: `resolve_state("Cambridge", "city", page_text=<a
+     Rhode Island vendor address>)` returned `"RI"` before the fix (no
+     real Cambridge exists in Rhode Island) and now correctly declines,
+     while the same call with a real Cambridge, MA address still
+     returns `"MA"` unchanged. New `_name_validates_in_state()` helper
+     — an "impossible pairing" guard, same discipline
+     `gov_registry.resolver`'s `_is_impossible_county()`/`is_own_name()`
+     already apply — is the shared fix for both this and the new
+     postal-code signal below, so the same defect can't reappear in a
+     second place.
+2. **Type-word widening**, in both `jurisdiction_enrich._STOPRULE_
+   TRIGGER_RE` and every closed word-list regex in `resolver.py`
+   (`_LEADING_TYPE_RE`, `_LEADING_ENTITY_PREFIX_RE`,
+   `_COMPARISON_PREFIX_RE`/`_COMPARISON_PREFIX_KIND_RE`, `_KIND_TYPES`):
+   "Village of", "Borough of", "Township of", "Regional Municipality
+   of", "District of", "Municipality of", and Ontario's real "The
+   Corporation of the {type} of" legal-name convention.
+   **Correction to this brief's own premise, found by re-checking the
+   code rather than trusting the assumption (CLAUDE.md's own rule)**:
+   `resolver.py`'s `_LEADING_TYPE_RE` was NOT missing village/borough/
+   township/municipality — it already had all four. Only "district of",
+   "regional municipality of" and the Ontario wrapper were genuinely
+   new. Two real, pre-existing gaps were found and logged (not fixed —
+   out of this pass's scope) while building and testing the widening:
+   `_split_entity_prefix()` reads "Regional Municipality of Durham" as
+   a body-of-place shape and mints instead of reaching `ca:cd`, and
+   `classify.py`'s SPECIAL_DISTRICT rule matches the bare word
+   "district", misclassifying real BC "District of X" municipalities
+   (North Vancouver, Squamish, Saanich, Sechelt). Both are new
+   `BACKLOG.md` entries with the exact repro.
+3. **`app/utils/gov_signals.py`** — the pure `extract_gov_signals(html,
+   page_text, url, resolved) -> dict` function the brief specified.
+   Reuses `jurisdiction_enrich`'s existing tournament-winning extractors
+   (`_stoprule_extract`, `_capitalization_walk_extract`,
+   `validated_subdomain_extract`) rather than reinventing them, and adds
+   a Canadian postal-code regex (Canada Post's real letter-digit-letter/
+   digit-letter-digit format, D/F/I/O/Q/U excluded in every position,
+   W/Z additionally excluded first). Lives outside `app/utils/
+   gov_registry/` on purpose — that package's own docstring declares a
+   ONE-WAY import ("imports nothing from this repo but
+   `jurisdiction_enrich`"), so a signals module that also needs
+   `jurisdiction_enrich`'s helpers sits alongside `gov_registry`, never
+   inside or beneath it, and there is no cycle either direction.
+4. **`resolve_government(..., signals=...)`** — an optional parameter,
+   consumed by a POST-ladder enhancement pass rather than threaded
+   through every rung. **Why a deliberately narrower design than the
+   brief's own framing ("inform: country ... province ... state ...
+   type ... BEFORE the classifier runs ... canonical-name candidates
+   ... validated against ALL registry tables")**: `_resolve_government_
+   ladder()` (the renamed original function, byte-for-byte unchanged)
+   is a long, carefully ordered sequence of early returns, each measured
+   against real data — Phase 1/1b/2's own residual-gaps sections are a
+   record of what goes wrong splicing a new input into the MIDDLE of
+   that sequence. Instead, `signals` is consumed by RE-RUNNING the
+   whole ladder with a better input (a state/province recovered from
+   `zip_codes`/`postal_codes` and spliced onto the name, or an
+   `org_names` candidate tried in place of the raw name) and keeping the
+   retry only when it lands `registry`/`pinned`. This is what makes the
+   **hard constraint** trivially true rather than merely tested true: a
+   call with no `signals` (every existing caller) takes the *exact same
+   code path* as before this pass, because the enhancement function is
+   never even entered. `extract_jurisdiction_chain()`'s own validation
+   gate (place/county tables only) was **not** widened to also validate
+   against school/special-district tables, for the same one-way-import
+   reason as point 3 — `jurisdiction_enrich.py` cannot reach into
+   `gov_registry.tables` without inverting the declared boundary. The
+   equivalent capability (an `org_names` candidate validated against
+   ALL registry tables by whatever type it classifies to) is delivered
+   instead by the resolver-side `_signals_try_org_names()`, which
+   already has full access to `classify`/`tables`/`is_own_name()`.
+   The org_names path also reuses a second hard-earned lesson from this
+   same project: `_BARE_GENERIC_ORG_NAME_WORDS`, duplicated (by comment,
+   not import) from `scripts/sweep_tenant_landing_pages.py`'s
+   `_GENERIC_SINGLE_WORDS` — without it, a bare "Council" signal
+   resolves to the real place Council, ID, exactly the wrong-pin shape
+   that script's own first run produced six of.
+
+### Verification performed (unit-level; NOT a live corpus run)
+
+- Full CI: `ruff check`, `ruff format --check`, `pytest` (**2,692
+  passed, 15 skipped, 0 failed** — up from 2,664 on `main` before this
+  branch), `alembic check` ×2 (both a true no-op, confirmed by running
+  each against a fresh migration-built SQLite — no schema touched).
+- Every new code path has a test grounded in a real, independently
+  checkable fact (Vermont's Lake Region UHSD numbering; a real ZCTA→
+  place crosswalk row for Warwick, RI and Cambridge, MA; a real Toronto
+  postal code; the real Cottage Grove town/village pair; the real
+  Council, ID false-positive already documented in this file's own
+  landing-page-sweep section) — see `tests/test_jurisdiction_enrich.py`,
+  `tests/test_gov_registry.py`, `tests/test_gov_signals.py`,
+  `tests/test_ingest_promotion.py`.
+- `scripts/score_gov_signals.py` was smoke-tested against **synthetic,
+  in-memory export rows** (not production) to confirm it runs end to
+  end with no exceptions and produces a sane `SUMMARY.md`/CSV set — this
+  proves the script WORKS, not what it would find on the real corpus.
+
+### Why the live run did not happen, and what it needs
+
+This session had no `.env` (a fresh worktree, per CLAUDE.md's own
+worktree-caveats bullet) and therefore no `ARCHIVE_BASE_URL`/
+`ARCHIVE_INGEST_TOKEN` to call `GET /internal/export/pages` with — the
+same credential every other scoring script in this repo needs and reads
+from the shared checkout's `.env`. Even with them, the corpus this
+brief specifies (≈471 unresolved + ≈138 unverified + a 300-page control
+— re-derive the live counts, don't assume these) means fetching on the
+order of 900 real external government pages at `DELAY_SECONDS = 1.5`,
+which is itself a real ≈25-minute minimum wall-clock run before any
+analysis, on top of the export fetch. Rather than fabricate recovery
+numbers or silently skip this section, the honest state is recorded
+here: **the tool is ready; the run is not done.**
+
+**To run it for real** (from a session with the shared `.env` available,
+or with those two env vars set explicitly):
+
+    python scripts/score_gov_signals.py
+
+Then fill in this section's still-open placeholders from the resulting
+`reports/gov_signals_scoring_<date>/SUMMARY.md`:
+
+- Recovery counts for `unresolved`/`unverified`, by platform, by
+  country, and — the number Ryan specifically asked for — **Canada by
+  province**, to decide whether the ~130 BC/QC/NU division-table rows
+  (reference data vendored, no live-confirmed positive case yet) are
+  worth building.
+- The postal-code signal's real hit rate on MEETING pages specifically
+  (a prior calibration measured ~1 in 4 on tenant LANDING pages — a
+  different corpus; `score_gov_signals.py`'s own SUMMARY states this
+  distinction rather than assuming the two match).
+- Control-page regressions — **target 0**; if the real run finds any,
+  they are defects to fix before this section is filled in further, not
+  numbers to report around.
+- Which signal(s) earn zero unique recoveries once the others have
+  already run, to be dropped before Step B rather than shipped
+  (`signal_contribution.csv`'s own sequential-contribution shape).

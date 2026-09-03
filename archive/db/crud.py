@@ -34,6 +34,7 @@ from app.utils.gov_registry import (
     TIER_REGISTRY,
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
+    page_hints_for,
     resolve_government,
 )
 from app.utils.gov_registry import display_name as gov_display_name
@@ -635,7 +636,9 @@ def _display_jurisdiction(gov, finalized: Optional[str]) -> Optional[str]:
     return finalized
 
 
-async def _resolve_page_government(session, raw_jurisdiction, source_url_normalized):
+async def _resolve_page_government(
+    session, raw_jurisdiction, source_url_normalized, platform=None, external_id=None
+):
     """`resolve_government()` for one page, with the one input it cannot
     see for itself.
 
@@ -645,6 +648,14 @@ async def _resolve_page_government(session, raw_jurisdiction, source_url_normali
     looked up and the resolve repeated. A page that already keyed to a
     national table or a pin is never re-resolved, so the common path
     costs exactly one pure, in-process call and no extra query.
+
+    `platform`/`external_id` -- WO-105: before this, nothing anywhere
+    ever built a `page_hints` dict, so `resolve_government()`'s `match=
+    key=value` discriminator was unreachable in production regardless of
+    what any `tenant_overrides.csv` row said (BACKLOG.md's "`page_hints`
+    argument is never passed by anything" entry). Both are already real
+    `MeetingPage` columns, so `page_hints_for()` builds the dict with no
+    schema change and no extra query.
     """
     parsed = urlparse(source_url_normalized)
     host = (parsed.netloc or "").lower().split(":")[0]
@@ -652,7 +663,10 @@ async def _resolve_page_government(session, raw_jurisdiction, source_url_normali
     # discriminated by a path prefix or a query parameter (`view_id=5`),
     # and `_match_override()` looks for either inside this string.
     path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-    match = resolve_government(raw_jurisdiction, tenant_host=host, path=path)
+    hints = page_hints_for(platform, external_id)
+    match = resolve_government(
+        raw_jurisdiction, tenant_host=host, path=path, page_hints=hints
+    )
     if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
         dominant = await _tenant_dominant_gov_id(session, host)
         if dominant:
@@ -660,6 +674,7 @@ async def _resolve_page_government(session, raw_jurisdiction, source_url_normali
                 raw_jurisdiction,
                 tenant_host=host,
                 path=path,
+                page_hints=hints,
                 tenant_gov_id=dominant,
             )
     return match
@@ -712,6 +727,8 @@ async def _find_or_create_page(
         session,
         normalize_state_suffix(payload.get("jurisdiction")),
         source_url_normalized,
+        platform=platform,
+        external_id=external_id,
     )
 
     page = await _find_existing_page(

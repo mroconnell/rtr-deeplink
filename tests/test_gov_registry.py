@@ -251,6 +251,102 @@ def test_cottage_grove_town_and_village_are_two_governments():
     assert town.hub_slug != village.hub_slug
 
 
+# --- WO-105, 2026-09-03: type-word widening -----------------------------
+#
+# `_LEADING_TYPE_RE`/`_COMPARISON_PREFIX_RE`/`_COMPARISON_PREFIX_KIND_RE`/
+# `_LEADING_ENTITY_PREFIX_RE` widened to also recognize "Village of",
+# "Borough of", "Township of", "Regional Municipality of", "District of",
+# "Municipality of", and Ontario's real "The Corporation of the {type}
+# of" legal-name convention. Note: this repo's own brief for this pass
+# claimed `_LEADING_TYPE_RE` was missing village/borough/township/
+# municipality, matching jurisdiction_enrich.py's narrower
+# `_STOPRULE_TRIGGER_RE` -- re-checking the actual code before touching
+# it (per CLAUDE.md's own "verify a backlog entry's claims" rule) showed
+# `_LEADING_TYPE_RE` already had all four; only "district of", "regional
+# municipality of" and the "Corporation of the" wrapper were genuinely
+# missing. The tests below cover what actually changed.
+
+
+def test_corporation_of_the_wrapper_resolves_the_same_real_cottage_grove_pair():
+    # Same real Wisconsin Town-of/Village-of pair as the test above, with
+    # Ontario's real "The Corporation of the {type} of" legal-name prefix
+    # in front -- confirms the wrapper is stripped down to the true type
+    # word rather than swallowing or confusing it.
+    town = resolve("The Corporation of the Town of Cottage Grove, WI")
+    village = resolve("The Corporation of the Village of Cottage Grove, WI")
+    assert town.gov_id == "us:cousub:5502517200"
+    assert village.gov_id == "us:place:5517175"
+    assert town.gov_id != village.gov_id
+
+
+def test_leading_type_word_recognizes_the_newly_widened_words():
+    # Direct unit test of the helper `resolve_government()`'s type-
+    # preference rung depends on.
+    assert resolver._leading_type_word("Village of Cottage Grove") == "village"
+    assert resolver._leading_type_word("Borough of Somerville") == "borough"
+    assert resolver._leading_type_word("Township of King") == "township"
+    assert resolver._leading_type_word("District of North Vancouver") == "district"
+    assert (
+        resolver._leading_type_word("Regional Municipality of Durham")
+        == "regional municipality"
+    )
+    assert (
+        resolver._leading_type_word("The Corporation of the City of Toronto") == "city"
+    )
+    assert (
+        resolver._leading_type_word("The Corporation of the Township of King")
+        == "township"
+    )
+    # Unaffected: a name with no leading type word at all still returns "".
+    assert resolver._leading_type_word("Cottage Grove") == ""
+
+
+def test_regional_municipality_of_durham_type_word_widened_but_resolution_unchanged():
+    # Honest, current-state test -- NOT what was originally expected here.
+    # "Region of Peel, ON" (parametrized above) resolves correctly to
+    # `ca:cd`. "Regional Municipality of Durham, ON" does not, and this
+    # is a PRE-EXISTING `jurisdiction_enrich.finalize_jurisdiction()`
+    # behavior, unrelated to and unchanged by this pass's widening (this
+    # test never touches `_LEADING_TYPE_RE`/`_COMPARISON_PREFIX_RE`,
+    # confirmed by reproducing it directly against `finalize_jurisdiction()`
+    # alone): `_split_entity_prefix()` reads "Regional Municipality of
+    # Durham" as an "<Entity> of <Jurisdiction>" shape (the same pattern
+    # built for "Housing Authority of the County of Santa Clara") and
+    # splits it into meeting_body="Regional Municipality",
+    # jurisdiction="Durham, ON" -- but unlike a housing authority, "Regional
+    # Municipality of X" IS the government's own identity, not a body
+    # within "Durham". By the time rung 3 classifies, the entity prefix
+    # is already gone, so "Durham" alone classifies as `other` and mints
+    # `rtr:ca:on:durham` instead of reaching `ca:cd`. A new, separate
+    # BACKLOG.md entry logs this (out of scope for this pass -- fixing it
+    # means teaching `_split_entity_prefix()`/`_ENTITY_OF_PLACE_RE` to
+    # recognize "Regional Municipality"/"Region"/"County" as
+    # identity-carrying prefixes, not body prefixes, which is a
+    # `jurisdiction_enrich.py` change well beyond a regex word-list
+    # widening). Pinned here as found, not silently worked around.
+    match = resolve("Regional Municipality of Durham, ON")
+    assert match.tier == resolver.TIER_UNVERIFIED
+    assert match.gov_id == "rtr:ca:on:durham"
+    assert match.meeting_body == "Regional Municipality"
+
+
+def test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved():
+    # Honest, current-state test, not an aspirational one: "District of
+    # North Vancouver" is a real, current BC municipality, and the
+    # widened `_leading_type_word()` now correctly reads its type word as
+    # "district" (see above). It still does NOT resolve to its real
+    # `ca:csd` row today, because `classify.py`'s SPECIAL_DISTRICT rule
+    # matches the bare word "district" before the municipality rule ever
+    # runs -- a real, separate, already-logged gap (BACKLOG.md), out of
+    # scope for this pass. Pinned here so a future fix to that gap has a
+    # test that starts failing (a signal to update this test, not a
+    # silent behavior change) rather than one that was never written.
+    match = resolve("District of North Vancouver, BC")
+    assert match.tier == resolver.TIER_UNVERIFIED
+    assert match.gov_type == classify.SPECIAL_DISTRICT
+    assert match.gov_id == "rtr:ca:bc:north-vancouver"
+
+
 # --- The namespaces, one test each -------------------------------------
 
 
@@ -1565,3 +1661,99 @@ def test_a_telvue_org_token_is_extracted_as_the_match_value():
     )
     assert module._telvue_match(url) == "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"
     assert module._telvue_match("https://pub-x.escribemeetings.com/Meeting.aspx") == ""
+
+
+# --- WO-105, 2026-09-03: `resolve_government(..., signals=...)` --------
+#
+# The `extract_gov_signals()` shape (`app/utils/gov_signals.py`), consumed
+# by a post-ladder enhancement pass that only ever fires when `signals`
+# is explicitly passed AND the plain ladder's own answer was
+# `unverified`/`unresolved`/`blank` -- see resolver.py's own WO-105
+# comment block for the full design/hard-constraint reasoning. Every
+# "control" test below re-confirms that an ALREADY-solid resolution
+# (`registry`/`pinned`) is never disturbed, however wrong the signals
+# passed alongside it are.
+
+
+def test_signals_recover_a_missing_state_from_a_real_zip():
+    # "City of Cambridge" alone has no state and is genuinely ambiguous
+    # (real in IA/ID/IL/KS/KY/MA/MD/MN/NE/NY/OH/VT/WI -- same fact as the
+    # Bug 2 tests in tests/test_jurisdiction_enrich.py) -- unresolved with
+    # no signals. 02138 is Cambridge, MA's own real ZCTA.
+    assert resolve("City of Cambridge").tier == resolver.TIER_UNRESOLVED
+    match = resolve("City of Cambridge", signals={"zip_codes": ["02138"]})
+    assert match.gov_id == "us:place:2511000"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_signals_zip_recovery_declines_an_impossible_pairing():
+    # Same "impossible pairing" guard as Bug 2's `resolve_state()` fix,
+    # reused via `_name_validates_in_state()`: 02818 is Warwick city, RI's
+    # real ZCTA, and Rhode Island has no Cambridge at all, so this ZIP
+    # must not hijack the state.
+    match = resolve("City of Cambridge", signals={"zip_codes": ["02818"]})
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert not match.gov_id
+
+
+def test_signals_recover_a_missing_province_from_a_real_postal_code():
+    # "City of Toronto" alone has no province. M5H 2N2 is a real Toronto
+    # postal code (Old City Hall, a genuinely public address).
+    assert resolve("City of Toronto").tier == resolver.TIER_UNRESOLVED
+    match = resolve("City of Toronto", signals={"postal_codes": ["M5H 2N2"]})
+    assert match.gov_id == "ca:csd:3520005"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_signals_org_names_recovers_a_real_government_from_a_noisy_stored_string():
+    # "Meeting Info" alone names nothing. A real org_names candidate
+    # (e.g. the kind `_stoprule_extract()` would find in real page text)
+    # resolves it, the same acceptance test (`is_own_name()`) the landing-
+    # page sweep already relies on.
+    assert resolve("Meeting Info").tier == resolver.TIER_UNRESOLVED
+    match = resolve(
+        "Meeting Info",
+        signals={"org_names": [{"value": "City of Fresno, CA", "rule": "stoprule"}]},
+    )
+    assert match.gov_id == "us:place:0627000"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_signals_org_names_declines_a_bare_generic_word():
+    # The exact real failure JURISDICTION_METADATA_PLAN.md's landing-page
+    # sweep documents from its own first, wrong-pin-producing run:
+    # "Council" alone is a real place (Council, ID) but is never evidence
+    # about a DIFFERENT government -- `_BARE_GENERIC_ORG_NAME_WORDS`
+    # rejects it as a candidate before ever calling `is_own_name()`.
+    match = resolve(
+        "Meeting Info",
+        signals={"org_names": [{"value": "Council", "rule": "capitalization_walk"}]},
+    )
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert not match.gov_id
+
+
+def test_signals_never_change_an_already_solid_resolution():
+    # The hard constraint, directly: a real, already-correctly-resolving
+    # name must come back byte-identical whether or not (wrong, noisy)
+    # signals ride along -- the enhancement pass is skipped entirely
+    # whenever the plain ladder's own answer is already registry/pinned.
+    plain = resolve("City of Fresno, CA")
+    with_bogus_signals = resolve(
+        "City of Fresno, CA",
+        signals={
+            "org_names": [{"value": "Bogus County, TX", "rule": "stoprule"}],
+            "zip_codes": ["99999"],
+            "postal_codes": ["Z9Z 9Z9"],
+        },
+    )
+    assert with_bogus_signals == plain
+    assert plain.tier == resolver.TIER_REGISTRY
+
+
+def test_signals_default_is_none_and_changes_nothing():
+    # `signals=None` (the default, and what every real caller other than
+    # `scripts/score_gov_signals.py` passes) must be indistinguishable
+    # from not having the parameter at all.
+    assert resolve("City of Cambridge", signals=None) == resolve("City of Cambridge")
+    assert resolve("City of Cambridge", signals={}) == resolve("City of Cambridge")

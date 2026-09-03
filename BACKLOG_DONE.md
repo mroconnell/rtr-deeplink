@@ -1,5 +1,39 @@
 # Backlog — done
 
+## `resolve_government()`'s `page_hints` argument is now actually passed [Done 2026-09-03]
+
+The narrow dead-code fix WO-105's brief called for, done first and
+separately from the rest of that pass: `_match_override()` could already
+satisfy a `tenant_overrides.csv` `match` discriminator via a `page_hints`
+entry, but nothing ever built or passed one — `crud._resolve_page_
+government()` and `scripts/backfill_gov_id.py` both called
+`resolve_government()` with no `page_hints` at all, so that third match
+path was dead however a pin was written. WO-103 nearly shipped 46 pins
+that depended on it.
+
+Fixed with no schema change: `platform`/`external_id` are already real
+`MeetingPage` columns, available at both call sites. New
+`gov_registry.page_hints_for(platform, external_id)` builds `{"platform":
+..., "external_id": ...}`, threaded through both `resolve_government()`
+calls in `_resolve_page_government()` (`archive/db/crud.py`) and both
+loops in `scripts/backfill_gov_id.py` (its `select()` now also pulls
+`MeetingPage.platform`/`MeetingPage.external_id`). Verified end to end,
+not just at the resolver: `tests/test_ingest_promotion.py::
+test_ingest_resolution_page_hints_reach_a_match_discriminator_pin` runs
+the exact Cottage Grove-shaped two-government-one-host case through
+`crud.ingest_resolution()`, discriminated by `platform` rather than a
+query parameter, and gets the right government both times.
+
+**Residual, deliberately not built this pass**: a `channel` hint for a
+shared YouTube host (the other real multi-government-tenant shape
+architecture doc §1.5 names) would need a cheap, no-extra-fetch
+video-id→channel-id lookup, and the only thing this repo has today
+(`app/platforms/youtube_channel.py`) is a full, network-fetching channel
+listing — not a reverse lookup. Left out rather than adding a fetch to
+the ingest/backfill hot path; STATE_gov_identity.md's "Loose ends"
+section already tracks "YouTube shared hosts need a per-channel method"
+as the umbrella item this would close.
+
 ## PrimeGov's `videoUrl` regex missed a real `?feature=share` suffix [Done 2026-09-03]
 
 `app/platforms/primegov.py`'s `_VIDEO_URL_VAR_RE` required the closing `"`

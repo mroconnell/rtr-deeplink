@@ -120,7 +120,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (63)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -151,11 +151,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (13)
+  Jurisdiction extraction & backfill  (14)
+    `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
+    `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
     `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
     `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
-    `[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints`…
     `[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real…
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
@@ -1131,6 +1132,82 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
 
+- **`[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of X"` split off as a body instead of resolving as the government.**
+  - **Issue**: `jurisdiction_enrich._split_entity_prefix()` reads
+    "Regional Municipality of Durham" as the same "`<Entity> of
+    <Jurisdiction>`" shape built for "Housing Authority of the County of
+    Santa Clara" — splitting it into `meeting_body="Regional
+    Municipality"`, `jurisdiction="Durham"`. For a housing authority that
+    is correct (D2: it has its own board/statute/budget, "Durham" is a
+    different question). For "Regional Municipality of X" it is wrong:
+    that phrase IS the government's own identity (`classify.
+    classify_government_type()` already returns `county` for it via
+    `_CA_UPPER_TIER_RE`), not a body within a place called "Durham". By
+    the time `resolve_government()`'s rung 3 classifies, the entity
+    prefix is already gone from the cleaned name, so "Durham" alone
+    classifies `other` and mints `rtr:ca:on:durham` instead of reaching
+    `ca:cd:3521`. "Region of Peel"/"County of X" do NOT have this bug —
+    only the longer "Regional Municipality of" phrasing triggers the
+    split. Confirmed live against this repo's own code 2026-09-03 (not a
+    hypothetical): `resolve_government("Regional Municipality of Durham,
+    ON")` → `tier=unverified`, `gov_id=rtr:ca:on:durham`.
+  - **Impact**: at least one real, named example (Durham) mints instead
+    of keying to its census division — a fragmentation of exactly the
+    shape Phase 1b/2 spent most of their effort closing. Scope beyond
+    Durham not yet measured (needs a live corpus check for how many
+    stored Ontario/other-province jurisdictions use this longer phrase).
+  - **Next action**: teach `_split_entity_prefix()`/`classify.
+    _ENTITY_OF_PLACE_RE` (or a guard ahead of them) to recognize
+    "Regional Municipality"/"Region"/"County" as IDENTITY-carrying
+    prefixes for a Canadian upper-tier name, not body-carrying ones — the
+    same distinction `classify._CA_UPPER_TIER_RE` already draws, just
+    applied before the entity-prefix split runs instead of after.
+  - **Constraint**: don't weaken the housing-authority case this
+    mechanism exists for — the fix needs to distinguish "this entity
+    phrase names an upper-tier Canadian government" from "this entity
+    phrase names a body", not just special-case the word "Regional".
+  - **History**: WO-105 (2026-09-03), found writing
+    `tests/test_gov_registry.py::
+    test_regional_municipality_of_durham_type_word_widened_but_resolution_unchanged`
+    while widening `resolver.py`'s type-word regexes — the widening
+    itself does not cause or fix this, it is pre-existing on `main`.
+
+- **`[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule matches the bare word "district", misclassifying real BC "District of X" municipalities.**
+  - **Issue**: `classify._RULES`' SPECIAL_DISTRICT pattern includes a bare
+    `\bdistrict\b` alternative. District of North Vancouver, District of
+    Squamish, District of Saanich and District of Sechelt are all real,
+    current BC municipalities (a general-purpose government, StatCan CSD
+    type `DM`), not special districts — but `classify_government_type()`
+    files them SPECIAL_DISTRICT before `_CA_UPPER_TIER_RE`/the
+    municipality rule ever gets a look, the same shape as the already-
+    fixed "wastewater" (§1.4) and "port" (Phase 2's four-defects section)
+    negative-lookahead gaps.
+  - **Impact**: a real "District of X" name mints an `rtr:` id under
+    NON_PLACE_TYPES routing instead of reaching `ca:csd`'s real row for
+    it — confirmed live 2026-09-03:
+    `classify.classify_government_type("District of North Vancouver",
+    country="ca")` → `special_district`. `resolver.py`'s type-word
+    widening this same pass (WO-105) now correctly extracts "district" as
+    the raw name's own type word regardless, so the widening itself does
+    not make this worse, but it also can't fix it — rung 3 (type
+    classification) runs before `_leading_type_word()`'s result is ever
+    consulted, and it decides the branch.
+  - **Next action**: add a negative lookahead (or an upper-tier check
+    ahead of the special_district rule, mirroring `_CA_UPPER_TIER_RE`'s
+    own early check) so "district" only fires the special-district rule
+    when NOT preceded by "of" naming a Census/StatCan place — i.e.
+    "District of X" should classify the same way "Regional Municipality
+    of X"/"Region of X" already correctly do, not the way "X Water
+    District" should.
+  - **Constraint**: don't lose real special districts that DO use
+    "District of" phrasing, if any exist (not yet checked) — ground the
+    fix in a real confirmed example the way the wastewater/port fixes
+    were, not a blind exemption.
+  - **History**: WO-105 (2026-09-03), found building the type-word
+    widening; pinned as a known, current-state gap by
+    `tests/test_gov_registry.py::
+    test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved`.
+
 - **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
   - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
     Canadian and one American: `pub-richmond` is Richmond BC *and*
@@ -1245,30 +1322,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     and the sweep now skips the four shared YouTube netlocs rather than
     every page whose video is on YouTube, so hosts like
     `www.townofrossca.gov` are in its scope for the first time.
-
-- **`[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints` argument is never passed by anything.**
-  - **Issue**: `_match_override()` satisfies a `tenant_overrides.csv`
-    `match` three ways — the page's path, a `key=value` in its query, or
-    a `page_hints` entry. The first two work. The third is dead: neither
-    `crud._resolve_page_government()` nor `scripts/backfill_gov_id.py`
-    builds a `page_hints` dict, so a `match` value that is not in the URL
-    can never fire.
-  - **Impact**: a pin written against a discriminator the URL does not
-    carry is **silently inert** — no error, no log line, and the worklist
-    row reads as settled while its pages stay `unresolved`. WO-103 nearly
-    shipped 46 of them (YouTube channel handles) and works around it by
-    expanding one channel decision into one pin per video id instead.
-  - **Next action**: decide whether to pass real hints (the resolver
-    payload already knows the platform, the external id, and for YouTube
-    the channel once something looks it up) or to delete the branch. Do
-    not leave it as is — a discriminator that fails open is worse than
-    one that does not exist.
-  - **Constraint**: whatever is passed must be available at BOTH call
-    sites, or the backfill and live ingest will disagree about which pin
-    applies to the same page.
-  - **History**: WO-103 (2026-09-03), found while building
-    `scripts/apply_pin_worklist.py`; `_match_override()` in
-    `app/utils/gov_registry/resolver.py`.
 
 - **`[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real multi-government tenant and still has no `match` discriminator.**
   - **Issue**: it is listed under El Cerrito **and** San Pablo in
