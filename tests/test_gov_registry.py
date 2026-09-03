@@ -1101,6 +1101,167 @@ def test_the_county_itself_is_not_shadowed_by_the_citys_alias():
     assert resolve("Boise County, ID").gov_id == "us:county:16015"
 
 
+# --- WO-100: the three defects found in the production dry run --------
+
+
+def test_a_machine_derived_pin_may_not_mint_a_government():
+    """`king.granicus.com` is the Metropolitan King County Council --
+    King County, WA. It carried `rtr:us:nc:king-county`, source
+    `auto_derived+inferred_unique_name`, built on rtr-discovery's wrong
+    `state_abbr=NC` for that host. Pinning to a national id is a claim a
+    table can check; pinning to an `rtr:` id invents an identity, and a
+    pin is the one tier that overrides a working extraction. Combining
+    two machine sources does not make one human one."""
+    assert registry._has_human_source("known_domains") is True
+    assert registry._has_human_source("architecture_doc_1_3") is True
+    assert registry._has_human_source("auto_derived") is False
+    assert registry._has_human_source("auto_derived+inferred_unique_name") is False
+    # ...and the loader drops such a row entirely.
+    for rows in registry.tenant_overrides().values():
+        for override in rows:
+            if override.gov_id.startswith("rtr:"):
+                assert registry._has_human_source(override.source), override
+
+
+def test_king_county_resolves_to_washington():
+    match = resolve("King County", "king.granicus.com")
+    assert match.gov_id == "us:county:53033"
+    assert match.gov_name == "King County, WA"
+
+
+def test_a_county_that_cannot_exist_is_never_minted():
+    """US counties are exhaustively enumerated, so a county-shaped name
+    with no such county in that state is a contradiction, not an unlisted
+    government."""
+    assert resolver._is_impossible_county("King County", "NC", "us") is True
+    assert resolver._is_impossible_county("King County", "WA", "us") is False
+    assert resolver._is_impossible_county("County of Nowhere", "CA", "us") is True
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        # Agencies that merely NAME their county, and both are real
+        # minted governments the §1.3 fixes depend on.
+        "Los Angeles County Metropolitan Transportation Authority",
+        "Tarrant County College District",
+        "Horry County Schools",
+    ],
+)
+def test_naming_a_county_is_not_being_one(name):
+    assert resolver._is_impossible_county(name, "CA", "us") is False
+
+
+def test_a_tenant_hint_ranks_below_a_subdomain_or_known_domain(monkeypatch):
+    """`tenant_hints.csv` is rtr-discovery's learned state and is the
+    weakest of the three signals -- it is what put NC on
+    `king.granicus.com`. A validated subdomain reading or a
+    `_KNOWN_DOMAINS` entry must win."""
+    monkeypatch.setattr(registry, "tenant_hints", lambda: {"x.granicus.com": "NC"})
+    monkeypatch.setattr(
+        resolver, "_validated_subdomain_hint_with_state", lambda h: ("X", "WA")
+    )
+    assert resolver._state_from_tenant("x.granicus.com")[0] == "WA"
+    monkeypatch.setattr(
+        resolver, "_validated_subdomain_hint_with_state", lambda h: None
+    )
+    assert resolver._state_from_tenant("x.granicus.com")[0] == "NC"
+
+
+# --- WO-100: a stateless name must be unique across ALL three tables ---
+
+
+def test_a_stateless_name_ambiguous_between_tables_is_unresolved():
+    """ "Town of Hillsborough" on `youtu.be` -- a shared host with no
+    tenant state -- became Hillsborough town, NEW HAMPSHIRE. Two
+    Hillsborough places (CA, NC), two county subdivisions (NH, NJ) and
+    two counties (FL, NH); the place table declined because it saw two,
+    the cousub table answered because "Town of" narrowed its two to one,
+    and nothing compared the six."""
+    assert resolve("Town of Hillsborough", "youtu.be").tier == resolver.TIER_UNRESOLVED
+    assert resolve("Oregon", "oregon.granicus.com").tier == resolver.TIER_UNRESOLVED
+
+
+@pytest.mark.parametrize(
+    "raw,host,expected",
+    [
+        ("City of Corona", "corona.granicus.com", "us:place:0616350"),
+        ("Town of Herndon", "herndon.granicus.com", "us:place:5136648"),
+        ("City of Burnsville", "burnsville.civicweb.net", "us:place:2708794"),
+        ("City of Palm Springs", "palmsprings.granicus.com", "us:place:0655254"),
+    ],
+)
+def test_the_type_word_still_settles_a_stateless_name(raw, host, expected):
+    """The cross-table count uses the raw name's own type word, exactly
+    as each table's lookup does. Counting without it looks stricter and
+    is simply wrong: measured over the 5,053-page export it declined 74
+    rows, and about 40 were right -- these among them, including a
+    documented three-slug merge (Herndon)."""
+    assert resolve(raw, host).gov_id == expected
+
+
+def test_a_place_and_its_own_county_are_not_a_dangerous_ambiguity():
+    """Counted by row rather than by STATE, the rule declined
+    "Milwaukee." -- a real stored string whose merge with "Milwaukee, WI"
+    is one of the documented Phase 1b wins. A place and a county sharing
+    a name in the SAME state put the page in that state either way, and
+    place-before-county already settles which. What goes wrong is the
+    wrong state."""
+    assert resolve("Milwaukee.").gov_id == resolve("Milwaukee, WI").gov_id
+    assert resolver._stateless_states("Milwaukee") == {"WI"}
+    assert len(resolver._stateless_states("Hillsborough")) > 1
+
+
+def test_a_curated_alias_counts_as_a_competing_stateless_candidate():
+    """Census names the California city "San Buenaventura (Ventura)
+    city", so the place table keys no "Ventura" in CA at all and a
+    stateless "City of Ventura" reached Ventura city, IOWA. One table hit
+    plus one curated assertion is two candidates."""
+    assert resolve("City of Ventura", "www.youtube.com").tier == (
+        resolver.TIER_UNRESOLVED
+    )
+
+
+@pytest.mark.parametrize(
+    "raw,host",
+    [("Ventura, CA", "cityofventura.granicus.com"), ("City of Ventura, CA", None)],
+)
+def test_both_spellings_of_ventura_reach_the_city(raw, host):
+    """Three answers for one government before this: the real
+    `cityofventura.granicus.com` page, stored as a bare "Ventura, CA",
+    resolved to Ventura COUNTY -- and an authoritative pin had frozen
+    that in place."""
+    assert resolve(raw, host).gov_id == "us:place:0665042"
+
+
+def test_the_county_itself_is_unaffected():
+    assert resolve("Ventura County, CA", "ventura.primegov.com").gov_id == (
+        "us:county:06111"
+    )
+
+
+# --- WO-100: an unresolved government has no hub -----------------------
+
+
+def test_an_unresolved_row_has_no_hub_slug():
+    """`GovernmentMatch.hub_slug` built a slug from the raw cleaned name
+    for tiers that have no identity: an unresolved "City of Las Vegas"
+    gave `city-of-las-vegas`, while the page actually lives at
+    `/j/las-vegas` -- `jurisdiction_hub_slug()` goes through
+    `format_jurisdiction_display()`, which strips a leading "City of ".
+    No page ever moved (crud falls back correctly), but both scripts read
+    this property, so the backfill's dry run and the scoring run credited
+    moves that would not happen."""
+    match = resolve("City of Las Vegas", "lasvegas.primegov.com")
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.hub_slug is None
+    assert resolve(None, "example.granicus.com").hub_slug is None
+
+
+def test_a_resolved_row_still_has_one():
+    assert resolve("City of Napa, CA", "napa.granicus.com").hub_slug == "napa-ca"
+
+
 # --- Phase 2: "nationally unique" has to mean both countries ----------
 
 

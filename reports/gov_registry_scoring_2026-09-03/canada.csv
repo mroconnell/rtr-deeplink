@@ -134,6 +134,7 @@ archive,Saugeenshores,ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
 archive,"Shelburne, ON",ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
 archive,"Tillsonburg, ON",ca:csd:3532004,yes,pub-tillsonburg.escribemeetings.com
 archive,"City of Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
+archive,Town of Bradford,,no,pub-bradfordwestgwillimbury.escribemeetings.com
 archive,"Courtenay, BC",ca:csd:5926010,yes,pub-courtenay.escribemeetings.com
 archive,H Psb,rtr:ca:on:hamilton-police-services-board,no,pub-hpsb.escribemeetings.com
 archive,Town of Orangeville,ca:csd:3522014,yes,pub-eastgarafraxa.escribemeetings.com
@@ -424,7 +425,6 @@ ledger,Kneehill County,ca:csd:4805041,yes,pub-kneehillcounty.escribemeetings.com
 ledger,"Merrickville-Wolford, ON",ca:csd:3507052,yes,pub-merrickville-wolford.escribemeetings.com
 ledger,"City of Salmon Arm, BC",ca:csd:5939032,yes,pub-salmonarm.escribemeetings.com
 ledger,"Town of Saugeen Shores, ON",ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
-ledger,Town of Shelburne,ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
 ledger,City of Markham,rtr:ca:on:toronto-and-region-conservation-authority,no,pub-trca.escribemeetings.com
 ledger,"Town of Amherstburg, ON",ca:csd:3537028,yes,pub-amherstburg.escribemeetings.com
 ledger,"Town of Grand Valley, ON",ca:csd:3522010,yes,pub-townofgrandvalley.escribemeetings.com

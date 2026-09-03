@@ -157,6 +157,34 @@ def governments() -> Dict[str, Government]:
     return out
 
 
+# A `source` token that means a HUMAN established this pin -- read a
+# landing page, checked a dashboard, wrote it into the architecture doc,
+# said so directly. Matched as prefixes, so `architecture_doc_1_3` counts.
+#
+# Everything else is machine-derived: `auto_derived` (rtr-discovery's own
+# `tenants.jurisdiction_override`, whose values include "S Fw, MD" and
+# "Psr C 2") and `inferred_unique_name`.
+HUMAN_PIN_SOURCES = (
+    "known_domains",
+    "ryan_stated",
+    "visual_confirmed",
+    "upcoming_roster",
+    "landing_page",
+    "architecture_doc",
+    "manual_override",
+    "consolidated_government",
+    "curated",
+)
+
+
+def _has_human_source(source: str) -> bool:
+    return any(
+        tok.strip().startswith(HUMAN_PIN_SOURCES)
+        for tok in (source or "").split("+")
+        if tok.strip()
+    )
+
+
 @lru_cache(maxsize=1)
 def tenant_overrides() -> Dict[str, List[TenantOverride]]:
     """host -> its override rows, most specific first.
@@ -171,6 +199,21 @@ def tenant_overrides() -> Dict[str, List[TenantOverride]]:
         host = (r.get("tenant_host") or "").strip().lower()
         gov_id = (r.get("gov_id") or "").strip()
         if not host or not gov_id:
+            continue
+        if gov_id.startswith("rtr:") and not _has_human_source(r.get("source") or ""):
+            # A machine may not MINT a government for a tenant. Pinning
+            # to a national id is a claim a table can be checked against;
+            # pinning to an `rtr:` id invents an identity, and a pin is
+            # the one tier that overrides a working extraction.
+            #
+            # Real: `king.granicus.com` is the Metropolitan King County
+            # Council -- King County, WA. It carried
+            # `rtr:us:nc:king-county`, source
+            # `auto_derived+inferred_unique_name`, built on the ledger's
+            # wrong `state_abbr=NC` for that host. There is no King
+            # County in North Carolina. Combining two machine sources
+            # does not make one human one, which is why this tests every
+            # token rather than the string as a whole.
             continue
         out.setdefault(host, []).append(
             TenantOverride(

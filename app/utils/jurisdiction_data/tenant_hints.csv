@@ -701,7 +701,7 @@ ketchikan.primegov.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.stat
 keybiscayne.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Key Biscayne, FL'"
 killeen.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 king-county-tv.cablecast.tv,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-king.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+king.granicus.com,WA,ryan_stated,"Metropolitan King County Council, King County WA. The ledger's state_abbr said NC, which is what minted rtr:us:nc:king-county."
 kingsport-tn.municodemeetings.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 kingwilliamcova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 kirkland.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr

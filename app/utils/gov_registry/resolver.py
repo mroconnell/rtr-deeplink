@@ -135,6 +135,28 @@ class GovernmentMatch:
 
     @property
     def hub_slug(self) -> Optional[str]:
+        """The `/j/` slug for this government, or None when it has no hub.
+
+        None for `unresolved` and `blank`, and the distinction is not
+        cosmetic. Both tiers still carry a `Government` -- it holds the
+        cleaned name and the evidence a human pin needs -- but neither
+        has an identity, so neither has a hub, and a caller must fall
+        back to the page's own display string instead.
+
+        Returning a slug for them was wrong in a way that only showed up
+        downstream: an unresolved "City of Las Vegas" produced
+        `city-of-las-vegas` from the raw cleaned name, while the page
+        actually lives at `/j/las-vegas` -- `jurisdiction_hub_slug()`
+        goes through `format_jurisdiction_display()`, which strips a
+        leading "City of ". `crud._hub_identity()` was unaffected (it
+        looks the id up in `governments.csv`, misses, and falls back
+        correctly), so no page ever moved; but both scripts read this
+        property directly, so the backfill's dry-run report and the
+        scoring run's merge/split counts credited moves that would not
+        happen.
+        """
+        if not self.gov_id or self.gov_id.startswith("rtr:unknown:"):
+            return None
         return hub_slug(self.government) if self.government else None
 
 
@@ -462,6 +484,69 @@ def _census_type_word(census_name: str) -> str:
     return parts[1].lower() if len(parts) == 2 else ""
 
 
+def _stateless_states(name: str, type_preference: str = "") -> set:
+    """Every general-purpose government a STATELESS name could mean,
+    across all three tables at once.
+
+    The exactly-one rule was applied per table, so a name ambiguous
+    *between* tables still resolved. Real: "Town of Hillsborough" on
+    `youtu.be` -- a shared host with no tenant state -- became
+    `us:cousub:3301136180`, Hillsborough town, **New Hampshire**. There
+    are two Hillsborough places (CA and NC), two Hillsborough county
+    subdivisions (NH and NJ) and two Hillsborough counties (FL and NH);
+    the place table declined because it saw two, the cousub table
+    answered because the raw "Town of" narrowed its two to one, and
+    nothing ever compared the six against each other.
+
+    **The raw name's own type word narrows the count, exactly as it
+    narrows each table's lookup.** Counting without it looks stricter and
+    is simply wrong: measured over the 5,053-page export, the unnarrowed
+    version declined 74 rows, and roughly 40 of them were right --
+    "City of Corona" (one Corona *city*, tied against a same-named
+    township), "Town of Herndon" (a documented merge of three hub
+    slugs), "City of Burnsville", "City of Palm Springs". Those are not
+    ambiguous names; they are names whose ambiguity the type word
+    already settles.
+
+    Counties are excluded once a municipal type word is present, for the
+    same reason the county fallback is: a page that says "City of" is not
+    naming a county.
+
+    **Counted by STATE, not by row**, and that is the whole difference
+    between a useful rule and a destructive one. A place and a county
+    sharing a name *in the same state* -- Milwaukee, Napa, Fresno -- are
+    not a dangerous ambiguity: the page is in that state either way, and
+    `_general_purpose_lookup()`'s place-before-county order already
+    settles which. Counting them as two candidates declined "Milwaukee.",
+    a real stored string whose merge with "Milwaukee, WI" is one of the
+    documented Phase 1b wins. What actually goes wrong is landing in the
+    WRONG STATE -- Hillsborough NH for a town that is not in New
+    Hampshire, Ventura IA for a California city -- so that is what this
+    counts.
+    """
+    out = set()
+    for table in (tables.us_places, tables.us_cousubs):
+        for row in table().lookup_all(name, None):
+            if type_preference and _census_type_word(row.name) != type_preference:
+                continue
+            out.add(row.state.upper())
+    if not type_preference:
+        for row in tables.us_counties().lookup_all(name, None):
+            out.add(row.state.upper())
+    # A curated alias is a human's assertion that this name means this
+    # government, so it is a competing candidate like any other -- and
+    # for a stateless name it is the one the table cannot see. "City of
+    # Ventura" on `www.youtube.com` reached Ventura city, IOWA, because
+    # Census names the California city "San Buenaventura (Ventura) city"
+    # and the place table therefore keys no "Ventura" in CA at all. One
+    # table hit plus one curated assertion is two candidates, not one.
+    for key in tables.lookup_keys(name):
+        for (scope, alias), gov_id in registry.curated_aliases().items():
+            if alias == key and scope:
+                out.add(scope.upper())
+    return out
+
+
 def _national_lookup(
     name: str,
     state: str,
@@ -609,6 +694,11 @@ def _national_lookup(
         # phase (D3 keeps the Census of Governments file as enrichment
         # only), so these mint an `rtr:` id. The important part is that
         # they stop here rather than reaching the place table below.
+        return None
+
+    # A stateless general-purpose name must be unique across all three
+    # tables together, not merely within whichever one answers first.
+    if not state and len(_stateless_states(name, type_preference)) > 1:
         return None
 
     if gov_type == classify.COUNTY:
@@ -1189,6 +1279,35 @@ def _squashed_national_hit(
     return None
 
 
+# A name shaped like a county's: "King County", "St. Landry Parish",
+# "County of Fresno". Not merely a name CONTAINING the word -- "Los
+# Angeles County Metropolitan Transportation Authority" and "Tarrant
+# County College District" are agencies that happen to name their county,
+# and both are real minted governments that must survive.
+_COUNTY_SHAPED_RE = re.compile(
+    r"\s(county|parish)$|^(?:the\s+)?(county|parish)\s+of\s", re.I
+)
+
+
+def _is_impossible_county(name: str, state: str, country: str) -> bool:
+    """A county-shaped name with no such county in that state.
+
+    Minting one invents a government that cannot exist: US counties are
+    exhaustively enumerated, so "King County" in North Carolina is not an
+    unlisted government, it is a contradiction. Real, and it reached
+    production as a PIN -- `rtr:us:nc:king-county`, minted from the
+    ledger's wrong state for `king.granicus.com`, which is really the
+    Metropolitan King County Council of King County, WA.
+
+    US only: the Canadian tables are census divisions rather than an
+    exhaustive list of upper-tier governments, so absence there is not a
+    contradiction.
+    """
+    if country != "us" or not state or not _COUNTY_SHAPED_RE.search(name):
+        return False
+    return tables.us_counties().lookup(name, state) is None
+
+
 def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
     """`rtr:<country>:<st>:<slug>` -- tier `unverified`, display = the
     cleaned name.
@@ -1499,18 +1618,23 @@ def resolve_government(
     if gov_type == classify.STATE:
         meeting_body = meeting_body or _state_body(name)
         name = _state_name(name)
-    if not state or not _looks_like_a_name(name):
+    if (
+        not state
+        or not _looks_like_a_name(name)
+        or _is_impossible_county(name, state, country)
+    ):
         # 7b. Unresolved -- either no state, or a string that is not a
         #     government name at all. Listed for a pin rather than
         #     minted: an id nobody can key is worse than an honest gap,
         #     because it looks resolved. The raw string is kept in
         #     `evidence`, so a human pin still has everything to work
         #     from and no information is lost.
-        reason = (
-            f"no state for {cleaned!r}"
-            if not state
-            else f"not a government name: {cleaned!r}"
-        )
+        if not state:
+            reason = f"no state for {cleaned!r}"
+        elif _is_impossible_county(name, state, country):
+            reason = f"no {name!r} in {state} -- counties are exhaustively listed"
+        else:
+            reason = f"not a government name: {cleaned!r}"
         gov = Government(
             gov_id="",
             gov_name=name,

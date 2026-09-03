@@ -307,14 +307,24 @@ def main() -> None:
     # Two passes. The first resolves every row on its own; the second
     # re-resolves with the same-tenant consensus the first pass revealed,
     # which is the only rung that needs to see a page's siblings.
-    consensus = _tenant_consensus(
-        score_rows(archive_inputs) + score_rows(ledger_inputs)
-    )
-    print(f"  same-tenant consensus available for {len(consensus)} hosts")
-    archive_rows = score_rows(archive_inputs, consensus)
+    #
+    # The consensus is computed PER INPUT SET, not over both together.
+    # The archive's answer has to depend only on the archive, because
+    # that is all `crud._tenant_dominant_gov_id()` and
+    # `scripts/backfill_gov_id.py` can see in production -- a scored
+    # sheet that quietly consults rtr-discovery's ledger is not modelling
+    # what will actually happen. It is not academic: with the ledger
+    # mixed in, `kingsport-tn.municodemeetings.com` and six siblings got
+    # a dominant government the Archive does not have, went `unresolved`
+    # here and `unverified` in the backfill, and the seven hub slugs they
+    # retire were left with no 301 because this file never saw them move.
+    archive_consensus = _tenant_consensus(score_rows(archive_inputs))
+    print(f"  same-tenant consensus available for {len(archive_consensus)} hosts")
+    archive_rows = score_rows(archive_inputs, archive_consensus)
 
     print("\nrtr-discovery ledger:")
-    ledger_rows = score_rows(ledger_inputs, consensus)
+    ledger_consensus = _tenant_consensus(score_rows(ledger_inputs))
+    ledger_rows = score_rows(ledger_inputs, ledger_consensus)
     print(f"  {len(ledger_rows)} distinct (tenant, jurisdiction) pairs")
 
     print("\nReports:")
@@ -450,7 +460,12 @@ def main() -> None:
 
     _write_pin_worklist(out_dir, all_rows)
     _seed_governments(all_rows)
-    _write_hub_slug_aliases(all_rows)
+    # Archive rows ONLY. A hub is made of pages, and a ledger row is not
+    # a page -- it can neither create a hub nor retire one. Including
+    # them let a ledger row's `new_hub_slug` mark a slug "still live" and
+    # suppress a real 301, which is how 7 junk-named Municode singletons
+    # ended up retiring with no redirect after the first backfill.
+    _write_hub_slug_aliases(archive_rows)
     _write_summary(
         out_dir,
         archive_rows,
@@ -508,7 +523,36 @@ def _write_pin_worklist(out_dir: Path, all_rows: List[dict]) -> None:
     `videoplayer.telvue.com`, so a host-level pin there would be wrong
     for all of them -- the token is what identifies the government.
     """
+    # Tenants that resolved to MORE THAN ONE government. Not a failure --
+    # `pwcgov.granicus.com` really is Prince William County plus the City
+    # of Manassas Park, and `clerkshq.com` is a shared host serving many
+    # -- but each one is either that, or a leftover the consistency rung
+    # could not settle, and only a human can tell which. Listed with the
+    # ids each carries so the review can do that in one pass.
+    multi: Dict[str, set] = defaultdict(set)
+    multi_names: Dict[str, set] = defaultdict(set)
+    for row in all_rows:
+        host = (row.get("tenant_host") or "").strip().lower()
+        gov_id = row.get("gov_id") or ""
+        if host and gov_id and not gov_id.startswith("rtr:unknown:"):
+            multi[host].add(gov_id)
+            multi_names[host].add(f"{gov_id} ({row.get('gov_name') or '?'})")
+
     by_host: Dict[str, dict] = {}
+    for host, ids in multi.items():
+        if len(ids) < 2:
+            continue
+        by_host[f"{host}|multi"] = {
+            "platform": _worklist_platform(host, ""),
+            "tenant_host": host,
+            "match_value": "",
+            "rows": len(ids),
+            "reason": "multiple_governments",
+            "stored_names": set(sorted(multi_names[host])),
+            "landing_url": "",
+            "example_slug": "",
+        }
+
     for row in all_rows:
         if row["tier"] not in ("unresolved", "blank"):
             continue
@@ -519,6 +563,8 @@ def _write_pin_worklist(out_dir: Path, all_rows: List[dict]) -> None:
         platform = _worklist_platform(host, row.get("platform") or "")
         match_value = _telvue_match(source_url) if platform == "telvue" else ""
         key = f"{host}|{match_value}"
+        if key in by_host and by_host[key]["reason"] == "multiple_governments":
+            key = f"{key}|unresolved"
         entry = by_host.setdefault(
             key,
             {
@@ -548,6 +594,9 @@ def _write_pin_worklist(out_dir: Path, all_rows: List[dict]) -> None:
     ]
     rows.sort(
         key=lambda r: (
+            # The multi-government hosts first: they are the shortest
+            # list and the one where a human decision unblocks the most.
+            0 if r["reason"] == "multiple_governments" else 1,
             order.get(r["platform"], len(order)),
             r["platform"],
             -r["rows"],

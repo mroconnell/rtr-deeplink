@@ -120,7 +120,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (59)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -151,7 +151,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (12)
+  Jurisdiction extraction & backfill  (13)
+    `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
     `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
     `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
     `[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to…
@@ -1124,6 +1125,28 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
+
+- **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
+  - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
+    Canadian and one American: `pub-richmond` is Richmond BC *and*
+    Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
+    `pub-courtenay` is Courtenay BC *and* Courtenay ND, `pub-owensound`
+    is Owen Sound ON *and* Owen WI, `pub-gloucesterva` is Gloucester
+    County VA *and* Gloucester MA. WO-100's cross-border guard does not
+    catch these because the STORED string carries a state suffix, so the
+    name never reaches the stateless path.
+  - **Impact**: a handful of pages per host on the wrong country's hub.
+    Surfaced by `pin_worklist.csv`'s new `multiple_governments` section
+    (WO-100), which is the first cut that made them visible.
+  - **Next action**: read the section, then pin each host — one landing
+    fetch settles a `pub-*` host's country even where it cannot settle
+    its name (`scripts/sweep_tenant_landing_pages.py`).
+  - **Constraint**: don't infer the country from the `pub-` prefix.
+    eScribe has real US customers (`pub-horrycountyschools` is SC), so
+    the prefix is a hint, not a rule.
+  - **History**: WO-100 (2026-09-03);
+    `reports/gov_registry_scoring_2026-09-03/pin_worklist.csv`,
+    `reason=multiple_governments`.
 
 - **`[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show two different names.**
   - **Issue**: `_display_jurisdiction()` (`archive/db/crud.py`) rewrites

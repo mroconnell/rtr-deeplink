@@ -144,7 +144,7 @@ async def main() -> None:
     # at all.
     resolved: dict[int, object] = {}
     keep = []
-    skipped_override = 0
+    overrides = 0
     for row in rows:
         (
             page_id,
@@ -156,8 +156,7 @@ async def main() -> None:
             source_url,
         ) = row
         if confidence == _MANUAL_OVERRIDE_CONFIDENCE:
-            skipped_override += 1
-            continue
+            overrides += 1
         parsed = urlparse(source_url or "")
         host = (parsed.netloc or "").lower().split(":")[0]
         path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
@@ -217,9 +216,20 @@ async def main() -> None:
         tiers[match.tier] += 1
         new_gov_id = match.gov_id or None
         new_gov_type = match.gov_type or None
+        # An overridden row keeps BOTH its string and its tier: the
+        # string because a human chose it, the tier because
+        # `_find_or_create_page()`'s guard recognises pages by exactly
+        # that value, and turning it into a resolution tier would quietly
+        # un-protect every hand-fixed page in the archive.
+        overridden = confidence == _MANUAL_OVERRIDE_CONFIDENCE
+        new_confidence = confidence if overridden else match.tier
         new_jurisdiction = (
             match.gov_name
-            if (match.tier in (TIER_PINNED, TIER_REGISTRY) and match.gov_name)
+            if (
+                not overridden
+                and match.tier in (TIER_PINNED, TIER_REGISTRY)
+                and match.gov_name
+            )
             else jurisdiction
         )
 
@@ -227,7 +237,7 @@ async def main() -> None:
             new_gov_id == current_gov_id
             and new_gov_type == current_gov_type
             and new_jurisdiction == jurisdiction
-            and confidence == match.tier
+            and confidence == new_confidence
         ):
             unchanged += 1
             continue
@@ -245,7 +255,8 @@ async def main() -> None:
                 "jurisdiction_before": jurisdiction or "",
                 "jurisdiction_after": new_jurisdiction or "",
                 "confidence_before": confidence or "",
-                "tier_after": match.tier,
+                "tier_after": new_confidence,
+                "resolver_tier": match.tier,
                 "gov_id_before": current_gov_id or "",
                 "gov_id_after": new_gov_id or "",
                 "gov_type_after": new_gov_type or "",
@@ -261,27 +272,31 @@ async def main() -> None:
             # a resume rather than a restart.
             async with async_session() as write_session:
                 page = await write_session.get(MeetingPage, page_id)
-                if page is None or page.jurisdiction_confidence == (
-                    _MANUAL_OVERRIDE_CONFIDENCE
-                ):
-                    # Re-checked inside the write session: a human may
-                    # have overridden this row since the read above.
+                if page is None:
                     continue
+                # Re-read inside the write session: a human may have
+                # overridden this row since the read above, and an
+                # override that landed in between must still keep its
+                # string and its tier.
+                live_override = (
+                    page.jurisdiction_confidence == _MANUAL_OVERRIDE_CONFIDENCE
+                )
                 page.gov_id = new_gov_id
                 page.gov_type = new_gov_type
-                page.jurisdiction = new_jurisdiction
-                page.jurisdiction_confidence = match.tier
+                if not live_override:
+                    page.jurisdiction = new_jurisdiction
+                    page.jurisdiction_confidence = match.tier
                 await write_session.commit()
 
-    _report(changes, tiers, hub_moves, unchanged, skipped_override, args)
+    _report(changes, tiers, hub_moves, unchanged, overrides, args)
 
 
-def _report(changes, tiers, hub_moves, unchanged, skipped_override, args) -> None:
+def _report(changes, tiers, hub_moves, unchanged, overrides, args) -> None:
     print("")
     label = "changed          " if args.apply else "would change     "
     print(f"  {label} : {len(changes)}")
     print(f"  already current   : {unchanged}")
-    print(f"  manual_override   : {skipped_override} (never touched)")
+    print(f"  manual_override   : {overrides} (keyed; their string is left alone)")
     print("")
     print("  tier distribution:")
     for tier, n in tiers.most_common():
@@ -330,6 +345,7 @@ def _report(changes, tiers, hub_moves, unchanged, skipped_override, args) -> Non
                     "jurisdiction_after",
                     "confidence_before",
                     "tier_after",
+                    "resolver_tier",
                     "gov_id_before",
                     "gov_id_after",
                     "gov_type_after",
