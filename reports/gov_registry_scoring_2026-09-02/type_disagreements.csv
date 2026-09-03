@@ -1,0 +1,584 @@
+input_set,jurisdiction,meeting_body,gov_classify_bucket,gov_type,gov_id,tenant_host
+archive,California State Senate,,city,state,us:state:06,www.senate.ca.gov
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,City and County of Denver,,county,municipality,us:place:0820000,denver.granicus.com
+archive,"Louisville, KY",,city,other,rtr:us:ky:louisville,louisville.granicus.com
+archive,City and County of San Francisco,,county,municipality,us:place:0667000,sanfrancisco.granicus.com
+archive,City and County of San Francisco,,county,municipality,us:place:0667000,sanfrancisco.granicus.com
+archive,California State Senate,,city,state,us:state:06,www.senate.ca.gov
+archive,Ashland,,city,other,rtr:us:xx:ashland,videoplayer.telvue.com
+archive,Ashland,,city,other,rtr:us:xx:ashland,videoplayer.telvue.com
+archive,Albuquerque Bernalillo County Water Utility Authority,,county,special_district,rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,abcwua.granicus.com
+archive,"Bainbridge, WA",,city,other,rtr:us:wa:bainbridge,bainbridgewa.granicus.com
+archive,City of Brighton,,city,other,rtr:us:xx:brighton,brightonco.granicus.com
+archive,"City of North Port, FL",,city,special_district,rtr:us:fl:north-port,cityofnorthport.granicus.com
+archive,"The City of College Park, MD",,school,municipality,us:place:2418750,college-park.granicus.com
+archive,City and County of Denver,,county,municipality,us:place:0820000,denver.granicus.com
+archive,City of Greenville,,city,county,us:county:45045,greenville.granicus.com
+archive,Town of Huntington,,city,county,us:county:18069,huntingtonny.granicus.com
+archive,J Cc,,city,court,rtr:us:ca:judicial-council-of-california,jcc.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,lcpsnm.granicus.com
+archive,L Oswego K 12,,city,school_district,us:sd:4107230,loswegok12.granicus.com
+archive,"Louisville, KY",,city,other,rtr:us:ky:louisville,louisville.granicus.com
+archive,Marion,,city,county,us:county:12083,marionfl.granicus.com
+archive,Metra Railroad,,city,other,rtr:us:xx:metra-railroad,metrarr.granicus.com
+archive,Metrolink,,city,other,rtr:us:xx:metrolink,metrolink.granicus.com
+archive,Mn Senate,,city,state,rtr:us:xx:mn,mnsenate.granicus.com
+archive,Mw Rd,,city,other,rtr:us:xx:mw-rd,mwrd.granicus.com
+archive,Nashville,,city,county,rtr:us:tn:nashville-davidson-county,nashville.granicus.com
+archive,County of Nevada,,county,municipality,us:place:0650874,nevco.granicus.com
+archive,Nevada Legislature,,city,state,us:state:32,nvleg.granicus.com
+archive,The City of Oak Ridge,,city,other,rtr:us:xx:oak-ridge,oakridgetn.granicus.com
+archive,"Ps C, FL",,city,other,rtr:us:fl:ps-c,psc-fl.granicus.com
+archive,City of Port St Lucie,,city,special_district,rtr:us:fl:port-st-lucie,psl.granicus.com
+archive,Psr C 2,,city,other,rtr:us:xx:psr-c-2,psrc2.granicus.com
+archive,Ride Uta,,city,other,rtr:us:xx:ride-uta,rideuta.granicus.com
+archive,City of Riverside,,city,county,us:county:06065,riversideca.granicus.com
+archive,"S Fw, MD",,city,other,rtr:us:md:s-fw,sfwmd.granicus.com
+archive,California State Personnel Board,,city,other,rtr:us:ca:california-state-personnel-board,spb.granicus.com
+archive,"Tarrant County, TX",,county,school_district,rtr:us:tx:tarrant-county-college-district,tccd.granicus.com
+archive,Virginia Senate,,city,state,us:state:51,virginia-senate.granicus.com
+archive,"City of Waukesha, WI",,city,county,us:county:55133,waukesha.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+archive,"Baltimore County Schools, MD",,county,school_district,us:sd:2400120,bcps.new.swagit.com
+archive,"Calvert County Public Schools, MD",,county,school_district,us:sd:2400150,calvertcountyps.new.swagit.com
+archive,"Cecil County Public Schools, MD",,county,school_district,us:sd:2400240,ccpsmd.new.swagit.com
+archive,"Chesterfield County Public Schools, VA",,county,school_district,us:sd:5100840,chesterfieldschoolsva.new.swagit.com
+archive,"Henry County Schools, GA",,county,school_district,us:sd:1302820,henrycountyschoolsga.new.swagit.com
+archive,"Harford County Public Schools, MD",,county,school_district,us:sd:2400390,harfordcountypublicschoolsmd.new.swagit.com
+archive,"Lamar CISD, TX",,city,school_district,rtr:us:tx:lamar-cisd,lamarcisdtx.new.swagit.com
+archive,Meridian,,city,other,rtr:us:xx:meridian,meridianmi.new.swagit.com
+archive,"Port Arthur, TX",,city,special_district,rtr:us:tx:port-arthur,portarthurtx.new.swagit.com
+archive,"Wilson County Schools, TN",,county,school_district,us:sd:4704550,wilsoncountyschoolstn.new.swagit.com
+archive,"Upper Providence, PA",,city,other,rtr:us:pa:upper-providence,uprovmontco.new.swagit.com
+archive,"Warren County Public Schools, VA",,county,school_district,us:sd:5103870,wcps.new.swagit.com
+archive,Ezt,,city,other,rtr:us:xx:ezt,pub-ezt.escribemeetings.com
+archive,Hamilton,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
+archive,"Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
+archive,Stjohns,,city,other,rtr:us:xx:stjohns,pub-stjohns.escribemeetings.com
+archive,Stratford Ad,,city,other,rtr:us:xx:stratford-ad,pub-stratford.escribemeetings.com
+archive,Tdsb,,city,school_district,rtr:ca:on:toronto-district-school-board,pub-tdsb.escribemeetings.com
+archive,Townofws,,city,other,rtr:us:xx:townofws,pub-townofws.escribemeetings.com
+archive,Victoria,,city,county,us:county:48469,pub-victoria.escribemeetings.com
+archive,West Kelowna Council Chambers,,city,other,rtr:us:xx:west-kelowna-council-chambers,pub-westkelowna.escribemeetings.com
+archive,"Escambia, FL",,city,county,us:county:12033,escambiacofl.portal.civicclerk.com
+archive,Frederick,,city,other,rtr:us:xx:frederick,frederickco.portal.civicclerk.com
+archive,Greeley,,city,other,rtr:us:xx:greeley,greeleyco.portal.civicclerk.com
+archive,Mill Creek,,city,other,rtr:us:xx:mill-creek,millcreekut.portal.civicclerk.com
+archive,Travis,,city,county,us:county:48453,traviscotx.portal.civicclerk.com
+archive,Ashland,,city,other,rtr:us:xx:ashland,u.peg.tv
+archive,"The City of Amarillo, TX",,city,other,rtr:us:tx:amarillo,amarillo.granicus.com
+archive,Arkansas Supreme Court,,city,court,rtr:us:xx:arkansas-supreme-court,arkansas-sc.granicus.com
+archive,"The City of Auburn, CA",,city,other,rtr:us:ca:auburn,auburn.granicus.com
+archive,Lad Wp,,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.granicus.com
+archive,Ny State Assembly,,city,state,rtr:us:xx:ny,nystateassembly.granicus.com
+archive,Port Colborne Resolution,,city,special_district,rtr:us:xx:port-colborne-resolution,pub-brockton.escribemeetings.com
+archive,Chatham Kent,,city,other,rtr:us:xx:chatham-kent,pub-chatham-kent.escribemeetings.com
+archive,Cofs,,city,other,rtr:us:xx:cofs,pub-cofs.escribemeetings.com
+archive,Elliot Lake GIS Services SSMIC,,city,other,rtr:us:xx:elliot-lake-gis-services-ssmic,pub-elliotlake.escribemeetings.com
+archive,"Gloucester, VA",,city,county,us:county:51073,pub-gloucesterva.escribemeetings.com
+archive,Llbc,,city,other,rtr:us:xx:llbc,pub-llbc.escribemeetings.com
+archive,"Lloydminster, AB/SK",,city,other,rtr:us:xx:lloydminster-ab-sk,pub-lloydminster.escribemeetings.com
+archive,Northcowichan,,city,other,rtr:us:xx:northcowichan,pub-northcowichan.escribemeetings.com
+archive,Town of Oliver,,city,county,us:county:38065,pub-oliver.escribemeetings.com
+archive,"Port Coquitlam, BC",,city,special_district,rtr:ca:bc:port-coquitlam,pub-portcoquitlam.escribemeetings.com
+archive,"Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
+archive,Cvr D,,city,other,rtr:us:xx:cvr-d,pub-cvrd.escribemeetings.com
+archive,Espanol A,,city,other,rtr:us:xx:espanol-a,pub-espanola.escribemeetings.com
+archive,Ezt,,city,other,rtr:us:xx:ezt,pub-ezt.escribemeetings.com
+archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+archive,Halifax,,city,other,rtr:us:xx:halifax,pub-halifax.escribemeetings.com
+archive,"Horry County, SC",,county,school_district,us:sd:4502490,pub-horrycountyschools.escribemeetings.com
+archive,"Hamilton Public Library, ON",,city,special_district,rtr:ca:on:hamilton-public-library,pub-hpl.escribemeetings.com
+archive,Mission,,city,other,rtr:us:xx:mission,pub-mission.escribemeetings.com
+archive,Notl,,city,other,rtr:us:xx:notl,pub-notl.escribemeetings.com
+archive,Oneinvestmentprogram,,city,other,rtr:us:xx:oneinvestmentprogram,pub-oneinvestmentprogram.escribemeetings.com
+archive,Rmwb,,city,other,rtr:us:xx:rmwb,pub-rmwb.escribemeetings.com
+archive,Twpec,,city,other,rtr:us:xx:twpec,pub-twpec.escribemeetings.com
+archive,Victoria,,city,county,us:county:48469,pub-victoria.escribemeetings.com
+archive,Winona,,city,county,us:county:27169,pub-winona.escribemeetings.com
+archive,Strathroy Caradoc,,city,other,rtr:us:xx:strathroy-caradoc,pub-strathroy-caradoc.escribemeetings.com
+archive,Meeting Portal,,city,other,rtr:us:xx:meeting-portal,northsaanich.civicweb.net
+archive,Northern Rockies Regional Municipality,,county,special_district,rtr:us:xx:northern-rockies-regional-municipality,nr.civicweb.net
+archive,"City of Boise, ID",,city,county,us:county:16015,boisecityid.iqm2.com
+archive,"The City of Buffalo, NY",,city,other,rtr:us:ny:buffalo,buffalony.iqm2.com
+archive,City of Providence,,city,county,us:county:44007,providenceri.iqm2.com
+archive,Scituate Town Council,,city,other,rtr:us:xx:scituate-town-council,clerkshq.com
+archive,West Warwick Town Council,,city,other,rtr:us:xx:west-warwick-town-council,clerkshq.com
+archive,Cambridge,,city,other,rtr:us:xx:cambridge,pub-cambridge.escribemeetings.com
+archive,North Bay By,,city,other,rtr:us:xx:north-bay-by,pub-northbay.escribemeetings.com
+archive,Bradfordwestgwillimbury,,city,other,rtr:us:xx:bradfordwestgwillimbury,pub-bradfordwestgwillimbury.escribemeetings.com
+archive,Leeds1000Islands,,city,other,rtr:us:xx:leeds1000islands,pub-leeds1000islands.escribemeetings.com
+archive,Merrickville Wolford,,city,other,rtr:us:xx:merrickville-wolford,pub-merrickville-wolford.escribemeetings.com
+archive,"Paso Robles, CA",,city,other,rtr:us:ca:paso-robles,pub-pasorobles.escribemeetings.com
+archive,Saugeenshores,,city,other,rtr:us:xx:saugeenshores,pub-saugeenshores.escribemeetings.com
+archive,Sd57,,city,other,rtr:us:xx:sd57,pub-sd57.escribemeetings.com
+archive,H Psb,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
+archive,Leeds1000Islands,,city,other,rtr:us:xx:leeds1000islands,pub-leeds1000islands.escribemeetings.com
+archive,Lincoln,,city,other,rtr:us:xx:lincoln,pub-lincoln.escribemeetings.com
+archive,Marvin,,city,other,rtr:us:xx:marvin,pub-marvinnc.escribemeetings.com
+archive,Merrickville Wolford,,city,other,rtr:us:xx:merrickville-wolford,pub-merrickville-wolford.escribemeetings.com
+archive,"Paso Robles, CA",,city,other,rtr:us:ca:paso-robles,pub-pasorobles.escribemeetings.com
+archive,Prescott,,city,other,rtr:us:xx:prescott,pub-prescott.escribemeetings.com
+archive,"City of San Diego, CA",,city,special_district,rtr:us:ca:san-diego-association-of-governments,pub-sandag.escribemeetings.com
+archive,Sd57,,city,other,rtr:us:xx:sd57,pub-sd57.escribemeetings.com
+archive,"City of Mississauga, ON",,city,special_district,rtr:ca:on:toronto-and-region-conservation-authority,pub-trca.escribemeetings.com
+archive,State College Borough,,school,municipality,us:place:4273808,videoplayer.telvue.com
+archive,"Escambia, FL",,city,county,us:county:12033,escambiacofl.portal.civicclerk.com
+archive,"Hays CISD, TX",,city,school_district,rtr:us:tx:hays-cisd,hayscisdtx.new.swagit.com
+archive,Meridian,,city,other,rtr:us:xx:meridian,meridianmi.new.swagit.com
+archive,Mill Creek,,city,other,rtr:us:xx:mill-creek,millcreekut.portal.civicclerk.com
+archive,Nashua,,city,other,rtr:us:xx:nashua,nashuanh.portal.civicclerk.com
+archive,The Maryland-National Capital Park & Planning Commission,,city,special_district,rtr:us:xx:the-maryland-national-capital-park-planning-commission,mncppc.iqm2.com
+archive,"The City of Buffalo, NY",,city,other,rtr:us:ny:buffalo,buffalony.iqm2.com
+archive,"Henry County Schools, GA",,county,school_district,us:sd:1302820,henrycountyschoolsga.new.swagit.com
+archive,Riverview,,city,other,rtr:us:xx:riverview,riverviewmi.cablecast.tv
+archive,Eldorado,,city,other,rtr:us:xx:eldorado,eldoradoks.portal.civicclerk.com
+archive,Cass,,city,other,rtr:us:xx:cass,casscoin.portal.civicclerk.com
+archive,City of Santa Rosa,,city,county,us:county:12113,santa-rosa.granicus.com
+archive,"Broward County Public Schools, FL",,county,school_district,us:sd:1200180,browardschools.granicus.com
+archive,"Manatee County Public Schools, FL",,county,school_district,us:sd:1201230,manateeschools.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,pioneercommunityenergy.granicus.com
+archive,Beaufort,,city,other,rtr:us:xx:beaufort,beaufort.granicus.com
+archive,"The Town of Bethany Beach, DE",,city,other,rtr:us:de:bethany-beach,bethanybeach.granicus.com
+archive,"Ketchikan Gateway Borough, AK",,city,county,us:county:02130,borough-ketchikan.granicus.com
+archive,Salem,,city,other,rtr:us:xx:salem,salem.cablecast.tv
+archive,"Broomfield, CO",City/County,county,municipality,us:place:0809280,broomfield.granicus.com
+archive,Cambridge,,city,other,rtr:us:xx:cambridge,cambridgema.granicus.com
+archive,Central Valley Flood Protection Board,,city,other,rtr:us:xx:central-valley-flood-protection-board,centralvalleyflood.granicus.com
+archive,"Ranson, WV",,city,other,rtr:us:wv:ranson,ransonwv.iqm2.com
+archive,Charlotte,,city,county,us:county:12015,charlotte.granicus.com
+archive,"City of Chesapeake, VA",School Board,school,municipality,us:place:5116000,chesapeake.granicus.com
+archive,"West County Wastewater District, CA",,county,special_district,rtr:us:ca:west-county-wastewater-district,wcwdca.iqm2.com
+archive,"July13, 2026 | Town of Bladensburg Maryland Meetings Hub",,city,other,rtr:us:xx:july13-2026-town-of-bladensburg-maryland-meetings-hub,bladensburgtown-md.municodemeetings.com
+archive,Columbus Wisconsin Meetings Hub,,city,other,rtr:us:xx:columbus-wisconsin-meetings-hub,columbus-wi.municodemeetings.com
+archive,"Highlands Borough, FL",,city,county,us:county:12055,highlands-nj.municodemeetings.com
+archive,Municode Portal,,city,other,rtr:us:xx:municode-portal,kingsport-tn.municodemeetings.com
+archive,Municode Portal,,city,other,rtr:us:xx:municode-portal,laurel-md.municodemeetings.com
+archive,Madeira Beach Florida Meetings Hub,,city,other,rtr:us:xx:madeira-beach-florida-meetings-hub,madeirabeach-fl.municodemeetings.com
+archive,Willow Park Texas Meetings Hub,,city,other,rtr:us:xx:willow-park-texas-meetings-hub,willowpark-tx.municodemeetings.com
+archive,City of Gonzales,,city,county,us:county:48177,cityofgonzales.granicus.com
+archive,Arlington Heights,,city,other,rtr:us:xx:arlington-heights,arlingtonheightsil.portal.civicclerk.com
+archive,The City of Andover,,city,other,rtr:us:xx:andover,andoverks.civicweb.net
+archive,City of Bowie,,city,county,us:county:48037,cityofbowietx.civicweb.net
+archive,Coaldale,,city,other,rtr:us:xx:coaldale,coaldale.civicweb.net
+archive,Duncan,,city,other,rtr:us:xx:duncan,duncan.civicweb.net
+archive,The City of Hilliard,,city,other,rtr:us:xx:hilliard,hilliardohio.civicweb.net
+archive,La Center,,city,other,rtr:us:xx:la-center,lacenter.civicweb.net
+archive,qathet Regional District,,county,special_district,rtr:us:xx:qathet-regional-district,qathetrd.civicweb.net
+archive,SLRD,,city,other,rtr:us:xx:slrd,slrd.civicweb.net
+archive,Sonoma County Library,,county,special_district,rtr:us:xx:sonoma-county-library,sonomalibrary.civicweb.net
+archive,West County Wastewater,,county,other,rtr:us:xx:west-county-wastewater,wcwd.civicweb.net
+archive,Richland Center Wisconsin,,city,other,rtr:us:xx:richland-center-wisconsin,www.richlandcenterwi.gov
+archive,"Port Chester, NY",,city,special_district,rtr:us:ny:port-chester,play.champds.com
+archive,Holden,,city,other,rtr:us:xx:holden,hctv.cablecast.tv
+archive,Holden,,city,other,rtr:us:xx:holden,hctv.cablecast.tv
+archive,Riverview,,city,other,rtr:us:xx:riverview,riverviewmi.cablecast.tv
+archive,Riverview,,city,other,rtr:us:xx:riverview,riverviewmi.cablecast.tv
+archive,City of Duncan Town,,city,other,rtr:us:xx:duncan,cvrd.primegov.com
+archive,"City of Los Angeles, CA",,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.primegov.com
+archive,"City of Menlo Park, CA",,city,special_district,rtr:us:ca:menlo-park-fire-protection-district,menlofire.primegov.com
+archive,Pontiac,,city,other,rtr:us:xx:pontiac,cityofpontiac.cablecast.tv
+archive,Pontiac,,city,other,rtr:us:xx:pontiac,cityofpontiac.cablecast.tv
+archive,Hamilton,,city,other,rtr:us:xx:hamilton,tvhamilton.cablecast.tv
+archive,Hamilton,,city,other,rtr:us:xx:hamilton,tvhamilton.cablecast.tv
+archive,St,,city,other,rtr:us:xx:st,city-slp-mn.cablecast.tv
+archive,Santee,,city,other,rtr:us:xx:santee,cityofsantee.cablecast.tv
+archive,Charleston,,city,county,us:county:45019,charlestonwv.portal.civicclerk.com
+archive,Clallam,,city,county,us:county:53009,clallamcowa.portal.civicclerk.com
+archive,Hanover,,city,county,us:county:51085,hanovercova.portal.civicclerk.com
+archive,Holly Springs,,city,other,rtr:us:xx:holly-springs,hollyspringsnc.portal.civicclerk.com
+archive,Inyo,,city,county,us:county:06027,inyococa.portal.civicclerk.com
+archive,Jefferson,,city,other,rtr:us:xx:jefferson,jeffersoncomo.portal.civicclerk.com
+archive,"The City of La Crosse, WI",,city,other,rtr:us:wi:la-crosse,cityoflacrosse.granicus.com
+archive,City of Maricopa,,city,county,us:county:04013,cityofmaricopa.granicus.com
+archive,"Aiken County Public Schools, SC",,county,school_district,us:sd:4500720,acpsd.new.swagit.com
+archive,"Lethbridge, AB",,city,other,rtr:ca:ab:lethbridge,pub-lethbridge.escribemeetings.com
+archive,Raleigh,,city,county,us:county:54081,pub-raleighnc.escribemeetings.com
+archive,"Capital Metro, Austin TX",,city,other,rtr:us:tx:capital-metro-austin,capmetrotx.iqm2.com
+archive,Midlothian,,city,other,rtr:us:xx:midlothian,midlothiantx.new.swagit.com
+archive,New Hanover,,city,county,us:county:37129,newhanovernc.new.swagit.com
+archive,"New Port Richey, FL",,city,special_district,rtr:us:fl:new-port-richey,newportricheyfl.new.swagit.com
+archive,MLGW,,city,other,rtr:us:xx:mlgw,mlgw.iqm2.com
+archive,"City of Port Townsend, WA",,city,special_district,rtr:us:wa:port-townsend,cityofpt.granicus.com
+archive,City of Racine,,city,county,us:county:55101,cityofracine.granicus.com
+archive,City of Stillwater,,city,county,us:county:30095,cityofstillwater.granicus.com
+archive,"Ventura, CA",,city,county,us:county:06111,cityofventura.granicus.com
+archive,"The City of Clawson, MI",,city,other,rtr:us:mi:clawson,clawson.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,cms-k12-nc.granicus.com
+archive,City of Converse,,city,county,us:county:56009,conversetx.granicus.com
+archive,"Capital Metro, Austin TX",,city,other,rtr:us:tx:capital-metro-austin,capmetrotx.iqm2.com
+archive,"Calaveras, CA",,city,county,us:county:06009,ccogca.iqm2.com
+archive,"Chesterfield County Public Schools, VA",,county,school_district,us:sd:5100840,chesterfieldschoolsva.new.swagit.com
+archive,"Fair Fire Department, TX",,city,other,rtr:us:tx:fair-fire-department,cyfairfd.new.swagit.com
+archive,"Fort Bend County ISD, TX",,county,school_district,rtr:us:tx:fort-bend-county-isd,fortbendisd.new.swagit.com
+archive,"Harford County Public Schools, MD",,county,school_district,us:sd:2400390,harfordcountypublicschoolsmd.new.swagit.com
+archive,"Lamar CISD, TX",,city,school_district,rtr:us:tx:lamar-cisd,lamarcisdtx.new.swagit.com
+archive,"Upper Providence, PA",,city,other,rtr:us:pa:upper-providence,uprovmontco.new.swagit.com
+archive,"Wilson County Schools, TN",,county,school_district,us:sd:4704550,wilsoncountyschoolstn.new.swagit.com
+archive,Charleston,,city,county,us:county:45019,charlestonwv.portal.civicclerk.com
+archive,City of Mesa,,city,county,us:county:08077,mesa.legistar.com
+archive,Open Publica,,city,other,rtr:us:xx:open-publica,www.openpublica.com
+archive,"San Diego, CA",,city,special_district,rtr:us:ca:san-diego-association-of-governments,pub-sandag.escribemeetings.com
+archive,California,,city,other,rtr:us:xx:california,csmfo.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,csos.granicus.com
+archive,Chesterfield,,city,other,rtr:us:xx:chesterfield,chesterfieldcova.portal.civicclerk.com
+archive,The City Of DeLand,,city,other,rtr:us:xx:deland,delandfl.granicus.com
+archive,City of Dixon,,city,county,us:county:31051,dixon-ca.granicus.com
+archive,Draper,,city,other,rtr:us:xx:draper,draper.granicus.com
+archive,"College Station, TX",,school,municipality,us:place:4815976,collegestationtx.portal.civicclerk.com
+archive,Colorado,,city,county,us:county:48089,coloradoga.granicus.com
+archive,"The City of East Lansing, MI",,city,other,rtr:us:mi:east-lansing,eastlansing.granicus.com
+archive,City of Eau Claire,,city,county,us:county:55035,eauclairewi.granicus.com
+archive,Franklin,,city,other,rtr:us:xx:franklin,franklintn.portal.civicclerk.com
+archive,Eldorado,,city,county,us:county:06017,eldorado.granicus.com
+archive,Fontana,,city,other,rtr:us:xx:fontana,fontana.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,fortworthisd.granicus.com
+archive,Hastings,,city,other,rtr:us:xx:hastings,hastingsne.portal.civicclerk.com
+archive,Hernando County School District,,county,school_district,us:sd:1200810,hernandocountyschool.iqm2.com
+archive,"Islamorada, FL",,city,other,rtr:us:fl:islamorada,islamoradafl.portal.civicclerk.com
+archive,Keene,,city,other,rtr:us:xx:keene,keenenh.portal.civicclerk.com
+archive,Morrisville,,city,other,rtr:us:xx:morrisville,morrisville.granicus.com
+archive,Oregon,,city,county,us:county:29149,oregon.granicus.com
+archive,New Boston,,city,other,rtr:us:xx:new-boston,townhallstreams.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,scvwd.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,gpisd.granicus.com
+archive,MLGW,,city,other,rtr:us:xx:mlgw,mlgw.iqm2.com
+archive,The Maryland-National Capital Park & Planning Commission,,city,special_district,rtr:us:xx:the-maryland-national-capital-park-planning-commission,mncppc.iqm2.com
+archive,"Pinellas County School District, FL",,county,school_district,us:sd:1201560,pinellasschool.iqm2.com
+archive,"The City of Harrisonburg, VA",,city,other,rtr:us:va:harrisonburg,harrisonburg-va.granicus.com
+archive,Town of Amherst,,city,county,us:county:51009,pub-amherst.escribemeetings.com
+archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+archive,Halifax,,city,other,rtr:us:xx:halifax,pub-halifax.escribemeetings.com
+archive,City of Hamilton,,city,other,rtr:us:xx:hamilton,pub-hamilton.escribemeetings.com
+archive,Mission,,city,other,rtr:us:xx:mission,pub-mission.escribemeetings.com
+archive,Portland,,city,other,rtr:us:xx:portland,portlandtn.portal.civicclerk.com
+archive,City of Providence,,city,county,us:county:44007,providenceri.iqm2.com
+archive,Town of Oliver,,city,county,us:county:38065,pub-oliver.escribemeetings.com
+archive,"The Town of Hooksett, NH",,city,other,rtr:us:nh:hooksett,hooksett.granicus.com
+archive,Horry County Schools,,county,school_district,us:sd:4502490,horrycountyschools.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,houstonisd.granicus.com
+archive,City of Hudson,,city,county,us:county:34017,hudson.granicus.com
+archive,"The City of Huntington Park, CA",,city,other,rtr:us:ca:huntington-park,huntingtonpark.granicus.com
+archive,Cal-ICMA,,city,other,rtr:us:xx:cal-icma,icma.granicus.com
+archive,IEUA,,city,other,rtr:us:xx:ieua,ieua.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,illinoistollway.granicus.com
+archive,Imperial,,city,county,us:county:06025,imperialid.granicus.com
+archive,"Town of Yarmouth, NS",,city,county,ca:cd:1202,pub-townofyarmouth.escribemeetings.com
+archive,"Ranson, WV",,city,other,rtr:us:wv:ranson,ransonwv.iqm2.com
+archive,Jefferson,,city,other,rtr:us:xx:jefferson,jeffersonco.granicus.com
+archive,Stockbridge,,city,other,rtr:us:xx:stockbridge,stockbridgega.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,tlchouse.granicus.com
+archive,City of Tracy,,city,other,rtr:us:xx:tracy,tracy-ca.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,kpb.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,lacanadaflintridge-ca.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,lcd.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,lewisvilleisd.granicus.com
+archive,"The City of Lincoln Park, MI",,city,other,rtr:us:mi:lincoln-park,lincolnpark-mi.granicus.com
+archive,The City of Live Oak Texas,,city,other,rtr:us:xx:live-oak-texas,liveoaktx.granicus.com
+archive,LOSSAN - OCTA,,city,other,rtr:us:xx:lossan-octa,lossan.granicus.com
+archive,Loudoun,,city,county,us:county:51107,loudoun.granicus.com
+archive,City of Lynchburg,,city,county,us:county:51680,lynchburg.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,matanuska.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,matatransit.granicus.com
+archive,City of Mesa,,city,county,us:county:08077,mesaaz.granicus.com
+archive,"Farmingville, NY",,city,other,rtr:us:ny:farmingville,brookhavenny.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,mojavewater.granicus.com
+archive,Charleston,,city,county,us:county:45019,charlestonwv.portal.civicclerk.com
+archive,Burlington,,city,county,us:county:34005,burlingtonvt.portal.civicclerk.com
+archive,"The City of Morgantown, WV",,city,other,rtr:us:wv:morgantown,morgantown.granicus.com
+archive,Multnomah,,city,county,us:county:41051,multnomah.granicus.com
+archive,"Clallam, WA",,city,county,us:county:53009,clallamcowa.portal.civicclerk.com
+archive,New Brighton,,city,other,rtr:us:xx:new-brighton,newbrighton.granicus.com
+archive,"The Town of North Salem, NY",,city,other,rtr:us:ny:north-salem,northsalem.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,northsalemschools.granicus.com
+archive,"College Station, TX",,school,municipality,us:place:4815976,collegestationtx.portal.civicclerk.com
+archive,Columbia,,city,other,rtr:us:xx:columbia,columbiatn.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,olelo.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,onelakewood.granicus.com
+archive,Oregon Metro Council,,city,other,rtr:us:xx:oregon-metro-council,oregonmetro.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,oregonpuc.granicus.com
+archive,Easton,,city,other,rtr:us:xx:easton,eastonmd.portal.civicclerk.com
+archive,"Pedernals Electric Cooperative, TX",,city,other,rtr:us:tx:pedernals-electric-cooperative,pec.granicus.com
+archive,City of Peoria,,city,county,us:county:17143,peoriail.granicus.com
+archive,"City of Petersburg, AK",,city,county,us:county:02195,petersburg.granicus.com
+archive,Franklin,,city,other,rtr:us:xx:franklin,franklintn.portal.civicclerk.com
+archive,Frederick,,city,other,rtr:us:xx:frederick,frederickco.portal.civicclerk.com
+archive,Plainfield,,city,other,rtr:us:xx:plainfield,plainfieldil.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,portofla.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,portofsandiego.granicus.com
+archive,Hanover,,city,county,us:county:51085,hanovercova.portal.civicclerk.com
+archive,Hastings,,city,other,rtr:us:xx:hastings,hastingsne.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,pvestates.granicus.com
+archive,City of Raleigh,,city,county,us:county:54081,raleigh.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,rdale.granicus.com
+archive,"The City of Redmond, WA",,city,other,rtr:us:wa:redmond,redmond.granicus.com
+archive,Holly Springs,,city,other,rtr:us:xx:holly-springs,hollyspringsnc.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,sanantonioisd.granicus.com
+archive,Inyo,,city,county,us:county:06027,inyococa.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,sandyutah.granicus.com
+archive,City of Saratoga,,city,county,us:county:36091,saratoga.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,scag.granicus.com
+archive,"James City, VA",,city,county,us:county:51095,jamescitycova.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,sfha.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,smud.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,sonomamarintrain.granicus.com
+archive,Cumberland Town Council,,city,other,rtr:us:xx:cumberland-town-council,clerkshq.com
+archive,Pawtucket City Council,,city,other,rtr:us:xx:pawtucket-city-council,clerkshq.com
+archive,The City of Spokane Valley,,city,other,rtr:us:xx:spokane-valley,spokanevalley.granicus.com
+archive,Lakeshore,,city,other,rtr:us:xx:lakeshore,lakeshoreon.new.swagit.com
+archive,Roosevelt,,city,other,rtr:us:xx:roosevelt,www.youtube.com
+archive,Jackson,,city,other,rtr:us:xx:jackson,youtu.be
+archive,Hamden Action NOW,,city,other,rtr:us:xx:hamden-action-now,www.youtube.com
+archive,KSAT 12,,city,other,rtr:us:xx:ksat-12,www.youtube.com
+archive,Greenwich Community Television,,city,special_district,rtr:us:xx:greenwich-community-television,www.youtube.com
+archive,Arizona Supreme Court,,city,court,rtr:us:xx:arizona-supreme-court,supremestateaz.granicus.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,tahoecitypud.granicus.com
+archive,Tuolumne,,city,county,us:county:06109,tuolumne.granicus.com
+archive,"City of University Park, TX",,school,municipality,us:place:4874492,uptexas.granicus.com
+archive,Washington,,city,other,rtr:us:xx:washington,utc-wa.granicus.com
+archive,Linn,,city,other,rtr:us:xx:linn,linncoia.portal.civicclerk.com
+archive,"TV, NY",,city,special_district,rtr:us:ny:tv,lmctvny.new.swagit.com
+archive,Mill Creek,,city,other,rtr:us:xx:mill-creek,millcreekut.portal.civicclerk.com
+archive,WB,,city,other,rtr:us:xx:wb,videoplayer.telvue.com
+archive,Summit Planning,,city,other,rtr:us:xx:summit-planning,videoplayer.telvue.com
+archive,Nevada County,,county,municipality,us:place:0650874,nevco.granicus.com
+archive,Parker,,city,county,us:county:48367,parkerco.portal.civicclerk.com
+archive,City of Denton,,city,county,us:county:48121,denton-tx.granicus.com
+archive,"Town of Chenango, NY",,city,county,us:county:36017,townofchenango.civicweb.net
+archive,Randall,,city,county,us:county:48381,randallcotx.portal.civicclerk.com
+archive,Sherman,,city,other,rtr:us:xx:sherman,shermantx.portal.civicclerk.com
+archive,"Lincoln, ME",,city,county,us:county:23015,www.lincolncountymaine.me
+archive,Oakdale,,city,other,rtr:us:xx:oakdale,oakdalemn.gov
+archive,Woodbury,,city,county,us:county:19193,woodburymn.gov
+archive,"Coffee, TN",,city,county,us:county:47031,coffeecountytn.gov
+archive,"Van Buren, TN",,city,county,us:county:47175,vanburencountytn.gov
+archive,"Henry, VA",,city,county,us:county:51089,henrycountyva.gov
+archive,Aberdeen,,city,other,rtr:us:xx:aberdeen,www.aberdeenwa.gov
+archive,Travis,,city,county,us:county:48453,traviscotx.portal.civicclerk.com
+archive,City of Dearborn,,city,county,us:county:18029,dearborn.gov
+archive,Westfield,,city,other,rtr:us:xx:westfield,westfieldnj.gov
+archive,Prescott,,city,other,rtr:us:xx:prescott,prescottwi.gov
+archive,"Juneau, AK",,city,other,rtr:us:ak:juneau,juneauak.portal.civicclerk.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,villageofgreenport.granicus.com
+archive,Virginia,,city,state,us:state:51,virginia-house.granicus.com
+archive,Wake,,city,county,us:county:37183,wake.granicus.com
+archive,Sulphur,,city,other,rtr:us:xx:sulphur,www.sulphurla.gov
+archive,"Town of Sullivan, NY",,city,county,us:county:36105,www.townofsullivanny.gov
+archive,"Pueblo West, CO",,city,other,rtr:us:co:pueblo-west,pueblowestmetroco.portal.civicclerk.com
+archive,Brighton,,city,other,rtr:us:xx:brighton,brighton.civicweb.net
+archive,Coaldale,,city,other,rtr:us:xx:coaldale,coaldale.civicweb.net
+archive,The Town of Redcliff,,city,other,rtr:us:xx:redcliff,redcliff.civicweb.net
+archive,Duncan,,city,other,rtr:us:xx:duncan,duncan.civicweb.net
+archive,City of Victoria,,city,county,us:county:48469,victoria.civicweb.net
+archive,City of Umatilla,,city,county,us:county:41059,umatilla.civicweb.net
+archive,La Center,,city,other,rtr:us:xx:la-center,lacenter.civicweb.net
+archive,the Town of Perth,,city,other,rtr:us:xx:perth,perth.civicweb.net
+archive,Watertown,,city,other,rtr:us:xx:watertown,watertown.civicweb.net
+archive,"Red Deer, AB",,city,other,rtr:ca:ab:red-deer,pub-reddeer.escribemeetings.com
+archive,City of Victoria,,city,county,us:county:48469,pub-victoria.escribemeetings.com
+archive,Wilmot,,city,other,rtr:us:xx:wilmot,pub-wilmot.escribemeetings.com
+archive,Town of Oliver,,city,county,us:county:38065,pub-oliver.escribemeetings.com
+archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+archive,City of Winona,,city,county,us:county:27169,pub-winona.escribemeetings.com
+archive,Amherst,,city,county,us:county:51009,pub-amherst.escribemeetings.com
+archive,Port Hope,,city,special_district,rtr:us:xx:port-hope,pub-porthope.escribemeetings.com
+archive,Halifax,,city,other,rtr:us:xx:halifax,pub-halifax.escribemeetings.com
+archive,Clearview,,city,other,rtr:us:xx:clearview,pub-clearview.escribemeetings.com
+archive,Unknown Jurisdiction,,city,other,rtr:us:xx:unknown-jurisdiction,westspringfieldma.granicus.com
+archive,"Marion County Public Schools, WV",,county,school_district,us:sd:5400720,marionboe.new.swagit.com
+archive,Louisville,Metro Council View,city,other,rtr:us:ky:louisville,louisville.granicus.com
+archive,"Red Deer, AB",,city,other,rtr:ca:ab:red-deer,meeting.reddeer.ca
+archive,MCS,,city,other,rtr:us:xx:mcs,videoplayer.telvue.com
+archive,"Montgomery County Public Schools, MD",,county,school_district,us:sd:2400480,mcpsmd.new.swagit.com
+archive,Eastvale,,city,other,rtr:us:xx:eastvale,eastvale.granicus.com
+archive,Fremont,,city,other,rtr:us:xx:fremont,fremont.granicus.com
+archive,Lexington,,city,other,rtr:us:xx:lexington,lexingtonnc.granicus.com
+archive,Richmond,,city,other,rtr:us:xx:richmond,richmondtx.granicus.com
+archive,Salisbury,,city,other,rtr:us:xx:salisbury,vimeo.com
+archive,Covington,,city,other,rtr:us:xx:covington,vimeo.com
+archive,Town of Amherst,,city,county,us:county:51009,vimeo.com
+archive,Hopkins,,city,other,rtr:us:xx:hopkins,vimeo.com
+archive,Miami,,city,other,rtr:us:xx:miami,miamicoks.portal.civicclerk.com
+archive,Newburgh,,city,other,rtr:us:xx:newburgh,newburghny.portal.civicclerk.com
+archive,Norfolk,,city,other,rtr:us:xx:norfolk,norfolkva.portal.civicclerk.com
+archive,Pensacola,,city,other,rtr:us:xx:pensacola,pensacolafl.portal.civicclerk.com
+archive,City of Mesa,City Council,city,county,us:county:08077,mesa.legistar.com
+archive,Phoenix,,city,other,rtr:us:xx:phoenix,www.youtube.com
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Winchester,,city,county,us:county:51840,videoplayer.telvue.com
+archive,Albany Common,,city,other,rtr:us:xx:albany-common,videoplayer.telvue.com
+archive,Portage,,city,other,rtr:us:xx:portage,portagecowi.portal.civicclerk.com
+archive,Portland,,city,other,rtr:us:xx:portland,portlandme.portal.civicclerk.com
+archive,"Pueblo West, CO",,city,other,rtr:us:co:pueblo-west,pueblowestmetroco.portal.civicclerk.com
+archive,Sherman,,city,other,rtr:us:xx:sherman,shermantx.portal.civicclerk.com
+archive,"Washington, DC",Committee of the Whole,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+archive,City of Mesa,City Council Study Session,city,county,us:county:08077,mesa.legistar.com
+archive,City of Mesa,City Council Study Session,city,county,us:county:08077,mesa.legistar.com
+archive,Phoenix,,city,other,rtr:us:xx:phoenix,www.youtube.com
+archive,Phoenix,,city,other,rtr:us:xx:phoenix,www.youtube.com
+archive,"Harris, TX",,city,county,us:county:48201,theharriscentertx.new.swagit.com
+archive,Andover,,city,other,rtr:us:xx:andover,andoverks.civicweb.net
+archive,Brighton,,city,other,rtr:us:xx:brighton,brightonco.granicus.com
+archive,City of Bowie,,city,county,us:county:48037,cityofbowietx.civicweb.net
+archive,"North Port, FL",City Commission-orig,city,special_district,rtr:us:fl:north-port,cityofnorthport.granicus.com
+archive,"City of Port Townsend, WA",,city,special_district,rtr:us:wa:port-townsend,cityofpt.granicus.com
+archive,Coaldale,,city,other,rtr:us:xx:coaldale,coaldale.civicweb.net
+archive,"College Park, MD",,school,municipality,us:place:2418750,college-park.granicus.com
+archive,Duncan,,city,other,rtr:us:xx:duncan,cvrd.primegov.com
+archive,"City of Indio, CA",,city,special_district,rtr:us:ca:coachella-valley-water-district,cvwd.primegov.com
+archive,Easton,,city,other,rtr:us:xx:easton,eastonmd.portal.civicclerk.com
+archive,Greeley,,city,other,rtr:us:xx:greeley,greeleyco.portal.civicclerk.com
+archive,City of Greenville,City Council View,city,county,us:county:45045,greenville.granicus.com
+archive,Holden,,city,other,rtr:us:xx:holden,hctv.cablecast.tv
+archive,City of Honolulu,,city,county,us:county:15003,honolulu.granicus.com
+archive,Village of Irvington,Board of Trustees,school,municipality,rtr:us:xx:irvington,irvington.granicus.com
+archive,California,Judicial Council Meetings Archive,city,court,rtr:us:ca:judicial-council-of-california,jcc.granicus.com
+archive,La Center,,city,other,rtr:us:xx:la-center,lacenter.civicweb.net
+archive,"Los Angeles, CA",Board of Commissioners - Meeting Video &amp; Agenda Archive,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.granicus.com
+archive,"Louisville, KY",Metro Council View,city,other,rtr:us:ky:louisville,louisville.granicus.com
+archive,Madison,,city,other,rtr:us:xx:madison,madisonsd.portal.civicclerk.com
+archive,Mill Creek,,city,other,rtr:us:xx:mill-creek,millcreekut.portal.civicclerk.com
+archive,Nashville,,city,special_district,rtr:us:tn:nashville-davidson-metropolitan-government,nashville.cablecast.tv
+archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+archive,"Horry County, SC",,county,school_district,us:sd:4502490,pub-horrycountyschools.escribemeetings.com
+archive,City of Hamilton,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
+archive,Mackenzie,,city,other,rtr:us:xx:mackenzie,pub-mackenziebc.escribemeetings.com
+archive,Marvin,,city,other,rtr:us:xx:marvin,pub-marvinnc.escribemeetings.com
+archive,"Paso Robles, CA",,city,other,rtr:us:ca:paso-robles,pub-pasorobles.escribemeetings.com
+archive,Port Hope,,city,special_district,rtr:us:xx:port-hope,pub-porthope.escribemeetings.com
+archive,"City of Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
+archive,"City of San Diego, CA",,city,special_district,rtr:us:ca:san-diego-association-of-governments,pub-sandag.escribemeetings.com
+archive,City of Victoria,,city,county,us:county:48469,pub-victoria.escribemeetings.com
+archive,Wilmot,,city,other,rtr:us:xx:wilmot,pub-wilmot.escribemeetings.com
+archive,Riverside,City Council View Page,city,county,us:county:06065,riversideca.granicus.com
+archive,City of Riverview,,city,other,rtr:us:xx:riverview,riverviewmi.cablecast.tv
+archive,City of Santa Clara,,city,county,us:county:06085,santaclara.granicus.com
+archive,City of Saratoga,,city,county,us:county:36091,saratoga.granicus.com
+archive,"Tarrant County, TX",,county,school_district,rtr:us:tx:tarrant-county-college-district,tccd.granicus.com
+archive,"Town of Chenango, NY",,city,county,us:county:36017,townofchenango.civicweb.net
+archive,Tracy,,city,other,rtr:us:xx:tracy,tracy-ca.granicus.com
+archive,Virginia,,city,state,us:state:51,virginia-house.granicus.com
+archive,Tom Green,,city,county,us:county:48451,tomgreencotx.portal.civicclerk.com
+archive,Ukiah,,city,other,rtr:us:xx:ukiah,ukiahca.portal.civicclerk.com
+archive,"Wicomico County Public Schools, MD",,county,school_district,us:sd:2400690,wicomicocountyps.new.swagit.com
+archive,Winter Park,,city,other,rtr:us:xx:winter-park,winterparkfl.portal.civicclerk.com
+archive,Westfield,,city,other,rtr:us:xx:westfield,www.youtube.com
+archive,Harrison,,city,other,rtr:us:xx:harrison,www.youtube.com
+archive,Lebanon,,city,county,us:county:42075,www.youtube.com
+archive,Woodland,,city,other,rtr:us:xx:woodland,woodlandca.portal.civicclerk.com
+archive,Fulton,,city,other,rtr:us:xx:fulton,www.youtube.com
+archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+archive,"Montgomery County Public Schools, MD",,county,school_district,us:sd:2400480,mcpsmd.new.swagit.com
+archive,Village Of University Park,,school,municipality,rtr:us:xx:university-park,villageofuniversitypark.cablecast.tv
+archive,Pontiac,,city,other,rtr:us:xx:pontiac,cityofpontiac.cablecast.tv
+archive,Independence,,city,county,us:county:05063,independenceks.gov
+archive,Henderson,,city,other,rtr:us:xx:henderson,hendersonky.gov
+archive,City of Belmont,,city,county,us:county:39013,cityofbelmont.civicweb.net
+archive,Portage,,city,other,rtr:us:xx:portage,portagemi.cablecast.tv
+archive,"Bristol, RI",,city,county,us:county:44001,www.youtube.com
+archive,"City of Los Angeles, CA",,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.primegov.com
+archive,City of Markham,,city,special_district,rtr:ca:on:toronto-and-region-conservation-authority,pub-trca.escribemeetings.com
+archive,Brighton,,city,other,rtr:us:xx:brighton,brighton.civicweb.net
+archive,"St James, MN",,city,other,rtr:us:mn:st-james,www.youtube.com
+archive,Clinton,,city,other,rtr:us:xx:clinton,www.youtube.com
+archive,Duncan,,city,other,rtr:us:xx:duncan,duncan.civicweb.net
+archive,Alpine,,city,county,us:county:06003,www.youtube.com
+archive,"Juneau, AK",,city,other,rtr:us:ak:juneau,www.youtube.com
+archive,Lebanon,,city,county,us:county:42075,www.youtube.com
+archive,"Town of Atherton, CA",,city,special_district,rtr:us:ca:menlo-park-fire-protection-district,menlofire.primegov.com
+archive,"Port Orange, FL",,city,special_district,rtr:us:fl:port-orange,www.youtube.com
+archive,City of Hamilton,,city,other,rtr:us:xx:hamilton,pub-hamilton.escribemeetings.com
+archive,City of Pratt,,city,county,us:county:20151,youtu.be
+archive,Fairfield,,city,other,rtr:us:xx:fairfield,pub-fairfield.escribemeetings.com
+archive,Town of Huntington,,city,county,us:county:18069,huntingtonny.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+archive,Town of Huntington,,city,county,us:county:18069,huntingtonny.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+archive,Town of Huntington,,city,county,us:county:18069,huntingtonny.granicus.com
+archive,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+ledger,City of Mesa,,city,county,us:county:08077,mesa.legistar.com
+ledger,Phoenix,,city,other,rtr:us:xx:phoenix,phoenix.legistar.com
+ledger,Edina,,city,other,rtr:us:xx:edina,edina-mn.cablecast.tv
+ledger,"Washington, DC",,city,other,rtr:us:dc:washington,dc.granicus.com
+ledger,Mill Creek,,city,other,rtr:us:xx:mill-creek,millcreekut.portal.civicclerk.com
+ledger,City of Victoria,,city,county,us:county:48469,pub-victoria.escribemeetings.com
+ledger,Riverside,,city,county,us:county:06065,riversideca.granicus.com
+ledger,Duncan,,city,other,rtr:us:xx:duncan,cvrd.primegov.com
+ledger,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
+ledger,"City of San Diego, CA",,city,special_district,rtr:us:ca:san-diego-association-of-governments,pub-sandag.escribemeetings.com
+ledger,City of Riverview,,city,other,rtr:us:xx:riverview,riverviewmi.cablecast.tv
+ledger,Holden,,city,other,rtr:us:xx:holden,hctv.cablecast.tv
+ledger,Nashville,,city,special_district,rtr:us:tn:nashville-davidson-metropolitan-government,nashville.cablecast.tv
+ledger,"Louisville, KY",,city,other,rtr:us:ky:louisville,louisville.granicus.com
+ledger,"City of Indio, CA",,city,special_district,rtr:us:ca:coachella-valley-water-district,cvwd.primegov.com
+ledger,Greeley,,city,other,rtr:us:xx:greeley,greeleyco.portal.civicclerk.com
+ledger,City of Hamilton,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
+ledger,"City of Los Angeles, CA",,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.primegov.com
+ledger,City of Santa Clara,,city,county,us:county:06085,santaclara.granicus.com
+ledger,"City of Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
+ledger,"Town of Atherton, CA",,city,special_district,rtr:us:ca:menlo-park-fire-protection-district,menlofire.primegov.com
+ledger,"Horry County, SC",,county,school_district,us:sd:4502490,pub-horrycountyschools.escribemeetings.com
+ledger,Marvin,,city,other,rtr:us:xx:marvin,pub-marvinnc.escribemeetings.com
+ledger,"Paso Robles, CA",,city,other,rtr:us:ca:paso-robles,pub-pasorobles.escribemeetings.com
+ledger,Coaldale,,city,other,rtr:us:xx:coaldale,coaldale.civicweb.net
+ledger,City of Markham,,city,special_district,rtr:ca:on:toronto-and-region-conservation-authority,pub-trca.escribemeetings.com
+ledger,"Tarrant County, TX",,county,school_district,rtr:us:tx:tarrant-county-college-district,tccd.granicus.com
+ledger,Duncan,,city,other,rtr:us:xx:duncan,duncan.civicweb.net
+ledger,Mackenzie,,city,other,rtr:us:xx:mackenzie,pub-mackenziebc.escribemeetings.com
+ledger,City of Hamilton,,city,other,rtr:us:xx:hamilton,pub-hamilton.escribemeetings.com
+ledger,La Center,,city,other,rtr:us:xx:la-center,lacenter.civicweb.net
+ledger,Wilmot,,city,other,rtr:us:xx:wilmot,pub-wilmot.escribemeetings.com
+ledger,Port Hope,,city,special_district,rtr:us:xx:port-hope,pub-porthope.escribemeetings.com
+ledger,Town of Windsor,,city,county,us:county:50027,windsor-ca.granicus.com
+ledger,Easton,,city,other,rtr:us:xx:easton,eastonmd.portal.civicclerk.com
+ledger,Madison,,city,other,rtr:us:xx:madison,madisonsd.portal.civicclerk.com
+ledger,"Los Angeles, CA",,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.granicus.com
+ledger,Brighton,,city,other,rtr:us:xx:brighton,brightonco.granicus.com
+ledger,City of Saratoga,,city,county,us:county:36091,saratoga.granicus.com
+ledger,Andover,,city,other,rtr:us:xx:andover,andoverks.civicweb.net
+ledger,"North Port, FL",,city,special_district,rtr:us:fl:north-port,cityofnorthport.granicus.com
+ledger,"College Park, MD",,school,municipality,us:place:2418750,college-park.granicus.com
+ledger,Tracy,,city,other,rtr:us:xx:tracy,tracy-ca.granicus.com
+ledger,City of Bowie,,city,county,us:county:48037,cityofbowietx.civicweb.net
+ledger,City of Greenville,,city,county,us:county:45045,greenville.granicus.com
+ledger,City of Honolulu,,city,county,us:county:15003,honolulu.granicus.com
+ledger,Town of Huntington,,city,county,us:county:18069,huntingtonny.granicus.com
+ledger,California,,city,court,rtr:us:ca:judicial-council-of-california,jcc.granicus.com
+ledger,"City of Port Townsend, WA",,city,special_district,rtr:us:wa:port-townsend,cityofpt.granicus.com
+ledger,Virginia,,city,state,us:state:51,virginia-house.granicus.com
+ledger,"Town of Chenango, NY",,city,county,us:county:36017,townofchenango.civicweb.net
+ledger,Brighton,,city,other,rtr:us:xx:brighton,brighton.civicweb.net
+ledger,"Port Orange, FL",,city,special_district,rtr:us:fl:port-orange,fl-portorange.civicplus.com
+ledger,Independence,,city,county,us:county:05063,ks-independence.civicplus.com
+ledger,City of Pratt,,city,county,us:county:20151,ks-pratt.civicplus.com
+ledger,Borough of Fair Haven,,city,other,rtr:us:nj:fairhaven,nj-fairhaven.civicplus.com
+ledger,City of St. Marys,,city,other,rtr:us:oh:st-marys,oh-stmarys.civicplus.com
+ledger,Alpine,,city,county,us:county:06003,ut-alpine.civicplus.com
+ledger,Henderson,,city,other,rtr:us:xx:henderson,hendersonky.gov
+ledger,Lebanon,,city,county,us:county:42075,or-lebanon.civicplus.com
+ledger,"Beaufort County, SC",,county,municipality,us:place:4507210,bluffton-sc.municodemeetings.com
+ledger,"Bristol, RI",,city,county,us:county:44001,bristol-ri.municodemeetings.com
+ledger,"Juneau, AK",,city,other,rtr:us:ak:juneau,juneau-ak.municodemeetings.com
+ledger,"St James, MN",,city,other,rtr:us:mn:st-james,stjames-mn.municodemeetings.com
+ledger,"Ventura, CA",,city,county,us:county:06111,ca-ventura.civicplus.com

@@ -1,0 +1,8 @@
+input_set,tier,rows,pct
+archive,registry,3743,74.1
+archive,unverified,673,13.3
+archive,pinned,410,8.1
+archive,blank,227,4.5
+ledger,registry,731,83.4
+ledger,pinned,94,10.7
+ledger,unverified,51,5.8

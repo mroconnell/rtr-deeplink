@@ -1,0 +1,294 @@
+sgc_code,name,province
+1001,Division No. 1,NL
+1002,Division No. 2,NL
+1003,Division No. 3,NL
+1004,Division No. 4,NL
+1005,Division No. 5,NL
+1006,Division No. 6,NL
+1007,Division No. 7,NL
+1008,Division No. 8,NL
+1009,Division No. 9,NL
+1010,Division No. 10,NL
+1011,Division No. 11,NL
+1101,Kings,PE
+1102,Queens,PE
+1103,Prince,PE
+1201,Shelburne,NS
+1202,Yarmouth,NS
+1203,Digby,NS
+1204,Queens,NS
+1205,Annapolis,NS
+1206,Lunenburg,NS
+1207,Kings,NS
+1208,Hants,NS
+1209,Halifax,NS
+1210,Colchester,NS
+1211,Cumberland,NS
+1212,Pictou,NS
+1213,Guysborough,NS
+1214,Antigonish,NS
+1215,Inverness,NS
+1216,Richmond,NS
+1217,Cape Breton,NS
+1218,Victoria,NS
+1301,Saint John,NB
+1302,Charlotte,NB
+1303,Sunbury,NB
+1304,Queens,NB
+1305,Kings,NB
+1306,Albert,NB
+1307,Westmorland,NB
+1308,Kent,NB
+1309,Northumberland,NB
+1310,York,NB
+1311,Carleton,NB
+1312,Victoria,NB
+1313,Madawaska,NB
+1314,Restigouche,NB
+1315,Gloucester,NB
+2401,Communauté maritime des Îles-de-la-Madeleine,QC
+2402,Le Rocher-Percé,QC
+2403,La Côte-de-Gaspé,QC
+2404,La Haute-Gaspésie,QC
+2405,Bonaventure,QC
+2406,Avignon,QC
+2407,La Matapédia,QC
+2408,La Matanie,QC
+2409,La Mitis,QC
+2410,Rimouski-Neigette,QC
+2411,Les Basques,QC
+2412,Rivière-du-Loup,QC
+2413,Témiscouata,QC
+2414,Kamouraska,QC
+2415,Charlevoix-Est,QC
+2416,Charlevoix,QC
+2417,L'Islet,QC
+2418,Montmagny,QC
+2419,Bellechasse,QC
+2420,L'Île-d'Orléans,QC
+2421,La Côte-de-Beaupré,QC
+2422,La Jacques-Cartier,QC
+2423,Québec,QC
+2425,Lévis,QC
+2426,La Nouvelle-Beauce,QC
+2427,Robert-Cliche,QC
+2428,Les Etchemins,QC
+2429,Beauce-Sartigan,QC
+2430,Le Granit,QC
+2431,Les Appalaches,QC
+2432,L'Érable,QC
+2433,Lotbinière,QC
+2434,Portneuf,QC
+2435,Mékinac,QC
+2436,Shawinigan,QC
+2437,Francheville,QC
+2438,Bécancour,QC
+2439,Arthabaska,QC
+2440,Les Sources,QC
+2441,Le Haut-Saint-François,QC
+2442,Le Val-Saint-François,QC
+2443,Sherbrooke,QC
+2444,Coaticook,QC
+2445,Memphrémagog,QC
+2446,Brome-Missisquoi,QC
+2447,La Haute-Yamaska,QC
+2448,Acton,QC
+2449,Drummond,QC
+2450,Nicolet-Yamaska,QC
+2451,Maskinongé,QC
+2452,D'Autray,QC
+2453,Pierre-De Saurel,QC
+2454,Les Maskoutains,QC
+2455,Rouville,QC
+2456,Le Haut-Richelieu,QC
+2457,La Vallée-du-Richelieu,QC
+2458,Longueuil,QC
+2459,Marguerite-D'Youville,QC
+2460,L'Assomption,QC
+2461,Joliette,QC
+2462,Matawinie,QC
+2463,Montcalm,QC
+2464,Les Moulins,QC
+2465,Laval,QC
+2466,Montréal,QC
+2467,Roussillon,QC
+2468,Les Jardins-de-Napierville,QC
+2469,Le Haut-Saint-Laurent,QC
+2470,Beauharnois-Salaberry,QC
+2471,Vaudreuil-Soulanges,QC
+2472,Deux-Montagnes,QC
+2473,Thérèse-De Blainville,QC
+2474,Mirabel,QC
+2475,La Rivière-du-Nord,QC
+2476,Argenteuil,QC
+2477,Les Pays-d'en-Haut,QC
+2478,Les Laurentides,QC
+2479,Antoine-Labelle,QC
+2480,Papineau,QC
+2481,Gatineau,QC
+2482,Les Collines-de-l'Outaouais,QC
+2483,La Vallée-de-la-Gatineau,QC
+2484,Pontiac,QC
+2485,Témiscamingue,QC
+2486,Rouyn-Noranda,QC
+2487,Abitibi-Ouest,QC
+2488,Abitibi,QC
+2489,La Vallée-de-l'Or,QC
+2490,La Tuque,QC
+2491,Le Domaine-du-Roy,QC
+2492,Maria-Chapdelaine,QC
+2493,Lac-Saint-Jean-Est,QC
+2494,Le Saguenay-et-son-Fjord,QC
+2495,La Haute-Côte-Nord,QC
+2496,Manicouagan,QC
+2497,Sept-Rivières--Caniapiscau,QC
+2498,Minganie--Le Golfe-du-Saint-Laurent,QC
+2499,Nord-du-Québec,QC
+3501,"Stormont, Dundas and Glengarry",ON
+3502,Prescott and Russell,ON
+3506,Ottawa,ON
+3507,Leeds and Grenville,ON
+3509,Lanark,ON
+3510,Frontenac,ON
+3511,Lennox and Addington,ON
+3512,Hastings,ON
+3513,Prince Edward,ON
+3514,Northumberland,ON
+3515,Peterborough,ON
+3516,Kawartha Lakes,ON
+3518,Durham,ON
+3519,York,ON
+3520,Toronto,ON
+3521,Peel,ON
+3522,Dufferin,ON
+3523,Wellington,ON
+3524,Halton,ON
+3525,Hamilton,ON
+3526,Niagara,ON
+3528,Haldimand-Norfolk,ON
+3529,Brant,ON
+3530,Waterloo,ON
+3531,Perth,ON
+3532,Oxford,ON
+3534,Elgin,ON
+3536,Chatham-Kent,ON
+3537,Essex,ON
+3538,Lambton,ON
+3539,Middlesex,ON
+3540,Huron,ON
+3541,Bruce,ON
+3542,Grey,ON
+3543,Simcoe,ON
+3544,Muskoka,ON
+3546,Haliburton,ON
+3547,Renfrew,ON
+3548,Nipissing,ON
+3549,Parry Sound,ON
+3551,Manitoulin,ON
+3552,Sudbury,ON
+3553,Greater Sudbury / Grand Sudbury,ON
+3554,Timiskaming,ON
+3556,Cochrane,ON
+3557,Algoma,ON
+3558,Thunder Bay,ON
+3559,Rainy River,ON
+3560,Kenora,ON
+4601,Division No. 1,MB
+4602,Division No. 2,MB
+4603,Division No. 3,MB
+4604,Division No. 4,MB
+4605,Division No. 5,MB
+4606,Division No. 6,MB
+4607,Division No. 7,MB
+4608,Division No. 8,MB
+4609,Division No. 9,MB
+4610,Division No. 10,MB
+4611,Division No. 11,MB
+4612,Division No. 12,MB
+4613,Division No. 13,MB
+4614,Division No. 14,MB
+4615,Division No. 15,MB
+4616,Division No. 16,MB
+4617,Division No. 17,MB
+4618,Division No. 18,MB
+4619,Division No. 19,MB
+4620,Division No. 20,MB
+4621,Division No. 21,MB
+4622,Division No. 22,MB
+4623,Division No. 23,MB
+4701,Division No. 1,SK
+4702,Division No. 2,SK
+4703,Division No. 3,SK
+4704,Division No. 4,SK
+4705,Division No. 5,SK
+4706,Division No. 6,SK
+4707,Division No. 7,SK
+4708,Division No. 8,SK
+4709,Division No. 9,SK
+4710,Division No. 10,SK
+4711,Division No. 11,SK
+4712,Division No. 12,SK
+4713,Division No. 13,SK
+4714,Division No. 14,SK
+4715,Division No. 15,SK
+4716,Division No. 16,SK
+4717,Division No. 17,SK
+4718,Division No. 18,SK
+4801,Division No. 1,AB
+4802,Division No. 2,AB
+4803,Division No. 3,AB
+4804,Division No. 4,AB
+4805,Division No. 5,AB
+4806,Division No. 6,AB
+4807,Division No. 7,AB
+4808,Division No. 8,AB
+4809,Division No. 9,AB
+4810,Division No. 10,AB
+4811,Division No. 11,AB
+4812,Division No. 12,AB
+4813,Division No. 13,AB
+4814,Division No. 14,AB
+4815,Division No. 15,AB
+4816,Division No. 16,AB
+4817,Division No. 17,AB
+4818,Division No. 18,AB
+4819,Division No. 19,AB
+5901,East Kootenay,BC
+5903,Central Kootenay,BC
+5905,Kootenay Boundary,BC
+5907,Okanagan-Similkameen,BC
+5909,Fraser Valley,BC
+5915,Greater Vancouver,BC
+5917,Capital,BC
+5919,Cowichan Valley,BC
+5921,Nanaimo,BC
+5923,Alberni-Clayoquot,BC
+5924,Strathcona,BC
+5926,Comox Valley,BC
+5927,Powell River,BC
+5929,Sunshine Coast,BC
+5931,Squamish-Lillooet,BC
+5933,Thompson-Nicola,BC
+5935,Central Okanagan,BC
+5937,North Okanagan,BC
+5939,Columbia-Shuswap,BC
+5941,Cariboo,BC
+5943,Mount Waddington,BC
+5945,Central Coast,BC
+5947,Skeena-Queen Charlotte,BC
+5949,Kitimat-Stikine,BC
+5951,Bulkley-Nechako,BC
+5953,Fraser-Fort George,BC
+5955,Peace River,BC
+5957,Stikine,BC
+5959,Northern Rockies,BC
+6001,Yukon,YT
+6101,Region 1,NT
+6102,Region 2,NT
+6103,Region 3,NT
+6104,Region 4,NT
+6105,Region 5,NT
+6106,Region 6,NT
+6204,Qikiqtaaluk,NU
+6205,Kivalliq,NU
+6208,Kitikmeot,NU

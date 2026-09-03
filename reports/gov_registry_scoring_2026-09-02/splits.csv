@@ -1,0 +1,51 @@
+old_hub,gov_ids,gov_count,raw_names
+unknown-jurisdiction,rtr:us:xx:unknown-jurisdiction|us:place:0620956|us:place:4852356,3,Unknown Jurisdiction
+san-diego-ca,rtr:us:ca:san-diego-association-of-governments|us:place:0666000,2,"City of San Diego, CA|San Diego, CA"
+los-angeles-ca,rtr:us:ca:los-angeles-department-of-water-and-power|us:place:0644000,2,"City of Los Angeles, CA|Los Angeles, CA"
+los-angeles-county-ca,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority|us:county:06037,2,"Los Angeles County, CA"
+beverly-hills,rtr:us:xx:beverly-hills|us:place:0606308,2,City of Beverly Hills
+horry-county-sc,us:county:45051|us:sd:4502490,2,"Horry County, SC"
+marion,rtr:us:xx:marion|us:county:12083,2,City of Marion|Marion
+montgomery-county,rtr:us:md:montgomery-county-planning-board|rtr:us:xx:montgomery-county,2,Montgomery County
+nashville,rtr:us:tn:nashville-davidson-county|rtr:us:tn:nashville-davidson-metropolitan-government,2,Nashville
+miami,rtr:us:xx:miami|us:place:1249225,2,City of Miami|Miami
+tarrant-county-tx,rtr:us:tx:tarrant-county-college-district|us:county:48439,2,"Tarrant County, TX"
+lees-summit,rtr:us:xx:lees-summit|us:place:3775000,2,City of Lees Summit
+amarillo-tx,rtr:us:tx:amarillo|us:place:4803000,2,"Amarillo, TX|The City of Amarillo, TX"
+beaufort-county-sc,us:county:45013|us:place:4507210,2,"Beaufort County, SC"
+indio-ca,rtr:us:ca:coachella-valley-water-district|us:place:0636448,2,"City of Indio, CA|Indio, CA"
+corona,rtr:us:xx:corona|us:place:0616350,2,City of Corona|Corona
+hamilton,rtr:ca:on:hamilton-police-services-board|rtr:us:xx:hamilton,2,City of Hamilton|Hamilton
+mississauga-on,ca:csd:3521005|rtr:ca:on:toronto-and-region-conservation-authority,2,"City of Mississauga, ON|Mississauga, ON"
+east-lansing-mi,rtr:us:mi:east-lansing|us:place:2624120,2,"City of East Lansing, MI|The City of East Lansing, MI"
+eldorado,rtr:us:xx:eldorado|us:county:06017,2,Eldorado
+carson,rtr:us:xx:carson|us:place:0611530,2,Carson|City of Carson
+town-of-atherton-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0603092,2,"Town of Atherton, CA"
+menlo-park-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0646870,2,"City of Menlo Park, CA"
+lafayette,rtr:us:xx:lafayette|us:place:0639122,2,City of Lafayette
+california,rtr:us:ca:judicial-council-of-california|rtr:us:xx:california,2,California
+orange-county,us:county:12095|us:county:37135,2,Orange County
+easton,rtr:us:xx:easton|us:place:4221648,2,City of Easton|Easton
+portage,rtr:us:xx:portage|us:place:1861092,2,City of Portage|Portage
+oak-harbor,rtr:us:xx:oak-harbor|us:place:5350360,2,City of Oak Harbor
+wayne,rtr:us:xx:wayne|us:place:2684940,2,City of Wayne
+westfield,rtr:us:xx:westfield|us:place:3479040,2,Westfield
+verona,rtr:us:xx:verona|us:place:5582600,2,City of Verona
+sulphur,rtr:us:xx:sulphur|us:place:2273640,2,Sulphur
+markham,rtr:ca:on:toronto-and-region-conservation-authority|us:place:1747007,2,City of Markham|Markham
+norfolk,rtr:us:xx:norfolk|us:place:5157000,2,Norfolk
+harrison,rtr:us:xx:harrison|us:place:3632402,2,Harrison
+ridgecrest,rtr:us:xx:ridgecrest|us:place:0660704,2,City of Ridgecrest
+fulton,rtr:us:xx:fulton|us:place:2926182,2,Fulton
+rome,rtr:us:xx:rome|us:place:1366668,2,City of Rome
+clinton,rtr:us:xx:clinton|us:place:4515295,2,City of Clinton|Clinton
+caledonia-township,rtr:us:xx:caledonia-township|us:cousub:2615512520,2,Caledonia Township
+lincoln-park,rtr:us:xx:lincoln-park|us:place:2647800,2,City of Lincoln Park
+village-of-northfield,rtr:us:xx:northfield|us:place:1753663,2,Village of Northfield
+st-marys,rtr:us:oh:st-marys|rtr:us:xx:st-marys,2,City of St. Marys
+buckley,rtr:us:xx:buckley|us:place:5308570,2,City of Buckley
+crestview,rtr:us:xx:crestview|us:place:1215475,2,City of Crestview
+town-of-fraser,rtr:us:xx:fraser|us:place:0828305,2,Town of Fraser
+borough-of-fair-haven,rtr:us:nj:fairhaven|rtr:us:xx:fair-haven,2,Borough of Fair Haven
+new-franklin,rtr:us:xx:new-franklin|us:place:3954562,2,City of New Franklin
+village-of-galena,rtr:us:xx:galena|us:place:3975602,2,Village of Galena

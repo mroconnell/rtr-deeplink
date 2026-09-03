@@ -367,3 +367,129 @@ keep-and-flag**, reaching 536/649 before the registry tier even counts.
   SLC in prod. Once the enricher-side registry is built and proven, it
   becomes redundant and can be deleted — logged in `BACKLOG.md` as a
   future refactor.
+
+---
+
+## Phase 1 — gov_id registry scoring (WO-98, 2026-09-02)
+
+Step 1 of `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6:
+the registry data files and a pure resolver module
+(`app/utils/gov_registry/`), **scored before any schema change**. Nothing
+in this repo imports the package yet; `scripts/score_gov_registry.py` is
+its only caller. No schema change, no production write, no Alembic
+migration, and no change to any adapter's or `finalize_jurisdiction()`'s
+behaviour — the resolver *calls* the enricher rather than replacing it.
+
+Scored the way the 2026-08-15 tournament above was: against real data,
+with the numbers stated before anything is built on them. Inputs:
+**5,053** archived pages (metadata only, via `GET
+/internal/export/pages`) and **876** distinct `(tenant, jurisdiction)`
+pairs from rtr-discovery's ledger — 5,929 rows in total. Full sheets and
+per-cut breakdowns in `reports/gov_registry_scoring_2026-09-02/`.
+
+### Tier distribution
+
+| tier | archive pages | ledger pairs |
+| --- | --- | --- |
+| pinned | 410 (8.1%) | 94 (10.7%) |
+| registry | 3,743 (74.1%) | 731 (83.4%) |
+| unverified | 673 (13.3%) | 51 (5.8%) |
+| blank | 227 (4.5%) | 0 (0.0%) |
+
+**4,719 of 5,929 rows (79.6%) got a national id** — a Census GEOID/FIPS,
+a Census school-district GEOID, or a StatCan SGC code. The remaining
+1,210 mint an `rtr:` id over **636 distinct governments**, and 227 rows
+have no jurisdiction string at all (`rtr:unknown:<host>`).
+
+### Merges and splits — the part that proves the design
+
+**142 merges**: two or more of today's `/j/` hubs collapse into one
+`gov_id`, retiring **289** hub pages' worth of fragmentation. **Exactly
+13 of them are California counties** — which is what the architecture
+doc predicted, unprompted, from a completely separate count of
+`/state/california`. Others: `us:place:0667000` absorbs `ccs-f`,
+`city-and-county-of-san-francisco` and `san-francisco-ca`;
+`us:county:12095` absorbs `orange-county`, `orange-county-comptroller`
+and `orange-county-fl`.
+
+**50 splits**: one of today's hubs becomes several governments. Six of
+them are the §1.3 mislabels being undone, which is the whole point:
+
+| today's hub | becomes |
+| --- | --- |
+| `/j/los-angeles-ca` | LADWP + City of Los Angeles |
+| `/j/los-angeles-county-ca` | LA Metro + Los Angeles County |
+| `/j/san-diego-ca` | SANDAG + City of San Diego |
+| `/j/indio-ca` | Coachella Valley Water District + City of Indio |
+| `/j/tarrant-county-tx` | Tarrant County College District + Tarrant County |
+| `/j/horry-county-sc` | Horry County Schools + Horry County |
+
+### Government types, and the classifier disagreement
+
+| gov_type | rows |
+| --- | --- |
+| municipality | 3,926 |
+| county | 955 |
+| other | 569 |
+| township | 236 |
+| school_district | 124 |
+| special_district | 104 |
+| state | 10 |
+| court | 5 |
+
+**583 rows** where the new `gov_type` disagrees with
+`archive/utils/gov_classify.py`, the classifier driving the `/state/*`
+headings today: 135 filed as cities that are counties, 46 as cities that
+are special districts, 29 as counties that are school districts, 10 as
+schools that are municipalities, 9 as cities that are state bodies. The
+largest bucket (330 "city" → "other") is not a disagreement about a
+*government* so much as about a bare, unclassifiable name —
+`gov_classify` defaults to city, this defaults to `other` rather than
+guessing.
+
+### Canada
+
+**415 of 450** Canadian rows (92.2%) got a StatCan id. The 35 that
+didn't are school boards, conservation authorities and police services
+boards, which have no SGC code by construction (decision D4 — SGC codes
+subdivisions and divisions, not boards) and correctly mint `rtr:ca:`.
+This is against **0 of 10** Canadian override rows carrying any code
+before this work.
+
+### Two corrections to the architecture doc, found by building against it
+
+1. **§1.4 is wrong about one of its three examples.** It states that
+   `discovery/feed/govtype.py` correctly classifies "Broward County
+   Public Schools", "West County Wastewater District" and "Minnesota
+   Senate". Running its own `_RULES` on 2026-09-02 returns
+   `school_district`, **`county`**, `state` — the county rule's negative
+   lookahead lists "water" but not "wastewater", so the middle one falls
+   into the same bucket `gov_classify.py` puts it in. Corrected here and
+   in the doc; `tests/test_gov_registry.py` pins the fix.
+2. **The COG file's `CENSUS_ID_GIDID` cannot be an identity namespace.**
+   Census stopped generating it in 2022 and has never published its
+   segment layout (it does not even line up with FIPS — California rows
+   start "05"). `cog_units.csv` therefore carries `CENSUS_ID_PID6` as a
+   pure enrichment column, which is what D3 already provided for.
+
+### Residual gaps, for Ryan before Phase 2
+
+- **A state-less stored jurisdiction cannot be keyed nationally.** Most
+  remaining splits are one government arriving twice — once with a state
+  and once without (`/j/beverly-hills` → `rtr:us:xx:beverly-hills` +
+  `us:place:0606308`). Phase 2's backfill should let a tenant's other
+  pages supply the state before minting.
+- **11 tenant hosts have sources that disagree** about which government
+  they belong to. Neither is written; both are in
+  `app/utils/jurisdiction_data/tenant_overrides_conflicts.csv` for
+  review. A wrong pin is worse than no pin, because a pin is the one tier
+  that overrides a working extraction.
+- **Consolidated city-counties are only half solved.** San Francisco
+  merges correctly onto its place GEOID; Nashville-Davidson still mints
+  two ids ("Nashville-Davidson County" and "Nashville-Davidson
+  metropolitan government") because neither spelling matches the county
+  table and only the "(balance)" form matches the place table.
+- **227 rows have no jurisdiction at all**, concentrated on Swagit school
+  district tenants (`coppellisd.new.swagit.com`,
+  `pelhampublicschoolsny.new.swagit.com`) — the same blank-jurisdiction
+  family workstream 3 above already identified, now countable per host.
