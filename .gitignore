@@ -20,3 +20,10 @@ scripts/rollup_dedupe_state.json
 # scripts/repair_repetition_loops.py's own run artifacts.
 scripts/seam_duplication_report.json
 scripts/repetition_loop_report.json
+# scripts/score_gov_signals.py's cached raw HTML of real, external
+# government pages (WO-105) -- the scored sheets/SUMMARY.md a scoring run
+# writes under the same reports/gov_signals_scoring_<date>/ directory are
+# committed like every other reports/*_scoring_<date>/ run; the raw page
+# bodies themselves never should be (large, and a point-in-time copy of
+# someone else's site content, not repo content).
+reports/gov_signals_scoring_*/html_cache/

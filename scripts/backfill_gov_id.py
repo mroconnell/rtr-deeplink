@@ -122,6 +122,7 @@ async def main() -> None:
         TIER_REGISTRY,
         TIER_UNRESOLVED,
         TIER_UNVERIFIED,
+        page_hints_for,
         resolve_government,
     )
     from archive.db.engine import async_session
@@ -148,6 +149,11 @@ async def main() -> None:
             MeetingPage.gov_id,
             MeetingPage.gov_type,
             MeetingPage.source_url_normalized,
+            # WO-105: platform/external_id feed page_hints_for(), which
+            # is what makes a tenant_overrides.csv `match=key=value` row
+            # reachable at all -- see that function's own docstring.
+            MeetingPage.platform,
+            MeetingPage.external_id,
         ).order_by(MeetingPage.id.asc())
         if args.limit:
             stmt = stmt.limit(args.limit)
@@ -190,6 +196,8 @@ async def main() -> None:
             current_gov_id,
             current_gov_type,
             source_url,
+            platform,
+            external_id,
         ) = row
         parsed = urlparse(source_url or "")
         host = (parsed.netloc or "").lower().split(":")[0]
@@ -204,12 +212,18 @@ async def main() -> None:
         # output. normalize_state_suffix() first, matching the order
         # _find_or_create_page() uses.
         raw = normalize_state_suffix(jurisdiction)
-        keep.append((row, host, path, raw))
-        resolved[page_id] = resolve_government(raw, tenant_host=host or None, path=path)
+        # WO-105: same page_hints_for() build as crud._resolve_page_
+        # government() -- see that function's docstring for why this was
+        # previously always empty in production.
+        hints = page_hints_for(platform, external_id)
+        keep.append((row, host, path, raw, hints))
+        resolved[page_id] = resolve_government(
+            raw, tenant_host=host or None, path=path, page_hints=hints
+        )
 
     dominant_by_host: dict[str, str] = {}
     votes: dict[str, Counter] = {}
-    for row, host, _path, _raw in keep:
+    for row, host, _path, _raw, _hints in keep:
         match = resolved[row[0]]
         if not host or match.tier not in (TIER_REGISTRY, TIER_PINNED):
             continue
@@ -230,7 +244,7 @@ async def main() -> None:
     unchanged = 0
     hub_moves: Counter = Counter()
 
-    for row, host, path, raw in keep:
+    for row, host, path, raw, hints in keep:
         (
             page_id,
             slug,
@@ -239,6 +253,8 @@ async def main() -> None:
             current_gov_id,
             current_gov_type,
             _source_url,
+            _platform,
+            _external_id,
         ) = row
         match = resolved[page_id]
         if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
@@ -248,6 +264,7 @@ async def main() -> None:
                     raw,
                     tenant_host=host or None,
                     path=path,
+                    page_hints=hints,
                     tenant_gov_id=dominant,
                 )
 

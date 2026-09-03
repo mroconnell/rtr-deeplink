@@ -1329,6 +1329,29 @@ def known_jurisdiction_display(netloc: str) -> Optional[str]:
     return f"{known.type.capitalize()} of {known.name}, {known.state}"
 
 
+def _name_validates_in_state(name: str, jurisdiction_type: str, state: str) -> bool:
+    """Whether `name` is a real place/county of `jurisdiction_type` IN
+    `state` SPECIFICALLY -- not merely nationally unique, which is the
+    (stricter) question `lookup_county_state()`/`lookup_city_state()`
+    already answer. Reuses the same tables and the same
+    `_normalize_candidates()` normalization, just checked against one
+    particular state instead of requiring national uniqueness.
+
+    The guard `resolve_state()`'s ZIP branch needs (WO-105): a ZIP found
+    anywhere on the page is only evidence for a STATE this specific name
+    can plausibly belong to. Falls back to the subdivision table for a
+    non-county type, same as `lookup_city_state()` itself."""
+    table = _COUNTY_STATES if jurisdiction_type == "county" else _PLACE_STATES
+    for candidate in _normalize_candidates(name):
+        if state in table.get(candidate, []):
+            return True
+    if jurisdiction_type != "county":
+        for candidate in _normalize_candidates(name):
+            if state in _SUBDIVISION_STATES.get(candidate, []):
+                return True
+    return False
+
+
 def resolve_state(
     name: Optional[str],
     jurisdiction_type: str,
@@ -1404,8 +1427,31 @@ def resolve_state(
         )
         for _city, _state, zip_code in find_zip_addresses(page_text):
             result = zip_lookup(zip_code)
-            if result:
-                return result[1]
+            if not result:
+                continue
+            if name and not _name_validates_in_state(
+                name, jurisdiction_type, result[1]
+            ):
+                # WO-105, 2026-09-03: an "impossible pairing" guard, the
+                # same discipline `app/utils/gov_registry/resolver.py`'s
+                # `_is_impossible_county()`/`is_own_name()` already apply
+                # to a pin/mint -- a ZIP found ANYWHERE on the page (a
+                # vendor's mailing address, a payment processor's return
+                # address, a linked news article's dateline) is not
+                # evidence about THIS government's state unless `name`
+                # is actually a real place/county there. Before this
+                # guard, the first ZIP-shaped address on the page won
+                # unconditionally: a page naming "Cambridge" (real and
+                # nationally ambiguous -- IA/ID/IL/KS/KY/MA/MD/MN/NE/NY/
+                # OH/VT/WI, confirmed against this module's own
+                # `places.csv`) with an unrelated vendor address whose
+                # ZIP resolves to a state with no Cambridge at all would
+                # still silently accept that state. Declining here costs
+                # nothing already correct: the un-guarded ZIP with the
+                # SAME state as a real Cambridge still resolves exactly
+                # as before.
+                continue
+            return result[1]
 
     return None
 
@@ -1781,6 +1827,19 @@ _ENTITY_TYPE_SUFFIX_WORDS = {
     "isd",
     "usd",
     "cisd",
+    # UHSD/UFSD: "Union High School District"/"Union Free School
+    # District" -- the real Vermont/New York acronym family alongside
+    # the already-listed isd/usd/cisd. Added for WO-105's district-number
+    # digit fix below (`_looks_like_district_number_tail()`), grounded in
+    # Vermont's real Lake Region Union High School District, which
+    # identifies itself on real pages as "Lake Region UHSD 24"/"...UHSD
+    # #24" -- confirmed against this app's own registered jurisdiction
+    # data (`finalize_jurisdiction("Lake Region UHSD 24")` minted "Lake,
+    # MS" before this fix; the live Archive export was not reachable to
+    # independently confirm this exact string is currently stored there,
+    # see BACKLOG.md).
+    "uhsd",
+    "ufsd",
 }
 # Two-word committee-name endings -- confirmed real in this app's own
 # archive (Guelph's "Committee of Adjustment", Kenora's "Committee of
@@ -1854,6 +1913,43 @@ def _ends_with_known_entity_suffix(tail: str) -> bool:
 # "district"/"authority"/etc. still aren't on this list.
 _KNOWN_JUNK_TAIL_WORDS = {"attachments", "meeting", "meetings", "address"}
 
+# WO-105, 2026-09-03: a discarded tail's trailing bare NUMBER is not, on
+# its own, evidence of bleed -- real district/board numbering IS a
+# trailing digit, not sentence/agenda bleed. Confirmed live against this
+# module's own tables: `finalize_jurisdiction("Lake Region UHSD 24")`
+# minted "Lake, MS" before this fix -- "Lake" alone is a real place
+# (Lake village, MS), the fuller string validates nowhere, and the old
+# unconditional `re.search(r"\d", tail)` read the discarded tail "Region
+# UHSD 24" as bleed purely because it contains a digit, so the whole
+# name got trimmed down to "Lake" and would mint/resolve under
+# Mississippi -- confidently wrong, not just missing, for what is really
+# Vermont's Lake Region Union High School District. (The live Archive
+# export was not reachable from this pass to independently confirm this
+# exact string is currently stored there -- the real-world existence and
+# numbering of Lake Region UHSD is documented by the Vermont Agency of
+# Education; see BACKLOG.md.)
+#
+# Deliberately narrow and end-anchored, the same shape as
+# `_ends_with_known_entity_suffix()` above rather than a call into
+# `app/utils/gov_registry/classify.classify_government_type()`: that
+# package's own docstring declares a ONE-WAY import boundary --
+# `gov_registry` imports `jurisdiction_enrich`, never the reverse -- so
+# reaching for its classifier here would invert a relationship this repo
+# documents on purpose. A tail whose trailing number, once removed,
+# still ends in a real school/special-district type word (reusing
+# `_ENTITY_TYPE_SUFFIX_WORDS`/`_ENTITY_TYPE_SUFFIX_PHRASES` above, now
+# including "uhsd"/"ufsd") is a district number; every other digit this
+# branch sees (an agenda year, a roman-numeral-adjacent stray digit)
+# still counts as bleed exactly as before this fix.
+_TRAILING_DISTRICT_NUMBER_RE = re.compile(r"\s+(?:(?:no\.?|#)\s*)?\d{1,4}$", re.I)
+
+
+def _looks_like_district_number_tail(tail: str) -> bool:
+    without_number = _TRAILING_DISTRICT_NUMBER_RE.sub("", tail).strip()
+    if not without_number or without_number == tail.strip():
+        return False
+    return _ends_with_known_entity_suffix(without_number)
+
 
 def _looks_like_bleed(tail: str) -> bool:
     """Sanity check on text a trim would discard: does it look like
@@ -1878,7 +1974,7 @@ def _looks_like_bleed(tail: str) -> bool:
     if _ROMAN_NUMERAL_RE.search(tail):
         return True
     if re.search(r"\d", tail):
-        return True
+        return not _looks_like_district_number_tail(tail)
     words = tail.split()
     if not words:
         return False
@@ -2532,7 +2628,31 @@ _CHAIN_TAG_JURISDICTION_RE = re.compile(
     r"\b(city|county|town) of\s+([^<>]{1,80}?)(?=<|[,.])", re.IGNORECASE
 )
 
-_STOPRULE_TRIGGER_RE = re.compile(r"\b(City|County|Town) of\s+")
+# Widened WO-105 (2026-09-03) from the original "(City|County|Town) of"
+# to also trigger on "Village of"/"Borough of"/"Township of"/
+# "Municipality of"/"District of"/"Regional Municipality of", plus
+# Ontario's real "The Corporation of the {City|Town|Township|Village|
+# Borough|Municipality|District|Regional Municipality} of" legal-name
+# convention (Ontario municipal law names most of its municipalities
+# this way, not just city/town/township, so the optional wrapper is left
+# generic rather than narrowed to three types). The wrapper is
+# non-capturing and optional, so `m.group(1)` below is always the real
+# type word, never the ceremonial "Corporation of the" phrase -- an
+# extracted "The Corporation of the City of Springfield" still becomes
+# "City of Springfield", matching every other trigger's output shape.
+# "District of" is included for extraction/signal purposes even though
+# `app/utils/gov_registry/classify.py`'s SPECIAL_DISTRICT rule currently
+# misclassifies a real "District of X" BC municipality (District of
+# North Vancouver, Squamish, Saanich, Sechelt are all real, current BC
+# municipalities, not special districts) on the bare word "district" --
+# a real, separate gap logged in BACKLOG.md rather than fixed here
+# (out of this pass's scope; extracting the candidate is still useful
+# signal even where resolution doesn't yet use it correctly).
+_STOPRULE_TRIGGER_RE = re.compile(
+    r"\b(?:The Corporation of the )?"
+    r"(City|County|Town|Village|Borough|Township|Municipality|District|"
+    r"Regional Municipality) of\s+"
+)
 # Abbreviations pages actually write ("Ft. Worth", "Mt. Vernon", "N. Las
 # Vegas") -- not just the Census tables' own canonical two (St./Ste.),
 # since this stop rule is about how *websites* punctuate a name, not how
