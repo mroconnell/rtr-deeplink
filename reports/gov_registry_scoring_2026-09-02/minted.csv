@@ -264,7 +264,6 @@ archive,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",juneauak.por
 archive,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",www.youtube.com,"minted from 'Juneau, AK'"
 ledger,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",juneau-ak.municodemeetings.com,"minted from 'Juneau, AK'"
 archive,rtr:us:ak:petersburg,"City of Petersburg, AK",municipality,unverified,"City of Petersburg, AK",petersburg.granicus.com,"minted from 'City of Petersburg, AK'"
-archive,rtr:us:al:city-of,"City of, AL",municipality,unverified,City of Al,allentownpa.granicus.com,minted from 'City of Al'
 archive,rtr:us:az:lake-havasu,"City of Lake Havasu, AZ",municipality,unverified,"City of Lake Havasu, AZ",lakehavasucity.granicus.com,"minted from 'City of Lake Havasu, AZ'"
 archive,rtr:us:ca:auburn,"The City of Auburn, CA",other,unverified,"The City of Auburn, CA",auburn.granicus.com,"minted from 'The City of Auburn, CA'"
 archive,rtr:us:ca:california-state-personnel-board,"California State Personnel Board, CA",other,pinned,California State Personnel Board,spb.granicus.com,tenant_overrides.csv spb.granicus.com source=visual_confirmed
@@ -343,7 +342,6 @@ archive,rtr:us:il:park-ridge-park-district,"Park Ridge Park District, IL",specia
 archive,rtr:us:il:park-ridge-park-district,"Park Ridge Park District, IL",special_district,unverified,"Park Ridge Park District, IL",prparkdistrictil.iqm2.com,"minted from 'Park Ridge Park District, IL'"
 archive,rtr:us:la:louisiana-economic-development,"Louisiana Economic Development, LA",other,pinned,,lagov.new.swagit.com,tenant_overrides.csv lagov.new.swagit.com source=visual_confirmed
 archive,rtr:us:la:louisiana-economic-development,"Louisiana Economic Development, LA",other,pinned,,lagov.new.swagit.com,tenant_overrides.csv lagov.new.swagit.com source=visual_confirmed
-archive,rtr:us:ma:city,"City, MA",municipality,unverified,"City, MA",videoplayer.telvue.com,"minted from 'City, MA'"
 archive,rtr:us:md:baltimore-county,"Baltimore County, MD",county,unverified,"Baltimore County, MD",baltimorecountymd.iqm2.com,"minted from 'Baltimore County, MD'"
 archive,rtr:us:md:baltimore-county,"Baltimore County, MD",county,unverified,"Baltimore County, MD",baltimorecountymd.iqm2.com,"minted from 'Baltimore County, MD'"
 archive,rtr:us:md:caroline-county-ps,"Caroline County PS, MD",county,unverified,"Caroline County PS, MD",carolineschools.new.swagit.com,"minted from 'Caroline County PS, MD'"

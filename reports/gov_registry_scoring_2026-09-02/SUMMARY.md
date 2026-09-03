@@ -9,8 +9,8 @@ Inputs: **5053** archived pages (`GET /internal/export/pages`, metadata only) an
 | pinned | 176 (3.5%) | 23 (2.6%) |
 | registry | 4037 (79.9%) | 805 (91.9%) |
 | inferred | 12 (0.2%) | 2 (0.2%) |
-| unverified | 139 (2.8%) | 2 (0.2%) |
-| unresolved | 448 (8.9%) | 44 (5.0%) |
+| unverified | 137 (2.7%) | 2 (0.2%) |
+| unresolved | 450 (8.9%) | 44 (5.0%) |
 | blank | 241 (4.8%) | 0 (0.0%) |
 
 **4958 of 5929** rows (83.6%) got a national id.
@@ -25,24 +25,25 @@ Inputs: **5053** archived pages (`GET /internal/export/pages`, metadata only) an
 
 ## The minting gate
 
-**17** rows carry a string that is not a government name -- a subdomain fragment, an initialism or a station callsign -- and are tier `unresolved` with the raw text kept in `evidence`, rather than minting an `rtr:` id nobody could ever look up.
+**19** rows carry a string that is not a government name -- a subdomain fragment, an initialism or a station callsign -- and are tier `unresolved` with the raw text kept in `evidence`, rather than minting an `rtr:` id nobody could ever look up.
 
 | platform | rows | distinct hosts |
 | --- | --- | --- |
-| granicus | 15 | 15 |
+| granicus | 16 | 16 |
 | escribe | 1 | 1 |
+| telvue | 1 | 1 |
 | swagit | 1 | 1 |
 
 | country | rows |
 | --- | --- |
-| us | 16 |
+| us | 18 |
 | ca | 1 |
 
-Examples: 'Llbc', 'Ps C, FL', 'S Fw, MD', 'TV, NY', 'Unknown Jurisdiction'
+Examples: 'City of Al', 'City, MA', 'Llbc', 'Ps C, FL', 'S Fw, MD', 'TV, NY', 'Unknown Jurisdiction'
 
 ## Pin worklist
 
-`pin_worklist.csv` -- **394** tenant hosts with no government across 733 rows, each with a landing URL to fetch once and read the organisation name out of the header, the way `jurisdiction_overrides.csv`'s `visual_confirmed` rows were made. Ordered eScribe / Cablecast / Swagit / TelVue first -- the four whose landing page reliably names its customer. TelVue rows carry the org token from the URL path as `match_value`, because every TelVue customer shares one host and a host-level pin would be wrong for all of them.
+`pin_worklist.csv` -- **395** tenant hosts with no government across 735 rows, each with a landing URL to fetch once and read the organisation name out of the header, the way `jurisdiction_overrides.csv`'s `visual_confirmed` rows were made. Ordered eScribe / Cablecast / Swagit / TelVue first -- the four whose landing page reliably names its customer. TelVue rows carry the org token from the URL path as `match_value`, because every TelVue customer shares one host and a host-level pin would be wrong for all of them.
 
 ## Government types
 
@@ -98,24 +99,20 @@ Splits:
 - `/j/victoria` → ca:csd:5917034|us:place:2767036
 - `/j/mississauga-on` → ca:csd:3521005|rtr:ca:on:toronto-and-region-conservation-authority
 
-## Type disagreements with gov_classify.py
+## What the /state/* headings will read
 
-**395** rows where the new `gov_type` disagrees with `archive/utils/gov_classify.py`'s bucket (the classifier driving the `/state/*` headings today).
+From `gov_type` via `archive/utils/gov_groups.py`, which replaced `archive/utils/gov_classify.py`'s regex over the display name (WO-99). Every row is a page, not a distinct government.
 
-| gov_classify bucket | new gov_type | rows |
+| heading | gov_type | rows |
 | --- | --- | --- |
-| city | other | 221 |
-| city | county | 56 |
-| county | school_district | 29 |
-| city | special_district | 27 |
-| county | municipality | 26 |
-| school | municipality | 10 |
-| city | state | 9 |
-| county | special_district | 5 |
-| city | court | 5 |
-| city | school_district | 5 |
-| county | township | 1 |
-| county | other | 1 |
+| Cities & towns | municipality | 4202 |
+| Counties & regions | county | 857 |
+| Other public bodies | other | 470 |
+| Cities & towns | township | 178 |
+| School districts | school_district | 124 |
+| Agencies & special districts | special_district | 83 |
+| State government | state | 10 |
+| Courts | court | 5 |
 
 ## Canada
 
@@ -123,8 +120,8 @@ Splits:
 
 ## Minted and unknown
 
-- **269** distinct minted `rtr:` governments over 479 rows.
+- **267** distinct minted `rtr:` governments over 477 rows.
 - **241** rows with nothing at all (`rtr:unknown:<host>`).
-- **492** rows tier `unresolved` — a real government name with no state and nothing to key it by. Listed in `unresolved.csv` for a `tenant_overrides.csv` pin; deliberately NOT minted, because an id nobody can key looks resolved and is not.
+- **494** rows tier `unresolved` — a real government name with no state and nothing to key it by. Listed in `unresolved.csv` for a `tenant_overrides.csv` pin; deliberately NOT minted, because an id nobody can key looks resolved and is not.
 - **14** rows resolved by same-tenant consistency (tier `inferred`).
 

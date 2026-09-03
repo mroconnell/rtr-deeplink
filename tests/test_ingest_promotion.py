@@ -475,9 +475,21 @@ async def test_ingest_resolution_repairs_a_bled_jurisdiction_end_to_end():
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
-    assert page["jurisdiction"] == "City of Hercules, CA"
+    # WO-99: the repair now feeds the resolver, so the page comes out of
+    # ingest carrying an IDENTITY, not just a repaired string. Hercules
+    # keys to its Census place, and `jurisdiction` becomes the display
+    # name generated from that row -- which is what makes every spelling
+    # of this city share one hub instead of one hub per spelling.
+    assert page["gov_id"] == "us:place:0633308"
+    assert page["gov_type"] == "municipality"
+    assert page["jurisdiction"] == "Hercules, CA"
     assert page["meeting_body"] is None
-    assert page["jurisdiction_confidence"] == "repaired"
+    # `jurisdiction_confidence` holds the RESOLUTION TIER now, not
+    # finalize_jurisdiction()'s confidence -- a national-table hit is
+    # `registry`.
+    assert page["jurisdiction_confidence"] == "registry"
+    # Nothing set it, so this is an ordinary meeting (decision D2a).
+    assert page["meeting_kind"] is None
 
 
 async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
@@ -493,12 +505,31 @@ async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
         url,
     )
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    # Decision D2, end to end: a housing authority has its own governing
+    # board, its own enabling statute and its own budget, so it is its
+    # OWN government -- not a `meeting_body` of the county whose name it
+    # carries. The resolver classifies the RAW name as a special district
+    # before any place lookup runs, which is what stops the county in the
+    # string capturing the page (architecture doc §1.3's nine measured
+    # tenants). No national table covers special districts this phase
+    # (D3), so it mints.
+    assert page["gov_id"] == (
+        "rtr:us:ca:housing-authority-of-the-county-of-santa-clara"
+    )
+    assert page["gov_type"] == "special_district"
+    # A minted row keeps the string finalize_jurisdiction() produced --
+    # only a `pinned` or `registry` tier substitutes a registry display
+    # name. Known cosmetic residual, logged in BACKLOG.md: the stored
+    # display here reads "County of Santa Clara, CA / Housing Authority"
+    # while the hub this page belongs to reads "Housing Authority of the
+    # County of Santa Clara, CA". The hub is the one a reader browses and
+    # it is right; the two agreeing is follow-up work, not a wrong hub.
     assert page["jurisdiction"] == "County of Santa Clara, CA"
     assert page["meeting_body"] == "Housing Authority"
-    assert page["jurisdiction_confidence"] == "repaired"
+    assert page["jurisdiction_confidence"] == "unverified"
 
 
-async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unverified():
+async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unresolved():
     # "City of Test" (the shared _payload() default) isn't a real place --
     # must be kept exactly as given, not discarded or guessed at.
     url = "https://example.granicus.com/player/clip/promo-jx-unverified"
@@ -508,4 +539,11 @@ async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unverified():
     page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
     assert page["jurisdiction"] == "City of Test"
     assert page["meeting_body"] is None
-    assert page["jurisdiction_confidence"] == "unverified"
+    # WO-99: `unresolved`, not `unverified`, and `gov_id` stays NULL. The
+    # distinction is the point -- `unverified` means "a real government
+    # name with a minted id", while this is a name with no state and
+    # nothing to key it by. Minting an id for it would look resolved and
+    # would fragment the moment the same government arrived with a state,
+    # so the row is left honestly empty and listed for a pin instead.
+    assert page["gov_id"] is None
+    assert page["jurisdiction_confidence"] == "unresolved"

@@ -1061,6 +1061,24 @@ def test_a_place_named_port_is_not_a_special_district(raw, expected):
     assert resolve(raw).gov_id == expected
 
 
+@pytest.mark.parametrize("raw", ["Boise, ID", "City of Boise, ID"])
+def test_both_spellings_of_boise_reach_the_city(raw):
+    """Census spells the city "Boise City city", so the place lookup
+    misses and the bare-name county fallback answered first -- "Boise,
+    ID" resolved to Boise COUNTY while "City of Boise, ID" resolved
+    correctly, because a municipal type word gates that fallback off. One
+    city, two governments, depending on how a page spelled it. The
+    fallback now declines a name a curated row already claims."""
+    assert resolve(raw).gov_id == "us:place:1608830"
+
+
+def test_the_county_itself_is_not_shadowed_by_the_citys_alias():
+    """The other half of the same fix: "Boise County, ID" normalizes to
+    the same key as the city's curated alias, so the alias is *checked*
+    to decline the fallback and never *returned* from it."""
+    assert resolve("Boise County, ID").gov_id == "us:county:16015"
+
+
 # --- Phase 2: "nationally unique" has to mean both countries ----------
 
 
@@ -1192,6 +1210,29 @@ def test_a_string_that_is_not_a_name_is_never_minted(raw):
     assert match.tier == resolver.TIER_UNRESOLVED
     # The raw string survives in evidence, so a human pin loses nothing.
     assert raw.split(",")[0] in match.evidence
+
+
+def test_a_name_made_only_of_type_words_is_not_a_name():
+    """`allentownpa.granicus.com` stores "City of Al" -- a truncated "City
+    of Allentown" whose stray "Al" the bare-state-suffix rule then read as
+    Alabama, leaving the name "City of" and minting `rtr:us:al:city-of`,
+    displayed to a reader as "City of, AL". Every step is individually
+    defensible, which is why the gate is on the outcome."""
+    match = resolve("City of Al", "allentownpa.granicus.com")
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.gov_id == ""
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "West County Wastewater District, CA",
+        "County of Santa Clara, CA",
+        "Town of Yarmouth, NS",
+    ],
+)
+def test_the_type_word_gate_does_not_touch_a_real_name(raw):
+    assert resolve(raw).gov_id
 
 
 def test_a_run_together_real_name_resolves_rather_than_being_declined():

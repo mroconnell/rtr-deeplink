@@ -4,6 +4,7 @@ archive,Ada County Highway District,Ada County Highway District,county,achdidaho
 archive,Ac Transit,Ac Transit,special_district,actransit.granicus.com,granicus,no state for 'Ac Transit'
 archive,County of Adams,County of Adams,county,adams.granicus.com,granicus,no state for 'County of Adams'
 archive,Subtitles County,Subtitles County,county,allegheny.granicus.com,granicus,no state for 'Subtitles County'
+archive,City of Al,City of,municipality,allentownpa.granicus.com,granicus,not a government name: 'City of Al'
 archive,Town of Bancroft,Town of Bancroft,municipality,bancroft.civicweb.net,youtube,no state for 'Town of Bancroft'
 archive,Town of Bancroft,Town of Bancroft,municipality,bancroft.civicweb.net,youtube,no state for 'Town of Bancroft'
 archive,Town of Bancroft,Town of Bancroft,municipality,bancroft.civicweb.net,youtube,no state for 'Town of Bancroft'
@@ -393,6 +394,7 @@ archive,Ashland,Ashland,other,videoplayer.telvue.com,telvue,no state for 'Ashlan
 archive,Ashland,Ashland,other,videoplayer.telvue.com,telvue,no state for 'Ashland'
 archive,Bellefonte Borough,Bellefonte Borough,municipality,videoplayer.telvue.com,telvue,no state for 'Bellefonte Borough'
 archive,Bellefonte Borough,Bellefonte Borough,municipality,videoplayer.telvue.com,telvue,no state for 'Bellefonte Borough'
+archive,"City, MA",City,municipality,videoplayer.telvue.com,telvue,"not a government name: 'City, MA'"
 archive,MCS,MCS,other,videoplayer.telvue.com,telvue,no state for 'MCS'
 archive,Summit Planning,Summit Planning,other,videoplayer.telvue.com,telvue,no state for 'Summit Planning'
 archive,WB,WB,other,videoplayer.telvue.com,telvue,no state for 'WB'

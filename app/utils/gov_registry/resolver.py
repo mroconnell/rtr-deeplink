@@ -692,7 +692,24 @@ def _national_lookup(
     # `/j/santa-clara-county-ca` would have absorbed the City of Santa
     # Clara. When a municipal type word is present and the place tables
     # decline, the honest answer is "unresolved".
-    hit = None if type_preference else tables.us_counties().lookup(name, state)
+    # ...and neither may a name a CURATED row already claims. "Boise,
+    # ID" was landing on Boise County: Census spells the city "Boise City
+    # city" so the place lookup misses, and this fallback then answered
+    # before rung 4b's curated alias -- the alias that exists for exactly
+    # this name -- was ever consulted. "City of Boise, ID" resolved
+    # correctly the whole time, because its type word gates this off, so
+    # one city had two governments depending on how a page spelled it.
+    # Caught by an unrelated hub test, not by this rung's own.
+    #
+    # A curated alias is checked, not returned, here: returning it would
+    # let "Boise County, ID" -- whose trailing type word normalizes away
+    # to the same key -- resolve to the city. The county branch above
+    # already answered that one; this only declines the FALLBACK.
+    hit = (
+        None
+        if (type_preference or _curated_alias(name, state))
+        else tables.us_counties().lookup(name, state)
+    )
     if hit:
         return (
             _as_government(
@@ -894,6 +911,22 @@ _NAME_TOKEN_RE = re.compile(r"[A-Za-z']+")
 # wholesale ("Auroratv" is named in JURISDICTION_METADATA_PLAN.md's own
 # tournament as junk output).
 _CALLSIGN_RE = re.compile(r"^[kw][a-z]{2,3}(?:[- ]?(?:tv|fm|am|dt))?$", re.I)
+# The words for what KIND of government something is. A name made of
+# nothing but these is not a name.
+_ENTITY_TYPE_WORDS = frozenset(
+    {
+        "city",
+        "town",
+        "village",
+        "borough",
+        "township",
+        "municipality",
+        "county",
+        "parish",
+        "region",
+        "district",
+    }
+)
 _TRAILING_STATION_RE = re.compile(r"[\s-]*\b(?:tv|fm|am|dt|media|channel)\b\s*$", re.I)
 
 
@@ -933,6 +966,17 @@ def _looks_like_a_name(name: str) -> bool:
         return False
     long_tokens = [t for t in tokens if len(t) >= 4]
     if not long_tokens:
+        return False
+    if all(t.lower() in _ENTITY_TYPE_WORDS for t in long_tokens):
+        # 4. **Something other than the word for what kind of government
+        #    it is.** A string made only of type words names no
+        #    government. Real and singular: `allentownpa.granicus.com`
+        #    stores "City of Al" -- a truncated "City of Allentown" whose
+        #    stray "Al" was then read as the state Alabama by the
+        #    bare-suffix rule, leaving the name "City of" and minting
+        #    `rtr:us:al:city-of`, displayed as "City of, AL". Every one
+        #    of those steps is individually defensible, which is why the
+        #    gate has to be on the outcome.
         return False
     vocabulary = tables.name_vocabulary()
     return any(t.lower() in vocabulary for t in long_tokens)

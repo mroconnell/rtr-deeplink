@@ -69,6 +69,58 @@ class MeetingPage(Base):
     jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True
     )
+    # The identity of the government whose meeting this is -- added
+    # 2026-09-02 (WO-99, Phase 2 of
+    # rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md). Written
+    # by app/utils/gov_registry's resolve_government() in
+    # _find_or_create_page(), right after finalize_jurisdiction().
+    #
+    # `jurisdiction` above is now the DISPLAY NAME and this is the KEY.
+    # That split is the whole point: identifying a government by its name
+    # as a string is what put "County of Fresno" and "Fresno County" on
+    # two hub pages, and what let LADWP's pages be filed under the City
+    # of Los Angeles because the place check passed on a name the page
+    # merely mentioned. A namespaced, deterministic id --
+    # `us:place:0627000`, `us:county:06019`, `ca:csd:3518013`,
+    # `us:sd:0622710`, or a minted `rtr:us:ca:<slug>` where no national
+    # table covers the government -- is derivable by every tool in this
+    # estate from the same committed data files, which is what lets
+    # rtr-discovery and rtr-upcoming agree with this table without
+    # sharing a sequence.
+    #
+    # NULL means "not resolved yet", a real and distinguishable state:
+    # every row was NULL until scripts/backfill_gov_id.py ran, and a row
+    # the resolver declines to key (tier `unresolved`) stays NULL on
+    # purpose rather than carrying an id nobody can look up.
+    #
+    # 64 characters is generous for every namespace above; the longest
+    # real id in the 2026-09-02 scoring run is a minted slug well under
+    # that.
+    gov_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    # The Census of Governments vocabulary (decision D7): county,
+    # municipality, township, school_district, special_district, state,
+    # court, other. Drives the headings on /state/*, which is why
+    # archive/utils/gov_classify.py -- a regex guess over the display
+    # string, which filed "Broward County Public Schools" under counties
+    # and "Minnesota Senate" under cities -- could be retired when this
+    # landed. Denormalized from the registry row rather than looked up
+    # per render: a /state/* page groups a few hundred rows and the type
+    # is a function of the id, so a stale value can only happen if the
+    # registry itself is re-typed, which the backfill re-runs for.
+    gov_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # What KIND of event this page is (decision D2a). NULL means
+    # `meeting`, which is the overwhelming majority and needs no write;
+    # the other values name the things that are on a government's video
+    # portal without being meetings of a body -- `press_conference`,
+    # `public_statement`, `town_hall`, `workshop`, `hearing`.
+    #
+    # Explicit rather than inferred because two existing gates key on
+    # "plausibly meeting-length" and reject a 12-minute press Q&A:
+    # discovery's quality gate and the on-demand transcription check.
+    # This is what lets those relax on purpose rather than by loosening a
+    # duration threshold for everything. Plain String, not an enum, same
+    # convention as jurisdiction_confidence and TranscriptionJob.status.
+    meeting_kind: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     video_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     agenda_items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)

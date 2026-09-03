@@ -207,6 +207,13 @@ async def test_export_never_exposes_account_or_derived_fields():
         "jurisdiction",
         "meeting_body",
         "jurisdiction_confidence",
+        # WO-99: the identity, its type, and what kind of event the page
+        # is. Asserted here on purpose -- this test exists to catch a
+        # column being added to the model and left out of the hand-built
+        # export dict, which has happened before.
+        "gov_id",
+        "gov_type",
+        "meeting_kind",
         "video_url",
         "video_format",
         "agenda_items",
