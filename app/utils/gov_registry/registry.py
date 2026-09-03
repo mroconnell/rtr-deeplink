@@ -254,6 +254,66 @@ def relations() -> List[Tuple[str, str, str, str]]:
     ]
 
 
+def government_for_id(gov_id: str) -> Optional[Government]:
+    """The registry row for `gov_id`, deriving it from the national
+    tables when `governments.csv` has not got one yet.
+
+    `governments.csv` is a *generated snapshot* -- it holds the
+    governments some scoring run happened to resolve to, not every
+    government that exists. Requiring a row there before an id can be
+    used would mean a perfectly valid `us:county:56021` could not be
+    pinned until someone re-ran the scorer, which is real operational
+    friction for no safety gain: for a national id every field is a
+    function of the id, so deriving it is exact rather than a guess.
+
+    Returns None for a namespace this package does not issue, and for an
+    id whose row the relevant table does not contain -- so garbage is
+    still rejected. A minted `rtr:` id has no table behind it by
+    definition and is only ever found in the committed file.
+    """
+    gov_id = (gov_id or "").strip()
+    if not gov_id:
+        return None
+    existing = governments().get(gov_id)
+    if existing:
+        return existing
+    # Imported here rather than at module scope: `tables` reads the
+    # registry files through this module, and a top-level import would
+    # be a cycle.
+    from . import classify, tables
+
+    specs = {
+        "us:place": (tables.us_places, classify.MUNICIPALITY, "us", "place_geoid"),
+        "us:county": (tables.us_counties, classify.COUNTY, "us", "county_fips"),
+        "us:cousub": (tables.us_cousubs, classify.TOWNSHIP, "us", None),
+        "us:state": (tables.us_states, classify.STATE, "us", None),
+        "us:sd": (tables.us_school_districts, classify.SCHOOL_DISTRICT, "us", None),
+        "ca:csd": (tables.ca_csd, classify.MUNICIPALITY, "ca", "sgc_code"),
+        "ca:cd": (tables.ca_cd, classify.COUNTY, "ca", "sgc_code"),
+        "ca:pr": (tables.ca_pr, classify.STATE, "ca", "sgc_code"),
+    }
+    namespace, _, row_id = gov_id.rpartition(":")
+    spec = specs.get(namespace)
+    if not spec or not row_id:
+        return None
+    table_fn, gov_type, country, code_field = spec
+    row = table_fn().get(row_id)
+    if row is None:
+        return None
+    fields = {code_field: row.row_id} if code_field else {}
+    if namespace == "us:sd":
+        fields["nces_lea_id"] = row.row_id[2:]
+    return Government(
+        gov_id=gov_id,
+        gov_name=row.name,
+        gov_type=gov_type,
+        country=country,
+        state=row.state,
+        source=f"{namespace} (derived from the national table)",
+        **fields,
+    )
+
+
 def write_governments(rows: List[Government], path: Optional[Path] = None) -> None:
     """Rewrite `governments.csv`, sorted by gov_id. Used by the seed
     scripts; the app only ever reads."""

@@ -419,10 +419,36 @@ async def test_crud_get_national_government_list_scopes_to_us_states():
     # also holds a "City of Napa, CA" row seeded by another test, grouped
     # under this same hub_slug (see test_crud_get_state_page_data_shape_
     # and_counts's identical caveat above).
+    # `gov_type` is the Census-of-Governments vocabulary the registry
+    # assigned and the ingest stored (WO-99), not gov_classify.py's old
+    # county/city/school/agency guess over the display string -- so a
+    # city is `municipality` here and archive/utils/gov_groups.py is what
+    # turns that into the "Cities & towns" heading.
     napa = next(r for r in rows if r["hub_slug"] == "napa-ca")
-    assert napa["gov_type"] == "city"
+    assert napa["gov_type"] == "municipality"
     sacramento = next(r for r in rows if r["hub_slug"] == "sacramento-county-ca")
     assert sacramento["gov_type"] == "county"
+
+
+async def test_a_state_government_appears_on_its_own_state_page():
+    """Decision D1 makes the State of California ONE government whose
+    Senate and departments are `meeting_body` rows under it -- so its
+    display name is "State of California", with no ", CA" suffix for the
+    state page's anchored LIKE to match. Found in a browser check of the
+    rebuilt page (WO-99): the new "State government" heading could never
+    have held a row, because nothing mapped a state abbreviation to its
+    own `us:state:` id."""
+    await _seed(
+        "granicus:state-senate-d1",
+        jurisdiction="California State Senate",
+        title="Senate Floor Session",
+    )
+    data = await crud.get_state_page_data("CA")
+    senate = [j for j in data["jurisdictions"] if j["gov_type"] == "state"]
+    assert len(senate) == 1
+    assert senate[0]["jurisdiction"] == "State of California"
+    assert senate[0]["hub_slug"] == "state-of-california"
+    assert "state" in {g["key"] for g in data["government_groups"]}
 
 
 async def test_crud_get_national_government_list_excludes_unknown_platform():
@@ -445,7 +471,12 @@ async def test_crud_get_all50_page_data_bounded_pool_and_scope():
     # Grouped list feeds straight into the shared _group_governments()
     # output shape, same as get_state_page_data()'s.
     group_keys = {g["key"] for g in data["government_groups"]}
-    assert group_keys <= {"county", "city", "school", "agency"}
+    # WO-99 widened this from gov_classify.py's four buckets to
+    # gov_groups.py's seven: `state` and `court` got their own headings,
+    # and `other` stopped being folded into "agency" -- calling an
+    # unidentified government an agency is the guess that module was
+    # retired for making.
+    assert group_keys <= set(crud.GROUP_ORDER)
 
 
 async def test_crud_get_all50_page_data_recent_pages_fallback_without_highlights(

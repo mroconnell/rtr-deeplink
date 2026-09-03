@@ -1,5 +1,163 @@
 # Backlog — done
 
+## `gov_id`: a government stops being identified by a string [Done 2026-09-02]
+
+WO-99, Phase 2 of
+`rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md`. Closes the
+two entries below at once, because they were one problem: a government
+was identified by *its name as a string*, so one government fragmented
+into several and a government whose page merely mentioned its host city
+was filed under that city.
+
+**What shipped.** `meeting_pages` gains `gov_id` (namespaced and
+deterministic -- `us:place:0627000`, `us:county:06019`, `ca:csd:3518013`,
+`us:sd:0622710`, or a minted `rtr:us:ca:<slug>`), `gov_type` and
+`meeting_kind`. `app/utils/gov_registry/` assigns them at ingest, right
+after `finalize_jurisdiction()` and from the PRE-repair name -- the
+repair is place-oriented, so by the time it is done "Los Angeles
+Department of Water and Power" has become "Los Angeles" and the evidence
+that this is a district rather than a city is gone. `/j/` and `/state/*`
+group by `gov_id`; `jurisdiction` becomes the display name, generated
+from the registry row; `jurisdiction_confidence` holds the resolution
+tier. `archive/utils/gov_classify.py` is deleted.
+
+**Measured over 5,053 archived pages and 876 ledger pairs**: 83.6% of
+rows get a national id (95.0% of Canadian rows); **176 merges** retiring
+**359** hub pages of fragmentation; 29 splits, and the ones that matter
+are the mislabels being undone -- LADWP out of Los Angeles, LA Metro out
+of LA County, SANDAG out of San Diego, CVWD out of Indio, Tarrant County
+College District and Horry County Schools out of their counties. 699
+retired `/j/` slugs 301 rather than 404.
+
+**Two corrections to what the docs said about this repo, both found by
+checking rather than assuming:**
+
+- The architecture doc states that "`BACKLOG.md` already carries this as
+  two `[NEEDS-AUDIT]` entries (13 CA counties; Santa Clara
+  re-fragmenting)". Only the Santa Clara one existed --
+  `grep -inE "county of |13 CA counties|County of Fresno"` over
+  `BACKLOG.md` returns nothing else. The 13 CA counties were recorded in
+  the architecture doc itself and in `JURISDICTION_METADATA_PLAN.md`, not
+  here.
+- The Phase 2 brief asked to "move the two `gov_classify` misfilings to
+  `BACKLOG_DONE.md`". There were no such entries to move: the misfilings
+  ("Broward County Public Schools, FL" and "West County Wastewater
+  District, CA" under **Counties & regions**, "Minnesota Senate, MN"
+  under **Cities & towns**, ~17 "X County Public Schools" rows under the
+  counties heading on the live `/state/all-50`) were recorded in
+  `JURISDICTION_METADATA_PLAN.md`'s Phase 1 section and the architecture
+  doc's §1.4, never filed here. They are fixed by the same change:
+  `archive/utils/gov_groups.py` maps the stored `gov_type` to a heading
+  and guesses nothing, and the two classifiers disagreed on 388 of the
+  5,929 scored rows.
+
+**Two defects found while building, both measured, both fixed in the
+same PR**: a bare `port` token in the special-district classifier put the
+place tables out of reach for 24 rows over 11 real municipalities (Port
+Townsend WA, Port Moody and Port Coquitlam BC, Port Hope and Port
+Colborne ON, North Port and Port Orange FL, ...), and "nationally
+unique" silently meant "unique in the United States", filing Abbotsford
+BC as Abbotsford WI, Edmonton AB as Edmonton KY and Niagara Falls ON as
+Niagara Falls NY across 16 rows.
+
+**And two the in-browser check found, which no test would have**: 82 of
+the generated hub-slug aliases redirected to hubs that do not exist (a
+301 to a 404), and the new "State government" heading was unreachable
+because decision D1 gives a state government a display name with no ",
+CA" suffix for `/state/*`'s anchored LIKE to match.
+
+### The two entries this closes
+
+- **`[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical form — Santa Clara has already re-fragmented in production.**
+  - **Issue**: `override_jurisdiction()` stamps the specific rows it
+    touches with `jurisdiction_confidence="manual_override"`, which
+    `_find_or_create_page()`'s re-ingest path respects — but it
+    establishes no canonical-form *rule*. Any row not carrying that tier
+    still gets its string from `finalize_jurisdiction()`, which by design
+    "makes zero changes" to an already-valid variant (its own docstring
+    names the Santa Clara variants as the example). So a variant string
+    can reappear.
+  - **Impact**: the 2026-08-31 convergence has partly undone itself.
+    Re-checked live 2026-09-02: `/api/jurisdictions?q=santa+clara`
+    returns **5** variants, not the 3 that entry verified — `County of
+    Santa Clara, CA` is back (1 page, `/j/county-of-santa-clara-ca`,
+    a 2024-04-15 meeting) alongside `Santa Clara County, CA` (20 pages),
+    and a bare `City of Santa Clara` (`/j/santa-clara`, holding a
+    2026-08-25 meeting) sits alongside `City of Santa Clara, CA`. The
+    same exposure applies to every override applied so far, not just
+    this one.
+  - **Next action**: first determine which it is — newly-ingested rows
+    written after the override, or rows the original batch missed (needs
+    `GET /internal/jurisdiction/search?q=santa+clara` with the admin
+    token; not determinable from the public API). Then decide between a
+    canonical-alias table consulted at ingest and a periodic
+    re-convergence sweep.
+  - **How it was actually fixed**: `POST /internal/jurisdiction/override`
+    now takes a `gov_id` rather than a jurisdiction string, and appends a
+    `tenant_overrides.csv`-shaped RULE per tenant host alongside the row
+    write. That is the half this entry was asking for: a pin reaches
+    pages nobody has archived yet, which a row stamp structurally cannot.
+    The fragmentation itself is gone independently of any override --
+    "County of Santa Clara, CA" and "Santa Clara County, CA" both
+    resolve to `us:county:06085` and render as one hub, and "City of
+    Santa Clara" resolves to `us:place:0669084` separately (Phase 1b had
+    to fix that one twice: gating the county fallback on a municipal type
+    word immediately sent it to Santa Clara *town, NY* instead).
+  - **Constraint**: don't just re-run the override and call it closed —
+    that is exactly what happened on 2026-08-31, and the result had
+    re-fragmented within two days.
+  - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
+    variants converged" `[Done 2026-08-31]`, whose "exactly 3
+    jurisdictions" live check no longer holds. WO-98 (2026-09-02) built and
+    scored the canonical-form mechanism this entry asks for — a `gov_id`
+    that both spellings resolve to — but shipped it as a pure module
+    nothing imports yet; see the `[HUMAN]` Phase 2 entry below. The
+    scoring run collapses this exact pair, along with 12 more CA
+    counties.
+
+- **[HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
+  reading WO-98's scoring report.**
+  - **Issue**: WO-98 built the registry data files and the resolver
+    (`app/utils/gov_registry/`) and scored them against 5,053 archived
+    pages and 876 ledger pairs. Nothing imports the package; no schema
+    changed. Phase 2 — the `gov_id`/`gov_type` columns, `/j/` grouped by
+    `gov_id` with 301s, the backfill, retiring `gov_classify.py` — starts
+    only once that report has been read.
+  - **Impact**: 79.6% of rows get a national id; 142 of today's `/j/`
+    hubs collapse (289 hub pages of fragmentation, including exactly the
+    13 CA counties predicted); 50 split, six of them the confirmed §1.3
+    mislabels being undone (LADWP out of Los Angeles, LA Metro out of LA
+    County, SANDAG out of San Diego, CVWD out of Indio, TCCD and Horry
+    County Schools out of their counties).
+  - **Outcome**: Ryan read the report and Phase 2 shipped the same day.
+    Of the three things this entry said wanted a human call: the
+    conflicting tenant hosts fell from 11 to 1 in Phase 1b (ten were
+    never disagreements — an `unresolved` candidate asserts nothing);
+    borrowing a state from the tenant's other pages was adopted, guarded
+    on the base names agreeing AND the states not contradicting; and
+    Nashville-Davidson resolves to one id via a curated alias.
+  - **Next action (at the time)**: Ryan reads
+    `reports/gov_registry_scoring_2026-09-03/SUMMARY.md` and the three
+    residual gaps at the end of `JURISDICTION_METADATA_PLAN.md`'s
+    "Phase 1" section, then decides. Three things want a human call
+    before Phase 2: the 11 conflicting tenant hosts in
+    `tenant_overrides_conflicts.csv`; whether a state-less stored
+    jurisdiction may borrow its state from the tenant's other pages;
+    and Nashville-Davidson, the one consolidated city-county still
+    minting two ids.
+  - **Constraint**: don't start Phase 2 by writing the migration.
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6 orders it deliberately —
+    the registry data proves or kills the design and costs no migration,
+    and the migration is only safe once the merge/split list is one a
+    human has agreed to.
+  - **History**: `JURISDICTION_METADATA_PLAN.md`'s "Phase 1 — gov_id
+    registry scoring" section (the numbers, and two corrections to the
+    architecture doc found while building against it);
+    `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §7 (the
+    settled decisions D1-D7).
+
+---
+
 ## District of Columbia: no `/state/` page, jurisdiction search missed it [Done 2026-08-31]
 
 Real user report: `/state/district-of-columbia` 404'd, and searching

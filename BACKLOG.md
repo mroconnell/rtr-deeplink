@@ -120,7 +120,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -151,9 +151,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (9)
+  Jurisdiction extraction & backfill  (12)
+    `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
+    `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
+    `[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to…
+    `[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real…
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
-    `[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical…
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
@@ -181,19 +184,18 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
-  Transcription queue & workers  (7)
+  Transcription queue & workers  (6)
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
-    [HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
   Search Console, structured data & SEO plumbing  (2)
@@ -1123,6 +1125,106 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
 
+- **`[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show two different names.**
+  - **Issue**: `_display_jurisdiction()` (`archive/db/crud.py`) rewrites
+    `jurisdiction` to the registry name only for the `pinned` and
+    `registry` tiers, as WO-99's brief specified. For a MINTED government
+    that leaves the two out of step, because the resolver classified the
+    raw name while `finalize_jurisdiction()` split it: the Housing
+    Authority of the County of Santa Clara stores `jurisdiction =
+    "County of Santa Clara, CA"` with `meeting_body = "Housing
+    Authority"`, while its `gov_id` is
+    `rtr:us:ca:housing-authority-of-the-county-of-santa-clara` and its
+    hub reads "Housing Authority of the County of Santa Clara, CA".
+  - **Impact**: cosmetic, and bounded — the hub is the surface a reader
+    browses and it is correct; `/m/` and `/meetings` show the county's
+    name with the authority as the body, which is what shipped before
+    WO-99 and reads fine. 479 rows are minted, but only the non-place
+    types (83 `special_district`, plus school districts) can diverge this
+    way at all.
+  - **Next action**: decide whether an `unverified` row should take the
+    minted `gov_name` as its display too. It is not obviously right:
+    doing so duplicates the entity name across `jurisdiction` and
+    `meeting_body`, so the honest fix is probably to take the resolver's
+    own `meeting_body` (which is `None` for a non-place type, by design —
+    "the entity IS the government") at the same time, and that is a
+    behaviour change to a field several audit paths read.
+  - **Constraint**: don't widen the rewrite to every tier. An
+    `inferred` row's id came from its neighbours rather than its own
+    name, so its raw text is the evidence a reviewer needs.
+  - **History**: WO-99 (2026-09-02). Pinned by
+    `tests/test_ingest_promotion.py::test_ingest_resolution_splits_a_real_entity_prefix_end_to_end`,
+    which asserts the current behaviour explicitly and says why.
+
+- **`[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing pages do not name their customer — the pin worklist assumed they did.**
+  - **Issue**: `pin_worklist.csv`'s ordering note calls eScribe,
+    Cablecast, Swagit and TelVue "the four whose landing page reliably
+    names its customer". Measured 2026-09-02 against real hosts, only
+    Cablecast does. eScribe's `Meetings.aspx` is titled "Meetings" and
+    the only place a customer name could live is a logo whose alt text
+    is the literal string "Organization Logo"; Swagit's root is titled
+    "SwagitAdmin" and `/videos` 404s; CivicClerk's is "Public Portal •
+    CivicClerk", with the organisation name only behind its API.
+    Granicus, which the note does not list, DOES name it — but on
+    `ViewPublisher.php?view_id=N`, not the root.
+  - **Impact**: the highest-yield block named in the report (eScribe:
+    `pub-cambridge`, `pub-london`, `pub-halifax`, `pub-hamilton`, 41
+    hosts) cannot be settled by a landing-page fetch at all. Those hosts
+    stay `unresolved` and their pages have no `gov_id`. Measured over the
+    real sweep (2026-09-03): 278 hosts fetched, 223 pages returned, **7**
+    pins written — all 7 from Granicus's `ViewPublisher.php` and one
+    CivicPlus root. Still unresolved: granicus 106, cablecast 61,
+    escribe 41, swagit 39, iqm2 5, civicclerk 4, unknown 4, telvue 2,
+    and one each of castus / champds / townhallstreams / vimeo (39
+    cablecast and 14 granicus hosts were unreachable outright).
+  - **Next action**: for eScribe, read the organisation name from a
+    real `Meeting.aspx` page instead of the listing (the adapter already
+    fetches those, and the archive holds an example slug per host); for
+    CivicClerk, its public API already returns `location.city/state` and
+    the adapter already reads it. Both are per-platform work, not more
+    sweeping.
+  - **Constraint**: one fetch per host, politely paced, and read-only —
+    `scripts/sweep_tenant_landing_pages.py` is the shape to extend, not
+    a crawl.
+  - **History**: WO-99 step 8 (2026-09-02);
+    `reports/landing_page_sweep.csv` has what each host actually
+    returned, and the script's `_PLATFORM_PATHS` comment records the
+    per-platform measurements.
+
+- **`[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to pin, so 117 worklist rows need a different method.**
+  - **Issue**: every YouTube row in `pin_worklist.csv` shares
+    `www.youtube.com` / `youtu.be`, so the host is not the tenant — the
+    channel id in `match` is. A landing-page fetch for the shared host
+    would name Google. `scripts/sweep_tenant_landing_pages.py` skips
+    them explicitly rather than counting them as failures.
+  - **Impact**: 117 of the 447 worklist rows, the second-largest block
+    after Granicus.
+  - **Next action**: fetch the CHANNEL page per channel id and read its
+    name, writing a `tenant_overrides.csv` row with `match=<channel id>`
+    — the `match` discriminator exists for exactly this (architecture
+    doc §4) and nothing uses it yet.
+  - **Constraint**: yt-dlp is the only reliable YouTube client here (see
+    CLAUDE.md), and channel extraction is not lazy — `playlistend` is
+    load-bearing.
+  - **History**: WO-99 step 8 (2026-09-02).
+
+- **`[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real multi-government tenant and still has no `match` discriminator.**
+  - **Issue**: it is listed under El Cerrito **and** San Pablo in
+    rtr-upcoming's roster — a real shared tenant (architecture doc
+    §1.5), not a conflict. It gets no pin, because a host-level pin
+    would be wrong for one of the two.
+  - **Impact**: one tenant today, but the same shape as
+    `wi-cottagegrove.civicplus.com` (Town and Village of Cottage Grove)
+    and every `clerkshq.com` customer, and the `match` column exists
+    unused.
+  - **Next action**: find the path prefix or query parameter that
+    separates the two cities' meetings on that host, then write two
+    `tenant_overrides.csv` rows carrying it.
+  - **Constraint**: `match` must come from a real observed URL shape,
+    not a guess — a wrong discriminator over-applies silently.
+  - **History**: WO-98 Phase 1b (2026-09-02),
+    `app/utils/jurisdiction_data/tenant_overrides_conflicts.csv`.
+
 - **`[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.**
   - **Issue**: `_KNOWN_ORG_TOKEN_JURISDICTIONS` in `app/platforms/telvue.py`
     has no entry for Derry NH, so its jurisdiction field resolves
@@ -1139,42 +1241,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     MN, Albany NY) — see `BACKLOG_DONE.md`. Derry NH itself was never part
     of that fix; it surfaced as a "real bug found along the way" note in
     `BACKLOG_DONE.md`'s "TelVue: 10 of 12" entry (2026-08-30).
-
-- **`[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical form — Santa Clara has already re-fragmented in production.**
-  - **Issue**: `override_jurisdiction()` stamps the specific rows it
-    touches with `jurisdiction_confidence="manual_override"`, which
-    `_find_or_create_page()`'s re-ingest path respects — but it
-    establishes no canonical-form *rule*. Any row not carrying that tier
-    still gets its string from `finalize_jurisdiction()`, which by design
-    "makes zero changes" to an already-valid variant (its own docstring
-    names the Santa Clara variants as the example). So a variant string
-    can reappear.
-  - **Impact**: the 2026-08-31 convergence has partly undone itself.
-    Re-checked live 2026-09-02: `/api/jurisdictions?q=santa+clara`
-    returns **5** variants, not the 3 that entry verified — `County of
-    Santa Clara, CA` is back (1 page, `/j/county-of-santa-clara-ca`,
-    a 2024-04-15 meeting) alongside `Santa Clara County, CA` (20 pages),
-    and a bare `City of Santa Clara` (`/j/santa-clara`, holding a
-    2026-08-25 meeting) sits alongside `City of Santa Clara, CA`. The
-    same exposure applies to every override applied so far, not just
-    this one.
-  - **Next action**: first determine which it is — newly-ingested rows
-    written after the override, or rows the original batch missed (needs
-    `GET /internal/jurisdiction/search?q=santa+clara` with the admin
-    token; not determinable from the public API). Then decide between a
-    canonical-alias table consulted at ingest and a periodic
-    re-convergence sweep.
-  - **Constraint**: don't just re-run the override and call it closed —
-    that is exactly what happened on 2026-08-31, and the result had
-    re-fragmented within two days.
-  - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
-    variants converged" `[Done 2026-08-31]`, whose "exactly 3
-    jurisdictions" live check no longer holds. WO-98 (2026-09-02) built and
-    scored the canonical-form mechanism this entry asks for — a `gov_id`
-    that both spellings resolve to — but shipped it as a pure module
-    nothing imports yet; see the `[HUMAN]` Phase 2 entry below. The
-    scoring run collapses this exact pair, along with 12 more CA
-    counties.
 
 - **`[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
   CO.**
@@ -1856,40 +1922,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     it's still needed.
   - **History**: `BACKLOG_DONE.md`'s "CI ffprobe regression, fixed" entry
     (2026-08-31).
-
-- **[HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
-  reading WO-98's scoring report.**
-  - **Issue**: WO-98 built the registry data files and the resolver
-    (`app/utils/gov_registry/`) and scored them against 5,053 archived
-    pages and 876 ledger pairs. Nothing imports the package; no schema
-    changed. Phase 2 — the `gov_id`/`gov_type` columns, `/j/` grouped by
-    `gov_id` with 301s, the backfill, retiring `gov_classify.py` — starts
-    only once that report has been read.
-  - **Impact**: 79.6% of rows get a national id; 142 of today's `/j/`
-    hubs collapse (289 hub pages of fragmentation, including exactly the
-    13 CA counties predicted); 50 split, six of them the confirmed §1.3
-    mislabels being undone (LADWP out of Los Angeles, LA Metro out of LA
-    County, SANDAG out of San Diego, CVWD out of Indio, TCCD and Horry
-    County Schools out of their counties).
-  - **Next action**: Ryan reads
-    `reports/gov_registry_scoring_2026-09-02/SUMMARY.md` and the three
-    residual gaps at the end of `JURISDICTION_METADATA_PLAN.md`'s
-    "Phase 1" section, then decides. Three things want a human call
-    before Phase 2: the 11 conflicting tenant hosts in
-    `tenant_overrides_conflicts.csv`; whether a state-less stored
-    jurisdiction may borrow its state from the tenant's other pages;
-    and Nashville-Davidson, the one consolidated city-county still
-    minting two ids.
-  - **Constraint**: don't start Phase 2 by writing the migration.
-    `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6 orders it deliberately —
-    the registry data proves or kills the design and costs no migration,
-    and the migration is only safe once the merge/split list is one a
-    human has agreed to.
-  - **History**: `JURISDICTION_METADATA_PLAN.md`'s "Phase 1 — gov_id
-    registry scoring" section (the numbers, and two corrections to the
-    architecture doc found while building against it);
-    `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §7 (the
-    settled decisions D1-D7).
 
 - **[LATER] `list_transcription_backlog_candidates()` still does a real
   N+1 query pattern.**

@@ -48,11 +48,20 @@ pinning the two together (see `display.slugify()`), don't reach across.
 
 from .classify import GOVERNMENT_TYPES, classify_government_type
 from .display import display_name, hub_slug, slugify
-from .registry import Government, TenantOverride, governments, tenant_overrides
+from .tables import state_gov_id
+from .registry import (
+    Government,
+    TenantOverride,
+    government_for_id,
+    governments,
+    tenant_overrides,
+)
 from .resolver import (
     TIER_BLANK,
+    TIER_INFERRED,
     TIER_PINNED,
     TIER_REGISTRY,
+    TIER_UNRESOLVED,
     TIER_UNVERIFIED,
     GovernmentMatch,
     resolve_government,
@@ -63,15 +72,19 @@ __all__ = [
     "Government",
     "GovernmentMatch",
     "TIER_BLANK",
+    "TIER_INFERRED",
     "TIER_PINNED",
     "TIER_REGISTRY",
+    "TIER_UNRESOLVED",
     "TIER_UNVERIFIED",
     "TenantOverride",
     "classify_government_type",
     "display_name",
+    "government_for_id",
     "governments",
     "hub_slug",
     "resolve_government",
     "slugify",
+    "state_gov_id",
     "tenant_overrides",
 ]

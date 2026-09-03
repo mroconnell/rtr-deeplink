@@ -432,9 +432,12 @@ async def test_get_jurisdiction_coverage_lists_a_real_ingested_meeting():
     )
 
     jurisdictions = await crud.get_jurisdiction_coverage()
-    napa_row = next(
-        row for row in jurisdictions if row["jurisdiction"] == "City of Napa, CA"
-    )
+    # Stored as "Napa, CA", not the payload's "City of Napa, CA": since
+    # WO-99 `jurisdiction` is the DISPLAY NAME generated from the
+    # government the page resolved to (us:place:0650258), and `gov_id` is
+    # the identity. That rewrite is what makes every spelling of one
+    # government read the same way and share one hub.
+    napa_row = next(row for row in jurisdictions if row["jurisdiction"] == "Napa, CA")
     assert napa_row["example"]["title"] == "Napa City Council Regular Meeting"
     assert napa_row["example"]["has_transcript"] is True
     assert napa_row["page_count"] >= 1

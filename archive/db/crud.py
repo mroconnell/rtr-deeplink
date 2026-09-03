@@ -1,10 +1,13 @@
 import asyncio
+import csv
 import hashlib
 import logging
 import math
+import os
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Optional, Sequence, Set
 from urllib.parse import urlparse
 
@@ -26,6 +29,18 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
+from app.utils.gov_registry import (
+    TIER_PINNED,
+    TIER_REGISTRY,
+    TIER_UNRESOLVED,
+    TIER_UNVERIFIED,
+    resolve_government,
+)
+from app.utils.gov_registry import display_name as gov_display_name
+from app.utils.gov_registry import government_for_id as registry_government_for_id
+from app.utils.gov_registry import governments as registry_governments
+from app.utils.gov_registry import hub_slug as gov_hub_slug
+from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
 from ..utils.date_status import (
@@ -45,6 +60,7 @@ from ..utils.jurisdiction_format import (
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
+from ..utils.gov_groups import GROUP_LABELS, GROUP_ORDER, group_for_page
 from ..utils.language import detect_language_from_texts
 from ..utils.search import (
     _fuzzy_threshold,
@@ -67,7 +83,6 @@ from ..topics import (
     TOPICS_VERSION,
     any_topic_pattern,
 )
-from ..utils.gov_classify import GROUP_LABELS, GROUP_ORDER, classify_government
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
@@ -537,6 +552,119 @@ async def _unique_slug(session, base: str) -> str:
     return f"{base}-{random_suffix(12)}"
 
 
+# Tiers whose `gov_id` is evidence about a tenant rather than the
+# resolver's own earlier guess. A minted or inferred id must never vote in
+# `_tenant_dominant_gov_id()` below -- letting it would be the same
+# self-reinforcement `gov_registry.registry.curated_aliases()` refuses for
+# aliases, and it is how the unguarded Phase 1b pass filed a "City of
+# Dallas" bleed page under Duncanville.
+_GOV_EVIDENCE_TIERS = ("registry", "pinned", "manual_override")
+
+
+async def _tenant_dominant_gov_id(session, host: str) -> Optional[str]:
+    """The `gov_id` most of this tenant's already-resolved pages carry, or
+    None -- the input to `resolve_government()`'s same-tenant consistency
+    rung, which the resolver cannot compute itself because it is pure and
+    cannot see a page's siblings.
+
+    `scripts/score_gov_registry.py::_tenant_consensus()` is the offline
+    counterpart and the two must agree on what "dominant" means: the most
+    common such id, and nothing at all when two are tied. Adopting it is
+    still gated on the names agreeing (`resolver._tenant_consistency()`),
+    so this only ever supplies a candidate.
+
+    There is no `tenant_host` column, so the host is matched against
+    `source_url_normalized` with a leading wildcard and no index. That is
+    why this is called ONLY for a page the ladder has already declined to
+    key -- ~12% of ingests in the 2026-09-02 run -- rather than on every
+    push. At 5,053 rows the scan is milliseconds; if the archive reaches
+    the point where it is not, the fix is a real `tenant_host` column
+    populated at ingest, not a cache that can go stale against a table
+    this same call is writing to.
+    """
+    if not host:
+        return None
+    like = _escape_like(host)
+    rows = (
+        await session.execute(
+            select(MeetingPage.gov_id, func.count())
+            .where(
+                MeetingPage.gov_id.is_not(None),
+                MeetingPage.gov_id != "",
+                ~MeetingPage.gov_id.like("rtr:%"),
+                MeetingPage.jurisdiction_confidence.in_(_GOV_EVIDENCE_TIERS),
+                or_(
+                    MeetingPage.source_url_normalized.like(f"%//{like}/%", escape="\\"),
+                    MeetingPage.source_url_normalized.like(f"%//{like}", escape="\\"),
+                ),
+            )
+            .group_by(MeetingPage.gov_id)
+            .order_by(func.count().desc())
+            .limit(2)
+        )
+    ).all()
+    if not rows:
+        return None
+    if len(rows) > 1 and rows[0][1] == rows[1][1]:
+        return None
+    return rows[0][0]
+
+
+def _display_jurisdiction(gov, finalized: Optional[str]) -> Optional[str]:
+    """What goes in `MeetingPage.jurisdiction` -- which is the DISPLAY
+    NAME now that `gov_id` is the identity.
+
+    Rewritten to the registry's name only for the two tiers that
+    identified a real government: `pinned` (a human said so) and
+    `registry` (a national table said so). That is what makes "County of
+    Fresno, CA" and "Fresno County, CA" read as one government on one hub
+    instead of two.
+
+    Every other tier keeps the string the adapter and
+    `finalize_jurisdiction()` produced. Deliberately, and it is not
+    timidity: a minted government's name IS the cleaned string (there is
+    no better one to substitute), an `inferred` row's id came from its
+    neighbours rather than from its own name so its raw text is the
+    evidence a reviewer needs, and an `unresolved` row has no registry
+    row at all. Nothing is lost either way -- the hub renders from the
+    registry, so this column is the fallback and the audit trail, not the
+    thing a reader sees on a resolved page.
+    """
+    if gov.tier in (TIER_PINNED, TIER_REGISTRY) and gov.gov_name:
+        return gov.gov_name
+    return finalized
+
+
+async def _resolve_page_government(session, raw_jurisdiction, source_url_normalized):
+    """`resolve_government()` for one page, with the one input it cannot
+    see for itself.
+
+    Two calls at most. The first resolves the page on its own evidence;
+    only if that lands on a tier the tenant could improve -- `unverified`
+    (a minted id) or `unresolved` -- is the tenant's dominant government
+    looked up and the resolve repeated. A page that already keyed to a
+    national table or a pin is never re-resolved, so the common path
+    costs exactly one pure, in-process call and no extra query.
+    """
+    parsed = urlparse(source_url_normalized)
+    host = (parsed.netloc or "").lower().split(":")[0]
+    # Path AND query: a tenant that serves several governments is
+    # discriminated by a path prefix or a query parameter (`view_id=5`),
+    # and `_match_override()` looks for either inside this string.
+    path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    match = resolve_government(raw_jurisdiction, tenant_host=host, path=path)
+    if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
+        dominant = await _tenant_dominant_gov_id(session, host)
+        if dominant:
+            match = resolve_government(
+                raw_jurisdiction,
+                tenant_host=host,
+                path=path,
+                tenant_gov_id=dominant,
+            )
+    return match
+
+
 async def _find_or_create_page(
     session, payload: dict[str, Any], input_url_normalized: str
 ) -> tuple[MeetingPage, bool]:
@@ -571,6 +699,21 @@ async def _find_or_create_page(
     )
     jurisdiction = jx_result.jurisdiction
 
+    # WO-99: the government's IDENTITY, resolved right after the string
+    # repair above and from the same inputs. Deliberately fed the
+    # pre-finalize name, not `jurisdiction`: the resolver calls
+    # finalize_jurisdiction() itself, and its type-classification rung
+    # needs the RAW name -- by the time the repair is done, "Los Angeles
+    # Department of Water and Power" has become "Los Angeles" and the
+    # evidence that this is a special district rather than a city is
+    # gone. That ordering is the whole §1.3 fix; see
+    # app/utils/gov_registry/resolver.py's rung 3.
+    gov = await _resolve_page_government(
+        session,
+        normalize_state_suffix(payload.get("jurisdiction")),
+        source_url_normalized,
+    )
+
     page = await _find_existing_page(
         session,
         platform=platform,
@@ -581,8 +724,13 @@ async def _find_or_create_page(
 
     created = page is None
     if page is None:
+        # The display name, so a new page's slug matches the government
+        # its hub is filed under -- "fresno-county-ca-..." whichever
+        # spelling the adapter happened to extract.
         base_slug = build_base_slug(
-            jurisdiction or "", payload.get("date") or "", payload.get("title") or ""
+            _display_jurisdiction(gov, jurisdiction) or "",
+            payload.get("date") or "",
+            payload.get("title") or "",
         )
         slug = await _unique_slug(session, base_slug)
         page = MeetingPage(
@@ -592,12 +740,19 @@ async def _find_or_create_page(
             source_url_normalized=source_url_normalized,
             title=payload.get("title"),
             date=payload.get("date"),
-            jurisdiction=jurisdiction,
+            jurisdiction=_display_jurisdiction(gov, jurisdiction),
             # An adapter that names the governing body itself (Granicus's
             # RSS channel title, 2026-08-23) beats the split-from-
             # jurisdiction fallback finalize_jurisdiction() produces.
             meeting_body=payload.get("meeting_body") or jx_result.meeting_body,
-            jurisdiction_confidence=jx_result.confidence,
+            # The RESOLUTION TIER now, not finalize_jurisdiction()'s
+            # confidence -- see MeetingPage.jurisdiction_confidence's own
+            # comment. Its "plain string, not an enum" decision is what
+            # makes this a value change rather than a migration.
+            jurisdiction_confidence=gov.tier,
+            gov_id=gov.gov_id or None,
+            gov_type=gov.gov_type or None,
+            meeting_kind=payload.get("meeting_kind") or None,
             video_url=payload.get("video_url"),
             video_format=payload.get("video_format"),
             agenda_items=payload.get("agenda_items") or [],
@@ -643,15 +798,39 @@ async def _find_or_create_page(
         # re-resolve's recomputed jurisdiction is exactly the guess the
         # override was written to correct. Only another explicit
         # override call can move it off this tier.
-        if page.jurisdiction_confidence != "manual_override":
-            page.jurisdiction = jurisdiction or page.jurisdiction
+        if page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+            page.jurisdiction = (
+                _display_jurisdiction(gov, jurisdiction) or page.jurisdiction
+            )
         # meeting_body/jurisdiction_confidence only refresh alongside a
         # real new jurisdiction value -- same truthy-gated pattern as
         # jurisdiction itself just above, so a later resolve with no
         # jurisdiction at all can't silently wipe a previously-split body.
-        if jurisdiction and page.jurisdiction_confidence != "manual_override":
+        if jurisdiction and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
             page.meeting_body = jx_result.meeting_body
-            page.jurisdiction_confidence = jx_result.confidence
+            page.jurisdiction_confidence = gov.tier
+        # The identity, on the same manual_override guard as the display
+        # name above and for the same reason: POST
+        # /internal/jurisdiction/override sets `gov_id` directly now, so a
+        # human's answer here is exactly the thing a passive re-resolve
+        # would overwrite with the guess it was written to correct. Only
+        # another explicit override moves it.
+        #
+        # Not truthy-gated, unlike `jurisdiction`: an id the resolver has
+        # stopped producing (a registry correction, a pin removed) must be
+        # able to go back to NULL, which is the honest "not resolved yet"
+        # state. There is no partial-payload hazard here the way there is
+        # for agenda_items -- every caller passes the page's jurisdiction
+        # through, so `gov` is recomputed from the same inputs every time.
+        if page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+            page.gov_id = gov.gov_id or None
+            page.gov_type = gov.gov_type or None
+        # Truthy-gated and never cleared: no adapter sets this today, so
+        # an ingest that omits it must not wipe a kind an override wrote
+        # (decision D2a -- NULL means `meeting`, and a press conference
+        # marked by hand should survive the next re-ingest).
+        if payload.get("meeting_kind"):
+            page.meeting_kind = payload["meeting_kind"]
         # Truthy-gated like every other refresh field above: an adapter
         # that names the governing body itself overrides both the stored
         # value and the jurisdiction-split fallback just applied, but a
@@ -1209,6 +1388,9 @@ _EXPORT_PAGE_COLUMNS = (
     MeetingPage.jurisdiction,
     MeetingPage.meeting_body,
     MeetingPage.jurisdiction_confidence,
+    MeetingPage.gov_id,
+    MeetingPage.gov_type,
+    MeetingPage.meeting_kind,
     MeetingPage.video_url,
     MeetingPage.video_format,
     MeetingPage.agenda_items,
@@ -1362,6 +1544,18 @@ async def list_pages_for_export(
             "jurisdiction": row.jurisdiction,
             "meeting_body": row.meeting_body,
             "jurisdiction_confidence": row.jurisdiction_confidence,
+            # WO-99. The export is how rtr-discovery's feed roster and
+            # the data-product samples read this archive, and `gov_id` is
+            # the join key the whole estate was missing -- shipping the
+            # column without shipping it here would be the "field exists
+            # on the model but the hand-built dict doesn't include it"
+            # bug this file has already had once.
+            "gov_id": row.gov_id,
+            "gov_type": row.gov_type,
+            # NULL means `meeting` (decision D2a). Sent as-is rather than
+            # defaulted, so a consumer can tell "this is an ordinary
+            # meeting" from "this predates the column".
+            "meeting_kind": row.meeting_kind,
             "video_url": row.video_url,
             "video_format": row.video_format,
             "agenda_items": row.agenda_items or [],
@@ -2907,6 +3101,98 @@ async def mark_low_trust_pages_reviewed(
         }
 
 
+# Decision D2a: what KIND of event a page is. NULL/absent means
+# `meeting`, which is the overwhelming majority and needs no write. The
+# rest name the things that sit on a government's video portal without
+# being a meeting of a body -- and the reason they are explicit rather
+# than inferred is that two existing gates reject them for being too
+# short (discovery's quality gate, the on-demand transcription check), so
+# something has to say "this one is meant to be 12 minutes".
+MEETING_KINDS = frozenset(
+    {
+        "meeting",
+        "press_conference",
+        "public_statement",
+        "town_hall",
+        "workshop",
+        "hearing",
+    }
+)
+
+# Where POST /internal/jurisdiction/override appends the rule half of its
+# work. Deliberately NOT app/utils/jurisdiction_data/tenant_overrides.csv
+# itself: the Archive runs from a read-only deploy of this repo, so a
+# write there would be lost on the next deploy while looking like it had
+# worked. This file is a staging area a human copies from -- the same
+# shape CLAUDE_INBOX_TRIAGE.md uses for the same reason.
+#
+# Overridable by env var because the container's filesystem is ephemeral
+# and an operator may want it somewhere they can read it back from; the
+# endpoint returns the resolved path in every response either way, so
+# "where did my rule go" is always answerable from the response itself.
+JURISDICTION_OVERRIDE_RULES_FILE = Path(
+    os.environ.get(
+        "JURISDICTION_OVERRIDE_RULES_FILE", "/tmp/tenant_overrides_pending.csv"
+    )
+)
+
+_TENANT_OVERRIDE_RULES_HEADER = [
+    "tenant_host",
+    "match",
+    "gov_id",
+    "strength",
+    "source",
+    "evidence",
+]
+
+
+def _tenant_override_rule(host: str, gov_id: str, example_slug: str) -> dict:
+    """One `tenant_overrides.csv` row, in that file's exact column shape.
+
+    `strength` is `authoritative`: a human looked at specific pages and
+    said which government they belong to, which is precisely the claim
+    that tier encodes -- and the only tier allowed to override a
+    working-looking extraction (the SLC lesson: a plausible wrong
+    extraction passes validation, so validation alone can never fix a
+    confirmed-misleading host).
+    """
+    return {
+        "tenant_host": host,
+        "match": "",
+        "gov_id": gov_id,
+        "strength": "authoritative",
+        "source": "manual_override",
+        "evidence": (
+            f"set by POST /internal/jurisdiction/override on "
+            f"{date.today().isoformat()}; example page /m/{example_slug}"
+        ),
+    }
+
+
+def _append_override_rules(rules: list[dict]) -> int:
+    """Append rules to the pending-rules file, header first if new.
+
+    Best-effort on purpose: a read-only or full filesystem must not fail
+    an override that already wrote its rows. The count comes back in the
+    response, so a 0 against a non-empty `tenant_override_rules` list is
+    visible rather than silent.
+    """
+    try:
+        JURISDICTION_OVERRIDE_RULES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        is_new = not JURISDICTION_OVERRIDE_RULES_FILE.exists()
+        with open(
+            JURISDICTION_OVERRIDE_RULES_FILE, "a", newline="", encoding="utf-8"
+        ) as fh:
+            writer = csv.DictWriter(fh, fieldnames=_TENANT_OVERRIDE_RULES_HEADER)
+            if is_new:
+                writer.writeheader()
+            for rule in rules:
+                writer.writerow(rule)
+        return len(rules)
+    except OSError:
+        return 0
+
+
 # The one jurisdiction_confidence tier finalize_jurisdiction() itself
 # never produces -- see MeetingPage.jurisdiction_confidence's own
 # comment for the full ladder.
@@ -2917,93 +3203,157 @@ _JURISDICTION_OVERRIDE_MAX_IDS = 1000
 async def override_jurisdiction(
     *,
     ids: Set[int],
-    jurisdiction: str,
+    gov_id: str,
+    meeting_kind: Optional[str] = None,
     dry_run: bool = True,
 ) -> dict:
-    """Write counterpart to no existing GET -- the one place in this repo
-    that writes a caller-supplied jurisdiction string directly, rather
-    than recomputing one via finalize_jurisdiction(). Exists for the
-    cases finalize_jurisdiction() can't reach on its own: several
-    already-valid strings that should all read as one canonical form
-    (Santa Clara's "County of Santa Clara, CA" / "The County of Santa
-    Clara, CA" / "Santa Clara County, CA" / "County of Santa Clara
-    Office" -- finalize_jurisdiction() makes zero changes to any of
-    them, since each independently validates already), and the
-    low-trust queue's "review -> repair" gap (BACKLOG.md's Trust &
-    safety section, "reviewing a row doesn't repair it").
+    """Set the GOVERNMENT for specific pages -- and record the decision as
+    a *rule*, not just a stamp on N rows.
+
+    Rewritten for WO-99. It used to take a caller-supplied `jurisdiction`
+    string and write it onto the named ids, which fixed those rows and
+    nothing else. `BACKLOG.md`'s Santa Clara entry is what that cost:
+    somebody canonicalised "County of Santa Clara, CA" / "The County of
+    Santa Clara, CA" / "Santa Clara County, CA" by hand, and **within two
+    days** the hub had re-fragmented, because the next ingest recomputed
+    the same three spellings for pages the override had never seen. A row
+    stamp cannot survive re-ingest; a rule can.
+
+    So this now does two things:
+
+    1. **Sets `gov_id`** (and `gov_type`, and the display `jurisdiction`,
+       both derived from the registry row -- never from caller text, so a
+       forged or stale request cannot write arbitrary strings the way the
+       old signature allowed). `jurisdiction_confidence` becomes
+       `manual_override`, the one tier `_find_or_create_page()` refuses to
+       overwrite on a passive re-ingest.
+    2. **Appends a `tenant_overrides.csv`-shaped line** to
+       `JURISDICTION_OVERRIDE_RULES_FILE`, one per distinct tenant host in
+       the batch, ready for a human to copy into the committed registry.
+       That is what makes the fix apply to pages nobody has archived yet.
+
+    The rules file is deliberately a *separate, reviewable* file rather
+    than a direct write into `app/utils/jurisdiction_data/tenant_overrides.csv`:
+    the Archive runs from a read-only deploy of this repo, so a write
+    there would vanish on the next deploy and, worse, would look like it
+    had worked. Same reasoning as `CLAUDE_INBOX_TRIAGE.md` being its own
+    staging file rather than writing into `BACKLOG.md`.
+
+    `meeting_kind` (decision D2a) is optional and applied to the same
+    rows: a press conference or a town hall is not a meeting of a body,
+    and the two gates that key on "plausibly meeting-length" need to be
+    told so explicitly rather than guessing from a duration.
 
     Same id-driven, dry-run-first, idempotent shape as
-    mark_low_trust_pages_reviewed() above (no "override everything"
-    mode -- a caller-supplied string applied blindly to an unbounded set
-    is exactly the mistake this endpoint's narrow scope exists to
-    prevent). `jurisdiction` is REQUIRED and applied identically to
-    every id in the batch -- the real use case (several rows needing the
-    same canonical form) is a batch of one string, not N different ones;
-    call it once per distinct string.
-
-    Writes jurisdiction_confidence="manual_override" alongside the
-    string. _find_or_create_page()'s re-ingest path checks for exactly
-    this tier and skips its own truthy-gated jurisdiction overwrite when
-    it's set, so a manual fix survives the next passive re-check instead
-    of drifting back on the next re-resolve. Also stamps reviewed_at
-    when that column is available (degrades gracefully otherwise, same
-    _reviewed_at_available() gate as mark_low_trust_pages_reviewed()
-    above) -- an explicit override is definitionally a human having
-    looked at the row, so it should also drop out of the low-trust
-    queue's unreviewed view.
-
-    Idempotent: an id already carrying this exact jurisdiction string
-    AND jurisdiction_confidence="manual_override" is reported under
-    already_overridden and left untouched; anything else (a different
-    string, or the same string not yet tagged manual_override) is
-    reported under changed with its before/after values.
+    `mark_low_trust_pages_reviewed()` -- no "override everything" mode.
+    Idempotent: an id already carrying this exact `gov_id` AND
+    `jurisdiction_confidence="manual_override"` (and this `meeting_kind`,
+    when one was asked for) is reported under `already_overridden` and
+    left untouched.
     """
     ids = {int(i) for i in ids}
     if not ids:
         raise ValueError("ids is required and must contain at least one id")
     if len(ids) > _JURISDICTION_OVERRIDE_MAX_IDS:
         raise ValueError(f"at most {_JURISDICTION_OVERRIDE_MAX_IDS} ids per call")
-    jurisdiction = jurisdiction.strip()
-    if not jurisdiction:
-        raise ValueError("jurisdiction is required and must be non-blank")
+    gov_id = (gov_id or "").strip()
+    if not gov_id:
+        raise ValueError("gov_id is required and must be non-blank")
+    gov = registry_government_for_id(gov_id)
+    if gov is None:
+        # A gov_id with no registry row is an id whose name nothing can
+        # render -- the same thing `resolver._pinned()` refuses to return.
+        # Rejected here rather than written, because an unrenderable id on
+        # a page is a blank hub, not a fixed one.
+        raise ValueError(
+            f"unknown gov_id {gov_id!r} -- it must exist in "
+            "app/utils/jurisdiction_data/governments.csv (or "
+            "curated_governments.csv). Add the row first, then override."
+        )
+    meeting_kind = (meeting_kind or "").strip() or None
+    if meeting_kind and meeting_kind not in MEETING_KINDS:
+        raise ValueError(
+            f"meeting_kind must be one of {', '.join(sorted(MEETING_KINDS))}"
+        )
+
+    display = gov_display_name(gov)
 
     async with async_session() as session:
         reviewed_at_available = await _reviewed_at_available(session)
-        select_cols = [
-            MeetingPage.id,
-            MeetingPage.slug,
-            MeetingPage.jurisdiction,
-            MeetingPage.jurisdiction_confidence,
-        ]
         rows = (
-            await session.execute(select(*select_cols).where(MeetingPage.id.in_(ids)))
+            await session.execute(
+                select(
+                    MeetingPage.id,
+                    MeetingPage.slug,
+                    MeetingPage.jurisdiction,
+                    MeetingPage.jurisdiction_confidence,
+                    MeetingPage.gov_id,
+                    MeetingPage.meeting_kind,
+                    MeetingPage.source_url_normalized,
+                ).where(MeetingPage.id.in_(ids))
+            )
         ).all()
 
         found = {row[0] for row in rows}
         changed = []
         already = []
-        for page_id, slug, current_jurisdiction, current_confidence in rows:
+        hosts: dict[str, str] = {}
+        for (
+            page_id,
+            slug,
+            current_jurisdiction,
+            current_confidence,
+            current_gov_id,
+            current_kind,
+            source_url,
+        ) in rows:
+            host = (urlparse(source_url or "").netloc or "").lower().split(":")[0]
+            if host:
+                hosts.setdefault(host, slug)
             entry = {
                 "meeting_page_id": page_id,
                 "slug": slug,
                 "jurisdiction_before": current_jurisdiction,
                 "jurisdiction_confidence_before": current_confidence,
+                "gov_id_before": current_gov_id,
+                "meeting_kind_before": current_kind,
             }
-            if (
-                current_jurisdiction == jurisdiction
+            settled = (
+                current_gov_id == gov_id
                 and current_confidence == _MANUAL_OVERRIDE_CONFIDENCE
-            ):
+                and (meeting_kind is None or current_kind == meeting_kind)
+            )
+            if settled:
                 already.append(entry)
             else:
-                entry["jurisdiction_after"] = jurisdiction
+                entry["gov_id_after"] = gov_id
+                entry["jurisdiction_after"] = display
                 entry["jurisdiction_confidence_after"] = _MANUAL_OVERRIDE_CONFIDENCE
+                if meeting_kind:
+                    entry["meeting_kind_after"] = meeting_kind
                 changed.append(entry)
+
+        # One rule per distinct tenant host in the batch -- that is the
+        # key `tenant_overrides.csv` uses, and the level at which the fix
+        # survives re-ingest. `match` is left blank: a host serving more
+        # than one government needs a discriminator a human has to choose
+        # (a path prefix, `view_id=5`, a channel id), and guessing one
+        # from a batch of page ids would produce a rule that quietly
+        # over-applies.
+        rules = [
+            _tenant_override_rule(host, gov_id, example_slug)
+            for host, example_slug in sorted(hosts.items())
+        ]
 
         if changed and not dry_run:
             values = {
-                "jurisdiction": jurisdiction,
+                "jurisdiction": display,
                 "jurisdiction_confidence": _MANUAL_OVERRIDE_CONFIDENCE,
+                "gov_id": gov_id,
+                "gov_type": gov.gov_type or None,
             }
+            if meeting_kind:
+                values["meeting_kind"] = meeting_kind
             if reviewed_at_available:
                 values["reviewed_at"] = datetime.now(timezone.utc)
             await session.execute(
@@ -3013,19 +3363,28 @@ async def override_jurisdiction(
             )
             await session.commit()
 
-        return {
-            "dry_run": dry_run,
-            "jurisdiction": jurisdiction,
-            "reviewed_at_stamped": bool(
-                reviewed_at_available and changed and not dry_run
-            ),
-            "requested": sorted(ids),
-            "updated": len(changed) if not dry_run else 0,
-            "would_update": len(changed),
-            "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
-            "already_overridden": sorted(already, key=lambda e: e["meeting_page_id"]),
-            "missing_ids": sorted(ids - found),
-        }
+    rules_written = _append_override_rules(rules) if (rules and not dry_run) else 0
+
+    return {
+        "dry_run": dry_run,
+        "gov_id": gov_id,
+        "gov_name": display,
+        "gov_type": gov.gov_type,
+        "meeting_kind": meeting_kind,
+        "reviewed_at_stamped": bool(reviewed_at_available and changed and not dry_run),
+        "requested": sorted(ids),
+        "updated": len(changed) if not dry_run else 0,
+        "would_update": len(changed),
+        "changed": sorted(changed, key=lambda e: e["meeting_page_id"]),
+        "already_overridden": sorted(already, key=lambda e: e["meeting_page_id"]),
+        "missing_ids": sorted(ids - found),
+        # The half that makes this a rule rather than a stamp. Shown in
+        # dry-run too, because seeing the line you are about to create is
+        # most of the point of a dry run.
+        "tenant_override_rules": rules,
+        "tenant_override_rules_file": str(JURISDICTION_OVERRIDE_RULES_FILE),
+        "tenant_override_rules_written": rules_written,
+    }
 
 
 async def list_jurisdiction_bleed_backfill_candidates() -> dict:
@@ -3530,6 +3889,15 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             # documents as a real, previously-shipped bug.
             "meeting_body": page.meeting_body,
             "jurisdiction_confidence": page.jurisdiction_confidence,
+            # WO-99. Included from the start for the same reason the two
+            # lines above say they were: this function's own
+            # test_get_page_by_slug_includes_platform exists because a
+            # column was once added to the model and left out of this
+            # hand-built dict, and nothing noticed until a page rendered
+            # wrong. Every builder that returns a page gets all three.
+            "gov_id": page.gov_id,
+            "gov_type": page.gov_type,
+            "meeting_kind": page.meeting_kind,
             "video_url": page.video_url,
             "video_format": page.video_format,
             "agenda_items": page.agenda_items or [],
@@ -4101,6 +4469,9 @@ async def list_pages(
         MeetingPage.meeting_body,
         MeetingPage.platform,
         MeetingPage.agenda_items,
+        MeetingPage.gov_id,
+        MeetingPage.gov_type,
+        MeetingPage.meeting_kind,
         TranscriptVersion.language,
         TranscriptVersion.id,
         TranscriptVersion.transcript_warnings,
@@ -4280,6 +4651,12 @@ async def list_pages(
                 "jurisdiction": jurisdiction_,
                 "meeting_body": meeting_body,
                 "platform": platform,
+                # WO-99 -- the identity alongside the display name, so a
+                # consumer of /meetings can join rather than match a
+                # string.
+                "gov_id": gov_id,
+                "gov_type": gov_type,
+                "meeting_kind": meeting_kind,
                 "language": lang,
                 # Quality-aware, not just "a version exists" -- a garbled
                 # transcript shouldn't earn the same "Transcript" badge as
@@ -4317,6 +4694,9 @@ async def list_pages(
                 meeting_body,
                 platform,
                 agenda_items,
+                gov_id,
+                gov_type,
+                meeting_kind,
                 lang,
                 version_id,
                 warnings,
@@ -5719,7 +6099,7 @@ def _featured_entry(
         # Not rendered -- carried so _build_featured()'s body cap can see
         # it without re-reading the pool.
         "meeting_body": page.get("meeting_body"),
-        "hub_slug": jurisdiction_hub_slug(page["jurisdiction"]),
+        "hub_slug": _hub_identity(page.get("gov_id"), page["jurisdiction"])[1],
         "date": page["date"],
         "start_seconds": start,
         "timestamp_label": format_timestamp_label(start),
@@ -5952,11 +6332,15 @@ def _topic_chips(highlights: dict[int, dict], active_slug: Optional[str]) -> lis
 
 
 def _group_governments(jurisdictions: Sequence[dict]) -> list[dict]:
-    """The flat government list split into County / City / School /
-    Agency sections, empty sections dropped."""
+    """The flat government list split into sections, empty ones dropped.
+
+    `row["gov_type"]` is the Census-of-Governments type the registry
+    assigned and the ingest stored, not a regex guess over the display
+    name -- see archive/utils/gov_groups.py for what that replaced and
+    the 388 rows the two disagreed on."""
     buckets: dict[str, list[dict]] = {key: [] for key in GROUP_ORDER}
     for row in jurisdictions:
-        buckets[row["gov_type"]].append(row)
+        buckets[group_for_page(row["gov_type"], row.get("jurisdiction"))].append(row)
     return [
         {"key": key, "label": GROUP_LABELS[key], "rows": buckets[key]}
         for key in GROUP_ORDER
@@ -6080,6 +6464,25 @@ async def get_home_highlights(topic_slug: Optional[str] = None) -> dict:
     }
 
 
+def _state_scope_condition(abbr: str):
+    """Every page belonging to one state or province.
+
+    The anchored ", CA" suffix on the display name, which
+    normalize_state_suffix() guarantees at write time, plus the state's
+    OWN government by id. That second arm exists because decision D1
+    makes the State of California one government whose Senate and
+    departments are `meeting_body` rows under it -- so its display name
+    is "State of California", with no suffix to anchor on. Found in a
+    browser check of the rebuilt page: the new "State government" heading
+    could never have held a row without this.
+    """
+    conditions = [MeetingPage.jurisdiction.like(f"%, {abbr}")]
+    gov_id = state_gov_id(abbr)
+    if gov_id:
+        conditions.append(MeetingPage.gov_id == gov_id)
+    return or_(*conditions)
+
+
 async def get_state_page_data(
     abbr: str, topic_slug: Optional[str] = None
 ) -> Optional[dict]:
@@ -6114,6 +6517,8 @@ async def get_state_page_data(
                 MeetingPage.date,
                 MeetingPage.meeting_body,
                 MeetingPage.created_at,
+                MeetingPage.gov_id,
+                MeetingPage.gov_type,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
             )
@@ -6125,7 +6530,7 @@ async def get_state_page_data(
                 ),
             )
             .where(
-                MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                _state_scope_condition(abbr),
                 MeetingPage.platform != "unknown",
             )
         )
@@ -6140,16 +6545,25 @@ async def get_state_page_data(
             date,
             meeting_body,
             created_at,
+            gov_id,
+            gov_type,
             version_id,
             warnings,
         ) in rows:
             # LIKE is case-insensitive on SQLite (dev/tests), so re-check
             # the suffix exactly -- keeps dev and prod (case-sensitive
-            # Postgres LIKE) behaving identically.
-            if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+            # Postgres LIKE) behaving identically. A state government is
+            # matched by its id instead and skips the suffix check, since
+            # "State of California" deliberately has no ", CA" on it.
+            if gov_id != state_gov_id(abbr) and (
+                state_abbr_from_jurisdiction(jurisdiction) != abbr
+            ):
                 continue
             has_transcript = (
                 version_id is not None and _has_real_warning_free_transcript(warnings)
+            )
+            hub_key, hub_slug_, hub_display, registry_type = _hub_identity(
+                gov_id, jurisdiction
             )
             pages.append(
                 {
@@ -6160,6 +6574,11 @@ async def get_state_page_data(
                     "date": date,
                     "meeting_body": meeting_body,
                     "created_at": created_at,
+                    "gov_id": gov_id,
+                    "gov_type": registry_type or gov_type,
+                    "hub_key": hub_key,
+                    "hub_slug": hub_slug_,
+                    "hub_display": hub_display,
                     "has_transcript": has_transcript,
                 }
             )
@@ -6173,32 +6592,40 @@ async def get_state_page_data(
         highlights = await _load_highlights(session, [p["id"] for p in pool])
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
 
-    # Grouped by hub slug (jurisdiction_hub_slug(), i.e. the display form),
-    # not the raw string -- since 2026-08-17 each row links to its /j/{slug}
-    # hub, and raw variants of one government ("City of Napa, CA" /
-    # "Napa, CA") must be one row pointing at one hub, not two rows with
-    # the same display name. `jurisdiction` stays the first raw string
-    # seen, for the jurisdiction_display filter and any raw-string uses.
+    # Grouped by GOVERNMENT (`gov_id`), not by the slug of a display
+    # string -- WO-99. Each row links to its /j/{slug} hub, and every
+    # spelling of one government ("City of Napa, CA" / "Napa, CA",
+    # "County of Fresno, CA" / "Fresno County, CA") must be one row
+    # pointing at one hub. Grouping by the display slug got most of that
+    # right and the county pairs wrong, because both spellings are
+    # legitimate display forms of different strings.
+    #
+    # `jurisdiction` on the row is the registry display name when the
+    # page resolved, and the stored string otherwise -- see
+    # `_hub_identity()` for the fallbacks.
     by_hub: dict[str, list[dict]] = {}
     for p in pages:
-        by_hub.setdefault(jurisdiction_hub_slug(p["jurisdiction"]) or "", []).append(p)
+        by_hub.setdefault(p["hub_key"], []).append(p)
     jurisdictions = []
-    for hub_slug in sorted(
-        by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
+    for hub_key in sorted(
+        by_hub,
+        key=lambda k: (
+            by_hub[k][0]["hub_display"] or by_hub[k][0]["jurisdiction"] or ""
+        ).casefold(),
     ):
-        examples = by_hub[hub_slug]
+        examples = by_hub[hub_key]
         # The linked example must belong to *this* government: pick the
         # newest transcribed meeting, falling back to the newest at all.
         ordered = sorted(examples, key=lambda e: e["date"] or "", reverse=True)
         example = next((e for e in ordered if e["has_transcript"]), ordered[0])
-        body = next((e["meeting_body"] for e in examples if e["meeting_body"]), None)
         jurisdictions.append(
             {
-                "jurisdiction": examples[0]["jurisdiction"],
-                "hub_slug": hub_slug or None,
+                "jurisdiction": examples[0]["hub_display"]
+                or examples[0]["jurisdiction"],
+                "hub_slug": examples[0]["hub_slug"] or None,
                 "example": example,
                 "page_count": len(examples),
-                "gov_type": classify_government(examples[0]["jurisdiction"], body),
+                "gov_type": examples[0]["gov_type"],
             }
         )
 
@@ -6230,7 +6657,7 @@ async def get_state_page_data(
     active_counts: dict[str, int] = {}
     for p in pages:
         if _within(p, MOST_ACTIVE_WINDOW_DAYS):
-            slug_key = jurisdiction_hub_slug(p["jurisdiction"]) or ""
+            slug_key = p["hub_key"]
             active_counts[slug_key] = active_counts.get(slug_key, 0) + 1
     most_active = []
     if len(jurisdictions) >= MOST_ACTIVE_MIN_GOVERNMENTS:
@@ -6238,12 +6665,12 @@ async def get_state_page_data(
             active_counts.items(), key=lambda kv: (-kv[1], kv[0])
         )[:MOST_ACTIVE_COUNT]:
             group = by_hub.get(slug_key)
-            if not group or not slug_key:
+            if not group or not group[0]["hub_slug"]:
                 continue
             most_active.append(
                 {
-                    "hub_slug": slug_key,
-                    "jurisdiction": group[0]["jurisdiction"],
+                    "hub_slug": group[0]["hub_slug"],
+                    "jurisdiction": group[0]["hub_display"] or group[0]["jurisdiction"],
                     "recent_count": count,
                     "total_count": len(group),
                 }
@@ -6329,9 +6756,9 @@ async def get_national_government_list() -> list[dict]:
     get_jurisdiction_coverage()'s deliberate inclusion of unknown-platform
     rows (this feeds a "browse casually" list, not the receipts table).
 
-    Grouped by jurisdiction_hub_slug(), same as get_state_page_data(), so
-    raw-string variants of one government collapse into one row and the
-    result feeds straight into _group_governments() unchanged.
+    Grouped by `gov_id`, same as get_state_page_data(), so every spelling
+    of one government collapses into one row and the result feeds
+    straight into _group_governments() unchanged.
     """
     async with async_session() as session:
         stmt = (
@@ -6340,6 +6767,8 @@ async def get_national_government_list() -> list[dict]:
                 MeetingPage.slug,
                 MeetingPage.title,
                 MeetingPage.meeting_body,
+                MeetingPage.gov_id,
+                MeetingPage.gov_type,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
             )
@@ -6359,7 +6788,16 @@ async def get_national_government_list() -> list[dict]:
         rows = (await session.execute(stmt)).all()
 
     by_hub: dict[str, list[dict]] = {}
-    for jurisdiction, slug, title, meeting_body, version_id, warnings in rows:
+    for (
+        jurisdiction,
+        slug,
+        title,
+        meeting_body,
+        gov_id,
+        gov_type,
+        version_id,
+        warnings,
+    ) in rows:
         # Same SQLite case-insensitive-LIKE re-check get_state_page_data()
         # does for its own single-abbr suffix match.
         if state_abbr_from_jurisdiction(jurisdiction) not in US_50_STATE_ABBRS:
@@ -6367,30 +6805,34 @@ async def get_national_government_list() -> list[dict]:
         has_transcript = version_id is not None and _has_real_warning_free_transcript(
             warnings
         )
-        by_hub.setdefault(jurisdiction_hub_slug(jurisdiction) or "", []).append(
+        hub_key, hub_slug_, hub_display, registry_type = _hub_identity(
+            gov_id, jurisdiction
+        )
+        by_hub.setdefault(hub_key, []).append(
             {
-                "jurisdiction": jurisdiction,
+                "jurisdiction": hub_display or jurisdiction,
                 "slug": slug,
                 "title": title,
                 "meeting_body": meeting_body,
+                "hub_slug": hub_slug_,
+                "gov_type": registry_type or gov_type,
                 "has_transcript": has_transcript,
             }
         )
 
     result = []
-    for hub_slug in sorted(
-        by_hub, key=lambda s: by_hub[s][0]["jurisdiction"].casefold()
+    for hub_key in sorted(
+        by_hub, key=lambda k: by_hub[k][0]["jurisdiction"].casefold()
     ):
-        examples = by_hub[hub_slug]
+        examples = by_hub[hub_key]
         example = next((e for e in examples if e["has_transcript"]), examples[0])
-        body = next((e["meeting_body"] for e in examples if e["meeting_body"]), None)
         result.append(
             {
                 "jurisdiction": examples[0]["jurisdiction"],
-                "hub_slug": hub_slug or None,
+                "hub_slug": examples[0]["hub_slug"] or None,
                 "example": example,
                 "page_count": len(examples),
-                "gov_type": classify_government(examples[0]["jurisdiction"], body),
+                "gov_type": examples[0]["gov_type"],
             }
         )
     return result
@@ -6470,7 +6912,11 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
         )
         recent_rows = (
             await session.execute(
-                select(MeetingPage.jurisdiction, MeetingPage.created_at).where(
+                select(
+                    MeetingPage.jurisdiction,
+                    MeetingPage.gov_id,
+                    MeetingPage.created_at,
+                ).where(
                     MeetingPage.jurisdiction.is_not(None),
                     MeetingPage.platform != "unknown",
                     MeetingPage.created_at.is_not(None),
@@ -6568,18 +7014,20 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
         return (now - created_at) <= timedelta(days=days)
 
     recently_added_count = sum(
-        1 for _, created_at in recent_rows if _within(created_at, FRESHNESS_WINDOW_DAYS)
+        1
+        for _, _, created_at in recent_rows
+        if _within(created_at, FRESHNESS_WINDOW_DAYS)
     )
     active_counts: dict[str, int] = {}
-    hub_examples: dict[str, str] = {}
-    for jurisdiction, created_at in recent_rows:
+    hub_examples: dict[str, tuple] = {}
+    for jurisdiction, gov_id, created_at in recent_rows:
         if not _within(created_at, MOST_ACTIVE_WINDOW_DAYS):
             continue
-        slug_key = jurisdiction_hub_slug(jurisdiction) or ""
-        if not slug_key:
+        _key, hub_slug_, hub_display, _type = _hub_identity(gov_id, jurisdiction)
+        if not hub_slug_:
             continue
-        active_counts[slug_key] = active_counts.get(slug_key, 0) + 1
-        hub_examples.setdefault(slug_key, jurisdiction)
+        active_counts[hub_slug_] = active_counts.get(hub_slug_, 0) + 1
+        hub_examples.setdefault(hub_slug_, hub_display or jurisdiction)
 
     jurisdictions = await get_national_government_list()
     total_by_hub = {
@@ -6641,7 +7089,7 @@ async def _top_jurisdictions_in_state(abbr: str, limit: int) -> list[tuple[str, 
     async with async_session() as session:
         rows = (
             await session.execute(
-                select(MeetingPage.jurisdiction).where(
+                select(MeetingPage.jurisdiction, MeetingPage.gov_id).where(
                     MeetingPage.jurisdiction.is_not(None),
                     MeetingPage.jurisdiction.like(f"%, {abbr}"),
                 )
@@ -6649,15 +7097,15 @@ async def _top_jurisdictions_in_state(abbr: str, limit: int) -> list[tuple[str, 
         ).all()
     counts: dict[str, int] = {}
     examples: dict[str, str] = {}
-    for (jurisdiction,) in rows:
+    for jurisdiction, gov_id in rows:
         # Same SQLite case-insensitive-LIKE re-check as elsewhere.
         if state_abbr_from_jurisdiction(jurisdiction) != abbr:
             continue
-        hub_slug = jurisdiction_hub_slug(jurisdiction)
+        _key, hub_slug, hub_display, _type = _hub_identity(gov_id, jurisdiction)
         if not hub_slug:
             continue
         counts[hub_slug] = counts.get(hub_slug, 0) + 1
-        examples.setdefault(hub_slug, jurisdiction)
+        examples.setdefault(hub_slug, hub_display or jurisdiction)
     capped_limit = min(max(limit, 1), _JURISDICTION_SEARCH_MAX_RESULTS)
     top = sorted(counts.items(), key=lambda kv: (-kv[1], examples[kv[0]].casefold()))[
         :capped_limit
@@ -6718,7 +7166,7 @@ async def search_jurisdictions(q: str, limit: int = 10) -> list[dict]:
     async with async_session() as session:
         rows = (
             await session.execute(
-                select(MeetingPage.jurisdiction)
+                select(MeetingPage.jurisdiction, MeetingPage.gov_id)
                 .where(
                     MeetingPage.jurisdiction.is_not(None),
                     or_(*(MeetingPage.jurisdiction.ilike(f"%{t}%") for t in terms)),
@@ -6729,11 +7177,11 @@ async def search_jurisdictions(q: str, limit: int = 10) -> list[dict]:
         ).all()
 
     seen: dict[str, str] = {}
-    for (jurisdiction,) in rows:
-        hub_slug = jurisdiction_hub_slug(jurisdiction)
+    for jurisdiction, gov_id in rows:
+        _key, hub_slug, hub_display, _type = _hub_identity(gov_id, jurisdiction)
         if not hub_slug or hub_slug in seen:
             continue
-        seen[hub_slug] = jurisdiction
+        seen[hub_slug] = hub_display or jurisdiction
 
     capped_limit = min(max(limit, 1), _JURISDICTION_SEARCH_MAX_RESULTS)
     return [
@@ -6793,37 +7241,96 @@ def _hub_base_conditions():
     )
 
 
+def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
+    """(key, slug, display, gov_type) for one page's hub.
+
+    Three cases, and the fallbacks matter as much as the happy path
+    because a hub has to keep working for every page in the archive, not
+    only the resolved ones:
+
+    1. **A `gov_id` with a registry row** -- the normal case after the
+       backfill. The key is the id, and the slug and display name are
+       *generated from the registry row*, which is the entire point: it
+       is what makes "County of Fresno, CA" and "Fresno County, CA" one
+       hub instead of two, and what stops a re-ingest with a slightly
+       different spelling forking a hub in half.
+    2. **A `gov_id` with no registry row** -- a freshly-minted `rtr:` id
+       for a government that has not been through a scoring run yet, so
+       `governments.csv` does not carry it. Still keyed on the id (two
+       such pages are still one government), with the slug and name
+       falling back to the stored string, which for a minted row IS the
+       cleaned name.
+    3. **No `gov_id`** -- a page the resolver declined to key, or one
+       not yet backfilled. Falls back to exactly today's behaviour,
+       `jurisdiction_hub_slug()` over the display form, so nothing goes
+       missing during a partial backfill and an unresolvable page still
+       has a hub to belong to.
+    """
+    gov = registry_governments().get(gov_id) if gov_id else None
+    if gov:
+        return gov.gov_id, gov_hub_slug(gov), gov_display_name(gov), gov.gov_type
+    slug = jurisdiction_hub_slug(jurisdiction)
+    display = format_jurisdiction_display(jurisdiction)
+    return (gov_id or slug or ""), slug, display, None
+
+
+def hub_slug_for_page(gov_id: Optional[str], jurisdiction: Optional[str]):
+    """The `/j/{slug}` a single page belongs to -- the public shape of
+    `_hub_identity()`, for archive/main.py's meeting-page render."""
+    return _hub_identity(gov_id, jurisdiction)[1]
+
+
 async def _hub_groups(session) -> dict[str, dict]:
-    """slug -> {display, jurisdictions: [raw strings], page_count,
-    last_updated, state_abbr}, from one GROUP BY over indexable, non-empty
-    pages. A few hundred rows -- cheap enough to run per request (no
-    cache, so nothing can go stale), same approach the state pages use."""
+    """slug -> {key, display, gov_ids, jurisdictions: [raw strings],
+    page_count, last_updated, state_abbr, gov_type}, from one GROUP BY
+    over indexable, non-empty pages.
+
+    Grouped by `gov_id` (WO-99), not by the slug of a display string.
+    A few hundred rows -- cheap enough to run per request (no cache, so
+    nothing can go stale), same approach the state pages use.
+
+    Keyed by SLUG because the slug is the URL, while the identity inside
+    each group is the `gov_id`. Two different governments resolving to one
+    slug would merge here; measured against the whole 5,053-page export on
+    2026-09-02 that happens zero times, because a registry display name
+    carries its state and its LSAD disambiguator ("Cottage Grove
+    (village), WI"). If it ever does happen the symptom is two
+    governments on one hub, which `splits.csv` in the scoring report is
+    exactly the thing that would show it.
+    """
     stmt = (
         select(
+            MeetingPage.gov_id,
+            MeetingPage.gov_type,
             MeetingPage.jurisdiction,
             func.count(),
             func.max(MeetingPage.updated_at),
         )
         .where(*_hub_base_conditions())
-        .group_by(MeetingPage.jurisdiction)
+        .group_by(MeetingPage.gov_id, MeetingPage.gov_type, MeetingPage.jurisdiction)
     )
     rows = (await session.execute(stmt)).all()
     groups: dict[str, dict] = {}
-    for jurisdiction, count, last_updated in rows:
-        slug = jurisdiction_hub_slug(jurisdiction)
+    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
+        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
         if not slug:
             continue
         g = groups.setdefault(
             slug,
             {
                 "slug": slug,
-                "display": format_jurisdiction_display(jurisdiction),
+                "key": key,
+                "display": display,
+                "gov_ids": [],
                 "jurisdictions": [],
                 "page_count": 0,
                 "last_updated": last_updated,
-                "state_abbr": state_abbr_from_jurisdiction(jurisdiction),
+                "state_abbr": state_abbr_from_jurisdiction(display or jurisdiction),
+                "gov_type": registry_type or gov_type,
             },
         )
+        if gov_id and gov_id not in g["gov_ids"]:
+            g["gov_ids"].append(gov_id)
         g["jurisdictions"].append(jurisdiction)
         g["page_count"] += count
         if last_updated and (
@@ -6831,6 +7338,27 @@ async def _hub_groups(session) -> dict[str, dict]:
         ):
             g["last_updated"] = last_updated
     return groups
+
+
+def _hub_page_condition(group: dict):
+    """Every page belonging to one hub group.
+
+    Two arms, because a hub can hold both kinds of page at once during a
+    partial backfill: rows keyed by `gov_id`, and rows with no id at all
+    whose display string still slugs to this hub. The second arm is
+    restricted to un-keyed rows so a page that resolved to a DIFFERENT
+    government cannot be dragged back in by its old spelling."""
+    arms = []
+    if group["gov_ids"]:
+        arms.append(MeetingPage.gov_id.in_(group["gov_ids"]))
+    if group["jurisdictions"]:
+        arms.append(
+            and_(
+                MeetingPage.gov_id.is_(None),
+                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
+            )
+        )
+    return or_(*arms) if arms else false()
 
 
 async def _state_topic_chips(session, abbr: Optional[str]) -> list[dict]:
@@ -6873,8 +7401,9 @@ async def get_jurisdiction_hub_data(
     slug: str, topic_slug: Optional[str] = None
 ) -> Optional[dict]:
     """Everything /j/{slug} renders, or None when no indexable page maps to
-    this slug (the route 404s). Every meeting for the hub's raw
-    jurisdiction strings, newest first; counts, date range, transcript
+    this slug (the route 404s). Every meeting for the hub's government --
+    by `gov_id` since WO-99, so "County of Fresno, CA" and "Fresno
+    County, CA" are one page -- newest first; counts, date range, transcript
     count, a by-body breakdown (meeting_body, e.g. "City Council" x 30 --
     None when the split never happened); the state for the breadcrumb and
     "Part of {State}" link; and `indexable`, the threshold verdict the
@@ -6906,7 +7435,7 @@ async def get_jurisdiction_hub_data(
                 ),
             )
             .where(
-                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
+                _hub_page_condition(group),
                 *_hub_base_conditions(),
             )
             .order_by(
@@ -7008,6 +7537,10 @@ async def get_jurisdiction_hub_data(
         # (the first is as good as any -- list_pages()'s jurisdiction
         # filter is a substring match).
         "search_jurisdiction": group["jurisdictions"][0],
+        # The identity, for anything downstream that wants to join rather
+        # than match a name (and for the 301 alias lookup on this route).
+        "gov_id": group["key"],
+        "gov_type": group["gov_type"],
     }
 
 
@@ -8683,6 +9216,9 @@ async def list_saved_items(clerk_user_id: str) -> dict:
                         MeetingPage.date,
                         MeetingPage.jurisdiction,
                         MeetingPage.meeting_body,
+                        MeetingPage.gov_id,
+                        MeetingPage.gov_type,
+                        MeetingPage.meeting_kind,
                     ).where(MeetingPage.id.in_(meeting_ids))
                 )
             ).all()
@@ -8693,8 +9229,21 @@ async def list_saved_items(clerk_user_id: str) -> dict:
                     "date": date,
                     "jurisdiction": jurisdiction,
                     "meeting_body": meeting_body,
+                    "gov_id": gov_id,
+                    "gov_type": gov_type,
+                    "meeting_kind": meeting_kind,
                 }
-                for pid, slug, title, date, jurisdiction, meeting_body in page_rows
+                for (
+                    pid,
+                    slug,
+                    title,
+                    date,
+                    jurisdiction,
+                    meeting_body,
+                    gov_id,
+                    gov_type,
+                    meeting_kind,
+                ) in page_rows
             }
 
     meetings, searches = [], []

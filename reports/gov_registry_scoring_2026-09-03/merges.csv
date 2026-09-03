@@ -8,6 +8,7 @@ us:place:0828690,"Frisco, CO",frisco-co|town-of-frisco|town-of-frisco-co,3
 us:county:53009,"Clallam County, WA",clallam|clallam-county-wa|clallam-wa,3
 us:place:1245000,"Miami, FL",miami|miami-fl,2
 us:place:3755000,"Raleigh, NC",raleigh|raleigh-nc,2
+us:place:5553000,"Milwaukee, WI",milwaukee|milwaukee-wi,2
 us:place:4752006,"Nashville-Davidson, TN",nashville|nashville-davidson-county-tn,2
 us:place:2148006,"Louisville/Jefferson County, KY",louisville|louisville-ky,2
 us:place:0452930,"Paradise Valley, AZ",paradise-valley|paradise-valley-az,2
@@ -20,11 +21,14 @@ us:county:06085,"Santa Clara County, CA",county-of-santa-clara-ca|santa-clara-co
 us:place:5303736,"Bainbridge Island, WA",bainbridge-island-wa|bainbridge-wa,2
 us:place:1219825,"Edgewater, FL",edgewater|edgewater-fl,2
 us:place:3722920,"Fayetteville, NC",fayetteville|fayetteville-nc,2
+us:place:1248625,"New Smyrna Beach, FL",new-smyrna-beach-fl|nsb,2
 us:place:0618100,"Davis, CA",davis|davis-ca,2
 us:place:2717000,"Duluth (city), MN",duluth|duluth-mn,2
 us:place:1225175,"Gainesville, FL",gainesville|gainesville-fl,2
+us:place:1728326,"Galesburg (city), IL",gales-burg|galesburg-il,2
 us:place:5135000,"Hampton, VA",hampton|hampton-va,2
 us:place:1232000,"Hollywood, FL",hollywood|hollywood-fl,2
+us:county:15003,"City and County of Honolulu, HI",county-of-honolulu|honolulu,2
 rtr:us:ca:judicial-council-of-california,"Judicial Council of California, CA",california|j-cc,2
 us:place:1349756,"Marietta, GA",marietta|marietta-ga,2
 us:county:12083,"Marion County, FL",marion|marion-county-fl,2
@@ -54,6 +58,7 @@ us:place:1747007,"Markham, IL",markham|markham-il,2
 ca:csd:3524009,"Milton, ON",milton-on|town-of-milton-on,2
 us:place:2957404,"Pickering, MO",pickering|pickering-mo,2
 us:place:3668462,"Southampton (village), NY",southampton|southampton-ny,2
+ca:csd:1001519,"St. John's, NL",st-john-s-nl|stjohns,2
 ca:csd:3522010,"Grand Valley, ON",grand-valley-on|town-of-grand-valley-on,2
 ca:csd:3524001,"Oakville, ON",oakville-on|town-of-oakville-on,2
 us:place:0602252,"Antioch, CA",antioch|antioch-ca,2
@@ -61,9 +66,11 @@ us:county:12033,"Escambia County, FL",escambia-county-fl|escambia-fl,2
 us:place:0832155,"Greeley, CO",greeley|greeley-co,2
 us:county:48453,"Travis County, TX",travis|travis-county-tx,2
 rtr:us:ca:los-angeles-department-of-water-and-power,"Los Angeles Department of Water and Power, CA",lad-wp|los-angeles-ca,2
-ca:csd:3526032,"Welland, ON",county-of-elgin|welland-on,2
+us:place:2509000,"Brockton, MA",brockton|port-colborne-resolution,2
+ca:csd:3536020,"Chatham-Kent, ON",chatham-kent|chatham-kent-on,2
 us:county:51073,"Gloucester County, VA",gloucester-county-va|gloucester-va,2
 ca:csd:3524015,"Halton Hills, ON",halton-hills-on|town-of-halton-hills-on,2
+ca:csd:5919008,"North Cowichan, BC",north-cowichan-bc|northcowichan,2
 us:place:5500100,"Abbotsford, WI",abbotsford|abbotsford-wi,2
 us:place:4216256,"Cornwall, PA",cornwall|cornwall-pa,2
 us:place:2123968,"Edmonton, KY",edmonton|edmonton-ky,2
@@ -84,9 +91,10 @@ us:place:0649278,"Morgan Hill, CA",morgan-hill-ca|morgan-hill-ca-california,2
 us:place:1757225,"Palatine (village), IL",palatine-il|palatine-village-il,2
 us:county:55109,"St. Croix County, WI",saint-croix-county-wi|st-croix-county-wi,2
 ca:csd:5953033,"Mackenzie, BC",mackenzie|mackenzie-bc,2
-us:place:5557700,"North Bay, WI",north-bay|north-bay-by,2
 us:place:3741720,"Marvin, NC",marvin|marvin-nc,2
+ca:csd:3507052,"Merrickville-Wolford, ON",merrickville-wolford|merrickville-wolford-on,2
 rtr:us:ca:san-diego-association-of-governments,"San Diego Association of Governments, CA",san-diego-ca|sandag-ca,2
+ca:csd:3541045,"Saugeen Shores, ON",saugeenshores|town-of-saugeen-shores-on,2
 ca:csd:3522021,"Shelburne, ON",shelburne-on|town-of-shelburne,2
 ca:csd:3532004,"Tillsonburg, ON",tillsonburg-on|town-of-tillsonburg-on,2
 ca:csd:3522014,"Orangeville, ON",orangeville|town-of-orangeville,2
@@ -127,9 +135,9 @@ us:place:3710740,"Cary, NC",cary|town-of-cary-nc,2
 us:place:3650034,"Newburgh (city), NY",newburgh|newburgh-ny,2
 us:place:4857476,"Pilot Point, TX",pilot-point|pilot-point-tx,2
 us:place:4807300,"Bellaire, TX",bellaire|bellaire-tx,2
-us:place:4821628,"Duncanville, TX",dallas|duncanville-tx,2
 us:place:0649670,"Mountain View, CA",mountain-view|mountain-view-ca,2
 us:cousub:0911025990,"Enfield Town, CT",enfield|enfield-ct,2
+us:county:06017,"El Dorado County, CA",el-dorado-county-ca|eldorado,2
 us:county:06019,"Fresno County, CA",county-of-fresno-ca|fresno-county-ca,2
 us:county:51079,"Greene County, VA",greene-county|greene-county-va,2
 us:county:06095,"Solano County, CA",county-of-solano-ca|solano-county-ca,2
@@ -144,12 +152,14 @@ us:place:1373704,"Stockbridge, GA",stockbridge|stockbridge-ga,2
 us:place:0642202,"Lodi, CA",lodi|lodi-ca,2
 us:county:41051,"Multnomah County, OR",multnomah|multnomah-county-or,2
 us:cousub:3611951693,"North Castle Town, NY",north-castle-ny|town-of-north-castle-ny,2
+us:place:4852356,"North Richland Hills, TX",north-richland-hills-tx|unknown-jurisdiction,2
 us:place:4819972,"Denton, TX",denton|denton-tx,2
 us:place:0655254,"Palm Springs, CA",palm-springs|palm-springs-ca,2
 us:place:0677000,"Sunnyvale, CA",sunnyvale|sunnyvale-ca,2
 us:cousub:2300526525,"Freeport Town, ME",freeport-me|town-of-freeport,2
 us:county:24041,"Talbot County, MD",talbot-county|talbot-county-md,2
 us:place:2679000,"Taylor, MI",taylor-mi|taylor-mi-city,2
+us:cousub:2615512520,"Caledonia (charter township), MI",caledonia-charter-township-mi|caledonia-township,2
 us:county:37179,"Union County, NC",union-county|union-county-nc,2
 us:place:1273900,"Venice, FL",venice|venice-fl,2
 us:place:0857630,"Parker, CO",parker|parker-co,2

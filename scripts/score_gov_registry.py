@@ -25,7 +25,7 @@ Outputs land in `reports/gov_registry_scoring_<date>/`:
   unknown.csv                every `rtr:unknown:` row
   merges.csv                 two or more current `/j/` hubs -> one gov_id
   splits.csv                 one current hub -> several gov_ids
-  type_disagreements.csv     new gov_type vs gov_classify.py's bucket
+  state_headings.csv         gov_type -> the /state/* heading it lands under
   canada.csv                 Canadian rows, keyed vs not
   SUMMARY.md                 the numbers, for JURISDICTION_METADATA_PLAN.md
 
@@ -64,7 +64,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from app.utils.gov_registry import registry, resolve_government  # noqa: E402
-from archive.utils.gov_classify import classify_government  # noqa: E402
+from archive.utils.gov_groups import GROUP_LABELS, group_for_gov_type  # noqa: E402
 from archive.utils.jurisdiction_format import jurisdiction_hub_slug  # noqa: E402
 
 DEFAULT_DISCOVERY = Path.home() / "Documents" / "rtr-discovery"
@@ -160,24 +160,46 @@ def has_municipal_type_word(jurisdiction: str) -> bool:
 
 
 def _tenant_consensus(rows: List[dict]) -> Dict[str, str]:
-    """tenant_host -> the one gov_id every resolved row for that host
-    agrees on, for the same-tenant consistency rung (resolver rung 5b).
+    """tenant_host -> the DOMINANT gov_id among that host's rows that
+    resolved through a national table or a pin -- the resolver's rung 5b
+    input.
 
     A pre-pass, because the resolver is pure and cannot see a page's
-    siblings. In Phase 2 this becomes a query against `meeting_pages` by
-    host; here it is a group-by over the sheet. Only hosts where EVERY
-    keyed row agrees contribute -- a host serving two governments
-    (Cottage Grove, uatccta) must produce nothing rather than pick one,
-    which is the same decline-rather-than-guess posture as everywhere
-    else in the ladder.
+    siblings. `archive/db/crud._tenant_dominant_gov_id()` is the
+    production counterpart, a query against `meeting_pages` by tenant
+    host, and the two must agree on what "dominant" means: the most
+    common such gov_id, and nothing at all when two are tied.
+
+    Only `registry` and `pinned` rows vote. A minted or inferred id is
+    not evidence about a tenant -- it is the resolver's own earlier
+    guess, and letting it vote here would be the same
+    self-reinforcement `registry.curated_aliases()` refuses for aliases.
+
+    Unlike Phase 1b's version this does NOT require unanimity, because
+    it no longer has to carry the whole safety burden on its own: the
+    resolver adopts the answer only when the names also agree
+    (`resolver._tenant_consistency()`). Requiring unanimity here instead
+    would have missed exactly the cases worth collapsing --
+    `milwaukee.granicus.com` holds a minted id beside its real one, which
+    is the fragmentation, so "every row agrees" is false precisely when
+    the rung is needed.
     """
-    by_host: Dict[str, set] = defaultdict(set)
+    by_host: Dict[str, Counter] = defaultdict(Counter)
     for row in rows:
         host = (row.get("tenant_host") or "").strip().lower()
         gov_id = row.get("gov_id") or ""
-        if host and gov_id and not gov_id.startswith("rtr:unknown:"):
-            by_host[host].add(gov_id)
-    return {host: next(iter(ids)) for host, ids in by_host.items() if len(ids) == 1}
+        if not host or not gov_id or gov_id.startswith("rtr:"):
+            continue
+        if row.get("tier") not in ("registry", "pinned"):
+            continue
+        by_host[host][gov_id] += 1
+    out: Dict[str, str] = {}
+    for host, counts in by_host.items():
+        ranked = counts.most_common(2)
+        if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+            continue
+        out[host] = ranked[0][0]
+    return out
 
 
 def score_rows(
@@ -208,9 +230,7 @@ def score_rows(
                 "municipal_type_word": (
                     "yes" if has_municipal_type_word(jurisdiction) else "no"
                 ),
-                "gov_classify_bucket": classify_government(
-                    jurisdiction or None, row.get("meeting_body") or None
-                ),
+                "state_heading": GROUP_LABELS[group_for_gov_type(match.gov_type)],
             }
         )
     return out
@@ -223,18 +243,6 @@ def _write(path: Path, rows: List[dict], fields: Optional[List[str]] = None) -> 
         writer.writeheader()
         writer.writerows(rows)
     print(f"  {path.name}: {len(rows)} rows")
-
-
-# `gov_classify.py`'s four buckets against the Census-of-Governments
-# vocabulary. Only a genuine disagreement is reported: "agency" is
-# gov_classify's catch-all for everything that isn't a county, city or
-# school, so it is counted as agreeing with either kind of district.
-_BUCKET_EQUIVALENTS = {
-    "county": {"county"},
-    "city": {"municipality", "township"},
-    "school": {"school_district"},
-    "agency": {"special_district", "other", "court", "state"},
-}
 
 
 def main() -> None:
@@ -406,22 +414,26 @@ def main() -> None:
     ]
     _write(out_dir / "splits.csv", sorted(splits, key=lambda r: -r["gov_count"]))
 
-    disagreements = [
+    # What the `/state/*` headings will actually read, per government.
+    # This replaced a "disagreements with gov_classify.py" cut once WO-99
+    # retired that module: there is no second classifier left to disagree
+    # with, and the useful question now is what a reader sees.
+    headings = [
         {
-            "input_set": r["input_set"],
-            "jurisdiction": r["jurisdiction"],
-            "meeting_body": r.get("meeting_body", ""),
-            "gov_classify_bucket": r["gov_classify_bucket"],
-            "gov_type": r["gov_type"],
-            "gov_id": r["gov_id"],
-            "tenant_host": r["tenant_host"],
+            "state_heading": heading,
+            "gov_type": gov_type,
+            "governments": n,
         }
-        for r in all_rows
-        if r["jurisdiction"]
-        and r["gov_type"]
-        not in _BUCKET_EQUIVALENTS.get(r["gov_classify_bucket"], set())
+        for (heading, gov_type), n in sorted(
+            Counter(
+                (r["state_heading"], r["gov_type"])
+                for r in all_rows
+                if r["gov_id"] or r["jurisdiction"]
+            ).items(),
+            key=lambda kv: -kv[1],
+        )
     ]
-    _write(out_dir / "type_disagreements.csv", disagreements)
+    _write(out_dir / "state_headings.csv", headings)
 
     canada = [
         {
@@ -438,6 +450,7 @@ def main() -> None:
 
     _write_pin_worklist(out_dir, all_rows)
     _seed_governments(all_rows)
+    _write_hub_slug_aliases(all_rows)
     _write_summary(
         out_dir,
         archive_rows,
@@ -445,7 +458,7 @@ def main() -> None:
         all_rows,
         merges,
         splits,
-        disagreements,
+        headings,
         canada,
     )
     print(f"\nWrote {out_dir}")
@@ -593,6 +606,19 @@ def _seed_governments(all_rows: List[dict]) -> None:
         fresh[match.gov_id] = match.government
         if r["jurisdiction"]:
             aliases[match.gov_id].add(r["jurisdiction"])
+    # Every government a PIN names, too -- not only the ones some page
+    # resolved to. `tenant_overrides.csv` can name a government no
+    # archived page has reached yet (the landing-page sweep writes
+    # exactly those), and a pin whose id `governments.csv` cannot render
+    # is a broken registry rather than a resolution.
+    for rows in registry.tenant_overrides().values():
+        for override in rows:
+            if override.gov_id in fresh or override.gov_id in existing:
+                continue
+            derived = registry.government_for_id(override.gov_id)
+            if derived:
+                fresh[override.gov_id] = derived
+
     merged = []
     for gov_id, gov in {**fresh, **existing}.items():
         merged.append(
@@ -616,8 +642,62 @@ def _seed_governments(all_rows: List[dict]) -> None:
     print(f"  governments.csv: {len(merged)} rows")
 
 
+def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
+    """Write `archive/data/hub_slug_aliases.csv` -- every `/j/` slug that
+    stops being a hub, and where it goes.
+
+    This has to be generated HERE, and only here, because the set of old
+    slugs is knowable exactly once: it is `jurisdiction_hub_slug()` over
+    the stored `jurisdiction` values as they are *before* the backfill
+    rewrites them to registry display names. After the backfill the old
+    spelling is gone from the database and nothing could reconstruct it.
+    See archive/utils/hub_aliases.py for why the map is a committed file
+    rather than a table.
+
+    Only a slug that no longer belongs to ANY live hub is written -- a
+    slug that survives as some other government's hub must never redirect,
+    which is what would happen if the raw before/after pairs were dumped
+    unfiltered.
+    """
+    # A row with no `gov_id` is `unresolved` or `blank`: it has no
+    # government, so it has no hub, and `_hub_identity()` will keep
+    # filing its page under the OLD display slug. 82 such aliases were
+    # written before this guard and every one pointed at a hub that would
+    # 404 -- `/j/cottage-grove` -> `/j/city-of-cottage-grove`, a redirect
+    # to nothing, which is strictly worse than the 404 it replaced.
+    live = {r["new_hub_slug"] for r in all_rows if r["new_hub_slug"] and r["gov_id"]}
+    rows: Dict[str, dict] = {}
+    for r in all_rows:
+        old, new = r["old_hub_slug"], r["new_hub_slug"]
+        if not r["gov_id"] or not old or not new or old == new or old in live:
+            continue
+        rows.setdefault(
+            old,
+            {
+                "old_slug": old,
+                "gov_id": r["gov_id"],
+                "new_slug": new,
+                "evidence": (
+                    f"{r['jurisdiction']!r} now resolves to {r['gov_id']} "
+                    f"({r['gov_name']})"
+                ),
+            },
+        )
+    path = REPO_ROOT / "archive" / "data" / "hub_slug_aliases.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(
+            fh, fieldnames=["old_slug", "gov_id", "new_slug", "evidence"]
+        )
+        writer.writeheader()
+        for row in sorted(rows.values(), key=lambda r: r["old_slug"]):
+            writer.writerow(row)
+    print(f"  archive/data/hub_slug_aliases.csv: {len(rows)} retired slugs")
+    return len(rows)
+
+
 def _write_summary(
-    out_dir, archive_rows, ledger_rows, all_rows, merges, splits, disagreements, canada
+    out_dir, archive_rows, ledger_rows, all_rows, merges, splits, headings, canada
 ) -> None:
     def pct(n, d):
         return f"{100 * n / max(d, 1):.1f}%"
@@ -654,10 +734,19 @@ def _write_summary(
     )
     lines.append("")
 
+    # A hand-verified `authoritative` pin is deliberately exempt: it is
+    # the one tier allowed to override a classified name, and the only
+    # rows it exempts today are the two consolidated city-counties on
+    # `honolulu.granicus.com`, where "City of Honolulu" landing on
+    # `us:county:15003` is the CORRECT answer -- Hawaii has no separate
+    # municipal government there. Counting those as failures would ask
+    # the resolver to un-learn a fact a human established.
     municipal_on_county = [
         r
         for r in all_rows
-        if r["municipal_type_word"] == "yes" and r["gov_id"].startswith("us:county:")
+        if r["municipal_type_word"] == "yes"
+        and r["gov_id"].startswith("us:county:")
+        and r["tier"] != "pinned"
     ]
     xx_ids = [r for r in all_rows if ":xx:" in r["gov_id"]]
     auto_only_pins = [
@@ -777,20 +866,18 @@ def _write_summary(
             lines.append(f"- `/j/{s['old_hub']}` → {s['gov_ids']}")
         lines.append("")
 
-    lines.append("## Type disagreements with gov_classify.py")
+    lines.append("## What the /state/* headings will read")
     lines.append("")
     lines.append(
-        f"**{len(disagreements)}** rows where the new `gov_type` disagrees with "
-        "`archive/utils/gov_classify.py`'s bucket (the classifier driving the "
-        "`/state/*` headings today)."
+        "From `gov_type` via `archive/utils/gov_groups.py`, which replaced "
+        "`archive/utils/gov_classify.py`'s regex over the display name "
+        "(WO-99). Every row is a page, not a distinct government."
     )
     lines.append("")
-    lines.append("| gov_classify bucket | new gov_type | rows |")
+    lines.append("| heading | gov_type | rows |")
     lines.append("| --- | --- | --- |")
-    for (bucket, gov_type), n in Counter(
-        (d["gov_classify_bucket"], d["gov_type"]) for d in disagreements
-    ).most_common(12):
-        lines.append(f"| {bucket} | {gov_type} | {n} |")
+    for h in headings[:12]:
+        lines.append(f"| {h['state_heading']} | {h['gov_type']} | {h['governments']} |")
     lines.append("")
 
     ca_keyed = [r for r in canada if r["keyed"] == "yes"]
