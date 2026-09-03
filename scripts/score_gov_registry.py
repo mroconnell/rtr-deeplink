@@ -436,6 +436,7 @@ def main() -> None:
     ]
     _write(out_dir / "canada.csv", canada)
 
+    _write_pin_worklist(out_dir, all_rows)
     _seed_governments(all_rows)
     _write_summary(
         out_dir,
@@ -448,6 +449,130 @@ def main() -> None:
         canada,
     )
     print(f"\nWrote {out_dir}")
+
+
+# Platform order for the pin worklist: the four where a landing page
+# reliably names its organisation in the header, so a single fetch per
+# host settles the pin the way Phase 0's `visual_confirmed` rows were
+# made by hand.
+_WORKLIST_PLATFORM_ORDER = ["escribe", "cablecast", "swagit", "telvue"]
+
+# TelVue's per-customer identifier is an opaque token in the URL PATH,
+# not a subdomain -- `videoplayer.telvue.com/player/{org_token}/...` --
+# so every TelVue customer shares one host and a host-level pin is
+# meaningless for them. The token is the `match` value.
+# See rtr-business/research/telvue_org_tokens.md, which already
+# identifies 12 of these by hand.
+_TELVUE_TOKEN_RE = re.compile(r"/player/([A-Za-z0-9_\-]{16,})", re.I)
+
+
+def _telvue_match(source_url: str) -> str:
+    m = _TELVUE_TOKEN_RE.search(source_url or "")
+    return m.group(1) if m else ""
+
+
+def _worklist_platform(host: str, platform: str) -> str:
+    host = (host or "").lower()
+    for name in ("escribemeetings", "cablecast", "swagit", "telvue"):
+        if name in host:
+            return "escribe" if name == "escribemeetings" else name
+    return platform or "unknown"
+
+
+def _write_pin_worklist(out_dir: Path, all_rows: List[dict]) -> None:
+    """One row per tenant host that still has no government, with a
+    landing URL to fetch.
+
+    This is the input to the Phase 2 side-task: fetch each landing page
+    once and read the organisation name out of its header, exactly how
+    `jurisdiction_overrides.csv`'s `visual_confirmed` rows were made.
+    Grouped by platform with the four that put their customer's name in
+    the page header first, because those are the ones a single fetch
+    settles.
+
+    A TelVue row carries the org token from its own source URL as
+    `match_value`: every TelVue customer shares
+    `videoplayer.telvue.com`, so a host-level pin there would be wrong
+    for all of them -- the token is what identifies the government.
+    """
+    by_host: Dict[str, dict] = {}
+    for row in all_rows:
+        if row["tier"] not in ("unresolved", "blank"):
+            continue
+        host = (row.get("tenant_host") or "").strip().lower()
+        if not host:
+            continue
+        source_url = row.get("source_url") or ""
+        platform = _worklist_platform(host, row.get("platform") or "")
+        match_value = _telvue_match(source_url) if platform == "telvue" else ""
+        key = f"{host}|{match_value}"
+        entry = by_host.setdefault(
+            key,
+            {
+                "platform": platform,
+                "tenant_host": host,
+                "match_value": match_value,
+                "rows": 0,
+                "reason": row["tier"],
+                "stored_names": set(),
+                "landing_url": "",
+                "example_slug": row.get("slug") or "",
+            },
+        )
+        entry["rows"] += 1
+        if row.get("jurisdiction"):
+            entry["stored_names"].add(row["jurisdiction"])
+        if source_url and not entry["landing_url"]:
+            entry["landing_url"] = _landing_url(source_url, platform, match_value)
+
+    order = {name: i for i, name in enumerate(_WORKLIST_PLATFORM_ORDER)}
+    rows = [
+        {
+            **e,
+            "stored_names": "|".join(sorted(e["stored_names"])),
+        }
+        for e in by_host.values()
+    ]
+    rows.sort(
+        key=lambda r: (
+            order.get(r["platform"], len(order)),
+            r["platform"],
+            -r["rows"],
+            r["tenant_host"],
+        )
+    )
+    _write(
+        out_dir / "pin_worklist.csv",
+        rows,
+        [
+            "platform",
+            "tenant_host",
+            "match_value",
+            "rows",
+            "reason",
+            "landing_url",
+            "stored_names",
+            "example_slug",
+        ],
+    )
+
+
+def _landing_url(source_url: str, platform: str, match_value: str) -> str:
+    """The page most likely to name the organisation in its header.
+
+    Deliberately conservative: for the platforms whose landing page is a
+    known fixed path this returns it, and otherwise it returns the host
+    root. Getting this wrong costs one wasted fetch, not a wrong pin.
+    """
+    parsed = urlparse(source_url)
+    root = f"{parsed.scheme or 'https'}://{parsed.netloc}"
+    if platform == "telvue" and match_value:
+        return f"{root}/player/{match_value}"
+    if platform == "escribe":
+        return f"{root}/Meetings.aspx"
+    if platform == "cablecast":
+        return f"{root}/CablecastPublicSite/"
+    return root or source_url
 
 
 def _seed_governments(all_rows: List[dict]) -> None:
@@ -564,6 +689,62 @@ def _write_summary(
                 f"- still unknown-state: {r['jurisdiction']!r} -> {r['gov_id']}"
             )
         lines.append("")
+
+    gated = [
+        r
+        for r in all_rows
+        if r["tier"] == "unresolved" and "not a government name" in r["evidence"]
+    ]
+    lines.append("## The minting gate")
+    lines.append("")
+    lines.append(
+        f"**{len(gated)}** rows carry a string that is not a government name -- "
+        "a subdomain fragment, an initialism or a station callsign -- and are "
+        "tier `unresolved` with the raw text kept in `evidence`, rather than "
+        "minting an `rtr:` id nobody could ever look up."
+    )
+    lines.append("")
+    lines.append("| platform | rows | distinct hosts |")
+    lines.append("| --- | --- | --- |")
+    by_platform = defaultdict(list)
+    for r in gated:
+        by_platform[r.get("platform") or "(ledger)"].append(r)
+    for platform, rows in sorted(by_platform.items(), key=lambda kv: -len(kv[1])):
+        hosts = len({r["tenant_host"] for r in rows})
+        lines.append(f"| {platform} | {len(rows)} | {hosts} |")
+    lines.append("")
+    lines.append("| country | rows |")
+    lines.append("| --- | --- |")
+    for country, n in Counter(r["country"] for r in gated).most_common():
+        lines.append(f"| {country} | {n} |")
+    lines.append("")
+    if gated:
+        lines.append(
+            "Examples: "
+            + ", ".join(
+                sorted({repr(r["jurisdiction"]) for r in gated if r["jurisdiction"]})[
+                    :12
+                ]
+            )
+        )
+        lines.append("")
+
+    lines.append("## Pin worklist")
+    lines.append("")
+    worklist = [r for r in all_rows if r["tier"] in ("unresolved", "blank")]
+    worklist_hosts = {r["tenant_host"] for r in worklist if r["tenant_host"]}
+    lines.append(
+        f"`pin_worklist.csv` -- **{len(worklist_hosts)}** tenant hosts with no "
+        f"government across {len(worklist)} rows, each with a landing URL to "
+        "fetch once and read the organisation name out of the header, the way "
+        "`jurisdiction_overrides.csv`'s `visual_confirmed` rows were made. "
+        "Ordered eScribe / Cablecast / Swagit / TelVue first -- the four whose "
+        "landing page reliably names its customer. TelVue rows carry the org "
+        "token from the URL path as `match_value`, because every TelVue "
+        "customer shares one host and a host-level pin would be wrong for all "
+        "of them."
+    )
+    lines.append("")
 
     lines.append("## Government types")
     lines.append("")

@@ -868,3 +868,104 @@ def test_census_bookkeeping_is_not_part_of_a_display_name():
 def test_dc_and_louisville_are_municipalities_not_other():
     assert resolve("Washington, DC").gov_type == classify.MUNICIPALITY
     assert resolve("Louisville, KY").gov_type == classify.MUNICIPALITY
+
+
+# --- Phase 1b addendum: the minting gate -------------------------------
+#
+# Every string below is a real stored jurisdiction produced by the old
+# wordninja subdomain fallback. Minting an id for one creates a
+# permanent, authoritative-looking identity for something nobody can ever
+# look up.
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Llbc, AB",  # pub-llbc = Lac La Biche County
+        "Notl, ON",  # Niagara-on-the-Lake
+        "Stjohns, NL",
+        "Ezt",  # pub-ezt = East Zorra-Tavistock
+        "TV, NY",
+        "Psr C 2",  # psrc2 = Puget Sound Regional Council
+        "Mw Rd",
+        "S Fw, MD",
+        "Ride Uta",
+        "Auroratv, CO",  # named as junk in JURISDICTION_METADATA_PLAN.md
+    ],
+)
+def test_a_string_that_is_not_a_name_is_never_minted(raw):
+    match = resolve(raw)
+    assert match.gov_id == ""
+    assert match.tier == resolver.TIER_UNRESOLVED
+    # The raw string survives in evidence, so a human pin loses nothing.
+    assert raw.split(",")[0] in match.evidence
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        (
+            "West County Wastewater District, CA",
+            "rtr:us:ca:west-county-wastewater-district",
+        ),
+        ("Leduc, AB", "rtr:ca:ab:leduc"),
+        ("Imperial Irrigation District, CA", "rtr:us:ca:imperial-irrigation-district"),
+        (
+            "Metropolitan Airports Commission, MN",
+            "rtr:us:mn:metropolitan-airports-commission",
+        ),
+        (
+            "Toronto and Region Conservation Authority, ON",
+            "rtr:ca:on:toronto-and-region-conservation-authority",
+        ),
+    ],
+)
+def test_the_gate_still_mints_a_real_government_name(raw, gov_id):
+    """The gate must not cost coverage. Each of these is a real
+    government with no national table to key it to."""
+    assert resolve(raw).gov_id == gov_id
+
+
+def test_the_vocabulary_knows_government_words_a_place_table_does_not():
+    """Built from the national tables PLUS `cog_units.csv` -- 90,837 real
+    US government names. The place tables alone know "Wichita" but not
+    "authority", so a vocabulary built from them would reject most real
+    agency names."""
+    vocabulary = tables.name_vocabulary()
+    for word in ("authority", "commission", "irrigation", "wastewater", "sewerage"):
+        assert word in vocabulary
+    for junk in ("llbc", "notl", "stjohns", "ride"):
+        assert junk not in vocabulary
+
+
+def test_a_station_callsign_is_not_a_government():
+    assert resolver._looks_like_a_name("KXYZ-TV") is False
+    assert resolver._looks_like_a_name("WABC") is False
+
+
+def test_every_token_under_four_letters_is_not_a_name():
+    assert resolver._looks_like_a_name("Psr C 2") is False
+    assert resolver._looks_like_a_name("Mw Rd") is False
+    assert resolver._looks_like_a_name("Leduc") is True
+
+
+def test_a_telvue_org_token_is_extracted_as_the_match_value():
+    """Every TelVue customer shares `videoplayer.telvue.com`, so a
+    host-level pin would be wrong for all of them -- the org token in the
+    URL path is what identifies the government. Checked against a token
+    already identified by hand in
+    rtr-business/research/telvue_org_tokens.md (Centre County PA)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "score_gov_registry",
+        Path(__file__).parent.parent / "scripts" / "score_gov_registry.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    url = (
+        "https://videoplayer.telvue.com/player/"
+        "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru/playlists/4806/media/123456"
+    )
+    assert module._telvue_match(url) == "GNduNoua2rBThhw6N4PRP9OCSPf6B2ru"
+    assert module._telvue_match("https://pub-x.escribemeetings.com/Meeting.aspx") == ""

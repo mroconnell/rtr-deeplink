@@ -784,6 +784,57 @@ def _curated_alias(name: str, state: str) -> Optional[Government]:
     return None
 
 
+_NAME_TOKEN_RE = re.compile(r"[A-Za-z']+")
+# A US broadcast callsign: K or W plus 2-3 letters, optionally -TV/-FM/-AM
+# /-DT. A municipal access channel's callsign is not the government that
+# runs it, and the old wordninja subdomain fallback produced these
+# wholesale ("Auroratv" is named in JURISDICTION_METADATA_PLAN.md's own
+# tournament as junk output).
+_CALLSIGN_RE = re.compile(r"^[kw][a-z]{2,3}(?:[- ]?(?:tv|fm|am|dt))?$", re.I)
+_TRAILING_STATION_RE = re.compile(r"[\s-]*\b(?:tv|fm|am|dt|media|channel)\b\s*$", re.I)
+
+
+def _looks_like_a_name(name: str) -> bool:
+    """Whether a cleaned string is plausibly a government's NAME, and so
+    worth minting an `rtr:` id for.
+
+    Minting turns a string into an identity. Doing that for a subdomain
+    fragment creates a permanent, authoritative-looking id for something
+    nobody can ever look up, and it is not hypothetical -- these are all
+    real rows produced by the old wordninja subdomain fallback and still
+    stored today: "Llbc, AB" (`pub-llbc`, really Lac La Biche County),
+    "Notl, ON" (Niagara-on-the-Lake), "Stjohns, NL", "Ezt", "TV, NY",
+    "Psr C 2", "Mw Rd", "S Fw, MD", "Ride Uta".
+
+    Three tests, all of which must pass:
+
+    1. **Some real word.** At least one 4+-letter token appears in
+       `tables.name_vocabulary()` -- the words that occur in real
+       government names. This is what separates "West County Wastewater
+       District" from "Llbc": both are unfamiliar, only one is made of
+       words any government uses.
+    2. **Not an initialism.** A name whose every token is under 4 letters
+       is not a name we can key or a reader can recognise ("Ezt", "Mw
+       Rd", "Psr C 2", "TV").
+    3. **Not a station callsign.** A channel is not a government.
+
+    A string that fails becomes tier `unresolved`, keeping the raw text in
+    `evidence` so it can still be pinned by hand -- the information is
+    preserved, it just never becomes an id.
+    """
+    stripped = _TRAILING_STATION_RE.sub("", name).strip() or name
+    tokens = _NAME_TOKEN_RE.findall(stripped)
+    if not tokens:
+        return False
+    if len(tokens) == 1 and _CALLSIGN_RE.match(tokens[0]):
+        return False
+    long_tokens = [t for t in tokens if len(t) >= 4]
+    if not long_tokens:
+        return False
+    vocabulary = tables.name_vocabulary()
+    return any(t.lower() in vocabulary for t in long_tokens)
+
+
 def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
     """`rtr:<country>:<st>:<slug>` -- tier `unverified`, display = the
     cleaned name.
@@ -1009,23 +1060,31 @@ def resolve_government(
                 meeting_body,
             )
 
-    # 6. Mint -- but only with a real state.
+    # 6. Mint -- but only with a real state AND a string that is a name.
     if gov_type == classify.STATE:
         meeting_body = meeting_body or _state_body(name)
         name = _state_name(name)
-    if not state:
-        # 7b. Unresolved: a real name, no state, nothing else to go on.
-        #     Listed for a pin rather than minted, because an id nobody
-        #     can key is worse than an honest gap -- it looks resolved.
+    if not state or not _looks_like_a_name(name):
+        # 7b. Unresolved -- either no state, or a string that is not a
+        #     government name at all. Listed for a pin rather than
+        #     minted: an id nobody can key is worse than an honest gap,
+        #     because it looks resolved. The raw string is kept in
+        #     `evidence`, so a human pin still has everything to work
+        #     from and no information is lost.
+        reason = (
+            f"no state for {cleaned!r}"
+            if not state
+            else f"not a government name: {cleaned!r}"
+        )
         gov = Government(
             gov_id="",
             gov_name=name,
             gov_type=gov_type or classify.OTHER,
             country=country,
             source="unresolved",
-            evidence="no state could be determined for this name",
+            evidence=reason,
         )
-        return _match(gov, TIER_UNRESOLVED, f"no state for {cleaned!r}", meeting_body)
+        return _match(gov, TIER_UNRESOLVED, reason, meeting_body)
     gov = _mint(name, state, country, gov_type)
     return _match(gov, TIER_UNVERIFIED, f"minted from {cleaned!r}", meeting_body)
 

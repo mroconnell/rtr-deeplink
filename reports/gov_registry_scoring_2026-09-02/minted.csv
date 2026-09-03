@@ -1,5 +1,4 @@
 input_set,gov_id,gov_name,gov_type,tier,jurisdiction,tenant_host,evidence
-archive,rtr:ca:ab:cofs,"Cofs, AB",other,unverified,Cofs,pub-cofs.escribemeetings.com,minted from 'Cofs'
 archive,rtr:ca:ab:kneehill-county,"Kneehill County, AB",county,unverified,Kneehill County,pub-kneehillcounty.escribemeetings.com,minted from 'Kneehill County'
 archive,rtr:ca:ab:kneehill-county,"Kneehill County, AB",county,unverified,Kneehill County,pub-kneehillcounty.escribemeetings.com,minted from 'Kneehill County'
 archive,rtr:ca:ab:kneehill-county,"Kneehill County, AB",county,unverified,Kneehill County,pub-kneehillcounty.escribemeetings.com,minted from 'Kneehill County'
@@ -8,7 +7,6 @@ archive,rtr:ca:ab:leduc,"City of Leduc, AB",municipality,unverified,"City of Led
 archive,rtr:ca:ab:leduc,"City of Leduc, AB",municipality,unverified,"City of Leduc, AB",pub-leduc.escribemeetings.com,"minted from 'City of Leduc, AB'"
 archive,rtr:ca:ab:lethbridge,"City of Lethbridge, AB",municipality,unverified,"City of Lethbridge, AB",pub-lethbridge.escribemeetings.com,"minted from 'City of Lethbridge, AB'"
 archive,rtr:ca:ab:lethbridge,"Lethbridge, AB",other,unverified,"Lethbridge, AB",pub-lethbridge.escribemeetings.com,"minted from 'Lethbridge, AB'"
-archive,rtr:ca:ab:llbc,"Llbc, AB",other,unverified,Llbc,pub-llbc.escribemeetings.com,minted from 'Llbc'
 archive,rtr:ca:ab:red-deer,"Red Deer, AB",other,unverified,"Red Deer, AB",pub-reddeer.escribemeetings.com,"minted from 'Red Deer, AB'"
 archive,rtr:ca:ab:red-deer,"Red Deer, AB",other,pinned,"Red Deer, AB",meeting.reddeer.ca,tenant_overrides.csv meeting.reddeer.ca source=known_domains
 archive,rtr:ca:ab:sturgeon-county,"Sturgeon County, AB",county,unverified,Sturgeon County,pub-sturgeoncounty.escribemeetings.com,minted from 'Sturgeon County'
@@ -16,7 +14,6 @@ archive,rtr:ca:ab:sturgeon-county,"Sturgeon County, AB",county,unverified,Sturge
 archive,rtr:ca:ab:vulcan,"Town of Vulcan, AB",municipality,unverified,"Town of Vulcan, AB",townofvulcan.civicweb.net,"minted from 'Town of Vulcan, AB'"
 archive,rtr:ca:ab:vulcan,"Town of Vulcan, AB",municipality,unverified,"Town of Vulcan, AB",townofvulcan.civicweb.net,"minted from 'Town of Vulcan, AB'"
 ledger,rtr:ca:ab:vulcan,"Town of Vulcan, AB",municipality,unverified,"Town of Vulcan, AB",townofvulcan.civicweb.net,"minted from 'Town of Vulcan, AB'"
-archive,rtr:ca:bc:northcowichan,"Northcowichan, BC",other,unverified,Northcowichan,pub-northcowichan.escribemeetings.com,minted from 'Northcowichan'
 archive,rtr:ca:bc:port-coquitlam,"Port Coquitlam, BC",special_district,unverified,"Port Coquitlam, BC",pub-portcoquitlam.escribemeetings.com,"minted from 'Port Coquitlam, BC'"
 archive,rtr:ca:bc:port-moody,"Port Moody, BC",special_district,unverified,"Port Moody, BC",pub-portmoody.escribemeetings.com,"minted from 'Port Moody, BC'"
 archive,rtr:ca:bc:port-moody,"Port Moody, BC",special_district,unverified,"Port Moody, BC",pub-portmoody.escribemeetings.com,"minted from 'Port Moody, BC'"
@@ -24,11 +21,8 @@ archive,rtr:ca:bc:port-moody,"City of Port Moody, BC",special_district,unverifie
 ledger,rtr:ca:bc:port-moody,"City of Port Moody, BC",special_district,unverified,"City of Port Moody, BC",pub-portmoody.escribemeetings.com,"minted from 'City of Port Moody, BC'"
 archive,rtr:ca:bc:regional-district-of-central-okanagan,"Regional District of Central Okanagan, BC",special_district,pinned,,pub-rdco.escribemeetings.com,tenant_overrides.csv pub-rdco.escribemeetings.com source=known_domains
 archive,rtr:ca:bc:west-kelowna-council-chambers,"West Kelowna Council Chambers, BC",other,unverified,West Kelowna Council Chambers,pub-westkelowna.escribemeetings.com,minted from 'West Kelowna Council Chambers'
-archive,rtr:ca:nl:stjohns,"Stjohns, NL",other,unverified,Stjohns,pub-stjohns.escribemeetings.com,minted from 'Stjohns'
-archive,rtr:ca:on:bradfordwestgwillimbury,"Bradfordwestgwillimbury, ON",other,unverified,Bradfordwestgwillimbury,pub-bradfordwestgwillimbury.escribemeetings.com,minted from 'Bradfordwestgwillimbury'
 archive,rtr:ca:on:chatham-kent,"Chatham Kent, ON",other,unverified,Chatham Kent,pub-chatham-kent.escribemeetings.com,minted from 'Chatham Kent'
 archive,rtr:ca:on:elliot-lake-gis-services-ssmic,"Elliot Lake GIS Services SSMIC, ON",other,unverified,Elliot Lake GIS Services SSMIC,pub-elliotlake.escribemeetings.com,minted from 'Elliot Lake GIS Services SSMIC'
-archive,rtr:ca:on:espanol-a,"Espanol A, ON",other,unverified,Espanol A,pub-espanola.escribemeetings.com,minted from 'Espanol A'
 archive,rtr:ca:on:haldimand-county,"Haldimand County, ON",county,pinned,Haldimand County,pub-haldimandcounty.escribemeetings.com,tenant_overrides.csv pub-haldimandcounty.escribemeetings.com source=visual_confirmed
 archive,rtr:ca:on:haldimand-county,"Haldimand County, ON",county,pinned,Haldimand County,pub-haldimandcounty.escribemeetings.com,tenant_overrides.csv pub-haldimandcounty.escribemeetings.com source=visual_confirmed
 ledger,rtr:ca:on:haldimand-county,"Haldimand County, ON",county,pinned,Haldimand County,pub-haldimandcounty.escribemeetings.com,tenant_overrides.csv pub-haldimandcounty.escribemeetings.com source=visual_confirmed
@@ -40,9 +34,6 @@ archive,rtr:ca:on:hamilton-public-library,"Hamilton Public Library, ON",special_
 archive,rtr:ca:on:hamilton-public-library,"Hamilton Public Library, ON",special_district,pinned,,pub-hpl.escribemeetings.com,tenant_overrides.csv pub-hpl.escribemeetings.com source=auto_derived+known_domains
 archive,rtr:ca:on:merrickville-wolford,"Merrickville Wolford, ON",other,unverified,Merrickville Wolford,pub-merrickville-wolford.escribemeetings.com,minted from 'Merrickville Wolford'
 archive,rtr:ca:on:merrickville-wolford,"Merrickville Wolford, ON",other,unverified,Merrickville Wolford,pub-merrickville-wolford.escribemeetings.com,minted from 'Merrickville Wolford'
-archive,rtr:ca:on:notl,"Notl, ON",other,unverified,Notl,pub-notl.escribemeetings.com,minted from 'Notl'
-archive,rtr:ca:on:oneinvestmentprogram,"Oneinvestmentprogram, ON",other,unverified,Oneinvestmentprogram,pub-oneinvestmentprogram.escribemeetings.com,minted from 'Oneinvestmentprogram'
-archive,rtr:ca:on:saugeenshores,"Saugeenshores, ON",other,unverified,Saugeenshores,pub-saugeenshores.escribemeetings.com,minted from 'Saugeenshores'
 archive,rtr:ca:on:strathroy-caradoc,"Strathroy Caradoc, ON",other,unverified,Strathroy Caradoc,pub-strathroy-caradoc.escribemeetings.com,minted from 'Strathroy Caradoc'
 archive,rtr:ca:on:thunder-bay-district-health-unit,"Thunder Bay District Health Unit, ON",special_district,pinned,"Thunder Bay District Health Unit, ON",pub-tbdhu.escribemeetings.com,tenant_overrides.csv pub-tbdhu.escribemeetings.com source=known_domains
 archive,rtr:ca:on:thunder-bay-district-health-unit,"Thunder Bay District Health Unit, ON",special_district,pinned,,pub-tbdhu.escribemeetings.com,tenant_overrides.csv pub-tbdhu.escribemeetings.com source=known_domains
@@ -52,7 +43,6 @@ archive,rtr:ca:on:toronto-and-region-conservation-authority,"Toronto and Region 
 ledger,rtr:ca:on:toronto-and-region-conservation-authority,"Toronto and Region Conservation Authority, ON",special_district,pinned,City of Markham,pub-trca.escribemeetings.com,tenant_overrides.csv pub-trca.escribemeetings.com source=architecture_doc_1_3
 archive,rtr:ca:on:toronto-catholic-district-school-board,"Toronto Catholic District School Board, ON",school_district,pinned,,tcdsbpublishing.escribemeetings.com,tenant_overrides.csv tcdsbpublishing.escribemeetings.com source=known_domains
 archive,rtr:ca:on:toronto-district-school-board,"Toronto District School Board, ON",school_district,pinned,Tdsb,pub-tdsb.escribemeetings.com,tenant_overrides.csv pub-tdsb.escribemeetings.com source=visual_confirmed
-archive,rtr:ca:on:townofws,"Townofws, ON",other,unverified,Townofws,pub-townofws.escribemeetings.com,minted from 'Townofws'
 archive,rtr:ca:on:whitewater-region,"Whitewater Region, ON",county,unverified,"Whitewater Region, ON",whitewaterregion.civicweb.net,"minted from 'Whitewater Region, ON'"
 archive,rtr:ca:on:whitewater-region,"Whitewater Region, ON",county,unverified,"Whitewater Region, ON",whitewaterregion.civicweb.net,"minted from 'Whitewater Region, ON'"
 ledger,rtr:ca:on:whitewater-region,"Whitewater Region, ON",county,unverified,"Whitewater Region, ON",whitewaterregion.civicweb.net,"minted from 'Whitewater Region, ON'"
@@ -303,8 +293,6 @@ archive,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",juneauak.por
 archive,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",www.youtube.com,"minted from 'Juneau, AK'"
 ledger,rtr:us:ak:juneau,"Juneau, AK",other,unverified,"Juneau, AK",juneau-ak.municodemeetings.com,"minted from 'Juneau, AK'"
 archive,rtr:us:ak:petersburg,"City of Petersburg, AK",municipality,unverified,"City of Petersburg, AK",petersburg.granicus.com,"minted from 'City of Petersburg, AK'"
-archive,rtr:us:ak:unknown-jurisdiction,"Unknown Jurisdiction, AK",other,unverified,Unknown Jurisdiction,kpb.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:ak:unknown-jurisdiction,"Unknown Jurisdiction, AK",other,unverified,Unknown Jurisdiction,matanuska.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:al:city-of,"City of, AL",municipality,unverified,City of Al,allentownpa.granicus.com,minted from 'City of Al'
 archive,rtr:us:al:huntsville-ordinance-no,"City of Huntsville.Ordinance No, AL",municipality,unverified,City of Huntsville.Ordinance No.,huntsvilleal.granicus.com,minted from 'City of Huntsville.Ordinance No.'
 archive,rtr:us:az:lake-havasu,"City of Lake Havasu, AZ",municipality,unverified,"City of Lake Havasu, AZ",lakehavasucity.granicus.com,"minted from 'City of Lake Havasu, AZ'"
@@ -335,9 +323,6 @@ archive,rtr:us:ca:judicial-council-of-california,"Judicial Council of California
 ledger,rtr:us:ca:judicial-council-of-california,"Judicial Council of California, CA",court,pinned,California,jcc.granicus.com,tenant_overrides.csv jcc.granicus.com source=visual_confirmed
 archive,rtr:us:ca:jurupa-community-services-district,"Jurupa Community Services District, CA",special_district,pinned,"Jurupa Community Services District, CA",records.jcsd.us,tenant_overrides.csv records.jcsd.us source=known_domains
 archive,rtr:us:ca:l-a-world-airports-board-of-airport-commissioners,"L. A. World Airports - Board of Airport Commissioners, CA",special_district,unverified,L. A. World Airports - Board of Airport Commissioners,lawa.granicus.com,minted from 'L. A. World Airports - Board of Airport Commissioners'
-archive,rtr:us:ca:la,"La, CA",other,unverified,La,laquinta.cablecast.tv,minted from 'La'
-archive,rtr:us:ca:la,"La, CA",other,unverified,La,laquinta.cablecast.tv,minted from 'La'
-archive,rtr:us:ca:la,"La, CA",other,unverified,La,laquinta.cablecast.tv,minted from 'La'
 archive,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority,"Los Angeles County Metropolitan Transportation Authority, CA",county,pinned,"Los Angeles County, CA",metro.granicus.com,tenant_overrides.csv metro.granicus.com source=architecture_doc_1_3
 archive,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority,"Los Angeles County Metropolitan Transportation Authority, CA",county,pinned,"Los Angeles County, CA",metro.granicus.com,tenant_overrides.csv metro.granicus.com source=architecture_doc_1_3
 archive,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority,"Los Angeles County Metropolitan Transportation Authority, CA",county,pinned,"Los Angeles County, CA",metro.granicus.com,tenant_overrides.csv metro.granicus.com source=architecture_doc_1_3
@@ -372,11 +357,6 @@ ledger,rtr:us:ca:san-diego-association-of-governments,"San Diego Association of 
 archive,rtr:us:ca:santa-clara-valley-transportation-authority,"Santa Clara Valley Transportation Authority, CA",special_district,unverified,"Santa Clara Valley Transportation Authority, CA",santaclaravta.iqm2.com,"minted from 'Santa Clara Valley Transportation Authority, CA'"
 archive,rtr:us:ca:sb,"City of Sb"", CA",municipality,unverified,"City of Sb""",sealbeach.primegov.com,"minted from 'City of Sb""'"
 archive,rtr:us:ca:turlock-irrigation-district,"Turlock Irrigation District, CA",special_district,unverified,"Turlock Irrigation District, CA",tid.new.swagit.com,"minted from 'Turlock Irrigation District, CA'"
-archive,rtr:us:ca:unknown-jurisdiction,"Unknown Jurisdiction, CA",other,unverified,Unknown Jurisdiction,mojavewater.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:ca:unknown-jurisdiction,"Unknown Jurisdiction, CA",other,unverified,Unknown Jurisdiction,portofla.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:ca:unknown-jurisdiction,"Unknown Jurisdiction, CA",other,unverified,Unknown Jurisdiction,pvestates.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:ca:unknown-jurisdiction,"Unknown Jurisdiction, CA",other,unverified,Unknown Jurisdiction,scag.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:ca:unknown-jurisdiction,"Unknown Jurisdiction, CA",other,unverified,Unknown Jurisdiction,sonomamarintrain.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:ca:water-replenishment-district,"Water Replenishment District, CA",special_district,pinned,"Water Replenishment District, CA",agendas.wrd.org,tenant_overrides.csv agendas.wrd.org source=known_domains
 archive,rtr:us:ca:west-basin-municipal-water-district,"West Basin Municipal Water District, CA",special_district,unverified,"West Basin Municipal Water District, CA",wbmwdca.iqm2.com,"minted from 'West Basin Municipal Water District, CA'"
 archive,rtr:us:ca:west-county-wastewater-district,"West County Wastewater District, CA",special_district,unverified,"West County Wastewater District, CA",wcwdca.iqm2.com,"minted from 'West County Wastewater District, CA'"
@@ -397,12 +377,9 @@ archive,rtr:us:fl:new-port-richey,"New Port Richey, FL",special_district,unverif
 archive,rtr:us:fl:north-port,"City of North Port, FL",special_district,unverified,"City of North Port, FL",cityofnorthport.granicus.com,"minted from 'City of North Port, FL'"
 archive,rtr:us:fl:north-port,"North Port, FL",special_district,unverified,"North Port, FL",cityofnorthport.granicus.com,"minted from 'North Port, FL'"
 ledger,rtr:us:fl:north-port,"North Port, FL",special_district,unverified,"North Port, FL",cityofnorthport.granicus.com,"minted from 'North Port, FL'"
-archive,rtr:us:fl:nsb,"Nsb, FL",other,unverified,Nsb,cityofnsb.granicus.com,minted from 'Nsb'
-archive,rtr:us:fl:pcb-gov,"Pcb Gov, FL",other,unverified,Pcb Gov,pcbgov.granicus.com,minted from 'Pcb Gov'
 archive,rtr:us:fl:port-orange,"Port Orange, FL",special_district,unverified,"Port Orange, FL",www.youtube.com,"minted from 'Port Orange, FL'"
 ledger,rtr:us:fl:port-orange,"Port Orange, FL",special_district,unverified,"Port Orange, FL",fl-portorange.civicplus.com,"minted from 'Port Orange, FL'"
 archive,rtr:us:fl:port-st-lucie,"Port St. Lucie, FL",special_district,pinned,City of Port St Lucie,psl.granicus.com,tenant_overrides.csv psl.granicus.com source=visual_confirmed
-archive,rtr:us:fl:ps-c,"Ps C, FL",other,unverified,"Ps C, FL",psc-fl.granicus.com,"minted from 'Ps C, FL'"
 archive,rtr:us:fl:st-johns-river-water-management-district,"St. Johns River Water Management District, FL",special_district,unverified,"St. Johns River Water Management District, FL",sjrwmd.iqm2.com,"minted from 'St. Johns River Water Management District, FL'"
 archive,rtr:us:fl:st-lucie-county,"St Lucie County, FL",county,unverified,"St Lucie County, FL",stluciefl.iqm2.com,"minted from 'St Lucie County, FL'"
 archive,rtr:us:fl:tampa-bay-water,"Tampa Bay Water, FL",special_district,pinned,City of Tampa D.,tampabaywater.granicus.com,tenant_overrides.csv tampabaywater.granicus.com source=visual_confirmed
@@ -420,7 +397,6 @@ archive,rtr:us:la:louisiana-economic-development,"Louisiana Economic Development
 archive,rtr:us:la:st-charles-parish,"St Charles Parish, LA",county,unverified,"St Charles Parish, LA",stcharlesparishla.new.swagit.com,"minted from 'St Charles Parish, LA'"
 archive,rtr:us:ma:city,"City, MA",municipality,unverified,"City, MA",videoplayer.telvue.com,"minted from 'City, MA'"
 archive,rtr:us:ma:port-colborne-resolution,"Port Colborne Resolution, MA",special_district,unverified,Port Colborne Resolution,pub-brockton.escribemeetings.com,minted from 'Port Colborne Resolution'
-archive,rtr:us:ma:unknown-jurisdiction,"Unknown Jurisdiction, MA",other,unverified,Unknown Jurisdiction,westspringfieldma.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:md:baltimore-county,"Baltimore County, MD",county,unverified,"Baltimore County, MD",baltimorecountymd.iqm2.com,"minted from 'Baltimore County, MD'"
 archive,rtr:us:md:baltimore-county,"Baltimore County, MD",county,unverified,"Baltimore County, MD",baltimorecountymd.iqm2.com,"minted from 'Baltimore County, MD'"
 archive,rtr:us:md:caroline-county-ps,"Caroline County PS, MD",county,unverified,"Caroline County PS, MD",carolineschools.new.swagit.com,"minted from 'Caroline County PS, MD'"
@@ -428,7 +404,6 @@ archive,rtr:us:md:college-park,"The City of College Park, MD",other,unverified,"
 archive,rtr:us:md:july13-2026-town-of-bladensburg-maryland-meetings-hub,"July13, 2026 | Town of Bladensburg Maryland Meetings Hub, MD",other,unverified,"July13, 2026 | Town of Bladensburg Maryland Meetings Hub",bladensburgtown-md.municodemeetings.com,"minted from 'July13, 2026 | Town of Bladensburg Maryland Meetings Hub'"
 archive,rtr:us:md:municode-portal,"Municode Portal, MD",other,unverified,Municode Portal,laurel-md.municodemeetings.com,minted from 'Municode Portal'
 archive,rtr:us:md:prince-george-apos-s-county,"Prince George&apos;s County, MD",county,unverified,"Prince George&apos;s County, MD",princegeorgescountymd.granicus.com,"minted from 'Prince George&apos;s County, MD'"
-archive,rtr:us:md:s-fw,"S Fw, MD",other,unverified,"S Fw, MD",sfwmd.granicus.com,"minted from 'S Fw, MD'"
 ledger,rtr:us:mi:caledonia-township,"Caledonia Township, MI",township,unverified,Caledonia Township,mi-caledoniachartertownship.civicplus.com,minted from 'Caledonia Township'
 archive,rtr:us:mi:clawson,"The City of Clawson, MI",other,unverified,"The City of Clawson, MI",clawson.granicus.com,"minted from 'The City of Clawson, MI'"
 archive,rtr:us:mi:east-lansing,"The City of East Lansing, MI",other,unverified,"The City of East Lansing, MI",eastlansing.granicus.com,"minted from 'The City of East Lansing, MI'"
@@ -439,7 +414,6 @@ archive,rtr:us:mn:anoka-hennepin-school-district,"Anoka-Hennepin School District
 archive,rtr:us:mn:metropolitan-airports-commission,"Metropolitan Airports Commission, MN",special_district,pinned,Metropolitan Airports Commission (MAC),metroairports.granicus.com,tenant_overrides.csv metroairports.granicus.com source=visual_confirmed
 archive,rtr:us:mn:st-james,"St James, MN",other,unverified,"St James, MN",www.youtube.com,"minted from 'St James, MN'"
 ledger,rtr:us:mn:st-james,"St James, MN",other,unverified,"St James, MN",stjames-mn.municodemeetings.com,"minted from 'St James, MN'"
-archive,rtr:us:mn:unknown-jurisdiction,"Unknown Jurisdiction, MN",other,unverified,Unknown Jurisdiction,rdale.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:nc:cape-fear-public-utility-authority,"Cape Fear Public Utility Authority, NC",special_district,unverified,"Cape Fear Public Utility Authority, NC",cfpua.iqm2.com,"minted from 'Cape Fear Public Utility Authority, NC'"
 archive,rtr:us:nc:king-county,"King County, NC",county,pinned,King County,king.granicus.com,tenant_overrides.csv king.granicus.com source=auto_derived+inferred_unique_name
 archive,rtr:us:nc:king-county,"King County, NC",county,pinned,King County,king.granicus.com,tenant_overrides.csv king.granicus.com source=auto_derived+inferred_unique_name
@@ -480,10 +454,7 @@ archive,rtr:us:ny:smithtown-smithtown,"Town of Smithtown,Smithtown, NY",municipa
 archive,rtr:us:ny:smithtown-smithtown,"Town of Smithtown,Smithtown, NY",municipality,unverified,"Town of Smithtown,Smithtown NY",smithtownny.iqm2.com,"minted from 'Town of Smithtown,Smithtown NY'"
 archive,rtr:us:ny:southampton-long-island,"Town of Southampton, Long Island, NY",municipality,unverified,"Town of Southampton, Long Island, NY",southamptonny.iqm2.com,"minted from 'Town of Southampton, Long Island, NY'"
 archive,rtr:us:ny:southold-long-island,"Town of Southold, Long Island, NY",municipality,unverified,"Town of Southold, Long Island, NY",southoldtown.iqm2.com,"minted from 'Town of Southold, Long Island, NY'"
-archive,rtr:us:ny:tv,"TV, NY",special_district,unverified,"TV, NY",lmctvny.new.swagit.com,"minted from 'TV, NY'"
 archive,rtr:us:oh:deerfield-township,"Deerfield Township, OH",township,unverified,"Deerfield Township, OH",deerfield.granicus.com,"minted from 'Deerfield Township, OH'"
-archive,rtr:us:oh:unknown-jurisdiction,"Unknown Jurisdiction, OH",other,unverified,Unknown Jurisdiction,onelakewood.granicus.com,minted from 'Unknown Jurisdiction'
-archive,rtr:us:or:unknown-jurisdiction,"Unknown Jurisdiction, OR",other,unverified,Unknown Jurisdiction,lcd.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:pa:cherry-township,"Cherry Township, PA",township,unverified,"Cherry Township, PA",cherrytownship.com,"minted from 'Cherry Township, PA'"
 archive,rtr:us:pa:middletown-township,"Middletown Township, PA",township,unverified,"Middletown Township, PA",middletowntwppa.new.swagit.com,"minted from 'Middletown Township, PA'"
 archive,rtr:us:pa:upper-providence,"Upper Providence, PA",other,unverified,"Upper Providence, PA",uprovmontco.new.swagit.com,"minted from 'Upper Providence, PA'"
@@ -495,7 +466,6 @@ archive,rtr:us:sc:arkansas-supreme-court,"Arkansas Supreme Court, SC",court,unve
 archive,rtr:us:sd:nassau-county,"Nassau County, SD",county,unverified,Nassau County,nassaucountysd.new.swagit.com,minted from 'Nassau County'
 archive,rtr:us:tn:municode-portal,"Municode Portal, TN",other,unverified,Municode Portal,kingsport-tn.municodemeetings.com,minted from 'Municode Portal'
 archive,rtr:us:tn:oak-ridge,"The City of Oak Ridge, TN",other,unverified,The City of Oak Ridge,oakridgetn.granicus.com,minted from 'The City of Oak Ridge'
-archive,rtr:us:tn:unknown-jurisdiction,"Unknown Jurisdiction, TN",other,unverified,Unknown Jurisdiction,matatransit.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:tx:aledo-isd,"Aledo ISD, TX",school_district,unverified,"Aledo ISD, TX",aledoisdtx.new.swagit.com,"minted from 'Aledo ISD, TX'"
 archive,rtr:us:tx:allen-isd,"Allen ISD, TX",school_district,unverified,"Allen ISD, TX",allenisd.new.swagit.com,"minted from 'Allen ISD, TX'"
 archive,rtr:us:tx:amarillo,"The City of Amarillo, TX",other,unverified,"The City of Amarillo, TX",amarillo.granicus.com,"minted from 'The City of Amarillo, TX'"
@@ -560,7 +530,6 @@ archive,rtr:us:tx:the-woodlands-township,"The Woodlands Township, TX",township,u
 archive,rtr:us:tx:the-woodlands-township,"The Woodlands Township, TX",township,unverified,"The Woodlands Township, TX",woodlandstx.new.swagit.com,"minted from 'The Woodlands Township, TX'"
 archive,rtr:us:tx:the-woodlands-township,"The Woodlands Township, TX",township,unverified,"The Woodlands Township, TX",public.destinyhosted.com,"minted from 'The Woodlands Township, TX'"
 archive,rtr:us:tx:travis-central-appraisal-district,"Travis Central Appraisal District, TX",special_district,unverified,"Travis Central Appraisal District, TX",traviscad.new.swagit.com,"minted from 'Travis Central Appraisal District, TX'"
-archive,rtr:us:tx:unknown-jurisdiction,"Unknown Jurisdiction, TX",other,unverified,Unknown Jurisdiction,nrhtx.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:tx:via-metropolitan-transit,"VIA Metropolitan Transit, TX",special_district,pinned,"VIA Metropolitan Transit, TX",viametrotransit.new.swagit.com,tenant_overrides.csv viametrotransit.new.swagit.com source=known_domains
 archive,rtr:us:tx:victoria-isd,"Victoria ISD, TX",school_district,unverified,"Victoria ISD, TX",victoriaisdtx.new.swagit.com,"minted from 'Victoria ISD, TX'"
 archive,rtr:us:tx:wichita-falls-isd,"Wichita Falls ISD, TX",school_district,unverified,"Wichita Falls ISD, TX",wichitafallsisdtx.new.swagit.com,"minted from 'Wichita Falls ISD, TX'"
@@ -571,7 +540,6 @@ archive,rtr:us:ut:mill-creek,"Mill Creek, UT",other,unverified,Mill Creek,millcr
 archive,rtr:us:ut:mill-creek,"Mill Creek, UT",other,unverified,Mill Creek,millcreekut.portal.civicclerk.com,minted from 'Mill Creek'
 ledger,rtr:us:ut:mill-creek,"Mill Creek, UT",other,unverified,Mill Creek,millcreekut.portal.civicclerk.com,minted from 'Mill Creek'
 archive,rtr:us:ut:subtitles-county,"Subtitles County, UT",county,unverified,Subtitles County,slco.granicus.com,minted from 'Subtitles County'
-archive,rtr:us:ut:unknown-jurisdiction,"Unknown Jurisdiction, UT",other,unverified,Unknown Jurisdiction,sandyutah.granicus.com,minted from 'Unknown Jurisdiction'
 archive,rtr:us:va:goochland-county-ps,"Goochland County PS, VA",county,unverified,"Goochland County PS, VA",goochlandschools.new.swagit.com,"minted from 'Goochland County PS, VA'"
 archive,rtr:us:va:harrisonburg,"The City of Harrisonburg, VA",other,unverified,"The City of Harrisonburg, VA",harrisonburg-va.granicus.com,"minted from 'The City of Harrisonburg, VA'"
 archive,rtr:us:va:roanoke-county,"Roanoke County, VA",county,unverified,"Roanoke County, VA",roanokecountyva.iqm2.com,"minted from 'Roanoke County, VA'"

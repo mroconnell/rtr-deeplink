@@ -10,7 +10,7 @@ archive,Ashland,,city,other,,videoplayer.telvue.com
 archive,Ashland,,city,other,,videoplayer.telvue.com
 archive,Albuquerque Bernalillo County Water Utility Authority,,county,special_district,rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,abcwua.granicus.com
 archive,"City of North Port, FL",,city,special_district,rtr:us:fl:north-port,cityofnorthport.granicus.com
-archive,Nsb,,city,other,rtr:us:fl:nsb,cityofnsb.granicus.com
+archive,Nsb,,city,other,,cityofnsb.granicus.com
 archive,"The City of College Park, MD",,school,other,rtr:us:md:college-park,college-park.granicus.com
 archive,City and County of Denver,,county,municipality,us:place:0820000,denver.granicus.com
 archive,Gales Burg,,city,other,rtr:us:il:gales-burg,galesburg.granicus.com
@@ -24,12 +24,12 @@ archive,Mn Senate,,city,state,us:state:27,mnsenate.granicus.com
 archive,Mw Rd,,city,other,,mwrd.granicus.com
 archive,Nevada Legislature,,city,state,us:state:32,nvleg.granicus.com
 archive,The City of Oak Ridge,,city,other,rtr:us:tn:oak-ridge,oakridgetn.granicus.com
-archive,Pcb Gov,,city,other,rtr:us:fl:pcb-gov,pcbgov.granicus.com
-archive,"Ps C, FL",,city,other,rtr:us:fl:ps-c,psc-fl.granicus.com
+archive,Pcb Gov,,city,other,,pcbgov.granicus.com
+archive,"Ps C, FL",,city,other,,psc-fl.granicus.com
 archive,City of Port St Lucie,,city,special_district,rtr:us:fl:port-st-lucie,psl.granicus.com
 archive,Psr C 2,,city,special_district,rtr:us:wa:puget-sound-regional-council,psrc2.granicus.com
 archive,Ride Uta,,city,other,,rideuta.granicus.com
-archive,"S Fw, MD",,city,other,rtr:us:md:s-fw,sfwmd.granicus.com
+archive,"S Fw, MD",,city,other,,sfwmd.granicus.com
 archive,California State Personnel Board,,city,other,rtr:us:ca:california-state-personnel-board,spb.granicus.com
 archive,City of Tampa D.,,city,special_district,rtr:us:fl:tampa-bay-water,tampabaywater.granicus.com
 archive,"Tarrant County, TX",,county,school_district,rtr:us:tx:tarrant-county-college-district,tccd.granicus.com
@@ -48,10 +48,10 @@ archive,"Upper Providence, PA",,city,other,rtr:us:pa:upper-providence,uprovmontc
 archive,"Warren County Public Schools, VA",,county,school_district,us:sd:5103870,wcps.new.swagit.com
 archive,Hamilton,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
 archive,"Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
-archive,Stjohns,,city,other,rtr:ca:nl:stjohns,pub-stjohns.escribemeetings.com
+archive,Stjohns,,city,other,,pub-stjohns.escribemeetings.com
 archive,Stratford Ad,,city,other,,pub-stratford.escribemeetings.com
 archive,Tdsb,,city,school_district,rtr:ca:on:toronto-district-school-board,pub-tdsb.escribemeetings.com
-archive,Townofws,,city,other,rtr:ca:on:townofws,pub-townofws.escribemeetings.com
+archive,Townofws,,city,other,,pub-townofws.escribemeetings.com
 archive,West Kelowna Council Chambers,,city,other,rtr:ca:bc:west-kelowna-council-chambers,pub-westkelowna.escribemeetings.com
 archive,"Escambia, FL",,city,county,us:county:12033,escambiacofl.portal.civicclerk.com
 archive,Mill Creek,,city,other,rtr:us:ut:mill-creek,millcreekut.portal.civicclerk.com
@@ -65,24 +65,24 @@ archive,Ny State Assembly,,city,state,,nystateassembly.granicus.com
 archive,Port Colborne Resolution,,city,special_district,rtr:us:ma:port-colborne-resolution,pub-brockton.escribemeetings.com
 archive,Chatham Kent,,city,other,rtr:ca:on:chatham-kent,pub-chatham-kent.escribemeetings.com
 archive,Chula Vista Public Comments,,city,other,rtr:us:ca:chula-vista-public-comments,pub-chulavista.escribemeetings.com
-archive,Cofs,,city,other,rtr:ca:ab:cofs,pub-cofs.escribemeetings.com
+archive,Cofs,,city,other,,pub-cofs.escribemeetings.com
 archive,Elliot Lake GIS Services SSMIC,,city,other,rtr:ca:on:elliot-lake-gis-services-ssmic,pub-elliotlake.escribemeetings.com
 archive,"Gloucester, VA",,city,county,us:county:51073,pub-gloucesterva.escribemeetings.com
-archive,Llbc,,city,other,rtr:ca:ab:llbc,pub-llbc.escribemeetings.com
+archive,Llbc,,city,other,,pub-llbc.escribemeetings.com
 archive,"Lloydminster, AB/SK",,city,other,rtr:us:ab/sk:lloydminster-ab-sk,pub-lloydminster.escribemeetings.com
-archive,Northcowichan,,city,other,rtr:ca:bc:northcowichan,pub-northcowichan.escribemeetings.com
+archive,Northcowichan,,city,other,,pub-northcowichan.escribemeetings.com
 archive,"Port Coquitlam, BC",,city,special_district,rtr:ca:bc:port-coquitlam,pub-portcoquitlam.escribemeetings.com
 archive,"Port Moody, BC",,city,special_district,rtr:ca:bc:port-moody,pub-portmoody.escribemeetings.com
 archive,Cvr D,,city,other,,pub-cvrd.escribemeetings.com
-archive,Espanol A,,city,other,rtr:ca:on:espanol-a,pub-espanola.escribemeetings.com
+archive,Espanol A,,city,other,,pub-espanola.escribemeetings.com
 archive,"Garfield, CO",,city,county,us:county:08045,pub-garfield.escribemeetings.com
 archive,"Haines City  Settlement, FL",,city,other,rtr:us:fl:haines-city-settlement,pub-hainescity.escribemeetings.com
 archive,Halifax,,city,other,,pub-halifax.escribemeetings.com
 archive,"Horry County, SC",,county,school_district,us:sd:4502490,pub-horrycountyschools.escribemeetings.com
 archive,"Hamilton Public Library, ON",,city,special_district,rtr:ca:on:hamilton-public-library,pub-hpl.escribemeetings.com
 archive,Mission,,city,other,,pub-mission.escribemeetings.com
-archive,Notl,,city,other,rtr:ca:on:notl,pub-notl.escribemeetings.com
-archive,Oneinvestmentprogram,,city,other,rtr:ca:on:oneinvestmentprogram,pub-oneinvestmentprogram.escribemeetings.com
+archive,Notl,,city,other,,pub-notl.escribemeetings.com
+archive,Oneinvestmentprogram,,city,other,,pub-oneinvestmentprogram.escribemeetings.com
 archive,Palm Desert City Negotiator,,city,other,rtr:us:ca:palm-desert-city-negotiator,pub-palmdesert.escribemeetings.com
 archive,Rmwb,,city,other,,pub-rmwb.escribemeetings.com
 archive,Twpec,,city,other,,pub-twpec.escribemeetings.com
@@ -94,11 +94,11 @@ archive,"The City of Buffalo, NY",,city,other,rtr:us:ny:buffalo,buffalony.iqm2.c
 archive,Scituate Town Council,,city,other,,clerkshq.com
 archive,West Warwick Town Council,,city,other,,clerkshq.com
 archive,Cambridge,,city,other,,pub-cambridge.escribemeetings.com
-archive,Bradfordwestgwillimbury,,city,other,rtr:ca:on:bradfordwestgwillimbury,pub-bradfordwestgwillimbury.escribemeetings.com
+archive,Bradfordwestgwillimbury,,city,other,,pub-bradfordwestgwillimbury.escribemeetings.com
 archive,Leeds1000Islands,,city,other,,pub-leeds1000islands.escribemeetings.com
 archive,Merrickville Wolford,,city,other,rtr:ca:on:merrickville-wolford,pub-merrickville-wolford.escribemeetings.com
 archive,"Paso Robles, CA",,city,other,rtr:us:ca:paso-robles,pub-pasorobles.escribemeetings.com
-archive,Saugeenshores,,city,other,rtr:ca:on:saugeenshores,pub-saugeenshores.escribemeetings.com
+archive,Saugeenshores,,city,other,,pub-saugeenshores.escribemeetings.com
 archive,Sd57,,city,other,,pub-sd57.escribemeetings.com
 archive,H Psb,,city,other,rtr:ca:on:hamilton-police-services-board,pub-hpsb.escribemeetings.com
 archive,Leeds1000Islands,,city,other,,pub-leeds1000islands.escribemeetings.com
@@ -117,7 +117,7 @@ archive,Mill Creek,,city,other,rtr:us:ut:mill-creek,millcreekut.portal.civiccler
 archive,The Maryland-National Capital Park & Planning Commission,,city,special_district,,mncppc.iqm2.com
 archive,"The City of Buffalo, NY",,city,other,rtr:us:ny:buffalo,buffalony.iqm2.com
 archive,"Henry County Schools, GA",,county,school_district,us:sd:1302820,henrycountyschoolsga.new.swagit.com
-archive,La,,city,other,rtr:us:ca:la,laquinta.cablecast.tv
+archive,La,,city,other,,laquinta.cablecast.tv
 archive,Eldorado,,city,other,rtr:us:ks:eldorado,eldoradoks.portal.civicclerk.com
 archive,Cass,,city,county,us:county:18017,casscoin.portal.civicclerk.com
 archive,"Broward County Public Schools, FL",,county,school_district,us:sd:1200180,browardschools.granicus.com
@@ -152,8 +152,8 @@ archive,Richland Center Wisconsin,,city,other,,www.richlandcenterwi.gov
 archive,"Port Chester, NY",,city,special_district,rtr:us:ny:port-chester,play.champds.com
 archive,Holden,,city,other,,hctv.cablecast.tv
 archive,Holden,,city,other,,hctv.cablecast.tv
-archive,La,,city,other,rtr:us:ca:la,laquinta.cablecast.tv
-archive,La,,city,other,rtr:us:ca:la,laquinta.cablecast.tv
+archive,La,,city,other,,laquinta.cablecast.tv
+archive,La,,city,other,,laquinta.cablecast.tv
 archive,"City of Los Angeles, CA",,city,special_district,rtr:us:ca:los-angeles-department-of-water-and-power,ladwp.primegov.com
 archive,"City of Menlo Park, CA",,city,special_district,rtr:us:ca:menlo-park-fire-protection-district,menlofire.primegov.com
 archive,Pontiac,,city,other,,cityofpontiac.cablecast.tv
@@ -226,45 +226,45 @@ archive,"Ranson, WV",,city,other,rtr:us:wv:ranson,ransonwv.iqm2.com
 archive,Irvington,,city,other,,irvington.granicus.com
 archive,Jefferson,,city,county,us:county:08059,jeffersonco.granicus.com
 archive,Unknown Jurisdiction,,city,other,,tlchouse.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ak:unknown-jurisdiction,kpb.granicus.com
+archive,Unknown Jurisdiction,,city,other,,kpb.granicus.com
 archive,Unknown Jurisdiction,,city,other,,lacanadaflintridge-ca.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:or:unknown-jurisdiction,lcd.granicus.com
+archive,Unknown Jurisdiction,,city,other,,lcd.granicus.com
 archive,Unknown Jurisdiction,,city,other,,lewisvilleisd.granicus.com
 archive,"The City of Lincoln Park, MI",,city,other,rtr:us:mi:lincoln-park,lincolnpark-mi.granicus.com
 archive,The City of Live Oak Texas,,city,other,rtr:us:tx:live-oak-texas,liveoaktx.granicus.com
 archive,LOSSAN - OCTA,,city,other,,lossan.granicus.com
 archive,Loudoun,,city,county,us:county:51107,loudoun.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ak:unknown-jurisdiction,matanuska.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:tn:unknown-jurisdiction,matatransit.granicus.com
+archive,Unknown Jurisdiction,,city,other,,matanuska.granicus.com
+archive,Unknown Jurisdiction,,city,other,,matatransit.granicus.com
 archive,"Farmingville, NY",,city,other,rtr:us:ny:farmingville,brookhavenny.portal.civicclerk.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ca:unknown-jurisdiction,mojavewater.granicus.com
+archive,Unknown Jurisdiction,,city,other,,mojavewater.granicus.com
 archive,"The City of Morgantown, WV",,city,other,rtr:us:wv:morgantown,morgantown.granicus.com
 archive,Multnomah,,city,county,us:county:41051,multnomah.granicus.com
 archive,"Clallam, WA",,city,county,us:county:53009,clallamcowa.portal.civicclerk.com
 archive,New Brighton,,city,other,,newbrighton.granicus.com
 archive,"The Town of North Salem, NY",,city,other,rtr:us:ny:north-salem,northsalem.granicus.com
 archive,Unknown Jurisdiction,,city,other,,northsalemschools.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:tx:unknown-jurisdiction,nrhtx.granicus.com
+archive,Unknown Jurisdiction,,city,other,,nrhtx.granicus.com
 archive,"College Station, TX",,school,municipality,us:place:4815976,collegestationtx.portal.civicclerk.com
 archive,Unknown Jurisdiction,,city,other,,olelo.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:oh:unknown-jurisdiction,onelakewood.granicus.com
+archive,Unknown Jurisdiction,,city,other,,onelakewood.granicus.com
 archive,Oregon Metro Council,,city,other,,oregonmetro.granicus.com
 archive,Unknown Jurisdiction,,city,other,,oregonpuc.granicus.com
 archive,"Pedernals Electric Cooperative, TX",,city,other,rtr:us:tx:pedernals-electric-cooperative,pec.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ca:unknown-jurisdiction,portofla.granicus.com
+archive,Unknown Jurisdiction,,city,other,,portofla.granicus.com
 archive,Unknown Jurisdiction,,city,other,,portofsandiego.granicus.com
 archive,Hanover,,city,county,us:county:51085,hanovercova.portal.civicclerk.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ca:unknown-jurisdiction,pvestates.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:mn:unknown-jurisdiction,rdale.granicus.com
+archive,Unknown Jurisdiction,,city,other,,pvestates.granicus.com
+archive,Unknown Jurisdiction,,city,other,,rdale.granicus.com
 archive,"The City of Redmond, WA",,city,other,rtr:us:wa:redmond,redmond.granicus.com
 archive,Unknown Jurisdiction,,city,other,,sanantonioisd.granicus.com
 archive,Inyo,,city,county,us:county:06027,inyococa.portal.civicclerk.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ut:unknown-jurisdiction,sandyutah.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ca:unknown-jurisdiction,scag.granicus.com
+archive,Unknown Jurisdiction,,city,other,,sandyutah.granicus.com
+archive,Unknown Jurisdiction,,city,other,,scag.granicus.com
 archive,"James City, VA",,city,county,us:county:51095,jamescitycova.portal.civicclerk.com
 archive,Unknown Jurisdiction,,city,other,,sfha.granicus.com
 archive,Unknown Jurisdiction,,city,other,,smud.granicus.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ca:unknown-jurisdiction,sonomamarintrain.granicus.com
+archive,Unknown Jurisdiction,,city,other,,sonomamarintrain.granicus.com
 archive,Cumberland Town Council,,city,other,,clerkshq.com
 archive,Pawtucket City Council,,city,other,,clerkshq.com
 archive,The City of Spokane Valley,,city,other,,spokanevalley.granicus.com
@@ -279,7 +279,7 @@ archive,Tuolumne,,city,county,us:county:06109,tuolumne.granicus.com
 archive,"City of University Park, TX",,school,municipality,us:place:4874492,uptexas.granicus.com
 archive,Washington,,city,other,,utc-wa.granicus.com
 archive,Linn,,city,county,us:county:19113,linncoia.portal.civicclerk.com
-archive,"TV, NY",,city,special_district,rtr:us:ny:tv,lmctvny.new.swagit.com
+archive,"TV, NY",,city,special_district,,lmctvny.new.swagit.com
 archive,Mill Creek,,city,other,rtr:us:ut:mill-creek,millcreekut.portal.civicclerk.com
 archive,WB,,city,other,,videoplayer.telvue.com
 archive,Summit Planning,,city,other,,videoplayer.telvue.com
@@ -313,7 +313,7 @@ archive,Amherst,,city,county,us:county:51009,pub-amherst.escribemeetings.com
 archive,Port Hope,,city,special_district,,pub-porthope.escribemeetings.com
 archive,Halifax,,city,other,,pub-halifax.escribemeetings.com
 archive,Clearview,,city,other,,pub-clearview.escribemeetings.com
-archive,Unknown Jurisdiction,,city,other,rtr:us:ma:unknown-jurisdiction,westspringfieldma.granicus.com
+archive,Unknown Jurisdiction,,city,other,,westspringfieldma.granicus.com
 archive,"Marion County Public Schools, WV",,county,school_district,us:sd:5400720,marionboe.new.swagit.com
 archive,"Red Deer, AB",,city,other,rtr:ca:ab:red-deer,meeting.reddeer.ca
 archive,MCS,,city,other,,videoplayer.telvue.com

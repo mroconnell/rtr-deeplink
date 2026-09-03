@@ -23,11 +23,11 @@ archive,"Port Moody, BC",rtr:ca:bc:port-moody,no,pub-portmoody.escribemeetings.c
 archive,"Region Of Waterloo, ON",ca:cd:3530,yes,pub-regionofwaterloo.escribemeetings.com
 archive,Richmond Hill Single Source Award,ca:csd:3519038,yes,pub-richmondhill.escribemeetings.com
 archive,"Scugog, ON",ca:csd:3518020,yes,pub-scugog.escribemeetings.com
-archive,Stjohns,rtr:ca:nl:stjohns,no,pub-stjohns.escribemeetings.com
+archive,Stjohns,,no,pub-stjohns.escribemeetings.com
 archive,Tdsb,rtr:ca:on:toronto-district-school-board,no,pub-tdsb.escribemeetings.com
 archive,"Thunder Bay, ON",ca:csd:3558004,yes,pub-thunderbay.escribemeetings.com
 archive,"Grand Valley, ON",ca:csd:3522010,yes,pub-townofgrandvalley.escribemeetings.com
-archive,Townofws,rtr:ca:on:townofws,no,pub-townofws.escribemeetings.com
+archive,Townofws,,no,pub-townofws.escribemeetings.com
 archive,Township Of Brock,ca:csd:3518039,yes,pub-townshipofbrock.escribemeetings.com
 archive,Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
 archive,West Kelowna Council Chambers,rtr:ca:bc:west-kelowna-council-chambers,no,pub-westkelowna.escribemeetings.com
@@ -43,7 +43,7 @@ archive,"Brampton, ON",ca:csd:3521010,yes,pub-brampton.escribemeetings.com
 archive,"Central Saanich, BC",ca:csd:5917015,yes,pub-centralsaanich.escribemeetings.com
 archive,Chatham Kent,rtr:ca:on:chatham-kent,no,pub-chatham-kent.escribemeetings.com
 archive,County of Essex,ca:cd:3537,yes,coe-pub.escribemeetings.com
-archive,Cofs,rtr:ca:ab:cofs,no,pub-cofs.escribemeetings.com
+archive,Cofs,,no,pub-cofs.escribemeetings.com
 archive,"Cramahe, ON",ca:csd:3514014,yes,pub-cramahe.escribemeetings.com
 archive,"Welland, ON",ca:csd:3526032,yes,pub-elgincounty.escribemeetings.com
 archive,Elliot Lake GIS Services SSMIC,rtr:ca:on:elliot-lake-gis-services-ssmic,no,pub-elliotlake.escribemeetings.com
@@ -54,10 +54,10 @@ archive,"Halton Hills, ON",ca:csd:3524015,yes,pub-haltonhills.escribemeetings.co
 archive,"Kelowna, BC",ca:csd:5935010,yes,kelownapublishing.escribemeetings.com
 archive,"City of Kitchener, ON",ca:csd:3530013,yes,pub-kitchener.escribemeetings.com
 archive,"Lake Country, BC",ca:csd:5935016,yes,pub-lakecountry.escribemeetings.com
-archive,Llbc,rtr:ca:ab:llbc,no,pub-llbc.escribemeetings.com
+archive,Llbc,,no,pub-llbc.escribemeetings.com
 archive,"Moose Jaw, SK",ca:csd:4707039,yes,pub-moosejaw.escribemeetings.com
 archive,"New Westminster, BC",ca:csd:5915029,yes,pub-newwestcity.escribemeetings.com
-archive,Northcowichan,rtr:ca:bc:northcowichan,no,pub-northcowichan.escribemeetings.com
+archive,Northcowichan,,no,pub-northcowichan.escribemeetings.com
 archive,"Oshawa, ON",ca:csd:3518013,yes,pub-oshawa.escribemeetings.com
 archive,"Owen Sound, ON",ca:csd:3542059,yes,pub-owensound.escribemeetings.com
 archive,"Oxford County, ON",ca:cd:3532,yes,pub-oxfordcounty.escribemeetings.com
@@ -71,7 +71,7 @@ archive,"Collingwood, ON",ca:csd:3543031,yes,pub-collingwood.escribemeetings.com
 archive,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
 archive,Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
 archive,"Durham Region, ON",ca:cd:3518,yes,pub-durhamregion.escribemeetings.com
-archive,Espanol A,rtr:ca:on:espanol-a,no,pub-espanola.escribemeetings.com
+archive,Espanol A,,no,pub-espanola.escribemeetings.com
 archive,Ezt,ca:csd:3532038,yes,pub-ezt.escribemeetings.com
 archive,"Fort Erie, ON",ca:csd:3526003,yes,pub-forterie.escribemeetings.com
 archive,"Goderich, ON",ca:csd:3540028,yes,pub-goderich.escribemeetings.com
@@ -84,9 +84,9 @@ archive,"City of Lethbridge, AB",rtr:ca:ab:lethbridge,no,pub-lethbridge.escribem
 archive,"Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
 archive,"Town of Morinville, AB",ca:csd:4811068,yes,pub-morinville.escribemeetings.com
 archive,"Nanaimo, BC",ca:csd:5921007,yes,pub-nanaimo.escribemeetings.com
-archive,Notl,rtr:ca:on:notl,no,pub-notl.escribemeetings.com
+archive,Notl,,no,pub-notl.escribemeetings.com
 archive,"Town of Oakville, ON",ca:csd:3524001,yes,pub-oakville.escribemeetings.com
-archive,Oneinvestmentprogram,rtr:ca:on:oneinvestmentprogram,no,pub-oneinvestmentprogram.escribemeetings.com
+archive,Oneinvestmentprogram,,no,pub-oneinvestmentprogram.escribemeetings.com
 archive,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
 archive,"City of Penticton, BC",ca:csd:5907041,yes,pub-penticton.escribemeetings.com
 archive,"Peterborough, ON",ca:csd:3515014,yes,pub-peterborough.escribemeetings.com
@@ -126,11 +126,11 @@ archive,"Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
 archive,"Brant, ON",ca:csd:3529005,yes,pub-brant.escribemeetings.com
 archive,"Mackenzie, BC",ca:csd:5953033,yes,pub-mackenziebc.escribemeetings.com
 archive,"Point Edward, ON",ca:csd:3538031,yes,pub-pointedward.escribemeetings.com
-archive,Bradfordwestgwillimbury,rtr:ca:on:bradfordwestgwillimbury,no,pub-bradfordwestgwillimbury.escribemeetings.com
+archive,Bradfordwestgwillimbury,,no,pub-bradfordwestgwillimbury.escribemeetings.com
 archive,"Kincardine, ON",ca:csd:3541024,yes,pub-kincardine.escribemeetings.com
 archive,Kneehill County,rtr:ca:ab:kneehill-county,no,pub-kneehillcounty.escribemeetings.com
 archive,Merrickville Wolford,rtr:ca:on:merrickville-wolford,no,pub-merrickville-wolford.escribemeetings.com
-archive,Saugeenshores,rtr:ca:on:saugeenshores,no,pub-saugeenshores.escribemeetings.com
+archive,Saugeenshores,,no,pub-saugeenshores.escribemeetings.com
 archive,"Shelburne, ON",ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
 archive,"Tillsonburg, ON",ca:csd:3532004,yes,pub-tillsonburg.escribemeetings.com
 archive,"City of Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com

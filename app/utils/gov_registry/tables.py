@@ -21,6 +21,7 @@ module this phase is explicitly not changing.
 """
 
 import csv
+import re
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -274,11 +275,67 @@ def ca_pr() -> NameStateTable:
     )
 
 
-# `cog_units.csv` is deliberately NOT loaded here. Decision D3 keeps the
-# Census of Governments file as enrichment only this phase -- there is no
-# `us:cog:` namespace to resolve into -- and it is 90,837 rows, which is
-# not something to pay for at import time for a column nothing reads yet.
-# `scripts/` can read the file directly when a later phase wants it.
+# `cog_units.csv` is deliberately NOT loaded as a lookup table. Decision
+# D3 keeps the Census of Governments file as enrichment only this phase --
+# there is no `us:cog:` namespace to resolve into. It IS read, lazily and
+# once, for its vocabulary (below).
+
+
+@lru_cache(maxsize=1)
+def name_vocabulary() -> frozenset:
+    """Every 4+-letter word that appears in a real government's name.
+
+    Built from the national tables plus `cog_units.csv` -- 90,837 real US
+    government names from the 2022 Census of Governments. That file is the
+    right source for this and nothing else is: the place tables alone know
+    "Wichita" and "Tampa" but not "authority", "commission", "irrigation"
+    or "wastewater", so a vocabulary built from them would reject most
+    real agency names. With COG the two halves cover each other -- 20,676
+    words, and measured against the words at issue it accepts every real
+    government term tried (authority, commission, conservation, sewerage,
+    aquifer, ambulance, irrigation, sandag) while rejecting every piece of
+    subdomain junk tried (llbc, notl, stjohns, ride).
+
+    This is a *vocabulary*, not a dictionary: it says "this word occurs in
+    the name of some real government", which is exactly the question
+    `resolver._looks_like_a_name()` needs answered and a general English
+    dictionary would answer worse (it would accept "ride" and reject
+    "sandag"). Lazy and cached: only a minting attempt ever pays for it.
+    """
+    words = set(_STATE_BODY_WORDS)
+    tables = (
+        us_places(),
+        us_counties(),
+        us_cousubs(),
+        us_school_districts(),
+        us_states(),
+        ca_csd(),
+        ca_cd(),
+        ca_pr(),
+    )
+    for table in tables:
+        for row in table._by_id.values():
+            words.update(w.lower() for w in _WORD_RE.findall(row.name))
+    for row in _read("cog_units.csv"):
+        words.update(w.lower() for w in _WORD_RE.findall(row.get("name") or ""))
+    return frozenset(words)
+
+
+_WORD_RE = re.compile(r"[A-Za-z']{4,}")
+
+# State-level bodies are one government per state (D1) and their own
+# words never appear in a place or Census-of-Governments name, so they
+# are added by hand -- a short, closed list, not a category.
+_STATE_BODY_WORDS = frozenset(
+    {
+        "senate",
+        "assembly",
+        "legislature",
+        "delegates",
+        "representatives",
+        "commonwealth",
+    }
+)
 
 
 @lru_cache(maxsize=1)

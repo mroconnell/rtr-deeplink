@@ -1,8 +1,8 @@
 input_set,tier,rows,pct
 archive,registry,4013,79.4
-archive,unresolved,382,7.6
+archive,unresolved,414,8.2
 archive,blank,241,4.8
-archive,unverified,235,4.7
+archive,unverified,203,4.0
 archive,pinned,175,3.5
 archive,inferred,7,0.1
 ledger,registry,799,91.2

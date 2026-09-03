@@ -638,6 +638,56 @@ the other. **33 splits**, down from 50, and the remainder are real:
 `/j/portland` becomes three governments in OR, ME and TX; `/j/portage`
 three in IN, MI and WI; and the §1.3 agency splits all stand.
 
+### Addendum — the minting gate and the pin worklist
+
+**6. A string only mints an id if it looks like a name.** Minting turns a
+string into an identity, and doing that for a subdomain fragment creates
+a permanent, authoritative-looking id nobody can ever look up. Three
+tests, all of which must pass: at least one 4+-letter token that occurs
+in a real government's name; not every token under 4 letters; not a
+station callsign. A failure is tier `unresolved` with the raw string kept
+in `evidence`, so no information is lost and a human pin still has
+everything.
+
+"A real government's name" is a *vocabulary*, not a dictionary —
+20,686 words from the national tables plus `cog_units.csv`'s 90,837 real
+US government names. That pairing is what makes it work: the place tables
+know "Wichita" and "Tampa" but not "authority", "commission",
+"irrigation" or "wastewater", so a vocabulary built from them alone would
+reject most real agency names. A general English dictionary would fail
+the other way — it accepts "ride" and rejects "sandag".
+
+**32 rows reclassified**, over 30 distinct hosts: granicus 18, escribe
+10, cablecast 3, swagit 1; 22 US and 10 Canadian. Every one is
+subdomain-derived junk — `'Llbc'`, `'Notl'`, `'Cofs'`, `'Nsb'`,
+`'Ps C, FL'`, `'S Fw, MD'`, `'Oneinvestmentprogram'`, `'La'`. Minted
+governments fell 588 → 556 rows with no real name lost: "West County
+Wastewater District", "Imperial Irrigation District", "Metropolitan
+Airports Commission", "Toronto and Region Conservation Authority" and
+"Leduc, AB" all still mint.
+
+**7. `pin_worklist.csv` — 369 hosts, 420 rows.** Every tenant with no
+government, grouped by platform with eScribe, Cablecast, Swagit and
+TelVue first (the four whose landing page reliably names its customer),
+each with a landing URL to fetch once and read the organisation name out
+of the header — the way `jurisdiction_overrides.csv`'s
+`visual_confirmed` rows were made by hand. Platform spread: granicus 114,
+youtube 102, cablecast 61, telvue 53, swagit 38, escribe 35.
+
+The eScribe block is the highest-yield: `pub-cambridge`, `pub-london`,
+`pub-halifax`, `pub-hamilton`, `pub-brucecounty`, `pub-lincoln` are all
+real Canadian governments that are `unresolved` only because no province
+could be recovered — a single fetch settles each.
+
+TelVue rows carry the org token from the URL path as `match_value`
+(53 distinct tokens), because every TelVue customer shares
+`videoplayer.telvue.com` and a host-level pin would be wrong for all of
+them. One of the 53, `GNduNoua2rBThhw6N4PRP9OCSPf6B2ru`, is already
+identified by hand in
+`rtr-business/research/telvue_org_tokens.md` (Centre County PA) — a
+useful cross-check that the extracted token matches that file's format,
+and 12 of the 53 already have an answer waiting there.
+
 ### Still open for Phase 2
 
 - **422 `unresolved` rows want pins**, concentrated on shared hosts
