@@ -108,6 +108,50 @@ def lookup_keys(name: str) -> List[str]:
     return keys
 
 
+_SQUASH_RE = re.compile(r"[^a-z0-9]+")
+
+
+def squash(name: str) -> str:
+    """ "Gales Burg" -> "galesburg"; "The City of Milwaukee, WI" ->
+    "thecityofmilwaukeewi".
+
+    Every space and punctuation mark removed. Used for two different
+    comparisons, both of which need the same rule: `lookup_squashed()`
+    below, and the resolver's tenant-consistency name guard (rung 5b),
+    which architecture-doc terms compare "with spaces and punctuation
+    stripped".
+    """
+    return _SQUASH_RE.sub("", (name or "").lower())
+
+
+# Canadian CSD type code -> the municipal type word an English page
+# writes for it, for the same tie-break the US place table already gets
+# from LSAD. Only the codes whose meaning is unambiguous in English are
+# mapped; every other code (P parish, MÉ municipalité, IRI reserve, ...)
+# is left out rather than guessed at, so an unmapped row simply never
+# wins a tie and the lookup declines as it did before.
+#
+# The case this exists for: "Town of Yarmouth, NS" has two CSDs under one
+# name -- 1202006 (T, the town) and 1202004 (MD, the municipal district
+# surrounding it) -- so the exactly-one rule declined and the census
+# division "Yarmouth" caught the fall, filing a town as a county.
+CSD_TYPE_WORDS = {
+    "CY": "city",
+    "C": "city",
+    "T": "town",
+    "TV": "town",
+    "VL": "village",
+    "TP": "township",
+    "MU": "municipality",
+    "MD": "municipality",
+    "RM": "municipality",
+    "DM": "municipality",
+    "IM": "municipality",
+    "RGM": "municipality",
+    "MRM": "municipality",
+}
+
+
 class NameStateTable:
     """normalized name -> state -> rows, with an exactly-one-match rule.
 
@@ -123,9 +167,16 @@ class NameStateTable:
         self._by_key: Dict[str, Dict[str, List[TableRow]]] = defaultdict(
             lambda: defaultdict(list)
         )
+        # The same index with every space and hyphen removed -- see
+        # `lookup_squashed()` for what it is for and why it is separate.
+        self._by_squashed: Dict[str, Dict[str, List[TableRow]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
         self._by_id: Dict[str, TableRow] = {}
         for row in rows:
-            self._by_key[_normalize_name(row.name)][row.state.upper()].append(row)
+            key = _normalize_name(row.name)
+            self._by_key[key][row.state.upper()].append(row)
+            self._by_squashed[squash(key)][row.state.upper()].append(row)
             self._by_id[row.row_id] = row
 
     def get(self, row_id: str) -> Optional[TableRow]:
@@ -173,6 +224,36 @@ class NameStateTable:
                 # normalizations of the same name, so they can only be
                 # more ambiguous, not less -- stop rather than letting a
                 # looser key produce a lucky single hit.
+                return None
+        return None
+
+    def lookup_squashed(self, name: str, state: Optional[str]) -> Optional[TableRow]:
+        """The one row whose name matches `name` once every space and
+        hyphen is removed from both sides -- or None.
+
+        A LAST resort, tried only when minting is otherwise the outcome
+        (resolver rung 5c), and deliberately requiring a state: this is a
+        looser key than `lookup()`'s, so running it nationally, or ahead
+        of the real lookup, would let two genuinely different governments
+        collide on a squashed spelling.
+
+        The real case, from the 2026-09-02 archive: `galesburg.granicus.com`
+        stores "Gales Burg" on one page and "Galesburg, IL" on the next.
+        The first matched no key and minted `rtr:us:il:gales-burg`, so one
+        government held two ids. Its own tenant is what supplies the IL,
+        and "galesburg" == "galesburg" is what makes the match safe rather
+        than a guess.
+        """
+        if not state:
+            return None
+        for key in lookup_keys(name):
+            by_state = self._by_squashed.get(squash(key))
+            if not by_state:
+                continue
+            unique = {r.row_id: r for r in (by_state.get(state.upper()) or [])}
+            if len(unique) == 1:
+                return next(iter(unique.values()))
+            if unique:
                 return None
         return None
 

@@ -105,7 +105,20 @@ _RULES: list[tuple[str, re.Pattern]] = [
         re.compile(
             r"\b(district|authority|agency|commission|jpa|joint powers|transit|"
             r"transportation|water|sanitation|sanitary|fire protection|utility|"
-            r"utilities|airport|port|housing|library|hospital|healthcare|"
+            # "port" only as a port AGENCY, never as a bare token. Same
+            # shape of defect as the "wastewater" one already recorded in
+            # the architecture doc's §1.4 correction, and measured the
+            # same way: a bare `port` sent 24 rows over 11 real
+            # municipalities -- Port Townsend WA, Port Moody and Port
+            # Coquitlam BC, Port Hope and Port Colborne ON, Port Orange,
+            # North Port and New Port Richey FL, Port St. Lucie, Port
+            # Arthur TX, Port Chester NY -- down the special-district
+            # branch, where `NON_PLACE_TYPES` puts the place tables out
+            # of reach and every one of them minted an `rtr:` id for a
+            # government the Census and StatCan tables already hold.
+            # "Airport" is matched separately above and is unaffected.
+            r"utilities|airport|port of|port district|port authority|"
+            r"port commission|housing|library|hospital|healthcare|"
             r"conservation|irrigation|flood control|metropolitan|regional|"
             r"council of governments|cog|association of governments|"
             r"planning organization|mpo|tv|television|cable|media center)\b",

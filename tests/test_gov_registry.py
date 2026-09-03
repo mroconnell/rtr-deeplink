@@ -659,8 +659,18 @@ def test_a_minted_id_ignores_a_leading_city_of():
     Shown on a real Canadian mint (Leduc AB, `pub-leduc.escribemeetings.com`)
     -- since Phase 1b a stateless name is `unresolved` rather than
     minted, so a minted example needs a state."""
-    assert resolve("City of Leduc, AB").gov_id == resolve("Leduc, AB").gov_id
-    assert resolve("City of Leduc, AB").gov_id == "rtr:ca:ab:leduc"
+    assert resolve("City of Port Moody, BC").gov_id == resolve("Port Moody, BC").gov_id
+    assert resolve("City of Port Moody, BC").gov_id == "ca:csd:5915043"
+    # A government no national table covers, which is where minting is
+    # the right answer -- and where the leading phrase must still not
+    # fork the id. Leduc AB was this example until Phase 2's Canadian
+    # tie-break gave it a real `ca:csd` id (see
+    # test_a_flattened_county_name_does_not_shadow_the_city).
+    assert (
+        resolve("City of West County Wastewater District, CA").gov_id
+        == resolve("West County Wastewater District, CA").gov_id
+        == "rtr:us:ca:west-county-wastewater-district"
+    )
 
 
 # --- Phase 1b: a municipal name may never resolve to a county ----------
@@ -784,8 +794,11 @@ def test_the_state_comes_from_the_tenant_before_the_lookup_not_after():
 
 
 def test_same_tenant_consistency_is_a_tier_of_its_own(monkeypatch):
-    """Rung 5b. The caller supplies the consensus because the resolver is
-    pure and cannot see a page's siblings."""
+    """Rung 5b. The caller supplies the dominant gov_id because the
+    resolver is pure and cannot see a page's siblings.
+
+    The name has to agree -- see the over-fire tests below for what the
+    unguarded version of this rung did to two real tenants."""
     gov = registry.Government(
         "us:place:0662000", "Riverside city", classify.MUNICIPALITY, state="CA"
     )
@@ -793,13 +806,294 @@ def test_same_tenant_consistency_is_a_tier_of_its_own(monkeypatch):
     monkeypatch.setattr(registry, "tenant_overrides", lambda: {})
     monkeypatch.setattr(registry, "tenant_hints", lambda: {})
     match = resolve(
-        "Some Unlisted Board",
+        "The City of Riverside",
         "example.granicus.com",
         tenant_gov_id="us:place:0662000",
     )
     assert match.gov_id == "us:place:0662000"
     assert match.tier == resolver.TIER_INFERRED
     assert "example.granicus.com" in match.evidence
+
+
+# --- Phase 2 (7a): the tenant-consistency rung needs a name guard ------
+#
+# Every case below is a real (tenant, jurisdiction) pair from
+# reports/gov_registry_scoring_2026-09-02/sheet_archive.csv.
+
+
+@pytest.mark.parametrize(
+    "raw,host,tenant_gov_id,expected",
+    [
+        # "The City of Milwaukee, WI" matched no place key (the leading
+        # "The" defeats the enricher's prefix strip) and minted a second
+        # id beside `milwaukee.granicus.com`'s own City of Milwaukee.
+        (
+            "The City of Milwaukee, WI",
+            "milwaukee.granicus.com",
+            "us:place:5553000",
+            "us:place:5553000",
+        ),
+        (
+            "The City of Andover",
+            "andoverks.civicweb.net",
+            "us:place:2001800",
+            "us:place:2001800",
+        ),
+        (
+            "The City of College Park, MD",
+            "college-park.granicus.com",
+            "us:place:2418750",
+            "us:place:2418750",
+        ),
+    ],
+)
+def test_tenant_consistency_collapses_a_spelling_of_the_tenants_own_name(
+    raw, host, tenant_gov_id, expected
+):
+    match = resolve(raw, host, tenant_gov_id=tenant_gov_id)
+    assert match.gov_id == expected
+    assert match.tier == resolver.TIER_INFERRED
+
+
+@pytest.mark.parametrize(
+    "raw,host,tenant_gov_id",
+    [
+        # Dallas County Community College District. Its own bleed page
+        # reads "City of Dallas"; the tenant's other page is Duncanville.
+        # The unguarded rung filed a Dallas page under Duncanville.
+        ("City of Dallas", "dcccd.new.swagit.com", "us:place:4821628"),
+        # A shared host serving several real governments: nothing on it
+        # names Scituate, so nothing may claim it.
+        ("Scituate Town Council", "clerkshq.com", "us:place:3986940"),
+    ],
+)
+def test_tenant_consistency_does_nothing_when_the_names_disagree(
+    raw, host, tenant_gov_id
+):
+    match = resolve(raw, host, tenant_gov_id=tenant_gov_id)
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.gov_id == ""
+
+
+def test_tenant_consistency_will_not_cross_a_state_line():
+    """`juneauak.portal.civicclerk.com` stores two pages as "Juneau, WI"
+    and one as "Juneau, AK". The names agree perfectly, and adopting the
+    tenant's dominant government would file the City and Borough of
+    Juneau under a Wisconsin city on the strength of a spelling."""
+    match = resolve(
+        "Juneau, AK",
+        "juneauak.portal.civicclerk.com",
+        tenant_gov_id="us:place:5538675",
+    )
+    assert match.gov_id != "us:place:5538675"
+
+
+def test_tenant_consistency_never_reads_a_generated_rows_aliases():
+    """The first run of the guard passed on `winston-salem.granicus.com`'s
+    bleed page, because `governments.csv` carried "City of Lees Summit" in
+    Winston-Salem's `aliases` -- written there by the very unguarded pass
+    this rung replaces. On a GENERATED row that column records what
+    previously resolved here, so reading it back makes a wrong resolution
+    self-reinforcing (`registry.curated_aliases()` says the same thing
+    about lookups)."""
+    gov = registry.Government(
+        "us:place:3775000",
+        "Winston-Salem city",
+        classify.MUNICIPALITY,
+        state="NC",
+        aliases=("City of Lees Summit",),
+        source="us_places.csv",
+    )
+    assert resolver._tenant_consistency(gov.gov_id, "City of Lees Summit", "") is None
+
+
+def test_a_bleed_page_on_the_wrong_tenant_is_listed_not_minted(monkeypatch):
+    """§7f. Lee's Summit is in Missouri, `winston-salem.granicus.com` is
+    in North Carolina, and "City of Lees Summit" matches no NC table row.
+    Minting produced `rtr:us:nc:lees-summit` -- a permanent,
+    official-looking id for a government that does not exist in that
+    state, which is worse than an honest gap."""
+    gov = registry.Government(
+        "us:place:3775000", "Winston-Salem city", classify.MUNICIPALITY, state="NC"
+    )
+    monkeypatch.setattr(registry, "governments", lambda: {gov.gov_id: gov})
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {})
+    monkeypatch.setattr(
+        registry, "tenant_hints", lambda: {"winston-salem.granicus.com": "NC"}
+    )
+    match = resolve(
+        "City of Lees Summit",
+        "winston-salem.granicus.com",
+        tenant_gov_id="us:place:3775000",
+    )
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.gov_id == ""
+
+
+def test_a_district_on_its_host_city_still_mints(monkeypatch):
+    """The exemption that keeps the bleed rule from eating decision D2:
+    a housing authority disagreeing with its host city's name is the
+    NORMAL case for a non-place government, not evidence of a bleed, and
+    D2 says it gets its own id."""
+    gov = registry.Government(
+        "us:place:0644000", "Los Angeles city", classify.MUNICIPALITY, state="CA"
+    )
+    monkeypatch.setattr(registry, "governments", lambda: {gov.gov_id: gov})
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {})
+    monkeypatch.setattr(registry, "tenant_hints", lambda: {"ladwp.granicus.com": "CA"})
+    match = resolve(
+        "Los Angeles Department of Water and Power",
+        "ladwp.granicus.com",
+        tenant_gov_id="us:place:0644000",
+    )
+    assert match.gov_id.startswith("rtr:us:ca:")
+    assert match.tier == resolver.TIER_UNVERIFIED
+
+
+# --- Phase 2 (7b): a spacing slip is not a new government --------------
+
+
+def test_a_spacing_slip_resolves_rather_than_minting():
+    """`galesburg.granicus.com` stores "Gales Burg" on one page and
+    "Galesburg, IL" on the next -- one government, and minting the first
+    gave it a second permanent id."""
+    match = resolve("Gales Burg", "galesburg.granicus.com")
+    assert match.gov_id == "us:place:1728326"
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_id == resolve("Galesburg, IL").gov_id
+
+
+def test_the_spacing_insensitive_lookup_needs_a_state():
+    """It is a looser key than the real one, so running it nationally
+    would let two different governments collide on a squashed spelling.
+    Tried only with a state in hand, and only when the alternative is
+    minting."""
+    assert tables.us_places().lookup_squashed("Gales Burg", None) is None
+    assert tables.us_places().lookup_squashed("Gales Burg", "IL").row_id == "1728326"
+
+
+# --- Phase 2 (7c): "Name, X County, ST" names a place and its county ---
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("City of Sunset Valley, Travis County, TX", "us:place:4871324"),
+        ("Town of Amherst, Erie County, NY", "us:cousub:3602902000"),
+    ],
+)
+def test_a_named_county_is_enrichment_not_the_government(raw, expected):
+    """Both are real archived jurisdictions, and both minted an `rtr:` id
+    for a government the tables already hold -- the county word in the
+    middle classified the whole string as a county."""
+    match = resolve(raw)
+    assert match.gov_id == expected
+    assert match.tier == resolver.TIER_REGISTRY
+    # Seen and set aside, not silently dropped.
+    assert "County" in match.evidence
+
+
+def test_a_body_named_before_a_county_is_not_a_place():
+    """The gate on the county-qualifier rule: without it the same shape
+    would eat the tail of a body name and resolve a county's page to
+    "Board of Supervisors"."""
+    assert resolver._strip_county_qualifier("Board of Supervisors, Fresno County") == (
+        "Board of Supervisors, Fresno County",
+        "",
+    )
+
+
+# --- Phase 2 (7d): the Canadian tables need the same type-word gate ----
+
+
+def test_a_canadian_town_is_not_its_census_division():
+    """ "Town of Yarmouth, NS" resolved to `ca:cd:1202`, the Yarmouth
+    census division: two CSDs share the name (1202006, the town; 1202004,
+    the municipal district around it), the exactly-one rule declined, and
+    the census-division fallback caught the fall. Filing a town under its
+    county is the mistake the US county gate already prevents."""
+    match = resolve("Town of Yarmouth, NS")
+    assert match.gov_id == "ca:csd:1202006"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+@pytest.mark.parametrize("raw", ["City of Leduc, AB", "Leduc, AB"])
+def test_a_flattened_county_name_does_not_shadow_the_city(raw):
+    """ "Leduc County" and "Leduc" are two different names, not one name
+    shared by two governments -- `_normalize_name()`'s trailing-type-word
+    strip is what collapses them onto one key. Both spellings of the city
+    must reach the city, or the type-word tie-break would trade one
+    fragmentation for another."""
+    assert resolve(raw).gov_id == "ca:csd:4811016"
+
+
+# --- Phase 2 (7e): Honolulu is one consolidated government -------------
+
+
+@pytest.mark.parametrize("raw", ["City of Honolulu", "County of Honolulu."])
+def test_honolulu_is_one_government(raw):
+    """Both strings are real, both on `honolulu.granicus.com`, and both
+    for Granicus clip 2444 -- the same meeting archived twice. Hawaii has
+    no separate municipal government for Honolulu; the City and County IS
+    the county."""
+    match = resolve(raw, "honolulu.granicus.com")
+    assert match.gov_id == "us:county:15003"
+    assert match.gov_name == "City and County of Honolulu, HI"
+
+
+# --- Phase 2: "port" is a port agency, not any place named Port X ------
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("City of Port Townsend, WA", "us:place:5355855"),
+        ("City of Port Moody, BC", "ca:csd:5915043"),
+        ("North Port, FL", "us:place:1249675"),
+    ],
+)
+def test_a_place_named_port_is_not_a_special_district(raw, expected):
+    """Same defect as the "wastewater" one the architecture doc's §1.4
+    correction records: a bare `port` token in the special-district rule
+    put the place tables out of reach (NON_PLACE_TYPES) for 24 rows over
+    11 real municipalities, every one of which minted an `rtr:` id for a
+    government the national tables hold."""
+    assert resolve(raw).gov_id == expected
+
+
+# --- Phase 2: "nationally unique" has to mean both countries ----------
+
+
+@pytest.mark.parametrize(
+    "raw,wrong",
+    [
+        ("Abbotsford", "us:place:5500100"),  # Abbotsford BC, filed as WI
+        ("Edmonton", "us:place:2123968"),  # Edmonton AB, filed as KY
+        ("City of Langford", "us:place:4635820"),  # Langford BC, filed as SD
+        ("City of White Rock", "us:place:4671380"),  # White Rock BC, filed as SD
+        ("City of Niagara Falls", "us:place:3651055"),  # Niagara Falls ON, as NY
+        ("Port Hope", "us:place:2665800"),  # Port Hope ON, filed as MI
+    ],
+)
+def test_a_stateless_name_is_not_unique_just_because_the_us_table_says_so(raw, wrong):
+    """`country_for_state("")` is "us", so a name with no state was looked
+    up in the US tables alone and a unique hit there looked unambiguous
+    while a Canadian government of the same name sat unchecked. Every
+    string here is a real stored jurisdiction on a real Canadian eScribe
+    or CivicWeb tenant."""
+    assert resolve(raw).gov_id != wrong
+
+
+def test_a_state_still_settles_the_country():
+    """The guard is about the STATELESS case only -- a name that says
+    which state or province it is in was never ambiguous."""
+    assert resolve("Abbotsford, WI").gov_id == "us:place:5500100"
+    assert resolve("Abbotsford, BC").gov_id == "ca:csd:5909052"
+
+
+def test_a_real_port_agency_still_classifies_as_a_district():
+    for raw in ("Port of Seattle, WA", "Port Authority of New York and New Jersey"):
+        assert classify.classify_government_type(raw) == classify.SPECIAL_DISTRICT
 
 
 def test_a_tenant_hint_supplies_only_a_state_never_a_government():
@@ -883,7 +1177,6 @@ def test_dc_and_louisville_are_municipalities_not_other():
     [
         "Llbc, AB",  # pub-llbc = Lac La Biche County
         "Notl, ON",  # Niagara-on-the-Lake
-        "Stjohns, NL",
         "Ezt",  # pub-ezt = East Zorra-Tavistock
         "TV, NY",
         "Psr C 2",  # psrc2 = Puget Sound Regional Council
@@ -901,6 +1194,16 @@ def test_a_string_that_is_not_a_name_is_never_minted(raw):
     assert raw.split(",")[0] in match.evidence
 
 
+def test_a_run_together_real_name_resolves_rather_than_being_declined():
+    """ "Stjohns, NL" was in the list above until Phase 2. It is not junk
+    like its neighbours -- it is St. John's with its spacing and
+    punctuation gone, and the spacing-insensitive lookup (rung 5b) now
+    reaches the real StatCan row. The gate above is for strings that name
+    no government at all; this one names one perfectly well."""
+    assert resolve("Stjohns, NL").gov_id == "ca:csd:1001519"
+    assert resolve("Stjohns, NL").tier == resolver.TIER_REGISTRY
+
+
 @pytest.mark.parametrize(
     "raw,gov_id",
     [
@@ -908,7 +1211,15 @@ def test_a_string_that_is_not_a_name_is_never_minted(raw):
             "West County Wastewater District, CA",
             "rtr:us:ca:west-county-wastewater-district",
         ),
-        ("Leduc, AB", "rtr:ca:ab:leduc"),
+        # Leduc AB was here until Phase 2's Canadian name-first
+        # tie-break gave it its real `ca:csd:4811016` -- a coverage gain,
+        # not a gate failure. Replaced by another real Canadian
+        # government with no StatCan id by construction (decision D4:
+        # SGC codes subdivisions and divisions, not boards).
+        (
+            "Hamilton Police Services Board, ON",
+            "rtr:ca:on:hamilton-police-services-board",
+        ),
         ("Imperial Irrigation District, CA", "rtr:us:ca:imperial-irrigation-district"),
         (
             "Metropolitan Airports Commission, MN",

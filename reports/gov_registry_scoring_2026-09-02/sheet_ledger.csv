@@ -43,7 +43,7 @@ pub-markham.escribemeetings.com,City of Markham,us:place:1747007,"Markham, IL",m
 laquinta.cablecast.tv,"La Quinta, CA",us:place:0640354,"La Quinta, CA",municipality,registry,us_places.csv La Quinta city,,la-quinta-ca,us,CA,la-quinta-ca,no,city
 pub-milton.escribemeetings.com,"Town of Milton, ON",ca:csd:3524009,"Milton, ON",municipality,registry,ca_csd.csv Milton,,milton-on,ca,ON,town-of-milton-on,yes,city
 pub-peelregion.escribemeetings.com,"Peel Region, ON",ca:cd:3521,"Peel, ON",county,registry,ca_cd.csv Peel,,peel-on,ca,ON,peel-region-on,no,county
-millcreekut.portal.civicclerk.com,Mill Creek,rtr:us:ut:mill-creek,"Mill Creek, UT",other,unverified,minted from 'Mill Creek',,mill-creek-ut,us,UT,mill-creek,no,city
+millcreekut.portal.civicclerk.com,Mill Creek,us:place:4950150,"Millcreek, UT",municipality,registry,us:place:4950150 Millcreek city matched with spacing ignored,,millcreek-ut,us,UT,mill-creek,no,city
 bcnv.primegov.com,"City of Boulder City, NV",us:place:3206500,"Boulder City, NV",municipality,registry,us_places.csv Boulder City city,,boulder-city-nv,us,NV,boulder-city-nv,yes,city
 pub-pickering.escribemeetings.com,City of Pickering,us:place:2957404,"Pickering, MO",municipality,registry,us_places.csv Pickering city (state from tenant_hints.csv pub-pickering.escribemeetings.com),,pickering-mo,us,MO,pickering,yes,city
 pub-victoria.escribemeetings.com,City of Victoria,ca:csd:5917034,"Victoria, BC",municipality,registry,ca_csd.csv Victoria (state from tenant_hints.csv pub-victoria.escribemeetings.com),,victoria-bc,ca,BC,victoria,yes,city
@@ -137,7 +137,7 @@ lakeforest.primegov.com,City of Lake Forest,,City of Lake Forest,municipality,un
 pub-penticton.escribemeetings.com,"City of Penticton, BC",ca:csd:5907041,"Penticton, BC",municipality,registry,ca_csd.csv Penticton,,penticton-bc,ca,BC,penticton-bc,yes,city
 santaclara.granicus.com,City of Santa Clara,us:place:0669084,"Santa Clara, CA",municipality,pinned,tenant_overrides.csv santaclara.granicus.com source=auto_derived+upcoming_roster,,santa-clara-ca,us,CA,santa-clara,yes,city
 lucascooh.portal.civicclerk.com,"Lucas County, OH",us:county:39095,"Lucas County, OH",county,registry,us_counties.csv Lucas County,,lucas-county-oh,us,OH,lucas-county-oh,no,county
-pub-portmoody.escribemeetings.com,"City of Port Moody, BC",rtr:ca:bc:port-moody,"City of Port Moody, BC",special_district,unverified,"minted from 'City of Port Moody, BC'",,city-of-port-moody-bc,ca,BC,port-moody-bc,yes,city
+pub-portmoody.escribemeetings.com,"City of Port Moody, BC",ca:csd:5915043,"Port Moody, BC",municipality,registry,ca_csd.csv Port Moody,,port-moody-bc,ca,BC,port-moody-bc,yes,city
 redmondor.portal.civicclerk.com,"Redmond, OR",us:place:4161200,"Redmond, OR",municipality,registry,us_places.csv Redmond city,,redmond-or,us,OR,redmond-or,no,city
 pub-regionofwaterloo.escribemeetings.com,"Region Of Waterloo, ON",ca:cd:3530,"Waterloo, ON",county,registry,ca_cd.csv Waterloo,,waterloo-on,ca,ON,region-of-waterloo-on,no,county
 ricecountymn.portal.civicclerk.com,"Rice County, MN",us:county:27131,"Rice County, MN",county,registry,us_counties.csv Rice County,,rice-county-mn,us,MN,rice-county-mn,no,county
@@ -152,7 +152,7 @@ tavaresfl.portal.civicclerk.com,"Tavares, FL",us:place:1271225,"Tavares, FL",mun
 pub-thunderbay.escribemeetings.com,"City of Thunder Bay, ON",ca:csd:3558004,"Thunder Bay, ON",municipality,registry,ca_csd.csv Thunder Bay,,thunder-bay-on,ca,ON,thunder-bay-on,yes,city
 pub-townshipofbrock.escribemeetings.com,Township Of Brock,ca:csd:3518039,"Brock, ON",municipality,registry,ca_csd.csv Brock (state from tenant_hints.csv pub-townshipofbrock.escribemeetings.com),,brock-on,ca,ON,township-of-brock,yes,city
 sanmateocounty.granicus.com,"County of San Mateo, CA",us:county:06081,"San Mateo County, CA",county,registry,us_counties.csv San Mateo County,,san-mateo-county-ca,us,CA,county-of-san-mateo-ca,no,county
-nampa.primegov.com,City of Nampa,us:place:1656260,"Nampa, ID",municipality,registry,us_places.csv Nampa city,,nampa-id,us,ID,nampa,yes,city
+nampa.primegov.com,City of Nampa,,City of Nampa,municipality,unresolved,no state for 'City of Nampa',,city-of-nampa,us,,nampa,yes,city
 pub-orlando.escribemeetings.com,"City of Orlando, FL",us:place:1253000,"Orlando, FL",municipality,registry,us_places.csv Orlando city,,orlando-fl,us,FL,orlando-fl,yes,city
 highlandparkil.portal.civicclerk.com,"Highland Park, IL",us:place:1734722,"Highland Park, IL",municipality,registry,us_places.csv Highland Park city,,highland-park-il,us,IL,highland-park-il,no,city
 forestgroveor.portal.civicclerk.com,"Forest Grove, OR",us:place:4126200,"Forest Grove, OR",municipality,registry,us_places.csv Forest Grove city,,forest-grove-or,us,OR,forest-grove-or,no,city
@@ -177,7 +177,7 @@ firestoneco.portal.civicclerk.com,"Firestone, CO",us:place:0826600,"Firestone, C
 smyrnaga.primegov.com,"City of Smyrna, GA",us:place:1371492,"Smyrna, GA",municipality,registry,us_places.csv Smyrna city,,smyrna-ga,us,GA,smyrna-ga,yes,city
 southbendin.primegov.com,"City of South Bend, IN",us:place:1871000,"South Bend, IN",municipality,registry,us_places.csv South Bend city,,south-bend-in,us,IN,south-bend-in,yes,city
 herndonva.portal.civicclerk.com,Herndon,us:place:5136648,"Herndon, VA",municipality,registry,us_places.csv Herndon town (state from subdomain herndonva.portal.civicclerk.com),,herndon-va,us,VA,herndon,no,city
-niagarafalls.civicweb.net,City of Niagara Falls,us:place:3651055,"Niagara Falls, NY",municipality,registry,us_places.csv Niagara Falls city,,niagara-falls-ny,us,NY,niagara-falls,yes,city
+niagarafalls.civicweb.net,City of Niagara Falls,us:place:3651055,"Niagara Falls, NY",municipality,inferred,tenant niagarafalls.civicweb.net resolves to us:place:3651055 and the names agree ('City of Niagara Falls'),,niagara-falls-ny,us,NY,niagara-falls,yes,city
 sbcounty.granicus.com,"Santa Barbara County, CA",us:county:06083,"Santa Barbara County, CA",county,registry,us_counties.csv Santa Barbara County,,santa-barbara-county-ca,us,CA,santa-barbara-county-ca,no,county
 tarrantcounty.primegov.com,"Tarrant County, TX",us:county:48439,"Tarrant County, TX",county,registry,us_counties.csv Tarrant County,,tarrant-county-tx,us,TX,tarrant-county-tx,no,county
 pub-goderich.escribemeetings.com,"Goderich, ON",ca:csd:3540028,"Goderich, ON",municipality,registry,ca_csd.csv Goderich,,goderich-on,ca,ON,goderich-on,no,city
@@ -215,7 +215,7 @@ delawarecounty.in.gov,"Delaware County, IN",us:county:18035,"Delaware County, IN
 sunrisefl.granicus.com,"City of Sunrise, FL",us:place:1269700,"Sunrise, FL",municipality,registry,us_places.csv Sunrise city,,sunrise-fl,us,FL,sunrise-fl,yes,city
 pub-beaumontab.escribemeetings.com,"City of Beaumont, AB",ca:csd:4811013,"Beaumont, AB",municipality,registry,ca_csd.csv Beaumont,,beaumont-ab,ca,AB,beaumont-ab,yes,city
 coloradosprings.granicus.com,"City of Colorado Springs, CO",us:place:0816000,"Colorado Springs, CO",municipality,registry,us_places.csv Colorado Springs city,,colorado-springs-co,us,CO,colorado-springs-co,yes,city
-pub-kneehillcounty.escribemeetings.com,Kneehill County,rtr:ca:ab:kneehill-county,"Kneehill County, AB",county,unverified,minted from 'Kneehill County',,kneehill-county-ab,ca,AB,kneehill-county,no,county
+pub-kneehillcounty.escribemeetings.com,Kneehill County,ca:csd:4805041,"Kneehill County, AB",municipality,registry,ca:csd:4805041 Kneehill County matched with spacing ignored,,kneehill-county-ab,ca,AB,kneehill-county,no,county
 www.cityofmontclair.org,"Montclair, CA",us:place:0648788,"Montclair, CA",municipality,registry,us_places.csv Montclair city,,montclair-ca,us,CA,montclair-ca,no,city
 pub-marvinnc.escribemeetings.com,Marvin,us:place:3741720,"Marvin, NC",municipality,registry,us_places.csv Marvin village (state from subdomain pub-marvinnc.escribemeetings.com),,marvin-nc,us,NC,marvin,no,city
 pub-merrickville-wolford.escribemeetings.com,"Merrickville-Wolford, ON",ca:csd:3507052,"Merrickville-Wolford, ON",municipality,registry,ca_csd.csv Merrickville-Wolford,,merrickville-wolford-on,ca,ON,merrickville-wolford-on,no,city
@@ -226,7 +226,7 @@ pub-salmonarm.escribemeetings.com,"City of Salmon Arm, BC",ca:csd:5939032,"Salmo
 coaldale.civicweb.net,Coaldale,,Coaldale,other,unresolved,no state for 'Coaldale',,coaldale,us,,coaldale,no,city
 pub-saugeenshores.escribemeetings.com,"Town of Saugeen Shores, ON",ca:csd:3541045,"Saugeen Shores, ON",municipality,registry,ca_csd.csv Saugeen Shores,,saugeen-shores-on,ca,ON,town-of-saugeen-shores-on,yes,city
 buttecoca.portal.civicclerk.com,"Butte County, CA",us:county:06007,"Butte County, CA",county,registry,us_counties.csv Butte County,,butte-county-ca,us,CA,butte-county-ca,no,county
-pub-shelburne.escribemeetings.com,Town of Shelburne,ca:csd:3522021,"Shelburne, ON",municipality,inferred,every other resolved row for pub-shelburne.escribemeetings.com agrees on ca:csd:3522021,,shelburne-on,ca,ON,town-of-shelburne,yes,city
+pub-shelburne.escribemeetings.com,Town of Shelburne,ca:csd:3522021,"Shelburne, ON",municipality,inferred,tenant pub-shelburne.escribemeetings.com resolves to ca:csd:3522021 and the names agree ('Town of Shelburne'),,shelburne-on,ca,ON,town-of-shelburne,yes,city
 pub-lincoln.escribemeetings.com,Town of Lincoln,,Town of Lincoln,municipality,unresolved,no state for 'Town of Lincoln',,town-of-lincoln,us,,town-of-lincoln,yes,city
 www.westhamptonbeach.gov,"Westhampton Beach, NY",us:place:3680181,"Westhampton Beach, NY",municipality,registry,us_places.csv Westhampton Beach village,,westhampton-beach-ny,us,NY,westhampton-beach-ny,no,city
 pub-trca.escribemeetings.com,City of Markham,rtr:ca:on:toronto-and-region-conservation-authority,"Toronto and Region Conservation Authority, ON",special_district,pinned,tenant_overrides.csv pub-trca.escribemeetings.com source=architecture_doc_1_3,,toronto-and-region-conservation-authority-on,ca,ON,markham,yes,city
@@ -287,7 +287,7 @@ pub-anmore.escribemeetings.com,"Anmore, BC",ca:csd:5915038,"Anmore, BC",municipa
 pub-evans.escribemeetings.com,"Evans, CO",us:place:0825280,"Evans, CO",municipality,registry,us_places.csv Evans city,,evans-co,us,CO,evans-co,no,city
 pub-orangeville.escribemeetings.com,Orangeville,ca:csd:3522014,"Orangeville, ON",municipality,registry,ca_csd.csv Orangeville (state from tenant_hints.csv pub-orangeville.escribemeetings.com),,orangeville-on,ca,ON,orangeville,no,city
 pub-wellington.escribemeetings.com,County of Wellington,ca:cd:3523,"Wellington, ON",county,registry,ca_cd.csv Wellington (state from tenant_hints.csv pub-wellington.escribemeetings.com),,wellington-on,ca,ON,county-of-wellington,no,county
-pub-porthope.escribemeetings.com,Port Hope,,Port Hope,special_district,unresolved,no state for 'Port Hope',,port-hope,us,,port-hope,no,city
+pub-porthope.escribemeetings.com,Port Hope,,Port Hope,other,unresolved,no state for 'Port Hope',,port-hope,us,,port-hope,no,city
 pub-stthomas.escribemeetings.com,"City of St. Thomas, ON",ca:csd:3534021,"St. Thomas, ON",municipality,registry,ca_csd.csv St. Thomas,,st-thomas-on,ca,ON,st-thomas-on,yes,city
 pub-cornerbrook.escribemeetings.com,"City of Corner Brook, NL",ca:csd:1005018,"Corner Brook, NL",municipality,registry,ca_csd.csv Corner Brook,,corner-brook-nl,ca,NL,corner-brook-nl,yes,city
 pub-mountpearl.escribemeetings.com,"City of Mount Pearl, NL",ca:csd:1001542,"Mount Pearl, NL",municipality,registry,ca_csd.csv Mount Pearl,,mount-pearl-nl,ca,NL,mount-pearl-nl,yes,city
@@ -295,7 +295,7 @@ nassaufl.granicus.com,"Nassau County, FL",us:county:12089,"Nassau County, FL",co
 pub-northumberland.escribemeetings.com,County of Northumberland,us:county:42097,"Northumberland County, PA",county,registry,us_counties.csv Northumberland County (state from tenant_hints.csv pub-northumberland.escribemeetings.com),,northumberland-county-pa,us,PA,county-of-northumberland,no,county
 parkerco.portal.civicclerk.com,"Parker, CO",us:place:0857630,"Parker, CO",municipality,registry,us_places.csv Parker town,,parker-co,us,CO,parker-co,no,city
 mapleton.civicweb.net,Township of Mapleton,,Township of Mapleton,township,unresolved,no state for 'Township of Mapleton',,township-of-mapleton,us,,township-of-mapleton,yes,city
-princeton.civicweb.net,Town of Princeton,us:place:3753820,"Princeton, NC",municipality,registry,us_places.csv Princeton town,,princeton-nc,us,NC,town-of-princeton,yes,city
+princeton.civicweb.net,Town of Princeton,,Town of Princeton,municipality,unresolved,no state for 'Town of Princeton',,town-of-princeton,us,,town-of-princeton,yes,city
 louisvilleco.portal.civicclerk.com,"Louisville, CO",us:place:0846355,"Louisville, CO",municipality,registry,us_places.csv Louisville city,,louisville-co,us,CO,louisville-co,no,city
 eldorado.granicus.com,"El Dorado County, CA",us:county:06017,"El Dorado County, CA",county,registry,us_counties.csv El Dorado County,,el-dorado-county-ca,us,CA,el-dorado-county-ca,no,county
 hillsboroughcounty.granicus.com,"Hillsborough County, FL",us:county:12057,"Hillsborough County, FL",county,registry,us_counties.csv Hillsborough County,,hillsborough-county-fl,us,FL,hillsborough-county-fl,no,county
@@ -346,7 +346,7 @@ lancastercosc.portal.civicclerk.com,"Lancaster County, SC",us:county:45057,"Lanc
 olatheks.granicus.com,"City of Olathe, KS",us:place:2052575,"Olathe, KS",municipality,registry,us_places.csv Olathe city,,olathe-ks,us,KS,olathe-ks,yes,city
 pcbgov.granicus.com,"Panama City Beach, FL",us:place:1254725,"Panama City Beach, FL",municipality,registry,us_places.csv Panama City Beach city,,panama-city-beach-fl,us,FL,panama-city-beach-fl,no,city
 pflugerville.granicus.com,"City of Pflugerville, TX",us:place:4857176,"Pflugerville, TX",municipality,registry,us_places.csv Pflugerville city,,pflugerville-tx,us,TX,pflugerville-tx,yes,city
-dcccd.new.swagit.com,City of Dallas,us:place:4821628,"Duncanville, TX",municipality,inferred,every other resolved row for dcccd.new.swagit.com agrees on us:place:4821628,,duncanville-tx,us,TX,dallas,yes,city
+dcccd.new.swagit.com,City of Dallas,,City of Dallas,municipality,unresolved,no state for 'City of Dallas',,city-of-dallas,us,,dallas,yes,city
 cityofrehoboth.civicweb.net,"Rehoboth, MA",us:cousub:2500556375,"Rehoboth Town, MA",township,registry,us_cousubs.csv Rehoboth town,,rehoboth-town-ma,us,MA,rehoboth-ma,no,city
 pleasanthill.granicus.com,City of Pleasant Hill,,City of Pleasant Hill,municipality,unresolved,no state for 'City of Pleasant Hill',,city-of-pleasant-hill,us,,pleasant-hill,yes,city
 cityofwasilla.civicweb.net,"City of Wasilla, AK",us:place:0283080,"Wasilla, AK",municipality,registry,us_places.csv Wasilla city,,wasilla-ak,us,AK,wasilla-ak,yes,city
@@ -423,7 +423,7 @@ lambton.civicweb.net,"Lambton, QC",ca:csd:2430095,"Lambton, QC",municipality,reg
 cityofedgewater.granicus.com,"City of Edgewater, FL",us:place:1219825,"Edgewater, FL",municipality,registry,us_places.csv Edgewater city,,edgewater-fl,us,FL,edgewater-fl,yes,city
 andoverks.civicweb.net,Andover,us:place:2001800,"Andover, KS",municipality,registry,us_places.csv Andover city (state from subdomain andoverks.civicweb.net),,andover-ks,us,KS,andover,no,city
 cityoffayetteville.granicus.com,"City of Fayetteville, NC",us:place:3722920,"Fayetteville, NC",municipality,registry,us_places.csv Fayetteville city,,fayetteville-nc,us,NC,fayetteville-nc,yes,city
-cityofnorthport.granicus.com,"North Port, FL",rtr:us:fl:north-port,"North Port, FL",special_district,unverified,"minted from 'North Port, FL'",,north-port-fl,us,FL,north-port-fl,no,city
+cityofnorthport.granicus.com,"North Port, FL",us:place:1249675,"North Port, FL",municipality,registry,us_places.csv North Port city,,north-port-fl,us,FL,north-port-fl,no,city
 brookfieldil.civicweb.net,Village of Brookfield,us:place:1708576,"Brookfield (village), IL",municipality,registry,us_places.csv Brookfield village (state from subdomain brookfieldil.civicweb.net),,brookfield-village-il,us,IL,village-of-brookfield,yes,city
 cityofnsb.granicus.com,"New Smyrna Beach, FL",us:place:1248625,"New Smyrna Beach, FL",municipality,registry,us_places.csv New Smyrna Beach city,,new-smyrna-beach-fl,us,FL,new-smyrna-beach-fl,no,city
 cityofpalmdesert.granicus.com,"City of Palm Desert, CA",us:place:0655184,"Palm Desert, CA",municipality,registry,us_places.csv Palm Desert city,,palm-desert-ca,us,CA,palm-desert-ca,yes,city
@@ -473,7 +473,7 @@ cityofgastonia.granicus.com,"City of Gastonia, NC",us:place:3725580,"Gastonia, N
 hennepinmn.granicus.com,"County of Hennepin, MN",us:county:27053,"Hennepin County, MN",county,registry,us_counties.csv Hennepin County,,hennepin-county-mn,us,MN,county-of-hennepin-mn,no,county
 grosseile.civicweb.net,"Township of Grosse Ile, MI",us:cousub:2616335420,"Grosse Ile Township, MI",township,registry,us_cousubs.csv Grosse Ile township,,grosse-ile-township-mi,us,MI,township-of-grosse-ile-mi,yes,city
 hollywoodfl.granicus.com,"Hollywood, FL",us:place:1232000,"Hollywood, FL",municipality,registry,us_places.csv Hollywood city,,hollywood-fl,us,FL,hollywood-fl,no,city
-honolulu.granicus.com,City of Honolulu,rtr:us:hi:honolulu,"City of Honolulu, HI",municipality,pinned,tenant_overrides.csv honolulu.granicus.com source=inferred_unique_name,,city-of-honolulu-hi,us,HI,honolulu,yes,city
+honolulu.granicus.com,City of Honolulu,us:county:15003,"City and County of Honolulu, HI",county,pinned,tenant_overrides.csv honolulu.granicus.com source=consolidated_government,,city-and-county-of-honolulu-hi,us,HI,honolulu,yes,city
 haslet.civicweb.net,"City of Haslet, TX",us:place:4832720,"Haslet, TX",municipality,registry,us_places.csv Haslet city,,haslet-tx,us,TX,haslet-tx,yes,city
 horrycounty.granicus.com,"Horry County, SC",us:county:45051,"Horry County, SC",county,registry,us_counties.csv Horry County,,horry-county-sc,us,SC,horry-county-sc,no,county
 humboldt.granicus.com,"Humboldt County, CA",us:county:06023,"Humboldt County, CA",county,registry,us_counties.csv Humboldt County,,humboldt-county-ca,us,CA,humboldt-county-ca,no,county
@@ -499,7 +499,7 @@ kenora.civicweb.net,"City of Kenora, ON",ca:csd:3560010,"Kenora, ON",municipalit
 marietta.granicus.com,"City of Marietta, GA",us:place:1349756,"Marietta, GA",municipality,registry,us_places.csv Marietta city,,marietta-ga,us,GA,marietta-ga,yes,city
 venice.granicus.com,"Venice, FL",us:place:1273900,"Venice, FL",municipality,registry,us_places.csv Venice city,,venice-fl,us,FL,venice-fl,no,city
 martin.granicus.com,"Martin County, FL",us:county:12085,"Martin County, FL",county,registry,us_counties.csv Martin County,,martin-county-fl,us,FL,martin-county-fl,no,county
-cityofpt.granicus.com,"City of Port Townsend, WA",rtr:us:wa:port-townsend,"City of Port Townsend, WA",special_district,unverified,"minted from 'City of Port Townsend, WA'",,city-of-port-townsend-wa,us,WA,port-townsend-wa,yes,city
+cityofpt.granicus.com,"City of Port Townsend, WA",us:place:5355855,"Port Townsend, WA",municipality,registry,us_places.csv Port Townsend city,,port-townsend-wa,us,WA,port-townsend-wa,yes,city
 lethcounty.civicweb.net,Lethbridge County,,Lethbridge County,county,unresolved,no state for 'Lethbridge County',,lethbridge-county,us,,lethbridge-county,no,county
 mendocino.granicus.com,"Mendocino County, CA",us:county:06045,"Mendocino County, CA",county,registry,us_counties.csv Mendocino County,,mendocino-county-ca,us,CA,mendocino-county-ca,no,county
 mallorytown.civicweb.net,"Township of Front of Yonge, ON",ca:csd:3507017,"Front of Yonge, ON",municipality,registry,ca_csd.csv Front of Yonge,,front-of-yonge-on,ca,ON,township-of-front-of-yonge-on,yes,city
@@ -545,13 +545,13 @@ ridemetro.granicus.com,"Harris County, TX",us:county:48201,"Harris County, TX",c
 mokena.granicus.com,"Village of Mokena, IL",us:place:1749854,"Mokena, IL",municipality,registry,us_places.csv Mokena village,,mokena-il,us,IL,village-of-mokena-il,yes,city
 ryebrook.civicweb.net,"Village of Rye Brook, NY",us:place:3664325,"Rye Brook, NY",municipality,registry,us_places.csv Rye Brook village,,rye-brook-ny,us,NY,village-of-rye-brook-ny,yes,city
 torbay.civicweb.net,"Torbay, NL",ca:csd:1001509,"Torbay, NL",municipality,registry,ca_csd.csv Torbay,,torbay-nl,ca,NL,torbay-nl,no,city
-townofvulcan.civicweb.net,"Town of Vulcan, AB",rtr:ca:ab:vulcan,"Town of Vulcan, AB",municipality,unverified,"minted from 'Town of Vulcan, AB'",,town-of-vulcan-ab,ca,AB,town-of-vulcan-ab,yes,city
+townofvulcan.civicweb.net,"Town of Vulcan, AB",ca:csd:4805006,"Vulcan, AB",municipality,registry,ca_csd.csv Vulcan,,vulcan-ab,ca,AB,town-of-vulcan-ab,yes,city
 tumblerridge.civicweb.net,"Tumbler Ridge, BC",ca:csd:5955003,"Tumbler Ridge, BC",municipality,registry,ca_csd.csv Tumbler Ridge,,tumbler-ridge-bc,ca,BC,tumbler-ridge-bc,no,city
 wasagabeach.civicweb.net,"Wasaga Beach, ON",ca:csd:3543064,"Wasaga Beach, ON",municipality,registry,ca_csd.csv Wasaga Beach,,wasaga-beach-on,ca,ON,wasaga-beach-on,no,city
 waxhaw.civicweb.net,"Town of Waxhaw, NC",us:place:3771460,"Waxhaw, NC",municipality,registry,us_places.csv Waxhaw town,,waxhaw-nc,us,NC,town-of-waxhaw-nc,yes,city
 westperth.civicweb.net,"West Perth, ON",ca:csd:3531025,"West Perth, ON",municipality,registry,ca_csd.csv West Perth,,west-perth-on,ca,ON,west-perth-on,no,city
 wetaskiwin.civicweb.net,"Wetaskiwin, AB",ca:csd:4811002,"Wetaskiwin, AB",municipality,registry,ca_csd.csv Wetaskiwin,,wetaskiwin-ab,ca,AB,wetaskiwin-ab,no,city
-whitewaterregion.civicweb.net,"Whitewater Region, ON",rtr:ca:on:whitewater-region,"Whitewater Region, ON",county,unverified,"minted from 'Whitewater Region, ON'",,whitewater-region-on,ca,ON,whitewater-region-on,no,county
+whitewaterregion.civicweb.net,"Whitewater Region, ON",ca:csd:3547056,"Whitewater Region, ON",municipality,registry,ca:csd:3547056 Whitewater Region matched with spacing ignored,,whitewater-region-on,ca,ON,whitewater-region-on,no,county
 hearst.civicweb.net,"Town of Hearst, ON",ca:csd:3556076,"Hearst, ON",municipality,registry,ca_csd.csv Hearst,,hearst-on,ca,ON,town-of-hearst-on,yes,city
 townofryeny.civicweb.net,Town of Rye,us:cousub:3611964320,"Rye (town), NY",township,registry,us_cousubs.csv Rye town (state from subdomain townofryeny.civicweb.net),,rye-town-ny,us,NY,town-of-rye,yes,city
 silverthorne.civicweb.net,"Town of Silverthorne, CO",us:place:0870525,"Silverthorne, CO",municipality,registry,us_places.csv Silverthorne town,,silverthorne-co,us,CO,town-of-silverthorne-co,yes,city
@@ -573,7 +573,7 @@ ramara.civicweb.net,"Township of Ramara, ON",ca:csd:3543019,"Ramara, ON",municip
 sarnia.civicweb.net,"Sarnia, ON",ca:csd:3538030,"Sarnia, ON",municipality,registry,ca_csd.csv Sarnia,,sarnia-on,ca,ON,sarnia-on,no,city
 al-owenscrossroads.civicplus.com,"City of Owens Cross Roads, AL",us:place:0157504,"Owens Cross Roads, AL",municipality,registry,us_places.csv Owens Cross Roads city,,owens-cross-roads-al,us,AL,owens-cross-roads-al,yes,city
 me-skowhegan2.civicplus.com,"Town of Skowhegan, ME",us:cousub:2302568910,"Skowhegan Town, ME",township,registry,us_cousubs.csv Skowhegan town,,skowhegan-town-me,us,ME,town-of-skowhegan-me,yes,city
-mi-caledoniachartertownship.civicplus.com,Caledonia Township,rtr:us:mi:caledonia-township,"Caledonia Township, MI",township,unverified,minted from 'Caledonia Township',,caledonia-township-mi,us,MI,caledonia-township,no,city
+mi-caledoniachartertownship.civicplus.com,Caledonia Township,,Caledonia Township,township,unresolved,"'Caledonia Township' names no government on mi-caledoniachartertownship.civicplus.com, whose pages resolve to us:cousub:2615512520, and its only state came from that tenant",,caledonia-township,us,,caledonia-township,no,city
 mo-brentwood4.civicplus.com,"Brentwood, MO",us:place:2908236,"Brentwood, MO",municipality,registry,us_places.csv Brentwood city,,brentwood-mo,us,MO,brentwood-mo,no,city
 pa-mediaborough.civicplus.com,Media Borough,us:place:4248480,"Media, PA",municipality,registry,us_places.csv Media borough (state from tenant_hints.csv pa-mediaborough.civicplus.com),,media-pa,us,PA,media-borough,no,city
 ca-clearlake.civicplus.com,"City of Clearlake, CA",us:place:0613945,"Clearlake, CA",municipality,registry,us_places.csv Clearlake city,,clearlake-ca,us,CA,clearlake-ca,yes,city
@@ -587,7 +587,7 @@ co-fruita.civicplus.com,"City of Fruita, CO",us:place:0828745,"Fruita, CO",munic
 co-palmerlake.civicplus.com,"Town of Palmer Lake, CO",us:place:0857025,"Palmer Lake, CO",municipality,registry,us_places.csv Palmer Lake town,,palmer-lake-co,us,CO,town-of-palmer-lake-co,yes,city
 fl-aventura.civicplus.com,"City of Aventura, FL",us:place:1202681,"Aventura, FL",municipality,registry,us_places.csv Aventura city,,aventura-fl,us,FL,aventura-fl,yes,city
 fl-crestview.civicplus.com,City of Crestview,us:place:1215475,"Crestview, FL",municipality,registry,us_places.csv Crestview city (state from tenant_hints.csv fl-crestview.civicplus.com),,crestview-fl,us,FL,crestview,yes,city
-fl-portorange.civicplus.com,"Port Orange, FL",rtr:us:fl:port-orange,"Port Orange, FL",special_district,unverified,"minted from 'Port Orange, FL'",,port-orange-fl,us,FL,port-orange-fl,no,city
+fl-portorange.civicplus.com,"Port Orange, FL",us:place:1258575,"Port Orange, FL",municipality,registry,us_places.csv Port Orange city,,port-orange-fl,us,FL,port-orange-fl,no,city
 ga-avondaleestates.civicplus.com,"City of Avondale Estates, GA",us:place:1304644,"Avondale Estates, GA",municipality,registry,us_places.csv Avondale Estates city,,avondale-estates-ga,us,GA,avondale-estates-ga,yes,city
 ga-rome.civicplus.com,City of Rome,us:place:1366668,"Rome, GA",municipality,registry,us_places.csv Rome city (state from tenant_hints.csv ga-rome.civicplus.com),,rome-ga,us,GA,rome,yes,city
 ga-walnutgrove.civicplus.com,"Walnut Grove, GA",us:place:1380228,"Walnut Grove, GA",municipality,registry,us_places.csv Walnut Grove city,,walnut-grove-ga,us,GA,walnut-grove-ga,no,city
@@ -833,7 +833,7 @@ riodell-ca.municodemeetings.com,"Rio Dell, CA",us:place:0660900,"Rio Dell, CA",m
 sanger-tx.municodemeetings.com,"Sanger, TX",us:place:4865408,"Sanger, TX",municipality,registry,us_places.csv Sanger city,,sanger-tx,us,TX,sanger-tx,no,city
 sheboygan-wi.municodemeetings.com,"Sheboygan, WI",us:place:5572975,"Sheboygan (city), WI",municipality,registry,us_places.csv Sheboygan city,,sheboygan-city-wi,us,WI,sheboygan-wi,no,city
 southernshores-nc.municodemeetings.com,"Southern Shores, NC",us:place:3763130,"Southern Shores, NC",municipality,registry,us_places.csv Southern Shores town,,southern-shores-nc,us,NC,southern-shores-nc,no,city
-stjames-mn.municodemeetings.com,"St James, MN",rtr:us:mn:st-james,"St James, MN",other,unverified,"minted from 'St James, MN'",,st-james-mn,us,MN,st-james-mn,no,city
+stjames-mn.municodemeetings.com,"St James, MN",us:place:2757040,"St. James (city), MN",municipality,registry,us:place:2757040 St. James city matched with spacing ignored,,st-james-city-mn,us,MN,st-james-mn,no,city
 stonecrest-ga.municodemeetings.com,"Stonecrest, GA",us:place:1373784,"Stonecrest, GA",municipality,registry,us_places.csv Stonecrest city,,stonecrest-ga,us,GA,stonecrest-ga,no,city
 swansboro-nc.municodemeetings.com,"Swansboro, NC",us:place:3766360,"Swansboro, NC",municipality,registry,us_places.csv Swansboro town,,swansboro-nc,us,NC,swansboro-nc,no,city
 sylva-nc.municodemeetings.com,"Sylva, NC",us:place:3766500,"Sylva, NC",municipality,registry,us_places.csv Sylva town,,sylva-nc,us,NC,sylva-nc,no,city

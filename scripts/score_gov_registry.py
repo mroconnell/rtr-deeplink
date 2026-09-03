@@ -160,24 +160,46 @@ def has_municipal_type_word(jurisdiction: str) -> bool:
 
 
 def _tenant_consensus(rows: List[dict]) -> Dict[str, str]:
-    """tenant_host -> the one gov_id every resolved row for that host
-    agrees on, for the same-tenant consistency rung (resolver rung 5b).
+    """tenant_host -> the DOMINANT gov_id among that host's rows that
+    resolved through a national table or a pin -- the resolver's rung 5b
+    input.
 
     A pre-pass, because the resolver is pure and cannot see a page's
-    siblings. In Phase 2 this becomes a query against `meeting_pages` by
-    host; here it is a group-by over the sheet. Only hosts where EVERY
-    keyed row agrees contribute -- a host serving two governments
-    (Cottage Grove, uatccta) must produce nothing rather than pick one,
-    which is the same decline-rather-than-guess posture as everywhere
-    else in the ladder.
+    siblings. `archive/db/crud._tenant_dominant_gov_id()` is the
+    production counterpart, a query against `meeting_pages` by tenant
+    host, and the two must agree on what "dominant" means: the most
+    common such gov_id, and nothing at all when two are tied.
+
+    Only `registry` and `pinned` rows vote. A minted or inferred id is
+    not evidence about a tenant -- it is the resolver's own earlier
+    guess, and letting it vote here would be the same
+    self-reinforcement `registry.curated_aliases()` refuses for aliases.
+
+    Unlike Phase 1b's version this does NOT require unanimity, because
+    it no longer has to carry the whole safety burden on its own: the
+    resolver adopts the answer only when the names also agree
+    (`resolver._tenant_consistency()`). Requiring unanimity here instead
+    would have missed exactly the cases worth collapsing --
+    `milwaukee.granicus.com` holds a minted id beside its real one, which
+    is the fragmentation, so "every row agrees" is false precisely when
+    the rung is needed.
     """
-    by_host: Dict[str, set] = defaultdict(set)
+    by_host: Dict[str, Counter] = defaultdict(Counter)
     for row in rows:
         host = (row.get("tenant_host") or "").strip().lower()
         gov_id = row.get("gov_id") or ""
-        if host and gov_id and not gov_id.startswith("rtr:unknown:"):
-            by_host[host].add(gov_id)
-    return {host: next(iter(ids)) for host, ids in by_host.items() if len(ids) == 1}
+        if not host or not gov_id or gov_id.startswith("rtr:"):
+            continue
+        if row.get("tier") not in ("registry", "pinned"):
+            continue
+        by_host[host][gov_id] += 1
+    out: Dict[str, str] = {}
+    for host, counts in by_host.items():
+        ranked = counts.most_common(2)
+        if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+            continue
+        out[host] = ranked[0][0]
+    return out
 
 
 def score_rows(
@@ -654,10 +676,19 @@ def _write_summary(
     )
     lines.append("")
 
+    # A hand-verified `authoritative` pin is deliberately exempt: it is
+    # the one tier allowed to override a classified name, and the only
+    # rows it exempts today are the two consolidated city-counties on
+    # `honolulu.granicus.com`, where "City of Honolulu" landing on
+    # `us:county:15003` is the CORRECT answer -- Hawaii has no separate
+    # municipal government there. Counting those as failures would ask
+    # the resolver to un-learn a fact a human established.
     municipal_on_county = [
         r
         for r in all_rows
-        if r["municipal_type_word"] == "yes" and r["gov_id"].startswith("us:county:")
+        if r["municipal_type_word"] == "yes"
+        and r["gov_id"].startswith("us:county:")
+        and r["tier"] != "pinned"
     ]
     xx_ids = [r for r in all_rows if ":xx:" in r["gov_id"]]
     auto_only_pins = [

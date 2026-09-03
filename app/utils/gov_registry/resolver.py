@@ -282,6 +282,36 @@ _CA_UPPER_TIER_AFFIX_RE = re.compile(
 )
 
 
+# "City of Sunset Valley, Travis County" -- a place named together with
+# the county it sits in. Both real, both archived, and both minted an
+# `rtr:` id for a government the place table already holds.
+_COUNTY_QUALIFIER_RE = re.compile(
+    r",\s*(?P<county>[A-Za-z.'\- ]+\s(?:County|Parish))\s*$", re.I
+)
+
+
+def _strip_county_qualifier(name: str) -> Tuple[str, str]:
+    """ "City of Sunset Valley, Travis County" -> ("City of Sunset
+    Valley", "Travis County"). The county is *enrichment* -- where the
+    government sits -- and never its type or its identity (§2's
+    place-is-not-identity rule, applied to a string that names both).
+
+    Deliberately gated on the remaining prefix carrying a municipal type
+    word, which both real archived cases do ("City of Sunset Valley,
+    Travis County, TX", "Town of Amherst, Erie County, NY" -- the only
+    two strings of this shape in the 2026-09-02 export). Without that
+    gate the same rule would eat the tail of "Board of Supervisors,
+    Fresno County" and resolve a county's page to a body name.
+    """
+    m = _COUNTY_QUALIFIER_RE.search(name)
+    if not m:
+        return name, ""
+    prefix = name[: m.start()].strip().rstrip(",")
+    if not prefix or not _LEADING_TYPE_RE.match(prefix):
+        return name, ""
+    return prefix, m.group("county").strip()
+
+
 def _leading_type_word(name: str) -> str:
     """ "Town of Cottage Grove" -> "town".
 
@@ -351,6 +381,48 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
         if place_word == type_preference and cousub_word != type_preference:
             return place, None
     return place, cousub
+
+
+def _ca_csd_disambiguate(name: str, state: str, type_preference: str):
+    """The one CSD a name means when several share a normalized key --
+    or None, which is still the default answer.
+
+    Two tie-breaks, in order, and only ever consulted after the
+    exactly-one rule has already declined, so neither can create an
+    ambiguity that was not already there.
+
+    1. **The name itself.** `_normalize_name()` strips a trailing type
+       word, which is right for querying and wrong for telling two
+       Alberta governments apart: "Leduc County" (a municipal district)
+       and "Leduc" (the city) both index under "leduc". They are not one
+       name shared by two governments, they are two different names the
+       index flattened, and a page that wrote "Leduc" meant the one
+       actually called Leduc. Prefer the candidate whose own name matches
+       the query with nothing stripped.
+    2. **The raw name's municipal type word**, the Canadian counterpart
+       of the LSAD tie-break `_general_purpose_lookup()` already does for
+       US places. This is the genuine shared-name case: Yarmouth, NS is
+       both a town (1202006) and the municipal district around it
+       (1202004), so only "Town of Yarmouth" can pick one. Without a type
+       word this declines, and a real shared name mints -- which is the
+       honest answer.
+    """
+    rows = tables.ca_csd().lookup_all(name, state)
+    if len(rows) < 2:
+        return None
+    query = tables.squash(_LEADING_ENTITY_PREFIX_RE.sub("", name).strip())
+    exact = [r for r in rows if tables.squash(r.name) == query]
+    if len(exact) == 1:
+        return exact[0]
+    candidates = exact if exact else rows
+    if not type_preference:
+        return None
+    matching = [
+        r
+        for r in candidates
+        if tables.CSD_TYPE_WORDS.get(r.type_word.upper()) == type_preference
+    ]
+    return matching[0] if len(matching) == 1 else None
 
 
 def _consolidated_lookup(name: str, state: str):
@@ -438,7 +510,9 @@ def _national_lookup(
             # StatCan id -- SGC codes subdivisions and divisions, not
             # boards (decision D4). They mint.
             return None
-        hit = tables.ca_csd().lookup(name, state)
+        hit = tables.ca_csd().lookup(name, state) or _ca_csd_disambiguate(
+            name, state, type_preference
+        )
         if hit:
             return (
                 _as_government(
@@ -453,6 +527,15 @@ def _national_lookup(
                 f"ca_csd.csv {hit.name}",
                 classify.MUNICIPALITY,
             )
+        if type_preference:
+            # A name that SAYS it is a town/city/village may never come
+            # back as a census division -- the Canadian half of the same
+            # gate the US county table already has. "Town of Yarmouth,
+            # NS" resolved to `ca:cd:1202`, the Yarmouth census division,
+            # because two CSDs share the name and the exactly-one rule
+            # declined; filing a town under its county is the mistake
+            # that gate exists to stop, in either country.
+            return None
         # An upper-tier Canadian government whose name did not read as
         # one ("Peel" bare, say) -- try the census division before giving
         # up, since it is the only other general-purpose level.
@@ -562,6 +645,26 @@ def _national_lookup(
     # order the enricher already trusts -- place, then county (a name
     # that says "County" classified above, so this catches only a bare
     # county name), then county subdivision.
+    if not state and tables.ca_csd().lookup(name, None):
+        # A name with no state is looked up NATIONALLY, and "nationally"
+        # silently meant "in the United States" -- `country_for_state("")`
+        # is "us", so the Canadian tables were never consulted and a name
+        # unique in the US table looked unambiguous while a Canadian
+        # government of the same name sat unchecked. 16 real rows, and
+        # the wrong ones are not subtle: Abbotsford BC filed as
+        # Abbotsford WI, Edmonton AB as Edmonton KY, Niagara Falls ON as
+        # Niagara Falls NY, Langford and White Rock BC as two South
+        # Dakota places, Port Hope ON as Port Hope MI.
+        #
+        # This is the exactly-one rule applied honestly rather than
+        # per-country. Declining costs an `unresolved` row on the pin
+        # worklist, which a single landing-page fetch settles; resolving
+        # costs a page in the wrong country's hub, which nothing catches.
+        # Three of the 16 (Nampa ID, New Carlisle OH, Hawarden IA) are
+        # genuinely the US one and are the price -- each has a real
+        # Canadian namesake, so the ambiguity is real and a pin is the
+        # honest way to break it.
+        return None
     place, cousub = _general_purpose_lookup(name, state, type_preference)
     if place:
         return (
@@ -835,6 +938,204 @@ def _looks_like_a_name(name: str) -> bool:
     return any(t.lower() in vocabulary for t in long_tokens)
 
 
+def _with_qualifier(evidence: str, county_qualifier: str) -> str:
+    """Record a county the page named alongside its government, so the
+    evidence says the county was *seen and set aside* rather than
+    silently dropped. It is enrichment, never the identity (§2)."""
+    return (
+        f"{evidence} (page also named {county_qualifier})"
+        if county_qualifier
+        else evidence
+    )
+
+
+# Leading noise a page writes in front of a government's name but the
+# registry never does: "The City of Milwaukee, WI" and "Milwaukee" are
+# one government. Stripped only for the tenant-consistency COMPARISON
+# below, never for a lookup key -- `_normalize_candidates()` owns that.
+_COMPARISON_PREFIX_RE = re.compile(
+    r"^(?:the\s+)?(?:city|town|village|borough|township|municipality|county|parish)"
+    r"\s+(?:and\s+(?:county|borough)\s+)?of\s+",
+    re.I,
+)
+
+
+_COMPARISON_PREFIX_KIND_RE = re.compile(
+    r"^(?:the\s+)?(?P<kind>city|town|village|borough|township|municipality|county|"
+    r"parish)\s+(?:and\s+(?:county|borough)\s+)?of\s+",
+    re.I,
+)
+
+# Which `gov_type` an entity prefix is allowed to agree with. A page that
+# writes "County of Clark" means a county and a page that writes "City of
+# Ashland" does not -- and the two names differ by a word the comparison
+# below deliberately strips, so without this the strip would let a city
+# collapse into its same-named county. That is the exact Phase 1b bug,
+# arriving through the consistency rung instead of the county table.
+_KIND_TYPES = {
+    "county": {classify.COUNTY},
+    "parish": {classify.COUNTY},
+    "city": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    "town": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    "village": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    "borough": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    "township": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    "municipality": {classify.MUNICIPALITY, classify.TOWNSHIP},
+}
+
+
+def _entity_kind(name: str) -> str:
+    """ "County of Clark" -> "county"; "The City of Milwaukee" -> "city";
+    a name with no entity prefix -> ""."""
+    m = _COMPARISON_PREFIX_KIND_RE.match((name or "").strip())
+    return m.group("kind").lower() if m else ""
+
+
+def _base_name_keys(name: str) -> set:
+    """Every comparison key for a name: its entity prefix removed, then
+    each of `tables.lookup_keys()`' normalizations with all spacing and
+    punctuation squeezed out.
+
+    Three real shapes have to meet in here. "The City of Milwaukee, WI"
+    and "Milwaukee" -- a leading phrase the registry never writes.
+    "Gales Burg" and "Galesburg" -- a spacing slip. "County of Clark" and
+    "Clark County" -- the SAME word, on opposite sides of the name, which
+    `lookup_keys()` already knows how to strip because that is how it
+    indexes a table in the first place. `_entity_kind()` above is what
+    keeps that last strip from also making a city agree with its county.
+    """
+    stripped = _COMPARISON_PREFIX_KIND_RE.sub("", (name or "").strip())
+    keys = {tables.squash(k) for k in tables.lookup_keys(stripped)}
+    keys.add(tables.squash(stripped))
+    keys.discard("")
+    return keys
+
+
+def _tenant_consistency(
+    tenant_gov_id: Optional[str], name: str, state: str
+) -> Optional[Government]:
+    """The government this row belongs to according to its own tenant --
+    but ONLY when the names agree.
+
+    The rung itself is architecture doc §5's same-tenant consistency
+    idea; the guard is what Phase 1b's sheet pre-pass was missing, and it
+    over-fired twice in the 2026-09-02 report without it:
+    `dcccd.new.swagit.com` (Dallas County Community College District)
+    inferred a bleed page reading "City of Dallas" onto Duncanville, and
+    `victoria.civicweb.net`'s bare "City of Victoria" onto whatever its
+    sibling row had resolved to. Neither is a government this page
+    belongs to; both looked resolved.
+
+    Two things must agree, not one:
+
+    * the **base name**, spaces and punctuation stripped -- so "The City
+      of Milwaukee, WI" collapses onto Milwaukee and "Gales Burg" onto
+      Galesburg, while "City of Dallas" does not collapse onto
+      Duncanville;
+    * the **state**, when this row has one -- `juneauak.portal.civicclerk.com`
+      stores two pages as "Juneau, WI" and one as "Juneau, AK", and the
+      names agree perfectly. Adopting the tenant's dominant government
+      there would file the City and Borough of Juneau under a Wisconsin
+      city on the strength of a spelling.
+
+    With no agreement it does nothing at all, which leaves the row
+    `unresolved` and on the list a human works from (§7f).
+    """
+    if not tenant_gov_id:
+        return None
+    gov = registry.governments().get(tenant_gov_id)
+    if not gov:
+        return None
+    if state and gov.state and state.upper() != gov.state.upper():
+        return None
+    kind = _entity_kind(name)
+    if kind and gov.gov_type and gov.gov_type not in _KIND_TYPES.get(kind, set()):
+        return None
+    ours = _base_name_keys(name)
+    if not ours:
+        return None
+    # The registry row's own name, both as the national table spells it
+    # ("College Park city", "Winston-Salem city") and as this repo
+    # displays it ("College Park, MD") -- the Census generic type word is
+    # in one and not the other, and a page writes neither reliably.
+    #
+    # A GENERATED row's `aliases` are deliberately NOT consulted, for the
+    # reason `registry.curated_aliases()` already spells out: on a
+    # generated row that column is a *record of what previously resolved
+    # here*, so reading it back makes a wrong resolution self-reinforcing.
+    # This is not hypothetical -- it fired the first time this guard ran.
+    # `governments.csv` still carried "City of Lees Summit" as an alias of
+    # Winston-Salem, written by the very unguarded pass this rung exists
+    # to replace, and the bleed page collapsed straight back into the
+    # wrong hub with the guard reporting that the names agreed. Only a
+    # hand-written row's aliases are an assertion rather than an echo.
+    theirs = _base_name_keys(gov.gov_name) | _base_name_keys(
+        _split_state(display_name(gov))[0]
+    )
+    if gov.source.startswith(registry.CURATED_SOURCE_PREFIX):
+        for alias in gov.aliases:
+            theirs |= _base_name_keys(alias)
+    return gov if ours & theirs else None
+
+
+def _squashed_national_hit(
+    name: str, state: str, gov_type: Optional[str], country: str, type_preference: str
+) -> Optional[Tuple[Government, str, str]]:
+    """A national-table row whose name matches once every space and
+    hyphen comes off both sides -- tried only when the alternative is
+    minting (rung 5c).
+
+    "Gales Burg" is a real archived jurisdiction on
+    `galesburg.granicus.com`, sitting beside "Galesburg, IL" on the next
+    page. Minting it created a second, permanent id for one government.
+    A squashed match is a weaker signal than a real one, so it runs after
+    every ordinary lookup has already declined and only with a state in
+    hand -- see `tables.NameStateTable.lookup_squashed()`.
+    """
+    if not state:
+        return None
+    if gov_type in classify.NON_PLACE_TYPES:
+        # The non-place branch has its own rule about which table may
+        # answer at all (that is rung 3, the whole LADWP fix), and no
+        # measured case wants it loosened. This stays on the
+        # general-purpose path.
+        return None
+    table_choices = []
+    if country == "ca":
+        # Same shape, one table. Real: `pub-strathroy-caradoc` stores
+        # "Strathroy Caradoc" for the Municipality of Strathroy-Caradoc,
+        # ON -- one hyphen away from `ca:csd:3539036`.
+        table_choices = [(tables.ca_csd(), "ca:csd", classify.MUNICIPALITY)]
+    elif gov_type == classify.COUNTY:
+        table_choices = [(tables.us_counties(), "us:county", classify.COUNTY)]
+    elif gov_type == classify.TOWNSHIP:
+        table_choices = [(tables.us_cousubs(), "us:cousub", classify.TOWNSHIP)]
+    if not table_choices and country != "ca":
+        table_choices = [(tables.us_places(), "us:place", classify.MUNICIPALITY)]
+        if not type_preference:
+            table_choices.append((tables.us_counties(), "us:county", classify.COUNTY))
+    for table, namespace, resolved_type in table_choices:
+        hit = table.lookup_squashed(name, state)
+        if not hit:
+            continue
+        return (
+            _as_government(
+                f"{namespace}:{hit.row_id}",
+                hit.name,
+                resolved_type,
+                country=country,
+                state=hit.state,
+                place_geoid=hit.row_id if namespace == "us:place" else "",
+                county_fips=hit.row_id if namespace == "us:county" else "",
+                sgc_code=hit.row_id if namespace == "ca:csd" else "",
+                source=f"{namespace} (spacing-insensitive match)",
+            ),
+            f"{namespace}:{hit.row_id} {hit.name} matched with spacing ignored",
+            resolved_type,
+        )
+    return None
+
+
 def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
     """`rtr:<country>:<st>:<slug>` -- tier `unverified`, display = the
     cleaned name.
@@ -884,13 +1185,16 @@ def resolve_government(
     `tenants.netloc` already use. `path` and `page_hints` are only
     consulted for a tenant that serves more than one government.
 
-    `tenant_gov_id` is the same-tenant consistency rung (5b): the one
-    `gov_id` every OTHER already-resolved row for this host agrees on.
-    The caller supplies it because the caller is the only thing that can
-    see the other rows -- `scripts/score_gov_registry.py` computes it as
-    a pre-pass over the sheet, and in Phase 2 it becomes a query against
-    `meeting_pages` by host. Passing it is always optional and never
-    changes an answer the tables already gave.
+    `tenant_gov_id` is the same-tenant consistency rung (5b): the
+    dominant `gov_id` among this host's other already-resolved rows. The
+    caller supplies it because the caller is the only thing that can see
+    the other rows -- `scripts/score_gov_registry.py` computes it as a
+    pre-pass over the sheet, and `archive/db/crud.py`'s
+    `_tenant_dominant_gov_id()` as a query against `meeting_pages` by
+    tenant host. Passing it is always optional, never changes an answer
+    the tables already gave, and is adopted only when the two names
+    agree -- see `_tenant_consistency()`, which is the guard the Phase 1b
+    pre-pass lacked.
     """
     host = _tenant_host(tenant_host)
 
@@ -922,6 +1226,7 @@ def resolve_government(
         return _match(gov, TIER_BLANK, "nothing extracted", meeting_body)
 
     name, state = _split_state(cleaned)
+    name, county_qualifier = _strip_county_qualifier(name)
     country = tables.country_for_state(state)
 
     # 3. Classify the TYPE, before any place lookup.
@@ -938,6 +1243,7 @@ def resolve_government(
     # *identity*, and leaves its repaired name available for everything
     # else.
     raw_name, raw_state = _split_state((raw_name or "").strip())
+    raw_name, _raw_county = _strip_county_qualifier(raw_name)
     state = state or raw_state
     country = tables.country_for_state(state)
     raw_type = classify.classify_government_type(raw_name, country=country)
@@ -984,7 +1290,9 @@ def resolve_government(
                 return _match(
                     gov,
                     TIER_REGISTRY,
-                    f"{evidence} (state {state_evidence})",
+                    _with_qualifier(
+                        f"{evidence} (state {state_evidence})", county_qualifier
+                    ),
                     meeting_body,
                 )
             alias_hit = _curated_alias(name, tenant_state)
@@ -992,7 +1300,10 @@ def resolve_government(
                 return _match(
                     alias_hit,
                     TIER_REGISTRY,
-                    f"governments.csv curated alias (state {state_evidence})",
+                    _with_qualifier(
+                        f"governments.csv curated alias (state {state_evidence})",
+                        county_qualifier,
+                    ),
                     meeting_body,
                 )
 
@@ -1002,7 +1313,12 @@ def resolve_government(
         gov, evidence, _resolved_type = hit
         if gov.gov_type == classify.STATE:
             meeting_body = meeting_body or _state_body(name)
-        return _match(gov, TIER_REGISTRY, evidence, meeting_body)
+        return _match(
+            gov,
+            TIER_REGISTRY,
+            _with_qualifier(evidence, county_qualifier),
+            meeting_body,
+        )
 
     # 4b. Curated aliases -- a hand-asserted name for a government whose
     #     Census official name nobody writes. Only `governments.csv` rows
@@ -1013,7 +1329,9 @@ def resolve_government(
         return _match(
             alias_hit,
             TIER_REGISTRY,
-            f"governments.csv curated alias {name!r}",
+            _with_qualifier(
+                f"governments.csv curated alias {name!r}", county_qualifier
+            ),
             meeting_body,
         )
 
@@ -1041,24 +1359,88 @@ def resolve_government(
     #     identity -- it fragments on contact with the same government
     #     named with its state ("City of Easton" and "Easton, PA" would be
     #     two governments), and 624 of the Phase 1 run's rows carried one.
+    state_from_tenant = False
     if not state and host:
         tenant_state, state_evidence = _state_from_tenant(host)
         if tenant_state:
             state = tenant_state
             country = tables.country_for_state(state)
+            state_from_tenant = True
 
-    # 5b. Same-tenant consistency. Every other resolved row for this host
-    #     agrees on one government, so this row belongs to it too. Weaker
-    #     than a table hit and weaker than a pin, hence its own tier.
-    if tenant_gov_id and not state:
-        gov = registry.governments().get(tenant_gov_id)
-        if gov:
-            return _match(
-                gov,
-                TIER_INFERRED,
-                f"every other resolved row for {host} agrees on {tenant_gov_id}",
-                meeting_body,
-            )
+    # 5b. The same national tables once more, ignoring spacing. Ahead
+    #     of the two tenant-derived rungs below, because a table hit is
+    #     evidence and a tenant is context: "Gales Burg" should resolve
+    #     to Galesburg because that is what the table says, not because
+    #     its host happens to agree.
+    squashed = _squashed_national_hit(name, state, gov_type, country, type_preference)
+    if squashed:
+        gov, evidence, _resolved_type = squashed
+        return _match(
+            gov,
+            TIER_REGISTRY,
+            _with_qualifier(evidence, county_qualifier),
+            meeting_body,
+        )
+
+    # 5c. Same-tenant consistency, guarded by name agreement. This row's
+    #     tenant already has a dominant government and this row's name is
+    #     that government's name written differently, so it belongs to it.
+    #     Weaker than a table hit and weaker than a pin, hence its own
+    #     tier -- and it does nothing whenever the names disagree, which
+    #     is what keeps a bleed page (a "City of Lees Summit" row on
+    #     `winston-salem.granicus.com`) out of the wrong hub. See
+    #     `_tenant_consistency()` for the two over-fires the guard fixes.
+    consistent = _tenant_consistency(tenant_gov_id, name, state)
+    if consistent:
+        return _match(
+            consistent,
+            TIER_INFERRED,
+            f"tenant {host} resolves to {consistent.gov_id} and the names agree "
+            f"({name!r})",
+            meeting_body,
+        )
+
+    # 5d. A general-purpose name whose ONLY state came from its
+    #     tenant, on a tenant whose own government it does not name, is a
+    #     bleed page -- not a new government. Left `unresolved` and
+    #     listed, never minted.
+    #
+    #     Real: `winston-salem.granicus.com` stores one page as "City of
+    #     Lees Summit". Lee's Summit is in Missouri; the tenant is in
+    #     North Carolina; the string matched no NC table row. Minting it
+    #     produced `rtr:us:nc:lees-summit` -- a permanent, official-looking
+    #     id for a government that does not exist in that state, which is
+    #     strictly worse than an honest gap because nothing downstream can
+    #     tell it from a real minted district.
+    #
+    #     Non-place types are exempt, and deliberately: decision D2 says a
+    #     housing authority or a water district gets its own minted id
+    #     precisely when no national table covers it, and such a name
+    #     disagreeing with its host city is the NORMAL case for those, not
+    #     evidence of a bleed.
+    if (
+        tenant_gov_id
+        and state_from_tenant
+        and gov_type not in classify.NON_PLACE_TYPES
+        and registry.governments().get(tenant_gov_id)
+    ):
+        reason = (
+            f"{cleaned!r} names no government on {host}, whose pages resolve to "
+            f"{tenant_gov_id}, and its only state came from that tenant"
+        )
+        return _match(
+            Government(
+                gov_id="",
+                gov_name=name,
+                gov_type=gov_type or classify.OTHER,
+                country=country,
+                source="unresolved",
+                evidence=reason,
+            ),
+            TIER_UNRESOLVED,
+            reason,
+            meeting_body,
+        )
 
     # 6. Mint -- but only with a real state AND a string that is a name.
     if gov_type == classify.STATE:

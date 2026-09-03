@@ -6,7 +6,6 @@ san-diego-ca,rtr:us:ca:san-diego-association-of-governments|us:place:0666000,2,"
 los-angeles-ca,rtr:us:ca:los-angeles-department-of-water-and-power|us:place:0644000,2,"City of Los Angeles, CA|Los Angeles, CA"
 los-angeles-county-ca,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority|us:county:06037,2,"Los Angeles County, CA"
 fayetteville,us:place:0523290|us:place:3722920,2,City of Fayetteville
-college-park-md,rtr:us:md:college-park|us:place:2418750,2,"College Park, MD|The City of College Park, MD"
 horry-county-sc,us:county:45051|us:sd:4502490,2,"Horry County, SC"
 miami,us:county:20121|us:place:1245000,2,City of Miami|Miami
 tarrant-county-tx,rtr:us:tx:tarrant-county-college-district|us:county:48439,2,"Tarrant County, TX"
@@ -18,9 +17,7 @@ mississauga-on,ca:csd:3521005|rtr:ca:on:toronto-and-region-conservation-authorit
 frederick,us:place:0828360|us:place:2430325,2,City of Frederick|Frederick
 east-lansing-mi,rtr:us:mi:east-lansing|us:place:2624120,2,"City of East Lansing, MI|The City of East Lansing, MI"
 langley,us:cousub:2005338600|us:place:5338355,2,City of Langley|Langley
-eldorado,rtr:us:ca:eldorado|rtr:us:ks:eldorado,2,Eldorado
-municode-portal,rtr:us:md:municode-portal|rtr:us:tn:municode-portal,2,Municode Portal
-andover,rtr:us:ks:andover|us:place:2001800,2,Andover|The City of Andover
+eldorado,us:county:06017|us:place:2020075,2,Eldorado
 town-of-atherton-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0603092,2,"Town of Atherton, CA"
 menlo-park-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0646870,2,"City of Menlo Park, CA"
 jefferson,us:county:08059|us:county:29099,2,Jefferson
