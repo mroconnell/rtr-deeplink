@@ -65,13 +65,74 @@ def _assert_expected_db_host(url: str) -> None:
 
 _assert_expected_db_host(DATABASE_URL)
 
-_engine_kwargs = {"pool_pre_ping": True}
-if not DATABASE_URL.startswith("sqlite"):
+
+# WO-111. Postgres invalidates a cached query PLAN when a column that
+# query selects changes type -- and asyncpg keeps server-side prepared
+# statements per connection, so a live pool goes on using plans that the
+# server has just rejected. SQLAlchemy's asyncpg dialect surfaces that as
+# `InvalidCachedStatementError: cached plan must not change result type`
+# and the request 500s.
+#
+# Two confirmed user-facing failures, 2026-09-03 (Sentry
+# PYTHON-FASTAPI-1D / -1E): `/j/rancho-cordova-ca` and one `/m/` page,
+# both within 8 minutes of WO-101's `ALTER COLUMN meeting_pages.gov_id
+# TYPE VARCHAR(320)`. Both failing queries select `gov_id` --
+# `get_page_by_slug()` and `_hub_groups()`, the two hottest read paths in
+# this service.
+#
+# **The timing is the part worth understanding.** `render.yaml`'s
+# `preDeployCommand` runs the migration after the build and BEFORE the
+# new instance is switched live, so the build serving traffic during the
+# ALTER is the OLD one, with the OLD pool. A fix deployed alongside a
+# migration therefore does nothing for that migration -- it protects the
+# NEXT one, because by then the running build is the one carrying this
+# setting. That is why this ships on its own rather than being bundled
+# with whatever schema change comes next.
+#
+# Both caches are turned off -- see the two comments below for which is
+# which. The cost is re-planning each query; these are indexed
+# single-table selects and a `GROUP BY` over a few thousand rows, where
+# planning is microseconds and nowhere near the dominant term. The
+# alternative -- retrying once on `InvalidCachedStatementError` -- keeps
+# the cache but only covers the call sites it wraps, and the failure
+# class is "any query touching an altered column", which is not a set
+# anyone can enumerate in advance. Same reasoning, same value, as the
+# standard pgbouncer-in-transaction-mode setting.
+def _engine_options(url: str) -> dict:
+    """Engine kwargs for `url`. A function rather than a literal so a test
+    can ask for the Postgres options without a Postgres URL in the env."""
+    options = {"pool_pre_ping": True}
+    if url.startswith("sqlite"):
+        return options
+    options["connect_args"] = {
+        # SQLAlchemy's own cache of prepared-statement objects. This is
+        # the one that matters and the one its docs name for exactly this
+        # failure: the asyncpg dialect calls `connection.prepare()` for
+        # ALL statements and caches the results per pooled connection,
+        # and its docstring says outright that when "DDL changes are made
+        # from other database engines and/or processes" -- which is
+        # precisely `alembic upgrade head` in the preDeploy container --
+        # "a running application may encounter asyncpg exceptions
+        # InvalidCachedStatementError". Despite the name it is a DBAPI
+        # argument, not a dialect one, so it goes here rather than in the
+        # URL.
+        "prepared_statement_cache_size": 0,
+        # asyncpg's own server-side statement cache, underneath
+        # SQLAlchemy's. Disabled too, because a fresh `prepare()` of the
+        # same SQL can still be served from it. Same setting the pgbouncer
+        # transaction-mode guidance uses.
+        "statement_cache_size": 0,
+    }
+
     # Same free-tier connection-cap reasoning as the resolver's engine.py --
     # this service shares a Postgres *server* with the resolver (per design),
     # so keeping both pools small matters even more here.
-    _engine_kwargs["pool_size"] = 5
-    _engine_kwargs["max_overflow"] = 2
+    options["pool_size"] = 5
+    options["max_overflow"] = 2
+    return options
+
+
+_engine_kwargs = _engine_options(DATABASE_URL)
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

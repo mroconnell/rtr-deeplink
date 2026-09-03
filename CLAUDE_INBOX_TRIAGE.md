@@ -739,48 +739,12 @@ again 03:50 UTC — 7 restarts across both workers in ~30 hours now
 same rate. Root cause is still **Unconfirmed**; same open question for
 Ryan as above (Render's memory graphs, whether `/tmp` is RAM-backed).
 
-**New finding: WO-101's `gov_id`-widening migration caused two confirmed
-transient 500s via a textbook asyncpg prepared-statement-cache
-invalidation, and nothing in this codebase guards against the class of
-bug.**
-
-- **Confirmed** via the full Sentry tracebacks (PYTHON-FASTAPI-1D, -1E)
-  plus the migration itself. `242c9a2` (WO-101,
-  `archive/alembic/versions/2026_09_03_1230-d8b2c5e07a41_widen_gov_id.py`,
-  committed 2026-09-03 12:20:17 UTC) runs a catalog-only
-  `ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)` (widened from
-  `VARCHAR(64)`, landed via `render.yaml`'s `preDeployCommand`). Both
-  failing queries explicitly select `meeting_pages.gov_id`:
-  `archive/db/crud.py:3856` `get_page_by_slug()` (backs `GET /m/{slug}`,
-  `archive/main.py:2273`) and `archive/db/crud.py:7312` `_hub_groups()`
-  (backs `GET /j/{hub_slug}`, `archive/main.py:2860`). Postgres raised
-  `InvalidCachedStatementError: cached plan must not change result type`
-  — the standard asyncpg/SQLAlchemy failure when a live connection
-  already holds a cached prepared plan for a query whose result columns
-  a concurrent `ALTER TABLE` then changes. Timestamps line up tightly:
-  PYTHON-FASTAPI-1D hit `/j/rancho-cordova-ca` at 12:22:39 UTC and
-  PYTHON-FASTAPI-1E hit `/m/town-of-yarmouth-ns-2021-10-28-committee-of-
-  the-whole` at 12:28:25 UTC, both within 8 minutes of the migration
-  commit.
-- **Impact**: 2 confirmed real page-load failures (one jurisdiction hub
-  page, one meeting page) in an ~8-minute post-deploy window.
-  Self-healing this time — the email's own tags confirm SQLAlchemy's
-  asyncpg dialect invalidates its prepared-statement cache on exactly
-  this exception, and neither issue got a follow-up Sentry "New Alert"
-  (volume-threshold) email, only the one-time "New issue" — but
-  `archive/db/engine.py`'s `create_async_engine()` (checked directly, see
-  its `_engine_kwargs`) has zero mitigation for this error class today:
-  no `statement_cache_size=0`, no retry wrapper. This repo changes
-  `meeting_pages`'s schema often (WO-99 and WO-101 both landed the same
-  day), so any future migration touching a column selected by one of
-  these two hot-path queries — or any other frequently-hit query — will
-  reproduce this exact user-facing failure during its deploy window.
-- **Fix effort**: small. The standard fix is disabling asyncpg's
-  server-side prepared-statement cache on the affected engine
-  (SQLAlchemy's asyncpg dialect takes `connect_args={"statement_cache_size":
-  0}`), trading a small per-query overhead for eliminating this whole
-  class of post-migration error; the narrower alternative is a
-  retry-once wrapper around request handling specifically for
-  `InvalidCachedStatementError`. Neither exists today.
+**WO-101 prepared-statement finding: FIXED, see `BACKLOG_DONE.md`.**
+Promoted out of this file 2026-09-03 (WO-111) rather than left staged --
+`connect_args={"prepared_statement_cache_size": 0, "statement_cache_size":
+0}` now on both services' engines. The triage entry's suggested fix named
+only `statement_cache_size`; that is asyncpg's own cache and not the one
+SQLAlchemy's docs point at for this error, so the shipped fix disables
+both. Everything else in the finding held up exactly as written.
 
 Ledger: 6 new message IDs recorded (215 → 221 kept), 0 pruned this pass.
