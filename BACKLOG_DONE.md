@@ -1,5 +1,72 @@
 # Backlog — done
 
+## Three wrong `tenant_overrides.csv` pins from name-only matching [Done 2026-09-03]
+
+The Phase 3 rtr-discovery session (FINDING-9/10/11) caught three wrong
+pins, all sharing one root cause: a pin was assigned by matching
+*hostname text* to a jurisdiction *name*, without ever confirming the
+host actually belongs to that jurisdiction's government.
+
+- **`newark.granicus.com`** was pinned to `us:place:0650916` (Newark,
+  Alameda County, CA), source `ryan_stated+upcoming_roster`. The
+  upcoming-roster pins were derived by matching tenant HOSTNAMES to
+  `rtr-upcoming/roster.csv` jurisdiction NAMES, not by the roster's own
+  `calendar_url` — Ryan stated the 109 roster jurisdictions are all
+  Californian, but never stated which host each one uses. Newark, CA's
+  real `calendar_url` per the roster is `newark.legistar.com`, not
+  Granicus. Live-checked `newark.granicus.com/ViewPublisher.php?view_id=2`:
+  it reads "City of Newark, New Jersey — Live Proceedings" /
+  "City of Newark, NJ Streaming Media Archive". Re-pinned to
+  `us:place:3451000` (Newark city, NJ), source `landing_page`.
+  `data-product/feed/upcoming_jurisdictions.csv`'s Newark row had the
+  same host in `matched_tenants`; cleared (rtr-business repo).
+- **`psl.granicus.com`** was pinned to a *minted* `rtr:us:fl:port-st-lucie`
+  id even though its own evidence already named the real registry match
+  (`-> place 1258715`) — Port St. Lucie city, FL is a real row in
+  `us_places.csv`. A pin should point at the registry id the evidence
+  names, not mint a new one. Re-pinned to `us:place:1258715`.
+- **`pub-gloucesterva.escribemeetings.com`** had no override at all and
+  was bleeding between "Gloucester County, VA" and "Gloucester, MA" (the
+  gap BACKLOG.md's "`pub-*` eScribe hosts resolve to a US government of
+  the same name" entry flagged). Live-checked: board/committee list is
+  unambiguously Gloucester County, VA (Board of Supervisors, Colonial
+  Courthouse, Thomas Calhoun Walker Education Center). New row added,
+  pinned to `us:county:51073`.
+
+**Given the root cause was systemic, not a one-off**, every other
+`tenant_overrides.csv` pin whose `source` includes `upcoming_roster` was
+re-derived by joining tenant host against the netloc of
+`rtr-upcoming/roster.csv`'s `calendar_url` (118 rows carried that source;
+59 hosts, including Newark, did not literally appear as any roster row's
+`calendar_url` netloc). Every one of those 59 was live-checked
+individually (landing page / `ViewPublisher.php` view-id sweep / public
+portal text) — Newark was the only actual misidentification found; the
+other 58 are real, correctly-identified Bay Area tenants whose `source`
+field just falsely credited the roster join (or `ryan_stated`) for a
+match that join never actually made. Source corrected: 6 rows that
+already carried independent `known_domains` backing just had the false
+`upcoming_roster`/`ryan_stated` credit stripped; the remaining 52 were
+re-sourced to `landing_page` with the live quote that confirmed them (or,
+for two rows blocked by a JS-rendered portal, cross-corroborated against
+an already-directly-confirmed sibling host pinned to the same `gov_id`).
+No `gov_id` changed in this batch except Newark's. Full before/after
+list of all 59 changed rows: `/tmp/tenant_overrides_changes.json` (not
+committed — regenerate by re-running the same roster-netloc join if
+needed).
+
+**Independent confirmation, same day**: a second, parallel audit (this
+repo's `gov-signals-r1` branch, WO-105) re-derived the same 65
+`ryan_stated+upcoming_roster` rows against `roster.csv`'s `calendar_url`
+netloc using a narrower method (national-uniqueness + hostname
+self-disambiguation + live-fetch only the genuinely ambiguous remainder)
+and reached the same conclusion by a different path: Newark was the only
+wrong pin among them. Cross-checked live: `mountainview.granicus.com`,
+`saratoga.granicus.com`, `cityofcampbell.granicus.com`, and
+`unioncity.primegov.com` (the four ambiguous names with no hostname
+"ca" tell) all independently confirmed correct. Superseded by the fuller
+fix above, which also corrected the `source` field on every row, not
+just the three misidentified ones.
+
 ## `resolve_government()`'s `page_hints` argument is now actually passed [Done 2026-09-03]
 
 The narrow dead-code fix WO-105's brief called for, done first and

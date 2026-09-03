@@ -121,6 +121,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (64)
+  [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -151,10 +152,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (64)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (15)
+  Jurisdiction extraction & backfill  (14)
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
     `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
-    `[JUST-DO-IT]` `newark.granicus.com` is pinned to Newark, CA — it's…
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
     `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
     `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
@@ -429,6 +429,64 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  confidently-wrong extraction on a confirmed-misleading host — the
+  ladder validates a plausible wrong answer before the pin ever gets a
+  chance to apply.**
+  - **Issue**: `pub-gloucesterva.escribemeetings.com` is Gloucester
+    County, VA's eScribe host, pinned `strength=fallback` to
+    `us:county:51073` (added in #707, fixing a name-only host-matching
+    bug). Fallback strength only applies when steps 2-4 of the resolver
+    ladder (`GOVERNMENT_IDENTITY_ARCHITECTURE.md` §5) produce nothing —
+    by design, so a real per-page extraction always wins over a tenant
+    default. But eScribe GUID meeting URLs give `match` nothing to
+    discriminate on, and this host's own page text ("School Board
+    Meeting") resolves confidently, and wrongly, to `us:place:2526150`
+    (Gloucester, **MA** — the exact name-bleed #707 fixed upstream,
+    still baked into that one already-ingested candidate/page). The
+    fallback pin never even gets consulted, because the ladder didn't
+    fail — it succeeded at the wrong government. §4 predicted this
+    exactly: "a plausible wrong extraction passes validation, so
+    validation alone can never fix a confirmed-misleading host."
+  - **Impact**: production has exactly one live instance right now —
+    `/j/gloucester-ma`, a public hub whose entire content is that one
+    Gloucester County, VA school-board page filed under a Massachusetts
+    city. WO-106 added the missing identity (`us:sd:5101620`, Gloucester
+    County Public Schools, VA) to `governments.csv` and prepared the
+    per-page `POST /internal/jurisdiction/override` + hub-alias regen
+    commands for Ryan to run against production; see that PR for the
+    exact commands and live counts. This entry tracks the general
+    failure mode, which stays open after that one page is fixed: any
+    tenant whose URL shape carries no
+    discriminator (eScribe GUIDs are the known case) and whose page text
+    names a real place that collides with a different government's name
+    is exposed the same way, and a `strength=fallback` pin gives no
+    signal that it happened — the ladder reports `registry` tier
+    (confidently resolved), not `unresolved` or `blank`.
+  - **Next action**: this page is a known-answer case for **Phase 2d**
+    (`gov_signals.py` / `score_gov_signals.py`, branch `gov-signals-r1`,
+    not yet merged — see `~/Documents/rtr-business/research/
+    STATE_gov_identity.md`) — "School Board" in the page text is
+    precisely the type signal 2d is meant to score *above* a nearby
+    place-name match. Add this page/host to its evaluation corpus once
+    2d's live run has real numbers; don't build a one-off fix here.
+  - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
+    existing tenant pin to `strength=authoritative`, or copy
+    `POST /internal/jurisdiction/override`'s proposed
+    `tenant_overrides.csv` rule (blank `match`, `strength=authoritative`,
+    `gov_id=us:sd:5101620`) into the committed registry when applying
+    WO-106's fix. Either one pins the whole tenant, including the Board
+    of Supervisors' own meetings on that host (2 pages archived today —
+    one county, one this wrongly-keyed one — plus every one this
+    Archive hasn't ingested yet), to whichever single government wins,
+    misfiling the other. The fallback pin is correctly doing its one job
+    (a sane default where `dominant_gov_id()` ties 1-1) and should stay
+    exactly as it is; the school-district fix belongs on the one
+    affected page only, via that same endpoint's per-page write.
+  - **History**: `~/Documents/rtr-business/research/
+    STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
+    review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
@@ -1209,28 +1267,24 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `tests/test_gov_registry.py::
     test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved`.
 
-- **`[JUST-DO-IT]` `newark.granicus.com` is pinned to Newark, CA — it's Newark, NJ (rtr-discovery FINDING-9, 2026-09-03), and the audit it asked for is done.**
-  - **Issue**: `tenant_overrides.csv`'s `newark.granicus.com,,us:place:0650916,fallback,ryan_stated+upcoming_roster,...` row names Newark, **CA** (Alameda County). One polite GET of `https://newark.granicus.com/ViewPublisher.php?view_id=3` (rtr-discovery, 2026-09-03) shows the real page reads "City of Newark, **NJ** Streaming Media Archive," body name "Municipal Council" — Newark NJ's, not Newark CA's. Root cause: the pin was built by matching the roster row's bare *name* ("Newark, Alameda County") to the tenant host, not by confirming that tenant host is what the roster row's own `calendar_url` actually names — `rtr-upcoming/roster.csv`'s current Newark row is `Newark,Alameda,legistar,https://newark.legistar.com/Calendar.aspx,...`, a *different* host entirely, so `newark.granicus.com` was never really "the Newark, CA roster row's URL" at all.
-  - **Impact**: FINDING-9 asked "audit ALL `upcoming_roster`/`ryan_stated` pins by calendar_url netloc" — done, 2026-09-03. Of the 65 `ryan_stated+upcoming_roster` rows in `tenant_overrides.csv`, 33 have a `tenant_host` that does not currently match any `roster.csv` `calendar_url` netloc (same name-not-URL join defect as Newark). Of those 33: 24 are names nationally unique to CA in `places.csv` (safe regardless of join method), 3 self-disambiguate via a literal "ca" token in the hostname (`albanyca`, `dublinca`, `stream.ci.concord.ca.us`), 1 (`alameda.granicus.com`) collides only with a Saskatchewan village, not a plausible real conflict. The remaining 5 were genuinely ambiguous with no hostname tell and got a live fetch each: `mountainview.granicus.com` → "City of Mountain View, CA" (confirmed), `saratoga.granicus.com` → "City of Saratoga" (CA's own legal name, distinct from "Saratoga Springs" so this rules out NY), `cityofcampbell.granicus.com` → "City of Campbell, California" (confirmed), `unioncity.primegov.com` → its meeting API lists a "Successor Agency" (a California-specific post-redevelopment-dissolution body; NJ has no such thing) — confirmed CA. **Newark is the only wrong pin the audit found.**
-  - **Next action**: repoint `newark.granicus.com`'s row to Newark, NJ (`us:place:3451000`) or drop it outright (verify via `finalize_jurisdiction()`/the resolver's own ladder whether unpinned it lands somewhere reasonable before dropping); flag the same fix upstream to `rtr-upcoming/roster.csv`'s Newark row and `rtr-discovery/feed/upcoming_jurisdictions.csv` (both cross-repo, not fixable from here).
-  - **Constraint**: don't bulk-repoint or drop the other 32 no-netloc-match rows on the strength of "the join method was wrong" alone — this audit individually confirmed every ambiguous one of them is still correct; re-deriving by netloc match is necessary but not sufficient evidence of a real error, as this same audit shows.
-  - **History**: FINDING-9/10/11 raised in rtr-discovery's `hungry-einstein-ce49db` worktree BACKLOG.md 2026-09-03, flagged upstream via `~/Documents/rtr-business/research/STATE_gov_identity.md`. FINDING-11 (`pub-gloucesterva.escribemeetings.com`) is separate and already tracked in this file's "`pub-*` eScribe hosts" entry just below. FINDING-10 (`psl.granicus.com` pinned to a minted `rtr:` id instead of the national place table's `us:place:1258715`) is real and measured but not yet logged anywhere in this file — still open, not covered by this entry.
-
 - **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
   - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
     Canadian and one American: `pub-richmond` is Richmond BC *and*
     Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
     `pub-courtenay` is Courtenay BC *and* Courtenay ND, `pub-owensound`
-    is Owen Sound ON *and* Owen WI, `pub-gloucesterva` is Gloucester
-    County VA *and* Gloucester MA. WO-100's cross-border guard does not
+    is Owen Sound ON *and* Owen WI. WO-100's cross-border guard does not
     catch these because the STORED string carries a state suffix, so the
-    name never reaches the stateless path.
+    name never reaches the stateless path. (`pub-gloucesterva` had the
+    same symptom — bleeding into "Gloucester, MA" alongside Gloucester
+    County, VA — but was US/US, not Canada/US; fixed 2026-09-03 by
+    pinning it to `us:county:51073` in `tenant_overrides.csv`, see
+    BACKLOG_DONE.md.)
   - **Impact**: a handful of pages per host on the wrong country's hub.
     Surfaced by `pin_worklist.csv`'s new `multiple_governments` section
     (WO-100), which is the first cut that made them visible.
-  - **Next action**: read the section, then pin each host — one landing
-    fetch settles a `pub-*` host's country even where it cannot settle
-    its name (`scripts/sweep_tenant_landing_pages.py`).
+  - **Next action**: read the section, then pin each remaining host —
+    one landing fetch settles a `pub-*` host's country even where it
+    cannot settle its name (`scripts/sweep_tenant_landing_pages.py`).
   - **Constraint**: don't infer the country from the `pub-` prefix.
     eScribe has real US customers (`pub-horrycountyschools` is SC), so
     the prefix is a hint, not a rule.
