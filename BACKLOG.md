@@ -103,8 +103,9 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (6)
+Standing decisions — do NOT re-raise  (7)
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
+  Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
   Prefer a generated/computed column over "add a column, then backfill…
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
@@ -286,6 +287,23 @@ something hasn't been decided.
 excludes it on purpose, to avoid swamping the review queue with
 probably-fine rows. Revisit only if the queue proves too narrow rather
 than too noisy. WO-21 (2026-08-21) build in `BACKLOG_DONE.md`.
+
+### Don't reach for a bigger Render plan before measuring what the peak actually is
+
+Twice now the obvious read of a worker OOM has been "2GB isn't enough,
+buy 4GB", and twice the measurement said otherwise. WO-94 (2026-09-01):
+the real 900s peak was 1588MB, so the fix was a chunk-size change, not
+$60/mo. WO-95 (2026-09-02): the chunk actually killing the worker was
+2,519s, projecting **~3.6GB** — `pro` (4GB) would have left ~200MB of
+margin, very likely kept crash-looping, and cost $85/mo per worker while
+hiding the real bug behind a bigger number.
+
+`_WORKER_DEFAULT_CHUNK_SIZE_SECONDS`' own comment carries the measured
+duration/RSS curve; peak scales with **audio duration**, roughly 1.26MB
+per second above a ~457MB floor. Project the peak for the longest chunk
+the code can actually produce before pricing a plan — and note that "the
+longest chunk the code can actually produce" is the part both incidents
+got wrong, not the arithmetic.
 
 ### Never run an unbounded scan or bulk workload against the production DB from an interactive session
 
@@ -1715,8 +1733,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     throws away that chunk's work in progress — up to ~15 min at the
     production pool's measured per-chunk pace — and a chunk that OOMs
     deterministically will loop on that cycle indefinitely rather than
-    failing out. WO-94 removed the known trigger (chunk size 900s →
-    450s, peak RSS 1588MB → 977MB) but not the blind spot.
+    failing out. WO-94 removed one trigger (chunk size 900s → 450s,
+    peak RSS 1588MB → 977MB) but not the blind spot — and on
+    2026-09-02 the loop this describes ran for real: job 1419's
+    2,519s multi-clip chunk (WO-95) OOMed ~40 times over 3.5 hours,
+    and cost ~3.5 hours of diagnosis the worker's own data could not
+    shorten, because it recorded nothing. Throughput fell 42 → 14
+    jobs/day while it ran. No longer a theoretical cost.
   - **Next action**: detection before prevention, and the cheap version
     is enough — the process is killed, so it cannot report anything
     itself, but the *next* process can notice: on startup, look for a

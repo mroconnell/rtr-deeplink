@@ -64,7 +64,7 @@ async def test_multi_clip_meeting_reports_the_real_summed_total(monkeypatch):
         ],
     )
 
-    async def _plan(video_segments, *, source_page_url):
+    async def _plan(video_segments, *, source_page_url, max_chunk_seconds=None):
         return [
             {
                 "media_url": "https://x/a.m3u8",
@@ -114,7 +114,7 @@ async def test_multi_clip_plan_failure_falls_back_to_first_clip_probe(monkeypatc
         ],
     )
 
-    async def _plan(video_segments, *, source_page_url):
+    async def _plan(video_segments, *, source_page_url, max_chunk_seconds=None):
         return None
 
     monkeypatch.setattr(app_main, "probe_multi_clip_chunk_plan", _plan)
