@@ -554,6 +554,28 @@ def test_school_district_ids_are_state_fips_plus_nces_lea():
     assert match.government.nces_lea_id == "22710"
 
 
+def test_a_pin_to_a_government_not_yet_in_governments_csv_still_applies():
+    """`governments.csv` is a generated snapshot of what some scoring run
+    resolved TO, so a pin naming a government no archived page has
+    reached yet is absent from it by construction -- which is the normal
+    state for a freshly hand-added pin.
+
+    `_pinned()` used to look the id up in that file alone and fall
+    through silently when it missed, so such a pin did not apply and
+    nothing said so. Found when WO-99's landing-page sweep wrote seven of
+    them (`us:place:0621230` Eastvale, `us:place:1248625` New Smyrna
+    Beach, `us:place:4852356` North Richland Hills, `us:sd:4838730` San
+    Antonio ISD, ...) and the test below turned red."""
+    gov_id = "us:county:01001"  # Autauga County, AL -- in no committed row
+    assert gov_id not in registry.governments()
+    match = resolve(
+        "Something The Tables Cannot Key",
+        "example-unpinned.granicus.com",
+    )
+    assert match.gov_id != gov_id  # control: nothing pins this host yet
+    assert registry.government_for_id(gov_id) is not None
+
+
 def test_every_tenant_override_row_has_a_resolvable_gov_id():
     """§4: every row in `tenant_overrides.csv` needs a gov_id, and that
     gov_id needs a `governments.csv` row -- a pin whose name nothing can
@@ -818,7 +840,7 @@ def test_same_tenant_consistency_is_a_tier_of_its_own(monkeypatch):
 # --- Phase 2 (7a): the tenant-consistency rung needs a name guard ------
 #
 # Every case below is a real (tenant, jurisdiction) pair from
-# reports/gov_registry_scoring_2026-09-02/sheet_archive.csv.
+# reports/gov_registry_scoring_2026-09-03/sheet_archive.csv.
 
 
 @pytest.mark.parametrize(

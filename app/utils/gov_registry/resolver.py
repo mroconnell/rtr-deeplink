@@ -222,7 +222,16 @@ def _pinned(
     for row in _match_override(host, path, page_hints):
         if row.strength != strength:
             continue
-        gov = registry.governments().get(row.gov_id)
+        # Derived when `governments.csv` has not got a row yet, which is
+        # the normal state for a freshly hand-added pin: that file is a
+        # generated snapshot of what some scoring run resolved TO, so a
+        # pin to a government no page has reached yet is absent from it
+        # by construction. Silently ignoring such a pin is worse than it
+        # sounds -- the ladder simply carries on and the host stays
+        # wrong, with nothing saying the pin did not apply. Caught by
+        # test_every_tenant_override_row_has_a_resolvable_gov_id the
+        # moment the landing-page sweep wrote seven of them.
+        gov = registry.government_for_id(row.gov_id)
         if gov:
             evidence = f"tenant_overrides.csv {host}"
             if row.match:

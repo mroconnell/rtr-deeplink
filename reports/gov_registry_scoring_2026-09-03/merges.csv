@@ -21,6 +21,7 @@ us:county:06085,"Santa Clara County, CA",county-of-santa-clara-ca|santa-clara-co
 us:place:5303736,"Bainbridge Island, WA",bainbridge-island-wa|bainbridge-wa,2
 us:place:1219825,"Edgewater, FL",edgewater|edgewater-fl,2
 us:place:3722920,"Fayetteville, NC",fayetteville|fayetteville-nc,2
+us:place:1248625,"New Smyrna Beach, FL",new-smyrna-beach-fl|nsb,2
 us:place:0618100,"Davis, CA",davis|davis-ca,2
 us:place:2717000,"Duluth (city), MN",duluth|duluth-mn,2
 us:place:1225175,"Gainesville, FL",gainesville|gainesville-fl,2
@@ -151,12 +152,14 @@ us:place:1373704,"Stockbridge, GA",stockbridge|stockbridge-ga,2
 us:place:0642202,"Lodi, CA",lodi|lodi-ca,2
 us:county:41051,"Multnomah County, OR",multnomah|multnomah-county-or,2
 us:cousub:3611951693,"North Castle Town, NY",north-castle-ny|town-of-north-castle-ny,2
+us:place:4852356,"North Richland Hills, TX",north-richland-hills-tx|unknown-jurisdiction,2
 us:place:4819972,"Denton, TX",denton|denton-tx,2
 us:place:0655254,"Palm Springs, CA",palm-springs|palm-springs-ca,2
 us:place:0677000,"Sunnyvale, CA",sunnyvale|sunnyvale-ca,2
 us:cousub:2300526525,"Freeport Town, ME",freeport-me|town-of-freeport,2
 us:county:24041,"Talbot County, MD",talbot-county|talbot-county-md,2
 us:place:2679000,"Taylor, MI",taylor-mi|taylor-mi-city,2
+us:cousub:2615512520,"Caledonia (charter township), MI",caledonia-charter-township-mi|caledonia-township,2
 us:county:37179,"Union County, NC",union-county|union-county-nc,2
 us:place:1273900,"Venice, FL",venice|venice-fl,2
 us:place:0857630,"Parker, CO",parker|parker-co,2

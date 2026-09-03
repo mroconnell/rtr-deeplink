@@ -53,10 +53,11 @@ import aiohttp  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from app.utils.gov_registry import registry, resolve_government  # noqa: E402
+from app.utils.gov_registry import display_name, registry, resolve_government  # noqa: E402
+from app.utils.gov_registry.resolver import _base_name_keys, _split_state  # noqa: E402
 
 WORKLIST = (
-    REPO_ROOT / "reports" / "gov_registry_scoring_2026-09-02" / "pin_worklist.csv"
+    REPO_ROOT / "reports" / "gov_registry_scoring_2026-09-03" / "pin_worklist.csv"
 )
 OVERRIDES = registry.DATA_DIR / registry.TENANT_OVERRIDES_FILE
 
@@ -73,6 +74,7 @@ TIMEOUT = aiohttp.ClientTimeout(total=25)
 # Hosts whose landing page names Google rather than a government.
 SKIP_PLATFORMS = {"youtube"}
 
+_NAME_TOKEN_RE = re.compile(r"[A-Za-z']+")
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 _H1_RE = re.compile(r"<h1[^>]*>(.*?)</h1>", re.I | re.S)
 _OG_SITE_RE = re.compile(
@@ -183,19 +185,100 @@ async def fetch(session, url: str) -> Optional[str]:
         return None
 
 
+# A single word that names an office, a page or a vendor's furniture --
+# never a government on its own. Rejected as a whole candidate.
+#
+# "Council" is not hypothetical: it is the ENTIRE extracted name from
+# `onelakewood.granicus.com`, and the first version of this sweep pinned
+# that host to Council, IDAHO on the strength of it.
+_GENERIC_SINGLE_WORDS = frozenset(
+    {
+        "council",
+        "board",
+        "commission",
+        "committee",
+        "government",
+        "city",
+        "town",
+        "village",
+        "borough",
+        "township",
+        "county",
+        "district",
+        "default",
+        "home",
+        "live",
+        "media",
+        "video",
+        "archive",
+        "public",
+        "meeting",
+    }
+)
+
+
+def _resolves_cleanly(candidate: str, match) -> bool:
+    """Whether `candidate` IS the government's name, rather than a string
+    that merely contains something the resolver could key on.
+
+    This is the guard the first run of this sweep did not have, and it is
+    the whole difference between a useful pin and a poisonous one. The
+    resolver normalizes hard -- that is its job, and it is what lets a
+    real page's "County of Fresno, CA" reach `us:county:06019`. Handed a
+    page-title fragment it normalizes just as hard, and 6 of the first
+    run's 12 pins were the result:
+
+        'Section View- Live on website'        -> a Minnesota township
+        'Fullerton Public - Powered by .com'   -> Fullerton, NEBRASKA
+                                                  (the tenant is Fullerton CA)
+        'Midland City Council , Summaries &'   -> Midland, ALABAMA
+        'Oregon Metro Council - New View'      -> Oregon County, MISSOURI
+        'Council'                              -> Council, IDAHO
+
+    Every one of those would have been written `authoritative` -- the one
+    tier that overrides a working extraction -- so a wrong pin here is
+    strictly worse than no pin, which is the reason for a rule this
+    strict. The test: the candidate, with any trailing state stripped,
+    must equal one of the government's own names (the national table's
+    spelling or this repo's display form), compared the same way the
+    resolver's tenant-consistency rung compares names.
+
+    It costs real coverage and that is the right trade. Fullerton CA's
+    landing page never plainly says "City of Fullerton", so this sweep
+    honestly cannot settle that host, and the row stays on the worklist
+    saying what was found.
+    """
+    gov = match.government
+    if gov is None:
+        return False
+    bare, _state = _split_state(candidate)
+    ours = _base_name_keys(bare)
+    theirs = _base_name_keys(gov.gov_name) | _base_name_keys(
+        _split_state(display_name(gov))[0]
+    )
+    return bool(ours & theirs)
+
+
 def best_match(names: List[str], host: str) -> Tuple[Optional[str], str, str]:
     """(gov_id, the name that resolved, evidence) for the first candidate
-    that reaches a REGISTRY government.
+    that reaches a REGISTRY government AND is plainly that government's
+    own name.
 
     A minted `rtr:` id is deliberately not accepted: the point of a pin
     is to say which known government a tenant belongs to, and minting one
     from a page title would invent an identity out of a masthead. A host
-    with no national match stays on the worklist with what was found.
+    with no clean match stays on the worklist with what was found.
     """
     for name in names:
+        tokens = _NAME_TOKEN_RE.findall(name)
+        if len(tokens) == 1 and tokens[0].lower() in _GENERIC_SINGLE_WORDS:
+            continue
         match = resolve_government(name, tenant_host=host)
-        if match.gov_id and not match.gov_id.startswith("rtr:"):
-            return match.gov_id, name, match.evidence
+        if not match.gov_id or match.gov_id.startswith("rtr:"):
+            continue
+        if not _resolves_cleanly(name, match):
+            continue
+        return match.gov_id, name, match.evidence
     return None, "", ""
 
 

@@ -389,7 +389,7 @@ with the numbers stated before anything is built on them. Inputs:
 **5,053** archived pages (metadata only, via `GET
 /internal/export/pages`) and **876** distinct `(tenant, jurisdiction)`
 pairs from rtr-discovery's ledger — 5,929 rows in total. Full sheets and
-per-cut breakdowns in `reports/gov_registry_scoring_2026-09-02/`.
+per-cut breakdowns in `reports/gov_registry_scoring_2026-09-03/`.
 
 ### Tier distribution
 
@@ -505,8 +505,12 @@ before this work.
 A second pass over the same branch, before Phase 2, against the same
 inputs: 5,053 archived pages and 876 ledger pairs. Same constraints —
 no schema change, no production write, nothing importing the package.
-Report regenerated in place at
-`reports/gov_registry_scoring_2026-09-02/`.
+Report regenerated in place at `reports/gov_registry_scoring_2026-09-03/`
+— **that directory holds the CURRENT run, not this one.** The report is
+regenerated in place by every scoring pass and the directory was renamed
+when Phase 2's last pass rolled past midnight; Phase 1's and Phase 1b's
+numbers survive as the tables in this document, which is what the note at
+the top of the Phase 1 section is about.
 
 ### The three targets
 
@@ -688,6 +692,83 @@ identified by hand in
 useful cross-check that the extracted token matches that file's format,
 and 12 of the 53 already have an answer waiting there.
 
+### Step 8 — the landing-page sweep
+
+278 hosts fetched once each, politely paced, read-only
+(`scripts/sweep_tenant_landing_pages.py`; YouTube's 117 rows skipped, and
+counted as skipped rather than failed, because the host is shared and the
+tenant is the channel id). 223 landing pages came back. **7 pins
+written**, every one corroborated by its own hostname:
+
+| host | government | the page reads |
+| --- | --- | --- |
+| `cityofnsb.granicus.com` | `us:place:1248625` | "New Smyrna Beach FL" |
+| `eastvale.granicus.com` | `us:place:0621230` | "Eastvale, CA" |
+| `nrhtx.granicus.com` | `us:place:4852356` | "North Richland Hills TX" |
+| `pvestates.granicus.com` | `us:place:0655380` | "Palos Verdes Estates" |
+| `sanantonioisd.granicus.com` | `us:sd:4838730` | "San Antonio Independent School District" |
+| `sandyutah.granicus.com` | `us:place:4967440` | "Sandy City, UT" |
+| `mi-caledoniachartertownship.civicplus.com` | `us:cousub:2615512520` | "Caledonia Charter Township, MI" |
+
+Still unresolved, by platform: granicus 106, cablecast 61, escribe 41,
+swagit 39, iqm2 5, civicclerk 4, unknown 4, telvue 2, and one each of
+castus, champds, townhallstreams, vimeo. Of those, 39 cablecast and 14
+granicus hosts were unreachable at all; the rest served a page that names
+nobody.
+
+**The first run of this sweep produced 12 pins and six of them were
+wrong.** Worth recording, because the failure is instructive and it is
+the exact thing this whole scheme exists to prevent:
+
+    'Section View- Live on website'       -> a Minnesota township
+    'Fullerton Public - Powered by .com'  -> Fullerton, NEBRASKA
+                                             (the tenant is Fullerton CA)
+    'Midland City Council , Summaries &'  -> Midland, ALABAMA
+    'Oregon Metro Council - New View'     -> Oregon County, MISSOURI
+    'Council'                             -> Council, IDAHO
+
+The extractor was splitting page titles on separators and the acceptance
+test was "does this resolve to a non-`rtr:` id". The resolver normalizes
+hard — that is its job, and it is what lets a real page's "County of
+Fresno, CA" reach `us:county:06019` — so handed a title fragment it
+normalizes just as hard and finds a nationally-unique token. Every one of
+those would have been written `authoritative`, the one tier that
+overrides a working extraction.
+
+The fix is a rule strict enough to be boring: **the candidate, with any
+trailing state stripped, must EQUAL one of the government's own names**
+(the national table's spelling or this repo's display form, compared the
+way the tenant-consistency rung compares names), and a bare generic word
+("Council", "Board", "Default") is never a candidate at all. Re-derived
+offline from the candidates the run had already recorded — no site was
+fetched twice — it rejects all six wrong pins, keeps all six right ones,
+and turns "Palos Verdes Estates - Palos Verdes Estates Content" into the
+clean fragment beside it. It costs coverage on purpose: Fullerton CA's
+page never plainly says "City of Fullerton", so this method honestly
+cannot settle that host.
+
+**A functional bug fell out of writing the pins**, caught by an existing
+test: `_pinned()` looked its `gov_id` up in `governments.csv` alone and
+fell through silently when it missed — and that file is a generated
+snapshot of what a scoring run resolved *to*, so a pin naming a
+government no page has reached yet is absent from it by construction.
+All seven new pins would have been ignored, with nothing saying so. It
+now derives the row from the national tables, and the scorer seeds every
+pinned id into `governments.csv` as well.
+
+**And the worklist's own ordering note is wrong.** It calls eScribe,
+Cablecast, Swagit and TelVue "the four whose landing page reliably names
+its customer". Measured: Cablecast does (in `og:site_name` *and*
+`<title>`). Granicus, which the note omits, does — on
+`ViewPublisher.php?view_id=N`, not the root; that is where every pin
+above came from. eScribe names it **nowhere**: `Meetings.aspx` is titled
+"Meetings" and the only candidate is a logo whose alt text is the literal
+string "Organization Logo". Swagit's root is "SwagitAdmin", CivicClerk's
+is "Public Portal • CivicClerk". So the block the report called
+highest-yield — 41 eScribe hosts including `pub-cambridge`, `pub-london`,
+`pub-halifax`, `pub-hamilton` — cannot be settled this way at all, and
+wants the per-platform work `BACKLOG.md` now carries.
+
 ### Still open for Phase 2
 
 - **422 `unresolved` rows want pins**, concentrated on shared hosts
@@ -724,20 +805,20 @@ by hand, they never landed in the repo.)
 
 | check | Phase 1b | Phase 2 |
 | --- | --- | --- |
-| national id | 83.0% | **83.6%** |
+| national id | 83.0% | **83.7%** |
 | Canadian rows with a StatCan code | 88.6% | **95.0%** |
-| merges (hub pages collapsed) | 169 (345) | **176 (359)** |
-| splits | 32 | **29** |
+| merges (hub pages collapsed) | 169 (345) | **179 (365)** |
+| splits | 32 | **30** |
 | distinct minted `rtr:` governments | 320 | **267** |
 | strings rejected as "not a name" | 32 rows | **17 rows** |
 
 | tier | archive pages | ledger pairs |
 | --- | --- | --- |
-| pinned | 176 (3.5%) | 23 (2.6%) |
-| registry | 4,037 (79.9%) | 805 (91.9%) |
+| pinned | 181 (3.6%) | 26 (3.0%) |
+| registry | 4,034 (79.8%) | 803 (91.7%) |
 | inferred | 12 (0.2%) | 2 (0.2%) |
 | unverified | 137 (2.7%) | 2 (0.2%) |
-| unresolved | 450 (8.9%) | 44 (5.0%) |
+| unresolved | 448 (8.9%) | 43 (4.9%) |
 | blank | 241 (4.8%) | 0 |
 
 Coverage moved less than the Canadian figure because two of the fixes
@@ -854,7 +935,7 @@ here — neither of these would have failed a test.
   exist.** A row the resolver leaves `unresolved` has no `gov_id` and so
   no hub, but the alias writer was still emitting a redirect for it:
   `/j/cottage-grove` → `/j/city-of-cottage-grove`, a 301 to a 404, which
-  is strictly worse than the 404 it replaced. 751 → **699**.
+  is strictly worse than the 404 it replaced. 751 → **702** (the count moved again when the seven new pins resolved seven more hosts).
 
 - **A state government could never appear on its own state page.**
   Decision D1 makes the State of California one government whose Senate
@@ -865,7 +946,7 @@ here — neither of these would have failed a test.
 
 ### Still open
 
-- **450 `unresolved` rows and 241 blank ones** want pins. The landing-page
+- **448 `unresolved` rows and 241 blank ones** want pins. The landing-page
   sweep (step 8) is the method, and it turns out to work for fewer
   platforms than `pin_worklist.csv` assumed — see `BACKLOG.md`'s three
   new entries for what each platform actually returns and what would

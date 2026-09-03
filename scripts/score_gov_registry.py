@@ -606,6 +606,19 @@ def _seed_governments(all_rows: List[dict]) -> None:
         fresh[match.gov_id] = match.government
         if r["jurisdiction"]:
             aliases[match.gov_id].add(r["jurisdiction"])
+    # Every government a PIN names, too -- not only the ones some page
+    # resolved to. `tenant_overrides.csv` can name a government no
+    # archived page has reached yet (the landing-page sweep writes
+    # exactly those), and a pin whose id `governments.csv` cannot render
+    # is a broken registry rather than a resolution.
+    for rows in registry.tenant_overrides().values():
+        for override in rows:
+            if override.gov_id in fresh or override.gov_id in existing:
+                continue
+            derived = registry.government_for_id(override.gov_id)
+            if derived:
+                fresh[override.gov_id] = derived
+
     merged = []
     for gov_id, gov in {**fresh, **existing}.items():
         merged.append(

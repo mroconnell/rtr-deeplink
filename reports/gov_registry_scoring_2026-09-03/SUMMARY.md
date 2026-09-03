@@ -1,4 +1,4 @@
-# Phase 1 — gov_id registry scoring (2026-09-02)
+# Phase 1 — gov_id registry scoring (2026-09-03)
 
 Inputs: **5053** archived pages (`GET /internal/export/pages`, metadata only) and **876** distinct (tenant, jurisdiction) pairs from rtr-discovery's ledger. Read-only; no schema change, no production write.
 
@@ -6,14 +6,14 @@ Inputs: **5053** archived pages (`GET /internal/export/pages`, metadata only) an
 
 | tier | archive pages | ledger pairs |
 | --- | --- | --- |
-| pinned | 176 (3.5%) | 23 (2.6%) |
-| registry | 4037 (79.9%) | 805 (91.9%) |
+| pinned | 185 (3.7%) | 26 (3.0%) |
+| registry | 4034 (79.8%) | 803 (91.7%) |
 | inferred | 12 (0.2%) | 2 (0.2%) |
 | unverified | 137 (2.7%) | 2 (0.2%) |
-| unresolved | 450 (8.9%) | 44 (5.0%) |
+| unresolved | 444 (8.8%) | 43 (4.9%) |
 | blank | 241 (4.8%) | 0 (0.0%) |
 
-**4958 of 5929** rows (83.6%) got a national id.
+**4965 of 5929** rows (83.7%) got a national id.
 
 ## Phase 1b targets — before / after
 
@@ -25,43 +25,43 @@ Inputs: **5053** archived pages (`GET /internal/export/pages`, metadata only) an
 
 ## The minting gate
 
-**19** rows carry a string that is not a government name -- a subdomain fragment, an initialism or a station callsign -- and are tier `unresolved` with the raw text kept in `evidence`, rather than minting an `rtr:` id nobody could ever look up.
+**17** rows carry a string that is not a government name -- a subdomain fragment, an initialism or a station callsign -- and are tier `unresolved` with the raw text kept in `evidence`, rather than minting an `rtr:` id nobody could ever look up.
 
 | platform | rows | distinct hosts |
 | --- | --- | --- |
-| granicus | 16 | 16 |
+| granicus | 14 | 14 |
 | escribe | 1 | 1 |
 | telvue | 1 | 1 |
 | swagit | 1 | 1 |
 
 | country | rows |
 | --- | --- |
-| us | 18 |
+| us | 16 |
 | ca | 1 |
 
 Examples: 'City of Al', 'City, MA', 'Llbc', 'Ps C, FL', 'S Fw, MD', 'TV, NY', 'Unknown Jurisdiction'
 
 ## Pin worklist
 
-`pin_worklist.csv` -- **395** tenant hosts with no government across 735 rows, each with a landing URL to fetch once and read the organisation name out of the header, the way `jurisdiction_overrides.csv`'s `visual_confirmed` rows were made. Ordered eScribe / Cablecast / Swagit / TelVue first -- the four whose landing page reliably names its customer. TelVue rows carry the org token from the URL path as `match_value`, because every TelVue customer shares one host and a host-level pin would be wrong for all of them.
+`pin_worklist.csv` -- **388** tenant hosts with no government across 728 rows, each with a landing URL to fetch once and read the organisation name out of the header, the way `jurisdiction_overrides.csv`'s `visual_confirmed` rows were made. Ordered eScribe / Cablecast / Swagit / TelVue first -- the four whose landing page reliably names its customer. TelVue rows carry the org token from the URL path as `match_value`, because every TelVue customer shares one host and a host-level pin would be wrong for all of them.
 
 ## Government types
 
 | gov_type | rows |
 | --- | --- |
-| municipality | 4202 |
+| municipality | 4207 |
 | county | 857 |
-| other | 470 |
+| other | 464 |
 | township | 178 |
-| school_district | 124 |
+| school_district | 125 |
 | special_district | 83 |
 | state | 10 |
 | court | 5 |
 
 ## Merges and splits
 
-- **176 merges** — two or more current `/j/` hubs collapsing into one `gov_id` (359 hubs in total).
-- **29 splits** — one current hub becoming several `gov_id`s.
+- **179 merges** — two or more current `/j/` hubs collapsing into one `gov_id` (365 hubs in total).
+- **30 splits** — one current hub becoming several `gov_id`s.
 
 Largest merges:
 
@@ -83,6 +83,7 @@ Largest merges:
 
 Splits:
 
+- `/j/unknown-jurisdiction` → us:place:0620956|us:place:0655380|us:place:4852356|us:place:4967440|us:sd:4838730
 - `/j/hollywood` → us:cousub:2701929726|us:place:1232000|us:place:4534495
 - `/j/portland` → us:place:2360545|us:place:4760280|us:place:4858904
 - `/j/portage` → us:place:1861092|us:place:2665560|us:place:5564100
@@ -97,7 +98,6 @@ Splits:
 - `/j/beaufort-county-sc` → us:county:45013|us:place:4507210
 - `/j/indio-ca` → rtr:us:ca:coachella-valley-water-district|us:place:0636448
 - `/j/victoria` → ca:csd:5917034|us:place:2767036
-- `/j/mississauga-on` → ca:csd:3521005|rtr:ca:on:toronto-and-region-conservation-authority
 
 ## What the /state/* headings will read
 
@@ -105,11 +105,11 @@ From `gov_type` via `archive/utils/gov_groups.py`, which replaced `archive/utils
 
 | heading | gov_type | rows |
 | --- | --- | --- |
-| Cities & towns | municipality | 4202 |
+| Cities & towns | municipality | 4207 |
 | Counties & regions | county | 857 |
-| Other public bodies | other | 470 |
+| Other public bodies | other | 464 |
 | Cities & towns | township | 178 |
-| School districts | school_district | 124 |
+| School districts | school_district | 125 |
 | Agencies & special districts | special_district | 83 |
 | State government | state | 10 |
 | Courts | court | 5 |
@@ -122,6 +122,6 @@ From `gov_type` via `archive/utils/gov_groups.py`, which replaced `archive/utils
 
 - **267** distinct minted `rtr:` governments over 477 rows.
 - **241** rows with nothing at all (`rtr:unknown:<host>`).
-- **494** rows tier `unresolved` — a real government name with no state and nothing to key it by. Listed in `unresolved.csv` for a `tenant_overrides.csv` pin; deliberately NOT minted, because an id nobody can key looks resolved and is not.
+- **487** rows tier `unresolved` — a real government name with no state and nothing to key it by. Listed in `unresolved.csv` for a `tenant_overrides.csv` pin; deliberately NOT minted, because an id nobody can key looks resolved and is not.
 - **14** rows resolved by same-tenant consistency (tier `inferred`).
 

@@ -1,4 +1,5 @@
 old_hub,gov_ids,gov_count,raw_names
+unknown-jurisdiction,us:place:0620956|us:place:0655380|us:place:4852356|us:place:4967440|us:sd:4838730,5,Unknown Jurisdiction
 hollywood,us:cousub:2701929726|us:place:1232000|us:place:4534495,3,City of Hollywood|Hollywood
 portland,us:place:2360545|us:place:4760280|us:place:4858904,3,City of Portland|Portland
 portage,us:place:1861092|us:place:2665560|us:place:5564100,3,City of Portage|Portage

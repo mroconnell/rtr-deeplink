@@ -1170,7 +1170,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Impact**: the highest-yield block named in the report (eScribe:
     `pub-cambridge`, `pub-london`, `pub-halifax`, `pub-hamilton`, 41
     hosts) cannot be settled by a landing-page fetch at all. Those hosts
-    stay `unresolved` and their pages have no `gov_id`.
+    stay `unresolved` and their pages have no `gov_id`. Measured over the
+    real sweep (2026-09-03): 278 hosts fetched, 223 pages returned, **7**
+    pins written — all 7 from Granicus's `ViewPublisher.php` and one
+    CivicPlus root. Still unresolved: granicus 106, cablecast 61,
+    escribe 41, swagit 39, iqm2 5, civicclerk 4, unknown 4, telvue 2,
+    and one each of castus / champds / townhallstreams / vimeo (39
+    cablecast and 14 granicus hosts were unreachable outright).
   - **Next action**: for eScribe, read the organisation name from a
     real `Meeting.aspx` page instead of the listing (the adapter already
     fetches those, and the archive holds an example slug per host); for

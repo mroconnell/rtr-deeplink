@@ -61,6 +61,7 @@ burnsville,us:place:2708794,burnsville-mn,"'City of Burnsville' now resolves to 
 burton,us:place:2612060,burton-mi,"'City of Burton' now resolves to us:place:2612060 (Burton, MI)"
 butler-county,us:county:20015,butler-county-ks,"'Butler County' now resolves to us:county:20015 (Butler County, KS)"
 calaveras-ca,us:county:06009,calaveras-county-ca,"'Calaveras, CA' now resolves to us:county:06009 (Calaveras County, CA)"
+caledonia-township,us:cousub:2615512520,caledonia-charter-township-mi,"'Caledonia Township' now resolves to us:cousub:2615512520 (Caledonia (charter township), MI)"
 california,rtr:us:ca:judicial-council-of-california,judicial-council-of-california-ca,"'California' now resolves to rtr:us:ca:judicial-council-of-california (Judicial Council of California, CA)"
 california-state-personnel-board,rtr:us:ca:california-state-personnel-board,california-state-personnel-board-ca,"'California State Personnel Board' now resolves to rtr:us:ca:california-state-personnel-board (California State Personnel Board, CA)"
 california-state-senate,us:state:06,state-of-california,'California State Senate' now resolves to us:state:06 (State of California)
@@ -163,6 +164,7 @@ duluth-mn,us:place:2717000,duluth-city-mn,"'City of Duluth, MN' now resolves to 
 durham-region-on,ca:cd:3518,durham-on,"'Durham Region, ON' now resolves to ca:cd:3518 (Durham, ON)"
 east-greenwich-ri,us:cousub:4400322240,east-greenwich-town-ri,"'East Greenwich, RI' now resolves to us:cousub:4400322240 (East Greenwich Town, RI)"
 easton,us:place:2424475,easton-md,"'Easton' now resolves to us:place:2424475 (Easton, MD)"
+eastvale,us:place:0621230,eastvale-ca,"'Eastvale' now resolves to us:place:0621230 (Eastvale, CA)"
 eau-claire,us:place:5522300,eau-claire-wi,"'City of Eau Claire' now resolves to us:place:5522300 (Eau Claire, WI)"
 edgewater,us:place:1219825,edgewater-fl,"'City of Edgewater' now resolves to us:place:1219825 (Edgewater, FL)"
 edina,us:place:2718188,edina-mn,"'Edina' now resolves to us:place:2718188 (Edina, MN)"
@@ -376,6 +378,7 @@ north-branch-mn,us:place:2746798,north-branch-city-mn,"'North Branch, MN' now re
 north-castle-ny,us:cousub:3611951693,north-castle-town-ny,"'North Castle, NY' now resolves to us:cousub:3611951693 (North Castle Town, NY)"
 northcowichan,ca:csd:5919008,north-cowichan-bc,"'Northcowichan' now resolves to ca:csd:5919008 (North Cowichan, BC)"
 northfield,us:place:2746924,northfield-city-mn,"'City of Northfield' now resolves to us:place:2746924 (Northfield (city), MN)"
+nsb,us:place:1248625,new-smyrna-beach-fl,"'Nsb' now resolves to us:place:1248625 (New Smyrna Beach, FL)"
 oak-harbor,us:place:5350360,oak-harbor-wa,"'City of Oak Harbor' now resolves to us:place:5350360 (Oak Harbor, WA)"
 oak-park,us:place:1754885,oak-park-il,"'Oak Park' now resolves to us:place:1754885 (Oak Park, IL)"
 oak-ridge,rtr:us:tn:oak-ridge,the-city-of-oak-ridge-tn,"'The City of Oak Ridge' now resolves to rtr:us:tn:oak-ridge (The City of Oak Ridge, TN)"

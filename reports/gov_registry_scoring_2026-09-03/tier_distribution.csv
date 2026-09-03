@@ -1,0 +1,12 @@
+input_set,tier,rows,pct
+archive,registry,4034,79.8
+archive,unresolved,444,8.8
+archive,blank,241,4.8
+archive,pinned,185,3.7
+archive,unverified,137,2.7
+archive,inferred,12,0.2
+ledger,registry,803,91.7
+ledger,unresolved,43,4.9
+ledger,pinned,26,3.0
+ledger,inferred,2,0.2
+ledger,unverified,2,0.2

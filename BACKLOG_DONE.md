@@ -137,7 +137,7 @@ CA" suffix for `/state/*`'s anchored LIKE to match.
     on the base names agreeing AND the states not contradicting; and
     Nashville-Davidson resolves to one id via a curated alias.
   - **Next action (at the time)**: Ryan reads
-    `reports/gov_registry_scoring_2026-09-02/SUMMARY.md` and the three
+    `reports/gov_registry_scoring_2026-09-03/SUMMARY.md` and the three
     residual gaps at the end of `JURISDICTION_METADATA_PLAN.md`'s
     "Phase 1" section, then decides. Three things want a human call
     before Phase 2: the 11 conflicting tenant hosts in

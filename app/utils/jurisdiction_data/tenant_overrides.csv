@@ -328,3 +328,10 @@ www.cityofbelvedere.org,,us:place:0605164,fallback,upcoming_roster,upcoming_juri
 www.cityofsanrafael.org,,us:place:0668364,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0668364 match=exact -> registry: us_places.csv San Rafael city
 www.colma.ca.gov,,us:place:0614736,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Colma, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Colma town"
 yountvilleca.new.swagit.com,,us:place:0686930,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Yountville, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Yountville city"
+cityofnsb.granicus.com,,us:place:1248625,authoritative,landing_page,"landing page https://cityofnsb.granicus.com/ViewPublisher.php?view_id=1 reads ""New Smyrna Beach FL"""
+eastvale.granicus.com,,us:place:0621230,authoritative,landing_page,"landing page https://eastvale.granicus.com/ViewPublisher.php?view_id=1 reads ""Eastvale, CA"""
+nrhtx.granicus.com,,us:place:4852356,authoritative,landing_page,"landing page https://nrhtx.granicus.com/ViewPublisher.php?view_id=1 reads ""North Richland Hills TX"""
+pvestates.granicus.com,,us:place:0655380,authoritative,landing_page,"landing page https://pvestates.granicus.com/ViewPublisher.php?view_id=1 reads ""Palos Verdes Estates"""
+sanantonioisd.granicus.com,,us:sd:4838730,authoritative,landing_page,"landing page https://sanantonioisd.granicus.com/ViewPublisher.php?view_id=1 reads ""San Antonio Independent School District"""
+sandyutah.granicus.com,,us:place:4967440,authoritative,landing_page,"landing page https://sandyutah.granicus.com/ViewPublisher.php?view_id=1 reads ""Sandy City, UT"""
+mi-caledoniachartertownship.civicplus.com,,us:cousub:2615512520,authoritative,landing_page,"landing page https://mi-caledoniachartertownship.civicplus.com/ reads ""Caledonia Charter Township, MI"""
