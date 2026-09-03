@@ -1,15 +1,3 @@
-https://pub-albanyga.escribemeetings.com/Meeting.aspx?Id=80a65f32-e769-4a5d-a13e-005d8aaa3059&Agenda=Agenda&lang=English
-https://pub-amherst.escribemeetings.com/Meeting.aspx?Id=5d9c4e0d-cf9f-4b5a-b903-9a7f1737a72c&lang=English
-https://pub-applevalley.escribemeetings.com/Meeting.aspx?Id=5933700c-3fb4-447b-829a-d0e22241b67b&Agenda=Agenda&lang=English&Item=35&Tab=attachments
-https://pub-atascadero.escribemeetings.com/Meeting.aspx?Id=0831325d-259a-4268-996a-8fef9f8de7c7&Agenda=Agenda&lang=English
-https://pub-atptx.escribemeetings.com/Meeting.aspx?Id=ed1b0dad-e880-4e69-9f40-832ea17c624f&Agenda=Agenda&lang=English
-https://pub-billingstwp.escribemeetings.com/Meeting.aspx?Id=d4f6504a-a9e7-4a5a-9280-fe842f654d03&Agenda=Agenda&lang=English
-https://pub-butternutvalley.escribemeetings.com/Meeting.aspx?Id=54d5248f-8765-4367-ba50-8b3b68323950&lang=English
-https://pub-casselman.escribemeetings.com/Meeting.aspx?Id=85be2535-32ef-4556-a8ee-198fe8543180&Agenda=Agenda&lang=English
-https://pub-chestermere.escribemeetings.com/Meeting.aspx?Id=3edef2d4-dd60-4d66-9ef3-4f3c3a7c26e6&lang=English
-https://pub-chilliwack.escribemeetings.com/Meeting.aspx?Id=3cc1f82b-8fba-4933-acdb-7431d3de4f1b&Agenda=Agenda&lang=English&Item=32&Tab=attachments
-https://pub-coldlake.escribemeetings.com/Meeting.aspx?Id=ffd7f8d8-fb2b-4c88-a11c-42be0ca818c5&Agenda=Agenda&lang=English
-https://pub-countyofmchenry.escribemeetings.com/Meeting.aspx?fbclid=IwY2xjawQVPhVleHRuA2FlbQIxMABicmlkETE0QnhHWVpwd0EyN0hXTFBEc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHrYclXjpsExLq0mQL3t2FtyrKL8kU5vysXl6PrhtebbmJ5oj9v9aP7490xDb_aem_uFOs76zGlKF78zWSEV1VgQ&Id=ff14891d-8792-4210-9ae0-4d45544d76f8&Agenda=Agenda&lang=English&Item=9&Tab=attachments
 https://pub-covinaca.escribemeetings.com/Meeting.aspx?Id=8000e8a5-a04a-4f48-97a7-84b0f6e295ab&Agenda=Agenda&lang=English
 https://pub-crd.escribemeetings.com/Meeting.aspx?Id=4ac45015-77a0-467e-b446-af02cf694400&Agenda=Agenda&lang=English
 https://pub-csac.escribemeetings.com/Meeting.aspx?Id=6251f494-3aa2-46e2-82b9-978ecaca3c81&Agenda=Agenda&lang=English
