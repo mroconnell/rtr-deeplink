@@ -1,6 +1,67 @@
 # Backlog — done
 
-## `gov_id`: a government stops being identified by a string [Done 2026-09-02]
+## `gov_id`: a government stops being identified by a string [Done 2026-09-03]
+
+> **Backfilled in production 2026-09-03.** The two entries below are
+> closed on measured after-numbers, not on the projection. Verified
+> against `GET /internal/export/pages` and the live site once
+> `scripts/backfill_gov_id.py --apply` finished (4,714 changed, 339
+> already current from the interrupted first attempt, 226
+> `manual_override` keyed with their strings untouched):
+>
+> | | before | after |
+> | --- | --- | --- |
+> | pages with a `gov_id` | 0 | **4,582 of 5,053 (90.7%)** |
+> | ...with a NATIONAL id | 0 | **4,140 (81.9%)** |
+> | distinct governments | — | **2,265** |
+> | pages with no join key | 5,053 | **471** |
+>
+> **The 13 California counties.** `/state/california` now lists 47
+> distinct county-level CA governments and **not one of them appears on
+> more than one hub** — the pairs the architecture doc opened with
+> ("County of Fresno" / "Fresno County", and twelve more) are each one
+> hub: `/j/fresno-county-ca`, `/j/humboldt-county-ca`,
+> `/j/santa-clara-county-ca`, `/j/san-diego-county-ca`. The retired
+> spellings 301 rather than 404 — `/j/county-of-fresno-ca` →
+> `/j/fresno-county-ca` and `/j/king-county` → `/j/king-county-wa`,
+> both checked live — and none of them is in `sitemap.xml` any more,
+> while their replacements are.
+>
+> **Santa Clara, the entry that re-fragmented within two days of a hand
+> fix.** Four governments now, each keyed and each on its own hub, with
+> the 10 overridden pages keeping the exact string a human chose:
+>
+>     10  us:county:06085                                       'Santa Clara County, CA'
+>      1  us:place:0669084                                      'City of Santa Clara, CA'
+>      1  us:place:0669084                                      'Santa Clara, CA'
+>      1  rtr:us:ca:santa-clara-valley-transportation-authority  'Santa Clara Valley...'
+>
+> Both spellings of the city resolve to `us:place:0669084` and share one
+> hub, which is what the entry asked for — and it holds now without an
+> override, because the identity is a key rather than a string. The
+> override endpoint additionally emits a `tenant_overrides.csv` rule, so
+> the next re-ingest of a page nobody has archived yet inherits it.
+>
+> **The §1.3 mislabels, on the live site.** LADWP is 4 pages on
+> `/j/los-angeles-department-of-water-and-power-ca`, separate from the
+> City of Los Angeles's 11 on `/j/los-angeles-ca`. Honolulu is one
+> government, `us:county:15003`, on one hub. The Cottage Grove pair are
+> two hubs, `/j/cottage-grove-town-wi` and `/j/cottage-grove-village-wi`.
+> `dcccd.new.swagit.com`'s bleed page is `unresolved` and sits on its own
+> `/j/dallas` rather than being merged into the City of Dallas's
+> `/j/dallas-tx` (11 pages).
+>
+> Two premises in the brief did not survive checking, and are corrected
+> rather than acted on: `victoria.civicweb.net` is **Victoria,
+> Minnesota** — its portal reads "City of Victoria / City of lakes and
+> parks" and carries "MN" six times with no Canadian signal at all, so
+> the architecture doc's "Victoria TX on a Canadian CivicWeb host" was
+> wrong on both counts — and `wilmington.granicus.com` is confirmed
+> Wilmington NC from its own page (`OFFICIAL WILMINGTON, NC GOVERNMENT
+> WEBSITE`), independently of the `tenant_hints` value that had asserted
+> it.
+
+
 
 WO-99, Phase 2 of
 `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md`. Closes the
