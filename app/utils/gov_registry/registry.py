@@ -21,8 +21,14 @@ from typing import Dict, List, Optional, Tuple
 DATA_DIR = Path(__file__).parent.parent / "jurisdiction_data"
 
 GOVERNMENTS_FILE = "governments.csv"
+# Hand-written rows, kept in their own file so a regeneration of
+# `governments.csv` cannot lose or dilute them, and so a reviewer can see
+# the whole curated set without reading 2,800 generated rows. Loaded on
+# top of `governments.csv`, and the only source of lookup aliases.
+CURATED_GOVERNMENTS_FILE = "curated_governments.csv"
 TENANT_OVERRIDES_FILE = "tenant_overrides.csv"
 RELATIONS_FILE = "gov_relations.csv"
+TENANT_HINTS_FILE = "tenant_hints.csv"
 
 GOVERNMENTS_HEADER = [
     "gov_id",
@@ -48,6 +54,11 @@ TENANT_OVERRIDES_HEADER = [
     "evidence",
 ]
 RELATIONS_HEADER = ["from_gov_id", "relation", "to_gov_id", "evidence"]
+TENANT_HINTS_HEADER = ["tenant_host", "state", "source", "evidence"]
+
+# A `source` value starting with this marks a hand-written row. Only such
+# a row's `aliases` are trusted for LOOKUP -- see `curated_aliases()`.
+CURATED_SOURCE_PREFIX = "curated"
 
 # The only relations D2 allows. Deliberately few, and deliberately not a
 # general "related to": a JPA's members and a fire district's served
@@ -121,7 +132,7 @@ def _read(filename: str) -> List[dict]:
 @lru_cache(maxsize=1)
 def governments() -> Dict[str, Government]:
     out: Dict[str, Government] = {}
-    for r in _read(GOVERNMENTS_FILE):
+    for r in _read(GOVERNMENTS_FILE) + _read(CURATED_GOVERNMENTS_FILE):
         gov_id = (r.get("gov_id") or "").strip()
         if not gov_id:
             continue
@@ -177,6 +188,59 @@ def tenant_overrides() -> Dict[str, List[TenantOverride]]:
 
 
 @lru_cache(maxsize=1)
+def curated_aliases() -> Dict[Tuple[str, str], str]:
+    """(state, alias) -> gov_id, from HAND-WRITTEN `governments.csv` rows
+    only (`source` starting "curated").
+
+    The `aliases` column serves two different purposes and only one of
+    them is safe to look up by. On a generated row it is a *record* of
+    every raw string that happened to resolve there, written by the
+    scoring run -- looking those up would cement whatever the resolver
+    already did, including its mistakes, and make a wrong resolution
+    self-reinforcing. On a curated row it is an *assertion* by a human
+    that this name means this government, which is exactly what the
+    Census official-name shapes need ("Boise" for "Boise City city",
+    "Nashville" for "Nashville-Davidson metropolitan government
+    (balance)").
+
+    State is part of the key: "Louisville" means the Kentucky metro
+    government only in KY, and there are real Louisvilles in CO and OH.
+    A row with no state contributes its aliases under the empty state,
+    which only a stateless query can match.
+    """
+    out: Dict[Tuple[str, str], str] = {}
+    for gov in governments().values():
+        if not gov.source.startswith(CURATED_SOURCE_PREFIX):
+            continue
+        for alias in gov.aliases:
+            out[(gov.state.upper(), alias.strip().lower())] = gov.gov_id
+    return out
+
+
+@lru_cache(maxsize=1)
+def tenant_hints() -> Dict[str, str]:
+    """tenant_host -> state abbreviation.
+
+    Deliberately NOT a gov_id. These rows are machine-derived (mostly
+    rtr-discovery's `tenants.jurisdiction_override`, whose values include
+    "S Fw, MD", "Mw Rd", "Ps C, FL", "Psr C 2", "Ride Uta" and "Tampa
+    D" -- subdomain guesses, not government names), so they are trusted
+    for the one narrow thing they are reliably right about: which state a
+    tenant is in. A hint can stop a government minting an unknown-state
+    id; it can never say which government a page belongs to. That is what
+    `tenant_overrides.csv` is for, and every row there now has a
+    non-auto-derived source behind it.
+    """
+    out: Dict[str, str] = {}
+    for r in _read(TENANT_HINTS_FILE):
+        host = (r.get("tenant_host") or "").strip().lower()
+        state = (r.get("state") or "").strip().upper()
+        if host and state:
+            out[host] = state
+    return out
+
+
+@lru_cache(maxsize=1)
 def relations() -> List[Tuple[str, str, str, str]]:
     return [
         (
@@ -207,3 +271,5 @@ def clear_caches() -> None:
     governments.cache_clear()
     tenant_overrides.cache_clear()
     relations.cache_clear()
+    curated_aliases.cache_clear()
+    tenant_hints.cache_clear()

@@ -372,6 +372,10 @@ keep-and-flag**, reaching 536/649 before the registry tier even counts.
 
 ## Phase 1 — gov_id registry scoring (WO-98, 2026-09-02)
 
+> **Numbers below are the first run's, kept for the record. The current
+> ones are in "Phase 1b" at the end of this file** — a fix pass over the
+> same branch, run against the same 5,929 rows.
+
 Step 1 of `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6:
 the registry data files and a pure resolver module
 (`app/utils/gov_registry/`), **scored before any schema change**. Nothing
@@ -493,3 +497,158 @@ before this work.
   district tenants (`coppellisd.new.swagit.com`,
   `pelhampublicschoolsny.new.swagit.com`) — the same blank-jurisdiction
   family workstream 3 above already identified, now countable per host.
+
+---
+
+## Phase 1b — the fix pass (WO-98, 2026-09-02)
+
+A second pass over the same branch, before Phase 2, against the same
+inputs: 5,053 archived pages and 876 ledger pairs. Same constraints —
+no schema change, no production write, nothing importing the package.
+Report regenerated in place at
+`reports/gov_registry_scoring_2026-09-02/`.
+
+### The three targets
+
+| check | Phase 1 | Phase 1b | target |
+| --- | --- | --- | --- |
+| rows on the county table whose raw name had a municipal type word | 26 | **0** | 0 |
+| `rtr:us:xx:` / `rtr:ca:xx:` ids | 624 | **0** | 0 |
+| pins sourced only from `auto_derived` | 447 | **0** | 0 |
+
+National-id coverage went **79.6% → 83.0%** (4,919 of 5,929) on a
+stricter definition: the Phase 1 headline counted an id as national
+whenever it did not start with `rtr:`, which quietly included the new
+empty-id `unresolved` rows. Canada went 92.2% → **88.6%** for the same
+reason — the honest denominator grew as more Canadian rows became
+reachable at all.
+
+| tier | archive pages | ledger pairs |
+| --- | --- | --- |
+| pinned | 175 (3.5%) | 23 (2.6%) |
+| registry | 4,013 (79.4%) | 799 (91.2%) |
+| inferred | 7 (0.1%) | 2 (0.2%) |
+| unverified | 235 (4.7%) | 12 (1.4%) |
+| unresolved | 382 (7.6%) | 40 (4.6%) |
+| blank | 241 (4.8%) | 0 |
+
+`pinned` falls because 447 hosts lost a pin they should never have had;
+`registry` absorbs them, which is the point — a table hit is evidence, a
+machine-derived pin is not.
+
+### What was wrong, and what fixed it
+
+**1. A municipal name resolving to a county.** "City of Santa Clara",
+"City of Riverside", "City of Maricopa", "City of Boise, ID", "City of
+Waukesha, WI", "City of Greenville", "City of Santa Rosa" — each landed
+on the same-named county, merging a city's pages into its county's hub.
+That is worse than not resolving, because it looks resolved. The
+general-purpose branch's bare-name county fallback is now gated on the
+absence of a municipal type word.
+
+Gating it immediately produced a second bug of the same shape: "City of
+Santa Clara" stopped becoming Santa Clara County and started becoming
+`us:cousub:3603365178` — **Santa Clara *town*, NY**. A cousub now has to
+match the raw type word too.
+
+**2. Place lookups that missed.**
+- *Within-state place collisions.* Waukesha WI is a city (`5584250`) and
+  a village (`5584275`) under one normalized key, so the exactly-one rule
+  declined and the county caught the fall. The raw type word now breaks
+  the tie inside the place table, the same way it already did between
+  place and cousub. Two candidates and no type word still returns
+  nothing.
+- *Census official names.* Boise is "Boise City city"; Louisville is
+  "Louisville/Jefferson County metro government (balance)"; Nashville is
+  "Nashville-Davidson metropolitan government (balance)"; DC was missing
+  from the table entirely (FUNCSTAT `N`, kept now by GEOID with the
+  reason recorded — the other three `N` rows nationally are genuinely
+  defunct, and Louisville city in particular must stay out or it collides
+  with the metro government). Handled by reusing the enricher's own
+  `_QUERY_GOVERNMENT_TYPE_RE` and slash-spacing normalization, a
+  county→place fallback restricted to the 10 consolidated FUNCSTAT `B`/`F`
+  rows, and a **curated alias** pass. Both Nashville tenants now land on
+  `us:place:4752006`, Louisville on `us:place:2148006`, DC on
+  `us:place:1150000`.
+  Curated aliases live in their own `curated_governments.csv` and are the
+  only aliases ever looked up: the `aliases` column on a *generated* row
+  records what happened to resolve there, and looking those up would make
+  a wrong resolution self-reinforcing.
+
+**3. No id is minted with an unknown state.** The state is now recovered
+from the tenant — the enricher's validated subdomain reading,
+`_KNOWN_DOMAINS`, then `tenant_hints.csv` — **before** the national
+lookup, not merely before minting. That ordering matters and was itself a
+bug found mid-pass: a stateless name is looked up nationally, where the
+place table is often ambiguous while the county table is not, so
+`riversideca.granicus.com` stored "City of Riverside" on one page
+(→ `us:place:0662000`) and a bare "Riverside" on the next
+(→ `us:county:06065`). One tenant, one government, two ids. 458 rows now
+carry a state recovered this way.
+
+Two new tiers follow. **`inferred`** is the same-tenant consistency rung:
+when every other resolved row for a host agrees on one government, adopt
+it (9 rows — low, because rung 3b already recovered most of them by
+state). **`unresolved`** is a real government name with no state and
+nothing to key it by: 422 rows, listed in `unresolved.csv` for a pin, and
+deliberately **not** minted. Their hosts are mostly shared ones where a
+tenant state is meaningless — `youtu.be` (28), `www.youtube.com` (13),
+`videoplayer.telvue.com` (8).
+
+**4. Seeding no longer launders machine guesses into pins.** 447 hosts
+whose only evidence was rtr-discovery's `tenants.jurisdiction_override`
+are out of `tenant_overrides.csv` and into a new `tenant_hints.csv` that
+the resolver reads **for state only, never for a gov_id**. That is where
+"S Fw, MD", "Mw Rd", "Ps C, FL", "Psr C 2", "Ride Uta" and "Tampa D"
+came from. Pins: 767 → 330, of which 0 are auto-derived-only.
+
+Conflicts fell 11 hosts → **1**. Ten were never disagreements: an
+`unresolved` candidate has no gov_id and asserts nothing, so it no longer
+counts as a competing claim. The one that remains,
+`uatccta.primegov.com`, is listed under El Cerrito **and** San Pablo in
+the upcoming roster — a real shared multi-government tenant (§1.5), not a
+conflict. It gets no pin and is recorded as the first case wanting a
+`match` discriminator.
+
+**5. Display.** One parenthetical form for within-state disambiguation —
+"Cottage Grove (town), WI" / "Cottage Grove (village), WI" — so both
+sides of a shared name read the same way; the old suffix form ("Cottage
+Grove Town") read as a different name rather than as a disambiguator. An
+uncontested township keeps §4's suffix form ("Chesterfield Township,
+MI"). Census's "(balance)" and government-type phrases are stripped from
+display names ("Nashville-Davidson, TN"). DC and Louisville are
+`municipality`, not `other`.
+
+### One more mislabel found, from the export itself
+
+`imperialid.granicus.com` resolved to **Imperial County, CA**. Its one
+archived page has slug `imperial-iid-bod-regular-meeting-january-21-2025`
+— Imperial Irrigation District, Board of Directors. The "id" in the
+subdomain is the district, not Idaho, and its stored jurisdiction is a
+bare "Imperial", which matched the nationally-unique county while the
+places named Imperial were ambiguous. Pinned, with that slug as the
+evidence. Same shape as §1.3's nine.
+
+### Merges and splits now
+
+**169 merges** over 341 hub pages, and the bad ones are gone: Santa
+Clara, Riverside and Maricopa each now have a *city* merge and a
+*county* merge, separately and correctly, instead of one hub swallowing
+the other. **33 splits**, down from 50, and the remainder are real:
+`/j/portland` becomes three governments in OR, ME and TX; `/j/portage`
+three in IN, MI and WI; and the §1.3 agency splits all stand.
+
+### Still open for Phase 2
+
+- **422 `unresolved` rows want pins**, concentrated on shared hosts
+  (`youtu.be`, `videoplayer.telvue.com`) where no tenant-level state
+  exists. These are the rows a human list would fix fastest.
+- **`uatccta.primegov.com` needs the first real `match` discriminator** —
+  a path prefix or query parameter separating El Cerrito's meetings from
+  San Pablo's.
+- **241 rows still have no jurisdiction string at all**
+  (`rtr:unknown:<host>`), concentrated on Swagit school-district tenants.
+- A bare name with no type word and no tenant state can still reach the
+  county table ("Waukesha" alone). The gate is on the municipal type
+  word, as specified; the tenant-consistency rung is what catches these
+  in context.

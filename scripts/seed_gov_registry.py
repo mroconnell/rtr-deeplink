@@ -92,6 +92,16 @@ _ARCHITECTURE_DOC_CORRECTIONS = {
     ),
     "pub-hpsb.escribemeetings.com": "Hamilton Police Services Board, ON",
     "pub-trca.escribemeetings.com": "Toronto and Region Conservation Authority, ON",
+    # Found in the Phase 1b pass, same shape as the nine above and
+    # verified the same way -- from the export itself, not guessed. The
+    # host's one archived page has slug
+    # "imperial-iid-bod-regular-meeting-january-21-2025": IID BOD is the
+    # Imperial Irrigation District Board of Directors, and "id" in the
+    # subdomain is the district, not Idaho. Its stored jurisdiction is a
+    # bare "Imperial", which resolved to Imperial County CA because that
+    # county is nationally unique while the places named Imperial are
+    # not.
+    "imperialid.granicus.com": "Imperial Irrigation District, CA",
 }
 
 
@@ -222,6 +232,47 @@ def _ledger(discovery_dir: Path) -> List[Candidate]:
     return [c for c in out if c.host and c.name]
 
 
+# Hosts where two governments is the right answer, not a disagreement --
+# so the conflicts file says so rather than asking Ryan to pick.
+_SHARED_TENANTS = {
+    "uatccta.primegov.com": (
+        "SHARED TENANT, not a conflict: the upcoming roster lists this "
+        "host under BOTH El Cerrito and San Pablo, which is a real "
+        "many-governments-to-one-tenant case (architecture doc §1.5). It "
+        "wants the first real `match` discriminator in "
+        "tenant_overrides.csv -- a path prefix or query parameter that "
+        "separates the two cities' meetings -- not a pin to either. No "
+        "pin is written until that discriminator is known."
+    ),
+}
+
+
+def _ledger_states(discovery_dir: Path) -> Dict[str, str]:
+    """netloc -> learned `tenants.state_abbr`, read-only.
+
+    Feeds `tenant_hints.csv`, never `tenant_overrides.csv`. A learned
+    state is a much weaker claim than a government name and is right far
+    more often -- it comes from a state suffix seen on the tenant's own
+    pages, not from splitting its subdomain into words.
+    """
+    path = discovery_dir / "ledger.db"
+    if not path.exists():
+        return {}
+    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        rows = conn.execute(
+            "SELECT netloc, state_abbr FROM tenants "
+            "WHERE state_abbr IS NOT NULL AND state_abbr != ''"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {
+        (n or "").strip().lower(): (st or "").strip().upper()
+        for n, st in rows
+        if n and st
+    }
+
+
 def _collapse_stateless_duplicates(entries, aliases):
     """Two minted ids for one host that differ ONLY in the state segment
     -- `rtr:us:xx:albuquerque-bernalillo-county-water-utility-authority`
@@ -297,6 +348,17 @@ def main() -> None:
 
     kept: List[dict] = []
     conflicts: List[dict] = []
+    demoted: List[str] = []
+    ledger_states = _ledger_states(args.discovery)
+    hints: Dict[str, dict] = {
+        host: {
+            "tenant_host": host,
+            "state": state,
+            "source": "ledger_state_abbr",
+            "evidence": "rtr-discovery ledger.db tenants.state_abbr",
+        }
+        for host, state in ledger_states.items()
+    }
     for host, entries in sorted(resolved.items()):
         entries = _collapse_stateless_duplicates(entries, aliases)
         corrected = [e for e in entries if e[0].precedence == 0]
@@ -307,6 +369,37 @@ def main() -> None:
             for cand, _match in entries:
                 aliases[corrected[0][1].gov_id].add(cand.name)
             entries = corrected
+        if all(c.source == "auto_derived" for c, _m in entries):
+            # A host whose ONLY evidence is rtr-discovery's
+            # `tenants.jurisdiction_override` gets no pin. Those values
+            # are subdomain guesses, and the ones that are wrong are
+            # unmistakable once listed: "S Fw, MD", "Mw Rd", "Ps C, FL",
+            # "Psr C 2", "Ride Uta", "Tampa D". A pin is the one tier
+            # that overrides a working extraction, so it is the last
+            # place such a value belongs. What they ARE reliably right
+            # about is the state, so that goes to `tenant_hints.csv`.
+            state = entries[0][1].state or ledger_states.get(host, "")
+            if state:
+                hints[host] = {
+                    "tenant_host": host,
+                    "state": state,
+                    "source": "auto_derived",
+                    "evidence": (
+                        "state only, from rtr-discovery ledger.db "
+                        f"tenants.jurisdiction_override {entries[0][0].name!r}"
+                    ),
+                }
+            demoted.append(host)
+            continue
+        # An `unresolved` candidate (empty gov_id) asserts no government
+        # at all -- it is the ladder saying "a real name, but no state and
+        # nothing to key it by". It must not count as a competing claim,
+        # or every host with one auto-derived subdomain guess alongside a
+        # real source looks like a disagreement. 10 of the 11 apparent
+        # conflicts in the first run were exactly this shape.
+        claiming = [e for e in entries if e[1].gov_id]
+        if claiming:
+            entries = claiming
         gov_ids = {m.gov_id for _c, m in entries}
         if len(gov_ids) > 1:
             for cand, match in sorted(entries, key=lambda e: e[0].precedence):
@@ -320,6 +413,7 @@ def main() -> None:
                         "strength": cand.strength,
                         "tier": match.tier,
                         "evidence": cand.evidence,
+                        "note": _SHARED_TENANTS.get(host, "sources disagree — review"),
                     }
                 )
             continue
@@ -355,7 +449,19 @@ def main() -> None:
         writer.writerows(sorted(kept, key=lambda r: r["tenant_host"]))
     print(f"\n{registry.TENANT_OVERRIDES_FILE}: {len(kept)} rows")
 
+    with open(
+        DATA_DIR / registry.TENANT_HINTS_FILE, "w", newline="", encoding="utf-8"
+    ) as fh:
+        writer = csv.DictWriter(fh, fieldnames=registry.TENANT_HINTS_HEADER)
+        writer.writeheader()
+        writer.writerows(sorted(hints.values(), key=lambda r: r["tenant_host"]))
+    print(
+        f"{registry.TENANT_HINTS_FILE}: {len(hints)} rows "
+        f"({len(demoted)} hosts demoted from pins to state-only hints)"
+    )
+
     conflict_fields = [
+        "note",
         "tenant_host",
         "gov_id",
         "gov_name",

@@ -1,7 +1,5 @@
 tenant_host,match,gov_id,strength,source,evidence
 abcwua.granicus.com,,rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,fallback,visual_confirmed,"archive lists 'Albuquerque Bernalillo County Water Utility Authority' meetings; meeting page agenda text mentions New Mexico (landing.png, meeting.png) [reports/jurisdiction_screens/abcwua.granicus.com/landing.png reports/jurisdiction_screens/abcwua.granicus.com/meeting.png] -> seat county 35001 -> unverified: minted from 'Albuquerque Bernalillo County Water Utility Authority, NM'"
-achdidaho.civicweb.net,,rtr:us:xx:ada-county-highway-district,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Ada County Highway District'
-addison.granicus.com,,us:place:1700243,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Addison village
 agenda.friscotexas.gov,,us:place:4827684,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Frisco city
 agenda.modestogov.com,,us:place:0648354,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Modesto city
 agenda2.modestogov.com,,us:place:0648354,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Modesto city
@@ -10,147 +8,65 @@ agendaonline.mymanatee.org,,us:county:12081,fallback,known_domains,app/utils/jur
 agendas.cityofsparks.us,,us:place:3268400,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sparks city
 agendas.fitchburgwi.gov,,us:place:5525950,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Fitchburg city
 agendas.wrd.org,,rtr:us:ca:water-replenishment-district,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Water Replenishment District, CA'"
-alachua.granicus.com,,us:county:12001,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Alachua County
 alameda.granicus.com,,us:place:0600562,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Alameda, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Alameda city"
 alamedacounty.granicus.com,,us:county:06001,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06001 match=exact -> registry: us_counties.csv Alameda County
 albanyca.granicus.com,,us:place:0600674,fallback,known_domains+ryan_stated+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Albany city
 albanyca.primegov.com,,us:place:0600674,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0600674 match=exact -> registry: us_places.csv Albany city
-albemarle.granicus.com,,us:county:51003,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Albemarle County
 alexandria.granicus.com,,us:place:5101000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Alexandria city
 americancanyon.granicus.com,,us:place:0601640,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: American Canyon, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv American Canyon city"
 amv.siouxfalls.gov,,us:place:4659020,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sioux Falls city
-andoverks.civicweb.net,,rtr:us:xx:andover,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Andover'
 antiochca.portal.civicclerk.com,,us:place:0602252,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0602252 match=exact -> registry: us_places.csv Antioch city
 apps.tampagov.net,,us:place:1271000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tampa city
-ar-maumelle.civicplus.com,,us:place:0544600,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Maumelle city
-arapahoe.granicus.com,,us:county:08005,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Arapahoe County
 artesiaca.cablecast.tv,,us:place:0602896,fallback,auto_derived+visual_confirmed,"city seal reads 'City of Artesia, State of California, Incorporated 1959' (landing.png) [reports/jurisdiction_screens/artesiaca.cablecast.tv/landing.png reports/jurisdiction_screens/artesiaca.cablecast.tv/meeting.png] -> place 0602896 -> registry: us_places.csv Artesia city"
 atherton.primegov.com,,us:place:0603092,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0603092 match=exact -> registry: us_places.csv Atherton town
-austintx.new.swagit.com,,us:place:4805000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Austin city
-austintx.swagit.com,,us:place:4805000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Austin city
-azusa.granicus.com,,us:place:0603386,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Azusa city
+baha.granicus.com,,rtr:us:ca:metropolitan-transportation-commission,fallback,visual_confirmed,"archive lists 'Metropolitan Transportation Commission', 'ABAG', 'Bay Area Toll Authority', 'Bay Area Housing Finance Authority', 'Clipper Executive Board' (landing.png) -- the Bay Area MPO, California [reports/jurisdiction_screens/baha.granicus.com/landing.png reports/jurisdiction_screens/baha.granicus.com/meeting.png] -> no seat county in name -> unverified: minted from 'Metropolitan Transportation Commission, CA'"
 baldwincountyal.granicus.com,,us:county:01003,fallback,auto_derived+visual_confirmed,'Baldwin County Commission Regular' meeting; agenda text mentions Alabama (meeting.png) [reports/jurisdiction_screens/baldwincountyal.granicus.com/landing.png reports/jurisdiction_screens/baldwincountyal.granicus.com/meeting.png] -> county 01003 -> registry: us_counties.csv Baldwin County
 baltimore.legistar.com,,us:place:2404000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Baltimore city
 bart.granicus.com,,us:county:06001,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=06001 match=exact -> registry: us_counties.csv Alameda County
-batonrougela.new.swagit.com,,us:place:2205000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Baton Rouge city
-beaufortcountysc.new.swagit.com,,us:county:45013,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Beaufort County
 belmont-ca.granicus.com,,us:place:0605108,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Belmont, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Belmont city"
-bentoncoor.portal.civicclerk.com,,us:county:41003,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Benton County
 berkeley.granicus.com,,us:place:0606000,fallback,auto_derived+known_domains+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Berkeley city
-bexarcountytx.new.swagit.com,,us:county:48029,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Bexar County
 blacksburg.granicus.com,,us:place:5107784,fallback,auto_derived+visual_confirmed,"page title 'Town of Blacksburg, Va.: Blacksburg' (landing.png) [reports/jurisdiction_screens/blacksburg.granicus.com/landing.png reports/jurisdiction_screens/blacksburg.granicus.com/meeting.png] -> place 5107784 -> registry: us_places.csv Blacksburg town"
-bluffton-sc.municodemeetings.com,,us:county:45013,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Beaufort County
 boston.granicus.com,,us:place:2507000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Boston city
-brightonco.granicus.com,,rtr:us:xx:brighton,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Brighton'
 brisbaneca.portal.civicclerk.com,,us:place:0608310,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0608310 match=exact -> registry: us_places.csv Brisbane city
-brla.gov,,us:place:2205000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Baton Rouge city
 broomfieldco.cablecast.tv,,us:place:0809280,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Broomfield city
-broward.granicus.com,,us:county:12011,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Broward County
 browardmpo.new.swagit.com,,rtr:us:fl:broward-metropolitan-planning-organization,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Broward Metropolitan Planning Organization, FL'"
-browardschools.granicus.com,,us:sd:1200180,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_school_districts.csv Broward County School District (unified)
-buda-tx.granicus.com,,us:place:4811080,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Buda city
-bullheadcity.granicus.com,,us:place:0408220,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Bullhead City city
 burbank.granicus.com,,us:sd:0606450,fallback,visual_confirmed,'Burbank Unified School District' logo on the player (meeting.png); the only NCES district of that name [reports/jurisdiction_screens/burbank.granicus.com/landing.png reports/jurisdiction_screens/burbank.granicus.com/meeting.png] -> nces 0606450 -> registry: us_school_districts.csv Burbank Unified School District (unified)
 burlingameca.granicus.com,,us:place:0609066,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0609066 match=exact -> registry: us_places.csv Burlingame city
-buttecoca.portal.civicclerk.com,,us:county:06007,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Butte County
 ca-beverlyhills.civicplus.com,,us:place:0606308,fallback,auto_derived+visual_confirmed,"footer address 'City of Beverly Hills, 455 North Rexford Drive, Beverly Hills, CA 90210' (landing.png) [reports/jurisdiction_screens/ca-beverlyhills.civicplus.com/landing.png reports/jurisdiction_screens/ca-beverlyhills.civicplus.com/meeting.png] -> place 0606308 -> registry: us_places.csv Beverly Hills city"
-ca-ceres.civicplus.com,,us:place:0612524,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Ceres city
-ca-clearlake.civicplus.com,,us:place:0613945,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Clearlake city
-ca-escalon.civicplus.com,,us:place:0622790,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Escalon city
 ca-moraga.civicplus.com,,us:place:0649187,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0649187 match=exact -> registry: us_places.csv Moraga town
-ca-ridgecrest.civicplus.com,,us:place:0660704,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Ridgecrest city
-ca-sanclemente.civicplus.com,,us:place:0665084,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv San Clemente city
-ca-ventura.civicplus.com,,us:county:06111,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Ventura County
-ca-willits.civicplus.com,,us:place:0685600,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Willits city
-cabq.granicus.com,,us:place:3502000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Albuquerque city
 calistoga.civicweb.net,,us:place:0609892,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Calistoga, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Calistoga city"
-cambridgema.primegov.com,,us:place:2511000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cambridge city
 capitalcityconnection.cablecast.tv,,us:place:0151000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Montgomery city
-capmetrotx.granicus.com,,rtr:us:tx:capital-metropolitan-transportation-authority,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Capital Metropolitan Transportation Authority, TX'"
-carmelin.new.swagit.com,,us:place:1810342,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Carmel city
-carson.granicus.com,,rtr:us:xx:carson,fallback,jurisdiction_overrides, -> unverified: minted from 'City of Carson'
+carson.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Carson'
 carsonca.cablecast.tv,,us:place:0611530,fallback,auto_derived+visual_confirmed,"show titles 'City of Carson CA. Planning Commission meeting' (landing.png, meeting.png) [reports/jurisdiction_screens/carsonca.cablecast.tv/landing.png reports/jurisdiction_screens/carsonca.cablecast.tv/meeting.png] -> place 0611530 -> registry: us_places.csv Carson city"
-casselberryfl.portal.civicclerk.com,,us:place:1211050,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Casselberry city
-castlepines.granicus.com,,us:place:0812387,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Castle Pines city
-castlerock-co.granicus.com,,rtr:us:xx:castle-rock,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Town of Castle Rock'
 ccsf.granicus.com,,us:place:0667000,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0667000 match=exact -> registry: us_places.csv San Francisco city
 ccta.primegov.com,,rtr:us:ca:contra-costa-transportation-authority,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Contra Costa Transportation Authority, CA'"
-champaign-cablecast.cablecast.tv,,us:place:1712385,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Champaign city
-champaign.cablecast.tv,,us:place:1712385,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Champaign city
 charlotte.cablecast.tv,,us:place:3712000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Charlotte city
-charlotte.granicus.com,,us:county:12015,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Charlotte County
-charlottenc.granicus.com,,us:place:3712000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Charlotte city
-chathamcountyga.iqm2.com,,us:county:13051,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Chatham County
-chelanwa.portal.civicclerk.com,,us:place:5311615,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chelan city
-chestercopa.portal.civicclerk.com,,us:county:42029,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Chester County
-chico-ca.granicus.com,,us:place:0613014,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chico city
-chino.granicus.com,,us:place:0613210,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chino city
 ci-ssf-ca.granicus.com,,us:place:0673262,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0673262 match=exact -> registry: us_places.csv South San Francisco city
-citrusclerk.portal.civicclerk.com,,us:county:12017,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Citrus County
-city-lighthousepoint.granicus.com,,us:place:1240450,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lighthouse Point city
 citychannel-ia.cablecast.tv,,us:place:1922395,fallback,auto_derived+visual_confirmed,'CityChannel Dubuque ... local government programming'; about text names Iowa (landing.png) [reports/jurisdiction_screens/citychannel-ia.cablecast.tv/landing.png reports/jurisdiction_screens/citychannel-ia.cablecast.tv/meeting.png] -> place 1922395 -> registry: us_places.csv Dubuque city
-cityftmyers.granicus.com,,us:place:1224125,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fort Myers city
-citynmb.granicus.com,,us:place:1249475,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv North Miami Beach city
 cityofcampbell.granicus.com,,us:place:0610345,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Campbell, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Campbell city"
-cityofcoralvilleiowa.cablecast.tv,,us:place:1916230,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Coralville city
-cityofdoral.granicus.com,,us:place:1217935,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Doral city
-cityofedgewater.granicus.com,,us:place:1219825,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Edgewater city
 cityofepa.granicus.com,,us:place:0620956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: East Palo Alto, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv East Palo Alto city"
-cityoffayetteville.granicus.com,,us:place:3722920,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fayetteville city
-cityofgastonia.granicus.com,,us:place:3725580,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Gastonia city
 cityoflancasterca.primegov.com,,us:place:0640130,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Lancaster city
 cityofmillvalley.granicus.com,,us:place:0647710,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Mill Valley, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Mill Valley city"
-cityofnorthport.granicus.com,,rtr:us:fl:north-port,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'North Port, FL'"
-cityofnsb.granicus.com,,us:place:1248625,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv New Smyrna Beach city
-cityofpt.granicus.com,,rtr:us:wa:port-townsend,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'City of Port Townsend, WA'"
-cityofredlands.cablecast.tv,,us:place:0659962,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Redlands city
-cityofrehoboth.civicweb.net,,us:place:1060290,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Rehoboth Beach city
-cityofrsm.granicus.com,,us:place:0659587,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Rancho Santa Margarita city
 cityofsancarlos.primegov.com,,us:place:0665070,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0665070 match=exact -> registry: us_places.csv San Carlos city
-cityofsignalhill.granicus.com,,us:place:0671876,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Signal Hill city
-cityoftacoma.granicus.com,,us:place:5370000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tacoma city
 cityofventura.granicus.com,,us:county:06111,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Ventura County
 cityordinances.durhamnc.gov,,us:place:3719000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Durham city
-clay.primegov.com,,us:county:12019,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Clay County
-clayfl.new.swagit.com,,us:county:12019,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Clay County
-co-fraser.civicplus.com,,us:place:0828305,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fraser town
-co-fruita.civicplus.com,,us:place:0828745,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fruita city
-co-palmerlake.civicplus.com,,us:place:0857025,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Palmer Lake town
-co-tellercounty.civicplus.com,,us:county:08119,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Teller County
-co-woodlandpark.civicplus.com,,us:place:0886090,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Woodland Park city
-coconutcreek.granicus.com,,us:place:1213275,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Coconut Creek city
 cocookmn.civicweb.net,,us:place:2713006,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Cook city
 coe-pub.escribemeetings.com,,ca:cd:3537,fallback,visual_confirmed,"agenda masthead '360 Fairview Avenue West, Essex, Ontario N8M 1Y6' (meeting.png) [reports/jurisdiction_screens/coe-pub.escribemeetings.com/landing.png reports/jurisdiction_screens/coe-pub.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_cd.csv Essex"
-college-park.granicus.com,,us:place:2418750,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv College Park city
-coloradosprings.granicus.com,,us:place:0816000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Colorado Springs city
 concordca.cablecast.tv,,us:place:0616000,fallback,auto_derived+visual_confirmed,"'Concord' city logo; schedule shows Mt. Diablo / Ygnacio Valley High School and Todos Santos Plaza (Concord, Contra Costa County, CA landmarks); cityofconcord.org in footer (landing.png) [reports/jurisdiction_screens/concordca.cablecast.tv/landing.png reports/jurisdiction_screens/concordca.cablecast.tv/meeting.png] -> place 0616000 -> registry: us_places.csv Concord city"
 connect.sussexcountyde.gov,,us:county:10005,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Sussex County
 contra-costa.granicus.com,,us:county:06013,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06013 match=exact -> registry: us_counties.csv Contra Costa County
-cooper.granicus.com,,us:place:1214125,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cooper City city
-coralgables.granicus.com,,us:place:1214250,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Coral Gables city
-corpuschristi.granicus.com,,us:place:4817000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Corpus Christi city
 cosm.granicus.com,,us:place:0668252,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0668252 match=exact -> registry: us_places.csv San Mateo city
 cosumnescommunityservices.portal.civicclerk.com,,rtr:us:ca:cosumnes-community-services-district,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Cosumnes Community Services District, CA'"
 cotaticityca.iqm2.com,,us:place:0616560,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Cotati, Sonoma County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Cotati city"
 cu.new.swagit.com,,rtr:us:co:colorado,fallback,visual_confirmed,"footer 'University of Colorado Video Archive' (landing.png) -- a state university Board of Regents, typed as a state body [reports/jurisdiction_screens/cu.new.swagit.com/landing.png] ->  -> unverified: minted from 'Colorado, CO'"
-culver-city.granicus.com,,us:place:0617568,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Culver City city
 cupertino.granicus.com,,us:place:0617610,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Cupertino, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Cupertino city"
-cvrd.primegov.com,,rtr:us:xx:duncan,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Duncan'
 cvwd.primegov.com,,rtr:us:ca:coachella-valley-water-district,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Coachella Valley Water District, CA'"
 dakota.granicus.com,,us:county:27037,fallback,auto_derived+visual_confirmed,"title 'County Board Meetings - Dakota County Minnesota'; footer 'Copyright Dakota County, Minnesota' (landing.png) [reports/jurisdiction_screens/dakota.granicus.com/landing.png reports/jurisdiction_screens/dakota.granicus.com/meeting.png] -> county 27037 -> registry: us_counties.csv Dakota County"
 dallascounty.civicweb.net,,us:place:4819000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Dallas city
-dallastx.new.swagit.com,,us:place:4819000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Dallas city
 dalycityca.portal.civicclerk.com,,us:place:0617918,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Daly City, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Daly City city"
-danbury.granicus.com,,us:place:0918430,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Danbury city
 danville-ca.granicus.com,,us:place:0617988,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Danville, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Danville town"
-davis.granicus.com,,us:place:0618100,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Davis city
-dc.granicus.com,,rtr:us:dc:washington,authoritative,auto_derived+known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Washington, DC'"
-delandfl.portal.civicclerk.com,,us:place:1216875,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv DeLand city
-delraybeach.granicus.com,,us:place:1217100,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Delray Beach city
-deltona.granicus.com,,us:place:1217200,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Deltona city
+dc.granicus.com,,us:place:1150000,authoritative,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Washington city
 denver.granicus.com,,us:place:0820000,fallback,auto_derived+visual_confirmed,'DENVER The Mile High City' logo; footer 'City and County of Denver' (landing.png) [reports/jurisdiction_screens/denver.granicus.com/landing.png] -> place 0820000 -> registry: us_places.csv Denver city
-desmoines.civicweb.net,,us:place:5317635,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Des Moines city
-desplainesil.cablecast.tv,,us:place:1719642,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Des Plaines city
 detroit-vod.cablecast.tv,,us:place:2622000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Detroit city
 dfps.new.swagit.com,,rtr:us:tx:texas,fallback,known_domains+visual_confirmed,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Texas, TX'"
 dixon-ca.granicus.com,,us:place:0619402,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Dixon, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Dixon city"
@@ -158,424 +74,166 @@ dms.missionviejo.gov,,us:place:0648256,fallback,known_domains,app/utils/jurisdic
 docs.medicinehat.ca,,ca:csd:4801006,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Medicine Hat
 docs.santabarbaraca.gov,,us:place:0669070,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Santa Barbara city
 docs.steamboatsprings.net,,us:place:0873825,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Steamboat Springs city
-duarteca.portal.civicclerk.com,,us:place:0619990,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Duarte city
 dublin.granicus.com,,us:place:0620018,fallback,auto_derived+known_domains+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Dublin city
 dublinca.iqm2.com,,us:place:0620018,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Dublin, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Dublin city"
 dublinca.new.swagit.com,,us:place:0620018,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0620018 match=exact -> registry: us_places.csv Dublin city
-duluth-mn.granicus.com,,us:place:2717000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Duluth city
-dunedin.granicus.com,,us:place:1218575,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Dunedin city
-dunnellon.granicus.com,,us:place:1218675,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Dunnellon city
 dunwoodyga.hylandcloud.com,,us:place:1324768,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Dunwoody city
 durangogov.hylandcloud.com,,us:place:0822035,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Durango city
-eastonmd.portal.civicclerk.com,,rtr:us:xx:easton,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Easton'
 eastpaloalto.iqm2.com,,us:place:0620956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: East Palo Alto, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv East Palo Alto city"
-ebparks.new.swagit.com,,rtr:us:ca:east-bay-regional-park-district,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'East Bay Regional Park District, CA'"
 ecm.cityofsantacruz.com,,us:place:0669112,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Santa Cruz city
-edina-mn.cablecast.tv,,rtr:us:xx:edina,fallback,jurisdiction_overrides, -> unverified: minted from 'Edina'
-edmondswa.granicus.com,,us:place:5320750,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Edmonds city
+edina-mn.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Edina'
 egenda.scgov.net,,us:place:1264175,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sarasota city
 elcerritoca.portal.civicclerk.com,,us:place:0621796,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0621796 match=exact -> registry: us_places.csv El Cerrito city
-eldorado.granicus.com,,us:county:06017,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv El Dorado County
-elsegundo.granicus.com,,us:place:0622412,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv El Segundo city
 emeryville.granicus.com,,us:place:0622594,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Emeryville, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Emeryville city"
-emporiaks.portal.civicclerk.com,,us:place:2021275,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Emporia city
-encinitas.granicus.com,,us:place:0622678,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Encinitas city
-enfieldct.portal.civicclerk.com,,us:cousub:0911025990,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv Enfield town
 ercot.new.swagit.com,,rtr:us:tx:texas,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Texas, TX'"
-escambiacofl.portal.civicclerk.com,,us:county:12033,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Escambia County
-fairfax.granicus.com,,us:place:5126496,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fairfax city
 fargo.cablecast.tv,,us:place:3825700,fallback,auto_derived+visual_confirmed,"'The City of Fargo' banner; FARGODOME Authority, Metro Flood Diversion Authority, Lake Agassiz Water Authority shows (landing.png) -- Fargo, ND [reports/jurisdiction_screens/fargo.cablecast.tv/landing.png reports/jurisdiction_screens/fargo.cablecast.tv/meeting.png] -> place 3825700 -> registry: us_places.csv Fargo city"
 fcva.granicus.com,,us:county:51069,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Frederick County
-festusmo.portal.civicclerk.com,,us:place:2924094,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Festus city
-firestoneco.portal.civicclerk.com,,us:place:0826600,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Firestone town
-fl-aventura.civicplus.com,,us:place:1202681,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Aventura city
-fl-crestview.civicplus.com,,us:place:1215475,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Crestview city
-fl-jupiterinletcolony.civicplus.com,,us:place:1235900,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Jupiter Inlet Colony town
-fl-oakland.civicplus.com,,us:place:1250525,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Oakland town
-fl-portorange.civicplus.com,,rtr:us:fl:port-orange,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Port Orange, FL'"
-folsom.granicus.com,,us:cousub:2715521554,fallback,jurisdiction_overrides, -> registry: us_cousubs.csv Folsom township
-fortbendcountytx.new.swagit.com,,us:county:48157,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Fort Bend County
-fortlauderdale.granicus.com,,us:place:1224000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fort Lauderdale city
-fortworthgov.granicus.com,,us:place:4827000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fort Worth city
+folsom.granicus.com,,us:place:0624638,fallback,jurisdiction_overrides, -> registry: us_places.csv Folsom city
 fostercity.new.swagit.com,,us:place:0625338,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Foster City, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Foster City city"
 fostercity.primegov.com,,us:place:0625338,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Foster City, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Foster City city"
-fountainvalley.granicus.com,,us:place:0625380,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fountain Valley city
-frederickco.portal.civicclerk.com,,rtr:us:xx:frederick,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Frederick'
-fremont.granicus.com,,rtr:us:xx:fremont,fallback,jurisdiction_overrides, -> unverified: minted from 'Fremont'
-fresnocounty.granicus.com,,us:county:06019,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Fresno County
-ga-rome.civicplus.com,,us:place:1366668,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Rome city
-ga-walnutgrove.civicplus.com,,us:place:1380228,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Walnut Grove city
-ga-watkinsville.civicplus.com,,us:place:1380788,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Watkinsville city
+fremont.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Fremont'
 gainesville.granicus.com,,us:place:1225175,fallback,visual_confirmed,title 'Legislative Information Portal - Clerk of the Commission Office - City Of Gainesville'; page text names Florida (landing.png) [reports/jurisdiction_screens/gainesville.granicus.com/landing.png reports/jurisdiction_screens/gainesville.granicus.com/meeting.png] -> place 1225175 -> registry: us_places.csv Gainesville city
-galesburg.granicus.com,,us:place:1728326,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Galesburg city
-gaston.granicus.com,,us:county:37071,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Gaston County
 gilbertaz.databankcloud.com,,us:place:0427400,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Gilbert town
 gilroyca.portal.civicclerk.com,,us:place:0629504,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Gilroy, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Gilroy city"
 glendale-az.granicus.com,,us:place:0427820,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Glendale city
 glendoraca.cablecast.tv,,us:place:0630014,fallback,auto_derived+visual_confirmed,"'KGLN Glendora' logo, 'City of Glendora Incorporated 1911' seal and the California bear flag in the chamber still (landing.png) [reports/jurisdiction_screens/glendoraca.cablecast.tv/landing.png reports/jurisdiction_screens/glendoraca.cablecast.tv/meeting.png] -> place 0630014 -> registry: us_places.csv Glendora city"
-gocolumbiamo.granicus.com,,us:place:2915670,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Columbia city
-grandjunctionco.portal.civicclerk.com,,us:place:0831660,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Grand Junction city
-grandrapidsmi.new.swagit.com,,us:place:2634000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Grand Rapids city
-greeleyco.portal.civicclerk.com,,rtr:us:xx:greeley,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Greeley'
-greenbaywi.portal.civicclerk.com,,us:place:5531000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Green Bay city
-greenville.granicus.com,,us:county:45045,fallback,jurisdiction_overrides, -> registry: us_counties.csv Greenville County
-guilford.granicus.com,,us:county:37081,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Guilford County
-gulfport.granicus.com,,rtr:us:xx:gulfport,fallback,jurisdiction_overrides, -> unverified: minted from 'City of Gulfport'
+greenville.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Greenville'
+gulfport.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Gulfport'
 hacsc.granicus.com,,us:county:06085,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06085 match=exact -> registry: us_counties.csv Santa Clara County
 halfmoonbay.granicus.com,,us:place:0631708,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Half Moon Bay, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Half Moon Bay city"
-hallandalebeach.granicus.com,,us:place:1228452,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hallandale Beach city
-hampton.granicus.com,,us:place:5135000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hampton city
-hanovercova.portal.civicclerk.com,,us:county:51085,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Hanover County
-harfordcountymd.new.swagit.com,,us:county:24025,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Harford County
-harriscountytx.new.swagit.com,,us:county:48201,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Harris County
-hawaiicounty.granicus.com,,us:county:15001,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Hawaii County
 hayward.granicus.com,,us:place:0633000,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0633000 match=exact -> registry: us_places.csv Hayward city
 hcjfsonbase.jfs.hamilton-co.org,,us:place:3933012,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Hamilton city
-hctv.cablecast.tv,,rtr:us:xx:holden,fallback,jurisdiction_overrides, -> unverified: minted from 'Holden'
+hctv.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Holden'
 healdsburgca.iqm2.com,,us:place:0633056,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Healdsburg, Sonoma County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Healdsburg city"
 henderson.hylandcloud.com,,us:place:3231900,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Henderson city
-hennepinmn.granicus.com,,us:county:27053,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Hennepin County
 hercules.granicus.com,,us:place:0633308,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0633308 match=exact -> registry: us_places.csv Hercules city
-herndonva.portal.civicclerk.com,,us:place:5136648,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Herndon town
-hillsboroughcounty.granicus.com,,us:county:12057,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Hillsborough County
-hollywoodfl.granicus.com,,us:place:1232000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hollywood city
-honolulu.granicus.com,,us:county:15003,fallback,inferred_unique_name, -> registry: us_counties.csv Honolulu County
-horrycounty.granicus.com,,us:county:45051,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Horry County
+honolulu.granicus.com,,rtr:us:hi:honolulu,fallback,inferred_unique_name," -> unverified: minted from 'City of Honolulu, HI'"
 houstonisdtx.new.swagit.com,,us:sd:4823640,fallback,visual_confirmed,'Houston Independent School District / HISD TV' masthead (meeting.png) [reports/jurisdiction_screens/houstonisdtx.new.swagit.com/landing.png reports/jurisdiction_screens/houstonisdtx.new.swagit.com/meeting.png] -> nces 4823640 -> registry: us_school_districts.csv Houston Independent School District (unified)
-houstontx.new.swagit.com,,us:place:4835000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Houston city
-howardcounty.granicus.com,,rtr:us:xx:howard-county,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Howard County'
+howardcounty.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Howard County'
 humalertca.gov,,rtr:us:ca:humboldt-county-sheriff,fallback,ryan_stated,"Ryan 2026-09-02: humalertca.gov is the Humboldt County Sheriff (CA), not a municipality; hostname alone could not establish it -> county FIPS 06023 -> unverified: minted from 'Humboldt County Sheriff, CA'"
-huntingtonbeach.granicus.com,,us:place:0636000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Huntington Beach city
-huntingtonny.granicus.com,,us:county:18069,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Huntington County
-huntsvilleal.granicus.com,,us:place:0137000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Huntsville city
-huron-township.cablecast.tv,,rtr:us:xx:huron-township,fallback,jurisdiction_overrides, -> unverified: minted from 'Huron Township'
-ia-hawarden.civicplus.com,,us:place:1935265,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hawarden city
-ia-maquoketa.civicplus.com,,us:place:1949215,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Maquoketa city
-ia-tipton.civicplus.com,,us:place:1978285,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tipton city
-ia-winterset.civicplus.com,,us:place:1986520,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Winterset city
-id-pocatello.civicplus.com,,us:place:1664090,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pocatello city
-il-cresthill.civicplus.com,,us:place:1717458,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Crest Hill city
-il-hanoverpark.civicplus.com,,us:place:1732746,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hanover Park village
-il-monee.civicplus.com,,us:place:1749945,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Monee village
-il-northfield.civicplus.com,,us:place:1753663,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Northfield village
-il-palospark.civicplus.com,,us:place:1757407,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Palos Park village
-il-riverside.civicplus.com,,us:place:1764421,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Riverside village
-il-skokie.civicplus.com,,us:place:1770122,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Skokie village
-il-wheaton.civicplus.com,,us:place:1781048,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Wheaton city
+huron-township.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Huron Township'
 imaging.sedgwickcounty.org,,us:place:2063800,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sedgwick city
-in-anderson.civicplus.com,,us:place:1801468,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Anderson city
-in-avon.civicplus.com,,us:place:1802908,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Avon town
-in-charlestown.civicplus.com,,us:place:1812124,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Charlestown city
-in-lafayette.civicplus.com,,us:place:1840788,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lafayette city
-in-portage.civicplus.com,,us:place:1861092,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Portage city
-in-shelbyville.civicplus.com,,us:place:1869318,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Shelbyville city
-in-woodburn.civicplus.com,,us:place:1885184,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Woodburn city
-in-zionsville.civicplus.com,,us:place:1886372,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Zionsville town
-indianapolis.granicus.com,,us:place:1836003,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Indianapolis city (balance)
-irvington.granicus.com,,rtr:us:xx:irvington,fallback,jurisdiction_overrides, -> unverified: minted from 'Village of Irvington'
+imperialid.granicus.com,,rtr:us:ca:imperial-irrigation-district,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Imperial Irrigation District, CA'"
+irvington.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Village of Irvington'
 isearchmonterey.org,,us:place:0648872,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Monterey city
 jacksonco.granicus.com,,us:county:29095,fallback,auto_derived+visual_confirmed,"'JCMO - Boards and Commissions'; 'County Legislature ... INDEPENDENCE'; agenda text names Missouri (landing.png, meeting.png) [reports/jurisdiction_screens/jacksonco.granicus.com/landing.png reports/jurisdiction_screens/jacksonco.granicus.com/meeting.png] -> county 29095 -> registry: us_counties.csv Jackson County"
 jaxcityc.granicus.com,,us:place:1235000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Jacksonville city
 jcc.granicus.com,,rtr:us:ca:judicial-council-of-california,fallback,visual_confirmed,"'CALIFORNIA COURTS MEETING INFORMATION CENTER' / 'Judicial Council Meeting' (landing.png) [reports/jurisdiction_screens/jcc.granicus.com/landing.png reports/jurisdiction_screens/jcc.granicus.com/meeting.png] ->  -> unverified: minted from 'California, CA'"
-johnson-county.granicus.com,,us:county:19103,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Johnson County
-johnstownco.portal.civicclerk.com,,us:place:0839855,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Johnstown town
 kansascity.granicus.com,,us:place:2938000,fallback,auto_derived+visual_confirmed,title 'KCMO.gov'; 'Video on Demand: Meetings' (landing.png) [reports/jurisdiction_screens/kansascity.granicus.com/landing.png reports/jurisdiction_screens/kansascity.granicus.com/meeting.png] -> place 2938000 -> registry: us_places.csv Kansas City city
-kauai.granicus.com,,rtr:us:hi:kaua-apos-i-county,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Kaua&apos;i County, HI'"
-kerrvilletx.portal.civicclerk.com,,us:place:4839040,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Kerrville city
-keybiscayne.granicus.com,,us:place:1236300,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Key Biscayne village
 king-county-tv.cablecast.tv,,us:county:53033,fallback,auto_derived+visual_confirmed,"'King County TV'; 'Metropolitan King County Council', 'King County Flood Control District' (landing.png) [reports/jurisdiction_screens/king-county-tv.cablecast.tv/landing.png reports/jurisdiction_screens/king-county-tv.cablecast.tv/meeting.png] -> county 53033 -> registry: us_counties.csv King County"
 king.granicus.com,,rtr:us:nc:king-county,fallback,auto_derived+inferred_unique_name," -> unverified: minted from 'King County, NC'"
 kirkland.granicus.com,,us:place:5335940,fallback,auto_derived+visual_confirmed,'City of Kirkland Washington' logo and KirklandTV masthead on the meeting page (meeting.png) [reports/jurisdiction_screens/kirkland.granicus.com/landing.png reports/jurisdiction_screens/kirkland.granicus.com/meeting.png] -> place 5335940 -> registry: us_places.csv Kirkland city
-kissimmeefl.portal.civicclerk.com,,us:place:1236950,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Kissimmee city
-knoxvilletn.primegov.com,,us:place:4740000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Knoxville city
-ks-basehor.civicplus.com,,us:place:2004400,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Basehor city
-ks-hays.civicplus.com,,us:place:2031100,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hays city
-ks-independence.civicplus.com,,us:place:2033875,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Independence city
-ks-iola.civicplus.com,,us:place:2034300,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Iola city
-ks-osawatomie.civicplus.com,,us:place:2053225,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Osawatomie city
-ks-pratt.civicplus.com,,us:place:2057625,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pratt city
-ks-wichita.civicplus.com,,us:place:2079000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Wichita city
-la-sulphur.civicplus.com,,us:place:2273640,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sulphur city
-lacdrp.granicus.com,,us:county:06037,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Los Angeles County
-laceywa.portal.civicclerk.com,,us:place:5336745,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lacey city
 lacity.primegov.com,,us:place:0644000,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Los Angeles city
-lacounty.granicus.com,,us:county:06037,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Los Angeles County
 ladwp.granicus.com,,rtr:us:ca:los-angeles-department-of-water-and-power,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Los Angeles, CA'"
 ladwp.primegov.com,,rtr:us:ca:los-angeles-department-of-water-and-power,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Los Angeles, CA'"
-ladylakefl.portal.civicclerk.com,,us:place:1237375,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lady Lake town
 lafayette.granicus.com,,us:place:0639122,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Lafayette, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Lafayette city"
 lagov.new.swagit.com,,rtr:us:la:louisiana-economic-development,fallback,visual_confirmed,"footer 'Louisiana Economic Development Video Archive' (landing.png) [reports/jurisdiction_screens/lagov.new.swagit.com/landing.png] ->  -> unverified: minted from 'Louisiana Economic Development, LA'"
-lagunawoods.cablecast.tv,,us:place:0639259,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Laguna Woods city
-lakecountyfl.portal.civicclerk.com,,us:county:12069,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Lake County
-lapalmaca.portal.civicclerk.com,,us:place:0640256,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv La Palma city
-laquinta.cablecast.tv,,us:place:0640354,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv La Quinta city
-laramiecounty.granicus.com,,us:county:56021,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Laramie County
-lausd.granicus.com,,rtr:us:xx:la-usd,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'La Usd'
-lausdca.new.swagit.com,,us:sd:0622710,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_school_districts.csv Los Angeles Unified School District (unified)
-lcpsnm.granicus.com,,rtr:us:xx:unknown-jurisdiction,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Unknown Jurisdiction'
-leandertx.new.swagit.com,,us:place:4842016,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Leander city
-leesburgva.granicus.com,,us:place:5144984,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Leesburg town
-leonvalleytx.cablecast.tv,,us:place:4842388,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Leon Valley city
-lfucg.granicus.com,,rtr:us:xx:lexington-fayette-urban-county-government,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Lexington-Fayette Urban County Government'
+lawa.granicus.com,,us:place:0644000,fallback,visual_confirmed,"'City of Los Angeles Board of Airport Commissioners Streaming Media Archive'; meetings '@ LAX', '@ Van Nuys City Hall' (landing.png) [reports/jurisdiction_screens/lawa.granicus.com/landing.png reports/jurisdiction_screens/lawa.granicus.com/meeting.png] -> place 0644000 -> registry: us_places.csv Los Angeles city"
+lcpsnm.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Unknown Jurisdiction'
+lfucg.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Lexington-Fayette Urban County Government'
 lims.minneapolismn.gov,,us:place:2743000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Minneapolis city
-lincoln.granicus.com,,us:place:0641474,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lincoln city
-lipower.granicus.com,,rtr:us:xx:long-island-power-authority,fallback,jurisdiction_overrides, -> unverified: minted from 'Long Island Power Authority'
-lodica.granicus.com,,us:place:0642202,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lodi city
+lipower.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Long Island Power Authority'
 longbeach.granicus.com,,us:place:0643000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Long Beach city
-longbeach.primegov.com,,us:place:0643000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Long Beach city
-longbeachca.new.swagit.com,,us:place:0643000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Long Beach city
 los-altos.granicus.com,,us:place:0643280,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Los Altos, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Los Altos city"
 losaltoshills.granicus.com,,us:place:0643294,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Los Altos Hills, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Los Altos Hills town"
 losaltoshillsca.portal.civicclerk.com,,us:place:0643294,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0643294 match=exact -> registry: us_places.csv Los Altos Hills town
 losgatos-ca.municodemeetings.com,,us:place:0644112,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0644112 match=exact -> registry: us_places.csv Los Gatos town
 loswegok12.granicus.com,,us:sd:4107230,fallback,auto_derived+visual_confirmed,'Lake Oswego School District Streaming Media Archive' (landing.png); the only NCES district of that name [reports/jurisdiction_screens/loswegok12.granicus.com/landing.png reports/jurisdiction_screens/loswegok12.granicus.com/meeting.png] -> nces 4107230 -> registry: us_school_districts.csv Lake Oswego School District 7J (unified)
-louisville.granicus.com,,rtr:us:ky:louisville,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Louisville, KY'"
-lubbocktx.new.swagit.com,,us:place:4845000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lubbock city
-lucascooh.portal.civicclerk.com,,us:county:39095,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Lucas County
 lwsd.granicus.com,,us:sd:5304230,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_school_districts.csv Lake Washington School District (unified)
-ma-easthampton.civicplus.com,,us:place:2519365,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Easthampton city
-ma-salem.civicplus.com,,us:place:2559105,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Salem city
-madisonal.portal.civicclerk.com,,us:place:0145784,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Madison city
-manateeschools.granicus.com,,us:sd:1201230,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_school_districts.csv Manatee County School District (unified)
 manhattanbeach.granicus.com,,us:place:0645400,fallback,auto_derived+visual_confirmed,"'Manhattan Beach Local Community Cable'; agenda text names California (landing.png, meeting.png) [reports/jurisdiction_screens/manhattanbeach.granicus.com/landing.png reports/jurisdiction_screens/manhattanbeach.granicus.com/meeting.png] -> place 0645400 -> registry: us_places.csv Manhattan Beach city"
-manitowoc.granicus.com,,us:place:5548500,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Manitowoc city
 mansfieldisd.new.swagit.com,,us:sd:4828920,fallback,visual_confirmed,'MISD / Mansfield Independent School District' masthead (meeting.png) [reports/jurisdiction_screens/mansfieldisd.new.swagit.com/landing.png reports/jurisdiction_screens/mansfieldisd.new.swagit.com/meeting.png] -> nces 4828920 -> registry: us_school_districts.csv Mansfield Independent School District (unified)
-manteca-ca.granicus.com,,us:place:0645484,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Manteca city
-marcoisland.granicus.com,,us:place:1243083,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Marco Island city
-margatefl.granicus.com,,us:place:1243125,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Margate city
-marietta.granicus.com,,us:place:1349756,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Marietta city
 marin.granicus.com,,us:county:06041,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06041 match=exact -> registry: us_counties.csv Marin County
-marionfl.granicus.com,,us:county:12083,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Marion County
-martin.granicus.com,,us:county:12085,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Martin County
 martinez.granicus.com,,us:place:0646114,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0646114 match=exact -> registry: us_places.csv Martinez city
 mccobagenda.databankcloud.com,,us:place:0444410,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Maricopa city
-mckinney.granicus.com,,us:place:4845744,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv McKinney city
-md-centreville.civicplus.com,,us:place:2414950,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Centreville town
-md-chesapeakebeach.civicplus.com,,us:place:2415925,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chesapeake Beach town
-md-mountrainier.civicplus.com,,us:place:2454275,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mount Rainier city
-md-sykesville.civicplus.com,,us:place:2476550,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sykesville town
-md-takomapark.civicplus.com,,us:place:2476650,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Takoma Park city
-me-freeport.civicplus.com,,us:cousub:2300526525,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv Freeport town
-me-skowhegan2.civicplus.com,,us:cousub:2302568910,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv Skowhegan town
 meeting.reddeer.ca,,rtr:ca:ab:red-deer,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Red Deer, AB'"
 meetings.muni.org,,us:place:0203000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Anchorage municipality
 meetings.redwoodcity.org,,us:place:0660102,fallback,known_domains+ryan_stated+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Redwood City city
 memphis.granicus.com,,us:place:4748000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Memphis city
-mendocino.granicus.com,,us:county:06045,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Mendocino County
 menlofire.primegov.com,,rtr:us:ca:menlo-park-fire-protection-district,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Menlo Park Fire Protection District, CA'"
 menlopark.granicus.com,,us:place:0646870,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Menlo Park, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Menlo Park city"
-meridianmi.new.swagit.com,,rtr:us:xx:meridian,fallback,jurisdiction_overrides, -> unverified: minted from 'Meridian'
+meridianmi.new.swagit.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Meridian'
 metro.granicus.com,,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Los Angeles County Metropolitan Transportation Authority, CA'"
-metrolink.granicus.com,,rtr:us:xx:metrolink,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Metrolink'
-mi-caledoniachartertownship.civicplus.com,,us:cousub:2615512520,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv Caledonia charter township
-mi-lincolnpark.civicplus.com,,us:place:2647800,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lincoln Park city
-mi-saginaw.civicplus.com,,us:place:2670520,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Saginaw city
-mi-sturgis.civicplus.com,,us:place:2676960,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sturgis city
-mi-taylor.civicplus.com,,us:place:2679000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Taylor city
-mi-wayne.civicplus.com,,us:place:2684940,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Wayne city
-mi-ypsilanti.civicplus.com,,us:place:2689140,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Ypsilanti city
+metroairports.granicus.com,,rtr:us:mn:metropolitan-airports-commission,fallback,visual_confirmed,"'MAC View Page'; committee list; agenda names Minnesota Association of Government Communicators (landing.png, meeting.png) [reports/jurisdiction_screens/metroairports.granicus.com/landing.png reports/jurisdiction_screens/metroairports.granicus.com/meeting.png] -> no seat county in name -> unverified: minted from 'Metropolitan Airports Commission, MN'"
+metrolink.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Metrolink'
 miamidade.granicus.com,,us:county:12086,fallback,auto_derived+visual_confirmed,"'Board of County Commissioners', 'Mayor Daniella Levine Cava', 'Naranja Lakes CRA', 'Public Health Trust' (landing.png) -- Miami-Dade County, the only county of that name [reports/jurisdiction_screens/miamidade.granicus.com/landing.png reports/jurisdiction_screens/miamidade.granicus.com/meeting.png] -> county 12086 -> registry: us_counties.csv Miami-Dade County"
-miamifl.granicus.com,,us:place:1245000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Miami city
-middleburgva.new.swagit.com,,us:place:5151448,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Middleburg town
-millcreekut.portal.civicclerk.com,,rtr:us:xx:mill-creek,fallback,jurisdiction_overrides, -> unverified: minted from 'Mill Creek'
+millcreekut.portal.civicclerk.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Mill Creek'
 milpitasca.portal.civicclerk.com,,us:place:0647766,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Milpitas, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Milpitas city"
-milwaukee.granicus.com,,us:place:5553000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Milwaukee city
-milwaukeecounty.granicus.com,,us:county:55079,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Milwaukee County
-missionviejo.granicus.com,,us:place:0648256,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mission Viejo city
-mn-brainerd.civicplus.com,,us:place:2707300,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Brainerd city
-mn-cannonfalls.civicplus.com,,us:place:2709730,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cannon Falls city
-mn-crookston.civicplus.com,,us:place:2713870,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Crookston city
-mn-forestlake.civicplus.com,,us:place:2721770,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Forest Lake city
-mn-maplegrove.civicplus.com,,us:place:2740166,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Maple Grove city
 mncppc.granicus.com,,rtr:us:md:montgomery-county-planning-board,fallback,visual_confirmed,"footer 'The Maryland-National Capital Park and Planning Commission, Montgomery County Planning Board, 8787 Georgia Ave., Silver Spring, MD 20910' (landing.png) [reports/jurisdiction_screens/mncppc.granicus.com/landing.png reports/jurisdiction_screens/mncppc.granicus.com/meeting.png] -> seat county 24031 -> unverified: minted from 'Montgomery County Planning Board, MD'"
-mo-brentwood4.civicplus.com,,us:place:2908236,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Brentwood city
-mo-fulton.civicplus.com,,us:place:2926182,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fulton city
-mo-olivette.civicplus.com,,us:place:2954650,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Olivette city
-mo-sunsethills.civicplus.com,,us:place:2971746,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sunset Hills city
-mo-warrensburg.civicplus.com,,us:place:2977092,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Warrensburg city
-mokena.granicus.com,,us:place:1749854,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mokena village
+mnsenate.granicus.com,,us:state:27,fallback,visual_confirmed,'Minnesota Senate Media Services Archived Video' (landing.png) [reports/jurisdiction_screens/mnsenate.granicus.com/landing.png reports/jurisdiction_screens/mnsenate.granicus.com/meeting.png] ->  -> registry: us_states.csv Minnesota
 montesereno.civicweb.net,,us:place:0648956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Monte Sereno, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Monte Sereno city"
-montroseco.portal.civicclerk.com,,us:place:0851745,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Montrose city
-mooresvillenc.granicus.com,,us:place:3744220,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mooresville town
 morgan-hill.granicus.com,,us:place:0649278,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Morgan Hill, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Morgan Hill city"
 morganhillca.iqm2.com,,us:place:0649278,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Morgan Hill, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Morgan Hill city"
 morganhillca.portal.civicclerk.com,,us:place:0649278,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Morgan Hill, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Morgan Hill city"
 mountainview.granicus.com,,us:place:0649670,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Mountain View, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Mountain View city"
 mountainview.legistar.com,,us:place:0649670,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Mountain View, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Mountain View city"
-ms-olivebranch.civicplus.com,,us:place:2854040,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Olive Branch city
-mt-columbiafalls.civicplus.com,,us:place:3016600,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Columbia Falls city
-mt-redlodge.civicplus.com,,us:place:3061525,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Red Lodge city
-mt-whitefish.civicplus.com,,us:place:3079825,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Whitefish city
-mwrd.granicus.com,,rtr:us:xx:mw-rd,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Mw Rd'
+mwrd.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Mw Rd'
 napa.granicus.com,,us:county:06055,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06055 match=exact -> registry: us_counties.csv Napa County
 napacity.granicus.com,,us:place:0650258,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Napa, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Napa city"
 napatv.granicus.com,,us:place:0650258,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Napa, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Napa city"
 naples.granicus.com,,us:place:1247625,fallback,visual_confirmed,"'The City of Naples, Florida broadcasts live meetings' (landing.png) [reports/jurisdiction_screens/naples.granicus.com/landing.png reports/jurisdiction_screens/naples.granicus.com/meeting.png] -> place 1247625 -> registry: us_places.csv Naples city"
-nashville.cablecast.tv,,rtr:us:tn:nashville-davidson-metropolitan-government,fallback,auto_derived+visual_confirmed,"'Metro Nashville Network ... official channel of the Metropolitan Government of Nashville & Davidson County'; 'Davidson County Election Commission' (landing.png) [reports/jurisdiction_screens/nashville.cablecast.tv/landing.png reports/jurisdiction_screens/nashville.cablecast.tv/meeting.png] -> place 4752006 -> unverified: minted from 'Nashville-Davidson metropolitan government, TN'"
-nashville.granicus.com,,rtr:us:tn:nashville-davidson-county,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Nashville-Davidson County, TN'"
+nashville.cablecast.tv,,us:place:4752006,fallback,auto_derived+visual_confirmed,'Metro Nashville Network ... official channel of the Metropolitan Government of Nashville & Davidson County'; 'Davidson County Election Commission' (landing.png) [reports/jurisdiction_screens/nashville.cablecast.tv/landing.png reports/jurisdiction_screens/nashville.cablecast.tv/meeting.png] -> place 4752006 -> registry: us_places.csv Nashville-Davidson metropolitan government (balance)
 nassaufl.granicus.com,,us:county:12089,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Nassau County
-nbvillage.granicus.com,,us:place:1249225,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv North Bay Village city
-nc-blowingrock.civicplus.com,,us:place:3706500,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Blowing Rock town
-nc-edenton.civicplus.com,,us:place:3720120,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Edenton town
-nc-emeraldisle.civicplus.com,,us:place:3721160,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Emerald Isle town
-nc-indiantrail.civicplus.com,,us:place:3733560,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Indian Trail town
-nc-millsriver.civicplus.com,,us:place:3743260,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mills River town
-nc-northwilkesboro.civicplus.com,,us:place:3747880,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv North Wilkesboro town
-ne-chadron.civicplus.com,,us:place:3108605,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chadron city
 netapps.ocfl.net,,us:county:12095,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Orange County
 nevco.granicus.com,,us:place:0650874,fallback,auto_derived+visual_confirmed,'City of Nevada City Streaming Media Archive'; 'Nevada City Council Meeting' (landing.png) -- the only place of that name [reports/jurisdiction_screens/nevco.granicus.com/landing.png reports/jurisdiction_screens/nevco.granicus.com/meeting.png] -> place 0650874 -> registry: us_places.csv Nevada City city
 newark.granicus.com,,us:place:0650916,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Newark, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Newark city"
-newbraunfels.granicus.com,,us:place:4850820,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv New Braunfels city
-nj-boonton.civicplus.com,,us:place:3406610,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Boonton town
-nj-fairhaven.civicplus.com,,rtr:us:nj:fairhaven,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Fairhaven, NJ'"
-nj-hawthorne.civicplus.com,,us:place:3430570,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hawthorne borough
-nj-newprovidence.civicplus.com,,us:place:3451810,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv New Providence borough
-nj-princeton.civicplus.com,,us:place:3460900,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Princeton
-nj-rockaway.civicplus.com,,us:place:3464050,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Rockaway borough
-nj-roseland.civicplus.com,,us:place:3464590,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Roseland borough
-nj-tenafly.civicplus.com,,us:place:3472420,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tenafly borough
-nj-westfield.civicplus.com,,us:place:3479040,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Westfield town
-nm-corrales.civicplus.com,,us:place:3517960,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Corrales village
 norfolk-va.cablecast.tv,,us:place:5157000,fallback,auto_derived+visual_confirmed,"'Norfolk TV-48 ... Norfolk, Virginia is the most dynamic ... waterfront community' (landing.png) [reports/jurisdiction_screens/norfolk-va.cablecast.tv/landing.png reports/jurisdiction_screens/norfolk-va.cablecast.tv/meeting.png] -> place 5157000 -> registry: us_places.csv Norfolk city"
-northsaanich.civicweb.net,,rtr:us:xx:meeting-portal,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Meeting Portal'
 novato.granicus.com,,us:place:0652582,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0652582 match=exact -> registry: us_places.csv Novato city
-nr.civicweb.net,,rtr:us:xx:northern-rockies-regional-municipality,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Northern Rockies Regional Municipality'
-nrhtx.granicus.com,,us:place:4852356,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv North Richland Hills city
-nuecescountytx.new.swagit.com,,us:county:48355,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Nueces County
 nvleg.granicus.com,,us:state:32,fallback,visual_confirmed,'Nevada Legislature Streaming Media' (landing.png) [reports/jurisdiction_screens/nvleg.granicus.com/landing.png] ->  -> registry: us_states.csv Nevada
-ny-albany.civicplus.com,,us:place:3601000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Albany city
-ny-amsterdam.civicplus.com,,us:place:3602066,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Amsterdam city
-ny-harrison.civicplus.com,,us:place:3632402,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Harrison village
-ny-patchogue.civicplus.com,,us:place:3656660,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Patchogue village
-ny-redhook.civicplus.com,,us:place:3660895,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Red Hook village
-ny-sagaponack.civicplus.com,,us:place:3664452,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sagaponack village
-ny-schenectady.civicplus.com,,us:place:3665508,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Schenectady city
-ny-troy.civicplus.com,,us:place:3675484,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Troy city
-nystateassembly.granicus.com,,rtr:us:xx:ny,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Ny State Assembly'
-oak-park.granicus.com,,us:place:1754885,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Oak Park village
+nystateassembly.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Ny State Assembly'
 oakland.granicus.com,,us:place:0653000,fallback,auto_derived+known_domains+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Oakland city
-oaklandparkfl.granicus.com,,us:place:1250575,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Oakland Park city
 oakley.granicus.com,,us:place:0653070,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0653070 match=exact -> registry: us_places.csv Oakley city
 ob.wvc-ut.gov,,us:place:4983470,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv West Valley City city
-ocala.granicus.com,,us:place:1250750,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Ocala city
 occompt.granicus.com,,us:county:12095,fallback,auto_derived+visual_confirmed,"'BCC Meeting Video', 'Value Adjustment Board' (a Florida-only body), 'TransMAC' (landing.png) -- Orange County Comptroller, FL [reports/jurisdiction_screens/occompt.granicus.com/landing.png reports/jurisdiction_screens/occompt.granicus.com/meeting.png] -> county 12095 -> registry: us_counties.csv Orange County"
-ocgov.granicus.com,,us:county:06059,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Orange County
-oh-fairviewpark.civicplus.com,,us:place:3926446,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fairview Park city
-oh-fostoria.civicplus.com,,us:place:3928014,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fostoria city
-oh-louisville.civicplus.com,,us:place:3945094,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Louisville city
-oh-newfranklin.civicplus.com,,us:place:3954562,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv New Franklin city
-oh-norton.civicplus.com,,us:place:3957260,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Norton city
-oh-stmarys.civicplus.com,,rtr:us:oh:st-marys,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'St Marys, OH'"
-oh-sunbury.civicplus.com,,us:place:3975602,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sunbury city
-oh-tallmadge.civicplus.com,,us:place:3976106,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tallmadge city
-oh-twinsburg.civicplus.com,,us:place:3978050,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Twinsburg city
-ok-inola.civicplus.com,,us:place:4037100,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Inola town
-ok-jenks.civicplus.com,,us:place:4037800,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Jenks city
-ok-pryorcreek.civicplus.com,,us:place:4061000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pryor Creek city
-ok-tahlequah.civicplus.com,,us:place:4072100,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tahlequah city
-okaloosacountyfl.iqm2.com,,us:county:12091,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Okaloosa County
-okeechobee.granicus.com,,us:county:12093,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Okeechobee County
-olatheks.granicus.com,,us:place:2052575,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Olathe city
 onbase.centennialco.gov,,us:place:0812815,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Centennial city
 onbase.comptoncity.org,,us:place:0615044,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Compton city
 onbaseep22.mesacounty.us,,us:county:08077,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Mesa County
 onbaseweb.pittsburgca.gov,,us:place:0657456,fallback,known_domains+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Pittsburg city
-oneidacounty.primegov.com,,us:county:36065,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Oneida County
 online.cityofwhittier.org,,us:place:0685292,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Whittier city
 onlinedocs.akronohio.gov,,us:place:3901000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Akron city
-or-coquille.civicplus.com,,us:place:4115350,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Coquille city
-or-florence.civicplus.com,,us:place:4126050,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Florence city
-or-gearhart.civicplus.com,,us:place:4128450,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Gearhart city
-or-lagrande.civicplus.com,,us:place:4140350,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv La Grande city
-or-lebanon.civicplus.com,,us:place:4141650,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lebanon city
-or-madras.civicplus.com,,us:place:4145250,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Madras city
-or-millersburg.civicplus.com,,us:place:4148300,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Millersburg city
-or-prineville.civicplus.com,,us:place:4159850,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Prineville city
-or-scappoose.civicplus.com,,us:place:4165500,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Scappoose city
-or-seaside.civicplus.com,,us:place:4165950,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Seaside city
-or-yamhillcounty.civicplus.com,,us:county:41071,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Yamhill County
 orangecountync.cablecast.tv,,us:county:37135,fallback,auto_derived+visual_confirmed,'Orange County NC TV'; 'BOCC Business Meeting'; clerk@orangecountync.gov (landing.png) [reports/jurisdiction_screens/orangecountync.cablecast.tv/landing.png reports/jurisdiction_screens/orangecountync.cablecast.tv/meeting.png] -> county 37135 -> registry: us_counties.csv Orange County
 orindaca.iqm2.com,,us:place:0654232,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Orinda, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Orinda city"
-pa-easton.civicplus.com,,us:place:4221648,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Easton city
-pa-gettysburg.civicplus.com,,us:place:4228960,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Gettysburg borough
-pa-jeffersonhills.civicplus.com,,us:place:4237955,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Jefferson Hills borough
-pa-lititz.civicplus.com,,us:place:4243816,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lititz borough
-pa-mediaborough.civicplus.com,,us:place:4248480,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Media borough
-pa-monroeville.civicplus.com,,us:place:4250528,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Monroeville municipality
-pa-newtown.civicplus.com,,us:place:4254184,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Newtown borough
-pa-norristown.civicplus.com,,us:place:4254656,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Norristown borough
-palmdale.granicus.com,,us:place:0655156,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Palmdale city
-paramountcity.cablecast.tv,,us:place:0655618,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Paramount city
-parkerco.portal.civicclerk.com,,us:place:0857630,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Parker town
-pasadena.granicus.com,,rtr:us:xx:pasadena,fallback,jurisdiction_overrides, -> unverified: minted from 'City of Pasadena'
-pasadenaedu.granicus.com,,rtr:us:xx:pasadena-community-college,fallback,jurisdiction_overrides, -> unverified: minted from 'Pasadena Community College'
+pasadena.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Pasadena'
+pasadenaedu.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Pasadena Community College'
 payson.granicus.com,,us:place:0453700,fallback,visual_confirmed,'Council Meeting' archive; agenda text names Arizona (meeting.png) [reports/jurisdiction_screens/payson.granicus.com/landing.png reports/jurisdiction_screens/payson.granicus.com/meeting.png] -> place 0453700 -> registry: us_places.csv Payson town
-pcbgov.granicus.com,,us:place:1254725,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Panama City Beach city
 pekinil.portal.civicclerk.com,,us:place:1758447,fallback,auto_derived+visual_confirmed,"'Agendas & Minutes - Pekin, IL' masthead (landing.png, meeting.png) [reports/jurisdiction_screens/pekinil.portal.civicclerk.com/landing.png reports/jurisdiction_screens/pekinil.portal.civicclerk.com/meeting.png] -> place 1758447 -> registry: us_places.csv Pekin city"
 petaluma.granicus.com,,us:place:0656784,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Petaluma, Sonoma County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Petaluma city"
 petalumaca.new.swagit.com,,us:place:0656784,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0656784 match=exact -> registry: us_places.csv Petaluma city
-pflugerville.granicus.com,,us:place:4857176,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pflugerville city
 piedmont.granicus.com,,us:place:0656938,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Piedmont, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Piedmont city"
-pinecrest.granicus.com,,us:place:1256625,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pinecrest village
-pinellas.granicus.com,,us:county:12103,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Pinellas County
 pinole.granicus.com,,us:place:0657288,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Pinole, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Pinole city"
 pinoleca.portal.civicclerk.com,,us:place:0657288,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Pinole, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Pinole city"
-pioneercommunityenergy.granicus.com,,rtr:us:xx:unknown-jurisdiction,fallback,jurisdiction_overrides, -> unverified: minted from 'Unknown Jurisdiction'
+pioneercommunityenergy.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Unknown Jurisdiction'
 pittsburg.granicus.com,,us:place:0657456,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0657456 match=exact -> registry: us_places.csv Pittsburg city
 pittsburgca.portal.civicclerk.com,,us:place:0657456,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0657456 match=exact -> registry: us_places.csv Pittsburg city
-pleasanthill.granicus.com,,rtr:us:xx:pleasant-hill,fallback,jurisdiction_overrides, -> unverified: minted from 'City of Pleasant Hill'
+pleasanthill.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Pleasant Hill'
 pleasantonca.portal.civicclerk.com,,us:place:0657792,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Pleasanton, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Pleasanton city"
-ppines.granicus.com,,us:place:1255775,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pembroke Pines city
-psc-fl.granicus.com,,rtr:us:fl:ps-c,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Ps C, FL'"
 psl.granicus.com,,rtr:us:fl:port-st-lucie,fallback,visual_confirmed,"footer 'City of Port St. Lucie, Florida • 121 S.W. Port St. Lucie Blvd.' (landing.png) [reports/jurisdiction_screens/psl.granicus.com/landing.png] -> place 1258715 -> unverified: minted from 'Port St. Lucie, FL'"
+psrc2.granicus.com,,rtr:us:wa:puget-sound-regional-council,fallback,visual_confirmed,"'PSRC Meetings'; 'Central Puget Sound Economic Development District Board', 'Executive Dave Somers' (landing.png) [reports/jurisdiction_screens/psrc2.granicus.com/landing.png reports/jurisdiction_screens/psrc2.granicus.com/meeting.png] -> no seat county in name -> unverified: minted from 'Puget Sound Regional Council, WA'"
 pub-acwtownship.escribemeetings.com,,ca:csd:3540063,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Ashfield-Colborne-Wawanosh
 pub-bakersfield.escribemeetings.com,,us:place:0603526,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Bakersfield city
 pub-beaumontab.escribemeetings.com,,ca:csd:4811013,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Beaumont
-pub-bouldercounty.escribemeetings.com,,us:county:08013,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Boulder County
 pub-brentwood.escribemeetings.com,,us:place:0608142,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Brentwood, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Brentwood city"
 pub-brockton.escribemeetings.com,,us:place:2509000,fallback,auto_derived+inferred_unique_name, -> registry: us_places.csv Brockton city
-pub-brucecounty.escribemeetings.com,,rtr:us:xx:bruce-county,fallback,jurisdiction_overrides, -> unverified: minted from 'Bruce County'
-pub-capecoral.escribemeetings.com,,us:place:1210275,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cape Coral city
-pub-chulavista.escribemeetings.com,,us:place:0613392,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Chula Vista city
-pub-cityofgainesville.escribemeetings.com,,us:place:1225175,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Gainesville city
-pub-clarington.escribemeetings.com,,us:place:3915210,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Clarington village
+pub-brucecounty.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Bruce County'
 pub-cmsd.escribemeetings.com,,rtr:us:ca:costa-mesa-sanitary-district,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Costa Mesa Sanitary District, CA'"
-pub-cornwall.escribemeetings.com,,us:place:4216256,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cornwall borough
-pub-corona.escribemeetings.com,,us:place:0616350,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Corona city
 pub-courtenay.escribemeetings.com,,ca:csd:5926010,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Courtenay
-pub-cutlerbay-fl.escribemeetings.com,,us:place:1215968,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cutler Bay town
 pub-delta.escribemeetings.com,,ca:csd:5915011,fallback,visual_confirmed,"agenda 'Council Chamber, Delta City Hall, 4500 Clarence Taylor Crescent, Delta, BC' (meeting.png) [reports/jurisdiction_screens/pub-delta.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-delta.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Delta"
-pub-detroitmi.escribemeetings.com,,us:place:2622000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Detroit city
 pub-dryden.escribemeetings.com,,ca:csd:3560027,fallback,visual_confirmed,"'The Corporation of The City of Dryden'; 'calendar.dryden.ca' in the agenda (meeting.png) [reports/jurisdiction_screens/pub-dryden.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-dryden.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Dryden"
-pub-erin.escribemeetings.com,,us:place:4724320,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Erin city
-pub-garfield.escribemeetings.com,,us:county:08045,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Garfield County
-pub-gloucesterva.escribemeetings.com,,us:place:2526150,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Gloucester city
-pub-hainescity.escribemeetings.com,,us:place:1228400,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Haines City city
+pub-ezt.escribemeetings.com,,ca:csd:3532038,fallback,visual_confirmed,"'CORPORATION OF THE TOWNSHIP OF EAST ZORRA-TAVISTOCK ... Hickson, Ontario, N0J 1L0' (meeting.png) [reports/jurisdiction_screens/pub-ezt.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-ezt.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv East Zorra-Tavistock"
 pub-haldimandcounty.escribemeetings.com,,rtr:ca:on:haldimand-county,fallback,visual_confirmed,"'Haldimand O.P.P. Detachment Board' (Ontario Provincial Police), 'Haldimand County Administration Building' (meeting.png) [reports/jurisdiction_screens/pub-haldimandcounty.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-haldimandcounty.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> unverified: minted from 'Haldimand County, ON'"
-pub-hamilton.escribemeetings.com,,rtr:us:xx:hamilton,fallback,jurisdiction_overrides, -> unverified: minted from 'City of Hamilton'
+pub-hamilton.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Hamilton'
 pub-healdsburg.escribemeetings.com,,us:place:0633056,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Healdsburg, Sonoma County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Healdsburg city"
-pub-holmesbeachfl.escribemeetings.com,,us:place:1232150,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Holmes Beach city
 pub-horrycountyschools.escribemeetings.com,,us:sd:4502490,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> registry: us_school_districts.csv Horry County School District (unified)"
 pub-hpl.escribemeetings.com,,rtr:ca:on:hamilton-public-library,fallback,auto_derived+known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Hamilton Public Library, ON'"
 pub-hpsb.escribemeetings.com,,rtr:ca:on:hamilton-police-services-board,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Hamilton Police Services Board, ON'"
-pub-imperialbeach.escribemeetings.com,,us:place:0636294,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Imperial Beach city
-pub-lake-elsinore.escribemeetings.com,,us:place:0639486,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Lake Elsinore city
 pub-langleycity.escribemeetings.com,,us:cousub:2005338600,fallback,jurisdiction_overrides, -> registry: us_cousubs.csv Langley township
-pub-leeds1000islands.escribemeetings.com,,rtr:us:xx:leeds1000islands,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Leeds1000Islands'
-pub-lloydminster.escribemeetings.com,,rtr:us:xx:lloydminster-ab-sk,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Lloydminster, AB/SK'"
-pub-london.escribemeetings.com,,rtr:us:xx:london,fallback,jurisdiction_overrides, -> unverified: minted from 'City of London'
-pub-markham.escribemeetings.com,,us:place:1747007,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Markham city
+pub-lloydminster.escribemeetings.com,,,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unresolved: no state for 'Lloydminster, AB/SK'"
+pub-london.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of London'
 pub-milton.escribemeetings.com,,ca:csd:3524009,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Milton
-pub-morenovalley.escribemeetings.com,,us:place:0649270,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Moreno Valley city
-pub-morrobay.escribemeetings.com,,us:place:0649362,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Morro Bay city
 pub-northumberland.escribemeetings.com,,us:county:42097,fallback,auto_derived+inferred_unique_name, -> registry: us_counties.csv Northumberland County
 pub-oakville.escribemeetings.com,,ca:csd:3524001,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Oakville
 pub-orangeville.escribemeetings.com,,ca:csd:3522014,fallback,visual_confirmed,"agenda 'Council Chambers, Town Hall, 87 Broadway, Orangeville, ON L9W 1K1' (meeting.png) [reports/jurisdiction_screens/pub-orangeville.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-orangeville.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Orangeville"
 pub-orinda.escribemeetings.com,,us:place:0654232,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0654232 match=exact -> registry: us_places.csv Orinda city
-pub-orlando.escribemeetings.com,,us:place:1253000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Orlando city
 pub-oxfordcounty.escribemeetings.com,,ca:cd:3532,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_cd.csv Oxford
-pub-palmdesert.escribemeetings.com,,us:place:0655184,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Palm Desert city
-pub-pickering.escribemeetings.com,,us:place:2957404,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Pickering city
 pub-pleasanthillca.escribemeetings.com,,us:place:0657764,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0657764 match=exact -> registry: us_places.csv Pleasant Hill city
 pub-rdco.escribemeetings.com,,rtr:ca:bc:regional-district-of-central-okanagan,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Central Okanagan, BC'"
 pub-richmond.escribemeetings.com,,us:place:0660620,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0660620 match=exact -> registry: us_places.csv Richmond city
@@ -583,54 +241,37 @@ pub-richmondhill.escribemeetings.com,,ca:csd:3519038,fallback,visual_confirmed,"
 pub-rmow.escribemeetings.com,,ca:csd:5931020,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Whistler
 pub-sandag.escribemeetings.com,,rtr:us:ca:san-diego-association-of-governments,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'San Diego, CA'"
 pub-scrd.escribemeetings.com,,ca:cd:5929,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_cd.csv Sunshine Coast
-pub-sd57.escribemeetings.com,,rtr:us:xx:sd57,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Sd57'
-pub-southamptonny.escribemeetings.com,,us:place:3668462,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Southampton village
-pub-stratford.escribemeetings.com,,rtr:us:xx:stratford-ad,fallback,jurisdiction_overrides, -> unverified: minted from 'Stratford Ad'
+pub-stratford.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Stratford Ad'
 pub-strathcona.escribemeetings.com,,us:place:2763130,fallback,auto_derived+inferred_unique_name, -> registry: us_places.csv Strathcona city
 pub-stthomas.escribemeetings.com,,ca:csd:3534021,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv St. Thomas
 pub-surreyschools.escribemeetings.com,,ca:csd:5915004,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Surrey
 pub-tbdhu.escribemeetings.com,,rtr:ca:on:thunder-bay-district-health-unit,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Thunder Bay District Health Unit, ON'"
 pub-tdsb.escribemeetings.com,,rtr:ca:on:toronto-district-school-board,fallback,visual_confirmed,"agenda '5050 Yonge Street, Toronto' (meeting.png) [reports/jurisdiction_screens/pub-tdsb.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-tdsb.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> unverified: minted from 'Toronto District School Board, ON'"
-pub-townofmammothlakes.escribemeetings.com,,us:place:0645358,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Mammoth Lakes town
 pub-trca.escribemeetings.com,,rtr:ca:on:toronto-and-region-conservation-authority,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Toronto, ON'"
 pub-vacaville.escribemeetings.com,,us:place:0681554,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Vacaville, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Vacaville city"
 pub-victoria.escribemeetings.com,,ca:csd:5917034,fallback,visual_confirmed,"'VICTORIA CITY COUNCIL', 'COUNCIL CHAMBERS, CITY HALL, 1 CENTENNIAL SQUARE', 'Canada Day Subcommittee' (landing.png, meeting.png) [reports/jurisdiction_screens/pub-victoria.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-victoria.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Victoria"
 pub-wellington.escribemeetings.com,,ca:cd:3523,fallback,visual_confirmed,"'The Corporation of the County of Wellington County Council'; Ontario in the agenda text (meeting.png) [reports/jurisdiction_screens/pub-wellington.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-wellington.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_cd.csv Wellington"
-puntagorda.granicus.com,,us:place:1259200,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Punta Gorda city
 qac.gov,,us:county:24035,fallback,auto_derived+visual_confirmed,"'Queen Anne's County, MD - Official Website'; footer '107 N Liberty Street, Centreville, MD 21617' (landing.png) [reports/jurisdiction_screens/qac.gov/landing.png reports/jurisdiction_screens/qac.gov/meeting.png] -> county 24035 -> registry: us_counties.csv Queen Anne's County"
-qathetrd.civicweb.net,,rtr:us:xx:qathet-regional-district,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'qathet Regional District'
-raleigh.granicus.com,,us:place:3755000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Raleigh city
-ramseycountymn.granicus.com,,rtr:us:xx:ramsey-county,fallback,jurisdiction_overrides, -> unverified: minted from 'Ramsey County'
+ramseycountymn.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Ramsey County'
 records.jcsd.us,,rtr:us:ca:jurupa-community-services-district,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Jurupa Community Services District, CA'"
 records.santabarbaraca.gov,,us:place:0669070,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Santa Barbara city
-reddingca.granicus.com,,us:place:0659920,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Redding city
 redmondor.portal.civicclerk.com,,us:place:4161200,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Redmond city
-redwingmn.portal.civicclerk.com,,us:place:2753620,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Red Wing city
 redwoodcity-ca.granicus.com,,us:place:0660102,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Redwood City, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Redwood City city"
-reflect-ccx.cablecast.tv,,us:place:2740166,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Maple Grove city
 reflect-detroit-vod.cablecast.tv,,us:place:2622000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Detroit city
 reflect-ontv.cablecast.tv,,rtr:us:mi:orion-township,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Orion Township, MI'"
-ricecountymn.portal.civicclerk.com,,us:county:27131,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Rice County
 ridemetro.granicus.com,,us:county:48201,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Harris County
-rideuta.granicus.com,,rtr:us:xx:ride-uta,fallback,auto_derived+jurisdiction_overrides, -> unverified: minted from 'Ride Uta'
+rideuta.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Ride Uta'
 ringwoodtv.viebit.com,,us:place:3463150,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Ringwood borough
 riovista-ca.granicus.com,,us:place:0660984,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Rio Vista, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Rio Vista city"
-riversideca.granicus.com,,us:county:06065,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Riverside County
 riversidesheriff.portal.civicclerk.com,,rtr:us:ca:riverside-county-sheriff-s-department,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from ""Riverside County Sheriff's Department, CA"""
-riverviewmi.cablecast.tv,,rtr:us:xx:riverview,fallback,jurisdiction_overrides, -> unverified: minted from 'Riverview'
-rockvillemd.granicus.com,,us:place:2467675,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Rockville city
-roundrock.granicus.com,,us:place:4863500,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Round Rock city
+riverviewmi.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Riverview'
 rpcity.granicus.com,,us:place:0662546,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0662546 match=exact -> registry: us_places.csv Rohnert Park city
 sacramento.granicus.com,,us:place:0664000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Sacramento city
 sananselmo-ca.granicus.com,,us:place:0664434,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: San Anselmo, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv San Anselmo town"
-sanantonio.primegov.com,,us:place:4865000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv San Antonio city
-sanantoniotx.new.swagit.com,,us:place:4865000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv San Antonio city
-sanbernardino.granicus.com,,us:county:06071,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv San Bernardino County
 sanbruno.primegov.com,,us:place:0665028,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: San Bruno, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv San Bruno city"
 sancarlosca.iqm2.com,,us:place:0665070,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: San Carlos, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv San Carlos city"
 sandiego.granicus.com,,us:place:0666000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv San Diego city
 sandiego.hylandcloud.com,,us:place:0666000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv San Diego city
-sandyspringsga.portal.civicclerk.com,,us:place:1368516,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sandy Springs city
 sanfrancisco.granicus.com,,us:place:0667000,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: San Francisco, San Francisco County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv San Francisco city"
 sanjose.granicus.com,,us:place:0668000,fallback,auto_derived+known_domains+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv San Jose city
 sanjoseca.new.swagit.com,,us:place:0668000,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0668000 match=exact -> registry: us_places.csv San Jose city
@@ -642,127 +283,48 @@ sanramonca.iqm2.com,,us:place:0668378,fallback,ryan_stated+upcoming_roster,"rtr-
 santa-rosa.granicus.com,,us:place:0670098,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0670098 match=exact -> registry: us_places.csv Santa Rosa city
 santaclara.granicus.com,,us:place:0669084,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0669084 match=exact -> registry: us_places.csv Santa Clara city
 santaclaracounty.primegov.com,,us:county:06085,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=06085 match=exact -> registry: us_counties.csv Santa Clara County
-santarosacofl.portal.civicclerk.com,,us:place:1245750,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Milton city
-sarasotacounty.granicus.com,,us:county:12115,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Sarasota County
 saratoga.granicus.com,,us:place:0670280,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Saratoga, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Saratoga city"
-sauk.granicus.com,,us:county:55111,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Sauk County
 sausalito.granicus.com,,us:place:0670364,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Sausalito, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Sausalito city"
-sbcounty.granicus.com,,us:county:06083,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Santa Barbara County
-sc-beaufort.civicplus.com,,us:place:4504690,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Beaufort city
-sc-clemson.civicplus.com,,us:place:4514950,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Clemson city
-sc-clinton.civicplus.com,,us:place:4515295,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Clinton city
-sc-fountaininn.civicplus.com,,us:place:4527070,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fountain Inn city
-sc-hollywood.civicplus.com,,us:place:4534495,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hollywood town
-sc-northmyrtlebeach.civicplus.com,,us:place:4551280,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv North Myrtle Beach city
 sccgov.granicus.com,,us:county:06085,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=06085 match=exact -> registry: us_counties.csv Santa Clara County
 sccgov.iqm2.com,,us:county:06085,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Santa Clara County, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_counties.csv Santa Clara County"
 sccoe.new.swagit.com,,us:county:06085,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Santa Clara County
-sd-spearfish.civicplus.com,,us:place:4660020,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Spearfish city
-sd-vermillion.civicplus.com,,us:place:4666700,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Vermillion city
-sfwmd.granicus.com,,rtr:us:md:s-fw,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'S Fw, MD'"
-shastacountyca.new.swagit.com,,us:county:06089,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Shasta County
-shoreline.granicus.com,,us:place:5363960,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Shoreline city
-shoreviewmn.granicus.com,,us:place:2759998,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Shoreview city
-sibfl.granicus.com,,us:place:1269555,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sunny Isles Beach city
-simivalley.granicus.com,,us:place:0672016,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Simi Valley city
-skagit.granicus.com,,us:county:53057,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Skagit County
 slc.primegov.com,,us:place:4967000,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Salt Lake City city
-slrd.civicweb.net,,rtr:us:xx:slrd,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'SLRD'
 smyrna.cablecast.tv,,us:place:4769420,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Smyrna town
 solano.granicus.com,,us:county:06095,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=06095 match=exact -> registry: us_counties.csv Solano County
 sonoma-county.granicus.com,,us:county:06097,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=06097 match=exact -> registry: us_counties.csv Sonoma County
 sonomacity.civicweb.net,,us:place:0672646,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0672646 match=exact -> registry: us_places.csv Sonoma city
-sonomalibrary.civicweb.net,,rtr:us:xx:sonoma-county-library,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Sonoma County Library'
-southorangetwpnj.portal.civicclerk.com,,us:cousub:3401369274,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv South Orange Village township
 spb.granicus.com,,rtr:us:ca:california-state-personnel-board,fallback,visual_confirmed,"'California State Personnel Board Streaming Media' (landing.png) [reports/jurisdiction_screens/spb.granicus.com/landing.png reports/jurisdiction_screens/spb.granicus.com/meeting.png] ->  -> unverified: minted from 'California State Personnel Board, CA'"
 sthelenaca.portal.civicclerk.com,,us:place:0664140,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: St. Helena, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv St. Helena city"
 stpete.granicus.com,,us:place:1263000,fallback,auto_derived+visual_confirmed,"logo alt text 'City of St. Petersburg, Fl' (landing.png) [reports/jurisdiction_screens/stpete.granicus.com/landing.png reports/jurisdiction_screens/stpete.granicus.com/meeting.png] -> place 1263000 -> registry: us_places.csv St. Petersburg city"
-stpetebeachfl.portal.civicclerk.com,,us:place:1262885,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv St. Pete Beach city
 stream.ci.concord.ca.us,,us:place:0616000,fallback,known_domains+ryan_stated+upcoming_roster,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Concord city
 stream2.ci.concord.ca.us,,us:place:0616000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Concord city
 sunnyvaleca.granicus.com,,us:place:0677000,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0677000 match=exact -> registry: us_places.csv Sunnyvale city
-sunrisefl.granicus.com,,us:place:1269700,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Sunrise city
-surpriseaz.portal.civicclerk.com,,us:place:0471510,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Surprise city
-talbot-md.granicus.com,,us:county:24041,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Talbot County
+tampabaywater.granicus.com,,rtr:us:fl:tampa-bay-water,fallback,visual_confirmed,"'Tampa Bay Water Board'; agenda 'South Hillsborough Pipeline' (landing.png, meeting.png) [reports/jurisdiction_screens/tampabaywater.granicus.com/landing.png reports/jurisdiction_screens/tampabaywater.granicus.com/meeting.png] -> no seat county in name -> unverified: minted from 'Tampa Bay Water, FL'"
 tampagov.hylandcloud.com,,us:place:1271000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tampa city
-tavaresfl.portal.civicclerk.com,,us:place:1271225,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tavares city
 taylor.granicus.com,,us:place:2679000,fallback,auto_derived+visual_confirmed,"'Taylor, MI Content' title; City Council meetings (landing.png) [reports/jurisdiction_screens/taylor.granicus.com/landing.png reports/jurisdiction_screens/taylor.granicus.com/meeting.png] -> place 2679000 -> registry: us_places.csv Taylor city"
 tccd.granicus.com,,rtr:us:tx:tarrant-county-college-district,authoritative,architecture_doc_1_3,"GOVERNMENT_IDENTITY_ARCHITECTURE.md §1.3, verified live 2026-09-02 against ledger.db resolved_json -> unverified: minted from 'Tarrant County College District, TX'"
 tcdsbpublishing.escribemeetings.com,,rtr:ca:on:toronto-catholic-district-school-board,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Toronto, ON'"
-temeculaca.granicus.com,,us:place:0678120,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Temecula city
 tempe.hylandcloud.com,,us:place:0473000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tempe city
-tn-hendersonville.civicplus.com,,us:place:4733280,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Hendersonville city
 townoffairfaxca.gov,,us:place:0623168,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Fairfax, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Fairfax town"
 townoffrisco.primegov.com,,us:place:0828690,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Frisco town
-townofsurfsidefl.granicus.com,,us:place:1270075,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Surfside town
 townoftiburon.granicus.com,,us:place:0678666,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Tiburon, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Tiburon town"
-tracy-ca.granicus.com,,rtr:us:xx:tracy,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'Tracy'
-traviscotx.portal.civicclerk.com,,us:county:48453,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Travis County
 tucsonaz.hylandcloud.com,,us:place:0477000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tucson city
-tustin.granicus.com,,us:place:0680854,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tustin city
-twinfallsid.portal.civicclerk.com,,us:place:1682810,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Twin Falls city
-tx-denison.civicplus.com,,us:place:4819900,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Denison city
-tx-dentoncounty.civicplus.com,,us:county:48121,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Denton County
-tx-montgomery.civicplus.com,,us:place:4849128,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Montgomery city
-tx-shenandoah.civicplus.com,,us:place:4867400,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Shenandoah city
-tylertx.primegov.com,,us:place:4874144,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Tyler city
 unioncity.primegov.com,,us:place:0681204,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Union City, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Union City city"
-unioncountync.granicus.com,,us:county:37179,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Union County
-upperdublin.granicus.com,,us:cousub:4209179008,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_cousubs.csv Upper Dublin township
 urbana.cablecast.tv,,us:place:1777005,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Urbana city
-ut-alpine.civicplus.com,,us:place:4900540,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Alpine city
-ut-ogden.civicplus.com,,us:place:4955980,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Ogden city
-ut-parowan.civicplus.com,,us:place:4958510,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Parowan city
-ut-payson.civicplus.com,,us:place:4958730,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Payson city
-ut-providence.civicplus.com,,us:place:4962360,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Providence city
-ut-provo.civicplus.com,,us:place:4962470,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Provo city
-ut-woodscross.civicplus.com,,us:place:4985370,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Woods Cross city
-va-crewe.civicplus.com,,us:place:5120160,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Crewe town
-va-radford.civicplus.com,,us:place:5165392,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Radford city
 vacaville.granicus.com,,us:place:0681554,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0681554 match=exact -> registry: us_places.csv Vacaville city
 vallejoca.portal.civicclerk.com,,us:place:0681666,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Vallejo, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Vallejo city"
-venice.granicus.com,,us:place:1273900,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Venice city
 ventura.primegov.com,,us:county:06111,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Ventura County
 viametrotransit.new.swagit.com,,rtr:us:tx:via-metropolitan-transit,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'VIA Metropolitan Transit, TX'"
 virginia-house.granicus.com,,us:state:51,fallback,visual_confirmed,'Virginia House of Delegates Internal Portal' (landing.png) [reports/jurisdiction_screens/virginia-house.granicus.com/landing.png reports/jurisdiction_screens/virginia-house.granicus.com/meeting.png] ->  -> registry: us_states.csv Virginia
 virginia-senate.granicus.com,,us:state:51,fallback,jurisdiction_overrides, -> registry: us_states.csv Virginia
-virginiabeach.cablecast.tv,,us:place:5182000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Virginia Beach city
-wa-bothell.civicplus.com,,us:place:5307380,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Bothell city
-wa-bremerton.civicplus.com,,us:place:5307695,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Bremerton city
-wa-buckley.civicplus.com,,us:place:5308570,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Buckley city
-wa-duvall.civicplus.com,,us:place:5319035,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Duvall city
-wa-milton.civicplus.com,,us:place:5346020,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Milton city
-wa-oakharbor.civicplus.com,,us:place:5350360,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Oak Harbor city
-wa-westrichland.civicplus.com,,us:place:5377665,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv West Richland city
-wake.granicus.com,,us:county:37183,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Wake County
 walnutcreek.granicus.com,,us:place:0683346,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Walnut Creek, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Walnut Creek city"
 washingtoncounty.civicweb.net,,us:county:41067,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Washington County
-washoe-nv.granicus.com,,us:county:32031,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Washoe County
-waukesha.granicus.com,,us:county:55133,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Waukesha County
-wellington.granicus.com,,us:place:1275812,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Wellington village
-westbasin.portal.civicclerk.com,,us:place:0611530,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Carson city
-westchestercountyny.granicus.com,,us:county:36119,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Westchester County
 westerville.hylandcloud.com,,us:place:3983342,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Westerville city
-westlakevillage.granicus.com,,us:place:0684438,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Westlake Village city
-wi-browndeer.civicplus.com,,us:place:5510375,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Brown Deer village
-wi-cottagegrove.civicplus.com,,us:place:5517175,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cottage Grove village
-wi-crossplains.civicplus.com,,us:place:5517775,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Cross Plains village
-wi-fredonia.civicplus.com,,us:place:5527550,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Fredonia village
-wi-juneau.civicplus.com,,us:place:5538675,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Juneau city
-wi-sawyercounty.civicplus.com,,us:county:55113,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_counties.csv Sawyer County
-wi-stoughton.civicplus.com,,us:place:5577675,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Stoughton city
-wi-verona.civicplus.com,,us:place:5582600,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Verona city
-wi-whitefishbay.civicplus.com,,us:place:5586700,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Whitefish Bay village
 wilmington-nc.cablecast.tv,,us:place:3774440,fallback,auto_derived+visual_confirmed,'City of Wilmington North Carolina' logo (landing.png) [reports/jurisdiction_screens/wilmington-nc.cablecast.tv/landing.png reports/jurisdiction_screens/wilmington-nc.cablecast.tv/meeting.png] -> place 3774440 -> registry: us_places.csv Wilmington city
 wilmington.granicus.com,,us:place:3774440,fallback,visual_confirmed,"'OFFICIAL WILMINGTON, NC GOVERNMENT WEBSITE' banner (landing.png) [reports/jurisdiction_screens/wilmington.granicus.com/landing.png reports/jurisdiction_screens/wilmington.granicus.com/meeting.png] -> place 3774440 -> registry: us_places.csv Wilmington city"
-wilsoncountyschoolstn.new.swagit.com,,us:sd:4704550,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_school_districts.csv Wilson County School District (unified)
-wiltonmanorsfl.portal.civicclerk.com,,us:place:1278000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Wilton Manors city
-winston-salem.granicus.com,,us:place:3775000,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Winston-Salem city
-winterspringsfl.granicus.com,,us:place:1278325,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Winter Springs city
-woodlandstx.new.swagit.com,,rtr:us:tx:the-woodlands-township,fallback,auto_derived,"rtr-discovery ledger.db tenants.jurisdiction_override -> unverified: minted from 'The Woodlands Township, TX'"
-wsscwater.granicus.com,,rtr:us:xx:washington-suburban-sanitary-commission,fallback,jurisdiction_overrides, -> unverified: minted from 'Washington Suburban Sanitary Commission'
+windsor-ca.granicus.com,,us:place:0685922,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0685922 match=exact -> registry: us_places.csv Windsor town
+wsscwater.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Washington Suburban Sanitary Commission'
 www.cityofbelvedere.org,,us:place:0605164,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0605164 match=exact -> registry: us_places.csv Belvedere city
 www.cityofsanrafael.org,,us:place:0668364,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0668364 match=exact -> registry: us_places.csv San Rafael city
 www.colma.ca.gov,,us:place:0614736,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Colma, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Colma town"
 yountvilleca.new.swagit.com,,us:place:0686930,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Yountville, Napa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Yountville city"
-yubacityca.portal.civicclerk.com,,us:place:0686972,fallback,auto_derived,rtr-discovery ledger.db tenants.jurisdiction_override -> registry: us_places.csv Yuba City city

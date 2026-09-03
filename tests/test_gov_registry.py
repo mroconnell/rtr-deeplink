@@ -515,18 +515,29 @@ def test_existing_hub_slugs_mostly_survive():
 def test_exactly_one_match_or_nothing():
     """A nationally-ambiguous bare name with no state must resolve to
     nothing rather than to a plausible wrong government. "Springfield" is
-    a real place in more than 30 states."""
+    a real place in more than 30 states.
+
+    Since Phase 1b it is `unresolved` rather than minted: with no state
+    there is no id to mint that would not fragment against the same
+    government named with one."""
     match = resolve("Springfield")
-    assert match.gov_id.startswith("rtr:")
-    assert match.tier == resolver.TIER_UNVERIFIED
+    assert match.gov_id == ""
+    assert match.tier == resolver.TIER_UNRESOLVED
 
 
 def test_a_cdp_is_never_a_government():
     """CDPs are statistical areas with no government (§4). The build
-    script drops them; this asserts the table it produced actually has."""
+    script drops them; this asserts the table it produced actually has.
+
+    "N" (nonfunctioning) is kept for exactly one GEOID -- Washington DC,
+    which Census codes that way as a *place* because its government is
+    state-level. The other three "N" rows nationally are genuinely
+    defunct place governments, and Louisville city in particular must
+    stay out or it collides with the real metro-government row."""
     with open(DATA_DIR / "us_places.csv", encoding="utf-8") as fh:
-        funcstats = {row["funcstat"] for row in csv.DictReader(fh)}
-    assert funcstats <= {"A", "B", "F"}
+        rows = list(csv.DictReader(fh))
+    assert {r["funcstat"] for r in rows} <= {"A", "B", "F", "N"}
+    assert [r["geoid"] for r in rows if r["funcstat"] == "N"] == ["1150000"]
 
 
 def test_canadian_tables_carry_no_unorganized_areas():
@@ -640,9 +651,220 @@ def test_a_state_suffix_without_its_comma_still_counts():
 
 
 def test_a_minted_id_ignores_a_leading_city_of():
-    """355 of the first run's 1,198 minted rows carried a leading type
+    """355 of the Phase 1 run's 1,198 minted rows carried a leading type
     phrase, and `/j/easton`, `/j/portage` and `/j/hamilton` each split in
     two purely because of it. The display name still keeps the raw
-    string; only the id collapses."""
-    assert resolve("City of Easton").gov_id == resolve("Easton").gov_id
-    assert resolve("City of Easton").gov_id.endswith(":easton")
+    string; only the id collapses.
+
+    Shown on a real Canadian mint (Leduc AB, `pub-leduc.escribemeetings.com`)
+    -- since Phase 1b a stateless name is `unresolved` rather than
+    minted, so a minted example needs a state."""
+    assert resolve("City of Leduc, AB").gov_id == resolve("Leduc, AB").gov_id
+    assert resolve("City of Leduc, AB").gov_id == "rtr:ca:ab:leduc"
+
+
+# --- Phase 1b: a municipal name may never resolve to a county ----------
+#
+# Every string below is a real stored jurisdiction that landed on a county
+# in the 2026-09-02 Phase 1 run, merging a city's pages into its county's
+# hub -- worse than not resolving, because it looks resolved.
+
+
+@pytest.mark.parametrize(
+    "raw,wrong_county",
+    [
+        ("City of Santa Clara", "us:county:06085"),
+        ("City of Riverside", "us:county:06065"),
+        ("City of Maricopa", "us:county:04013"),
+        ("City of Boise, ID", "us:county:16015"),
+        ("City of Waukesha, WI", "us:county:55133"),
+        ("City of Greenville", "us:county:45045"),
+        ("City of Santa Rosa", "us:county:12113"),
+    ],
+)
+def test_a_municipal_type_word_never_resolves_to_a_county(raw, wrong_county):
+    match = resolve(raw)
+    assert match.gov_id != wrong_county
+    assert not match.gov_id.startswith("us:county:")
+
+
+def test_a_municipal_type_word_never_resolves_to_a_mismatched_cousub():
+    """The regression the county gate created before the cousub branch
+    was gated too: "City of Santa Clara" stopped becoming Santa Clara
+    County and started becoming `us:cousub:3603365178` -- Santa Clara
+    TOWN, NY. One wrong government swapped for another."""
+    assert resolve("City of Santa Clara").gov_id != "us:cousub:3603365178"
+
+
+def test_a_within_state_place_collision_uses_the_raw_type_word():
+    """Waukesha WI is a city (5584250) and a village (5584275), two rows
+    under one normalized key, so the exactly-one rule declined and
+    "City of Waukesha, WI" fell through to Waukesha County."""
+    assert resolve("City of Waukesha, WI").gov_id == "us:place:5584250"
+    assert resolve("Village of Waukesha, WI").gov_id == "us:place:5584275"
+
+
+def test_a_collision_with_no_type_word_resolves_to_nothing():
+    """Two candidates and nothing to choose by: decline. Picking the more
+    populous Waukesha would be a guess."""
+    match = resolve("Waukesha")
+    assert not match.gov_id.startswith("us:place:")
+
+
+# --- Phase 1b: Census official-name shapes -----------------------------
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        # "Boise City city" is the Census/legal name; no page writes it.
+        ("City of Boise, ID", "us:place:1608830"),
+        # Both real archived Nashville tenants must land on one id.
+        ("Nashville-Davidson County, TN", "us:place:4752006"),
+        ("Nashville-Davidson metropolitan government, TN", "us:place:4752006"),
+        # The enricher's own "Louisville / Jefferson County Metro" shape.
+        ("Louisville, KY", "us:place:2148006"),
+        ("Louisville / Jefferson County Metro, KY", "us:place:2148006"),
+        # DC: Census codes it FUNCSTAT "N" as a place because its
+        # government is state-level, so the build script keeps it by GEOID.
+        ("Washington, DC", "us:place:1150000"),
+        # One page stores the short form, three store the long one.
+        ("Bainbridge, WA", "us:place:5303736"),
+        ("Bainbridge Island, WA", "us:place:5303736"),
+    ],
+)
+def test_census_official_name_shapes(raw, gov_id):
+    assert resolve(raw).gov_id == gov_id
+
+
+def test_a_real_louisville_elsewhere_is_not_the_kentucky_metro():
+    """The curated alias is keyed by state, because Louisville CO and
+    Louisville OH are real, different governments."""
+    assert resolve("Louisville, CO").gov_id == "us:place:0846355"
+    assert resolve("Louisville, OH").gov_id == "us:place:3945094"
+
+
+def test_only_curated_rows_contribute_lookup_aliases():
+    """A generated row's `aliases` column records what resolved there;
+    looking those up would cement the resolver's own mistakes. Only
+    hand-written rows are an assertion about naming."""
+    for (_state, _alias), gov_id in registry.curated_aliases().items():
+        gov = registry.governments()[gov_id]
+        assert gov.source.startswith(registry.CURATED_SOURCE_PREFIX)
+
+
+# --- Phase 1b: never an unknown-state id -------------------------------
+
+
+def test_no_id_is_ever_minted_with_an_unknown_state():
+    """`rtr:us:xx:easton` and `rtr:us:pa:easton` would be two governments
+    for one. 624 rows carried an "xx" id in the Phase 1 run."""
+    for raw in ["City of Riverside", "Washington", "Nashville", "Some Unlisted Board"]:
+        assert ":xx:" not in resolve(raw).gov_id
+
+
+def test_a_stateless_name_with_nothing_to_go_on_is_unresolved_not_minted():
+    match = resolve("City of Greenville")
+    assert match.gov_id == ""
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.gov_name == "City of Greenville"
+
+
+def test_the_state_comes_from_the_tenant_before_the_lookup_not_after():
+    """One tenant, one government. `riversideca.granicus.com` stored
+    "City of Riverside" on one page and a bare "Riverside" on the next;
+    the bare one resolved to Riverside County, because "Riverside"
+    matches three CA places' worth of ambiguity nationally and exactly
+    one county. Recovering CA from the tenant first settles it."""
+    host = "riversideca.granicus.com"
+    assert (
+        resolve("Riverside", host).gov_id == resolve("City of Riverside", host).gov_id
+    )
+    assert resolve("Riverside", host).gov_id == "us:place:0662000"
+
+
+def test_same_tenant_consistency_is_a_tier_of_its_own(monkeypatch):
+    """Rung 5b. The caller supplies the consensus because the resolver is
+    pure and cannot see a page's siblings."""
+    gov = registry.Government(
+        "us:place:0662000", "Riverside city", classify.MUNICIPALITY, state="CA"
+    )
+    monkeypatch.setattr(registry, "governments", lambda: {gov.gov_id: gov})
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {})
+    monkeypatch.setattr(registry, "tenant_hints", lambda: {})
+    match = resolve(
+        "Some Unlisted Board",
+        "example.granicus.com",
+        tenant_gov_id="us:place:0662000",
+    )
+    assert match.gov_id == "us:place:0662000"
+    assert match.tier == resolver.TIER_INFERRED
+    assert "example.granicus.com" in match.evidence
+
+
+def test_a_tenant_hint_supplies_only_a_state_never_a_government():
+    """`tenant_hints.csv` is fed by rtr-discovery's own
+    `tenants.jurisdiction_override`, whose values include "S Fw, MD",
+    "Mw Rd", "Psr C 2" and "Tampa D". Those are useless as government
+    names and still correct about the state."""
+    hints = registry.tenant_hints()
+    assert hints, "expected seeded tenant hints"
+    for state in hints.values():
+        assert len(state) == 2 and state.isalpha()
+
+
+# --- Phase 1b: seeding ------------------------------------------------
+
+
+def test_no_pin_is_sourced_only_from_auto_derived():
+    """A pin is the one tier that overrides a working extraction, so a
+    machine-derived subdomain guess is the last thing that belongs in
+    one. 447 hosts were demoted to state-only hints."""
+    offenders = [
+        host
+        for host, rows in registry.tenant_overrides().items()
+        for o in rows
+        if o.source == "auto_derived"
+    ]
+    assert offenders == []
+
+
+def test_imperial_irrigation_district_is_not_imperial_county():
+    """Found in the Phase 1b pass from the export itself: the host's one
+    archived page has slug "imperial-iid-bod-regular-meeting-january-21-
+    2025" -- Imperial Irrigation District Board of Directors -- while its
+    stored jurisdiction is a bare "Imperial", which resolved to Imperial
+    County CA."""
+    match = resolve("Imperial", "imperialid.granicus.com")
+    assert match.gov_id == "rtr:us:ca:imperial-irrigation-district"
+    assert match.gov_id != "us:county:06025"
+
+
+# --- Phase 1b: display ------------------------------------------------
+
+
+def test_within_state_disambiguation_uses_one_parenthetical_form():
+    """Both sides of a shared name read the same way. The suffix form
+    ("Cottage Grove Town") reads as a different name rather than as a
+    disambiguator."""
+    assert resolve("Town of Cottage Grove, WI").gov_name == "Cottage Grove (town), WI"
+    assert (
+        resolve("Village of Cottage Grove, WI").gov_name
+        == "Cottage Grove (village), WI"
+    )
+
+
+def test_an_uncontested_township_keeps_the_suffix_form():
+    assert resolve("Chesterfield Township, MI").gov_name == "Chesterfield Township, MI"
+
+
+def test_census_bookkeeping_is_not_part_of_a_display_name():
+    """ "(balance)" and the government-type phrase are Census bookkeeping
+    about the *area*, not part of the government's name."""
+    assert resolve("Nashville-Davidson County, TN").gov_name == "Nashville-Davidson, TN"
+    assert "(balance)" not in resolve("Louisville, KY").gov_name
+
+
+def test_dc_and_louisville_are_municipalities_not_other():
+    assert resolve("Washington, DC").gov_type == classify.MUNICIPALITY
+    assert resolve("Louisville, KY").gov_type == classify.MUNICIPALITY

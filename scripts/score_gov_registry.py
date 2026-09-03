@@ -38,6 +38,7 @@ import asyncio
 import csv
 import json
 import os
+import re
 import sqlite3
 import sys
 from collections import Counter, defaultdict
@@ -145,12 +146,52 @@ def _host(url: Optional[str]) -> str:
     return (urlparse(url).netloc or "").lower().split(":")[0]
 
 
-def score_rows(rows: List[dict]) -> List[dict]:
+# A raw name that SAYS it is a municipality. Kept here rather than
+# imported from the resolver so the report measures the property from the
+# outside -- the whole point of the "0 municipal names on the county
+# table" check is that it does not just re-assert the resolver's own gate.
+_MUNICIPAL_WORD_RE = re.compile(
+    r"^(?:the\s+)?(city|town|village|borough|township|municipality)\s+of\b", re.I
+)
+
+
+def has_municipal_type_word(jurisdiction: str) -> bool:
+    return bool(_MUNICIPAL_WORD_RE.match((jurisdiction or "").strip()))
+
+
+def _tenant_consensus(rows: List[dict]) -> Dict[str, str]:
+    """tenant_host -> the one gov_id every resolved row for that host
+    agrees on, for the same-tenant consistency rung (resolver rung 5b).
+
+    A pre-pass, because the resolver is pure and cannot see a page's
+    siblings. In Phase 2 this becomes a query against `meeting_pages` by
+    host; here it is a group-by over the sheet. Only hosts where EVERY
+    keyed row agrees contribute -- a host serving two governments
+    (Cottage Grove, uatccta) must produce nothing rather than pick one,
+    which is the same decline-rather-than-guess posture as everywhere
+    else in the ladder.
+    """
+    by_host: Dict[str, set] = defaultdict(set)
+    for row in rows:
+        host = (row.get("tenant_host") or "").strip().lower()
+        gov_id = row.get("gov_id") or ""
+        if host and gov_id and not gov_id.startswith("rtr:unknown:"):
+            by_host[host].add(gov_id)
+    return {host: next(iter(ids)) for host, ids in by_host.items() if len(ids) == 1}
+
+
+def score_rows(
+    rows: List[dict], consensus: Optional[Dict[str, str]] = None
+) -> List[dict]:
     out = []
     for row in rows:
         jurisdiction = row.get("jurisdiction") or ""
         host = row.get("tenant_host") or ""
-        match = resolve_government(jurisdiction or None, tenant_host=host or None)
+        match = resolve_government(
+            jurisdiction or None,
+            tenant_host=host or None,
+            tenant_gov_id=(consensus or {}).get(host.lower()),
+        )
         out.append(
             {
                 **row,
@@ -164,6 +205,9 @@ def score_rows(rows: List[dict]) -> List[dict]:
                 "country": match.country,
                 "state": match.state,
                 "old_hub_slug": jurisdiction_hub_slug(jurisdiction) or "",
+                "municipal_type_word": (
+                    "yes" if has_municipal_type_word(jurisdiction) else "no"
+                ),
                 "gov_classify_bucket": classify_government(
                     jurisdiction or None, row.get("meeting_body") or None
                 ),
@@ -237,24 +281,32 @@ def main() -> None:
             args.save_export.write_text(json.dumps(pages))
             print(f"  saved raw export to {args.save_export}")
 
-    archive_rows = score_rows(
-        [
-            {
-                "page_id": p.get("id"),
-                "slug": p.get("slug"),
-                "platform": p.get("platform"),
-                "source_url": p.get("source_url_normalized"),
-                "tenant_host": _host(p.get("source_url_normalized")),
-                "jurisdiction": p.get("jurisdiction") or "",
-                "meeting_body": p.get("meeting_body") or "",
-                "jurisdiction_confidence": p.get("jurisdiction_confidence") or "",
-            }
-            for p in pages
-        ]
+    archive_inputs = [
+        {
+            "page_id": p.get("id"),
+            "slug": p.get("slug"),
+            "platform": p.get("platform"),
+            "source_url": p.get("source_url_normalized"),
+            "tenant_host": _host(p.get("source_url_normalized")),
+            "jurisdiction": p.get("jurisdiction") or "",
+            "meeting_body": p.get("meeting_body") or "",
+            "jurisdiction_confidence": p.get("jurisdiction_confidence") or "",
+        }
+        for p in pages
+    ]
+    ledger_inputs = ledger_pairs(args.discovery)
+
+    # Two passes. The first resolves every row on its own; the second
+    # re-resolves with the same-tenant consensus the first pass revealed,
+    # which is the only rung that needs to see a page's siblings.
+    consensus = _tenant_consensus(
+        score_rows(archive_inputs) + score_rows(ledger_inputs)
     )
+    print(f"  same-tenant consensus available for {len(consensus)} hosts")
+    archive_rows = score_rows(archive_inputs, consensus)
 
     print("\nrtr-discovery ledger:")
-    ledger_rows = score_rows(ledger_pairs(args.discovery))
+    ledger_rows = score_rows(ledger_inputs, consensus)
     print(f"  {len(ledger_rows)} distinct (tenant, jurisdiction) pairs")
 
     print("\nReports:")
@@ -294,6 +346,20 @@ def main() -> None:
             "evidence",
         ],
     )
+    unresolved = [r for r in all_rows if r["tier"] == "unresolved"]
+    _write(
+        out_dir / "unresolved.csv",
+        sorted(unresolved, key=lambda r: (r["tenant_host"], r["jurisdiction"])),
+        [
+            "input_set",
+            "jurisdiction",
+            "gov_name",
+            "gov_type",
+            "tenant_host",
+            "platform",
+            "evidence",
+        ],
+    )
     unknown = [r for r in all_rows if r["gov_id"].startswith("rtr:unknown:")]
     _write(
         out_dir / "unknown.csv",
@@ -307,7 +373,10 @@ def main() -> None:
     govs_by_hub: Dict[str, set] = defaultdict(set)
     names_by_hub: Dict[str, set] = defaultdict(set)
     for r in all_rows:
-        if not r["old_hub_slug"]:
+        # An `unresolved` row has no gov_id at all. It is not a government
+        # that hubs merge into -- grouping by the empty string made 220
+        # unrelated hubs look like one merge in the first Phase 1b run.
+        if not r["old_hub_slug"] or not r["gov_id"]:
             continue
         hubs_by_gov[r["gov_id"]].add(r["old_hub_slug"])
         govs_by_hub[r["old_hub_slug"]].add(r["gov_id"])
@@ -442,19 +511,59 @@ def _write_summary(
     lines.append("| --- | --- | --- |")
     a = Counter(r["tier"] for r in archive_rows)
     b = Counter(r["tier"] for r in ledger_rows)
-    for tier in ("pinned", "registry", "unverified", "blank"):
+    for tier in ("pinned", "registry", "inferred", "unverified", "unresolved", "blank"):
         lines.append(
             f"| {tier} | {a[tier]} ({pct(a[tier], len(archive_rows))}) "
             f"| {b[tier]} ({pct(b[tier], len(ledger_rows))}) |"
         )
     lines.append("")
 
-    keyed = [r for r in all_rows if not r["gov_id"].startswith("rtr:")]
+    # A national id means a real Census/StatCan code. An `unresolved` row
+    # has an EMPTY gov_id, which this test used to count as "not rtr:"
+    # and therefore as keyed -- it inflated the headline by 422 rows in
+    # the first Phase 1b run.
+    keyed = [r for r in all_rows if r["gov_id"] and not r["gov_id"].startswith("rtr:")]
     lines.append(
         f"**{len(keyed)} of {len(all_rows)}** rows ({pct(len(keyed), len(all_rows))}) "
         "got a national id."
     )
     lines.append("")
+
+    municipal_on_county = [
+        r
+        for r in all_rows
+        if r["municipal_type_word"] == "yes" and r["gov_id"].startswith("us:county:")
+    ]
+    xx_ids = [r for r in all_rows if ":xx:" in r["gov_id"]]
+    auto_only_pins = [
+        host
+        for host, rows in registry.tenant_overrides().items()
+        for o in rows
+        if o.source == "auto_derived"
+    ]
+    lines.append("## Phase 1b targets — before / after")
+    lines.append("")
+    lines.append("| check | Phase 1 | now | target |")
+    lines.append("| --- | --- | --- | --- |")
+    lines.append(
+        f"| rows on the county table whose raw name had a municipal type word "
+        f"| 26 | **{len(municipal_on_county)}** | 0 |"
+    )
+    lines.append(f"| `rtr:us:xx:` / `rtr:ca:xx:` ids | 624 | **{len(xx_ids)}** | 0 |")
+    lines.append(
+        f"| pins sourced only from `auto_derived` | 447 | **{len(auto_only_pins)}** | 0 |"
+    )
+    lines.append("")
+    if municipal_on_county:
+        for r in municipal_on_county[:10]:
+            lines.append(f"- still on a county: {r['jurisdiction']!r} -> {r['gov_id']}")
+        lines.append("")
+    if xx_ids:
+        for r in xx_ids[:10]:
+            lines.append(
+                f"- still unknown-state: {r['jurisdiction']!r} -> {r['gov_id']}"
+            )
+        lines.append("")
 
     lines.append("## Government types")
     lines.append("")
@@ -514,6 +623,20 @@ def _write_summary(
     lines.append("")
 
     minted = [r for r in all_rows if r["gov_id"].startswith("rtr:")]
+    unresolved = [r for r in all_rows if r["tier"] == "unresolved"]
+    _write(
+        out_dir / "unresolved.csv",
+        sorted(unresolved, key=lambda r: (r["tenant_host"], r["jurisdiction"])),
+        [
+            "input_set",
+            "jurisdiction",
+            "gov_name",
+            "gov_type",
+            "tenant_host",
+            "platform",
+            "evidence",
+        ],
+    )
     unknown = [r for r in all_rows if r["gov_id"].startswith("rtr:unknown:")]
     lines.append("## Minted and unknown")
     lines.append("")
@@ -523,6 +646,17 @@ def _write_summary(
     )
     lines.append(
         f"- **{len(unknown)}** rows with nothing at all (`rtr:unknown:<host>`)."
+    )
+    lines.append(
+        f"- **{len(unresolved)}** rows tier `unresolved` — a real government "
+        "name with no state and nothing to key it by. Listed in "
+        "`unresolved.csv` for a `tenant_overrides.csv` pin; deliberately "
+        "NOT minted, because an id nobody can key looks resolved and is not."
+    )
+    inferred = [r for r in all_rows if r["tier"] == "inferred"]
+    lines.append(
+        f"- **{len(inferred)}** rows resolved by same-tenant consistency "
+        "(tier `inferred`)."
     )
     lines.append("")
     (out_dir / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -39,6 +39,18 @@ _TRAILING_TYPE_RE = re.compile(
     r"CDP|comunidad|zona urbana))$"
 )
 
+# Census's canonical spelling of a consolidated city-county carries a
+# "(balance)" marker and a government-type phrase --
+# "Nashville-Davidson metropolitan government (balance)". Both are
+# Census bookkeeping about the *area*, not part of the government's name,
+# and `jurisdiction_enrich._normalize_name()` already strips them for
+# lookup; this is the display-side counterpart, which has to preserve
+# case. 10 rows nationally.
+_BALANCE_RE = re.compile(r"\s*\(balance\)\s*$", re.IGNORECASE)
+_GOVERNMENT_PHRASE_RE = re.compile(
+    r"\s+(?:metropolitan|metro|unified|consolidated)\s+government$", re.IGNORECASE
+)
+
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
@@ -54,6 +66,11 @@ def slugify(text: str) -> str:
     every `/j/` slug in two.
     """
     return _NON_ALNUM.sub("-", (text or "").lower()).strip("-")
+
+
+def _strip_census_bookkeeping(census_name: str) -> str:
+    stripped = _GOVERNMENT_PHRASE_RE.sub("", _BALANCE_RE.sub("", census_name)).strip()
+    return stripped or census_name
 
 
 def _split_type_word(census_name: str) -> tuple[str, str]:
@@ -93,12 +110,20 @@ def display_name(gov: Government) -> str:
 
     if gov.gov_type == TOWNSHIP:
         base, word = _split_type_word(gov.gov_name)
+        if word and tables.name_is_ambiguous_in_state(base, state):
+            # Same parenthetical form the municipality branch uses, so
+            # one name shared by two governments in a state reads the
+            # same way from either side: "Cottage Grove (town), WI" and
+            # "Cottage Grove (village), WI". The suffix form below would
+            # give "Cottage Grove Town", which reads as a different name
+            # rather than as a disambiguator.
+            return f"{base} ({word}){suffix}"
         if word:
             return f"{base} {_titled_type_word(word)}{suffix}"
         return f"{gov.gov_name}{suffix}"
 
     if gov.gov_type == MUNICIPALITY:
-        base, word = _split_type_word(gov.gov_name)
+        base, word = _split_type_word(_strip_census_bookkeeping(gov.gov_name))
         if word and tables.name_is_ambiguous_in_state(base, state):
             # Two real governments in one state share this name -- the
             # Cottage Grove village/town case. The LSAD word is data from

@@ -27,10 +27,12 @@ from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from ..jurisdiction_enrich import (
+    _QUERY_GOVERNMENT_TYPE_RE,
     _contract_saints,
     _expand_abbreviations,
     _normalize_candidates,
     _normalize_name,
+    _normalize_slash_spacing,
     _strip_okina,
 )
 
@@ -66,20 +68,38 @@ class TableRow(NamedTuple):
     name: str
     state: str
     type_word: str = ""
+    # Census FUNCSTAT, places only: "A" active, "B"/"F" a consolidated
+    # city-county government, "N" the one kept nonfunctioning row (DC).
+    # Carried because the county->place fallback for a consolidated
+    # government must be restricted to B/F rather than searching the
+    # whole place table (resolver._consolidated_lookup()).
+    funcstat: str = ""
 
 
-def _lookup_keys(name: str) -> List[str]:
+def lookup_keys(name: str) -> List[str]:
     """Every normalized key a query name could reasonably match, in the
     order `_table_lookup()` already tries them: as-is, trailing-type-word
     stripped, abbreviation-expanded, Saint-contracted, ʻokina-stripped.
     Duplicates removed, order preserved.
     """
     keys: List[str] = []
+    # The last two variants are the enricher's own consolidated-government
+    # handling, reused rather than re-derived: `_QUERY_GOVERNMENT_TYPE_RE`
+    # strips a trailing "metropolitan government"/"metro"/"unified"
+    # (earned 2026-08-17 by the real archived "Louisville / Jefferson
+    # County Metro"), and `_normalize_slash_spacing` collapses the spaced
+    # slash that same row uses. Both are what let a page's informal
+    # spelling reach the Census "(balance)" key.
+    consolidated = _normalize_slash_spacing(
+        _QUERY_GOVERNMENT_TYPE_RE.sub("", name).strip()
+    )
     for variant in (
         name,
         _expand_abbreviations(name),
         _contract_saints(name),
         _strip_okina(name),
+        consolidated,
+        _normalize_slash_spacing(name),
     ):
         for candidate in _normalize_candidates(variant):
             if candidate and candidate not in keys:
@@ -110,6 +130,23 @@ class NameStateTable:
     def get(self, row_id: str) -> Optional[TableRow]:
         return self._by_id.get(row_id)
 
+    def lookup_all(self, name: str, state: Optional[str]) -> List[TableRow]:
+        """Every row matching `name`, at the first normalization key that
+        matches anything -- so a caller can break a tie the exactly-one
+        rule would otherwise decline (the raw name's own type word, see
+        `resolver._general_purpose_lookup()`)."""
+        for key in lookup_keys(name):
+            by_state = self._by_key.get(key)
+            if not by_state:
+                continue
+            if state:
+                rows = by_state.get(state.upper()) or []
+            else:
+                rows = [r for state_rows in by_state.values() for r in state_rows]
+            if rows:
+                return list({r.row_id: r for r in rows}.values())
+        return []
+
     def lookup(self, name: str, state: Optional[str]) -> Optional[TableRow]:
         """The one row matching `name`, or None.
 
@@ -119,7 +156,7 @@ class NameStateTable:
         `lookup_city_state()` takes, so a page that never said which
         state it is in can't be assigned to the wrong Springfield.
         """
-        for key in _lookup_keys(name):
+        for key in lookup_keys(name):
             by_state = self._by_key.get(key)
             if not by_state:
                 continue
@@ -170,7 +207,13 @@ _LSAD_WORDS = {"25": "city", "43": "town", "47": "village", "21": "borough"}
 def us_places() -> NameStateTable:
     return NameStateTable(
         [
-            TableRow(r["geoid"], r["name"], r["state"], _LSAD_WORDS.get(r["lsad"], ""))
+            TableRow(
+                r["geoid"],
+                r["name"],
+                r["state"],
+                _LSAD_WORDS.get(r["lsad"], ""),
+                r["funcstat"],
+            )
             for r in _read("us_places.csv")
         ]
     )
@@ -262,4 +305,4 @@ def name_is_ambiguous_in_state(name: str, state: Optional[str]) -> bool:
     if not state:
         return False
     counts = _ambiguous_display_names()
-    return any(counts.get((state.upper(), key), 0) > 1 for key in _lookup_keys(name))
+    return any(counts.get((state.upper(), key), 0) > 1 for key in lookup_keys(name))

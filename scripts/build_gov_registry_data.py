@@ -112,6 +112,23 @@ def _write(name: str, header: List[str], rows) -> None:
 # --- US -------------------------------------------------------------
 
 
+# FUNCSTAT "N" (nonfunctioning) rows kept by GEOID, one at a time, with
+# the reason. There are only 4 nationally, so this is a real list, not a
+# category: Washington DC (below), plus Louisville city KY, Tribune city
+# KS and Houma city LA -- those three are genuinely defunct place
+# governments superseded by a consolidated one, and Louisville in
+# particular MUST stay out or it collides with the real
+# "Louisville/Jefferson County metro government (balance)" row.
+#
+#   1150000  Washington city, DC. Census codes the District "N" as a
+#            *place* because its government is state-level, not because
+#            there is no government -- the District plainly governs
+#            itself, and 14 real archived pages resolve to it. Confirmed
+#            by reading the Gazetteer directly (2026-09-02): the row
+#            exists with GEOID 1150000 and is the only DC place row.
+_FUNCSTAT_N_KEEP = {"1150000"}
+
+
 def build_us_places(source_dir: Path) -> None:
     """Incorporated places only, with GEOID + LSAD + FUNCSTAT kept.
 
@@ -132,7 +149,7 @@ def build_us_places(source_dir: Path) -> None:
     out = [
         (r["GEOID"], r["NAME"], r["USPS"], r["LSAD"], r["FUNCSTAT"])
         for r in rows
-        if r["FUNCSTAT"] in ("A", "B", "F")
+        if r["FUNCSTAT"] in ("A", "B", "F") or r["GEOID"] in _FUNCSTAT_N_KEEP
     ]
     _write("us_places.csv", ["geoid", "name", "state", "lsad", "funcstat"], out)
 

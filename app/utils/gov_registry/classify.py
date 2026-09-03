@@ -140,20 +140,6 @@ _CA_UPPER_TIER_RE = re.compile(
     re.I,
 )
 
-# "<Entity> of the County of <Place>" -- an entity that has its own name
-# in front of a general-purpose government's. Checked before `_RULES`
-# because the county rule would otherwise fire on the *tail* and file the
-# whole thing as a county: "Housing Authority of the County of Santa
-# Clara" (a real archived page, JURISDICTION_METADATA_PLAN.md's own worked
-# example) classifies `county` under `govtype.py`'s rules today,
-# confirmed by running them 2026-09-02.
-#
-# The entity half is classified on its own, and only a *non-place* answer
-# is taken. That is decision D2's test in regex form: a housing authority
-# has its own board, statute and budget, so it is its own government; a
-# City Council or a Planning Commission does not, classifies
-# municipality/None here, and correctly stays a `meeting_body` of the
-# place that follows it.
 # Consolidated city-county governments: San Francisco, Denver, Honolulu,
 # Juneau, Sitka, Nashville-Davidson, Louisville/Jefferson. One government,
 # and Census keys it as a *place* (`San Francisco city`, GEOID 0667000),
@@ -173,6 +159,31 @@ CONSOLIDATED_RE = re.compile(
     re.I,
 )
 
+# The same governments named the other way round -- "Nashville-Davidson
+# metropolitan government", "Athens-Clarke County unified government" --
+# which is how Census itself spells them and how a real archived page
+# does. Same four roots as `jurisdiction_enrich._GOVERNMENT_TYPE_RE`, the
+# closed 10-row-nationally category. Without this the word "metropolitan"
+# sends the name to the special_district rule.
+CONSOLIDATED_SUFFIX_RE = re.compile(
+    r"\b(?:metropolitan|metro|unified|consolidated)(?:\s+government)\b",
+    re.I,
+)
+
+# "<Entity> of the County of <Place>" -- an entity that has its own name
+# in front of a general-purpose government's. Checked before `_RULES`
+# because the county rule would otherwise fire on the *tail* and file the
+# whole thing as a county: "Housing Authority of the County of Santa
+# Clara" (a real archived page, JURISDICTION_METADATA_PLAN.md's own worked
+# example) classifies `county` under `govtype.py`'s rules today,
+# confirmed by running them 2026-09-02.
+#
+# The entity half is classified on its own, and only a *non-place* answer
+# is taken. That is decision D2's test in regex form: a housing authority
+# has its own board, statute and budget, so it is its own government; a
+# City Council or a Planning Commission does not, classifies
+# municipality/None here, and correctly stays a `meeting_body` of the
+# place that follows it.
 _ENTITY_OF_PLACE_RE = re.compile(
     r"^(?P<entity>.+?)\s+of\s+(the\s+)?"
     r"(city|county|parish|town|village|borough|township)\s+of\b",
@@ -201,7 +212,7 @@ def classify_government_type(
         return None
     if country == "ca" and _CA_UPPER_TIER_RE.search(name.strip()):
         return COUNTY
-    if CONSOLIDATED_RE.match(name.strip()):
+    if CONSOLIDATED_RE.match(name.strip()) or CONSOLIDATED_SUFFIX_RE.search(name):
         return MUNICIPALITY
     entity_of_place = _ENTITY_OF_PLACE_RE.match(name.strip())
     if entity_of_place:
