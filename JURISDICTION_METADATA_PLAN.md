@@ -989,3 +989,136 @@ here — neither of these would have failed a test.
   (the Santa Clara housing authority). Cosmetic, bounded, and logged.
 - **`uatccta.primegov.com`** is still the first real multi-government
   tenant with no `match` discriminator.
+
+
+---
+
+## Phase 2b — three defects the production dry run found (WO-100, 2026-09-03)
+
+The Archive deploy went green and the pre-apply dry run over
+`GET /internal/export/pages` surfaced three wrong hub moves. All three
+were real, all three are fixed here, and the last two of them were found
+by *reading the moves* rather than by any test.
+
+### 1. A machine-derived pin minted a government that cannot exist
+
+`king.granicus.com` is the Metropolitan King County Council — King
+County, **WA**. It carried `rtr:us:nc:king-county`, source
+`auto_derived+inferred_unique_name`, built on rtr-discovery's wrong
+`state_abbr=NC` for that host. There is no King County in North
+Carolina. Three rules now stop this shape, plus the data fix (the pin is
+`us:county:53033`, `ryan_stated`, and the hint row says WA):
+
+- **A pin to a minted `rtr:` id needs a human source.** Pinning to a
+  national id is a claim a table can be checked against; pinning to an
+  `rtr:` id invents an identity, and a pin is the one tier that overrides
+  a working extraction. `registry._has_human_source()` tests every `+`
+  token, because combining two machine sources does not make one human
+  one.
+- **A county-shaped name with no such county in that state is never
+  minted.** US counties are exhaustively enumerated, so this is a
+  contradiction rather than an unlisted government. Gated on the name
+  *being* county-shaped ("King County", "County of Fresno"), not merely
+  containing the word — "Los Angeles County Metropolitan Transportation
+  Authority" and "Tarrant County College District" are agencies that
+  name their county, and both are real minted governments the §1.3 fixes
+  depend on.
+- **`tenant_hints.csv` already ranks below a subdomain or
+  `_KNOWN_DOMAINS` reading** — verified rather than changed, and now
+  pinned by a test.
+
+**Re-audit, as asked:** of 41 pins to a minted `rtr:` id, exactly **one**
+had a machine-only source — this one. The other 10 that a first pass
+flagged were `architecture_doc_1_3`, which is a human source; the pass
+missed it because its allow-list held `architecture_doc` without the
+section suffix. Correcting that was the difference between "11 bad pins"
+and "1".
+
+### 2. Uniqueness was tested per table, so a stateless name could be
+### unique in one table and ambiguous across three
+
+"Town of Hillsborough" on `youtu.be` — a shared host with no tenant
+state — became Hillsborough town, **New Hampshire**. Two Hillsborough
+places (CA, NC), two county subdivisions (NH, NJ), two counties (FL, NH):
+the place table declined because it saw two, the cousub table answered
+because "Town of" narrowed its two to one, and nothing compared the six.
+
+The check now spans `us_places` + `us_cousubs` + `us_counties` together,
+and two refinements were needed to make it right rather than merely
+strict — both found by measuring against the 5,053-page export:
+
+- **The raw name's own type word narrows the count**, exactly as it
+  narrows each table's lookup. Without it the rule declined 74 rows and
+  about **40 were correct** — "City of Corona", "Town of Herndon" (a
+  documented three-slug merge), "City of Burnsville", "City of Palm
+  Springs". Those names are not ambiguous; their ambiguity is what the
+  type word settles.
+- **Candidates are counted by STATE, not by row.** A place and a county
+  sharing a name in the *same* state — Milwaukee, Napa, Fresno — put the
+  page in that state either way, and place-before-county already settles
+  which. Counting them separately declined "Milwaukee.", whose merge with
+  "Milwaukee, WI" is one of Phase 1b's documented wins. What actually
+  goes wrong is the wrong state.
+
+Final effect: **28 rows change, and every one is a wrong resolution being
+declined** — Woodbury County IA for a page on `woodburymn.gov`, Webster
+NC on `websterny.gov`, Glenview Township ND, Ventura IA, Amherst VA,
+Alpine County CA, Hillsborough NH — plus two that improve
+(`rtr:ca:on:bradford`, `rtr:us:ga:colorado`). No legitimate resolution is
+lost.
+
+**A third Ventura-shaped case fell out of it.** Census names the
+California city "San Buenaventura (Ventura) city", so the place table
+keys no "Ventura" in CA at all, and one government had three answers: the
+real `cityofventura.granicus.com` page, stored as a bare "Ventura, CA",
+resolved to Ventura **County** — with an `authoritative` pin freezing
+that in place — while "City of Ventura, CA" minted and a stateless "City
+of Ventura" reached Iowa. A curated row plus the corrected pin settles
+all three. Same shape as Boise, and the audit for other city-named hosts
+pinned to a county found no second case.
+
+### 3. An unresolved government had a hub slug
+
+`GovernmentMatch.hub_slug` built a slug from the raw cleaned name for
+tiers that have no identity: an unresolved "City of Las Vegas" gave
+`city-of-las-vegas`, while the page lives at `/j/las-vegas` —
+`jurisdiction_hub_slug()` goes through `format_jurisdiction_display()`,
+which strips a leading "City of ". No page ever moved (`_hub_identity()`
+looks the id up, misses and falls back correctly), but both scripts read
+the property, so the backfill's dry run and the scoring run credited
+moves that would not happen. It returns None for `unresolved` and
+`blank` now.
+
+### Three more, folded in from the same review
+
+- **`manual_override` rows are keyed.** "Respect the override" means
+  don't rewrite the hand-set *string* — the identity is a different
+  column that did not exist when the override was made. 226 pages (206
+  Schenectady NY, 7 Santa Clara) were otherwise the only ones in the
+  archive with no join key. Their string and their `manual_override`
+  tier are both left exactly as they are, so
+  `_find_or_create_page()`'s guard still recognises them.
+- **The hub-slug alias map is generated from the archive alone.** A hub
+  is made of pages and a ledger row is not a page, so it can neither
+  create a hub nor retire one — but a ledger row's `new_hub_slug` could
+  mark a slug "still live" and suppress a real 301, which is exactly how
+  7 junk-named Municode singletons were going to 404. The scoring run's
+  same-tenant consensus is now computed per input set for the same
+  reason: the archive's answer must depend only on what production can
+  see. **Retired slugs without a 301: 7 → 0.**
+- **`pin_worklist.csv` gains a `multiple_governments` section** — every
+  tenant still carrying more than one `gov_id`, with the ids it carries,
+  sorted first. It earned itself immediately: `pub-richmond` is Richmond
+  BC *and* Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
+  `pub-courtenay` is Courtenay BC *and* Courtenay ND — cross-border
+  mis-resolutions on Canadian eScribe hosts that no other cut surfaced.
+
+### The numbers after all six
+
+| check | before this pass | after |
+| --- | --- | --- |
+| national id | 81.3% | **81.9%** |
+| tenants carrying >1 `gov_id` | 55 → 43 | 53 → **41** |
+| merges (today's hub slugs absorbed) | 170 (347) | **170 (347)** |
+| retired slugs with no 301 | 7 | **0** |
+| pages with no join key | 662 | **471** |
