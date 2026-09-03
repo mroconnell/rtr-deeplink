@@ -270,7 +270,8 @@ each other directly:**
   meeting" form submissions). See "Caching and reporting" below.
 - **`archive/db/`** — the Archive's own database, holding the actual
   permanent-page content. Four tables: `meeting_pages` (one row per
-  permanent `/m/{slug}` page), `transcript_versions` (a page can have
+  permanent `/m/{slug}` page, including which **government** it belongs
+  to -- see "Government identity" below), `transcript_versions` (a page can have
   several — original scrape, a self-transcribed replacement, etc.),
   `transcription_jobs` (the on-demand-transcription queue, see below),
   and `meeting_page_url_aliases` (every URL that's ever successfully
@@ -953,11 +954,18 @@ Both surfaces now lead with:
   ?t=`), and `VideoObject` structured data for each featured meeting.
   Both only where `crud.pages_with_thumbnails()` confirms a stored frame
   — advertising a card URL that would 404 is worse than advertising none.
-* **Grouped government list** (state pages) — Counties & regions /
-  Cities & towns / School districts / Agencies & special districts, via
-  `archive/utils/gov_classify.py` (trusts `meeting_body` where it is
-  conclusive, falls back to the jurisdiction name, defaults
-  conservatively to city). A sticky sidebar beside the results on
+* **Grouped government list** (state pages) — State government /
+  Counties & regions / Cities & towns / School districts / Agencies &
+  special districts / Courts / Other public bodies, via
+  `archive/utils/gov_groups.py`, which maps each page's stored
+  `gov_type` (the Census-of-Governments type the registry assigned at
+  ingest) to a heading. It replaced `gov_classify.py`, a regex over the
+  display *name* that filed "Broward County Public Schools" and "West
+  County Wastewater District" under counties and "Minnesota Senate"
+  under cities, and disagreed with the registry on 388 of 5,929 rows
+  (WO-99, 2026-09-02). Nothing here guesses: an unidentified government
+  reads "Other public bodies" rather than being called a city or an
+  agency. A sticky sidebar beside the results on
   desktop; below them on mobile, where the results lead. Every `/j/`
   link stays in the initial HTML in both layouts.
 * **"Most watched governments"** (state pages, ≥8 governments) — ranked
@@ -988,15 +996,88 @@ rather than guesswork (`crud.top_search_keywords()`); nothing renders it
 yet. Written from a FastAPI background task, so a logging failure can
 never break a search.
 
+**Government identity (`gov_id`, WO-99, 2026-09-02)** — `meeting_pages`
+carries three columns that say *whose* meeting a page is, alongside the
+`jurisdiction` string that says what to call it:
+
+| column | meaning |
+| --- | --- |
+| `gov_id` | the identity of the government whose event this is |
+| `gov_type` | its Census-of-Governments type (`county`, `municipality`, `township`, `school_district`, `special_district`, `state`, `court`, `other`) |
+| `meeting_kind` | what kind of event the page is; NULL means an ordinary `meeting` |
+
+`jurisdiction` did both jobs before, and a string cannot be an identity.
+Two measured consequences, both live on the site until this landed:
+`/state/california` listed **both** "County of Fresno" and "Fresno
+County" — thirteen California counties on twenty-six hub pages, each pair
+one government — and, worse, a government whose page merely *mentioned*
+its host city was filed under that city. LADWP's meetings sat on the City
+of Los Angeles's hub; SANDAG's on San Diego's; Menlo Park Fire's on
+Atherton's. Nine confirmed tenants. A validated name is not a validated
+identity.
+
+The id is **namespaced and deterministic** — `us:place:0627000`,
+`us:county:06019`, `us:cousub:5502517200`, `us:state:06`,
+`us:sd:0622710`, `ca:csd:3518013`, `ca:cd:3521`, `ca:pr:35`, or a minted
+`rtr:us:ca:<slug>` where no national table covers the government. Not a
+surrogate key, because nothing in this estate shares a sequence: this app
+is Postgres on Render, rtr-discovery and rtr-upcoming are local SQLite,
+the feed is flat files and rtr-business is CSVs. An id every tool derives
+from `(type, name, state)` plus the same committed data files is the only
+one all five can assign independently and still agree on.
+
+`app/utils/gov_registry/` assigns it, from a seven-rung ladder whose
+order is the fix: a pin, then `finalize_jurisdiction()`'s string repair,
+then **the government's TYPE classified before any place lookup** — a
+name that reads as a special district is looked up in the district path
+and can never fall through to the place table, however place-like it
+reads — then the matching national table (exactly one match or nothing),
+then a fallback pin, then minting, then blank. `jurisdiction_confidence`
+holds the resolution tier now (`pinned` / `registry` / `inferred` /
+`unverified` / `unresolved` / `blank`, plus the existing
+`manual_override`), which its "plain string, not an enum" decision
+already anticipated.
+
+**`jurisdiction` is the display name** and is generated from the registry
+row for a `pinned` or `registry` page, so "County of Fresno, CA" and
+"Fresno County, CA" both read and group as `Fresno County, CA`. A page
+the resolver declines to key keeps the string it had and its `gov_id`
+stays NULL — a real, distinguishable state, and deliberately not a minted
+id, because an id nobody can look up is worse than an honest gap.
+
+**The word is "government"** in code and column names — `gov_id`,
+`gov_type` — because that is the Census of Governments' own term for
+exactly this unit (a mosquito abatement district and a city are both
+"governments" there), and "public body" would collide with `body`, which
+already means the council/commission level. "Public bodies" is fine as
+*display* copy on the site, and `/state/*` uses it for the catch-all
+heading; headings and column names do not have to match.
+
+`scripts/backfill_gov_id.py` is the retroactive sweep (dry-run by
+default, commit per row, Render shell only), and
+`scripts/score_gov_registry.py` regenerates the registry files, the
+scoring report in `reports/gov_registry_scoring_<date>/` and the hub-slug
+alias map. `POST /internal/jurisdiction/override?ids=&gov_id=` sets the
+identity by hand and appends a `tenant_overrides.csv`-shaped rule for a
+human to commit, so an override becomes a rule rather than a stamp on N
+rows — `BACKLOG.md`'s Santa Clara entry is a hub that re-fragmented
+within two days of a row-level fix.
+
 **`GET /j/{slug}` (per-government hub pages, added 2026-08-17)** — one
-landing page per jurisdiction ("Napa, CA public meeting videos &
+landing page per government ("Napa, CA public meeting videos &
 transcripts", `/j/napa-ca`), proxied like `/state/*`. Grouped by
-`jurisdiction_hub_slug()` (`archive/utils/jurisdiction_format.py`) — the
-slug of the *display* form, so raw-string variants of one government
-("City of Napa, CA" / "Napa, CA" / casing) consolidate into a single hub
-while real distinctions ("County of Napa, CA", "City and County of San
-Francisco, CA") stay separate; the state-page tables group by the same
-slug and link each government to its hub. Each hub lists every archived
+**`gov_id`** since WO-99 (2026-09-02), with the slug and the title
+generated from the registry row rather than from whatever string an
+adapter extracted. That is what finally collapsed the fragmentation the
+old rule left behind: grouping by the slug of the *display* form got
+"City of Napa, CA" and "Napa, CA" right, and got the thirteen California
+counties wrong, because "County of Fresno, CA" and "Fresno County, CA"
+are two legitimate display forms of one government. 176 merges over 359
+hub pages in the scoring run; the state-page tables group by the same id
+and link each government to its hub. Retired slugs 301 rather than 404
+(`archive/data/hub_slug_aliases.csv`, 699 of them, generated by
+`scripts/score_gov_registry.py` — see `archive/utils/hub_aliases.py` for
+why that map is a committed file and not a table). Each hub lists every archived
 meeting for that government newest-first with transcript badges, a
 meeting-body breakdown ("City Council (30) · Planning Commission (12)"
 from `meeting_body`), date range, the same featured snippets and topic
@@ -2373,6 +2454,29 @@ app/
                            detect_language_from_texts(), which votes
                            across the whole transcript rather than
                            sampling its opening
+  utils/gov_registry/      one namespaced, deterministic `gov_id` per
+                           GOVERNMENT, and the resolver that assigns it
+                           (WO-98/WO-99). resolver.py is the seven-rung
+                           ladder; classify.py decides the TYPE before
+                           any place lookup, which is what stops LADWP
+                           resolving as Los Angeles; tables.py holds the
+                           Census/StatCan lookups; display.py generates
+                           the display name and the /j/ slug from the
+                           registry row; registry.py reads the committed
+                           CSVs. Imports the standard library, its own
+                           data files and jurisdiction_enrich — nothing
+                           else from this repo, so it can be lifted into
+                           its own distribution and imported by
+                           rtr-discovery and rtr-upcoming (decision D5).
+                           A test enforces that boundary.
+  utils/jurisdiction_data/ the national tables plus the registry's own
+                           three committed, hand-editable files:
+                           governments.csv (generated for national rows,
+                           reviewed for minted ones),
+                           curated_governments.csv (hand-written, and
+                           the ONLY source of lookup aliases) and
+                           tenant_overrides.csv (the "hard-code a public
+                           name" pins)
   utils/url_normalize.py   normalize_url() — the cache/log dedup key
   utils/clerk_auth.py      get_clerk_user_id()/clerk_frontend_api_url() --
                            see "Accounts (Clerk)" above; deliberately
@@ -2446,7 +2550,18 @@ archive/
                            items functions (save/unsave meeting/search,
                            list_saved_items, delete_account_data -- the
                            right-to-deletion cascade)
+  data/
+    hub_slug_aliases.csv     retired /j/ slugs -> the hub they 301 to,
+                           generated by scripts/score_gov_registry.py --
+                           see archive/utils/hub_aliases.py for why this
+                           is a committed file and not a table
   utils/
+    gov_groups.py            gov_type -> the /state/* heading it lands
+                           under. Replaced gov_classify.py (WO-99), a
+                           regex over the display name that filed
+                           "Broward County Public Schools" under
+                           counties and "Minnesota Senate" under cities
+    hub_aliases.py           the 301 lookup behind /j/{old-slug}
     slugify.py               slug generation
     search.py                 keyword matching for list_pages() -- exact
                            (substring) and fuzzy (bounded edit-distance

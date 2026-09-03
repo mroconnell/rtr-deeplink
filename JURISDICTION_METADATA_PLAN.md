@@ -702,3 +702,175 @@ and 12 of the 53 already have an answer waiting there.
   county table ("Waukesha" alone). The gate is on the municipal type
   word, as specified; the tenant-consistency rung is what catches these
   in context.
+
+---
+
+## Phase 2 — `gov_id` on `meeting_pages` (WO-99, 2026-09-02)
+
+`GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6's rtr-deeplink block, shipped.
+The columns, the hubs, the override endpoint and the backfill; the same
+5,053 archived pages and 876 ledger pairs as Phase 1/1b, so every number
+below is comparable to the ones above.
+
+**Confirmed before touching anything**: re-running
+`scripts/score_gov_registry.py` against the committed registry
+reproduced the merged Phase 1b report **byte-for-byte across all 12
+files**, and `git log` shows no commit has touched
+`tenant_overrides.csv` or `governments.csv` since the Phase 1 merge — so
+Phase 2 started from exactly what was reviewed. (If corrections were made
+by hand, they never landed in the repo.)
+
+### The numbers, Phase 1b → now
+
+| check | Phase 1b | Phase 2 |
+| --- | --- | --- |
+| national id | 83.0% | **83.6%** |
+| Canadian rows with a StatCan code | 88.6% | **95.0%** |
+| merges (hub pages collapsed) | 169 (345) | **176 (359)** |
+| splits | 32 | **29** |
+| distinct minted `rtr:` governments | 320 | **267** |
+| strings rejected as "not a name" | 32 rows | **17 rows** |
+
+| tier | archive pages | ledger pairs |
+| --- | --- | --- |
+| pinned | 176 (3.5%) | 23 (2.6%) |
+| registry | 4,037 (79.9%) | 805 (91.9%) |
+| inferred | 12 (0.2%) | 2 (0.2%) |
+| unverified | 137 (2.7%) | 2 (0.2%) |
+| unresolved | 450 (8.9%) | 44 (5.0%) |
+| blank | 241 (4.8%) | 0 |
+
+Coverage moved less than the Canadian figure because two of the fixes
+below *reduce* it on purpose: declining a stateless name that is
+ambiguous across the border, and refusing to mint for a bleed page, both
+trade a resolved-looking row for an honest gap on the pin worklist.
+
+### The seven residuals from the 1b review
+
+Each was reproducible from `sheet_archive.csv`, and each has a test.
+
+- **(a) Tenant consistency, guarded.** Adopts the tenant's dominant
+  registry/pinned `gov_id` only when the base names agree with spacing
+  and punctuation stripped, and the states do not contradict. The
+  unguarded 1b pre-pass filed `dcccd.new.swagit.com`'s "City of Dallas"
+  bleed page under Duncanville; the state half is what stops
+  `juneauak.portal.civicclerk.com`'s "Juneau, AK" collapsing into the two
+  "Juneau, WI" rows beside it, where the names agree perfectly. Hosts
+  carrying more than one `gov_id`: **75 → 48** of 2,375, counted across
+  both input sets and excluding `rtr:unknown:`. (The brief's "85 of
+  2,254" is a differently-scoped count of the same thing; 75 is what the
+  committed Phase 1b report gives under this definition, and the two
+  figures here are measured the same way as each other.)
+  The pre-pass also stopped requiring unanimity, which was false exactly
+  when the rung was needed — `milwaukee.granicus.com` holds a minted id
+  *beside* its real one, and that is the fragmentation.
+
+  One trap, worth knowing about because it is the same shape as the
+  `curated_aliases()` rule: the guard passed on
+  `winston-salem.granicus.com`'s "City of Lees Summit" bleed page,
+  because `governments.csv` carried that string in Winston-Salem's
+  `aliases` — written there by the very unguarded pass being replaced. A
+  generated row's aliases record what previously resolved there, so
+  reading them back makes a wrong resolution self-reinforcing. Only
+  curated rows' aliases count now.
+
+- **(b) Minting gate.** A name that matches a national-table row once
+  spacing and punctuation come off resolves instead of minting: "Gales
+  Burg" → Galesburg, IL. Only with a state in hand, only when minting is
+  the alternative. It also recovered four real run-together Canadian
+  names the gate had been declining as junk — "Stjohns" → St. John's NL,
+  "Northcowichan", "Bradfordwestgwillimbury", "Espanol A" → Espanola ON.
+
+- **(c) "Name, X County, ST".** "City of Sunset Valley, Travis County,
+  TX" and "Town of Amherst, Erie County, NY" — the only two strings of
+  this shape in the export — resolve the place, with the county recorded
+  in the evidence as enrichment. Gated on the prefix carrying a municipal
+  type word, so the rule cannot eat the tail of "Board of Supervisors,
+  Fresno County".
+
+- **(d) Canada.** The `ca:cd` fallback now has the same municipal-type-word
+  gate the US county table already had: "Town of Yarmouth, NS" is
+  `ca:csd:1202006`, not the Yarmouth census division. A **name-first**
+  tie-break runs ahead of it, because "Leduc County" and "Leduc" are two
+  different names that `_normalize_name()` flattens onto one key, not one
+  name shared by two governments — without it the type-word rule would
+  have traded one fragmentation for another (City of Leduc resolving
+  while a bare Leduc minted). This is most of the 88.6% → 95.0% jump.
+
+- **(e) Honolulu.** Pinned to `us:county:15003`, authoritative: Hawaii
+  has no separate municipal government there, and the same Granicus clip
+  2444 is archived twice on that host, once as "County of Honolulu." and
+  once as "City of Honolulu". A curated row names it "City and County of
+  Honolulu".
+
+- **(f) Bleed pages.** A general-purpose name whose only state came from
+  its tenant, on a tenant whose government it does not name, is left
+  `unresolved` and listed rather than minted. "City of Lees Summit" on a
+  North Carolina tenant was minting `rtr:us:nc:lees-summit` — an
+  official-looking id for a government that does not exist in that state.
+  Non-place types are exempt: D2 says a housing authority disagreeing
+  with its host city is the normal case, not a bleed.
+
+### Four defects found while building, none of them on the list
+
+- **A bare `port` token** in the special-district classifier put the
+  place tables out of reach for **24 rows over 11 real municipalities**
+  (Port Townsend WA, Port Moody and Port Coquitlam BC, Port Hope and Port
+  Colborne ON, North Port and Port Orange FL, Port St. Lucie, Port Arthur
+  TX, Port Chester NY), every one minting an `rtr:` id for a government
+  the tables hold. Same shape as the "wastewater" defect §1.4's
+  correction records. Real port agencies still classify as districts.
+
+- **"Nationally unique" meant "unique in the United States."**
+  `country_for_state("")` is `"us"`, so a stateless name was never
+  checked against the Canadian tables. **16 rows**, and the wrong ones
+  are not subtle: Abbotsford BC as Abbotsford WI, Edmonton AB as Edmonton
+  KY, Niagara Falls ON as Niagara Falls NY, Langford and White Rock BC as
+  two South Dakota places, Port Hope ON as Port Hope MI. Now declines —
+  which costs a pin-worklist row and prevents a wrong-country hub. Three
+  of the 16 (Nampa ID, New Carlisle OH, Hawarden IA) really are the US
+  one and are the price; each has a real Canadian namesake, so the
+  ambiguity is genuine.
+
+- **"Boise, ID" resolved to Boise COUNTY.** Census spells the city "Boise
+  City city", so the place lookup misses and the bare-name county
+  fallback answered before the curated alias that exists for exactly this
+  name. "City of Boise, ID" was correct the whole time, because its type
+  word gates that fallback off — so one city had two governments
+  depending on how a page spelled it. Caught by an unrelated hub test.
+
+- **"City of Al"** on `allentownpa.granicus.com` — a truncated "City of
+  Allentown" whose stray "Al" the bare-state-suffix rule read as Alabama,
+  leaving the name "City of" and minting `rtr:us:al:city-of`, displayed
+  as "City of, AL". Every step individually defensible, which is why the
+  gate is on the outcome: a name made only of type words is not a name.
+
+### And two only the in-browser check could find
+
+CLAUDE.md's "verify in-browser, not just via the API" earned itself again
+here — neither of these would have failed a test.
+
+- **82 of 751 generated hub-slug aliases redirected to hubs that do not
+  exist.** A row the resolver leaves `unresolved` has no `gov_id` and so
+  no hub, but the alias writer was still emitting a redirect for it:
+  `/j/cottage-grove` → `/j/city-of-cottage-grove`, a 301 to a 404, which
+  is strictly worse than the 404 it replaced. 751 → **699**.
+
+- **A state government could never appear on its own state page.**
+  Decision D1 makes the State of California one government whose Senate
+  and departments are `meeting_body` rows under it, so its display name
+  is "State of California" — with no ", CA" suffix for `/state/*`'s
+  anchored LIKE to anchor on. The "State government" heading this same
+  change introduced was therefore unreachable.
+
+### Still open
+
+- **450 `unresolved` rows and 241 blank ones** want pins. The landing-page
+  sweep (step 8) is the method, and it turns out to work for fewer
+  platforms than `pin_worklist.csv` assumed — see `BACKLOG.md`'s three
+  new entries for what each platform actually returns and what would
+  settle the rest.
+- **A minted government's page and its hub show two different names**
+  (the Santa Clara housing authority). Cosmetic, bounded, and logged.
+- **`uatccta.primegov.com`** is still the first real multi-government
+  tenant with no `match` discriminator.
