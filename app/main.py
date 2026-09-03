@@ -1403,7 +1403,11 @@ async def _probe_meeting_duration(
     chunk_plan = None
     if len(result.video_segments) > 1:
         chunk_plan = await probe_multi_clip_chunk_plan(
-            result.video_segments, source_page_url=source_page_url
+            result.video_segments,
+            source_page_url=source_page_url,
+            # WO-95: same cap the fixed-window path gets, so one very long
+            # clip can't become one very long chunk.
+            max_chunk_seconds=chunk_size_seconds_for_platform(result.platform),
         )
         if chunk_plan:
             return chunk_plan[-1]["start"] + chunk_plan[-1]["duration"], chunk_plan

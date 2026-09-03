@@ -220,7 +220,11 @@ async def maybe_generate_auto_job() -> bool:
     if len(result.video_segments) > 1:
         chunk_plan = await retry_async(
             lambda: probe_multi_clip_chunk_plan(
-                result.video_segments, source_page_url=source_url
+                result.video_segments,
+                source_page_url=source_url,
+                # WO-95: same cap the fixed-window path gets, so one very
+                # long clip can't become one very long chunk.
+                max_chunk_seconds=chunk_size_seconds_for_platform(result.platform),
             ),
             label=f"auto-generation multi-clip chunk-plan probe of {source_url}",
             attempts=AUTO_GENERATION_ATTEMPTS,
@@ -424,11 +428,12 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         # archive/db/models.py's TranscriptionJob.chunk_plan docstring),
         # not the usual fixed chunk_size_seconds windows -- chunk_index
         # maps directly onto chunk_plan[chunk_index], whose own `start`
-        # is already this clip's cumulative MEETING-relative offset (used
+        # is already this entry's cumulative MEETING-relative offset (used
         # below for shift_segments -- see that function's own docstring).
-        # Extraction itself is unaffected: start=0/duration=the clip's
-        # own full length, same extract_chunk_audio() call as any other
-        # chunk, just against that clip's own file.
+        # Extraction reads `media_start`/`duration` off the entry, which
+        # since WO-95 may be a window within a long clip rather than the
+        # whole clip -- same extract_chunk_audio() call either way, just
+        # against that clip's own file.
         #
         # Deliberately skips the live re-resolve-and-refresh below: doing
         # that safely for a specific clip would mean re-resolving the
@@ -443,7 +448,11 @@ async def process_next_chunk(engine: TranscriptionEngine) -> bool:
         # shortcut.
         entry = chunk_plan[chunk_index]
         media_url = entry["media_url"]
-        start = 0.0
+        # WO-95: an entry is a window WITHIN a clip now, not necessarily a
+        # whole clip, so extraction starts at its own intra-clip offset.
+        # .get(..., 0.0) because a plan frozen onto a job before WO-95 has
+        # no such key, and every one of its entries is a whole clip.
+        start = entry.get("media_start", 0.0)
         duration = entry["duration"]
         meeting_offset = entry["start"]
     else:

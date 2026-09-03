@@ -560,6 +560,7 @@ async def test_probe_multi_clip_chunk_plan_orders_by_seq_and_accumulates_offsets
         {
             "media_url": "https://x/a.m3u8",
             "start": 0.0,
+            "media_start": 0.0,
             "duration": 120.0,
             "title": "First",
             "seq": 6,
@@ -567,6 +568,7 @@ async def test_probe_multi_clip_chunk_plan_orders_by_seq_and_accumulates_offsets
         {
             "media_url": "https://x/b.m3u8",
             "start": 120.0,
+            "media_start": 0.0,
             "duration": 300.0,
             "title": "Second",
             "seq": 13,
@@ -574,6 +576,7 @@ async def test_probe_multi_clip_chunk_plan_orders_by_seq_and_accumulates_offsets
         {
             "media_url": "https://x/c.m3u8",
             "start": 420.0,
+            "media_start": 0.0,
             "duration": 45.0,
             "title": "Third",
             "seq": 51,
