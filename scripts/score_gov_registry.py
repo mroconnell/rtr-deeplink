@@ -625,15 +625,21 @@ def _landing_url(source_url: str, platform: str, match_value: str) -> str:
     Deliberately conservative: for the platforms whose landing page is a
     known fixed path this returns it, and otherwise it returns the host
     root. Getting this wrong costs one wasted fetch, not a wrong pin.
+
+    eScribe and Cablecast are the host root, not a guessed sub-path --
+    corrected 2026-09-03 (WO-103) after `/CablecastPublicSite/` was found
+    to 404 on every real Cablecast host checked while root 200s and
+    already carries the real government name in `<title>`/`og:site_name`;
+    `/Meetings.aspx` 200s but is eScribe's generic meeting-calendar shell,
+    matching BACKLOG.md's existing "eScribe landing pages do not name
+    their customer" finding. See `scripts/build_pin_worklist.py`'s own
+    `landing_url()` docstring for the live-check detail -- this function
+    is that one's ancestor and should stay in step with it.
     """
     parsed = urlparse(source_url)
     root = f"{parsed.scheme or 'https'}://{parsed.netloc}"
     if platform == "telvue" and match_value:
         return f"{root}/player/{match_value}"
-    if platform == "escribe":
-        return f"{root}/Meetings.aspx"
-    if platform == "cablecast":
-        return f"{root}/CablecastPublicSite/"
     return root or source_url
 
 

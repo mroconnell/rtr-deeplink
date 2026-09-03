@@ -219,6 +219,185 @@ CA" suffix for `/state/*`'s anchored LIKE to match.
 
 ---
 
+## Pin worklist round trip, and YouTube's shared hosts keyed by channel [Done 2026-09-03]
+
+WO-103. Two scripts and one shared rule, so the 712 pages that still want
+a government (471 `unresolved` + 241 `blank`, live figures) can be settled
+by Ryan writing names in plain English:
+
+- `scripts/build_pin_worklist.py` regenerates `reports/pin_worklist.csv`
+  from `GET /internal/export/pages` — one row per `(tenant_host, match)`,
+  **492 rows** covering all 712 pages, with a best-guess `proposed_name`
+  on **94** of them (123 pages) from three cheap signals: the hostname,
+  the page slugs/titles, and the YouTube channel title / TelVue org-token
+  note.
+- `scripts/apply_pin_worklist.py` resolves what Ryan wrote, writes the
+  `tenant_overrides.csv` pin (always `fallback`, never `authoritative`),
+  and prints the exact `backfill_gov_id.py --hosts-file` sequence for the
+  Render shell.
+- `gov_registry.is_own_name()` — the landing-page sweep's acceptance rule,
+  lifted out of that script so both callers share one implementation.
+
+**This closes the entry below, and corrects its central claim.**
+
+> **`[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to
+> pin, so 117 worklist rows need a different method.** Its **Next
+> action** read: "fetch the CHANNEL page per channel id and read its
+> name, writing a `tenant_overrides.csv` row with `match=<channel id>` —
+> the `match` discriminator exists for exactly this (architecture doc
+> §4) and nothing uses it yet."
+
+The first half was right and cheaper than expected: **YouTube's public
+oEmbed endpoint** answers "who made this video" in one unauthenticated
+GET, no key and no yt-dlp — 91 shared-host pages resolved to **46
+channels** in under a minute, and the channel titles are real government
+names ("Town of Woodside", "County of Sussex", "Malvern Borough",
+"Village of Northfield"). `reports/pin_worklist_youtube.csv` is the map,
+and a re-run costs no YouTube traffic at all.
+
+**The second half was wrong, and would have shipped inert pins.**
+`_match_override()` satisfies a `match` by finding it in the page's
+**path or query**, or in `page_hints` — and *nothing in this repo ever
+passes `page_hints`*. Neither `crud._resolve_page_government()` nor
+`scripts/backfill_gov_id.py` does; both pass `path` only. A YouTube URL's
+path carries the **video id** and nothing else. So a pin written
+`match=@TownofWoodside` would have been silently ignored: the worklist
+would have said the host was settled and all 24 pages would have stayed
+`unresolved`, with nothing anywhere reporting a problem.
+
+So the channel stays the unit of Ryan's **decision** (he names one
+government per channel, once) and `apply_pin_worklist.py` expands that
+decision into one pin per **video id** on that channel and host, which
+the path does carry. Verified end to end: `youtu.be/uXwBvWhzj_k` →
+`us:place:0633798` (Hillsborough, CA), tier `pinned`. These are the first
+rows in `tenant_overrides.csv` ever to use the `match` column — all 337
+existing rows leave it empty.
+
+**Two other defects the build caught, both the same shape.** A window-based
+scan of slugs proposed **Ada County** for the Ada County Highway
+*District*, **Sonoma County** for the Sonoma County *Library*, and **San
+Diego County** for the county's *Employees Retirement Association* —
+architecture doc §1.3 ("the place check gives agencies the wrong
+identity") rebuilt inside the tool written to help fix it. Candidates are
+now anchored to a boundary (a whole date-delimited segment, a suffix
+ending in a type word, a prefix beginning with an entity phrase), so a
+window can no longer start inside an agency's name. The same shape
+reaches the apply side through a human: "Howard County Public School
+System, MD" really does resolve, to `us:county:24027`, and
+`is_own_name()` reports it back rather than pinning it.
+
+**And one the tests caught.** 12 of the 94 proposals carry a display form
+with an LSAD qualifier — "Portage (city), MI", "Webster (village), NY" —
+which is a display convention, not a lookup key: re-resolving it misses
+the place table and mints `rtr:us:mi:portage-city`. So "ok" accepts the
+row's `proposed_gov_id` **as an id**, never by re-resolving the name.
+
+**One existing test relaxed, deliberately.**
+`test_every_tenant_override_row_has_a_resolvable_gov_id` asserted
+membership in `governments()`; it now asserts `government_for_id()` is not
+None, which is what `_pinned()` itself calls. `governments.csv` is a
+generated snapshot of what some scoring run resolved *to*, so a pin to a
+real national government no page has reached yet is absent from it by
+construction — `us:county:24017` (Charles County, MD) is exactly that, and
+`government_for_id()` derives it from the county table. Garbage and
+uncommitted `rtr:` ids are still rejected.
+
+Coverage of the proposals, by platform: youtube 51/157, cablecast 19/62,
+granicus 8/116, swagit 7/40, escribe 5/43, telvue 3/55, castus 1/1. The
+gaps are honest ones — a stateless "Town of Woodside" or "City of Easton"
+is ambiguous and stays unproposed rather than guessing a state.
+
+## Canadian counties added to `jurisdiction_enrich.py`'s state-recovery table [Done 2026-09-03]
+
+WO-104. `gov_registry.resolve_government()` could already key a Canadian
+county correctly (`ca:cd:3541` for "Bruce County, ON", via
+`gov_registry.tables.ca_cd()`) -- but nothing upstream could ever hand it
+that province. Traced live: `pub-brucecounty.escribemeetings.com`'s real
+meeting pages extract a clean "Bruce County" (confirmed via a live fetch
+of a real `Meeting.aspx` page), but `jurisdiction_enrich.py`'s state
+enrichment (`enrich_jurisdiction_text()`, and the subdomain validator
+`_state_from_tenant()` also tries) only ever checked `counties.csv` --
+**US counties only**. `places.csv` already carries 5,028 real Canadian
+census subdivisions (merged 2026-08-17), but the equivalent never
+happened for counties, so a genuine Canadian county-shaped name had no
+row anywhere in this module's tables and correctly-but-uselessly
+declined every time.
+
+This is the SAME shape as the Oxford County, ON bug (WO-77,
+2026-08-30) -- fixed there with a one-off `_KNOWN_DOMAINS` entry,
+deliberately not generalized at the time ("this is the one real
+confirmed Canadian county-shaped eScribe tenant found so far... not a
+guess at which other Ontario counties might also need it"). What changed:
+`gov_registry.tables.ca_cd()` (Canadian census divisions) didn't exist
+yet when that call was made. It does now, and the underlying province
+structure is public, stable, verifiable fact -- not something that needs
+per-tenant confirmation the way a `tenant_overrides.csv` pin does -- so
+generalizing it is now the same category of safe addition
+`build_canada_places()` already made for all 5,028 CSD rows in one shot.
+
+**The fix**: `scripts/build_jurisdiction_data.py::build_canada_counties()`,
+mirroring `build_canada_places()`'s exact additive pattern (reads
+`counties.csv`, adds new rows, writes back) but for Level "3" ("Census
+division") rows from the same real SGC 2021 structure file
+`build_canada_places()` and `build_gov_registry_data.py::build_ca_cd()`
+both already read. **Scoped to the four provinces that actually call
+these divisions "County" in real usage** -- Ontario, Nova Scotia, New
+Brunswick, PEI -- confirmed by surveying every province's real
+`ca_cd.csv` rows first: BC's are Regional Districts ("East Kootenay"),
+Quebec's are MRCs (French names), Alberta/Manitoba/Newfoundland/
+Saskatchewan's are plain statistical "Division No. N" with no governing
+county council, NWT's are "Region N", Nunavut's are named regions, Yukon
+is one territory-wide division. Appending "County" to any of those would
+have fabricated a government type that doesn't exist. 85 rows added
+(49 ON + 18 NS + 15 NB + 3 PE), `counties.csv` 3,222 -> 3,307.
+
+**Verified against real hosts, not just the table**:
+
+  - `pub-brucecounty.escribemeetings.com`'s real extracted "Bruce County"
+    now enriches to "Bruce County, ON" and resolves to `ca:cd:3541`.
+  - `pub-elgincounty.escribemeetings.com`'s real "County of Elgin" now
+    enriches to "County of Elgin, ON" and resolves to `ca:cd:3534`.
+  - Every OTHER currently-unresolved eScribe host with a bare
+    county-shaped name was checked too (48 candidates) -- only these two
+    are genuine County-table matches; the rest are either place-shaped
+    names already covered by the 2026-08-17 CSD merge and still
+    nationally ambiguous for an unrelated reason (Cambridge, Hamilton --
+    real cities in multiple US states too, correctly still declining),
+    or subdomain-derived acronym junk needing a real page read, not a
+    table fix.
+
+**A genuine safety improvement, not just new coverage**: before this fix,
+a bare "Oxford County" matched ONLY Maine in `_COUNTY_STATES` --
+confidently WRONG for the real Ontario tenant, which is the original
+WO-77 bug. It is now genuinely ambiguous (`["ME", "ON"]`), which means
+the ladder correctly DECLINES rather than guessing, for this host and for
+any future, not-yet-known Ontario-county-shaped host that happens to
+share a name with a US county. `pub-oxfordcounty.escribemeetings.com`'s
+own `_KNOWN_DOMAINS` entry still does real, distinct work on top of that
+(it's what actually produces "ON" for this one confirmed tenant, not just
+prevents a wrong guess) and was kept.
+
+21 real name collisions now exist between a Canadian and a US (or
+another Canadian) county (Durham NC/ON, Essex MA/NJ/NY/ON/VA/VT,
+Middlesex MA/NJ/ON/VA, Oxford ME/ON, and 17 more) -- all genuine, all
+resolved the same safe way every pre-existing US collision already was
+("Washington County" already spans 30+ states): decline a bare name,
+require a state/province to disambiguate.
+
+7 new tests in `tests/test_jurisdiction_enrich.py`; one pre-existing test
+(`test_known_domains_oxford_county_on_beats_only_us_table_candidate`)
+updated to assert the corrected `["ME", "ON"]` ambiguity instead of the
+old confidently-wrong `["ME"]`, its history preserved rather than deleted.
+All 2,660 tests green, all five CI gates pass.
+
+**Not live yet.** This is a reference-data + code change to
+`app/utils/jurisdiction_data/counties.csv` and
+`app/utils/jurisdiction_enrich.py` -- it needs a resolver deploy before
+any real page is affected, and the two currently-affected archived pages
+(`pub-brucecounty`/`pub-elgincounty`) still need
+`scripts/backfill_gov_id.py` re-run against them afterward, same as any
+other registry change. CLAUDE.md's own "merging ships nothing" rule.
+
 ## District of Columbia: no `/state/` page, jurisdiction search missed it [Done 2026-08-31]
 
 Real user report: `/state/district-of-columbia` 404'd, and searching

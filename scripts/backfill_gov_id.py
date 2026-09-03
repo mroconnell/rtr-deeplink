@@ -41,6 +41,10 @@ Usage (from the repo root, with DATABASE_URL set):
     python scripts/backfill_gov_id.py --apply          # write
     python scripts/backfill_gov_id.py --apply --limit 200
     python scripts/backfill_gov_id.py --report /tmp/gov_id_backfill.csv
+
+After a round of pins, restricted to just the hosts those pins settled
+(`scripts/apply_pin_worklist.py` writes the file and prints the command):
+    python scripts/backfill_gov_id.py --hosts-file reports/pin_worklist_hosts.txt
 """
 
 import argparse
@@ -77,7 +81,37 @@ async def main() -> None:
         default=None,
         help="Write the per-row diff to this CSV as well as summarising it",
     )
+    parser.add_argument(
+        "--hosts",
+        default=None,
+        help="Comma-separated tenant hosts to restrict the sweep to",
+    )
+    parser.add_argument(
+        "--hosts-file",
+        type=Path,
+        default=None,
+        help=(
+            "File of tenant hosts, one per line -- what "
+            "scripts/apply_pin_worklist.py writes after a round of pins"
+        ),
+    )
     args = parser.parse_args()
+
+    # Restricting by HOST rather than by page id is what keeps the
+    # same-tenant consistency rung honest: every page of a named host is
+    # still loaded, so the dominant-government pre-pass below sees exactly
+    # what an unrestricted run would see for that host. A page-id filter
+    # would not, and would quietly give a different answer than the full
+    # sweep.
+    only_hosts = set()
+    if args.hosts:
+        only_hosts |= {h.strip().lower() for h in args.hosts.split(",") if h.strip()}
+    if args.hosts_file:
+        only_hosts |= {
+            line.strip().lower()
+            for line in args.hosts_file.read_text().splitlines()
+            if line.strip() and not line.startswith("#")
+        }
 
     load_dotenv()
 
@@ -120,6 +154,8 @@ async def main() -> None:
         rows = (await session.execute(stmt)).all()
 
     print(f"  {len(rows)} pages to consider")
+    if only_hosts:
+        print(f"  restricted to {len(only_hosts)} tenant hosts")
 
     # Two passes, the same shape scripts/score_gov_registry.py uses and
     # for the same reason -- with one extra reason that only applies
@@ -155,10 +191,12 @@ async def main() -> None:
             current_gov_type,
             source_url,
         ) = row
-        if confidence == _MANUAL_OVERRIDE_CONFIDENCE:
-            overrides += 1
         parsed = urlparse(source_url or "")
         host = (parsed.netloc or "").lower().split(":")[0]
+        if only_hosts and host not in only_hosts:
+            continue
+        if confidence == _MANUAL_OVERRIDE_CONFIDENCE:
+            overrides += 1
         path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
         # The stored `jurisdiction` is already finalize_jurisdiction()'s
         # output, not an adapter's raw payload -- the resolver runs it
