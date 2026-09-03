@@ -772,6 +772,49 @@ def chunk_size_seconds_for_platform(
     return _UNCONSTRAINED_DEFAULT_CHUNK_SIZE_SECONDS
 
 
+async def probe_duration_and_chunk_plan(
+    result,
+    *,
+    source_page_url: str,
+    max_chunk_seconds: Optional[int] = None,
+) -> tuple[Optional[float], Optional[list[dict]]]:
+    """(whole-meeting duration, chunk plan or None) for a resolved meeting.
+
+    The one decision every job-creation path has to make and must not get
+    wrong: a multi-clip meeting's real duration is the SUM of its clips,
+    not the length of `result.video_url`, which is only the first one.
+    Getting that wrong doesn't fail -- it silently creates a job covering
+    a fraction of the meeting.
+
+    Lives here rather than in any one caller because that is exactly what
+    went wrong (WO-98, 2026-09-03): the logic was written inline in
+    app/main.py, worker/main.py and scripts/transcribe_backlog_locally.py,
+    and scripts/bulk_queue_transcription_backlog.py -- the script most
+    likely to be pointed at a backlog in bulk -- never grew a copy at all.
+    It probed `result.video_url` directly, so every multi-clip meeting it
+    queued got a first-clip-only job. Same class of drift as WO-64's, and
+    the same remedy: one definition, in the module both services already
+    import.
+
+    Falls back to the ordinary single-clip probe whenever a plan can't be
+    built -- probe_multi_clip_chunk_plan() is all-or-nothing, and a probe
+    failure on one clip must not turn an otherwise-transcribable meeting
+    into a hard error. Returns (None, None) if there is nothing to probe.
+    """
+    if len(result.video_segments or []) > 1:
+        plan = await probe_multi_clip_chunk_plan(
+            result.video_segments,
+            source_page_url=source_page_url,
+            max_chunk_seconds=max_chunk_seconds,
+        )
+        if plan:
+            return plan[-1]["start"] + plan[-1]["duration"], plan
+    if not result.video_url:
+        return None, None
+    duration = await probe_duration(result.video_url, source_page_url=source_page_url)
+    return duration, None
+
+
 def is_hls(media_url: str) -> bool:
     """True for an HLS playlist. HLS is exactly the case the whole-file
     path must NOT be used for: ffmpeg fetches only the segments covering
