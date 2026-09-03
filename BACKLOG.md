@@ -122,7 +122,6 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
-  [NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
@@ -166,9 +165,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (20)
+  Adapter & platform gaps  (21)
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
+    [NEEDS-AUDIT] RVTV's org-token jurisdiction override
     [IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
@@ -460,35 +460,6 @@ structural change than the two entries below.
   - **History**: found during the §49 Phase 1 coverage_map.csv resolve
     sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
     record of it).
-
-- **[NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
-  `?feature=share` suffix, dropping a working YouTube video.**
-  - **Issue**: `app/platforms/primegov.py`'s `_VIDEO_URL_VAR_RE` requires
-    the closing `"` immediately after the 11-char YouTube id in
-    `var videoUrl = "..."`, but a real Palo Alto, CA page has
-    `var videoUrl = "ZyoXmQYCV4o?feature=share";` — the id plus a query
-    suffix inside the same quotes. Confirmed live 2026-09-02 on 3 real
-    Palo Alto meetings (Aug 17/24/26 2026), all with a real, publicly
-    playable YouTube video the resolver reported as "no video found."
-  - **Impact**: likely blocks most/all of Palo Alto's PrimeGov archive —
-    every sampled `videoUrl` in the tenant's own `ListArchivedMeetings`
-    API carried the same suffix. The API-fallback path (used when the
-    page regex finds nothing) doesn't cover this either: it explicitly
-    excludes `youtube.com` URLs on the assumption the page regex already
-    catches them.
-  - **Next action**: broaden `_VIDEO_URL_VAR_RE` to tolerate a trailing
-    `?...` (or other non-quote suffix) after the 11-char id before the
-    closing quote; then re-check whether these meetings have real YouTube
-    captions once the video is actually found — would move them from
-    tier 3 (video only) to tier 1/2.
-  - **Constraint**: only confirmed on one tenant (Palo Alto) so far — a
-    second real PrimeGov customer with this same `?feature=share` shape
-    would be worth finding before treating the fix as fully general,
-    though the regex change itself (loosening one anchor) is low-risk
-    either way.
-  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
-    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
-    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
   forms creates two separate Archive pages instead of deduping.**
@@ -1524,6 +1495,40 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
     pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
     not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] RVTV's org-token jurisdiction override
+  (`w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP` = "Ashland, OR") is wrong for 5 of
+  the 6 real governments on that channel.**
+  - **Issue**: `_KNOWN_ORG_TOKEN_JURISDICTIONS` (`telvue.py`) maps this
+    token to a single `"Ashland, OR"` string, added 2026-08-28 when the
+    token was believed to serve just Ashland. A 2026-09-03 pin worklist
+    (rtr-business's gov-identity cleanup pass) shows it's actually Rogue
+    Valley Community Television, serving 6 real governments: Ashland
+    city, Ashland School District, Jackson County, Grants Pass, Medford,
+    and Eagle Point (real playlist IDs pinned: 5224/5237/5222/5226/5229/
+    5242 respectively). Traced the `resolve()` logic (`telvue.py:606-640`):
+    when a meeting's title fails to yield any jurisdiction guess at all
+    (e.g. a generic, non-city-prefixed title), the code falls straight
+    through to the org-level override unconditionally --
+    `if not jurisdiction: jurisdiction = known_jurisdiction` -- so a
+    Grants Pass or Medford meeting with an ambiguous title would land
+    tagged `Ashland, OR`. The base-name-match guard just below it only
+    protects against a *different, non-empty* guessed name being
+    overwritten; it does nothing for this empty-guess fallback case.
+  - **Impact**: any past or future ingest from this org token whose title
+    doesn't self-disambiguate its own government risks landing mistagged
+    as Ashland, OR instead of its real jurisdiction. Not yet checked
+    whether any already-ingested RVTV pages are affected -- that's part
+    of the audit, not confirmed either way.
+  - **Next action**: needs the same per-meeting resolution this file's
+    other multi-gov-token entry (Pacifica, `wuZKb9gwEY7sMACIIsr7VSJglB35kNZA`,
+    just above) is waiting on -- a real fix, not a workaround. Held off
+    ingesting any new RVTV meeting (Grants Pass/Medford/Eagle Point/
+    Jackson County/Ashland-School-District pins) until this is
+    addressed, per Ryan's direction 2026-09-03.
+  - **History**: found 2026-09-03 investigating a new pin worklist from
+    rtr-business's `research/` gov-identity cleanup session, before any
+    ingest against these pins.
 
 - **[IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
   confirmed multi-tenant platform with no adapter yet.**
