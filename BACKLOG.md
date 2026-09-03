@@ -181,18 +181,19 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
-  Transcription queue & workers  (6)
+  Transcription queue & workers  (7)
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
+    [HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
   Search Console, structured data & SEO plumbing  (2)
@@ -1168,7 +1169,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     re-fragmented within two days.
   - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
     variants converged" `[Done 2026-08-31]`, whose "exactly 3
-    jurisdictions" live check no longer holds.
+    jurisdictions" live check no longer holds. WO-98 (2026-09-02) built and
+    scored the canonical-form mechanism this entry asks for — a `gov_id`
+    that both spellings resolve to — but shipped it as a pure module
+    nothing imports yet; see the `[HUMAN]` Phase 2 entry below. The
+    scoring run collapses this exact pair, along with 12 more CA
+    counties.
 
 - **`[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
   CO.**
@@ -1850,6 +1856,40 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     it's still needed.
   - **History**: `BACKLOG_DONE.md`'s "CI ffprobe regression, fixed" entry
     (2026-08-31).
+
+- **[HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
+  reading WO-98's scoring report.**
+  - **Issue**: WO-98 built the registry data files and the resolver
+    (`app/utils/gov_registry/`) and scored them against 5,053 archived
+    pages and 876 ledger pairs. Nothing imports the package; no schema
+    changed. Phase 2 — the `gov_id`/`gov_type` columns, `/j/` grouped by
+    `gov_id` with 301s, the backfill, retiring `gov_classify.py` — starts
+    only once that report has been read.
+  - **Impact**: 79.6% of rows get a national id; 142 of today's `/j/`
+    hubs collapse (289 hub pages of fragmentation, including exactly the
+    13 CA counties predicted); 50 split, six of them the confirmed §1.3
+    mislabels being undone (LADWP out of Los Angeles, LA Metro out of LA
+    County, SANDAG out of San Diego, CVWD out of Indio, TCCD and Horry
+    County Schools out of their counties).
+  - **Next action**: Ryan reads
+    `reports/gov_registry_scoring_2026-09-02/SUMMARY.md` and the three
+    residual gaps at the end of `JURISDICTION_METADATA_PLAN.md`'s
+    "Phase 1" section, then decides. Three things want a human call
+    before Phase 2: the 11 conflicting tenant hosts in
+    `tenant_overrides_conflicts.csv`; whether a state-less stored
+    jurisdiction may borrow its state from the tenant's other pages;
+    and Nashville-Davidson, the one consolidated city-county still
+    minting two ids.
+  - **Constraint**: don't start Phase 2 by writing the migration.
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6 orders it deliberately —
+    the registry data proves or kills the design and costs no migration,
+    and the migration is only safe once the merge/split list is one a
+    human has agreed to.
+  - **History**: `JURISDICTION_METADATA_PLAN.md`'s "Phase 1 — gov_id
+    registry scoring" section (the numbers, and two corrections to the
+    architecture doc found while building against it);
+    `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §7 (the
+    settled decisions D1-D7).
 
 - **[LATER] `list_transcription_backlog_candidates()` still does a real
   N+1 query pattern.**

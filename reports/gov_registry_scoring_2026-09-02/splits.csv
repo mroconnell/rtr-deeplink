@@ -1,0 +1,33 @@
+old_hub,gov_ids,gov_count,raw_names
+hollywood,us:cousub:2701929726|us:place:1232000|us:place:4534495,3,City of Hollywood|Hollywood
+portland,us:place:2360545|us:place:4760280|us:place:4858904,3,City of Portland|Portland
+portage,us:place:1861092|us:place:2665560|us:place:5564100,3,City of Portage|Portage
+san-diego-ca,rtr:us:ca:san-diego-association-of-governments|us:place:0666000,2,"City of San Diego, CA|San Diego, CA"
+los-angeles-ca,rtr:us:ca:los-angeles-department-of-water-and-power|us:place:0644000,2,"City of Los Angeles, CA|Los Angeles, CA"
+los-angeles-county-ca,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority|us:county:06037,2,"Los Angeles County, CA"
+fayetteville,us:place:0523290|us:place:3722920,2,City of Fayetteville
+college-park-md,rtr:us:md:college-park|us:place:2418750,2,"College Park, MD|The City of College Park, MD"
+horry-county-sc,us:county:45051|us:sd:4502490,2,"Horry County, SC"
+miami,us:county:20121|us:place:1245000,2,City of Miami|Miami
+tarrant-county-tx,rtr:us:tx:tarrant-county-college-district|us:county:48439,2,"Tarrant County, TX"
+amarillo-tx,rtr:us:tx:amarillo|us:place:4803000,2,"Amarillo, TX|The City of Amarillo, TX"
+beaufort-county-sc,us:county:45013|us:place:4507210,2,"Beaufort County, SC"
+indio-ca,rtr:us:ca:coachella-valley-water-district|us:place:0636448,2,"City of Indio, CA|Indio, CA"
+victoria,ca:csd:5917034|us:place:2767036,2,City of Victoria|Victoria
+mississauga-on,ca:csd:3521005|rtr:ca:on:toronto-and-region-conservation-authority,2,"City of Mississauga, ON|Mississauga, ON"
+frederick,us:place:0828360|us:place:2430325,2,City of Frederick|Frederick
+east-lansing-mi,rtr:us:mi:east-lansing|us:place:2624120,2,"City of East Lansing, MI|The City of East Lansing, MI"
+langley,us:cousub:2005338600|us:place:5338355,2,City of Langley|Langley
+eldorado,rtr:us:ca:eldorado|rtr:us:ks:eldorado,2,Eldorado
+municode-portal,rtr:us:md:municode-portal|rtr:us:tn:municode-portal,2,Municode Portal
+andover,rtr:us:ks:andover|us:place:2001800,2,Andover|The City of Andover
+town-of-atherton-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0603092,2,"Town of Atherton, CA"
+menlo-park-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0646870,2,"City of Menlo Park, CA"
+jefferson,us:county:08059|us:county:29099,2,Jefferson
+lafayette,us:place:0639122|us:place:0841835,2,City of Lafayette
+orange-county,us:county:12095|us:county:37135,2,Orange County
+easton,us:place:2424475|us:place:4221648,2,City of Easton|Easton
+markham,rtr:ca:on:toronto-and-region-conservation-authority|us:place:1747007,2,City of Markham|Markham
+lebanon,us:county:42075|us:place:4141650,2,Lebanon
+farmersville,us:cousub:3600925340|us:place:0623616,2,Farmersville
+alpine,us:county:06003|us:place:4900540,2,Alpine

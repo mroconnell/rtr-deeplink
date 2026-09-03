@@ -1,0 +1,170 @@
+gov_id,gov_name,old_hubs,hub_count
+us:place:0667000,"San Francisco, CA",ccs-f|city-and-county-of-san-francisco|san-francisco-ca,3
+us:county:12095,"Orange County, FL",orange-county|orange-county-comptroller|orange-county-fl,3
+us:county:06023,"Humboldt County, CA",county-of-humboldt-ca|humboldt-county|humboldt-county-ca,3
+us:place:2511000,"Cambridge, MA",cambridge|cambridge-city-ma|cambridge-ma,3
+us:place:5136648,"Herndon, VA",herndon|herndon-va|town-of-herndon,3
+us:place:0828690,"Frisco, CO",frisco-co|town-of-frisco|town-of-frisco-co,3
+us:county:53009,"Clallam County, WA",clallam|clallam-county-wa|clallam-wa,3
+us:place:1245000,"Miami, FL",miami|miami-fl,2
+us:place:3755000,"Raleigh, NC",raleigh|raleigh-nc,2
+us:place:4752006,"Nashville-Davidson, TN",nashville|nashville-davidson-county-tn,2
+us:place:2148006,"Louisville/Jefferson County, KY",louisville|louisville-ky,2
+us:place:0452930,"Paradise Valley, AZ",paradise-valley|paradise-valley-az,2
+us:county:48201,"Harris County, TX",harris-county-tx|harris-tx,2
+us:county:06073,"San Diego County, CA",county-of-san-diego-ca|san-diego-county-ca,2
+us:county:06059,"Orange County, CA",county-of-orange|orange-county-ca,2
+us:county:12086,"Miami-Dade County, FL",miami-dade-county|miami-dade-county-fl,2
+us:county:32003,"Clark County, NV",county-of-clark|county-of-clark-nv,2
+us:county:06085,"Santa Clara County, CA",county-of-santa-clara-ca|santa-clara-county-ca,2
+us:place:5303736,"Bainbridge Island, WA",bainbridge-island-wa|bainbridge-wa,2
+us:place:1219825,"Edgewater, FL",edgewater|edgewater-fl,2
+us:place:3722920,"Fayetteville, NC",fayetteville|fayetteville-nc,2
+us:place:0618100,"Davis, CA",davis|davis-ca,2
+us:place:2717000,"Duluth (city), MN",duluth|duluth-mn,2
+us:place:1225175,"Gainesville, FL",gainesville|gainesville-fl,2
+us:place:5135000,"Hampton, VA",hampton|hampton-va,2
+us:place:1232000,"Hollywood, FL",hollywood|hollywood-fl,2
+rtr:us:ca:judicial-council-of-california,"Judicial Council of California, CA",california|j-cc,2
+us:place:1349756,"Marietta, GA",marietta|marietta-ga,2
+us:county:12083,"Marion County, FL",marion|marion-county-fl,2
+us:county:06057,"Nevada County, CA",county-of-nevada|nevada-county,2
+us:place:1754885,"Oak Park, IL",oak-park|oak-park-il,2
+us:place:2052575,"Olathe, KS",olathe|olathe-ks,2
+us:place:4857176,"Pflugerville, TX",pflugerville|pflugerville-tx,2
+us:place:2467675,"Rockville, MD",rockville|rockville-md,2
+us:place:0669084,"Santa Clara, CA",santa-clara|santa-clara-ca,2
+us:place:1270075,"Surfside, FL",surfside-fl|town-of-surfside-fl,2
+us:place:0680854,"Tustin, CA",tustin|tustin-ca,2
+us:state:51,State of Virginia,virginia|virginia-senate,2
+us:place:1275812,"Wellington, FL",village-of-wellington-fl|wellington,2
+us:county:48215,"Hidalgo County, TX",hidalgo-county|hidalgo-county-tx,2
+us:place:5138424,"Hopewell, VA",hopewell-borough-va|hopewell-va,2
+us:place:4848096,"Midlothian, TX",midlothian|midlothian-tx,2
+ca:csd:3537028,"Amherstburg, ON",amherstburg-on|town-of-amherstburg-on,2
+us:place:3915210,"Clarington, OH",clarington|clarington-oh,2
+ca:csd:3514021,"Cobourg, ON",cobourg-on|town-of-cobourg-on,2
+ca:csd:3543031,"Collingwood, ON",collingwood-on|town-of-collingwood-on,2
+us:place:0616350,"Corona, CA",corona|corona-ca,2
+us:place:4724320,"Erin, TN",erin-tn|town-of-erin,2
+ca:csd:3526003,"Fort Erie, ON",fort-erie-on|town-of-fort-erie-on,2
+ca:csd:3519070,"Georgina, ON",georgina-on|town-of-georgina-on,2
+rtr:ca:on:hamilton-police-services-board,"Hamilton Police Services Board, ON",h-psb|hamilton,2
+us:place:1747007,"Markham, IL",markham|markham-il,2
+ca:csd:3524009,"Milton, ON",milton-on|town-of-milton-on,2
+us:place:2957404,"Pickering, MO",pickering|pickering-mo,2
+us:place:3668462,"Southampton (village), NY",southampton|southampton-ny,2
+ca:csd:3522010,"Grand Valley, ON",grand-valley-on|town-of-grand-valley-on,2
+ca:csd:3524001,"Oakville, ON",oakville-on|town-of-oakville-on,2
+us:place:0602252,"Antioch, CA",antioch|antioch-ca,2
+us:county:12033,"Escambia County, FL",escambia-county-fl|escambia-fl,2
+us:place:0832155,"Greeley, CO",greeley|greeley-co,2
+us:county:48453,"Travis County, TX",travis|travis-county-tx,2
+rtr:us:ca:los-angeles-department-of-water-and-power,"Los Angeles Department of Water and Power, CA",lad-wp|los-angeles-ca,2
+ca:csd:3526032,"Welland, ON",county-of-elgin|welland-on,2
+us:county:51073,"Gloucester County, VA",gloucester-county-va|gloucester-va,2
+ca:csd:3524015,"Halton Hills, ON",halton-hills-on|town-of-halton-hills-on,2
+us:place:5500100,"Abbotsford, WI",abbotsford|abbotsford-wi,2
+us:place:4216256,"Cornwall, PA",cornwall|cornwall-pa,2
+us:place:2123968,"Edmonton, KY",edmonton|edmonton-ky,2
+us:place:3728000,"Greensboro, NC",greensboro|greensboro-nc,2
+us:sd:4502490,"Horry County School District, SC",horry-county-sc|horry-county-schools,2
+us:place:0462140,"Sahuarita, AZ",sahuarita-az|town-of-sahuarita-az,2
+ca:csd:3543064,"Wasaga Beach, ON",town-of-wasaga-beach-on|wasaga-beach-on,2
+ca:csd:3518009,"Whitby, ON",town-of-whitby-on|whitby-on,2
+us:county:06111,"Ventura County, CA",ventura-ca|ventura-county-ca,2
+us:county:48113,"Dallas County, TX",county-of-dallas-tx|dallas-county-tx,2
+us:place:3651055,"Niagara Falls, NY",niagara-falls|niagara-falls-ny,2
+us:county:06009,"Calaveras County, CA",calaveras-ca|calaveras-county-ca,2
+us:county:12017,"Citrus County, FL",citrus-county-fl|county-of-citrus-fl,2
+us:county:17043,"DuPage County, IL",county-of-dupage-il|dupage-county-il,2
+us:place:0620956,"East Palo Alto, CA",east-palo-alto-ca|unknown-jurisdiction,2
+us:place:1729756,"Glen Ellyn, IL",glen-ellyn-il|village-of-glen-ellyn-il,2
+us:place:0649278,"Morgan Hill, CA",morgan-hill-ca|morgan-hill-ca-california,2
+us:place:1757225,"Palatine (village), IL",palatine-il|palatine-village-il,2
+us:county:55109,"St. Croix County, WI",saint-croix-county-wi|st-croix-county-wi,2
+ca:csd:5953033,"Mackenzie, BC",mackenzie|mackenzie-bc,2
+us:place:5557700,"North Bay, WI",north-bay|north-bay-by,2
+us:place:3741720,"Marvin, NC",marvin|marvin-nc,2
+rtr:us:ca:san-diego-association-of-governments,"San Diego Association of Governments, CA",san-diego-ca|sandag-ca,2
+ca:csd:3522021,"Shelburne, ON",shelburne-on|town-of-shelburne,2
+ca:csd:3532004,"Tillsonburg, ON",tillsonburg-on|town-of-tillsonburg-on,2
+ca:csd:3522014,"Orangeville, ON",orangeville|town-of-orangeville,2
+rtr:ca:on:toronto-and-region-conservation-authority,"Toronto and Region Conservation Authority, ON",markham|mississauga-on,2
+us:county:06003,"Alpine County, CA",alpine|alpine-county-ca,2
+us:place:0616000,"Concord, CA",concord|concord-ca,2
+us:place:3350260,"Nashua, NH",nashua|nashua-nh,2
+us:place:1709447,"Buffalo Grove, IL",buffalo-grove-il|buffalo-grove-village-il,2
+us:place:2612060,"Burton, MI",burton|burton-mi,2
+us:place:0686328,"Woodland, CA",woodland|woodland-ca,2
+us:cousub:3403507180,"Branchburg Township, NJ",branchburg-nj|township-of-branchburg-nj,2
+us:place:4716540,"Columbia, TN",columbia|columbia-tn,2
+us:place:0670098,"Santa Rosa, CA",santa-rosa|santa-rosa-ca,2
+us:place:4504690,"Beaufort, SC",beaufort|beaufort-sc,2
+us:cousub:4400741500,"Lincoln Town, RI",lincoln-ri|town-of-lincoln-ri,2
+us:place:5157000,"Norfolk, VA",norfolk|norfolk-va,2
+us:place:4813024,"Carrollton, TX",carrollton|carrollton-tx,2
+us:county:12015,"Charlotte County, FL",charlotte|charlotte-county-fl,2
+us:county:51041,"Chesterfield County, VA",chesterfield|chesterfield-county-va,2
+us:place:1221350,"Eustis, FL",eustis|eustis-fl,2
+us:place:1241577,"Loxahatchee Groves, FL",loxahatchee-groves-fl|town-of-loxahatchee-groves-fl,2
+us:place:1702154,"Arlington Heights, IL",arlington-heights|arlington-heights-il,2
+us:cousub:2609915340,"Chesterfield Township, MI",chesterfield-township|chesterfield-township-mi,2
+ca:csd:3543007,"New Tecumseth, ON",new-tecumseth-on|town-of-new-tecumseth-on,2
+us:place:2767036,"Victoria, MN",victoria|victoria-mn,2
+rtr:us:ca:menlo-park-fire-protection-district,"Menlo Park Fire Protection District, CA",menlo-park-ca|town-of-atherton-ca,2
+us:place:1371492,"Smyrna, GA",smyrna|smyrna-ga,2
+us:cousub:3610310000,"Brookhaven Town, NY",brookhaven|town-of-brookhaven-ny,2
+us:place:5010675,"Burlington, VT",burlington|burlington-vt,2
+us:county:42045,"Delaware County, PA",county-of-delaware|delaware-county-pa,2
+us:county:42049,"Erie County, PA",erie-county|erie-county-pa,2
+us:county:51085,"Hanover County, VA",hanover|hanover-county-va,2
+us:county:29099,"Jefferson County, MO",jefferson|jefferson-county-mo,2
+us:place:5147672,"Lynchburg, VA",lynchburg|lynchburg-va,2
+us:place:0444410,"Maricopa, AZ",maricopa|maricopa-az,2
+us:place:0645358,"Mammoth Lakes, CA",mammoth-lakes-ca|town-of-mammoth-lakes-ca,2
+us:place:3710740,"Cary, NC",cary|town-of-cary-nc,2
+us:place:3650034,"Newburgh (city), NY",newburgh|newburgh-ny,2
+us:place:4857476,"Pilot Point, TX",pilot-point|pilot-point-tx,2
+us:place:4807300,"Bellaire, TX",bellaire|bellaire-tx,2
+us:place:4821628,"Duncanville, TX",dallas|duncanville-tx,2
+us:place:0649670,"Mountain View, CA",mountain-view|mountain-view-ca,2
+us:cousub:0911025990,"Enfield Town, CT",enfield|enfield-ct,2
+us:county:06019,"Fresno County, CA",county-of-fresno-ca|fresno-county-ca,2
+us:county:51079,"Greene County, VA",greene-county|greene-county-va,2
+us:county:06095,"Solano County, CA",county-of-solano-ca|solano-county-ca,2
+us:county:19113,"Linn County, IA",linn|linn-county-ia,2
+us:place:4740000,"Knoxville, TN",knoxville|knoxville-tn,2
+us:place:4131250,"Gresham, OR",gresham|gresham-or,2
+us:place:4846452,"Mansfield, TX",mansfield|mansfield-tx,2
+us:place:0633000,"Hayward, CA",hayward|hayward-ca,2
+us:place:4760280,"Portland, TN",portland|portland-tn,2
+us:place:2562535,"Somerville, MA",somerville|somerville-ma,2
+us:place:1373704,"Stockbridge, GA",stockbridge|stockbridge-ga,2
+us:place:0642202,"Lodi, CA",lodi|lodi-ca,2
+us:county:41051,"Multnomah County, OR",multnomah|multnomah-county-or,2
+us:cousub:3611951693,"North Castle Town, NY",north-castle-ny|town-of-north-castle-ny,2
+us:place:4819972,"Denton, TX",denton|denton-tx,2
+us:place:0655254,"Palm Springs, CA",palm-springs|palm-springs-ca,2
+us:place:0677000,"Sunnyvale, CA",sunnyvale|sunnyvale-ca,2
+us:cousub:2300526525,"Freeport Town, ME",freeport-me|town-of-freeport,2
+us:county:24041,"Talbot County, MD",talbot-county|talbot-county-md,2
+us:place:2679000,"Taylor, MI",taylor-mi|taylor-mi-city,2
+us:county:37179,"Union County, NC",union-county|union-county-nc,2
+us:place:1273900,"Venice, FL",venice|venice-fl,2
+us:place:0857630,"Parker, CO",parker|parker-co,2
+us:place:4640220,"Madison (city), SD",madison|madison-sd,2
+us:county:06063,"Plumas County, CA",county-of-plumas-ca|plumas-county-ca,2
+us:county:48381,"Randall County, TX",randall|randall-county-tx,2
+us:place:2965000,"St. Louis, MO",saint-louis-mo|st-louis-mo,2
+us:place:0611530,"Carson, CA",carson|carson-ca,2
+us:place:5105544,"Bedford, VA",bedford-va|town-of-bedford-va,2
+us:place:1278300,"Winter Park, FL",winter-park|winter-park-fl,2
+us:county:37183,"Wake County, NC",wake|wake-county-nc,2
+us:place:2665560,"Portage (city), MI",portage|portage-mi,2
+us:place:5517175,"Cottage Grove (village), WI",cottage-grove-wi|village-of-cottage-grove-wi,2
+us:place:1770122,"Skokie, IL",skokie-il|village-of-skokie-il,2
+us:place:0660704,"Ridgecrest, CA",ridgecrest|ridgecrest-ca,2
+us:place:4141650,"Lebanon, OR",lebanon|lebanon-or,2
+us:place:2057625,"Pratt, KS",pratt|pratt-ks,2
+us:place:4900540,"Alpine, UT",alpine|alpine-ut,2
