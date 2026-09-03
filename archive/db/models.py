@@ -93,10 +93,18 @@ class MeetingPage(Base):
     # the resolver declines to key (tier `unresolved`) stays NULL on
     # purpose rather than carrying an id nobody can look up.
     #
-    # 64 characters is generous for every namespace above; the longest
+    # 320 characters, DERIVED rather than asserted -- see migration
+    # d8b2c5e07a41. This was String(64) on the strength of "the longest
     # real id in the 2026-09-02 scoring run is a minted slug well under
-    # that.
-    gov_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    # that", which was not true when it was written (that run's own
+    # minted.csv held two 66-character ids) and killed the production
+    # backfill 333 rows in. Two id shapes have a data-dependent length: a
+    # minted `rtr:<cc>:<st>:<slug>` is bounded by `jurisdiction`
+    # (String(200)) at 10 + 200, and `rtr:unknown:<host>` by DNS's
+    # 253-octet hostname limit at 12 + 253. 320 covers both.
+    gov_id: Mapped[Optional[str]] = mapped_column(
+        String(320), nullable=True, index=True
+    )
     # The Census of Governments vocabulary (decision D7): county,
     # municipality, township, school_district, special_district, state,
     # court, other. Drives the headings on /state/*, which is why
