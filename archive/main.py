@@ -52,11 +52,11 @@ from .utils.date_status import (
     meeting_date_status,
 )
 from .utils.highlights import meta_description
+from .utils.hub_aliases import redirect_target
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
-    jurisdiction_hub_slug,
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
@@ -1282,37 +1282,48 @@ async def internal_low_trust_pages_mark_reviewed(
 @app.post("/internal/jurisdiction/override")
 async def internal_jurisdiction_override(
     ids: Optional[str] = None,
-    jurisdiction: Optional[str] = None,
+    gov_id: Optional[str] = None,
+    meeting_kind: Optional[str] = None,
     dry_run: bool = True,
     authorization: Optional[str] = Header(None),
 ):
-    """Write a caller-supplied jurisdiction string directly onto specific
-    pages -- the one place in this repo that trusts a client-supplied
-    jurisdiction value at all, rather than recomputing one via
-    finalize_jurisdiction(). Every other jurisdiction write endpoint here
-    (POST /internal/jurisdiction/backfill-apply above) deliberately never
-    accepts one, for good reason -- but that leaves no way to fix a case
-    finalize_jurisdiction() can't reach on its own: several strings that
-    already independently validate but should read as one canonical form
-    (see BACKLOG.md's Santa Clara entry), or the low-trust queue's
-    missing "review -> repair" path (BACKLOG.md's Trust & safety
-    section).
+    """Set the GOVERNMENT for specific pages, and turn that decision into
+    a rule other pages will inherit.
+
+    Rewritten for WO-99. It used to take a caller-supplied `jurisdiction`
+    STRING and write it onto the named ids -- the one place in this repo
+    that trusted client-supplied jurisdiction text. That fixed those rows
+    and nothing else, which `BACKLOG.md`'s Santa Clara entry measured:
+    the hub re-fragmented within two days, because the next ingest
+    recomputed the same spellings for pages the override had never
+    touched. So the parameter is now a `gov_id` -- an identity that must
+    already exist in `governments.csv` -- and the display name is derived
+    from the registry row rather than accepted from the caller. No
+    endpoint here accepts jurisdiction text any more.
+
+    The second half is what makes it a rule: every distinct tenant host
+    in the batch produces a `tenant_overrides.csv`-shaped line, appended
+    to the file named by `tenant_override_rules_file` in the response,
+    for a human to copy into the committed registry. `match` is left
+    blank -- a host serving more than one government needs a
+    discriminator a person has to choose, and inferring one from a batch
+    of page ids would produce a rule that quietly over-applies.
 
     `ids` is REQUIRED, comma-separated `meeting_page_id`s, same parse as
-    /internal/low-trust-pages/mark-reviewed's `ids`. `jurisdiction` is
-    REQUIRED and applied identically to every id -- call this once per
-    distinct canonical string, not once with a mixed batch.
+    /internal/low-trust-pages/mark-reviewed's `ids`. `gov_id` is REQUIRED
+    and applied identically to every id. `meeting_kind` is optional
+    (decision D2a) and applied to the same rows -- `press_conference`,
+    `public_statement`, `town_hall`, `workshop`, `hearing`; absent means
+    an ordinary meeting.
 
-    Writes `jurisdiction_confidence="manual_override"` alongside the
-    string, which `_find_or_create_page()`'s re-ingest path specifically
-    checks for and skips overwriting -- see crud.override_jurisdiction()'s
-    own docstring for why a manual fix needs that guard to actually
-    stick. Also stamps `reviewed_at` when available, since an explicit
-    override is definitionally a human having looked at the row.
+    Writes `jurisdiction_confidence="manual_override"`, which
+    `_find_or_create_page()`'s re-ingest path checks for and skips -- see
+    crud.override_jurisdiction()'s docstring for why a manual fix needs
+    that guard to stick. Also stamps `reviewed_at` when available.
 
-    dry_run defaults to true, matching every other write endpoint here.
-    Idempotent: an id already carrying this exact string and confidence
-    tier is reported under `already_overridden`, not re-written.
+    dry_run defaults to true, matching every other write endpoint here,
+    and the dry run shows the rule lines it WOULD write as well as the
+    row diff -- seeing the rule before creating it is most of the point.
     """
     if not _token_ok(authorization):
         return JSONResponse({"detail": "Not Found"}, status_code=404)
@@ -1324,12 +1335,23 @@ async def internal_jurisdiction_override(
             {"detail": "ids must be comma-separated integers"}, status_code=400
         )
 
-    if jurisdiction is None:
-        return JSONResponse({"detail": "jurisdiction is required"}, status_code=400)
+    if gov_id is None:
+        return JSONResponse(
+            {
+                "detail": (
+                    "gov_id is required (this endpoint no longer accepts a "
+                    "jurisdiction string -- see WO-99)"
+                )
+            },
+            status_code=400,
+        )
 
     try:
         return await crud.override_jurisdiction(
-            ids=parsed or set(), jurisdiction=jurisdiction, dry_run=dry_run
+            ids=parsed or set(),
+            gov_id=gov_id,
+            meeting_kind=meeting_kind,
+            dry_run=dry_run,
         )
     except ValueError as exc:
         return JSONResponse({"detail": str(exc)}, status_code=400)
@@ -1705,14 +1727,34 @@ class ResolvedMeetingIn(BaseModel):
 
 
 class ChunkPlanEntryIn(BaseModel):
-    """One entry of a WO-79 per-clip chunk plan -- see
+    """One entry of a WO-79 chunk plan -- see
     app/platforms/media_probe.py's probe_multi_clip_chunk_plan() for how
     this is built and archive/db/models.py's
-    TranscriptionJob.chunk_plan for how the worker consumes it."""
+    TranscriptionJob.chunk_plan for how the worker consumes it.
+
+    **Every field the plan carries has to be declared here or it is
+    silently dropped in transit (WO-97).** Pydantic ignores extra fields
+    by default, and this model sits on the ONE path that crosses HTTP:
+    the resolver's on-demand submit and
+    scripts/bulk_queue_transcription_backlog.py both POST through
+    /internal/transcription/create-job, while worker/main.py's
+    auto-generation calls crud.create_transcription_job() in-process and
+    never touches this model. So a field added to the plan reaches the
+    database on one path and vanishes on the other -- which is exactly
+    what happened to media_start between WO-95 and this fix, and it
+    fails silently rather than loudly: the worker reads it as
+    .get("media_start", 0.0), so every window of a sub-split clip would
+    have extracted from offset 0 and produced a transcript that repeats
+    the clip's opening N times at N different meeting timestamps."""
 
     media_url: str
     start: float
     duration: float
+    # WO-95. Offset within this clip's own file, as opposed to `start`,
+    # which is meeting-relative. Defaults to 0.0 so a caller that predates
+    # WO-95 keeps its exact meaning -- every entry in such a plan is a
+    # whole clip, which is what an offset of 0.0 says.
+    media_start: float = 0.0
     title: Optional[str] = None
     seq: Optional[int] = None
 
@@ -2325,7 +2367,15 @@ async def meeting_page(
             "state_slug": state_slug_from_abbr(state_abbr) if state_abbr else None,
             # For the "More {Jurisdiction} meetings" link to /j/{slug} --
             # None (link omitted) when the page has no jurisdiction at all.
-            "hub_slug": jurisdiction_hub_slug(page.get("jurisdiction")),
+            # The government's own hub, by `gov_id` when the page has one
+            # (WO-99) -- so a page stored as "County of Fresno, CA" links
+            # to the same /j/ page as one stored "Fresno County, CA".
+            # Falls back to the display-string slug for a page the
+            # resolver declined to key, which is exactly what this line
+            # did before.
+            "hub_slug": crud.hub_slug_for_page(
+                page.get("gov_id"), page.get("jurisdiction")
+            ),
             # og:image / VideoObject.thumbnailUrl / Event.image for
             # non-YouTube pages (WO-28). Only true once a real frame is
             # actually stored -- advertising a card URL that would 404 is
@@ -2802,13 +2852,24 @@ async def state_page(request: Request, state_slug: str, topic: str = ""):
 async def jurisdiction_page(request: Request, hub_slug: str, topic: str = ""):
     """Per-government hub: every archived meeting for one jurisdiction
     (see crud.get_jurisdiction_hub_data() -- grouped by
-    jurisdiction_hub_slug(), so raw-string variants of one city land on one
+    `gov_id` since WO-99, so every spelling of one government lands on one
     page). 404s for an unknown slug or one with no indexable meetings, same
     in-route pattern as /m/{slug} and /state/{slug}. Below
     crud.JURISDICTION_HUB_MIN_INDEXABLE meetings the page renders with a
     noindex (thin-content posture) and stays out of sitemap.xml."""
     data = await crud.get_jurisdiction_hub_data(hub_slug, topic_slug=topic or None)
     if data is None:
+        # A slug that used to be a hub and no longer is, because WO-99
+        # collapsed its government's spellings onto one `gov_id`. 301,
+        # not 404: these URLs are in sitemap.xml, on every /m/ page and
+        # on the state pages, and decision D6 accepted the rename only
+        # on the understanding that the old address keeps working. The
+        # `?topic=` chip is carried over so a redirect never silently
+        # drops the filter the reader was on.
+        target = redirect_target(hub_slug)
+        if target:
+            query = f"?topic={quote(topic)}" if topic else ""
+            return RedirectResponse(f"/j/{target}{query}", status_code=301)
         return templates.TemplateResponse(
             request, "not_found.html", {}, status_code=404
         )

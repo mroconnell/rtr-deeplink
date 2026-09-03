@@ -69,6 +69,66 @@ class MeetingPage(Base):
     jurisdiction_confidence: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True
     )
+    # The identity of the government whose meeting this is -- added
+    # 2026-09-02 (WO-99, Phase 2 of
+    # rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md). Written
+    # by app/utils/gov_registry's resolve_government() in
+    # _find_or_create_page(), right after finalize_jurisdiction().
+    #
+    # `jurisdiction` above is now the DISPLAY NAME and this is the KEY.
+    # That split is the whole point: identifying a government by its name
+    # as a string is what put "County of Fresno" and "Fresno County" on
+    # two hub pages, and what let LADWP's pages be filed under the City
+    # of Los Angeles because the place check passed on a name the page
+    # merely mentioned. A namespaced, deterministic id --
+    # `us:place:0627000`, `us:county:06019`, `ca:csd:3518013`,
+    # `us:sd:0622710`, or a minted `rtr:us:ca:<slug>` where no national
+    # table covers the government -- is derivable by every tool in this
+    # estate from the same committed data files, which is what lets
+    # rtr-discovery and rtr-upcoming agree with this table without
+    # sharing a sequence.
+    #
+    # NULL means "not resolved yet", a real and distinguishable state:
+    # every row was NULL until scripts/backfill_gov_id.py ran, and a row
+    # the resolver declines to key (tier `unresolved`) stays NULL on
+    # purpose rather than carrying an id nobody can look up.
+    #
+    # 320 characters, DERIVED rather than asserted -- see migration
+    # d8b2c5e07a41. This was String(64) on the strength of "the longest
+    # real id in the 2026-09-02 scoring run is a minted slug well under
+    # that", which was not true when it was written (that run's own
+    # minted.csv held two 66-character ids) and killed the production
+    # backfill 333 rows in. Two id shapes have a data-dependent length: a
+    # minted `rtr:<cc>:<st>:<slug>` is bounded by `jurisdiction`
+    # (String(200)) at 10 + 200, and `rtr:unknown:<host>` by DNS's
+    # 253-octet hostname limit at 12 + 253. 320 covers both.
+    gov_id: Mapped[Optional[str]] = mapped_column(
+        String(320), nullable=True, index=True
+    )
+    # The Census of Governments vocabulary (decision D7): county,
+    # municipality, township, school_district, special_district, state,
+    # court, other. Drives the headings on /state/*, which is why
+    # archive/utils/gov_classify.py -- a regex guess over the display
+    # string, which filed "Broward County Public Schools" under counties
+    # and "Minnesota Senate" under cities -- could be retired when this
+    # landed. Denormalized from the registry row rather than looked up
+    # per render: a /state/* page groups a few hundred rows and the type
+    # is a function of the id, so a stale value can only happen if the
+    # registry itself is re-typed, which the backfill re-runs for.
+    gov_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # What KIND of event this page is (decision D2a). NULL means
+    # `meeting`, which is the overwhelming majority and needs no write;
+    # the other values name the things that are on a government's video
+    # portal without being meetings of a body -- `press_conference`,
+    # `public_statement`, `town_hall`, `workshop`, `hearing`.
+    #
+    # Explicit rather than inferred because two existing gates key on
+    # "plausibly meeting-length" and reject a 12-minute press Q&A:
+    # discovery's quality gate and the on-demand transcription check.
+    # This is what lets those relax on purpose rather than by loosening a
+    # duration threshold for everything. Plain String, not an enum, same
+    # convention as jurisdiction_confidence and TranscriptionJob.status.
+    meeting_kind: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     video_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     video_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     agenda_items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
@@ -476,12 +536,24 @@ class TranscriptionJob(Base):
     chunk_size_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     total_chunks: Mapped[int] = mapped_column(Integer, nullable=False)
     chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # NULL for every ordinary single-video job (the overwhelming majority
-    # -- unaffected). Set only for a WO-79 multi-clip meeting (some Swagit
-    # tenants -- see app/platforms/swagit.py/media_probe.py's
-    # probe_multi_clip_chunk_plan()): one dict per real source clip,
-    # `{"media_url", "start", "duration", "title", "seq"}`, `start` being
-    # that clip's cumulative meeting-relative offset. When set, each
+    # Empty for every ordinary single-video job (the overwhelming majority
+    # -- unaffected), but NOT SQL NULL: SQLAlchemy's JSON type defaults to
+    # none_as_null=False, so a Python None is persisted as the JSON value
+    # `null`. Measured 2026-09-03: 63 of the 66 rows matching `chunk_plan
+    # IS NOT NULL` are ordinary single-video jobs. Read this column's
+    # emptiness in Python (`if not chunk_plan`), never with a SQL NULL
+    # test -- see BACKLOG.md's matching entry.
+    #
+    # Set only for a WO-79 multi-clip meeting (some Swagit tenants -- see
+    # app/platforms/swagit.py/media_probe.py's
+    # probe_multi_clip_chunk_plan()): one dict per chunk, `{"media_url",
+    # "start", "media_start", "duration", "title", "seq"}`, `start` being
+    # that entry's cumulative meeting-relative offset and `media_start`
+    # (WO-95) its offset within that clip's own file -- an entry is a
+    # window WITHIN a clip when the clip is longer than the cap, so it is
+    # no longer one dict per source clip. Absent on a plan frozen before
+    # WO-95, where every entry is a whole clip; read it as
+    # `.get("media_start", 0.0)`. When set, each
     # chunk_index (0..total_chunks-1, total_chunks == len(chunk_plan))
     # maps directly to chunk_plan[chunk_index] instead of the usual
     # chunk_size_seconds-windowed math -- see worker/main.py's

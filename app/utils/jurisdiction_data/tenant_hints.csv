@@ -1,0 +1,1700 @@
+tenant_host,state,source,evidence
+a2gov.legistar.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ab-slavelake.civicplus.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+abcwua.granicus.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+accessfayetteville.granicus.com,AR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+accomackcountyva.new.swagit.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+addison.granicus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Village of Addison, IL'"
+addisontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+adjala-tosorontio.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+agenda.friscotexas.gov,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+agourahills.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+al-owenscrossroads.civicplus.com,AL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alachua.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'County of Alachua, FL'"
+alameda.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alamedacounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alamogordonm.portal.civicclerk.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+albanyca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+albanyca.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+albanycountywy.gov,WY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+albanyny.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+albemarle.granicus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Albemarle County, VA'"
+alexandriaschoolsva.new.swagit.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alleganycomd.portal.civicclerk.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+allenisd.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+allentownpa.granicus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alnwickhaldimand.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alpharettaga.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+altoona.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+altuscityok.iqm2.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+alvordtx.gov,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+amarillo.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+amarillotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+americancanyon.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+amherstny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+anacorteswa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+anaheim.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+angleton-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+annapolismd.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+anoka-k12.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+apachejunction.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+apopkafl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ar-hebersprings.civicplus.com,AR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ar-maumelle.civicplus.com,AR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Maumelle, AR'"
+arapahoe.granicus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Arapahoe County, CO'"
+arlingtonheightsil.new.swagit.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+artesiaca.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+arvin.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ashland-va.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ashlandcowi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+athensoh.new.swagit.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+atherton.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+atikokan.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+atlantacityga.iqm2.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+atlanticbeachfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+auburn.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+augustacova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+aurora-il.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+austintx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Austin, TX'"
+austintx.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Austin, TX'"
+avonindiana.gov,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+azusa.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Azusa, CA'"
+baha.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bainbridgeislandwa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bainbridgewa.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bakercityor.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+baldwincountyal.granicus.com,AL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+baltimore.legistar.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+barstowcityca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bartlesvilleok.new.swagit.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+batonrougela.new.swagit.com,LA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Baton Rouge, LA'"
+baycountyfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bayharborislandsfl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+baytowntx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bcnv.primegov.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+beaufort.granicus.com,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+beaufortcountysc.new.swagit.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Beaufort County, SC'"
+beaumonttx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bedfordtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+belaire-ks.municodemeetings.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+belfastme.new.swagit.com,ME,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bellairetx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bellbrook-oh.municodemeetings.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+belleplaine.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+belmont-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+benbrooktx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bend.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bentoncoor.portal.civicclerk.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Benton County, OR'"
+bentonvillear.portal.civicclerk.com,AR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+berkeley.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bernalillocountynm.iqm2.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+berwynheights.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bethanybeach.granicus.com,DE,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bethlehemtownny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+beverlyma.gov,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bexarcountytx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Bexar County, TX'"
+bhamal.granicus.com,AL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+biddefordme.portal.civicclerk.com,ME,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bigspringtx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blackfordcoin.portal.civicclerk.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blacksburg.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bladensburgtown-md.municodemeetings.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blaine.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blainemn.portal.civicclerk.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blueearthcountymn.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+blueriver-co.municodemeetings.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bluewater.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bluffdaleut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bluffton-sc.municodemeetings.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Beaufort County, SC'"
+blufftonin.portal.civicclerk.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bocaraton.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+boisecityid.iqm2.com,ID,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+borough-ketchikan.granicus.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+boston.granicus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brainerdmn.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+branchburgnj.granicus.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+branchburgnj.iqm2.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brazoriacountytx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+breaca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+breckenridge-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brecksville-oh.municodemeetings.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brentwoodtn.new.swagit.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brightonco.granicus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Brighton'"
+brisbaneca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bristol-in.municodemeetings.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bristol-ri.municodemeetings.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bristolva.gov,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brla.gov,LA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Baton Rouge, LA'"
+brockville.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brokenarrow.granicus.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brookhavencityga.iqm2.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brookhavenny.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brookingscountysd.gov,SD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+broomfield.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+broomfieldco.cablecast.tv,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+broward.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Broward County, FL'"
+browardschools.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Broward County Public Schools, FL'"
+brownsburgin.new.swagit.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brunswick-md.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+brunswickconc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+buckscopa.portal.civicclerk.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bucoks.granicus.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+buda-tx.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Buda, TX'"
+buenapark.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+buffalogroveil.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+buffalony.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+bullheadcity.granicus.com,AZ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Bullhead City, AZ'"
+burbank.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+burgawnc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+burlesontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+burlingameca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+burlingtonvt.portal.civicclerk.com,VT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+burrillville.granicus.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+butlercountyoh.iqm2.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+buttecoca.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Butte County, CA'"
+buttecounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-avenal.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-beverlyhills.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-ceres.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ceres, CA'"
+ca-clearlake.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clearlake, CA'"
+ca-escalon.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Escalon, CA'"
+ca-farmersville.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-inglewood.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-lahabraheights.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-losalamitos.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-moraga.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-ridgecrest.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ridgecrest, CA'"
+ca-riverbank.civicplus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ca-sanclemente.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'San Clemente, CA'"
+ca-ventura.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ventura, CA'"
+ca-willits.civicplus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Willits, CA'"
+cabq.granicus.com,NM,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Albuquerque, NM'"
+calaverascountyca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+caldwellcountytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+californiacity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+calistoga.civicweb.net,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+calumetcounty.civicweb.net,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+camarillo.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cambridgema.granicus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cambridgema.iqm2.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cambridgema.primegov.com,MA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cambridge, MA'"
+camdencountyga.gov,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cantonga.granicus.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+capaz.portal.civicclerk.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+capitalcityconnection.cablecast.tv,AL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+capmetrotx.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Capital Metropolitan Transportation Authority, TX'"
+carbondaleil.new.swagit.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carlsbadca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carmelin.new.swagit.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Carmel, IN'"
+carolinabeach-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carpinteria.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carrboro.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carrollisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carrolltontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carsonca.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carteretcountync.gov,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carvermn.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+carync.iqm2.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+casagrandeaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+casco-me.municodemeetings.com,ME,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+casselberryfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Casselberry, FL'"
+castlepines.granicus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Castle Pines, CO'"
+castlerock-co.granicus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Town of Castle Rock'"
+cathedralcity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ccsf.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ccta.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cedarparktx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cedarparktx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cedarrapidsia.new.swagit.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+centervilleut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+centralelgin.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+centrewellington.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cerritos.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cerritos.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chaffeecoco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chamberscotx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+champaign-cablecast.cablecast.tv,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Champaign, IL'"
+champaign.cablecast.tv,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Champaign, IL'"
+chanhassen.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+charlescountymd.cablecast.tv,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+charlestownri.iqm2.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+charlotte.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Charlotte County, FL'"
+charlottenc.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Charlotte, NC'"
+charlottesvilleva.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chathamcountyga.iqm2.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Chatham County, GA'"
+chathamnc.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chelanwa.portal.civicclerk.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Chelan, WA'"
+chemungny.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cherrytownship.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chestercopa.portal.civicclerk.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Chester County, PA'"
+chestercountysc.gov,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chesterfieldcova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chesterfieldtwp.civicweb.net,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chesterfieldva.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chestermere.civicweb.net,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cheverlymd.new.swagit.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chico-ca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Chico, CA'"
+chino.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Chino, CA'"
+chinohills.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chinohillsca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+chinovalleyaz.portal.civicclerk.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+churchillconv.portal.civicclerk.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ci-ssf-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cincinnatioh.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+citrusclerk.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Citrus County, FL'"
+citwentynine-palmsca.civicweb.net,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+city-lighthousepoint.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lighthouse Point, FL'"
+citychannel-ia.cablecast.tv,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityfortbragg.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityftmyers.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ft Myers, FL'"
+citynmb.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of North Miami Beach, FL'"
+cityofappleton.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofbowie.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofbrea.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofbrookings.granicus.com,SD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofbryantx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofcampbell.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofcoralvilleiowa.cablecast.tv,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Coralville, IA'"
+cityofdeerpark.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofdellrapids.granicus.com,SD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofdoral.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Doral, FL'"
+cityofdubuque.granicus.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofeastlansing.civicweb.net,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofedgewater.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Edgewater, FL'"
+cityofelgin.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofepa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoffayetteville.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Fayetteville, NC'"
+cityoffrederick.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofgastonia.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Gastonia, NC'"
+cityofgonzales.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofgreen.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofkeller.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflacrosse.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflafayette.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflamirada.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflancasterca.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflawton.granicus.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoflewisville.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmalden.granicus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmaricopa.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmenifee.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmerced.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmiamisburg.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofmillvalley.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofnewport.granicus.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofno.granicus.com,LA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofnorthport.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'North Port, FL'"
+cityofnsb.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'New Smyrna Beach, FL'"
+cityoforange.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofoviedo.primegov.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofoxford.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofpalmdesert.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofpeekskill.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofpilotpoint.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofpt.granicus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Port Townsend, WA'"
+cityofredlands.cablecast.tv,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Redlands, CA'"
+cityofrehoboth.civicweb.net,DE,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Rehoboth Beach'"
+cityofrosemead.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofrsm.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Rancho Santa Margarita, CA'"
+cityofsancarlos.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofseguintx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofsignalhill.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Signal Hill, CA'"
+cityofstamford.granicus.com,CT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofstillwater.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityoftacoma.granicus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Tacoma, WA'"
+cityofventura.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cityofwasilla.civicweb.net,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clallamcowa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+claremontca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clarksvilletn.new.swagit.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clarksvilletn.portal.civicclerk.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clatsopcounty.gov,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clawson.granicus.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clay.primegov.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clay County, FL'"
+claycomo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clayfl.new.swagit.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clay County, FL'"
+claytoncountyga.iqm2.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+claytonnc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clearlake-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+clovisca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+co-fraser.civicplus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fraser, CO'"
+co-fruita.civicplus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fruita, CO'"
+co-palmerlake.civicplus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Palmer Lake, CO'"
+co-tellercounty.civicplus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Teller County, CO'"
+co-woodlandpark.civicplus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Woodland Park, CO'"
+cobergennj.granicus.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cocoabeach.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+coconutcreek.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Coconut Creek, FL'"
+cocookmn.civicweb.net,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+coe-pub.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+college-park.granicus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'College Park, MD'"
+collegestationtx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+colleyvilletx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+collincountytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+collinsville.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+colonieny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+coloradosprings.granicus.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Colorado Springs, CO'"
+columbus-wi.municodemeetings.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+columbusin.granicus.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+colusa-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+colwood.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+concordca.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+conroetx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+contra-costa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+conversetx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cook-county.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cooper.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cooper City, FL'"
+coppellisd.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+coppelltx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+coralgables.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Coral Gables, FL'"
+coronadousdca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+corpuschristi.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Corpus Christi, TX'"
+cortlandcountyny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cosm.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cosmopolis-wa.municodemeetings.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+costamesa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cosumnescommunityservices.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cotaticityca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cowetacoga.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cresthill-il.municodemeetings.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+crestwood.granicus.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+crevecoeurmo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cu.new.swagit.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+culver-city.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Culver City, CA'"
+cumberland.iqm2.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cumberlandcountypa.gov,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cupertino.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cvrdtest.primegov.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cvwd.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+cvwd.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dakota.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dallascountyiowa.gov,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dallasisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dallastx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Dallas, TX'"
+dalycityca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+danbury.granicus.com,CT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Danbury, CT'"
+dane.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+danville-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+davenport.granicus.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+davieconc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+davis.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Davis, CA'"
+dc.granicus.com,DC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+decaturga.new.swagit.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dekalbcountyga.granicus.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+delandfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'DeLand, FL'"
+delawarecopa.portal.civicclerk.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+delawarecounty.in.gov,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+delcopa.granicus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+delraybeach.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Delray Beach, FL'"
+delriotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+deltona.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Deltona, FL'"
+denton-tx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dentoncounty.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dentontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+denver.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+deperewi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+derbyks.new.swagit.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+desmoines.civicweb.net,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Des Moines WA'"
+desototx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+desplainesil.cablecast.tv,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Des Plaines, IL'"
+dfps.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dhaz.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+diamondbarca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dixon-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+douglas-mi.municodemeetings.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+douglascountywi.gov,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+douglaswy.portal.civicclerk.com,WY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dpwlacity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+drippingsprings-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+duarteca.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Duarte, CA'"
+dublin.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dublinca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+dubuquecountyia.portal.civicclerk.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+duluth-mn.granicus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Duluth, MN'"
+dunedin.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Dunedin, FL'"
+dunnellon.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Dunnellon, FL'"
+dupage.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+durham.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+durhamcounty.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eagan.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eagleco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eaglecounty.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eaglemountainut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eastgrandforks.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eastgreenwichri.granicus.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eastgwillimbury.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+easthamptontown.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eastlansing.granicus.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eastonmd.portal.civicclerk.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Easton'"
+eastpaloalto.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eatonville-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eauclairewi.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ebparks.new.swagit.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'East Bay Regional Park District, CA'"
+eden-prairie.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+edmondok.new.swagit.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+edmondswa.granicus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Edmonds, WA'"
+elatownship.gov,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elbertcounty.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elcerritoca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eldorado.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'El Dorado County, CA'"
+eldoradoks.portal.civicclerk.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elizabethco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elkgrove.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elliscountytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elmonte.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+elsegundo.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of El Segundo, CA'"
+emeryville.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+emporiaks.portal.civicclerk.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Emporia, KS'"
+encinitas.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Encinitas, CA'"
+enfieldct.portal.civicclerk.com,CT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Enfield, CT'"
+erie.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+escambiacofl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Escambia County, FL'"
+escondido-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+eustis-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+everettwa.gov,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fairfax.granicus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Fairfax, VA'"
+fairoaksranch-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fallschurch-va.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fargo.cablecast.tv,ND,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+farmersbranch.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fcva.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fernandinabeachfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+festusmo.portal.civicclerk.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Festus, MO'"
+firestoneco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Firestone, CO'"
+fishkilltownny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fl-aventura.civicplus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Aventura, FL'"
+fl-crestview.civicplus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Crestview, FL'"
+fl-jupiterinletcolony.civicplus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Jupiter Inlet Colony, FL'"
+fl-oakland.civicplus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Oakland, FL'"
+fl-portorange.civicplus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Port Orange, FL'"
+flagstaffaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+flandreau.granicus.com,SD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+florencesc.portal.civicclerk.com,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+flowermoundtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fnsb.portal.civicclerk.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fontana.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+forestgroveor.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fortbendcountytx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fort Bend County, TX'"
+fortcollins-co.municodemeetings.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fortlauderdale.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Fort Lauderdale, FL'"
+fortluptonco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fortpiercefl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fortwaltonbeachcityfl.iqm2.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fortworthgov.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Fort Worth, TX'"
+fostercity.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fostercity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fountainvalley.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fountain Valley, CA'"
+franklin-twp.org,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+franklincountyva.gov,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+franklintn.portal.civicclerk.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+frederick.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+frederickco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Frederick'"
+fredericksburgtx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+frenchriver.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fresno.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fresnocounty.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fresno County, CA'"
+friscoco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+friscotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+frostburg-md.municodemeetings.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+frostburgcity.civicweb.net,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fruitheights.gov,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+fultoncoin.portal.civicclerk.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ga-avondaleestates.civicplus.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ga-rome.civicplus.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Rome, GA'"
+ga-walnutgrove.civicplus.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Walnut Grove, GA'"
+ga-watkinsville.civicplus.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Watkinsville, GA'"
+gailborden.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gainesville.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gaithersburgmd.iqm2.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+galesburg.granicus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Galesburg, IL'"
+galvestontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+garlandisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+garlandtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gaston.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Gaston County, NC'"
+gcva.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+georgetowntx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+georgianbay.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+germantown-tn.granicus.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gigharborwa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gilroyca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glencoevillageil.iqm2.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glendale-az.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glendaleaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glendaleca.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glendoraca.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glenellynil.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+glenncounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gocolumbiamo.granicus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Columbia, MO'"
+goldenco.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+goleta.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+goodhuecountymn.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gptx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grandcounty-co.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grandcountyutah.gov,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grandjunctionco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Grand Junction, CO'"
+grandprairieisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grandprairietx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grandrapidsmi.new.swagit.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Grand Rapids, MI'"
+grandterraceca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grapevinetx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greaternapanee.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greeleyco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Greeley'"
+greenbaywi.portal.civicclerk.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Green Bay, WI'"
+greenbeltmd.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greenbeltmd.portal.civicclerk.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greenburghny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greenecova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gresham.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+gresham.primegov.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+greyhighlands.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grimescountytx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grosseile.civicweb.net,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+grundycountyil.iqm2.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+guilford.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Guilford County, NC'"
+hacsc.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+halfmoonbay.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hallandalebeach.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hallandale Beach, FL'"
+hamburg-mi.municodemeetings.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hamdenct.portal.civicclerk.com,CT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hampton.granicus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Hampton, VA'"
+hanfordca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hanovercounty.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hanovercova.portal.civicclerk.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hanover County, VA'"
+hapevillega.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+harfordcountymd.new.swagit.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Harford County, MD'"
+harfordcountypublicschoolsmd.new.swagit.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+harriscountytx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Harris County, TX'"
+harrisonburg-va.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+harrisoncountyin.portal.civicclerk.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+haslet.civicweb.net,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hastingsne.portal.civicclerk.com,NE,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hastingsonhudsonny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hawaiicounty.granicus.com,HI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hawaii County, HI'"
+hawthorne-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hays.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hayscountytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hayward.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+haywoodcountync.gov,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+haywoodcountync.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+healdsburgca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hearst.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hebercityut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hendersonky.gov,KY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hendersonville-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hennepinmn.granicus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'County of Hennepin, MN'"
+henricocountyva.new.swagit.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+henryga.granicus.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hercules.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hernandocountyfl.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+herndonva.portal.civicclerk.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Herndon, VA'"
+hesperia.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hgcity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+highlandbeach-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+highlandca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+highlandparkil.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+highlands-nj.municodemeetings.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+highriver.civicweb.net,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hillsborough-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hillsboroughcounty.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hillsborough County, FL'"
+hoke.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hollywoodfl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hollywood, FL'"
+hometown.cablecast.tv,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+homewood-il.municodemeetings.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+honolulu.granicus.com,HI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hooksett.granicus.com,NH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hopewell-va.municodemeetings.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hopewellboroughnj.gov,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hopkinsmn.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+horrycounty.granicus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Horry County, SC'"
+houstonisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+houstontx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Houston, TX'"
+hudson.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+humalertca.gov,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+humboldt.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hunterdonconj.portal.civicclerk.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+huntingtonbeach.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Huntington Beach, CA'"
+huntingtonny.granicus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Town of Huntington'"
+huntingtonpark.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+huntsvilleal.granicus.com,AL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Huntsville, AL'"
+huntsvilletx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hursttx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+hyattsville-md.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ia-hawarden.civicplus.com,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hawarden, IA'"
+ia-maquoketa.civicplus.com,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Maquoketa, IA'"
+ia-tipton.civicplus.com,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tipton, IA'"
+ia-winterset.civicplus.com,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Winterset, IA'"
+id-pocatello.civicplus.com,ID,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pocatello, ID'"
+idahofallsid.new.swagit.com,ID,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+il-cresthill.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Crest Hill, IL'"
+il-hanoverpark.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hanover Park, IL'"
+il-monee.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Monee, IL'"
+il-northfield.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Northfield, IL'"
+il-palospark.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Palos Park, IL'"
+il-riverside.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Riverside, IL'"
+il-skokie.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Skokie, IL'"
+il-wheaton.civicplus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wheaton, IL'"
+imperial.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+in-anderson.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Anderson, IN'"
+in-avon.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Avon, IN'"
+in-charlestown.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Charlestown, IN'"
+in-lafayette.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lafayette, IN'"
+in-portage.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Portage, IN'"
+in-shelbyville.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Shelbyville, IN'"
+in-woodburn.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Woodburn, IN'"
+in-zionsville.civicplus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Zionsville, IN'"
+independence-ia.municodemeetings.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+independenceia.portal.civicclerk.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+independenceks.gov,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+indianapolis-in.municodemeetings.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+indianapolis.granicus.com,IN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Indianapolis, IN'"
+indianwells.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+indio.civicweb.net,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+innisfail.civicweb.net,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+inyococa.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ircgov.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+irvingisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+irvingtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+islamoradafl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ivgid.portal.civicclerk.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ivins.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksonco.granicus.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksoncomi.portal.civicclerk.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksonms.new.swagit.com,MS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksonvillear.gov,AR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksonvillenc.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jacksonwy.new.swagit.com,WY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jamescitycova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jaxcityc.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jcc.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jeffco.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jeffersonco.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jeffersoncomo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jeffersonparishla.new.swagit.com,LA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jerome-az.municodemeetings.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+johnson-county.granicus.com,IA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Johnson County, IA'"
+johnsoncountyia.iqm2.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+johnstownco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Johnstown, CO'"
+joliet.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jonesboro.granicus.com,AR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+joplinmo.granicus.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+jordan-mn.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+junctioncityks.portal.civicclerk.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+juneau-ak.municodemeetings.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+juneauak.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kansascity.granicus.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kapuskasing.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+katyisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kauai.granicus.com,HI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Kaua&apos;i County, HI'"
+kaufmancountytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kaysvilleut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+keizeror.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kelownapublishing.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kemah-tx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kennesawga.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kenora.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kenosha.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kentoh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kentwa.iqm2.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kerrvilletx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kerrvilletx.portal.civicclerk.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Kerrville, TX'"
+ketchikan.primegov.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+keybiscayne.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Key Biscayne, FL'"
+killeen.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+king-county-tv.cablecast.tv,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+king.granicus.com,WA,ryan_stated,"Metropolitan King County Council, King County WA. The ledger's state_abbr said NC, which is what minted rtr:us:nc:king-county."
+kingsport-tn.municodemeetings.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kingwilliamcova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kirkland.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kissimmeefl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Kissimmee, FL'"
+klickitatcowa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+knoxvilletn.primegov.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Knoxville, TN'"
+kpb.granicus.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+kronenwetter-wi.municodemeetings.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ks-basehor.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Basehor, KS'"
+ks-hays.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hays, KS'"
+ks-herington.civicplus.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ks-independence.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Independence, KS'"
+ks-iola.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Iola, KS'"
+ks-osawatomie.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Osawatomie, KS'"
+ks-pratt.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pratt, KS'"
+ks-wichita.civicplus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wichita, KS'"
+kyletx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+la-sulphur.civicplus.com,LA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sulphur, LA'"
+lacdrp.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Los Angeles County, CA'"
+laceywa.portal.civicclerk.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lacey, WA'"
+lacity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lacity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lackawanna.granicus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+laconnerwa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lacounty.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Los Angeles County, CA'"
+lacountymediahost.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ladwp.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ladwp.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ladylakefl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lady Lake, FL'"
+lafayette.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lagov.new.swagit.com,LA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lagrangeil.gov,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lagunabeachcity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lagunahillsca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lagunawoods.cablecast.tv,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Laguna Woods, CA'"
+lahabraca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakecountyfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lake County, FL'"
+lakeforestpark-wa.municodemeetings.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakegenevawi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakehavasucity.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakelandtn.portal.civicclerk.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakemills-wi.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakewaytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lakeworthtx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lambton.civicweb.net,QC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lancastercosc.portal.civicclerk.com,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lancastertx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lapalmaca.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'La Palma, CA'"
+laplata.primegov.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lapuente.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+laquinta.cablecast.tv,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'La Quinta, CA'"
+laramiecounty.granicus.com,WY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Laramie County, WY'"
+laredotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lauderdalebytheseafl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+laurel-md.municodemeetings.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lausdca.new.swagit.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Los Angeles USD, CA'"
+lawa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lawtonok.portal.civicclerk.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+laytonut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lcd.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+leacountynm.portal.civicclerk.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+leaguecitytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+leandertx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Leander, TX'"
+lebanon-or.municodemeetings.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lebanonnh.portal.civicclerk.com,NH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ledyardct.granicus.com,CT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+leesburgva.granicus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Leesburg, VA'"
+lehi.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lenaweecomi.portal.civicclerk.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+leonvalleytx.cablecast.tv,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Leon Valley, TX'"
+lewes.civicweb.net,DE,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+libertycountyga.gov,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+libertyhilltx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+libertylakewa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lillooet.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+limaoh.primegov.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lincoln.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Lincoln, CA'"
+lincolncoor.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lincolnpark-mi.granicus.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lincolnri.portal.civicclerk.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lindon.gov,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+litchfieldparkaz.portal.civicclerk.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+littleelmtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lmctvny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lodica.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Lodi, CA'"
+loganville-ga.municodemeetings.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+longbeach.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+longbeach.primegov.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Long Beach, CA'"
+longbeachca.new.swagit.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Long Beach, CA'"
+longmont.primegov.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+los-altos.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+losalamos.granicus.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+losaltoshills.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+losaltoshillsca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+losgatos-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+loswegok12.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+loudoun.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+louisacova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+louisville.granicus.com,KY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Louisville, KY'"
+louisvilleco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lovelandoh.iqm2.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+loxahatcheegroves-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+loyalist.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lpcgov.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lubbockisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lubbocktx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lubbock, TX'"
+lucascooh.portal.civicclerk.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lucas County, OH'"
+lwsd.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lwsd.new.swagit.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lynchburgva.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+lynnwoodwa.new.swagit.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ma-beverly.civicplus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ma-easthampton.civicplus.com,MA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Easthampton, MA'"
+ma-salem.civicplus.com,MA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Salem, MA'"
+madeirabeach-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+madisonal.portal.civicclerk.com,AL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Madison, AL'"
+malibucity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mallorytown.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mammothlakes.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+manateeschools.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Manatee County Public Schools, FL'"
+manhattanbeach.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+manitowoc.granicus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Manitowoc, WI'"
+mansfieldisd.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mansfieldtx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mansfieldtx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+manteca-ca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Manteca, CA'"
+marcoisland.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Marco Island, FL'"
+margatefl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Margate, FL'"
+marietta.granicus.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Marietta, GA'"
+marin.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+marionfl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Marion County, FL'"
+mariposacoca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+marlboroughma.portal.civicclerk.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+martin.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Martin County, FL'"
+martinez.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+marysville.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+marysvilleca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+masoncity.granicus.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+matanuska.granicus.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+matatransit.granicus.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mauicounty.granicus.com,HI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mcallen.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mcallentx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mcdonoughga.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mckenziecountynd.gov,ND,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mckinney.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of McKinney, TX'"
+mckinneytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mclendon-chisholm.civicweb.net,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mcpsmd.new.swagit.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+md-centreville.civicplus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Centreville, MD'"
+md-chesapeakebeach.civicplus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Chesapeake Beach, MD'"
+md-mountrainier.civicplus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Mount Rainier, MD'"
+md-sykesville.civicplus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sykesville, MD'"
+md-takomapark.civicplus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Takoma Park, MD'"
+me-freeport.civicplus.com,ME,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Freeport, ME'"
+me-skowhegan2.civicplus.com,ME,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Skowhegan, ME'"
+meaford.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mecklenburg.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+medfordnj.new.swagit.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+meetings.redwoodcity.org,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+memphis.granicus.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mendocino.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Mendocino County, CA'"
+menlofire.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+menlopark.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+menomoneefallswi.new.swagit.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mequoncitywi.iqm2.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mesaaz.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mesquitetx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+metchosin.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+metro.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+metroairports.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mi-caledoniachartertownship.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Caledonia Charter Township, MI'"
+mi-lincolnpark.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lincoln Park, MI'"
+mi-saginaw.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Saginaw, MI'"
+mi-sturgis.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sturgis, MI'"
+mi-taylor.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Taylor, MI'"
+mi-wayne.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wayne, MI'"
+mi-ypsilanti.civicplus.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ypsilanti, MI'"
+miamibeachfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+miamidade.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+miamifl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Miami, FL'"
+miamifl.iqm2.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+middleburgva.new.swagit.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Middleburg, VA'"
+middlesexcountynj.iqm2.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+middletownnj.portal.civicclerk.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+millcreek.civicweb.net,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+millikenco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+milpitasca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+milwaukee.granicus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Milwaukee.'"
+milwaukeecounty.granicus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Milwaukee County, WI'"
+miramar.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+missionviejo.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Mission Viejo, CA'"
+missouricitytx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mitchellsd.portal.civicclerk.com,SD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mn-brainerd.civicplus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Brainerd, MN'"
+mn-cannonfalls.civicplus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cannon Falls, MN'"
+mn-crookston.civicplus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Crookston, MN'"
+mn-forestlake.civicplus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Forest Lake, MN'"
+mn-maplegrove.civicplus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Maple Grove, MN'"
+mncppc.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mnsenate.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mo-brentwood4.civicplus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Brentwood, MO'"
+mo-fulton.civicplus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fulton, MO'"
+mo-olivette.civicplus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Olivette, MO'"
+mo-sunsethills.civicplus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sunset Hills, MO'"
+mo-warrensburg.civicplus.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Warrensburg, MO'"
+mojavewater.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mokena.granicus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Village of Mokena, IL'"
+mono.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+monococa.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+monocounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+monroeoh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+monterey-park.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+monterey.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+montesereno.civicweb.net,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+montgomerycoks.portal.civicclerk.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+montgomerynj.new.swagit.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+montpelier-vt.granicus.com,VT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+montroseco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Montrose, CO'"
+mooreconc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mooresvillenc.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Mooresville, NC'"
+moorheadmn.portal.civicclerk.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+moorpark.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+morgan-hill.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+morganhillca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+morganhillca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+morganspointresort-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+morgantown.granicus.com,WV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mountainview.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mountainview.legistar.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mountdorafl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mountvernon-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ms-olivebranch.civicplus.com,MS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Olive Branch, MS'"
+mt-columbiafalls.civicplus.com,MT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Columbia Falls, MT'"
+mt-pleasant-tn.municodemeetings.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mt-redlodge.civicplus.com,MT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Red Lodge, MT'"
+mt-whitefish.civicplus.com,MT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Whitefish, MT'"
+mtlebanon.granicus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mukilteo-wa.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+multnomah.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+murrieta.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+muskegoncomi.portal.civicclerk.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+muskegonmi.portal.civicclerk.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+muskokalakes.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+mysanibel.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+myseminole.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nagsheadnc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+napa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+napacity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+napatv.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+naperville.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+naples.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nashuanh.portal.civicclerk.com,NH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nashville.cablecast.tv,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nashville.granicus.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Nashville-Davidson County, TN'"
+nassaucountyfl.primegov.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nassaufl.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nationalcityca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nbvillage.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'North Bay Village, FL'"
+nc-blowingrock.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Blowing Rock, NC'"
+nc-edenton.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Edenton, NC'"
+nc-emeraldisle.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Emerald Isle, NC'"
+nc-fuquayvarina.civicplus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nc-indiantrail.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Indian Trail, NC'"
+nc-millsriver.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Mills River, NC'"
+nc-northwilkesboro.civicplus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'North Wilkesboro, NC'"
+ne-chadron.civicplus.com,NE,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Chadron, NE'"
+needles-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+neoshomo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nevco.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newark.granicus.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newbernnc.new.swagit.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newbraunfels.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of New Braunfels, TX'"
+newburghny.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newhanovernc.new.swagit.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newmarketnh.portal.civicclerk.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newportbeach.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newprague-mn.municodemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newrochelle.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+newtecumseth.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nj-boonton.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Boonton, NJ'"
+nj-fairhaven.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fairhaven, NJ'"
+nj-hawthorne.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hawthorne, NJ'"
+nj-newprovidence.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'New Providence, NJ'"
+nj-oakland.civicplus.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nj-princeton.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Princeton, NJ'"
+nj-rockaway.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Rockaway, NJ'"
+nj-roseland.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Roseland, NJ'"
+nj-tenafly.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tenafly, NJ'"
+nj-westfield.civicplus.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Westfield, NJ'"
+nm-angelfire.civicplus.com,NM,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nm-corrales.civicplus.com,NM,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Corrales, NM'"
+norcrossga.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+norfolk-va.cablecast.tv,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+norfolkcityva.iqm2.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northbaltimore-oh.municodemeetings.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northbranchmn.portal.civicclerk.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northcastleny.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northcastleny.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northernbrucepeninsula.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northfield.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northkingstownschoolri.iqm2.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+northsalem.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+novato.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nrhtx.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'North Richland Hills, TX'"
+nuecescountytx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Nueces County, TX'"
+nvleg.granicus.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-brooklynctr.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-brooklynpark.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-maplegrove.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-newhope.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-osseo.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+nwsccc-plymouth.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ny-albany.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Albany, NY'"
+ny-amsterdam.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Amsterdam, NY'"
+ny-harrison.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Harrison, NY'"
+ny-patchogue.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Patchogue, NY'"
+ny-redhook.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Red Hook, NY'"
+ny-sagaponack.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sagaponack, NY'"
+ny-schenectady.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Schenectady, NY'"
+ny-troy.civicplus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Troy, NY'"
+nyecounty.granicus.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oak-park.granicus.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Oak Park, IL'"
+oakbay.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oakland.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oaklandparkfl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Oakland Park, FL'"
+oakley.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ocala.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ocala, FL'"
+occompt.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ocgov.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Orange County, CA'"
+ogunquitme.portal.civicclerk.com,ME,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oh-commercialpoint.civicplus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oh-fairviewpark.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fairview Park, OH'"
+oh-fostoria.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fostoria, OH'"
+oh-louisville.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Louisville, OH'"
+oh-morelandhills.civicplus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oh-newfranklin.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'New Franklin, OH'"
+oh-norton.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Norton, OH'"
+oh-stmarys.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'St Marys, OH'"
+oh-sunbury.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sunbury, OH'"
+oh-tallmadge.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tallmadge, OH'"
+oh-twinsburg.civicplus.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Twinsburg, OH'"
+oh-vandalia.civicplus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ojai.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ok-inola.civicplus.com,OK,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Inola, OK'"
+ok-jenks.civicplus.com,OK,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Jenks, OK'"
+ok-pryorcreek.civicplus.com,OK,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pryor Creek, OK'"
+ok-tahlequah.civicplus.com,OK,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tahlequah, OK'"
+okaloosacountyfl.iqm2.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Okaloosa County, FL'"
+okc.primegov.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+okeechobee.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Okeechobee County, FL'"
+okeechobeecountyfl.iqm2.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+olatheks.granicus.com,KS,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Olathe, KS'"
+oliverpaipoonge.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+olympia.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oneidacounty.primegov.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Oneida County, NY'"
+onelakewood.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+onlinedocs.akronohio.gov,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+onslow.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ontariocony.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+or-clatsopcounty.civicplus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+or-coquille.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Coquille, OR'"
+or-florence.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Florence, OR'"
+or-gearhart.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Gearhart, OR'"
+or-lagrande.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'La Grande, OR'"
+or-lebanon.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lebanon, OR'"
+or-madras.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Madras, OR'"
+or-millersburg.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Millersburg, OR'"
+or-prineville.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Prineville, OR'"
+or-scappoose.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Scappoose, OR'"
+or-seaside.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Seaside, OR'"
+or-yamhillcounty.civicplus.com,OR,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Yamhill County, OR'"
+orangecountync.cablecast.tv,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orangecountyva.gov,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orangecova.portal.civicclerk.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oregon-city.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orem.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orindaca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orland-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oronomn.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+orovalleyaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+otonabeesouthmonaghan.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ouhsd.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oxfordoh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+oxnardca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pa-easton.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Easton, PA'"
+pa-gettysburg.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Gettysburg, PA'"
+pa-jeffersonhills.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Jefferson Hills, PA'"
+pa-lititz.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Lititz, PA'"
+pa-malvern.civicplus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pa-mediaborough.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Media Borough, PA'"
+pa-monroeville.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Monroeville, PA'"
+pa-newtown.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Newtown, PA'"
+pa-norristown.civicplus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Norristown, PA'"
+pagosaspringsco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pahokee-fl.municodemeetings.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+palatineil.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+palmbayfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+palmbeachfl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+palmdale.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Palmdale, CA'"
+palmsprings.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+palmspringsca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+paradisevalleyaz.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+paramountcity.cablecast.tv,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Paramount, CA'"
+parkcityut.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+parker.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+parkerco.portal.civicclerk.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Parker, CO'"
+parkridge.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+parkvillemo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+payson.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+paysonutah.gov,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pcbgov.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Panama City Beach, FL'"
+pec.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pekinil.portal.civicclerk.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+penderconc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pendercountync.gov,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pensacola.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+peoriail.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+perris.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+petaluma.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+petersburg.granicus.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pflugerville.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Pflugerville, TX'"
+pickenscountyga.gov,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+piedmont.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pinalcountyaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pinecrest.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Village of Pinecrest, FL'"
+pinehurstnc.portal.civicclerk.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pinellas.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pinellas County, FL'"
+pinole.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pinoleca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pipestone-mn.municodemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pismobeach.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pitkincounty.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pittsburg.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pittsburgca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pittsburgh.granicus.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+plainfieldcitynj.iqm2.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+plainfieldil.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+planotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+plantation.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pleasantonca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+plumascoca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+polkcountyfl.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pompano.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portagecowi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portarthurtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portlandtn.portal.civicclerk.com,TN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portlandtx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portofcorpuschristi.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+portofla.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+powayca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+powellriver.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ppines.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Pembroke Pines, FL'"
+prescottvalley.primegov.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+prescottwi.gov,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+princegeorgebc.new.swagit.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+princegeorgescountymd.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+prosper-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+providenceri.iqm2.com,RI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+psc-fl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ps C, FL'"
+psl.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+psrc2.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-3ce.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-acwtownship.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-airdrie.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-amherstburg.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-anmore.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-arcata.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-arranelderslie.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-arroyogrande.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-bakersfield.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-beaumontab.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-blindriver.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-bluemountains.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-bouldercounty.escribemeetings.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Boulder County, CO'"
+pub-bradfordwestgwillimbury.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-brampton.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-brant.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-brentwood.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-brockton.escribemeetings.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-burnaby.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-caledon.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-calgary.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-capecoral.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Cape Coral, FL'"
+pub-centralsaanich.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-chatham-kent.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-chulavista.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Chula Vista, CA'"
+pub-cityofbaraboo.escribemeetings.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cityofgainesville.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Gainesville, FL'"
+pub-cityofgp.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cityofwatsonville.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-citypa.escribemeetings.com,SK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-clarington.escribemeetings.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clarington, OH'"
+pub-cmsd.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cobourg.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cofs.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-collingwood.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-conceptionbaysouth.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cornerbrook.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cornwall.escribemeetings.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cornwall, PA'"
+pub-corona.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Corona, CA'"
+pub-courtenay.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cramahe.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-cutlerbay-fl.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Town of Cutler Bay, FL'"
+pub-delta.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-detroitmi.escribemeetings.com,MI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Detroit, MI'"
+pub-dryden.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-durhamregion.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-eastgarafraxa.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-elliotlake.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-erin.escribemeetings.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Erin, TN'"
+pub-espanola.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-evans.escribemeetings.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-ezt.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-forterie.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-fredericton.escribemeetings.com,NB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-garfield.escribemeetings.com,CO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Garfield, CO'"
+pub-georgina.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-gloucesterva.escribemeetings.com,MA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Gloucester, MA'"
+pub-goderich.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-greensboro-nc.escribemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-grey.escribemeetings.com,MB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-guelph.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-hainescity.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Haines City, FL'"
+pub-haldimandcounty.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-haltonhills.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-healdsburg.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-hermosabeach.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-hollister.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-holmesbeachfl.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Holmes Beach, FL'"
+pub-horrycountyschools.escribemeetings.com,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-hpl.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-imperialbeach.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Imperial Beach, CA'"
+pub-kenora.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-kincardine.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-kitchener.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-kneehillcounty.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-lake-elsinore.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Lake Elsinore, CA'"
+pub-lakecountry.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-lambtonshores.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-lamesa.escribemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-leduc.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-lethbridge.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-llbc.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-mackenziebc.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-mapleridge.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-markham.escribemeetings.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Markham, IL'"
+pub-merrickville-wolford.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-milton.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-mississauga.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-missoula.escribemeetings.com,MT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-moosejaw.escribemeetings.com,SK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-morenovalley.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Moreno Valley, CA'"
+pub-morinville.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-morrobay.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Morro Bay, CA'"
+pub-mountpearl.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-nanaimo.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-newwestcity.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-northcowichan.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-northgrenville.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-northumberland.escribemeetings.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-notl.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-oakville.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-okotoks.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-oneinvestmentprogram.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-orangeville.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-orinda.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-orlando.escribemeetings.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Orlando, FL'"
+pub-oshawa.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-owasa.escribemeetings.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-owensound.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-oxfordcounty.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-palmdesert.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Palm Desert, CA'"
+pub-pasorobles.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-peelregion.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-penticton.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-peterborough.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-pickering.escribemeetings.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pickering, MO'"
+pub-pittmeadows.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-pleasanthillca.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-pointedward.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-portcoquitlam.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-portmoody.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-raleighnc.escribemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-rdco.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-reddeer.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-regionofwaterloo.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-richmond.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-richmondhill.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-rideaulakes.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-rmow.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-rockyview.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-sahuarita.escribemeetings.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-salmonarm.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-sandag.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-santamaria.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-saskatoon.escribemeetings.com,SK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-saugeenshores.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-scrd.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-scugog.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-sechelt.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-slocity.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-southamptonny.escribemeetings.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Southampton, NY'"
+pub-southstormont.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-sprucegrove.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-stjohns.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-strathcona.escribemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-strathroy-caradoc.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-stthomas.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-sturgeoncounty.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-surreyschools.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-tbdhu.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-tdsb.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-tetoncounty.escribemeetings.com,ID,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-thunderbay.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-tillsonburg.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-townofbonnyville.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-townofgrandvalley.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-townofmammothlakes.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Town of Mammoth Lakes, CA'"
+pub-townofws.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-townofyarmouth.escribemeetings.com,NS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-townshipofbrock.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-trca.escribemeetings.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-tuckerga.escribemeetings.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-uxbridge.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-vacaville.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-vaughan.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-victoria.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-wasagabeach.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-wellington.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-westgrey.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-westkelowna.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-whitby.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-winona.escribemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pub-yorbalinda.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pueblowestmetroco.portal.civicclerk.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+puntagorda.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Punta Gorda, FL'"
+pusd.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pvestates.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+pwcgov.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+qac.gov,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+quesnel.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+raleigh.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Raleigh, NC'"
+ramara.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ranchocordovaca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+randallcotx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+randolph-ma.municodemeetings.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ravalli-mt.granicus.com,MT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rdale.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+red-wing.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redbluffca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+reddingca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Redding, CA'"
+reddingcityca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redlandsca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redmond-or.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redmond.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redmondor.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redondo.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+redwingmn.portal.civicclerk.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Red Wing, MN'"
+redwoodcity-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+reflect-ccx.cablecast.tv,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Maple Grove, MN'"
+reno.primegov.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+reynoldsburgoh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rialtoca.cablecast.tv,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ricecountymn.portal.civicclerk.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Rice County, MN'"
+richardsontx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+richlandwa.new.swagit.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+richmondtx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+richmondva.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+richmondva.legistar.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+richwood-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ridemetro.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+riodell-ca.municodemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+riovista-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+riversideca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Riverside'"
+riversidecountyca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+riversidesheriff.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rivertoncity.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+roanokecountyva.iqm2.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rochestermn.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rockfordcityil.iqm2.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rockvillemd.granicus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Rockville, MD'"
+rollinghillsestatesca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+romega.gov,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rosemountmn.portal.civicclerk.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rosenbergtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rosevilleca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+roswellcityga.iqm2.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+roundrock.granicus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Round Rock, TX'"
+roundrockisdtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rowletttx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rpcity.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rpv.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+rutherfordcountync.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ryebrook.civicweb.net,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ryebrook.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ryeny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sacog.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+safetyharbor.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+saltlakecounty.portal.civicclerk.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+san-marcos-tx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sananselmo-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanantonio.primegov.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'San Antonio, TX'"
+sanantoniotx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'San Antonio, TX'"
+sanbernardino.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'County of San Bernardino, CA'"
+sanbruno.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sancarlosca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sandiego.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sandy.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sandyspringsga.portal.civicclerk.com,GA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sandy Springs, GA'"
+sandyutah.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanfrancisco.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanger-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanjoaquincountyca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanjoseca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanjuancowa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanleandro.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanmateo.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanmateocounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanpablo.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sanramonca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santa-paula.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santa-rosa.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santaclaracounty.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santaclaravta.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santamonica.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+santarosacofl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Milton, FL'"
+sarasotacounty.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sarasota County, FL'"
+saratoga.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sarnia.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+satellitebeach.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sauk.granicus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sauk County, WI'"
+sausalito.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sbcounty.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Santa Barbara County, CA'"
+sc-beaufort.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Beaufort, SC'"
+sc-clemson.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clemson, SC'"
+sc-clinton.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clinton, SC'"
+sc-fountaininn.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fountain Inn, SC'"
+sc-hollywood.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hollywood, SC'"
+sc-northmyrtlebeach.civicplus.com,SC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'North Myrtle Beach, SC'"
+scag.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+scarsdaleny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sccgov.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sccwi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+scottcountymn.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+scottsdale.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sd-spearfish.civicplus.com,SD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Spearfish, SD'"
+sd-vermillion.civicplus.com,SD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Vermillion, SD'"
+sealbeach.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sedonaaz.new.swagit.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sedrowoolleywa.portal.civicclerk.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sequim-wa.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sewardcountyks.new.swagit.com,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sfwmd.granicus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'S Fw, MD'"
+shastacountyca.new.swagit.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Shasta County, CA'"
+sheboygan-wi.municodemeetings.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+shelbytownmi.iqm2.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+shoreline.granicus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Shoreline, WA'"
+shoreviewmn.granicus.com,MN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Shoreview, MN'"
+sibfl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Sunny Isles Beach, FL'"
+silverthorne.civicweb.net,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+simivalley.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Simi Valley, CA'"
+siouxcityschools.new.swagit.com,IA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sjrwmd.iqm2.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+skagit.granicus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'County of Skagit, WA'"
+slc.primegov.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+slco.granicus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+slocounty.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+smithtownny.portal.civicclerk.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+smyrnacity.granicus.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+smyrnaga.primegov.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+snohomish.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+snowmassvillage.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+solano.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+somervillema.granicus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sonomacity.civicweb.net,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sonomamarintrain.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sooke.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+south-haven.granicus.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southamptonny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southbendin.primegov.com,IN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southelmonteca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southernshores-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southjordan-ut.municodemeetings.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southlaketx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+southorangetwpnj.portal.civicclerk.com,NJ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'South Orange Village Township, NJ'"
+sparks.granicus.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+spartanburgsc.portal.civicclerk.com,SC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+spb.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+springhillks.gov,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+squamish.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+staffordtx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+staugustinefl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stcharlesmo.new.swagit.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stearnscounty.civicweb.net,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stevenspoint.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sthelenaca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stjames-mn.municodemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stjohnscountyfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stlouismo.portal.civicclerk.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stlouispark.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stockbridgega.portal.civicclerk.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stonecrest-ga.municodemeetings.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stpete.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+stpetebeachfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'St. Pete Beach, FL'"
+stream.ci.concord.ca.us,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sublettecountywy.gov,WY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+suffolkva.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sullivancountyny.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sumterclerk.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sunnyvaleca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sunrisefl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Sunrise, FL'"
+sunvalley.granicus.com,ID,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+superior-wi.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+surpriseaz.portal.civicclerk.com,AZ,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Surprise, AZ'"
+suttercountyca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+swansboro-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+sylva-nc.municodemeetings.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+takomapark.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+talbot-md.granicus.com,MD,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Talbot County, MD'"
+tamaracfl.new.swagit.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tampabaywater.granicus.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tarrantcounty.primegov.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tavaresfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tavares, FL'"
+taylor.granicus.com,MI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+taylortx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tccd.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tcdsbpublishing.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+teanecktownnj.iqm2.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+temeculaca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Temecula, CA'"
+tempe.granicus.com,AZ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+thecolony.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+thurmont.granicus.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tillamookcoor.portal.civicclerk.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+timminson.new.swagit.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tintonfalls-nj.municodemeetings.com,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tn-hendersonville.civicplus.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Hendersonville, TN'"
+toaks.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tofino.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+toledo.granicus.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tomball-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tompkinscountyny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+torbay.civicweb.net,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+torrance.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townofbabylonny.gov,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townofchenango.civicweb.net,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townoffairfaxca.gov,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townoffrisco.primegov.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townofsurfsidefl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Town of Surfside, FL'"
+townoftiburon.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townofvulcan.civicweb.net,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+townspi.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tracy-ca.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tracy'"
+traviscotx.portal.civicclerk.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Travis County, TX'"
+trenthills.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+trophyclubtx.portal.civicclerk.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ttsa.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tularecounty.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tulsa-ok.granicus.com,OK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tumblerridge.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tumwater-wa.municodemeetings.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+turlockca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tustin.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Tustin, CA'"
+twinfalls.granicus.com,ID,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+twinfallsid.portal.civicclerk.com,ID,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Twin Falls, ID'"
+tx-cotulla.civicplus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+tx-denison.civicplus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Denison, TX'"
+tx-dentoncounty.civicplus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Denton County, TX'"
+tx-montgomery.civicplus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Montgomery, TX'"
+tx-shenandoah.civicplus.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Shenandoah, TX'"
+tylertx.primegov.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Tyler, TX'"
+uatccta.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+unioncity.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+unioncountync.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Union County, NC'"
+upperarlingtonoh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+upperdublin.granicus.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Upper Dublin, PA'"
+uppermarlboro-md.municodemeetings.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+uptexas.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ut-alpine.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Alpine, UT'"
+ut-ogden.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Ogden, UT'"
+ut-parowan.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Parowan, UT'"
+ut-payson.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Payson, UT'"
+ut-providence.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Providence, UT'"
+ut-provo.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Provo, UT'"
+ut-santaquin.civicplus.com,UT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+ut-woodscross.civicplus.com,UT,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Woods Cross, UT'"
+va-bedford.civicplus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+va-crewe.civicplus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Crewe, VA'"
+va-radford.civicplus.com,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Radford, VA'"
+vacaville.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+valdez.granicus.com,AK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+vallejoca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+vbhil.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+venice.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Venice, FL'"
+ventura.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+victorville.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+victorvilleca.primegov.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+vienna-va.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+villageoflombard.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+virginia-house.granicus.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+virginiabeach.cablecast.tv,VA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Virginia Beach, VA'"
+visalia.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wa-bothell.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Bothell, WA'"
+wa-bremerton.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Bremerton, WA'"
+wa-buckley.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Buckley, WA'"
+wa-duvall.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Duvall, WA'"
+wa-milton.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Milton, WA'"
+wa-oakharbor.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Oak Harbor, WA'"
+wa-westrichland.civicplus.com,WA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'West Richland, WA'"
+wacocitytx.iqm2.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wake.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wake County, NC'"
+walnutcreek.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+waltoncounty-ga.municodemeetings.com,GA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wappingertownny.iqm2.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+warringtonpa.new.swagit.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wasagabeach.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+washingtonco.granicus.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+washingtoncountyva.iqm2.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+washoe-nv.granicus.com,NV,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Washoe County, NV'"
+waukesha.granicus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Waukesha, WI'"
+wauwatosacitywi.granicus.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+waxhaw.civicweb.net,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wellington.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Village of Wellington, FL'"
+wentzvillemo.iqm2.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westbasin.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Carson, CA'"
+westchester-il.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westchestercountyny.granicus.com,NY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Westchester County, NY'"
+westfargond.portal.civicclerk.com,ND,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westkelownabc.new.swagit.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westlakevillage.granicus.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Westlake Village, CA'"
+westlinn.granicus.com,OR,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westmelbourne.gov,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westminsterca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westonwi.gov,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westperth.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westspringfieldma.granicus.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+westwendovernv.iqm2.com,NV,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wetaskiwin.civicweb.net,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+whatcom.granicus.com,WA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wheatridge.granicus.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+whitehalloh.portal.civicclerk.com,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+whiteplainsny.new.swagit.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+whitewater-wi.municodemeetings.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+whitewaterregion.civicweb.net,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wi-browndeer.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Brown Deer, WI'"
+wi-cottagegrove.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cottage Grove, WI'"
+wi-crossplains.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cross Plains, WI'"
+wi-fredonia.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Fredonia, WI'"
+wi-juneau.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Juneau, WI'"
+wi-sawyercounty.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Sawyer County, WI'"
+wi-stoughton.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Stoughton, WI'"
+wi-verona.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Verona, WI'"
+wi-whitefishbay.civicplus.com,WI,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Whitefish Bay, WI'"
+willard-mo.municodemeetings.com,MO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+williamslake.civicweb.net,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+willowpark-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wilmington-nc.cablecast.tv,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wilmington.granicus.com,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wilmingtonde.new.swagit.com,DE,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wilmingtonohio.gov,OH,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wilsoncountyschoolstn.new.swagit.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wilson County Schools, TN'"
+wiltonmanorsfl.portal.civicclerk.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Wilton Manors, FL'"
+windcresttx.granicus.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+windhamweb.granicus.com,ME,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+windsor-ca.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+windsor-ct.granicus.com,CT,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+winnebagocowi.portal.civicclerk.com,WI,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+winston-salem.granicus.com,NC,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Winston-Salem, NC'"
+winterparkfl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+winterspringsfl.granicus.com,FL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'City of Winter Springs, FL'"
+woodlandca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+woodlandstx.new.swagit.com,TX,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'The Woodlands Township, TX'"
+woodstockil.granicus.com,IL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wrightcountymn.gov,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.cityofbelvedere.org,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.cityofmontclair.org,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.cityofsanrafael.org,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.colma.ca.gov,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.cravencountync.gov,NC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.hellamtownship.gov,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.holyoke.org,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.johnsoncitytx.org,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.newcastlede.gov,DE,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.orangecountyny.gov,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.somervillenj.org,NJ,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.westhamptonbeach.gov,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+www.wichita.gov,KS,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+wylie-tx.municodemeetings.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yolocountyca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yorbalinda.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yorkcountyva.new.swagit.com,VA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yorktownny.granicus.com,NY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yountvilleca.new.swagit.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yubacityca.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Yuba City, CA'"
+yuccavalleyca.iqm2.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
+yuccavalleyca.portal.civicclerk.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr

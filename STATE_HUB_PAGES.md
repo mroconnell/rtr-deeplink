@@ -284,11 +284,38 @@ re-resolving.
 
 ### Government grouping
 
-`archive/utils/gov_classify.py` sorts each government into County /
-City / School / Agency. It trusts `MeetingPage.meeting_body` where that
-says something conclusive, falls back to the jurisdiction name, and
-**defaults conservatively to city** — a special district misfiled as a
-city is a mild inaccuracy; a city misfiled as a county reads as an error.
+`archive/utils/gov_groups.py` maps each page's stored `gov_type` — the
+Census-of-Governments type the registry assigned at ingest — to a
+heading: State government / Counties & regions / Cities & towns / School
+districts / Agencies & special districts / Courts / Other public bodies.
+It is a lookup, not a guess. The only judgement left is which types
+share a heading: `municipality` and `township` do, because a reader
+looking for their town does not know or care whether Census codes it as
+a place or a county subdivision.
+
+**What this replaced, and why (WO-99, 2026-09-02).** `gov_classify.py`
+guessed the same thing from a regex over the display *name*, trusting
+`meeting_body` where it looked conclusive and **defaulting
+conservatively to city** — on the reasoning that "a special district
+misfiled as a city is a mild inaccuracy; a city misfiled as a county
+reads as an error". The reasoning was sound and the results were not.
+Run against the live corpus on 2026-09-02 it filed "Broward County
+Public Schools, FL" and "West County Wastewater District, CA" under
+**Counties & regions** (its county regex ran first) and "Minnesota
+Senate, MN" under **Cities & towns** (its default); `/state/all-50`
+showed ~17 "X County Public Schools" rows under the counties heading,
+and the module disagreed with the registry on 388 of 5,929 rows. Its
+conservative default is also what put 214 unclassifiable names under
+Cities & towns — hence "Other public bodies", which says what is
+actually known.
+
+The `state` heading needed one extra thing to be reachable at all:
+decision D1 makes the State of California one government whose Senate
+and departments are `meeting_body` rows under it, so its display name is
+"State of California" with no ", CA" suffix for `/state/*`'s anchored
+LIKE to match. `crud._state_scope_condition()` matches that government
+by its `us:state:` / `ca:pr:` id as a second arm. Found by looking at
+the rendered page, not by a test.
 
 ### Layout
 

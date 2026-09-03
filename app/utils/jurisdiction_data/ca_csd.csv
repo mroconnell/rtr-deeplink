@@ -1,0 +1,3693 @@
+sgc_code,name,csd_type,province
+1001105,Portugal Cove South,T,NL
+1001113,Trepassey,T,NL
+1001120,St. Shott's,T,NL
+1001126,Cape Broyle,T,NL
+1001131,Renews-Cappahayden,T,NL
+1001136,Fermeuse,T,NL
+1001140,Port Kirwan,T,NL
+1001144,Aquaforte,T,NL
+1001149,Ferryland,T,NL
+1001169,St. Vincent's-St. Stephen's-Peter's River,T,NL
+1001174,Gaskiers-Point La Haye,T,NL
+1001178,St. Mary's,T,NL
+1001181,Riverhead,T,NL
+1001186,Admirals Beach,T,NL
+1001192,St. Joseph's,T,NL
+1001197,Mount Carmel-Mitchells Brook-St. Catherine's,T,NL
+1001207,Colinet,T,NL
+1001219,Branch,T,NL
+1001225,Point Lance,T,NL
+1001228,St. Bride's,T,NL
+1001240,Placentia,T,NL
+1001254,Fox Harbour,T,NL
+1001263,Long Harbour-Mount Arlington Heights,T,NL
+1001267,Southern Harbour,T,NL
+1001270,Arnold's Cove,T,NL
+1001274,Come By Chance,T,NL
+1001277,Sunnyside,T,NL
+1001281,Chance Cove,T,NL
+1001285,Norman's Cove-Long Cove,T,NL
+1001289,Chapel Arm,T,NL
+1001298,Whitbourne,T,NL
+1001308,Whiteway,T,NL
+1001312,Heart's Delight-Islington,T,NL
+1001316,Heart's Desire,T,NL
+1001325,Heart's Content,T,NL
+1001328,New Perlican,T,NL
+1001332,Winterton,T,NL
+1001335,Hant's Harbour,T,NL
+1001343,Old Perlican,T,NL
+1001347,Bay de Verde,T,NL
+1001352,Small Point-Adam's Cove-Blackhead-Broad Cove,T,NL
+1001361,Salmon Cove,T,NL
+1001365,Victoria,T,NL
+1001370,Carbonear,T,NL
+1001375,Bryant's Cove,T,NL
+1001379,Harbour Grace,T,NL
+1001385,Upper Island Cove,T,NL
+1001394,Bishop's Cove,T,NL
+1001396,Spaniard's Bay,T,NL
+1001409,Bay Roberts,T,NL
+1001426,North River,T,NL
+1001429,Clarke's Beach,T,NL
+1001434,South River,T,NL
+1001437,Cupids,T,NL
+1001446,Brigus,T,NL
+1001456,Colliers,T,NL
+1001461,Conception Harbour,T,NL
+1001464,Avondale,T,NL
+1001469,Harbour Main-Chapel's Cove-Lakeview,T,NL
+1001472,Holyrood,T,NL
+1001485,Conception Bay South,T,NL
+1001494,Wabana,T,NL
+1001504,Portugal Cove-St. Philip's,T,NL
+1001505,Pouch Cove,T,NL
+1001507,Flatrock,T,NL
+1001509,Torbay,T,NL
+1001511,Logy Bay-Middle Cove-Outer Cove,T,NL
+1001512,Bauline,T,NL
+1001517,Paradise,T,NL
+1001519,St. John's,CY,NL
+1001542,Mount Pearl,CY,NL
+1001551,Petty Harbour-Maddox Cove,T,NL
+1001557,Bay Bulls,T,NL
+1001559,Witless Bay,T,NL
+1002002,Lewin's Cove,T,NL
+1002005,Burin,T,NL
+1002008,St. Lawrence,T,NL
+1002011,Lawn,T,NL
+1002012,Lamaline,T,NL
+1002013,Lord's Cove,T,NL
+1002014,Point May,T,NL
+1002015,Point au Gaul,T,NL
+1002017,Frenchman's Cove,T,NL
+1002018,Fortune,T,NL
+1002019,Grand Bank,T,NL
+1002021,Garnish,T,NL
+1002023,Winterland,T,NL
+1002024,Marystown,T,NL
+1002025,Fox Cove-Mortier,T,NL
+1002027,Bay L'Argent,T,NL
+1002030,Grand Le Pierre,T,NL
+1002033,Rushoon,T,NL
+1002034,Parkers Cove,T,NL
+1002036,Terrenceville,T,NL
+1002037,Red Harbour,T,NL
+1002039,English Harbour East,T,NL
+1002040,Baine Harbour,T,NL
+1002041,St. Bernard's-Jacques Fontaine,T,NL
+1002055,Little Bay East,T,NL
+1003002,Rencontre East,T,NL
+1003003,St. Jacques-Coomb's Cove,T,NL
+1003004,Belleoram,T,NL
+1003005,Pool's Cove,T,NL
+1003008,Harbour Breton,T,NL
+1003010,Seal Cove (Fortune Bay),T,NL
+1003011,Hermitage-Sandyville,T,NL
+1003012,Gaultois,T,NL
+1003018,Milltown-Head of Bay d'Espoir,T,NL
+1003019,St. Alban's,T,NL
+1003020,Morrisville,T,NL
+1003026,Ramea,T,NL
+1003028,Burgeo,T,NL
+1003032,Isle aux Morts,T,NL
+1003033,Burnt Islands,T,NL
+1003034,Channel-Port aux Basques,T,NL
+1003045,Rose Blanche-Harbour le Cou,T,NL
+1004013,St. George's,T,NL
+1004017,Gallants,T,NL
+1004018,Stephenville Crossing,T,NL
+1004019,Stephenville,T,NL
+1004020,Kippens,T,NL
+1004021,Port au Port East,T,NL
+1004033,Cape St. George,T,NL
+1004037,Lourdes,T,NL
+1004042,Port au Port West-Aguathuna-Felix Cove,T,NL
+1005004,Deer Lake,T,NL
+1005005,Jackson's Arm,T,NL
+1005006,Howley,T,NL
+1005008,Hampden,T,NL
+1005009,Reidville,T,NL
+1005011,Steady Brook,T,NL
+1005012,Pasadena,T,NL
+1005014,Cormack,T,NL
+1005015,Gillams,T,NL
+1005017,Massey Drive,T,NL
+1005018,Corner Brook,CY,NL
+1005020,Humber Arm South,T,NL
+1005022,McIvers,T,NL
+1005023,Cox's Cove,T,NL
+1005024,Lark Harbour,T,NL
+1005025,Meadows,T,NL
+1005028,Hughes Brook,T,NL
+1005030,Irishtown-Summerside,T,NL
+1005033,Mount Moriah,T,NL
+1005035,York Harbour,T,NL
+1006003,Norris Arm,T,NL
+1006009,Gander,T,NL
+1006011,Appleton,T,NL
+1006012,Glenwood,T,NL
+1006015,Northern Arm,T,NL
+1006017,Grand Falls-Windsor,T,NL
+1006019,Bishop's Falls,T,NL
+1006021,Peterview,T,NL
+1006022,Botwood,T,NL
+1006026,Badger,T,NL
+1006028,Millertown,T,NL
+1006031,Buchans,T,NL
+1007013,Clarenville,T,NL
+1007015,Trinity (Trinity Bay),T,NL
+1007016,Port Rexton,T,NL
+1007020,Elliston,T,NL
+1007022,Trinity Bay North,T,NL
+1007023,Bonavista,T,NL
+1007025,Keels,T,NL
+1007026,Duntara,T,NL
+1007027,King's Cove,T,NL
+1007032,Musgravetown,T,NL
+1007036,Port Blandford,T,NL
+1007037,Traytown,T,NL
+1007039,Sandy Cove,T,NL
+1007040,Terra Nova,T,NL
+1007041,Happy Adventure,T,NL
+1007042,Eastport,T,NL
+1007043,Sandringham,T,NL
+1007044,Glovertown,T,NL
+1007046,Salvage,T,NL
+1007047,Gambo,T,NL
+1007048,St. Brendan's,T,NL
+1007049,Hare Bay,T,NL
+1007050,Centreville-Wareham-Trinity,T,NL
+1007054,Greenspond,T,NL
+1007057,Dover,T,NL
+1007060,New-Wes-Valley,T,NL
+1007067,Indian Bay,T,NL
+1008004,Lumsden,T,NL
+1008006,Musgrave Harbour,T,NL
+1008011,Carmanville,T,NL
+1008024,Change Islands,T,NL
+1008029,Crow Head,T,NL
+1008032,Cottlesville,T,NL
+1008033,Summerford,T,NL
+1008035,Twillingate,T,NL
+1008037,Campbellton,T,NL
+1008038,Birchy Bay,T,NL
+1008039,Comfort Cove-Newstead,T,NL
+1008040,Baytona,T,NL
+1008043,Embree,T,NL
+1008044,Lewisporte,T,NL
+1008045,Little Burnt Bay,T,NL
+1008047,Point of Bay,T,NL
+1008048,Leading Tickles,T,NL
+1008049,Point Leamington,T,NL
+1008053,Pilley's Island,T,NL
+1008054,Triton,T,NL
+1008055,Brighton,T,NL
+1008056,Lushes Bight-Beaumont-Beaumont North,T,NL
+1008059,South Brook,T,NL
+1008060,Robert's Arm,T,NL
+1008061,Springdale,T,NL
+1008062,Port Anson,T,NL
+1008063,Little Bay,T,NL
+1008064,Little Bay Islands,T,NL
+1008066,Beachside,T,NL
+1008069,King's Point,T,NL
+1008070,Nippers Harbour,T,NL
+1008071,Burlington,T,NL
+1008072,Middle Arm,T,NL
+1008073,Tilt Cove,T,NL
+1008075,Fleur de Lys,T,NL
+1008076,LaScie,T,NL
+1008077,Brent's Cove,T,NL
+1008078,Pacquet,T,NL
+1008079,Baie Verte,T,NL
+1008091,Seal Cove (White Bay),T,NL
+1008092,Coachman's Cove,T,NL
+1008093,Westport,T,NL
+1008095,Ming's Bight,T,NL
+1008096,Woodstock,T,NL
+1008098,Miles Cove,T,NL
+1008099,Fogo Island,T,NL
+1009004,Englee,T,NL
+1009007,Roddickton-Bide Arm,T,NL
+1009008,Conche,T,NL
+1009010,Trout River,T,NL
+1009011,"Woody Point, Bonne Bay",T,NL
+1009012,Norris Point,T,NL
+1009013,Rocky Harbour,T,NL
+1009015,Daniel's Harbour,T,NL
+1009016,Cow Head,T,NL
+1009017,Parson's Pond,T,NL
+1009018,Hawke's Bay,T,NL
+1009019,Port Saunders,T,NL
+1009020,St. Pauls,T,NL
+1009022,Port au Choix,T,NL
+1009023,Anchor Point,T,NL
+1009024,Flower's Cove,T,NL
+1009026,Bird Cove,T,NL
+1009028,Main Brook,T,NL
+1009029,St. Anthony,T,NL
+1009030,Glenburnie-Birchy Head-Shoal Brook,T,NL
+1009032,St. Lunaire-Griquet,T,NL
+1009034,Cook's Harbour,T,NL
+1009035,Raleigh,T,NL
+1009037,Sally's Cove,T,NL
+1009039,Goose Cove East,T,NL
+1009042,Bellburns,T,NL
+1009048,River of Ponds,T,NL
+1010002,L'Anse au Loup,T,NL
+1010003,Red Bay,T,NL
+1010004,L'Anse-au-Clair,T,NL
+1010005,Forteau,T,NL
+1010006,West St. Modeste,T,NL
+1010007,Pinware,T,NL
+1010009,Port Hope Simpson,T,NL
+1010010,St. Lewis,T,NL
+1010011,Mary's Harbour,T,NL
+1010012,"Cartwright, Labrador",T,NL
+1010013,Charlottetown (Labrador),T,NL
+1010022,North West River,T,NL
+1010025,Happy Valley-Goose Bay,T,NL
+1010032,Labrador City,T,NL
+1010034,Wabush,T,NL
+1011010,Rigolet,T,NL
+1011015,Postville,T,NL
+1011020,Makkovik,T,NL
+1011030,Hopedale,T,NL
+1011035,Nain,T,NL
+1101002,Murray Harbour,RM,PE
+1101003,Murray Harbour,FD,PE
+1101004,Murray River,RM,PE
+1101005,"Murray River, Part 1",FD,PE
+1101020,Cardigan,FD,PE
+1101025,Central Kings,FD,PE
+1101027,Central Kings,RM,PE
+1101030,Annandale - Little Pond - Howe Bay,RM,PE
+1101033,Souris West,RM,PE
+1101035,Souris,FD,PE
+1101036,Souris,T,PE
+1101037,St. Peters,FD,PE
+1101040,Eastern Kings,RM,PE
+1101043,Morell,FD,PE
+1101044,St. Peters Bay,RM,PE
+1101045,Three Rivers,T,PE
+1101048,Morell,RM,PE
+1101052,"East River, Part 2",FD,PE
+1102002,Belfast,RM,PE
+1102003,"Murray River, Part 2",FD,PE
+1102005,Montague,FD,PE
+1102010,Crossroads,FD,PE
+1102011,Hazelbrook,RM,PE
+1102013,Alexandra,RM,PE
+1102015,Johnstons River,FD,PE
+1102016,Vernon River,FD,PE
+1102017,New Glasgow,FD,PE
+1102018,"Crapaud, Part 1",FD,PE
+1102019,North Rustico,FD,PE
+1102020,North Wiltshire,RM,PE
+1102021,Hampshire,RM,PE
+1102022,Kingston,RM,PE
+1102032,Victoria,RM,PE
+1102034,Crapaud,RM,PE
+1102035,Darlington,RM,PE
+1102037,Clyde River,RM,PE
+1102040,Miltonvale Park,RM,PE
+1102043,Hunter River,RM,PE
+1102045,"Stanley Bridge, Hope River, Bayview, Cavendish and North Rustico",RMU,PE
+1102046,North Rustico,T,PE
+1102050,Union Road,RM,PE
+1102051,Breadalbane,RM,PE
+1102055,Brackley,RM,PE
+1102059,Mount Stewart,RM,PE
+1102061,York,RM,PE
+1102064,"East River, Part 1",FD,PE
+1102066,"Kensington, Part 2",FD,PE
+1102067,North Shore,RM,PE
+1102068,West River,RM,PE
+1102069,Winsloe North,FD,PE
+1102070,Warren Grove,RM,PE
+1102071,New London,FD,PE
+1102072,North River,FD,PE
+1102073,North Shore,FD,PE
+1102075,Charlottetown,CY,PE
+1102080,Stratford,T,PE
+1102085,Cornwall,T,PE
+1103002,Borden,FD,PE
+1103003,Kinkora,FD,PE
+1103004,"Crapaud, Part 2",FD,PE
+1103005,Borden-Carleton,T,PE
+1103007,Malpeque Bay,RM,PE
+1103008,Kinkora,RM,PE
+1103014,Kensington,T,PE
+1103015,Bedeque and Area,RM,PE
+1103018,Sherbrooke,RM,PE
+1103020,Wellington,FD,PE
+1103021,Tyne Valley,FD,PE
+1103022,St. Nicholas,RM,PE
+1103023,Linkletter,RM,PE
+1103024,Miscouche,RM,PE
+1103025,Summerside,CY,PE
+1103027,Abram-Village,RM,PE
+1103029,Wellington,RM,PE
+1103033,Tyne Valley,RM,PE
+1103039,Lot 11 and Area,RM,PE
+1103040,Miscouche,FD,PE
+1103042,O'Leary,T,PE
+1103043,Central Prince,RM,PE
+1103050,Northport,RM,PE
+1103052,Alberton,T,PE
+1103053,St. Felix,RM,PE
+1103055,Greenmount-Montrose,RM,PE
+1103057,St. Louis,RM,PE
+1103059,Tignish,T,PE
+1103060,Tignish Shore,RM,PE
+1103061,Tignish,FD,PE
+1103062,Miminegash,RM,PE
+1103063,Miminegash,FD,PE
+1103064,Alberton,FD,PE
+1103065,O'Leary,FD,PE
+1103066,West Point,FD,PE
+1103067,"Kensington, Part 1",FD,PE
+1103068,Victoria,FD,PE
+1201001,Barrington,MD,NS
+1201004,Clark's Harbour,T,NS
+1201006,Shelburne,MD,NS
+1201008,Shelburne,T,NS
+1201009,Lockeport,T,NS
+1202001,Argyle,MD,NS
+1202004,Yarmouth,MD,NS
+1202006,Yarmouth,T,NS
+1203001,Clare,MD,NS
+1203004,Digby,MD,NS
+1203006,Digby,T,NS
+1204010,Queens,RGM,NS
+1205001,"Annapolis, Subd. D",SC,NS
+1205004,"Annapolis, Subd. A",SC,NS
+1205008,Annapolis Royal,T,NS
+1205009,"Annapolis, Subd. B",SC,NS
+1205014,"Annapolis, Subd. C",SC,NS
+1205016,Middleton,T,NS
+1206001,Lunenburg,MD,NS
+1206004,Bridgewater,T,NS
+1206006,Lunenburg,T,NS
+1206008,Mahone Bay,T,NS
+1206009,Chester,MD,NS
+1207001,"Kings, Subd. A",SC,NS
+1207004,Berwick,T,NS
+1207011,"Kings, Subd. C",SC,NS
+1207012,Kentville,T,NS
+1207016,"Kings, Subd. B",SC,NS
+1207021,"Kings, Subd. D",SC,NS
+1207024,Wolfville,T,NS
+1208003,West Hants,RM,NS
+1208008,East Hants,MD,NS
+1209034,Halifax,RGM,NS
+1210001,"Colchester, Subd. C",SC,NS
+1210002,Stewiacke,T,NS
+1210006,Truro,T,NS
+1210008,"Colchester, Subd. B",SC,NS
+1210012,"Colchester, Subd. A",SC,NS
+1211001,"Cumberland, Subd. A",SC,NS
+1211006,"Cumberland, Subd. B",SC,NS
+1211009,"Cumberland, Subd. C",SC,NS
+1211011,Amherst,T,NS
+1211012,Oxford,T,NS
+1211014,"Cumberland, Subd. D",SC,NS
+1212001,"Pictou, Subd. A",SC,NS
+1212004,Pictou,T,NS
+1212006,"Pictou, Subd. B",SC,NS
+1212008,Westville,T,NS
+1212009,Stellarton,T,NS
+1212011,"Pictou, Subd. C",SC,NS
+1212014,New Glasgow,T,NS
+1212016,Trenton,T,NS
+1213001,St. Mary's,MD,NS
+1213004,Guysborough,MD,NS
+1213008,Mulgrave,T,NS
+1214001,"Antigonish, Subd. A",SC,NS
+1214002,Antigonish,T,NS
+1214006,"Antigonish, Subd. B",SC,NS
+1215001,"Inverness, Subd. C",SC,NS
+1215002,Port Hawkesbury,T,NS
+1215006,"Inverness, Subd. B",SC,NS
+1215011,"Inverness, Subd. A",SC,NS
+1216001,"Richmond, Subd. C",SC,NS
+1216006,"Richmond, Subd. A",SC,NS
+1216011,"Richmond, Subd. B",SC,NS
+1217030,Cape Breton,RGM,NS
+1218001,"Victoria, Subd. B",SC,NS
+1218006,"Victoria, Subd. A",SC,NS
+1301001,Saint Martins,P,NB
+1301002,St. Martins,VL,NB
+1301004,Simonds,P,NB
+1301006,Saint John,C,NB
+1301016,Musquash,P,NB
+1302001,Grand Manan,P,NB
+1302004,Campobello Island,RCR,NB
+1302006,West Isles,P,NB
+1302008,Lepreau,P,NB
+1302011,Pennfield,P,NB
+1302012,Blacks Harbour,VL,NB
+1302014,Clarendon,P,NB
+1302016,Saint George,P,NB
+1302018,St. George,TV,NB
+1302021,Saint Patrick,P,NB
+1302024,Saint Andrews,P,NB
+1302026,Saint Andrews,TV,NB
+1302028,Saint Croix,P,NB
+1302031,Dufferin,P,NB
+1302034,Saint Stephen,P,NB
+1302037,St. Stephen,TV,NB
+1302039,Saint James,P,NB
+1302042,Saint David,P,NB
+1302044,Dumbarton,P,NB
+1302052,Grand Manan,VL,NB
+1303001,Blissville,P,NB
+1303004,Gladstone,P,NB
+1303005,Tracy,VL,NB
+1303006,Fredericton Junction,VL,NB
+1303008,Lincoln,P,NB
+1303011,Burton,P,NB
+1303012,Oromocto,TV,NB
+1303014,Sheffield,P,NB
+1303016,Maugerville,P,NB
+1303018,Northfield,P,NB
+1304001,Petersville,P,NB
+1304004,Gagetown,P,NB
+1304005,Gagetown,VL,NB
+1304006,Hampstead,P,NB
+1304008,Wickham,P,NB
+1304011,Cambridge,P,NB
+1304013,Cambridge-Narrows,VL,NB
+1304014,Johnston,P,NB
+1304016,Brunswick,P,NB
+1304018,Waterborough,P,NB
+1304021,Canning,P,NB
+1304022,Minto,VL,NB
+1304024,Chipman,P,NB
+1304025,Chipman,VL,NB
+1305001,Hammond,P,NB
+1305004,Upham,P,NB
+1305006,Hampton,P,NB
+1305007,Hampton,TV,NB
+1305008,Rothesay,P,NB
+1305011,Westfield,P,NB
+1305014,Kingston,P,NB
+1305015,Grand Bay-Westfield,TV,NB
+1305016,Norton,P,NB
+1305018,Norton,VL,NB
+1305021,Sussex,P,NB
+1305022,Sussex,TV,NB
+1305023,Sussex Corner,VL,NB
+1305024,Waterford,P,NB
+1305026,Cardwell,P,NB
+1305028,Havelock,P,NB
+1305031,Studholm,P,NB
+1305034,Springfield,P,NB
+1305036,Kars,P,NB
+1305038,Greenwich,P,NB
+1305045,Rothesay,TV,NB
+1305057,Quispamsis,TV,NB
+1306001,Hopewell,P,NB
+1306003,Riverside-Albert,VL,NB
+1306004,Harvey,P,NB
+1306006,Alma,VL,NB
+1306007,Alma,P,NB
+1306008,Elgin,P,NB
+1306011,Hillsborough,P,NB
+1306014,Coverdale,P,NB
+1306020,Riverview,TV,NB
+1306025,Hillsborough,VL,NB
+1307001,Westmorland,P,NB
+1307002,Port Elgin,VL,NB
+1307004,Botsford,P,NB
+1307005,Beaubassin East,RCR,NB
+1307007,Cap-Pelé,VL,NB
+1307008,Sackville,P,NB
+1307009,Sackville,TV,NB
+1307011,Dorchester,P,NB
+1307012,Dorchester,VL,NB
+1307013,Memramcook,VL,NB
+1307016,Shediac,P,NB
+1307019,Moncton,P,NB
+1307022,Moncton,C,NB
+1307024,Salisbury,P,NB
+1307028,Salisbury,VL,NB
+1307029,Petitcodiac,VL,NB
+1307045,Dieppe,C,NB
+1307052,Shediac,TV,NB
+1308001,Dundas,P,NB
+1308002,Cocagne,RCR,NB
+1308004,Wellington,P,NB
+1308005,Bouctouche,TV,NB
+1308006,Saint Mary,P,NB
+1308007,Saint-Antoine,VL,NB
+1308008,Saint-Paul,P,NB
+1308010,Harcourt,P,NB
+1308012,Huskisson,P,NB
+1308014,Weldford,P,NB
+1308016,Richibucto,P,NB
+1308017,Rexton,VL,NB
+1308018,Richibucto,TV,NB
+1308019,Saint-Charles,P,NB
+1308021,Saint-Louis,P,NB
+1308022,Saint-Louis de Kent,VL,NB
+1308024,Acadieville,P,NB
+1308026,Carleton,P,NB
+1309001,Hardwicke,P,NB
+1309004,Glenelg,P,NB
+1309006,Chatham,P,NB
+1309011,Derby,P,NB
+1309014,Nelson,P,NB
+1309016,Rogersville,P,NB
+1309017,Rogersville,VL,NB
+1309018,Blackville,P,NB
+1309019,Blackville,VL,NB
+1309021,Blissfield,P,NB
+1309022,Doaktown,VL,NB
+1309026,Southesk,P,NB
+1309027,Upper Miramichi,RCR,NB
+1309028,Northesk,P,NB
+1309031,Newcastle,P,NB
+1309036,Alnwick,P,NB
+1309038,Neguac,VL,NB
+1309050,Miramichi,C,NB
+1310001,New Maryland,P,NB
+1310002,New Maryland,VL,NB
+1310004,Manners Sutton,P,NB
+1310005,Harvey,VL,NB
+1310006,McAdam,VL,NB
+1310007,McAdam,P,NB
+1310008,North Lake,P,NB
+1310011,Canterbury,P,NB
+1310012,Canterbury,VL,NB
+1310013,Meductic,VL,NB
+1310014,Dumfries,P,NB
+1310016,Prince William,P,NB
+1310017,Hanwell,RCR,NB
+1310018,Kingsclear,P,NB
+1310021,Queensbury,P,NB
+1310024,Southampton,P,NB
+1310025,Millville,VL,NB
+1310026,Bright,P,NB
+1310028,Douglas,P,NB
+1310031,Saint Marys,P,NB
+1310032,Fredericton,C,NB
+1310036,Stanley,P,NB
+1310037,Stanley,VL,NB
+1310054,Nackawic,TV,NB
+1311001,Richmond,P,NB
+1311004,Woodstock,P,NB
+1311006,Woodstock,TV,NB
+1311008,Northampton,P,NB
+1311011,Brighton,P,NB
+1311012,Hartland,TV,NB
+1311014,Wakefield,P,NB
+1311018,Wilmot,P,NB
+1311019,Centreville,VL,NB
+1311021,Simonds,P,NB
+1311024,Peel,P,NB
+1311026,Aberdeen,P,NB
+1311027,Florenceville-Bristol,TV,NB
+1311028,Kent,P,NB
+1311030,Bath,VL,NB
+1311031,Wicklow,P,NB
+1312001,Andover,P,NB
+1312002,Aroostook,VL,NB
+1312004,Perth,P,NB
+1312006,Perth-Andover,VL,NB
+1312008,Gordon,P,NB
+1312009,Plaster Rock,VL,NB
+1312011,Lorne,P,NB
+1312014,Denmark,P,NB
+1312016,Grand Falls,P,NB
+1312019,Grand Falls,TV,NB
+1312021,Drummond,P,NB
+1312023,Drummond,VL,NB
+1313002,Saint-André,RCR,NB
+1313004,Saint-Léonard,P,NB
+1313006,Saint-Léonard,TV,NB
+1313008,Notre-Dame-de-Lourdes,P,NB
+1313011,Sainte-Anne,P,NB
+1313012,Sainte-Anne-de-Madawaska,VL,NB
+1313014,Rivière-Verte,VL,NB
+1313015,Rivière-Verte,P,NB
+1313018,Saint-Basile,P,NB
+1313022,Saint-Joseph,P,NB
+1313024,Saint-Jacques,P,NB
+1313027,Edmundston,C,NB
+1313028,Madawaska,P,NB
+1313031,Haut-Madawaska,RCR,NB
+1313037,Lac Baker,VL,NB
+1314001,Durham,P,NB
+1314003,Colborne,P,NB
+1314004,Charlo,VL,NB
+1314005,Balmoral,P,NB
+1314006,Balmoral,VL,NB
+1314008,Dalhousie,P,NB
+1314011,Eel River Crossing,VL,NB
+1314012,Addington,P,NB
+1314013,Atholville,VL,NB
+1314014,Campbellton,C,NB
+1314015,Tide Head,VL,NB
+1314016,Eldon,P,NB
+1314017,Dalhousie,TV,NB
+1314020,Kedgwick,RCR,NB
+1314021,Saint-Quentin,P,NB
+1314022,Saint-Quentin,TV,NB
+1314025,Belledune,VL,NB
+1315002,Tracadie,MRM,NB
+1315006,Allardville,P,NB
+1315008,Bathurst,P,NB
+1315011,Bathurst,C,NB
+1315012,Beresford,P,NB
+1315013,Pointe-Verte,VL,NB
+1315014,Petit-Rocher,VL,NB
+1315015,Beresford,TV,NB
+1315016,New Bandon,P,NB
+1315017,Saint-Léolin,VL,NB
+1315019,Paquetville,P,NB
+1315020,Paquetville,VL,NB
+1315021,Saint-Isidore,P,NB
+1315022,Saint-Isidore,VL,NB
+1315024,Inkerman,P,NB
+1315026,Caraquet,P,NB
+1315027,Bas-Caraquet,VL,NB
+1315028,Caraquet,TV,NB
+1315029,Shippagan,P,NB
+1315030,Le Goulet,VL,NB
+1315031,Shippagan,TV,NB
+1315032,Lamèque,TV,NB
+1315033,Sainte-Marie-Saint-Raphaël,VL,NB
+1315036,Bertrand,VL,NB
+1315037,Nigadoo,VL,NB
+1315038,Grande-Anse,VL,NB
+1315040,Maisonnette,VL,NB
+2401023,Les Îles-de-la-Madeleine,MÉ,QC
+2401042,Grosse-Île,MÉ,QC
+2402005,Percé,V,QC
+2402010,Sainte-Thérèse-de-Gaspé,MÉ,QC
+2402015,Grande-Rivière,V,QC
+2402028,Chandler,V,QC
+2402047,Port-Daniel--Gascons,MÉ,QC
+2403005,Gaspé,V,QC
+2403010,Cloridorme,CT,QC
+2403015,Petite-Vallée,MÉ,QC
+2403020,Grande-Vallée,MÉ,QC
+2403025,Murdochville,V,QC
+2404005,Sainte-Madeleine-de-la-Rivière-Madeleine,MÉ,QC
+2404010,Saint-Maxime-du-Mont-Louis,MÉ,QC
+2404015,Mont-Saint-Pierre,VL,QC
+2404020,Rivière-à-Claude,MÉ,QC
+2404025,Marsoui,VL,QC
+2404030,La Martre,MÉ,QC
+2404037,Sainte-Anne-des-Monts,V,QC
+2404047,Cap-Chat,V,QC
+2405010,Shigawake,MÉ,QC
+2405015,Saint-Godefroi,CT,QC
+2405020,Hope Town,MÉ,QC
+2405025,Hope,CT,QC
+2405032,Paspébiac,V,QC
+2405040,New Carlisle,MÉ,QC
+2405045,Bonaventure,V,QC
+2405050,Saint-Elzéar,MÉ,QC
+2405055,Saint-Siméon,PE,QC
+2405060,Caplan,MÉ,QC
+2405065,Saint-Alphonse,MÉ,QC
+2405070,New Richmond,V,QC
+2405077,Cascapédia--Saint-Jules,MÉ,QC
+2406005,Maria,MÉ,QC
+2406013,Carleton-sur-Mer,V,QC
+2406020,Nouvelle,MÉ,QC
+2406025,Escuminac,MÉ,QC
+2406030,Pointe-à-la-Croix,MÉ,QC
+2406035,Ristigouche-Partie-Sud-Est,CT,QC
+2406040,Saint-André-de-Restigouche,MÉ,QC
+2406045,Matapédia,MÉ,QC
+2406050,Saint-Alexis-de-Matapédia,MÉ,QC
+2406055,Saint-François-d'Assise,MÉ,QC
+2406060,L'Ascension-de-Patapédia,MÉ,QC
+2407005,Sainte-Marguerite-Marie,MÉ,QC
+2407010,Sainte-Florence,MÉ,QC
+2407018,Causapscal,V,QC
+2407025,Albertville,MÉ,QC
+2407030,Saint-Léon-le-Grand,PE,QC
+2407035,Saint-Zénon-du-Lac-Humqui,PE,QC
+2407040,Sainte-Irène,PE,QC
+2407047,Amqui,V,QC
+2407057,Lac-au-Saumon,MÉ,QC
+2407065,Saint-Alexandre-des-Lacs,PE,QC
+2407070,Saint-Tharcisius,PE,QC
+2407075,Saint-Vianney,MÉ,QC
+2407080,Val-Brillant,MÉ,QC
+2407085,Sayabec,MÉ,QC
+2407090,Saint-Cléophas,PE,QC
+2407095,Saint-Moïse,PE,QC
+2407100,Saint-Noël,VL,QC
+2407105,Saint-Damase,PE,QC
+2408005,Les Méchins,MÉ,QC
+2408010,Saint-Jean-de-Cherbourg,PE,QC
+2408015,Grosses-Roches,MÉ,QC
+2408023,Sainte-Félicité,MÉ,QC
+2408030,Saint-Adelme,PE,QC
+2408035,Saint-René-de-Matane,MÉ,QC
+2408040,Sainte-Paule,MÉ,QC
+2408053,Matane,V,QC
+2408065,Saint-Léandre,PE,QC
+2408073,Saint-Ulric,MÉ,QC
+2408080,Baie-des-Sables,MÉ,QC
+2409005,La Rédemption,PE,QC
+2409010,Saint-Charles-Garnier,PE,QC
+2409015,Les Hauteurs,MÉ,QC
+2409020,Sainte-Jeanne-d'Arc,PE,QC
+2409025,Saint-Gabriel-de-Rimouski,MÉ,QC
+2409030,Saint-Donat,PE,QC
+2409035,Sainte-Angèle-de-Mérici,MÉ,QC
+2409040,Padoue,MÉ,QC
+2409048,Métis-sur-Mer,V,QC
+2409055,Saint-Octave-de-Métis,PE,QC
+2409060,Grand-Métis,MÉ,QC
+2409065,Price,VL,QC
+2409070,Saint-Joseph-de-Lepage,PE,QC
+2409077,Mont-Joli,V,QC
+2409085,Sainte-Flavie,PE,QC
+2409092,Sainte-Luce,MÉ,QC
+2410005,Esprit-Saint,MÉ,QC
+2410010,La Trinité-des-Monts,PE,QC
+2410015,Saint-Narcisse-de-Rimouski,PE,QC
+2410025,Saint-Marcellin,PE,QC
+2410030,Saint-Anaclet-de-Lessard,PE,QC
+2410043,Rimouski,V,QC
+2410060,Saint-Valérien,PE,QC
+2410070,Saint-Fabien,PE,QC
+2410075,Saint-Eugène-de-Ladrière,PE,QC
+2411005,Saint-Clément,MÉ,QC
+2411010,Saint-Jean-de-Dieu,MÉ,QC
+2411015,Sainte-Rita,MÉ,QC
+2411020,Saint-Guy,MÉ,QC
+2411025,Saint-Médard,MÉ,QC
+2411030,Sainte-Françoise,PE,QC
+2411035,Saint-Éloi,PE,QC
+2411040,Trois-Pistoles,V,QC
+2411045,Notre-Dame-des-Neiges,MÉ,QC
+2411050,Saint-Mathieu-de-Rioux,MÉ,QC
+2411055,Saint-Simon-de-Rimouski,MÉ,QC
+2412005,Saint-Cyprien,MÉ,QC
+2412010,Saint-Hubert-de-Rivière-du-Loup,MÉ,QC
+2412015,Saint-Antonin,MÉ,QC
+2412020,Saint-Modeste,MÉ,QC
+2412025,Saint-François-Xavier-de-Viger,MÉ,QC
+2412030,Saint-Épiphane,MÉ,QC
+2412035,Saint-Paul-de-la-Croix,PE,QC
+2412043,L'Isle-Verte,MÉ,QC
+2412045,Notre-Dame-des-Sept-Douleurs,PE,QC
+2412057,Cacouna,MÉ,QC
+2412065,Saint-Arsène,PE,QC
+2412072,Rivière-du-Loup,V,QC
+2412080,Notre-Dame-du-Portage,MÉ,QC
+2413005,Dégelis,V,QC
+2413010,Saint-Jean-de-la-Lande,MÉ,QC
+2413015,Packington,PE,QC
+2413020,Saint-Marc-du-Lac-Long,PE,QC
+2413025,Rivière-Bleue,MÉ,QC
+2413030,Saint-Eusèbe,PE,QC
+2413040,Saint-Juste-du-Lac,MÉ,QC
+2413045,Auclair,MÉ,QC
+2413050,Lejeune,MÉ,QC
+2413055,Biencourt,MÉ,QC
+2413060,Lac-des-Aigles,MÉ,QC
+2413065,Saint-Michel-du-Squatec,MÉ,QC
+2413073,Témiscouata-sur-le-Lac,V,QC
+2413075,Saint-Pierre-de-Lamy,MÉ,QC
+2413080,Saint-Louis-du-Ha! Ha!,PE,QC
+2413085,Saint-Elzéar-de-Témiscouata,MÉ,QC
+2413090,Saint-Honoré-de-Témiscouata,MÉ,QC
+2413095,Pohénégamook,V,QC
+2413100,Saint-Athanase,MÉ,QC
+2414005,Mont-Carmel,MÉ,QC
+2414010,Saint-Bruno-de-Kamouraska,MÉ,QC
+2414018,Saint-Pascal,V,QC
+2414025,Sainte-Hélène-de-Kamouraska,MÉ,QC
+2414030,Saint-Joseph-de-Kamouraska,PE,QC
+2414035,Saint-Alexandre-de-Kamouraska,MÉ,QC
+2414040,Saint-André-de-Kamouraska,MÉ,QC
+2414045,Saint-Germain,PE,QC
+2414050,Kamouraska,MÉ,QC
+2414055,Saint-Denis-De La Bouteillerie,MÉ,QC
+2414060,Saint-Philippe-de-Néri,PE,QC
+2414065,Rivière-Ouelle,MÉ,QC
+2414070,Saint-Pacôme,MÉ,QC
+2414075,Saint-Gabriel-Lalemant,MÉ,QC
+2414080,Saint-Onésime-d'Ixworth,MÉ,QC
+2414085,La Pocatière,V,QC
+2414090,Sainte-Anne-de-la-Pocatière,PE,QC
+2415005,Saint-Irénée,PE,QC
+2415013,La Malbaie,V,QC
+2415025,Notre-Dame-des-Monts,MÉ,QC
+2415030,Saint-Aimé-des-Lacs,MÉ,QC
+2415035,Clermont,V,QC
+2415058,Saint-Siméon,MÉ,QC
+2415065,Baie-Sainte-Catherine,MÉ,QC
+2416005,Petite-Rivière-Saint-François,MÉ,QC
+2416013,Baie-Saint-Paul,V,QC
+2416023,L'Isle-aux-Coudres,MÉ,QC
+2416048,Les Éboulements,MÉ,QC
+2416050,Saint-Hilarion,PE,QC
+2416055,Saint-Urbain,PE,QC
+2417005,Saint-Omer,MÉ,QC
+2417010,Saint-Pamphile,V,QC
+2417015,Saint-Adalbert,MÉ,QC
+2417020,Saint-Marcel,MÉ,QC
+2417025,Sainte-Félicité,MÉ,QC
+2417030,Sainte-Perpétue,MÉ,QC
+2417035,Tourville,MÉ,QC
+2417040,Saint-Damase-de-L'Islet,MÉ,QC
+2417045,Saint-Cyrille-de-Lessard,PE,QC
+2417055,Saint-Aubert,MÉ,QC
+2417060,Sainte-Louise,PE,QC
+2417065,Saint-Roch-des-Aulnaies,MÉ,QC
+2417070,Saint-Jean-Port-Joli,MÉ,QC
+2417078,L'Islet,MÉ,QC
+2418005,Saint-Just-de-Bretenières,MÉ,QC
+2418010,Lac-Frontière,MÉ,QC
+2418015,Saint-Fabien-de-Panet,PE,QC
+2418020,Sainte-Lucie-de-Beauregard,MÉ,QC
+2418025,Sainte-Apolline-de-Patton,PE,QC
+2418030,Saint-Paul-de-Montminy,MÉ,QC
+2418035,Sainte-Euphémie-sur-Rivière-du-Sud,MÉ,QC
+2418040,Notre-Dame-du-Rosaire,MÉ,QC
+2418045,Cap-Saint-Ignace,MÉ,QC
+2418050,Montmagny,V,QC
+2418055,Saint-Pierre-de-la-Rivière-du-Sud,PE,QC
+2418060,Saint-François-de-la-Rivière-du-Sud,MÉ,QC
+2418065,Berthier-sur-Mer,MÉ,QC
+2418070,Saint-Antoine-de-l'Isle-aux-Grues,PE,QC
+2419005,Saint-Philémon,PE,QC
+2419010,Notre-Dame-Auxiliatrice-de-Buckland,PE,QC
+2419015,Saint-Nazaire-de-Dorchester,PE,QC
+2419020,Saint-Léon-de-Standon,PE,QC
+2419025,Saint-Malachie,PE,QC
+2419030,Saint-Damien-de-Buckland,PE,QC
+2419037,Armagh,MÉ,QC
+2419045,Saint-Nérée-de-Bellechasse,MÉ,QC
+2419050,Saint-Lazare-de-Bellechasse,MÉ,QC
+2419055,Sainte-Claire,MÉ,QC
+2419062,Saint-Anselme,MÉ,QC
+2419068,Saint-Henri,MÉ,QC
+2419070,Honfleur,MÉ,QC
+2419075,Saint-Gervais,MÉ,QC
+2419082,Saint-Raphaël,MÉ,QC
+2419090,La Durantaye,PE,QC
+2419097,Saint-Charles-de-Bellechasse,MÉ,QC
+2419105,Beaumont,MÉ,QC
+2419110,Saint-Michel-de-Bellechasse,MÉ,QC
+2419117,Saint-Vallier,MÉ,QC
+2420005,Saint-François-de-l'Île-d'Orléans,MÉ,QC
+2420010,Sainte-Famille-de-l'Île-d'Orléans,MÉ,QC
+2420015,Saint-Jean-de-l'Île-d'Orléans,MÉ,QC
+2420020,Saint-Laurent-de-l'Île-d'Orléans,MÉ,QC
+2420025,Saint-Pierre-de-l'Île-d'Orléans,MÉ,QC
+2420030,Sainte-Pétronille,VL,QC
+2421005,Saint-Tite-des-Caps,MÉ,QC
+2421010,Saint-Ferréol-les-Neiges,MÉ,QC
+2421015,Saint-Louis-de-Gonzague-du-Cap-Tourmente,PE,QC
+2421020,Saint-Joachim,PE,QC
+2421025,Beaupré,V,QC
+2421030,Sainte-Anne-de-Beaupré,V,QC
+2421035,Château-Richer,V,QC
+2421040,L'Ange-Gardien,MÉ,QC
+2421045,Boischatel,MÉ,QC
+2422005,Sainte-Catherine-de-la-Jacques-Cartier,V,QC
+2422010,Fossambault-sur-le-Lac,V,QC
+2422015,Lac-Saint-Joseph,V,QC
+2422020,Shannon,V,QC
+2422025,Saint-Gabriel-de-Valcartier,MÉ,QC
+2422030,Lac-Delage,V,QC
+2422035,Stoneham-et-Tewkesbury,CU,QC
+2422040,Lac-Beauport,MÉ,QC
+2422045,Sainte-Brigitte-de-Laval,V,QC
+2423015,Notre-Dame-des-Anges,PE,QC
+2423027,Québec,V,QC
+2423057,L'Ancienne-Lorette,V,QC
+2423072,Saint-Augustin-de-Desmaures,V,QC
+2425213,Lévis,V,QC
+2426005,Frampton,MÉ,QC
+2426010,Saints-Anges,PE,QC
+2426015,Vallée-Jonction,MÉ,QC
+2426022,Saint-Elzéar,MÉ,QC
+2426030,Sainte-Marie,V,QC
+2426035,Sainte-Marguerite,PE,QC
+2426040,Sainte-Hénédine,PE,QC
+2426048,Scott,MÉ,QC
+2426055,Saint-Bernard,MÉ,QC
+2426063,Saint-Isidore,MÉ,QC
+2426070,Saint-Lambert-de-Lauzon,MÉ,QC
+2427008,Saint-Victor,MÉ,QC
+2427015,Saint-Alfred,MÉ,QC
+2427028,Beauceville,V,QC
+2427035,Saint-Odilon-de-Cranbourne,PE,QC
+2427043,Saint-Joseph-de-Beauce,V,QC
+2427050,Saint-Joseph-des-Érables,MÉ,QC
+2427055,Saint-Jules,PE,QC
+2427060,Tring-Jonction,VL,QC
+2427065,Saint-Frédéric,PE,QC
+2427070,Saint-Séverin,PE,QC
+2428005,Saint-Zacharie,MÉ,QC
+2428015,Sainte-Aurélie,MÉ,QC
+2428020,Saint-Prosper,MÉ,QC
+2428025,Saint-Benjamin,MÉ,QC
+2428030,Sainte-Rose-de-Watford,MÉ,QC
+2428035,Saint-Louis-de-Gonzague,MÉ,QC
+2428040,Saint-Cyprien,PE,QC
+2428045,Sainte-Justine,MÉ,QC
+2428053,Lac-Etchemin,MÉ,QC
+2428060,Saint-Luc-de-Bellechasse,MÉ,QC
+2428065,Sainte-Sabine,PE,QC
+2428070,Saint-Camille-de-Lellis,PE,QC
+2428075,Saint-Magloire,MÉ,QC
+2429005,Saint-Théophile,MÉ,QC
+2429013,Saint-Gédéon-de-Beauce,MÉ,QC
+2429020,Saint-Hilaire-de-Dorset,PE,QC
+2429025,Saint-Évariste-de-Forsyth,MÉ,QC
+2429030,La Guadeloupe,VL,QC
+2429038,Saint-Honoré-de-Shenley,MÉ,QC
+2429045,Saint-Martin,PE,QC
+2429050,Saint-René,PE,QC
+2429057,Saint-Côme--Linière,MÉ,QC
+2429065,Saint-Philibert,MÉ,QC
+2429073,Saint-Georges,V,QC
+2429095,Lac-Poulin,VL,QC
+2429100,Saint-Benoît-Labre,MÉ,QC
+2429112,Saint-Éphrem-de-Beauce,MÉ,QC
+2429120,Notre-Dame-des-Pins,PE,QC
+2429125,Saint-Simon-les-Mines,MÉ,QC
+2430005,Saint-Augustin-de-Woburn,PE,QC
+2430010,Notre-Dame-des-Bois,MÉ,QC
+2430015,Val-Racine,MÉ,QC
+2430020,Piopolis,MÉ,QC
+2430025,Frontenac,MÉ,QC
+2430030,Lac-Mégantic,V,QC
+2430035,Marston,CT,QC
+2430040,Milan,MÉ,QC
+2430045,Nantes,MÉ,QC
+2430050,Sainte-Cécile-de-Whitton,MÉ,QC
+2430055,Audet,MÉ,QC
+2430070,Saint-Robert-Bellarmin,MÉ,QC
+2430072,Saint-Ludger,MÉ,QC
+2430080,Lac-Drolet,MÉ,QC
+2430085,Saint-Sébastien,MÉ,QC
+2430090,Courcelles,MÉ,QC
+2430095,Lambton,MÉ,QC
+2430100,Saint-Romain,MÉ,QC
+2430105,Stornoway,MÉ,QC
+2430110,Stratford,CT,QC
+2431008,Beaulac-Garthby,MÉ,QC
+2431015,Disraeli,V,QC
+2431020,Disraeli,PE,QC
+2431025,Saint-Jacques-le-Majeur-de-Wolfestown,PE,QC
+2431030,Saint-Fortunat,MÉ,QC
+2431035,Saint-Julien,MÉ,QC
+2431040,Irlande,MÉ,QC
+2431045,Saint-Joseph-de-Coleraine,MÉ,QC
+2431050,Sainte-Praxède,PE,QC
+2431056,Adstock,MÉ,QC
+2431060,Sainte-Clotilde-de-Beauce,MÉ,QC
+2431084,Thetford Mines,V,QC
+2431095,Saint-Adrien-d'Irlande,MÉ,QC
+2431100,Saint-Jean-de-Brébeuf,MÉ,QC
+2431105,Kinnear's Mills,MÉ,QC
+2431122,East Broughton,MÉ,QC
+2431130,Sacré-Coeur-de-Jésus,PE,QC
+2431135,Saint-Pierre-de-Broughton,MÉ,QC
+2431140,Saint-Jacques-de-Leeds,MÉ,QC
+2432013,Saint-Ferdinand,MÉ,QC
+2432023,Sainte-Sophie-d'Halifax,MÉ,QC
+2432033,Princeville,V,QC
+2432040,Plessisville,V,QC
+2432045,Plessisville,PE,QC
+2432050,Saint-Pierre-Baptiste,PE,QC
+2432058,Inverness,MÉ,QC
+2432065,Lyster,MÉ,QC
+2432072,Laurierville,MÉ,QC
+2432080,Notre-Dame-de-Lourdes,PE,QC
+2432085,Villeroy,MÉ,QC
+2433007,Saint-Sylvestre,MÉ,QC
+2433017,Sainte-Agathe-de-Lotbinière,MÉ,QC
+2433025,Saint-Patrice-de-Beaurivage,MÉ,QC
+2433030,Saint-Narcisse-de-Beaurivage,PE,QC
+2433035,Saint-Gilles,MÉ,QC
+2433040,Dosquet,MÉ,QC
+2433045,Saint-Agapit,MÉ,QC
+2433052,Saint-Flavien,MÉ,QC
+2433060,Laurier-Station,VL,QC
+2433065,Saint-Janvier-de-Joly,MÉ,QC
+2433070,Val-Alain,MÉ,QC
+2433080,Saint-Édouard-de-Lotbinière,PE,QC
+2433085,Notre-Dame-du-Sacré-Coeur-d'Issoudun,PE,QC
+2433090,Saint-Apollinaire,MÉ,QC
+2433095,Saint-Antoine-de-Tilly,MÉ,QC
+2433102,Sainte-Croix,MÉ,QC
+2433115,Lotbinière,MÉ,QC
+2433123,Leclercville,MÉ,QC
+2434007,Neuville,V,QC
+2434017,Pont-Rouge,V,QC
+2434025,Donnacona,V,QC
+2434030,Cap-Santé,V,QC
+2434038,Saint-Basile,V,QC
+2434048,Portneuf,V,QC
+2434058,Deschambault-Grondines,MÉ,QC
+2434060,Saint-Gilbert,PE,QC
+2434065,Saint-Marc-des-Carrières,V,QC
+2434078,Saint-Casimir,MÉ,QC
+2434085,Saint-Thuribe,PE,QC
+2434090,Saint-Ubalde,MÉ,QC
+2434097,Saint-Alban,MÉ,QC
+2434105,Sainte-Christine-d'Auvergne,MÉ,QC
+2434115,Saint-Léonard-de-Portneuf,MÉ,QC
+2434120,Lac-Sergent,V,QC
+2434128,Saint-Raymond,V,QC
+2434135,Rivière-à-Pierre,MÉ,QC
+2435005,Notre-Dame-de-Montauban,MÉ,QC
+2435010,Lac-aux-Sables,PE,QC
+2435015,Saint-Adelphe,PE,QC
+2435020,Saint-Séverin,PE,QC
+2435027,Saint-Tite,V,QC
+2435035,Hérouxville,PE,QC
+2435040,Grandes-Piles,VL,QC
+2435045,Saint-Roch-de-Mékinac,PE,QC
+2435050,Sainte-Thècle,MÉ,QC
+2435055,Trois-Rives,MÉ,QC
+2436033,Shawinigan,V,QC
+2437067,Trois-Rivières,V,QC
+2437205,Sainte-Anne-de-la-Pérade,MÉ,QC
+2437210,Batiscan,MÉ,QC
+2437215,Sainte-Geneviève-de-Batiscan,PE,QC
+2437220,Champlain,MÉ,QC
+2437225,Saint-Luc-de-Vincennes,MÉ,QC
+2437230,Saint-Maurice,PE,QC
+2437235,Notre-Dame-du-Mont-Carmel,PE,QC
+2437240,Saint-Narcisse,PE,QC
+2437245,Saint-Stanislas,MÉ,QC
+2437250,Saint-Prosper-de-Champlain,MÉ,QC
+2438005,Saint-Sylvère,MÉ,QC
+2438010,Bécancour,V,QC
+2438015,Sainte-Marie-de-Blandford,MÉ,QC
+2438020,Lemieux,MÉ,QC
+2438028,Manseau,MÉ,QC
+2438035,Sainte-Françoise,MÉ,QC
+2438040,Sainte-Sophie-de-Lévrard,PE,QC
+2438047,Fortierville,MÉ,QC
+2438055,Parisville,PE,QC
+2438060,Sainte-Cécile-de-Lévrard,PE,QC
+2438065,Saint-Pierre-les-Becquets,MÉ,QC
+2438070,Deschaillons-sur-Saint-Laurent,MÉ,QC
+2439005,Saints-Martyrs-Canadiens,PE,QC
+2439010,Ham-Nord,CT,QC
+2439015,Notre-Dame-de-Ham,MÉ,QC
+2439020,Saint-Rémi-de-Tingwick,MÉ,QC
+2439025,Tingwick,MÉ,QC
+2439030,Chesterville,MÉ,QC
+2439035,Sainte-Hélène-de-Chester,MÉ,QC
+2439043,Saint-Norbert-d'Arthabaska,MÉ,QC
+2439060,Saint-Christophe-d'Arthabaska,PE,QC
+2439062,Victoriaville,V,QC
+2439077,Warwick,V,QC
+2439085,Saint-Albert,MÉ,QC
+2439090,Sainte-Élizabeth-de-Warwick,MÉ,QC
+2439097,Kingsey Falls,V,QC
+2439105,Sainte-Séraphine,PE,QC
+2439117,Sainte-Clotilde-de-Horton,MÉ,QC
+2439130,Saint-Samuel,MÉ,QC
+2439135,Saint-Valère,MÉ,QC
+2439145,Saint-Rosaire,PE,QC
+2439152,Daveluyville,V,QC
+2439165,Maddington Falls,MÉ,QC
+2439170,Saint-Louis-de-Blandford,MÉ,QC
+2440005,Ham-Sud,MÉ,QC
+2440010,Saint-Adrien,MÉ,QC
+2440017,Wotton,MÉ,QC
+2440025,Saint-Camille,CT,QC
+2440032,Saint-Georges-de-Windsor,MÉ,QC
+2440043,Val-des-Sources,V,QC
+2440047,Danville,V,QC
+2441012,Saint-Isidore-de-Clifton,MÉ,QC
+2441020,Chartierville,MÉ,QC
+2441027,La Patrie,MÉ,QC
+2441037,Newport,MÉ,QC
+2441038,Cookshire-Eaton,V,QC
+2441055,Ascot Corner,MÉ,QC
+2441060,East Angus,V,QC
+2441065,Westbury,CT,QC
+2441070,Bury,MÉ,QC
+2441075,Hampden,CT,QC
+2441080,Scotstown,V,QC
+2441085,Lingwick,CT,QC
+2441098,Weedon,MÉ,QC
+2441117,Dudswell,MÉ,QC
+2442005,Stoke,MÉ,QC
+2442020,Saint-François-Xavier-de-Brompton,MÉ,QC
+2442025,Saint-Denis-de-Brompton,MÉ,QC
+2442032,Racine,MÉ,QC
+2442040,Bonsecours,MÉ,QC
+2442045,Lawrenceville,VL,QC
+2442050,Sainte-Anne-de-la-Rochelle,MÉ,QC
+2442055,Valcourt,V,QC
+2442060,Valcourt,CT,QC
+2442065,Maricourt,MÉ,QC
+2442070,Kingsbury,VL,QC
+2442075,Melbourne,CT,QC
+2442078,Ulverton,MÉ,QC
+2442088,Windsor,V,QC
+2442095,Val-Joli,MÉ,QC
+2442098,Richmond,V,QC
+2442100,Saint-Claude,MÉ,QC
+2442110,Cleveland,CT,QC
+2443027,Sherbrooke,V,QC
+2444003,Saint-Malo,MÉ,QC
+2444005,Saint-Venant-de-Paquette,MÉ,QC
+2444010,East Hereford,MÉ,QC
+2444015,Saint-Herménégilde,MÉ,QC
+2444023,Dixville,MÉ,QC
+2444037,Coaticook,V,QC
+2444045,Barnston-Ouest,MÉ,QC
+2444050,Stanstead-Est,MÉ,QC
+2444055,Sainte-Edwidge-de-Clifton,CT,QC
+2444060,Martinville,MÉ,QC
+2444071,Compton,MÉ,QC
+2444080,Waterville,V,QC
+2445008,Stanstead,V,QC
+2445020,Ogden,MÉ,QC
+2445025,Stanstead,CT,QC
+2445030,Potton,CT,QC
+2445035,Ayer's Cliff,VL,QC
+2445043,Hatley,MÉ,QC
+2445050,North Hatley,VL,QC
+2445055,Hatley,CT,QC
+2445060,Sainte-Catherine-de-Hatley,MÉ,QC
+2445072,Magog,V,QC
+2445080,Saint-Benoît-du-Lac,MÉ,QC
+2445085,Austin,MÉ,QC
+2445093,Eastman,MÉ,QC
+2445095,Bolton-Est,MÉ,QC
+2445100,Saint-Étienne-de-Bolton,MÉ,QC
+2445105,Stukely-Sud,VL,QC
+2445115,Orford,CT,QC
+2446005,Abercorn,VL,QC
+2446010,Frelighsburg,MÉ,QC
+2446017,Saint-Armand,MÉ,QC
+2446025,Pike River,MÉ,QC
+2446030,Stanbridge Station,MÉ,QC
+2446035,Bedford,V,QC
+2446040,Bedford,CT,QC
+2446045,Stanbridge East,MÉ,QC
+2446050,Dunham,V,QC
+2446058,Sutton,V,QC
+2446065,Bolton-Ouest,MÉ,QC
+2446070,Brome,VL,QC
+2446075,Lac-Brome,V,QC
+2446078,Bromont,V,QC
+2446080,Cowansville,V,QC
+2446085,East Farnham,MÉ,QC
+2446090,Brigham,MÉ,QC
+2446095,Saint-Ignace-de-Stanbridge,MÉ,QC
+2446100,Notre-Dame-de-Stanbridge,MÉ,QC
+2446105,Sainte-Sabine,MÉ,QC
+2446112,Farnham,V,QC
+2447010,Saint-Alphonse-de-Granby,MÉ,QC
+2447017,Granby,V,QC
+2447025,Waterloo,V,QC
+2447030,Warden,VL,QC
+2447035,Shefford,CT,QC
+2447040,Saint-Joachim-de-Shefford,MÉ,QC
+2447047,Roxton Pond,MÉ,QC
+2447055,Sainte-Cécile-de-Milton,MÉ,QC
+2448005,Béthanie,MÉ,QC
+2448010,Roxton Falls,VL,QC
+2448015,Roxton,CT,QC
+2448020,Sainte-Christine,PE,QC
+2448028,Acton Vale,V,QC
+2448038,Upton,MÉ,QC
+2448045,Saint-Théodore-d'Acton,MÉ,QC
+2448050,Saint-Nazaire-d'Acton,PE,QC
+2449005,Saint-Félix-de-Kingsey,MÉ,QC
+2449015,Durham-Sud,MÉ,QC
+2449020,Lefebvre,MÉ,QC
+2449025,L'Avenir,MÉ,QC
+2449030,Saint-Lucien,MÉ,QC
+2449040,Wickham,MÉ,QC
+2449048,Saint-Germain-de-Grantham,MÉ,QC
+2449058,Drummondville,V,QC
+2449070,Saint-Cyrille-de-Wendover,MÉ,QC
+2449075,Notre-Dame-du-Bon-Conseil,VL,QC
+2449080,Notre-Dame-du-Bon-Conseil,PE,QC
+2449085,Sainte-Brigitte-des-Saults,PE,QC
+2449095,Saint-Majorique-de-Grantham,PE,QC
+2449100,Saint-Edmond-de-Grantham,PE,QC
+2449105,Saint-Eugène,MÉ,QC
+2449113,Saint-Guillaume,MÉ,QC
+2449125,Saint-Bonaventure,MÉ,QC
+2449130,Saint-Pie-de-Guire,PE,QC
+2450005,Sainte-Eulalie,MÉ,QC
+2450013,Aston-Jonction,MÉ,QC
+2450023,Saint-Wenceslas,MÉ,QC
+2450030,Saint-Célestin,VL,QC
+2450035,Saint-Célestin,MÉ,QC
+2450042,Saint-Léonard-d'Aston,MÉ,QC
+2450050,Sainte-Perpétue,PE,QC
+2450057,Sainte-Monique,MÉ,QC
+2450065,Grand-Saint-Esprit,MÉ,QC
+2450072,Nicolet,V,QC
+2450085,La Visitation-de-Yamaska,MÉ,QC
+2450090,Saint-Zéphirin-de-Courval,PE,QC
+2450095,Saint-Elphège,PE,QC
+2450100,Baie-du-Febvre,MÉ,QC
+2450113,Pierreville,MÉ,QC
+2450128,Saint-François-du-Lac,MÉ,QC
+2451008,Maskinongé,MÉ,QC
+2451015,Louiseville,V,QC
+2451020,Yamachiche,MÉ,QC
+2451025,Saint-Barnabé,PE,QC
+2451030,Saint-Sévère,PE,QC
+2451035,Saint-Léon-le-Grand,PE,QC
+2451040,Sainte-Ursule,MÉ,QC
+2451045,Saint-Justin,MÉ,QC
+2451050,Saint-Édouard-de-Maskinongé,MÉ,QC
+2451055,Sainte-Angèle-de-Prémont,MÉ,QC
+2451060,Saint-Paulin,MÉ,QC
+2451065,Saint-Alexis-des-Monts,PE,QC
+2451070,Saint-Mathieu-du-Parc,MÉ,QC
+2451075,Saint-Élie-de-Caxton,MÉ,QC
+2451080,Charette,MÉ,QC
+2451085,Saint-Boniface,MÉ,QC
+2451090,Saint-Étienne-des-Grès,PE,QC
+2452007,Lavaltrie,V,QC
+2452017,Lanoraie,MÉ,QC
+2452030,Sainte-Élisabeth,MÉ,QC
+2452035,Berthierville,V,QC
+2452040,Sainte-Geneviève-de-Berthier,MÉ,QC
+2452045,Saint-Ignace-de-Loyola,MÉ,QC
+2452050,La Visitation-de-l'Île-Dupas,MÉ,QC
+2452055,Saint-Barthélemy,PE,QC
+2452062,Saint-Cuthbert,MÉ,QC
+2452070,Saint-Norbert,PE,QC
+2452075,Saint-Cléophas-de-Brandon,MÉ,QC
+2452080,Saint-Gabriel,V,QC
+2452085,Saint-Gabriel-de-Brandon,MÉ,QC
+2452090,Saint-Didace,PE,QC
+2452095,Mandeville,MÉ,QC
+2453005,Saint-David,MÉ,QC
+2453010,Massueville,VL,QC
+2453015,Saint-Aimé,MÉ,QC
+2453020,Saint-Robert,MÉ,QC
+2453025,Sainte-Victoire-de-Sorel,MÉ,QC
+2453032,Saint-Ours,V,QC
+2453040,Saint-Roch-de-Richelieu,MÉ,QC
+2453050,Saint-Joseph-de-Sorel,V,QC
+2453052,Sorel-Tracy,V,QC
+2453065,Sainte-Anne-de-Sorel,MÉ,QC
+2453072,Yamaska,MÉ,QC
+2453085,Saint-Gérard-Majella,PE,QC
+2454008,Saint-Pie,V,QC
+2454017,Saint-Damase,MÉ,QC
+2454025,Sainte-Madeleine,VL,QC
+2454030,Sainte-Marie-Madeleine,PE,QC
+2454035,La Présentation,MÉ,QC
+2454048,Saint-Hyacinthe,V,QC
+2454060,Saint-Dominique,MÉ,QC
+2454065,Saint-Valérien-de-Milton,MÉ,QC
+2454072,Saint-Liboire,MÉ,QC
+2454090,Saint-Simon,MÉ,QC
+2454095,Sainte-Hélène-de-Bagot,MÉ,QC
+2454100,Saint-Hugues,MÉ,QC
+2454105,Saint-Barnabé-Sud,MÉ,QC
+2454110,Saint-Jude,MÉ,QC
+2454115,Saint-Bernard-de-Michaudville,MÉ,QC
+2454120,Saint-Louis,MÉ,QC
+2454125,Saint-Marcel-de-Richelieu,MÉ,QC
+2455008,Ange-Gardien,MÉ,QC
+2455015,Saint-Paul-d'Abbotsford,MÉ,QC
+2455023,Saint-Césaire,V,QC
+2455030,Sainte-Angèle-de-Monnoir,MÉ,QC
+2455037,Rougemont,MÉ,QC
+2455048,Marieville,V,QC
+2455057,Richelieu,V,QC
+2455065,Saint-Mathias-sur-Richelieu,MÉ,QC
+2456005,Venise-en-Québec,MÉ,QC
+2456010,Saint-Georges-de-Clarenceville,MÉ,QC
+2456015,Noyan,MÉ,QC
+2456023,Lacolle,MÉ,QC
+2456030,Saint-Valentin,MÉ,QC
+2456035,Saint-Paul-de-l'Île-aux-Noix,MÉ,QC
+2456042,Henryville,MÉ,QC
+2456050,Saint-Sébastien,MÉ,QC
+2456055,Saint-Alexandre,MÉ,QC
+2456060,Sainte-Anne-de-Sabrevois,PE,QC
+2456065,Saint-Blaise-sur-Richelieu,MÉ,QC
+2456083,Saint-Jean-sur-Richelieu,V,QC
+2456097,Mont-Saint-Grégoire,MÉ,QC
+2456105,Sainte-Brigide-d'Iberville,MÉ,QC
+2457005,Chambly,V,QC
+2457010,Carignan,V,QC
+2457020,Saint-Basile-le-Grand,V,QC
+2457025,McMasterville,MÉ,QC
+2457030,Otterburn Park,V,QC
+2457033,Saint-Jean-Baptiste,MÉ,QC
+2457035,Mont-Saint-Hilaire,V,QC
+2457040,Beloeil,V,QC
+2457045,Saint-Mathieu-de-Beloeil,MÉ,QC
+2457050,Saint-Marc-sur-Richelieu,MÉ,QC
+2457057,Saint-Charles-sur-Richelieu,MÉ,QC
+2457068,Saint-Denis-sur-Richelieu,MÉ,QC
+2457075,Saint-Antoine-sur-Richelieu,MÉ,QC
+2458007,Brossard,V,QC
+2458012,Saint-Lambert,V,QC
+2458033,Boucherville,V,QC
+2458037,Saint-Bruno-de-Montarville,V,QC
+2458227,Longueuil,V,QC
+2459010,Sainte-Julie,V,QC
+2459015,Saint-Amable,V,QC
+2459020,Varennes,V,QC
+2459025,Verchères,MÉ,QC
+2459030,Calixa-Lavallée,MÉ,QC
+2459035,Contrecoeur,V,QC
+2460005,Charlemagne,V,QC
+2460013,Repentigny,V,QC
+2460020,Saint-Sulpice,PE,QC
+2460028,L'Assomption,V,QC
+2460037,L'Épiphanie,V,QC
+2461005,Saint-Paul,MÉ,QC
+2461013,Crabtree,MÉ,QC
+2461020,Saint-Pierre,VL,QC
+2461025,Joliette,V,QC
+2461027,Saint-Thomas,MÉ,QC
+2461030,Notre-Dame-des-Prairies,V,QC
+2461035,Saint-Charles-Borromée,V,QC
+2461040,Saint-Ambroise-de-Kildare,MÉ,QC
+2461045,Notre-Dame-de-Lourdes,MÉ,QC
+2461050,Sainte-Mélanie,MÉ,QC
+2462007,Saint-Félix-de-Valois,MÉ,QC
+2462015,Saint-Jean-de-Matha,MÉ,QC
+2462020,Sainte-Béatrix,MÉ,QC
+2462025,Saint-Alphonse-Rodriguez,MÉ,QC
+2462030,Sainte-Marcelline-de-Kildare,MÉ,QC
+2462037,Rawdon,MÉ,QC
+2462047,Chertsey,MÉ,QC
+2462053,Entrelacs,MÉ,QC
+2462055,Notre-Dame-de-la-Merci,MÉ,QC
+2462060,Saint-Donat,MÉ,QC
+2462065,Saint-Côme,MÉ,QC
+2462070,Sainte-Émélie-de-l'Énergie,MÉ,QC
+2462075,Saint-Damien,PE,QC
+2462080,Saint-Zénon,MÉ,QC
+2462085,Saint-Michel-des-Saints,MÉ,QC
+2463005,Sainte-Marie-Salomé,MÉ,QC
+2463013,Saint-Jacques,MÉ,QC
+2463023,Saint-Alexis,MÉ,QC
+2463030,Saint-Esprit,MÉ,QC
+2463035,Saint-Roch-de-l'Achigan,MÉ,QC
+2463040,Saint-Roch-Ouest,MÉ,QC
+2463048,Saint-Lin--Laurentides,V,QC
+2463055,Saint-Calixte,MÉ,QC
+2463060,Sainte-Julienne,MÉ,QC
+2463065,Saint-Liguori,MÉ,QC
+2464008,Terrebonne,V,QC
+2464015,Mascouche,V,QC
+2465005,Laval,V,QC
+2466007,Montréal-Est,V,QC
+2466023,Montréal,V,QC
+2466032,Westmount,V,QC
+2466047,Montréal-Ouest,V,QC
+2466058,Côte-Saint-Luc,V,QC
+2466062,Hampstead,V,QC
+2466072,Mont-Royal,V,QC
+2466087,Dorval,V,QC
+2466092,L'Île-Dorval,V,QC
+2466097,Pointe-Claire,V,QC
+2466102,Kirkland,V,QC
+2466107,Beaconsfield,V,QC
+2466112,Baie-D'Urfé,V,QC
+2466117,Sainte-Anne-de-Bellevue,V,QC
+2466127,Senneville,VL,QC
+2466142,Dollard-Des Ormeaux,V,QC
+2467005,Saint-Mathieu,MÉ,QC
+2467010,Saint-Philippe,V,QC
+2467015,La Prairie,V,QC
+2467020,Candiac,V,QC
+2467025,Delson,V,QC
+2467030,Sainte-Catherine,V,QC
+2467035,Saint-Constant,V,QC
+2467040,Saint-Isidore,PE,QC
+2467045,Mercier,V,QC
+2467050,Châteauguay,V,QC
+2467055,Léry,V,QC
+2468005,Saint-Bernard-de-Lacolle,MÉ,QC
+2468010,Hemmingford,VL,QC
+2468015,Hemmingford,CT,QC
+2468020,Sainte-Clotilde,MÉ,QC
+2468025,Saint-Patrice-de-Sherrington,MÉ,QC
+2468030,Napierville,MÉ,QC
+2468035,Saint-Cyprien-de-Napierville,MÉ,QC
+2468040,Saint-Jacques-le-Mineur,MÉ,QC
+2468045,Saint-Édouard,MÉ,QC
+2468050,Saint-Michel,MÉ,QC
+2468055,Saint-Rémi,V,QC
+2469005,Havelock,CT,QC
+2469010,Franklin,MÉ,QC
+2469017,Saint-Chrysostome,MÉ,QC
+2469025,Howick,MÉ,QC
+2469030,Très-Saint-Sacrement,PE,QC
+2469037,Ormstown,MÉ,QC
+2469045,Hinchinbrooke,MÉ,QC
+2469050,Elgin,MÉ,QC
+2469055,Huntingdon,V,QC
+2469060,Godmanchester,CT,QC
+2469065,Sainte-Barbe,MÉ,QC
+2469070,Saint-Anicet,MÉ,QC
+2469075,Dundee,CT,QC
+2470005,Saint-Urbain-Premier,MÉ,QC
+2470012,Sainte-Martine,MÉ,QC
+2470022,Beauharnois,V,QC
+2470030,Saint-Étienne-de-Beauharnois,MÉ,QC
+2470035,Saint-Louis-de-Gonzague,PE,QC
+2470040,Saint-Stanislas-de-Kostka,MÉ,QC
+2470052,Salaberry-de-Valleyfield,V,QC
+2471005,Rivière-Beaudette,MÉ,QC
+2471015,Saint-Télesphore,MÉ,QC
+2471020,Saint-Polycarpe,MÉ,QC
+2471025,Saint-Zotique,MÉ,QC
+2471033,Les Coteaux,MÉ,QC
+2471040,Coteau-du-Lac,V,QC
+2471045,Saint-Clet,MÉ,QC
+2471050,Les Cèdres,MÉ,QC
+2471055,Pointe-des-Cascades,VL,QC
+2471060,L'Île-Perrot,V,QC
+2471065,Notre-Dame-de-l'Île-Perrot,V,QC
+2471070,Pincourt,V,QC
+2471075,Terrasse-Vaudreuil,MÉ,QC
+2471083,Vaudreuil-Dorion,V,QC
+2471090,Vaudreuil-sur-le-Lac,VL,QC
+2471095,L'Île-Cadieux,V,QC
+2471100,Hudson,V,QC
+2471105,Saint-Lazare,V,QC
+2471110,Sainte-Marthe,MÉ,QC
+2471115,Sainte-Justine-de-Newton,MÉ,QC
+2471125,Très-Saint-Rédempteur,MÉ,QC
+2471133,Rigaud,V,QC
+2471140,Pointe-Fortune,VL,QC
+2472005,Saint-Eustache,V,QC
+2472010,Deux-Montagnes,V,QC
+2472015,Sainte-Marthe-sur-le-Lac,V,QC
+2472020,Pointe-Calumet,MÉ,QC
+2472025,Saint-Joseph-du-Lac,MÉ,QC
+2472032,Oka,MÉ,QC
+2472043,Saint-Placide,MÉ,QC
+2473005,Boisbriand,V,QC
+2473010,Sainte-Thérèse,V,QC
+2473015,Blainville,V,QC
+2473020,Rosemère,V,QC
+2473025,Lorraine,V,QC
+2473030,Bois-des-Filion,V,QC
+2473035,Sainte-Anne-des-Plaines,V,QC
+2474005,Mirabel,V,QC
+2475005,Saint-Colomban,V,QC
+2475017,Saint-Jérôme,V,QC
+2475028,Sainte-Sophie,MÉ,QC
+2475040,Prévost,V,QC
+2475045,Saint-Hippolyte,MÉ,QC
+2476008,Saint-André-d'Argenteuil,MÉ,QC
+2476020,Lachute,V,QC
+2476025,Gore,CT,QC
+2476030,Mille-Isles,MÉ,QC
+2476035,Wentworth,CT,QC
+2476043,Brownsburg-Chatham,V,QC
+2476052,Grenville-sur-la-Rouge,MÉ,QC
+2476055,Grenville,VL,QC
+2476065,Harrington,CT,QC
+2477011,Estérel,V,QC
+2477012,Sainte-Marguerite-du-Lac-Masson,V,QC
+2477022,Sainte-Adèle,V,QC
+2477030,Piedmont,MÉ,QC
+2477035,Sainte-Anne-des-Lacs,PE,QC
+2477043,Saint-Sauveur,V,QC
+2477050,Morin-Heights,MÉ,QC
+2477055,Lac-des-Seize-Îles,MÉ,QC
+2477060,Wentworth-Nord,MÉ,QC
+2477065,Saint-Adolphe-d'Howard,MÉ,QC
+2478005,Val-Morin,MÉ,QC
+2478010,Val-David,VL,QC
+2478015,Lantier,MÉ,QC
+2478020,Sainte-Lucie-des-Laurentides,MÉ,QC
+2478032,Sainte-Agathe-des-Monts,V,QC
+2478042,Ivry-sur-le-Lac,MÉ,QC
+2478047,Saint-Faustin--Lac-Carré,MÉ,QC
+2478050,Barkmere,V,QC
+2478055,Montcalm,MÉ,QC
+2478060,Arundel,CT,QC
+2478065,Huberdeau,MÉ,QC
+2478070,Amherst,CT,QC
+2478075,Brébeuf,PE,QC
+2478095,Lac-Supérieur,MÉ,QC
+2478100,Val-des-Lacs,MÉ,QC
+2478102,Mont-Tremblant,V,QC
+2478115,La Conception,MÉ,QC
+2478120,Labelle,MÉ,QC
+2478127,Lac-Tremblant-Nord,MÉ,QC
+2478130,La Minerve,MÉ,QC
+2479005,Notre-Dame-du-Laus,MÉ,QC
+2479010,Notre-Dame-de-Pontmain,MÉ,QC
+2479015,Lac-du-Cerf,MÉ,QC
+2479022,Saint-Aimé-du-Lac-des-Îles,MÉ,QC
+2479025,Kiamika,MÉ,QC
+2479030,Nominingue,MÉ,QC
+2479037,Rivière-Rouge,V,QC
+2479047,La Macaza,MÉ,QC
+2479050,L'Ascension,MÉ,QC
+2479060,Lac-Saguay,VL,QC
+2479065,Chute-Saint-Philippe,MÉ,QC
+2479078,Lac-des-Écorces,MÉ,QC
+2479088,Mont-Laurier,V,QC
+2479097,Ferme-Neuve,MÉ,QC
+2479105,Lac-Saint-Paul,MÉ,QC
+2479110,Mont-Saint-Michel,MÉ,QC
+2479115,Sainte-Anne-du-Lac,MÉ,QC
+2480005,Fassett,MÉ,QC
+2480010,Montebello,MÉ,QC
+2480015,Notre-Dame-de-Bonsecours,MÉ,QC
+2480020,Notre-Dame-de-la-Paix,MÉ,QC
+2480027,Saint-André-Avellin,MÉ,QC
+2480037,Papineauville,MÉ,QC
+2480045,Plaisance,MÉ,QC
+2480050,Thurso,V,QC
+2480055,Lochaber,CT,QC
+2480060,Lochaber-Partie-Ouest,CT,QC
+2480065,Mayo,MÉ,QC
+2480070,Saint-Sixte,MÉ,QC
+2480078,Ripon,MÉ,QC
+2480085,Mulgrave-et-Derry,MÉ,QC
+2480090,Montpellier,MÉ,QC
+2480095,Lac-Simon,MÉ,QC
+2480103,Chénéville,MÉ,QC
+2480110,Namur,MÉ,QC
+2480115,Boileau,MÉ,QC
+2480125,Saint-Émile-de-Suffolk,MÉ,QC
+2480130,Lac-des-Plages,MÉ,QC
+2480135,Duhamel,MÉ,QC
+2480140,Val-des-Bois,MÉ,QC
+2480145,Bowman,MÉ,QC
+2481017,Gatineau,V,QC
+2482005,L'Ange-Gardien,MÉ,QC
+2482010,Notre-Dame-de-la-Salette,MÉ,QC
+2482015,Val-des-Monts,MÉ,QC
+2482020,Cantley,MÉ,QC
+2482025,Chelsea,MÉ,QC
+2482030,Pontiac,MÉ,QC
+2482035,La Pêche,MÉ,QC
+2483005,Denholm,MÉ,QC
+2483010,Low,CT,QC
+2483015,Kazabazua,MÉ,QC
+2483020,Lac-Sainte-Marie,MÉ,QC
+2483032,Gracefield,V,QC
+2483040,Cayamant,MÉ,QC
+2483045,Blue Sea,MÉ,QC
+2483050,Bouchette,MÉ,QC
+2483055,Sainte-Thérèse-de-la-Gatineau,MÉ,QC
+2483060,Messines,MÉ,QC
+2483065,Maniwaki,V,QC
+2483070,Déléage,MÉ,QC
+2483075,Egan-Sud,MÉ,QC
+2483085,Bois-Franc,MÉ,QC
+2483088,Montcerf-Lytton,MÉ,QC
+2483090,Aumond,CT,QC
+2483095,Grand-Remous,MÉ,QC
+2484005,Bristol,MÉ,QC
+2484010,Shawville,MÉ,QC
+2484015,Clarendon,MÉ,QC
+2484020,Portage-du-Fort,VL,QC
+2484025,Bryson,MÉ,QC
+2484030,Campbell's Bay,MÉ,QC
+2484035,L'Île-du-Grand-Calumet,MÉ,QC
+2484040,Litchfield,MÉ,QC
+2484045,Thorne,MÉ,QC
+2484050,Alleyn-et-Cawood,MÉ,QC
+2484055,Otter Lake,MÉ,QC
+2484060,Fort-Coulonge,VL,QC
+2484065,Mansfield-et-Pontefract,MÉ,QC
+2484070,Waltham,MÉ,QC
+2484082,L'Isle-aux-Allumettes,MÉ,QC
+2484090,Chichester,CT,QC
+2484095,Sheenboro,MÉ,QC
+2484100,Rapides-des-Joachims,MÉ,QC
+2485005,Témiscaming,V,QC
+2485010,Kipawa,MÉ,QC
+2485015,Saint-Édouard-de-Fabre,PE,QC
+2485020,Béarn,MÉ,QC
+2485025,Ville-Marie,V,QC
+2485030,Duhamel-Ouest,MÉ,QC
+2485037,Lorrainville,MÉ,QC
+2485045,Saint-Bruno-de-Guigues,MÉ,QC
+2485052,Laverlochère-Angliers,MÉ,QC
+2485055,Fugèreville,MÉ,QC
+2485060,Latulipe-et-Gaboury,CU,QC
+2485065,Belleterre,V,QC
+2485070,Laforce,MÉ,QC
+2485075,Moffet,MÉ,QC
+2485085,Saint-Eugène-de-Guigues,MÉ,QC
+2485090,Notre-Dame-du-Nord,MÉ,QC
+2485095,Guérin,CT,QC
+2485100,Nédélec,CT,QC
+2485105,Rémigny,MÉ,QC
+2486042,Rouyn-Noranda,V,QC
+2487005,Duparquet,V,QC
+2487010,Rapide-Danseur,MÉ,QC
+2487015,Roquemaure,MÉ,QC
+2487020,Gallichan,MÉ,QC
+2487025,Palmarolle,MÉ,QC
+2487030,Sainte-Germaine-Boulé,MÉ,QC
+2487035,Poularies,MÉ,QC
+2487042,Taschereau,MÉ,QC
+2487050,Authier,MÉ,QC
+2487058,Macamic,V,QC
+2487070,Sainte-Hélène-de-Mancebourg,PE,QC
+2487075,Clerval,MÉ,QC
+2487080,La Reine,MÉ,QC
+2487085,Dupuy,MÉ,QC
+2487090,La Sarre,V,QC
+2487095,Chazel,MÉ,QC
+2487100,Authier-Nord,MÉ,QC
+2487105,Val-Saint-Gilles,MÉ,QC
+2487110,Clermont,CT,QC
+2487115,Normétal,MÉ,QC
+2487120,Saint-Lambert,PE,QC
+2488005,Champneuf,MÉ,QC
+2488010,Rochebaucourt,MÉ,QC
+2488015,La Morandière,MÉ,QC
+2488022,Barraute,MÉ,QC
+2488030,La Corne,MÉ,QC
+2488035,Landrienne,CT,QC
+2488040,Saint-Marc-de-Figuery,PE,QC
+2488045,La Motte,MÉ,QC
+2488050,Saint-Mathieu-d'Harricana,MÉ,QC
+2488055,Amos,V,QC
+2488060,Saint-Félix-de-Dalquier,MÉ,QC
+2488065,Saint-Dominique-du-Rosaire,MÉ,QC
+2488070,Berry,MÉ,QC
+2488075,Trécesson,CT,QC
+2488080,Launay,CT,QC
+2488085,Sainte-Gertrude-Manneville,MÉ,QC
+2488090,Preissac,MÉ,QC
+2489008,Val-d'Or,V,QC
+2489010,Rivière-Héva,MÉ,QC
+2489015,Malartic,V,QC
+2489040,Senneterre,V,QC
+2489045,Senneterre,PE,QC
+2489050,Belcourt,MÉ,QC
+2490012,La Tuque,V,QC
+2490017,La Bostonnais,MÉ,QC
+2490027,Lac-Édouard,MÉ,QC
+2491005,Lac-Bouchette,MÉ,QC
+2491010,Saint-André-du-Lac-Saint-Jean,VL,QC
+2491015,Saint-François-de-Sales,MÉ,QC
+2491020,Chambord,MÉ,QC
+2491025,Roberval,V,QC
+2491030,Sainte-Hedwidge,MÉ,QC
+2491035,Saint-Prime,MÉ,QC
+2491042,Saint-Félicien,V,QC
+2491050,La Doré,PE,QC
+2492005,Saint-Augustin,PE,QC
+2492010,Péribonka,MÉ,QC
+2492015,Sainte-Jeanne-d'Arc,VL,QC
+2492022,Dolbeau-Mistassini,V,QC
+2492030,Albanel,MÉ,QC
+2492040,Normandin,V,QC
+2492045,Saint-Thomas-Didyme,MÉ,QC
+2492050,Saint-Edmond-les-Plaines,MÉ,QC
+2492055,Girardville,MÉ,QC
+2492060,Notre-Dame-de-Lorette,MÉ,QC
+2492065,Saint-Eugène-d'Argentenay,MÉ,QC
+2492070,Saint-Stanislas,MÉ,QC
+2493005,Desbiens,V,QC
+2493012,Métabetchouan--Lac-à-la-Croix,V,QC
+2493020,Hébertville,MÉ,QC
+2493025,Hébertville-Station,VL,QC
+2493030,Saint-Bruno,MÉ,QC
+2493035,Saint-Gédéon,MÉ,QC
+2493042,Alma,V,QC
+2493045,Saint-Nazaire,MÉ,QC
+2493055,Labrecque,MÉ,QC
+2493060,Lamarche,MÉ,QC
+2493065,L'Ascension-de-Notre-Seigneur,PE,QC
+2493070,Saint-Henri-de-Taillon,MÉ,QC
+2493075,Sainte-Monique,MÉ,QC
+2493080,Saint-Ludger-de-Milot,MÉ,QC
+2494068,Saguenay,V,QC
+2494205,Petit-Saguenay,MÉ,QC
+2494210,L'Anse-Saint-Jean,MÉ,QC
+2494215,Rivière-Éternité,MÉ,QC
+2494220,Ferland-et-Boilleau,MÉ,QC
+2494225,Saint-Félix-d'Otis,MÉ,QC
+2494230,Sainte-Rose-du-Nord,PE,QC
+2494235,Saint-Fulgence,MÉ,QC
+2494240,Saint-Honoré,V,QC
+2494245,Saint-David-de-Falardeau,MÉ,QC
+2494250,Bégin,MÉ,QC
+2494255,Saint-Ambroise,MÉ,QC
+2494260,Saint-Charles-de-Bourget,MÉ,QC
+2494265,Larouche,MÉ,QC
+2495005,Tadoussac,VL,QC
+2495010,Sacré-Coeur,MÉ,QC
+2495018,Les Bergeronnes,MÉ,QC
+2495025,Les Escoumins,MÉ,QC
+2495032,Longue-Rive,MÉ,QC
+2495040,Portneuf-sur-Mer,MÉ,QC
+2495045,Forestville,V,QC
+2495050,Colombier,MÉ,QC
+2496005,Baie-Trinité,VL,QC
+2496010,Godbout,VL,QC
+2496015,Franquelin,MÉ,QC
+2496020,Baie-Comeau,V,QC
+2496025,Pointe-Lebel,VL,QC
+2496030,Pointe-aux-Outardes,VL,QC
+2496035,Chute-aux-Outardes,VL,QC
+2496040,Ragueneau,PE,QC
+2497007,Sept-Îles,V,QC
+2497022,Port-Cartier,V,QC
+2497035,Fermont,V,QC
+2497040,Schefferville,V,QC
+2498005,Blanc-Sablon,MÉ,QC
+2498010,Bonne-Espérance,MÉ,QC
+2498012,Saint-Augustin,MÉ,QC
+2498014,Gros-Mécatina,MÉ,QC
+2498015,Côte-Nord-du-Golfe-du-Saint-Laurent,MÉ,QC
+2498020,L'Île-d'Anticosti,MÉ,QC
+2498025,Natashquan,MÉ,QC
+2498030,Aguanish,MÉ,QC
+2498035,Baie-Johan-Beetz,MÉ,QC
+2498040,Havre-Saint-Pierre,MÉ,QC
+2498045,Longue-Pointe-de-Mingan,MÉ,QC
+2498050,Rivière-Saint-Jean,MÉ,QC
+2498055,Rivière-au-Tonnerre,MÉ,QC
+2499005,Lebel-sur-Quévillon,V,QC
+2499010,Waswanipi,VC,QC
+2499015,Matagami,V,QC
+2499020,Chapais,V,QC
+2499025,Chibougamau,V,QC
+2499030,Mistissini,VC,QC
+2499035,Waskaganish,VC,QC
+2499040,Nemaska,VC,QC
+2499045,Eastmain,VC,QC
+2499050,Wemindji,VC,QC
+2499055,Chisasibi,VC,QC
+2499060,Eeyou Istchee Baie-James,GR,QC
+2499065,Kawawachikamach,VK,QC
+2499070,Whapmagoostui,VC,QC
+2499075,Kuujjuarapik,VN,QC
+2499080,Umiujaq,VN,QC
+2499085,Inukjuak,VN,QC
+2499090,Kangiqsualujjuaq,VN,QC
+2499095,Kuujjuaq,VN,QC
+2499100,Tasiujaq,VN,QC
+2499105,Aupaluk,VN,QC
+2499110,Kangirsuk,VN,QC
+2499115,Quaqtaq,VN,QC
+2499120,Puvirnituq,VN,QC
+2499125,Akulivik,VN,QC
+2499130,Kangiqsujuaq,VN,QC
+2499135,Salluit,VN,QC
+2499140,Ivujivik,VN,QC
+3501005,South Glengarry,TP,ON
+3501011,South Stormont,TP,ON
+3501012,Cornwall,CY,ON
+3501020,South Dundas,MU,ON
+3501030,North Dundas,TP,ON
+3501042,North Stormont,TP,ON
+3501050,North Glengarry,TP,ON
+3502001,East Hawkesbury,TP,ON
+3502008,Hawkesbury,T,ON
+3502010,Champlain,TP,ON
+3502023,Alfred and Plantagenet,TP,ON
+3502025,The Nation,M,ON
+3502036,Clarence-Rockland,C,ON
+3502044,Casselman,VL,ON
+3502048,Russell,TP,ON
+3506008,Ottawa,CV,ON
+3507004,Edwardsburgh/Cardinal,TP,ON
+3507006,Augusta,TP,ON
+3507008,Prescott,T,ON
+3507014,Elizabethtown-Kitley,TP,ON
+3507015,Brockville,CY,ON
+3507017,Front of Yonge,TP,ON
+3507021,Leeds and the Thousand Islands,TP,ON
+3507024,Gananoque,T,ON
+3507033,Westport,VL,ON
+3507040,Rideau Lakes,TP,ON
+3507042,Athens,TP,ON
+3507052,Merrickville-Wolford,VL,ON
+3507065,North Grenville,MU,ON
+3509001,Montague,TP,ON
+3509004,Smiths Falls,T,ON
+3509010,Drummond/North Elmsley,TP,ON
+3509015,Tay Valley,TP,ON
+3509021,Perth,T,ON
+3509024,Beckwith,TP,ON
+3509028,Carleton Place,T,ON
+3509030,Mississippi Mills,T,ON
+3509039,Lanark Highlands,TP,ON
+3510005,Frontenac Islands,TP,ON
+3510010,Kingston,CY,ON
+3510020,South Frontenac,TP,ON
+3510035,Central Frontenac,TP,ON
+3510045,North Frontenac,TP,ON
+3511005,Loyalist,TP,ON
+3511015,Greater Napanee,T,ON
+3511030,Stone Mills,TP,ON
+3511035,Addington Highlands,TP,ON
+3512001,Tyendinaga,TP,ON
+3512002,Deseronto,T,ON
+3512005,Belleville,CY,ON
+3512015,Quinte West,CY,ON
+3512020,Stirling-Rawdon,TP,ON
+3512026,Centre Hastings,MU,ON
+3512030,Tweed,MU,ON
+3512036,Madoc,TP,ON
+3512046,Marmora and Lake,MU,ON
+3512048,Tudor and Cashel,TP,ON
+3512051,Limerick,TP,ON
+3512054,Wollaston,TP,ON
+3512058,Faraday,TP,ON
+3512061,Bancroft,T,ON
+3512065,Carlow/Mayo,TP,ON
+3512076,Hastings Highlands,MU,ON
+3513020,Prince Edward County,CY,ON
+3514004,Brighton,MU,ON
+3514014,Cramahe,TP,ON
+3514019,Hamilton,TP,ON
+3514020,Port Hope,MU,ON
+3514021,Cobourg,T,ON
+3514024,Alnwick/Haldimand,TP,ON
+3514045,Trent Hills,MU,ON
+3515003,Asphodel-Norwood,TP,ON
+3515005,Otonabee-South Monaghan,TP,ON
+3515013,Cavan Monaghan,TP,ON
+3515014,Peterborough,CY,ON
+3515015,Selwyn,TP,ON
+3515023,Douro-Dummer,TP,ON
+3515030,Havelock-Belmont-Methuen,TP,ON
+3515037,North Kawartha,TP,ON
+3515044,Trent Lakes,MU,ON
+3516010,Kawartha Lakes,CY,ON
+3518001,Pickering,CY,ON
+3518005,Ajax,T,ON
+3518009,Whitby,T,ON
+3518013,Oshawa,CY,ON
+3518017,Clarington,MU,ON
+3518020,Scugog,TP,ON
+3518029,Uxbridge,TP,ON
+3518039,Brock,TP,ON
+3519028,Vaughan,CY,ON
+3519036,Markham,CY,ON
+3519038,Richmond Hill,T,ON
+3519044,Whitchurch-Stouffville,T,ON
+3519046,Aurora,T,ON
+3519048,Newmarket,T,ON
+3519049,King,TP,ON
+3519054,East Gwillimbury,T,ON
+3519070,Georgina,T,ON
+3520005,Toronto,C,ON
+3521005,Mississauga,CY,ON
+3521010,Brampton,CY,ON
+3521024,Caledon,T,ON
+3522001,East Garafraxa,TP,ON
+3522008,Amaranth,TP,ON
+3522010,Grand Valley,T,ON
+3522012,Mono,T,ON
+3522014,Orangeville,T,ON
+3522016,Mulmur,TP,ON
+3522019,Melancthon,TP,ON
+3522021,Shelburne,T,ON
+3523001,Puslinch,TP,ON
+3523008,Guelph,CY,ON
+3523009,Guelph/Eramosa,TP,ON
+3523017,Erin,T,ON
+3523025,Centre Wellington,TP,ON
+3523033,Mapleton,TP,ON
+3523043,Minto,T,ON
+3523050,Wellington North,TP,ON
+3524001,Oakville,T,ON
+3524002,Burlington,CY,ON
+3524009,Milton,T,ON
+3524015,Halton Hills,T,ON
+3525005,Hamilton,C,ON
+3526003,Fort Erie,T,ON
+3526011,Port Colborne,CY,ON
+3526014,Wainfleet,TP,ON
+3526021,West Lincoln,TP,ON
+3526028,Pelham,T,ON
+3526032,Welland,CY,ON
+3526037,Thorold,CY,ON
+3526043,Niagara Falls,CY,ON
+3526047,Niagara-on-the-Lake,T,ON
+3526053,St. Catharines,CY,ON
+3526057,Lincoln,T,ON
+3526065,Grimsby,T,ON
+3528018,Haldimand County,CY,ON
+3528052,Norfolk County,CY,ON
+3529005,Brant,CY,ON
+3529006,Brantford,CY,ON
+3530004,North Dumfries,TP,ON
+3530010,Cambridge,CY,ON
+3530013,Kitchener,CY,ON
+3530016,Waterloo,CY,ON
+3530020,Wilmot,TP,ON
+3530027,Wellesley,TP,ON
+3530035,Woolwich,TP,ON
+3531011,Stratford,CY,ON
+3531013,Perth South,TP,ON
+3531016,St. Marys,T,ON
+3531025,West Perth,MU,ON
+3531030,Perth East,TP,ON
+3531040,North Perth,MU,ON
+3532002,Norwich,TP,ON
+3532004,Tillsonburg,T,ON
+3532012,South-West Oxford,TP,ON
+3532018,Ingersoll,T,ON
+3532027,Zorra,TP,ON
+3532038,East Zorra-Tavistock,TP,ON
+3532042,Woodstock,CY,ON
+3532045,Blandford-Blenheim,TP,ON
+3534005,Bayham,MU,ON
+3534010,Malahide,TP,ON
+3534011,Aylmer,T,ON
+3534020,Central Elgin,MU,ON
+3534021,St. Thomas,CY,ON
+3534024,Southwold,TP,ON
+3534030,Dutton/Dunwich,MU,ON
+3534042,West Elgin,MU,ON
+3536020,Chatham-Kent,MU,ON
+3537001,Pelee,TP,ON
+3537003,Leamington,MU,ON
+3537013,Kingsville,T,ON
+3537016,Essex,T,ON
+3537028,Amherstburg,T,ON
+3537034,LaSalle,T,ON
+3537039,Windsor,CY,ON
+3537048,Tecumseh,T,ON
+3537064,Lakeshore,T,ON
+3538003,St. Clair,TP,ON
+3538007,Dawn-Euphemia,TP,ON
+3538015,Brooke-Alvinston,MU,ON
+3538016,Enniskillen,TP,ON
+3538018,Oil Springs,VL,ON
+3538019,Petrolia,T,ON
+3538030,Sarnia,CY,ON
+3538031,Point Edward,VL,ON
+3538035,Plympton-Wyoming,T,ON
+3538040,Lambton Shores,MU,ON
+3538043,Warwick,TP,ON
+3539002,Newbury,VL,ON
+3539005,Southwest Middlesex,MU,ON
+3539015,Strathroy-Caradoc,MU,ON
+3539027,Thames Centre,MU,ON
+3539033,Middlesex Centre,MU,ON
+3539036,London,CY,ON
+3539041,North Middlesex,MU,ON
+3539047,Adelaide-Metcalfe,TP,ON
+3539060,Lucan Biddulph,TP,ON
+3540005,South Huron,MU,ON
+3540010,Bluewater,MU,ON
+3540025,Central Huron,MU,ON
+3540028,Goderich,T,ON
+3540040,Huron East,MU,ON
+3540046,Howick,TP,ON
+3540050,Morris-Turnberry,MU,ON
+3540055,North Huron,TP,ON
+3540063,Ashfield-Colborne-Wawanosh,TP,ON
+3541004,South Bruce,MU,ON
+3541015,Huron-Kinloss,TP,ON
+3541024,Kincardine,MU,ON
+3541032,Brockton,MU,ON
+3541043,Arran-Elderslie,MU,ON
+3541045,Saugeen Shores,T,ON
+3541055,South Bruce Peninsula,T,ON
+3541069,Northern Bruce Peninsula,MU,ON
+3542004,West Grey,MU,ON
+3542005,Southgate,TP,ON
+3542015,Grey Highlands,MU,ON
+3542029,Hanover,T,ON
+3542037,Chatsworth,TP,ON
+3542045,The Blue Mountains,T,ON
+3542047,Meaford,MU,ON
+3542053,Georgian Bluffs,TP,ON
+3542059,Owen Sound,CY,ON
+3543003,Adjala-Tosorontio,TP,ON
+3543005,Clearview,TP,ON
+3543007,New Tecumseth,T,ON
+3543009,Springwater,TP,ON
+3543014,Bradford West Gwillimbury,T,ON
+3543015,Severn,TP,ON
+3543017,Innisfil,T,ON
+3543019,Ramara,TP,ON
+3543021,Essa,TP,ON
+3543023,Oro-Medonte,TP,ON
+3543031,Collingwood,T,ON
+3543042,Barrie,CY,ON
+3543052,Orillia,CY,ON
+3543064,Wasaga Beach,T,ON
+3543068,Tiny,TP,ON
+3543071,Tay,TP,ON
+3543072,Penetanguishene,T,ON
+3543074,Midland,T,ON
+3544002,Gravenhurst,T,ON
+3544018,Bracebridge,T,ON
+3544027,Lake of Bays,TP,ON
+3544042,Huntsville,T,ON
+3544053,Muskoka Lakes,TP,ON
+3544065,Georgian Bay,TP,ON
+3546005,Highlands East,MU,ON
+3546015,Minden Hills,TP,ON
+3546018,Algonquin Highlands,TP,ON
+3546024,Dysart et al,MU,ON
+3547002,Arnprior,T,ON
+3547003,McNab/Braeside,TP,ON
+3547008,Greater Madawaska,TP,ON
+3547020,"Brudenell, Lyndoch and Raglan",TP,ON
+3547030,Madawaska Valley,TP,ON
+3547033,"Killaloe, Hagarty and Richards",TP,ON
+3547035,Bonnechere Valley,TP,ON
+3547043,Admaston/Bromley,TP,ON
+3547046,Horton,TP,ON
+3547048,Renfrew,T,ON
+3547056,Whitewater Region,TP,ON
+3547064,Pembroke,CY,ON
+3547070,North Algona Wilberforce,TP,ON
+3547075,Laurentian Valley,TP,ON
+3547076,Petawawa,T,ON
+3547090,Laurentian Hills,T,ON
+3547096,Deep River,T,ON
+3547098,"Head, Clara and Maria",TP,ON
+3548001,South Algonquin,TP,ON
+3548013,Papineau-Cameron,TP,ON
+3548019,Mattawan,TP,ON
+3548021,Mattawa,T,ON
+3548022,Calvin,MU,ON
+3548027,Bonfield,TP,ON
+3548031,Chisholm,TP,ON
+3548034,East Ferris,MU,ON
+3548044,North Bay,CY,ON
+3548055,West Nipissing,M,ON
+3548069,Temagami,MU,ON
+3549003,Seguin,TP,ON
+3549005,The Archipelago,TP,ON
+3549012,McMurrich/Monteith,TP,ON
+3549014,Perry,TP,ON
+3549018,Kearney,T,ON
+3549019,Armour,TP,ON
+3549022,Burk's Falls,VL,ON
+3549024,Ryerson,TP,ON
+3549028,McKellar,TP,ON
+3549031,McDougall,MU,ON
+3549032,Parry Sound,T,ON
+3549036,Carling,TP,ON
+3549039,Whitestone,MU,ON
+3549043,Magnetawan,MU,ON
+3549046,Strong,TP,ON
+3549048,Sundridge,VL,ON
+3549051,Joly,TP,ON
+3549054,Machar,TP,ON
+3549056,South River,VL,ON
+3549060,Powassan,MU,ON
+3549066,Callander,MU,ON
+3549071,Nipissing,TP,ON
+3551001,Tehkummah,TP,ON
+3551006,Central Manitoulin,MU,ON
+3551011,Assiginack,TP,ON
+3551017,Northeastern Manitoulin and the Islands,MU,ON
+3551021,Billings,TP,ON
+3551026,Gore Bay,T,ON
+3551027,Gordon/Barrie Island,MU,ON
+3551028,Burpee and Mills,TP,ON
+3551034,Cockburn Island,TP,ON
+3552001,French River,M,ON
+3552004,St.-Charles,MU,ON
+3552013,Markstay-Warren,MU,ON
+3552023,Sables-Spanish Rivers,TP,ON
+3552026,Espanola,T,ON
+3552028,Baldwin,TP,ON
+3552031,Nairn and Hyman,TP,ON
+3552036,Killarney,MU,ON
+3552092,Chapleau,TP,ON
+3553005,Greater Sudbury,CV,ON
+3554001,Coleman,TP,ON
+3554006,Latchford,T,ON
+3554008,Cobalt,T,ON
+3554014,Harris,TP,ON
+3554020,Temiskaming Shores,CY,ON
+3554021,Hudson,TP,ON
+3554024,Kerns,TP,ON
+3554026,Harley,TP,ON
+3554029,Casey,TP,ON
+3554032,Brethour,TP,ON
+3554034,Hilliard,TP,ON
+3554036,Armstrong,TP,ON
+3554038,Thornloe,VL,ON
+3554042,James,TP,ON
+3554044,Charlton and Dack,MU,ON
+3554049,Evanturel,TP,ON
+3554052,Englehart,T,ON
+3554054,Chamberlain,TP,ON
+3554056,Matachewan,TP,ON
+3554058,McGarry,TP,ON
+3554062,Larder Lake,TP,ON
+3554066,Gauthier,TP,ON
+3554068,Kirkland Lake,T,ON
+3556014,Black River-Matheson,TP,ON
+3556027,Timmins,CY,ON
+3556031,Iroquois Falls,T,ON
+3556042,Cochrane,T,ON
+3556048,Smooth Rock Falls,T,ON
+3556052,Fauquier-Strickland,TP,ON
+3556056,Moonbeam,TP,ON
+3556066,Kapuskasing,T,ON
+3556070,Val Rita-Harty,TP,ON
+3556073,Opasatika,TP,ON
+3556076,Hearst,T,ON
+3556077,Mattice-Val Côté,TP,ON
+3556106,Moosonee,TV,ON
+3557001,Jocelyn,TP,ON
+3557004,Hilton,TP,ON
+3557006,Hilton Beach,VL,ON
+3557008,St. Joseph,TP,ON
+3557011,Laird,TP,ON
+3557014,Tarbutt and Tarbutt Additional,TP,ON
+3557016,Johnson,TP,ON
+3557019,Plummer Additional,TP,ON
+3557021,Bruce Mines,T,ON
+3557028,Thessalon,T,ON
+3557035,Huron Shores,MU,ON
+3557038,Blind River,T,ON
+3557039,Spanish,T,ON
+3557040,The North Shore,TP,ON
+3557041,Elliot Lake,CY,ON
+3557051,"Macdonald, Meredith and Aberdeen Additional",TP,ON
+3557061,Sault Ste. Marie,CY,ON
+3557066,Prince,TP,ON
+3557076,Wawa,MU,ON
+3557079,Dubreuilville,TP,ON
+3557091,White River,TP,ON
+3557096,Hornepayne,TP,ON
+3558001,Neebing,MU,ON
+3558004,Thunder Bay,CY,ON
+3558011,Oliver Paipoonge,MU,ON
+3558012,Gillies,TP,ON
+3558016,O'Connor,TP,ON
+3558019,Conmee,TP,ON
+3558028,Shuniah,MU,ON
+3558034,Dorion,TP,ON
+3558041,Red Rock,TP,ON
+3558044,Nipigon,TP,ON
+3558051,Schreiber,TP,ON
+3558054,Terrace Bay,TP,ON
+3558059,Marathon,T,ON
+3558066,Manitouwadge,TP,ON
+3558075,Greenstone,MU,ON
+3559001,Atikokan,T,ON
+3559011,Alberton,TP,ON
+3559012,Fort Frances,T,ON
+3559016,La Vallee,TP,ON
+3559019,Emo,TP,ON
+3559024,Chapple,TP,ON
+3559031,Morley,TP,ON
+3559040,Dawson,TP,ON
+3559042,Rainy River,T,ON
+3559047,Lake of the Woods,TP,ON
+3560001,Ignace,TP,ON
+3560008,Sioux Narrows-Nestor Falls,TP,ON
+3560010,Kenora,CY,ON
+3560021,Machin,MU,ON
+3560027,Dryden,CY,ON
+3560032,Ear Falls,TP,ON
+3560034,Sioux Lookout,MU,ON
+3560042,Red Lake,MU,ON
+3560049,Pickle Lake,TP,ON
+4601035,Stuartburn,RM,MB
+4601039,Piney,RM,MB
+4601043,Reynolds,RM,MB
+4601046,Whitemouth,RM,MB
+4601051,Pinawa,LGD,MB
+4601057,Lac du Bonnet,RM,MB
+4601060,Lac du Bonnet,T,MB
+4601071,Alexander,RM,MB
+4601075,Powerview-Pine Falls,T,MB
+4601078,Victoria Beach,RM,MB
+4602024,Emerson-Franklin,MU,MB
+4602032,De Salaberry,RM,MB
+4602037,St-Pierre-Jolys,VL,MB
+4602041,Hanover,RM,MB
+4602044,Steinbach,CY,MB
+4602046,Niverville,T,MB
+4602053,La Broquerie,RM,MB
+4602057,Ste. Anne,RM,MB
+4602061,Ste. Anne,T,MB
+4602069,Taché,RM,MB
+4602075,Ritchot,RM,MB
+4603030,Montcalm,RM,MB
+4603040,Altona,T,MB
+4603041,Rhineland,MU,MB
+4603047,Stanley,RM,MB
+4603050,Winkler,CY,MB
+4603053,Morden,CY,MB
+4603058,Thompson,RM,MB
+4603062,Roland,RM,MB
+4603065,Morris,RM,MB
+4603067,Morris,T,MB
+4603072,Dufferin,RM,MB
+4603074,Carman,T,MB
+4604034,Pembina,MU,MB
+4604040,Louise,MU,MB
+4604052,Cartwright-Roblin,MU,MB
+4604057,Argyle,RM,MB
+4604064,Lorne,MU,MB
+4605025,Killarney - Turtle Mountain,RM,MB
+4605032,Boissevain-Morton,MU,MB
+4605038,Deloraine-Winchester,MU,MB
+4605044,Brenda-Waskada,MU,MB
+4605052,Melita,T,MB
+4605056,Two Borders,MU,MB
+4605062,Grassland,MU,MB
+4605071,Prairie Lakes,RM,MB
+4606016,Sifton,RM,MB
+4606023,Pipestone,RM,MB
+4606031,Wallace-Woodworth,RM,MB
+4606034,Virden,T,MB
+4607039,Glenboro-South Cypress,MU,MB
+4607046,Oakland-Wawanesa,MU,MB
+4607052,Souris-Glenwood,MU,MB
+4607057,Whitehead,RM,MB
+4607060,Cornwallis,RM,MB
+4607062,Brandon,CY,MB
+4607066,North Cypress-Langford,MU,MB
+4607068,Carberry,T,MB
+4607071,Elton,RM,MB
+4607076,Riverdale,MU,MB
+4608032,Norfolk-Treherne,MU,MB
+4608042,Victoria,RM,MB
+4608046,North Norfolk,MU,MB
+4608055,Glenella-Lansdowne,MU,MB
+4608060,WestLake-Gladstone,MU,MB
+4609018,Grey,RM,MB
+4609024,Portage la Prairie,RM,MB
+4609029,Portage la Prairie,CY,MB
+4610035,Macdonald,RM,MB
+4610043,Cartier,RM,MB
+4610052,St. François Xavier,RM,MB
+4611040,Winnipeg,CY,MB
+4611042,Headingley,RM,MB
+4612047,Springfield,RM,MB
+4612054,Brokenhead,RM,MB
+4612056,Beausejour,T,MB
+4613032,East St. Paul,RM,MB
+4613037,West St. Paul,RM,MB
+4613043,St. Andrews,RM,MB
+4613047,Selkirk,CY,MB
+4613049,Dunnottar,VL,MB
+4613056,St. Clements,RM,MB
+4614015,Rosser,RM,MB
+4614031,Woodlands,RM,MB
+4614036,Rockwood,RM,MB
+4614039,Stonewall,T,MB
+4614042,Teulon,T,MB
+4615020,Neepawa,T,MB
+4615032,Oakview,RM,MB
+4615037,Hamiota,MU,MB
+4615047,Ellice-Archie,RM,MB
+4615056,Prairie View,MU,MB
+4615063,Yellowhead,RM,MB
+4615070,Harrison Park,MU,MB
+4615074,Minto-Odanah,MU,MB
+4615075,Minnedosa,T,MB
+4615078,Rosedale,RM,MB
+4615092,Clanwilliam-Erickson,MU,MB
+4616005,Rossburn,MU,MB
+4616020,Riding Mountain West,RM,MB
+4616030,Russell-Binscarth,MU,MB
+4616048,Hillsburg-Roblin-Shell River,MU,MB
+4617026,Alonsa,RM,MB
+4617035,McCreary,MU,MB
+4617041,Ste. Rose,MU,MB
+4617048,Dauphin,RM,MB
+4617050,Dauphin,CY,MB
+4617054,Gilbert Plains,MU,MB
+4617058,Grandview,MU,MB
+4617064,Ethelbert,MU,MB
+4617072,Mossey River,RM,MB
+4617075,Lakeshore,RM,MB
+4618031,Gimli,RM,MB
+4618034,Winnipeg Beach,T,MB
+4618037,Armstrong,RM,MB
+4618040,St. Laurent,RM,MB
+4618044,Coldwell,RM,MB
+4618056,West Interlake,MU,MB
+4618060,Grahamdale,RM,MB
+4618068,Fisher,RM,MB
+4618074,Arborg,T,MB
+4618076,Bifrost-Riverton,MU,MB
+4620032,Mountain (South),RM,MB
+4620042,Swan Valley West,MU,MB
+4620048,Swan River,T,MB
+4620051,Minitonas-Bowsman,MU,MB
+4620055,Mountain (North),RM,MB
+4621025,Grand Rapids,T,MB
+4621045,The Pas,T,MB
+4621052,Kelsey,RM,MB
+4621064,Flin Flon (Part),CY,MB
+4621071,Snow Lake,T,MB
+4622017,Mystery Lake,LGD,MB
+4622026,Thompson,CY,MB
+4623022,Gillam,T,MB
+4623034,Leaf Rapids,T,MB
+4623047,Lynn Lake,T,MB
+4623056,Churchill,T,MB
+4701001,Argyle No. 1,RM,SK
+4701002,Gainsborough,VL,SK
+4701004,Carievale,VL,SK
+4701006,Mount Pleasant No. 2,RM,SK
+4701008,Carnduff,T,SK
+4701011,Enniskillen No. 3,RM,SK
+4701012,Glen Ewen,VL,SK
+4701014,Oxbow,T,SK
+4701016,Coalfields No. 4,RM,SK
+4701017,Frobisher,VL,SK
+4701018,North Portal,VL,SK
+4701019,Roche Percée,VL,SK
+4701021,Bienfait,T,SK
+4701022,Estevan No. 5,RM,SK
+4701024,Estevan,CY,SK
+4701027,Benson No. 35,RM,SK
+4701031,Browning No. 34,RM,SK
+4701032,Lampman,T,SK
+4701036,Moose Creek No. 33,RM,SK
+4701037,Alameda,T,SK
+4701039,Reciprocity No. 32,RM,SK
+4701041,Alida,VL,SK
+4701043,Storthoaks No. 31,RM,SK
+4701044,Storthoaks,VL,SK
+4701047,Antler No. 61,RM,SK
+4701049,Redvers,T,SK
+4701053,Moose Mountain No. 63,RM,SK
+4701054,Manor,VL,SK
+4701056,Carlyle,T,SK
+4701058,Brock No. 64,RM,SK
+4701059,Arcola,T,SK
+4701061,Kisbey,VL,SK
+4701063,Tecumseh No. 65,RM,SK
+4701064,Forget,VL,SK
+4701066,Stoughton,T,SK
+4701067,Heward,VL,SK
+4701069,Golden West No. 95,RM,SK
+4701072,Hazelwood No. 94,RM,SK
+4701076,Wawken No. 93,RM,SK
+4701077,Kennedy,VL,SK
+4701078,Wawota,T,SK
+4701079,Kenosee Lake,VL,SK
+4701091,Walpole No. 92,RM,SK
+4701094,Maryfield No. 91,RM,SK
+4701096,Maryfield,VL,SK
+4701098,Fairlight,VL,SK
+4702001,Cambria No. 6,RM,SK
+4702002,Torquay,VL,SK
+4702006,Souris Valley No. 7,RM,SK
+4702008,Tribune,VL,SK
+4702011,Lake Alma No. 8,RM,SK
+4702014,Surprise Valley No. 9,RM,SK
+4702016,Minton,VL,SK
+4702018,Happy Valley No. 10,RM,SK
+4702023,Bengough,T,SK
+4702024,Bengough No. 40,RM,SK
+4702026,The Gap No. 39,RM,SK
+4702028,Ceylon,VL,SK
+4702029,Laurier No. 38,RM,SK
+4702031,Radville,T,SK
+4702033,Lomond No. 37,RM,SK
+4702036,Goodwater,VL,SK
+4702037,Cymri No. 36,RM,SK
+4702038,Halbrite,VL,SK
+4702039,Midale,T,SK
+4702041,Macoun,VL,SK
+4702042,Griffin No. 66,RM,SK
+4702044,Weyburn No. 67,RM,SK
+4702047,Weyburn,CY,SK
+4702048,McTaggart,VL,SK
+4702051,Brokenshell No. 68,RM,SK
+4702052,Norton No. 69,RM,SK
+4702054,Pangman,VL,SK
+4702057,Key West No. 70,RM,SK
+4702058,Ogema,T,SK
+4702061,Elmsthorpe No. 100,RM,SK
+4702062,Avonlea,VL,SK
+4702066,Caledonia No. 99,RM,SK
+4702067,Milestone,T,SK
+4702069,Scott No. 98,RM,SK
+4702071,Lang,VL,SK
+4702072,Yellow Grass,T,SK
+4702073,Wellington No. 97,RM,SK
+4702076,Fillmore No. 96,RM,SK
+4702077,Osage,VL,SK
+4702078,Fillmore,VL,SK
+4702079,Creelman,VL,SK
+4703001,Hart Butte No. 11,RM,SK
+4703004,Coronach,T,SK
+4703006,Poplar Valley No. 12,RM,SK
+4703009,Rockglen,T,SK
+4703011,Old Post No. 43,RM,SK
+4703012,Wood Mountain,VL,SK
+4703016,Glen McPherson No. 46,RM,SK
+4703018,Mankota No. 45,RM,SK
+4703019,Mankota,VL,SK
+4703022,Waverley No. 44,RM,SK
+4703026,Willow Bunch No. 42,RM,SK
+4703028,Willow Bunch,T,SK
+4703029,Excel No. 71,RM,SK
+4703034,Lake of the Rivers No. 72,RM,SK
+4703036,Assiniboia,T,SK
+4703038,Stonehenge No. 73,RM,SK
+4703041,Limerick,VL,SK
+4703042,Wood River No. 74,RM,SK
+4703044,Lafleche,T,SK
+4703048,Pinto Creek No. 75,RM,SK
+4703051,Kincaid,VL,SK
+4703052,Hazenmore,VL,SK
+4703054,Auvergne No. 76,RM,SK
+4703058,Ponteix,T,SK
+4703059,Whiska Creek No. 106,RM,SK
+4703061,Neville,VL,SK
+4703062,Vanguard,VL,SK
+4703064,Glen Bain No. 105,RM,SK
+4703068,Gravelbourg No. 104,RM,SK
+4703071,Gravelbourg,T,SK
+4703074,Sutton No. 103,RM,SK
+4703092,Mossbank,T,SK
+4703093,Lake Johnston No. 102,RM,SK
+4703096,Terrell No. 101,RM,SK
+4704002,Val Marie,VL,SK
+4704003,Val Marie No. 17,RM,SK
+4704006,Lone Tree No. 18,RM,SK
+4704008,Bracken,VL,SK
+4704009,Climax,VL,SK
+4704011,Frontier No. 19,RM,SK
+4704012,Frontier,VL,SK
+4704019,Reno No. 51,RM,SK
+4704021,Consul,VL,SK
+4704024,White Valley No. 49,RM,SK
+4704026,Eastend,T,SK
+4704028,Wise Creek No. 77,RM,SK
+4704029,Cadillac,VL,SK
+4704034,Grassy Creek No. 78,RM,SK
+4704036,Shaunavon,T,SK
+4704038,Arlington No. 79,RM,SK
+4704045,Maple Creek No. 111,RM,SK
+4704048,Maple Creek,T,SK
+4704050,Piapot No. 110,RM,SK
+4704054,Carmichael No. 109,RM,SK
+4704058,Bone Creek No. 108,RM,SK
+4704061,Lac Pelletier No. 107,RM,SK
+4705001,Moosomin No. 121,RM,SK
+4705002,Fleming,T,SK
+4705004,Moosomin,T,SK
+4705007,Martin No. 122,RM,SK
+4705009,Wapella,T,SK
+4705011,Silverwood No. 123,RM,SK
+4705014,Kingsley No. 124,RM,SK
+4705016,Kipling,T,SK
+4705018,Chester No. 125,RM,SK
+4705019,Windthorst,VL,SK
+4705021,Glenavon,VL,SK
+4705024,Wolseley,T,SK
+4705027,Wolseley No. 155,RM,SK
+4705028,Elcapo No. 154,RM,SK
+4705029,Grenfell,T,SK
+4705031,Broadview,T,SK
+4705033,Willowdale No. 153,RM,SK
+4705034,Whitewood,T,SK
+4705037,Rocanville No. 151,RM,SK
+4705038,Rocanville,T,SK
+4705041,Spy Hill No. 152,RM,SK
+4705042,Tantallon,VL,SK
+4705043,Spy Hill,VL,SK
+4705044,Gerald,VL,SK
+4705047,Langenburg No. 181,RM,SK
+4705048,Langenburg,T,SK
+4705049,Yarbo,VL,SK
+4705050,West End,RV,SK
+4705051,Fertile Belt No. 183,RM,SK
+4705052,Esterhazy,T,SK
+4705053,Atwater,VL,SK
+4705054,Bangor,VL,SK
+4705055,Bird's Point,RV,SK
+4705056,Stockholm,VL,SK
+4705057,Grayson No. 184,RM,SK
+4705058,Dubuc,VL,SK
+4705059,Grayson,VL,SK
+4705060,Melville Beach,RV,SK
+4705061,Waldron,VL,SK
+4705062,Killaly,VL,SK
+4705063,McLeod No. 185,RM,SK
+4705064,Neudorf,VL,SK
+4705066,Lemberg,T,SK
+4705067,Stanley No. 215,RM,SK
+4705068,Duff,VL,SK
+4705069,Goodeve,VL,SK
+4705071,Fenwood,VL,SK
+4705073,Cana No. 214,RM,SK
+4705074,Melville,CY,SK
+4705077,Saltcoats No. 213,RM,SK
+4705078,Saltcoats,T,SK
+4705079,Bredenbury,T,SK
+4705093,Churchbridge No. 211,RM,SK
+4705094,Churchbridge,T,SK
+4705096,MacNutt,VL,SK
+4706001,Montmartre No. 126,RM,SK
+4706002,Montmartre,VL,SK
+4706003,Kendal,VL,SK
+4706004,Francis No. 127,RM,SK
+4706006,Odessa,VL,SK
+4706007,Vibank,VL,SK
+4706008,Sedley,VL,SK
+4706009,Francis,T,SK
+4706011,Lajord No. 128,RM,SK
+4706013,Bratt's Lake No. 129,RM,SK
+4706014,Wilcox,VL,SK
+4706016,Redburn No. 130,RM,SK
+4706017,Rouleau,T,SK
+4706018,Briercrest,VL,SK
+4706019,Drinkwater,VL,SK
+4706021,Pense No. 160,RM,SK
+4706022,Belle Plaine,VL,SK
+4706023,Pense,T,SK
+4706026,Sherwood No. 159,RM,SK
+4706027,Regina,CY,SK
+4706028,Grand Coulee,T,SK
+4706029,Edenwold No. 158,RM,SK
+4706030,White City,T,SK
+4706031,Pilot Butte,T,SK
+4706032,Balgonie,T,SK
+4706033,Edenwold,VL,SK
+4706034,South Qu'Appelle No. 157,RM,SK
+4706036,Qu'Appelle,T,SK
+4706037,McLean,VL,SK
+4706038,Indian Head No. 156,RM,SK
+4706039,Indian Head,T,SK
+4706041,Sintaluta,T,SK
+4706042,Abernethy No. 186,RM,SK
+4706045,Fort San,RV,SK
+4706046,Abernethy,VL,SK
+4706047,Balcarres,T,SK
+4706048,North Qu'Appelle No. 187,RM,SK
+4706049,Lebret,VL,SK
+4706050,Katepwa,RV,SK
+4706051,Fort Qu'Appelle,T,SK
+4706052,B-Say-Tah,RV,SK
+4706053,Lumsden No. 189,RM,SK
+4706054,Disley,VL,SK
+4706055,Buena Vista,VL,SK
+4706056,Lumsden,T,SK
+4706057,Lumsden Beach,RV,SK
+4706058,Regina Beach,T,SK
+4706059,Dufferin No. 190,RM,SK
+4706060,Wee Too Beach,RV,SK
+4706061,Bethune,VL,SK
+4706062,Findlater,VL,SK
+4706063,Sarnia No. 221,RM,SK
+4706064,Chamberlain,VL,SK
+4706065,Alice Beach,RV,SK
+4706067,Holdfast,VL,SK
+4706068,Dilke,VL,SK
+4706069,Grandview Beach,RV,SK
+4706070,Longlaketon No. 219,RM,SK
+4706071,McKillop No. 220,RM,SK
+4706072,Saskatchewan Beach,RV,SK
+4706073,Bulyea,VL,SK
+4706074,Strasbourg,T,SK
+4706075,Kannata Valley,RV,SK
+4706076,Sunset Cove,RV,SK
+4706077,Silton,VL,SK
+4706078,Craven,VL,SK
+4706079,Earl Grey,VL,SK
+4706080,Glen Harbour,RV,SK
+4706081,North Grove,RV,SK
+4706082,Pelican Pointe,RV,SK
+4706085,Island View,RV,SK
+4706091,Cupar No. 218,RM,SK
+4706092,Southey,T,SK
+4706093,Markinch,VL,SK
+4706094,Cupar,T,SK
+4706096,Lipton No. 217,RM,SK
+4706097,Dysart,VL,SK
+4706098,Lipton,VL,SK
+4706099,Tullymet No. 216,RM,SK
+4707001,Baildon No. 131,RM,SK
+4707004,Hillsborough No. 132,RM,SK
+4707006,Rodgers No. 133,RM,SK
+4707008,Coderre,VL,SK
+4707011,Shamrock No. 134,RM,SK
+4707012,Shamrock,VL,SK
+4707014,Lawtonia No. 135,RM,SK
+4707016,Hodgeville,VL,SK
+4707018,Coulee No. 136,RM,SK
+4707020,Beaver Flat,RV,SK
+4707021,Excelsior No. 166,RM,SK
+4707022,Waldeck,VL,SK
+4707023,Rush Lake,VL,SK
+4707024,Morse No. 165,RM,SK
+4707026,Herbert,T,SK
+4707027,Morse,T,SK
+4707028,Ernfold,VL,SK
+4707029,Chaplin No. 164,RM,SK
+4707031,Chaplin,VL,SK
+4707032,Wheatlands No. 163,RM,SK
+4707034,Mortlach,VL,SK
+4707036,Caron No. 162,RM,SK
+4707037,Caronport,VL,SK
+4707038,Moose Jaw No. 161,RM,SK
+4707039,Moose Jaw,CY,SK
+4707042,Marquis No. 191,RM,SK
+4707043,Tuxford,VL,SK
+4707044,Marquis,VL,SK
+4707045,Sun Valley,RV,SK
+4707047,Eyebrow No. 193,RM,SK
+4707048,Brownlee,VL,SK
+4707049,Eyebrow,VL,SK
+4707051,South Lake,RV,SK
+4707053,Enfield No. 194,RM,SK
+4707054,Central Butte,T,SK
+4707058,Canaan No. 225,RM,SK
+4707059,Lucky Lake,VL,SK
+4707062,Beechy,VL,SK
+4707063,Victory No. 226,RM,SK
+4707066,King George No. 256,RM,SK
+4707067,Coteau No. 255,RM,SK
+4707068,Coteau Beach,RV,SK
+4707071,Maple Bush No. 224,RM,SK
+4707072,Riverhurst,VL,SK
+4707074,Mistusinne,RV,SK
+4707076,Huron No. 223,RM,SK
+4707077,Tugaske,VL,SK
+4707091,Craik No. 222,RM,SK
+4707092,Craik,T,SK
+4707093,Aylesbury,VL,SK
+4708001,Swift Current No. 137,RM,SK
+4708004,Swift Current,CY,SK
+4708006,Webb No. 138,RM,SK
+4708008,Webb,VL,SK
+4708009,Gull Lake No. 139,RM,SK
+4708011,Gull Lake,T,SK
+4708012,Tompkins,VL,SK
+4708016,Big Stick No. 141,RM,SK
+4708018,Golden Prairie,VL,SK
+4708021,Enterprise No. 142,RM,SK
+4708022,Richmound,VL,SK
+4708024,Fox Valley No. 171,RM,SK
+4708026,Fox Valley,VL,SK
+4708028,Pittville No. 169,RM,SK
+4708029,Hazlet,VL,SK
+4708031,Riverside No. 168,RM,SK
+4708032,Cabri,T,SK
+4708034,Pennant,VL,SK
+4708036,Success,VL,SK
+4708038,Saskatchewan Landing No. 167,RM,SK
+4708039,Stewart Valley,VL,SK
+4708042,Lacadena No. 228,RM,SK
+4708044,Kyle,T,SK
+4708046,Miry Creek No. 229,RM,SK
+4708048,Abbey,VL,SK
+4708049,Lancer,VL,SK
+4708053,Clinworth No. 230,RM,SK
+4708054,Sceptre,VL,SK
+4708056,Happyland No. 231,RM,SK
+4708057,Prelate,VL,SK
+4708058,Leader,T,SK
+4708059,Mendham,VL,SK
+4708061,Deer Forks No. 232,RM,SK
+4708062,Burstall,T,SK
+4708065,Chesterfield No. 261,RM,SK
+4708068,Eatonia,T,SK
+4708071,Newcombe No. 260,RM,SK
+4708074,Snipe Lake No. 259,RM,SK
+4708076,Eston,T,SK
+4708092,Monet No. 257,RM,SK
+4708094,Elrose,T,SK
+4709001,Calder No. 241,RM,SK
+4709002,Calder,VL,SK
+4709006,Wallace No. 243,RM,SK
+4709009,Rhein,VL,SK
+4709011,Orkney No. 244,RM,SK
+4709012,Yorkton,CY,SK
+4709014,Ebenezer,VL,SK
+4709016,Springside,T,SK
+4709019,Garry No. 245,RM,SK
+4709023,Insinger No. 275,RM,SK
+4709024,Sheho,VL,SK
+4709028,Theodore,VL,SK
+4709029,Good Lake No. 274,RM,SK
+4709032,Canora,T,SK
+4709033,Sliding Hills No. 273,RM,SK
+4709037,Cote No. 271,RM,SK
+4709038,Togo,VL,SK
+4709039,Kamsack,T,SK
+4709042,St. Philips No. 301,RM,SK
+4709044,Pelly,VL,SK
+4709046,Keys No. 303,RM,SK
+4709049,Buchanan No. 304,RM,SK
+4709053,Buchanan,VL,SK
+4709054,Invermay No. 305,RM,SK
+4709056,Rama,VL,SK
+4709058,Invermay,VL,SK
+4709060,Hazel Dell No. 335,RM,SK
+4709061,Lintlaw,VL,SK
+4709062,Preeceville No. 334,RM,SK
+4709064,Preeceville,T,SK
+4709065,Endeavour,VL,SK
+4709066,Sturgis,T,SK
+4709067,Clayton No. 333,RM,SK
+4709069,Stenen,VL,SK
+4709071,Hyas,VL,SK
+4709072,Norquay,T,SK
+4709075,Livingston No. 331,RM,SK
+4709076,Arran,VL,SK
+4710002,Hubbard,VL,SK
+4710003,Ituna Bon Accord No. 246,RM,SK
+4710004,Ituna,T,SK
+4710008,Kellross No. 247,RM,SK
+4710009,Kelliher,VL,SK
+4710011,Leross,VL,SK
+4710014,Touchwood No. 248,RM,SK
+4710022,Semans,VL,SK
+4710024,Mount Hope No. 279,RM,SK
+4710027,Raymore,T,SK
+4710028,Quinton,VL,SK
+4710029,Punnichy,VL,SK
+4710031,Emerald No. 277,RM,SK
+4710034,Chorney Beach,RV,SK
+4710035,Leslie Beach,RV,SK
+4710036,Foam Lake No. 276,RM,SK
+4710038,Foam Lake,T,SK
+4710041,Elfros No. 307,RM,SK
+4710043,Elfros,VL,SK
+4710046,Big Quill No. 308,RM,SK
+4710047,Wynyard,T,SK
+4710052,Prairie Rose No. 309,RM,SK
+4710054,Jansen,VL,SK
+4710056,Leroy No. 339,RM,SK
+4710058,Leroy,T,SK
+4710061,Lakeside No. 338,RM,SK
+4710062,Watson,T,SK
+4710064,Quill Lake,VL,SK
+4710066,Lakeview No. 337,RM,SK
+4710068,Wadena,T,SK
+4710071,Sasman No. 336,RM,SK
+4710072,Margo,VL,SK
+4711002,Duval,VL,SK
+4711003,Last Mountain Valley No. 250,RM,SK
+4711004,Govan,T,SK
+4711006,Big Arm No. 251,RM,SK
+4711007,Etters Beach,RV,SK
+4711008,Imperial,T,SK
+4711009,Liberty,VL,SK
+4711011,Arm River No. 252,RM,SK
+4711014,Davidson,T,SK
+4711016,Willner No. 253,RM,SK
+4711018,Loreburn No. 254,RM,SK
+4711019,Elbow,VL,SK
+4711021,Loreburn,VL,SK
+4711022,Strongfield,VL,SK
+4711024,Hawarden,VL,SK
+4711026,Rudy No. 284,RM,SK
+4711027,Outlook,T,SK
+4711028,Broderick,VL,SK
+4711029,Glenside,VL,SK
+4711031,Rosedale No. 283,RM,SK
+4711032,Hanley,T,SK
+4711034,McCraney No. 282,RM,SK
+4711036,Kenaston,VL,SK
+4711038,Bladworth,VL,SK
+4711039,Wood Creek No. 281,RM,SK
+4711041,Simpson,VL,SK
+4711042,Wreford No. 280,RM,SK
+4711044,Nokomis,T,SK
+4711046,Usborne No. 310,RM,SK
+4711048,Drake,VL,SK
+4711049,Lanigan,T,SK
+4711052,Morris No. 312,RM,SK
+4711053,Watrous,T,SK
+4711054,Manitou Beach,RV,SK
+4711056,Young,VL,SK
+4711058,Zelma,VL,SK
+4711059,Lost River No. 313,RM,SK
+4711060,Thode,RV,SK
+4711061,Dundurn No. 314,RM,SK
+4711063,Dundurn,T,SK
+4711064,Shields,RV,SK
+4711065,Corman Park No. 344,RM,SK
+4711066,Saskatoon,CY,SK
+4711067,Langham,T,SK
+4711068,Warman,CY,SK
+4711069,Blucher No. 343,RM,SK
+4711070,Martensville,CY,SK
+4711071,Bradwell,VL,SK
+4711072,Allan,T,SK
+4711073,Dalmeny,T,SK
+4711075,Osler,T,SK
+4711076,Colonsay No. 342,RM,SK
+4711077,Clavet,VL,SK
+4711078,Meacham,VL,SK
+4711079,Colonsay,T,SK
+4711091,Viscount No. 341,RM,SK
+4711092,Viscount,VL,SK
+4711094,Plunkett,VL,SK
+4711096,Wolverine No. 340,RM,SK
+4712001,Pleasant Valley No. 288,RM,SK
+4712004,St. Andrews No. 287,RM,SK
+4712006,Rosetown,T,SK
+4712008,Zealandia,T,SK
+4712011,Milden No. 286,RM,SK
+4712012,Milden,VL,SK
+4712014,Wiseton,VL,SK
+4712016,Dinsmore,VL,SK
+4712019,Macrorie,VL,SK
+4712020,Fertile Valley No. 285,RM,SK
+4712022,Conquest,VL,SK
+4712026,Montrose No. 315,RM,SK
+4712029,Harris No. 316,RM,SK
+4712031,Tessier,VL,SK
+4712032,Harris,VL,SK
+4712034,Marriott No. 317,RM,SK
+4712038,Mountain View No. 318,RM,SK
+4712042,Biggar No. 347,RM,SK
+4712046,Biggar,T,SK
+4712050,Perdue No. 346,RM,SK
+4712051,Perdue,VL,SK
+4712052,Kinley,VL,SK
+4712054,Vanscoy No. 345,RM,SK
+4712056,Delisle,T,SK
+4712058,Vanscoy,VL,SK
+4712059,Asquith,T,SK
+4712064,Eagle Creek No. 376,RM,SK
+4712069,Glenside No. 377,RM,SK
+4712072,Rosemount No. 378,RM,SK
+4712078,Battle River No. 438,RM,SK
+4712079,Battleford,T,SK
+4713002,Brock,VL,SK
+4713004,Netherhill,VL,SK
+4713006,Kindersley No. 290,RM,SK
+4713008,Kindersley,T,SK
+4713009,Flaxcombe,VL,SK
+4713011,Milton No. 292,RM,SK
+4713014,Marengo,VL,SK
+4713016,Antelope Park No. 322,RM,SK
+4713019,Prairiedale No. 321,RM,SK
+4713021,Major,VL,SK
+4713022,Smiley,VL,SK
+4713024,Oakdale No. 320,RM,SK
+4713026,Coleville,VL,SK
+4713028,Winslow No. 319,RM,SK
+4713029,Dodsland,VL,SK
+4713031,Plenty,VL,SK
+4713032,Grandview No. 349,RM,SK
+4713038,Mariposa No. 350,RM,SK
+4713039,Tramping Lake,VL,SK
+4713041,Progress No. 351,RM,SK
+4713042,Kerrobert,T,SK
+4713044,Luseland,T,SK
+4713046,Heart's Hill No. 352,RM,SK
+4713049,Eye Hill No. 382,RM,SK
+4713051,Macklin,T,SK
+4713053,Primate,VL,SK
+4713054,Denzil,VL,SK
+4713056,Grass Lake No. 381,RM,SK
+4713059,Tramping Lake No. 380,RM,SK
+4713062,Scott,T,SK
+4713064,Reford No. 379,RM,SK
+4713067,Landis,VL,SK
+4713068,Buffalo No. 409,RM,SK
+4713069,Wilkie,T,SK
+4713072,Round Valley No. 410,RM,SK
+4713074,Unity,T,SK
+4713076,Senlac No. 411,RM,SK
+4713078,Senlac,VL,SK
+4713079,Manitou Lake No. 442,RM,SK
+4713091,Marsden,VL,SK
+4713092,Hillsdale No. 440,RM,SK
+4713094,Neilburg,VL,SK
+4713096,Cut Knife No. 439,RM,SK
+4713098,Cut Knife,T,SK
+4714001,Hudson Bay No. 394,RM,SK
+4714004,Hudson Bay,T,SK
+4714006,Porcupine No. 395,RM,SK
+4714007,Porcupine Plain,T,SK
+4714009,Weekes,VL,SK
+4714021,Kelvington No. 366,RM,SK
+4714022,Kelvington,T,SK
+4714023,Ponass Lake No. 367,RM,SK
+4714024,Rose Valley,T,SK
+4714025,Fosston,VL,SK
+4714026,Spalding No. 368,RM,SK
+4714028,Spalding,VL,SK
+4714030,Pleasantdale,VL,SK
+4714032,Naicam,T,SK
+4714034,Barrier Valley No. 397,RM,SK
+4714035,Pleasantdale No. 398,RM,SK
+4714036,Archerwill,VL,SK
+4714038,Bjorkdale No. 426,RM,SK
+4714039,Mistatim,VL,SK
+4714041,Bjorkdale,VL,SK
+4714043,Tisdale No. 427,RM,SK
+4714044,Tisdale,T,SK
+4714047,Star City No. 428,RM,SK
+4714048,Valparaiso,VL,SK
+4714049,Star City,T,SK
+4714051,Melfort,CY,SK
+4714053,Willow Creek No. 458,RM,SK
+4714056,Connaught No. 457,RM,SK
+4714058,Ridgedale,VL,SK
+4714059,Arborfield No. 456,RM,SK
+4714061,Zenon Park,VL,SK
+4714062,Arborfield,T,SK
+4714067,Moose Range No. 486,RM,SK
+4714068,Tobin Lake,RV,SK
+4714069,Carrot River,T,SK
+4714072,Nipawin No. 487,RM,SK
+4714073,Aylsham,VL,SK
+4714074,Codette,VL,SK
+4714076,Nipawin,T,SK
+4714077,Torch River No. 488,RM,SK
+4714079,White Fox,VL,SK
+4714091,Love,VL,SK
+4714092,Choiceland,T,SK
+4714093,Smeaton,VL,SK
+4715001,St. Peter No. 369,RM,SK
+4715002,Englefeld,VL,SK
+4715003,St. Gregor,VL,SK
+4715004,Muenster,VL,SK
+4715005,Annaheim,VL,SK
+4715006,Lake Lenore,VL,SK
+4715007,Humboldt No. 370,RM,SK
+4715008,Humboldt,CY,SK
+4715011,Bayne No. 371,RM,SK
+4715012,Bruno,T,SK
+4715014,Grant No. 372,RM,SK
+4715016,Prud'homme,VL,SK
+4715017,Vonda,T,SK
+4715018,Aberdeen No. 373,RM,SK
+4715019,Aberdeen,T,SK
+4715026,Laird No. 404,RM,SK
+4715027,Hepburn,T,SK
+4715028,Waldheim,T,SK
+4715029,Laird,VL,SK
+4715031,Rosthern No. 403,RM,SK
+4715032,Rosthern,T,SK
+4715034,Hague,T,SK
+4715036,Fish Creek No. 402,RM,SK
+4715038,Alvena,VL,SK
+4715039,Hoodoo No. 401,RM,SK
+4715041,Cudworth,T,SK
+4715042,Wakaw,T,SK
+4715043,Wakaw Lake,RV,SK
+4715044,Three Lakes No. 400,RM,SK
+4715045,Pilger,VL,SK
+4715046,St. Benedict,VL,SK
+4715047,Middle Lake,VL,SK
+4715048,Lake Lenore No. 399,RM,SK
+4715049,St. Brieux,T,SK
+4715051,Flett's Springs No. 429,RM,SK
+4715052,Beatty,VL,SK
+4715054,Invergordon No. 430,RM,SK
+4715057,St. Louis No. 431,RM,SK
+4715059,St. Louis,VL,SK
+4715061,Duck Lake No. 463,RM,SK
+4715062,Duck Lake,T,SK
+4715064,Prince Albert No. 461,RM,SK
+4715066,Prince Albert,CY,SK
+4715067,Birch Hills No. 460,RM,SK
+4715068,Birch Hills,T,SK
+4715070,Candle Lake,RV,SK
+4715071,Kinistino No. 459,RM,SK
+4715072,Weldon,VL,SK
+4715074,Kinistino,T,SK
+4715075,Lakeland No. 521,RM,SK
+4715076,Christopher Lake,VL,SK
+4715079,Garden River No. 490,RM,SK
+4715085,Albertville,VL,SK
+4715091,Weirdale,VL,SK
+4715092,Meath Park,VL,SK
+4715094,Buckland No. 491,RM,SK
+4715098,Paddockwood,VL,SK
+4715099,Paddockwood No. 520,RM,SK
+4716002,Denholm,VL,SK
+4716003,Ruddell,VL,SK
+4716004,Maymont,VL,SK
+4716005,Mayfield No. 406,RM,SK
+4716008,Great Bend No. 405,RM,SK
+4716009,Radisson,T,SK
+4716011,Borden,VL,SK
+4716013,Blaine Lake No. 434,RM,SK
+4716014,Marcelin,VL,SK
+4716016,Blaine Lake,T,SK
+4716018,Redberry No. 435,RM,SK
+4716019,Krydor,VL,SK
+4716022,Hafford,T,SK
+4716023,Douglas No. 436,RM,SK
+4716024,Speers,VL,SK
+4716026,Richard,VL,SK
+4716027,North Battleford,CN,SK
+4716028,North Battleford No. 437,RM,SK
+4716029,North Battleford,CY,SK
+4716033,Round Hill No. 467,RM,SK
+4716038,Meeting Lake No. 466,RM,SK
+4716041,Leask No. 464,RM,SK
+4716042,Leask,VL,SK
+4716043,Pebble Baye,RV,SK
+4716044,Parkside,VL,SK
+4716046,Shellbrook No. 493,RM,SK
+4716047,Shellbrook,T,SK
+4716051,Canwood No. 494,RM,SK
+4716052,Canwood,VL,SK
+4716054,Debden,VL,SK
+4716056,Spiritwood No. 496,RM,SK
+4716057,Shell Lake,VL,SK
+4716058,Spiritwood,T,SK
+4716059,Big Shell,RV,SK
+4716060,Echo Bay,RV,SK
+4716061,Leoville,VL,SK
+4716062,Medstead No. 497,RM,SK
+4716063,Medstead,VL,SK
+4716072,Big River,T,SK
+4716075,Big River No. 555,RM,SK
+4716077,Chitek Lake,RV,SK
+4717001,Meota No. 468,RM,SK
+4717002,Cochin,RV,SK
+4717004,Metinota,RV,SK
+4717005,Aquadeo,RV,SK
+4717006,Meota,VL,SK
+4717008,Turtle River No. 469,RM,SK
+4717011,Edam,VL,SK
+4717013,Paynton No. 470,RM,SK
+4717014,Paynton,VL,SK
+4717017,Eldon No. 471,RM,SK
+4717018,Maidstone,T,SK
+4717019,Waseca,VL,SK
+4717022,Wilton No. 472,RM,SK
+4717024,Lashburn,T,SK
+4717026,Marshall,T,SK
+4717028,Britannia No. 502,RM,SK
+4717029,Lloydminster (Part),CY,SK
+4717032,Frenchman Butte No. 501,RM,SK
+4717034,Paradise Hill,VL,SK
+4717036,St. Walburg,T,SK
+4717039,Mervin,VL,SK
+4717041,Turtleford,T,SK
+4717042,Kivimaa-Moonlight Bay,RV,SK
+4717045,Mervin No. 499,RM,SK
+4717047,Parkdale No. 498,RM,SK
+4717048,Glaslyn,VL,SK
+4717052,Meadow Lake,CY,SK
+4717053,Greig Lake,RV,SK
+4717054,Meadow Lake No. 588,RM,SK
+4717055,Dorintosh,VL,SK
+4717056,Loon Lake No. 561,RM,SK
+4717057,Makwa,VL,SK
+4717058,Loon Lake,VL,SK
+4717062,Beaver River No. 622,RM,SK
+4717066,Goodsoil,VL,SK
+4717067,Pierceland,VL,SK
+4718005,Cumberland House,NV,SK
+4718012,Timber Bay,NH,SK
+4718015,Weyakwin,NH,SK
+4718021,Green Lake,NV,SK
+4718023,Dore Lake,NH,SK
+4718028,Cole Bay,NH,SK
+4718030,Jans Bay,NH,SK
+4718033,Beauval,NV,SK
+4718041,La Ronge,T,SK
+4718042,Air Ronge,NV,SK
+4718049,Denare Beach,NV,SK
+4718051,Creighton,T,SK
+4718052,Flin Flon (Part),CY,SK
+4718055,Pelican Narrows,NV,SK
+4718058,Sandy Bay,NV,SK
+4718065,Pinehouse,NV,SK
+4718067,Île-à-la-Crosse,NV,SK
+4718069,Patuanak,NH,SK
+4718070,Buffalo Narrows,NV,SK
+4718071,St. George's Hill,NH,SK
+4718072,Michel Village,NH,SK
+4718074,La Loche,NV,SK
+4718075,Turnor Lake,NH,SK
+4718089,Black Point,NH,SK
+4718100,Stony Rapids,NH,SK
+4801003,Cypress County,MD,AB
+4801006,Medicine Hat,CY,AB
+4801008,Forty Mile County No. 8,MD,AB
+4801009,Foremost,VL,AB
+4801014,Bow Island,T,AB
+4801018,Redcliff,T,AB
+4802001,Warner County No. 5,MD,AB
+4802002,Coutts,VL,AB
+4802004,Milk River,T,AB
+4802006,Warner,VL,AB
+4802008,Raymond,T,AB
+4802009,Stirling,VL,AB
+4802011,Lethbridge County,MD,AB
+4802012,Lethbridge,CY,AB
+4802013,Coalhurst,T,AB
+4802014,Nobleford,T,AB
+4802016,Barons,VL,AB
+4802018,Picture Butte,T,AB
+4802019,Coaldale,T,AB
+4802021,Taber,MD,AB
+4802022,Taber,T,AB
+4802023,Barnwell,VL,AB
+4802029,Vauxhall,T,AB
+4802031,Newell County,MD,AB
+4802034,Brooks,CY,AB
+4802036,Duchess,VL,AB
+4802038,Rosemary,VL,AB
+4802039,Bassano,T,AB
+4803001,Cardston County,MD,AB
+4803002,Magrath,T,AB
+4803003,Improvement District No. 4 Waterton,ID,AB
+4803004,Cardston,T,AB
+4803006,Glenwood,VL,AB
+4803008,Hill Spring,VL,AB
+4803011,Pincher Creek No. 9,MD,AB
+4803014,Pincher Creek,T,AB
+4803016,Cowley,VL,AB
+4803018,Willow Creek No. 26,MD,AB
+4803019,Fort Macleod,T,AB
+4803022,Claresholm,T,AB
+4803024,Stavely,T,AB
+4803026,Nanton,T,AB
+4804001,Acadia No. 34,MD,AB
+4804006,Empress,VL,AB
+4804011,Hanna,T,AB
+4804014,Oyen,T,AB
+4804019,Youngstown,VL,AB
+4804021,Veteran,VL,AB
+4804022,Consort,VL,AB
+4805001,Vulcan County,MD,AB
+4805002,Carmangay,VL,AB
+4805004,Champion,VL,AB
+4805006,Vulcan,T,AB
+4805008,Lomond,VL,AB
+4805009,Milo,VL,AB
+4805011,Arrowwood,VL,AB
+4805012,Wheatland County,MD,AB
+4805018,Strathmore,T,AB
+4805019,Hussar,VL,AB
+4805021,Standard,VL,AB
+4805022,Rockyford,VL,AB
+4805026,Drumheller,T,AB
+4805031,Starland County,MD,AB
+4805034,Delia,VL,AB
+4805036,Munson,VL,AB
+4805038,Morrin,VL,AB
+4805041,Kneehill County,MD,AB
+4805042,Carbon,VL,AB
+4805044,Acme,VL,AB
+4805046,Linden,VL,AB
+4805048,Three Hills,T,AB
+4805049,Trochu,T,AB
+4806001,Foothills County,MD,AB
+4806006,High River,T,AB
+4806008,Longview,VL,AB
+4806009,Turner Valley,T,AB
+4806011,Black Diamond,T,AB
+4806012,Okotoks,T,AB
+4806014,Rocky View County,MD,AB
+4806016,Calgary,CY,AB
+4806017,Chestermere,CY,AB
+4806019,Cochrane,T,AB
+4806021,Airdrie,CY,AB
+4806022,Irricana,T,AB
+4806024,Beiseker,VL,AB
+4806026,Crossfield,T,AB
+4806028,Mountain View County,MD,AB
+4806029,Carstairs,T,AB
+4806031,Cremona,VL,AB
+4806032,Didsbury,T,AB
+4806034,Olds,T,AB
+4806036,Sundre,T,AB
+4807001,Provost No. 52,MD,AB
+4807002,Provost,T,AB
+4807004,Czar,VL,AB
+4807006,Hughenden,VL,AB
+4807008,Amisk,VL,AB
+4807011,Paintearth County No. 18,MD,AB
+4807012,Coronation,T,AB
+4807014,Castor,T,AB
+4807016,Halkirk,VL,AB
+4807019,Stettler County No. 6,MD,AB
+4807021,Big Valley,VL,AB
+4807026,Stettler,T,AB
+4807027,White Sands,SV,AB
+4807028,Rochon Sands,SV,AB
+4807029,Donalda,VL,AB
+4807031,Flagstaff County,MD,AB
+4807032,Alliance,VL,AB
+4807036,Forestburg,VL,AB
+4807038,Heisler,VL,AB
+4807039,Daysland,T,AB
+4807042,Killam,T,AB
+4807044,Sedgewick,T,AB
+4807046,Lougheed,VL,AB
+4807048,Hardisty,T,AB
+4807049,Wainwright No. 61,MD,AB
+4807051,Chauvin,VL,AB
+4807052,Edgerton,VL,AB
+4807054,Wainwright,T,AB
+4807056,Irma,VL,AB
+4808001,Red Deer County,MD,AB
+4808002,Elnora,VL,AB
+4808004,Delburne,VL,AB
+4808005,Jarvis Bay,SV,AB
+4808006,Bowden,T,AB
+4808008,Innisfail,T,AB
+4808009,Penhold,T,AB
+4808011,Red Deer,CY,AB
+4808012,Sylvan Lake,T,AB
+4808013,Norglenwold,SV,AB
+4808022,Lacombe County,MD,AB
+4808023,Birchcliff,SV,AB
+4808024,Eckville,T,AB
+4808025,Half Moon Bay,SV,AB
+4808026,Bentley,T,AB
+4808027,Sunbreaker Cove,SV,AB
+4808028,Gull Lake,SV,AB
+4808029,Blackfalds,T,AB
+4808031,Lacombe,CY,AB
+4808032,Clive,VL,AB
+4808034,Alix,VL,AB
+4808038,Ponoka County,MD,AB
+4808039,Ponoka,T,AB
+4808042,Parkland Beach,SV,AB
+4808044,Rimbey,T,AB
+4809002,Clearwater County,MD,AB
+4809005,Burnstick Lake,SV,AB
+4809010,Caroline,VL,AB
+4809015,Rocky Mountain House,T,AB
+4810001,Camrose County,MD,AB
+4810002,Bashaw,T,AB
+4810003,Rosalind,VL,AB
+4810006,Edberg,VL,AB
+4810009,Bawlf,VL,AB
+4810011,Camrose,CY,AB
+4810012,Bittern Lake,VL,AB
+4810014,Hay Lakes,VL,AB
+4810016,Beaver County,MD,AB
+4810018,Tofield,T,AB
+4810019,Ryley,VL,AB
+4810021,Holden,VL,AB
+4810022,Viking,T,AB
+4810026,Minburn County No. 27,MD,AB
+4810028,Vegreville,T,AB
+4810031,Innisfree,VL,AB
+4810034,Mannville,VL,AB
+4810036,Vermilion River County,MD,AB
+4810038,Paradise Valley,VL,AB
+4810039,Lloydminster (Part),CY,AB
+4810041,Kitscoty,VL,AB
+4810042,Vermilion,T,AB
+4810044,Marwayne,VL,AB
+4810048,Two Hills County No. 21,MD,AB
+4810051,Myrnam,VL,AB
+4810052,Two Hills,T,AB
+4810058,Lamont County,MD,AB
+4810059,Andrew,VL,AB
+4810061,Mundare,T,AB
+4810062,Chipman,VL,AB
+4810064,Lamont,T,AB
+4810066,Bruderheim,T,AB
+4810068,Improvement District No. 13 Elk Island,ID,AB
+4811001,Wetaskiwin County No. 10,MD,AB
+4811002,Wetaskiwin,CY,AB
+4811003,Argentia Beach,SV,AB
+4811004,Grandview,SV,AB
+4811005,Poplar Bay,SV,AB
+4811006,Crystal Springs,SV,AB
+4811007,Norris Beach,SV,AB
+4811008,Ma-Me-O Beach,SV,AB
+4811009,Silver Beach,SV,AB
+4811011,Millet,T,AB
+4811012,Leduc County,MD,AB
+4811013,Beaumont,CY,AB
+4811016,Leduc,CY,AB
+4811018,Devon,T,AB
+4811019,Calmar,T,AB
+4811020,Sundance Beach,SV,AB
+4811021,Thorsby,T,AB
+4811022,Itaska Beach,SV,AB
+4811023,Golden Days,SV,AB
+4811024,Warburg,VL,AB
+4811026,Breton,VL,AB
+4811031,Drayton Valley,T,AB
+4811032,Brazeau County,MD,AB
+4811034,Parkland County,MD,AB
+4811038,Seba Beach,SV,AB
+4811039,Betula Beach,SV,AB
+4811041,Point Alison,SV,AB
+4811042,Lakeview,SV,AB
+4811044,Kapasiwin,SV,AB
+4811046,Spring Lake,VL,AB
+4811048,Stony Plain,T,AB
+4811049,Spruce Grove,CY,AB
+4811052,Strathcona County,SM,AB
+4811056,Fort Saskatchewan,CY,AB
+4811059,Sturgeon County,MD,AB
+4811061,Edmonton,CY,AB
+4811062,St. Albert,CY,AB
+4811064,Gibbons,T,AB
+4811065,Redwater,T,AB
+4811066,Bon Accord,T,AB
+4811068,Morinville,T,AB
+4811069,Legal,T,AB
+4812002,Cold Lake,CY,AB
+4812004,Bonnyville No. 87,MD,AB
+4812009,Bonnyville,T,AB
+4812011,Bonnyville Beach,SV,AB
+4812012,Glendon,VL,AB
+4812013,Pelican Narrows,SV,AB
+4812014,St. Paul County No. 19,MD,AB
+4812016,Elk Point,T,AB
+4812018,St. Paul,T,AB
+4812020,Horseshoe Bay,SV,AB
+4812022,Smoky Lake County,MD,AB
+4812024,Vilna,VL,AB
+4812026,Waskatenau,VL,AB
+4812029,Smoky Lake,T,AB
+4812037,Lac la Biche County,SM,AB
+4812038,Improvement District No. 349,ID,AB
+4813001,Lac Ste. Anne County,MD,AB
+4813002,Mayerthorpe,T,AB
+4813003,Nakamun Park,SV,AB
+4813005,Val Quentin,SV,AB
+4813006,West Cove,SV,AB
+4813007,Yellowstone,SV,AB
+4813008,Ross Haven,SV,AB
+4813009,Castle Island,SV,AB
+4813010,Silver Sands,SV,AB
+4813011,Sunset Point,SV,AB
+4813012,Alberta Beach,VL,AB
+4813013,Birch Cove,SV,AB
+4813014,Onoway,T,AB
+4813015,South View,SV,AB
+4813016,Sandy Beach,SV,AB
+4813017,Sunrise Beach,SV,AB
+4813018,Barrhead County No. 11,MD,AB
+4813019,Barrhead,T,AB
+4813028,Westlock County,MD,AB
+4813029,Woodlands County,MD,AB
+4813030,Whitecourt,T,AB
+4813031,Westlock,T,AB
+4813032,Clyde,VL,AB
+4813033,Larkspur,SV,AB
+4813036,Thorhild County,MD,AB
+4813044,Athabasca County,MD,AB
+4813045,Mewatha Beach,SV,AB
+4813046,Boyle,VL,AB
+4813047,Sunset Beach,SV,AB
+4813048,Athabasca,T,AB
+4813049,Island Lake,SV,AB
+4813051,Island Lake South,SV,AB
+4813053,Bondiss,SV,AB
+4813055,South Baptiste,SV,AB
+4813057,West Baptiste,SV,AB
+4813061,Whispering Hills,SV,AB
+4814003,Yellowhead County,MD,AB
+4814019,Hinton,T,AB
+4814024,Edson,T,AB
+4814028,Improvement District No. 25 Willmore Wilderness,ID,AB
+4815007,Crowsnest Pass,SM,AB
+4815013,Kananaskis,ID,AB
+4815015,Bighorn No. 8,MD,AB
+4815023,Canmore,T,AB
+4815027,Ghost Lake,SV,AB
+4815030,Waiparous,SV,AB
+4815032,Improvement District No. 9 Banff,ID,AB
+4815033,Jasper,SM,AB
+4815035,Banff,T,AB
+4815037,Improvement District No. 12 Jasper Park,ID,AB
+4815045,Ranchland No. 66,MD,AB
+4816037,Wood Buffalo,SM,AB
+4816051,Improvement District No. 24 Wood Buffalo,ID,AB
+4817021,High Prairie,T,AB
+4817024,Swan Hills,T,AB
+4817026,Northern Sunrise County,MD,AB
+4817027,Big Lakes County,MD,AB
+4817029,Slave Lake,T,AB
+4817031,Opportunity No. 17,MD,AB
+4817033,Lesser Slave River No. 124,MD,AB
+4817039,Nampa,VL,AB
+4817062,Clear Hills,MD,AB
+4817064,Hines Creek,VL,AB
+4817076,Northern Lights County,MD,AB
+4817078,Manning,T,AB
+4817093,High Level,T,AB
+4817095,Mackenzie County,SM,AB
+4817097,Rainbow Lake,T,AB
+4818002,Fox Creek,T,AB
+4818015,Greenview No. 16,MD,AB
+4818018,Valleyview,T,AB
+4819006,Grande Prairie County No. 1,MD,AB
+4819008,Hythe,VL,AB
+4819009,Beaverlodge,T,AB
+4819011,Wembley,T,AB
+4819012,Grande Prairie,CY,AB
+4819014,Sexsmith,T,AB
+4819038,Peace River,T,AB
+4819041,Smoky River No. 130,MD,AB
+4819042,McLennan,T,AB
+4819044,Donnelly,VL,AB
+4819046,Falher,T,AB
+4819048,Girouxville,VL,AB
+4819049,Birch Hills County,MD,AB
+4819054,Spirit River No. 133,MD,AB
+4819056,Rycroft,VL,AB
+4819058,Spirit River,T,AB
+4819059,Saddle Hills County,MD,AB
+4819066,Fairview No. 136,MD,AB
+4819068,Fairview,T,AB
+4819071,Peace No. 135,MD,AB
+4819072,Berwyn,VL,AB
+4819074,Grimshaw,T,AB
+5901003,Elkford,DM,BC
+5901006,Sparwood,DM,BC
+5901012,Fernie,CY,BC
+5901022,Cranbrook,CY,BC
+5901028,Kimberley,CY,BC
+5901039,Invermere,DM,BC
+5901040,Radium Hot Springs,VL,BC
+5901043,Canal Flats,VL,BC
+5903004,Creston,T,BC
+5903011,Salmo,VL,BC
+5903015,Nelson,CY,BC
+5903019,Slocan,VL,BC
+5903023,Kaslo,VL,BC
+5903027,Silverton,VL,BC
+5903032,New Denver,VL,BC
+5903045,Castlegar,CY,BC
+5903050,Nakusp,VL,BC
+5905005,Fruitvale,VL,BC
+5905009,Montrose,VL,BC
+5905014,Trail,CY,BC
+5905018,Warfield,VL,BC
+5905023,Rossland,CY,BC
+5905032,Grand Forks,CY,BC
+5905037,Midway,VL,BC
+5905042,Greenwood,CY,BC
+5907005,Osoyoos,T,BC
+5907009,Keremeos,VL,BC
+5907014,Oliver,T,BC
+5907024,Princeton,T,BC
+5907035,Summerland,DM,BC
+5907041,Penticton,CY,BC
+5909009,Hope,DM,BC
+5909020,Chilliwack,CY,BC
+5909027,Harrison Hot Springs,VL,BC
+5909032,Kent,DM,BC
+5909052,Abbotsford,CY,BC
+5909056,Mission,DM,BC
+5915001,Langley,DM,BC
+5915002,Langley,CY,BC
+5915004,Surrey,CY,BC
+5915007,White Rock,CY,BC
+5915011,Delta,CY,BC
+5915015,Richmond,CY,BC
+5915022,Vancouver,CY,BC
+5915025,Burnaby,CY,BC
+5915029,New Westminster,CY,BC
+5915034,Coquitlam,CY,BC
+5915036,Belcarra,VL,BC
+5915038,Anmore,VL,BC
+5915039,Port Coquitlam,CY,BC
+5915043,Port Moody,CY,BC
+5915046,North Vancouver,DM,BC
+5915051,North Vancouver,CY,BC
+5915055,West Vancouver,DM,BC
+5915062,Bowen Island,IM,BC
+5915065,Lions Bay,VL,BC
+5915070,Pitt Meadows,CY,BC
+5915075,Maple Ridge,CY,BC
+5917005,North Saanich,DM,BC
+5917010,Sidney,T,BC
+5917015,Central Saanich,DM,BC
+5917021,Saanich,DM,BC
+5917030,Oak Bay,DM,BC
+5917034,Victoria,CY,BC
+5917040,Esquimalt,DM,BC
+5917041,Colwood,CY,BC
+5917042,Metchosin,DM,BC
+5917044,Langford,CY,BC
+5917047,View Royal,T,BC
+5917049,Highlands,DM,BC
+5917052,Sooke,DM,BC
+5919008,North Cowichan,DM,BC
+5919012,Duncan,CY,BC
+5919016,Lake Cowichan,T,BC
+5919021,Ladysmith,T,BC
+5921007,Nanaimo,CY,BC
+5921008,Lantzville,DM,BC
+5921018,Parksville,CY,BC
+5921023,Qualicum Beach,T,BC
+5923008,Port Alberni,CY,BC
+5923019,Ucluelet,DM,BC
+5923025,Tofino,DM,BC
+5924025,Gold River,VL,BC
+5924029,Zeballos,VL,BC
+5924030,Tahsis,VL,BC
+5924034,Campbell River,CY,BC
+5924039,Sayward,VL,BC
+5926005,Comox,T,BC
+5926010,Courtenay,CY,BC
+5926014,Cumberland,VL,BC
+5927008,Powell River,CY,BC
+5927806,Sechelt (Part),IGD,BC
+5929005,Gibsons,T,BC
+5929011,Sechelt,DM,BC
+5929803,Sechelt (Part),IGD,BC
+5931006,Squamish,DM,BC
+5931012,Pemberton,VL,BC
+5931020,Whistler,DM,BC
+5931026,Lillooet,DM,BC
+5933006,Merritt,CY,BC
+5933015,Lytton,VL,BC
+5933019,Ashcroft,VL,BC
+5933024,Cache Creek,VL,BC
+5933028,Clinton,VL,BC
+5933035,Logan Lake,DM,BC
+5933042,Kamloops,CY,BC
+5933045,Sun Peaks Mountain,VL,BC
+5933054,Chase,VL,BC
+5933067,Clearwater,DM,BC
+5933074,Barriere,DM,BC
+5935010,Kelowna,CY,BC
+5935016,Lake Country,DM,BC
+5935018,Peachland,DM,BC
+5935029,West Kelowna,CY,BC
+5937005,Lumby,VL,BC
+5937010,Coldstream,DM,BC
+5937014,Vernon,CY,BC
+5937024,Spallumcheen,DM,BC
+5937028,Armstrong,CY,BC
+5937033,Enderby,CY,BC
+5939007,Golden,T,BC
+5939019,Revelstoke,CY,BC
+5939032,Salmon Arm,CY,BC
+5939045,Sicamous,DM,BC
+5941005,One Hundred Mile House,DM,BC
+5941009,Williams Lake,CY,BC
+5941013,Quesnel,CY,BC
+5941025,Wells,DM,BC
+5943008,Alert Bay,VL,BC
+5943012,Port McNeill,T,BC
+5943017,Port Alice,VL,BC
+5943023,Port Hardy,DM,BC
+5947007,Port Edward,DM,BC
+5947012,Prince Rupert,CY,BC
+5947023,Masset,VL,BC
+5947026,Queen Charlotte,VL,BC
+5947030,Port Clements,VL,BC
+5949005,Kitimat,DM,BC
+5949011,Terrace,CY,BC
+5949022,Hazelton,VL,BC
+5949024,New Hazelton,DM,BC
+5949032,Stewart,DM,BC
+5951007,Vanderhoof,DM,BC
+5951009,Fraser Lake,VL,BC
+5951013,Fort St. James,DM,BC
+5951022,Burns Lake,VL,BC
+5951032,Granisle,VL,BC
+5951034,Houston,DM,BC
+5951038,Telkwa,VL,BC
+5951043,Smithers,T,BC
+5953007,Valemount,VL,BC
+5953012,McBride,VL,BC
+5953023,Prince George,CY,BC
+5953033,Mackenzie,DM,BC
+5955003,Tumbler Ridge,DM,BC
+5955005,Pouce Coupe,VL,BC
+5955010,Chetwynd,DM,BC
+5955014,Dawson Creek,CY,BC
+5955025,Hudson's Hope,DM,BC
+5955030,Taylor,DM,BC
+5955034,Fort St. John,CY,BC
+5959007,Northern Rockies,RGM,BC
+6001003,Watson Lake,T,YT
+6001004,Faro,T,YT
+6001006,Teslin,VL,YT
+6001009,Whitehorse,CY,YT
+6001012,Carmacks,VL,YT
+6001018,Haines Junction,VL,YT
+6001022,Mayo,VL,YT
+6001029,Dawson,T,YT
+6001044,Mt. Lorne,HAM,YT
+6001055,Ibex Valley,HAM,YT
+6101014,Paulatuk,HAM,NT
+6101015,Fort McPherson,HAM,NT
+6101017,Inuvik,T,NT
+6101025,Aklavik,HAM,NT
+6101036,Tuktoyaktuk,HAM,NT
+6101041,Sachs Harbour,HAM,NT
+6101095,Ulukhaktok,HAM,NT
+6102005,Tulita,HAM,NT
+6102007,Norman Wells,T,NT
+6104009,Fort Liard,HAM,NT
+6104014,Fort Providence,HAM,NT
+6104038,Fort Simpson,VL,NT
+6105001,Fort Smith,T,NT
+6105003,Enterprise,HAM,NT
+6105016,Hay River,T,NT
+6105018,Fort Resolution,HAM,NT
+6106023,Yellowknife,CY,NT
+6204001,Sanikiluaq,HAM,NU
+6204003,Iqaluit,CY,NU
+6204005,Kimmirut,HAM,NU
+6204007,Cape Dorset,HAM,NU
+6204009,Pangnirtung,HAM,NU
+6204010,Qikiqtarjuaq,HAM,NU
+6204011,Hall Beach,HAM,NU
+6204012,Igloolik,HAM,NU
+6204015,Clyde River,HAM,NU
+6204018,Arctic Bay,HAM,NU
+6204020,Pond Inlet,HAM,NU
+6204022,Resolute,HAM,NU
+6204025,Grise Fiord,HAM,NU
+6205014,Coral Harbour,HAM,NU
+6205015,Arviat,HAM,NU
+6205016,Whale Cove,HAM,NU
+6205017,Rankin Inlet,HAM,NU
+6205019,Chesterfield Inlet,HAM,NU
+6205023,Baker Lake,HAM,NU
+6205027,Naujaat,HAM,NU
+6208047,Kugaaruk,HAM,NU
+6208059,Kugluktuk,HAM,NU
+6208073,Cambridge Bay,HAM,NU
+6208081,Gjoa Haven,HAM,NU
+6208087,Taloyoak,HAM,NU

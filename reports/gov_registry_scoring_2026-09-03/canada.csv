@@ -1,0 +1,498 @@
+input_set,jurisdiction,gov_id,keyed,tenant_host
+archive,"Elliot Lake, ON",ca:csd:3557041,yes,elliotlakeon.new.swagit.com
+archive,"Amherstburg, ON",ca:csd:3537028,yes,pub-amherstburg.escribemeetings.com
+archive,"Arran-Elderslie, ON",ca:csd:3541043,yes,pub-arranelderslie.escribemeetings.com
+archive,"Blind River, ON",ca:csd:3557038,yes,pub-blindriver.escribemeetings.com
+archive,"The Blue Mountains, ON",ca:csd:3542045,yes,pub-bluemountains.escribemeetings.com
+archive,"Brampton, ON",ca:csd:3521010,yes,pub-brampton.escribemeetings.com
+archive,"Caledon, ON",ca:csd:3521024,yes,pub-caledon.escribemeetings.com
+archive,"Cobourg, ON",ca:csd:3514021,yes,pub-cobourg.escribemeetings.com
+archive,"Collingwood, ON",ca:csd:3543031,yes,pub-collingwood.escribemeetings.com
+archive,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
+archive,Ezt,ca:csd:3532038,yes,pub-ezt.escribemeetings.com
+archive,"Fort Erie, ON",ca:csd:3526003,yes,pub-forterie.escribemeetings.com
+archive,"Georgina, ON",ca:csd:3519070,yes,pub-georgina.escribemeetings.com
+archive,"Guelph, ON",ca:csd:3523008,yes,pub-guelph.escribemeetings.com
+archive,Hamilton,rtr:ca:on:hamilton-police-services-board,no,pub-hpsb.escribemeetings.com
+archive,"Lambton Shores, ON",ca:csd:3538040,yes,pub-lambtonshores.escribemeetings.com
+archive,"Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+archive,"Oshawa, ON",ca:csd:3518013,yes,pub-oshawa.escribemeetings.com
+archive,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
+archive,"Penticton, BC",ca:csd:5907041,yes,pub-penticton.escribemeetings.com
+archive,"Port Moody, BC",ca:csd:5915043,yes,pub-portmoody.escribemeetings.com
+archive,"Region Of Waterloo, ON",ca:cd:3530,yes,pub-regionofwaterloo.escribemeetings.com
+archive,Richmond Hill Single Source Award,ca:csd:3519038,yes,pub-richmondhill.escribemeetings.com
+archive,"Scugog, ON",ca:csd:3518020,yes,pub-scugog.escribemeetings.com
+archive,Stjohns,ca:csd:1001519,yes,pub-stjohns.escribemeetings.com
+archive,Tdsb,rtr:ca:on:toronto-district-school-board,no,pub-tdsb.escribemeetings.com
+archive,"Thunder Bay, ON",ca:csd:3558004,yes,pub-thunderbay.escribemeetings.com
+archive,"Grand Valley, ON",ca:csd:3522010,yes,pub-townofgrandvalley.escribemeetings.com
+archive,Townofws,,no,pub-townofws.escribemeetings.com
+archive,Township Of Brock,ca:csd:3518039,yes,pub-townshipofbrock.escribemeetings.com
+archive,Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
+archive,West Kelowna Council Chambers,,no,pub-westkelowna.escribemeetings.com
+archive,"Mississauga, ON",ca:csd:3521005,yes,pub-mississauga.escribemeetings.com
+archive,"Oakville, ON",ca:csd:3524001,yes,pub-oakville.escribemeetings.com
+archive,"Township of Adjala-Tosorontio, ON",ca:csd:3543003,yes,adjala-tosorontio.civicweb.net
+archive,"Brockville, ON",ca:csd:3507015,yes,brockville.civicweb.net
+archive,"Ashfield-Colborne-Wawanosh, ON",ca:csd:3540063,yes,pub-acwtownship.escribemeetings.com
+archive,"Airdrie, AB",ca:csd:4806021,yes,pub-airdrie.escribemeetings.com
+archive,"Arran-Elderslie, ON",ca:csd:3541043,yes,pub-arranelderslie.escribemeetings.com
+archive,"The Blue Mountains, ON",ca:csd:3542045,yes,pub-bluemountains.escribemeetings.com
+archive,"Brampton, ON",ca:csd:3521010,yes,pub-brampton.escribemeetings.com
+archive,"Central Saanich, BC",ca:csd:5917015,yes,pub-centralsaanich.escribemeetings.com
+archive,Chatham Kent,ca:csd:3536020,yes,pub-chatham-kent.escribemeetings.com
+archive,County of Essex,ca:cd:3537,yes,coe-pub.escribemeetings.com
+archive,Cofs,,no,pub-cofs.escribemeetings.com
+archive,"Cramahe, ON",ca:csd:3514014,yes,pub-cramahe.escribemeetings.com
+archive,"Welland, ON",ca:csd:3526032,yes,pub-elgincounty.escribemeetings.com
+archive,Elliot Lake GIS Services SSMIC,,no,pub-elliotlake.escribemeetings.com
+archive,"Fredericton, NB",ca:csd:1310032,yes,pub-fredericton.escribemeetings.com
+archive,"Georgina, ON",ca:csd:3519070,yes,pub-georgina.escribemeetings.com
+archive,"Grey, MB",ca:csd:4609018,yes,pub-grey.escribemeetings.com
+archive,"Halton Hills, ON",ca:csd:3524015,yes,pub-haltonhills.escribemeetings.com
+archive,"Kelowna, BC",ca:csd:5935010,yes,kelownapublishing.escribemeetings.com
+archive,"City of Kitchener, ON",ca:csd:3530013,yes,pub-kitchener.escribemeetings.com
+archive,"Lake Country, BC",ca:csd:5935016,yes,pub-lakecountry.escribemeetings.com
+archive,Llbc,,no,pub-llbc.escribemeetings.com
+archive,"Moose Jaw, SK",ca:csd:4707039,yes,pub-moosejaw.escribemeetings.com
+archive,"New Westminster, BC",ca:csd:5915029,yes,pub-newwestcity.escribemeetings.com
+archive,Northcowichan,ca:csd:5919008,yes,pub-northcowichan.escribemeetings.com
+archive,"Oshawa, ON",ca:csd:3518013,yes,pub-oshawa.escribemeetings.com
+archive,"Owen Sound, ON",ca:csd:3542059,yes,pub-owensound.escribemeetings.com
+archive,"Oxford County, ON",ca:cd:3532,yes,pub-oxfordcounty.escribemeetings.com
+archive,"Port Coquitlam, BC",ca:csd:5915039,yes,pub-portcoquitlam.escribemeetings.com
+archive,"Port Moody, BC",ca:csd:5915043,yes,pub-portmoody.escribemeetings.com
+archive,"Burnaby, BC",ca:csd:5915025,yes,pub-burnaby.escribemeetings.com
+archive,"Caledon, ON",ca:csd:3521024,yes,pub-caledon.escribemeetings.com
+archive,"Calgary, AB",ca:csd:4806016,yes,pub-calgary.escribemeetings.com
+archive,"Cobourg, ON",ca:csd:3514021,yes,pub-cobourg.escribemeetings.com
+archive,"Collingwood, ON",ca:csd:3543031,yes,pub-collingwood.escribemeetings.com
+archive,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
+archive,Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+archive,"Durham Region, ON",ca:cd:3518,yes,pub-durhamregion.escribemeetings.com
+archive,Espanol A,ca:csd:3552026,yes,pub-espanola.escribemeetings.com
+archive,Ezt,ca:csd:3532038,yes,pub-ezt.escribemeetings.com
+archive,"Fort Erie, ON",ca:csd:3526003,yes,pub-forterie.escribemeetings.com
+archive,"Goderich, ON",ca:csd:3540028,yes,pub-goderich.escribemeetings.com
+archive,"Guelph, ON",ca:csd:3523008,yes,pub-guelph.escribemeetings.com
+archive,"Hamilton Public Library, ON",rtr:ca:on:hamilton-public-library,no,pub-hpl.escribemeetings.com
+archive,"City of Kenora, ON",ca:csd:3560010,yes,pub-kenora.escribemeetings.com
+archive,"Lambton Shores, ON",ca:csd:3538040,yes,pub-lambtonshores.escribemeetings.com
+archive,"City of Leduc, AB",ca:csd:4811016,yes,pub-leduc.escribemeetings.com
+archive,"City of Lethbridge, AB",ca:csd:4802012,yes,pub-lethbridge.escribemeetings.com
+archive,"Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+archive,"Town of Morinville, AB",ca:csd:4811068,yes,pub-morinville.escribemeetings.com
+archive,"Nanaimo, BC",ca:csd:5921007,yes,pub-nanaimo.escribemeetings.com
+archive,Notl,,no,pub-notl.escribemeetings.com
+archive,"Town of Oakville, ON",ca:csd:3524001,yes,pub-oakville.escribemeetings.com
+archive,Oneinvestmentprogram,,no,pub-oneinvestmentprogram.escribemeetings.com
+archive,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
+archive,"City of Penticton, BC",ca:csd:5907041,yes,pub-penticton.escribemeetings.com
+archive,"Peterborough, ON",ca:csd:3515014,yes,pub-peterborough.escribemeetings.com
+archive,"City of Pitt Meadows, BC",ca:csd:5915070,yes,pub-pittmeadows.escribemeetings.com
+archive,"City of Kelowna, BC",ca:csd:5935010,yes,pub-rdco.escribemeetings.com
+archive,"Region Of Waterloo, ON",ca:cd:3530,yes,pub-regionofwaterloo.escribemeetings.com
+archive,"Rideau Lakes, ON",ca:csd:3507040,yes,pub-rideaulakes.escribemeetings.com
+archive,"Whistler, BC",ca:csd:5931020,yes,pub-rmow.escribemeetings.com
+archive,"Saskatoon, SK",ca:csd:4711066,yes,pub-saskatoon.escribemeetings.com
+archive,"Sunshine Coast Regional District, BC",ca:cd:5929,yes,pub-scrd.escribemeetings.com
+archive,"Scugog, ON",ca:csd:3518020,yes,pub-scugog.escribemeetings.com
+archive,"Sechelt, BC",ca:csd:5929011,yes,pub-sechelt.escribemeetings.com
+archive,"City of Spruce Grove, AB",ca:csd:4811049,yes,pub-sprucegrove.escribemeetings.com
+archive,Sturgeon County,ca:csd:4811059,yes,pub-sturgeoncounty.escribemeetings.com
+archive,"Surrey, BC",ca:csd:5915004,yes,pub-surreyschools.escribemeetings.com
+archive,"Thunder Bay, ON",ca:csd:3558004,yes,pub-thunderbay.escribemeetings.com
+archive,"Town of Bonnyville, AB",ca:csd:4812009,yes,pub-townofbonnyville.escribemeetings.com
+archive,"Uxbridge, ON",ca:csd:3518029,yes,pub-uxbridge.escribemeetings.com
+archive,"City of Vaughan, ON",ca:csd:3519028,yes,pub-vaughan.escribemeetings.com
+archive,Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
+archive,"Town of Wasaga Beach, ON",ca:csd:3543064,yes,pub-wasagabeach.escribemeetings.com
+archive,"Whitby, ON",ca:csd:3518009,yes,pub-whitby.escribemeetings.com
+archive,"Nanaimo, BC",ca:csd:5921007,yes,rdn-pub.escribemeetings.com
+archive,Strathroy Caradoc,ca:csd:3539015,yes,pub-strathroy-caradoc.escribemeetings.com
+archive,,rtr:ca:on:toronto-catholic-district-school-board,no,tcdsbpublishing.escribemeetings.com
+archive,Township of Brock,ca:csd:3518039,yes,pub-townshipofbrock.escribemeetings.com
+archive,"West Grey, ON",ca:csd:3542004,yes,pub-westgrey.escribemeetings.com
+archive,"City of Colwood, BC",ca:csd:5917041,yes,colwood.civicweb.net
+archive,"Loyalist Township, ON",ca:csd:3511005,yes,loyalist.civicweb.net
+archive,"Metchosin, BC",ca:csd:5917042,yes,metchosin.civicweb.net
+archive,"Town of Mono, ON",ca:csd:3522012,yes,mono.civicweb.net
+archive,"Oak Bay, BC",ca:csd:5917030,yes,oakbay.civicweb.net
+archive,"Sooke, BC",ca:csd:5917052,yes,sooke.civicweb.net
+archive,"Squamish, BC",ca:csd:5931006,yes,squamish.civicweb.net
+archive,"Trent Hills, ON",ca:csd:3514045,yes,trenthills.civicweb.net
+archive,"Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
+archive,"Brant, ON",ca:csd:3529005,yes,pub-brant.escribemeetings.com
+archive,"Mackenzie, BC",ca:csd:5953033,yes,pub-mackenziebc.escribemeetings.com
+archive,"Point Edward, ON",ca:csd:3538031,yes,pub-pointedward.escribemeetings.com
+archive,Bradfordwestgwillimbury,ca:csd:3543014,yes,pub-bradfordwestgwillimbury.escribemeetings.com
+archive,"Kincardine, ON",ca:csd:3541024,yes,pub-kincardine.escribemeetings.com
+archive,Kneehill County,ca:csd:4805041,yes,pub-kneehillcounty.escribemeetings.com
+archive,Merrickville Wolford,ca:csd:3507052,yes,pub-merrickville-wolford.escribemeetings.com
+archive,Saugeenshores,ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
+archive,"Shelburne, ON",ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
+archive,"Tillsonburg, ON",ca:csd:3532004,yes,pub-tillsonburg.escribemeetings.com
+archive,"City of Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
+archive,Town of Bradford,,no,pub-bradfordwestgwillimbury.escribemeetings.com
+archive,"Courtenay, BC",ca:csd:5926010,yes,pub-courtenay.escribemeetings.com
+archive,H Psb,rtr:ca:on:hamilton-police-services-board,no,pub-hpsb.escribemeetings.com
+archive,Town of Orangeville,ca:csd:3522014,yes,pub-eastgarafraxa.escribemeetings.com
+archive,Kneehill County,ca:csd:4805041,yes,pub-kneehillcounty.escribemeetings.com
+archive,Merrickville Wolford,ca:csd:3507052,yes,pub-merrickville-wolford.escribemeetings.com
+archive,"City of Salmon Arm, BC",ca:csd:5939032,yes,pub-salmonarm.escribemeetings.com
+archive,"Town of Saugeen Shores, ON",ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
+archive,"Thunder Bay District Health Unit, ON",rtr:ca:on:thunder-bay-district-health-unit,no,pub-tbdhu.escribemeetings.com
+archive,"City of Mississauga, ON",rtr:ca:on:toronto-and-region-conservation-authority,no,pub-trca.escribemeetings.com
+archive,"Elliot Lake, ON",ca:csd:3557041,yes,elliotlakeon.new.swagit.com
+archive,"Yellowknife, NT",ca:csd:6106023,yes,yellowknifent.new.swagit.com
+archive,"Atikokan, ON",ca:csd:3559001,yes,atikokan.civicweb.net
+archive,"Lambton, QC",ca:csd:2430095,yes,lambton.civicweb.net
+archive,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
+archive,"Township of Adjala-Tosorontio, ON",ca:csd:3543003,yes,adjala-tosorontio.civicweb.net
+archive,"Township of Centre Wellington, ON",ca:csd:3523025,yes,centrewellington.civicweb.net
+archive,"City of Chestermere, AB",ca:csd:4806017,yes,chestermere.civicweb.net
+archive,"French River, ON",ca:csd:3552001,yes,frenchriver.civicweb.net
+archive,"Town of High River, AB",ca:csd:4806006,yes,highriver.civicweb.net
+archive,"Innisfail, AB",ca:csd:4808008,yes,innisfail.civicweb.net
+archive,"Kapuskasing, ON",ca:csd:3556066,yes,kapuskasing.civicweb.net
+archive,"City of Kenora, ON",ca:csd:3560010,yes,kenora.civicweb.net
+archive,"Township of Front of Yonge, ON",ca:csd:3507017,yes,mallorytown.civicweb.net
+archive,"Muskoka Lakes, ON",ca:csd:3544053,yes,muskokalakes.civicweb.net
+archive,"New Tecumseth, ON",ca:csd:3543007,yes,newtecumseth.civicweb.net
+archive,"Oliver Paipoonge, ON",ca:csd:3558011,yes,oliverpaipoonge.civicweb.net
+archive,"Powell River, BC",ca:csd:5927008,yes,powellriver.civicweb.net
+archive,"Quesnel, BC",ca:csd:5941013,yes,quesnel.civicweb.net
+archive,"Torbay, NL",ca:csd:1001509,yes,torbay.civicweb.net
+archive,"Town of Vulcan, AB",ca:csd:4805006,yes,townofvulcan.civicweb.net
+archive,"Tumbler Ridge, BC",ca:csd:5955003,yes,tumblerridge.civicweb.net
+archive,"Wasaga Beach, ON",ca:csd:3543064,yes,wasagabeach.civicweb.net
+archive,"West Perth, ON",ca:csd:3531025,yes,westperth.civicweb.net
+archive,"Wetaskiwin, AB",ca:csd:4811002,yes,wetaskiwin.civicweb.net
+archive,"Whitewater Region, ON",ca:csd:3547056,yes,whitewaterregion.civicweb.net
+archive,"Town of Hearst, ON",ca:csd:3556076,yes,hearst.civicweb.net
+archive,"James City, ON",ca:csd:3554042,yes,jamescitycova.portal.civicclerk.com
+archive,"City of Elliot Lake, ON",ca:csd:3557041,yes,pub-elliotlake.escribemeetings.com
+archive,"Lethbridge, AB",ca:csd:4802012,yes,pub-lethbridge.escribemeetings.com
+archive,"Town of Niagara-on-the-Lake, ON",ca:csd:3526047,yes,pub-notl.escribemeetings.com
+archive,"City of Peterborough, ON",ca:csd:3515014,yes,pub-peterborough.escribemeetings.com
+archive,"Prince George, BC",ca:csd:5953023,yes,princegeorgebc.new.swagit.com
+archive,"West Kelowna, BC",ca:csd:5935029,yes,westkelownabc.new.swagit.com
+archive,"Calgary, AB",ca:csd:4806016,yes,pub-calgary.escribemeetings.com
+archive,,ca:csd:3540063,yes,pub-acwtownship.escribemeetings.com
+archive,"Airdrie, AB",ca:csd:4806021,yes,pub-airdrie.escribemeetings.com
+archive,"Calgary, AB",ca:csd:4806016,yes,pub-calgary.escribemeetings.com
+archive,"Central Saanich, BC",ca:csd:5917015,yes,pub-centralsaanich.escribemeetings.com
+archive,"Chatham-Kent, ON",ca:csd:3536020,yes,pub-chatham-kent.escribemeetings.com
+archive,"City of Grande Prairie, AB",ca:csd:4819012,yes,pub-cityofgp.escribemeetings.com
+archive,"City of Prince Albert, SK",ca:csd:4715066,yes,pub-citypa.escribemeetings.com
+archive,"City of Fort Saskatchewan, AB",ca:csd:4811056,yes,pub-cofs.escribemeetings.com
+archive,City of Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+archive,"Fredericton, NB",ca:csd:1310032,yes,pub-fredericton.escribemeetings.com
+archive,"Goderich, ON",ca:csd:3540028,yes,pub-goderich.escribemeetings.com
+archive,Haldimand County,rtr:ca:on:haldimand-county,no,pub-haldimandcounty.escribemeetings.com
+archive,"Halton Hills, ON",ca:csd:3524015,yes,pub-haltonhills.escribemeetings.com
+archive,,rtr:ca:on:hamilton-public-library,no,pub-hpl.escribemeetings.com
+archive,"City of Kenora, ON",ca:csd:3560010,yes,pub-kenora.escribemeetings.com
+archive,"Lake Country, BC",ca:csd:5935016,yes,pub-lakecountry.escribemeetings.com
+archive,"City of Leduc, AB",ca:csd:4811016,yes,pub-leduc.escribemeetings.com
+archive,"City of Maple Ridge, BC",ca:csd:5915075,yes,pub-mapleridge.escribemeetings.com
+archive,"Town of Morinville, AB",ca:csd:4811068,yes,pub-morinville.escribemeetings.com
+archive,"City of Nanaimo, BC",ca:csd:5921007,yes,pub-nanaimo.escribemeetings.com
+archive,"City of Campbell River, BC",ca:csd:5924034,yes,pub-northcowichan.escribemeetings.com
+archive,"North Grenville, ON",ca:csd:3507065,yes,pub-northgrenville.escribemeetings.com
+archive,"Town of Okotoks, AB",ca:csd:4806012,yes,pub-okotoks.escribemeetings.com
+archive,"Oxford County, ON",ca:cd:3532,yes,pub-oxfordcounty.escribemeetings.com
+archive,,rtr:ca:bc:regional-district-of-central-okanagan,no,pub-rdco.escribemeetings.com
+archive,"Rideau Lakes, ON",ca:csd:3507040,yes,pub-rideaulakes.escribemeetings.com
+archive,,ca:csd:5931020,yes,pub-rmow.escribemeetings.com
+archive,"Rocky View, AB",ca:csd:4806014,yes,pub-rockyview.escribemeetings.com
+archive,"City of Saskatoon, SK",ca:csd:4711066,yes,pub-saskatoon.escribemeetings.com
+archive,"Sunshine Coast Regional District, BC",ca:cd:5929,yes,pub-scrd.escribemeetings.com
+archive,"Sechelt, BC",ca:csd:5929011,yes,pub-sechelt.escribemeetings.com
+archive,"South Stormont, ON",ca:csd:3501011,yes,pub-southstormont.escribemeetings.com
+archive,"Spruce Grove, AB",ca:csd:4811049,yes,pub-sprucegrove.escribemeetings.com
+archive,Sturgeon County,ca:csd:4811059,yes,pub-sturgeoncounty.escribemeetings.com
+archive,,ca:csd:5915004,yes,pub-surreyschools.escribemeetings.com
+archive,,rtr:ca:on:thunder-bay-district-health-unit,no,pub-tbdhu.escribemeetings.com
+archive,"Town of Yarmouth, NS",ca:csd:1202006,yes,pub-townofyarmouth.escribemeetings.com
+archive,,rtr:ca:on:toronto-and-region-conservation-authority,no,pub-trca.escribemeetings.com
+archive,"Uxbridge, ON",ca:csd:3518029,yes,pub-uxbridge.escribemeetings.com
+archive,"Town of Whitby, ON",ca:csd:3518009,yes,pub-whitby.escribemeetings.com
+archive,Lakeshore,ca:csd:3537064,yes,lakeshoreon.new.swagit.com
+archive,"Newmarket, ON",ca:csd:3519048,yes,newmarketnh.portal.civicclerk.com
+archive,"Timmins, ON",ca:csd:3556027,yes,timminson.new.swagit.com
+archive,"Georgian Bay, ON",ca:csd:3544065,yes,georgianbay.civicweb.net
+archive,"Grey Highlands, ON",ca:csd:3542015,yes,greyhighlands.civicweb.net
+archive,"Bowen Island, BC",ca:csd:5915062,yes,bowenisland.civicweb.net
+archive,"Fort St. John, BC",ca:csd:5955034,yes,fortstjohn.civicweb.net
+archive,"Kimberley, BC",ca:csd:5901028,yes,kimberley.civicweb.net
+archive,"Lillooet, BC",ca:csd:5931026,yes,lillooet.civicweb.net
+archive,"Osoyoos, BC",ca:csd:5907005,yes,osoyoos.civicweb.net
+archive,"Parksville, BC",ca:csd:5921018,yes,parksville.civicweb.net
+archive,"Tofino, BC",ca:csd:5923025,yes,tofino.civicweb.net
+archive,"City of Williams Lake, BC",ca:csd:5941009,yes,williamslake.civicweb.net
+archive,"Alnwick/Haldimand, ON",ca:csd:3514024,yes,alnwickhaldimand.civicweb.net
+archive,"Bluewater, ON",ca:csd:3540010,yes,bluewater.civicweb.net
+archive,"Central Elgin, ON",ca:csd:3534020,yes,centralelgin.civicweb.net
+archive,"Greater Napanee, ON",ca:csd:3511015,yes,greaternapanee.civicweb.net
+archive,"East Gwillimbury, ON",ca:csd:3519054,yes,eastgwillimbury.civicweb.net
+archive,"Meaford, ON",ca:csd:3542047,yes,meaford.civicweb.net
+archive,"Northern Bruce Peninsula, ON",ca:csd:3541069,yes,northernbrucepeninsula.civicweb.net
+archive,"Township of Otonabee-South Monaghan, ON",ca:csd:3515005,yes,otonabeesouthmonaghan.civicweb.net
+archive,"Township of Ramara, ON",ca:csd:3543019,yes,ramara.civicweb.net
+archive,"Sarnia, ON",ca:csd:3538030,yes,sarnia.civicweb.net
+archive,"St. Catharines, ON",ca:csd:3526053,yes,stcatharines.civicweb.net
+archive,"Red Deer, AB",ca:csd:4808011,yes,pub-reddeer.escribemeetings.com
+archive,"Rocky View, AB",ca:csd:4806014,yes,pub-rockyview.escribemeetings.com
+archive,"City of St. John's, NL",ca:csd:1001519,yes,pub-stjohns.escribemeetings.com
+archive,City of Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
+archive,"Anmore, BC",ca:csd:5915038,yes,pub-anmore.escribemeetings.com
+archive,"Courtenay, BC",ca:csd:5926010,yes,pub-courtenay.escribemeetings.com
+archive,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
+archive,"North Cowichan, BC",ca:csd:5919008,yes,pub-northcowichan.escribemeetings.com
+archive,"Richmond, BC",ca:csd:5915015,yes,pub-richmond.escribemeetings.com
+archive,"Town of Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+archive,Orangeville,ca:csd:3522014,yes,pub-orangeville.escribemeetings.com
+archive,County of Wellington,ca:cd:3523,yes,pub-wellington.escribemeetings.com
+archive,"Town of Oakville, ON",ca:csd:3524001,yes,pub-oakville.escribemeetings.com
+archive,City of Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+archive,,ca:csd:3534021,yes,pub-stthomas.escribemeetings.com
+archive,"City of Corner Brook, NL",ca:csd:1005018,yes,pub-cornerbrook.escribemeetings.com
+archive,"Town of Conception Bay South, NL",ca:csd:1001485,yes,pub-conceptionbaysouth.escribemeetings.com
+archive,"City of Mount Pearl, NL",ca:csd:1001542,yes,pub-mountpearl.escribemeetings.com
+archive,Town of Shelburne,ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
+archive,"Blind River, ON",ca:csd:3557038,yes,pub-blindriver.escribemeetings.com
+archive,"Arran-Elderslie, ON",ca:csd:3541043,yes,pub-arranelderslie.escribemeetings.com
+archive,"Medicine Hat, AB",ca:csd:4801006,yes,docs.medicinehat.ca
+archive,"Red Deer, AB",ca:csd:4808011,yes,meeting.reddeer.ca
+archive,"Newmarket, ON",ca:csd:3519048,yes,newmarketnh.portal.civicclerk.com
+archive,"City of Kitchener, ON",ca:csd:3530013,yes,pub-kitchener.escribemeetings.com
+archive,"Township of Adjala-Tosorontio, ON",ca:csd:3543003,yes,adjala-tosorontio.civicweb.net
+archive,"Atikokan, ON",ca:csd:3559001,yes,atikokan.civicweb.net
+archive,"Brockville, ON",ca:csd:3507015,yes,brockville.civicweb.net
+archive,"Central Elgin, ON",ca:csd:3534020,yes,centralelgin.civicweb.net
+archive,"Township of Centre Wellington, ON",ca:csd:3523025,yes,centrewellington.civicweb.net
+archive,"City of Chestermere, AB",ca:csd:4806017,yes,chestermere.civicweb.net
+archive,County of Essex,ca:cd:3537,yes,coe-pub.escribemeetings.com
+archive,"City of Colwood, BC",ca:csd:5917041,yes,colwood.civicweb.net
+archive,"East Gwillimbury, ON",ca:csd:3519054,yes,eastgwillimbury.civicweb.net
+archive,"French River, ON",ca:csd:3552001,yes,frenchriver.civicweb.net
+archive,"Georgian Bay, ON",ca:csd:3544065,yes,georgianbay.civicweb.net
+archive,"Greater Napanee, ON",ca:csd:3511015,yes,greaternapanee.civicweb.net
+archive,"Grey Highlands, ON",ca:csd:3542015,yes,greyhighlands.civicweb.net
+archive,"Town of Hearst, ON",ca:csd:3556076,yes,hearst.civicweb.net
+archive,"Town of High River, AB",ca:csd:4806006,yes,highriver.civicweb.net
+archive,"Innisfail, AB",ca:csd:4808008,yes,innisfail.civicweb.net
+archive,"Kapuskasing, ON",ca:csd:3556066,yes,kapuskasing.civicweb.net
+archive,"City of Kelowna, BC",ca:csd:5935010,yes,kelownapublishing.escribemeetings.com
+archive,"City of Kenora, ON",ca:csd:3560010,yes,kenora.civicweb.net
+archive,"Lambton, QC",ca:csd:2430095,yes,lambton.civicweb.net
+archive,"Loyalist Township, ON",ca:csd:3511005,yes,loyalist.civicweb.net
+archive,"Township of Front of Yonge, ON",ca:csd:3507017,yes,mallorytown.civicweb.net
+archive,"Meaford, ON",ca:csd:3542047,yes,meaford.civicweb.net
+archive,"Metchosin, BC",ca:csd:5917042,yes,metchosin.civicweb.net
+archive,"Town of Mono, ON",ca:csd:3522012,yes,mono.civicweb.net
+archive,"Muskoka Lakes, ON",ca:csd:3544053,yes,muskokalakes.civicweb.net
+archive,"New Tecumseth, ON",ca:csd:3543007,yes,newtecumseth.civicweb.net
+archive,"Northern Bruce Peninsula, ON",ca:csd:3541069,yes,northernbrucepeninsula.civicweb.net
+archive,"Oak Bay, BC",ca:csd:5917030,yes,oakbay.civicweb.net
+archive,"Oliver Paipoonge, ON",ca:csd:3558011,yes,oliverpaipoonge.civicweb.net
+archive,"Powell River, BC",ca:csd:5927008,yes,powellriver.civicweb.net
+archive,"Town of Amherstburg, ON",ca:csd:3537028,yes,pub-amherstburg.escribemeetings.com
+archive,"Anmore, BC",ca:csd:5915038,yes,pub-anmore.escribemeetings.com
+archive,"Arran-Elderslie, ON",ca:csd:3541043,yes,pub-arranelderslie.escribemeetings.com
+archive,"City of Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
+archive,"Blind River, ON",ca:csd:3557038,yes,pub-blindriver.escribemeetings.com
+archive,"The Blue Mountains, ON",ca:csd:3542045,yes,pub-bluemountains.escribemeetings.com
+archive,"City of Brampton, ON",ca:csd:3521010,yes,pub-brampton.escribemeetings.com
+archive,"Brant, ON",ca:csd:3529005,yes,pub-brant.escribemeetings.com
+archive,"Caledon, ON",ca:csd:3521024,yes,pub-caledon.escribemeetings.com
+archive,"Chatham-Kent, ON",ca:csd:3536020,yes,pub-chatham-kent.escribemeetings.com
+archive,"Town of Cobourg, ON",ca:csd:3514021,yes,pub-cobourg.escribemeetings.com
+archive,"Town of Collingwood, ON",ca:csd:3543031,yes,pub-collingwood.escribemeetings.com
+archive,"City of Corner Brook, NL",ca:csd:1005018,yes,pub-cornerbrook.escribemeetings.com
+archive,"Courtenay, BC",ca:csd:5926010,yes,pub-courtenay.escribemeetings.com
+archive,"Cramahe, ON",ca:csd:3514014,yes,pub-cramahe.escribemeetings.com
+archive,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
+archive,City of Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+archive,"Durham Region, ON",ca:cd:3518,yes,pub-durhamregion.escribemeetings.com
+archive,"City of Elliot Lake, ON",ca:csd:3557041,yes,pub-elliotlake.escribemeetings.com
+archive,"Town of Fort Erie, ON",ca:csd:3526003,yes,pub-forterie.escribemeetings.com
+archive,"Town of Georgina, ON",ca:csd:3519070,yes,pub-georgina.escribemeetings.com
+archive,"Goderich, ON",ca:csd:3540028,yes,pub-goderich.escribemeetings.com
+archive,"Guelph, ON",ca:csd:3523008,yes,pub-guelph.escribemeetings.com
+archive,Haldimand County,rtr:ca:on:haldimand-county,no,pub-haldimandcounty.escribemeetings.com
+archive,"Town of Halton Hills, ON",ca:csd:3524015,yes,pub-haltonhills.escribemeetings.com
+archive,City of Hamilton,rtr:ca:on:hamilton-police-services-board,no,pub-hpsb.escribemeetings.com
+archive,Kneehill County,ca:csd:4805041,yes,pub-kneehillcounty.escribemeetings.com
+archive,"Lambton Shores, ON",ca:csd:3538040,yes,pub-lambtonshores.escribemeetings.com
+archive,Mackenzie,ca:csd:5953033,yes,pub-mackenziebc.escribemeetings.com
+archive,"Merrickville-Wolford, ON",ca:csd:3507052,yes,pub-merrickville-wolford.escribemeetings.com
+archive,"Town of Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+archive,"Mississauga, ON",ca:csd:3521005,yes,pub-mississauga.escribemeetings.com
+archive,"City of Mount Pearl, NL",ca:csd:1001542,yes,pub-mountpearl.escribemeetings.com
+archive,"Nanaimo, BC",ca:csd:5921007,yes,pub-nanaimo.escribemeetings.com
+archive,"City of New Westminster, BC",ca:csd:5915029,yes,pub-newwestcity.escribemeetings.com
+archive,"Town of Lake Cowichan, BC",ca:csd:5919016,yes,pub-northcowichan.escribemeetings.com
+archive,"Town of Okotoks, AB",ca:csd:4806012,yes,pub-okotoks.escribemeetings.com
+archive,"Town of New Tecumseth, ON",ca:csd:3543007,yes,pub-oneinvestmentprogram.escribemeetings.com
+archive,Orangeville,ca:csd:3522014,yes,pub-orangeville.escribemeetings.com
+archive,"City of Oshawa, ON",ca:csd:3518013,yes,pub-oshawa.escribemeetings.com
+archive,"City of Owen Sound, ON",ca:csd:3542059,yes,pub-owensound.escribemeetings.com
+archive,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
+archive,"City of Penticton, BC",ca:csd:5907041,yes,pub-penticton.escribemeetings.com
+archive,"Point Edward, ON",ca:csd:3538031,yes,pub-pointedward.escribemeetings.com
+archive,"City of Port Moody, BC",ca:csd:5915043,yes,pub-portmoody.escribemeetings.com
+archive,"Region Of Waterloo, ON",ca:cd:3530,yes,pub-regionofwaterloo.escribemeetings.com
+archive,"City of Salmon Arm, BC",ca:csd:5939032,yes,pub-salmonarm.escribemeetings.com
+archive,"Saskatoon, SK",ca:csd:4711066,yes,pub-saskatoon.escribemeetings.com
+archive,"Town of Saugeen Shores, ON",ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
+archive,Town of Shelburne,ca:csd:3522021,yes,pub-shelburne.escribemeetings.com
+archive,"City of St. John's, NL",ca:csd:1001519,yes,pub-stjohns.escribemeetings.com
+archive,County of Middlesex,ca:cd:3539,yes,pub-strathroy-caradoc.escribemeetings.com
+archive,"City of St. Thomas, ON",ca:csd:3534021,yes,pub-stthomas.escribemeetings.com
+archive,"City of Thunder Bay, ON",ca:csd:3558004,yes,pub-thunderbay.escribemeetings.com
+archive,"Town of Tillsonburg, ON",ca:csd:3532004,yes,pub-tillsonburg.escribemeetings.com
+archive,"Town of Grand Valley, ON",ca:csd:3522010,yes,pub-townofgrandvalley.escribemeetings.com
+archive,"Town of Whitchurch-Stouffville, ON",ca:csd:3519044,yes,pub-townofws.escribemeetings.com
+archive,Township Of Brock,ca:csd:3518039,yes,pub-townshipofbrock.escribemeetings.com
+archive,"City of Vaughan, ON",ca:csd:3519028,yes,pub-vaughan.escribemeetings.com
+archive,City of Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
+archive,"Town of Wasaga Beach, ON",ca:csd:3543064,yes,pub-wasagabeach.escribemeetings.com
+archive,County of Wellington,ca:cd:3523,yes,pub-wellington.escribemeetings.com
+archive,"City of West Kelowna, BC",ca:csd:5935029,yes,pub-westkelowna.escribemeetings.com
+archive,"Quesnel, BC",ca:csd:5941013,yes,quesnel.civicweb.net
+archive,"Township of Ramara, ON",ca:csd:3543019,yes,ramara.civicweb.net
+archive,"Sarnia, ON",ca:csd:3538030,yes,sarnia.civicweb.net
+archive,"Sooke, BC",ca:csd:5917052,yes,sooke.civicweb.net
+archive,"Squamish, BC",ca:csd:5931006,yes,squamish.civicweb.net
+archive,"Tofino, BC",ca:csd:5923025,yes,tofino.civicweb.net
+archive,"Torbay, NL",ca:csd:1001509,yes,torbay.civicweb.net
+archive,"Town of Vulcan, AB",ca:csd:4805006,yes,townofvulcan.civicweb.net
+archive,"Trent Hills, ON",ca:csd:3514045,yes,trenthills.civicweb.net
+archive,"Tumbler Ridge, BC",ca:csd:5955003,yes,tumblerridge.civicweb.net
+archive,"Wasaga Beach, ON",ca:csd:3543064,yes,wasagabeach.civicweb.net
+archive,"West Perth, ON",ca:csd:3531025,yes,westperth.civicweb.net
+archive,"Wetaskiwin, AB",ca:csd:4811002,yes,wetaskiwin.civicweb.net
+archive,"Whitewater Region, ON",ca:csd:3547056,yes,whitewaterregion.civicweb.net
+archive,"City of Williams Lake, BC",ca:csd:5941009,yes,williamslake.civicweb.net
+archive,"Town of Slave Lake, AB",ca:csd:4817029,yes,youtube.com
+archive,"Town of Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+archive,"Greater Sudbury, ON",ca:csd:3553005,yes,pub-greatersudbury.escribemeetings.com
+archive,City of Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+archive,"City of St. John's, NL",ca:csd:1001519,yes,pub-stjohns.escribemeetings.com
+archive,"Town of Lake Cowichan, BC",ca:csd:5919016,yes,cvrdtest.primegov.com
+archive,"Town of Slave Lake, AB",ca:csd:4817029,yes,youtube.com
+archive,City of Markham,rtr:ca:on:toronto-and-region-conservation-authority,no,pub-trca.escribemeetings.com
+ledger,"Arran-Elderslie, ON",ca:csd:3541043,yes,pub-arranelderslie.escribemeetings.com
+ledger,Delta,ca:csd:5915011,yes,pub-delta.escribemeetings.com
+ledger,"Town of Milton, ON",ca:csd:3524009,yes,pub-milton.escribemeetings.com
+ledger,"Peel Region, ON",ca:cd:3521,yes,pub-peelregion.escribemeetings.com
+ledger,City of Victoria,ca:csd:5917034,yes,pub-victoria.escribemeetings.com
+ledger,"Town of Lake Cowichan, BC",ca:csd:5919016,yes,pub-northcowichan.escribemeetings.com
+ledger,City of Dryden,ca:csd:3560027,yes,pub-dryden.escribemeetings.com
+ledger,"Courtenay, BC",ca:csd:5926010,yes,pub-courtenay.escribemeetings.com
+ledger,"Township of Adjala-Tosorontio, ON",ca:csd:3543003,yes,adjala-tosorontio.civicweb.net
+ledger,"Blind River, ON",ca:csd:3557038,yes,pub-blindriver.escribemeetings.com
+ledger,"The Blue Mountains, ON",ca:csd:3542045,yes,pub-bluemountains.escribemeetings.com
+ledger,"City of Brampton, ON",ca:csd:3521010,yes,pub-brampton.escribemeetings.com
+ledger,"Caledon, ON",ca:csd:3521024,yes,pub-caledon.escribemeetings.com
+ledger,"Town of Cobourg, ON",ca:csd:3514021,yes,pub-cobourg.escribemeetings.com
+ledger,"Town of Collingwood, ON",ca:csd:3543031,yes,pub-collingwood.escribemeetings.com
+ledger,"Town of Lake Cowichan, BC",ca:csd:5919016,yes,cvrdtest.primegov.com
+ledger,"Town of Fort Erie, ON",ca:csd:3526003,yes,pub-forterie.escribemeetings.com
+ledger,"Town of Georgina, ON",ca:csd:3519070,yes,pub-georgina.escribemeetings.com
+ledger,"Guelph, ON",ca:csd:3523008,yes,pub-guelph.escribemeetings.com
+ledger,City of Hamilton,rtr:ca:on:hamilton-police-services-board,no,pub-hpsb.escribemeetings.com
+ledger,"Lambton Shores, ON",ca:csd:3538040,yes,pub-lambtonshores.escribemeetings.com
+ledger,"City of Oshawa, ON",ca:csd:3518013,yes,pub-oshawa.escribemeetings.com
+ledger,"City of Owen Sound, ON",ca:csd:3542059,yes,pub-owensound.escribemeetings.com
+ledger,"City of Penticton, BC",ca:csd:5907041,yes,pub-penticton.escribemeetings.com
+ledger,"City of Port Moody, BC",ca:csd:5915043,yes,pub-portmoody.escribemeetings.com
+ledger,"Region Of Waterloo, ON",ca:cd:3530,yes,pub-regionofwaterloo.escribemeetings.com
+ledger,"City of St. John's, NL",ca:csd:1001519,yes,pub-stjohns.escribemeetings.com
+ledger,"City of Thunder Bay, ON",ca:csd:3558004,yes,pub-thunderbay.escribemeetings.com
+ledger,Township Of Brock,ca:csd:3518039,yes,pub-townshipofbrock.escribemeetings.com
+ledger,"Chatham-Kent, ON",ca:csd:3536020,yes,pub-chatham-kent.escribemeetings.com
+ledger,"City of Elliot Lake, ON",ca:csd:3557041,yes,pub-elliotlake.escribemeetings.com
+ledger,"Town of Halton Hills, ON",ca:csd:3524015,yes,pub-haltonhills.escribemeetings.com
+ledger,"Goderich, ON",ca:csd:3540028,yes,pub-goderich.escribemeetings.com
+ledger,"Nanaimo, BC",ca:csd:5921007,yes,pub-nanaimo.escribemeetings.com
+ledger,"Saskatoon, SK",ca:csd:4711066,yes,pub-saskatoon.escribemeetings.com
+ledger,"City of Beaumont, AB",ca:csd:4811013,yes,pub-beaumontab.escribemeetings.com
+ledger,Kneehill County,ca:csd:4805041,yes,pub-kneehillcounty.escribemeetings.com
+ledger,"Merrickville-Wolford, ON",ca:csd:3507052,yes,pub-merrickville-wolford.escribemeetings.com
+ledger,"City of Salmon Arm, BC",ca:csd:5939032,yes,pub-salmonarm.escribemeetings.com
+ledger,"Town of Saugeen Shores, ON",ca:csd:3541045,yes,pub-saugeenshores.escribemeetings.com
+ledger,City of Markham,rtr:ca:on:toronto-and-region-conservation-authority,no,pub-trca.escribemeetings.com
+ledger,"Town of Amherstburg, ON",ca:csd:3537028,yes,pub-amherstburg.escribemeetings.com
+ledger,"Town of Grand Valley, ON",ca:csd:3522010,yes,pub-townofgrandvalley.escribemeetings.com
+ledger,"Town of Whitchurch-Stouffville, ON",ca:csd:3519044,yes,pub-townofws.escribemeetings.com
+ledger,"City of West Kelowna, BC",ca:csd:5935029,yes,pub-westkelowna.escribemeetings.com
+ledger,"Mississauga, ON",ca:csd:3521005,yes,pub-mississauga.escribemeetings.com
+ledger,County of Essex,ca:cd:3537,yes,coe-pub.escribemeetings.com
+ledger,"Cramahe, ON",ca:csd:3514014,yes,pub-cramahe.escribemeetings.com
+ledger,"City of Kelowna, BC",ca:csd:5935010,yes,kelownapublishing.escribemeetings.com
+ledger,"City of New Westminster, BC",ca:csd:5915029,yes,pub-newwestcity.escribemeetings.com
+ledger,"Durham Region, ON",ca:cd:3518,yes,pub-durhamregion.escribemeetings.com
+ledger,"Town of New Tecumseth, ON",ca:csd:3543007,yes,pub-oneinvestmentprogram.escribemeetings.com
+ledger,"City of Vaughan, ON",ca:csd:3519028,yes,pub-vaughan.escribemeetings.com
+ledger,"Town of Wasaga Beach, ON",ca:csd:3543064,yes,pub-wasagabeach.escribemeetings.com
+ledger,County of Middlesex,ca:cd:3539,yes,pub-strathroy-caradoc.escribemeetings.com
+ledger,"Brant, ON",ca:csd:3529005,yes,pub-brant.escribemeetings.com
+ledger,Mackenzie,ca:csd:5953033,yes,pub-mackenziebc.escribemeetings.com
+ledger,"Point Edward, ON",ca:csd:3538031,yes,pub-pointedward.escribemeetings.com
+ledger,"Town of Tillsonburg, ON",ca:csd:3532004,yes,pub-tillsonburg.escribemeetings.com
+ledger,Haldimand County,rtr:ca:on:haldimand-county,no,pub-haldimandcounty.escribemeetings.com
+ledger,"Town of Okotoks, AB",ca:csd:4806012,yes,pub-okotoks.escribemeetings.com
+ledger,"Anmore, BC",ca:csd:5915038,yes,pub-anmore.escribemeetings.com
+ledger,Orangeville,ca:csd:3522014,yes,pub-orangeville.escribemeetings.com
+ledger,County of Wellington,ca:cd:3523,yes,pub-wellington.escribemeetings.com
+ledger,"City of St. Thomas, ON",ca:csd:3534021,yes,pub-stthomas.escribemeetings.com
+ledger,"City of Corner Brook, NL",ca:csd:1005018,yes,pub-cornerbrook.escribemeetings.com
+ledger,"City of Mount Pearl, NL",ca:csd:1001542,yes,pub-mountpearl.escribemeetings.com
+ledger,"Brockville, ON",ca:csd:3507015,yes,brockville.civicweb.net
+ledger,"City of Colwood, BC",ca:csd:5917041,yes,colwood.civicweb.net
+ledger,"Loyalist Township, ON",ca:csd:3511005,yes,loyalist.civicweb.net
+ledger,"Metchosin, BC",ca:csd:5917042,yes,metchosin.civicweb.net
+ledger,"Town of Mono, ON",ca:csd:3522012,yes,mono.civicweb.net
+ledger,"Oak Bay, BC",ca:csd:5917030,yes,oakbay.civicweb.net
+ledger,"Sooke, BC",ca:csd:5917052,yes,sooke.civicweb.net
+ledger,"Squamish, BC",ca:csd:5931006,yes,squamish.civicweb.net
+ledger,"Trent Hills, ON",ca:csd:3514045,yes,trenthills.civicweb.net
+ledger,"Atikokan, ON",ca:csd:3559001,yes,atikokan.civicweb.net
+ledger,"Lambton, QC",ca:csd:2430095,yes,lambton.civicweb.net
+ledger,"Township of Centre Wellington, ON",ca:csd:3523025,yes,centrewellington.civicweb.net
+ledger,"City of Chestermere, AB",ca:csd:4806017,yes,chestermere.civicweb.net
+ledger,"French River, ON",ca:csd:3552001,yes,frenchriver.civicweb.net
+ledger,"Town of High River, AB",ca:csd:4806006,yes,highriver.civicweb.net
+ledger,"Innisfail, AB",ca:csd:4808008,yes,innisfail.civicweb.net
+ledger,"Kapuskasing, ON",ca:csd:3556066,yes,kapuskasing.civicweb.net
+ledger,"City of Kenora, ON",ca:csd:3560010,yes,kenora.civicweb.net
+ledger,"Township of Front of Yonge, ON",ca:csd:3507017,yes,mallorytown.civicweb.net
+ledger,"Muskoka Lakes, ON",ca:csd:3544053,yes,muskokalakes.civicweb.net
+ledger,"New Tecumseth, ON",ca:csd:3543007,yes,newtecumseth.civicweb.net
+ledger,"Oliver Paipoonge, ON",ca:csd:3558011,yes,oliverpaipoonge.civicweb.net
+ledger,"Powell River, BC",ca:csd:5927008,yes,powellriver.civicweb.net
+ledger,"Quesnel, BC",ca:csd:5941013,yes,quesnel.civicweb.net
+ledger,"Torbay, NL",ca:csd:1001509,yes,torbay.civicweb.net
+ledger,"Town of Vulcan, AB",ca:csd:4805006,yes,townofvulcan.civicweb.net
+ledger,"Tumbler Ridge, BC",ca:csd:5955003,yes,tumblerridge.civicweb.net
+ledger,"Wasaga Beach, ON",ca:csd:3543064,yes,wasagabeach.civicweb.net
+ledger,"West Perth, ON",ca:csd:3531025,yes,westperth.civicweb.net
+ledger,"Wetaskiwin, AB",ca:csd:4811002,yes,wetaskiwin.civicweb.net
+ledger,"Whitewater Region, ON",ca:csd:3547056,yes,whitewaterregion.civicweb.net
+ledger,"Town of Hearst, ON",ca:csd:3556076,yes,hearst.civicweb.net
+ledger,"Georgian Bay, ON",ca:csd:3544065,yes,georgianbay.civicweb.net
+ledger,"Grey Highlands, ON",ca:csd:3542015,yes,greyhighlands.civicweb.net
+ledger,"Tofino, BC",ca:csd:5923025,yes,tofino.civicweb.net
+ledger,"City of Williams Lake, BC",ca:csd:5941009,yes,williamslake.civicweb.net
+ledger,"Central Elgin, ON",ca:csd:3534020,yes,centralelgin.civicweb.net
+ledger,"Greater Napanee, ON",ca:csd:3511015,yes,greaternapanee.civicweb.net
+ledger,"East Gwillimbury, ON",ca:csd:3519054,yes,eastgwillimbury.civicweb.net
+ledger,"Meaford, ON",ca:csd:3542047,yes,meaford.civicweb.net
+ledger,"Northern Bruce Peninsula, ON",ca:csd:3541069,yes,northernbrucepeninsula.civicweb.net
+ledger,"Township of Ramara, ON",ca:csd:3543019,yes,ramara.civicweb.net
+ledger,"Sarnia, ON",ca:csd:3538030,yes,sarnia.civicweb.net
+ledger,"Town of Slave Lake, AB",ca:csd:4817029,yes,ab-slavelake.civicplus.com

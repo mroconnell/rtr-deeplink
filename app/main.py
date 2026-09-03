@@ -68,8 +68,7 @@ from .platforms.headless_browser import warm_up as warm_up_headless_browser
 from .platforms.media_probe import (
     chunk_size_seconds_for_platform,
     is_plausible_meeting_duration,
-    probe_duration,
-    probe_multi_clip_chunk_plan,
+    probe_duration_and_chunk_plan,
 )
 from .platforms.models import ResolvedMeeting
 from .platforms.youtube import YouTubeAssetFinder
@@ -1400,21 +1399,16 @@ async def _probe_meeting_duration(
     "all-or-nothing" docstring) -- a probe failure on one clip must not
     turn an otherwise-transcribable meeting into a hard error.
     """
-    chunk_plan = None
-    if len(result.video_segments) > 1:
-        chunk_plan = await probe_multi_clip_chunk_plan(
-            result.video_segments,
-            source_page_url=source_page_url,
-            # WO-95: same cap the fixed-window path gets, so one very long
-            # clip can't become one very long chunk.
-            max_chunk_seconds=chunk_size_seconds_for_platform(result.platform),
-        )
-        if chunk_plan:
-            return chunk_plan[-1]["start"] + chunk_plan[-1]["duration"], chunk_plan
-    if not result.video_url:
-        return None, None
-    duration = await probe_duration(result.video_url, source_page_url=source_page_url)
-    return duration, None
+    # WO-98: the body of this moved to media_probe.probe_duration_and_chunk_
+    # plan() so every job-creation path shares one definition -- see that
+    # function's docstring for which path was missing it and what that cost.
+    return await probe_duration_and_chunk_plan(
+        result,
+        source_page_url=source_page_url,
+        # WO-95: same cap the fixed-window path gets, so one very long clip
+        # can't become one very long chunk.
+        max_chunk_seconds=chunk_size_seconds_for_platform(result.platform),
+    )
 
 
 @app.post("/api/transcription/check-feasibility")

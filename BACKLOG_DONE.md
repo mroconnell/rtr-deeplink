@@ -1,5 +1,402 @@
 # Backlog — done
 
+## `gov_id`: a government stops being identified by a string [Done 2026-09-03]
+
+> **Backfilled in production 2026-09-03.** The two entries below are
+> closed on measured after-numbers, not on the projection. Verified
+> against `GET /internal/export/pages` and the live site once
+> `scripts/backfill_gov_id.py --apply` finished (4,714 changed, 339
+> already current from the interrupted first attempt, 226
+> `manual_override` keyed with their strings untouched):
+>
+> | | before | after |
+> | --- | --- | --- |
+> | pages with a `gov_id` | 0 | **4,582 of 5,053 (90.7%)** |
+> | ...with a NATIONAL id | 0 | **4,140 (81.9%)** |
+> | distinct governments | — | **2,265** |
+> | pages with no join key | 5,053 | **471** |
+>
+> **The 13 California counties.** `/state/california` now lists 47
+> distinct county-level CA governments and **not one of them appears on
+> more than one hub** — the pairs the architecture doc opened with
+> ("County of Fresno" / "Fresno County", and twelve more) are each one
+> hub: `/j/fresno-county-ca`, `/j/humboldt-county-ca`,
+> `/j/santa-clara-county-ca`, `/j/san-diego-county-ca`. The retired
+> spellings 301 rather than 404 — `/j/county-of-fresno-ca` →
+> `/j/fresno-county-ca` and `/j/king-county` → `/j/king-county-wa`,
+> both checked live — and none of them is in `sitemap.xml` any more,
+> while their replacements are.
+>
+> **Santa Clara, the entry that re-fragmented within two days of a hand
+> fix.** Four governments now, each keyed and each on its own hub, with
+> the 10 overridden pages keeping the exact string a human chose:
+>
+>     10  us:county:06085                                       'Santa Clara County, CA'
+>      1  us:place:0669084                                      'City of Santa Clara, CA'
+>      1  us:place:0669084                                      'Santa Clara, CA'
+>      1  rtr:us:ca:santa-clara-valley-transportation-authority  'Santa Clara Valley...'
+>
+> Both spellings of the city resolve to `us:place:0669084` and share one
+> hub, which is what the entry asked for — and it holds now without an
+> override, because the identity is a key rather than a string. The
+> override endpoint additionally emits a `tenant_overrides.csv` rule, so
+> the next re-ingest of a page nobody has archived yet inherits it.
+>
+> **The §1.3 mislabels, on the live site.** LADWP is 4 pages on
+> `/j/los-angeles-department-of-water-and-power-ca`, separate from the
+> City of Los Angeles's 11 on `/j/los-angeles-ca`. Honolulu is one
+> government, `us:county:15003`, on one hub. The Cottage Grove pair are
+> two hubs, `/j/cottage-grove-town-wi` and `/j/cottage-grove-village-wi`.
+> `dcccd.new.swagit.com`'s bleed page is `unresolved` and sits on its own
+> `/j/dallas` rather than being merged into the City of Dallas's
+> `/j/dallas-tx` (11 pages).
+>
+> Two premises in the brief did not survive checking, and are corrected
+> rather than acted on: `victoria.civicweb.net` is **Victoria,
+> Minnesota** — its portal reads "City of Victoria / City of lakes and
+> parks" and carries "MN" six times with no Canadian signal at all, so
+> the architecture doc's "Victoria TX on a Canadian CivicWeb host" was
+> wrong on both counts — and `wilmington.granicus.com` is confirmed
+> Wilmington NC from its own page (`OFFICIAL WILMINGTON, NC GOVERNMENT
+> WEBSITE`), independently of the `tenant_hints` value that had asserted
+> it.
+
+
+
+WO-99, Phase 2 of
+`rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md`. Closes the
+two entries below at once, because they were one problem: a government
+was identified by *its name as a string*, so one government fragmented
+into several and a government whose page merely mentioned its host city
+was filed under that city.
+
+**What shipped.** `meeting_pages` gains `gov_id` (namespaced and
+deterministic -- `us:place:0627000`, `us:county:06019`, `ca:csd:3518013`,
+`us:sd:0622710`, or a minted `rtr:us:ca:<slug>`), `gov_type` and
+`meeting_kind`. `app/utils/gov_registry/` assigns them at ingest, right
+after `finalize_jurisdiction()` and from the PRE-repair name -- the
+repair is place-oriented, so by the time it is done "Los Angeles
+Department of Water and Power" has become "Los Angeles" and the evidence
+that this is a district rather than a city is gone. `/j/` and `/state/*`
+group by `gov_id`; `jurisdiction` becomes the display name, generated
+from the registry row; `jurisdiction_confidence` holds the resolution
+tier. `archive/utils/gov_classify.py` is deleted.
+
+**Measured over 5,053 archived pages and 876 ledger pairs**: 83.6% of
+rows get a national id (95.0% of Canadian rows); **176 merges** retiring
+**359** hub pages of fragmentation; 29 splits, and the ones that matter
+are the mislabels being undone -- LADWP out of Los Angeles, LA Metro out
+of LA County, SANDAG out of San Diego, CVWD out of Indio, Tarrant County
+College District and Horry County Schools out of their counties. 699
+retired `/j/` slugs 301 rather than 404.
+
+**Two corrections to what the docs said about this repo, both found by
+checking rather than assuming:**
+
+- The architecture doc states that "`BACKLOG.md` already carries this as
+  two `[NEEDS-AUDIT]` entries (13 CA counties; Santa Clara
+  re-fragmenting)". Only the Santa Clara one existed --
+  `grep -inE "county of |13 CA counties|County of Fresno"` over
+  `BACKLOG.md` returns nothing else. The 13 CA counties were recorded in
+  the architecture doc itself and in `JURISDICTION_METADATA_PLAN.md`, not
+  here.
+- The Phase 2 brief asked to "move the two `gov_classify` misfilings to
+  `BACKLOG_DONE.md`". There were no such entries to move: the misfilings
+  ("Broward County Public Schools, FL" and "West County Wastewater
+  District, CA" under **Counties & regions**, "Minnesota Senate, MN"
+  under **Cities & towns**, ~17 "X County Public Schools" rows under the
+  counties heading on the live `/state/all-50`) were recorded in
+  `JURISDICTION_METADATA_PLAN.md`'s Phase 1 section and the architecture
+  doc's §1.4, never filed here. They are fixed by the same change:
+  `archive/utils/gov_groups.py` maps the stored `gov_type` to a heading
+  and guesses nothing, and the two classifiers disagreed on 388 of the
+  5,929 scored rows.
+
+**Two defects found while building, both measured, both fixed in the
+same PR**: a bare `port` token in the special-district classifier put the
+place tables out of reach for 24 rows over 11 real municipalities (Port
+Townsend WA, Port Moody and Port Coquitlam BC, Port Hope and Port
+Colborne ON, North Port and Port Orange FL, ...), and "nationally
+unique" silently meant "unique in the United States", filing Abbotsford
+BC as Abbotsford WI, Edmonton AB as Edmonton KY and Niagara Falls ON as
+Niagara Falls NY across 16 rows.
+
+**And two the in-browser check found, which no test would have**: 82 of
+the generated hub-slug aliases redirected to hubs that do not exist (a
+301 to a 404), and the new "State government" heading was unreachable
+because decision D1 gives a state government a display name with no ",
+CA" suffix for `/state/*`'s anchored LIKE to match.
+
+### The two entries this closes
+
+- **`[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical form — Santa Clara has already re-fragmented in production.**
+  - **Issue**: `override_jurisdiction()` stamps the specific rows it
+    touches with `jurisdiction_confidence="manual_override"`, which
+    `_find_or_create_page()`'s re-ingest path respects — but it
+    establishes no canonical-form *rule*. Any row not carrying that tier
+    still gets its string from `finalize_jurisdiction()`, which by design
+    "makes zero changes" to an already-valid variant (its own docstring
+    names the Santa Clara variants as the example). So a variant string
+    can reappear.
+  - **Impact**: the 2026-08-31 convergence has partly undone itself.
+    Re-checked live 2026-09-02: `/api/jurisdictions?q=santa+clara`
+    returns **5** variants, not the 3 that entry verified — `County of
+    Santa Clara, CA` is back (1 page, `/j/county-of-santa-clara-ca`,
+    a 2024-04-15 meeting) alongside `Santa Clara County, CA` (20 pages),
+    and a bare `City of Santa Clara` (`/j/santa-clara`, holding a
+    2026-08-25 meeting) sits alongside `City of Santa Clara, CA`. The
+    same exposure applies to every override applied so far, not just
+    this one.
+  - **Next action**: first determine which it is — newly-ingested rows
+    written after the override, or rows the original batch missed (needs
+    `GET /internal/jurisdiction/search?q=santa+clara` with the admin
+    token; not determinable from the public API). Then decide between a
+    canonical-alias table consulted at ingest and a periodic
+    re-convergence sweep.
+  - **How it was actually fixed**: `POST /internal/jurisdiction/override`
+    now takes a `gov_id` rather than a jurisdiction string, and appends a
+    `tenant_overrides.csv`-shaped RULE per tenant host alongside the row
+    write. That is the half this entry was asking for: a pin reaches
+    pages nobody has archived yet, which a row stamp structurally cannot.
+    The fragmentation itself is gone independently of any override --
+    "County of Santa Clara, CA" and "Santa Clara County, CA" both
+    resolve to `us:county:06085` and render as one hub, and "City of
+    Santa Clara" resolves to `us:place:0669084` separately (Phase 1b had
+    to fix that one twice: gating the county fallback on a municipal type
+    word immediately sent it to Santa Clara *town, NY* instead).
+  - **Constraint**: don't just re-run the override and call it closed —
+    that is exactly what happened on 2026-08-31, and the result had
+    re-fragmented within two days.
+  - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
+    variants converged" `[Done 2026-08-31]`, whose "exactly 3
+    jurisdictions" live check no longer holds. WO-98 (2026-09-02) built and
+    scored the canonical-form mechanism this entry asks for — a `gov_id`
+    that both spellings resolve to — but shipped it as a pure module
+    nothing imports yet; see the `[HUMAN]` Phase 2 entry below. The
+    scoring run collapses this exact pair, along with 12 more CA
+    counties.
+
+- **[HUMAN] `[BIG]` Phase 2 of the `gov_id` registry is gated on Ryan
+  reading WO-98's scoring report.**
+  - **Issue**: WO-98 built the registry data files and the resolver
+    (`app/utils/gov_registry/`) and scored them against 5,053 archived
+    pages and 876 ledger pairs. Nothing imports the package; no schema
+    changed. Phase 2 — the `gov_id`/`gov_type` columns, `/j/` grouped by
+    `gov_id` with 301s, the backfill, retiring `gov_classify.py` — starts
+    only once that report has been read.
+  - **Impact**: 79.6% of rows get a national id; 142 of today's `/j/`
+    hubs collapse (289 hub pages of fragmentation, including exactly the
+    13 CA counties predicted); 50 split, six of them the confirmed §1.3
+    mislabels being undone (LADWP out of Los Angeles, LA Metro out of LA
+    County, SANDAG out of San Diego, CVWD out of Indio, TCCD and Horry
+    County Schools out of their counties).
+  - **Outcome**: Ryan read the report and Phase 2 shipped the same day.
+    Of the three things this entry said wanted a human call: the
+    conflicting tenant hosts fell from 11 to 1 in Phase 1b (ten were
+    never disagreements — an `unresolved` candidate asserts nothing);
+    borrowing a state from the tenant's other pages was adopted, guarded
+    on the base names agreeing AND the states not contradicting; and
+    Nashville-Davidson resolves to one id via a curated alias.
+  - **Next action (at the time)**: Ryan reads
+    `reports/gov_registry_scoring_2026-09-03/SUMMARY.md` and the three
+    residual gaps at the end of `JURISDICTION_METADATA_PLAN.md`'s
+    "Phase 1" section, then decides. Three things want a human call
+    before Phase 2: the 11 conflicting tenant hosts in
+    `tenant_overrides_conflicts.csv`; whether a state-less stored
+    jurisdiction may borrow its state from the tenant's other pages;
+    and Nashville-Davidson, the one consolidated city-county still
+    minting two ids.
+  - **Constraint**: don't start Phase 2 by writing the migration.
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §6 orders it deliberately —
+    the registry data proves or kills the design and costs no migration,
+    and the migration is only safe once the merge/split list is one a
+    human has agreed to.
+  - **History**: `JURISDICTION_METADATA_PLAN.md`'s "Phase 1 — gov_id
+    registry scoring" section (the numbers, and two corrections to the
+    architecture doc found while building against it);
+    `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md` §7 (the
+    settled decisions D1-D7).
+
+---
+
+## Pin worklist round trip, and YouTube's shared hosts keyed by channel [Done 2026-09-03]
+
+WO-103. Two scripts and one shared rule, so the 712 pages that still want
+a government (471 `unresolved` + 241 `blank`, live figures) can be settled
+by Ryan writing names in plain English:
+
+- `scripts/build_pin_worklist.py` regenerates `reports/pin_worklist.csv`
+  from `GET /internal/export/pages` — one row per `(tenant_host, match)`,
+  **492 rows** covering all 712 pages, with a best-guess `proposed_name`
+  on **94** of them (123 pages) from three cheap signals: the hostname,
+  the page slugs/titles, and the YouTube channel title / TelVue org-token
+  note.
+- `scripts/apply_pin_worklist.py` resolves what Ryan wrote, writes the
+  `tenant_overrides.csv` pin (always `fallback`, never `authoritative`),
+  and prints the exact `backfill_gov_id.py --hosts-file` sequence for the
+  Render shell.
+- `gov_registry.is_own_name()` — the landing-page sweep's acceptance rule,
+  lifted out of that script so both callers share one implementation.
+
+**This closes the entry below, and corrects its central claim.**
+
+> **`[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to
+> pin, so 117 worklist rows need a different method.** Its **Next
+> action** read: "fetch the CHANNEL page per channel id and read its
+> name, writing a `tenant_overrides.csv` row with `match=<channel id>` —
+> the `match` discriminator exists for exactly this (architecture doc
+> §4) and nothing uses it yet."
+
+The first half was right and cheaper than expected: **YouTube's public
+oEmbed endpoint** answers "who made this video" in one unauthenticated
+GET, no key and no yt-dlp — 91 shared-host pages resolved to **46
+channels** in under a minute, and the channel titles are real government
+names ("Town of Woodside", "County of Sussex", "Malvern Borough",
+"Village of Northfield"). `reports/pin_worklist_youtube.csv` is the map,
+and a re-run costs no YouTube traffic at all.
+
+**The second half was wrong, and would have shipped inert pins.**
+`_match_override()` satisfies a `match` by finding it in the page's
+**path or query**, or in `page_hints` — and *nothing in this repo ever
+passes `page_hints`*. Neither `crud._resolve_page_government()` nor
+`scripts/backfill_gov_id.py` does; both pass `path` only. A YouTube URL's
+path carries the **video id** and nothing else. So a pin written
+`match=@TownofWoodside` would have been silently ignored: the worklist
+would have said the host was settled and all 24 pages would have stayed
+`unresolved`, with nothing anywhere reporting a problem.
+
+So the channel stays the unit of Ryan's **decision** (he names one
+government per channel, once) and `apply_pin_worklist.py` expands that
+decision into one pin per **video id** on that channel and host, which
+the path does carry. Verified end to end: `youtu.be/uXwBvWhzj_k` →
+`us:place:0633798` (Hillsborough, CA), tier `pinned`. These are the first
+rows in `tenant_overrides.csv` ever to use the `match` column — all 337
+existing rows leave it empty.
+
+**Two other defects the build caught, both the same shape.** A window-based
+scan of slugs proposed **Ada County** for the Ada County Highway
+*District*, **Sonoma County** for the Sonoma County *Library*, and **San
+Diego County** for the county's *Employees Retirement Association* —
+architecture doc §1.3 ("the place check gives agencies the wrong
+identity") rebuilt inside the tool written to help fix it. Candidates are
+now anchored to a boundary (a whole date-delimited segment, a suffix
+ending in a type word, a prefix beginning with an entity phrase), so a
+window can no longer start inside an agency's name. The same shape
+reaches the apply side through a human: "Howard County Public School
+System, MD" really does resolve, to `us:county:24027`, and
+`is_own_name()` reports it back rather than pinning it.
+
+**And one the tests caught.** 12 of the 94 proposals carry a display form
+with an LSAD qualifier — "Portage (city), MI", "Webster (village), NY" —
+which is a display convention, not a lookup key: re-resolving it misses
+the place table and mints `rtr:us:mi:portage-city`. So "ok" accepts the
+row's `proposed_gov_id` **as an id**, never by re-resolving the name.
+
+**One existing test relaxed, deliberately.**
+`test_every_tenant_override_row_has_a_resolvable_gov_id` asserted
+membership in `governments()`; it now asserts `government_for_id()` is not
+None, which is what `_pinned()` itself calls. `governments.csv` is a
+generated snapshot of what some scoring run resolved *to*, so a pin to a
+real national government no page has reached yet is absent from it by
+construction — `us:county:24017` (Charles County, MD) is exactly that, and
+`government_for_id()` derives it from the county table. Garbage and
+uncommitted `rtr:` ids are still rejected.
+
+Coverage of the proposals, by platform: youtube 51/157, cablecast 19/62,
+granicus 8/116, swagit 7/40, escribe 5/43, telvue 3/55, castus 1/1. The
+gaps are honest ones — a stateless "Town of Woodside" or "City of Easton"
+is ambiguous and stays unproposed rather than guessing a state.
+
+## Canadian counties added to `jurisdiction_enrich.py`'s state-recovery table [Done 2026-09-03]
+
+WO-104. `gov_registry.resolve_government()` could already key a Canadian
+county correctly (`ca:cd:3541` for "Bruce County, ON", via
+`gov_registry.tables.ca_cd()`) -- but nothing upstream could ever hand it
+that province. Traced live: `pub-brucecounty.escribemeetings.com`'s real
+meeting pages extract a clean "Bruce County" (confirmed via a live fetch
+of a real `Meeting.aspx` page), but `jurisdiction_enrich.py`'s state
+enrichment (`enrich_jurisdiction_text()`, and the subdomain validator
+`_state_from_tenant()` also tries) only ever checked `counties.csv` --
+**US counties only**. `places.csv` already carries 5,028 real Canadian
+census subdivisions (merged 2026-08-17), but the equivalent never
+happened for counties, so a genuine Canadian county-shaped name had no
+row anywhere in this module's tables and correctly-but-uselessly
+declined every time.
+
+This is the SAME shape as the Oxford County, ON bug (WO-77,
+2026-08-30) -- fixed there with a one-off `_KNOWN_DOMAINS` entry,
+deliberately not generalized at the time ("this is the one real
+confirmed Canadian county-shaped eScribe tenant found so far... not a
+guess at which other Ontario counties might also need it"). What changed:
+`gov_registry.tables.ca_cd()` (Canadian census divisions) didn't exist
+yet when that call was made. It does now, and the underlying province
+structure is public, stable, verifiable fact -- not something that needs
+per-tenant confirmation the way a `tenant_overrides.csv` pin does -- so
+generalizing it is now the same category of safe addition
+`build_canada_places()` already made for all 5,028 CSD rows in one shot.
+
+**The fix**: `scripts/build_jurisdiction_data.py::build_canada_counties()`,
+mirroring `build_canada_places()`'s exact additive pattern (reads
+`counties.csv`, adds new rows, writes back) but for Level "3" ("Census
+division") rows from the same real SGC 2021 structure file
+`build_canada_places()` and `build_gov_registry_data.py::build_ca_cd()`
+both already read. **Scoped to the four provinces that actually call
+these divisions "County" in real usage** -- Ontario, Nova Scotia, New
+Brunswick, PEI -- confirmed by surveying every province's real
+`ca_cd.csv` rows first: BC's are Regional Districts ("East Kootenay"),
+Quebec's are MRCs (French names), Alberta/Manitoba/Newfoundland/
+Saskatchewan's are plain statistical "Division No. N" with no governing
+county council, NWT's are "Region N", Nunavut's are named regions, Yukon
+is one territory-wide division. Appending "County" to any of those would
+have fabricated a government type that doesn't exist. 85 rows added
+(49 ON + 18 NS + 15 NB + 3 PE), `counties.csv` 3,222 -> 3,307.
+
+**Verified against real hosts, not just the table**:
+
+  - `pub-brucecounty.escribemeetings.com`'s real extracted "Bruce County"
+    now enriches to "Bruce County, ON" and resolves to `ca:cd:3541`.
+  - `pub-elgincounty.escribemeetings.com`'s real "County of Elgin" now
+    enriches to "County of Elgin, ON" and resolves to `ca:cd:3534`.
+  - Every OTHER currently-unresolved eScribe host with a bare
+    county-shaped name was checked too (48 candidates) -- only these two
+    are genuine County-table matches; the rest are either place-shaped
+    names already covered by the 2026-08-17 CSD merge and still
+    nationally ambiguous for an unrelated reason (Cambridge, Hamilton --
+    real cities in multiple US states too, correctly still declining),
+    or subdomain-derived acronym junk needing a real page read, not a
+    table fix.
+
+**A genuine safety improvement, not just new coverage**: before this fix,
+a bare "Oxford County" matched ONLY Maine in `_COUNTY_STATES` --
+confidently WRONG for the real Ontario tenant, which is the original
+WO-77 bug. It is now genuinely ambiguous (`["ME", "ON"]`), which means
+the ladder correctly DECLINES rather than guessing, for this host and for
+any future, not-yet-known Ontario-county-shaped host that happens to
+share a name with a US county. `pub-oxfordcounty.escribemeetings.com`'s
+own `_KNOWN_DOMAINS` entry still does real, distinct work on top of that
+(it's what actually produces "ON" for this one confirmed tenant, not just
+prevents a wrong guess) and was kept.
+
+21 real name collisions now exist between a Canadian and a US (or
+another Canadian) county (Durham NC/ON, Essex MA/NJ/NY/ON/VA/VT,
+Middlesex MA/NJ/ON/VA, Oxford ME/ON, and 17 more) -- all genuine, all
+resolved the same safe way every pre-existing US collision already was
+("Washington County" already spans 30+ states): decline a bare name,
+require a state/province to disambiguate.
+
+7 new tests in `tests/test_jurisdiction_enrich.py`; one pre-existing test
+(`test_known_domains_oxford_county_on_beats_only_us_table_candidate`)
+updated to assert the corrected `["ME", "ON"]` ambiguity instead of the
+old confidently-wrong `["ME"]`, its history preserved rather than deleted.
+All 2,660 tests green, all five CI gates pass.
+
+**Not live yet.** This is a reference-data + code change to
+`app/utils/jurisdiction_data/counties.csv` and
+`app/utils/jurisdiction_enrich.py` -- it needs a resolver deploy before
+any real page is affected, and the two currently-affected archived pages
+(`pub-brucecounty`/`pub-elgincounty`) still need
+`scripts/backfill_gov_id.py` re-run against them afterward, same as any
+other registry change. CLAUDE.md's own "merging ships nothing" rule.
 ## Granicus agenda-fallback link silently dropped on an S3 hostname/cert mismatch [Done 2026-09-02]
 
 Found live during a Bay Area corpus-expansion pass (see

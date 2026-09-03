@@ -45,7 +45,12 @@ class FakeResponse:
     async def __aexit__(self, exc_type, exc, tb):
         return False
 
-    async def text(self):
+    async def text(self, errors=None):
+        # `errors` accepted (and ignored, same as real aiohttp when the
+        # caller already has decoded text) so a caller that defensively
+        # passes `errors="replace"` for a real malformed-encoding page
+        # (sweep_tenant_landing_pages.py, build_pin_worklist.py) doesn't
+        # need a different call shape in tests.
         if self._text_raises:
             raise self._text_raises
         return self._text

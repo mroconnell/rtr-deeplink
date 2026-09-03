@@ -120,7 +120,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
@@ -152,9 +152,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (9)
+  Jurisdiction extraction & backfill  (13)
+    `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
+    `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
+    `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
+    `[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints`…
+    `[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real…
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
-    `[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical…
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
     `[NEEDS-AUDIT]` Bare "Pitt" jurisdiction value — likely not a bug.
     `[NEEDS-AUDIT]` Swagit still resolves special-purpose entities with a
@@ -184,14 +188,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (12)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
-  Transcription queue & workers  (5)
+  Transcription queue & workers  (6)
+    [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
@@ -1155,6 +1160,162 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
 
+- **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
+  - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
+    Canadian and one American: `pub-richmond` is Richmond BC *and*
+    Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
+    `pub-courtenay` is Courtenay BC *and* Courtenay ND, `pub-owensound`
+    is Owen Sound ON *and* Owen WI, `pub-gloucesterva` is Gloucester
+    County VA *and* Gloucester MA. WO-100's cross-border guard does not
+    catch these because the STORED string carries a state suffix, so the
+    name never reaches the stateless path.
+  - **Impact**: a handful of pages per host on the wrong country's hub.
+    Surfaced by `pin_worklist.csv`'s new `multiple_governments` section
+    (WO-100), which is the first cut that made them visible.
+  - **Next action**: read the section, then pin each host — one landing
+    fetch settles a `pub-*` host's country even where it cannot settle
+    its name (`scripts/sweep_tenant_landing_pages.py`).
+  - **Constraint**: don't infer the country from the `pub-` prefix.
+    eScribe has real US customers (`pub-horrycountyschools` is SC), so
+    the prefix is a hint, not a rule.
+  - **History**: WO-100 (2026-09-03);
+    `reports/gov_registry_scoring_2026-09-03/pin_worklist.csv`,
+    `reason=multiple_governments`. That frozen copy is still the one with
+    the `multiple_governments` section — WO-103's regenerated
+    `reports/pin_worklist.csv` is one row per tenant that WANTS a pin and
+    deliberately does not carry it.
+
+- **`[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show two different names.**
+  - **Issue**: `_display_jurisdiction()` (`archive/db/crud.py`) rewrites
+    `jurisdiction` to the registry name only for the `pinned` and
+    `registry` tiers, as WO-99's brief specified. For a MINTED government
+    that leaves the two out of step, because the resolver classified the
+    raw name while `finalize_jurisdiction()` split it: the Housing
+    Authority of the County of Santa Clara stores `jurisdiction =
+    "County of Santa Clara, CA"` with `meeting_body = "Housing
+    Authority"`, while its `gov_id` is
+    `rtr:us:ca:housing-authority-of-the-county-of-santa-clara` and its
+    hub reads "Housing Authority of the County of Santa Clara, CA".
+  - **Impact**: cosmetic, and bounded — the hub is the surface a reader
+    browses and it is correct; `/m/` and `/meetings` show the county's
+    name with the authority as the body, which is what shipped before
+    WO-99 and reads fine. 479 rows are minted, but only the non-place
+    types (83 `special_district`, plus school districts) can diverge this
+    way at all.
+  - **Next action**: decide whether an `unverified` row should take the
+    minted `gov_name` as its display too. It is not obviously right:
+    doing so duplicates the entity name across `jurisdiction` and
+    `meeting_body`, so the honest fix is probably to take the resolver's
+    own `meeting_body` (which is `None` for a non-place type, by design —
+    "the entity IS the government") at the same time, and that is a
+    behaviour change to a field several audit paths read.
+  - **Constraint**: don't widen the rewrite to every tier. An
+    `inferred` row's id came from its neighbours rather than its own
+    name, so its raw text is the evidence a reviewer needs.
+  - **History**: WO-99 (2026-09-02). Pinned by
+    `tests/test_ingest_promotion.py::test_ingest_resolution_splits_a_real_entity_prefix_end_to_end`,
+    which asserts the current behaviour explicitly and says why.
+
+- **`[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing pages do not name their customer — the pin worklist assumed they did.**
+  - **Issue**: `pin_worklist.csv`'s ordering note calls eScribe,
+    Cablecast, Swagit and TelVue "the four whose landing page reliably
+    names its customer". Measured 2026-09-02 against real hosts, only
+    Cablecast does. eScribe's `Meetings.aspx` is titled "Meetings" and
+    the only place a customer name could live is a logo whose alt text
+    is the literal string "Organization Logo"; Swagit's root is titled
+    "SwagitAdmin" and `/videos` 404s; CivicClerk's is "Public Portal •
+    CivicClerk", with the organisation name only behind its API.
+    Granicus, which the note does not list, DOES name it — but on
+    `ViewPublisher.php?view_id=N`, not the root.
+  - **Impact**: the highest-yield block named in the report (eScribe:
+    `pub-cambridge`, `pub-london`, `pub-halifax`, `pub-hamilton`, 41
+    hosts) cannot be settled by a landing-page fetch at all. Those hosts
+    stay `unresolved` and their pages have no `gov_id`. Measured over the
+    real sweep (2026-09-03): 278 hosts fetched, 223 pages returned, **7**
+    pins written — all 7 from Granicus's `ViewPublisher.php` and one
+    CivicPlus root. Still unresolved: granicus 106, cablecast 61,
+    escribe 41, swagit 39, iqm2 5, civicclerk 4, unknown 4, telvue 2,
+    and one each of castus / champds / townhallstreams / vimeo (39
+    cablecast and 14 granicus hosts were unreachable outright).
+    **Correction (WO-103, same day)**: the Cablecast row above undercounts
+    this entry's own real yield. The sweep's `_landing_url()` sent every
+    Cablecast host to `/CablecastPublicSite/`, which 404s on every real
+    host checked (`huron-township`, `wilson-co-schools`, `cerritos`, all
+    confirmed live) — the host ROOT 200s instead, and its
+    `<title>`/`og:site_name` already carry the real government name
+    ("Huron Charter Township"), exactly the shape `candidate_names()`
+    already reads. So an unknown share of "cablecast 61 unresolved" /
+    "unreachable outright" is really a wrong-path 404 this entry
+    mischaracterized as a content gap, not a genuine "landing page
+    doesn't name its customer" case the way eScribe/Swagit/CivicClerk are.
+  - **Next action**: for eScribe, read the organisation name from a
+    real `Meeting.aspx` page instead of the listing (the adapter already
+    fetches those, and the archive holds an example slug per host); for
+    CivicClerk, its public API already returns `location.city/state` and
+    the adapter already reads it. Both are per-platform work, not more
+    sweeping. **Cablecast's own next action changed**: re-run
+    `scripts/sweep_tenant_landing_pages.py --apply` now that
+    `_landing_url()` sends it to root (WO-103) — likely real, immediate
+    pins among the 61 currently unresolved, no code change needed to get
+    them, just the fixed path.
+  - **Constraint**: one fetch per host, politely paced, and read-only —
+    `scripts/sweep_tenant_landing_pages.py` is the shape to extend, not
+    a crawl.
+  - **History**: WO-99 step 8 (2026-09-02);
+    `reports/landing_page_sweep.csv` has what each host actually
+    returned, and the script's `_PLATFORM_PATHS` comment records the
+    per-platform measurements. WO-103 (2026-09-03) fixed the Cablecast
+    404 (see the correction above) and left eScribe/Swagit/CivicClerk's
+    real "doesn't name its customer" gap untouched — that part still
+    needs the per-platform work in **Next action**. Two smaller changes
+    landed alongside it: `reports/pin_worklist.csv` now carries a
+    hostname/slug-derived `proposed_name` on 5 of the 43 eScribe rows and
+    7 of the 40 Swagit ones, which settles a few of these without a fetch;
+    and the sweep now skips the four shared YouTube netlocs rather than
+    every page whose video is on YouTube, so hosts like
+    `www.townofrossca.gov` are in its scope for the first time.
+
+- **`[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints` argument is never passed by anything.**
+  - **Issue**: `_match_override()` satisfies a `tenant_overrides.csv`
+    `match` three ways — the page's path, a `key=value` in its query, or
+    a `page_hints` entry. The first two work. The third is dead: neither
+    `crud._resolve_page_government()` nor `scripts/backfill_gov_id.py`
+    builds a `page_hints` dict, so a `match` value that is not in the URL
+    can never fire.
+  - **Impact**: a pin written against a discriminator the URL does not
+    carry is **silently inert** — no error, no log line, and the worklist
+    row reads as settled while its pages stay `unresolved`. WO-103 nearly
+    shipped 46 of them (YouTube channel handles) and works around it by
+    expanding one channel decision into one pin per video id instead.
+  - **Next action**: decide whether to pass real hints (the resolver
+    payload already knows the platform, the external id, and for YouTube
+    the channel once something looks it up) or to delete the branch. Do
+    not leave it as is — a discriminator that fails open is worse than
+    one that does not exist.
+  - **Constraint**: whatever is passed must be available at BOTH call
+    sites, or the backfill and live ingest will disagree about which pin
+    applies to the same page.
+  - **History**: WO-103 (2026-09-03), found while building
+    `scripts/apply_pin_worklist.py`; `_match_override()` in
+    `app/utils/gov_registry/resolver.py`.
+
+- **`[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real multi-government tenant and still has no `match` discriminator.**
+  - **Issue**: it is listed under El Cerrito **and** San Pablo in
+    rtr-upcoming's roster — a real shared tenant (architecture doc
+    §1.5), not a conflict. It gets no pin, because a host-level pin
+    would be wrong for one of the two.
+  - **Impact**: one tenant today, but the same shape as
+    `wi-cottagegrove.civicplus.com` (Town and Village of Cottage Grove)
+    and every `clerkshq.com` customer, and the `match` column exists
+    unused.
+  - **Next action**: find the path prefix or query parameter that
+    separates the two cities' meetings on that host, then write two
+    `tenant_overrides.csv` rows carrying it.
+  - **Constraint**: `match` must come from a real observed URL shape,
+    not a guess — a wrong discriminator over-applies silently.
+  - **History**: WO-98 Phase 1b (2026-09-02),
+    `app/utils/jurisdiction_data/tenant_overrides_conflicts.csv`.
+
 - **`[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.**
   - **Issue**: `_KNOWN_ORG_TOKEN_JURISDICTIONS` in `app/platforms/telvue.py`
     has no entry for Derry NH, so its jurisdiction field resolves
@@ -1171,37 +1332,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     MN, Albany NY) — see `BACKLOG_DONE.md`. Derry NH itself was never part
     of that fix; it surfaced as a "real bug found along the way" note in
     `BACKLOG_DONE.md`'s "TelVue: 10 of 12" entry (2026-08-30).
-
-- **`[NEEDS-AUDIT]` A jurisdiction override pins rows, not a canonical form — Santa Clara has already re-fragmented in production.**
-  - **Issue**: `override_jurisdiction()` stamps the specific rows it
-    touches with `jurisdiction_confidence="manual_override"`, which
-    `_find_or_create_page()`'s re-ingest path respects — but it
-    establishes no canonical-form *rule*. Any row not carrying that tier
-    still gets its string from `finalize_jurisdiction()`, which by design
-    "makes zero changes" to an already-valid variant (its own docstring
-    names the Santa Clara variants as the example). So a variant string
-    can reappear.
-  - **Impact**: the 2026-08-31 convergence has partly undone itself.
-    Re-checked live 2026-09-02: `/api/jurisdictions?q=santa+clara`
-    returns **5** variants, not the 3 that entry verified — `County of
-    Santa Clara, CA` is back (1 page, `/j/county-of-santa-clara-ca`,
-    a 2024-04-15 meeting) alongside `Santa Clara County, CA` (20 pages),
-    and a bare `City of Santa Clara` (`/j/santa-clara`, holding a
-    2026-08-25 meeting) sits alongside `City of Santa Clara, CA`. The
-    same exposure applies to every override applied so far, not just
-    this one.
-  - **Next action**: first determine which it is — newly-ingested rows
-    written after the override, or rows the original batch missed (needs
-    `GET /internal/jurisdiction/search?q=santa+clara` with the admin
-    token; not determinable from the public API). Then decide between a
-    canonical-alias table consulted at ingest and a periodic
-    re-convergence sweep.
-  - **Constraint**: don't just re-run the override and call it closed —
-    that is exactly what happened on 2026-08-31, and the result had
-    re-fragmented within two days.
-  - **History**: `BACKLOG_DONE.md` — "Santa Clara's 6 jurisdiction-string
-    variants converged" `[Done 2026-08-31]`, whose "exactly 3
-    jurisdictions" live check no longer holds.
 
 - **`[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
   CO.**
@@ -1817,6 +1947,45 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   pattern measurement this residual is drawn from.
 
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
+  `IS NOT NULL` matches 63 rows that aren't multi-clip jobs at all.**
+  - **Issue**: `TranscriptionJob.chunk_plan` is
+    `mapped_column(JSON, nullable=True)` (`archive/db/models.py`), and
+    SQLAlchemy's `JSON` type defaults to `none_as_null=False` — a Python
+    `None` is persisted as the JSON value `null`, not SQL NULL. Verified
+    directly against SQLAlchemy 2026-09-03, not inferred from docs.
+  - **Impact**: `WHERE chunk_plan IS NOT NULL` returns **66 rows, of
+    which only 3 are real multi-clip jobs** — 95% noise. Nothing
+    misbehaves at runtime (every consumer tests truthiness, `if
+    chunk_plan:` / `if not plan`, which is correctly falsy for `None`),
+    so this is a query-correctness and auditability problem, not a
+    functional one. It bit a real audit: the 2026-09-03 sweep for
+    oversized clips (WO-95) had to filter the decoded value in Python
+    after `IS NOT NULL` let 63 single-video jobs through, and the
+    obvious SQL-only version of that query would have looked like it
+    worked while silently misreporting. The column's own comment also
+    asserted "NULL for every ordinary single-video job", which was
+    simply wrong — corrected in the same change as this entry.
+  - **Next action**: prefer fixing the read side over migrating data —
+    `jsonb_typeof`/`json_typeof(chunk_plan) = 'array'` (note `json`, not
+    `jsonb`: this is a plain `JSON` column, the same distinction that
+    produced a real 500 in `get_transcription_queue_summary()`, see its
+    docstring) is an exact predicate and needs no migration. Setting
+    `none_as_null=True` on the column would fix new writes but leaves
+    every existing row, so it needs a backfill to be worth anything, and
+    the runtime behaviour is already correct either way.
+  - **Constraint**: any change must keep `if not chunk_plan` working for
+    both shapes — a plan frozen before the change and one written after —
+    since that truthiness test is what three separate consumers rely on
+    (`worker/main.py`, `scripts/transcribe_backlog_locally.py`,
+    `app/main.py`). Don't "fix" it by making consumers test for SQL NULL.
+  - **History**: found 2026-09-03 while auditing every multi-clip job for
+    WO-95's oversized-clip bug. Worth knowing alongside that entry: all
+    3 real multi-clip jobs in the table's whole history had at least one
+    clip over their own cap — the feature had a 100% failure rate on long
+    clips, which was invisible partly because this predicate made
+    multi-clip jobs look 22x more common than they are.
 
 - **[NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
   records no failure, counts toward no retry cap, and silently discards

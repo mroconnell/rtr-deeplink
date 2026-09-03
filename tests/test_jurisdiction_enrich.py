@@ -2606,16 +2606,32 @@ def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
     # of Woodstock" -- Woodstock is Oxford County's own county seat, which
     # is why "Woodstock" appears in this page's slug/title at all).
     #
-    # Unlike the Douglas MI case (Case 2 above), this ISN'T a genuine
-    # two-candidate collision this module's own tables already contain --
-    # Oxford County, ME is the ONLY "Oxford County" row `counties.csv`
-    # carries (Canadian "counties" aren't census subdivisions, so
-    # build_canada_places()'s Level-4 SGC import never reaches them, and
-    # this repo has no separate Canadian-counties table). So the subdomain
-    # hint validates only against the US county table, with no
+    # At the time this bug was found (WO-77), this WASN'T a genuine
+    # two-candidate collision this module's own tables already contained --
+    # Oxford County, ME was the ONLY "Oxford County" row `counties.csv`
+    # carried, because Canadian "counties" aren't census subdivisions (so
+    # build_canada_places()'s Level-4 SGC import never reached them) and
+    # this module had no separate Canadian-counties table at all. So the
+    # subdomain hint validated only against the US county table, with no
     # `hint_state` for `_subdomain_override()` to disagree with -- WO-76's
-    # own hint_state mechanism can't reach this shape at all.
-    assert je._table_lookup("Oxford County") == ("county", ["ME"])
+    # own hint_state mechanism couldn't reach this shape, and this specific
+    # host's `_KNOWN_DOMAINS` entry (below) was the only fix available.
+    #
+    # WO-104 (2026-09-03) closed that gap generally: `build_canada_counties()`
+    # merges Canada's real English-language "County"-named census divisions
+    # (Ontario/Nova Scotia/New Brunswick/PEI -- the four provinces that
+    # actually use the word) into the SAME `counties.csv`, the same way
+    # `build_canada_places()` already merged Canadian census subdivisions
+    # into `places.csv`. "Oxford County" is now genuinely ambiguous (ME
+    # *and* ON both real), which is a STRICT IMPROVEMENT over the original
+    # bug even without this test's own `_KNOWN_DOMAINS` entry: a bare
+    # "Oxford County" now correctly declines to guess rather than
+    # confidently returning the wrong US state, for this host and for any
+    # future, not-yet-known Ontario-county-shaped host that happens to
+    # share a name with a US county. The `_KNOWN_DOMAINS` entry below still
+    # does real work on top of that -- it's what actually PRODUCES "ON" for
+    # this confirmed tenant, rather than leaving it ambiguous.
+    assert je._table_lookup("Oxford County") == ("county", ["ME", "ON"])
     assert je._validated_label_extract_with_state("pub-oxfordcounty") == (
         "Oxford County",
         None,
@@ -2636,6 +2652,104 @@ def test_known_domains_oxford_county_on_beats_only_us_table_candidate():
     )
     assert result_already_wrong.jurisdiction == "Oxford County, ON"
     assert result_already_wrong.confidence == "authoritative"
+
+
+# --- Canadian counties, WO-104 (2026-09-03) ---
+#
+# `_COUNTY_STATES` was US-only until this: `resolve_government()` could
+# already key "Bruce County, ON" (`ca:cd:3541`, via `gov_registry.tables
+# .ca_cd()`), but nothing upstream could ever HAND it that province,
+# because `counties.csv` -- the table `enrich_jurisdiction_text()` and
+# the subdomain validator both check -- had no Canadian rows at all. A
+# real eScribe host, `pub-brucecounty.escribemeetings.com`, extracts a
+# clean "Bruce County" from its own real meeting pages (confirmed live)
+# and stayed `unresolved` forever as a result -- the identical shape as
+# the Oxford County bug above, just not yet hand-curated.
+#
+# `scripts/build_jurisdiction_data.py::build_canada_counties()` closes it
+# the same way `build_canada_places()` already closed the equivalent gap
+# for Canadian places: merged into `counties.csv`, from the same real SGC
+# 2021 structure file, Level 3 ("Census division") rows this time. Scoped
+# to the four provinces that actually call these divisions "County" in
+# real usage -- Ontario, Nova Scotia, New Brunswick, PEI (see that
+# function's own comment for BC's Regional Districts, Quebec's MRCs, and
+# the plainly-statistical "Division No. N" rows elsewhere, none of which
+# would be correct with "County" appended).
+
+
+def test_bruce_county_on_now_gets_its_province():
+    """The real gap this closes -- `pub-brucecounty.escribemeetings.com`'s
+    own real meeting pages extract exactly this string, live-confirmed
+    2026-09-03.
+
+    Matches at the SECOND candidate ("bruce", "County" stripped as the
+    generic trailing type word `_normalize_name()` always strips when
+    building a stored key) rather than the first -- exactly the same
+    non-primary match shape an existing US row gets (see the Fresno
+    County comparison below), not a weaker or different kind of match.
+    """
+    assert je._table_lookup_strength("Bruce County") == (
+        "county",
+        ["ON"],
+        False,
+    )
+    enriched = je.enrich_jurisdiction_text(
+        "Bruce County", netloc="pub-brucecounty.escribemeetings.com"
+    )
+    assert enriched == "Bruce County, ON"
+
+
+def test_elgin_county_on_now_gets_its_province():
+    """The second real host confirmed live 2026-09-03 --
+    `pub-elgincounty.escribemeetings.com` extracts "County of Elgin"."""
+    enriched = je.enrich_jurisdiction_text(
+        "County of Elgin", netloc="pub-elgincounty.escribemeetings.com"
+    )
+    assert enriched == "County of Elgin, ON"
+
+
+def test_a_nova_scotia_county_also_resolves():
+    """Not just Ontario -- Nova Scotia is one of the four real
+    "County"-using provinces too."""
+    assert je._table_lookup("Yarmouth County") == ("county", ["NS"])
+
+
+def test_a_non_county_province_is_not_given_the_word_county():
+    """British Columbia has no counties at all -- it has Regional
+    Districts (`ca_cd.csv`'s own BC rows, e.g. "East Kootenay", are the
+    real Regional District names, bare). Appending "County" to a BC
+    census division would fabricate a government type that doesn't
+    exist, so it must not appear in `counties.csv` at all -- under either
+    spelling."""
+    assert je._table_lookup("East Kootenay County") is None
+    assert je._table_lookup("East Kootenay") is None  # it's a PLACE-shaped
+    # lookup for a regional district's own municipalities, not a county
+
+
+def test_a_statistical_division_is_not_given_the_word_county_either():
+    """Alberta's census divisions are plain "Division No. N" -- a Census
+    statistical grouping with no governing county council. Nobody calls
+    these "County", so none of them belong in this table."""
+    assert je._table_lookup("Division No. 1 County") is None
+
+
+def test_oxford_county_is_now_a_real_ambiguity_not_a_confident_wrong_guess():
+    """The safety improvement this fix produces even for a host with NO
+    hand-curated `_KNOWN_DOMAINS` entry: before WO-104, a bare "Oxford
+    County" matched ONLY Maine (confidently wrong for the real Ontario
+    tenant -- the original WO-77 bug). Now it is genuinely ambiguous
+    (both real), which means the ladder correctly DECLINES rather than
+    guessing -- for this host and for any future, not-yet-known
+    Ontario-county-shaped host sharing a name with a US county."""
+    assert je._table_lookup("Oxford County") == ("county", ["ME", "ON"])
+    assert je.resolve_state("Oxford County", "county") is None
+
+
+def test_the_merge_did_not_disturb_any_pre_existing_us_only_county_name():
+    """A spot check that the merge only ADDED rows -- Fresno County (no
+    Canadian collision) must resolve exactly as it always did, matching
+    at the same non-primary candidate as the new Canadian rows above."""
+    assert je._table_lookup_strength("Fresno County") == ("county", ["CA"], False)
 
 
 def test_known_domains_lloydminster_resolves_via_fallback_when_unindexed():

@@ -1,0 +1,279 @@
+platform,tenant_host,landing_url,fetched,extracted,gov_id,resolved_from,evidence,stored_names
+escribe,pub-cambridge.escribemeetings.com,https://pub-cambridge.escribemeetings.com/Meetings.aspx,yes,,,,,Cambridge|City of Cambridge
+escribe,pub-brucecounty.escribemeetings.com,https://pub-brucecounty.escribemeetings.com/Meetings.aspx,yes,,,,,Bruce County
+escribe,pub-lincoln.escribemeetings.com,https://pub-lincoln.escribemeetings.com/Meetings.aspx,yes,,,,,Lincoln|Town of Lincoln
+escribe,pub-london.escribemeetings.com,https://pub-london.escribemeetings.com/Meetings.aspx,yes,,,,,City of London
+escribe,pub-halifax.escribemeetings.com,https://pub-halifax.escribemeetings.com/Meetings.aspx,yes,,,,,Halifax
+escribe,pub-hamilton.escribemeetings.com,https://pub-hamilton.escribemeetings.com/Meetings.aspx,yes,,,,,City of Hamilton
+escribe,pub-langford.escribemeetings.com,https://pub-langford.escribemeetings.com/Meetings.aspx,yes,,,,,City of Langford|Langford
+escribe,pub-mission.escribemeetings.com,https://pub-mission.escribemeetings.com/Meetings.aspx,yes,,,,,City of Mission|Mission
+escribe,pub-norfolkcounty.escribemeetings.com,https://pub-norfolkcounty.escribemeetings.com/Meetings.aspx,yes,,,,,Norfolk County
+escribe,pub-oliver.escribemeetings.com,https://pub-oliver.escribemeetings.com/Meetings.aspx,yes,,,,,Town of Oliver
+escribe,pub-paradise.escribemeetings.com,https://pub-paradise.escribemeetings.com/Meetings.aspx,yes,,,,,Town of Paradise
+escribe,pub-porthope.escribemeetings.com,https://pub-porthope.escribemeetings.com/Meetings.aspx,yes,,,,,Port Hope
+escribe,pub-wilmot.escribemeetings.com,https://pub-wilmot.escribemeetings.com/Meetings.aspx,yes,,,,,Wilmot
+escribe,pub-creston.escribemeetings.com,https://pub-creston.escribemeetings.com/Meetings.aspx,yes,,,,,Town of Creston
+escribe,pub-leeds1000islands.escribemeetings.com,https://pub-leeds1000islands.escribemeetings.com/Meetings.aspx,yes,,,,,Leeds1000Islands
+escribe,pub-northbay.escribemeetings.com,https://pub-northbay.escribemeetings.com/Meetings.aspx,yes,,,,,North Bay|North Bay By
+escribe,pub-salinecounty.escribemeetings.com,https://pub-salinecounty.escribemeetings.com/Meetings.aspx,yes,,,,,Saline County
+escribe,pub-sd57.escribemeetings.com,https://pub-sd57.escribemeetings.com/Meetings.aspx,yes,,,,,Sd57
+escribe,pub-whiterockcity.escribemeetings.com,https://pub-whiterockcity.escribemeetings.com/Meetings.aspx,yes,,,,,City of White Rock
+escribe,pub-chulavista.escribemeetings.com,https://pub-chulavista.escribemeetings.com/Meetings.aspx,yes,,,,,Chula Vista Public Comments
+escribe,pub-clearview.escribemeetings.com,https://pub-clearview.escribemeetings.com/Meetings.aspx,yes,,,,,Clearview
+escribe,pub-cofs.escribemeetings.com,https://pub-cofs.escribemeetings.com/Meetings.aspx,yes,,,,,Cofs
+escribe,pub-cvrd.escribemeetings.com,https://pub-cvrd.escribemeetings.com/Meetings.aspx,yes,,,,,Cvr D
+escribe,pub-elgincounty.escribemeetings.com,https://pub-elgincounty.escribemeetings.com/Meetings.aspx,yes,,,,,County of Elgin
+escribe,pub-elliotlake.escribemeetings.com,https://pub-elliotlake.escribemeetings.com/Meetings.aspx,yes,,,,,Elliot Lake GIS Services SSMIC
+escribe,pub-fairfield.escribemeetings.com,https://pub-fairfield.escribemeetings.com/Meetings.aspx,yes,,,,,Fairfield
+escribe,pub-king.escribemeetings.com,https://pub-king.escribemeetings.com/Meetings.aspx,yes,,,,,King
+escribe,pub-leduc-county.escribemeetings.com,https://pub-leduc-county.escribemeetings.com/Meetings.aspx,yes,,,,,Leduc County
+escribe,pub-llbc.escribemeetings.com,https://pub-llbc.escribemeetings.com/Meetings.aspx,yes,,,,,Llbc
+escribe,pub-notl.escribemeetings.com,https://pub-notl.escribemeetings.com/Meetings.aspx,yes,,,,,Notl
+escribe,pub-oneinvestmentprogram.escribemeetings.com,https://pub-oneinvestmentprogram.escribemeetings.com/Meetings.aspx,yes,,,,,Oneinvestmentprogram
+escribe,pub-palmdesert.escribemeetings.com,https://pub-palmdesert.escribemeetings.com/Meetings.aspx,yes,,,,,Palm Desert City Negotiator
+escribe,pub-prescott.escribemeetings.com,https://pub-prescott.escribemeetings.com/Meetings.aspx,yes,,,,,Prescott
+escribe,pub-rmwb.escribemeetings.com,https://pub-rmwb.escribemeetings.com/Meetings.aspx,yes,,,,,Rmwb
+escribe,pub-stratford.escribemeetings.com,https://pub-stratford.escribemeetings.com/Meetings.aspx,yes,,,,,Stratford Ad
+escribe,pub-townofws.escribemeetings.com,https://pub-townofws.escribemeetings.com/Meetings.aspx,yes,,,,,Townofws
+escribe,pub-twpec.escribemeetings.com,https://pub-twpec.escribemeetings.com/Meetings.aspx,yes,,,,,Twpec
+escribe,pub-vermilion.escribemeetings.com,https://pub-vermilion.escribemeetings.com/Meetings.aspx,yes,,,,,Vermilion
+escribe,pub-vernon.escribemeetings.com,https://pub-vernon.escribemeetings.com/Meetings.aspx,yes,,,,,City of Vernon
+escribe,pub-westkelowna.escribemeetings.com,https://pub-westkelowna.escribemeetings.com/Meetings.aspx,yes,,,,,West Kelowna Council Chambers
+escribe,tecumseh-pub.escribemeetings.com,https://tecumseh-pub.escribemeetings.com/Meetings.aspx,yes,,,,,
+cablecast,huron-township.cablecast.tv,https://huron-township.cablecast.tv/CablecastPublicSite/,no,,,,,Huron Township
+cablecast,hctv.cablecast.tv,https://hctv.cablecast.tv/CablecastPublicSite/,no,,,,,Holden
+cablecast,cityofpontiac.cablecast.tv,https://cityofpontiac.cablecast.tv/CablecastPublicSite/,no,,,,,Pontiac
+cablecast,dakotamediaaccess.cablecast.tv,https://dakotamediaaccess.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,edina-mn.cablecast.tv,https://edina-mn.cablecast.tv/CablecastPublicSite/,yes,SWTV Education Channel | Schedule | closed captions available,,,,
+cablecast,hamiltonwenham.cablecast.tv,https://hamiltonwenham.cablecast.tv/CablecastPublicSite/,yes,Government | Schedule | closed captions available,,,,
+cablecast,laquinta.cablecast.tv,https://laquinta.cablecast.tv/CablecastPublicSite/,no,,,,,La
+cablecast,pcc.cablecast.tv,https://pcc.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,pgcps.cablecast.tv,https://pgcps.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,stcharles-mo.cablecast.tv,https://stcharles-mo.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,trojanvision.cablecast.tv,https://trojanvision.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,tvhamilton.cablecast.tv,https://tvhamilton.cablecast.tv/CablecastPublicSite/,no,,,,,City of Hamilton|Hamilton
+cablecast,utvs.cablecast.tv,https://utvs.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,wilson-co-schools.cablecast.tv,https://wilson-co-schools.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,wmcf.cablecast.tv,https://wmcf.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,buenapark.cablecast.tv,https://buenapark.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,capitoltvri.cablecast.tv,https://capitoltvri.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,carync.cablecast.tv,https://carync.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,cerritos.cablecast.tv,https://cerritos.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,charlescountymd.cablecast.tv,https://charlescountymd.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,cityofbrea.cablecast.tv,https://cityofbrea.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,cityofredlands.cablecast.tv,https://cityofredlands.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,desplainesil.cablecast.tv,https://desplainesil.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,gastoncoschools.cablecast.tv,https://gastoncoschools.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,hometown.cablecast.tv,https://hometown.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,lamoineme.cablecast.tv,https://lamoineme.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,methuentv.cablecast.tv,https://methuentv.cablecast.tv/CablecastPublicSite/,yes,Methuen Community TV | Schedule,,,,
+cablecast,portagemi.cablecast.tv,https://portagemi.cablecast.tv/CablecastPublicSite/,yes,Portage LIVE | Schedule,,,,
+cablecast,reflect-sttammany.cablecast.tv,https://reflect-sttammany.cablecast.tv/CablecastPublicSite/,yes,STPGtv | Schedule | closed captions available,,,,
+cablecast,wbrw.cablecast.tv,https://wbrw.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,yourtown.cablecast.tv,https://yourtown.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,agawamvod.cablecast.tv,https://agawamvod.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,betv-bensenville.cablecast.tv,https://betv-bensenville.cablecast.tv/CablecastPublicSite/,yes,Bensenville Television | Schedule | closed captions available,,,,
+cablecast,bourne.cablecast.tv,https://bourne.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,cctv-vod.cablecast.tv,https://cctv-vod.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,chabot.cablecast.tv,https://chabot.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,champaign-cablecast.cablecast.tv,https://champaign-cablecast.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,champaign.cablecast.tv,https://champaign.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,city-slp-mn.cablecast.tv,https://city-slp-mn.cablecast.tv/CablecastPublicSite/,no,,,,,St
+cablecast,cityofsantee.cablecast.tv,https://cityofsantee.cablecast.tv/CablecastPublicSite/,yes,SanteeTV | Schedule | closed captions available,,,,Santee
+cablecast,gnat.cablecast.tv,https://gnat.cablecast.tv/CablecastPublicSite/,yes,GNAT-TV Public | Schedule | closed captions available,,,,
+cablecast,ictv.cablecast.tv,https://ictv.cablecast.tv/CablecastPublicSite/,yes,Government Access | Schedule | closed captions available,,,,
+cablecast,jpschools.cablecast.tv,https://jpschools.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,kdol.cablecast.tv,https://kdol.cablecast.tv/CablecastPublicSite/,yes,Schedule,,,,
+cablecast,lakecounty.legistar.com,https://lakecounty.legistar.com/CablecastPublicSite/,no,,,,,Lake County Illinois
+cablecast,marintv.cablecast.tv,https://marintv.cablecast.tv/CablecastPublicSite/,yes,Schedule,,,,
+cablecast,marthasvineyard.cablecast.tv,https://marthasvineyard.cablecast.tv/CablecastPublicSite/,yes,Public | Schedule,,,,
+cablecast,metvweb.cablecast.tv,https://metvweb.cablecast.tv/CablecastPublicSite/,yes,Manatee Educational Television | Schedule | closed captions available,,,,
+cablecast,mycommunityfocus.cablecast.tv,https://mycommunityfocus.cablecast.tv/CablecastPublicSite/,yes,Community Focus | Schedule,,,,
+cablecast,northbrunswicktv.cablecast.tv,https://northbrunswicktv.cablecast.tv/CablecastPublicSite/,yes,North Brunswick TV Channel | Schedule,,,,
+cablecast,northpenn.cablecast.tv,https://northpenn.cablecast.tv/CablecastPublicSite/,yes,NPTV | closed captions available,,,,
+cablecast,salem.cablecast.tv,https://salem.cablecast.tv/CablecastPublicSite/,yes,Salem's Government Channel | Schedule,,,,Salem
+cablecast,sapatv.cablecast.tv,https://sapatv.cablecast.tv/CablecastPublicSite/,yes,SAPA TV | Schedule,,,,
+cablecast,sttammany.cablecast.tv,https://sttammany.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,verdevalleytv.cablecast.tv,https://verdevalleytv.cablecast.tv/CablecastPublicSite/,yes,Verde Valley TV Internet Channel | Schedule,,,,
+cablecast,vod-allencounty.cablecast.tv,https://vod-allencounty.cablecast.tv/CablecastPublicSite/,yes,Access 1 | Schedule,,,,
+cablecast,vod-eagan.cablecast.tv,https://vod-eagan.cablecast.tv/CablecastPublicSite/,yes,Public Access | Schedule | closed captions available,,,,
+cablecast,vod-framingham.cablecast.tv,https://vod-framingham.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,vsctv.cablecast.tv,https://vsctv.cablecast.tv/CablecastPublicSite/,yes,Valley Shore Community Television | Schedule | closed captions available,,,,
+cablecast,wausau-wi.cablecast.tv,https://wausau-wi.cablecast.tv/CablecastPublicSite/,no,,,,,
+cablecast,westernhills.cablecast.tv,https://westernhills.cablecast.tv/CablecastPublicSite/,no,,,,,
+swagit,coppellisd.new.swagit.com,https://coppellisd.new.swagit.com,yes,,,,,
+swagit,dcccd.new.swagit.com,https://dcccd.new.swagit.com,yes,,,,,City of Dallas
+swagit,pelhampublicschoolsny.new.swagit.com,https://pelhampublicschoolsny.new.swagit.com,yes,,,,,
+swagit,alamedausdca.new.swagit.com,https://alamedausdca.new.swagit.com,yes,,,,,
+swagit,alamoareampo.new.swagit.com,https://alamoareampo.new.swagit.com,yes,,,,,
+swagit,battlegroundps.new.swagit.com,https://battlegroundps.new.swagit.com,yes,,,,,
+swagit,brevardpublicschools.new.swagit.com,https://brevardpublicschools.new.swagit.com,yes,,,,,
+swagit,dart.new.swagit.com,https://dart.new.swagit.com,yes,,,,,City of Plano
+swagit,dd7.new.swagit.com,https://dd7.new.swagit.com,yes,,,,,
+swagit,derby.civicweb.net,https://derby.civicweb.net,yes,Home | City of Derby - Home | City of Derby,,,,City of Derby
+swagit,desotoisdtx.new.swagit.com,https://desotoisdtx.new.swagit.com,yes,,,,,
+swagit,floodauthorityeast.new.swagit.com,https://floodauthorityeast.new.swagit.com,yes,,,,,
+swagit,galvestonparkboardtx.new.swagit.com,https://galvestonparkboardtx.new.swagit.com,yes,,,,,
+swagit,greenburghpublicaccess.new.swagit.com,https://greenburghpublicaccess.new.swagit.com,yes,,,,,
+swagit,harrishealthtx.new.swagit.com,https://harrishealthtx.new.swagit.com,yes,,,,,City of Houston
+swagit,hcpsstv.new.swagit.com,https://hcpsstv.new.swagit.com,yes,,,,,
+swagit,hgac.new.swagit.com,https://hgac.new.swagit.com,yes,,,,,
+swagit,lasvirgenesmwd.new.swagit.com,https://lasvirgenesmwd.new.swagit.com,yes,,,,,
+swagit,lmctvny.new.swagit.com,https://lmctvny.new.swagit.com,yes,,,,,"TV, NY"
+swagit,lonestargcd.new.swagit.com,https://lonestargcd.new.swagit.com,yes,,,,,
+swagit,mankatoaps.new.swagit.com,https://mankatoaps.new.swagit.com,yes,,,,,
+swagit,mckinneyisdtx.new.swagit.com,https://mckinneyisdtx.new.swagit.com,yes,,,,,
+swagit,mobilityauthority.new.swagit.com,https://mobilityauthority.new.swagit.com,yes,,,,,
+swagit,nctcog.new.swagit.com,https://nctcog.new.swagit.com,yes,,,,,
+swagit,norfolkpublicschools.new.swagit.com,https://norfolkpublicschools.new.swagit.com,yes,,,,,
+swagit,ntmwd.new.swagit.com,https://ntmwd.new.swagit.com,yes,,,,,
+swagit,public.destinyhosted.com,https://public.destinyhosted.com,no,,,,,
+swagit,rockwallisdtx.new.swagit.com,https://rockwallisdtx.new.swagit.com,yes,,,,,
+swagit,scgtv.new.swagit.com,https://scgtv.new.swagit.com,yes,,,,,
+swagit,siouxcityschools.new.swagit.com,https://siouxcityschools.new.swagit.com,yes,,,,,
+swagit,tabc.new.swagit.com,https://tabc.new.swagit.com,yes,,,,,
+swagit,tdhca.new.swagit.com,https://tdhca.new.swagit.com,yes,,,,,
+swagit,texashhsc.new.swagit.com,https://texashhsc.new.swagit.com,yes,,,,,
+swagit,traviscad.new.swagit.com,https://traviscad.new.swagit.com,yes,,,,,
+swagit,triunfo.new.swagit.com,https://triunfo.new.swagit.com,yes,,,,,
+swagit,trwd.new.swagit.com,https://trwd.new.swagit.com,yes,,,,,
+swagit,txdot.new.swagit.com,https://txdot.new.swagit.com,yes,,,,,
+swagit,woodlandscvb.new.swagit.com,https://woodlandscvb.new.swagit.com,yes,,,,,
+swagit,wpcommunitymedia.new.swagit.com,https://wpcommunitymedia.new.swagit.com,yes,,,,,
+telvue,videoplayer.telvue.com,https://videoplayer.telvue.com/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l,yes,Home,,,,
+telvue,u.peg.tv,https://u.peg.tv,yes,Sign Up | Log In | Connect,,,,Ashland
+castus,cloud.castus.tv,https://cloud.castus.tv,yes,CASTUS Cloud,,,,
+champds,play.champds.com,https://play.champds.com,no,,,,,ElPaso County Colorado
+civicclerk,lenaweecomi.portal.civicclerk.com,https://lenaweecomi.portal.civicclerk.com,yes,Public •,,,,
+civicclerk,fsusga.portal.civicclerk.com,https://fsusga.portal.civicclerk.com,yes,Public •,,,,
+civicclerk,macombtwpmi.portal.civicclerk.com,https://macombtwpmi.portal.civicclerk.com,yes,Public •,,,,
+civicclerk,southorangetwpnj.portal.civicclerk.com,https://southorangetwpnj.portal.civicclerk.com,yes,Public •,,,,
+granicus,pasadena.granicus.com,https://pasadena.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Pasadena
+granicus,howardcounty.granicus.com,https://howardcounty.granicus.com/ViewPublisher.php?view_id=2,yes,Media Archive,,,,Howard County|Howard County Council
+granicus,carson.granicus.com,https://carson.granicus.com/ViewPublisher.php?view_id=3,yes,,,,,City of Carson
+granicus,greenville.granicus.com,https://greenville.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Greenville
+granicus,gulfport.granicus.com,https://gulfport.granicus.com/ViewPublisher.php?view_id=2,yes,MediaManager Login,,,,City of Gulfport
+granicus,irvington.granicus.com,https://irvington.granicus.com/ViewPublisher.php?view_id=3,yes,Planning Board,,,,Irvington|Village of Irvington
+granicus,pleasanthill.granicus.com,https://pleasanthill.granicus.com/ViewPublisher.php?view_id=3,yes,TEST VIEW - Powered by .com | TEST VIEW | Powered by .com,,,,City of Pleasant Hill
+granicus,beverlyhills.granicus.com,https://beverlyhills.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Beverly Hills
+granicus,chapelhill.granicus.com,https://chapelhill.granicus.com/ViewPublisher.php?view_id=3,yes,Town of Chapel Hill Media Archive | Town of Chapel Hill Official Website - Government | Town of Chapel Hill Official Website | Government,,,,Town of Chapel Hill
+granicus,stpaul.granicus.com,https://stpaul.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Saint Paul
+granicus,actransit.granicus.com,https://actransit.granicus.com/ViewPublisher.php?view_id=2,yes,Archive,,,,Ac Transit
+granicus,adams.granicus.com,https://adams.granicus.com/ViewPublisher.php?view_id=1,no,,,,,County of Adams
+granicus,allegheny.granicus.com,https://allegheny.granicus.com/ViewPublisher.php?view_id=3,yes,,,,,Subtitles County
+granicus,allentownpa.granicus.com,https://allentownpa.granicus.com/ViewPublisher.php?view_id=1,yes,for Insite,,,,City of Al
+granicus,bchd.granicus.com,https://bchd.granicus.com/ViewPublisher.php?view_id=2,yes,BCHD View Template,,,,Beach Cities Health District
+granicus,beaverton.granicus.com,https://beaverton.granicus.com/ViewPublisher.php?view_id=3,yes,City of Beaverton Planning Commission Videos Media Archive - Powered by .com | City of Beaverton Planning Commission Videos Media Archive | Powered by .com,,,,City of Beaverton
+granicus,bellevue.granicus.com,https://bellevue.granicus.com/ViewPublisher.php?view_id=3,yes,Bellevue TV (Official City of Bellevue Website),,,,City of Bellevue
+granicus,carroll.granicus.com,https://carroll.granicus.com/ViewPublisher.php?view_id=2,yes,Carroll County View,,,,County of Carroll
+granicus,ccisd.granicus.com,https://ccisd.granicus.com/ViewPublisher.php?view_id=2,yes,Board of Trustees Archives,,,,Corpus Christi ISD
+granicus,centralvalleyflood.granicus.com,https://centralvalleyflood.granicus.com/ViewPublisher.php?view_id=3,yes,testView,,,,Central Valley Flood Protection Board
+granicus,chapelhill.legistar.com,https://chapelhill.legistar.com/ViewPublisher.php?view_id=1,no,,,,,Town of Chapel Hill
+granicus,cityofnsb.granicus.com,https://cityofnsb.granicus.com/ViewPublisher.php?view_id=1,yes,New Smyrna Beach FL,us:place:1248625,New Smyrna Beach FL,us_places.csv New Smyrna Beach city,Nsb
+granicus,cityofracine.granicus.com,https://cityofracine.granicus.com/ViewPublisher.php?view_id=1,yes,New View,,,,City of Racine
+granicus,cityofwalnut.granicus.com,https://cityofwalnut.granicus.com/ViewPublisher.php?view_id=2,yes,City of Walnut,,,,City of Walnut
+granicus,cms-k12-nc.granicus.com,https://cms-k12-nc.granicus.com/ViewPublisher.php?view_id=2,yes,New View,,,,Unknown Jurisdiction
+granicus,csmfo.granicus.com,https://csmfo.granicus.com/ViewPublisher.php?view_id=2,yes,CSMFO - New View (Custom) | CSMFO | New View (Custom),,,,California
+granicus,csos.granicus.com,https://csos.granicus.com/ViewPublisher.php?view_id=1,yes,CSOS,,,,Unknown Jurisdiction
+granicus,dcwasa.granicus.com,https://dcwasa.granicus.com/ViewPublisher.php?view_id=3,yes,Internal ONLY,,,,DC Water &amp; Sewer Authority
+granicus,draper.granicus.com,https://draper.granicus.com/ViewPublisher.php?view_id=3,yes,Training Videos,,,,Draper
+granicus,eastvale.granicus.com,https://eastvale.granicus.com/ViewPublisher.php?view_id=1,yes,"Eastvale, CA",us:place:0621230,"Eastvale, CA",us_places.csv Eastvale city,Eastvale
+granicus,edina.granicus.com,https://edina.granicus.com/ViewPublisher.php?view_id=3,yes,Planning Commission | Other Programming | Other | iFrame View - Powered by .com,,,,City of Edina
+granicus,edwardsaquifer.granicus.com,https://edwardsaquifer.granicus.com/ViewPublisher.php?view_id=2,yes,New View,,,,Edwards Aquifer Authority
+granicus,evansville.granicus.com,https://evansville.granicus.com/ViewPublisher.php?view_id=1,yes,City of Evansville and Vanderburgh County - Section View- Live on website | City of Evansville and Vanderburgh County | Section View- Live on website,,,,City of Evansville
+granicus,everett.granicus.com,https://everett.granicus.com/ViewPublisher.php?view_id=2,yes,New View,,,,City of Everett
+granicus,fortworthisd.granicus.com,https://fortworthisd.granicus.com/ViewPublisher.php?view_id=3,yes,Internal,,,,Unknown Jurisdiction
+granicus,fpdcc.granicus.com,https://fpdcc.granicus.com/ViewPublisher.php?view_id=3,yes,New View,,,,Cook County Forest Preserve District
+granicus,fremont.granicus.com,https://fremont.granicus.com/ViewPublisher.php?view_id=1,yes,Default View,,,,Fremont
+granicus,fullerton.granicus.com,https://fullerton.granicus.com/ViewPublisher.php?view_id=2,yes,the Live and Archived Media page | Fullerton Public - Powered by .com | Fullerton Public | Powered by .com,,,,City of Fullerton
+granicus,fulton.granicus.com,https://fulton.granicus.com/ViewPublisher.php?view_id=2,yes,Fulton County Content,,,,Fulton County
+granicus,gilbert.granicus.com,https://gilbert.granicus.com/ViewPublisher.php?view_id=1,no,,,,,Town of Gilbert
+granicus,gpisd.granicus.com,https://gpisd.granicus.com/ViewPublisher.php?view_id=1,yes,Gregory-Portland ISD,,,,Unknown Jurisdiction
+granicus,houstonisd.granicus.com,https://houstonisd.granicus.com/ViewPublisher.php?view_id=2,yes,Training (do not delete),,,,Unknown Jurisdiction
+granicus,hpwd.granicus.com,https://hpwd.granicus.com/ViewPublisher.php?view_id=2,yes,Training Videos(do not delete),,,,High Plains Underground Water Conservation District No. 1
+granicus,huntsvilleal.granicus.com,https://huntsvilleal.granicus.com/ViewPublisher.php?view_id=1,yes,,,,,City of Huntsville.Ordinance No.
+granicus,icma.granicus.com,https://icma.granicus.com/ViewPublisher.php?view_id=3,yes,California Society of Municipal Finance Officers (CSMFO) | Media Archive | CSMFO Media Archive - Powered by .com | CSMFO Media Archive,,,,Cal-ICMA
+granicus,ieua.granicus.com,https://ieua.granicus.com/ViewPublisher.php?view_id=3,yes,Regional Sewerage Program Content,,,,IEUA
+granicus,illinoistollway.granicus.com,https://illinoistollway.granicus.com/ViewPublisher.php?view_id=2,yes,Illinois State Toll Highway Authority - Bid Opening View | Illinois State Toll Highway Authority | Bid Opening View,,,,Unknown Jurisdiction
+granicus,irvine.granicus.com,https://irvine.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Irvine
+granicus,kpb.granicus.com,https://kpb.granicus.com/ViewPublisher.php?view_id=2,yes,Training View,,,,Unknown Jurisdiction
+granicus,lacanadaflintridge-ca.granicus.com,https://lacanadaflintridge-ca.granicus.com/ViewPublisher.php?view_id=1,no,,,,,Unknown Jurisdiction
+granicus,lakecounty.granicus.com,https://lakecounty.granicus.com/ViewPublisher.php?view_id=1,yes,New View,,,,County of Lake
+granicus,lancaster.granicus.com,https://lancaster.granicus.com/ViewPublisher.php?view_id=2,yes,New View - Powered by .com | New View | Powered by .com,,,,City of Lancaster
+granicus,lausd.granicus.com,https://lausd.granicus.com/ViewPublisher.php?view_id=2,yes,iLegislate,,,,La Usd
+granicus,lcd.granicus.com,https://lcd.granicus.com/ViewPublisher.php?view_id=2,yes,Testing Videos,,,,Unknown Jurisdiction
+granicus,lcpsnm.granicus.com,https://lcpsnm.granicus.com/ViewPublisher.php?view_id=2,yes,Training (do not delete),,,,Unknown Jurisdiction
+granicus,lewisvilleisd.granicus.com,https://lewisvilleisd.granicus.com/ViewPublisher.php?view_id=1,yes,Default View,,,,Unknown Jurisdiction
+granicus,lfucg.granicus.com,https://lfucg.granicus.com/ViewPublisher.php?view_id=2,yes,Lexington-Fayette Urban County Government,,,,Lexington-Fayette Urban County Government
+granicus,lipower.granicus.com,https://lipower.granicus.com/ViewPublisher.php?view_id=2,yes,LIPA Webcasts,,,,Long Island Power Authority
+granicus,lockport.granicus.com,https://lockport.granicus.com/ViewPublisher.php?view_id=3,yes,City of Lockport - City Council | City of Lockport | City Council,,,,City of Lockport
+granicus,lossan.granicus.com,https://lossan.granicus.com/ViewPublisher.php?view_id=2,yes,Live and Archived Media | LOSSAN View - Powered by .com | LOSSAN View | Powered by .com,,,,LOSSAN - OCTA
+granicus,lsmo.granicus.com,https://lsmo.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Lees Summit
+granicus,matanuska.granicus.com,https://matanuska.granicus.com/ViewPublisher.php?view_id=1,yes,New View,,,,Unknown Jurisdiction
+granicus,matatransit.granicus.com,https://matatransit.granicus.com/ViewPublisher.php?view_id=2,yes,Training View,,,,Unknown Jurisdiction
+granicus,metrarr.granicus.com,https://metrarr.granicus.com/ViewPublisher.php?view_id=3,yes,Metra View (i-frame),,,,Metra Railroad
+granicus,metrolink.granicus.com,https://metrolink.granicus.com/ViewPublisher.php?view_id=3,yes,zzMetrolink Page (Metrolink 2.0) - DO NOT USE | zzMetrolink Page (Metrolink 2.0) | DO NOT USE,,,,Metrolink
+granicus,mid.granicus.com,https://mid.granicus.com/ViewPublisher.php?view_id=3,yes,2023 Archive,,,,Modesto Irrigation District
+granicus,middletown.granicus.com,https://middletown.granicus.com/ViewPublisher.php?view_id=3,yes,xxTESTING View,,,,City of Middletown
+granicus,midland.granicus.com,https://midland.granicus.com/ViewPublisher.php?view_id=2,yes,"City of Midland Media | Midland City Council , Summaries &",,,,City of Midland
+granicus,mojavewater.granicus.com,https://mojavewater.granicus.com/ViewPublisher.php?view_id=2,yes,Archive,,,,Unknown Jurisdiction
+granicus,morrisville.granicus.com,https://morrisville.granicus.com/ViewPublisher.php?view_id=1,no,,,,,Morrisville
+granicus,mplsk12mn.granicus.com,https://mplsk12mn.granicus.com/ViewPublisher.php?view_id=3,yes,Training/District Information - Powered by .com | Training/District Information | Powered by .com,,,,Minneapolis Public Schools
+granicus,mwrd.granicus.com,https://mwrd.granicus.com/ViewPublisher.php?view_id=2,yes,Training Videos(do not delete),,,,Mw Rd
+granicus,newbrighton.granicus.com,https://newbrighton.granicus.com/ViewPublisher.php?view_id=2,yes,New Brighton,,,,New Brighton
+granicus,northsalemschools.granicus.com,https://northsalemschools.granicus.com/ViewPublisher.php?view_id=1,yes,Default view,,,,Unknown Jurisdiction
+granicus,nrhtx.granicus.com,https://nrhtx.granicus.com/ViewPublisher.php?view_id=1,yes,North Richland Hills TX,us:place:4852356,North Richland Hills TX,us_places.csv North Richland Hills city,Unknown Jurisdiction
+granicus,nystateassembly.granicus.com,https://nystateassembly.granicus.com/ViewPublisher.php?view_id=3,yes,Testing and Training View,,,,Ny State Assembly
+granicus,olelo.granicus.com,https://olelo.granicus.com/ViewPublisher.php?view_id=1,no,,,,,Unknown Jurisdiction
+granicus,onelakewood.granicus.com,https://onelakewood.granicus.com/ViewPublisher.php?view_id=2,yes,Council,,,,Unknown Jurisdiction
+granicus,oregonmetro.granicus.com,https://oregonmetro.granicus.com/ViewPublisher.php?view_id=1,yes,Oregon Metro Council - New View | Oregon Metro Council | New View,,,,Oregon Metro Council
+granicus,oregonpuc.granicus.com,https://oregonpuc.granicus.com/ViewPublisher.php?view_id=2,yes,New website view,,,,Unknown Jurisdiction
+granicus,parkcounty.granicus.com,https://parkcounty.granicus.com/ViewPublisher.php?view_id=2,yes,Fairgrounds & Parks,,,,Park County
+granicus,pasadenaedu.granicus.com,https://pasadenaedu.granicus.com/ViewPublisher.php?view_id=3,yes,President's Open Forum View,,,,Pasadena Community College
+granicus,pcbgov.granicus.com,https://pcbgov.granicus.com/ViewPublisher.php?view_id=1,yes,Default View,,,,Pcb Gov
+granicus,pioneercommunityenergy.granicus.com,https://pioneercommunityenergy.granicus.com/ViewPublisher.php?view_id=2,yes,Training Videos,,,,Unknown Jurisdiction
+granicus,portofla.granicus.com,https://portofla.granicus.com/ViewPublisher.php?view_id=3,yes,Port of Los Angeles - HBR iFrame Other Content View - Powered by .com | Port of Los Angeles | HBR iFrame Other Content View | Powered by .com,,,,Unknown Jurisdiction
+granicus,portofsandiego.granicus.com,https://portofsandiego.granicus.com/ViewPublisher.php?view_id=1,yes,Internal View,,,,Unknown Jurisdiction
+granicus,psc-fl.granicus.com,https://psc-fl.granicus.com/ViewPublisher.php?view_id=2,yes,Public,,,,"Ps C, FL"
+granicus,pucnv.granicus.com,https://pucnv.granicus.com/ViewPublisher.php?view_id=3,yes,Outside Agencies,,,,State of Nevada Public Utilities Commission
+granicus,pvestates.granicus.com,https://pvestates.granicus.com/ViewPublisher.php?view_id=1,yes,Palos Verdes Estates - Palos Verdes Estates Content | Palos Verdes Estates | Palos Verdes Estates Content,us:place:0655380,Palos Verdes Estates,us_places.csv Palos Verdes Estates city,Unknown Jurisdiction
+granicus,rdale.granicus.com,https://rdale.granicus.com/ViewPublisher.php?view_id=3,yes,Legislative Action Coalition,,,,Unknown Jurisdiction
+granicus,richmond.granicus.com,https://richmond.granicus.com/ViewPublisher.php?view_id=3,yes,Planning Commission,,,,City of Richmond
+granicus,rideuta.granicus.com,https://rideuta.granicus.com/ViewPublisher.php?view_id=1,yes,,,,,Ride Uta
+granicus,rtachicago.granicus.com,https://rtachicago.granicus.com/ViewPublisher.php?view_id=3,yes,RTA Archive View,,,,Regional Transportation Authority (Chicago)
+granicus,sanantonioisd.granicus.com,https://sanantonioisd.granicus.com/ViewPublisher.php?view_id=1,yes,San Antonio Independent School District - Default | San Antonio Independent School District | Default,us:sd:4838730,San Antonio Independent School District,us_school_districts.csv San Antonio Independent School District (unified),Unknown Jurisdiction
+granicus,sandyutah.granicus.com,https://sandyutah.granicus.com/ViewPublisher.php?view_id=1,yes,"Sandy City, UT - New View | Sandy City, UT | New View",us:place:4967440,"Sandy City, UT",us_places.csv Sandy city,Unknown Jurisdiction
+granicus,sanmarcos.granicus.com,https://sanmarcos.granicus.com/ViewPublisher.php?view_id=3,yes,NEW San Marcos Web View,,,,City of San Marcos
+granicus,scag.granicus.com,https://scag.granicus.com/ViewPublisher.php?view_id=3,yes,xxRETIRED Featured Videos,,,,Unknown Jurisdiction
+granicus,scvwd.granicus.com,https://scvwd.granicus.com/ViewPublisher.php?view_id=3,yes,New iframe View,,,,Unknown Jurisdiction
+granicus,scwd.granicus.com,https://scwd.granicus.com/ViewPublisher.php?view_id=3,yes,New Main View June 2011 - Site Re-design | New Main View June 2011 | Site Re-design,,,,South Coast Water District
+granicus,sdcera.granicus.com,https://sdcera.granicus.com/ViewPublisher.php?view_id=3,yes,Internal View - Powered by .com | Internal View | Powered by .com,,,,San Diego County Retirement Association
+granicus,sedgwick.granicus.com,https://sedgwick.granicus.com/ViewPublisher.php?view_id=2,yes,BOCC Regular,,,,County of Sedgwick
+granicus,sfha.granicus.com,https://sfha.granicus.com/ViewPublisher.php?view_id=2,yes,San Francisco Housing Authority,,,,Unknown Jurisdiction
+granicus,sfwmd.granicus.com,https://sfwmd.granicus.com/ViewPublisher.php?view_id=2,yes,Lunch & Learn,,,,"S Fw, MD"
+granicus,sitka.granicus.com,https://sitka.granicus.com/ViewPublisher.php?view_id=1,yes,City of Borough of Sitka Media Archive | Default View,,,,City of Sitka
+granicus,smud.granicus.com,https://smud.granicus.com/ViewPublisher.php?view_id=1,no,,,,,Unknown Jurisdiction
+granicus,sonomamarintrain.granicus.com,https://sonomamarintrain.granicus.com/ViewPublisher.php?view_id=3,yes,Default View,,,,Unknown Jurisdiction
+granicus,spokanevalley.granicus.com,https://spokanevalley.granicus.com/ViewPublisher.php?view_id=3,yes,Sectioned View,,,,The City of Spokane Valley
+granicus,stockton.granicus.com,https://stockton.granicus.com/ViewPublisher.php?view_id=1,no,,,,,City of Stockton
+granicus,supremestateaz.granicus.com,https://supremestateaz.granicus.com/ViewPublisher.php?view_id=3,yes,COJET Training,,,,Arizona Supreme Court
+granicus,tahoecitypud.granicus.com,https://tahoecitypud.granicus.com/ViewPublisher.php?view_id=2,yes,Tahoe City Public Utility District View,,,,Unknown Jurisdiction
+granicus,tlchouse.granicus.com,https://tlchouse.granicus.com/ViewPublisher.php?view_id=3,yes,zzDefault TEST,,,,Unknown Jurisdiction
+granicus,townsquaretv.granicus.com,https://townsquaretv.granicus.com/ViewPublisher.php?view_id=2,yes,Town Square Television,,,,Northern Dakota County
+granicus,utc-wa.granicus.com,https://utc-wa.granicus.com/ViewPublisher.php?view_id=1,yes,WA UTC,,,,Washington
+granicus,villageofgreenport.granicus.com,https://villageofgreenport.granicus.com/ViewPublisher.php?view_id=3,yes,Planning Board View,,,,Unknown Jurisdiction
+granicus,westspringfieldma.granicus.com,https://westspringfieldma.granicus.com/ViewPublisher.php?view_id=3,yes,Town Council,,,,Unknown Jurisdiction
+granicus,winston-salem.granicus.com,https://winston-salem.granicus.com/ViewPublisher.php?view_id=3,yes,Training,,,,City of Lees Summit
+granicus,wsscwater.granicus.com,https://wsscwater.granicus.com/ViewPublisher.php?view_id=3,yes,Internal,,,,Washington Suburban Sanitary Commission
+iqm2,mlgw.iqm2.com,https://mlgw.iqm2.com,yes,MLGW,,,,MLGW
+iqm2,mncppc.iqm2.com,https://mncppc.iqm2.com,yes,The Maryland-National Capital Park & Planning Commission,,,,The Maryland-National Capital Park & Planning Commission
+iqm2,scag.iqm2.com,https://scag.iqm2.com,yes,Southern California Association of Governments,,,,Southern California Association of Governments
+iqm2,sfwmd.iqm2.com,https://sfwmd.iqm2.com,yes,South Florida Water Management District,,,,South Florida Water Management District
+iqm2,syossetsdny.iqm2.com,https://syossetsdny.iqm2.com,yes,Syosset School District,,,,Syosset School District
+townhallstreams,townhallstreams.com,https://townhallstreams.com,yes,Town Hall Streams | Learn more about us and the services we offer. | The highest quality in the industry with video recording for viewing at any time.,,,,New Boston
+unknown,discover.pbc.gov,https://discover.pbc.gov,yes,Home | Palm Beach County Home,,,,
+unknown,mi-caledoniachartertownship.civicplus.com,https://mi-caledoniachartertownship.civicplus.com/,yes,"Caledonia Charter Township, MI | Official Website | Caledonia Charter Township, MI | Official Website | Arrow Left",us:cousub:2615512520,"Caledonia Charter Township, MI",us_cousubs.csv Caledonia charter township,Caledonia Township
+unknown,video.ibm.com,https://video.ibm.com,yes,IBM Video,,,,
+unknown,www.mediafire.com,https://www.mediafire.com,yes,MediaFire | File storage and sharing made simple | File sharing and storage made simple,,,,
+unknown,www.openpublica.com,https://www.openpublica.com,yes,OpenPublica | Open Publica,,,,Open Publica
+vimeo,vimeo.com,https://vimeo.com,yes,Vimeo | Your complete video platform | Vimeo - All-in-One Video Platform | All-in-One Video Platform,,,,City of Lakeland|City of Plymouth|Covington|Hopkins|Jefferson Parish|Mason County|Peters Township|Salisbury

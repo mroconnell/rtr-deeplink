@@ -1,5 +1,5 @@
 """Tests for the featured-snippet heuristic (archive/utils/highlights.py)
-and the government-type classifier (archive/utils/gov_classify.py).
+and the government-type groupings (archive/utils/gov_groups.py).
 
 The snippet cases below are **frozen from real production transcripts**
 -- each quote was produced by running the heuristic against the live
@@ -19,7 +19,19 @@ what it is standing in for.
 
 from archive.db import crud
 from archive.topics import TOPICS, TOPICS_BY_SLUG, topics_in
-from archive.utils.gov_classify import AGENCY, CITY, COUNTY, SCHOOL, classify_government
+from archive.utils.gov_groups import (
+    AGENCY,
+    CITY,
+    COUNTY,
+    COURT,
+    GROUP_LABELS,
+    GROUP_ORDER,
+    OTHER,
+    SCHOOL,
+    STATE,
+    group_for_gov_type,
+    group_for_page,
+)
 from archive.utils.highlights import (
     clean_text,
     compute_highlight_payload,
@@ -293,35 +305,93 @@ def test_highlight_html_ignores_unknown_topic_slug():
     assert "<mark>" not in out
 
 
-# --- government classification -------------------------------------------
+# --- government grouping --------------------------------------------------
+#
+# `archive/utils/gov_classify.py` was retired 2026-09-02 (WO-99). It
+# guessed a government's kind from a regex over its display name, and got
+# it visibly wrong: run that day it filed "Broward County Public Schools,
+# FL" and "West County Wastewater District, CA" under Counties & regions
+# (its county regex ran first) and "Minnesota Senate, MN" under Cities &
+# towns (its default), and the live /state/all-50 page showed ~17 "X
+# County Public Schools" rows under the counties heading. It disagreed
+# with the registry on 388 of the 5,929 rows in the 2026-09-02 scoring
+# run.
+#
+# What replaced it does no guessing at all: `MeetingPage.gov_type` is the
+# Census-of-Governments type the resolver assigned at ingest, and
+# gov_groups.py only decides which types share a heading. So the tests
+# that used to pin the regex now pin those groupings, and the
+# classification itself is tested where it happens, in
+# tests/test_gov_registry.py.
 
 
-def test_classify_counties_cities_schools_agencies():
-    assert classify_government("Napa County, CA") == COUNTY
-    assert classify_government("Peel Region, ON") == COUNTY
-    assert classify_government("City of Napa, CA", "City Council") == CITY
-    assert classify_government("Berkeley, CA") == CITY
-    assert classify_government("Los Angeles USD, CA") == SCHOOL
-    assert classify_government("Cerritos College, CA") == SCHOOL
-    assert classify_government("East Bay Regional Park District, CA") == AGENCY
-    assert classify_government("Sandag, CA") == AGENCY
+def test_gov_types_map_to_their_headings():
+    assert group_for_gov_type("county") == COUNTY
+    assert group_for_gov_type("school_district") == SCHOOL
+    assert group_for_gov_type("special_district") == AGENCY
+    assert group_for_gov_type("state") == STATE
+    assert group_for_gov_type("court") == COURT
 
 
-def test_name_beats_body_for_county():
-    # A generic body string must never override an explicit county name.
-    assert classify_government("Napa County, CA", "Planning Commission") == COUNTY
+def test_municipality_and_township_share_one_heading():
+    """A reader looking for their town does not know or care whether
+    Census codes it as a place or a county subdivision -- the New England
+    and upper-Midwest town is a `cousub` and its neighbours are places."""
+    assert group_for_gov_type("municipality") == CITY
+    assert group_for_gov_type("township") == CITY
 
 
-def test_body_used_only_when_name_is_silent():
-    assert classify_government("Springfield", "Board of Education") == SCHOOL
+def test_an_unresolved_government_is_not_called_an_agency():
+    """The old module's documented default was CITY, on the reasoning
+    that "a special district misfiled as a city is a mild inaccuracy". It
+    is still a guess, and it is the guess that put 214 unclassifiable
+    names under Cities & towns. An unidentified government now says so."""
+    assert group_for_gov_type("other") == OTHER
+    assert group_for_gov_type(None) == OTHER
+    assert group_for_gov_type("") == OTHER
+    assert group_for_gov_type("something-new") == OTHER
 
 
-def test_unknown_government_falls_back_to_city():
-    # Documented conservative default: a special district misfiled as a
-    # city is a mild inaccuracy; a city misfiled as a county reads as an
-    # error.
-    assert classify_government("Somewhereville") == CITY
-    assert classify_government(None) == CITY
+def test_a_page_with_no_gov_type_is_grouped_by_its_name():
+    """The deploy window: between the migration adding `gov_type` and the
+    backfill filling it, every page has NULL. Measured by rendering
+    origin/main and this branch against the same 14-page pre-WO-99
+    database -- hubs, /j/, /coverage and sitemap.xml came out
+    byte-identical, and /state/*'s entire government list collapsed into
+    one "Other public bodies" section. This fallback is what closes that,
+    and it also covers any page that never gets a `gov_id` at all."""
+    assert group_for_page(None, "Napa County, CA") == COUNTY
+    assert group_for_page(None, "City of Napa, CA") == CITY
+    assert group_for_page(None, "Los Angeles USD, CA") == SCHOOL
+    assert group_for_page(None, "Peel Region, ON") == COUNTY
+    assert group_for_page(None, "West County Wastewater District, CA") == AGENCY
+
+
+def test_the_fallback_is_the_registrys_classifier_not_the_retired_one():
+    """Two things `gov_classify.py` got wrong on the live corpus, which
+    the fallback must not reintroduce -- it is the merged rule set, not a
+    revival of the module this replaced."""
+    assert group_for_page(None, "Broward County Public Schools, FL") == SCHOOL
+    assert group_for_page(None, "Minnesota Senate, MN") == STATE
+
+
+def test_a_stored_gov_type_is_never_second_guessed():
+    """The fallback is for a MISSING type only. A stored one wins even
+    when the name reads like something else -- that is the whole point of
+    resolving the government rather than parsing its name."""
+    assert group_for_page("special_district", "Los Angeles, CA") == AGENCY
+    assert group_for_page("county", "City of Honolulu") == COUNTY
+
+
+def test_an_unnameable_page_with_no_gov_type_is_not_guessed_at():
+    assert group_for_page(None, None) == OTHER
+    assert group_for_page(None, "Somewhereville") == OTHER
+
+
+def test_every_group_has_a_label_and_a_place_in_the_order():
+    for key in GROUP_ORDER:
+        assert GROUP_LABELS[key]
+    assert set(GROUP_LABELS) == set(GROUP_ORDER)
 
 
 # --- coherence guards -----------------------------------------------------
