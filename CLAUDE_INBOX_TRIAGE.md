@@ -616,3 +616,111 @@ to reach that dashboard itself.
 
 Ledger: 27 new message IDs recorded (163 → 190 kept), 0 pruned this run
 (all still inside the 30-day + 7-day-grace retention window).
+
+## 2026-09-03
+
+Reviewed 25 new messages under `label:rtr-claude newer_than:30d` (95
+candidates, 70 already ledgered — no run happened on 2026-09-02, so this
+run covers both days). Skipped as purely informational: two more
+transcription-worker daily reports, one RTR feed-drop report, one Search
+Console "validating your fix" notice (recrawl in progress, nothing to act
+on), two YouTube transcript digests (1 added, none-new — the "72 failed"
+count is entirely already-documented `TranscriptsDisabled` cases). Skipped
+as out of scope: three GitHub Actions "PR run failed" emails for non-`main`
+feature branches. Skipped as an already-documented, deliberate decision:
+"Your free Render database expires soon: rtr-deeplink-staging-db" —
+`render.yaml`'s own comment (line 587) says this database is intentionally
+left out of the Blueprint and disposable, expiring 2026-09-09 on purpose,
+with an explicit "not an oversight to fix, don't add it" note — nothing to
+do here. Skipped as duplicates of already-tracked patterns: another
+"Server failure detected on `test-redtaperecordings`" (status 3, Nth+
+occurrence); two more daily YouTube transcript-fetch `IpBlocked` failures
+(confirmed expected/self-clearing per the 2026-08-20 investigation);
+Transcription job 1444 failed (Belfast ME, Swagit, chunk 5/6, "ffmpeg
+timed out after 120s" three times) — the exact already-open `BACKLOG.md`
+`[NEEDS-AUDIT]` entry "The 120s ffmpeg timeout is a flat value that
+doesn't adapt per source"; and two more "Adapter health canary: All jobs
+have failed" runs ([33542443563](https://github.com/mroconnell/rtr-deeplink/actions/runs/33542443563),
+2026-09-01 18:15 UTC, 31/32 platforms OK; [33667381587](https://github.com/mroconnell/rtr-deeplink/actions/runs/33667381587),
+2026-09-02 18:29 UTC, 31/32 platforms OK) — confirmed via both runs' own
+job logs to be the same still-open Phoenix Legistar 410 (`ID=1425831`),
+no new signal.
+
+**One update to an already-open, not-yet-promoted finding, plus one new
+data point that may be related to it:**
+
+- **The `rtr-deeplink` (resolver) SIGABRT/status-134 crash, open since
+  2026-08-30, has recurred at least 3 more times**: 2026-09-02 11:38,
+  16:20, and 18:18 UTC, each with the identical "Exited with status 134"
+  text as every prior occurrence. That's at least **10 occurrences in
+  under 50 hours** now (first seen 2026-08-30 16:54 UTC). No new
+  UptimeRobot DOWN alert accompanied any of these three, unlike the
+  2026-09-01 11:46 occurrence — so no independently-confirmed user-facing
+  outage this round, but the crash itself is unambiguously still
+  happening at roughly the same rate. Root cause is still **Unconfirmed**
+  (same reasoning as 2026-08-31/09-01: Render's dashboard/logs remain
+  unreachable from this Routine).
+- **New, possibly-related data point: Sentry issue PYTHON-FASTAPI-1C**
+  (`OSError: [Errno 9] Bad file descriptor`, 2026-09-01 20:48 UTC,
+  `server_name: srv-d9qhdobm8hqs738fgkog` — confirmed via `BACKLOG_DONE.md`'s
+  "Recurring Playwright `chromium_headless_shell`" entry, which names this
+  exact `srv-` id as the resolver's own, i.e. this is the same service
+  that keeps SIGABRT-crashing). The traceback is entirely inside uvloop's
+  C extension: `uvloop.loop.TCPTransport.get_extra_info` →
+  `UVSocketHandle._get_socket` → `__tcp_get_socket`, raised from asyncio's
+  own `UVTransport._call_connection_made` callback, tagged `handled: yes`
+  (asyncio's default exception handler logged it; it did not crash the
+  process by itself). **Unconfirmed** whether this is actually connected
+  to the SIGABRT pattern — no timestamp lines up with any of the 10 known
+  crashes — but a C-level "bad file descriptor" fault inside uvloop's own
+  socket-handle code on the exact service that is repeatedly SIGABRT-ing
+  is at minimum consistent with the same underlying hypothesis already on
+  record (a native-extension fault, not application Python code) and is
+  worth keeping attached to this finding rather than treated as
+  unrelated noise. **Open question for Ryan**, same as before: this
+  Routine still cannot reach Render's own crash/exit logs to get a real
+  abort traceback.
+
+**One new finding: both transcription workers have started OOM-restarting
+in the last ~21 hours, a pattern with no prior occurrence in this
+Routine's history.** Five Render alerts across both worker services: two
+"exceeded its memory limit, which triggered an automatic restart"
+(`rtr-transcription-worker` 2026-09-01 21:41 UTC and 2026-09-02 18:32 UTC;
+`rtr-transcription-worker-2` 2026-09-01 21:51 UTC) and two more "Exited
+with status 137" (`rtr-transcription-worker` 2026-09-02 13:13 UTC;
+`rtr-transcription-worker-2` 2026-09-02 17:47 UTC) — 137 = 128+9 (SIGKILL),
+consistent with the OOM killer, not a separate failure mode. **Confirmed
+via `render.yaml`** that both workers already run on the `standard` (2GB)
+plan, upgraded 2026-08-17 specifically because the `starter` (512MB) plan
+OOM-crashed twice in real production — so this is memory pressure that
+exceeds a limit already raised once on real, measured evidence, not the
+original starter-plan problem recurring. Root cause is **Unconfirmed**,
+but there's a plausible, code-grounded hypothesis worth recording: WO-58/
+WO-64's `should_cache_whole_audio()` (`app/platforms/media_probe.py:668`,
+in production since 2026-08-27) pulls an entire meeting's audio in one
+sequential read to `out_path` for any non-HLS multi-chunk source — a
+deliberately broad gate (any progressive multi-chunk file, not just
+ChampDS) — and `extract_full_audio()`'s own docstring cites a real
+502MB/6733s example. If the workers' `/tmp` is a RAM-backed tmpfs (common
+on container platforms, and this Routine can't check from here), writing
+a several-hundred-MB-to-multi-GB whole-audio file there per job would be
+real container memory pressure that a 2GB plan sized for *per-chunk*
+extraction wouldn't have accounted for — plausible timing fit (the
+feature is 5 days old, but memory pressure from it would scale with how
+many *large* meetings hit the whole-file path on a given day, not with
+the feature's age) but genuinely unconfirmed. **Impact**: 5 restarts
+across 2 worker instances in under a day; each restart interrupts
+whatever chunk was mid-flight on that instance, likely surfacing as (or
+contributing to) some of the "Transcription job NNNN failed" volume seen
+in this same window, though no specific job has been traced to a specific
+restart. If the pattern continues or grows, worker throughput degrades
+and more in-flight jobs get lost to restarts. **Fix effort**: needs the
+data this Routine can't reach — Render's memory-usage graph for both
+worker services over the last ~24h would show whether this is a step
+change or a gradual climb, and whether it correlates with whole-audio-cache
+jobs specifically. **Open question for Ryan**: worth checking Render's
+memory metrics for both worker services, and confirming whether `/tmp` is
+RAM-backed there.
+
+Ledger: 25 new message IDs recorded (190 → 215 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).
