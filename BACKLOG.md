@@ -120,7 +120,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (63)
+  [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -427,6 +428,64 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  confidently-wrong extraction on a confirmed-misleading host — the
+  ladder validates a plausible wrong answer before the pin ever gets a
+  chance to apply.**
+  - **Issue**: `pub-gloucesterva.escribemeetings.com` is Gloucester
+    County, VA's eScribe host, pinned `strength=fallback` to
+    `us:county:51073` (added in #707, fixing a name-only host-matching
+    bug). Fallback strength only applies when steps 2-4 of the resolver
+    ladder (`GOVERNMENT_IDENTITY_ARCHITECTURE.md` §5) produce nothing —
+    by design, so a real per-page extraction always wins over a tenant
+    default. But eScribe GUID meeting URLs give `match` nothing to
+    discriminate on, and this host's own page text ("School Board
+    Meeting") resolves confidently, and wrongly, to `us:place:2526150`
+    (Gloucester, **MA** — the exact name-bleed #707 fixed upstream,
+    still baked into that one already-ingested candidate/page). The
+    fallback pin never even gets consulted, because the ladder didn't
+    fail — it succeeded at the wrong government. §4 predicted this
+    exactly: "a plausible wrong extraction passes validation, so
+    validation alone can never fix a confirmed-misleading host."
+  - **Impact**: production has exactly one live instance right now —
+    `/j/gloucester-ma`, a public hub whose entire content is that one
+    Gloucester County, VA school-board page filed under a Massachusetts
+    city. WO-106 added the missing identity (`us:sd:5101620`, Gloucester
+    County Public Schools, VA) to `governments.csv` and prepared the
+    per-page `POST /internal/jurisdiction/override` + hub-alias regen
+    commands for Ryan to run against production; see that PR for the
+    exact commands and live counts. This entry tracks the general
+    failure mode, which stays open after that one page is fixed: any
+    tenant whose URL shape carries no
+    discriminator (eScribe GUIDs are the known case) and whose page text
+    names a real place that collides with a different government's name
+    is exposed the same way, and a `strength=fallback` pin gives no
+    signal that it happened — the ladder reports `registry` tier
+    (confidently resolved), not `unresolved` or `blank`.
+  - **Next action**: this page is a known-answer case for **Phase 2d**
+    (`gov_signals.py` / `score_gov_signals.py`, branch `gov-signals-r1`,
+    not yet merged — see `~/Documents/rtr-business/research/
+    STATE_gov_identity.md`) — "School Board" in the page text is
+    precisely the type signal 2d is meant to score *above* a nearby
+    place-name match. Add this page/host to its evaluation corpus once
+    2d's live run has real numbers; don't build a one-off fix here.
+  - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
+    existing tenant pin to `strength=authoritative`, or copy
+    `POST /internal/jurisdiction/override`'s proposed
+    `tenant_overrides.csv` rule (blank `match`, `strength=authoritative`,
+    `gov_id=us:sd:5101620`) into the committed registry when applying
+    WO-106's fix. Either one pins the whole tenant, including the Board
+    of Supervisors' own meetings on that host (2 pages archived today —
+    one county, one this wrongly-keyed one — plus every one this
+    Archive hasn't ingested yet), to whichever single government wins,
+    misfiling the other. The fallback pin is correctly doing its one job
+    (a sane default where `dominant_gov_id()` ties 1-1) and should stay
+    exactly as it is; the school-district fix belongs on the one
+    affected page only, via that same endpoint's per-page write.
+  - **History**: `~/Documents/rtr-business/research/
+    STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
+    review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
