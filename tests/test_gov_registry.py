@@ -1339,8 +1339,19 @@ def test_an_unresolved_row_has_no_hub_slug():
     `format_jurisdiction_display()`, which strips a leading "City of ".
     No page ever moved (crud falls back correctly), but both scripts read
     this property, so the backfill's dry run and the scoring run credited
-    moves that would not happen."""
-    match = resolve("City of Las Vegas", "lasvegas.primegov.com")
+    moves that would not happen.
+
+    `lasvegas.primegov.com` was the original real example, but the
+    2026-09-03 pin-worklist round (WO-106 follow-up) pinned that exact
+    host to `us:place:3240000` -- a real fix, so it is no longer
+    unresolved and can't demonstrate this case any more. Swapped to an
+    intentionally-unpinned host (`example-unpinned.granicus.com`, the
+    same placeholder `test_a_pin_to_a_government_not_yet_in_governments_
+    csv_still_applies` uses below) with the same real, still-genuinely-
+    ambiguous "City of Las Vegas" name -- Las Vegas, NV and Las Vegas, NM
+    both exist, so without a state a bare name still can't resolve on its
+    own."""
+    match = resolve("City of Las Vegas", "example-unpinned.granicus.com")
     assert match.tier == resolver.TIER_UNRESOLVED
     assert match.hub_slug is None
     assert resolve(None, "example.granicus.com").hub_slug is None
