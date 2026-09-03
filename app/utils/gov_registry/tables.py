@@ -323,6 +323,32 @@ def us_states() -> NameStateTable:
 
 
 @lru_cache(maxsize=1)
+def state_gov_ids() -> Dict[str, str]:
+    """ "CA" -> "us:state:06", "ON" -> "ca:pr:35".
+
+    Decision D1 makes the State of California ONE government whose Senate,
+    Assembly and departments are `meeting_body` rows under it -- so its
+    display name is "State of California", with no ", CA" suffix. Every
+    `/state/*` query keys on that suffix, which means a state government
+    is invisible on its own state's page unless something maps the two.
+    Found in a browser check of the rebuilt /state/california: the new
+    "State government" heading could never have a row in it.
+    """
+    out = {
+        row.state.upper(): f"us:state:{row.row_id}"
+        for row in us_states()._by_id.values()
+    }
+    out.update(
+        {row.state.upper(): f"ca:pr:{row.row_id}" for row in ca_pr()._by_id.values()}
+    )
+    return out
+
+
+def state_gov_id(abbr: Optional[str]) -> Optional[str]:
+    return state_gov_ids().get((abbr or "").upper())
+
+
+@lru_cache(maxsize=1)
 def us_school_districts() -> NameStateTable:
     return NameStateTable(
         [

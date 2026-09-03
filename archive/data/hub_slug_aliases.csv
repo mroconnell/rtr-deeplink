@@ -1,7 +1,6 @@
 old_slug,gov_id,new_slug,evidence
 abbotsford,us:place:5500100,abbotsford-wi,"'Abbotsford' now resolves to us:place:5500100 (Abbotsford, WI)"
 aiken-county-public-schools-sc,us:sd:4500720,aiken-county-school-district-sc,"'Aiken County Public Schools, SC' now resolves to us:sd:4500720 (Aiken County School District, SC)"
-al,,city-of,'City of Al' now resolves to  (City of)
 alameda,us:place:0600562,alameda-ca,"'City of Alameda' now resolves to us:place:0600562 (Alameda, CA)"
 albuquerque-bernalillo-county-water-utility-authority,rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,albuquerque-bernalillo-county-water-utility-authority-nm,"'Albuquerque Bernalillo County Water Utility Authority' now resolves to rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority (Albuquerque Bernalillo County Water Utility Authority, NM)"
 alpine,us:county:06003,alpine-county-ca,"'Alpine' now resolves to us:county:06003 (Alpine County, CA)"
@@ -24,19 +23,15 @@ aurora-il,us:place:1703012,aurora-city-il,"'Aurora, IL' now resolves to us:place
 bainbridge-wa,us:place:5303736,bainbridge-island-wa,"'Bainbridge, WA' now resolves to us:place:5303736 (Bainbridge Island, WA)"
 baldwin-county,us:county:01003,baldwin-county-al,"'Baldwin County' now resolves to us:county:01003 (Baldwin County, AL)"
 baltimore-county-schools-md,us:sd:2400120,baltimore-county-public-schools-md,"'Baltimore County Schools, MD' now resolves to us:sd:2400120 (Baltimore County Public Schools, MD)"
-bangor,,city-of-bangor,'City of Bangor' now resolves to  (City of Bangor)
 baraboo-wi,us:place:5504625,baraboo-city-wi,"'City of Baraboo, WI' now resolves to us:place:5504625 (Baraboo (city), WI)"
 battle-ground-public-schools-wa,us:sd:5300380,battle-ground-school-district-wa,"'Battle Ground Public Schools, WA' now resolves to us:sd:5300380 (Battle Ground School District, WA)"
 bay-area-headquarters-authority,rtr:us:ca:metropolitan-transportation-commission,metropolitan-transportation-commission-ca,"'Bay Area Headquarters Authority' now resolves to rtr:us:ca:metropolitan-transportation-commission (Metropolitan Transportation Commission, CA)"
 beaufort,us:place:4504690,beaufort-sc,"'Beaufort' now resolves to us:place:4504690 (Beaufort, SC)"
 beavercreek-oh,us:place:3904720,beavercreek-city-oh,"'City of Beavercreek, OH' now resolves to us:place:3904720 (Beavercreek (city), OH)"
-beaverton,,city-of-beaverton,'City of Beaverton' now resolves to  (City of Beaverton)
 bedford-oh,us:place:3904878,bedford-city-oh,"'Bedford, OH' now resolves to us:place:3904878 (Bedford (city), OH)"
 bellaire,us:place:4807300,bellaire-tx,"'City of Bellaire' now resolves to us:place:4807300 (Bellaire, TX)"
 belle-plaine-mn,us:place:2704834,belle-plaine-city-mn,"'Belle Plaine, MN' now resolves to us:place:2704834 (Belle Plaine (city), MN)"
-bellevue,,city-of-bellevue,'City of Bellevue' now resolves to  (City of Bellevue)
-belmont,,city-of-belmont,'City of Belmont' now resolves to  (City of Belmont)
-beverly-hills,,city-of-beverly-hills,'City of Beverly Hills' now resolves to  (City of Beverly Hills)
+beverly-hills,us:place:0606308,beverly-hills-ca,"'City of Beverly Hills' now resolves to us:place:0606308 (Beverly Hills, CA)"
 birmingham,us:place:0107000,birmingham-al,"'City of Birmingham' now resolves to us:place:0107000 (Birmingham, AL)"
 blount-county,us:county:47009,blount-county-tn,"'Blount County' now resolves to us:county:47009 (Blount County, TN)"
 bonita-usd-ca,us:sd:0605610,bonita-unified-school-district-ca,"'Bonita USD, CA' now resolves to us:sd:0605610 (Bonita Unified School District, CA)"
@@ -51,6 +46,7 @@ bowie,us:place:4809640,bowie-tx,"'City of Bowie' now resolves to us:place:480964
 bradfordwestgwillimbury,ca:csd:3543014,bradford-west-gwillimbury-on,"'Bradfordwestgwillimbury' now resolves to ca:csd:3543014 (Bradford West Gwillimbury, ON)"
 branchburg-nj,us:cousub:3403507180,branchburg-township-nj,"'Branchburg, NJ' now resolves to us:cousub:3403507180 (Branchburg Township, NJ)"
 brandon-vt,us:cousub:5002107750,brandon-town-vt,"'Brandon, VT' now resolves to us:cousub:5002107750 (Brandon Town, VT)"
+brighton,us:place:0808675,brighton-co,"'City of Brighton' now resolves to us:place:0808675 (Brighton, CO)"
 bristol-ri,us:county:44001,bristol-county-ri,"'Bristol, RI' now resolves to us:county:44001 (Bristol County, RI)"
 brockton,us:place:2509000,brockton-ma,"'Brockton' now resolves to us:place:2509000 (Brockton, MA)"
 brookhaven,us:cousub:3610310000,brookhaven-town-ny,"'Brookhaven' now resolves to us:cousub:3610310000 (Brookhaven Town, NY)"
@@ -65,8 +61,10 @@ burnsville,us:place:2708794,burnsville-mn,"'City of Burnsville' now resolves to 
 burton,us:place:2612060,burton-mi,"'City of Burton' now resolves to us:place:2612060 (Burton, MI)"
 butler-county,us:county:20015,butler-county-ks,"'Butler County' now resolves to us:county:20015 (Butler County, KS)"
 calaveras-ca,us:county:06009,calaveras-county-ca,"'Calaveras, CA' now resolves to us:county:06009 (Calaveras County, CA)"
+california,rtr:us:ca:judicial-council-of-california,judicial-council-of-california-ca,"'California' now resolves to rtr:us:ca:judicial-council-of-california (Judicial Council of California, CA)"
 california-state-personnel-board,rtr:us:ca:california-state-personnel-board,california-state-personnel-board-ca,"'California State Personnel Board' now resolves to rtr:us:ca:california-state-personnel-board (California State Personnel Board, CA)"
 california-state-senate,us:state:06,state-of-california,'California State Senate' now resolves to us:state:06 (State of California)
+cambridge,us:place:2511000,cambridge-ma,"'Cambridge' now resolves to us:place:2511000 (Cambridge, MA)"
 cambridge-city-ma,us:place:2511000,cambridge-ma,"'Cambridge City, MA' now resolves to us:place:2511000 (Cambridge, MA)"
 campbell,us:place:0610345,campbell-ca,"'City of Campbell' now resolves to us:place:0610345 (Campbell, CA)"
 canaan-nh,us:cousub:3300908980,canaan-town-nh,"'Canaan, NH' now resolves to us:cousub:3300908980 (Canaan Town, NH)"
@@ -75,7 +73,7 @@ canfield-oh,us:place:3911360,canfield-city-oh,"'Canfield, OH' now resolves to us
 cannon-falls-mn,us:place:2709730,cannon-falls-city-mn,"'Cannon Falls, MN' now resolves to us:place:2709730 (Cannon Falls (city), MN)"
 carbondale-il,us:place:1711163,carbondale-city-il,"'Carbondale, IL' now resolves to us:place:1711163 (Carbondale (city), IL)"
 carrollton,us:place:4813024,carrollton-tx,"'City of Carrollton' now resolves to us:place:4813024 (Carrollton, TX)"
-carson,,city-of-carson,'City of Carson' now resolves to  (City of Carson)
+carson,us:place:0611530,carson-ca,"'Carson' now resolves to us:place:0611530 (Carson, CA)"
 cary,us:place:3710740,cary-nc,"'Cary' now resolves to us:place:3710740 (Cary, NC)"
 casco-me,us:cousub:2300511125,casco-town-me,"'Casco, ME' now resolves to us:cousub:2300511125 (Casco Town, ME)"
 cass,us:county:18017,cass-county-in,"'Cass' now resolves to us:county:18017 (Cass County, IN)"
@@ -92,12 +90,12 @@ chesterfield-township,us:cousub:2609915340,chesterfield-township-mi,"'Chesterfie
 cheyenne,us:place:5613900,cheyenne-wy,"'City of Cheyenne' now resolves to us:place:5613900 (Cheyenne, WY)"
 city-and-county-of-denver,us:place:0820000,denver-co,"'City and County of Denver' now resolves to us:place:0820000 (Denver, CO)"
 city-and-county-of-san-francisco,us:place:0667000,san-francisco-ca,"'City and County of San Francisco' now resolves to us:place:0667000 (San Francisco, CA)"
-city-ma,,city,"'City, MA' now resolves to  (City)"
 clallam,us:county:53009,clallam-county-wa,"'Clallam' now resolves to us:county:53009 (Clallam County, WA)"
 clallam-wa,us:county:53009,clallam-county-wa,"'Clallam, WA' now resolves to us:county:53009 (Clallam County, WA)"
 clarington,us:place:3915210,clarington-oh,"'Clarington' now resolves to us:place:3915210 (Clarington, OH)"
 clarkston-city-ga,us:place:1316544,clarkston-ga,"'Clarkston City, GA' now resolves to us:place:1316544 (Clarkston, GA)"
 clawson-mi,rtr:us:mi:clawson,the-city-of-clawson-mi,"'The City of Clawson, MI' now resolves to rtr:us:mi:clawson (The City of Clawson, MI)"
+clinton,us:place:4515295,clinton-sc,"'Clinton' now resolves to us:place:4515295 (Clinton, SC)"
 coffee-tn,us:county:47031,coffee-county-tn,"'Coffee, TN' now resolves to us:county:47031 (Coffee County, TN)"
 collinsville,us:place:1715599,collinsville-city-il,"'City of Collinsville' now resolves to us:place:1715599 (Collinsville (city), IL)"
 colonie-ny,us:place:3617332,colonie-village-ny,"'Colonie, NY' now resolves to us:place:3617332 (Colonie (village), NY)"
@@ -111,7 +109,6 @@ converse,us:place:4816468,converse-tx,"'City of Converse' now resolves to us:pla
 cornwall,us:place:4216256,cornwall-pa,"'City of Cornwall' now resolves to us:place:4216256 (Cornwall, PA)"
 corona,us:place:0616350,corona-ca,"'Corona' now resolves to us:place:0616350 (Corona, CA)"
 coronado-usd-ca,us:sd:0609870,coronado-unified-school-district-ca,"'Coronado USD, CA' now resolves to us:sd:0609870 (Coronado Unified School District, CA)"
-cottage-grove,,city-of-cottage-grove,'City of Cottage Grove' now resolves to  (City of Cottage Grove)
 cottage-grove-wi,us:place:5517175,cottage-grove-village-wi,"'Cottage Grove, WI' now resolves to us:place:5517175 (Cottage Grove (village), WI)"
 county-of-alachua-fl,us:county:12001,alachua-county-fl,"'County of Alachua, FL' now resolves to us:county:12001 (Alachua County, FL)"
 county-of-citrus-fl,us:county:12017,citrus-county-fl,"'County of Citrus, FL' now resolves to us:county:12017 (Citrus County, FL)"
@@ -148,31 +145,27 @@ county-of-skagit-wa,us:county:53057,skagit-county-wa,"'County of Skagit, WA' now
 county-of-solano-ca,us:county:06095,solano-county-ca,"'County of Solano, CA' now resolves to us:county:06095 (Solano County, CA)"
 county-of-wellington,ca:cd:3523,wellington-on,"'County of Wellington' now resolves to ca:cd:3523 (Wellington, ON)"
 courtenay-nd,us:place:3816380,courtenay-city-nd,"'Courtenay, ND' now resolves to us:place:3816380 (Courtenay (city), ND)"
-crestview,,city-of-crestview,'City of Crestview' now resolves to  (City of Crestview)
+crestview,us:place:1215475,crestview-fl,"'City of Crestview' now resolves to us:place:1215475 (Crestview, FL)"
 crookston,us:place:2713870,crookston-city-mn,"'City of Crookston' now resolves to us:place:2713870 (Crookston (city), MN)"
-dallas,,city-of-dallas,'City of Dallas' now resolves to  (City of Dallas)
 damariscotta-me,us:cousub:2301516235,damariscotta-town-me,"'Damariscotta, ME' now resolves to us:cousub:2301516235 (Damariscotta Town, ME)"
 davis,us:place:0618100,davis-ca,"'City of Davis' now resolves to us:place:0618100 (Davis, CA)"
-dearborn,,city-of-dearborn,'City of Dearborn' now resolves to  (City of Dearborn)
 decatur-il,us:place:1718823,decatur-city-il,"'Decatur, IL' now resolves to us:place:1718823 (Decatur (city), IL)"
 deland,rtr:us:fl:deland,the-city-of-deland-fl,"'The City Of DeLand' now resolves to rtr:us:fl:deland (The City Of DeLand, FL)"
 dell-rapids-sd,us:place:4615980,dell-rapids-city-sd,"'City of Dell Rapids, SD' now resolves to us:place:4615980 (Dell Rapids (city), SD)"
 delta,ca:csd:5915011,delta-bc,"'Delta' now resolves to ca:csd:5915011 (Delta, BC)"
 denton,us:place:4819972,denton-tx,"'City of Denton' now resolves to us:place:4819972 (Denton, TX)"
-derby,,city-of-derby,'City of Derby' now resolves to  (City of Derby)
 dixon,us:place:0619402,dixon-ca,"'City of Dixon' now resolves to us:place:0619402 (Dixon, CA)"
 dormont-borough-pa,us:place:4219576,dormont-pa,"'Dormont Borough, PA' now resolves to us:place:4219576 (Dormont, PA)"
 dryden,ca:csd:3560027,dryden-on,"'Dryden' now resolves to ca:csd:3560027 (Dryden, ON)"
 dublin-oh,us:place:3922694,dublin-city-oh,"'Dublin, OH' now resolves to us:place:3922694 (Dublin (city), OH)"
 duluth,us:place:2717000,duluth-city-mn,"'City of Duluth' now resolves to us:place:2717000 (Duluth (city), MN)"
 duluth-mn,us:place:2717000,duluth-city-mn,"'City of Duluth, MN' now resolves to us:place:2717000 (Duluth (city), MN)"
-duncan-town,,city-of-duncan-town,'City of Duncan Town' now resolves to  (City of Duncan Town)
 durham-region-on,ca:cd:3518,durham-on,"'Durham Region, ON' now resolves to ca:cd:3518 (Durham, ON)"
 east-greenwich-ri,us:cousub:4400322240,east-greenwich-town-ri,"'East Greenwich, RI' now resolves to us:cousub:4400322240 (East Greenwich Town, RI)"
 easton,us:place:2424475,easton-md,"'Easton' now resolves to us:place:2424475 (Easton, MD)"
 eau-claire,us:place:5522300,eau-claire-wi,"'City of Eau Claire' now resolves to us:place:5522300 (Eau Claire, WI)"
 edgewater,us:place:1219825,edgewater-fl,"'City of Edgewater' now resolves to us:place:1219825 (Edgewater, FL)"
-edina,,city-of-edina,'City of Edina' now resolves to  (City of Edina)
+edina,us:place:2718188,edina-mn,"'Edina' now resolves to us:place:2718188 (Edina, MN)"
 edmonton,us:place:2123968,edmonton-ky,"'Edmonton' now resolves to us:place:2123968 (Edmonton, KY)"
 el-paso-independent-school-district,us:sd:4818300,el-paso-independent-school-district-tx,"'El Paso Independent School District' now resolves to us:sd:4818300 (El Paso Independent School District, TX)"
 elbert-county,us:county:08039,elbert-county-co,"'Elbert County' now resolves to us:county:08039 (Elbert County, CO)"
@@ -186,15 +179,12 @@ erie-county,us:county:42049,erie-county-pa,"'Erie County' now resolves to us:cou
 escambia-fl,us:county:12033,escambia-county-fl,"'Escambia, FL' now resolves to us:county:12033 (Escambia County, FL)"
 espanol-a,ca:csd:3552026,espanola-on,"'Espanol A' now resolves to ca:csd:3552026 (Espanola, ON)"
 eustis,us:place:1221350,eustis-fl,"'City of Eustis' now resolves to us:place:1221350 (Eustis, FL)"
-evanston,,city-of-evanston,'City of Evanston' now resolves to  (City of Evanston)
-evansville,,city-of-evansville,'City of Evansville' now resolves to  (City of Evansville)
-everett,,city-of-everett,'City of Everett' now resolves to  (City of Everett)
+everett,us:place:5322640,everett-wa,"'City of Everett' now resolves to us:place:5322640 (Everett, WA)"
 ezt,ca:csd:3532038,east-zorra-tavistock-on,"'Ezt' now resolves to ca:csd:3532038 (East Zorra-Tavistock, ON)"
 fairfield-oh,us:place:3925970,fairfield-city-oh,"'City of Fairfield, OH' now resolves to us:place:3925970 (Fairfield (city), OH)"
 falmouth-schools-me,us:sd:2305670,falmouth-me,"'Falmouth Schools, ME' now resolves to us:sd:2305670 (Falmouth, ME)"
 fargo,us:place:3825700,fargo-nd,"'Fargo' now resolves to us:place:3825700 (Fargo, ND)"
 farmersville,us:cousub:3600925340,farmersville-town-ny,"'Farmersville' now resolves to us:cousub:3600925340 (Farmersville Town, NY)"
-farmington,,city-of-farmington,'City of Farmington' now resolves to  (City of Farmington)
 fayetteville,us:place:3722920,fayetteville-nc,"'City of Fayetteville' now resolves to us:place:3722920 (Fayetteville, NC)"
 flandreau-sd,us:place:4621540,flandreau-city-sd,"'Flandreau, SD' now resolves to us:place:4621540 (Flandreau (city), SD)"
 florence,us:place:4126050,florence-or,"'City of Florence' now resolves to us:place:4126050 (Florence, OR)"
@@ -206,7 +196,7 @@ franklin,us:place:4727740,franklin-tn,"'Franklin' now resolves to us:place:47277
 frederick,us:place:0828360,frederick-co,"'Frederick' now resolves to us:place:0828360 (Frederick, CO)"
 freeport-me,us:cousub:2300526525,freeport-town-me,"'Freeport, ME' now resolves to us:cousub:2300526525 (Freeport Town, ME)"
 ft-myers-fl,us:place:1224125,fort-myers-fl,"'Ft Myers, FL' now resolves to us:place:1224125 (Fort Myers, FL)"
-fullerton,,city-of-fullerton,'City of Fullerton' now resolves to  (City of Fullerton)
+fulton,us:place:2926182,fulton-mo,"'Fulton' now resolves to us:place:2926182 (Fulton, MO)"
 gainesville,us:place:1225175,gainesville-fl,"'City of Gainesville' now resolves to us:place:1225175 (Gainesville, FL)"
 gales-burg,us:place:1728326,galesburg-city-il,"'Gales Burg' now resolves to us:place:1728326 (Galesburg (city), IL)"
 galesburg-il,us:place:1728326,galesburg-city-il,"'Galesburg, IL' now resolves to us:place:1728326 (Galesburg (city), IL)"
@@ -226,25 +216,22 @@ green-bay-wi,us:place:5531000,green-bay-city-wi,"'Green Bay, WI' now resolves to
 greenburgh-ny,us:cousub:3611930367,greenburgh-town-ny,"'Greenburgh, NY' now resolves to us:cousub:3611930367 (Greenburgh Town, NY)"
 greene-county,us:county:51079,greene-county-va,"'Greene County' now resolves to us:county:51079 (Greene County, VA)"
 greensboro,us:place:3728000,greensboro-nc,"'City of Greensboro' now resolves to us:place:3728000 (Greensboro, NC)"
-greenville,,city-of-greenville,'City of Greenville' now resolves to  (City of Greenville)
 gresham,us:place:4131250,gresham-or,"'City of Gresham' now resolves to us:place:4131250 (Gresham, OR)"
-gridley,,city-of-gridley,'City of Gridley' now resolves to  (City of Gridley)
-gulfport,,city-of-gulfport,'City of Gulfport' now resolves to  (City of Gulfport)
 guttenberg,us:place:1933465,guttenberg-ia,"'City of Guttenberg' now resolves to us:place:1933465 (Guttenberg, IA)"
 h-psb,rtr:ca:on:hamilton-police-services-board,hamilton-police-services-board-on,"'H Psb' now resolves to rtr:ca:on:hamilton-police-services-board (Hamilton Police Services Board, ON)"
 haldimand-county,rtr:ca:on:haldimand-county,haldimand-county-on,"'Haldimand County' now resolves to rtr:ca:on:haldimand-county (Haldimand County, ON)"
 half-moon-bay,us:place:0631708,half-moon-bay-ca,"'City of Half Moon Bay' now resolves to us:place:0631708 (Half Moon Bay, CA)"
 hamburg-mi,us:cousub:2609336100,hamburg-township-mi,"'Hamburg, MI' now resolves to us:cousub:2609336100 (Hamburg Township, MI)"
 hamden-ct,us:cousub:0917035650,hamden-town-ct,"'Hamden, CT' now resolves to us:cousub:0917035650 (Hamden Town, CT)"
+hamilton,rtr:ca:on:hamilton-police-services-board,hamilton-police-services-board-on,"'Hamilton' now resolves to rtr:ca:on:hamilton-police-services-board (Hamilton Police Services Board, ON)"
 hampton,us:place:5135000,hampton-va,"'City of Hampton' now resolves to us:place:5135000 (Hampton, VA)"
 hanover,us:county:51085,hanover-county-va,"'Hanover' now resolves to us:county:51085 (Hanover County, VA)"
 harris-tx,us:county:48201,harris-county-tx,"'Harris, TX' now resolves to us:county:48201 (Harris County, TX)"
+harrison,us:place:3632402,harrison-ny,"'Harrison' now resolves to us:place:3632402 (Harrison, NY)"
 harrison-county,us:county:18061,harrison-county-in,"'Harrison County' now resolves to us:county:18061 (Harrison County, IN)"
 harrisonburg-va,rtr:us:va:harrisonburg,the-city-of-harrisonburg-va,"'The City of Harrisonburg, VA' now resolves to rtr:us:va:harrisonburg (The City of Harrisonburg, VA)"
-hartford,,city-of-hartford,'City of Hartford' now resolves to  (City of Hartford)
 hastings,us:place:3121415,hastings-ne,"'Hastings' now resolves to us:place:3121415 (Hastings, NE)"
-hawarden,,city-of-hawarden,'City of Hawarden' now resolves to  (City of Hawarden)
-hawthorne,,city-of-hawthorne,'City of Hawthorne' now resolves to  (City of Hawthorne)
+hawarden,us:place:1935265,hawarden-ia,"'City of Hawarden' now resolves to us:place:1935265 (Hawarden, IA)"
 hayward,us:place:0633000,hayward-ca,"'Hayward' now resolves to us:place:0633000 (Hayward, CA)"
 haywood-county,us:county:37087,haywood-county-nc,"'Haywood County' now resolves to us:county:37087 (Haywood County, NC)"
 henderson,us:place:2135866,henderson-ky,"'Henderson' now resolves to us:place:2135866 (Henderson, KY)"
@@ -255,25 +242,20 @@ herndon,us:place:5136648,herndon-va,"'Herndon' now resolves to us:place:5136648 
 hesperia,us:place:0633434,hesperia-ca,"'City of Hesperia' now resolves to us:place:0633434 (Hesperia, CA)"
 hidalgo-county,us:county:48215,hidalgo-county-tx,"'Hidalgo County' now resolves to us:county:48215 (Hidalgo County, TX)"
 highlands-borough-fl,us:county:12055,highlands-county-fl,"'Highlands Borough, FL' now resolves to us:county:12055 (Highlands County, FL)"
-hilliard,,the-city-of-hilliard,'The City of Hilliard' now resolves to  (The City of Hilliard)
 holbrook-ma,us:cousub:2502130455,holbrook-town-ma,"'Holbrook, MA' now resolves to us:cousub:2502130455 (Holbrook Town, MA)"
 holly-springs,us:place:3732260,holly-springs-nc,"'Holly Springs' now resolves to us:place:3732260 (Holly Springs, NC)"
 hollywood,us:place:1232000,hollywood-fl,"'City of Hollywood' now resolves to us:place:1232000 (Hollywood, FL)"
 honolulu,us:county:15003,city-and-county-of-honolulu-hi,"'City of Honolulu' now resolves to us:county:15003 (City and County of Honolulu, HI)"
 hopewell-borough-va,us:place:5138424,hopewell-va,"'Hopewell Borough, VA' now resolves to us:place:5138424 (Hopewell, VA)"
 horry-county-schools,us:sd:4502490,horry-county-school-district-sc,"'Horry County Schools' now resolves to us:sd:4502490 (Horry County School District, SC)"
-hot-springs-arkansas-government,,city-of-hot-springs-arkansas-government,"'City of Hot Springs, Arkansas Government' now resolves to  (City of Hot Springs, Arkansas Government)"
-houston,,city-of-houston,'City of Houston' now resolves to  (City of Houston)
 hudson,us:place:3936651,hudson-oh,"'City of Hudson' now resolves to us:place:3936651 (Hudson, OH)"
 humboldt-county,us:county:06023,humboldt-county-ca,"'Humboldt County' now resolves to us:county:06023 (Humboldt County, CA)"
 huntington-park-ca,rtr:us:ca:huntington-park,the-city-of-huntington-park-ca,"'The City of Huntington Park, CA' now resolves to rtr:us:ca:huntington-park (The City of Huntington Park, CA)"
-huntsville-ordinance-no,,city-of-huntsville-ordinance-no,'City of Huntsville.Ordinance No.' now resolves to  (City of Huntsville.Ordinance No)
 imperial,rtr:us:ca:imperial-irrigation-district,imperial-irrigation-district-ca,"'Imperial' now resolves to rtr:us:ca:imperial-irrigation-district (Imperial Irrigation District, CA)"
 independence,us:place:2033875,independence-city-ks,"'Independence' now resolves to us:place:2033875 (Independence (city), KS)"
 inyo,us:county:06027,inyo-county-ca,"'Inyo' now resolves to us:county:06027 (Inyo County, CA)"
 iola-ks,us:place:2034300,iola-city-ks,"'City of Iola, KS' now resolves to us:place:2034300 (Iola (city), KS)"
 irondequoit-ny,us:cousub:3605537726,irondequoit-town-ny,"'Irondequoit, NY' now resolves to us:cousub:3605537726 (Irondequoit Town, NY)"
-irvine,,city-of-irvine,'City of Irvine' now resolves to  (City of Irvine)
 j-cc,rtr:us:ca:judicial-council-of-california,judicial-council-of-california-ca,"'J Cc' now resolves to rtr:us:ca:judicial-council-of-california (Judicial Council of California, CA)"
 jackson-county,us:county:08057,jackson-county-co,"'Jackson County' now resolves to us:county:08057 (Jackson County, CO)"
 james-city-on,ca:csd:3554042,james-on,"'James City, ON' now resolves to ca:csd:3554042 (James, ON)"
@@ -298,20 +280,15 @@ lad-wp,rtr:us:ca:los-angeles-department-of-water-and-power,los-angeles-departmen
 lafayette,us:place:0841835,lafayette-co,"'City of Lafayette' now resolves to us:place:0841835 (Lafayette, CO)"
 lafayette-in,us:place:1840788,lafayette-city-in,"'City of Lafayette, IN' now resolves to us:place:1840788 (Lafayette (city), IN)"
 lake-county,us:county:17097,lake-county-il,"'Lake County' now resolves to us:county:17097 (Lake County, IL)"
-lake-forest,,city-of-lake-forest,"'City of Lake Forest""' now resolves to  (City of Lake Forest"")"
 lake-havasu-az,rtr:us:az:lake-havasu,city-of-lake-havasu-az,"'City of Lake Havasu, AZ' now resolves to rtr:us:az:lake-havasu (City of Lake Havasu, AZ)"
 lake-mills,us:place:5541675,lake-mills-city-wi,"'City of Lake Mills' now resolves to us:place:5541675 (Lake Mills (city), WI)"
-lakeland,,city-of-lakeland,'City of Lakeland' now resolves to  (City of Lakeland)
 lakeshore,ca:csd:3537064,lakeshore-on,"'Lakeshore' now resolves to ca:csd:3537064 (Lakeshore, ON)"
-lancaster,,city-of-lancaster,'City of Lancaster' now resolves to  (City of Lancaster)
 langley,us:place:5338355,langley-wa,"'City of Langley' now resolves to us:place:5338355 (Langley, WA)"
-las-vegas,,city-of-las-vegas,'City of Las Vegas' now resolves to  (City of Las Vegas)
 lawrence,us:place:2038900,lawrence-city-ks,"'City of Lawrence' now resolves to us:place:2038900 (Lawrence (city), KS)"
 leawood,us:place:2039075,leawood-ks,"'City of Leawood' now resolves to us:place:2039075 (Leawood, KS)"
 lebanon,us:county:42075,lebanon-county-pa,"'Lebanon' now resolves to us:county:42075 (Lebanon County, PA)"
 ledyard-ct,us:cousub:0918042600,ledyard-town-ct,"'Ledyard, CT' now resolves to us:cousub:0918042600 (Ledyard Town, CT)"
 ledyard-public-schools-ct,us:sd:0902160,ledyard-school-district-ct,"'Ledyard Public Schools, CT' now resolves to us:sd:0902160 (Ledyard School District, CT)"
-lees-summit,,city-of-lees-summit,'City of Lees Summit' now resolves to  (City of Lees Summit)
 lexington,us:place:3738060,lexington-nc,"'Lexington' now resolves to us:place:3738060 (Lexington, NC)"
 liberty-mo,us:place:2942032,liberty-city-mo,"'Liberty, MO' now resolves to us:place:2942032 (Liberty (city), MO)"
 lincoln-me,us:county:23015,lincoln-county-me,"'Lincoln, ME' now resolves to us:county:23015 (Lincoln County, ME)"
@@ -323,11 +300,7 @@ lisbon-wi,us:place:5544847,lisbon-village-wi,"'Lisbon, WI' now resolves to us:pl
 little-rock-school-district,us:sd:0509000,little-rock-school-district-ar,"'Little Rock School District' now resolves to us:sd:0509000 (Little Rock School District, AR)"
 live-oak-texas,rtr:us:tx:live-oak-texas,the-city-of-live-oak-texas-tx,"'The City of Live Oak Texas' now resolves to rtr:us:tx:live-oak-texas (The City of Live Oak Texas, TX)"
 lloydminster-ab-sk,rtr:us:ab/sk:lloydminster-ab-sk,lloydminster-ab-sk-ab-sk,"'Lloydminster, AB/SK' now resolves to rtr:us:ab/sk:lloydminster-ab-sk (Lloydminster, AB/SK, AB/SK)"
-lockport,,city-of-lockport,'City of Lockport' now resolves to  (City of Lockport)
 lodi,us:place:0642202,lodi-ca,"'City of Lodi' now resolves to us:place:0642202 (Lodi, CA)"
-london,,city-of-london,'City of London' now resolves to  (City of London)
-longmont-for-the-fiscal,,city-of-longmont-for-the-fiscal,'City of Longmont For The Fiscal' now resolves to  (City of Longmont For The Fiscal)
-longview,,city-of-longview,'City of Longview' now resolves to  (City of Longview)
 los-angeles-usd-ca,us:sd:0622710,los-angeles-unified-school-district-ca,"'Los Angeles USD, CA' now resolves to us:sd:0622710 (Los Angeles Unified School District, CA)"
 loudoun,us:county:51107,loudoun-county-va,"'Loudoun' now resolves to us:county:51107 (Loudoun County, VA)"
 louisville,us:place:2148006,louisville-jefferson-county-ky,"'Louisville' now resolves to us:place:2148006 (Louisville/Jefferson County, KY)"
@@ -339,6 +312,7 @@ madison,us:place:4640220,madison-city-sd,"'Madison' now resolves to us:place:464
 madison-in,us:place:1845990,madison-city-in,"'Madison, IN' now resolves to us:place:1845990 (Madison (city), IN)"
 madison-sd,us:place:4640220,madison-city-sd,"'Madison, SD' now resolves to us:place:4640220 (Madison (city), SD)"
 mahwah-nj,us:cousub:3400342750,mahwah-township-nj,"'Mahwah, NJ' now resolves to us:cousub:3400342750 (Mahwah Township, NJ)"
+malvern-borough,us:place:4246792,malvern-pa,"'Malvern Borough' now resolves to us:place:4246792 (Malvern, PA)"
 manatee-county-public-schools-fl,us:sd:1201230,manatee-county-school-district-fl,"'Manatee County Public Schools, FL' now resolves to us:sd:1201230 (Manatee County School District, FL)"
 manhattan-beach,us:place:0645400,manhattan-beach-ca,"'City of Manhattan Beach' now resolves to us:place:0645400 (Manhattan Beach, CA)"
 manitowoc-wi,us:place:5548500,manitowoc-city-wi,"'City of Manitowoc, WI' now resolves to us:place:5548500 (Manitowoc (city), WI)"
@@ -357,20 +331,19 @@ menifee-nbsp-ca,rtr:us:ca:menifee-nbsp,city-of-menifee-nbsp-ca,"'City of Menifee
 meridian,rtr:us:mi:meridian,meridian-mi,"'Meridian' now resolves to rtr:us:mi:meridian (Meridian, MI)"
 merrickville-wolford,ca:csd:3507052,merrickville-wolford-on,"'Merrickville Wolford' now resolves to ca:csd:3507052 (Merrickville-Wolford, ON)"
 merrill-wi,us:place:5551250,merrill-city-wi,"'Merrill, WI' now resolves to us:place:5551250 (Merrill (city), WI)"
-mesa,,city-of-mesa,'City of Mesa' now resolves to  (City of Mesa)
+mesa,us:place:0446000,mesa-az,"'City of Mesa' now resolves to us:place:0446000 (Mesa, AZ)"
 metropolitan-airports-commission-mac,rtr:us:mn:metropolitan-airports-commission,metropolitan-airports-commission-mn,"'Metropolitan Airports Commission (MAC)' now resolves to rtr:us:mn:metropolitan-airports-commission (Metropolitan Airports Commission, MN)"
 miami,us:place:1245000,miami-fl,"'City of Miami' now resolves to us:place:1245000 (Miami, FL)"
 miami-dade-county,us:county:12086,miami-dade-county-fl,"'Miami Dade County' now resolves to us:county:12086 (Miami-Dade County, FL)"
-middletown,,city-of-middletown,'City of Middletown' now resolves to  (City of Middletown)
 middletown-nj,us:cousub:3402545990,middletown-township-nj,"'Middletown, NJ' now resolves to us:cousub:3402545990 (Middletown Township, NJ)"
-midland,,city-of-midland,'City of Midland' now resolves to  (City of Midland)
 midlothian,us:place:4848096,midlothian-tx,"'Midlothian' now resolves to us:place:4848096 (Midlothian, TX)"
 mill-creek,us:place:4950150,millcreek-ut,"'Mill Creek' now resolves to us:place:4950150 (Millcreek, UT)"
-millersburg,,city-of-millersburg,'City of Millersburg' now resolves to  (City of Millersburg)
+millersburg,us:place:4148300,millersburg-or,"'City of Millersburg' now resolves to us:place:4148300 (Millersburg, OR)"
 milwaukee,us:place:5553000,milwaukee-wi,"'City of Milwaukee.' now resolves to us:place:5553000 (Milwaukee, WI)"
 mn-senate,us:state:27,state-of-minnesota,'Mn Senate' now resolves to us:state:27 (State of Minnesota)
 monroe-oh,us:place:3951310,monroe-city-oh,"'Monroe, OH' now resolves to us:place:3951310 (Monroe (city), OH)"
 montclair-nj,us:cousub:3401347500,montclair-township-nj,"'Montclair, NJ' now resolves to us:cousub:3401347500 (Montclair Township, NJ)"
+montgomery-county,us:county:24031,montgomery-county-md,"'Montgomery County' now resolves to us:county:24031 (Montgomery County, MD)"
 moorhead-mn,us:place:2743864,moorhead-city-mn,"'Moorhead, MN' now resolves to us:place:2743864 (Moorhead (city), MN)"
 morgan-hill-ca-california,us:place:0649278,morgan-hill-ca,"'MORGAN HILL, CA - California' now resolves to us:place:0649278 (Morgan Hill, CA)"
 morgantown-wv,rtr:us:wv:morgantown,the-city-of-morgantown-wv,"'The City of Morgantown, WV' now resolves to rtr:us:wv:morgantown (The City of Morgantown, WV)"
@@ -381,7 +354,6 @@ mt-pleasant-tn,us:place:4751080,mount-pleasant-tn,"'Mt Pleasant, TN' now resolve
 multnomah,us:county:41051,multnomah-county-or,"'Multnomah' now resolves to us:county:41051 (Multnomah County, OR)"
 mundelein-village-il,us:place:1751349,mundelein-il,"'Mundelein Village, IL' now resolves to us:place:1751349 (Mundelein, IL)"
 n-lauderdale,us:place:1249425,north-lauderdale-fl,"'N Lauderdale' now resolves to us:place:1249425 (North Lauderdale, FL)"
-nampa,,city-of-nampa,'City of Nampa' now resolves to  (City of Nampa)
 naperville-il,us:place:1751622,naperville-city-il,"'City of Naperville, IL' now resolves to us:place:1751622 (Naperville (city), IL)"
 naples,us:place:1247625,naples-fl,"'City of Naples' now resolves to us:place:1247625 (Naples, FL)"
 nashua,us:place:3350260,nashua-nh,"'Nashua' now resolves to us:place:3350260 (Nashua, NH)"
@@ -390,16 +362,13 @@ nashville-davidson-county-tn,us:place:4752006,nashville-davidson-tn,"'Nashville-
 nassau-county,rtr:us:sd:nassau-county,nassau-county-sd,"'Nassau County' now resolves to rtr:us:sd:nassau-county (Nassau County, SD)"
 natick-ma,us:cousub:2501743895,natick-town-ma,"'Natick, MA' now resolves to us:cousub:2501743895 (Natick Town, MA)"
 needham-ma,us:cousub:2502144105,needham-town-ma,"'Needham, MA' now resolves to us:cousub:2502144105 (Needham Town, MA)"
-nelson,,city-of-nelson,'City of Nelson' now resolves to  (City of Nelson)
 nevada-county,us:county:06057,nevada-county-ca,"'Nevada County' now resolves to us:county:06057 (Nevada County, CA)"
 nevada-legislature,us:state:32,state-of-nevada,'Nevada Legislature' now resolves to us:state:32 (State of Nevada)
-new-carlisle,,city-of-new-carlisle,'City of New Carlisle' now resolves to  (City of New Carlisle)
-new-franklin,,city-of-new-franklin,'City of New Franklin' now resolves to  (City of New Franklin)
+new-franklin,us:place:3954562,new-franklin-oh,"'City of New Franklin' now resolves to us:place:3954562 (New Franklin, OH)"
 new-hanover,us:county:37129,new-hanover-county-nc,"'New Hanover' now resolves to us:county:37129 (New Hanover County, NC)"
 newburgh,us:place:3650034,newburgh-city-ny,"'Newburgh' now resolves to us:place:3650034 (Newburgh (city), NY)"
 newburgh-ny,us:place:3650034,newburgh-city-ny,"'Newburgh, NY' now resolves to us:place:3650034 (Newburgh (city), NY)"
 newmarket-nh,us:cousub:3301552340,newmarket-town-nh,"'Newmarket, NH' now resolves to us:cousub:3301552340 (Newmarket Town, NH)"
-newton,,city-of-newton,'City of Newton' now resolves to  (City of Newton)
 newtown-pa,us:place:4254184,newtown-borough-pa,"'Newtown, PA' now resolves to us:place:4254184 (Newtown (borough), PA)"
 niagara-falls,us:place:3651055,niagara-falls-ny,"'City of Niagara Falls' now resolves to us:place:3651055 (Niagara Falls, NY)"
 norfolk,us:place:5157000,norfolk-va,"'Norfolk' now resolves to us:place:5157000 (Norfolk, VA)"
@@ -407,7 +376,6 @@ north-branch-mn,us:place:2746798,north-branch-city-mn,"'North Branch, MN' now re
 north-castle-ny,us:cousub:3611951693,north-castle-town-ny,"'North Castle, NY' now resolves to us:cousub:3611951693 (North Castle Town, NY)"
 northcowichan,ca:csd:5919008,north-cowichan-bc,"'Northcowichan' now resolves to ca:csd:5919008 (North Cowichan, BC)"
 northfield,us:place:2746924,northfield-city-mn,"'City of Northfield' now resolves to us:place:2746924 (Northfield (city), MN)"
-ny-state-assembly,,state-of-ny,'Ny State Assembly' now resolves to  (State of Ny)
 oak-harbor,us:place:5350360,oak-harbor-wa,"'City of Oak Harbor' now resolves to us:place:5350360 (Oak Harbor, WA)"
 oak-park,us:place:1754885,oak-park-il,"'Oak Park' now resolves to us:place:1754885 (Oak Park, IL)"
 oak-ridge,rtr:us:tn:oak-ridge,the-city-of-oak-ridge-tn,"'The City of Oak Ridge' now resolves to rtr:us:tn:oak-ridge (The City of Oak Ridge, TN)"
@@ -425,13 +393,11 @@ oxford-oh,us:place:3959234,oxford-city-oh,"'City of Oxford, OH' now resolves to 
 painesville-oh,us:place:3959416,painesville-city-oh,"'Painesville, OH' now resolves to us:place:3959416 (Painesville (city), OH)"
 palatine-il,us:place:1757225,palatine-village-il,"'Palatine, IL' now resolves to us:place:1757225 (Palatine (village), IL)"
 palm-springs,us:place:0655254,palm-springs-ca,"'City of Palm Springs' now resolves to us:place:0655254 (Palm Springs, CA)"
-palo-alto-amending-section,,city-of-palo-alto-amending-section,'City of Palo Alto Amending Section' now resolves to  (City of Palo Alto Amending Section)
 paradise-valley,us:place:0452930,paradise-valley-az,"'Paradise Valley' now resolves to us:place:0452930 (Paradise Valley, AZ)"
 paramount-retiree-ca,rtr:us:ca:paramount-retiree,city-of-paramount-retiree-ca,"'City of Paramount Retiree, CA' now resolves to rtr:us:ca:paramount-retiree (City of Paramount Retiree, CA)"
 park-ridge,us:place:1757875,park-ridge-il,"'City of Park Ridge' now resolves to us:place:1757875 (Park Ridge, IL)"
 parker,us:place:0857630,parker-co,"'Parker' now resolves to us:place:0857630 (Parker, CO)"
 parowan-city-ut,us:place:4958510,parowan-ut,"'PAROWAN city, UT' now resolves to us:place:4958510 (Parowan, UT)"
-pasadena,,city-of-pasadena,'City of Pasadena' now resolves to  (City of Pasadena)
 pasadena-unified-school-district,us:sd:0629940,pasadena-unified-school-district-ca,"'Pasadena Unified School District' now resolves to us:sd:0629940 (Pasadena Unified School District, CA)"
 payson,us:place:4958730,payson-ut,"'Payson' now resolves to us:place:4958730 (Payson, UT)"
 peel-region-on,ca:cd:3521,peel-on,"'Peel Region, ON' now resolves to ca:cd:3521 (Peel, ON)"
@@ -447,32 +413,27 @@ pickering,us:place:2957404,pickering-mo,"'City of Pickering' now resolves to us:
 piedmont,us:place:0656938,piedmont-ca,"'City of Piedmont' now resolves to us:place:0656938 (Piedmont, CA)"
 pilot-point,us:place:4857476,pilot-point-tx,"'City of Pilot Point' now resolves to us:place:4857476 (Pilot Point, TX)"
 plainfield,us:place:1760287,plainfield-village-il,"'Plainfield' now resolves to us:place:1760287 (Plainfield (village), IL)"
-plano,,city-of-plano,'City of Plano' now resolves to  (City of Plano)
 plantation,us:place:1257425,plantation-fl,"'City of Plantation' now resolves to us:place:1257425 (Plantation, FL)"
-pleasant-hill,,city-of-pleasant-hill,'City of Pleasant Hill' now resolves to  (City of Pleasant Hill)
 plymouth,us:place:2751730,plymouth-mn,"'City of Plymouth' now resolves to us:place:2751730 (Plymouth, MN)"
 port-colborne-resolution,us:place:2509000,brockton-ma,"'Port Colborne Resolution' now resolves to us:place:2509000 (Brockton, MA)"
 port-st-lucie,rtr:us:fl:port-st-lucie,port-st-lucie-fl,"'City of Port St Lucie' now resolves to rtr:us:fl:port-st-lucie (Port St. Lucie, FL)"
-portage,,city-of-portage,'City of Portage' now resolves to  (City of Portage)
+portage,us:place:5564100,portage-wi,"'Portage' now resolves to us:place:5564100 (Portage, WI)"
 portage-mi,us:place:2665560,portage-city-mi,"'Portage, MI' now resolves to us:place:2665560 (Portage (city), MI)"
 portland,us:place:4760280,portland-tn,"'Portland' now resolves to us:place:4760280 (Portland, TN)"
 pratt,us:place:2057625,pratt-ks,"'City of Pratt' now resolves to us:place:2057625 (Pratt, KS)"
+prescott,us:place:5565375,prescott-wi,"'Prescott' now resolves to us:place:5565375 (Prescott, WI)"
 providence,us:place:4459000,providence-ri,"'City of Providence' now resolves to us:place:4459000 (Providence, RI)"
-ps-c-fl,,ps-c,"'Ps C, FL' now resolves to  (Ps C)"
 psr-c-2,rtr:us:wa:puget-sound-regional-council,puget-sound-regional-council-wa,"'Psr C 2' now resolves to rtr:us:wa:puget-sound-regional-council (Puget Sound Regional Council, WA)"
-racine,,city-of-racine,'City of Racine' now resolves to  (City of Racine)
 raleigh,us:place:3755000,raleigh-nc,"'Raleigh' now resolves to us:place:3755000 (Raleigh, NC)"
 ramsey-county,us:county:27123,ramsey-county-mn,"'Ramsey County' now resolves to us:county:27123 (Ramsey County, MN)"
 randall,us:county:48381,randall-county-tx,"'Randall' now resolves to us:county:48381 (Randall County, TX)"
 red-hook-ny,us:place:3660895,red-hook-village-ny,"'Red Hook, NY' now resolves to us:place:3660895 (Red Hook (village), NY)"
 redmond-wa,rtr:us:wa:redmond,the-city-of-redmond-wa,"'The City of Redmond, WA' now resolves to rtr:us:wa:redmond (The City of Redmond, WA)"
 region-of-waterloo-on,ca:cd:3530,waterloo-on,"'Region Of Waterloo, ON' now resolves to ca:cd:3530 (Waterloo, ON)"
-rehoboth-beach,,the-city-of-rehoboth-beach,'the City of Rehoboth Beach' now resolves to  (the City of Rehoboth Beach)
 rehoboth-ma,us:cousub:2500556375,rehoboth-town-ma,"'Rehoboth, MA' now resolves to us:cousub:2500556375 (Rehoboth Town, MA)"
 reno-logo-nv,rtr:us:nv:reno-logo,city-of-reno-logo-nv,"'City of Reno Logo"", NV' now resolves to rtr:us:nv:reno-logo (City of Reno Logo"", NV)"
-richmond,,city-of-richmond,'City of Richmond' now resolves to  (City of Richmond)
+richmond,us:place:4861892,richmond-tx,"'Richmond' now resolves to us:place:4861892 (Richmond, TX)"
 richmond-hill-single-source-award,ca:csd:3519038,richmond-hill-on,"'Richmond Hill Single Source Award' now resolves to ca:csd:3519038 (Richmond Hill, ON)"
-richwood-texas,,city-of-richwood-texas,'City of Richwood Texas' now resolves to  (City of Richwood Texas)
 ridgecrest,us:place:0660704,ridgecrest-ca,"'City of Ridgecrest' now resolves to us:place:0660704 (Ridgecrest, CA)"
 riverhead-ny,us:cousub:3610361984,riverhead-town-ny,"'Riverhead, NY' now resolves to us:cousub:3610361984 (Riverhead Town, NY)"
 riverside,us:place:0662000,riverside-ca,"'City of Riverside' now resolves to us:place:0662000 (Riverside, CA)"
@@ -488,20 +449,14 @@ rome,us:place:1366668,rome-ga,"'City of Rome' now resolves to us:place:1366668 (
 rutherford-county,us:county:37161,rutherford-county-nc,"'Rutherford County' now resolves to us:county:37161 (Rutherford County, NC)"
 rutland-ma,us:cousub:2502758825,rutland-town-ma,"'Rutland, MA' now resolves to us:cousub:2502758825 (Rutland Town, MA)"
 rye-ny,us:place:3664309,rye-city-ny,"'Rye, NY' now resolves to us:place:3664309 (Rye (city), NY)"
-s-fw-md,,s-fw,"'S Fw, MD' now resolves to  (S Fw)"
 sagaponack-village-ny,us:place:3664452,sagaponack-ny,"'Sagaponack Village, NY' now resolves to us:place:3664452 (Sagaponack, NY)"
 saint-croix-county-wi,us:county:55109,st-croix-county-wi,"'Saint Croix County, WI' now resolves to us:county:55109 (St. Croix County, WI)"
 saint-louis-mo,us:place:2965000,st-louis-mo,"'Saint Louis, MO' now resolves to us:place:2965000 (St. Louis, MO)"
-saint-paul,,city-of-saint-paul,'City of Saint Paul' now resolves to  (City of Saint Paul)
-san-marcos,,city-of-san-marcos,'City of San Marcos' now resolves to  (City of San Marcos)
 sandag-ca,rtr:us:ca:san-diego-association-of-governments,san-diego-association-of-governments-ca,"'Sandag, CA' now resolves to rtr:us:ca:san-diego-association-of-governments (San Diego Association of Governments, CA)"
-sandy,,city-of-sandy,'City of Sandy' now resolves to  (City of Sandy)
 santa-clara,us:place:0669084,santa-clara-ca,"'City of Santa Clara' now resolves to us:place:0669084 (Santa Clara, CA)"
 santa-rosa,us:place:0670098,santa-rosa-ca,"'City of Santa Rosa' now resolves to us:place:0670098 (Santa Rosa, CA)"
 saratoga,us:place:0670280,saratoga-ca,"'City of Saratoga' now resolves to us:place:0670280 (Saratoga, CA)"
-saratoga-springs,,city-of-saratoga-springs,'City of Saratoga Springs' now resolves to  (City of Saratoga Springs)
 saugeenshores,ca:csd:3541045,saugeen-shores-on,"'Saugeenshores' now resolves to ca:csd:3541045 (Saugeen Shores, ON)"
-sb,,city-of-sb,"'City of Sb""' now resolves to  (City of Sb"")"
 scott-county,us:county:27139,scott-county-mn,"'Scott County' now resolves to us:county:27139 (Scott County, MN)"
 sebastopol,us:place:0670770,sebastopol-ca,"'City of Sebastopol' now resolves to us:place:0670770 (Sebastopol, CA)"
 seekonk-ma,us:cousub:2500560645,seekonk-town-ma,"'Seekonk, MA' now resolves to us:cousub:2500560645 (Seekonk Town, MA)"
@@ -509,7 +464,6 @@ seminole,us:place:1264975,seminole-fl,"'City of Seminole' now resolves to us:pla
 sheboygan-wi,us:place:5572975,sheboygan-city-wi,"'Sheboygan, WI' now resolves to us:place:5572975 (Sheboygan (city), WI)"
 shelby-mi,us:place:2672840,shelby-village-mi,"'Shelby, MI' now resolves to us:place:2672840 (Shelby (village), MI)"
 sherman,us:place:4867496,sherman-tx,"'Sherman' now resolves to us:place:4867496 (Sherman, TX)"
-sitka,,city-of-sitka,'City of Sitka' now resolves to  (City of Sitka)
 smithtown-ny,us:cousub:3610368000,smithtown-town-ny,"'SMITHTOWN, NY' now resolves to us:cousub:3610368000 (Smithtown Town, NY)"
 smyrna,us:place:1371492,smyrna-ga,"'City of Smyrna' now resolves to us:place:1371492 (Smyrna, GA)"
 somerville,us:place:2562535,somerville-ma,"'Somerville' now resolves to us:place:2562535 (Somerville, MA)"
@@ -518,23 +472,22 @@ south-windsor-ct,us:cousub:0911071390,south-windsor-town-ct,"'South Windsor, CT'
 south-windsor-public-schools-ct,us:sd:0904170,south-windsor-school-district-ct,"'South Windsor Public Schools, CT' now resolves to us:sd:0904170 (South Windsor School District, CT)"
 southampton,us:place:3668462,southampton-village-ny,"'Southampton' now resolves to us:place:3668462 (Southampton (village), NY)"
 southampton-ny,us:place:3668462,southampton-village-ny,"'Southampton, NY' now resolves to us:place:3668462 (Southampton (village), NY)"
-spokane-valley,,the-city-of-spokane-valley,'The City of Spokane Valley' now resolves to  (The City of Spokane Valley)
 spring-hill-ks,us:place:2067625,spring-hill-city-ks,"'City of Spring Hill, KS' now resolves to us:place:2067625 (Spring Hill (city), KS)"
-st-george,,city-of-st-george,'City of St. George' now resolves to  (City of St. George)
 st-james-mn,us:place:2757040,st-james-city-mn,"'St James, MN' now resolves to us:place:2757040 (St. James (city), MN)"
-st-marys,,city-of-st-marys,'City of St. Marys' now resolves to  (City of St. Marys)
+st-marys,us:place:3969680,st-marys-city-oh,"'City of St. Marys' now resolves to us:place:3969680 (St. Marys (city), OH)"
 st-petersburg,us:place:1263000,st-petersburg-fl,"'City of St. Petersburg' now resolves to us:place:1263000 (St. Petersburg, FL)"
 state-college-borough,us:place:4273808,state-college-pa,"'State College Borough' now resolves to us:place:4273808 (State College, PA)"
 stillwater,us:place:2762824,stillwater-city-mn,"'City of Stillwater' now resolves to us:place:2762824 (Stillwater (city), MN)"
 stjohns,ca:csd:1001519,st-john-s-nl,"'Stjohns' now resolves to ca:csd:1001519 (St. John's, NL)"
 stockbridge,us:place:1373704,stockbridge-ga,"'Stockbridge' now resolves to us:place:1373704 (Stockbridge, GA)"
-stockton,,city-of-stockton,'City of Stockton' now resolves to  (City of Stockton)
 stoneham-ma,us:cousub:2501767665,stoneham-town-ma,"'Stoneham, MA' now resolves to us:cousub:2501767665 (Stoneham Town, MA)"
 strathcona,us:place:2763130,strathcona-mn,"'Strathcona' now resolves to us:place:2763130 (Strathcona, MN)"
 strathroy-caradoc,ca:csd:3539015,strathroy-caradoc-on,"'Strathroy Caradoc' now resolves to ca:csd:3539015 (Strathroy-Caradoc, ON)"
 sturgeon-county,ca:csd:4811059,sturgeon-county-ab,"'Sturgeon County' now resolves to ca:csd:4811059 (Sturgeon County, AB)"
 sturgis,us:place:4662100,sturgis-sd,"'City of Sturgis' now resolves to us:place:4662100 (Sturgis, SD)"
 sturgis-mi,us:place:2676960,sturgis-city-mi,"'City of Sturgis, MI' now resolves to us:place:2676960 (Sturgis (city), MI)"
+subtitles-county,rtr:us:ut:subtitles-county,subtitles-county-ut,"'Subtitles County' now resolves to rtr:us:ut:subtitles-county (Subtitles County, UT)"
+sulphur,us:place:2273640,sulphur-la,"'Sulphur' now resolves to us:place:2273640 (Sulphur, LA)"
 sumter-county,us:county:12119,sumter-county-fl,"'Sumter County' now resolves to us:county:12119 (Sumter County, FL)"
 sun-valley,us:place:1678850,sun-valley-id,"'City of Sun Valley' now resolves to us:place:1678850 (Sun Valley, ID)"
 sunnyvale,us:place:0677000,sunnyvale-ca,"'City of Sunnyvale' now resolves to us:place:0677000 (Sunnyvale, CA)"
@@ -677,12 +630,11 @@ travis,us:county:48453,travis-county-tx,"'Travis' now resolves to us:county:4845
 troy-nh,us:cousub:3300577380,troy-town-nh,"'Troy, NH' now resolves to us:cousub:3300577380 (Troy Town, NH)"
 tuolumne,us:county:06109,tuolumne-county-ca,"'Tuolumne' now resolves to us:county:06109 (Tuolumne County, CA)"
 tustin,us:place:0680854,tustin-ca,"'City of Tustin' now resolves to us:place:0680854 (Tustin, CA)"
-tv-ny,,tv,"'TV, NY' now resolves to  (TV)"
 twinsburg-oh,us:place:3978050,twinsburg-city-oh,"'Twinsburg, OH' now resolves to us:place:3978050 (Twinsburg (city), OH)"
 ukiah,us:place:0681134,ukiah-ca,"'Ukiah' now resolves to us:place:0681134 (Ukiah, CA)"
-umatilla,,city-of-umatilla,'City of Umatilla' now resolves to  (City of Umatilla)
 union-city,us:place:0681204,union-city-ca,"'Union City' now resolves to us:place:0681204 (Union City, CA)"
 union-county,us:county:37179,union-county-nc,"'Union County' now resolves to us:county:37179 (Union County, NC)"
+unknown-jurisdiction,us:place:0620956,east-palo-alto-ca,"'Unknown Jurisdiction' now resolves to us:place:0620956 (East Palo Alto, CA)"
 upper-dublin-pa,us:cousub:4209179008,upper-dublin-township-pa,"'Upper Dublin, PA' now resolves to us:cousub:4209179008 (Upper Dublin Township, PA)"
 vacaville-unified-school-district,us:sd:0640590,vacaville-unified-school-district-ca,"'Vacaville Unified School District' now resolves to us:sd:0640590 (Vacaville Unified School District, CA)"
 van-buren-tn,us:county:47175,van-buren-county-tn,"'Van Buren, TN' now resolves to us:county:47175 (Van Buren County, TN)"
@@ -690,8 +642,7 @@ venice,us:place:1273900,venice-fl,"'Venice' now resolves to us:place:1273900 (Ve
 ventura,us:place:1980580,ventura-ia,"'City of Ventura' now resolves to us:place:1980580 (Ventura, IA)"
 ventura-ca,us:county:06111,ventura-county-ca,"'Ventura, CA' now resolves to us:county:06111 (Ventura County, CA)"
 vermillion-sd,us:place:4666700,vermillion-city-sd,"'Vermillion, SD' now resolves to us:place:4666700 (Vermillion (city), SD)"
-vernon,,city-of-vernon,'City of Vernon' now resolves to  (City of Vernon)
-verona,,city-of-verona,'City of Verona' now resolves to  (City of Verona)
+verona,us:place:5582600,verona-city-wi,"'City of Verona' now resolves to us:place:5582600 (Verona (city), WI)"
 victor-ny,us:place:3677376,victor-village-ny,"'Victor, NY' now resolves to us:place:3677376 (Victor (village), NY)"
 victoria,ca:csd:5917034,victoria-bc,"'Victoria' now resolves to ca:csd:5917034 (Victoria, BC)"
 village-of-addison-il,us:place:1700243,addison-village-il,"'Village of Addison, IL' now resolves to us:place:1700243 (Addison (village), IL)"
@@ -709,6 +660,7 @@ village-of-hanover-park-il,us:place:1732746,hanover-park-il,"'Village of Hanover
 village-of-mokena-il,us:place:1749854,mokena-il,"'Village of Mokena, IL' now resolves to us:place:1749854 (Mokena, IL)"
 village-of-monee-il,us:place:1749945,monee-village-il,"'Village of Monee, IL' now resolves to us:place:1749945 (Monee (village), IL)"
 village-of-moreland-hills-oh,us:place:3952052,moreland-hills-oh,"'Village of Moreland Hills, OH' now resolves to us:place:3952052 (Moreland Hills, OH)"
+village-of-northfield,us:place:1753663,northfield-village-il,"'Village of Northfield' now resolves to us:place:1753663 (Northfield (village), IL)"
 village-of-patchogue-ny,us:place:3656660,patchogue-ny,"'Village of Patchogue, NY' now resolves to us:place:3656660 (Patchogue, NY)"
 village-of-pinecrest-fl,us:place:1256625,pinecrest-fl,"'Village of Pinecrest, FL' now resolves to us:place:1256625 (Pinecrest, FL)"
 village-of-rye-brook-ny,us:place:3664325,rye-brook-ny,"'Village of Rye Brook, NY' now resolves to us:place:3664325 (Rye Brook, NY)"
@@ -722,22 +674,18 @@ virginia-senate,us:state:51,state-of-virginia,'Virginia Senate' now resolves to 
 vista,us:place:0682996,vista-ca,"'City of Vista' now resolves to us:place:0682996 (Vista, CA)"
 wake,us:county:37183,wake-county-nc,"'Wake' now resolves to us:county:37183 (Wake County, NC)"
 wakefield-ma,us:cousub:2501772215,wakefield-town-ma,"'Wakefield, MA' now resolves to us:cousub:2501772215 (Wakefield Town, MA)"
-walker,,city-of-walker,'City of Walker' now resolves to  (City of Walker)
-walnut,,city-of-walnut,'City of Walnut' now resolves to  (City of Walnut)
 walnut-creek,us:place:0683346,walnut-creek-ca,"'City of Walnut Creek' now resolves to us:place:0683346 (Walnut Creek, CA)"
 walworth-county,us:county:55127,walworth-county-wi,"'Walworth County' now resolves to us:county:55127 (Walworth County, WI)"
 walworth-wi,us:place:5583250,walworth-village-wi,"'Walworth, WI' now resolves to us:place:5583250 (Walworth (village), WI)"
 waukesha-wi,us:place:5584250,waukesha-city-wi,"'City of Waukesha, WI' now resolves to us:place:5584250 (Waukesha (city), WI)"
-waverly,,city-of-waverly,'City of Waverly' now resolves to  (City of Waverly)
-wayne,,city-of-wayne,'City of Wayne' now resolves to  (City of Wayne)
+wayne,us:place:2684940,wayne-city-mi,"'City of Wayne' now resolves to us:place:2684940 (Wayne (city), MI)"
 wellington,us:place:1275812,wellington-fl,"'Wellington' now resolves to us:place:1275812 (Wellington, FL)"
+westfield,us:place:3479040,westfield-nj,"'Westfield' now resolves to us:place:3479040 (Westfield, NJ)"
 westminster,us:place:0684550,westminster-ca,"'City of Westminster' now resolves to us:place:0684550 (Westminster, CA)"
 westport-ct,us:cousub:0919083500,westport-town-ct,"'Westport, CT' now resolves to us:cousub:0919083500 (Westport Town, CT)"
-white-rock,,city-of-white-rock,'City of White Rock' now resolves to  (City of White Rock)
 whitehouse,us:place:4878388,whitehouse-tx,"'City of Whitehouse' now resolves to us:place:4878388 (Whitehouse, TX)"
 whitewater-wi,us:place:5586925,whitewater-city-wi,"'Whitewater, WI' now resolves to us:place:5586925 (Whitewater (city), WI)"
 williams-county,us:county:38105,williams-county-nd,"'Williams County' now resolves to us:county:38105 (Williams County, ND)"
-williamsburg,,city-of-williamsburg,'City of Williamsburg' now resolves to  (City of Williamsburg)
 wilmington,us:place:3774440,wilmington-nc,"'Wilmington' now resolves to us:place:3774440 (Wilmington, NC)"
 wilson-county-schools-tn,us:sd:4704550,wilson-county-school-district-tn,"'Wilson County Schools, TN' now resolves to us:sd:4704550 (Wilson County School District, TN)"
 winchester,us:county:51840,winchester-city-va,"'Winchester' now resolves to us:county:51840 (Winchester city, VA)"
@@ -745,7 +693,7 @@ windsor-ct,us:cousub:0911087000,windsor-town-ct,"'Windsor, CT' now resolves to u
 winona,us:place:2771032,winona-mn,"'Winona' now resolves to us:place:2771032 (Winona, MN)"
 winter-park,us:place:1278300,winter-park-fl,"'Winter Park' now resolves to us:place:1278300 (Winter Park, FL)"
 woodbury,us:county:19193,woodbury-county-ia,"'Woodbury' now resolves to us:county:19193 (Woodbury County, IA)"
-woodland,,city-of-woodland,'City of Woodland' now resolves to  (City of Woodland)
+woodland,us:place:0686328,woodland-ca,"'Woodland' now resolves to us:place:0686328 (Woodland, CA)"
 woodstock-il,us:place:1783349,woodstock-city-il,"'City of Woodstock, IL' now resolves to us:place:1783349 (Woodstock (city), IL)"
 woonsocket,us:place:4480780,woonsocket-ri,"'City of Woonsocket' now resolves to us:place:4480780 (Woonsocket, RI)"
 worthington-oh,us:place:3986604,worthington-city-oh,"'Worthington, OH' now resolves to us:place:3986604 (Worthington (city), OH)"

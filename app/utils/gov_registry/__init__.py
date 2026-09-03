@@ -48,6 +48,7 @@ pinning the two together (see `display.slugify()`), don't reach across.
 
 from .classify import GOVERNMENT_TYPES, classify_government_type
 from .display import display_name, hub_slug, slugify
+from .tables import state_gov_id
 from .registry import (
     Government,
     TenantOverride,
@@ -84,5 +85,6 @@ __all__ = [
     "hub_slug",
     "resolve_government",
     "slugify",
+    "state_gov_id",
     "tenant_overrides",
 ]

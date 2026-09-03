@@ -646,11 +646,17 @@ def _write_hub_slug_aliases(all_rows: List[dict]) -> int:
     which is what would happen if the raw before/after pairs were dumped
     unfiltered.
     """
-    live = {r["new_hub_slug"] for r in all_rows if r["new_hub_slug"]}
+    # A row with no `gov_id` is `unresolved` or `blank`: it has no
+    # government, so it has no hub, and `_hub_identity()` will keep
+    # filing its page under the OLD display slug. 82 such aliases were
+    # written before this guard and every one pointed at a hub that would
+    # 404 -- `/j/cottage-grove` -> `/j/city-of-cottage-grove`, a redirect
+    # to nothing, which is strictly worse than the 404 it replaced.
+    live = {r["new_hub_slug"] for r in all_rows if r["new_hub_slug"] and r["gov_id"]}
     rows: Dict[str, dict] = {}
     for r in all_rows:
         old, new = r["old_hub_slug"], r["new_hub_slug"]
-        if not old or not new or old == new or old in live:
+        if not r["gov_id"] or not old or not new or old == new or old in live:
             continue
         rows.setdefault(
             old,

@@ -40,6 +40,7 @@ from app.utils.gov_registry import display_name as gov_display_name
 from app.utils.gov_registry import government_for_id as registry_government_for_id
 from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
+from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
 
 from ..utils.date_status import (
@@ -6463,6 +6464,25 @@ async def get_home_highlights(topic_slug: Optional[str] = None) -> dict:
     }
 
 
+def _state_scope_condition(abbr: str):
+    """Every page belonging to one state or province.
+
+    The anchored ", CA" suffix on the display name, which
+    normalize_state_suffix() guarantees at write time, plus the state's
+    OWN government by id. That second arm exists because decision D1
+    makes the State of California one government whose Senate and
+    departments are `meeting_body` rows under it -- so its display name
+    is "State of California", with no suffix to anchor on. Found in a
+    browser check of the rebuilt page: the new "State government" heading
+    could never have held a row without this.
+    """
+    conditions = [MeetingPage.jurisdiction.like(f"%, {abbr}")]
+    gov_id = state_gov_id(abbr)
+    if gov_id:
+        conditions.append(MeetingPage.gov_id == gov_id)
+    return or_(*conditions)
+
+
 async def get_state_page_data(
     abbr: str, topic_slug: Optional[str] = None
 ) -> Optional[dict]:
@@ -6510,7 +6530,7 @@ async def get_state_page_data(
                 ),
             )
             .where(
-                MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                _state_scope_condition(abbr),
                 MeetingPage.platform != "unknown",
             )
         )
@@ -6532,8 +6552,12 @@ async def get_state_page_data(
         ) in rows:
             # LIKE is case-insensitive on SQLite (dev/tests), so re-check
             # the suffix exactly -- keeps dev and prod (case-sensitive
-            # Postgres LIKE) behaving identically.
-            if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+            # Postgres LIKE) behaving identically. A state government is
+            # matched by its id instead and skips the suffix check, since
+            # "State of California" deliberately has no ", CA" on it.
+            if gov_id != state_gov_id(abbr) and (
+                state_abbr_from_jurisdiction(jurisdiction) != abbr
+            ):
                 continue
             has_transcript = (
                 version_id is not None and _has_real_warning_free_transcript(warnings)

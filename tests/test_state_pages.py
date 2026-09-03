@@ -430,6 +430,27 @@ async def test_crud_get_national_government_list_scopes_to_us_states():
     assert sacramento["gov_type"] == "county"
 
 
+async def test_a_state_government_appears_on_its_own_state_page():
+    """Decision D1 makes the State of California ONE government whose
+    Senate and departments are `meeting_body` rows under it -- so its
+    display name is "State of California", with no ", CA" suffix for the
+    state page's anchored LIKE to match. Found in a browser check of the
+    rebuilt page (WO-99): the new "State government" heading could never
+    have held a row, because nothing mapped a state abbreviation to its
+    own `us:state:` id."""
+    await _seed(
+        "granicus:state-senate-d1",
+        jurisdiction="California State Senate",
+        title="Senate Floor Session",
+    )
+    data = await crud.get_state_page_data("CA")
+    senate = [j for j in data["jurisdictions"] if j["gov_type"] == "state"]
+    assert len(senate) == 1
+    assert senate[0]["jurisdiction"] == "State of California"
+    assert senate[0]["hub_slug"] == "state-of-california"
+    assert "state" in {g["key"] for g in data["government_groups"]}
+
+
 async def test_crud_get_national_government_list_excludes_unknown_platform():
     await _seed_all()
     rows = await crud.get_national_government_list()
