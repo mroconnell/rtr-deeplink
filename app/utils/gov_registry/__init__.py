@@ -64,6 +64,7 @@ from .resolver import (
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
     GovernmentMatch,
+    is_own_name,
     resolve_government,
 )
 
@@ -81,6 +82,7 @@ __all__ = [
     "classify_government_type",
     "display_name",
     "government_for_id",
+    "is_own_name",
     "governments",
     "hub_slug",
     "resolve_government",

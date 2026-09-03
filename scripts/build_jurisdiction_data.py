@@ -323,6 +323,108 @@ def build_canada_places(canada_source_dir: Path) -> None:
 _ONTARIO_REGIONAL_MUNICIPALITIES = ["Durham", "Peel", "Waterloo"]
 
 
+# Which of Canada's 13 provinces/territories actually call their
+# upper-tier census divisions "County" in real, everyday usage -- the
+# rest use a different word entirely, and appending "County" to their
+# names would be fabricating a government type that doesn't exist, not
+# a translation:
+#
+#   ON, NS, NB, PE  the only four that are genuinely counties -- Bruce
+#                   County, Yarmouth County, Charlotte County, Kings
+#                   County, confirmed against each province's own
+#                   Municipal Affairs department (real, standing
+#                   provincial-level administrative divisions).
+#   BC              "Regional District" (East Kootenay, Fraser Valley --
+#                   `ca_cd.csv`'s BC rows are exactly the real Regional
+#                   District names, bare).
+#   QC              "MRC" / municipalité régionale de comté -- a French
+#                   name, not an English "County" at all.
+#   AB, MB, NL, SK  "Division No. N" -- Census statistical divisions with
+#                   no governing county council; nobody calls these
+#                   "County".
+#   NT              "Region N" -- same, a statistical division.
+#   NU              Qikiqtaaluk/Kivalliq/Kitikmeot -- regions, not
+#                   counties.
+#   YT              One territory-wide census division ("Yukon" itself);
+#                   Yukon has no county-level government at all.
+#
+# Scoped to public, stable facts about provincial government structure --
+# not per-tenant confirmation the way a `tenant_overrides.csv` pin needs,
+# because this is reference data (what a name IS), the same category
+# `build_canada_places()` already added for all 5,028 Canadian CSDs in
+# one shot with no per-row live check.
+_ENGLISH_COUNTY_PROVINCES = {"ON", "NS", "NB", "PE"}
+
+
+def build_canada_counties(canada_source_dir: Path) -> None:
+    """Appends Canada's real, English-language "County"-named census
+    divisions into the SAME counties.csv the US build_counties() above
+    writes -- architecture doc SS4/CLAUDE.md's own "the resolver can key
+    a Canadian county but jurisdiction_enrich's state-recovery can't see
+    one at all" gap (Bruce County ON never got a province, because
+    `_COUNTY_STATES` only ever had US rows). Same additive pattern as
+    `build_canada_places()`: reads whatever counties.csv already has and
+    adds Canada's rows on top, from the SAME real SGC 2021 structure file
+    that function and `scripts/build_gov_registry_data.py::build_ca_cd()`
+    both already read (Level "3" = census division) -- independently
+    re-derived rather than reading `ca_cd.csv`'s own output, matching
+    this file's existing convention that the two build scripts stay
+    independent entry points (see `_SGC_PROVINCE_CODES`'s own comment).
+
+    Only `_ENGLISH_COUNTY_PROVINCES` rows are added, and "County" is
+    appended to each -- `ca_cd.csv` stores these bare ("Bruce", "Elgin",
+    not "Bruce County"), which is correct for an ID-bearing table where a
+    government TYPE code sits in a separate column, but wrong for this
+    one: `counties.csv` has no type column, every existing US row already
+    spells the type word IN the name ("Abbeville County", "Acadia
+    Parish"), and `_normalize_candidates()`'s query-side matching tries
+    the UNSTRIPPED lowercased form FIRST -- a real page's "Bruce County"
+    has to equal a stored key of "bruce county", not "bruce", to match on
+    that first (most common) try.
+    """
+    text = (canada_source_dir / "sgc-cgt-2021-structure-eng.csv").read_text(
+        encoding="latin-1"
+    )
+    rows = list(csv.DictReader(text.splitlines()))
+
+    existing_rows: List[Tuple[str, str]] = []
+    counties_path = OUT_DIR / "counties.csv"
+    if counties_path.exists():
+        with open(counties_path, encoding="utf-8") as f:
+            existing_rows = [(r["name"], r["state"]) for r in csv.DictReader(f)]
+
+    canada_rows: List[Tuple[str, str]] = []
+    skipped_other_word = 0
+    for r in rows:
+        if r["Level"] != "3":  # Level 3 = "Census division"
+            continue
+        code = r["Code"].strip()
+        prov = _SGC_PROVINCE_CODES.get(code[:2])
+        if not prov:
+            continue
+        if prov not in _ENGLISH_COUNTY_PROVINCES:
+            skipped_other_word += 1
+            continue
+        canada_rows.append((f"{r['Class title'].strip()} County", prov))
+
+    if skipped_other_word:
+        print(
+            f"build_canada_counties: skipped {skipped_other_word} census divisions "
+            'whose province doesn\'t call them "County" (Regional District/MRC/'
+            "statistical division)"
+        )
+
+    combined = sorted(set(existing_rows) | set(canada_rows))
+    with open(counties_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["name", "state"])
+        writer.writerows(combined)
+    print(
+        f"counties.csv: added {len(set(canada_rows))} Canadian county rows "
+        f"({len(combined)} total, was {len(existing_rows)})"
+    )
+
+
 def build_canada_regional_municipalities() -> None:
     """Appends the curated list above into the same places.csv
     build_canada_places() just wrote to -- additive, same union-with-
@@ -393,3 +495,4 @@ if __name__ == "__main__":
     if canada_dir:
         build_canada_places(canada_dir)
         build_canada_regional_municipalities()
+        build_canada_counties(canada_dir)

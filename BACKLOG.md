@@ -155,7 +155,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (59)
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
     `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
     `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
-    `[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to…
+    `[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints`…
     `[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real…
     `[NEEDS-AUDIT]` Derry NH has no known-jurisdictions entry.
     `[NEEDS-AUDIT]` Jurisdiction-bleed single-word-tail gap: Castle Rock
@@ -1146,7 +1146,10 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     the prefix is a hint, not a rule.
   - **History**: WO-100 (2026-09-03);
     `reports/gov_registry_scoring_2026-09-03/pin_worklist.csv`,
-    `reason=multiple_governments`.
+    `reason=multiple_governments`. That frozen copy is still the one with
+    the `multiple_governments` section — WO-103's regenerated
+    `reports/pin_worklist.csv` is one row per tenant that WANTS a pin and
+    deliberately does not carry it.
 
 - **`[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show two different names.**
   - **Issue**: `_display_jurisdiction()` (`archive/db/crud.py`) rewrites
@@ -1200,36 +1203,67 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     escribe 41, swagit 39, iqm2 5, civicclerk 4, unknown 4, telvue 2,
     and one each of castus / champds / townhallstreams / vimeo (39
     cablecast and 14 granicus hosts were unreachable outright).
+    **Correction (WO-103, same day)**: the Cablecast row above undercounts
+    this entry's own real yield. The sweep's `_landing_url()` sent every
+    Cablecast host to `/CablecastPublicSite/`, which 404s on every real
+    host checked (`huron-township`, `wilson-co-schools`, `cerritos`, all
+    confirmed live) — the host ROOT 200s instead, and its
+    `<title>`/`og:site_name` already carry the real government name
+    ("Huron Charter Township"), exactly the shape `candidate_names()`
+    already reads. So an unknown share of "cablecast 61 unresolved" /
+    "unreachable outright" is really a wrong-path 404 this entry
+    mischaracterized as a content gap, not a genuine "landing page
+    doesn't name its customer" case the way eScribe/Swagit/CivicClerk are.
   - **Next action**: for eScribe, read the organisation name from a
     real `Meeting.aspx` page instead of the listing (the adapter already
     fetches those, and the archive holds an example slug per host); for
     CivicClerk, its public API already returns `location.city/state` and
     the adapter already reads it. Both are per-platform work, not more
-    sweeping.
+    sweeping. **Cablecast's own next action changed**: re-run
+    `scripts/sweep_tenant_landing_pages.py --apply` now that
+    `_landing_url()` sends it to root (WO-103) — likely real, immediate
+    pins among the 61 currently unresolved, no code change needed to get
+    them, just the fixed path.
   - **Constraint**: one fetch per host, politely paced, and read-only —
     `scripts/sweep_tenant_landing_pages.py` is the shape to extend, not
     a crawl.
   - **History**: WO-99 step 8 (2026-09-02);
     `reports/landing_page_sweep.csv` has what each host actually
     returned, and the script's `_PLATFORM_PATHS` comment records the
-    per-platform measurements.
+    per-platform measurements. WO-103 (2026-09-03) fixed the Cablecast
+    404 (see the correction above) and left eScribe/Swagit/CivicClerk's
+    real "doesn't name its customer" gap untouched — that part still
+    needs the per-platform work in **Next action**. Two smaller changes
+    landed alongside it: `reports/pin_worklist.csv` now carries a
+    hostname/slug-derived `proposed_name` on 5 of the 43 eScribe rows and
+    7 of the 40 Swagit ones, which settles a few of these without a fetch;
+    and the sweep now skips the four shared YouTube netlocs rather than
+    every page whose video is on YouTube, so hosts like
+    `www.townofrossca.gov` are in its scope for the first time.
 
-- **`[NEEDS-AUDIT]` `[EXAMPLE]` YouTube-hosted pages have no tenant to pin, so 117 worklist rows need a different method.**
-  - **Issue**: every YouTube row in `pin_worklist.csv` shares
-    `www.youtube.com` / `youtu.be`, so the host is not the tenant — the
-    channel id in `match` is. A landing-page fetch for the shared host
-    would name Google. `scripts/sweep_tenant_landing_pages.py` skips
-    them explicitly rather than counting them as failures.
-  - **Impact**: 117 of the 447 worklist rows, the second-largest block
-    after Granicus.
-  - **Next action**: fetch the CHANNEL page per channel id and read its
-    name, writing a `tenant_overrides.csv` row with `match=<channel id>`
-    — the `match` discriminator exists for exactly this (architecture
-    doc §4) and nothing uses it yet.
-  - **Constraint**: yt-dlp is the only reliable YouTube client here (see
-    CLAUDE.md), and channel extraction is not lazy — `playlistend` is
-    load-bearing.
-  - **History**: WO-99 step 8 (2026-09-02).
+- **`[NEEDS-AUDIT]` `[EASY]` `resolve_government()`'s `page_hints` argument is never passed by anything.**
+  - **Issue**: `_match_override()` satisfies a `tenant_overrides.csv`
+    `match` three ways — the page's path, a `key=value` in its query, or
+    a `page_hints` entry. The first two work. The third is dead: neither
+    `crud._resolve_page_government()` nor `scripts/backfill_gov_id.py`
+    builds a `page_hints` dict, so a `match` value that is not in the URL
+    can never fire.
+  - **Impact**: a pin written against a discriminator the URL does not
+    carry is **silently inert** — no error, no log line, and the worklist
+    row reads as settled while its pages stay `unresolved`. WO-103 nearly
+    shipped 46 of them (YouTube channel handles) and works around it by
+    expanding one channel decision into one pin per video id instead.
+  - **Next action**: decide whether to pass real hints (the resolver
+    payload already knows the platform, the external id, and for YouTube
+    the channel once something looks it up) or to delete the branch. Do
+    not leave it as is — a discriminator that fails open is worse than
+    one that does not exist.
+  - **Constraint**: whatever is passed must be available at BOTH call
+    sites, or the backfill and live ingest will disagree about which pin
+    applies to the same page.
+  - **History**: WO-103 (2026-09-03), found while building
+    `scripts/apply_pin_worklist.py`; `_match_override()` in
+    `app/utils/gov_registry/resolver.py`.
 
 - **`[NEEDS-AUDIT]` `uatccta.primegov.com` is the first real multi-government tenant and still has no `match` discriminator.**
   - **Issue**: it is listed under El Cerrito **and** San Pablo in

@@ -182,6 +182,13 @@ class NameStateTable:
     def get(self, row_id: str) -> Optional[TableRow]:
         return self._by_id.get(row_id)
 
+    def rows(self) -> List[TableRow]:
+        """Every row, for a caller that needs to build its own index over
+        the table rather than look a name up in it -- e.g. the
+        school-district acronym index in `scripts/build_pin_worklist.py`,
+        which reads a hostname like `pgcps` as a set of initials."""
+        return list(self._by_id.values())
+
     def lookup_all(self, name: str, state: Optional[str]) -> List[TableRow]:
         """Every row matching `name`, at the first normalization key that
         matches anything -- so a caller can break a tie the exactly-one

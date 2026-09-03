@@ -578,15 +578,26 @@ def test_a_pin_to_a_government_not_yet_in_governments_csv_still_applies():
 
 def test_every_tenant_override_row_has_a_resolvable_gov_id():
     """§4: every row in `tenant_overrides.csv` needs a gov_id, and that
-    gov_id needs a `governments.csv` row -- a pin whose name nothing can
-    render is a broken registry, not a resolution."""
-    govs = registry.governments()
+    gov_id needs to RENDER -- a pin whose name nothing can produce is a
+    broken registry, not a resolution (`_pinned()` looks the id up and
+    falls through to the ladder when it misses, so the host stays exactly
+    as unresolved as before, with a pin claiming otherwise).
+
+    Through `government_for_id()`, which is what `_pinned()` itself calls,
+    rather than through `governments()` alone. That file is a generated
+    snapshot of what some scoring run resolved TO, so a pin to a real
+    national government no page has reached yet is absent from it by
+    construction -- `us:county:24017` (Charles County, MD), the first pin
+    `scripts/apply_pin_worklist.py` had occasion to write, is exactly
+    that. `government_for_id()` derives such a row from the national
+    table, which is exact rather than a guess, and still returns None for
+    garbage and for a minted `rtr:` id with no committed row."""
     missing = sorted(
         {
             override.gov_id
             for rows in registry.tenant_overrides().values()
             for override in rows
-            if override.gov_id not in govs
+            if registry.government_for_id(override.gov_id) is None
         }
     )
     assert missing == []

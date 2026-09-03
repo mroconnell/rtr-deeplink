@@ -34,6 +34,7 @@ Alamosa County,CO
 Albany County,NY
 Albany County,WY
 Albemarle County,VA
+Albert County,NB
 Alcona County,MI
 Alcorn County,MS
 Aleutians East Borough,AK
@@ -43,6 +44,7 @@ Alexander County,NC
 Alexandria city,VA
 Alfalfa County,OK
 Alger County,MI
+Algoma County,ON
 Allamakee County,IA
 Allegan County,MI
 Allegany County,MD
@@ -72,10 +74,12 @@ Andrew County,MO
 Andrews County,TX
 Androscoggin County,ME
 Angelina County,TX
+Annapolis County,NS
 Anne Arundel County,MD
 Anoka County,MN
 Anson County,NC
 Antelope County,NE
+Antigonish County,NS
 Antrim County,MI
 Apache County,AZ
 Appanoose County,IA
@@ -271,6 +275,7 @@ Bradford County,PA
 Bradley County,AR
 Bradley County,TN
 Branch County,MI
+Brant County,ON
 Brantley County,GA
 Braxton County,WV
 Brazoria County,TX
@@ -303,6 +308,7 @@ Brown County,OH
 Brown County,SD
 Brown County,TX
 Brown County,WI
+Bruce County,ON
 Brule County,SD
 Brunswick County,NC
 Brunswick County,VA
@@ -396,6 +402,7 @@ Candler County,GA
 Cannon County,TN
 Canyon County,ID
 CanÃ³vanas Municipio,PR
+Cape Breton County,NS
 Cape Girardeau County,MO
 Cape May County,NJ
 Capitol Planning Region,CT
@@ -404,6 +411,7 @@ Carbon County,PA
 Carbon County,UT
 Carbon County,WY
 Caribou County,ID
+Carleton County,NB
 Carlisle County,KY
 Carlton County,MN
 Carolina Municipio,PR
@@ -473,6 +481,7 @@ Charles Mix County,SD
 Charleston County,SC
 Charlevoix County,MI
 Charlotte County,FL
+Charlotte County,NB
 Charlotte County,VA
 Charlottesville city,VA
 Charlton County,GA
@@ -480,6 +489,7 @@ Chase County,KS
 Chase County,NE
 Chatham County,GA
 Chatham County,NC
+Chatham-Kent County,ON
 Chattahoochee County,GA
 Chattooga County,GA
 Chautauqua County,KS
@@ -607,6 +617,7 @@ Coamo Municipio,PR
 Cobb County,GA
 Cochise County,AZ
 Cochran County,TX
+Cochrane County,ON
 Cocke County,TN
 Coconino County,AZ
 Codington County,SD
@@ -616,6 +627,7 @@ Coffee County,TN
 Coffey County,KS
 Coke County,TX
 Colbert County,AL
+Colchester County,NS
 Cole County,MO
 Coleman County,TX
 Coles County,IL
@@ -714,6 +726,7 @@ Cumberland County,KY
 Cumberland County,ME
 Cumberland County,NC
 Cumberland County,NJ
+Cumberland County,NS
 Cumberland County,PA
 Cumberland County,TN
 Cumberland County,VA
@@ -811,6 +824,7 @@ Dickinson County,IA
 Dickinson County,KS
 Dickinson County,MI
 Dickson County,TN
+Digby County,NS
 Dillingham Census Area,AK
 Dillon County,SC
 Dimmit County,TX
@@ -851,6 +865,7 @@ DuPage County,IL
 Dubois County,IN
 Dubuque County,IA
 Duchesne County,UT
+Dufferin County,ON
 Dukes County,MA
 Dundy County,NE
 Dunklin County,MO
@@ -858,6 +873,7 @@ Dunn County,ND
 Dunn County,WI
 Duplin County,NC
 Durham County,NC
+Durham County,ON
 Dutchess County,NY
 Duval County,FL
 Duval County,TX
@@ -889,6 +905,7 @@ El Paso County,CO
 El Paso County,TX
 Elbert County,CO
 Elbert County,GA
+Elgin County,ON
 Elk County,KS
 Elk County,PA
 Elkhart County,IN
@@ -916,6 +933,7 @@ Esmeralda County,NV
 Essex County,MA
 Essex County,NJ
 Essex County,NY
+Essex County,ON
 Essex County,VA
 Essex County,VT
 Estill County,KY
@@ -1019,6 +1037,7 @@ Fremont County,ID
 Fremont County,WY
 Fresno County,CA
 Frio County,TX
+Frontenac County,ON
 Frontier County,NE
 Fulton County,AR
 Fulton County,GA
@@ -1079,6 +1098,7 @@ Gladwin County,MI
 Glascock County,GA
 Glasscock County,TX
 Glenn County,CA
+Gloucester County,NB
 Gloucester County,NJ
 Gloucester County,VA
 Glynn County,GA
@@ -1132,6 +1152,7 @@ Grayson County,KY
 Grayson County,TX
 Grayson County,VA
 Greater Bridgeport Planning Region,CT
+Greater Sudbury / Grand Sudbury County,ON
 Greeley County,KS
 Greeley County,NE
 Green County,KY
@@ -1162,6 +1183,7 @@ Greer County,OK
 Gregg County,TX
 Gregory County,SD
 Grenada County,MS
+Grey County,ON
 Griggs County,ND
 Grimes County,TX
 Grundy County,IA
@@ -1179,18 +1201,23 @@ Gulf County,FL
 Gunnison County,CO
 Gurabo Municipio,PR
 Guthrie County,IA
+Guysborough County,NS
 GuÃ¡nica Municipio,PR
 Gwinnett County,GA
 Haakon County,SD
 Habersham County,GA
 Haines Borough,AK
+Haldimand-Norfolk County,ON
 Hale County,AL
 Hale County,TX
+Haliburton County,ON
 Halifax County,NC
+Halifax County,NS
 Halifax County,VA
 Hall County,GA
 Hall County,NE
 Hall County,TX
+Halton County,ON
 Hamblen County,TN
 Hamilton County,FL
 Hamilton County,IA
@@ -1200,6 +1227,7 @@ Hamilton County,KS
 Hamilton County,NE
 Hamilton County,NY
 Hamilton County,OH
+Hamilton County,ON
 Hamilton County,TN
 Hamilton County,TX
 Hamlin County,SD
@@ -1222,6 +1250,7 @@ Hand County,SD
 Hanover County,VA
 Hansford County,TX
 Hanson County,SD
+Hants County,NS
 Haralson County,GA
 Hardee County,FL
 Hardeman County,TN
@@ -1261,6 +1290,7 @@ Harvey County,KS
 Haskell County,KS
 Haskell County,OK
 Haskell County,TX
+Hastings County,ON
 Hatillo Municipio,PR
 Hawaii County,HI
 Hawkins County,TN
@@ -1363,6 +1393,7 @@ Huntingdon County,PA
 Huntington County,IN
 Huron County,MI
 Huron County,OH
+Huron County,ON
 Hutchinson County,SD
 Hutchinson County,TX
 Hyde County,NC
@@ -1376,6 +1407,7 @@ Independence County,AR
 Indian River County,FL
 Indiana County,PA
 Ingham County,MI
+Inverness County,NS
 Inyo County,CA
 Ionia County,MI
 Iosco County,MI
@@ -1514,6 +1546,7 @@ Kankakee County,IL
 Karnes County,TX
 Kauai County,HI
 Kaufman County,TX
+Kawartha Lakes County,ON
 Kay County,OK
 Kearney County,NE
 Kearny County,KS
@@ -1524,10 +1557,12 @@ Kendall County,IL
 Kendall County,TX
 Kenedy County,TX
 Kennebec County,ME
+Kenora County,ON
 Kenosha County,WI
 Kent County,DE
 Kent County,MD
 Kent County,MI
+Kent County,NB
 Kent County,RI
 Kent County,TX
 Kenton County,KY
@@ -1550,7 +1585,10 @@ King and Queen County,VA
 Kingfisher County,OK
 Kingman County,KS
 Kings County,CA
+Kings County,NB
+Kings County,NS
 Kings County,NY
+Kings County,PE
 Kingsbury County,SD
 Kinney County,TX
 Kiowa County,CO
@@ -1619,8 +1657,10 @@ Lamar County,GA
 Lamar County,MS
 Lamar County,TX
 Lamb County,TX
+Lambton County,ON
 Lamoille County,VT
 Lampasas County,TX
+Lanark County,ON
 Lancaster County,NE
 Lancaster County,PA
 Lancaster County,SC
@@ -1677,11 +1717,13 @@ Lee County,NC
 Lee County,SC
 Lee County,TX
 Lee County,VA
+Leeds and Grenville County,ON
 Leelanau County,MI
 Leflore County,MS
 Lehigh County,PA
 Lemhi County,ID
 Lenawee County,MI
+Lennox and Addington County,ON
 Lenoir County,NC
 Leon County,FL
 Leon County,TX
@@ -1776,6 +1818,7 @@ Lucas County,OH
 Luce County,MI
 Lumpkin County,GA
 Luna County,NM
+Lunenburg County,NS
 Lunenburg County,VA
 Luquillo Municipio,PR
 Luzerne County,PA
@@ -1797,6 +1840,7 @@ Macon County,MO
 Macon County,NC
 Macon County,TN
 Macoupin County,IL
+Madawaska County,NB
 Madera County,CA
 Madison County,AL
 Madison County,AR
@@ -1829,6 +1873,7 @@ Manassas city,VA
 Manatee County,FL
 ManatÃ­ Municipio,PR
 Manistee County,MI
+Manitoulin County,ON
 Manitowoc County,WI
 Marathon County,WI
 Marengo County,AL
@@ -1964,6 +2009,7 @@ Miami County,OH
 Miami-Dade County,FL
 Middlesex County,MA
 Middlesex County,NJ
+Middlesex County,ON
 Middlesex County,VA
 Midland County,MI
 Midland County,TX
@@ -2087,6 +2133,7 @@ Muscogee County,GA
 Muskegon County,MI
 Muskingum County,OH
 Muskogee County,OK
+Muskoka County,ON
 Musselshell County,MT
 Nacogdoches County,TX
 Naguabo Municipio,PR
@@ -2129,10 +2176,12 @@ Newton County,MS
 Newton County,TX
 Nez Perce County,ID
 Niagara County,NY
+Niagara County,ON
 Nicholas County,KY
 Nicholas County,WV
 Nicollet County,MN
 Niobrara County,WY
+Nipissing County,ON
 Noble County,IN
 Noble County,OH
 Noble County,OK
@@ -2148,6 +2197,8 @@ Northampton County,NC
 Northampton County,PA
 Northampton County,VA
 Northeastern Connecticut Planning Region,CT
+Northumberland County,NB
+Northumberland County,ON
 Northumberland County,PA
 Northumberland County,VA
 Northwest Arctic Borough,AK
@@ -2226,6 +2277,7 @@ Ottawa County,KS
 Ottawa County,MI
 Ottawa County,OH
 Ottawa County,OK
+Ottawa County,ON
 Otter Tail County,MN
 Ouachita County,AR
 Ouachita Parish,LA
@@ -2237,6 +2289,7 @@ Owen County,KY
 Owsley County,KY
 Owyhee County,ID
 Oxford County,ME
+Oxford County,ON
 Ozark County,MO
 Ozaukee County,WI
 Pacific County,WA
@@ -2254,6 +2307,7 @@ Park County,WY
 Parke County,IN
 Parker County,TX
 Parmer County,TX
+Parry Sound County,ON
 Pasco County,FL
 Pasquotank County,NC
 Passaic County,NJ
@@ -2269,6 +2323,7 @@ Payne County,OK
 Peach County,GA
 Pearl River County,MS
 Pecos County,TX
+Peel County,ON
 Pembina County,ND
 Pemiscot County,MO
 Pend Oreille County,WA
@@ -2295,6 +2350,8 @@ Perry County,PA
 Perry County,TN
 Pershing County,NV
 Person County,NC
+Perth County,ON
+Peterborough County,ON
 Petersburg Borough,AK
 Petersburg city,VA
 Petroleum County,MT
@@ -2313,6 +2370,7 @@ Pickens County,AL
 Pickens County,GA
 Pickens County,SC
 Pickett County,TN
+Pictou County,NS
 Pierce County,GA
 Pierce County,ND
 Pierce County,NE
@@ -2394,10 +2452,13 @@ Prairie County,MT
 Pratt County,KS
 Preble County,OH
 Prentiss County,MS
+Prescott and Russell County,ON
 Presidio County,TX
 Presque Isle County,MI
 Preston County,WV
 Price County,WI
+Prince County,PE
+Prince Edward County,ON
 Prince Edward County,VA
 Prince George County,VA
 Prince George's County,MD
@@ -2426,13 +2487,17 @@ Putnam County,WV
 Quay County,NM
 Quebradillas Municipio,PR
 Queen Anne's County,MD
+Queens County,NB
+Queens County,NS
 Queens County,NY
+Queens County,PE
 Quitman County,GA
 Quitman County,MS
 Rabun County,GA
 Racine County,WI
 Radford city,VA
 Rains County,TX
+Rainy River County,ON
 Raleigh County,WV
 Ralls County,MO
 Ramsey County,MN
@@ -2462,11 +2527,13 @@ Red Willow County,NE
 Redwood County,MN
 Reeves County,TX
 Refugio County,TX
+Renfrew County,ON
 Reno County,KS
 Rensselaer County,NY
 Renville County,MN
 Renville County,ND
 Republic County,KS
+Restigouche County,NB
 Reynolds County,MO
 Rhea County,TN
 Rice County,KS
@@ -2482,6 +2549,7 @@ Richland County,WI
 Richland Parish,LA
 Richmond County,GA
 Richmond County,NC
+Richmond County,NS
 Richmond County,NY
 Richmond County,VA
 Richmond city,VA
@@ -2551,6 +2619,7 @@ Sacramento County,CA
 Sagadahoc County,ME
 Saginaw County,MI
 Saguache County,CO
+Saint John County,NB
 Salem County,NJ
 Salem city,VA
 Salinas Municipio,PR
@@ -2654,6 +2723,7 @@ Shasta County,CA
 Shawano County,WI
 Shawnee County,KS
 Sheboygan County,WI
+Shelburne County,NS
 Shelby County,AL
 Shelby County,IA
 Shelby County,IL
@@ -2680,6 +2750,7 @@ Sibley County,MN
 Sierra County,CA
 Sierra County,NM
 Silver Bow County,MT
+Simcoe County,ON
 Simpson County,KY
 Simpson County,MS
 Sioux County,IA
@@ -2780,10 +2851,12 @@ Stone County,MO
 Stone County,MS
 Stonewall County,TX
 Storey County,NV
+"Stormont, Dundas and Glengarry County",ON
 Story County,IA
 Strafford County,NH
 Stutsman County,ND
 Sublette County,WY
+Sudbury County,ON
 Suffolk County,MA
 Suffolk County,NY
 Suffolk city,VA
@@ -2804,6 +2877,7 @@ Sumter County,AL
 Sumter County,FL
 Sumter County,GA
 Sumter County,SC
+Sunbury County,NB
 Sunflower County,MS
 Surry County,NC
 Surry County,VA
@@ -2860,11 +2934,13 @@ Thomas County,GA
 Thomas County,KS
 Thomas County,NE
 Throckmorton County,TX
+Thunder Bay County,ON
 Thurston County,NE
 Thurston County,WA
 Tift County,GA
 Tillamook County,OR
 Tillman County,OK
+Timiskaming County,ON
 Tioga County,NY
 Tioga County,PA
 Tippah County,MS
@@ -2883,6 +2959,7 @@ Tompkins County,NY
 Tooele County,UT
 Toole County,MT
 Toombs County,GA
+Toronto County,ON
 Torrance County,NM
 Towner County,ND
 Towns County,GA
@@ -2971,6 +3048,8 @@ Vermillion County,IN
 Vernon County,MO
 Vernon County,WI
 Vernon Parish,LA
+Victoria County,NB
+Victoria County,NS
 Victoria County,TX
 Vieques Municipio,PR
 Vigo County,IN
@@ -3061,6 +3140,7 @@ Washita County,OK
 Washoe County,NV
 Washtenaw County,MI
 Watauga County,NC
+Waterloo County,ON
 Watonwan County,MN
 Waukesha County,WI
 Waupaca County,WI
@@ -3094,6 +3174,7 @@ Webster County,NE
 Webster County,WV
 Webster Parish,LA
 Weld County,CO
+Wellington County,ON
 Wells County,IN
 Wells County,ND
 West Baton Rouge Parish,LA
@@ -3103,6 +3184,7 @@ Westchester County,NY
 Western Connecticut Planning Region,CT
 Westmoreland County,PA
 Westmoreland County,VA
+Westmorland County,NB
 Weston County,WY
 Wetzel County,WV
 Wexford County,MI
@@ -3199,6 +3281,7 @@ Yalobusha County,MS
 Yamhill County,OR
 Yancey County,NC
 Yankton County,SD
+Yarmouth County,NS
 Yates County,NY
 Yauco Municipio,PR
 Yavapai County,AZ
@@ -3209,7 +3292,9 @@ Yellowstone County,MT
 Yoakum County,TX
 Yolo County,CA
 York County,ME
+York County,NB
 York County,NE
+York County,ON
 York County,PA
 York County,SC
 York County,VA

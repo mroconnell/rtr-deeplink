@@ -1154,6 +1154,54 @@ def _base_name_keys(name: str) -> set:
     return keys
 
 
+def is_own_name(candidate: str, match: "GovernmentMatch") -> bool:
+    """Whether `candidate` IS the government's name, rather than a string
+    that merely contains something the resolver could key on.
+
+    The acceptance rule. It lives here rather than in the script that
+    first needed it because two callers now depend on it agreeing with
+    itself: `scripts/sweep_tenant_landing_pages.py`, which reads a name
+    out of a landing page, and `scripts/build_pin_worklist.py`, which
+    guesses one from a hostname or a slug. A pin is the one tier that
+    overrides a working extraction, so a rule that drifted between the
+    two would be a rule in name only.
+
+    The resolver normalizes hard -- that is its job, and it is what lets
+    a real page's "County of Fresno, CA" reach `us:county:06019`. Handed
+    a page-title fragment it normalizes just as hard, and 6 of the
+    landing-page sweep's first 12 pins were the result:
+
+        'Section View- Live on website'        -> a Minnesota township
+        'Fullerton Public - Powered by .com'   -> Fullerton, NEBRASKA
+                                                  (the tenant is Fullerton CA)
+        'Midland City Council , Summaries &'   -> Midland, ALABAMA
+        'Oregon Metro Council - New View'      -> Oregon County, MISSOURI
+        'Council'                              -> Council, IDAHO
+
+    The test: the candidate, with any trailing state stripped, must equal
+    one of the government's own names (the national table's spelling or
+    this repo's display form), compared the same way the tenant-consistency
+    rung compares names. It is deliberately strict about the whole name,
+    which is what rejects "Howard County Public School System" reaching
+    `us:county:24027` -- a real hit on a real government that is not the
+    one the signal named.
+
+    It costs real coverage and that is the right trade. Fullerton CA's
+    landing page never plainly says "City of Fullerton", so no tool can
+    honestly settle that host from it, and the row stays on the worklist
+    saying what was found.
+    """
+    gov = match.government
+    if gov is None:
+        return False
+    bare, _state = _split_state(candidate)
+    ours = _base_name_keys(bare)
+    theirs = _base_name_keys(gov.gov_name) | _base_name_keys(
+        _split_state(display_name(gov))[0]
+    )
+    return bool(ours & theirs)
+
+
 def _tenant_consistency(
     tenant_gov_id: Optional[str], name: str, state: str
 ) -> Optional[Government]:
