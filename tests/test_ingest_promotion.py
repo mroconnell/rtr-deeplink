@@ -529,6 +529,69 @@ async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
     assert page["jurisdiction_confidence"] == "unverified"
 
 
+async def test_a_transcript_only_push_cannot_wipe_a_gov_id():
+    """WO-102, a real regression shipped in WO-99 and caught by tracing a
+    single odd row in production.
+
+    `scripts/fetch_youtube_transcripts.py` deliberately omits
+    title/date/jurisdiction/agenda_items -- its own comment says "ingest
+    keeps the page's existing values for anything the payload doesn't
+    provide" -- and `transcribe_backlog_locally.py`'s partial pushes do
+    the same. The `gov_id` write was not truthy-gated on `jurisdiction`,
+    on the stated grounds that "every caller passes the page's
+    jurisdiction through". It does not. So a transcript-only push
+    resolved an EMPTY name, got tier `blank`, and replaced a correct
+    `us:place:...` with `rtr:unknown:<host>` -- silently, on every
+    routine YouTube caption run."""
+    url = "https://napa.granicus.com/player/clip/wo102-partial"
+    external_id = "granicus:wo102-partial"
+
+    await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction="City of Napa, CA"), url
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    before = await crud.get_page_by_slug(slug)
+    assert before["gov_id"] == "us:place:0650258"
+
+    # A transcript-only push: identity fields only, no jurisdiction.
+    await crud.ingest_resolution(
+        {
+            "platform": "granicus",
+            "source_url": url,
+            "external_id": external_id,
+            "segments": [{"start": 0.0, "end": 1.0, "text": "later transcript"}],
+            "transcript_language": "en",
+        },
+        url,
+    )
+    after = await crud.get_page_by_slug(slug)
+    assert after["gov_id"] == "us:place:0650258"
+    assert after["gov_type"] == "municipality"
+    assert after["jurisdiction"] == "Napa, CA"
+    assert after["jurisdiction_confidence"] == "registry"
+
+
+async def test_a_full_re_ingest_can_still_clear_a_gov_id():
+    """The control. Gating on `jurisdiction` must not freeze the id: a
+    payload that really carries a name and resolves to nothing still
+    takes the page back to NULL, which is the honest state."""
+    url = "https://example.granicus.com/player/clip/wo102-clears"
+    external_id = "granicus:wo102-clears"
+
+    await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction="City of Napa, CA"), url
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+    assert (await crud.get_page_by_slug(slug))["gov_id"] == "us:place:0650258"
+
+    await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction="Some Unlistable Body"), url
+    )
+    after = await crud.get_page_by_slug(slug)
+    assert after["gov_id"] is None
+    assert after["jurisdiction_confidence"] == "unresolved"
+
+
 async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unresolved():
     # "City of Test" (the shared _payload() default) isn't a real place --
     # must be kept exactly as given, not discarded or guessed at.

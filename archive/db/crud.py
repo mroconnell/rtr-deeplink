@@ -798,7 +798,21 @@ async def _find_or_create_page(
         # re-resolve's recomputed jurisdiction is exactly the guess the
         # override was written to correct. Only another explicit
         # override call can move it off this tier.
-        if page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+        # Truthy-gated on the INCOMING `jurisdiction`, not on the value
+        # this computes -- WO-102. Before WO-99 this line read
+        # `jurisdiction or page.jurisdiction`, so a payload with no
+        # jurisdiction left the column alone. `_display_jurisdiction()`
+        # returns the registry name whenever the tier is pinned or
+        # registry, and that is non-empty even when the payload was
+        # empty, so the `or` no longer protected anything: a
+        # transcript-only push on a host with a fallback pin rewrote the
+        # page's name to the PIN's government. Caught by
+        # test_a_transcript_only_push_cannot_wipe_a_gov_id --
+        # `napa.granicus.com` is pinned to Napa COUNTY, so the City of
+        # Napa's pages were renamed "Napa County, CA" by a caption run.
+        if jurisdiction and page.jurisdiction_confidence != (
+            _MANUAL_OVERRIDE_CONFIDENCE
+        ):
             page.jurisdiction = (
                 _display_jurisdiction(gov, jurisdiction) or page.jurisdiction
             )
@@ -816,13 +830,28 @@ async def _find_or_create_page(
         # would overwrite with the guess it was written to correct. Only
         # another explicit override moves it.
         #
-        # Not truthy-gated, unlike `jurisdiction`: an id the resolver has
-        # stopped producing (a registry correction, a pin removed) must be
-        # able to go back to NULL, which is the honest "not resolved yet"
-        # state. There is no partial-payload hazard here the way there is
-        # for agenda_items -- every caller passes the page's jurisdiction
-        # through, so `gov` is recomputed from the same inputs every time.
-        if page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+        # Truthy-gated on `jurisdiction`, exactly like the display name
+        # and `meeting_body` above -- WO-102.
+        #
+        # This was NOT gated, on the stated grounds that "every caller
+        # passes the page's jurisdiction through, so `gov` is recomputed
+        # from the same inputs every time". That was never checked and it
+        # is false: `scripts/fetch_youtube_transcripts.py` deliberately
+        # omits title/date/jurisdiction/agenda_items, and says so in its
+        # own comment -- "ingest keeps the page's existing values for
+        # anything the payload doesn't provide". So a transcript-only
+        # push resolved an EMPTY name, got tier `blank`, and overwrote a
+        # correct `us:place:...` with `rtr:unknown:<host>`. Every routine
+        # YouTube caption run would have degraded the rows it touched.
+        #
+        # An id can still go back to NULL, which is the honest "not
+        # resolved yet" state -- it just takes a payload that actually
+        # carries a jurisdiction, i.e. a real re-resolve rather than a
+        # partial push. That is the same contract the columns beside it
+        # have always had.
+        if jurisdiction and page.jurisdiction_confidence != (
+            _MANUAL_OVERRIDE_CONFIDENCE
+        ):
             page.gov_id = gov.gov_id or None
             page.gov_type = gov.gov_type or None
         # Truthy-gated and never cleared: no adapter sets this today, so
