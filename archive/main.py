@@ -1705,14 +1705,34 @@ class ResolvedMeetingIn(BaseModel):
 
 
 class ChunkPlanEntryIn(BaseModel):
-    """One entry of a WO-79 per-clip chunk plan -- see
+    """One entry of a WO-79 chunk plan -- see
     app/platforms/media_probe.py's probe_multi_clip_chunk_plan() for how
     this is built and archive/db/models.py's
-    TranscriptionJob.chunk_plan for how the worker consumes it."""
+    TranscriptionJob.chunk_plan for how the worker consumes it.
+
+    **Every field the plan carries has to be declared here or it is
+    silently dropped in transit (WO-97).** Pydantic ignores extra fields
+    by default, and this model sits on the ONE path that crosses HTTP:
+    the resolver's on-demand submit and
+    scripts/bulk_queue_transcription_backlog.py both POST through
+    /internal/transcription/create-job, while worker/main.py's
+    auto-generation calls crud.create_transcription_job() in-process and
+    never touches this model. So a field added to the plan reaches the
+    database on one path and vanishes on the other -- which is exactly
+    what happened to media_start between WO-95 and this fix, and it
+    fails silently rather than loudly: the worker reads it as
+    .get("media_start", 0.0), so every window of a sub-split clip would
+    have extracted from offset 0 and produced a transcript that repeats
+    the clip's opening N times at N different meeting timestamps."""
 
     media_url: str
     start: float
     duration: float
+    # WO-95. Offset within this clip's own file, as opposed to `start`,
+    # which is meeting-relative. Defaults to 0.0 so a caller that predates
+    # WO-95 keeps its exact meaning -- every entry in such a plan is a
+    # whole clip, which is what an offset of 0.0 says.
+    media_start: float = 0.0
     title: Optional[str] = None
     seq: Optional[int] = None
 
