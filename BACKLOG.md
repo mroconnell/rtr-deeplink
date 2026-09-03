@@ -120,8 +120,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (59)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (62)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+  [NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
@@ -165,8 +166,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (59)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (18)
+  Adapter & platform gaps  (20)
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
+    [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
+    [IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement)…
     [NEEDS-AUDIT] Anchorage AK's original "bot-blocked YouTube…
@@ -205,8 +208,10 @@ Reliability, ops & cost  (13)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (9)
+Trust, safety & data quality  (11)
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
+  `[NEEDS-AUDIT]` California county jurisdiction names split across two…
+  `[NEEDS-AUDIT]` YouTube-delegated ingests can land with…
   `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a…
   `[IMPROVEMENT-ROUND]` Low-trust queue rows have no repair workflow…
   `[IMPROVEMENT-ROUND]` A low-trust review doesn't expire when the page…
@@ -455,6 +460,35 @@ structural change than the two entries below.
   - **History**: found during the §49 Phase 1 coverage_map.csv resolve
     sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
     record of it).
+
+- **[NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
+  `?feature=share` suffix, dropping a working YouTube video.**
+  - **Issue**: `app/platforms/primegov.py`'s `_VIDEO_URL_VAR_RE` requires
+    the closing `"` immediately after the 11-char YouTube id in
+    `var videoUrl = "..."`, but a real Palo Alto, CA page has
+    `var videoUrl = "ZyoXmQYCV4o?feature=share";` — the id plus a query
+    suffix inside the same quotes. Confirmed live 2026-09-02 on 3 real
+    Palo Alto meetings (Aug 17/24/26 2026), all with a real, publicly
+    playable YouTube video the resolver reported as "no video found."
+  - **Impact**: likely blocks most/all of Palo Alto's PrimeGov archive —
+    every sampled `videoUrl` in the tenant's own `ListArchivedMeetings`
+    API carried the same suffix. The API-fallback path (used when the
+    page regex finds nothing) doesn't cover this either: it explicitly
+    excludes `youtube.com` URLs on the assumption the page regex already
+    catches them.
+  - **Next action**: broaden `_VIDEO_URL_VAR_RE` to tolerate a trailing
+    `?...` (or other non-quote suffix) after the 11-char id before the
+    closing quote; then re-check whether these meetings have real YouTube
+    captions once the video is actually found — would move them from
+    tier 3 (video only) to tier 1/2.
+  - **Constraint**: only confirmed on one tenant (Palo Alto) so far — a
+    second real PrimeGov customer with this same `?feature=share` shape
+    would be worth finding before treating the fix as fully general,
+    though the regex change itself (loosening one anchor) is low-risk
+    either way.
+  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
   forms creates two separate Archive pages instead of deduping.**
@@ -1461,6 +1495,74 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     real jurisdiction-guess bug in `telvue.py`: guessed "Building" as a
     place name from a "Building Commission Meeting" title.
 
+- **[NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
+  real cities defeats title-only jurisdiction guessing.**
+  - **Issue**: org token `wuZKb9gwEY7sMACIIsr7VSJglB35kNZA`
+    (`videoplayer.telvue.com/player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA/...`,
+    reached from `cityofpacifica.org/departments/live-video`'s "Videos"
+    tab, and via a real `u.peg.tv/s/htl405` share-link shortcut)
+    genuinely serves more than one real city's council/commission
+    meetings on the same channel — confirmed live 2026-09-02: a real
+    "Pacifica City Council - 8/24/26" title extracts `jurisdiction=
+    "Pacifica, CA"` correctly, but "Pacifica Special Meeting - 8/25/26"
+    (no body suffix to anchor on) and "HMB City Council - 9/1/26" (Half
+    Moon Bay, abbreviated — not a recognizable place name to any Census
+    lookup) both come back with `jurisdiction=None`. The existing
+    `_KNOWN_ORG_TOKEN_JURISDICTIONS` per-customer override map (this
+    same file) can't fix this org token the way it fixes a single-city
+    org, since a single override string would be wrong for whichever
+    city it doesn't match.
+  - **Impact**: real, playable meetings for this org resolve fine
+    (video found, tier 3 — see the 3 URLs just added to
+    `scripts/tier3_auto_transcription_queue.txt`) but land as
+    unverified-jurisdiction/low-trust pages once ingested.
+  - **Next action**: needs per-*meeting* (not per-org) jurisdiction
+    resolution for this token — e.g. a small keyword map ("HMB" → "Half
+    Moon Bay, CA", bare "Pacifica" already works) checked before falling
+    through to the org-level override, or a real per-meeting metadata
+    field on the page itself if one exists (not yet checked).
+  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+    not yet in `BACKLOG_DONE.md`.
+
+- **[IMPROVEMENT-ROUND] AV Capture All (`avcaptureall.cloud`) is a real,
+  confirmed multi-tenant platform with no adapter yet.**
+  - **Issue**: `media.avcaptureall.cloud/meeting/{meetingId}` is a
+    Blazor WASM app (raw HTML has zero content — needs a real headless
+    browser fetch, the `lims.py`/`slc.py` pattern, not a Cloudflare
+    block) whose `<video>` element populates a real, plain,
+    unauthenticated, range-capable direct MP4 at
+    `download.avcaptureall.cloud/customer-{uuid}/meetings/{meetingId}/
+    {title}_{date}.mp4` once it loads, plus a real agenda PDF at a
+    sibling path under the same `customer-{uuid}/meetings/{meetingId}/`
+    prefix. Confirmed live 2026-09-02 against two independent real
+    customers: Suisun City, CA (`.../c9d1a041-ed11-4e78-a1b3-
+    fbd6c56b33da`) and Farmington, NM (`.../2fdf5914-d126-4dae-ae03-
+    28fb42fd6c05`, found via web search) — identical structure on both.
+    Zero captions/text tracks on either sample (AVCaptureAll's own
+    marketing claims closed-captioning as a feature, so it may exist on
+    some meetings, just not these two) — would ship video-only/tier 3
+    to start, same posture as Castus/ChampDS.
+  - **Impact**: unblocks Suisun City, CA (this project's own earlier
+    check found zero video on its Granicus tenant — real, still true,
+    the video was just never on that platform) and at least Farmington,
+    NM plus AVCaptureAll's other named clients (Great Falls, Jefferson
+    County, Marysville, Oregon City per a web search, none independently
+    verified yet).
+  - **Next action**: build `app/platforms/avcaptureall.py` following the
+    `lims.py`/`slc.py` headless-browser-fetch pattern — the DOM structure
+    (real `<video>` `src`/`currentSrc`, a `Title:`/`Scheduled:`/
+    `Published:`/`Location:`/`Department:` metadata block) is already
+    confirmed on both samples above. Register it in the canary + coverage
+    registries per this repo's standing dual-registry obligation for any
+    new platform.
+  - **Constraint**: needs the headless-browser fetch path
+    (`GENERIC_FALLBACK_HEADLESS`-style), not plain `aiohttp` — confirmed
+    live that raw HTML carries none of the real content.
+  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+    not yet in `BACKLOG_DONE.md`.
+
 - **[NEEDS-AUDIT] Tarrant County TX (TechShare.AgendaManagement) agenda-item extraction needs a scoping decision.**
   - **Issue**: the one known sample's accordion markup and a second real
     sample (`meetingId=29112`/`29134`) are structurally different, so a
@@ -2110,6 +2212,81 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `scripts/backfill_archived_pages.py` (a re-resolve sweep) against
   whichever pages need real accuracy — it corrects them individually.
 - **History**: WO-21 (2026-08-21) build in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` California county jurisdiction names split across two conventions, fragmenting hub pages
+
+- **Issue**: some California county pages store `jurisdiction` as
+  `"County of {Name}, CA"` (a raw, unnormalized prefix form) instead of
+  this project's own majority convention, `"{Name} County, CA"`.
+  Confirmed live 2026-09-02 via `GET /internal/export/pages` (all 4,923
+  archived pages): 44 counties use the suffix form correctly, but 13 —
+  Fresno, Humboldt, Imperial, Marin, Monterey, Napa, Placer, Plumas, San
+  Bernardino, San Diego, San Mateo, Santa Clara, Solano — have at least
+  one page stored as `"County of {Name}, CA"`. `jurisdiction_enrich.py`'s
+  `_split_entity_prefix()` docstring already documents a "County of X"
+  → "X County" normalization step (built for a different case, stripping
+  it out of a body-name split like "Housing Authority of the County of
+  Santa Clara"), so the raw prefix form surviving into `jurisdiction`
+  itself suggests some resolve path (a Granicus RSS channel title taken
+  verbatim is the leading suspect, not yet confirmed) bypasses that
+  normalization rather than the normalization having a bug.
+- **Impact**: real, measured fragmentation for at least 3 counties — the
+  same government's pages split across two different `/j/{slug}` hubs,
+  invisible to each other: Santa Clara (7 pages under the correct suffix
+  form, 1 stranded under the prefix form), San Diego (2 vs 1), Solano (1
+  vs 1). Marin (3 pages) and San Mateo (3 pages) aren't fragmented yet
+  only because no suffix-form page exists for them yet — the next
+  Marin/San Mateo County resolve could create the same split. Originally
+  surfaced as a user report ("Napa County was already live in prod but
+  called 'County of Napa'") — Napa itself has only the prefix form so
+  isn't fragmented, but is the same underlying bug.
+- **Next action**: find the actual resolve path producing the raw
+  `"County of {Name}"` string (check Granicus's RSS-channel-title
+  jurisdiction source first, per `_split_entity_prefix()`'s own docstring
+  reasoning) and route it through the existing normalization instead of
+  bypassing it; separately, a one-time backfill/merge is needed for the
+  3 already-fragmented counties (re-resolve or hand-correct the stranded
+  pages' `jurisdiction`, then re-check `/j/{slug}` hub grouping).
+- **Constraint**: don't hand-fix only Napa/Santa Clara/San Diego/Solano
+  and call it done — all 13 listed above carry the same latent risk of
+  a future split. `~/Documents/rtr-upcoming/scripts/check_county_naming.py`
+  solved the analogous problem in that sibling project (a jurisdiction
+  name is display copy, nothing validates it) with two independent
+  signals — vendor host/path containing "county", and real meeting
+  titles containing "Board of Supervisors" — worth reusing that same
+  detection shape here rather than inventing a new one.
+- **History**: found live 2026-09-02 during a Bay Area corpus-expansion
+  pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
+  not yet in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` YouTube-delegated ingests can land with `jurisdiction=None` when the channel doesn't self-identify
+
+- **Issue**: 10 real Portola Valley, CA Town Council meetings (direct
+  `youtu.be` links from `portolavalley.net/town-government/town-council/
+  minutes-and-agendas`, ingested 2026-09-02) all resolved with
+  `jurisdiction=None` — confirmed directly via `YouTubeAssetFinder.
+  resolve()`, not just observed on the rendered page. Real transcripts
+  (2,109-8,049 segments each) are present; only jurisdiction is missing.
+- **Impact**: these 10 pages won't appear on any `/state/{slug}` or
+  `/j/{slug}` hub (both require a recognized `", ST"` suffix), and land
+  in `/internal/low-trust-pages`'s `unverified_jurisdiction` bucket.
+  **Patched live 2026-09-02** (real user report: pages visibly missing
+  jurisdiction in prod) via `POST /internal/jurisdiction/override` — all
+  10 page ids now carry `jurisdiction="Portola Valley, CA"` and
+  `jurisdiction_confidence="manual_override"`, confirmed rendering
+  correctly (state/hub links present) on `/m/2026-05-14-05-13-2026-town-
+  council-meeting`. This is a per-page patch, not a fix — the root cause
+  below is still open, and the next real YouTube ingest with this same
+  gap won't self-correct.
+- **Next action**: check what YouTube metadata (channel name/description,
+  video description) is actually available for this channel and whether
+  `youtube.py`'s jurisdiction extraction already tries it — video titles
+  here are bare dates ("08-26-2026 Town Council Meeting"), no city name
+  in the title itself, so a title-only guess was never going to work;
+  the channel-level metadata is the more promising signal, not yet
+  checked.
+- **History**: found live 2026-09-02 during the same corpus-expansion
+  pass as the entry above; not yet in `BACKLOG_DONE.md`.
 
 ### `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a full resolve from a partial push
 

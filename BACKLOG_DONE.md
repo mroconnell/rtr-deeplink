@@ -397,6 +397,50 @@ any real page is affected, and the two currently-affected archived pages
 (`pub-brucecounty`/`pub-elgincounty`) still need
 `scripts/backfill_gov_id.py` re-run against them afterward, same as any
 other registry change. CLAUDE.md's own "merging ships nothing" rule.
+## Granicus agenda-fallback link silently dropped on an S3 hostname/cert mismatch [Done 2026-09-02]
+
+Found live during a Bay Area corpus-expansion pass (see
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`): resolving
+real Benicia and Clayton, CA meetings (both Granicus) returned zero
+transcript, zero agenda items, *and* `agenda_link=None`, even though both
+meetings had a real, fetchable agenda document. Root cause:
+`AgendaViewer.php`'s agenda-attachment redirect lands, on both tenants,
+on a virtual-hosted-style S3 URL for
+`granicus_production_attachments.s3.amazonaws.com` — a bucket name with
+an underscore, which is not a valid DNS label. AWS's wildcard cert for
+`*.s3.amazonaws.com` never matches it, so aiohttp's automatic redirect
+following raised `ClientConnectorCertificateError` (`Hostname mismatch`)
+before any response was ever available — caught by
+`_fetch_agenda_items()`'s blanket `except Exception` in
+`app/platforms/granicus.py` and silently turned into `[], None`, the same
+shape as a real "no agenda available" outcome. Since this bucket is
+Granicus's own shared infra (not per-tenant), this plausibly affected
+every customer's agenda-attachment redirect, not just these two.
+
+**Fixed**: `_fetch_agenda_html()` now does a normal GET first (unchanged
+for every other redirect shape — Berkeley's external-site redirect, Napa's
+raw-PDF redirect, Paradise Valley AZ's Google-Docs-preview redirect all
+still work exactly as before, still covered by their own existing tests).
+Only on `ClientConnectorCertificateError` whose host matches the
+underscore-bucket pattern (`_is_broken_s3_underscore_host()`) does it
+retry: a second GET with `allow_redirects=False` against the *original*
+URL (verifies fine) recovers the real `Location` header, that target is
+rewritten to path-style (`s3.amazonaws.com/{bucket}/{key}` instead of
+`{bucket}.s3.amazonaws.com/{key}`, `_s3_path_style()`), and the retry
+against that URL succeeds with a valid cert — confirmed live, byte-identical
+content, same `Content-Length`. New tests:
+`test_s3_path_style_only_rewrites_underscore_buckets` and
+`test_agenda_viewer_s3_underscore_bucket_retries_via_path_style` in
+`tests/test_granicus.py`.
+
+**Verified live end to end**: re-resolving the same Benicia/Clayton
+meetings post-fix now returns a real, working `agenda_link`
+(`s3.amazonaws.com/granicus_production_attachments/...`), reclassifying
+them from tier 3 (video-only) to tier 1/2 — 6 real meetings (3 Benicia, 3
+Clayton) ingested for real via `scripts/bulk_ingest.py`, e.g.
+`/m/benicia-ca-2026-08-18-city-council`, confirmed rendering correctly
+in-browser with the agenda link now resolving instead of 404/silently
+absent.
 
 ## District of Columbia: no `/state/` page, jurisdiction search missed it [Done 2026-08-31]
 
