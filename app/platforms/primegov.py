@@ -15,7 +15,17 @@ from ..utils import jurisdiction_enrich
 
 logger = logging.getLogger("rtr_deeplink.primegov")
 
-_VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})"')
+# Real, confirmed-live gap (2026-09-02, Palo Alto): the 11-char id isn't
+# always immediately followed by the closing quote -- some tenants store
+# `var videoUrl = "{id}?feature=share";`, a query-string-shaped suffix
+# baked directly into the page's own raw text (confirmed independently via
+# this same tenant's Search Portal UI, whose own rendered "Video" links are
+# `youtube.com/watch?v={id}?feature=share` -- the malformed suffix is real
+# stored data, not a fetch artifact). The old regex required the quote
+# right after the id, so it never matched and a real, playable video was
+# reported as "no video found." `[^"]*` tolerates any such suffix (or none
+# at all) before the closing quote.
+_VIDEO_URL_VAR_RE = re.compile(r'var\s+videoUrl\s*=\s*"([A-Za-z0-9_-]{11})[^"]*"')
 
 # Real, confirmed-live gap (2026-08-19): not every PrimeGov tenant's real
 # video is a YouTube embed -- some (e.g. cambridgema, baycountyfl,

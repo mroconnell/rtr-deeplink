@@ -255,6 +255,33 @@ def test_extract_video_id_returns_none_when_absent():
     assert PrimeGovAssetFinder._extract_video_id(PAGE_HTML_NO_VIDEO) is None
 
 
+# Real bug, confirmed live 2026-09-02 against 3 real Palo Alto meetings:
+# some tenants store `var videoUrl = "{id}?feature=share";` -- a real
+# query-string-shaped suffix baked into the page's own raw text (confirmed
+# independently via this same tenant's Search Portal UI, whose own
+# rendered "Video" links are `youtube.com/watch?v={id}?feature=share`).
+# The old regex required the closing quote immediately after the 11-char
+# id, so a real, playable, publicly-indexed video was reported as "no
+# video found" -- see BACKLOG.md.
+PALO_ALTO_VIDEO_ID = "6mznWPfbEy0"
+PAGE_HTML_WITH_FEATURE_SHARE_SUFFIX = f"""
+<html><head><title>Meeting</title></head>
+<body>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+var videoUrl = "{PALO_ALTO_VIDEO_ID}?feature=share";
+</script>
+</body></html>
+"""
+
+
+def test_extract_video_id_tolerates_feature_share_suffix():
+    assert (
+        PrimeGovAssetFinder._extract_video_id(PAGE_HTML_WITH_FEATURE_SHARE_SUFFIX)
+        == PALO_ALTO_VIDEO_ID
+    )
+
+
 def test_extract_date_reads_all_caps_okc_header():
     assert PrimeGovAssetFinder._extract_date(OKC_HEADER_HTML) == "2026-08-04"
 
