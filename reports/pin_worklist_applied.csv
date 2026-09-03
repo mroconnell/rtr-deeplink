@@ -1,0 +1,28 @@
+outcome,platform,tenant_host,match,pages,stated_name,gov_id,gov_name,tier,detail
+pin,cablecast,huron-township.cablecast.tv,,4,"Huron Township, MI",us:cousub:2606340020,"Huron Township, MI",registry,us_cousubs.csv Huron township
+unresolved,cablecast,cityofpontiac.cablecast.tv,,3,"Pontiac, Michigan",,"Pontiac, Michigan",unresolved,"no state for 'Pontiac, Michigan'"
+pin,cablecast,hctv.cablecast.tv,,3,"Holden, MA",us:cousub:2502730560,"Holden Town, MA",registry,us_cousubs.csv Holden town
+pin,cablecast,laquinta.cablecast.tv,,3,"La Quinta, CA",us:place:0640354,"La Quinta, CA",registry,us_places.csv La Quinta city
+pin,cablecast,tvhamilton.cablecast.tv,,3,"Hamilton, OH",us:place:3933012,"Hamilton (city), OH",registry,us_places.csv Hamilton city
+pin,telvue,videoplayer.telvue.com,GNduNoua2rBThhw6N4PRP9OCSPf6B2ru,2,"Centre County, PA",us:county:42027,"Centre County, PA",registry,us_counties.csv Centre County
+pin,telvue,videoplayer.telvue.com,_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2,2,"Summit, NJ",us:place:3471430,"Summit, NJ",registry,us_places.csv Summit city
+pin,youtube,youtu.be,@TownofWoodside,24,"Woodside, CA",us:place:0686440,"Woodside, CA",registry,us_places.csv Woodside town
+pin,youtube,www.townofrossca.gov,,13,"Ross, CA",us:place:0662980,"Ross, CA",registry,us_places.csv Ross town
+pin,youtube,youtu.be,@townofhillsborough4333,10,"Hillsborough, CA",us:place:0633798,"Hillsborough, CA",registry,us_places.csv Hillsborough town
+pin,youtube,lasvegas.primegov.com,,7,"Las Vegas, NV",us:place:3240000,"Las Vegas, NV",registry,us_places.csv Las Vegas city
+pin,youtube,mesa.legistar.com,,4,"Mesa, AZ",us:place:0446000,"Mesa, AZ",registry,us_places.csv Mesa city
+unresolved,youtube,bancroft.civicweb.net,,3,"Bancroft, ON Canada",,"Bancroft, ON Canada",unresolved,"no state for 'Bancroft, ON Canada'"
+pin,youtube,cityofhawthorne.primegov.com,,3,"Hawthorne, CA",us:place:0632548,"Hawthorne, CA",registry,us_places.csv Hawthorne city
+unresolved,youtube,coaldale.civicweb.net,,3,"Coaldale, AB Canada",,"Coaldale, AB Canada",unresolved,"no state for 'Coaldale, AB Canada'"
+unverified,youtube,cvrd.primegov.com,,3,"Cowichan Valley Regional District, British Columbia (Canada)",rtr:ca:bc:cowichan-valley-regional-district-british-columbia-canada,"Cowichan Valley Regional District, British Columbia (Canada), BC",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unresolved,youtube,duncan.civicweb.net,,3,"Duncan, BC Canada",,"Duncan, BC Canada",unresolved,"no state for 'Duncan, BC Canada'"
+pin,youtube,lacenter.civicweb.net,,3,"La Center, WA",us:place:5336710,"La Center, WA",registry,us_places.csv La Center city
+unresolved,youtube,mapleton.civicweb.net,,3,"Mapelton, ON Canada",,"Mapelton, ON Canada",unresolved,"no state for 'Mapelton, ON Canada'"
+pin,youtube,nampa.primegov.com,,3,"Nampa, ID",us:place:1656260,"Nampa, ID",registry,us_places.csv Nampa city
+unresolved,youtube,princeton.civicweb.net,,3,"Princeton, BC Canada",,"Princeton, BC Canada",unresolved,"no state for 'Princeton, BC Canada'"
+pin,youtube,sandy.civicweb.net,,3,"Sandy, OR",us:place:4165250,"Sandy, OR",registry,us_places.csv Sandy city
+unresolved,youtube,sidney.civicweb.net,,3,"Sidney, BC Canada",,"Sidney, BC Canada",unresolved,"no state for 'Sidney, BC Canada'"
+pin,youtube,woodland.civicweb.net,,3,"Woodland, WA",us:place:5379625,"Woodland, WA",registry,us_places.csv Woodland city
+pin,youtube,www.youtube.com,@cityofphoenixaz,3,"Phoenix, AZ",us:place:0455000,"Phoenix, AZ",registry,us_places.csv Phoenix city
+pin,granicus,pasadena.granicus.com,,4,"Pasadena, CA",us:place:0656000,"Pasadena, CA",registry,us_places.csv Pasadena city
+pin,granicus,howardcounty.granicus.com,,3,"Howard County, MD",us:county:24027,"Howard County, MD",registry,us_counties.csv Howard County
