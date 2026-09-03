@@ -1,5 +1,19 @@
 # Backlog — done
 
+## PrimeGov's `videoUrl` regex missed a real `?feature=share` suffix [Done 2026-09-03]
+
+`app/platforms/primegov.py`'s `_VIDEO_URL_VAR_RE` required the closing `"`
+immediately after the 11-char YouTube id in `var videoUrl = "..."`, but a
+real Palo Alto, CA page has `var videoUrl =
+"ZyoXmQYCV4o?feature=share";` — the id plus a query suffix inside the same
+quotes — so a real, publicly playable video was reported as "no video
+found." Fixed (PR #684) by tolerating `[^"]*` after the id before the
+closing quote. Verified live against 3 real Palo Alto meetings: all three
+now resolve with a real `video_url`, and two of the three also turned up
+real YouTube captions (4297 and 2295 segments) previously unreachable
+because the video itself was never found — moves most of Palo Alto's
+PrimeGov archive from "no video found" to a real tier-1 transcript.
+
 ## `gov_id`: a government stops being identified by a string [Done 2026-09-03]
 
 > **Backfilled in production 2026-09-03.** The two entries below are

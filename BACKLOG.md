@@ -461,35 +461,6 @@ structural change than the two entries below.
     sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
     record of it).
 
-- **[NEEDS-AUDIT] `[EASY]` PrimeGov's `videoUrl` regex misses a real
-  `?feature=share` suffix, dropping a working YouTube video.**
-  - **Issue**: `app/platforms/primegov.py`'s `_VIDEO_URL_VAR_RE` requires
-    the closing `"` immediately after the 11-char YouTube id in
-    `var videoUrl = "..."`, but a real Palo Alto, CA page has
-    `var videoUrl = "ZyoXmQYCV4o?feature=share";` — the id plus a query
-    suffix inside the same quotes. Confirmed live 2026-09-02 on 3 real
-    Palo Alto meetings (Aug 17/24/26 2026), all with a real, publicly
-    playable YouTube video the resolver reported as "no video found."
-  - **Impact**: likely blocks most/all of Palo Alto's PrimeGov archive —
-    every sampled `videoUrl` in the tenant's own `ListArchivedMeetings`
-    API carried the same suffix. The API-fallback path (used when the
-    page regex finds nothing) doesn't cover this either: it explicitly
-    excludes `youtube.com` URLs on the assumption the page regex already
-    catches them.
-  - **Next action**: broaden `_VIDEO_URL_VAR_RE` to tolerate a trailing
-    `?...` (or other non-quote suffix) after the 11-char id before the
-    closing quote; then re-check whether these meetings have real YouTube
-    captions once the video is actually found — would move them from
-    tier 3 (video only) to tier 1/2.
-  - **Constraint**: only confirmed on one tenant (Palo Alto) so far — a
-    second real PrimeGov customer with this same `?feature=share` shape
-    would be worth finding before treating the fix as fully general,
-    though the regex change itself (loosening one anchor) is low-risk
-    either way.
-  - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
-    pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
-    not yet in `BACKLOG_DONE.md`.
-
 - **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
   forms creates two separate Archive pages instead of deduping.**
   - **Issue**: Yamhill County, OR's real meeting video
