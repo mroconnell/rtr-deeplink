@@ -196,6 +196,7 @@ garfield-co,us:county:08045,garfield-county-co,"'Garfield, CO' now resolves to u
 germantown,us:place:4728960,germantown-tn,"'City of Germantown' now resolves to us:place:4728960 (Germantown, TN)"
 glencoe-village-il,us:place:1729652,glencoe-il,"'Glencoe Village, IL' now resolves to us:place:1729652 (Glencoe, IL)"
 glendora,us:place:0630014,glendora-ca,"'Glendora' now resolves to us:place:0630014 (Glendora, CA)"
+gloucester-ma,us:sd:5101620,gloucester-county-public-schools-va,"HAND-ADDED, not from scripts/score_gov_registry.py -- that tool re-derives old/new from the SAME stored `jurisdiction` string and can't see a single-page manual override (verified 2026-09-03, see BACKLOG.md). Page 4097 was a Gloucester County, VA school-board meeting mis-keyed to Gloucester, MA (us:place:2526150); fixed via POST /internal/jurisdiction/override (WO-106) to us:sd:5101620 (Gloucester County Public Schools, VA). A future wholesale regen of this file will silently drop this row -- re-add it if that happens."
 gloucester-va,us:county:51073,gloucester-county-va,"'Gloucester, VA' now resolves to us:county:51073 (Gloucester County, VA)"
 goffstown-nh,us:cousub:3301129860,goffstown-town-nh,"'Goffstown, NH' now resolves to us:cousub:3301129860 (Goffstown Town, NH)"
 golden,us:place:0830835,golden-co,"'City of Golden' now resolves to us:place:0830835 (Golden, CO)"

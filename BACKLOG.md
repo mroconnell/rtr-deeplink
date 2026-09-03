@@ -448,28 +448,41 @@ structural change than the two entries below.
     fail — it succeeded at the wrong government. §4 predicted this
     exactly: "a plausible wrong extraction passes validation, so
     validation alone can never fix a confirmed-misleading host."
-  - **Impact**: production has exactly one live instance right now —
-    `/j/gloucester-ma`, a public hub whose entire content is that one
-    Gloucester County, VA school-board page filed under a Massachusetts
-    city. WO-106 added the missing identity (`us:sd:5101620`, Gloucester
-    County Public Schools, VA) to `governments.csv` and prepared the
-    per-page `POST /internal/jurisdiction/override` + hub-alias regen
-    commands for Ryan to run against production; see that PR for the
-    exact commands and live counts. This entry tracks the general
-    failure mode, which stays open after that one page is fixed: any
-    tenant whose URL shape carries no
-    discriminator (eScribe GUIDs are the known case) and whose page text
-    names a real place that collides with a different government's name
-    is exposed the same way, and a `strength=fallback` pin gives no
-    signal that it happened — the ladder reports `registry` tier
-    (confidently resolved), not `unresolved` or `blank`.
+  - **Impact**: **the one live instance is fixed** — page 4097 (the
+    `/j/gloucester-ma` page) was moved to `us:sd:5101620` via
+    `POST /internal/jurisdiction/override` on 2026-09-03, confirmed live
+    over `/internal/export/pages` (`gov_id: us:sd:5101620,
+    jurisdiction_confidence: manual_override`); the tenant pin's proposed
+    blank-`match`/`authoritative` rule was **not** copied into
+    `tenant_overrides.csv`, per the constraint below. The `/j/gloucester-
+    ma` → `/j/gloucester-county-public-schools-va` redirect needed a
+    second fix: `scripts/score_gov_registry.py` cannot regenerate that
+    row on its own (verified — it re-derives old/new from the same
+    stored `jurisdiction` string, so a single-page manual override is
+    invisible to it either before or after the override runs), so the
+    row was **hand-added** to `archive/data/hub_slug_aliases.csv`, marked
+    in its own `evidence` field as a deliberate exception. **This means a
+    future wholesale regen of that file will silently drop the row** —
+    whoever next runs `score_gov_registry.py` needs to re-add it (or fix
+    the tool to be `manual_override`-aware first). This entry tracks the
+    general failure mode, which stays open: any tenant whose URL shape
+    carries no discriminator (eScribe GUIDs are the known case) and whose
+    page text names a real place that collides with a different
+    government's name is exposed the same way, and a `strength=fallback`
+    pin gives no signal that it happened — the ladder reports `registry`
+    tier (confidently resolved), not `unresolved` or `blank`.
   - **Next action**: this page is a known-answer case for **Phase 2d**
     (`gov_signals.py` / `score_gov_signals.py`, branch `gov-signals-r1`,
     not yet merged — see `~/Documents/rtr-business/research/
     STATE_gov_identity.md`) — "School Board" in the page text is
     precisely the type signal 2d is meant to score *above* a nearby
     place-name match. Add this page/host to its evaluation corpus once
-    2d's live run has real numbers; don't build a one-off fix here.
+    2d's live run has real numbers; don't build a one-off fix here. The
+    hand-added hub-alias row is a real, separate tooling gap worth its
+    own small fix eventually (teach `score_gov_registry.py` to pass a
+    `manual_override` row's DB gov_id straight through as "new" instead
+    of re-deriving it), but not attempted here — out of scope for a
+    two-page live fix.
   - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
     existing tenant pin to `strength=authoritative`, or copy
     `POST /internal/jurisdiction/override`'s proposed
