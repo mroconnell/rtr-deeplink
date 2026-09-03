@@ -6,6 +6,14 @@ swagit.py), instead of just probing the first clip alone.
 """
 
 import app.main as app_main
+
+# WO-98: the body of _probe_meeting_duration() moved into
+# media_probe.probe_duration_and_chunk_plan() so every job-creation path
+# shares one definition, so these patch the helper's own module rather
+# than names re-exported through app.main. The tests themselves are
+# unchanged in intent -- they still drive app_main._probe_meeting_duration()
+# and assert its behavior.
+from app.platforms import media_probe
 from app.platforms.models import ResolvedMeeting, VideoSegment
 
 
@@ -24,7 +32,7 @@ async def test_ordinary_single_video_meeting_is_unchanged(monkeypatch):
         assert video_url == "https://example.org/meeting.m3u8"
         return 3600.0
 
-    monkeypatch.setattr(app_main, "probe_duration", _probe)
+    monkeypatch.setattr(media_probe, "probe_duration", _probe)
 
     duration, chunk_plan = await app_main._probe_meeting_duration(
         result, source_page_url="https://city.granicus.com/player/clip/1"
@@ -41,7 +49,7 @@ async def test_no_video_url_returns_none_without_probing(monkeypatch):
     async def _fail_if_called(*args, **kwargs):
         raise AssertionError("must not probe when there's no video_url")
 
-    monkeypatch.setattr(app_main, "probe_duration", _fail_if_called)
+    monkeypatch.setattr(media_probe, "probe_duration", _fail_if_called)
 
     duration, chunk_plan = await app_main._probe_meeting_duration(
         result, source_page_url="https://example.org/meeting"
@@ -82,14 +90,14 @@ async def test_multi_clip_meeting_reports_the_real_summed_total(monkeypatch):
             },
         ]
 
-    monkeypatch.setattr(app_main, "probe_multi_clip_chunk_plan", _plan)
+    monkeypatch.setattr(media_probe, "probe_multi_clip_chunk_plan", _plan)
 
     async def _fail_if_called(*args, **kwargs):
         raise AssertionError(
             "a successful multi-clip plan must skip the single-clip probe_duration()"
         )
 
-    monkeypatch.setattr(app_main, "probe_duration", _fail_if_called)
+    monkeypatch.setattr(media_probe, "probe_duration", _fail_if_called)
 
     duration, chunk_plan = await app_main._probe_meeting_duration(
         result, source_page_url="https://yolocountyca.new.swagit.com/videos/324107"
@@ -117,13 +125,13 @@ async def test_multi_clip_plan_failure_falls_back_to_first_clip_probe(monkeypatc
     async def _plan(video_segments, *, source_page_url, max_chunk_seconds=None):
         return None
 
-    monkeypatch.setattr(app_main, "probe_multi_clip_chunk_plan", _plan)
+    monkeypatch.setattr(media_probe, "probe_multi_clip_chunk_plan", _plan)
 
     async def _probe(video_url, *, source_page_url):
         assert video_url == "https://x/a.m3u8"
         return 120.0
 
-    monkeypatch.setattr(app_main, "probe_duration", _probe)
+    monkeypatch.setattr(media_probe, "probe_duration", _probe)
 
     duration, chunk_plan = await app_main._probe_meeting_duration(
         result, source_page_url="https://yolocountyca.new.swagit.com/videos/324107"

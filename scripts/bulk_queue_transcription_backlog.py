@@ -133,8 +133,8 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, get_finder  # noqa: E402
 from app.platforms.media_probe import (  # noqa: E402
     chunk_size_seconds_for_platform,
+    probe_duration_and_chunk_plan,
     is_plausible_meeting_duration,
-    probe_duration,
 )
 
 # Same "flushes immediately even when piped to a log file" reasoning as
@@ -260,6 +260,7 @@ async def _create_job(
     media_url: str,
     media_kind: str,
     duration: float,
+    chunk_plan: Optional[list] = None,
 ) -> dict:
     body = {
         "payload": payload,
@@ -273,6 +274,11 @@ async def _create_job(
         ),
         "clerk_verified": True,  # see module docstring -- trusted internal caller
         "priority": 0,  # crud.PRIORITY_LOW -- see module docstring
+        # WO-98. None for an ordinary single-video meeting, which is the
+        # overwhelming majority and exactly what this key's absence used to
+        # mean; set for a multi-clip one, where omitting it silently queued
+        # a first-clip-only job.
+        "chunk_plan": chunk_plan,
     }
     return await _request_json(
         session,
@@ -379,7 +385,16 @@ async def _check_feasible(page: dict) -> dict:
     if not result.video_url:
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
-    duration = await probe_duration(result.video_url, source_page_url=source_url)
+    # WO-98: probe_duration(result.video_url) alone was a real bug here --
+    # for a multi-clip meeting that URL is only the FIRST clip, so this
+    # script queued jobs covering a fraction of the meeting, silently and
+    # without failing. The shared helper makes the same multi-clip decision
+    # app/main.py and worker/main.py already made; see its docstring.
+    duration, chunk_plan = await probe_duration_and_chunk_plan(
+        result,
+        source_page_url=source_url,
+        max_chunk_seconds=chunk_size_seconds_for_platform(result.platform),
+    )
     if duration is None:
         return {"ok": False, "reason": "ffprobe couldn't read the media"}
     if not is_plausible_meeting_duration(duration):
@@ -388,7 +403,12 @@ async def _check_feasible(page: dict) -> dict:
             "reason": f"implausible duration ({duration:.0f}s) -- not a real meeting recording",
         }
 
-    return {"ok": True, "result": result, "duration": duration}
+    return {
+        "ok": True,
+        "result": result,
+        "duration": duration,
+        "chunk_plan": chunk_plan,
+    }
 
 
 _OUTCOME_CREATED = "created"
@@ -447,6 +467,7 @@ async def _process_candidate(
             media_url=result.video_url,
             media_kind=_auto_media_kind(result.video_format),
             duration=feasible["duration"],
+            chunk_plan=feasible.get("chunk_plan"),
         )
     except Exception as e:
         logger.error("  FAILED to create job: %s", e)
