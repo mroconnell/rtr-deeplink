@@ -554,6 +554,33 @@ def test_school_district_ids_are_state_fips_plus_nces_lea():
     assert match.government.nces_lea_id == "22710"
 
 
+def test_gloucester_county_public_schools_va_is_its_own_government():
+    """Real production defect: `/j/gloucester-ma` was a live public hub
+    whose one page -- a `pub-gloucesterva.escribemeetings.com` "School
+    Board Meeting" -- was keyed to Gloucester, MA via the eScribe bleed
+    #707 fixed upstream. The correct identity is neither MA nor the
+    county pin already covering that tenant as a fallback: Virginia
+    school divisions are Census-of-Governments "dependent" (funded
+    through county appropriation, no independent taxing authority --
+    confirmed via Census Bureau technical documentation and Gloucester's
+    own school-board budget being proposed to, and appropriated by, the
+    County Board of Supervisors), but D2's test is "own governing board /
+    own enabling statute / own budget", not fiscal independence -- and
+    this registry already treats same-shape dependent county school
+    systems as separate governments (Wilson County, TN and all six
+    Maryland rows, both Census-confirmed "dependent"). Virginia school
+    boards are a statutory "body corporate" (Va. Code S 22.1-71) with
+    their own elected/appointed board and their own proposed budget, so
+    the test passes the same way it already does for those precedents."""
+    match = resolve("Gloucester County Public Schools, VA")
+    assert match.gov_id == "us:sd:5101620"
+    assert match.government.nces_lea_id == "01620"
+    assert (
+        display.display_name(match.government) == "Gloucester County Public Schools, VA"
+    )
+    assert display.hub_slug(match.government) == "gloucester-county-public-schools-va"
+
+
 def test_a_pin_to_a_government_not_yet_in_governments_csv_still_applies():
     """`governments.csv` is a generated snapshot of what some scoring run
     resolved TO, so a pin naming a government no archived page has
