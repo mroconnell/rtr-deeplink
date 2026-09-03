@@ -120,7 +120,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (63)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (64)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -151,9 +151,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (63)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (14)
+  Jurisdiction extraction & backfill  (15)
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
     `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
+    `[JUST-DO-IT]` `newark.granicus.com` is pinned to Newark, CA — it's…
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
     `[NEEDS-AUDIT]` `[EASY]` A minted government's page and its hub show…
     `[NEEDS-AUDIT]` `[EXAMPLE]` eScribe, Swagit and CivicClerk landing…
@@ -1207,6 +1208,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     widening; pinned as a known, current-state gap by
     `tests/test_gov_registry.py::
     test_district_of_north_vancouver_type_word_extracted_but_not_yet_resolved`.
+
+- **`[JUST-DO-IT]` `newark.granicus.com` is pinned to Newark, CA — it's Newark, NJ (rtr-discovery FINDING-9, 2026-09-03), and the audit it asked for is done.**
+  - **Issue**: `tenant_overrides.csv`'s `newark.granicus.com,,us:place:0650916,fallback,ryan_stated+upcoming_roster,...` row names Newark, **CA** (Alameda County). One polite GET of `https://newark.granicus.com/ViewPublisher.php?view_id=3` (rtr-discovery, 2026-09-03) shows the real page reads "City of Newark, **NJ** Streaming Media Archive," body name "Municipal Council" — Newark NJ's, not Newark CA's. Root cause: the pin was built by matching the roster row's bare *name* ("Newark, Alameda County") to the tenant host, not by confirming that tenant host is what the roster row's own `calendar_url` actually names — `rtr-upcoming/roster.csv`'s current Newark row is `Newark,Alameda,legistar,https://newark.legistar.com/Calendar.aspx,...`, a *different* host entirely, so `newark.granicus.com` was never really "the Newark, CA roster row's URL" at all.
+  - **Impact**: FINDING-9 asked "audit ALL `upcoming_roster`/`ryan_stated` pins by calendar_url netloc" — done, 2026-09-03. Of the 65 `ryan_stated+upcoming_roster` rows in `tenant_overrides.csv`, 33 have a `tenant_host` that does not currently match any `roster.csv` `calendar_url` netloc (same name-not-URL join defect as Newark). Of those 33: 24 are names nationally unique to CA in `places.csv` (safe regardless of join method), 3 self-disambiguate via a literal "ca" token in the hostname (`albanyca`, `dublinca`, `stream.ci.concord.ca.us`), 1 (`alameda.granicus.com`) collides only with a Saskatchewan village, not a plausible real conflict. The remaining 5 were genuinely ambiguous with no hostname tell and got a live fetch each: `mountainview.granicus.com` → "City of Mountain View, CA" (confirmed), `saratoga.granicus.com` → "City of Saratoga" (CA's own legal name, distinct from "Saratoga Springs" so this rules out NY), `cityofcampbell.granicus.com` → "City of Campbell, California" (confirmed), `unioncity.primegov.com` → its meeting API lists a "Successor Agency" (a California-specific post-redevelopment-dissolution body; NJ has no such thing) — confirmed CA. **Newark is the only wrong pin the audit found.**
+  - **Next action**: repoint `newark.granicus.com`'s row to Newark, NJ (`us:place:3451000`) or drop it outright (verify via `finalize_jurisdiction()`/the resolver's own ladder whether unpinned it lands somewhere reasonable before dropping); flag the same fix upstream to `rtr-upcoming/roster.csv`'s Newark row and `rtr-discovery/feed/upcoming_jurisdictions.csv` (both cross-repo, not fixable from here).
+  - **Constraint**: don't bulk-repoint or drop the other 32 no-netloc-match rows on the strength of "the join method was wrong" alone — this audit individually confirmed every ambiguous one of them is still correct; re-deriving by netloc match is necessary but not sufficient evidence of a real error, as this same audit shows.
+  - **History**: FINDING-9/10/11 raised in rtr-discovery's `hungry-einstein-ce49db` worktree BACKLOG.md 2026-09-03, flagged upstream via `~/Documents/rtr-business/research/STATE_gov_identity.md`. FINDING-11 (`pub-gloucesterva.escribemeetings.com`) is separate and already tracked in this file's "`pub-*` eScribe hosts" entry just below. FINDING-10 (`psl.granicus.com` pinned to a minted `rtr:` id instead of the national place table's `us:place:1258715`) is real and measured but not yet logged anywhere in this file — still open, not covered by this entry.
 
 - **`[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US government of the same name.**
   - **Issue**: several Canadian eScribe tenants carry two `gov_id`s, one
