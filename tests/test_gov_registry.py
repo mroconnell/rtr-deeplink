@@ -1101,6 +1101,56 @@ def test_the_county_itself_is_not_shadowed_by_the_citys_alias():
     assert resolve("Boise County, ID").gov_id == "us:county:16015"
 
 
+# --- WO-101: the column has to hold what the resolver produces --------
+
+
+def test_every_gov_id_fits_the_column():
+    """`MeetingPage.gov_id` was String(64) on the strength of a comment
+    saying the longest real id was "well under that". It was not: the
+    same scoring run's `minted.csv` held two 66-character ids, and the
+    production backfill died on
+    `rtr:us:ca:los-angeles-county-metropolitan-transportation-authority`
+    after writing 333 of 5,053 rows.
+
+    This asserts the property directly against the committed registry,
+    rather than against a claim about it."""
+    from archive.db.models import MeetingPage
+
+    width = MeetingPage.__table__.c.gov_id.type.length
+    too_long = sorted(
+        (gov_id for gov_id in registry.governments() if len(gov_id) > width),
+        key=len,
+        reverse=True,
+    )
+    assert not too_long, f"gov_id is String({width}); longest is {too_long[:3]}"
+
+
+def test_the_column_covers_what_the_schema_can_produce():
+    """Not just today's data -- the two id shapes whose length depends on
+    data at all. A minted `rtr:<cc>:<st>:<slug>` is bounded by
+    `jurisdiction` (String(200)); `rtr:unknown:<host>` by DNS's 253-octet
+    hostname limit. Measuring only what the corpus happens to contain is
+    the reasoning that failed."""
+    from archive.db.models import MeetingPage
+
+    width = MeetingPage.__table__.c.gov_id.type.length
+    jurisdiction_width = MeetingPage.__table__.c.jurisdiction.type.length
+    assert width >= len("rtr:us:ca:") + jurisdiction_width
+    assert width >= len("rtr:unknown:") + 253
+
+
+@pytest.mark.parametrize(
+    "column,longest",
+    [("gov_type", "special_district"), ("meeting_kind", "press_conference")],
+)
+def test_the_closed_vocabulary_columns_fit_too(column, longest):
+    """Checked the same way rather than assumed, since that is the whole
+    lesson. These two are genuinely bounded -- closed vocabularies."""
+    from archive.db.models import MeetingPage
+
+    assert MeetingPage.__table__.c[column].type.length >= len(longest)
+
+
 # --- WO-100: the three defects found in the production dry run --------
 
 
