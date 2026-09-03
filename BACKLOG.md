@@ -119,10 +119,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
+  [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
@@ -209,7 +210,8 @@ Trust, safety & data quality  (9)
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
+  `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
   `[IMPROVEMENT-ROUND]` `[BIG]` App-wide audit — see…
@@ -517,6 +519,56 @@ structural change than the two entries below.
     2's real weak spot" section (end of file) and its "5 Steps"/"Key
     Scripts" intro. Not yet in `BACKLOG_DONE.md`, this is the first
     record of it.
+
+- **[NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
+  government meeting platforms with zero adapter support — no
+  `app/platforms/` module for either.**
+  - **Issue**: tonight's StreamText-candidate research (see the entry
+    above) independently surfaced multiple real government bodies whose
+    actual meeting platform is Teams or Zoom, not any platform this
+    project currently resolves: NYC Water Board (Microsoft Teams, live
+    join link `teams.microsoft.com/meet/282741341051726`, found in a real
+    Sept 2026 meeting-notice PDF), LA County Dept of Mental Health
+    Commission (Microsoft Teams meetup-join link, found on
+    `dmh.lacounty.gov`), Georgia Vocational Rehabilitation Services board
+    (Zoom, `us06web.zoom.us/j/86536611218`, found on `gvs.georgia.gov`).
+    Those three are all *live join links*, not archived recordings, so
+    none are directly ingestible even with an adapter. Separately
+    confirmed live, 2026-09-02: **Rockport, MA's own `.gov` site hosts
+    real, archived past-meeting recordings via Zoom's cloud-recording
+    share links** —
+    [rockportma.gov/598/Recorded-Zoom-Meetings](https://www.rockportma.gov/598/Recorded-Zoom-Meetings)
+    lists multiple real `zoom.us/rec/share/...` links across several
+    boards (Board of Health, Cultural Council, Historical Commission,
+    Planning Board) — this is the shape that would actually be
+    ingestible. **No equivalent past-recording example was found for
+    Microsoft Teams** despite real search effort (multiple queries,
+    2026-09-02) — every real Teams hit found so far is a live join link;
+    Teams' own recording model (OneDrive/SharePoint "Recordings" folder,
+    access often permission-gated to the org's own tenant) may make
+    public past-recording links structurally rarer than Zoom's shareable
+    `rec/share` links, but that's inference, not confirmed — worth a
+    dedicated search pass before concluding either way.
+  - **Impact**: unknown real scope, but not zero — three independent real
+    hits in one evening's research on an unrelated task, plus at least
+    one confirmed real ingestible-shaped example (Rockport MA/Zoom). Any
+    jurisdiction using Teams/Zoom as its primary or sole platform is
+    currently invisible to every discovery method in this file, since
+    none of them check for these two at all.
+  - **Next action**: (1) a small, cheap discovery pass — dork for
+    `"zoom.us/rec/share"` + the standard 5 governance-context phrases
+    (same proven pattern as TelVue/Cablecast/Vimeo) to gauge real
+    population size before committing to adapter work; (2) if that comes
+    back with real density, a Zoom adapter is straightforward (the
+    `rec/share` URL is a stable, directly-fetchable link) — a Teams
+    adapter is a separate, harder question given the permission-gating
+    concern above and deserves its own investigation, not an assumed
+    parallel build.
+  - **History**: found 2026-09-01/02 during the same enumeration session
+    as the entry above, while researching StreamText candidates and
+    following up on the user's question about competitor
+    captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
+    this is the first record of it.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
@@ -1995,6 +2047,58 @@ transcription crawler) grows in a **separate app** ("the Archive"), not
 this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
+
+### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
+
+- **Issue**: enumeration work keeps needing the same judgment call —
+  given a candidate page (a domain-guess hit, a search result, a page
+  that embeds a third-party widget like StreamText/Wordly), is it
+  actually a real government page for the jurisdiction in question? Right
+  now this is done ad hoc every time: a weak keyword/name-match script
+  (real false-positive rate confirmed 2026-09-01 — see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s
+  StreamText-candidate write-up, where both a government-keyword filter
+  and a place-name substring matcher produced real, meaningful false
+  positives — "Cement town, OK" matching inside "Commencement," "Council
+  city, ID" matching inside "Council_Awards"), or a full agent doing a
+  live web search and reasoning per candidate (real, but expensive —
+  ~195K tokens for 30 candidates that same night, meaning a shortcut here
+  has real leverage across every future sweep, not just one).
+- **Impact**: every discovery method in this file inherits this same gap
+  — `find_gov_domains.py`'s weak anti-false-positive check (does the
+  jurisdiction's bare name appear on the page — already known to produce
+  real false positives like state-portal collisions and tribal-nation
+  name collisions, see §57), any future StreamText/Wordly-style
+  third-party-widget sweep, and any human/agent reviewing a domain-guess
+  batch all re-derive "does this look like a real government page" from
+  scratch every time, at whatever cost that particular method's own
+  verification step happens to use.
+- **Next action**: build a standalone script that takes a URL (or fetched
+  HTML) and returns a confidence score that it's a real government page
+  — combining cheap, real signals already used piecemeal elsewhere in
+  this project: TLD (`.gov`/`.us` scores higher than `.com`/`.org`),
+  presence of the target jurisdiction's own bare name in the page text
+  (the existing weak check, but as one signal among several rather than
+  the sole gate), governance-context keywords in the page's own visible
+  text (council/commission/board/agenda/minutes — the same 5-query
+  vocabulary already proven in the TelVue/Cablecast/Vimeo dorking
+  passes), known CMS/platform fingerprints (CivicPlus/CivicEngage
+  markers, Granicus, etc.), and possibly a check against the state-portal/
+  tribal-nation false-positive categories already catalogued in §57. Not
+  meant to replace a real adapter resolve for final confirmation — meant
+  to replace the *first-pass* triage step that currently costs either a
+  fragile regex or a full agent turn.
+- **Constraint**: needs real calibration against known-good and
+  known-bad examples before being trusted (this project's own "never
+  build from assumption" rule) — the §57 false-positive catalogue and the
+  StreamText candidate results
+  (`coverage_gap_2026-09-01/streamtext_candidates_RESULTS.csv`) are a
+  ready-made labeled set to start from (both real hits and real
+  ambiguous/not-found cases already exist there).
+- **History**: proposed during a long enumeration session, 2026-09-01/02,
+  after two consecutive automated candidate-filtering attempts (keyword
+  match, then place-name match) both produced real, documented false
+  positives on the same night. Not yet built.
 
 ### `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube — investigate (added 2026-09-02)
 
