@@ -8,6 +8,8 @@ process_next_chunk()'s own branching -- which fields it reads from a claim,
 and what it does with them -- not the DB layer that produced them.
 """
 
+import pytest
+
 import worker.main as wm
 
 
@@ -180,3 +182,157 @@ async def test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_jo
     engine = _Engine([])
     processed = await wm.process_next_chunk(engine)
     assert processed is True
+
+
+# --- WO-95: a long clip must be sub-split, not become one huge chunk -------
+#
+# Real, confirmed production failure (2026-09-02), not a hypothetical: Alamo
+# Area MPO (alamoareampo.new.swagit.com/videos/149390) is a real multi-clip
+# Swagit meeting whose job 1419 carried a single 2,519.69-second clip as
+# chunk 6 of 9. That chunk OOM-killed the 2GB Render worker on every claim
+# (~3.6GB projected peak RSS against the measured duration/RSS curve), and
+# because an OOM-killed process reports no failure, the claim went stale and
+# the same chunk was re-claimed ~40 times over 3.5 hours.
+#
+# The durations below are the real probed values from that job: its total
+# was 5003.458s across 9 clips, which is what makes it the useful fixture --
+# ceil(5003.458/900) is 6, so the 9 proves it was the chunk_plan path, and
+# no chunk_size_seconds value could have capped it.
+
+from app.platforms.media_probe import _clip_pieces  # noqa: E402
+
+
+def test_clip_shorter_than_the_cap_is_left_as_one_whole_piece():
+    assert _clip_pieces(556.0, 900) == [(0.0, 556.0)]
+
+
+def test_clip_exactly_at_the_cap_is_not_split():
+    assert _clip_pieces(900.0, 900) == [(0.0, 900.0)]
+
+
+def test_the_real_alamo_area_mpo_clip_is_split_under_the_cap():
+    """The 42-minute clip that OOM-killed production."""
+    pieces = _clip_pieces(2519.69, 450)
+    assert len(pieces) == 6
+    assert all(dur <= 450 for _off, dur in pieces)
+    # Contiguous, no gap and no overlap, and the whole clip is covered.
+    assert pieces[0][0] == 0.0
+    for (off, dur), (next_off, _) in zip(pieces, pieces[1:]):
+        assert off + dur == next_off
+    assert sum(dur for _off, dur in pieces) == pytest.approx(2519.69)
+
+
+def test_no_cap_preserves_the_pre_wo95_whole_clip_behavior():
+    """max_chunk_seconds=None is the old shape exactly -- what an existing
+    caller that hasn't been updated still gets."""
+    assert _clip_pieces(2519.69, None) == [(0.0, 2519.69)]
+
+
+async def test_process_next_chunk_extracts_a_sub_split_window_from_its_intra_clip_offset(
+    monkeypatch,
+):
+    """WO-95: an entry may be a window WITHIN a long clip, so extraction has
+    to start at that entry's own `media_start` -- not 0.0, which before WO-95
+    was hardcoded and is what made a 42-minute clip a 42-minute chunk.
+
+    The two offsets are deliberately different numbers here and must not be
+    swapped: `media_start` (450.0) is where ffmpeg seeks INTO THE CLIP FILE,
+    while `start` (1370.0) is the MEETING-relative offset the transcribed
+    segments get shifted by. The clip itself begins 920s into the meeting, so
+    a bug that used `start` for extraction would seek past the clip's end and
+    a bug that used `media_start` for shifting would misplace every timestamp
+    by 920 seconds.
+    """
+    chunk_plan = [
+        {
+            "media_url": "https://x/a.m3u8",
+            "start": 0.0,
+            "media_start": 0.0,
+            "duration": 920.0,
+            "title": "First",
+            "seq": 6,
+        },
+        # One long clip, sub-split into two 450s windows + a remainder.
+        {
+            "media_url": "https://x/long.m3u8",
+            "start": 920.0,
+            "media_start": 0.0,
+            "duration": 450.0,
+            "title": "Long",
+            "seq": 13,
+        },
+        {
+            "media_url": "https://x/long.m3u8",
+            "start": 1370.0,
+            "media_start": 450.0,
+            "duration": 450.0,
+            "title": "Long",
+            "seq": 13,
+        },
+    ]
+
+    async def _claim():
+        return {
+            "job_id": 556,
+            "chunk_index": 2,  # the SECOND window of the long clip
+            "source_url": "https://alamoareampo.new.swagit.com/videos/149390",
+            "platform": "swagit",
+            "media_url": "https://x/a.m3u8",
+            "total_chunks": 3,
+            "chunk_size_seconds": 450,
+            "probed_duration_seconds": 1820.0,
+            "chunk_plan": chunk_plan,
+            "partial_segments": [],
+        }
+
+    monkeypatch.setattr(wm.crud, "claim_next_chunk", _claim)
+
+    extract_calls = []
+
+    async def _extract(media_url, *, start, duration, source_page_url, out_path):
+        extract_calls.append(
+            {"media_url": media_url, "start": start, "duration": duration}
+        )
+        out_path.write_bytes(b"fake-audio")
+        return True, None
+
+    monkeypatch.setattr(wm, "extract_chunk_audio", _extract)
+
+    def _fail_get_finder(platform):
+        raise AssertionError("a chunk_plan job must not re-resolve per chunk")
+
+    monkeypatch.setattr(wm, "get_finder", _fail_get_finder)
+
+    report_calls = {}
+
+    async def _report(
+        job_id,
+        *,
+        success,
+        shifted_segments=None,
+        drop_previous_tail=0,
+        error=None,
+        chunk_index=None,
+    ):
+        report_calls.update(shifted_segments=shifted_segments, success=success)
+        return {"status": "completed", "transcript_version_id": 43}
+
+    monkeypatch.setattr(wm.crud, "report_chunk_result", _report)
+
+    async def _noop(job_id):
+        pass
+
+    monkeypatch.setattr(wm, "_send_completion_email", _noop)
+
+    engine = _Engine([{"start": 1.0, "end": 2.0, "text": "hello", "speaker": None}])
+    assert await wm.process_next_chunk(engine) is True
+
+    # Seeks 450s INTO the long clip's own file, for 450s -- capped, not the
+    # whole clip.
+    assert extract_calls == [
+        {"media_url": "https://x/long.m3u8", "start": 450.0, "duration": 450.0}
+    ]
+    # Shifted by the MEETING-relative offset (1370.0), not the intra-clip one.
+    assert report_calls["shifted_segments"] == [
+        {"start": 1371.0, "end": 1372.0, "text": "hello", "speaker": None}
+    ]

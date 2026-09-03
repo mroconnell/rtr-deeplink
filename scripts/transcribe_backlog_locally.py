@@ -1070,7 +1070,16 @@ async def transcribe_meeting(
     if len(result.video_segments) > 1:
         chunk_plan = await retry_async(
             lambda: probe_multi_clip_chunk_plan(
-                result.video_segments, source_page_url=source_url
+                result.video_segments,
+                source_page_url=source_url,
+                # WO-95, and deliberately this script's OWN cap rather
+                # than the worker's: the 2GB ceiling that motivated the
+                # cap doesn't apply on this Mac, so the same
+                # memory_constrained=False that keeps ordinary chunks at
+                # 900s keeps a sub-split clip's windows at 900s too.
+                max_chunk_seconds=chunk_size_seconds_for_platform(
+                    result.platform, memory_constrained=False
+                ),
             ),
             label=f"multi-clip chunk-plan probe of {source_url}",
             attempts=MEDIA_ATTEMPTS,
@@ -1258,7 +1267,10 @@ async def transcribe_meeting(
                     # tests/test_worker_multi_clip_chunk_plan.py.
                     entry = chunk_plan[idx]
                     chunk_media_url = entry["media_url"]
-                    start = 0.0
+                    # WO-95: a window WITHIN a clip now, not necessarily a
+                    # whole clip -- .get(..., 0.0) keeps a pre-WO-95 plan
+                    # working (every entry there is a whole clip).
+                    start = entry.get("media_start", 0.0)
                     dur = entry["duration"]
                     meeting_offset = entry["start"]
                 else:

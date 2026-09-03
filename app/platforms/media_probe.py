@@ -286,8 +286,33 @@ async def probe_has_video_stream(
     return len(streams) > 0
 
 
+def _clip_pieces(
+    duration: float, max_chunk_seconds: Optional[int]
+) -> list[tuple[float, float]]:
+    """[(offset_within_clip, piece_duration), ...] for one clip.
+
+    One whole-clip piece when the clip already fits (or when no cap is
+    given, which is the pre-WO-95 behavior); otherwise fixed
+    max_chunk_seconds windows with the last clamped to the remainder --
+    deliberately the same shape chunk_start()/chunk_duration() produce
+    for the ordinary single-video path, so a sub-split clip and an
+    ordinary meeting end up chunked identically.
+    """
+    if not max_chunk_seconds or duration <= max_chunk_seconds:
+        return [(0.0, duration)]
+    pieces: list[tuple[float, float]] = []
+    offset = 0.0
+    while offset < duration:
+        pieces.append((offset, min(float(max_chunk_seconds), duration - offset)))
+        offset += max_chunk_seconds
+    return pieces
+
+
 async def probe_multi_clip_chunk_plan(
-    video_segments: Sequence[VideoSegment], *, source_page_url: str
+    video_segments: Sequence[VideoSegment],
+    *,
+    source_page_url: str,
+    max_chunk_seconds: Optional[int] = None,
 ) -> Optional[list[dict]]:
     """Real per-clip durations and meeting-relative cumulative offsets for
     a meeting whose adapter found more than one real video file that
@@ -319,16 +344,30 @@ async def probe_multi_clip_chunk_plan(
     should only reach for this when len(video_segments) > 1, but this is
     defensive rather than assuming that's always checked first.
 
-    Known limitation, not yet hit by any confirmed real clip: this does
-    NOT further sub-split an individual clip that turns out to be very
-    long, unlike the ordinary fixed-window path's chunk_size_seconds cap
-    -- ffmpeg extraction of a single very long clip could in principle
-    exceed the worker's per-subprocess timeout (media_probe.py's
-    _SUBPROCESS_TIMEOUT_SECONDS) on a slow source. Every confirmed real
-    case so far (Yolo County CA, White Plains NY, Apple Valley MN) has
-    short, per-agenda-item clips, so this hasn't been observed -- if a
-    future tenant's meeting hits it, that's a real BACKLOG.md follow-up,
-    not a hypothetical one to guard against here without a live example.
+    **max_chunk_seconds caps an individual clip (WO-95, 2026-09-02).**
+    The limitation this replaces was real, was predicted right here, and
+    then happened. A clip longer than the cap used to become one single
+    chunk of whatever length that clip was, because this path bypasses
+    the ordinary chunk_size_seconds windowing entirely. Alamo Area MPO
+    (alamoareampo.new.swagit.com/videos/149390, job 1419) produced a
+    **2,519-second (42-minute) chunk**, which OOM-killed the 2GB Render
+    worker every single time it was claimed -- ~3.6GB projected peak RSS
+    against the measured duration/RSS curve in
+    _WORKER_DEFAULT_CHUNK_SIZE_SECONDS' own comment below. Because an
+    OOM-killed process reports no failure, the claim merely went stale
+    after STALE_CLAIM_AFTER and the same chunk was re-claimed -- ~40
+    times over 3.5 hours, and it would not have stopped on its own.
+
+    The predicted symptom was a subprocess timeout; the real one was an
+    OOM. WO-94's chunk-size reduction could not help, because this path
+    never reads chunk_size_seconds at all. Pass the same value
+    chunk_size_seconds_for_platform() gives the fixed-window path, and a
+    long clip is sub-split into that many windows, each carrying its own
+    media_start offset into the clip's file.
+
+    Defaults to None (no cap -- the pre-WO-95 behavior) rather than being
+    required, so a caller written against the old shape cannot silently
+    get a different plan than it expects. Every real caller passes it.
     """
     if len(video_segments) < 2:
         return None
@@ -346,16 +385,24 @@ async def probe_multi_clip_chunk_plan(
                 seg.seq,
             )
             return None
-        plan.append(
-            {
-                "media_url": seg.url,
-                "start": cursor,
-                "duration": duration,
-                "title": seg.title,
-                "seq": seg.seq,
-            }
-        )
-        cursor += duration
+        for media_start, piece in _clip_pieces(duration, max_chunk_seconds):
+            plan.append(
+                {
+                    "media_url": seg.url,
+                    # Meeting-relative offset, for shift_segments().
+                    "start": cursor,
+                    # Offset within THIS clip's own file, for ffmpeg's
+                    # -ss. Always 0.0 for a clip that fits the cap, which
+                    # is every entry any pre-WO-95 plan contains -- so
+                    # consumers read it with .get(..., 0.0) and a plan
+                    # already frozen onto a job keeps working unchanged.
+                    "media_start": media_start,
+                    "duration": piece,
+                    "title": seg.title,
+                    "seq": seg.seq,
+                }
+            )
+            cursor += piece
     return plan
 
 

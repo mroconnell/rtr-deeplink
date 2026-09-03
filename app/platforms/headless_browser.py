@@ -59,6 +59,21 @@ host with an ephemeral filesystem. `fetch_via_browser()` also now raises
 a short, clean message instead of letting Playwright's own multi-line
 error text reach a real visitor's page.
 
+**Real production incident, 2026-09-02: that self-heal used to call
+`subprocess.run()` directly from `_get_browser()`, which is awaited from
+the startup lifespan** -- since this app runs a single-threaded asyncio
+event loop, that blocked *everything* (including Render's own
+`/api/health` polling) for up to the install's 300s timeout on every
+restart where the binary wasn't where the running service expected it.
+Render's health checks starved during that window, concluded the
+instance was unresponsive, and restarted it -- so a browser that needed
+to self-heal turned into ~10 minutes of the whole site returning 502,
+not just Cloudflare-gated resolves failing. `_install_chromium()` is now
+run via `asyncio.to_thread()` so it can't block other requests or health
+checks while it downloads. This doesn't fix why the build-time install
+isn't reliably surviving to runtime (see BACKLOG.md) -- it fixes the
+blast radius of that still-open gap.
+
 **Real production incident, 2026-08-09: `worker/main.py` imports
 `app.platforms` (for fresh video_url re-resolution before each
 transcription chunk -- see its module docstring), which registers every
@@ -125,8 +140,8 @@ class HeadlessBrowserUnavailable(Exception):
 
 
 def _install_chromium() -> bool:
-    """Runs `playwright install chromium chromium-headless-shell` in-process,
-    once. Real download (tens of seconds to a couple minutes depending on
+    """Runs `playwright install chromium chromium-headless-shell`, once.
+    Real download (tens of seconds to a couple minutes depending on
     network), so this is a last-resort self-heal for a build step that
     didn't work, not a substitute for fixing that build step. Must name
     both browsers -- `playwright install chromium` alone does not pull
@@ -134,7 +149,22 @@ def _install_chromium() -> bool:
     actually needs (root-caused 2026-08-31, see render.yaml's matching
     comment); installing "chromium" alone here used to "succeed" while
     leaving the real missing binary still missing. Returns whether it
-    succeeded."""
+    succeeded.
+
+    Blocking (uses `subprocess.run`) -- callers must run this off the event
+    loop (`asyncio.to_thread`), never await it directly. Real production
+    incident, 2026-09-02: this used to be called straight from `_get_browser`
+    (itself awaited from the startup lifespan), which froze the *entire*
+    single-threaded event loop -- including Render's own `/api/health`
+    polling -- for up to this function's 300s timeout on every restart
+    where the build-installed binary wasn't where the running service
+    expected it. Render's health checks starved during that window,
+    concluded the instance was unresponsive, and restarted it -- turning
+    "one adapter's browser is briefly unavailable" into "the whole site is
+    down" for ~10 minutes at a time. See BACKLOG.md for the still-open
+    question of why the build-time install isn't reliably surviving to
+    runtime in the first place; this fix addresses the blast radius, not
+    that root cause."""
     global _install_attempted
     if _install_attempted:
         return False
@@ -183,7 +213,9 @@ async def _get_browser() -> Browser:
         try:
             _browser = await playwright.chromium.launch(headless=True)
         except Exception as e:
-            if "Executable doesn't exist" not in str(e) or not _install_chromium():
+            if "Executable doesn't exist" not in str(e) or not await asyncio.to_thread(
+                _install_chromium
+            ):
                 raise HeadlessBrowserUnavailable(
                     "This meeting needs a real browser to load, and it isn't available right now."
                 ) from e

@@ -326,7 +326,7 @@ async def test_auto_generation_builds_a_chunk_plan_for_a_multi_clip_meeting(
 
     monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
 
-    async def _plan(video_segments, *, source_page_url):
+    async def _plan(video_segments, *, source_page_url, max_chunk_seconds=None):
         return [
             {
                 "media_url": "https://x/a.m3u8",
@@ -385,7 +385,7 @@ async def test_auto_generation_falls_back_to_single_clip_when_plan_probe_fails(
 
     monkeypatch.setattr(worker.main, "get_finder", lambda platform: _Finder())
 
-    async def _plan(video_segments, *, source_page_url):
+    async def _plan(video_segments, *, source_page_url, max_chunk_seconds=None):
         return None
 
     monkeypatch.setattr(worker.main, "probe_multi_clip_chunk_plan", _plan)
