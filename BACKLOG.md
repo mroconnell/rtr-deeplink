@@ -1136,16 +1136,19 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     Canadian and one American: `pub-richmond` is Richmond BC *and*
     Richmond CA, `pub-salmonarm` is Salmon Arm BC *and* Salmon ID,
     `pub-courtenay` is Courtenay BC *and* Courtenay ND, `pub-owensound`
-    is Owen Sound ON *and* Owen WI, `pub-gloucesterva` is Gloucester
-    County VA *and* Gloucester MA. WO-100's cross-border guard does not
+    is Owen Sound ON *and* Owen WI. WO-100's cross-border guard does not
     catch these because the STORED string carries a state suffix, so the
-    name never reaches the stateless path.
+    name never reaches the stateless path. (`pub-gloucesterva` had the
+    same symptom — bleeding into "Gloucester, MA" alongside Gloucester
+    County, VA — but was US/US, not Canada/US; fixed 2026-09-03 by
+    pinning it to `us:county:51073` in `tenant_overrides.csv`, see
+    BACKLOG_DONE.md.)
   - **Impact**: a handful of pages per host on the wrong country's hub.
     Surfaced by `pin_worklist.csv`'s new `multiple_governments` section
     (WO-100), which is the first cut that made them visible.
-  - **Next action**: read the section, then pin each host — one landing
-    fetch settles a `pub-*` host's country even where it cannot settle
-    its name (`scripts/sweep_tenant_landing_pages.py`).
+  - **Next action**: read the section, then pin each remaining host —
+    one landing fetch settles a `pub-*` host's country even where it
+    cannot settle its name (`scripts/sweep_tenant_landing_pages.py`).
   - **Constraint**: don't infer the country from the `pub-` prefix.
     eScribe has real US customers (`pub-horrycountyschools` is SC), so
     the prefix is a hint, not a rule.
