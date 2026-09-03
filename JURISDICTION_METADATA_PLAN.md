@@ -769,6 +769,40 @@ highest-yield — 41 eScribe hosts including `pub-cambridge`, `pub-london`,
 `pub-halifax`, `pub-hamilton` — cannot be settled this way at all, and
 wants the per-platform work `BACKLOG.md` now carries.
 
+### The deploy window, measured
+
+The migration lands with the deploy; the backfill is a separate step
+after it. Between the two, `gov_id` and `gov_type` are NULL on every
+page — so "does a NULL-`gov_id` page still render, group and appear in
+the sitemap exactly as today?" is a question worth answering by
+measurement rather than by reading the fallback branches.
+
+Method: seed a database through **`origin/main`'s** own ingest with the
+raw pre-WO-99 jurisdiction strings (14 pages covering the CA county
+pairs, LADWP — which `origin/main` stores as "Los Angeles, CA", §1.3
+live in the data — the Cottage Grove pair, LAUSD, the State Senate and
+both Honolulu spellings), capture `/state/california`, `/state/all-50`,
+`/coverage`, `sitemap.xml` and every `/j/` page; then run
+`alembic upgrade head` on that same database and capture the same
+surfaces with this branch's code.
+
+**First run: not identical.** Hubs, `/j/`, `/coverage` and `sitemap.xml`
+came out byte-for-byte the same — the `_hub_identity()` fallback does
+what it says. But `/state/*`'s entire government list collapsed from
+"Counties & regions / Cities & towns / School districts" into a single
+**"Other public bodies"** section, because `group_for_gov_type(None)` is
+OTHER and every row was NULL. A visible downgrade on a live, indexed
+page, for however long the gap between deploying and backfilling turns
+out to be.
+
+Fixed by `gov_groups.group_for_page()`, which falls back to the
+registry's own classifier on the display name when a page has no stored
+`gov_type` — not a revival of `gov_classify.py`: it is the merged rule
+set that gets "Broward County Public Schools" and "Minnesota Senate"
+right, and it returns None rather than defaulting to "city", so an
+unclassifiable government still reads "Other public bodies". Re-run, the
+two captures are **byte-identical**. There is no window.
+
 ### Still open for Phase 2
 
 - **422 `unresolved` rows want pins**, concentrated on shared hosts

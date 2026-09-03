@@ -30,6 +30,7 @@ from archive.utils.gov_groups import (
     SCHOOL,
     STATE,
     group_for_gov_type,
+    group_for_page,
 )
 from archive.utils.highlights import (
     clean_text,
@@ -349,6 +350,42 @@ def test_an_unresolved_government_is_not_called_an_agency():
     assert group_for_gov_type(None) == OTHER
     assert group_for_gov_type("") == OTHER
     assert group_for_gov_type("something-new") == OTHER
+
+
+def test_a_page_with_no_gov_type_is_grouped_by_its_name():
+    """The deploy window: between the migration adding `gov_type` and the
+    backfill filling it, every page has NULL. Measured by rendering
+    origin/main and this branch against the same 14-page pre-WO-99
+    database -- hubs, /j/, /coverage and sitemap.xml came out
+    byte-identical, and /state/*'s entire government list collapsed into
+    one "Other public bodies" section. This fallback is what closes that,
+    and it also covers any page that never gets a `gov_id` at all."""
+    assert group_for_page(None, "Napa County, CA") == COUNTY
+    assert group_for_page(None, "City of Napa, CA") == CITY
+    assert group_for_page(None, "Los Angeles USD, CA") == SCHOOL
+    assert group_for_page(None, "Peel Region, ON") == COUNTY
+    assert group_for_page(None, "West County Wastewater District, CA") == AGENCY
+
+
+def test_the_fallback_is_the_registrys_classifier_not_the_retired_one():
+    """Two things `gov_classify.py` got wrong on the live corpus, which
+    the fallback must not reintroduce -- it is the merged rule set, not a
+    revival of the module this replaced."""
+    assert group_for_page(None, "Broward County Public Schools, FL") == SCHOOL
+    assert group_for_page(None, "Minnesota Senate, MN") == STATE
+
+
+def test_a_stored_gov_type_is_never_second_guessed():
+    """The fallback is for a MISSING type only. A stored one wins even
+    when the name reads like something else -- that is the whole point of
+    resolving the government rather than parsing its name."""
+    assert group_for_page("special_district", "Los Angeles, CA") == AGENCY
+    assert group_for_page("county", "City of Honolulu") == COUNTY
+
+
+def test_an_unnameable_page_with_no_gov_type_is_not_guessed_at():
+    assert group_for_page(None, None) == OTHER
+    assert group_for_page(None, "Somewhereville") == OTHER
 
 
 def test_every_group_has_a_label_and_a_place_in_the_order():

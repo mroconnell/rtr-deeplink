@@ -60,7 +60,7 @@ from ..utils.jurisdiction_format import (
     state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
-from ..utils.gov_groups import GROUP_LABELS, GROUP_ORDER, group_for_gov_type
+from ..utils.gov_groups import GROUP_LABELS, GROUP_ORDER, group_for_page
 from ..utils.language import detect_language_from_texts
 from ..utils.search import (
     _fuzzy_threshold,
@@ -6340,7 +6340,7 @@ def _group_governments(jurisdictions: Sequence[dict]) -> list[dict]:
     the 388 rows the two disagreed on."""
     buckets: dict[str, list[dict]] = {key: [] for key in GROUP_ORDER}
     for row in jurisdictions:
-        buckets[group_for_gov_type(row["gov_type"])].append(row)
+        buckets[group_for_page(row["gov_type"], row.get("jurisdiction"))].append(row)
     return [
         {"key": key, "label": GROUP_LABELS[key], "rows": buckets[key]}
         for key in GROUP_ORDER
