@@ -181,14 +181,15 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
 
-Reliability, ops & cost  (12)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (3)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
-  Transcription queue & workers  (5)
+  Transcription queue & workers  (6)
+    [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
@@ -1715,6 +1716,45 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   pattern measurement this residual is drawn from.
 
 ### Transcription queue & workers
+
+- **[NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
+  `IS NOT NULL` matches 63 rows that aren't multi-clip jobs at all.**
+  - **Issue**: `TranscriptionJob.chunk_plan` is
+    `mapped_column(JSON, nullable=True)` (`archive/db/models.py`), and
+    SQLAlchemy's `JSON` type defaults to `none_as_null=False` — a Python
+    `None` is persisted as the JSON value `null`, not SQL NULL. Verified
+    directly against SQLAlchemy 2026-09-03, not inferred from docs.
+  - **Impact**: `WHERE chunk_plan IS NOT NULL` returns **66 rows, of
+    which only 3 are real multi-clip jobs** — 95% noise. Nothing
+    misbehaves at runtime (every consumer tests truthiness, `if
+    chunk_plan:` / `if not plan`, which is correctly falsy for `None`),
+    so this is a query-correctness and auditability problem, not a
+    functional one. It bit a real audit: the 2026-09-03 sweep for
+    oversized clips (WO-95) had to filter the decoded value in Python
+    after `IS NOT NULL` let 63 single-video jobs through, and the
+    obvious SQL-only version of that query would have looked like it
+    worked while silently misreporting. The column's own comment also
+    asserted "NULL for every ordinary single-video job", which was
+    simply wrong — corrected in the same change as this entry.
+  - **Next action**: prefer fixing the read side over migrating data —
+    `jsonb_typeof`/`json_typeof(chunk_plan) = 'array'` (note `json`, not
+    `jsonb`: this is a plain `JSON` column, the same distinction that
+    produced a real 500 in `get_transcription_queue_summary()`, see its
+    docstring) is an exact predicate and needs no migration. Setting
+    `none_as_null=True` on the column would fix new writes but leaves
+    every existing row, so it needs a backfill to be worth anything, and
+    the runtime behaviour is already correct either way.
+  - **Constraint**: any change must keep `if not chunk_plan` working for
+    both shapes — a plan frozen before the change and one written after —
+    since that truthiness test is what three separate consumers rely on
+    (`worker/main.py`, `scripts/transcribe_backlog_locally.py`,
+    `app/main.py`). Don't "fix" it by making consumers test for SQL NULL.
+  - **History**: found 2026-09-03 while auditing every multi-clip job for
+    WO-95's oversized-clip bug. Worth knowing alongside that entry: all
+    3 real multi-clip jobs in the table's whole history had at least one
+    clip over their own cap — the feature had a 100% failure rate on long
+    clips, which was invisible partly because this predicate made
+    multi-clip jobs look 22x more common than they are.
 
 - **[NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
   records no failure, counts toward no retry cap, and silently discards

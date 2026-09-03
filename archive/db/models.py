@@ -476,12 +476,24 @@ class TranscriptionJob(Base):
     chunk_size_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
     total_chunks: Mapped[int] = mapped_column(Integer, nullable=False)
     chunks_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # NULL for every ordinary single-video job (the overwhelming majority
-    # -- unaffected). Set only for a WO-79 multi-clip meeting (some Swagit
-    # tenants -- see app/platforms/swagit.py/media_probe.py's
-    # probe_multi_clip_chunk_plan()): one dict per real source clip,
-    # `{"media_url", "start", "duration", "title", "seq"}`, `start` being
-    # that clip's cumulative meeting-relative offset. When set, each
+    # Empty for every ordinary single-video job (the overwhelming majority
+    # -- unaffected), but NOT SQL NULL: SQLAlchemy's JSON type defaults to
+    # none_as_null=False, so a Python None is persisted as the JSON value
+    # `null`. Measured 2026-09-03: 63 of the 66 rows matching `chunk_plan
+    # IS NOT NULL` are ordinary single-video jobs. Read this column's
+    # emptiness in Python (`if not chunk_plan`), never with a SQL NULL
+    # test -- see BACKLOG.md's matching entry.
+    #
+    # Set only for a WO-79 multi-clip meeting (some Swagit tenants -- see
+    # app/platforms/swagit.py/media_probe.py's
+    # probe_multi_clip_chunk_plan()): one dict per chunk, `{"media_url",
+    # "start", "media_start", "duration", "title", "seq"}`, `start` being
+    # that entry's cumulative meeting-relative offset and `media_start`
+    # (WO-95) its offset within that clip's own file -- an entry is a
+    # window WITHIN a clip when the clip is longer than the cap, so it is
+    # no longer one dict per source clip. Absent on a plan frozen before
+    # WO-95, where every entry is a whole clip; read it as
+    # `.get("media_start", 0.0)`. When set, each
     # chunk_index (0..total_chunks-1, total_chunks == len(chunk_plan))
     # maps directly to chunk_plan[chunk_index] instead of the usual
     # chunk_size_seconds-windowed math -- see worker/main.py's
