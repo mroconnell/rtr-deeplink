@@ -385,6 +385,49 @@ def _leading_type_word(name: str) -> str:
     return m.group(1).lower() if m else ""
 
 
+# The exact inverse of `display.display_name()`'s ambiguous-name
+# disambiguator, which appends `" ({word})"` to a municipality/township
+# base name when two governments share it in-state (its own `_TRAILING_
+# TYPE_RE` group -- kept in sync by comment, not import, the way
+# `resolver.py` already keeps `_BARE_GENERIC_ORG_NAME_WORDS` in sync with
+# `sweep_tenant_landing_pages.py`'s closed list).
+_TRAILING_PAREN_TYPE_RE = re.compile(
+    r"\s*\(((?:charter\s+|urban\s+|unified\s+)?"
+    r"(?:city|town|township|village|borough|municipality|plantation|"
+    r"gore|grant|location|purchase|reservation|district|precinct|"
+    r"cdp|comunidad|zona urbana))\)\s*$",
+    re.I,
+)
+
+
+def _strip_trailing_paren_type(name: str) -> Tuple[str, str]:
+    """ "Brookfield (village)" -> ("Brookfield", "village").
+
+    `resolve_government()` was not idempotent on its own display output,
+    and that gap is exactly what WO-107's live signal-scoring run
+    surfaced as 5 false "control regressions": a REGISTRY/PINNED-tier
+    page's stored `jurisdiction` is `display_name()`'s disambiguated form
+    (`archive/db/crud.py`'s `_display_jurisdiction_or_finalized()` writes
+    the display name back, not the adapter's raw string, once a page is
+    solidly resolved) whenever its base name is ambiguous in-state --
+    "Cottage Grove (town), WI" alongside "Cottage Grove (village), WI" is
+    the architecture doc's own example. A caller that re-resolves from
+    STORED data (a backfill, `scripts/score_gov_signals.py`) feeds this
+    shape back in as `raw_name`, and before this fix the place/cousub
+    table lookup missed on "Brookfield (village)" as a literal string
+    (the table's own key is "Brookfield", with "village" stripped as an
+    ordinary trailing Census type word, not held in parentheses) -- so a
+    government the tables already have minted a fresh, wrong `rtr:` id
+    instead. Confirmed live: 150+ archived rows carry this exact shape
+    today, all registry-tier, all correctly resolved originally -- this
+    was a round-trip gap, not a wrong table entry.
+    """
+    m = _TRAILING_PAREN_TYPE_RE.search(name)
+    if not m:
+        return name, ""
+    return name[: m.start()].strip(), m.group(1).strip().lower()
+
+
 def _general_purpose_lookup(name: str, state: str, type_preference: str):
     """The place and county-subdivision tables together, with the raw
     name's own type word breaking any tie -- within the place table as
@@ -1545,6 +1588,7 @@ def _resolve_government_ladder(
 
     name, state = _split_state(cleaned)
     name, county_qualifier = _strip_county_qualifier(name)
+    name, paren_type = _strip_trailing_paren_type(name)
     country = tables.country_for_state(state)
 
     # 3. Classify the TYPE, before any place lookup.
@@ -1562,6 +1606,7 @@ def _resolve_government_ladder(
     # else.
     raw_name, raw_state = _split_state((raw_name or "").strip())
     raw_name, _raw_county = _strip_county_qualifier(raw_name)
+    raw_name, raw_paren_type = _strip_trailing_paren_type(raw_name)
     state = state or raw_state
     country = tables.country_for_state(state)
     raw_type = classify.classify_government_type(raw_name, country=country)
@@ -1573,7 +1618,12 @@ def _resolve_government_ladder(
         type_preference = ""
     else:
         gov_type = classify.classify_government_type(name, country=country)
-        type_preference = _leading_type_word(raw_name)
+        # A trailing "(word)" disambiguator (either side -- the cleaned
+        # name's own or the raw name's) is exactly as strong a type signal
+        # as a leading "Village of" phrase; tried second only because the
+        # raw name is where a real page's own phrasing survives, per rung
+        # 3's own comment above.
+        type_preference = _leading_type_word(raw_name) or raw_paren_type or paren_type
 
     # 3b. Recover the state from the tenant BEFORE looking anything up.
     #

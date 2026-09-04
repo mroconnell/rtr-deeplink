@@ -81,6 +81,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from app.utils.gov_registry import (  # noqa: E402
     TIER_PINNED,
     TIER_REGISTRY,
+    page_hints_for,
     resolve_government,
 )
 from app.utils.gov_signals import extract_gov_signals  # noqa: E402
@@ -288,8 +289,22 @@ def score_corpus(
         source_url = page.get("source_url_normalized")
         host = _host(source_url)
         path = urlparse(source_url or "").path
+        # Same `page_hints` production's own `_resolve_page_government()`
+        # (archive/db/crud.py) builds from `platform`/`external_id` --
+        # without it, a `tenant_overrides.csv` row that discriminates via
+        # `match=platform=X`/`match=external_id=Y` would silently miss
+        # here even though it applies in production, producing a "before"
+        # tier that disagrees with the page's real stored
+        # `jurisdiction_confidence` for reasons that have nothing to do
+        # with signals. Confirmed harmless to every run so far (zero rows
+        # in the current `tenant_overrides.csv` use a `key=value` match),
+        # but built the same way production does rather than relying on
+        # that staying true.
+        page_hints = page_hints_for(page.get("platform"), page.get("external_id"))
 
-        before = resolve_government(raw_jurisdiction, tenant_host=host, path=path)
+        before = resolve_government(
+            raw_jurisdiction, tenant_host=host, path=path, page_hints=page_hints
+        )
 
         row = {
             "page_id": page_id,
@@ -320,7 +335,11 @@ def score_corpus(
         page_text = _tag_re_free_text(html)
         signals = extract_gov_signals(html, page_text, source_url or "", page)
         after = resolve_government(
-            raw_jurisdiction, tenant_host=host, path=path, signals=signals
+            raw_jurisdiction,
+            tenant_host=host,
+            path=path,
+            page_hints=page_hints,
+            signals=signals,
         )
 
         changed = after.gov_id != before.gov_id
