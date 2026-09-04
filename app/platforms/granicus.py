@@ -1045,6 +1045,31 @@ class GranicusAssetFinder(AssetFinder):
             return 200, final_url, None
 
     @staticmethod
+    def _unwrap_google_docs_viewer(url: str) -> str:
+        """AgendaViewer.php's redirect can land on Google's own
+        docs.google.com/gview (or /viewer) -- a viewer for arbitrary
+        external URLs, confirmed live on Paradise Valley AZ and (2026-09-04)
+        Walnut CA. That endpoint is flaky/semi-deprecated: on Walnut it
+        fell through to serving the wrapped file directly instead of a
+        preview, and framing that inline (meeting_page.html's
+        `agenda-inline-frame`) triggered Chrome's download flow on page
+        load instead of an inline render -- an unwanted download with no
+        user click involved. Unwrapping back to the real document URL
+        (its `url=` query param) sidesteps Google's wrapper entirely: the
+        underlying Granicus `DocumentViewer.php` URL is confirmed live to
+        serve plain `application/pdf` with no `Content-Disposition:
+        attachment`, so it frames inline safely on its own.
+        """
+        parsed = urlparse(url)
+        if parsed.netloc != "docs.google.com" or parsed.path not in (
+            "/gview",
+            "/viewer",
+        ):
+            return url
+        inner = parse_qs(parsed.query).get("url", [None])[0]
+        return inner or url
+
+    @staticmethod
     async def _fetch_agenda_items(
         session: aiohttp.ClientSession, page_url: str, clip_id: str
     ) -> Tuple[List[Tuple[float, str]], Optional[str]]:
@@ -1091,6 +1116,7 @@ class GranicusAssetFinder(AssetFinder):
                 "Granicus agenda fetch got HTTP %s for %s", status, agenda_url
             )
             return [], None
+        final_url = GranicusAssetFinder._unwrap_google_docs_viewer(final_url)
         if html is None:
             return [], final_url
 
