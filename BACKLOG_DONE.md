@@ -1,5 +1,44 @@
 # Backlog — done
 
+## Granicus agenda inline-frame forced an unwanted browser download [Done 2026-09-04]
+
+WO-111. User report: loading
+`redtaperecordings.com/m/city-of-walnut-2023-01-25-city-council-meeting`
+in Chrome triggered a file download on page load, no click involved.
+Root cause: `archive/templates/meeting_page.html`'s unconditional
+`agenda-inline-frame` iframe (added 2026-08-10 as the "cheapest version
+of an inline agenda viewer") renders whatever `agenda_link` a platform
+sets, with no way to know server-side whether a given URL is actually
+safe to frame. For this meeting, `agenda_link` was
+`https://docs.google.com/gview?url=https://cityofwalnut.granicus.com/
+DocumentViewer.php?file=...pdf&view=1&embedded=true` — Granicus's
+`AgendaViewer.php` (`app/platforms/granicus.py`'s `_fetch_agenda_items`)
+redirected to Google's own `docs.google.com/gview`, a viewer for
+arbitrary external URLs, when the customer's page wasn't the native
+agenda-index HTML (same family as the already-known Paradise Valley AZ
+case in that method's docstring — never previously hit live before, so
+never a confirmed problem until now). That Google endpoint is
+flaky/semi-deprecated and can fall through to serving the wrapped file
+directly instead of a preview; framed inside an `<iframe>`, that reads to
+Chrome as a top-level navigation to a `.pdf`-shaped resource and it
+triggers the native download flow instead of an inline render.
+
+**Fix**: `GranicusAssetFinder._unwrap_google_docs_viewer()`
+(`app/platforms/granicus.py`) strips the `docs.google.com/gview`
+(or `/viewer`) wrapper back to its `url=` query param — the real
+underlying document — before it's ever set as `agenda_link`. Confirmed
+live that the real Granicus `DocumentViewer.php` URL serves plain
+`application/pdf` with no `Content-Disposition: attachment`, so it
+frames inline safely on its own with no dependency on Google's wrapper
+at all; this fixes the download *and* keeps the inline agenda preview
+(no fallback-to-link-only needed). Regression coverage:
+`test_agenda_viewer_redirect_to_google_docs_gview_unwraps_to_real_pdf`
+(`tests/test_granicus.py`), modeled on the existing raw-PDF-redirect
+test in the same file. Not yet deployed — see this repo's manual-deploy
+convention; the already-cached Archive row for this specific meeting
+will keep serving the old `gview` link until it's re-resolved or a
+deploy re-runs the resolve.
+
 ## Phase 2d live signal-scoring run, and a `resolve_government()` round-trip bug it found [Done 2026-09-04]
 
 WO-110 ran `scripts/score_gov_signals.py` for real for the first time

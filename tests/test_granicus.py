@@ -219,6 +219,51 @@ async def test_agenda_viewer_redirect_to_raw_pdf_surfaces_as_fallback_link():
     assert result.agenda_link == pdf_url
 
 
+async def test_agenda_viewer_redirect_to_google_docs_gview_unwraps_to_real_pdf():
+    # Real City of Walnut, CA clip 260, confirmed live 2026-09-04 --
+    # AgendaViewer.php redirects to Google's own docs.google.com/gview
+    # (a viewer for arbitrary external URLs, same family as Paradise
+    # Valley AZ's -- see the comment on the raw-PDF test above), which
+    # rendered inline in meeting_page.html's `agenda-inline-frame` caused
+    # an unwanted browser download on page load instead of a preview:
+    # that Google endpoint is flaky/semi-deprecated and can fall through
+    # to serving the wrapped file directly. `agenda_link` should unwrap
+    # past Google's wrapper to the real Granicus document URL (confirmed
+    # live to serve plain `application/pdf` with no `Content-Disposition:
+    # attachment`, so it frames inline safely on its own). The response
+    # body's HTML is a synthetic placeholder -- Google's real viewer
+    # markup doesn't matter here since it never matches the
+    # `name="agenda\d+"` anchor pattern real AgendaViewer.php pages use,
+    # so this always falls through to the fallback-link path either way.
+    url = "https://cityofwalnut.granicus.com/player/clip/260?view_id=2"
+    html = load_fixture("granicus", "napacity_clip3450.html").replace(
+        "napacity", "cityofwalnut"
+    )
+    pdf_url = (
+        "https://cityofwalnut.granicus.com/DocumentViewer.php?"
+        "file=cityofwalnut_0f7daa1f9621741ea19480a66da0eb68.pdf"
+    )
+    gview_url = f"https://docs.google.com/gview?url={pdf_url}&view=1&embedded=true"
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://cityofwalnut.granicus.com/videos/260/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://cityofwalnut.granicus.com/AgendaViewer.php?clip_id=260&embedded=1": FakeResponse(
+            status=200,
+            url=gview_url,
+            text="<html><body>Google Docs Viewer placeholder</body></html>",
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.agenda_items == []
+    assert result.agenda_link == pdf_url
+
+
 def test_s3_path_style_only_rewrites_underscore_buckets():
     # Real Benicia/Clayton case, confirmed live 2026-09-02: Granicus's
     # shared agenda-attachment bucket name has an underscore, which is
