@@ -120,8 +120,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (64)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (65)
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -500,6 +501,59 @@ structural change than the two entries below.
   - **History**: `~/Documents/rtr-business/research/
     STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
     review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+  `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
+  run can silently drop or corrupt a real, currently-serving redirect
+  from an earlier run — not just the known `manual_override` blind spot
+  above, but any row whose source page has since been re-backfilled.**
+  - **Issue**: the script never reads the file it's about to overwrite —
+    it derives every row fresh, per run, from `old_hub_slug =
+    jurisdiction_hub_slug(CURRENT stored jurisdiction string)` vs `new_
+    hub_slug = resolve_government(that same string)`. The FIRST run after
+    a backfill can see genuine pre-backfill/post-backfill pairs; every
+    run after that sees only ALREADY-backfilled strings, so a page whose
+    retirement was captured once becomes permanently invisible to future
+    runs (exactly what `hub_aliases.py`'s own docstring warns about, but
+    the blast radius turned out to be the whole file, not one row). WO-109
+    (2026-09-03) re-ran the script against production and confirmed
+    it directly: of 672 previously-committed rows, a naive overwrite
+    with the fresh run's 57-row output would have dropped **615** of
+    them — real, currently-necessary redirects with no way to
+    reconstruct them from the database again.
+  - **Impact**: no damage today — WO-109 wrote a merge (keep every
+    existing row, add only genuinely-new `old_slug`s) by hand instead of
+    running the script's own overwrite, so the committed file lost
+    nothing. But that merge is currently a one-off manual step, not
+    something the tool does, so the very next person who runs
+    `scripts/score_gov_registry.py` in the ordinary documented way (no
+    special care) will regress this — silently, since the script prints
+    a row count and nothing else, and a smaller "57 retired slugs"
+    number reads as normal output, not a warning.
+  - **Next action**: teach `_write_hub_slug_aliases()` to read the
+    existing committed file first and union with the freshly-derived
+    rows (existing row wins unless proven stale) instead of overwriting,
+    the same merge WO-109 did by hand — see that PR's description for
+    the exact logic and the three ambiguous cases (below) it had to
+    reason through manually.
+  - **Constraint**: a union isn't quite enough on its own — WO-109 also
+    hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
+    bare `old_slug`, computed from two different tenants' raw
+    jurisdiction text at two different points in time, legitimately wants
+    two different destinations (e.g. `tvhamilton.cablecast.tv` pinned to
+    Hamilton, OH in WO-107 collides with an existing, still-live
+    `hamilton → hamilton-police-services-board-on` redirect for a real
+    Ontario police board). Any fix needs a documented tie-break rule, not
+    silent last-write-wins — WO-109 kept the incumbent in all 3 cases
+    (safe here because every runner-up tenant was `unresolved` before its
+    pin, meaning it had no live hub_slug to protect), and left `victoria`
+    flagged for Ryan specifically since `STATE_gov_identity.md` already
+    documents the committed value (`victoria-bc`) as based on a premise
+    #707 later corrected (the tenant is actually Victoria, MN) — a real
+    candidate for the OLD row being the one that's wrong, not the new one.
+  - **History**: found and worked around by hand in WO-109's PR
+    (2026-09-03); see that PR's description for the full row-by-row
+    reasoning and the before/after counts.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
