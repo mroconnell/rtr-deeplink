@@ -101,7 +101,7 @@ def match_row(index, jurisdiction):
 
 async def main():
     register_all_finders()
-    urls = [l.strip() for l in open(URLS_FILE) if l.strip()]
+    urls = [line.strip() for line in open(URLS_FILE) if line.strip()]
     coverage_rows, coverage_index = load_coverage_index()
 
     results = []

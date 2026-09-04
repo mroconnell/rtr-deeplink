@@ -97,7 +97,7 @@ async def check_granicus(session, slug):
     try:
         async with session.head(url, timeout=TIMEOUT, allow_redirects=False) as resp:
             if resp.status == 302 and "NotFound.aspx" in (resp.headers.get("Location") or ""):
-                return False, f"302->NotFound"
+                return False, "302->NotFound"
             return True, f"HTTP {resp.status}"
     except Exception as e:
         return None, str(e)
