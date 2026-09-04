@@ -2109,6 +2109,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   feasibility failures so cooldown engages instead of looping on the same
   dead candidates forever); the root 504/timeout issue and the logging
   distinction above remain open here, not touched by that fix.
+- **Untested tool, not a fix**: `ViewPublisherRSS.php?mode=vpodcast` (a
+  Granicus RSS mode found 2026-09-04, see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §58) adds a
+  direct-download `<enclosure>` URL (`DownloadFile.php?...clip_id=N`)
+  per item, on a different origin than `archive-stream.granicus.com`'s
+  CDN — a plausible alternate source for a clip stuck on this timeout,
+  not verified against one.
 
 #### `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the same host (WO-40 falsified the round-robin fix)
 
