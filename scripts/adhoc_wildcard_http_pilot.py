@@ -16,6 +16,7 @@ Signatures (confirmed live 2026-09-04, see ENUMERATION_METHODS.md §62):
 
 Usage: python3 scripts/adhoc_wildcard_http_pilot.py
 """
+
 import asyncio
 import csv
 import random
@@ -75,12 +76,14 @@ def sample_candidates():
         sample = random.sample(rows, min(SAMPLE_PER_TABLE, len(rows)))
         for row in sample:
             for variant in variants_for(row.name, row.state):
-                candidates.append({
-                    "source_table": label,
-                    "name": row.name,
-                    "state": row.state,
-                    "slug": variant,
-                })
+                candidates.append(
+                    {
+                        "source_table": label,
+                        "name": row.name,
+                        "state": row.state,
+                        "slug": variant,
+                    }
+                )
     # dedupe on slug (different entities can squash to the same guess)
     seen = set()
     deduped = []
@@ -96,7 +99,9 @@ async def check_granicus(session, slug):
     url = f"https://{slug}.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video"
     try:
         async with session.head(url, timeout=TIMEOUT, allow_redirects=False) as resp:
-            if resp.status == 302 and "NotFound.aspx" in (resp.headers.get("Location") or ""):
+            if resp.status == 302 and "NotFound.aspx" in (
+                resp.headers.get("Location") or ""
+            ):
                 return False, "302->NotFound"
             return True, f"HTTP {resp.status}"
     except Exception as e:
@@ -112,7 +117,9 @@ async def check_legistar(session, slug):
     url = f"https://{slug}.legistar.com/"
     try:
         async with session.head(
-            url, timeout=TIMEOUT, allow_redirects=True,
+            url,
+            timeout=TIMEOUT,
+            allow_redirects=True,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
             length = int(resp.headers.get("Content-Length") or -1)
@@ -124,7 +131,15 @@ async def check_legistar(session, slug):
 
 
 ALL_RESULTS_CSV = OUT_DIR / "wildcard_http_pilot_all_results.csv"
-_RESULT_FIELDS = ["platform", "slug", "is_real", "detail", "source_table", "name", "state"]
+_RESULT_FIELDS = [
+    "platform",
+    "slug",
+    "is_real",
+    "detail",
+    "source_table",
+    "name",
+    "state",
+]
 
 
 def _open_incremental(path):
@@ -141,25 +156,36 @@ def _open_incremental(path):
     return f, writer
 
 
-async def platform_worker(session, platform, checker, candidates, delay, writer, write_lock, counts):
+async def platform_worker(
+    session, platform, checker, candidates, delay, writer, write_lock, counts
+):
     for c in candidates:
         slug = c["slug"]
         is_real, detail = await checker(session, slug)
         row = {
-            "platform": platform, "slug": slug, "is_real": is_real, "detail": detail,
-            "source_table": c["source_table"], "name": c["name"], "state": c["state"],
+            "platform": platform,
+            "slug": slug,
+            "is_real": is_real,
+            "detail": detail,
+            "source_table": c["source_table"],
+            "name": c["name"],
+            "state": c["state"],
         }
         async with write_lock:
             writer[1].writerow(row)
-            writer[0].flush()  # every row hits disk immediately -- these are long, unattended runs
+            writer[
+                0
+            ].flush()  # every row hits disk immediately -- these are long, unattended runs
         counts[platform]["total"] += 1
         if is_real:
             counts[platform]["hits"] += 1
         elif is_real is None:
             counts[platform]["errors"] += 1
         if counts[platform]["total"] % 100 == 0:
-            print(f"[{platform}] {counts[platform]['total']}/{len(candidates)} checked, "
-                  f"{counts[platform]['hits']} hits so far")
+            print(
+                f"[{platform}] {counts[platform]['total']}/{len(candidates)} checked, "
+                f"{counts[platform]['hits']} hits so far"
+            )
         await asyncio.sleep(delay)
 
 
@@ -172,23 +198,43 @@ async def main():
         writer.writerows(candidates)
 
     print(f"{len(candidates)} unique slug candidates generated -> {CANDIDATES_CSV}")
-    print(f"Sweeping {len(candidates)} slugs x 2 platforms, interleaved, "
-          f"{DELAY_PER_PLATFORM}s/req/platform, writing every result to "
-          f"{ALL_RESULTS_CSV} as it happens...")
+    print(
+        f"Sweeping {len(candidates)} slugs x 2 platforms, interleaved, "
+        f"{DELAY_PER_PLATFORM}s/req/platform, writing every result to "
+        f"{ALL_RESULTS_CSV} as it happens..."
+    )
 
     all_file, all_writer = _open_incremental(ALL_RESULTS_CSV)
     write_lock = asyncio.Lock()
-    counts = {"granicus": {"total": 0, "hits": 0, "errors": 0},
-              "legistar": {"total": 0, "hits": 0, "errors": 0}}
+    counts = {
+        "granicus": {"total": 0, "hits": 0, "errors": 0},
+        "legistar": {"total": 0, "hits": 0, "errors": 0},
+    }
 
     start = time.time()
     try:
         async with aiohttp.ClientSession() as session:
             await asyncio.gather(
-                platform_worker(session, "granicus", check_granicus, candidates,
-                                 DELAY_PER_PLATFORM, (all_file, all_writer), write_lock, counts),
-                platform_worker(session, "legistar", check_legistar, candidates,
-                                 DELAY_PER_PLATFORM, (all_file, all_writer), write_lock, counts),
+                platform_worker(
+                    session,
+                    "granicus",
+                    check_granicus,
+                    candidates,
+                    DELAY_PER_PLATFORM,
+                    (all_file, all_writer),
+                    write_lock,
+                    counts,
+                ),
+                platform_worker(
+                    session,
+                    "legistar",
+                    check_legistar,
+                    candidates,
+                    DELAY_PER_PLATFORM,
+                    (all_file, all_writer),
+                    write_lock,
+                    counts,
+                ),
             )
     finally:
         all_file.close()

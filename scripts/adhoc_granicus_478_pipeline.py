@@ -10,6 +10,7 @@ bodies, etc. are all in scope per Ryan's explicit direction.
 
 Run from rtr-deeplink repo root with the venv active.
 """
+
 import asyncio
 import csv
 import os
@@ -32,26 +33,70 @@ from app.platforms.base import detect_platform, get_finder, CalendarPageError  #
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
 URLS_FILE = "/Users/mroconnell/Documents/rtr-business/research/granicus_478_urls.txt"
-COVERAGE_CSV = "/Users/mroconnell/Documents/rtr-business/research/jurisdiction_coverage.csv"
+COVERAGE_CSV = (
+    "/Users/mroconnell/Documents/rtr-business/research/jurisdiction_coverage.csv"
+)
 REPORT_CSV = "/Users/mroconnell/Documents/rtr-business/research/granicus_478_report.csv"
 QUEUE_FILE = Path(__file__).resolve().parent / "tier3_auto_transcription_queue.txt"
 DELAY_SECONDS = 1.5
 INGEST_TIMEOUT = aiohttp.ClientTimeout(total=65)
 
 STATE_ABBR = {
-    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
-    "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
-    "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa",
-    "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
-    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire",
-    "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York", "NC": "North Carolina",
-    "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
-    "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee",
-    "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington",
-    "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia",
+    "AL": "Alabama",
+    "AK": "Alaska",
+    "AZ": "Arizona",
+    "AR": "Arkansas",
+    "CA": "California",
+    "CO": "Colorado",
+    "CT": "Connecticut",
+    "DE": "Delaware",
+    "FL": "Florida",
+    "GA": "Georgia",
+    "HI": "Hawaii",
+    "ID": "Idaho",
+    "IL": "Illinois",
+    "IN": "Indiana",
+    "IA": "Iowa",
+    "KS": "Kansas",
+    "KY": "Kentucky",
+    "LA": "Louisiana",
+    "ME": "Maine",
+    "MD": "Maryland",
+    "MA": "Massachusetts",
+    "MI": "Michigan",
+    "MN": "Minnesota",
+    "MS": "Mississippi",
+    "MO": "Missouri",
+    "MT": "Montana",
+    "NE": "Nebraska",
+    "NV": "Nevada",
+    "NH": "New Hampshire",
+    "NJ": "New Jersey",
+    "NM": "New Mexico",
+    "NY": "New York",
+    "NC": "North Carolina",
+    "ND": "North Dakota",
+    "OH": "Ohio",
+    "OK": "Oklahoma",
+    "OR": "Oregon",
+    "PA": "Pennsylvania",
+    "RI": "Rhode Island",
+    "SC": "South Carolina",
+    "SD": "South Dakota",
+    "TN": "Tennessee",
+    "TX": "Texas",
+    "UT": "Utah",
+    "VT": "Vermont",
+    "VA": "Virginia",
+    "WA": "Washington",
+    "WV": "West Virginia",
+    "WI": "Wisconsin",
+    "WY": "Wyoming",
+    "DC": "District of Columbia",
 }
-_NAME_CLEAN_RE = re.compile(r"\b(city|county|town|village|borough|township|of|the)\b|[^a-z ]")
+_NAME_CLEAN_RE = re.compile(
+    r"\b(city|county|town|village|borough|township|of|the)\b|[^a-z ]"
+)
 
 
 def norm_name(s):
@@ -70,8 +115,12 @@ def headers():
 async def ingest(session, payload, input_url_normalized):
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
-    async with session.post(f"{base_url()}/internal/ingest", json=body,
-                             headers=headers(), timeout=INGEST_TIMEOUT) as resp:
+    async with session.post(
+        f"{base_url()}/internal/ingest",
+        json=body,
+        headers=headers(),
+        timeout=INGEST_TIMEOUT,
+    ) as resp:
         if resp.status == 200:
             return await resp.json()
         text = await resp.text()
@@ -109,8 +158,16 @@ async def main():
 
     async with aiohttp.ClientSession() as session:
         for i, url in enumerate(urls):
-            row_out = {"url": url, "status": "", "jurisdiction": "", "segments": 0,
-                       "agenda_items": 0, "video_url": "", "matched_row": "", "detail": ""}
+            row_out = {
+                "url": url,
+                "status": "",
+                "jurisdiction": "",
+                "segments": 0,
+                "agenda_items": 0,
+                "video_url": "",
+                "matched_row": "",
+                "detail": "",
+            }
             try:
                 platform = detect_platform(url)
                 finder = get_finder(platform)
@@ -133,7 +190,12 @@ async def main():
             row_out["agenda_items"] = len(result.agenda_items)
             row_out["video_url"] = result.video_url or ""
 
-            has_content = bool(result.segments or result.agenda_items or result.agenda_link or result.video_url)
+            has_content = bool(
+                result.segments
+                or result.agenda_items
+                or result.agenda_link
+                or result.video_url
+            )
             if not has_content:
                 row_out.update(status="empty", detail="no segments/agenda/video")
                 results.append(row_out)
@@ -141,7 +203,9 @@ async def main():
                 await asyncio.sleep(DELAY_SECONDS)
                 continue
 
-            passes_client_gate = bool(result.segments or result.agenda_items or result.agenda_link)
+            passes_client_gate = bool(
+                result.segments or result.agenda_items or result.agenda_link
+            )
             normalized = normalize_url(url)
 
             if passes_client_gate:
@@ -157,7 +221,9 @@ async def main():
             else:
                 with open(QUEUE_FILE, "a") as qf:
                     qf.write(url + "\n")
-                row_out.update(status="queued-tier3", detail="tier3_auto_transcription_queue.txt")
+                row_out.update(
+                    status="queued-tier3", detail="tier3_auto_transcription_queue.txt"
+                )
                 print(f"[QUEUED ] {url}  tier3 (video-only)")
 
             matched = match_row(coverage_index, result.jurisdiction)
@@ -168,10 +234,16 @@ async def main():
                 matched["shares_video"] = "True"
                 if result.segments:
                     matched["transcribed"] = "True"
-                if matched.get("reject_reason") in ("no-video-found", "resolve-failed", ""):
+                if matched.get("reject_reason") in (
+                    "no-video-found",
+                    "resolve-failed",
+                    "",
+                ):
                     matched["reject_reason"] = ""
                 matched_count += 1
-                row_out["matched_row"] = f"{matched['city_name']}, {matched['state_or_province']}"
+                row_out["matched_row"] = (
+                    f"{matched['city_name']}, {matched['state_or_province']}"
+                )
 
             results.append(row_out)
             if (i + 1) % 25 == 0:
