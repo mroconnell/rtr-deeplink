@@ -1,9 +1,9 @@
 state_heading,gov_type,governments
-Cities & towns,municipality,4219
-Counties & regions,county,847
-Other public bodies,other,476
-Cities & towns,township,164
+Cities & towns,municipality,4085
+Counties & regions,county,851
+Other public bodies,other,610
+Cities & towns,township,161
 School districts,school_district,125
-Agencies & special districts,special_district,83
+Agencies & special districts,special_district,82
 State government,state,10
 Courts,court,5

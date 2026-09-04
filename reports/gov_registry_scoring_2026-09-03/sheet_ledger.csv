@@ -4,7 +4,7 @@ lacity.primegov.com,"Los Angeles, CA",us:place:0644000,"Los Angeles, CA",municip
 okc.primegov.com,"City of Oklahoma City, OK",us:place:4055000,"Oklahoma City, OK",municipality,registry,us_places.csv Oklahoma City city,,oklahoma-city-ok,us,OK,oklahoma-city-ok,yes,Cities & towns
 losaltoshillsca.portal.civicclerk.com,"LOS ALTOS HILLS, CA",us:place:0643294,"Los Altos Hills, CA",municipality,registry,us_places.csv Los Altos Hills town,,los-altos-hills-ca,us,CA,los-altos-hills-ca,no,Cities & towns
 burnsville.civicweb.net,City of Burnsville,us:place:2708794,"Burnsville, MN",municipality,registry,us_places.csv Burnsville city,,burnsville-mn,us,MN,burnsville,yes,Cities & towns
-mesa.legistar.com,City of Mesa,,City of Mesa,municipality,unresolved,no state for 'City of Mesa',,,us,,mesa,yes,Cities & towns
+mesa.legistar.com,City of Mesa,us:place:0446000,"Mesa, AZ",municipality,pinned,tenant_overrides.csv mesa.legistar.com source=ryan_stated,,mesa-az,us,AZ,mesa,yes,Cities & towns
 baltimore.legistar.com,"Baltimore, MD",us:place:2404000,"Baltimore, MD",municipality,registry,us_places.csv Baltimore city,,baltimore-md,us,MD,baltimore-md,no,Cities & towns
 pub-bakersfield.escribemeetings.com,"City of Bakersfield, CA",us:place:0603526,"Bakersfield, CA",municipality,registry,us_places.csv Bakersfield city,,bakersfield-ca,us,CA,bakersfield-ca,yes,Cities & towns
 pub-bakersfield.escribemeetings.com,"Bakersfield, CA",us:place:0603526,"Bakersfield, CA",municipality,registry,us_places.csv Bakersfield city,,bakersfield-ca,us,CA,bakersfield-ca,no,Cities & towns
@@ -29,7 +29,7 @@ cincinnatioh.granicus.com,"Cincinnati, OH",us:place:3915000,"Cincinnati, OH",mun
 corpuschristi.granicus.com,"City of Corpus Christi, TX",us:place:4817000,"Corpus Christi, TX",municipality,registry,us_places.csv Corpus Christi city,,corpus-christi-tx,us,TX,corpus-christi-tx,yes,Cities & towns
 fortworthgov.granicus.com,"City of Fort Worth, TX",us:place:4827000,"Fort Worth, TX",municipality,registry,us_places.csv Fort Worth city,,fort-worth-tx,us,TX,fort-worth-tx,yes,Cities & towns
 indianapolis.granicus.com,"City of Indianapolis, IN",us:place:1836003,"Indianapolis, IN",municipality,registry,us_places.csv Indianapolis city (balance),,indianapolis-in,us,IN,indianapolis-in,yes,Cities & towns
-lasvegas.primegov.com,City of Las Vegas,,City of Las Vegas,municipality,unresolved,no state for 'City of Las Vegas',,,us,,las-vegas,yes,Cities & towns
+lasvegas.primegov.com,City of Las Vegas,us:place:3240000,"Las Vegas, NV",municipality,pinned,tenant_overrides.csv lasvegas.primegov.com source=ryan_stated,,las-vegas-nv,us,NV,las-vegas,yes,Cities & towns
 memphis.granicus.com,"Memphis, TN",us:place:4748000,"Memphis, TN",municipality,registry,us_places.csv Memphis city,,memphis-tn,us,TN,memphis-tn,no,Cities & towns
 nashville.granicus.com,"Nashville-Davidson County, TN",us:place:4752006,"Nashville-Davidson, TN",municipality,registry,us_places.csv Nashville-Davidson metropolitan government (balance) (consolidated government),,nashville-davidson-tn,us,TN,nashville-davidson-county-tn,no,Cities & towns
 dc.granicus.com,"Washington, DC",us:place:1150000,"Washington, DC",municipality,pinned,tenant_overrides.csv dc.granicus.com source=auto_derived+known_domains,,washington-dc,us,DC,washington-dc,no,Cities & towns
@@ -54,7 +54,7 @@ traviscotx.portal.civicclerk.com,"Travis County, TX",us:county:48453,"Travis Cou
 ccta.primegov.com,"Contra Costa Transportation Authority, CA",rtr:us:ca:contra-costa-transportation-authority,"Contra Costa Transportation Authority, CA",special_district,pinned,tenant_overrides.csv ccta.primegov.com source=known_domains,,contra-costa-transportation-authority-ca,us,CA,contra-costa-transportation-authority-ca,no,Agencies & special districts
 ashlandcowi.portal.civicclerk.com,"Ashland County, WI",us:county:55003,"Ashland County, WI",county,registry,us_counties.csv Ashland County,,ashland-county-wi,us,WI,ashland-county-wi,no,Counties & regions
 pub-northcowichan.escribemeetings.com,"Town of Lake Cowichan, BC",ca:csd:5919016,"Lake Cowichan, BC",municipality,registry,ca_csd.csv Lake Cowichan,,lake-cowichan-bc,ca,BC,town-of-lake-cowichan-bc,yes,Cities & towns
-cityofhawthorne.primegov.com,City of Hawthorne,,City of Hawthorne,municipality,unresolved,no state for 'City of Hawthorne',,,us,,hawthorne,yes,Cities & towns
+cityofhawthorne.primegov.com,City of Hawthorne,us:place:0632548,"Hawthorne, CA",municipality,pinned,tenant_overrides.csv cityofhawthorne.primegov.com source=ryan_stated,,hawthorne-ca,us,CA,hawthorne,yes,Cities & towns
 simivalley.granicus.com,"City of Simi Valley, CA",us:place:0672016,"Simi Valley, CA",municipality,registry,us_places.csv Simi Valley city,,simi-valley-ca,us,CA,simi-valley-ca,yes,Cities & towns
 chathamcountyga.iqm2.com,"Chatham County, GA",us:county:13051,"Chatham County, GA",county,registry,us_counties.csv Chatham County,,chatham-county-ga,us,GA,chatham-county-ga,no,Counties & regions
 cityofmenifee.primegov.com,"City of Menifee, CA",us:place:0646842,"Menifee, CA",municipality,registry,us_places.csv Menifee city,,menifee-ca,us,CA,menifee-ca,yes,Cities & towns
@@ -75,7 +75,7 @@ adjala-tosorontio.civicweb.net,"Township of Adjala-Tosorontio, ON",ca:csd:354300
 pub-sandag.escribemeetings.com,"City of San Diego, CA",rtr:us:ca:san-diego-association-of-governments,"San Diego Association of Governments, CA",special_district,pinned,tenant_overrides.csv pub-sandag.escribemeetings.com source=architecture_doc_1_3,,san-diego-association-of-governments-ca,us,CA,san-diego-ca,yes,Agencies & special districts
 pub-blindriver.escribemeetings.com,"Blind River, ON",ca:csd:3557038,"Blind River, ON",municipality,registry,ca_csd.csv Blind River,,blind-river-on,ca,ON,blind-river-on,no,Cities & towns
 cityoflancasterca.primegov.com,"Lancaster, CA",us:place:0640130,"Lancaster, CA",municipality,pinned,tenant_overrides.csv cityoflancasterca.primegov.com source=known_domains,,lancaster-ca,us,CA,lancaster-ca,no,Cities & towns
-huron-township.cablecast.tv,Huron Township,,Huron Township,township,unresolved,no state for 'Huron Township',,,us,,huron-township,no,Cities & towns
+huron-township.cablecast.tv,Huron Township,us:cousub:2606340020,"Huron Township, MI",township,pinned,tenant_overrides.csv huron-township.cablecast.tv source=ryan_stated,,huron-township-mi,us,MI,huron-township,no,Cities & towns
 pub-bluemountains.escribemeetings.com,"The Blue Mountains, ON",ca:csd:3542045,"The Blue Mountains, ON",municipality,registry,ca_csd.csv The Blue Mountains,,the-blue-mountains-on,ca,ON,the-blue-mountains-on,no,Cities & towns
 emporiaks.portal.civicclerk.com,"Emporia, KS",us:place:2021275,"Emporia (city), KS",municipality,registry,us_places.csv Emporia city,,emporia-city-ks,us,KS,emporia-ks,no,Cities & towns
 riverviewmi.cablecast.tv,City of Riverview,us:place:2668880,"Riverview, MI",municipality,registry,us_places.csv Riverview city (state from subdomain riverviewmi.cablecast.tv),,riverview-mi,us,MI,riverview,yes,Cities & towns
@@ -88,11 +88,11 @@ pub-brampton.escribemeetings.com,"City of Brampton, ON",ca:csd:3521010,"Brampton
 sacog.primegov.com,"City of Galt, CA",us:place:0628112,"Galt, CA",municipality,registry,us_places.csv Galt city,,galt-ca,us,CA,galt-ca,yes,Cities & towns
 rockvillemd.granicus.com,"City of Rockville, MD",us:place:2467675,"Rockville, MD",municipality,registry,us_places.csv Rockville city,,rockville-md,us,MD,rockville-md,yes,Cities & towns
 cityofredlands.cablecast.tv,"Redlands, CA",us:place:0659962,"Redlands, CA",municipality,registry,us_places.csv Redlands city,,redlands-ca,us,CA,redlands-ca,no,Cities & towns
-pub-brucecounty.escribemeetings.com,Bruce County,,Bruce County,county,unresolved,no state for 'Bruce County',,,us,,bruce-county,no,Counties & regions
+pub-brucecounty.escribemeetings.com,Bruce County,ca:cd:3541,"Bruce, ON",county,registry,ca_cd.csv Bruce,,bruce-on,ca,ON,bruce-county,no,Counties & regions
 desplainesil.cablecast.tv,"Des Plaines, IL",us:place:1719642,"Des Plaines, IL",municipality,registry,us_places.csv Des Plaines city,,des-plaines-il,us,IL,des-plaines-il,no,Cities & towns
 glendoraca.cablecast.tv,City of Glendora,us:place:0630014,"Glendora, CA",municipality,registry,us_places.csv Glendora city (state from subdomain glendoraca.cablecast.tv),,glendora-ca,us,CA,glendora,yes,Cities & towns
 elcerritoca.portal.civicclerk.com,"El Cerrito, CA",us:place:0621796,"El Cerrito, CA",municipality,registry,us_places.csv El Cerrito city,,el-cerrito-ca,us,CA,el-cerrito-ca,no,Cities & towns
-hctv.cablecast.tv,Holden,,Holden,other,unresolved,no state for 'Holden',,,us,,holden,no,Other public bodies
+hctv.cablecast.tv,Holden,us:cousub:2502730560,"Holden Town, MA",township,pinned,tenant_overrides.csv hctv.cablecast.tv source=ryan_stated,,holden-town-ma,us,MA,holden,no,Cities & towns
 ventura.primegov.com,"Ventura County, CA",us:county:06111,"Ventura County, CA",county,pinned,tenant_overrides.csv ventura.primegov.com source=known_domains,,ventura-county-ca,us,CA,ventura-county-ca,no,Counties & regions
 pub-caledon.escribemeetings.com,"Caledon, ON",ca:csd:3521024,"Caledon, ON",municipality,registry,ca_csd.csv Caledon,,caledon-on,ca,ON,caledon-on,no,Cities & towns
 leonvalleytx.cablecast.tv,"Leon Valley, TX",us:place:4842388,"Leon Valley, TX",municipality,registry,us_places.csv Leon Valley city,,leon-valley-tx,us,TX,leon-valley-tx,no,Cities & towns
@@ -118,7 +118,7 @@ pub-forterie.escribemeetings.com,"Town of Fort Erie, ON",ca:csd:3526003,"Fort Er
 delraybeach.granicus.com,"City of Delray Beach, FL",us:place:1217100,"Delray Beach, FL",municipality,registry,us_places.csv Delray Beach city,,delray-beach-fl,us,FL,delray-beach-fl,yes,Cities & towns
 pub-georgina.escribemeetings.com,"Town of Georgina, ON",ca:csd:3519070,"Georgina, ON",municipality,registry,ca_csd.csv Georgina,,georgina-on,ca,ON,town-of-georgina-on,yes,Cities & towns
 cvwd.primegov.com,"City of Indio, CA",rtr:us:ca:coachella-valley-water-district,"Coachella Valley Water District, CA",special_district,pinned,tenant_overrides.csv cvwd.primegov.com source=architecture_doc_1_3,,coachella-valley-water-district-ca,us,CA,indio-ca,yes,Agencies & special districts
-pasadena.granicus.com,City of Pasadena,,City of Pasadena,municipality,unresolved,no state for 'City of Pasadena',,,us,,pasadena,yes,Cities & towns
+pasadena.granicus.com,City of Pasadena,us:place:0656000,"Pasadena, CA",municipality,pinned,tenant_overrides.csv pasadena.granicus.com source=ryan_stated,,pasadena-ca,us,CA,pasadena,yes,Cities & towns
 pub-guelph.escribemeetings.com,"Guelph, ON",ca:csd:3523008,"Guelph, ON",municipality,registry,ca_csd.csv Guelph,,guelph-on,ca,ON,guelph-on,no,Cities & towns
 greeleyco.portal.civicclerk.com,Greeley,us:place:0832155,"Greeley, CO",municipality,registry,us_places.csv Greeley city (state from subdomain greeleyco.portal.civicclerk.com),,greeley-co,us,CO,greeley,no,Cities & towns
 deltona.granicus.com,"City of Deltona, FL",us:place:1217200,"Deltona, FL",municipality,registry,us_places.csv Deltona city,,deltona-fl,us,FL,deltona-fl,yes,Cities & towns
@@ -135,7 +135,7 @@ kerrvilletx.portal.civicclerk.com,"Kerrville, TX",us:place:4839040,"Kerrville, T
 pub-owensound.escribemeetings.com,"City of Owen Sound, ON",ca:csd:3542059,"Owen Sound, ON",municipality,registry,ca_csd.csv Owen Sound,,owen-sound-on,ca,ON,owen-sound-on,yes,Cities & towns
 lakeforest.primegov.com,City of Lake Forest,,City of Lake Forest,municipality,unresolved,no state for 'City of Lake Forest',,,us,,lake-forest,yes,Cities & towns
 pub-penticton.escribemeetings.com,"City of Penticton, BC",ca:csd:5907041,"Penticton, BC",municipality,registry,ca_csd.csv Penticton,,penticton-bc,ca,BC,penticton-bc,yes,Cities & towns
-santaclara.granicus.com,City of Santa Clara,us:place:0669084,"Santa Clara, CA",municipality,pinned,tenant_overrides.csv santaclara.granicus.com source=auto_derived+upcoming_roster,,santa-clara-ca,us,CA,santa-clara,yes,Cities & towns
+santaclara.granicus.com,City of Santa Clara,us:place:0669084,"Santa Clara, CA",municipality,pinned,tenant_overrides.csv santaclara.granicus.com source=landing_page,,santa-clara-ca,us,CA,santa-clara,yes,Cities & towns
 lucascooh.portal.civicclerk.com,"Lucas County, OH",us:county:39095,"Lucas County, OH",county,registry,us_counties.csv Lucas County,,lucas-county-oh,us,OH,lucas-county-oh,no,Counties & regions
 pub-portmoody.escribemeetings.com,"City of Port Moody, BC",ca:csd:5915043,"Port Moody, BC",municipality,registry,ca_csd.csv Port Moody,,port-moody-bc,ca,BC,port-moody-bc,yes,Cities & towns
 redmondor.portal.civicclerk.com,"Redmond, OR",us:place:4161200,"Redmond, OR",municipality,registry,us_places.csv Redmond city,,redmond-or,us,OR,redmond-or,no,Cities & towns
@@ -152,7 +152,7 @@ tavaresfl.portal.civicclerk.com,"Tavares, FL",us:place:1271225,"Tavares, FL",mun
 pub-thunderbay.escribemeetings.com,"City of Thunder Bay, ON",ca:csd:3558004,"Thunder Bay, ON",municipality,registry,ca_csd.csv Thunder Bay,,thunder-bay-on,ca,ON,thunder-bay-on,yes,Cities & towns
 pub-townshipofbrock.escribemeetings.com,Township Of Brock,ca:csd:3518039,"Brock, ON",municipality,registry,ca_csd.csv Brock (state from tenant_hints.csv pub-townshipofbrock.escribemeetings.com),,brock-on,ca,ON,township-of-brock,yes,Cities & towns
 sanmateocounty.granicus.com,"County of San Mateo, CA",us:county:06081,"San Mateo County, CA",county,registry,us_counties.csv San Mateo County,,san-mateo-county-ca,us,CA,county-of-san-mateo-ca,no,Counties & regions
-nampa.primegov.com,City of Nampa,,City of Nampa,municipality,unresolved,no state for 'City of Nampa',,,us,,nampa,yes,Cities & towns
+nampa.primegov.com,City of Nampa,us:place:1656260,"Nampa, ID",municipality,pinned,tenant_overrides.csv nampa.primegov.com source=ryan_stated,,nampa-id,us,ID,nampa,yes,Cities & towns
 pub-orlando.escribemeetings.com,"City of Orlando, FL",us:place:1253000,"Orlando, FL",municipality,registry,us_places.csv Orlando city,,orlando-fl,us,FL,orlando-fl,yes,Cities & towns
 highlandparkil.portal.civicclerk.com,"Highland Park, IL",us:place:1734722,"Highland Park, IL",municipality,registry,us_places.csv Highland Park city,,highland-park-il,us,IL,highland-park-il,no,Cities & towns
 forestgroveor.portal.civicclerk.com,"Forest Grove, OR",us:place:4126200,"Forest Grove, OR",municipality,registry,us_places.csv Forest Grove city,,forest-grove-or,us,OR,forest-grove-or,no,Cities & towns
@@ -280,13 +280,13 @@ pub-haldimandcounty.escribemeetings.com,Haldimand County,rtr:ca:on:haldimand-cou
 pub-hamilton.escribemeetings.com,City of Hamilton,,City of Hamilton,municipality,unresolved,no state for 'City of Hamilton',,,us,,hamilton,yes,Cities & towns
 pub-imperialbeach.escribemeetings.com,"City of Imperial Beach, CA",us:place:0636294,"Imperial Beach, CA",municipality,registry,us_places.csv Imperial Beach city,,imperial-beach-ca,us,CA,imperial-beach-ca,yes,Cities & towns
 upperdublin.granicus.com,"Upper Dublin, PA",us:cousub:4209179008,"Upper Dublin Township, PA",township,registry,us_cousubs.csv Upper Dublin township,,upper-dublin-township-pa,us,PA,upper-dublin-pa,no,Cities & towns
-lacenter.civicweb.net,La Center,,La Center,other,unresolved,no state for 'La Center',,,us,,la-center,no,Other public bodies
+lacenter.civicweb.net,La Center,us:place:5336710,"La Center, WA",municipality,pinned,tenant_overrides.csv lacenter.civicweb.net source=ryan_stated,,la-center-wa,us,WA,la-center,no,Cities & towns
 pub-okotoks.escribemeetings.com,"Town of Okotoks, AB",ca:csd:4806012,"Okotoks, AB",municipality,registry,ca_csd.csv Okotoks,,okotoks-ab,ca,AB,town-of-okotoks-ab,yes,Cities & towns
 pub-wilmot.escribemeetings.com,Wilmot,,Wilmot,other,unresolved,no state for 'Wilmot',,,us,,wilmot,no,Other public bodies
 pub-anmore.escribemeetings.com,"Anmore, BC",ca:csd:5915038,"Anmore, BC",municipality,registry,ca_csd.csv Anmore,,anmore-bc,ca,BC,anmore-bc,no,Cities & towns
 pub-evans.escribemeetings.com,"Evans, CO",us:place:0825280,"Evans, CO",municipality,registry,us_places.csv Evans city,,evans-co,us,CO,evans-co,no,Cities & towns
 pub-orangeville.escribemeetings.com,Orangeville,ca:csd:3522014,"Orangeville, ON",municipality,registry,ca_csd.csv Orangeville (state from tenant_hints.csv pub-orangeville.escribemeetings.com),,orangeville-on,ca,ON,orangeville,no,Cities & towns
-pub-wellington.escribemeetings.com,County of Wellington,ca:cd:3523,"Wellington, ON",county,registry,ca_cd.csv Wellington (state from tenant_hints.csv pub-wellington.escribemeetings.com),,wellington-on,ca,ON,county-of-wellington,no,Counties & regions
+pub-wellington.escribemeetings.com,County of Wellington,ca:cd:3523,"Wellington, ON",county,registry,ca_cd.csv Wellington,,wellington-on,ca,ON,county-of-wellington,no,Counties & regions
 pub-porthope.escribemeetings.com,Port Hope,,Port Hope,other,unresolved,no state for 'Port Hope',,,us,,port-hope,no,Other public bodies
 pub-stthomas.escribemeetings.com,"City of St. Thomas, ON",ca:csd:3534021,"St. Thomas, ON",municipality,registry,ca_csd.csv St. Thomas,,st-thomas-on,ca,ON,st-thomas-on,yes,Cities & towns
 pub-cornerbrook.escribemeetings.com,"City of Corner Brook, NL",ca:csd:1005018,"Corner Brook, NL",municipality,registry,ca_csd.csv Corner Brook,,corner-brook-nl,ca,NL,corner-brook-nl,yes,Cities & towns
@@ -303,7 +303,7 @@ antiochca.portal.civicclerk.com,Antioch,us:place:0602252,"Antioch, CA",municipal
 elsegundo.granicus.com,"City of El Segundo, CA",us:place:0622412,"El Segundo, CA",municipality,registry,us_places.csv El Segundo city,,el-segundo-ca,us,CA,el-segundo-ca,yes,Cities & towns
 casselberryfl.portal.civicclerk.com,"Casselberry, FL",us:place:1211050,"Casselberry, FL",municipality,registry,us_places.csv Casselberry city,,casselberry-fl,us,FL,casselberry-fl,no,Cities & towns
 lapalmaca.portal.civicclerk.com,"La Palma, CA",us:place:0640256,"La Palma, CA",municipality,registry,us_places.csv La Palma city,,la-palma-ca,us,CA,la-palma-ca,no,Cities & towns
-sandy.civicweb.net,City of Sandy,,City of Sandy,municipality,unresolved,no state for 'City of Sandy',,,us,,sandy,yes,Cities & towns
+sandy.civicweb.net,City of Sandy,us:place:4165250,"Sandy, OR",municipality,pinned,tenant_overrides.csv sandy.civicweb.net source=ryan_stated,,sandy-or,us,OR,sandy,yes,Cities & towns
 pekinil.portal.civicclerk.com,Pekin,us:place:1758447,"Pekin (city), IL",municipality,registry,us_places.csv Pekin city (state from subdomain pekinil.portal.civicclerk.com),,pekin-city-il,us,IL,pekin,no,Cities & towns
 wellington.granicus.com,"Village of Wellington, FL",us:place:1275812,"Wellington, FL",municipality,registry,us_places.csv Wellington village,,wellington-fl,us,FL,village-of-wellington-fl,yes,Cities & towns
 palmdale.granicus.com,"City of Palmdale, CA",us:place:0655156,"Palmdale, CA",municipality,registry,us_places.csv Palmdale city,,palmdale-ca,us,CA,palmdale-ca,yes,Cities & towns
@@ -324,10 +324,10 @@ twinfallsid.portal.civicclerk.com,"Twin Falls, ID",us:place:1682810,"Twin Falls,
 winterspringsfl.granicus.com,"City of Winter Springs, FL",us:place:1278325,"Winter Springs, FL",municipality,registry,us_places.csv Winter Springs city,,winter-springs-fl,us,FL,winter-springs-fl,yes,Cities & towns
 cabq.granicus.com,"City of Albuquerque, NM",us:place:3502000,"Albuquerque, NM",municipality,registry,us_places.csv Albuquerque city,,albuquerque-nm,us,NM,albuquerque-nm,yes,Cities & towns
 culver-city.granicus.com,"Culver City, CA",us:place:0617568,"Culver City, CA",municipality,registry,us_places.csv Culver City city,,culver-city-ca,us,CA,culver-city-ca,no,Cities & towns
-woodland.civicweb.net,City of Woodland,,City of Woodland,municipality,unresolved,no state for 'City of Woodland',,,us,,woodland,yes,Cities & towns
+woodland.civicweb.net,City of Woodland,us:place:5379625,"Woodland, WA",municipality,pinned,tenant_overrides.csv woodland.civicweb.net source=ryan_stated,,woodland-wa,us,WA,woodland,yes,Cities & towns
 brockville.civicweb.net,"Brockville, ON",ca:csd:3507015,"Brockville, ON",municipality,registry,ca_csd.csv Brockville,,brockville-on,ca,ON,brockville-on,no,Cities & towns
 duluth-mn.granicus.com,"City of Duluth, MN",us:place:2717000,"Duluth (city), MN",municipality,registry,us_places.csv Duluth city,,duluth-city-mn,us,MN,duluth-mn,yes,Cities & towns
-howardcounty.granicus.com,Howard County,,Howard County,county,unresolved,no state for 'Howard County',,,us,,howard-county,no,Counties & regions
+howardcounty.granicus.com,Howard County,us:county:24027,"Howard County, MD",county,pinned,tenant_overrides.csv howardcounty.granicus.com source=ryan_stated,,howard-county-md,us,MD,howard-county,no,Counties & regions
 eriecopa.portal.civicclerk.com,Erie County,us:county:42049,"Erie County, PA",county,registry,us_counties.csv Erie County (state from subdomain eriecopa.portal.civicclerk.com),,erie-county-pa,us,PA,erie-county,no,Counties & regions
 citwentynine-palmsca.civicweb.net,"City of Twentynine Palms, CA",us:place:0680994,"Twentynine Palms, CA",municipality,registry,us_places.csv Twentynine Palms city,,twentynine-palms-ca,us,CA,twentynine-palms-ca,yes,Cities & towns
 addison.granicus.com,"Village of Addison, IL",us:place:1700243,"Addison (village), IL",municipality,registry,us_places.csv Addison village,,addison-village-il,us,IL,village-of-addison-il,yes,Cities & towns
