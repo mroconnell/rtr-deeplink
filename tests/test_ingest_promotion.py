@@ -610,3 +610,74 @@ async def test_ingest_resolution_leaves_unrecognized_jurisdiction_unresolved():
     # so the row is left honestly empty and listed for a pin instead.
     assert page["gov_id"] is None
     assert page["jurisdiction_confidence"] == "unresolved"
+
+
+async def test_ingest_resolution_page_hints_reach_a_match_discriminator_pin(
+    monkeypatch,
+):
+    # WO-105: real DB integration test for the `page_hints` dead-code fix.
+    # Before this pass, `_find_or_create_page()`/`_resolve_page_
+    # government()` never built or passed a `page_hints` dict at all --
+    # `resolve_government()`'s `match=key=value` discriminator (proven to
+    # work at the resolver level by
+    # tests/test_gov_registry.py::test_a_match_discriminator_picks_between_
+    # two_governments, the Cottage Grove case) was therefore unreachable
+    # through the real ingest path, however a `tenant_overrides.csv` row
+    # was written. WO-103 nearly shipped 46 such pins (BACKLOG.md's
+    # "`resolve_government()`'s `page_hints` argument is never passed by
+    # anything" entry). Same two-government-one-host shape, driven end to
+    # end through `crud.ingest_resolution()` this time, discriminated by
+    # `platform` (a real, always-present `MeetingPage` column, unlike a
+    # path/query parameter) via `page_hints_for()`.
+    from app.utils.gov_registry import registry as gov_registry_module
+
+    town = gov_registry_module.Government(
+        "us:cousub:5502517200", "Cottage Grove town", "township", state="WI"
+    )
+    village = gov_registry_module.Government(
+        "us:place:5517175", "Cottage Grove village", "municipality", state="WI"
+    )
+    monkeypatch.setattr(
+        gov_registry_module,
+        "governments",
+        lambda: {g.gov_id: g for g in (town, village)},
+    )
+    monkeypatch.setattr(
+        gov_registry_module,
+        "tenant_overrides",
+        lambda: {
+            "promo-hints.civicplus.com": [
+                gov_registry_module.TenantOverride(
+                    "promo-hints.civicplus.com",
+                    town.gov_id,
+                    match="platform=youtube",
+                    strength="authoritative",
+                ),
+                gov_registry_module.TenantOverride(
+                    "promo-hints.civicplus.com",
+                    village.gov_id,
+                    strength="authoritative",
+                ),
+            ]
+        },
+    )
+
+    yt_url = "https://promo-hints.civicplus.com/meeting/1"
+    await crud.ingest_resolution(
+        _payload("promo-hints-yt", yt_url, jurisdiction=None, platform="youtube"),
+        yt_url,
+    )
+    yt_page = await crud.get_page_by_slug(
+        (await crud.lookup_page_for_url(yt_url))["slug"]
+    )
+    assert yt_page["gov_id"] == town.gov_id
+
+    gr_url = "https://promo-hints.civicplus.com/meeting/2"
+    await crud.ingest_resolution(
+        _payload("promo-hints-gr", gr_url, jurisdiction=None, platform="granicus"),
+        gr_url,
+    )
+    gr_page = await crud.get_page_by_slug(
+        (await crud.lookup_page_for_url(gr_url))["slug"]
+    )
+    assert gr_page["gov_id"] == village.gov_id

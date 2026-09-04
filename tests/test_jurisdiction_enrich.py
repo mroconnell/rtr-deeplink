@@ -514,6 +514,48 @@ def test_resolve_state_returns_none_when_nothing_resolves():
     assert je.resolve_state(None, "city") is None
 
 
+# --- WO-105, 2026-09-03: Bug 2 -- the ZIP fallback had no "impossible
+# pairing" guard, the same discipline `app/utils/gov_registry/resolver.py`'s
+# `_is_impossible_county()`/`is_own_name()` already apply elsewhere. It
+# took the state of the FIRST zip-shaped address anywhere in the page
+# text, with no check that the name being enriched is even a real place
+# in that state -- see `_name_validates_in_state()`'s own docstring.
+
+
+def test_resolve_state_zip_fallback_declines_an_impossible_name_state_pairing():
+    # "Cambridge" is real and nationally ambiguous (IA/ID/IL/KS/KY/MA/MD/
+    # MN/NE/NY/OH/VT/WI, confirmed against this module's own
+    # places.csv), so lookup_city_state() alone already declines it.
+    # Before this fix, ANY zip-shaped address anywhere on the page won
+    # unconditionally, even a vendor's own return address unrelated to
+    # the government the page is actually about. 02818 is a real ZCTA
+    # whose largest-overlap place is Warwick city, RI (confirmed against
+    # zcta_place.csv) -- and Rhode Island has no Cambridge at all, so an
+    # unrelated vendor invoice using that ZIP must not resolve this
+    # page's "Cambridge" to Rhode Island.
+    page_text = "Vendor invoice: Acme Supply Co, 10 Main St, Warwick, RI 02818"
+    assert je.resolve_state("Cambridge", "city", page_text=page_text) is None
+
+
+def test_resolve_state_zip_fallback_still_accepts_a_valid_name_state_pairing():
+    # Positive control for the same guard, same ambiguous name: a ZIP
+    # whose largest-overlap place genuinely IS a real Cambridge (02138,
+    # Cambridge, MA's own real ZCTA, confirmed against zcta_place.csv)
+    # must still resolve exactly as it did before this fix.
+    page_text = "Mail to: City Clerk, 795 Massachusetts Ave, Cambridge, MA 02138"
+    assert je.resolve_state("Cambridge", "city", page_text=page_text) == "MA"
+
+
+def test_resolve_state_zip_fallback_guard_is_gated_on_name_being_present():
+    # No regression for the no-name case this guard has nothing to check
+    # against -- same real address as
+    # test_resolve_state_falls_back_to_zip_in_page_text_when_name_lookup_fails
+    # above, which already covers this, restated here to pin the "no
+    # name at all" branch specifically against the new guard.
+    page_text = "Contact us: 575 Administration Dr, Santa Rosa, CA 95403"
+    assert je.resolve_state(None, "county", page_text=page_text) == "CA"
+
+
 def test_enrich_jurisdiction_text_appends_state_for_an_unambiguous_city():
     assert je.enrich_jurisdiction_text("City of Napa") == "City of Napa, CA"
 
@@ -1580,6 +1622,66 @@ def test_looks_like_bleed_does_not_treat_a_leading_of_as_bleed():
     assert je._looks_like_bleed("of Douglas, Michigan") is False
     assert je._looks_like_bleed("to accept and expend the amount of") is True
     assert je._looks_like_bleed("from Council Information Index") is True
+
+
+# --- WO-105, 2026-09-03: Bug 1 -- `_looks_like_bleed()`'s digit rule
+# treated ANY digit anywhere in a discarded trim tail as bleed evidence,
+# unconditionally, so a real district/board NUMBER (which genuinely is a
+# trailing digit, not agenda/date bleed) got trimmed away along with a
+# legitimate longer name.
+
+
+def test_finalize_jurisdiction_does_not_mangle_a_real_school_district_number():
+    # Real, reproducible bug: BEFORE this fix,
+    # finalize_jurisdiction("Lake Region UHSD 24") minted "Lake, MS" --
+    # "Lake" (village, MS) is a real, literal `_table_lookup()` hit, and
+    # the old unconditional digit-is-bleed rule read the discarded tail
+    # "Region UHSD 24" as bleed purely because it contains a digit, so
+    # `_trim_repair()` trimmed the whole real name down to "Lake" and the
+    # result would have minted/resolved under Mississippi -- confidently
+    # wrong, not just missing, for what is really Vermont's Lake Region
+    # Union High School District (real-world existence and "UHSD 24"/
+    # "UHSD #24" self-naming documented by the Vermont Agency of
+    # Education; this repo's own live Archive export was not reachable
+    # from this pass to independently confirm the exact string "Lake
+    # Region UHSD 24" is currently stored there -- see BACKLOG.md).
+    # After the fix, the name is left alone rather than mangled -- it has
+    # no school-district table in `jurisdiction_enrich` to key against
+    # (that table lives in `app/utils/gov_registry/tables.py`), so
+    # "unverified" (unchanged, not trimmed) is the correct, honest
+    # outcome here, not a wrong "repaired" one.
+    result = je.finalize_jurisdiction("Lake Region UHSD 24")
+    assert result.jurisdiction == "Lake Region UHSD 24"
+    assert result.confidence == "unverified"
+
+    # Control, same real "Lake" trap, ordinary agenda bleed instead of a
+    # district number: the trailing digit here is NOT a district number
+    # (no school/special-district type word precedes it), so it must
+    # still be read as bleed and still trim to "Lake" exactly as before
+    # this fix -- the fix narrows the digit rule, it does not remove it.
+    result = je.finalize_jurisdiction("Lake Regular Meeting Agenda 2026")
+    assert result.jurisdiction == "Lake, MS"
+    assert result.confidence == "repaired"
+
+
+def test_looks_like_bleed_exempts_a_real_district_number_tail():
+    # Direct unit tests of the helper, the same style as the "of Douglas"
+    # test above. Every one of these tails ends (once its trailing bare
+    # number is stripped) in a real school/special-district type word.
+    assert je._looks_like_bleed("Region UHSD 24") is False
+    assert je._looks_like_bleed("UHSD 24") is False
+    assert je._looks_like_bleed("UHSD #24") is False
+    assert je._looks_like_bleed("School District 5") is False
+
+
+def test_looks_like_bleed_still_treats_an_ordinary_trailing_digit_as_bleed():
+    # Control: a trailing digit that is NOT a district/board number --
+    # an agenda year, or a short tail with no district type word at all
+    # -- must still count as bleed exactly as before this fix. Same
+    # shape as the existing roman-numeral bleed signal just above, with
+    # an arabic digit instead.
+    assert je._looks_like_bleed("Regular Meeting Agenda 2026") is True
+    assert je._looks_like_bleed("Item 2") is True
 
 
 def test_extract_jurisdiction_chain_courtenay_bc_not_burlington():

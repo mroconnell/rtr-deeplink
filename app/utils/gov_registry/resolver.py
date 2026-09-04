@@ -28,13 +28,16 @@ Nothing here writes anything, touches a database, or performs a fetch.
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from ..jurisdiction_enrich import (
+    _name_validates_in_state,
     _validated_subdomain_hint_with_state,
     finalize_jurisdiction,
     lookup_by_domain,
+    lookup_county_by_zip,
+    lookup_place_by_zip,
 )
 from . import classify, registry, tables
 from .display import display_name, hub_slug, slugify
@@ -297,8 +300,32 @@ def _split_state(name: str) -> Tuple[str, str]:
     return name.rstrip(".,;:").strip(), ""
 
 
+# Widened WO-105 (2026-09-03): this already covered village/borough/
+# township/municipality (a stale BACKLOG.md/brief claim that it was
+# "narrower" than jurisdiction_enrich.py's `_STOPRULE_TRIGGER_RE" turned
+# out to be wrong when re-checked against the actual code, per this
+# repo's own "verify a backlog entry's claims before building from it"
+# rule -- corrected here rather than silently). What was genuinely
+# missing: "district of", "regional municipality of", and Ontario's real
+# "The Corporation of the {type} of" legal-name convention (left generic
+# rather than narrowed to city/town/township, since Ontario municipal
+# law uses this phrasing for villages and townships too). Safe to add:
+# `_leading_type_word()`'s result only ever narrows an already-ambiguous
+# lookup (`_general_purpose_lookup()`/`_ca_csd_disambiguate()`), and a
+# "district"/"regional municipality" type_preference matches no real
+# Census LSAD word or StatCan `CSD_TYPE_WORDS` value today, so it behaves
+# exactly like today's "no type word" case (decline on ambiguity) rather
+# than picking a wrong candidate -- purely additive, verified against the
+# full test suite. "Regional municipality" is likewise inert on the
+# Canadian COUNTY path specifically (a name that reads as one already
+# classifies COUNTY via `classify._CA_UPPER_TIER_RE` before
+# `type_preference` is ever consulted), so this is groundwork for other
+# callers of `_leading_type_word()`, not a behavior change on that rung.
 _LEADING_TYPE_RE = re.compile(
-    r"^(?:the\s+)?(city|town|village|borough|township|municipality)\s+of\b", re.I
+    r"^(?:the\s+)?(?:corporation\s+of\s+the\s+)?"
+    r"(city|town|village|borough|township|municipality|district|"
+    r"regional\s+municipality)\s+of\b",
+    re.I,
 )
 
 # StatCan spells an upper-tier Canadian government by its bare name
@@ -356,6 +383,49 @@ def _leading_type_word(name: str) -> str:
     """
     m = _LEADING_TYPE_RE.match(name.strip())
     return m.group(1).lower() if m else ""
+
+
+# The exact inverse of `display.display_name()`'s ambiguous-name
+# disambiguator, which appends `" ({word})"` to a municipality/township
+# base name when two governments share it in-state (its own `_TRAILING_
+# TYPE_RE` group -- kept in sync by comment, not import, the way
+# `resolver.py` already keeps `_BARE_GENERIC_ORG_NAME_WORDS` in sync with
+# `sweep_tenant_landing_pages.py`'s closed list).
+_TRAILING_PAREN_TYPE_RE = re.compile(
+    r"\s*\(((?:charter\s+|urban\s+|unified\s+)?"
+    r"(?:city|town|township|village|borough|municipality|plantation|"
+    r"gore|grant|location|purchase|reservation|district|precinct|"
+    r"cdp|comunidad|zona urbana))\)\s*$",
+    re.I,
+)
+
+
+def _strip_trailing_paren_type(name: str) -> Tuple[str, str]:
+    """ "Brookfield (village)" -> ("Brookfield", "village").
+
+    `resolve_government()` was not idempotent on its own display output,
+    and that gap is exactly what WO-107's live signal-scoring run
+    surfaced as 5 false "control regressions": a REGISTRY/PINNED-tier
+    page's stored `jurisdiction` is `display_name()`'s disambiguated form
+    (`archive/db/crud.py`'s `_display_jurisdiction_or_finalized()` writes
+    the display name back, not the adapter's raw string, once a page is
+    solidly resolved) whenever its base name is ambiguous in-state --
+    "Cottage Grove (town), WI" alongside "Cottage Grove (village), WI" is
+    the architecture doc's own example. A caller that re-resolves from
+    STORED data (a backfill, `scripts/score_gov_signals.py`) feeds this
+    shape back in as `raw_name`, and before this fix the place/cousub
+    table lookup missed on "Brookfield (village)" as a literal string
+    (the table's own key is "Brookfield", with "village" stripped as an
+    ordinary trailing Census type word, not held in parentheses) -- so a
+    government the tables already have minted a fresh, wrong `rtr:` id
+    instead. Confirmed live: 150+ archived rows carry this exact shape
+    today, all registry-tier, all correctly resolved originally -- this
+    was a round-trip gap, not a wrong table entry.
+    """
+    m = _TRAILING_PAREN_TYPE_RE.search(name)
+    if not m:
+        return name, ""
+    return name[: m.start()].strip(), m.group(1).strip().lower()
 
 
 def _general_purpose_lookup(name: str, state: str, type_preference: str):
@@ -926,8 +996,17 @@ def _state_body(name: str) -> Optional[str]:
     return None
 
 
+# Widened alongside `_LEADING_TYPE_RE` above, same reasoning and same
+# WO-105 pass -- this is the strip-only counterpart (`_mint()`'s slug
+# generation, `_ca_csd_disambiguate()`'s exact-name tie-break), so a
+# minted "District of Squamish"/"Regional Municipality of Durham" slugs
+# to "squamish"/"durham" the same way "City of X" already does, rather
+# than carrying its ceremonial prefix into a permanent id.
 _LEADING_ENTITY_PREFIX_RE = re.compile(
-    r"^(?:the\s+)?(?:city|town|village|borough|township|municipality)\s+of\s+", re.I
+    r"^(?:the\s+)?(?:corporation\s+of\s+the\s+)?"
+    r"(?:city|town|village|borough|township|municipality|district|"
+    r"regional\s+municipality)\s+of\s+",
+    re.I,
 )
 
 _GENERAL_PURPOSE_TYPES = frozenset(
@@ -1096,16 +1175,26 @@ def _with_qualifier(evidence: str, county_qualifier: str) -> str:
 # registry never does: "The City of Milwaukee, WI" and "Milwaukee" are
 # one government. Stripped only for the tenant-consistency COMPARISON
 # below, never for a lookup key -- `_normalize_candidates()` owns that.
+#
+# Widened WO-105 (2026-09-03) alongside `_LEADING_TYPE_RE` above, same
+# reasoning: `_entity_kind()` returning "" on real text already lets the
+# comparison proceed with no type guard at all (see
+# `_tenant_consistency()`'s own `if kind and ...` check), so adding a
+# word here can only ever ADD a guard where none existed before, never
+# remove or weaken one -- confirmed against the full test suite.
 _COMPARISON_PREFIX_RE = re.compile(
-    r"^(?:the\s+)?(?:city|town|village|borough|township|municipality|county|parish)"
+    r"^(?:the\s+)?(?:corporation\s+of\s+the\s+)?"
+    r"(?:city|town|village|borough|township|municipality|county|parish|"
+    r"district|regional\s+municipality)"
     r"\s+(?:and\s+(?:county|borough)\s+)?of\s+",
     re.I,
 )
 
 
 _COMPARISON_PREFIX_KIND_RE = re.compile(
-    r"^(?:the\s+)?(?P<kind>city|town|village|borough|township|municipality|county|"
-    r"parish)\s+(?:and\s+(?:county|borough)\s+)?of\s+",
+    r"^(?:the\s+)?(?:corporation\s+of\s+the\s+)?"
+    r"(?P<kind>city|town|village|borough|township|municipality|county|"
+    r"parish|district|regional\s+municipality)\s+(?:and\s+(?:county|borough)\s+)?of\s+",
     re.I,
 )
 
@@ -1118,12 +1207,25 @@ _COMPARISON_PREFIX_KIND_RE = re.compile(
 _KIND_TYPES = {
     "county": {classify.COUNTY},
     "parish": {classify.COUNTY},
+    # Canadian upper-tier ("Regional Municipality of Durham" already
+    # classifies COUNTY via `classify._CA_UPPER_TIER_RE`, same as "Peel
+    # Region"/"County of X" -- see that regex's own comment).
+    "regional municipality": {classify.COUNTY},
     "city": {classify.MUNICIPALITY, classify.TOWNSHIP},
     "town": {classify.MUNICIPALITY, classify.TOWNSHIP},
     "village": {classify.MUNICIPALITY, classify.TOWNSHIP},
     "borough": {classify.MUNICIPALITY, classify.TOWNSHIP},
     "township": {classify.MUNICIPALITY, classify.TOWNSHIP},
     "municipality": {classify.MUNICIPALITY, classify.TOWNSHIP},
+    # BC's real "District of X" municipalities (North Vancouver, Squamish,
+    # Saanich, Sechelt) -- a general-purpose government, same bucket as
+    # city/town/village. Kept even though `classify.py`'s SPECIAL_DISTRICT
+    # rule currently misfires on the bare word "district" (a separate,
+    # logged gap -- see `_STOPRULE_TRIGGER_RE`'s comment in
+    # jurisdiction_enrich.py): the tenant's ALREADY-RESOLVED dominant
+    # government this compares against may well be correctly typed even
+    # when a fresh classification of THIS page's raw name would not be.
+    "district": {classify.MUNICIPALITY, classify.TOWNSHIP},
 }
 
 
@@ -1389,7 +1491,42 @@ def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Gover
     )
 
 
-def resolve_government(
+def page_hints_for(
+    platform: Optional[str], external_id: Optional[str]
+) -> Dict[str, str]:
+    """The `page_hints` dict a caller can build from a `MeetingPage`'s own
+    `platform`/`external_id` columns -- WO-105's narrow fix for
+    BACKLOG.md's "`resolve_government()`'s `page_hints` argument is never
+    passed by anything" entry.
+
+    Before this, `page_hints` was consumed only by `_match_override()`'s
+    `key=value` discriminator, and nothing anywhere ever built or passed
+    one -- so a `tenant_overrides.csv` row using `match=platform=youtube`
+    or similar was dead on arrival however it was written, and WO-103
+    nearly shipped 46 pins that depended on exactly that. Both `platform`
+    and `external_id` are already real `MeetingPage` columns available at
+    both call sites (`archive/db/crud.py`'s `_resolve_page_government()`,
+    `scripts/backfill_gov_id.py`) with no schema change needed.
+
+    A `channel` hint for a shared YouTube host (the other real multi-
+    government-tenant shape architecture doc §1.5 names, alongside the
+    Cottage Grove path-prefix case) is deliberately NOT included here:
+    the cheapest lookup this repo has for it,
+    `app/platforms/youtube_channel.py`, only offers a full, network-
+    fetching channel listing, not a per-video reverse lookup -- adding it
+    would mean a real fetch on the ingest/backfill hot path, which is out
+    of scope for this pass. Left as a documented gap rather than guessed
+    at.
+    """
+    hints: Dict[str, str] = {}
+    if platform:
+        hints["platform"] = platform
+    if external_id:
+        hints["external_id"] = external_id
+    return hints
+
+
+def _resolve_government_ladder(
     raw_name: Optional[str],
     *,
     tenant_host: Optional[str] = None,
@@ -1397,7 +1534,11 @@ def resolve_government(
     page_hints: Optional[Dict[str, str]] = None,
     tenant_gov_id: Optional[str] = None,
 ) -> GovernmentMatch:
-    """Resolve one page's government. Pure: no I/O, no writes.
+    """The seven-rung ladder itself, unchanged by WO-105 -- see
+    `resolve_government()` below (the public entry point) for the
+    optional `signals`-consuming enhancement pass wrapped around this.
+
+    Resolve one page's government. Pure: no I/O, no writes.
 
     `raw_name` is whatever the adapter extracted (or the stored
     `jurisdiction`). `tenant_host` is the lowercased netloc -- the same
@@ -1447,6 +1588,7 @@ def resolve_government(
 
     name, state = _split_state(cleaned)
     name, county_qualifier = _strip_county_qualifier(name)
+    name, paren_type = _strip_trailing_paren_type(name)
     country = tables.country_for_state(state)
 
     # 3. Classify the TYPE, before any place lookup.
@@ -1464,6 +1606,7 @@ def resolve_government(
     # else.
     raw_name, raw_state = _split_state((raw_name or "").strip())
     raw_name, _raw_county = _strip_county_qualifier(raw_name)
+    raw_name, raw_paren_type = _strip_trailing_paren_type(raw_name)
     state = state or raw_state
     country = tables.country_for_state(state)
     raw_type = classify.classify_government_type(raw_name, country=country)
@@ -1475,7 +1618,12 @@ def resolve_government(
         type_preference = ""
     else:
         gov_type = classify.classify_government_type(name, country=country)
-        type_preference = _leading_type_word(raw_name)
+        # A trailing "(word)" disambiguator (either side -- the cleaned
+        # name's own or the raw name's) is exactly as strong a type signal
+        # as a leading "Village of" phrase; tried second only because the
+        # raw name is where a real page's own phrasing survives, per rung
+        # 3's own comment above.
+        type_preference = _leading_type_word(raw_name) or raw_paren_type or paren_type
 
     # 3b. Recover the state from the tenant BEFORE looking anything up.
     #
@@ -1694,6 +1842,227 @@ def resolve_government(
         return _match(gov, TIER_UNRESOLVED, reason, meeting_body)
     gov = _mint(name, state, country, gov_type)
     return _match(gov, TIER_UNVERIFIED, f"minted from {cleaned!r}", meeting_body)
+
+
+# --- WO-105, 2026-09-03: `signals`-consuming enhancement pass -----------
+#
+# `app/utils/gov_signals.py`'s `extract_gov_signals()` return shape --
+# `org_names`, `zip_codes`, `postal_codes` today (`type_words`/
+# `body_names`/`rss_title`/`tld`/`country_words` are extracted and
+# scored by `scripts/score_gov_signals.py` but not yet consumed for a
+# resolution decision here -- see that script and BACKLOG.md for what's
+# left for Step B).
+#
+# **Design, and why it is a POST-ladder pass rather than threaded through
+# every rung**: `_resolve_government_ladder()` above is a long, carefully
+# ordered sequence of early returns, each one measured against real data
+# (see its own module docstring and every rung's comment). Splicing a
+# new input into the MIDDLE of that sequence is exactly how the Phase
+# 1/1b/2 sessions introduced real regressions the first time (see
+# JURISDICTION_METADATA_PLAN.md's residual-gaps sections) -- each rung
+# assumes the ones before it already ran and produced whatever they
+# produced. Instead, `signals` is consumed by RE-RUNNING the whole,
+# unchanged ladder with a better input (a recovered state/province
+# spliced onto the name, or an alternate name candidate) and keeping the
+# retry only when it lands somewhere solid (`registry`/`pinned`). This
+# guarantees the **hard constraint** this pass was built under: a call
+# with no `signals` (every existing caller, unchanged) takes the exact
+# same code path as before WO-105, and a call WITH `signals` only ever
+# upgrades a `unverified`/`unresolved`/`blank` result -- it can never
+# downgrade or change an already-solid one, because the enhancement pass
+# is skipped entirely whenever the ladder's own first answer is
+# `registry`/`pinned`/`inferred`.
+_CA_POSTAL_FIRST_LETTER_PROVINCES: Dict[str, Tuple[str, ...]] = {
+    "A": ("NL",),
+    "B": ("NS",),
+    "C": ("PE",),
+    "E": ("NB",),
+    "G": ("QC",),
+    "H": ("QC",),
+    "J": ("QC",),
+    "K": ("ON",),
+    "L": ("ON",),
+    "M": ("ON",),
+    "N": ("ON",),
+    "P": ("ON",),
+    "R": ("MB",),
+    "S": ("SK",),
+    "T": ("AB",),
+    "V": ("BC",),
+    "X": ("NT", "NU"),
+    "Y": ("YT",),
+}
+
+
+def _signals_recover_state(match: GovernmentMatch, signals: Dict[str, Any]) -> str:
+    """A state/province recovered from `signals`, or "".
+
+    Same "impossible pairing" discipline as Bug 2's fix to
+    `jurisdiction_enrich.resolve_state()`'s ZIP fallback -- a ZIP or
+    Canadian postcode found on the page is only evidence for a state this
+    specific government's name can plausibly belong to, checked via the
+    same `_name_validates_in_state()` both fixes now share. Tried against
+    the ladder's own already-cleaned name (`match.government.gov_name`),
+    not the raw page text, since that is the name a human or a table
+    would recognise.
+    """
+    if match.state or not match.government:
+        return ""
+    name = match.government.gov_name
+    if not name:
+        return ""
+    jurisdiction_type = "county" if match.gov_type == classify.COUNTY else "city"
+    zip_lookup = (
+        lookup_county_by_zip if jurisdiction_type == "county" else lookup_place_by_zip
+    )
+    for zip_code in signals.get("zip_codes") or ():
+        hit = zip_lookup(zip_code)
+        if hit and _name_validates_in_state(name, jurisdiction_type, hit[1]):
+            return hit[1]
+    for postal in signals.get("postal_codes") or ():
+        letter = postal.strip()[:1].upper()
+        for province in _CA_POSTAL_FIRST_LETTER_PROVINCES.get(letter, ()):
+            if _name_validates_in_state(name, jurisdiction_type, province):
+                return province
+    return ""
+
+
+# Duplicated from `scripts/sweep_tenant_landing_pages.py`'s
+# `_GENERIC_SINGLE_WORDS` (kept in sync by comment, not by import -- that
+# script also filters BEFORE calling `is_own_name()`, the same "reject
+# before resolving" shape this needs, so it is easier to keep two closed
+# lists honest than to widen `is_own_name()`'s own, narrower contract).
+# The real, singular case this exists for: the sweep's first run pinned
+# `onelakewood.granicus.com` to Council, IDAHO on the strength of its
+# ENTIRE extracted candidate being the bare word "Council" -- a real
+# place name (`is_own_name()` correctly says it IS Council, ID's own
+# name), just not evidence about THIS government. `org_names` signals
+# are noisier than a landing-page title (they include raw page-text
+# extractions with no acceptance filtering at all), so the same guard is
+# required here, not optional.
+_BARE_GENERIC_ORG_NAME_WORDS = frozenset(
+    {
+        "council",
+        "board",
+        "commission",
+        "committee",
+        "government",
+        "city",
+        "town",
+        "village",
+        "borough",
+        "township",
+        "county",
+        "district",
+        "default",
+        "home",
+        "live",
+        "media",
+        "video",
+        "archive",
+        "public",
+        "meeting",
+    }
+)
+
+
+def _is_bare_generic_org_name(value: str) -> bool:
+    bare, _state = _split_state(value)
+    return bare.strip().lower() in _BARE_GENERIC_ORG_NAME_WORDS
+
+
+def _signals_try_org_names(
+    original_match: GovernmentMatch,
+    raw_name: Optional[str],
+    tenant_host: Optional[str],
+    path: Optional[str],
+    page_hints: Optional[Dict[str, str]],
+    tenant_gov_id: Optional[str],
+    signals: Dict[str, Any],
+) -> Optional[GovernmentMatch]:
+    """The first `org_names` candidate that resolves solidly AND passes
+    `is_own_name()` -- the same acceptance test
+    `scripts/sweep_tenant_landing_pages.py` learned the hard way it needs
+    (its own first run wrote 12 pins, 6 of them wrong, from exactly this
+    kind of noisy title-fragment candidate; see that module's docstring).
+    `org_names` here is noisier still -- it includes the raw stored
+    `jurisdiction` string alongside real extractions -- so the same guard
+    applies with no exception.
+    """
+    original_norm = (raw_name or "").strip().lower()
+    for candidate in signals.get("org_names") or ():
+        value = candidate.get("value") if isinstance(candidate, dict) else candidate
+        if not value or not value.strip():
+            continue
+        if value.strip().lower() == original_norm:
+            continue
+        if _is_bare_generic_org_name(value):
+            continue
+        retry = resolve_government(
+            value,
+            tenant_host=tenant_host,
+            path=path,
+            page_hints=page_hints,
+            tenant_gov_id=tenant_gov_id,
+        )
+        if retry.tier in (TIER_REGISTRY, TIER_PINNED) and is_own_name(value, retry):
+            return retry
+    return None
+
+
+def resolve_government(
+    raw_name: Optional[str],
+    *,
+    tenant_host: Optional[str] = None,
+    path: Optional[str] = None,
+    page_hints: Optional[Dict[str, str]] = None,
+    tenant_gov_id: Optional[str] = None,
+    signals: Optional[Dict[str, Any]] = None,
+) -> GovernmentMatch:
+    """`_resolve_government_ladder()`, plus an optional enhancement pass
+    over `signals` (the `extract_gov_signals()` shape, WO-105) -- see the
+    comment block above for the design and the hard constraint it keeps.
+
+    `signals` is None for every caller this repo ships today
+    (`archive/db/crud.py`, `scripts/backfill_gov_id.py`) -- only
+    `scripts/score_gov_signals.py` passes one, and only for the
+    `unresolved`/`unverified`/`blank` corpus it was built to measure.
+    Passing `signals={}` behaves identically to passing None (nothing to
+    consume).
+    """
+    match = _resolve_government_ladder(
+        raw_name,
+        tenant_host=tenant_host,
+        path=path,
+        page_hints=page_hints,
+        tenant_gov_id=tenant_gov_id,
+    )
+    if not signals or match.tier not in (
+        TIER_UNVERIFIED,
+        TIER_UNRESOLVED,
+        TIER_BLANK,
+    ):
+        return match
+
+    recovered_state = _signals_recover_state(match, signals)
+    if recovered_state:
+        retried = resolve_government(
+            f"{(raw_name or '').strip()}, {recovered_state}".strip(" ,"),
+            tenant_host=tenant_host,
+            path=path,
+            page_hints=page_hints,
+            tenant_gov_id=tenant_gov_id,
+        )
+        if retried.tier in (TIER_REGISTRY, TIER_PINNED):
+            return retried
+
+    org_name_match = _signals_try_org_names(
+        match, raw_name, tenant_host, path, page_hints, tenant_gov_id, signals
+    )
+    if org_name_match:
+        return org_name_match
+
+    return match
 
 
 def _match(

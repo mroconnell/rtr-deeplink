@@ -65,6 +65,7 @@ from .resolver import (
     TIER_UNVERIFIED,
     GovernmentMatch,
     is_own_name,
+    page_hints_for,
     resolve_government,
 )
 
@@ -85,6 +86,7 @@ __all__ = [
     "is_own_name",
     "governments",
     "hub_slug",
+    "page_hints_for",
     "resolve_government",
     "slugify",
     "state_gov_id",
