@@ -1795,3 +1795,75 @@ def test_signals_default_is_none_and_changes_nothing():
     # from not having the parameter at all.
     assert resolve("City of Cambridge", signals=None) == resolve("City of Cambridge")
     assert resolve("City of Cambridge", signals={}) == resolve("City of Cambridge")
+
+
+# --- WO-107, 2026-09-03: resolve_government() round-trips its own -------
+# display-form output.
+#
+# Found running `scripts/score_gov_signals.py`'s live corpus scan for the
+# first time: every one of its 5 "control regressions" (a registry-tier
+# page whose gov_id changed when signals were applied -- explicitly a
+# defect per that script's own brief) turned out to share one shape, and
+# none was actually caused by `signals`. `archive/db/crud.py`'s
+# `_display_jurisdiction_or_finalized()` writes `display_name()`'s own
+# disambiguated form ("Brookfield (village), IL") back into a page's
+# stored `jurisdiction` once it resolves REGISTRY/PINNED with an in-state
+# name collision -- so re-resolving from stored data (a backfill, this
+# scoring script) feeds that shape back in as `raw_name`. Before this fix,
+# the place/cousub table lookup missed on the literal string "Brookfield
+# (village)" (the table's own key is "Brookfield", with the type word
+# stripped as ordinary trailing Census text, never held in parentheses),
+# so a government the tables already had minted a fresh `rtr:` id
+# instead -- and only then did the `signals` enhancement pass (which is
+# gated to fire on exactly unverified/unresolved/blank, per the hard
+# constraint above) correctly recover the real id from `org_names`,
+# making the change look like a signals-caused regression when the actual
+# defect was `resolve_government()` failing to parse its own prior
+# output. Confirmed live: all 5 pages resolve correctly with this fix,
+# byte-identical to their real stored `gov_id`.
+def test_resolve_government_parses_its_own_ambiguous_display_form():
+    # Real, live: page 1483 (brookfieldil.civicweb.net), stored exactly
+    # this way after a prior resolve, jurisdiction_confidence=registry,
+    # gov_id=us:place:1708576.
+    match = resolve("Brookfield (village), IL")
+    assert match.gov_id == "us:place:1708576"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_resolve_government_parses_a_disambiguated_township_display_form():
+    # The TOWNSHIP branch of `display.display_name()` uses the identical
+    # `"{base} ({word}){suffix}"` form for an in-state place/cousub name
+    # collision -- WI's real Town of Cottage Grove vs. Village of Cottage
+    # Grove pair architecture doc SS1.5 names (see `_leading_type_word()`'s
+    # own docstring above), so the round-trip fix has to cover both
+    # branches, not just MUNICIPALITY.
+    match = resolve("Cottage Grove (town), WI")
+    assert match.gov_id == "us:cousub:5502517200"
+    assert match.tier == resolver.TIER_REGISTRY
+    match = resolve("Cottage Grove (village), WI")
+    assert match.gov_id == "us:place:5517175"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_strip_trailing_paren_type_only_fires_on_an_actual_parenthetical():
+    # The helper itself: a real `(word)` disambiguator is split off and
+    # lowercased; anything else (no parens, or parens that aren't one of
+    # the known Census type words) is returned unchanged, so an ordinary
+    # name's lookup is provably untouched by this fix.
+    assert resolver._strip_trailing_paren_type("Brookfield (village)") == (
+        "Brookfield",
+        "village",
+    )
+    assert resolver._strip_trailing_paren_type("Cottage Grove (town)") == (
+        "Cottage Grove",
+        "town",
+    )
+    assert resolver._strip_trailing_paren_type("Fresno") == ("Fresno", "")
+    assert resolver._strip_trailing_paren_type("Nashville-Davidson (balance)") == (
+        "Nashville-Davidson (balance)",
+        "",
+    )
+
+    plain = resolve("Fresno, CA")
+    assert plain.gov_id == "us:place:0627000"
+    assert plain.tier == resolver.TIER_REGISTRY

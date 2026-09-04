@@ -1,5 +1,102 @@
 # Backlog — done
 
+## Phase 2d live signal-scoring run, and a `resolve_government()` round-trip bug it found [Done 2026-09-04]
+
+WO-110 ran `scripts/score_gov_signals.py` for real for the first time
+(built and unit-tested by WO-105, 2026-09-03, but never run against
+production — see `JURISDICTION_METADATA_PLAN.md`'s Phase 2d section for
+the full write-up). Live corpus: 604 target pages (467 `unresolved` + 137
+`unverified`, re-derived from `GET /internal/export/pages` at run time,
+not assumed from any earlier document) plus a 300-page random
+`registry`-tier control sample. Headline: **102 of 604 target pages
+recovered a `registry`/`pinned` `gov_id` from signals alone** (71 via
+`org_names`, 23 via `zip_codes`, 8 via `postal_codes` — true causal
+attribution, not co-occurrence, see below), **0 control regressions**
+(after a real fix — this entry), and Canada recovered 14 (ON 8, BC 4,
+AB 2) against a currently-empty BC/QC/NU division table.
+
+**The real bug, found by the control check itself**: the first full run
+found 5 control-tier ("already correctly resolved") pages whose `gov_id`
+changed when `signals` was applied — explicitly a defect per the script's
+own brief ("target: 0"), not a number to report around. All 5 shared one
+shape: `resolve_government()` was not idempotent on its own display-form
+output. `archive/db/crud.py`'s `_display_jurisdiction_or_finalized()`
+writes `display.display_name()`'s disambiguated form back into a page's
+stored `jurisdiction` once it resolves `registry`/`pinned` with an
+in-state name collision — e.g. "Brookfield (village), IL" for
+`us:place:1708576`, since Illinois also has a same-named Brookfield
+township. Feeding that string back into `resolve_government()` (exactly
+what a re-scoring pass, or any future backfill, does) missed the place
+table entirely: the table's own key is "Brookfield", with "village"
+stripped as an ordinary trailing Census type word, never held in
+parentheses — so a government the tables already had minted a fresh,
+wrong `rtr:` id, `signals`' `org_names` path then (correctly) recovered
+the real id from the fetched page, and the diff looked exactly like a
+signals-caused regression. It wasn't: the plain ladder was already wrong
+before `signals` ever ran. Confirmed live: 155 archived pages carry this
+`"Name (type), ST"` shape today (150 `registry`, 5 `inferred`), all
+correctly resolved by whatever produced them originally, none
+re-resolvable from stored data without this fix.
+
+**Fix**: `app/utils/gov_registry/resolver.py` gained
+`_strip_trailing_paren_type()`, the exact inverse of `display_name()`'s
+disambiguator — strips a trailing `(word)` and feeds the word in as a
+`type_preference` alongside the existing leading-phrase extraction
+(`_leading_type_word()`), covering both the `MUNICIPALITY` and
+`TOWNSHIP` branches of `display_name()`'s ambiguous-name form (verified
+against the architecture doc's own Cottage Grove town/village pair).
+Re-running the scorer after the fix: 0 control regressions, and all 5
+originally-flagged pages resolve to their real, live-stored `gov_id`.
+Regression coverage:
+`test_resolve_government_parses_its_own_ambiguous_display_form`,
+`test_resolve_government_parses_a_disambiguated_township_display_form`,
+`test_strip_trailing_paren_type_only_fires_on_an_actual_parenthetical`
+(`tests/test_gov_registry.py`); `test_pin_worklist.py`'s
+`test_accepting_a_proposal_pins_the_id_not_the_display_name` updated —
+its own "Portage (city), MI" example, on the first pin-worklist sheet
+specifically because it used to mint wrongly, now resolves correctly on
+its own (re-checked: all 96 non-minted rows on the current sheet
+self-resolve after this fix, up from an unknown-but-nonzero count of
+failures before it).
+
+**A second, smaller fix in the same pass**: `scripts/score_gov_signals.py`
+built its `signals_used` attribution (which signal "earned" a recovery)
+from mere co-occurrence — `extract_gov_signals()` adds a page's own
+stored `jurisdiction` to `org_names` unconditionally, so that category
+was populated on virtually every row regardless of whether it did
+anything, inflating `zip_codes`' credit on 5 of its 28 rows (real
+`org_names` recoveries that also happened to carry a zip code). Replaced
+with `_causal_signals()`, which isolates each signal category against
+the public `resolve_government(signals=...)` contract and credits it
+only when it alone reproduces the real recovered `gov_id`. Also gave the
+script `page_hints_for(platform, external_id)` (production's own
+`_resolve_page_government()`/`backfill_gov_id.py` already build this;
+the scoring script hadn't) — confirmed harmless to every number in this
+run (zero `tenant_overrides.csv` rows currently use a `key=value`
+`match`), built the same way production does rather than relying on that
+staying true.
+
+**Page 4097 (Gloucester VA/MA school-board mis-key, WO-106/BACKLOG.md's
+own "`strength=fallback` tenant pin" entry)**: already fixed live via a
+manual override before this run (`gov_id: us:sd:5101620,
+jurisdiction_confidence: manual_override`, confirmed via
+`/internal/export/pages`), so it wasn't in Phase 2d's live corpus. Per
+that entry's own "add to corpus once 2d has real numbers" instruction,
+reconstructed its pre-override raw string and ran it through
+`extract_gov_signals()`/`resolve_government(signals=...)` directly: the
+current signals mechanism does NOT recover it, and that's expected, not
+a 2d gap — the plain ladder already lands `registry` tier (confidently,
+wrongly) on `us:place:2526150` with no signals at all, and
+`resolve_government()`'s hard constraint skips the whole
+signals-enhancement pass whenever the plain ladder already answered
+`registry`/`pinned`. See `BACKLOG.md`'s Gloucester entry (updated in this
+same pass) for the full reasoning — it stays open, now as a Step B
+question.
+
+Full report: `JURISDICTION_METADATA_PLAN.md`'s Phase 2d section (real
+numbers, replacing the WO-105 placeholder); raw sheets in
+`reports/gov_signals_scoring_2026-09-03/`.
+
 ## Three wrong `tenant_overrides.csv` pins from name-only matching [Done 2026-09-03]
 
 The Phase 3 rtr-discovery session (FINDING-9/10/11) caught three wrong

@@ -212,15 +212,35 @@ def test_every_proposal_on_the_sheet_names_a_government_the_registry_holds():
 
 def test_accepting_a_proposal_pins_the_id_not_the_display_name():
     """The 12 rows on the first sheet where re-resolving the display name
-    would have minted an `rtr:` id instead of pinning the real place."""
+    used to mint an `rtr:` id instead of landing on the real place --
+    "Portage (city), MI" is `display_name()`'s own disambiguated form for
+    an in-state name collision, and `resolve_government()` was not
+    idempotent on its own output: fed back in as a raw name, the table
+    lookup missed on the literal string "Portage (city)" (the table's key
+    is "Portage", with "village"/"city" stripped as an ordinary trailing
+    Census type word, never held in parentheses). Fixed by WO-107's
+    `_strip_trailing_paren_type()` (`resolver.py`) -- all 12 of the
+    original sheet's rows, and all 96 non-minted rows on the current
+    sheet, now self-resolve correctly, confirmed by re-checking every row
+    against live `resolve_government()` while fixing this test.
+    `test_every_proposal_is_a_national_id_and_the_governments_own_name()`
+    below already asserts every proposal on the sheet resolves via
+    `is_own_name()`; what THIS test protects is a different invariant --
+    `apply_pin_worklist` pins the worklist's stated `proposed_gov_id`,
+    not a fresh re-resolution of the name -- which holds regardless of
+    whether the name happens to self-resolve today.
+    """
     row = {
         "ryan_gov_name": "ok",
         "ryan_note": "",
         "proposed_name": "Portage (city), MI",
         "proposed_gov_id": "us:place:2665560",
     }
-    # The display form on its own really does miss the place table.
-    assert resolve_government("Portage (city), MI").gov_id.startswith("rtr:")
+    # The display form now resolves correctly on its own (the WO-107 fix)
+    # -- kept as a positive assertion rather than deleted, so a future
+    # regression of the round-trip fix fails here too, not only in
+    # test_gov_registry.py's own coverage of it.
+    assert resolve_government("Portage (city), MI").gov_id == "us:place:2665560"
     name, accepted, source, may_mint = apply_pin_worklist._answer(row)
     assert accepted == "us:place:2665560"
     _m, gov_id, gov_name, _tier, outcome, _detail = apply_pin_worklist.resolve_answer(

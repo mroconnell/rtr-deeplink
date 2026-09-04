@@ -60,7 +60,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import certifi
@@ -278,6 +278,54 @@ def _ca_province_for_gov_id(gov_id: str) -> str:
     return (gov.state or "").upper() if gov and gov.country == "ca" else ""
 
 
+def _causal_signals(
+    recovered_gov_id: str,
+    raw_jurisdiction: str,
+    host: str,
+    path: str,
+    page_hints: Dict[str, str],
+    signals: Dict[str, Any],
+) -> List[str]:
+    """Which signal CATEGORY actually produced `recovered_gov_id` -- by
+    isolation, not by co-occurrence.
+
+    The first version of this function credited every category that was
+    merely non-empty on a changed row (`if signals.get("zip_codes"):
+    used.append(...)`), which overcounts: `extract_gov_signals()` adds the
+    page's own stored `jurisdiction` to `org_names` unconditionally, so
+    `org_names` is populated on nearly every row regardless of whether it
+    did anything, and a real page can carry a zip code that happens not to
+    validate while its `org_names` candidate is what actually resolved it.
+    Confirmed live scoring the real corpus: 36 rows had `zip_codes` and/or
+    `postal_codes` alongside `org_names`, and isolating each category
+    (calling `resolve_government()` with ONLY that one populated) showed
+    `zip_codes` was the true cause on 23 of them, not all 36 -- `org_names`
+    won the rest even though a zip/postal code was also present.
+
+    Each category is tested independently against the PUBLIC
+    `resolve_government(signals=...)` contract (no reach into resolver
+    internals) -- a category "caused" the recovery if resolving with only
+    that category populated reproduces the exact same `gov_id` the real,
+    all-signals call landed on.
+    """
+    categories = ("zip_codes", "postal_codes", "org_names")
+    caused = []
+    for category in categories:
+        if not signals.get(category):
+            continue
+        isolated = {k: (signals.get(k) if k == category else []) for k in categories}
+        isolated_match = resolve_government(
+            raw_jurisdiction,
+            tenant_host=host,
+            path=path,
+            page_hints=page_hints,
+            signals=isolated,
+        )
+        if isolated_match.gov_id == recovered_gov_id:
+            caused.append(category)
+    return caused
+
+
 def score_corpus(
     corpus: List[dict], html_by_id: Dict[int, Optional[str]]
 ) -> List[dict]:
@@ -345,12 +393,9 @@ def score_corpus(
         changed = after.gov_id != before.gov_id
         used = []
         if changed:
-            if signals.get("zip_codes"):
-                used.append("zip_codes")
-            if signals.get("postal_codes"):
-                used.append("postal_codes")
-            if signals.get("org_names"):
-                used.append("org_names")
+            used = _causal_signals(
+                after.gov_id, raw_jurisdiction, host, path, page_hints, signals
+            )
         row.update(
             {
                 "gov_id_after": after.gov_id,

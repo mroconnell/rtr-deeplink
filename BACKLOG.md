@@ -473,18 +473,35 @@ structural change than the two entries below.
     government's name is exposed the same way, and a `strength=fallback`
     pin gives no signal that it happened — the ladder reports `registry`
     tier (confidently resolved), not `unresolved` or `blank`.
-  - **Next action**: this page is a known-answer case for **Phase 2d**
-    (`gov_signals.py` / `score_gov_signals.py`, branch `gov-signals-r1`,
-    not yet merged — see `~/Documents/rtr-business/research/
-    STATE_gov_identity.md`) — "School Board" in the page text is
-    precisely the type signal 2d is meant to score *above* a nearby
-    place-name match. Add this page/host to its evaluation corpus once
-    2d's live run has real numbers; don't build a one-off fix here. The
-    hand-added hub-alias row is a real, separate tooling gap worth its
-    own small fix eventually (teach `score_gov_registry.py` to pass a
-    `manual_override` row's DB gov_id straight through as "new" instead
-    of re-deriving it), but not attempted here — out of scope for a
-    two-page live fix.
+  - **Next action**: **checked against Phase 2d's live run (WO-110,
+    2026-09-04) — the current signals mechanism does NOT recover this
+    case, and that's expected, not a gap in that pass.** Page 4097 is
+    `manual_override` tier today, so it isn't in 2d's live corpus (only
+    `unresolved`/`unverified` are); reconstructing its pre-override raw
+    string ("Gloucester, MA", the exact bled value this entry describes)
+    and running it through `extract_gov_signals()` +
+    `resolve_government(signals=...)` confirms why: the plain ladder
+    still lands `registry` tier on `us:place:2526150` (confidently, and
+    wrongly) with no `signals` at all, and `resolve_government()`'s own
+    hard constraint (`resolver.py`'s WO-105 comment block) skips the
+    signals-enhancement pass entirely whenever the plain ladder already
+    answered `registry`/`pinned` — by design, so it can't be the thing
+    that catches a *confidently wrong* national-table hit. This is
+    exactly the "validation alone can never fix a confirmed-misleading
+    host" problem this entry already names, now confirmed against the
+    real page rather than reasoned about in the abstract, and it's a
+    Step B question (does something get to run to challenge an
+    already-`registry` answer, and on what evidence) — not a Phase 2d
+    Step A defect. A secondary, minor finding from the same check:
+    `gov_signals.py`'s `_TYPE_WORDS` list has "Board of Education" but
+    not the bare "School Board" this page's own title/nav actually use —
+    moot for Step A either way (extracted `type_words` aren't consumed by
+    any resolution decision yet, per that module's own docstring), worth
+    fixing whenever Step B starts consuming them. The hand-added
+    hub-alias row is a real, separate tooling gap worth its own small fix
+    eventually (teach `score_gov_registry.py` to pass a `manual_override`
+    row's DB gov_id straight through as "new" instead of re-deriving it),
+    but not attempted here — out of scope for a two-page live fix.
   - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
     existing tenant pin to `strength=authoritative`, or copy
     `POST /internal/jurisdiction/override`'s proposed
@@ -501,6 +518,12 @@ structural change than the two entries below.
   - **History**: `~/Documents/rtr-business/research/
     STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
     review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.
+    WO-110 (2026-09-04) ran Phase 2d's live corpus scan (604 target pages,
+    300-page control, 102 real recoveries, 0 control regressions after a
+    resolver round-trip fix — see `JURISDICTION_METADATA_PLAN.md`'s
+    Phase 2d section) and, per this entry's own "add to corpus" note,
+    specifically checked page 4097 against it — see Next action above for
+    the (negative, expected) result.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
