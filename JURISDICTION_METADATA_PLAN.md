@@ -1125,13 +1125,14 @@ moves that would not happen. It returns None for `unresolved` and
 
 ---
 
-## Phase 2d — signal scoring (WO-105, 2026-09-03)
+## Phase 2d — signal scoring (WO-105 built it 2026-09-03; WO-110 ran it live 2026-09-04)
 
-**Status: code built and unit-verified; the live corpus run was NOT
-executed this pass.** Read this section for what that means before
-acting on anything in it — per this repo's own standing rule against
-claiming a data path works without a positive example, no recovery
-number below is a live measurement, and none is presented as one.
+**Status: code built, unit-verified, AND run against the real live
+corpus.** Every recovery number in this section is a live measurement —
+604 target pages (`unresolved`/`unverified`, re-derived from
+`GET /internal/export/pages` at run time), a 300-page `registry`-tier
+control sample, real HTML fetched from ~900 real government pages. Raw
+sheets: `reports/gov_signals_scoring_2026-09-03/`.
 
 ### What this pass actually did
 
@@ -1245,60 +1246,192 @@ more (a postal code, a "Board of Education", the TLD, "Bylaw" vs.
    resolves to the real place Council, ID, exactly the wrong-pin shape
    that script's own first run produced six of.
 
-### Verification performed (unit-level; NOT a live corpus run)
+### Verification performed
 
-- Full CI: `ruff check`, `ruff format --check`, `pytest` (**2,692
-  passed, 15 skipped, 0 failed** — up from 2,664 on `main` before this
-  branch), `alembic check` ×2 (both a true no-op, confirmed by running
-  each against a fresh migration-built SQLite — no schema touched).
+- Full CI, both sessions: `ruff check`, `ruff format --check`, `pytest`
+  (WO-105: 2,692 passed / 15 skipped; WO-110, after its own fixes and new
+  tests: **2,701 passed, 15 skipped, 0 failed**), `alembic check` ×2
+  (both a true no-op both times, confirmed against a fresh
+  migration-built SQLite — no schema touched by this pass, live or
+  unit).
 - Every new code path has a test grounded in a real, independently
   checkable fact (Vermont's Lake Region UHSD numbering; a real ZCTA→
   place crosswalk row for Warwick, RI and Cambridge, MA; a real Toronto
   postal code; the real Cottage Grove town/village pair; the real
   Council, ID false-positive already documented in this file's own
-  landing-page-sweep section) — see `tests/test_jurisdiction_enrich.py`,
-  `tests/test_gov_registry.py`, `tests/test_gov_signals.py`,
-  `tests/test_ingest_promotion.py`.
-- `scripts/score_gov_signals.py` was smoke-tested against **synthetic,
-  in-memory export rows** (not production) to confirm it runs end to
-  end with no exceptions and produces a sane `SUMMARY.md`/CSV set — this
-  proves the script WORKS, not what it would find on the real corpus.
+  landing-page-sweep section; WO-110's own real Brookfield IL / Athens OH
+  / Green Bay WI / Southampton NY / Pelham NY control-regression pages)
+  — see `tests/test_jurisdiction_enrich.py`, `tests/test_gov_registry.py`,
+  `tests/test_gov_signals.py`, `tests/test_ingest_promotion.py`,
+  `tests/test_pin_worklist.py`.
+- `scripts/score_gov_signals.py` was smoke-tested against synthetic,
+  in-memory export rows before WO-110 (proved the script ran end to end,
+  not what it would find), then **run for real** — see below.
 
-### Why the live run did not happen, and what it needs
+### Live run results (WO-110, 2026-09-04)
 
-This session had no `.env` (a fresh worktree, per CLAUDE.md's own
-worktree-caveats bullet) and therefore no `ARCHIVE_BASE_URL`/
-`ARCHIVE_INGEST_TOKEN` to call `GET /internal/export/pages` with — the
-same credential every other scoring script in this repo needs and reads
-from the shared checkout's `.env`. Even with them, the corpus this
-brief specifies (≈471 unresolved + ≈138 unverified + a 300-page control
-— re-derive the live counts, don't assume these) means fetching on the
-order of 900 real external government pages at `DELAY_SECONDS = 1.5`,
-which is itself a real ≈25-minute minimum wall-clock run before any
-analysis, on top of the export fetch. Rather than fabricate recovery
-numbers or silently skip this section, the honest state is recorded
-here: **the tool is ready; the run is not done.**
+**Corpus, re-derived live, not assumed from an earlier document or from
+this brief's own original "≈471 unresolved + ≈138 unverified" estimate**
+(stale the moment it was written — `tenant_overrides.csv` had 58 rows
+re-sourced and 3 pins fixed the same day, WO-104/#707, shifting tier
+membership): **467 unresolved + 137 unverified = 604 target pages**, plus
+a 300-page random `registry`-tier control sample. 589/604 target pages'
+real source HTML fetched successfully (the rest: fetch failure or an
+explicit human-verification gate, skipped per CLAUDE.md's "politely"
+rule, never defeated — none of the 604 hit a Cloudflare-style gate this
+run).
 
-**To run it for real** (from a session with the shared `.env` available,
-or with those two env vars set explicitly):
+**Recovery: 102 of 604 target pages (16.9%) recovered a `registry`/
+`pinned` `gov_id` from signals alone**, with **0 control regressions**
+(see below for the one that had to be fixed to get there).
 
-    python scripts/score_gov_signals.py
+By platform:
 
-Then fill in this section's still-open placeholders from the resulting
-`reports/gov_signals_scoring_<date>/SUMMARY.md`:
+| platform | recovered |
+| --- | --- |
+| youtube | 42 |
+| granicus | 26 |
+| escribe | 15 |
+| swagit | 10 |
+| iqm2 | 7 |
+| civicclerk | 2 |
 
-- Recovery counts for `unresolved`/`unverified`, by platform, by
-  country, and — the number Ryan specifically asked for — **Canada by
-  province**, to decide whether the ~130 BC/QC/NU division-table rows
-  (reference data vendored, no live-confirmed positive case yet) are
-  worth building.
-- The postal-code signal's real hit rate on MEETING pages specifically
-  (a prior calibration measured ~1 in 4 on tenant LANDING pages — a
-  different corpus; `score_gov_signals.py`'s own SUMMARY states this
-  distinction rather than assuming the two match).
-- Control-page regressions — **target 0**; if the real run finds any,
-  they are defects to fix before this section is filled in further, not
-  numbers to report around.
-- Which signal(s) earn zero unique recoveries once the others have
-  already run, to be dropped before Step B rather than shipped
-  (`signal_contribution.csv`'s own sequential-contribution shape).
+By country: **us 88, ca 14.**
+
+**Canada, by province** — the number Ryan asked for, to decide whether
+the ~130 BC/QC/NU division-table rows (reference data vendored, no
+live-confirmed positive case before this run) are worth building:
+
+| province | recovered |
+| --- | --- |
+| ON | 8 |
+| BC | 4 |
+| AB | 2 |
+
+**14 total, spread across 3 provinces, none of them BC/QC/NU's own
+un-vendored division tier.** Read plainly: this run gives no positive
+signal that the BC/QC/NU division rows would pay for themselves — the
+4 BC recoveries all resolved via the CSD (municipal) table already
+vendored, not a division-level id. Not building them yet is the
+defensible call from this data; if BC/QC/NU-specific `unresolved`/
+`unverified` volume is large independent of this signal (a separate,
+not-yet-run count), that would be a different argument for building
+them — this run doesn't speak to that.
+
+**Postal-code signal hit rate on MEETING pages** (the number this file's
+earlier calibration flagged as needing its own measurement, having only
+been checked on tenant LANDING pages before): **8 of 75 fetched Canadian
+target pages (`.ca`/`escribemeetings.com` tenant hosts) carried a usable
+postal code — 11%.** The prior landing-page calibration found roughly 1
+in 4 (25%); meeting pages carry postal codes distinctly less often, which
+makes sense in hindsight (a landing/contact page is where an address
+block lives; a meeting/agenda page is not) but was exactly the kind of
+assumption this file's own convention says not to make without
+measuring — now measured.
+
+**Which signal(s) earned zero unique recoveries — none did, all three
+are worth keeping.** True *causal* attribution (not the co-occurrence the
+first version of this run's own scoring script used — see the control-
+regression writeup below): **`org_names` 71, `zip_codes` 23,
+`postal_codes` 8** (sums to 102). Every signal earned real, independent
+recoveries; nothing here argues for dropping any of the three before
+Step B.
+
+### The control regression, and the real bug it found
+
+The first full run found **5 control-tier pages** whose `gov_id` changed
+when `signals` was applied — page 1483 (`brookfieldil.civicweb.net`,
+`rtr:us:il:brookfield-village` → `us:place:1708576`), 1949
+(`athensoh.new.swagit.com`), 709 (`greenbaywi.portal.civicclerk.com`),
+4150 (`pub-southamptonny.escribemeetings.com`), 3485
+(`pelhamny.portal.civicclerk.com`) — explicitly a defect per this
+section's own original brief ("target: 0"), not a number to report
+around, per this repo's own non-negotiable rule on control regressions.
+
+**It was not a signals bug.** All 5 shared one shape, and none was
+actually caused by `signals`: `resolve_government()` was not idempotent
+on its own display-form output. `archive/db/crud.py`'s
+`_display_jurisdiction_or_finalized()` writes `display.display_name()`'s
+disambiguated form back into a page's stored `jurisdiction` once it
+resolves `registry`/`pinned` with an in-state name collision — e.g.
+"Brookfield (village), IL" for `us:place:1708576`, since Illinois also
+has a same-named Brookfield township. Feeding that string back into
+`resolve_government()` — exactly what this scoring script's "before"
+baseline does, and what any future backfill re-run would also do — missed
+the place table entirely: its own key is "Brookfield", with "village"
+stripped as an ordinary trailing Census type word, never held in
+parentheses. A government the tables already had minted a fresh, wrong
+`rtr:` id, and only THEN did `signals`' `org_names` path (correctly)
+recover the real id from the freshly-fetched page — making the diff look
+exactly like a signals-caused regression, when the plain ladder was
+already wrong before `signals` ever ran. Confirmed live: **155 archived
+pages carry this `"Name (type), ST"` shape today** (150 `registry`, 5
+`inferred`), all correctly resolved by whatever produced them originally,
+none re-resolvable from stored data without this fix.
+
+**Fixed**: `resolver.py` gained `_strip_trailing_paren_type()`, the exact
+inverse of `display_name()`'s disambiguator, feeding the recovered word in
+as a `type_preference` alongside the existing leading-phrase extraction —
+covers both the `MUNICIPALITY` and `TOWNSHIP` branches of the
+disambiguated display form (verified against this file's own Cottage
+Grove town/village pair). Re-running the scorer after the fix: **0
+control regressions**, all 5 originally-flagged pages resolve to their
+real, live-stored `gov_id`. New regression tests in
+`tests/test_gov_registry.py`; `tests/test_pin_worklist.py`'s "Portage
+(city), MI" example updated (it used to demonstrate the mint-instead-of-
+resolve failure this fix closes — all 96 non-minted rows on the current
+pin-worklist sheet now self-resolve correctly, confirmed while fixing
+this test). Full writeup: `BACKLOG_DONE.md`'s "Phase 2d live
+signal-scoring run" entry.
+
+A second, smaller correctness gap fixed in the same pass, unrelated to
+the control regression: `scripts/score_gov_signals.py` was missing the
+`page_hints_for(platform, external_id)` build that both production call
+sites (`archive/db/crud.py`, `scripts/backfill_gov_id.py`) already had —
+confirmed harmless to every number in this run (zero
+`tenant_overrides.csv` rows currently use a `key=value` `match`
+discriminator), fixed anyway rather than relying on that staying true.
+
+### Page 4097 (Gloucester VA/MA), checked against this run as promised
+
+`BACKLOG.md`'s "`strength=fallback` tenant pin cannot correct a
+confidently-wrong extraction" entry explicitly asked for this: "add this
+page/host to its evaluation corpus once 2d's live run has real numbers."
+Page 4097 is `manual_override` tier today (fixed live via
+`POST /internal/jurisdiction/override` before this run,
+`gov_id: us:sd:5101620`, confirmed via `/internal/export/pages`), so it
+isn't in Phase 2d's live corpus (only `unresolved`/`unverified` are).
+Reconstructing its pre-override raw string ("Gloucester, MA", the exact
+bled value that entry describes) and running it through
+`extract_gov_signals()`/`resolve_government(signals=...)` directly:
+**the current signals mechanism does NOT recover it, and that's
+expected, not a Phase 2d gap.** The plain ladder still lands `registry`
+tier on `us:place:2526150` (confidently, and wrongly) with no signals at
+all, and `resolve_government()`'s hard constraint (this file's own
+design section above) skips the signals-enhancement pass entirely
+whenever the plain ladder already answered `registry`/`pinned` — it
+cannot be the thing that catches a *confidently wrong* national-table
+hit, by the same design that keeps it from ever touching an
+already-correct one. This is exactly the "validation alone can never fix
+a confirmed-misleading host" problem that `BACKLOG.md` entry already
+names, now confirmed against the real page instead of reasoned about in
+the abstract — and it stays open there, as a Step B question (does
+anything get to challenge an already-`registry` answer, and on what
+evidence), not a Step A defect.
+
+### What's still open for Step B
+
+- **The confidently-wrong-`registry` problem** page 4097 illustrates —
+  Step A's hard constraint is correct for what Step A is (never downgrade
+  an already-solid answer), but it also means Step A has no mechanism at
+  all for the "wrong but plausible" case, which is a different, harder
+  problem than "no answer yet."
+- **`type_words`/`body_names`/`rss_title`/`tld`/`country_words`** are
+  extracted by `gov_signals.py` but not consumed by any resolution
+  decision yet (per that module's own docstring) — `_TYPE_WORDS` is also
+  missing the bare "School Board" the Gloucester page's own title/nav
+  use (has "Board of Education" but not "School Board"), moot for Step A
+  either way but worth fixing when Step B starts consuming this list.
+- **Canada BC/QC/NU division rows**: this run's own data (above) doesn't
+  argue for building them yet — revisit if a separate, not-yet-run count
+  of BC/QC/NU-specific `unresolved`/`unverified` volume argues otherwise.
