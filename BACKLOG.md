@@ -112,15 +112,21 @@ Standing decisions — do NOT re-raise  (7)
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+  [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
-  Production actions only Ryan should take  (1)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
+  Production actions only Ryan should take  (5)
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
+    [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
+    [HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may…
+    [HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed…
+    [HUMAN] Dismiss the GitHub secret-scanning alert on…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (69)
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
@@ -171,7 +177,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (21)
+  Adapter & platform gaps  (22)
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
     [NEEDS-AUDIT] RVTV's org-token jurisdiction override
@@ -193,14 +199,16 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
     [NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no…
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
+    [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
-  Media-source reliability  (3)
+  Media-source reliability  (4)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
+    `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
   Transcription queue & workers  (6)
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
@@ -379,6 +387,17 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk decodability guard `extract_chunk_audio()` has had since 2026-08-21 — confirmed 5+ real production failures across 5 distinct sources on 2 platforms.**
+  - **Issue**: WO-54/58's whole-audio-cache path (`app/platforms/media_probe.py:944-982`, `slice_cached_audio()`) only checks ffmpeg's exit code and that the output file is non-empty. It never calls `_mean_volume_db()` — the same decodability check `extract_chunk_audio()`'s `_extract_chunk_once()` already applies (see that function's own docstring, `media_probe.py:1011-1031`) — so a corrupt/undecodable byte range inside the cached whole-file audio reaches `engine.transcribe_chunk()` raw as an unhandled PyAV `InvalidDataError` instead of failing as a normal retryable `(False, reason)`. Re-confirmed by direct read of current `slice_cached_audio()` on 2026-09-05: still no guard.
+  - **Impact**: real, repeated, cross-platform — job 1157 (San Diego CA, Granicus, lost 15/25 chunks, 60% of the meeting), job 1226 (College Station TX, CivicClerk, 11/17), job 1259 (Falls Church VA, Granicus, gave up at 14/15), job 1377 (Mansfield TX, CivicClerk, gave up at 1/6), job 1766 (Alameda County CA "BOS View", Granicus, gave up at 17/22, 2026-09-05) — same exact `errno 1094995529` signature every time, not one platform's quirk. WO-54/58's whole-audio-cache path targets exactly the seek-hostile progressive sources (ChampDS, Granicus) most likely to contain a corrupt/interrupted byte range, so this sits on the path most likely to need the guard.
+  - **Next action**: add the same `_mean_volume_db()` decodability check to `slice_cached_audio()`, returning `(False, "...isn't decodable (likely truncated/corrupt)")` instead of `(True, None)` on an undecodable slice. `worker/main.py`'s existing per-chunk retry/budget logic already treats that shape as a normal retryable failure — no other code path needs to change.
+  - **History**: found by the inbox-triage Routine's 2026-08-29 run; the 2026-08-30, -31, and 2026-09-01 runs each confirmed a fresh independent occurrence on a new source.
+
+- **[JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except Exception`, which doesn't catch `asyncio.CancelledError` — a fresh, still-open instance of the "Unclosed connector" leak class the 2026-08-21 fix only partly closed.**
+  - **Issue**: `app/archive_client.py`'s `proxy_get()` (`except Exception:` around `await session.get(...)`, currently line 490) and `app/main.py`'s `_proxy_to_archive()` (`except Exception:` around `archive_client.proxy_get(...)`, currently line 1701) both leave `asyncio.CancelledError` (a `BaseException` subclass since Python 3.8) unhandled, so a request cancelled mid-fetch (client/bot disconnects while the Archive fetch is in flight) leaks the aiohttp session's connector until GC finalizes it. Re-confirmed by direct read of current code on 2026-09-05 — the gap is unchanged; only the line numbers have drifted from the original triage note (`archive_client.py:465-474`, `app/main.py:1622-1632`).
+  - **Impact**: same self-healing-via-GC leak class as the already-fixed PYTHON-FASTAPI-V/S/Q/T/W/X cases (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), not a user-visible crash — surfaced fresh as Sentry **PYTHON-FASTAPI-13** (2026-08-28, real production traffic on `/state/massachusetts`), a new issue ID confirming this is a fresh recurrence via a path that fix didn't close. Structurally open on every proxied route (`/m/*`, `/state/*`, `/j/*`, `/meetings`, `/coverage`, sitemap, feed) since they all funnel through these two functions.
+  - **Next action**: in both functions, close the session on `asyncio.CancelledError` too, before re-raising it — e.g. `except (Exception, asyncio.CancelledError):` wrapping the existing close, always re-raising the cancellation rather than swallowing it.
+  - **History**: `BACKLOG_DONE.md`'s "Five bundled easy-win fixes" (2026-08-21). Found by the inbox-triage Routine's 2026-08-29 run.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -400,6 +419,30 @@ of human step they need.
     for the full numbers and why.
   - **History**: code side shipped and already deployed — see
     `BACKLOG_DONE.md`.
+
+- **[HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health check, `delete_meeting_pages_by_slug()`'s FK cleanup) may still not be deployed — confirm and redeploy if not.**
+  - **Issue**: both fixes are confirmed present on `main` (re-checked 2026-09-05): `archive/main.py`'s `/api/health` uses `LIMIT 1` not `SELECT count(*)`, and `archive/db/crud.py:9337`'s `delete_meeting_pages_by_slug()` deletes `SocialPost`/`MeetingPageThumbnail` rows before the page. Every service has `autoDeploy: false` in `render.yaml`, so a merge ships nothing until someone deploys it by hand.
+  - **Impact**: as of the inbox-triage Routine's 2026-08-31/09-01 runs, alerts consistent with both gaps still being live kept arriving — repeated `rtr-deeplink-archive` "HTTP health check failed" Render alerts, a `ClientConnectorError` hitting real `/j/belvedere-ca` traffic 58s before one such alert, and a `ForeignKeyViolationError` on `/internal/admin/delete-pages`. No further alerts of either shape turned up in the runs reviewed through 2026-09-03 — consistent with (but not proof of) an intervening deploy.
+  - **Next action**: check the Archive service's deploy history in Render; deploy if it's still running a pre-2026-08-30 13:28 PDT build. No code change needed — this is "ship what's already on `main`."
+  - **History**: `BACKLOG_DONE.md` (WO-80); PR #577 (`delete_meeting_pages_by_slug` fix). Flagged by the inbox-triage Routine's 2026-08-31 run.
+
+- **[HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may not be deployed to the transcription worker services — confirm and redeploy if not.**
+  - **Issue**: confirmed present on `main` (`app/platforms/civicclerk.py:77`'s `_reconstruct_cdn_stream_url()`), but the auto-transcription retry path calls `finder.resolve(source_url)` **in-process** (`worker/main.py:471`), importing the platform module directly rather than calling the deployed resolver's HTTP API — so a worker instance still running a pre-fix build hits the raw-relative-path bug regardless of the resolver's own deploy state. `rtr-transcription-worker`/`-2` are `type: worker` with `autoDeploy: false` like every other service, and neither has an `/admin/schema-info`-style endpoint to check deploy state directly.
+  - **Impact**: transcription job 1308 (`kaysville-ut-2023-04-28-city-council-work-session`, 2026-08-31T13:14:37Z) failed 3/3 on chunk 0/14 with the exact pre-fix raw-path symptom the fix was built and tested against — the same event/GUID cited in the fix's own docstring. Stays stuck failing/in cooldown until a worker redeploy ships the already-merged fix; any other CivicClerk event hitting the same fallback fails the same way until then.
+  - **Next action**: confirm whether `rtr-transcription-worker`/`rtr-transcription-worker-2` have deployed since 2026-08-31 13:14 UTC; redeploy if not. No code change needed.
+  - **History**: `BACKLOG_DONE.md` (WO-88). Flagged by the inbox-triage Routine's 2026-09-01 run.
+
+- **[HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed (status 134) at least 13 times since 2026-08-30, with at least 3 confirmed real outages — and 2 of those 3 have no matching Render alert at all, so the true rate may be higher than what's counted. Needs Render's own crash logs and memory graph, which only Ryan can pull.**
+  - **Issue**: identical "Exited with status 134" Render alerts recurring roughly every 5-12 hours from 2026-08-30 16:54 UTC through at least 2026-09-05 08:45 UTC (13 occurrences counted across ~6 days). Root cause is unconfirmed — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config, and a SIGABRT from a CPython process usually means a native-extension fault (this app's C-extension deps are aiohttp/uvloop/asyncpg/PyAV) or an allocator abort under severe memory pressure. The latter has real precedent on this exact service: `rtr-deeplink` runs on `plan: starter` (512MB) — Ryan bumped it to `standard` after a 2026-08-25/26 memory-pressure crash investigation (`BACKLOG_DONE.md`, "Four Render-dashboard `[HUMAN]` items walked through live with Ryan") then reverted to starter the same day, betting that WO-80's health-check fix (landed the same night) would relieve the pressure — with an explicit note to revisit "if the same crash pattern recurs post-WO-80." It has. A second, possibly-related data point: Sentry **PYTHON-FASTAPI-1C** (`OSError: [Errno 9] Bad file descriptor` inside uvloop's `TCPTransport.get_extra_info` → `_get_socket`, 2026-09-01 20:48 UTC, same `srv-d9qhdobm8hqs738fgkog` service) is a separate C-level fault inside uvloop's own socket-handle code — no timestamp lines up with a known crash, but it's at minimum consistent with the same native-fault hypothesis.
+  - **Impact**: 3 confirmed real UptimeRobot DOWN/UP outages now — 2026-09-01 11:57:22-12:07:31 UTC (~10 min, 10-11 min after a captured 11:46:53 crash alert); 2026-09-04 22:42:30-22:47:34 UTC (~5 min, `rtr-deeplink.onrender.com/api/health/resolve-check`); 2026-09-04 23:34:12-23:39:17 UTC (~5 min, `redtaperecordings.com` itself). Only the first has a plausibly-matching Render "server failure" alert inside a tight window — the other two don't line up with any captured alert within a reasonable margin, meaning the 13-alert count is very likely an undercount of the true crash rate, not the full picture.
+  - **Next action**: pull Render's real crash/exit logs for `rtr-deeplink` — ideally around 2026-09-04 22:42 or 23:34 UTC, since neither of those has a matching alert to anchor the search on otherwise — for the actual abort traceback, and check its memory-usage graph around the same windows the same way the 2026-08-25/26 and WO-94/95 worker investigations did. This Routine's tools can't reach either.
+  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence should revisit). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, and 2026-09-05 runs.
+
+- **[HUMAN] Dismiss the GitHub secret-scanning alert on `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103` — confirmed false positive, no RTR secret involved.**
+  - **Issue**: the flagged "Google API Key" is Durham NC's own public `GoogleMapsKey`, embedded in a real, live-fetched HTML fixture of Durham's own CivicPlus AgendaCenter page (exactly the "real fixture from a real live page" this repo's testing convention requires) — not an RTR credential. The alert's own "Public leaks" section lists the identical key already present in five unrelated public repos that scraped the same page, confirming it was already public before this repo's fixture captured it.
+  - **Impact**: nothing to rotate, but the alert keeps showing as "Action needed" in GitHub's Security tab until dismissed.
+  - **Next action**: dismiss the alert in GitHub's Security tab with reason "Used in tests." This Routine holds no GitHub write access for this, and dismissing a secret-scanning alert is a judgment call, so it's Ryan's to close.
+  - **History**: flagged by the inbox-triage Routine's 2026-08-31 run.
 
 ### Decisions about already-live content
 
@@ -2202,6 +2245,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     already resolves individually (WO-29).
   - **Next action**: none scheduled; low priority.
   - **History**: `BACKLOG_DONE.md` (full investigation).
+
+- **[NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a genuinely dead meeting, and `LegistarAssetFinder._fetch()` has no handling at all for a 404/410 page.**
+  - **Issue**: `scripts/adapter_canary.py:150`'s second Legistar URL (`https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, added 2026-08-29) still 410s — re-confirmed live 2026-09-05 via `curl`, and Phoenix's own Legistar API (`webapi.legistar.com/v1/phoenix/events?$filter=EventId eq 1425831`) returns `[]`, so the event is genuinely gone, not a transient blip. `legistar.py`'s `_fetch()` (`app/platforms/legistar.py:466-471`) calls `response.raise_for_status()` unconditionally with no exception handling, so a 410'd page raises before any of the existing fallback chain (`_try_fallback_video_link()` / `_try_known_channel_video()` / `_try_granicus_view_publisher_video()`) ever runs.
+  - **Impact**: not production-facing today — every real call site wraps `finder.resolve()` in a generic `except Exception` (`app/main.py`), so a real visitor just gets an unpolished raw-exception-string error rather than a friendly "this meeting listing is no longer available" message. The real cost is the canary itself: it's failed daily (15:00 UTC) since 2026-08-29, and a genuine adapter regression elsewhere in the 30+ platform sweep risks getting lost in an already-red build.
+  - **Next action**: swap the canary's Phoenix sample for a currently-live one. Two things found while re-verifying this (2026-09-05) worth handing to whoever picks it up: (1) Phoenix's Legistar pages need the full `?ID=...&GUID=...&Options=info|&Search=` querystring to load at all — the bare `?ID=` form 410s even for a real, live ID (confirmed against three live candidates pulled from `Calendar.aspx`: `1364180`/GUID `FE7842A8-9AF7-4022-90A6-9B0247C8DAB9`, `1363991`, `1363958`); (2) Phoenix's Legistar API shows `EventVideoPath: null` for every one of its 10 most recent events, matching the existing "Phoenix has no direct Legistar video links site-wide" finding (`BACKLOG_DONE.md`, 2026-08-11 survey) — so a good replacement sample must specifically exercise the WO-30 YouTube-channel fallback (a *past* meeting whose date/title should match Phoenix's YouTube channel), not just any live page. Separately, catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a friendly `video_warnings` message, the same pattern "no video link found" already uses.
+  - **History**: `BACKLOG_DONE.md` (2026-08-11 survey first documented this meeting ID as gone). Flagged by the inbox-triage Routine's 2026-08-30 run; recurred identically on every canary run since (2026-08-30, 08-31, twice on 09-01/09-02).
+
 ## Reliability, ops & cost
 
 ### `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice, still at the allowance
@@ -2319,6 +2369,31 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   backlog work.
 - **History**: `BACKLOG_DONE.md` (WO-40, 2026-08-21) — same failure-
   pattern measurement this residual is drawn from.
+
+#### `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic ffmpeg filter-graph failure has no known fix
+
+- **Issue**: `eastlansing.granicus.com/player/clip/1211?view_id=2`, chunk
+  1, fails identically every time with exit 234 / "Failed to configure
+  output pad on auto_aresample_0" / "Error reinitializing filters!" —
+  reproduced twice on separate transcription attempts two days apart
+  (job 1238, 2026-08-30 05:56 UTC; job 1294, 2026-08-31 06:42 UTC), each
+  with all 3 retries hitting the exact same error text, including after
+  the WO-45 output-side-seek retry (which fixes a different, empty/
+  undecodable-file failure shape, not this one). No fix attempted yet —
+  confirmed 2026-09-05: no `aresample` reference anywhere in
+  `app/platforms/media_probe.py` or `worker/main.py`.
+- **Impact**: this meeting has zero transcript (gave up at chunk 1/27).
+  Scope beyond this one source is unmeasured — no query groups failures
+  by this exact error string yet.
+- **Next action**: run `ffmpeg` directly against the real source at the
+  chunk-1 offset to see if this reproduces outside the app's own
+  subprocess context, and whether explicitly forcing
+  `-af aresample=async=1` (already known safe from the Napa VOD
+  investigation, for a different, cosmetic dts-warning case) happens to
+  route around this filter-config failure too.
+- **History**: found by the inbox-triage Routine's 2026-08-30 run;
+  confirmed deterministic (2nd occurrence, same source/chunk) in the
+  2026-08-31 run.
 
 ### Transcription queue & workers
 
