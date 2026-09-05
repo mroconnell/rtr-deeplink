@@ -1,6 +1,6 @@
 # Backlog — done
 
-## Inbox-triage promotion pass: 9 findings promoted, 1 closed as already-fixed [Done 2026-09-05]
+## Inbox-triage promotion pass: 8 findings promoted, 2 closed as already-fixed [Done 2026-09-05]
 
 Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s dated
 sections from 2026-08-29 through 2026-09-03 (the ones accumulated since
@@ -23,9 +23,7 @@ their own bullets.
 2026-09-05 (`[JUST-DO-IT]`, "Ship next"):** `slice_cached_audio()`'s
 missing decodability guard (now confirmed on a 5th distinct source,
 Alameda County CA, via the folded-in 2026-09-05 section);
-`proxy_get()`/`_proxy_to_archive()` not catching `asyncio.CancelledError`;
-no `statement_cache_size` mitigation for asyncpg's prepared-statement-
-cache class of bug (WO-101 hit it for real, 2026-09-03).
+`proxy_get()`/`_proxy_to_archive()` not catching `asyncio.CancelledError`.
 
 **Promoted to `BACKLOG.md` `[NEEDS-AUDIT]`:** the Phoenix Legistar canary
 sample (genuinely-dead meeting ID, plus `_fetch()` has no 404/410
@@ -78,6 +76,20 @@ numbers. Verified 2026-09-05 via `git log` (both commits present on
 message for the root-cause detail above. No separate `BACKLOG.md` entry
 needed; if worker OOM restarts recur after this, that would be new
 signal against a different cause, not a reopening of this one.
+
+**Also closed as already-fixed, not promoted — the "no `statement_cache_size`
+mitigation for asyncpg's prepared-statement cache" finding from the
+2026-09-03 section.** While preparing this promotion pass, `main` gained
+its own independent fix for the exact same issue: WO-111 (`73f0042`,
+merged same day) shipped `connect_args={"prepared_statement_cache_size":
+0, "statement_cache_size": 0}` on both `archive/db/engine.py` and
+`app/db/engine.py`, and its own commit edited this triage finding
+in-place in `CLAUDE_INBOX_TRIAGE.md` to point at its own
+`BACKLOG_DONE.md` entry ("A migration 500s live requests through stale
+prepared-statement caches," above) rather than leave it staged. Verified
+2026-09-05 by reading both engine files directly on `main`: both keys are
+present on both engines. No separate `BACKLOG.md` entry needed — this
+Routine's draft entry would have duplicated WO-111's own write-up.
 
 ## Granicus agenda inline-frame forced an unwanted browser download [Done 2026-09-04]
 
@@ -315,6 +327,64 @@ listing — not a reverse lookup. Left out rather than adding a fetch to
 the ingest/backfill hot path; STATE_gov_identity.md's "Loose ends"
 section already tracks "YouTube shared hosts need a per-channel method"
 as the umbrella item this would close.
+## A migration 500s live requests through stale prepared-statement caches [Done 2026-09-03]
+
+WO-111. Two confirmed user-facing failures on 2026-09-03 (Sentry
+`PYTHON-FASTAPI-1D` / `-1E`): `/j/rancho-cordova-ca` at 12:22:39 UTC and
+a `/m/` page at 12:28:25, both within eight minutes of WO-101's
+`ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)`. Postgres raised
+`InvalidCachedStatementError: cached plan must not change result type`.
+Both failing queries select `gov_id` — `get_page_by_slug()` and
+`_hub_groups()`, the two hottest read paths in the Archive.
+
+Found by the inbox-triage Routine (#701), not by anyone watching the
+deploy.
+
+**Why it happened.** SQLAlchemy's asyncpg dialect calls
+`connection.prepare()` for every statement and caches the results per
+pooled connection; asyncpg keeps its own server-side cache underneath
+that. Postgres invalidates a cached plan when a column the query selects
+changes type, so a live pool goes on using plans the server has just
+rejected. SQLAlchemy's own documentation names this exact case: when
+"DDL changes are made from other database engines and/or processes" — 
+which is precisely `alembic upgrade head` running in the preDeploy
+container — "a running application may encounter asyncpg exceptions
+`InvalidCachedStatementError`".
+
+**The timing detail that makes this recur.** `render.yaml`'s
+`preDeployCommand` runs the migration *after* the build and *before* the
+new instance is switched live, so the build serving traffic during the
+`ALTER` is the OLD one, with the OLD pool. A fix bundled with a
+migration therefore does nothing for that migration — it protects the
+next one. That is why this shipped on its own, ahead of any schema
+change.
+
+**Fix.** `connect_args={"prepared_statement_cache_size": 0,
+"statement_cache_size": 0}` on both services' engines (`archive/db/`
+and `app/db/` — deliberate duplicates, and both run their own
+`alembic upgrade head` in `preDeployCommand`, so both had the exposure).
+
+Two caches, and the first attempt set only the wrong one. Disabling
+asyncpg's `statement_cache_size` alone leaves SQLAlchemy's own
+prepared-statement cache in place, and that is the one its docs point at
+for this error; `prepared_statement_cache_size` is a DBAPI argument
+despite the name, so it belongs in `connect_args` rather than the URL.
+Verified by capturing what actually reaches
+`AsyncAdapt_asyncpg_dbapi.connect` — both keys arrive as 0 — rather than
+by reading the parameter names and assuming.
+
+**Cost.** Re-planning each query. These are indexed single-table selects
+and a `GROUP BY` over a few thousand rows, where planning is microseconds
+and nowhere near the dominant term. The narrower alternative — retrying
+once on `InvalidCachedStatementError` — keeps the cache but only covers
+the call sites it wraps, and the failure class is "any query touching an
+altered column", which nobody can enumerate in advance.
+
+**Standing consequence, worth remembering before the next migration:**
+"catalog-only" (a varchar widening, adding a nullable column) means no
+table rewrite and no index rebuild. It does *not* mean invisible to open
+connections. WO-101 was described as safe on exactly that reasoning, and
+the reasoning was true and incomplete.
 
 ## PrimeGov's `videoUrl` regex missed a real `?feature=share` suffix [Done 2026-09-03]
 

@@ -112,10 +112,9 @@ Standing decisions — do NOT re-raise  (7)
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
   [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
-  [JUST-DO-IT] No mitigation exists for asyncpg's prepared-statement…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Production actions only Ryan should take  (5)
@@ -399,12 +398,6 @@ so that work reads together.
   - **Impact**: same self-healing-via-GC leak class as the already-fixed PYTHON-FASTAPI-V/S/Q/T/W/X cases (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), not a user-visible crash — surfaced fresh as Sentry **PYTHON-FASTAPI-13** (2026-08-28, real production traffic on `/state/massachusetts`), a new issue ID confirming this is a fresh recurrence via a path that fix didn't close. Structurally open on every proxied route (`/m/*`, `/state/*`, `/j/*`, `/meetings`, `/coverage`, sitemap, feed) since they all funnel through these two functions.
   - **Next action**: in both functions, close the session on `asyncio.CancelledError` too, before re-raising it — e.g. `except (Exception, asyncio.CancelledError):` wrapping the existing close, always re-raising the cancellation rather than swallowing it.
   - **History**: `BACKLOG_DONE.md`'s "Five bundled easy-win fixes" (2026-08-21). Found by the inbox-triage Routine's 2026-08-29 run.
-
-- **[JUST-DO-IT] No mitigation exists for asyncpg's prepared-statement cache breaking on a migration that changes a hot-path query's result columns — already hit once by WO-101, will recur on the next such migration.**
-  - **Issue**: `242c9a2` (WO-101, `archive/alembic/versions/2026_09_03_1230-d8b2c5e07a41_widen_gov_id.py`)'s catalog-only `ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)` raised `InvalidCachedStatementError: cached plan must not change result type` on any connection that already held a cached plan across the deploy window, for the two hot-path queries that select `gov_id` directly: `get_page_by_slug()` (`archive/db/crud.py:3899`, backs `GET /m/{slug}`) and `_hub_groups()` (`archive/db/crud.py:7329`, backs `GET /j/{hub_slug}`). `archive/db/engine.py`'s `create_async_engine()` call (`_engine_kwargs`, line 68) still has zero mitigation for this error class — no `statement_cache_size=0`, no retry wrapper. Re-confirmed unchanged by direct read of current `engine.py` on 2026-09-05.
-  - **Impact**: 2 confirmed real page-load failures in an ~8-minute post-deploy window (Sentry PYTHON-FASTAPI-1D on `/j/rancho-cordova-ca`, PYTHON-FASTAPI-1E on `/m/town-of-yarmouth-ns-2021-10-28-committee-of-the-whole`, both 2026-09-03). Self-healing this time (no follow-up volume alert), but `meeting_pages`'s schema changes often — WO-99 and WO-101 both landed the same day — so any future migration touching a column selected by a frequently-hit query reproduces this exact user-facing failure during its deploy window.
-  - **Next action**: pass `connect_args={"statement_cache_size": 0}` to `create_async_engine()` in `archive/db/engine.py` — trades a small per-query overhead for eliminating the whole error class. Check whether `app/db/engine.py` (identical `_engine_kwargs` pattern) needs the same. Narrower alternative: a retry-once wrapper specifically around `InvalidCachedStatementError`.
-  - **History**: found and diagnosed by the inbox-triage Routine's 2026-09-03 run, from the full Sentry tracebacks plus the migration itself.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
