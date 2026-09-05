@@ -739,48 +739,82 @@ again 03:50 UTC — 7 restarts across both workers in ~30 hours now
 same rate. Root cause is still **Unconfirmed**; same open question for
 Ryan as above (Render's memory graphs, whether `/tmp` is RAM-backed).
 
-**New finding: WO-101's `gov_id`-widening migration caused two confirmed
-transient 500s via a textbook asyncpg prepared-statement-cache
-invalidation, and nothing in this codebase guards against the class of
-bug.**
-
-- **Confirmed** via the full Sentry tracebacks (PYTHON-FASTAPI-1D, -1E)
-  plus the migration itself. `242c9a2` (WO-101,
-  `archive/alembic/versions/2026_09_03_1230-d8b2c5e07a41_widen_gov_id.py`,
-  committed 2026-09-03 12:20:17 UTC) runs a catalog-only
-  `ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)` (widened from
-  `VARCHAR(64)`, landed via `render.yaml`'s `preDeployCommand`). Both
-  failing queries explicitly select `meeting_pages.gov_id`:
-  `archive/db/crud.py:3856` `get_page_by_slug()` (backs `GET /m/{slug}`,
-  `archive/main.py:2273`) and `archive/db/crud.py:7312` `_hub_groups()`
-  (backs `GET /j/{hub_slug}`, `archive/main.py:2860`). Postgres raised
-  `InvalidCachedStatementError: cached plan must not change result type`
-  — the standard asyncpg/SQLAlchemy failure when a live connection
-  already holds a cached prepared plan for a query whose result columns
-  a concurrent `ALTER TABLE` then changes. Timestamps line up tightly:
-  PYTHON-FASTAPI-1D hit `/j/rancho-cordova-ca` at 12:22:39 UTC and
-  PYTHON-FASTAPI-1E hit `/m/town-of-yarmouth-ns-2021-10-28-committee-of-
-  the-whole` at 12:28:25 UTC, both within 8 minutes of the migration
-  commit.
-- **Impact**: 2 confirmed real page-load failures (one jurisdiction hub
-  page, one meeting page) in an ~8-minute post-deploy window.
-  Self-healing this time — the email's own tags confirm SQLAlchemy's
-  asyncpg dialect invalidates its prepared-statement cache on exactly
-  this exception, and neither issue got a follow-up Sentry "New Alert"
-  (volume-threshold) email, only the one-time "New issue" — but
-  `archive/db/engine.py`'s `create_async_engine()` (checked directly, see
-  its `_engine_kwargs`) has zero mitigation for this error class today:
-  no `statement_cache_size=0`, no retry wrapper. This repo changes
-  `meeting_pages`'s schema often (WO-99 and WO-101 both landed the same
-  day), so any future migration touching a column selected by one of
-  these two hot-path queries — or any other frequently-hit query — will
-  reproduce this exact user-facing failure during its deploy window.
-- **Fix effort**: small. The standard fix is disabling asyncpg's
-  server-side prepared-statement cache on the affected engine
-  (SQLAlchemy's asyncpg dialect takes `connect_args={"statement_cache_size":
-  0}`), trading a small per-query overhead for eliminating this whole
-  class of post-migration error; the narrower alternative is a
-  retry-once wrapper around request handling specifically for
-  `InvalidCachedStatementError`. Neither exists today.
+**WO-101 prepared-statement finding: FIXED, see `BACKLOG_DONE.md`.**
+Promoted out of this file 2026-09-03 (WO-111) rather than left staged --
+`connect_args={"prepared_statement_cache_size": 0, "statement_cache_size":
+0}` now on both services' engines. The triage entry's suggested fix named
+only `statement_cache_size`; that is asyncpg's own cache and not the one
+SQLAlchemy's docs point at for this error, so the shipped fix disables
+both. Everything else in the finding held up exactly as written.
 
 Ledger: 6 new message IDs recorded (215 → 221 kept), 0 pruned this pass.
+
+## 2026-09-05
+
+Reviewed 19 new messages under `label:rtr-claude newer_than:30d` (120
+candidates, 101 already ledgered — no run happened on 2026-09-04, so this
+run covers 2026-09-03 evening through 2026-09-05 morning). Skipped as
+purely informational: two more transcription-worker daily reports.
+Skipped as duplicates of already-tracked patterns: two more daily YouTube
+transcript-fetch `IpBlocked` failures (confirmed expected/self-clearing
+per the 2026-08-20 investigation); two more "Server failure detected on
+`test-redtaperecordings`" (status 3, Nth+ occurrence, no new signal);
+Transcription job 1766 failed (Alameda County CA "BOS View", Granicus,
+`alamedacounty.granicus.com/ViewPublisher.php?view_id=2`, chunk 17/22,
+`errno 1094995529` three times, 2026-09-05 09:46-10:00 UTC) — same
+already-open `slice_cached_audio()` missing-decodability-guard gap
+(2026-08-29 finding #1, WO-54/58), now a 4th+ distinct Granicus/CivicClerk
+source; and two more "Adapter health canary: All jobs have failed" runs
+([33790267495](https://github.com/mroconnell/rtr-deeplink/actions/runs/33790267495),
+2026-09-03 18:26 UTC, 28/32 platforms OK — three extra transient failures
+this run only, `aurora_tv` "no real content", Simi Valley Granicus HTTP
+500, Charlotte NC Legistar "no real content", none of which recurred on
+the next run;
+[33904513989](https://github.com/mroconnell/rtr-deeplink/actions/runs/33904513989),
+2026-09-04 18:12 UTC, 31/32 platforms OK) — both confirmed via their own
+job logs to be the same still-open Phoenix Legistar 410 (`ID=1425831`), no
+new persistent signal. Skipped as out of scope: two GitHub Actions "PR run
+failed: Test" emails for a non-`main` feature branch
+(`Queue/document Granicus enumeration work, add ingest+sweep scripts`);
+one GitHub Actions "PR run failed: Tests" email for `mroconnell/rtr-upcoming`
+— a different repository/product, not this repo's own code, out of this
+Routine's scope per Step 2's "different property" rule.
+
+**Update to the already-open `rtr-deeplink` (resolver) SIGABRT/status-134
+finding (open since 2026-08-30): 3 more occurrences, and for the first
+time two real user-facing outages that don't line up with any captured
+Render alert — the true crash rate may exceed what these alerts capture.**
+
+- **3 more identical "Exited with status 134" alerts**: 2026-09-03 16:14
+  UTC, 2026-09-04 07:03 UTC, 2026-09-05 08:45 UTC — same exact alert text
+  as all 13 occurrences now on record since 2026-08-30 16:54 UTC (this
+  Routine's own history: 7 by 2026-09-01, 10 by 2026-09-02, now 13 across
+  ~6 days). Root cause is still **Unconfirmed** (Render's dashboard/logs
+  remain unreachable from this Routine, same as every prior write-up).
+- **New, more concerning data point: two more real UptimeRobot DOWN/UP
+  pairs, neither of which has a matching Render "server failure" email
+  within a plausible window.** `rtr-deeplink.onrender.com/api/health/resolve-check`
+  was DOWN (HTTP 502) 2026-09-04 22:42:30–22:47:34 UTC (5m4s) — the nearest
+  captured status-134 alert is 09-04 07:03 UTC, over 15 hours earlier, too
+  far to be the same event. `redtaperecordings.com` itself was DOWN (HTTP
+  502) 2026-09-04 23:34:12–23:39:17 UTC (5m5s, per UptimeRobot's own
+  timestamps — note this is ~49 minutes after the 09-05 08:45 UTC alert
+  used above, i.e. UptimeRobot and Render disagree on which day-boundary
+  that incident falls on in this Routine's own read of the raw timestamps;
+  taken at face value neither adjacent alert lines up within a few
+  minutes). Both read as genuine 502s (UptimeRobot's own `Root cause: HTTP
+  502 - Bad Gateway` field, not a generic timeout), consistent with the
+  same crash-and-restart pattern as the confirmed 2026-09-01 correlation —
+  but since 2 of the last 2 real outages checked have no matching Render
+  alert inside a tight window, this Routine can no longer assume every
+  crash produces a "Server failure detected" email; the 13 counted alerts
+  may undercount the true incident rate. **Open question for Ryan**, same
+  as every prior write-up: this Routine still cannot reach Render's own
+  crash/exit logs, and this is now the second and third independently
+  measured real-downtime windows (after 2026-09-01's ~10 minutes) tied to
+  this same unresolved pattern — worth pulling Render's actual logs around
+  2026-09-04 22:42 and 2026-09-04 23:34 UTC specifically, since neither has
+  an obvious matching alert to anchor the search on.
+
+Ledger: 19 new message IDs recorded (221 → 240 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).

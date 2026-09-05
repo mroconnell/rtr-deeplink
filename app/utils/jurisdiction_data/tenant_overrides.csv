@@ -415,3 +415,7 @@ www.youtube.com,Kj8xnou6W2o,us:place:0455000,fallback,ryan_stated,"Phoenix, AZ (
 www.youtube.com,blzlJG3T6AA,us:place:0455000,fallback,ryan_stated,"Phoenix, AZ (YouTube channel @cityofphoenixaz) -- us_places.csv Phoenix city"
 pasadena.granicus.com,,us:place:0656000,fallback,ryan_stated,"Pasadena, CA -- us_places.csv Pasadena city"
 howardcounty.granicus.com,,us:county:24027,fallback,ryan_stated,"Howard County, MD -- us_counties.csv Howard County"
+pub-abbotsford.escribemeetings.com,,ca:csd:5909052,fallback,ryan_stated,"Abbotsford, BC -- single-government eScribe tenant, confirmed live 2026-09-04 after deleting and resubmitting the two duplicate pages that had wrongly resolved to Abbotsford, WI"
+pub-edmonton.escribemeetings.com,,ca:csd:4811061,fallback,ryan_stated,"Edmonton, AB -- single-government eScribe tenant, confirmed live 2026-09-04 after deleting and resubmitting 3 pages that had wrongly resolved to Edmonton, KY"
+niagarafalls.civicweb.net,,ca:csd:3526043,fallback,ryan_stated,"Niagara Falls, ON -- single-government tenant, confirmed live 2026-09-04 after deleting and resubmitting 3 pages that had wrongly resolved to Niagara Falls, NY"
+pub-shelburne.escribemeetings.com,,ca:csd:3522021,fallback,ryan_stated,"Shelburne, ON -- confirmed by Ryan 2026-09-04; already the tenant's inferred gov_id, this pin turns it from a same-tenant-consistency guess into a settled pin"

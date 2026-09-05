@@ -1,5 +1,44 @@
 # Backlog — done
 
+## Granicus agenda inline-frame forced an unwanted browser download [Done 2026-09-04]
+
+WO-111. User report: loading
+`redtaperecordings.com/m/city-of-walnut-2023-01-25-city-council-meeting`
+in Chrome triggered a file download on page load, no click involved.
+Root cause: `archive/templates/meeting_page.html`'s unconditional
+`agenda-inline-frame` iframe (added 2026-08-10 as the "cheapest version
+of an inline agenda viewer") renders whatever `agenda_link` a platform
+sets, with no way to know server-side whether a given URL is actually
+safe to frame. For this meeting, `agenda_link` was
+`https://docs.google.com/gview?url=https://cityofwalnut.granicus.com/
+DocumentViewer.php?file=...pdf&view=1&embedded=true` — Granicus's
+`AgendaViewer.php` (`app/platforms/granicus.py`'s `_fetch_agenda_items`)
+redirected to Google's own `docs.google.com/gview`, a viewer for
+arbitrary external URLs, when the customer's page wasn't the native
+agenda-index HTML (same family as the already-known Paradise Valley AZ
+case in that method's docstring — never previously hit live before, so
+never a confirmed problem until now). That Google endpoint is
+flaky/semi-deprecated and can fall through to serving the wrapped file
+directly instead of a preview; framed inside an `<iframe>`, that reads to
+Chrome as a top-level navigation to a `.pdf`-shaped resource and it
+triggers the native download flow instead of an inline render.
+
+**Fix**: `GranicusAssetFinder._unwrap_google_docs_viewer()`
+(`app/platforms/granicus.py`) strips the `docs.google.com/gview`
+(or `/viewer`) wrapper back to its `url=` query param — the real
+underlying document — before it's ever set as `agenda_link`. Confirmed
+live that the real Granicus `DocumentViewer.php` URL serves plain
+`application/pdf` with no `Content-Disposition: attachment`, so it
+frames inline safely on its own with no dependency on Google's wrapper
+at all; this fixes the download *and* keeps the inline agenda preview
+(no fallback-to-link-only needed). Regression coverage:
+`test_agenda_viewer_redirect_to_google_docs_gview_unwraps_to_real_pdf`
+(`tests/test_granicus.py`), modeled on the existing raw-PDF-redirect
+test in the same file. Not yet deployed — see this repo's manual-deploy
+convention; the already-cached Archive row for this specific meeting
+will keep serving the old `gview` link until it's re-resolved or a
+deploy re-runs the resolve.
+
 ## Phase 2d live signal-scoring run, and a `resolve_government()` round-trip bug it found [Done 2026-09-04]
 
 WO-110 ran `scripts/score_gov_signals.py` for real for the first time
@@ -197,6 +236,64 @@ listing — not a reverse lookup. Left out rather than adding a fetch to
 the ingest/backfill hot path; STATE_gov_identity.md's "Loose ends"
 section already tracks "YouTube shared hosts need a per-channel method"
 as the umbrella item this would close.
+## A migration 500s live requests through stale prepared-statement caches [Done 2026-09-03]
+
+WO-111. Two confirmed user-facing failures on 2026-09-03 (Sentry
+`PYTHON-FASTAPI-1D` / `-1E`): `/j/rancho-cordova-ca` at 12:22:39 UTC and
+a `/m/` page at 12:28:25, both within eight minutes of WO-101's
+`ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)`. Postgres raised
+`InvalidCachedStatementError: cached plan must not change result type`.
+Both failing queries select `gov_id` — `get_page_by_slug()` and
+`_hub_groups()`, the two hottest read paths in the Archive.
+
+Found by the inbox-triage Routine (#701), not by anyone watching the
+deploy.
+
+**Why it happened.** SQLAlchemy's asyncpg dialect calls
+`connection.prepare()` for every statement and caches the results per
+pooled connection; asyncpg keeps its own server-side cache underneath
+that. Postgres invalidates a cached plan when a column the query selects
+changes type, so a live pool goes on using plans the server has just
+rejected. SQLAlchemy's own documentation names this exact case: when
+"DDL changes are made from other database engines and/or processes" — 
+which is precisely `alembic upgrade head` running in the preDeploy
+container — "a running application may encounter asyncpg exceptions
+`InvalidCachedStatementError`".
+
+**The timing detail that makes this recur.** `render.yaml`'s
+`preDeployCommand` runs the migration *after* the build and *before* the
+new instance is switched live, so the build serving traffic during the
+`ALTER` is the OLD one, with the OLD pool. A fix bundled with a
+migration therefore does nothing for that migration — it protects the
+next one. That is why this shipped on its own, ahead of any schema
+change.
+
+**Fix.** `connect_args={"prepared_statement_cache_size": 0,
+"statement_cache_size": 0}` on both services' engines (`archive/db/`
+and `app/db/` — deliberate duplicates, and both run their own
+`alembic upgrade head` in `preDeployCommand`, so both had the exposure).
+
+Two caches, and the first attempt set only the wrong one. Disabling
+asyncpg's `statement_cache_size` alone leaves SQLAlchemy's own
+prepared-statement cache in place, and that is the one its docs point at
+for this error; `prepared_statement_cache_size` is a DBAPI argument
+despite the name, so it belongs in `connect_args` rather than the URL.
+Verified by capturing what actually reaches
+`AsyncAdapt_asyncpg_dbapi.connect` — both keys arrive as 0 — rather than
+by reading the parameter names and assuming.
+
+**Cost.** Re-planning each query. These are indexed single-table selects
+and a `GROUP BY` over a few thousand rows, where planning is microseconds
+and nowhere near the dominant term. The narrower alternative — retrying
+once on `InvalidCachedStatementError` — keeps the cache but only covers
+the call sites it wraps, and the failure class is "any query touching an
+altered column", which nobody can enumerate in advance.
+
+**Standing consequence, worth remembering before the next migration:**
+"catalog-only" (a varchar widening, adding a nullable column) means no
+table rewrite and no index rebuild. It does *not* mean invisible to open
+connections. WO-101 was described as safe on exactly that reasoning, and
+the reasoning was true and incomplete.
 
 ## PrimeGov's `videoUrl` regex missed a real `?feature=share` suffix [Done 2026-09-03]
 
