@@ -120,7 +120,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (66)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
+  [NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
@@ -431,6 +433,103 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  wrong `gov_id` from before the cross-border name-collision guard
+  existed, and have never been re-backfilled since — the guard is
+  correct today, but a page resolved before it landed is still wrong.**
+  - **Issue**: `/m/abbotsford-wi-2025-06-24-council-meeting` (page 812)
+    is a real Abbotsford, **British Columbia** council meeting (agenda
+    items reference "Abbotsford Mission Highway 11" and real BC rezoning
+    applications; the AI transcript even mentions the Abbotsford
+    Canucks), keyed `us:place:5500100` — Abbotsford, **Wisconsin**, a
+    village of a few thousand. `app/utils/gov_registry/resolver.py`'s
+    national-table lookup has an explicit guard for exactly this shape
+    (`if not state and tables.ca_csd().lookup(name, None): return None`
+    — a bare name with no state that also exists in the Canadian table
+    declines rather than confidently picking the US one) and its own
+    code comment names this precise case among "16 real rows" a
+    2026-09-02 audit found: Abbotsford BC/WI, Edmonton AB/KY, Niagara
+    Falls ON/NY, Langford BC/SD, White Rock BC/SD, Port Hope ON/MI (3
+    more — Nampa ID, New Carlisle OH, Hawarden IA — are confirmed
+    genuinely American despite a same-named Canadian place, which is why
+    the guard declines rather than auto-picks either side). Confirmed
+    live 2026-09-04 that today's code gets it right:
+    `resolve_government("Abbotsford", tenant_host="pub-abbotsford.escribemeetings.com")`
+    returns `unresolved`, not the Wisconsin village. The guard's own
+    commit (`27e0c8f0`, WO-99/#696, merged 2026-09-03 11:26 UTC) predates
+    the page's last write (`updated_at` 2026-09-03 12:23 UTC, i.e. from
+    the WO-99/WO-100 wholesale backfill itself) by about an hour — so by
+    plain chronology the guard should have already been live when this
+    row was written, and exactly why it wasn't is still an open
+    question (a deploy-timing gap between merge and the Render rollout
+    actually used by that `--apply` run is the leading guess, not
+    confirmed). Not a currently-active resolver bug — a stale row the
+    ladder would no longer produce if asked today.
+  - **Impact**: at least one live page shows the wrong government and
+    country on its own `/m/` page and would file under the wrong state
+    on `/state/wisconsin` instead of not appearing there at all pending a
+    real fix. Scope of the other 5 named collisions is unverified — they
+    may be equally stale, already caught by a later backfill, or fine;
+    nobody has checked since 2026-09-02.
+  - **Next action**: `scripts/backfill_gov_id.py`'s own stated design
+    ("skip rows already current... a run after a registry change re-does
+    exactly the rows whose answer moved") means a plain unscoped re-run
+    from the Archive's Render shell should catch and correct this row
+    (and the other 5, if equally stale) automatically — it recomputes
+    fresh and compares, it doesn't trust the stored tier. Worth doing as
+    a full sweep rather than one-off pins, specifically because the
+    other 5 names haven't been checked. `pub-abbotsford.escribemeetings.com`
+    itself would settle to `unresolved` after a re-run (bare "Abbotsford"
+    stays ambiguous by design) unless also given a tenant pin to
+    `ca:csd:5909052` — a single-government eScribe host, no `match`
+    needed.
+  - **Constraint**: don't hand-fix this one row in isolation without
+    also re-running the backfill broadly — a one-off pin fixes the
+    symptom Ryan happened to notice and leaves the other 5 named
+    collisions (and any other page resolved in that same pre-guard
+    window) exactly as wrong and exactly as invisible.
+  - **History**: found 2026-09-04 answering a user question about
+    `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
+  `Agenda=` query-string values, and each one archives as a separate
+  page.**
+  - **Issue**: `pub-abbotsford.escribemeetings.com`'s real meeting
+    `Id=c157e0a4-351f-49f2-bd63-bc0747196fed` exists as two full,
+    separately-archived pages — `?Agenda=Merged&Id=...` (page 812) and
+    `?Agenda=Agenda&Id=...` (page 2225) — identical agenda and
+    transcript, different `source_url_normalized`, so nothing currently
+    treats them as duplicates of each other. Checked the corpus for the
+    same shape (same eScribe `Id=`, different `Agenda=` value) and found
+    **7 such pairs** across 6 hosts as of the 2026-09-03
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv` snapshot:
+    `pub-forterie` (`Agenda`/`Addendum`), `pub-oshawa`
+    (`PostMinutes`/`Agenda`), `pub-abbotsford` (`Merged`/`Agenda`),
+    `pub-peelregion` (`Agenda`/`PostAgenda`), `pub-townshipofbrock`
+    (`Merged`/`Agenda`), `pub-marvinnc` (`PostMinutes`/`Agenda`),
+    `pub-sandag` (`PostMinutes`/`Agenda`). Same shape as BACKLOG.md's
+    existing "same YouTube video, two URL forms" entry, different
+    platform.
+  - **Impact**: 7 known real duplicate archived meetings (14 pages for 7
+    real events) — double-counted in per-jurisdiction page counts,
+    double the storage/transcription cost per meeting, and a reader
+    landing on either copy has no link to the other. Likely undercounts
+    the true total since this was checked against one day's snapshot,
+    not the live corpus.
+  - **Next action**: at ingest time, treat `Agenda=`'s value as
+    something to strip (not compare) when checking whether an eScribe
+    `Meeting.aspx?Id=...` URL has already been archived — the `Id=` GUID
+    alone identifies the meeting; `Agenda=` only selects which document
+    view eScribe renders for it. Needs a real duplicate-merge pass for
+    the 7 already-archived pairs, not just a forward-looking ingest fix.
+  - **Constraint**: don't assume `Agenda=Agenda` is always the
+    "canonical" one to keep — `PostMinutes`/`PostAgenda`/`Merged` may
+    carry a fuller or more final document for some meetings; check
+    content before merging a pair.
+  - **History**: found 2026-09-04 investigating the Abbotsford
+    duplicate above; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   confidently-wrong extraction on a confirmed-misleading host — the
