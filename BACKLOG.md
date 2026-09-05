@@ -126,7 +126,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (70)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (71)
+  [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
@@ -478,6 +479,70 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+  lifted from an institutional-type word ("School District" → SD,
+  "Supreme Court" → SC) rather than a real state abbreviation — confirmed
+  on 2 live pages today, structurally able to recur on any of a
+  currently-small but nonzero population.**
+  - **Issue**: found live 2026-09-04 on two pages — id 757 "Arkansas
+    Supreme Court" minted as `rtr:us:sc:arkansas-supreme-court` (looks
+    like South Carolina; the real government is in Arkansas), and id
+    5218 "Oxnard School District" minted as
+    `rtr:us:sd:oxnard-school-district` (looks like South Dakota; the
+    real government is in California). Both are the same shape: the
+    mint path pulled a trailing two-letter code from inside the raw NAME
+    text itself ("...**S**chool **D**istrict", "...**S**upreme **C**ourt"),
+    not from an actual trailing state suffix, and nothing currently
+    distinguishes that from a real ", SD"/", SC".
+  - **Impact — real counts, queried live 2026-09-05, not estimated**:
+    of the 6 `rtr:us:sd:*` ids currently minted in production, 5 are
+    genuinely real South Dakota places (Brookings, Dell Rapids, Madison
+    ×2 pages, Vermillion) and exactly 1 is this bug (Oxnard). Of the 1
+    `rtr:us:sc:*` id minted, that 1 is this bug (Arkansas). For scale:
+    62 pages are correctly keyed to a real `us:sd:` **school district**
+    (the Gazetteer-backed national table, a completely different
+    namespace from the 2-letter state code — see
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md`'s "Clarification" in §7), and
+    roughly 13 pages carry a real South Carolina government. So today's
+    confirmed blast radius is small (2 wrong pages total) — the concern
+    is the mechanism, not the current count, since nothing stops a third
+    "___ Special District" or "___ Superior Court" from minting the same
+    way tomorrow.
+  - **Next action**: two tracks, not one.
+    1. **Immediate, bounded**: before minting `rtr:us:<st>:...` from a
+       cleaned name, check whether the *only* place the candidate state
+       code appears is inside an institutional-type phrase in the name
+       itself (a short, enumerable list — "school district," "supreme
+       court," and whatever else the audit below turns up) rather than
+       as a genuine trailing suffix the way `_split_state()` already
+       distinguishes elsewhere in this file. A quick scoping count first
+       (per Ryan's ask): how many minted `rtr:` ids nationally contain
+       "school district" or "supreme court" in their name — this decides
+       whether the guard needs to handle 2 known shapes or a longer tail
+       worth enumerating up front.
+    2. **Structural, for resilience going forward**: study what the
+       *tenant URL itself* already reliably carries at resolve time
+       (subdomain state suffixes are already proven reliable elsewhere —
+       see the sibling entry above on `score_gov_registry.py`'s
+       `match`-scoped blind spot and the Municode subdomain-state
+       finding from the Abbotsford investigation) and thread that
+       through the mint path as a real signal to cross-check a candidate
+       state code against, instead of trusting whatever two letters a
+       regex finds inside the name. This is the same shape as decision
+       D2/§5's existing "a plausible wrong extraction passes validation"
+       lesson, just at the minting step instead of the lookup step.
+  - **Constraint**: don't fix this by blocklisting "school district" and
+    "supreme court" alone and calling it done — that's the immediate
+    patch for the 2 confirmed cases, not the structural fix. Verify
+    whatever the audit finds before enumerating a "final" list; per this
+    repo's own standing rule, a backlog entry's central claim decays
+    fast and this one's counts should be re-checked, not assumed, by
+    whoever picks it up next.
+  - **History**: found 2026-09-04 investigating WO-110's Phase 2d
+    scoring report while answering questions about the Abbotsford
+    BC/WI fix; counts confirmed live 2026-09-05. Not yet in
+    `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
   Content-Length` on the resolver, seen twice in one production log
