@@ -126,7 +126,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (69)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (70)
+  [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
@@ -436,7 +437,8 @@ of human step they need.
   - **Issue**: identical "Exited with status 134" Render alerts recurring roughly every 5-12 hours from 2026-08-30 16:54 UTC through at least 2026-09-05 08:45 UTC (13 occurrences counted across ~6 days). Root cause is unconfirmed — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config, and a SIGABRT from a CPython process usually means a native-extension fault (this app's C-extension deps are aiohttp/uvloop/asyncpg/PyAV) or an allocator abort under severe memory pressure. The latter has real precedent on this exact service: `rtr-deeplink` runs on `plan: starter` (512MB) — Ryan bumped it to `standard` after a 2026-08-25/26 memory-pressure crash investigation (`BACKLOG_DONE.md`, "Four Render-dashboard `[HUMAN]` items walked through live with Ryan") then reverted to starter the same day, betting that WO-80's health-check fix (landed the same night) would relieve the pressure — with an explicit note to revisit "if the same crash pattern recurs post-WO-80." It has. A second, possibly-related data point: Sentry **PYTHON-FASTAPI-1C** (`OSError: [Errno 9] Bad file descriptor` inside uvloop's `TCPTransport.get_extra_info` → `_get_socket`, 2026-09-01 20:48 UTC, same `srv-d9qhdobm8hqs738fgkog` service) is a separate C-level fault inside uvloop's own socket-handle code — no timestamp lines up with a known crash, but it's at minimum consistent with the same native-fault hypothesis.
   - **Impact**: 3 confirmed real UptimeRobot DOWN/UP outages now — 2026-09-01 11:57:22-12:07:31 UTC (~10 min, 10-11 min after a captured 11:46:53 crash alert); 2026-09-04 22:42:30-22:47:34 UTC (~5 min, `rtr-deeplink.onrender.com/api/health/resolve-check`); 2026-09-04 23:34:12-23:39:17 UTC (~5 min, `redtaperecordings.com` itself). Only the first has a plausibly-matching Render "server failure" alert inside a tight window — the other two don't line up with any captured alert within a reasonable margin, meaning the 13-alert count is very likely an undercount of the true crash rate, not the full picture.
   - **Next action**: pull Render's real crash/exit logs for `rtr-deeplink` — ideally around 2026-09-04 22:42 or 23:34 UTC, since neither of those has a matching alert to anchor the search on otherwise — for the actual abort traceback, and check its memory-usage graph around the same windows the same way the 2026-08-25/26 and WO-94/95 worker investigations did. This Routine's tools can't reach either.
-  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence should revisit). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, and 2026-09-05 runs.
+  - **New data point (2026-09-05, from Ryan pasting the actual around-the-crash log for the first time)**: instance `8kp2j` exited status 134 at 8:05 AM local, **several minutes after a manual redeploy** — the first time a crash has been directly correlated with a fresh deploy rather than steady-state traffic. The pasted log shows only the aftermath (`Unclosed client session`/`Unclosed connection` to the Archive, `Unexpected error 9 on netlink descriptor 20` — GC-finalizer noise from the abrupt kill, not its cause) followed by Render's restart line; the actual abort still isn't in application-level stdout, confirming this needs Render's own crash log same as before. One thing the restart sequence *does* show: the fresh instance had to runtime-self-heal a missing Chromium binary (`headless_browser.py`'s existing, documented self-heal path, `warm_up_headless_browser()` at startup) before serving normally — consistent with Render having provisioned a genuinely new container rather than restarting the same one in place, which is worth mentioning to Ryan as a possible detail for whoever reads the real crash log, not a cause on its own.
+  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence should revisit). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, and 2026-09-05 runs; redeploy-correlation data point added 2026-09-05 from Ryan's own pasted log.
 
 - **[HUMAN] Dismiss the GitHub secret-scanning alert on `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103` — confirmed false positive, no RTR secret involved.**
   - **Issue**: the flagged "Google API Key" is Durham NC's own public `GoogleMapsKey`, embedded in a real, live-fetched HTML fixture of Durham's own CivicPlus AgendaCenter page (exactly the "real fixture from a real live page" this repo's testing convention requires) — not an RTR credential. The alert's own "Public leaks" section lists the identical key already present in five unrelated public repos that scraped the same page, confirming it was already public before this repo's fixture captured it.
@@ -476,6 +478,40 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
+  Content-Length` on the resolver, seen twice in one production log
+  (2026-09-05) on two different routes.**
+  - **Issue**: Ryan pasted a real Render log window that shows this
+    exception raised twice, both times inside
+    `starlette/middleware/base.py`'s `BaseHTTPMiddleware.__call__` →
+    `starlette/responses.py:167`'s plain (non-streaming) `Response.
+    __call__`, on `GET /api/health/resolve-check` and `GET /` — a
+    `Content-Length` header disagreeing with the actual body bytes sent.
+    `app/main.py`'s `handle_head_requests` middleware
+    (`@app.middleware("http")`, which Starlette implements via
+    `BaseHTTPMiddleware`) wraps every single request through this repo's
+    resolver service, so it's the one shared thing both failing routes
+    have in common — not confirmed as the actual cause yet, just the
+    common factor visible from the log alone.
+  - **Impact**: unconfirmed how often this fires or whether it's user-
+    visible (a broken/truncated page load vs. a clean retry) — only
+    known from this one pasted log window, not independently reproduced
+    or measured against Sentry/UptimeRobot yet.
+  - **Next action**: check Sentry for this exact `RuntimeError` string to
+    get a real occurrence count and see if it correlates with anything
+    (a specific route, a response size, gzip). If `handle_head_requests`
+    is confirmed as the trigger, the fix is probably to stop
+    unconditionally wrapping every request in `BaseHTTPMiddleware` for
+    the (rare) HEAD case and instead route HEAD handling some other way
+    that doesn't re-stream every GET too.
+  - **Constraint**: don't assume this is related to the SIGABRT/status-134
+    crash entry above just because both came out of the same pasted log
+    — they're different failure shapes (a process-level abort vs. an
+    HTTP-protocol-level assertion inside a request handler) with no
+    evidence connecting them beyond appearing in the same window.
+  - **History**: found 2026-09-05 from Ryan sharing a real Render log
+    after a redeploy; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
   wrong `gov_id` from before the cross-border name-collision guard
