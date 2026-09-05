@@ -120,11 +120,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (67)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+  [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -662,20 +663,77 @@ structural change than the two entries below.
     hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
     bare `old_slug`, computed from two different tenants' raw
     jurisdiction text at two different points in time, legitimately wants
-    two different destinations (e.g. `tvhamilton.cablecast.tv` pinned to
-    Hamilton, OH in WO-107 collides with an existing, still-live
-    `hamilton → hamilton-police-services-board-on` redirect for a real
-    Ontario police board). Any fix needs a documented tie-break rule, not
-    silent last-write-wins — WO-109 kept the incumbent in all 3 cases
-    (safe here because every runner-up tenant was `unresolved` before its
-    pin, meaning it had no live hub_slug to protect), and left `victoria`
-    flagged for Ryan specifically since `STATE_gov_identity.md` already
-    documents the committed value (`victoria-bc`) as based on a premise
-    #707 later corrected (the tenant is actually Victoria, MN) — a real
-    candidate for the OLD row being the one that's wrong, not the new one.
+    two different destinations. Any fix needs a documented tie-break
+    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
+    2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
+    live site after the WO-107 backfill and gave an explicit, direct
+    call: `hamilton` now points to `hamilton-city-oh`
+    (`us:place:3933012`) and `woodland` now points to `woodland-wa`
+    (`us:place:5379625`), superseding WO-109's cautious default. Both old
+    incumbent destinations (`hamilton-police-services-board-on`,
+    `woodland-ca`) remain real, live hubs at their own unambiguous slugs
+    — re-verified via `display.hub_slug()` on their own gov_ids before
+    the flip — so nothing is orphaned, they're just no longer reachable
+    via the bare, ambiguous slug. `victoria` is UNCHANGED: Ryan did not
+    mention it, and it stays flagged for him per the note below (a
+    genuinely different case — `victoria-bc` may itself be the wrong
+    committed value, not just the less-preferred one). A durable
+    tie-break rule for the *general* case (which of two colliding raw
+    strings wins a bare slug) is still not built — WO-112 only resolved
+    these two specific instances by direct instruction, it did not add a
+    policy the tool applies on its own next run.
   - **History**: found and worked around by hand in WO-109's PR
-    (2026-09-03); see that PR's description for the full row-by-row
-    reasoning and the before/after counts.
+    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
+    (2026-09-03) per Ryan's direct instruction. See both PRs'
+    descriptions for the full row-by-row reasoning and before/after
+    values.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
+  scoped `tenant_overrides.csv` pins, so its `hub_slug_aliases.csv` regen
+  silently drops the retiring-slug redirect for any government that was
+  only pinned that way.**
+  - **Issue**: `score_rows()` (and `_seed_governments()`) call
+    `resolve_government(jurisdiction, tenant_host=host,
+    tenant_gov_id=...)` with no `path`/`page_hints` argument. Those two
+    are exactly what `_pinned()` (`app/utils/gov_registry/resolver.py`)
+    needs to match a `tenant_overrides.csv` row whose `match` column
+    names a specific video id or TelVue org token rather than being
+    blank — so the script can only ever see host-level pins, never
+    `match`-scoped ones. WO-107 (#712) added 5 such groups (24 `youtu.be`
+    ids → Woodside CA, 10 `youtu.be` ids → Hillsborough CA, 3
+    `www.youtube.com` ids → Phoenix AZ, 2 `videoplayer.telvue.com` org
+    tokens → Centre County PA and Summit NJ), and WO-109's regen the same
+    day (#714) missed all 5 — confirmed by checking its own committed
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv`: all 5
+    pages still show `jurisdiction_confidence: unresolved` and a blank
+    `gov_id` in that snapshot.
+  - **Impact**: no live 404s today — WO-112 (2026-09-03) hand-added the
+    5 missing redirect rows to `archive/data/hub_slug_aliases.csv` from
+    that same pre-backfill snapshot before `scripts/backfill_gov_id.py
+    --apply` erased the only source that could reconstruct them. But
+    this is a real, general gap: any FUTURE `match`-scoped pin will hit
+    the identical blind spot the next time someone runs
+    `score_gov_registry.py` in the ordinary documented way, with no
+    warning that it happened (same silent-drop shape as the wholesale-
+    overwrite entry above, different root cause).
+  - **Next action**: thread `path`/`page_hints` through
+    `score_rows()`/`_seed_governments()` the way `page_hints_for()`
+    (`resolver.py`) already builds them from a `MeetingPage` in
+    production — the export payload would need the source URL fields
+    `page_hints_for()` reads (it currently fetches only the light
+    metadata shape, deliberately, per its own docstring on
+    `fetch_export_pages()`) — then re-run the script and confirm the 5
+    WO-107 rows above appear in its own regenerated output rather than
+    needing another hand-add.
+  - **Constraint**: don't build this against a fresh `/internal/
+    export/pages` pull to verify — after `backfill_gov_id.py --apply`
+    runs, every WO-107-pinned page's stored `jurisdiction` is already the
+    registry display name, so a fresh export can no longer show the
+    before/after gap this bug produces. Verify instead against the
+    committed `sheet_archive.csv` snapshot above, or a newly-crafted
+    synthetic case using a real, currently-unpinned `match` value.
+  - **History**: found and worked around in WO-112's PR (2026-09-03);
+    see that PR's description.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
