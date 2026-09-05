@@ -126,7 +126,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (70)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (72)
+  [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+  [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
   [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
@@ -478,6 +480,98 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+  resolutions — nothing retroactively re-applies it to already-archived
+  pages, and the one tool meant to make that reliable doesn't track
+  every pin.**
+  - **Issue**: fixing Edmonton (AB) and Niagara Falls (ON) — both the
+    same wrong-country-collision bug as Abbotsford BC/WI — required
+    deleting and resubmitting 6 pages by hand, then hand-writing 2 tenant
+    pins directly into `tenant_overrides.csv`. Checked afterward whether
+    the standard recovery path would have caught these two hosts:
+    `reports/pin_worklist_hosts.txt` (the file
+    `scripts/backfill_gov_id.py --hosts-file` is documented to use)
+    **does not contain either host**, because they were added by hand
+    outside `scripts/apply_pin_worklist.py`'s own workflow, which is the
+    only thing that currently writes that file. A pin added any way
+    other than through that one script's own run is invisible to the
+    one mechanism meant to re-sync already-ingested pages against it.
+  - **Impact**: every pin added outside a `apply_pin_worklist.py` batch
+    (which includes every pin found by direct investigation rather than
+    the worklist process — Abbotsford, Edmonton, Niagara Falls, and
+    likely others already in the file from earlier sessions) needs its
+    own by-hand `--hosts` backfill, discovered and run by whoever
+    happens to remember it exists. Nothing durable tracks "these hosts
+    have a pin newer than the last backfill that touched them."
+  - **Next action**: not settled — Ryan wants to think through the
+    right shape rather than build the first idea. **One approach
+    considered and explicitly rejected**: wiring an unscoped
+    `backfill_gov_id.py --apply` into the Archive's `preDeployCommand`
+    (the same way `alembic upgrade head` already runs there), so every
+    deploy re-syncs the whole corpus against whatever the registry
+    currently says with zero manual step. Ryan's call: not that way —
+    don't re-propose it without a new reason. Worth exploring instead:
+    something that tracks which hosts have a pin more recent than their
+    last backfill (so a human-triggered run stays complete without
+    needing `reports/pin_worklist_hosts.txt` to happen to be current),
+    or making `apply_pin_worklist.py`'s own hosts-file writer pick up
+    hand-added `tenant_overrides.csv` rows too rather than only the ones
+    it just wrote itself.
+  - **Constraint**: don't build the `preDeployCommand` version — see
+    above, already declined.
+  - **History**: found 2026-09-05 fixing Edmonton/Niagara Falls; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
+  `scripts/score_gov_signals.py`) needs a human review step before any
+  apply mode is built, not just a straight "recovered → write it"
+  pipeline — confirmed by two real wrong-level matches in its own
+  first report.**
+  - **Issue**: applying 5 of WO-110's "recovered" pages by hand
+    (2026-09-05) found 2 of the 5 were the wrong *level* of government,
+    not just the wrong place — the `org_names` signal has no way to
+    tell "this name matches a real place" apart from "this org IS that
+    place's own government." Checked both against the real archived
+    page before applying anything: id 335 "L. A. World Airports - Board
+    of Airport Commissioners" would have been folded into plain
+    `us:place:0644000` (Los Angeles, CA) — the real page names its own
+    Board of Airport Commissioners individually and cites "Los Angeles
+    City Charter Section 503(a)" as its own enabling authority, the
+    same "own governing board / own enabling statute" shape decision D2
+    already grants LADWP its own identity for. id 757 "Arkansas Supreme
+    Court" would have been folded into `us:county:05001` — a real
+    Arkansas county that coincidentally shares the word "Arkansas"; the
+    actual page is a state supreme court case ("State of Arkansas...
+    from Washington County Circuit Court"), which per decision D1
+    belongs under the State of Arkansas as a `meeting_body`, not any
+    county. The other 3 of the 5 (Oak Ridge TN, DeLand FL, Live Oak TX)
+    were clean, exact, correctly-leveled matches and were applied.
+  - **Impact**: an unreviewed apply mode built directly from WO-110's
+    scoring output would have silently written 2 wrong identities (of
+    5 checked — a 40% miss rate on this small sample, not something to
+    extrapolate a rate from, but not negligible either) alongside the 3
+    correct ones, with nothing distinguishing them in the output.
+  - **Next action**: Ryan's call, recorded here so it isn't lost —
+    **any apply mode needs a human review step between the confidence
+    score and actually writing**, at least while it's being tested.
+    Worth scoping a way to auto-sort the queue by risk rather than
+    review all of it blind: a recovered government whose name is an
+    exact or near-exact substring of the raw extracted text (Oak Ridge
+    TN, DeLand FL, Live Oak TX's shape) is a very different confidence
+    class from one where the match came from a *different* string found
+    somewhere else on the page (LAWA, Arkansas Supreme Court's shape) —
+    the second class is exactly where a name can validate against a
+    real, unrelated place. Counting how many of WO-110's 102 recovered
+    pages are which shape would say whether "auto-apply the exact-match
+    ones, queue the rest" is a small manual backlog or a large one.
+  - **Constraint**: don't build a straight apply mode (score → write)
+    without the review step above — this entry exists specifically
+    because that shape already produced 2 wrong answers out of 5 on the
+    first hand check.
+  - **History**: found 2026-09-05 applying WO-110's report by hand
+    while answering a question about the Edmonton/Niagara Falls fix;
+    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
   Content-Length` on the resolver, seen twice in one production log
