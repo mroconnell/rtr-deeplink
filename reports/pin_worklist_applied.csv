@@ -1,28 +1,166 @@
 outcome,platform,tenant_host,match,pages,stated_name,gov_id,gov_name,tier,detail
+would_delete,escribe,pub-cambridge.escribemeetings.com,,5,,,,,"5 page(s): cambridge-council-meeting-agenda-meeting-2026-02-03-council-meeting, cambridge-council-meeting-agenda-meeting-2024-11-05-council-meeting, city-of-cambridge-2026-08-25-council-meeting, city-of-cambridge-2026-08-25-council-meeting-c7a54b, city-of-cambridge-2026-08-25-council-meeting-f98475"
+pin,escribe,pub-brucecounty.escribemeetings.com,,3,"Bruce County, ON",ca:cd:3541,"Bruce, ON",registry,ca_cd.csv Bruce
+pin,escribe,pub-halifax.escribemeetings.com,,3,"Halifax, NS",ca:csd:1209034,"Halifax, NS",registry,ca_csd.csv Halifax
+pin,escribe,pub-langford.escribemeetings.com,,3,"Langford, BC",ca:csd:5917044,"Langford, BC",registry,ca_csd.csv Langford
+pin,escribe,pub-lincoln.escribemeetings.com,,3,"Lincoln, ON",ca:csd:3526057,"Lincoln, ON",registry,ca_csd.csv Lincoln
+pin,escribe,pub-london.escribemeetings.com,,3,"London, ON",ca:csd:3539036,"London, ON",registry,ca_csd.csv London
+pin,escribe,pub-mission.escribemeetings.com,,3,"Mission, BC",ca:csd:5909056,"Mission, BC",registry,ca_csd.csv Mission
+pin,escribe,pub-oliver.escribemeetings.com,,3,"Oliver, BC",ca:csd:5907014,"Oliver, BC",registry,ca_csd.csv Oliver
+pin,escribe,pub-paradise.escribemeetings.com,,3,"Paradise, NL",ca:csd:1001517,"Paradise, NL",registry,ca_csd.csv Paradise
 already_pinned,cablecast,huron-township.cablecast.tv,,4,"Huron Township, MI",us:cousub:2606340020,"Huron Township, MI",registry,us_cousubs.csv Huron township
 unresolved,cablecast,cityofpontiac.cablecast.tv,,3,"Pontiac, Michigan",,"Pontiac, Michigan",unresolved,"no state for 'Pontiac, Michigan'"
 already_pinned,cablecast,hctv.cablecast.tv,,3,"Holden, MA",us:cousub:2502730560,"Holden Town, MA",registry,us_cousubs.csv Holden town
 already_pinned,cablecast,laquinta.cablecast.tv,,3,"La Quinta, CA",us:place:0640354,"La Quinta, CA",registry,us_places.csv La Quinta city
 already_pinned,cablecast,tvhamilton.cablecast.tv,,3,"Hamilton, OH",us:place:3933012,"Hamilton (city), OH",registry,us_places.csv Hamilton city
+pin,cablecast,city-slp-mn.cablecast.tv,,1,"St Louis Park, MN",us:place:2757220,"St. Louis Park, MN",registry,us:place:2757220 St. Louis Park city matched with spacing ignored
+unverified,swagit,dart.new.swagit.com,,1,"Dallas Area Rapid Transit (DART), TX",rtr:us:tx:dallas-area-rapid-transit-dart,"Dallas Area Rapid Transit (DART), TX",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,swagit,dcccd.new.swagit.com,,1,"Dallas County Community College District, TX",rtr:us:tx:dallas-county-community-college-district,"Dallas County Community College District, TX",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,swagit,derby.civicweb.net,,1,"Derby, KS",us:place:2017800,"Derby, KS",registry,us_places.csv Derby city
+unverified,swagit,harrishealthtx.new.swagit.com,,1,"Harris Health System, TX",rtr:us:tx:harris-health-system,"Harris Health System, TX",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,telvue,videoplayer.telvue.com,CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l,3,"Derry, NH",us:cousub:3301517940,"Derry Town, NH",registry,us_cousubs.csv Derry town
 already_pinned,telvue,videoplayer.telvue.com,GNduNoua2rBThhw6N4PRP9OCSPf6B2ru,2,"Centre County, PA",us:county:42027,"Centre County, PA",registry,us_counties.csv Centre County
 already_pinned,telvue,videoplayer.telvue.com,_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2,2,"Summit, NJ",us:place:3471430,"Summit, NJ",registry,us_places.csv Summit city
+pin,telvue,videoplayer.telvue.com,aOt1iJYvW4IQawSCE8Goebgvo0CdBFwN,2,"Royal Oak, MI",us:place:2670040,"Royal Oak, MI",registry,us_places.csv Royal Oak city
+pin,telvue,videoplayer.telvue.com,m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT,2,"Leominster, MA",us:place:2535075,"Leominster, MA",registry,us_places.csv Leominster city
+pin,telvue,videoplayer.telvue.com,w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP,2,"Ashland, OR",us:place:4103050,"Ashland, OR",registry,us_places.csv Ashland city
+pin,telvue,videoplayer.telvue.com,bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA,1,"Schenectady, NY",us:place:3665508,"Schenectady, NY",registry,us_places.csv Schenectady city
+pin,telvue,videoplayer.telvue.com,yycCAZPb0NN3zj2o5qio-YFMNC43NjCG,1,"Fitchburg, MA",us:place:2523875,"Fitchburg, MA",registry,us_places.csv Fitchburg city
 already_pinned,youtube,youtu.be,@TownofWoodside,24,"Woodside, CA",us:place:0686440,"Woodside, CA",registry,us_places.csv Woodside town
 already_pinned,youtube,www.townofrossca.gov,,13,"Ross, CA",us:place:0662980,"Ross, CA",registry,us_places.csv Ross town
 already_pinned,youtube,youtu.be,@townofhillsborough4333,10,"Hillsborough, CA",us:place:0633798,"Hillsborough, CA",registry,us_places.csv Hillsborough town
 already_pinned,youtube,lasvegas.primegov.com,,7,"Las Vegas, NV",us:place:3240000,"Las Vegas, NV",registry,us_places.csv Las Vegas city
 already_pinned,youtube,mesa.legistar.com,,4,"Mesa, AZ",us:place:0446000,"Mesa, AZ",registry,us_places.csv Mesa city
-unresolved,youtube,bancroft.civicweb.net,,3,"Bancroft, ON Canada",,"Bancroft, ON Canada",unresolved,"no state for 'Bancroft, ON Canada'"
+pin,youtube,bancroft.civicweb.net,,3,"Bancroft, ON",ca:csd:3512061,"Bancroft, ON",registry,ca_csd.csv Bancroft
 already_pinned,youtube,cityofhawthorne.primegov.com,,3,"Hawthorne, CA",us:place:0632548,"Hawthorne, CA",registry,us_places.csv Hawthorne city
-unresolved,youtube,coaldale.civicweb.net,,3,"Coaldale, AB Canada",,"Coaldale, AB Canada",unresolved,"no state for 'Coaldale, AB Canada'"
-unverified,youtube,cvrd.primegov.com,,3,"Cowichan Valley Regional District, British Columbia (Canada)",rtr:ca:bc:cowichan-valley-regional-district-british-columbia-canada,"Cowichan Valley Regional District, British Columbia (Canada), BC",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
-unresolved,youtube,duncan.civicweb.net,,3,"Duncan, BC Canada",,"Duncan, BC Canada",unresolved,"no state for 'Duncan, BC Canada'"
+pin,youtube,coaldale.civicweb.net,,3,"Coaldale, AB",ca:csd:4802019,"Coaldale, AB",registry,ca_csd.csv Coaldale
+name_mismatch,youtube,cvrd.primegov.com,,3,"Cowichan Valley Regional District, BC",ca:cd:5919,"Cowichan Valley, BC",registry,"resolves to ""Cowichan Valley, BC"" (ca:cd:5919), which is not what the name says -- retype it as the registry spells it"
+pin,youtube,duncan.civicweb.net,,3,"Duncan, BC",ca:csd:5919012,"Duncan, BC",registry,ca_csd.csv Duncan
 already_pinned,youtube,lacenter.civicweb.net,,3,"La Center, WA",us:place:5336710,"La Center, WA",registry,us_places.csv La Center city
-unresolved,youtube,mapleton.civicweb.net,,3,"Mapelton, ON Canada",,"Mapelton, ON Canada",unresolved,"no state for 'Mapelton, ON Canada'"
+unresolved,youtube,mapleton.civicweb.net,,3,"Mapelton, ON",,Mapelton,unresolved,"not a government name: 'Mapelton, ON'"
 already_pinned,youtube,nampa.primegov.com,,3,"Nampa, ID",us:place:1656260,"Nampa, ID",registry,us_places.csv Nampa city
-unresolved,youtube,princeton.civicweb.net,,3,"Princeton, BC Canada",,"Princeton, BC Canada",unresolved,"no state for 'Princeton, BC Canada'"
+pin,youtube,princeton.civicweb.net,,3,"Princeton, BC",ca:csd:5907024,"Princeton, BC",registry,ca_csd.csv Princeton
 already_pinned,youtube,sandy.civicweb.net,,3,"Sandy, OR",us:place:4165250,"Sandy, OR",registry,us_places.csv Sandy city
-unresolved,youtube,sidney.civicweb.net,,3,"Sidney, BC Canada",,"Sidney, BC Canada",unresolved,"no state for 'Sidney, BC Canada'"
+pin,youtube,sidney.civicweb.net,,3,"Sidney, BC",ca:csd:5917010,"Sidney, BC",registry,ca_csd.csv Sidney
 already_pinned,youtube,woodland.civicweb.net,,3,"Woodland, WA",us:place:5379625,"Woodland, WA",registry,us_places.csv Woodland city
 already_pinned,youtube,www.youtube.com,@cityofphoenixaz,3,"Phoenix, AZ",us:place:0455000,"Phoenix, AZ",registry,us_places.csv Phoenix city
+unverified,youtube,achdidaho.civicweb.net,,2,"Ada County Highway District, ID",rtr:us:id:ada-county-highway-district,"Ada County Highway District, ID",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,youtube,brighton.civicweb.net,,2,"Brighton, ON",ca:csd:3514004,"Brighton, ON",registry,ca_csd.csv Brighton
+pin,youtube,ciwalkermi.civicweb.net,,2,"Walker, MI",us:place:2682960,"Walker (city), MI",registry,us_places.csv Walker city
+pin,youtube,farmington.civicweb.net,,2,"Farmington, MN",us:place:2720618,"Farmington (city), MN",registry,us_places.csv Farmington city
+pin,youtube,hartford.civicweb.net,,2,"Hartford, CT",us:place:0937000,"Hartford, CT",registry,us_places.csv Hartford city
+pin,youtube,lakeforest.primegov.com,,2,"Lake Forest, CA",us:place:0639496,"Lake Forest, CA",registry,us_places.csv Lake Forest city
+pin,youtube,lethcounty.civicweb.net,,2,"Lethbridge, AB",ca:csd:4802012,"Lethbridge, AB",registry,ca_csd.csv Lethbridge
+pin,youtube,mountainviewcounty.civicweb.net,,2,"Mountain View County, AB",ca:csd:4806028,"Mountain View County, AB",registry,ca:csd:4806028 Mountain View County matched with spacing ignored
+pin,youtube,nelson.civicweb.net,,2,"Nelson, BC",ca:csd:5903015,"Nelson, BC",registry,ca_csd.csv Nelson
+pin,youtube,newtonkansas.civicweb.net,,2,"Newton, KS",us:place:2050475,"Newton (city), KS",registry,us_places.csv Newton city
+pin,youtube,newtowntownship.civicweb.net,,2,"Newtown, PA",us:place:4254184,"Newtown (borough), PA",registry,us_places.csv Newtown borough
+pin,youtube,waverly.civicweb.net,,2,"Waverly, IA",us:place:1982875,"Waverly, IA",registry,us_places.csv Waverly city
+pin,youtube,williamsburg.civicweb.net,,2,"Williamsburg, VA",us:place:5186160,"Williamsburg, VA",registry,us_places.csv Williamsburg city
+pin,youtube,www.youtube.com,@CityofLebanonOR,2,"Lebanon, OR",us:place:4141650,"Lebanon, OR",registry,us_places.csv Lebanon city
+pin,youtube,www.youtube.com,@CityofWestminsterMD,2,"Westminster, MD",us:place:2483100,"Westminster, MD",registry,us_places.csv Westminster city
+pin,youtube,www.youtube.com,@cityofventura,2,"Ventura, CA",us:place:0665042,"Ventura, CA",registry,governments.csv curated alias 'Ventura'
+pin,youtube,youtube.com,@cityofmillersburg611,2,"Millersburg, OR",us:place:4148300,"Millersburg, OR",registry,us_places.csv Millersburg city
+pin,youtube,bangormaine.gov,,1,"Bangor, ME",us:place:2302795,"Bangor, ME",registry,us_places.csv Bangor city
+pin,youtube,berlinmd.gov,,1,"Berlin, MD",us:place:2406800,"Berlin, MD",registry,us_places.csv Berlin town
+pin,youtube,cityofbelmont.civicweb.net,,1,"Belmont, NC",us:place:3704840,"Belmont, NC",registry,us_places.csv Belmont city
+pin,youtube,cityofclintoniowa.civicweb.net,,1,"Clinton, IA",us:place:1914430,"Clinton, IA",registry,us_places.csv Clinton city
+pin,youtube,cityofevanston.civicweb.net,,1,"Evanston, IL",us:place:1724582,"Evanston, IL",registry,us_places.csv Evanston city
+pin,youtube,cityofmarion.civicweb.net,,1,"Marion, IA",us:place:1949485,"Marion, IA",registry,us_places.csv Marion city
+pin,youtube,cityofpaloalto.primegov.com,,1,"Palo Alto, CA",us:place:0655282,"Palo Alto, CA",registry,us_places.csv Palo Alto city
+pin,youtube,cityofrehoboth.civicweb.net,,1,"Rehoboth Beach, DE",us:place:1060290,"Rehoboth Beach, DE",registry,us_places.csv Rehoboth Beach city
+pin,youtube,cityofwayne.com,,1,"Wayne, MI",us:place:2684940,"Wayne (city), MI",registry,us_places.csv Wayne city
+pin,youtube,clearwatercounty.civicweb.net,,1,"Clearwater County, AB",ca:csd:4809002,"Clearwater County, AB",registry,ca:csd:4809002 Clearwater County matched with spacing ignored
+pin,youtube,cottagegroveor.gov,,1,"Cottage Grove, OR",us:place:4115950,"Cottage Grove, OR",registry,us_places.csv Cottage Grove city
+pin,youtube,dearborn.gov,,1,"Dearborn, MI",us:place:2621000,"Dearborn, MI",registry,us_places.csv Dearborn city
+pin,youtube,fremontne.gov,,1,"Fremont, NE",us:place:3117670,"Fremont, NE",registry,us_places.csv Fremont city
+pin,youtube,gridleyca.gov,,1,"Gridley, CA",us:place:0631260,"Gridley, CA",registry,us_places.csv Gridley city
+pin,youtube,hotspringsar.gov,,1,"Hot Springs, AR",us:place:0533400,"Hot Springs, AR",registry,us_places.csv Hot Springs city
+unverified,youtube,inportageparks.com,,1,"Portage Parks & Rec, IN",rtr:us:in:portage-parks-rec,"Portage Parks & Rec, IN",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,youtube,lincolnil.gov,,1,"Lincoln, IL",us:place:1743536,"Lincoln (city), IL",registry,us_places.csv Lincoln city
+pin,youtube,longmont.primegov.com,,1,"Longmont, CO",us:place:0845970,"Longmont, CO",registry,us_places.csv Longmont city
+pin,youtube,longviewtexas.gov,,1,"Longview, TX",us:place:4843888,"Longview, TX",registry,us_places.csv Longview city
+pin,youtube,millersburgoregon.gov,,1,"Millersburg, OR",us:place:4148300,"Millersburg, OR",registry,us_places.csv Millersburg city
+pin,youtube,newcarlisleohio.gov,,1,"New Carlisle, OH",us:place:3954334,"New Carlisle, OH",registry,us_places.csv New Carlisle city
+pin,youtube,phoenix.legistar.com,,1,"Phoenix, AZ",us:place:0455000,"Phoenix, AZ",registry,us_places.csv Phoenix city
+pin,youtube,portagein.gov,,1,"Portage, IN",us:place:1861092,"Portage (city), IN",registry,us_places.csv Portage city
+unverified,youtube,qathetrd.civicweb.net,,1,"Qathet Regional District, BC",rtr:ca:bc:qathet-regional-district,"Qathet Regional District, BC",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,youtube,saratogasprings-ut.gov,,1,"Sarasota Springs, UT",rtr:us:ut:sarasota-springs,"Sarasota Springs, UT",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,youtube,sealbeach.primegov.com,,1,"Seal Beach, CA",us:place:0670686,"Seal Beach, CA",registry,us_places.csv Seal Beach city
+pin,youtube,sgcityutah.gov,,1,"St George, UT",us:place:4965330,"St. George, UT",registry,us:place:4965330 St. George city matched with spacing ignored
+unresolved,youtube,sonomalibrary.civicweb.net,,1,"Sonoma County Library, California",,"Sonoma County Library, California",unresolved,"no state for 'Sonoma County Library, California'"
+pin,youtube,umatilla.civicweb.net,,1,"Umatilla, OR",us:place:4175650,"Umatilla, OR",registry,us_places.csv Umatilla city
+pin,youtube,veronawi.gov,,1,"Verona, WI",us:place:5582600,"Verona (city), WI",registry,us_places.csv Verona city
+pin,youtube,victorvilleca.primegov.com,,1,"Victorville, CA",us:place:0682590,"Victorville, CA",registry,us_places.csv Victorville city
+unresolved,youtube,www.aberdeenwa.gov,,1,"Abrdeen, WA",,Abrdeen,unresolved,"not a government name: 'Abrdeen, WA'"
+pin,youtube,www.sussex.nj.us,,1,"Sussex, NJ",us:place:3471670,"Sussex, NJ",registry,us_places.csv Sussex borough
+pin,youtube,www.youtube.com,@CityofFulton,1,"Fulton, MO",us:place:2926182,"Fulton, MO",registry,us_places.csv Fulton city
+pin,youtube,www.youtube.com,@SussexNJ,1,"Sussex, NJ",us:place:3471670,"Sussex, NJ",registry,us_places.csv Sussex borough
+pin,youtube,www.youtube.com,@alpinecity6873,1,"Alpine City, UT",us:place:4900540,"Alpine, UT",registry,us_places.csv Alpine city
+pin,youtube,www.youtube.com,@cityofeaston,1,"Easton, PA",us:place:4221648,"Easton, PA",registry,us_places.csv Easton city
+pin,youtube,www.youtube.com,@greenwichcommunitytelevisi9441,1,"Greenwich, CT",us:cousub:0919033620,"Greenwich Town, CT",registry,us_cousubs.csv Greenwich town
+pin,youtube,youtu.be,@CityOfStMarys,1,"St Marys, OH",us:place:3969680,"St. Marys (city), OH",registry,us:place:3969680 St. Marys city matched with spacing ignored
+pin,youtube,youtu.be,@CityofFarmersvilleCA,1,"Farmersville, CA",us:place:0623616,"Farmersville, CA",registry,us_places.csv Farmersville city
+pin,youtube,youtu.be,@cityofcrestview1916,1,"Crestview, FL",us:place:1215475,"Crestview, FL",registry,us_places.csv Crestview city
+pin,youtube,youtu.be,@cityofhawarden295,1,"Hawarden, IA",us:place:1935265,"Hawarden, IA",registry,us_places.csv Hawarden city
+pin,youtube,youtu.be,@cityofnewfranklin2587,1,"New Franklin, OH",us:place:3954562,"New Franklin, OH",registry,us_places.csv New Franklin city
+pin,youtube,youtube.com,@cityofeaston,1,"Easton, PA",us:place:4221648,"Easton, PA",registry,us_places.csv Easton city
 already_pinned,granicus,pasadena.granicus.com,,4,"Pasadena, CA",us:place:0656000,"Pasadena, CA",registry,us_places.csv Pasadena city
 already_pinned,granicus,howardcounty.granicus.com,,3,"Howard County, MD",us:county:24027,"Howard County, MD",registry,us_counties.csv Howard County
+pin,granicus,beverlyhills.granicus.com,,2,"Beverly Hills, CA",us:place:0606308,"Beverly Hills, CA",registry,us_places.csv Beverly Hills city
+unverified,granicus,carson.granicus.com,,2,"Cason City, NV",rtr:us:nv:cason-city,"Cason City, NV",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,chapelhill.granicus.com,,2,"Chapel Hill, NC",us:place:3711800,"Chapel Hill, NC",registry,us_places.csv Chapel Hill town
+pin,granicus,greenville.granicus.com,,2,"Greenville, NC",us:place:3728080,"Greenville, NC",registry,us_places.csv Greenville city
+pin,granicus,gulfport.granicus.com,,2,"Gulfport, FL",us:place:1228175,"Gulfport, FL",registry,us_places.csv Gulfport city
+pin,granicus,irvington.granicus.com,,2,"Irvington, NY",us:place:3637803,"Irvington, NY",registry,us_places.csv Irvington village
+pin,granicus,pleasanthill.granicus.com,,2,"Pleasant Hill, CA",us:place:0657764,"Pleasant Hill, CA",registry,us_places.csv Pleasant Hill city
+pin,granicus,stpaul.granicus.com,,2,"St Paul, MN",us:place:2758000,"St. Paul, MN",registry,us:place:2758000 St. Paul city matched with spacing ignored
+unverified,granicus,actransit.granicus.com,,1,"Alameda County Transit, CA",rtr:us:ca:alameda-county-transit,"Alameda County Transit, CA",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,adams.granicus.com,,1,"Adams County, CO",us:county:08001,"Adams County, CO",registry,us_counties.csv Adams County
+pin,granicus,allentownpa.granicus.com,,1,"Allentown, PA",us:place:4202000,"Allentown, PA",registry,us_places.csv Allentown city
+unverified,granicus,bchd.granicus.com,,1,"Beach Cities Health District, California",rtr:us:nd:beach-cities-health-district-california,"Beach Cities Health District, California, ND",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,beaverton.granicus.com,,1,"Beaverton, OR",us:place:4105350,"Beaverton, OR",registry,us_places.csv Beaverton city
+pin,granicus,bellevue.granicus.com,,1,"Bellevue, WA",us:place:5305210,"Bellevue, WA",registry,us_places.csv Bellevue city
+pin,granicus,carroll.granicus.com,,1,"Carroll County, MD",us:county:24013,"Carroll County, MD",registry,us_counties.csv Carroll County
+unverified,granicus,ccisd.granicus.com,,1,"Corpus Christi ISD, TX",rtr:us:tx:corpus-christi-isd,"Corpus Christi ISD, TX",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,granicus,centralvalleyflood.granicus.com,,1,"Central Valley Flood Protection Board, CA",rtr:us:ca:central-valley-flood-protection-board,"Central Valley Flood Protection Board, CA",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,cityofracine.granicus.com,,1,"Racine, WI",us:place:5566000,"Racine, WI",registry,us_places.csv Racine city
+pin,granicus,cityofwalnut.granicus.com,,1,"Walnut, CA",us:place:0683332,"Walnut, CA",registry,us_places.csv Walnut city
+unverified,granicus,csmfo.granicus.com,,1,"California Society of Municipal Finance Officers (CSMFO), CA",rtr:us:ca:california,"California, CA",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,granicus,dcwasa.granicus.com,,1,"DC Water & Sewer Authority, DC",rtr:us:dc:dc-water-sewer-authority,"DC Water & Sewer Authority, DC",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,draper.granicus.com,,1,"Draper, UT",us:place:4920120,"Draper, UT",registry,us_places.csv Draper city
+pin,granicus,edina.granicus.com,,1,"Edina, MN",us:place:2718188,"Edina, MN",registry,us_places.csv Edina city
+unverified,granicus,edwardsaquifer.granicus.com,,1,"Edwards Aquifer Authority, TX",rtr:us:tx:edwards-aquifer-authority,"Edwards Aquifer Authority, TX",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unresolved,granicus,evansville.granicus.com,,1,"City of Evansville and Vanderburgh County, Indiana",,City of Evansville,unresolved,no state for 'City of Evansville'
+pin,granicus,everett.granicus.com,,1,"Everett, WA",us:place:5322640,"Everett, WA",registry,us_places.csv Everett city
+unverified,granicus,fpdcc.granicus.com,,1,"Cook County Forest Preserve District, IL",rtr:us:il:cook-county-forest-preserve-district,"Cook County Forest Preserve District, IL",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,fullerton.granicus.com,,1,"Fullerton, CA",us:place:0628000,"Fullerton, CA",registry,us_places.csv Fullerton city
+pin,granicus,huntsvilleal.granicus.com,,1,"Huntsville, AL",us:place:0137000,"Huntsville, AL",registry,us_places.csv Huntsville city
+unresolved,granicus,icma.granicus.com,,1,International City/County Management Association,,International City/County Management Association,unresolved,no state for 'International City/County Management Association'
+pin,granicus,irvine.granicus.com,,1,"Irvine, CA",us:place:0636770,"Irvine, CA",registry,us_places.csv Irvine city
+pin,granicus,lacanadaflintridge-ca.granicus.com,,1,"La Cañada Flintridge, CA",us:place:0639003,"La CaÃ±ada Flintridge, CA",registry,us:place:0639003 La CaÃ±ada Flintridge city matched with spacing ignored
+pin,granicus,lakecounty.granicus.com,,1,"Lake County, CA",us:county:06033,"Lake County, CA",registry,us_counties.csv Lake County
+pin,granicus,lancaster.granicus.com,,1,"Lancaster, CA",us:place:0640130,"Lancaster, CA",registry,us_places.csv Lancaster city
+pin,granicus,lockport.granicus.com,,1,"Lockport, IL",us:place:1744225,"Lockport (city), IL",registry,us_places.csv Lockport city
+pin,granicus,lsmo.granicus.com,,1,"Lees Summit, MO",us:place:2941348,"Lee's Summit, MO",registry,us:place:2941348 Lee's Summit city matched with spacing ignored
+unverified,granicus,mid.granicus.com,,1,"Modesto Irrigation District, CA",rtr:us:ca:modesto-irrigation-district,"Modesto Irrigation District, CA",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,middletown.granicus.com,,1,"Middletown, CT",us:place:0947290,"Middletown, CT",registry,us_places.csv Middletown city
+pin,granicus,midland.granicus.com,,1,"Midland, MI",us:place:2653780,"Midland, MI",registry,us_places.csv Midland city
+unverified,granicus,mplsk12mn.granicus.com,,1,"Minneapolis Public Schools, MI",rtr:us:mi:minneapolis-public-schools,"Minneapolis Public Schools, MI",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+name_mismatch,granicus,nystateassembly.granicus.com,,1,"New York State Assembly, NY",us:state:36,State of New York,registry,"resolves to ""State of New York"" (us:state:36), which is not what the name says -- retype it as the registry spells it"
+pin,granicus,princegeorgescountymd.granicus.com,,1,"Prince George's County, MD",us:county:24033,"Prince George's County, MD",registry,us_counties.csv Prince George's County
+unverified,granicus,psc-fl.granicus.com,,1,"Florida Public Service Commission, FL",rtr:us:fl:florida-public-service-commission,"Florida Public Service Commission, FL",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,granicus,pucnv.granicus.com,,1,"Public Utilities Commission, NV",rtr:us:nv:public-utilities-commission,"Public Utilities Commission, NV",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,richmond.granicus.com,,1,"Richmond, CA",us:place:0660620,"Richmond, CA",registry,us_places.csv Richmond city
+unverified,granicus,rtachicago.granicus.com,,1,"Regional Transportation Authority (Chicago), IL",rtr:us:il:regional-transportation-authority-chicago,"Regional Transportation Authority (Chicago), IL",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,sanmarcos.granicus.com,,1,"San Marcos, CA",us:place:0668196,"San Marcos, CA",registry,us_places.csv San Marcos city
+unverified,granicus,sitka.granicus.com,,1,"Sitka, AK",rtr:us:ak:sitka,"Sitka, AK",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,stockton.granicus.com,,1,"Stockton, CA",us:place:0675000,"Stockton, CA",registry,us_places.csv Stockton city
+unverified,granicus,supremestateaz.granicus.com,,1,"Arizona Supreme Court, AZ",rtr:us:az:arizona-supreme-court,"Arizona Supreme Court, AZ",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+pin,granicus,winston-salem.granicus.com,,1,"Winston-Salem, NC",us:place:3775000,"Winston-Salem, NC",registry,us_places.csv Winston-Salem city
+unresolved,iqm2,baltimorecountymd.iqm2.com,,2,"Baltimore County, MD",,Baltimore County,unresolved,no 'Baltimore County' in MD -- counties are exhaustively listed
+unverified,iqm2,mlgw.iqm2.com,,2,"Memphis Light, Gas & Water Division, TN",rtr:us:tn:memphis-light-gas-water-division,"Memphis Light, Gas & Water Division, TN",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unresolved,iqm2,mncppc.iqm2.com,,2,"Prince George County, MD",,Prince George County,unresolved,no 'Prince George County' in MD -- counties are exhaustively listed
+unresolved,iqm2,roanokecountyva.iqm2.com,,2,"Roanoake County, VA",,Roanoake County,unresolved,no 'Roanoake County' in VA -- counties are exhaustively listed
+unverified,iqm2,scag.iqm2.com,,2,"Southern California Association of Governments, CA",rtr:us:ca:southern-california-association-of-governments,"Southern California Association of Governments, CA",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
+unverified,iqm2,sfwmd.iqm2.com,,2,"South Florida Water Management, FL",rtr:us:fl:south-florida-water-management,"South Florida Water Management, FL",unverified,"no national table row for this name -- add ""ok mint"" to ryan_note to pin the minted id"
