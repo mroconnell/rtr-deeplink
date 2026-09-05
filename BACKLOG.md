@@ -565,7 +565,7 @@ structural change than the two entries below.
     bare `old_slug`, computed from two different tenants' raw
     jurisdiction text at two different points in time, legitimately wants
     two different destinations. Any fix needs a documented tie-break
-    rule, not silent last-write-wins. **Update (WO-111, 2026-09-03):**
+    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
     2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
     live site after the WO-107 backfill and gave an explicit, direct
     call: `hamilton` now points to `hamilton-city-oh`
@@ -580,11 +580,11 @@ structural change than the two entries below.
     genuinely different case — `victoria-bc` may itself be the wrong
     committed value, not just the less-preferred one). A durable
     tie-break rule for the *general* case (which of two colliding raw
-    strings wins a bare slug) is still not built — WO-111 only resolved
+    strings wins a bare slug) is still not built — WO-112 only resolved
     these two specific instances by direct instruction, it did not add a
     policy the tool applies on its own next run.
   - **History**: found and worked around by hand in WO-109's PR
-    (2026-09-03); hamilton/woodland flipped by hand in WO-111's PR
+    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
     (2026-09-03) per Ryan's direct instruction. See both PRs'
     descriptions for the full row-by-row reasoning and before/after
     values.
@@ -608,7 +608,7 @@ structural change than the two entries below.
     `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv`: all 5
     pages still show `jurisdiction_confidence: unresolved` and a blank
     `gov_id` in that snapshot.
-  - **Impact**: no live 404s today — WO-111 (2026-09-03) hand-added the
+  - **Impact**: no live 404s today — WO-112 (2026-09-03) hand-added the
     5 missing redirect rows to `archive/data/hub_slug_aliases.csv` from
     that same pre-backfill snapshot before `scripts/backfill_gov_id.py
     --apply` erased the only source that could reconstruct them. But
@@ -633,7 +633,7 @@ structural change than the two entries below.
     before/after gap this bug produces. Verify instead against the
     committed `sheet_archive.csv` snapshot above, or a newly-crafted
     synthetic case using a real, currently-unpinned `match` value.
-  - **History**: found and worked around in WO-111's PR (2026-09-03);
+  - **History**: found and worked around in WO-112's PR (2026-09-03);
     see that PR's description.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback

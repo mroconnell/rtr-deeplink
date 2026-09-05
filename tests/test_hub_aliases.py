@@ -1,7 +1,7 @@
 """Tests for `archive/utils/hub_aliases.py` -- the `/j/{slug}` retired-
 slug redirect map (WO-99, hand-add exception added WO-106/WO-108,
 merge-not-overwrite regen added WO-109, match-scoped-pin blind spot
-fixed and the hamilton/woodland incumbent decision reversed by WO-111).
+fixed and the hamilton/woodland incumbent decision reversed by WO-112).
 
 Reads the real committed `archive/data/hub_slug_aliases.csv` rather than
 a synthetic fixture -- per CLAUDE.md, that file's own docstring says it
@@ -61,7 +61,7 @@ def test_ambiguous_bare_slugs_hamilton_and_woodland_now_favor_the_new_pin():
     `unresolved` before its pin, meaning it had no live hub_slug to
     protect).
 
-    WO-111 (2026-09-03) reverses that default for two of the three, on
+    WO-112 (2026-09-03) reverses that default for two of the three, on
     Ryan's own explicit instruction after reviewing the live site
     following the WO-107 backfill: for `hamilton` and `woodland`, the
     NEW destination is what he wants live -- `/j/hamilton` should go to
@@ -88,7 +88,7 @@ def test_ambiguous_bare_slugs_hamilton_and_woodland_now_favor_the_new_pin():
 
 
 def test_bellefonte_borough_redirects_after_the_match_scoped_pin_fix():
-    """Real row added by WO-111 (2026-09-03): WO-107 pinned
+    """Real row added by WO-112 (2026-09-03): WO-107 pinned
     `videoplayer.telvue.com`'s `GNduNoua2rBThhw6N4PRP9OCSPf6B2ru` TelVue
     org token to `us:county:42027` (Centre County, PA), but
     `scripts/score_gov_registry.py`'s WO-109 regen missed it, because
@@ -103,7 +103,7 @@ def test_bellefonte_borough_redirects_after_the_match_scoped_pin_fix():
 
 
 def test_town_of_woodside_redirects_after_the_match_scoped_pin_fix():
-    """Same WO-111 fix, same root cause as the Bellefonte Borough test
+    """Same WO-112 fix, same root cause as the Bellefonte Borough test
     above: WO-107 pinned 24 `youtu.be` video ids to `us:place:0686440`
     (Woodside, CA), a per-video `match`-scoped pin the WO-109 regen could
     not see."""
@@ -112,7 +112,7 @@ def test_town_of_woodside_redirects_after_the_match_scoped_pin_fix():
 
 
 def test_phoenix_redirects_after_the_match_scoped_pin_fix():
-    """Same WO-111 fix: WO-107 pinned 3 `www.youtube.com` video ids to
+    """Same WO-112 fix: WO-107 pinned 3 `www.youtube.com` video ids to
     `us:place:0455000` (Phoenix, AZ), a per-video `match`-scoped pin the
     WO-109 regen could not see. `phoenix` is also the bare slug for a
     `phoenix.legistar.com` page whose raw jurisdiction was "City of
