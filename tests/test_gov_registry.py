@@ -1591,12 +1591,17 @@ def test_a_string_that_is_not_a_name_is_never_minted(raw):
 
 
 def test_a_name_made_only_of_type_words_is_not_a_name():
-    """`allentownpa.granicus.com` stores "City of Al" -- a truncated "City
-    of Allentown" whose stray "Al" the bare-state-suffix rule then read as
-    Alabama, leaving the name "City of" and minting `rtr:us:al:city-of`,
-    displayed to a reader as "City of, AL". Every step is individually
-    defensible, which is why the gate is on the outcome."""
-    match = resolve("City of Al", "allentownpa.granicus.com")
+    """`allentownpa.granicus.com` used to store "City of Al" -- a truncated
+    "City of Allentown" whose stray "Al" the bare-state-suffix rule then
+    read as Alabama, leaving the name "City of" and minting
+    `rtr:us:al:city-of`, displayed to a reader as "City of, AL". Every step
+    is individually defensible, which is why the gate is on the outcome.
+
+    That host is now pinned to "Allentown, PA" (a real fix, a pin-worklist
+    round), so it can no longer demonstrate the unresolved case -- swapped
+    to an intentionally-unpinned host with the same real truncated-name
+    shape."""
+    match = resolve("City of Al", "example-unpinned.granicus.com")
     assert match.tier == resolver.TIER_UNRESOLVED
     assert match.gov_id == ""
 
