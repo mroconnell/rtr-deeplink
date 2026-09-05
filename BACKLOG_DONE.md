@@ -236,6 +236,64 @@ listing — not a reverse lookup. Left out rather than adding a fetch to
 the ingest/backfill hot path; STATE_gov_identity.md's "Loose ends"
 section already tracks "YouTube shared hosts need a per-channel method"
 as the umbrella item this would close.
+## A migration 500s live requests through stale prepared-statement caches [Done 2026-09-03]
+
+WO-111. Two confirmed user-facing failures on 2026-09-03 (Sentry
+`PYTHON-FASTAPI-1D` / `-1E`): `/j/rancho-cordova-ca` at 12:22:39 UTC and
+a `/m/` page at 12:28:25, both within eight minutes of WO-101's
+`ALTER COLUMN meeting_pages.gov_id TYPE VARCHAR(320)`. Postgres raised
+`InvalidCachedStatementError: cached plan must not change result type`.
+Both failing queries select `gov_id` — `get_page_by_slug()` and
+`_hub_groups()`, the two hottest read paths in the Archive.
+
+Found by the inbox-triage Routine (#701), not by anyone watching the
+deploy.
+
+**Why it happened.** SQLAlchemy's asyncpg dialect calls
+`connection.prepare()` for every statement and caches the results per
+pooled connection; asyncpg keeps its own server-side cache underneath
+that. Postgres invalidates a cached plan when a column the query selects
+changes type, so a live pool goes on using plans the server has just
+rejected. SQLAlchemy's own documentation names this exact case: when
+"DDL changes are made from other database engines and/or processes" — 
+which is precisely `alembic upgrade head` running in the preDeploy
+container — "a running application may encounter asyncpg exceptions
+`InvalidCachedStatementError`".
+
+**The timing detail that makes this recur.** `render.yaml`'s
+`preDeployCommand` runs the migration *after* the build and *before* the
+new instance is switched live, so the build serving traffic during the
+`ALTER` is the OLD one, with the OLD pool. A fix bundled with a
+migration therefore does nothing for that migration — it protects the
+next one. That is why this shipped on its own, ahead of any schema
+change.
+
+**Fix.** `connect_args={"prepared_statement_cache_size": 0,
+"statement_cache_size": 0}` on both services' engines (`archive/db/`
+and `app/db/` — deliberate duplicates, and both run their own
+`alembic upgrade head` in `preDeployCommand`, so both had the exposure).
+
+Two caches, and the first attempt set only the wrong one. Disabling
+asyncpg's `statement_cache_size` alone leaves SQLAlchemy's own
+prepared-statement cache in place, and that is the one its docs point at
+for this error; `prepared_statement_cache_size` is a DBAPI argument
+despite the name, so it belongs in `connect_args` rather than the URL.
+Verified by capturing what actually reaches
+`AsyncAdapt_asyncpg_dbapi.connect` — both keys arrive as 0 — rather than
+by reading the parameter names and assuming.
+
+**Cost.** Re-planning each query. These are indexed single-table selects
+and a `GROUP BY` over a few thousand rows, where planning is microseconds
+and nowhere near the dominant term. The narrower alternative — retrying
+once on `InvalidCachedStatementError` — keeps the cache but only covers
+the call sites it wraps, and the failure class is "any query touching an
+altered column", which nobody can enumerate in advance.
+
+**Standing consequence, worth remembering before the next migration:**
+"catalog-only" (a varchar widening, adding a nullable column) means no
+table rewrite and no index rebuild. It does *not* mean invisible to open
+connections. WO-101 was described as safe on exactly that reasoning, and
+the reasoning was true and incomplete.
 
 ## PrimeGov's `videoUrl` regex missed a real `?feature=share` suffix [Done 2026-09-03]
 
