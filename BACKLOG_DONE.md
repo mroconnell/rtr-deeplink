@@ -1,5 +1,84 @@
 # Backlog — done
 
+## Inbox-triage promotion pass: 9 findings promoted, 1 closed as already-fixed [Done 2026-09-05]
+
+Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s dated
+sections from 2026-08-29 through 2026-09-03 (the ones accumulated since
+the last such pass, `BACKLOG_DONE.md`'s 2026-08-28 entry above), plus the
+2026-09-05 run — a real instance of `CLAUDE.md`'s "worked on by more than
+one session" warning: that section didn't exist on `main` when this pass
+branched off it, but the Routine's own scheduled run merged it (PR #730)
+mid-pass, so it was rebased in and folded into the same review rather
+than left to a future pass to rediscover. Every finding was re-verified
+against current code/live data, not taken on faith — full detail of what
+changed since each finding was written is in each promoted entry's own
+text, not repeated here. The 2026-09-05 section's own findings were
+mostly updates to already-open items (a 5th `slice_cached_audio()`
+occurrence, a further-escalated SIGABRT count with 2 real outages that
+don't match any captured alert) rather than new standalone findings —
+folded into the corresponding promoted entries below rather than given
+their own bullets.
+
+**Promoted to `BACKLOG.md`, root cause confirmed unchanged as of
+2026-09-05 (`[JUST-DO-IT]`, "Ship next"):** `slice_cached_audio()`'s
+missing decodability guard (now confirmed on a 5th distinct source,
+Alameda County CA, via the folded-in 2026-09-05 section);
+`proxy_get()`/`_proxy_to_archive()` not catching `asyncio.CancelledError`;
+no `statement_cache_size` mitigation for asyncpg's prepared-statement-
+cache class of bug (WO-101 hit it for real, 2026-09-03).
+
+**Promoted to `BACKLOG.md` `[NEEDS-AUDIT]`:** the Phoenix Legistar canary
+sample (genuinely-dead meeting ID, plus `_fetch()` has no 404/410
+handling at all) — re-verification this pass turned up two new details
+folded into the entry: Phoenix Legistar pages need the full
+`?ID=&GUID=&Options=` querystring to load at all, and Phoenix's Legistar
+API shows null `EventVideoPath` on all 10 of its most recent events,
+confirming a good replacement sample needs to exercise the YouTube-
+channel fallback specifically; East Lansing MI's new
+`auto_aresample_0` ffmpeg filter-graph failure (now confirmed
+deterministic across 2 real jobs, still no fix attempted).
+
+**Promoted to `BACKLOG.md` `[HUMAN]`:** two Archive fixes (WO-80,
+`delete_meeting_pages_by_slug`) and one worker fix (WO-88) that are
+confirmed present on `main` but whose live-deploy status can't be
+verified without Render dashboard access; the `rtr-deeplink` resolver's
+recurring SIGABRT/status-134 crashes (13 occurrences since 2026-08-30,
+3 confirmed real outages, 2 of which don't line up with any captured
+Render alert — folding in the 2026-09-05 section's escalation) —
+re-verification found this ties directly into an already-recorded
+standing decision
+(`BACKLOG_DONE.md`'s "Four Render-dashboard `[HUMAN]` items walked
+through live with Ryan," 2026-08-29) that explicitly flagged this exact
+service's crash pattern as "worth revisiting if it recurs post-WO-80,"
+which it has, so the promoted entry asks for a memory-graph check
+alongside crash logs, not just logs alone; the Durham NC Google-Maps-key
+secret-scanning false positive, still needing a human dismiss action.
+
+**Closed as already-fixed, not promoted — the transcription-worker OOM
+restarts flagged in the 2026-09-03 sections.** Re-verification found this
+finding's own speculative root cause (the inbox-triage Routine
+hypothesized WO-58/64's whole-audio-cache path pulling large files onto a
+possibly-RAM-backed `/tmp`) was superseded by real, measured work Ryan
+did independently the same window: **WO-94** (`efe4632`, merged
+2026-09-02 09:22 PDT) re-measured peak worker RSS after `word_timestamps`
+`=True` changed the memory curve, and dropped the non-Granicus chunk size
+900s→450s; **WO-95** (`c96427a`, merged 2026-09-02 20:30 PDT) found the
+actual crash-loop's real cause directly in the worker's own logs — the
+multi-clip chunk-plan path (`worker/main.py`, WO-79) made one chunk per
+clip with no length cap at all, and job 1419 (Alamo Area MPO,
+`alamoareampo.new.swagit.com/videos/149390`) carried a 2,519s/42-minute
+clip that projected ~3.6GB RSS on a 2GB plan, re-claiming and OOM-dying
+roughly every 5 minutes for 3.5 hours straight. Both fixes are
+real-log-diagnosed, not hypothesized, and BACKLOG.md's own Standing
+decision ("Don't reach for a bigger Render plan before measuring what the
+peak actually is") already documents this exact pair with the measured
+numbers. Verified 2026-09-05 via `git log` (both commits present on
+`main`, no `render.yaml` plan bump alongside either — consistent with
+"fix the real bug, not the plan size") and by reading each commit's full
+message for the root-cause detail above. No separate `BACKLOG.md` entry
+needed; if worker OOM restarts recur after this, that would be new
+signal against a different cause, not a reopening of this one.
+
 ## Granicus agenda inline-frame forced an unwanted browser download [Done 2026-09-04]
 
 WO-111. User report: loading
