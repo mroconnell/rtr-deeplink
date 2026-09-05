@@ -120,9 +120,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (65)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (68)
+  [NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+  [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -431,6 +434,103 @@ routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
 
+- **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  wrong `gov_id` from before the cross-border name-collision guard
+  existed, and have never been re-backfilled since — the guard is
+  correct today, but a page resolved before it landed is still wrong.**
+  - **Issue**: `/m/abbotsford-wi-2025-06-24-council-meeting` (page 812)
+    is a real Abbotsford, **British Columbia** council meeting (agenda
+    items reference "Abbotsford Mission Highway 11" and real BC rezoning
+    applications; the AI transcript even mentions the Abbotsford
+    Canucks), keyed `us:place:5500100` — Abbotsford, **Wisconsin**, a
+    village of a few thousand. `app/utils/gov_registry/resolver.py`'s
+    national-table lookup has an explicit guard for exactly this shape
+    (`if not state and tables.ca_csd().lookup(name, None): return None`
+    — a bare name with no state that also exists in the Canadian table
+    declines rather than confidently picking the US one) and its own
+    code comment names this precise case among "16 real rows" a
+    2026-09-02 audit found: Abbotsford BC/WI, Edmonton AB/KY, Niagara
+    Falls ON/NY, Langford BC/SD, White Rock BC/SD, Port Hope ON/MI (3
+    more — Nampa ID, New Carlisle OH, Hawarden IA — are confirmed
+    genuinely American despite a same-named Canadian place, which is why
+    the guard declines rather than auto-picks either side). Confirmed
+    live 2026-09-04 that today's code gets it right:
+    `resolve_government("Abbotsford", tenant_host="pub-abbotsford.escribemeetings.com")`
+    returns `unresolved`, not the Wisconsin village. The guard's own
+    commit (`27e0c8f0`, WO-99/#696, merged 2026-09-03 11:26 UTC) predates
+    the page's last write (`updated_at` 2026-09-03 12:23 UTC, i.e. from
+    the WO-99/WO-100 wholesale backfill itself) by about an hour — so by
+    plain chronology the guard should have already been live when this
+    row was written, and exactly why it wasn't is still an open
+    question (a deploy-timing gap between merge and the Render rollout
+    actually used by that `--apply` run is the leading guess, not
+    confirmed). Not a currently-active resolver bug — a stale row the
+    ladder would no longer produce if asked today.
+  - **Impact**: at least one live page shows the wrong government and
+    country on its own `/m/` page and would file under the wrong state
+    on `/state/wisconsin` instead of not appearing there at all pending a
+    real fix. Scope of the other 5 named collisions is unverified — they
+    may be equally stale, already caught by a later backfill, or fine;
+    nobody has checked since 2026-09-02.
+  - **Next action**: `scripts/backfill_gov_id.py`'s own stated design
+    ("skip rows already current... a run after a registry change re-does
+    exactly the rows whose answer moved") means a plain unscoped re-run
+    from the Archive's Render shell should catch and correct this row
+    (and the other 5, if equally stale) automatically — it recomputes
+    fresh and compares, it doesn't trust the stored tier. Worth doing as
+    a full sweep rather than one-off pins, specifically because the
+    other 5 names haven't been checked. `pub-abbotsford.escribemeetings.com`
+    itself would settle to `unresolved` after a re-run (bare "Abbotsford"
+    stays ambiguous by design) unless also given a tenant pin to
+    `ca:csd:5909052` — a single-government eScribe host, no `match`
+    needed.
+  - **Constraint**: don't hand-fix this one row in isolation without
+    also re-running the backfill broadly — a one-off pin fixes the
+    symptom Ryan happened to notice and leaves the other 5 named
+    collisions (and any other page resolved in that same pre-guard
+    window) exactly as wrong and exactly as invisible.
+  - **History**: found 2026-09-04 answering a user question about
+    `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
+  `Agenda=` query-string values, and each one archives as a separate
+  page.**
+  - **Issue**: `pub-abbotsford.escribemeetings.com`'s real meeting
+    `Id=c157e0a4-351f-49f2-bd63-bc0747196fed` exists as two full,
+    separately-archived pages — `?Agenda=Merged&Id=...` (page 812) and
+    `?Agenda=Agenda&Id=...` (page 2225) — identical agenda and
+    transcript, different `source_url_normalized`, so nothing currently
+    treats them as duplicates of each other. Checked the corpus for the
+    same shape (same eScribe `Id=`, different `Agenda=` value) and found
+    **7 such pairs** across 6 hosts as of the 2026-09-03
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv` snapshot:
+    `pub-forterie` (`Agenda`/`Addendum`), `pub-oshawa`
+    (`PostMinutes`/`Agenda`), `pub-abbotsford` (`Merged`/`Agenda`),
+    `pub-peelregion` (`Agenda`/`PostAgenda`), `pub-townshipofbrock`
+    (`Merged`/`Agenda`), `pub-marvinnc` (`PostMinutes`/`Agenda`),
+    `pub-sandag` (`PostMinutes`/`Agenda`). Same shape as BACKLOG.md's
+    existing "same YouTube video, two URL forms" entry, different
+    platform.
+  - **Impact**: 7 known real duplicate archived meetings (14 pages for 7
+    real events) — double-counted in per-jurisdiction page counts,
+    double the storage/transcription cost per meeting, and a reader
+    landing on either copy has no link to the other. Likely undercounts
+    the true total since this was checked against one day's snapshot,
+    not the live corpus.
+  - **Next action**: at ingest time, treat `Agenda=`'s value as
+    something to strip (not compare) when checking whether an eScribe
+    `Meeting.aspx?Id=...` URL has already been archived — the `Id=` GUID
+    alone identifies the meeting; `Agenda=` only selects which document
+    view eScribe renders for it. Needs a real duplicate-merge pass for
+    the 7 already-archived pairs, not just a forward-looking ingest fix.
+  - **Constraint**: don't assume `Agenda=Agenda` is always the
+    "canonical" one to keep — `PostMinutes`/`PostAgenda`/`Merged` may
+    carry a fuller or more final document for some meetings; check
+    content before merging a pair.
+  - **History**: found 2026-09-04 investigating the Abbotsford
+    duplicate above; not yet in `BACKLOG_DONE.md`.
+
 - **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   confidently-wrong extraction on a confirmed-misleading host — the
   ladder validates a plausible wrong answer before the pin ever gets a
@@ -563,20 +663,77 @@ structural change than the two entries below.
     hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
     bare `old_slug`, computed from two different tenants' raw
     jurisdiction text at two different points in time, legitimately wants
-    two different destinations (e.g. `tvhamilton.cablecast.tv` pinned to
-    Hamilton, OH in WO-107 collides with an existing, still-live
-    `hamilton → hamilton-police-services-board-on` redirect for a real
-    Ontario police board). Any fix needs a documented tie-break rule, not
-    silent last-write-wins — WO-109 kept the incumbent in all 3 cases
-    (safe here because every runner-up tenant was `unresolved` before its
-    pin, meaning it had no live hub_slug to protect), and left `victoria`
-    flagged for Ryan specifically since `STATE_gov_identity.md` already
-    documents the committed value (`victoria-bc`) as based on a premise
-    #707 later corrected (the tenant is actually Victoria, MN) — a real
-    candidate for the OLD row being the one that's wrong, not the new one.
+    two different destinations. Any fix needs a documented tie-break
+    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
+    2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
+    live site after the WO-107 backfill and gave an explicit, direct
+    call: `hamilton` now points to `hamilton-city-oh`
+    (`us:place:3933012`) and `woodland` now points to `woodland-wa`
+    (`us:place:5379625`), superseding WO-109's cautious default. Both old
+    incumbent destinations (`hamilton-police-services-board-on`,
+    `woodland-ca`) remain real, live hubs at their own unambiguous slugs
+    — re-verified via `display.hub_slug()` on their own gov_ids before
+    the flip — so nothing is orphaned, they're just no longer reachable
+    via the bare, ambiguous slug. `victoria` is UNCHANGED: Ryan did not
+    mention it, and it stays flagged for him per the note below (a
+    genuinely different case — `victoria-bc` may itself be the wrong
+    committed value, not just the less-preferred one). A durable
+    tie-break rule for the *general* case (which of two colliding raw
+    strings wins a bare slug) is still not built — WO-112 only resolved
+    these two specific instances by direct instruction, it did not add a
+    policy the tool applies on its own next run.
   - **History**: found and worked around by hand in WO-109's PR
-    (2026-09-03); see that PR's description for the full row-by-row
-    reasoning and the before/after counts.
+    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
+    (2026-09-03) per Ryan's direct instruction. See both PRs'
+    descriptions for the full row-by-row reasoning and before/after
+    values.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
+  scoped `tenant_overrides.csv` pins, so its `hub_slug_aliases.csv` regen
+  silently drops the retiring-slug redirect for any government that was
+  only pinned that way.**
+  - **Issue**: `score_rows()` (and `_seed_governments()`) call
+    `resolve_government(jurisdiction, tenant_host=host,
+    tenant_gov_id=...)` with no `path`/`page_hints` argument. Those two
+    are exactly what `_pinned()` (`app/utils/gov_registry/resolver.py`)
+    needs to match a `tenant_overrides.csv` row whose `match` column
+    names a specific video id or TelVue org token rather than being
+    blank — so the script can only ever see host-level pins, never
+    `match`-scoped ones. WO-107 (#712) added 5 such groups (24 `youtu.be`
+    ids → Woodside CA, 10 `youtu.be` ids → Hillsborough CA, 3
+    `www.youtube.com` ids → Phoenix AZ, 2 `videoplayer.telvue.com` org
+    tokens → Centre County PA and Summit NJ), and WO-109's regen the same
+    day (#714) missed all 5 — confirmed by checking its own committed
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv`: all 5
+    pages still show `jurisdiction_confidence: unresolved` and a blank
+    `gov_id` in that snapshot.
+  - **Impact**: no live 404s today — WO-112 (2026-09-03) hand-added the
+    5 missing redirect rows to `archive/data/hub_slug_aliases.csv` from
+    that same pre-backfill snapshot before `scripts/backfill_gov_id.py
+    --apply` erased the only source that could reconstruct them. But
+    this is a real, general gap: any FUTURE `match`-scoped pin will hit
+    the identical blind spot the next time someone runs
+    `score_gov_registry.py` in the ordinary documented way, with no
+    warning that it happened (same silent-drop shape as the wholesale-
+    overwrite entry above, different root cause).
+  - **Next action**: thread `path`/`page_hints` through
+    `score_rows()`/`_seed_governments()` the way `page_hints_for()`
+    (`resolver.py`) already builds them from a `MeetingPage` in
+    production — the export payload would need the source URL fields
+    `page_hints_for()` reads (it currently fetches only the light
+    metadata shape, deliberately, per its own docstring on
+    `fetch_export_pages()`) — then re-run the script and confirm the 5
+    WO-107 rows above appear in its own regenerated output rather than
+    needing another hand-add.
+  - **Constraint**: don't build this against a fresh `/internal/
+    export/pages` pull to verify — after `backfill_gov_id.py --apply`
+    runs, every WO-107-pinned page's stored `jurisdiction` is already the
+    registry display name, so a fresh export can no longer show the
+    before/after gap this bug produces. Verify instead against the
+    committed `sheet_archive.csv` snapshot above, or a newly-crafted
+    synthetic case using a real, currently-unpinned `match` value.
+  - **History**: found and worked around in WO-112's PR (2026-09-03);
+    see that PR's description.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
@@ -2109,6 +2266,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   feasibility failures so cooldown engages instead of looping on the same
   dead candidates forever); the root 504/timeout issue and the logging
   distinction above remain open here, not touched by that fix.
+- **Untested tool, not a fix**: `ViewPublisherRSS.php?mode=vpodcast` (a
+  Granicus RSS mode found 2026-09-04, see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §58) adds a
+  direct-download `<enclosure>` URL (`DownloadFile.php?...clip_id=N`)
+  per item, on a different origin than `archive-stream.granicus.com`'s
+  CDN — a plausible alternate source for a clip stuck on this timeout,
+  not verified against one.
 
 #### `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the same host (WO-40 falsified the round-robin fix)
 

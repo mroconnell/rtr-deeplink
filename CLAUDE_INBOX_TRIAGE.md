@@ -784,3 +784,73 @@ bug.**
   `InvalidCachedStatementError`. Neither exists today.
 
 Ledger: 6 new message IDs recorded (215 → 221 kept), 0 pruned this pass.
+
+## 2026-09-05
+
+Reviewed 19 new messages under `label:rtr-claude newer_than:30d` (120
+candidates, 101 already ledgered — no run happened on 2026-09-04, so this
+run covers 2026-09-03 evening through 2026-09-05 morning). Skipped as
+purely informational: two more transcription-worker daily reports.
+Skipped as duplicates of already-tracked patterns: two more daily YouTube
+transcript-fetch `IpBlocked` failures (confirmed expected/self-clearing
+per the 2026-08-20 investigation); two more "Server failure detected on
+`test-redtaperecordings`" (status 3, Nth+ occurrence, no new signal);
+Transcription job 1766 failed (Alameda County CA "BOS View", Granicus,
+`alamedacounty.granicus.com/ViewPublisher.php?view_id=2`, chunk 17/22,
+`errno 1094995529` three times, 2026-09-05 09:46-10:00 UTC) — same
+already-open `slice_cached_audio()` missing-decodability-guard gap
+(2026-08-29 finding #1, WO-54/58), now a 4th+ distinct Granicus/CivicClerk
+source; and two more "Adapter health canary: All jobs have failed" runs
+([33790267495](https://github.com/mroconnell/rtr-deeplink/actions/runs/33790267495),
+2026-09-03 18:26 UTC, 28/32 platforms OK — three extra transient failures
+this run only, `aurora_tv` "no real content", Simi Valley Granicus HTTP
+500, Charlotte NC Legistar "no real content", none of which recurred on
+the next run;
+[33904513989](https://github.com/mroconnell/rtr-deeplink/actions/runs/33904513989),
+2026-09-04 18:12 UTC, 31/32 platforms OK) — both confirmed via their own
+job logs to be the same still-open Phoenix Legistar 410 (`ID=1425831`), no
+new persistent signal. Skipped as out of scope: two GitHub Actions "PR run
+failed: Test" emails for a non-`main` feature branch
+(`Queue/document Granicus enumeration work, add ingest+sweep scripts`);
+one GitHub Actions "PR run failed: Tests" email for `mroconnell/rtr-upcoming`
+— a different repository/product, not this repo's own code, out of this
+Routine's scope per Step 2's "different property" rule.
+
+**Update to the already-open `rtr-deeplink` (resolver) SIGABRT/status-134
+finding (open since 2026-08-30): 3 more occurrences, and for the first
+time two real user-facing outages that don't line up with any captured
+Render alert — the true crash rate may exceed what these alerts capture.**
+
+- **3 more identical "Exited with status 134" alerts**: 2026-09-03 16:14
+  UTC, 2026-09-04 07:03 UTC, 2026-09-05 08:45 UTC — same exact alert text
+  as all 13 occurrences now on record since 2026-08-30 16:54 UTC (this
+  Routine's own history: 7 by 2026-09-01, 10 by 2026-09-02, now 13 across
+  ~6 days). Root cause is still **Unconfirmed** (Render's dashboard/logs
+  remain unreachable from this Routine, same as every prior write-up).
+- **New, more concerning data point: two more real UptimeRobot DOWN/UP
+  pairs, neither of which has a matching Render "server failure" email
+  within a plausible window.** `rtr-deeplink.onrender.com/api/health/resolve-check`
+  was DOWN (HTTP 502) 2026-09-04 22:42:30–22:47:34 UTC (5m4s) — the nearest
+  captured status-134 alert is 09-04 07:03 UTC, over 15 hours earlier, too
+  far to be the same event. `redtaperecordings.com` itself was DOWN (HTTP
+  502) 2026-09-04 23:34:12–23:39:17 UTC (5m5s, per UptimeRobot's own
+  timestamps — note this is ~49 minutes after the 09-05 08:45 UTC alert
+  used above, i.e. UptimeRobot and Render disagree on which day-boundary
+  that incident falls on in this Routine's own read of the raw timestamps;
+  taken at face value neither adjacent alert lines up within a few
+  minutes). Both read as genuine 502s (UptimeRobot's own `Root cause: HTTP
+  502 - Bad Gateway` field, not a generic timeout), consistent with the
+  same crash-and-restart pattern as the confirmed 2026-09-01 correlation —
+  but since 2 of the last 2 real outages checked have no matching Render
+  alert inside a tight window, this Routine can no longer assume every
+  crash produces a "Server failure detected" email; the 13 counted alerts
+  may undercount the true incident rate. **Open question for Ryan**, same
+  as every prior write-up: this Routine still cannot reach Render's own
+  crash/exit logs, and this is now the second and third independently
+  measured real-downtime windows (after 2026-09-01's ~10 minutes) tied to
+  this same unresolved pattern — worth pulling Render's actual logs around
+  2026-09-04 22:42 and 2026-09-04 23:34 UTC specifically, since neither has
+  an obvious matching alert to anchor the search on.
+
+Ledger: 19 new message IDs recorded (221 → 240 kept), 0 pruned this run
+(all still inside the 30-day + 7-day-grace retention window).
