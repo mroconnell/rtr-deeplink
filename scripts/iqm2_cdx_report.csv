@@ -1,0 +1,66 @@
+tenant,meeting_id,url,status,jurisdiction,segments,agenda_items,video_url,detail
+ArcataCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+AtlantaCityGA,4378,https://atlantacityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4378,ingested-tier3-agenda,"City of Atlanta, Georgia",0,21,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/atlantacityga/76808_480.mp4/playlist.m3u8,/m/atlanta-ga-2026-08-26-transportation-committee-regular-committee-meeting
+BayStLouisMS,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+BoiseCityID,5669,https://boisecityid.iqm2.com/Citizens/Detail_Meeting.aspx?ID=5669,queued-tier3,"City of Boise, Idaho",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/boisecityid/3716_720.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+BrookhavenCityGA,2933,https://brookhavencityga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2933,empty,,,,,no segments/agenda/video in any candidate
+BuffaloNY,3434,https://buffalony.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3434,queued-tier3,"The City of Buffalo, NY",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/buffalony/2607_480.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+CambridgeMA,4848,https://cambridgema.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4848,empty,,,,,no segments/agenda/video in any candidate
+CarrollCountyMD,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+CathedralCityCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+ChippewaCountyWI,6965,https://chippewacountywi.iqm2.com/Citizens/Detail_Meeting.aspx?ID=6965,empty,,,,,no segments/agenda/video in any candidate
+CitrusCountyFL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+ClaytonCountyGA,1616,https://claytoncountyga.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1616,empty,,,,,no segments/agenda/video in any candidate
+DeschutesCountyOR,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+DuPage,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+EastHamptonTown,3026,https://easthamptontown.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3026,empty,,,,,no segments/agenda/video in any candidate
+EdmondsWA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+FishkillTownNY,1932,https://fishkilltownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1932,queued-tier3,"Town of Fishkill, New York",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/fishkilltownny/1671_480.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+FortWaltonBeachCityFL,2271,https://fortwaltonbeachcityfl.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2271,ingested-tier3-agenda,"City of Fort Walton Beach, Florida",0,2,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/fortwaltonbeachcityfl/2297_720.mp4/playlist.m3u8,/m/fort-walton-beach-fl-2026-08-26-city-council-special-meeting
+HealdsburgCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+HernandoCountyFL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+HighlandParkIL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+HobokenNJ,3298,https://hobokennj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3298,empty,,,,,no segments/agenda/video in any candidate
+JohnsonCountyIA,3984,https://johnsoncountyia.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3984,empty,,,,,no segments/agenda/video in any candidate
+KentWA,6137,https://kentwa.iqm2.com/Citizens/Detail_Meeting.aspx?ID=6137,ingested-tier3-agenda,"City of Kent, Washington",0,1,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/kentwa/3513_480.mp4/playlist.m3u8,/m/kent-wa-2026-09-01-council-workshop-workshop-regular-meeting
+LincolnCityOR,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+MNCPPC,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+MaderaCountyCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+MerrillWI,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+MiddlesexCountyNJ,2504,https://middlesexcountynj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2504,empty,,,,,no segments/agenda/video in any candidate
+ModocCountyCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+MonroeCountyFL,1160,https://monroecountyfl.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1160,ingested-tier1,Monroe County FL,4484,100,https://MediaHTTP.IQM2.com/MonroeCountyFL/1324_480.mp4,/m/monroe-county-fl-2022-06-15-board-of-county-commissioners-regular-meeting
+NassauCountyNY,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+NorthbrookIL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+OcalaFL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+OceanCityMD,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+OkeechobeeCountyFL,4381,https://okeechobeecountyfl.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4381,ingested-tier3-agenda,"Okeechobee County, Florida",0,3,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/okeechobeecountyfl/493356_720.mp4/playlist.m3u8,/m/okeechobee-county-fl-2026-07-10-board-of-county-commissioners-bocc-budget-worksh
+PeekskillCityNY,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+ProvidenceRI,16124,https://providenceri.iqm2.com/Citizens/Detail_Meeting.aspx?ID=16124,empty,,,,,no segments/agenda/video in any candidate
+ReddingCityCA,4954,https://reddingcityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4954,empty,,,,,no segments/agenda/video in any candidate
+ReginaSK,6865,https://reginask.iqm2.com/Citizens/Detail_Meeting.aspx?ID=6865,empty,,,,,no segments/agenda/video in any candidate
+RiversideCountyCA,3503,https://riversidecountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3503,queued-tier3,"Riverside County, California",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/riversidecountyca/7189_720.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+RoanokeCountyVA,1289,https://roanokecountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1289,empty,,,,,no segments/agenda/video in any candidate
+RochestercityMN,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+RockfordCityIL,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SFWMD,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SanCarlosCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SanJoaquinCountyCA,2656,https://sanjoaquincountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2656,queued-tier3,"San Joaquin County, CA",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/sanjoaquincountyca/3098_720.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+SantaClaraVTA,4755,https://santaclaravta.iqm2.com/Citizens/Detail_Meeting.aspx?ID=4755,empty,,,,,no segments/agenda/video in any candidate
+SantaClaritaCityCA,3170,https://santaclaritacityca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3170,ingested-tier3-agenda,"City of Santa Clarita, CA",0,3,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/santaclaritacityca/1709_480.mp4/playlist.m3u8,/m/santa-clarita-ca-2026-09-01-planning-commission-regular-meeting
+SantaCruzCountyCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SantaPaulaCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SomervilleCityMA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SouthamptonNY,9670,https://southamptonny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=9670,empty,,,,,no segments/agenda/video in any candidate
+SoutholdTown,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SunsetValleyTX,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+SutterCountyCA,3150,https://suttercountyca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3150,empty,,,,,no segments/agenda/video in any candidate
+TeaneckTownNJ,2315,https://teanecktownnj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2315,queued-tier3,"Teaneck Township, New Jersey",0,0,https://archive-stream.granicus.com/OnDemand/_definst_/mp4:archive/teanecktownnj/1840_480.mp4/playlist.m3u8,tier3_auto_transcription_queue.txt
+TehamaCountyCA,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+TravisCountyTX,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+VictoriaCountyTX,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+WacoCityTX,6047,https://wacocitytx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=6047,empty,,,,,no segments/agenda/video in any candidate
+WashingtonCountyVA,3494,https://washingtoncountyva.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3494,queued-tier3,"Washington County, Virginia",0,0,https://MediaHTTP.IQM2.com/WashingtonCountyVA/23162_720.mp4,tier3_auto_transcription_queue.txt
+WauwatosaCityWI,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+WestchesterCountyNY,,,no-meeting-found,,,,,no Detail_Meeting.aspx link on /Citizens/
+sccgov,18417,https://sccgov.iqm2.com/Citizens/Detail_Meeting.aspx?ID=18417,empty,,,,,no segments/agenda/video in any candidate

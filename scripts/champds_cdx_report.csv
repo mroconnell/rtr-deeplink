@@ -1,0 +1,49 @@
+tenant,event_id,url,status,jurisdiction,segments,agenda_items,video_url,detail
+alamedacocaschools,200,https://play.champds.com/alamedacocaschools/event/200,empty,"Alameda Schools, CA",0,0,,no segments/agenda/video
+atlantaga,1000,https://play.champds.com/atlantaga/event/1000,queued-tier3,"Atlanta, GA",0,0,https://play.champds.com/DOWNLOAD-MEDIA/atlantaga/eventmainmedia/1000,tier3_auto_transcription_queue.txt
+auburnny,200,https://play.champds.com/auburnny/event/200,empty,"Auburn, NY",0,0,,no segments/agenda/video
+augustaga,200,https://play.champds.com/augustaga/event/200,empty,"Augusta, GA",0,0,,no segments/agenda/video
+bellemeadetn,200,https://play.champds.com/bellemeadetn/event/200,queued-tier3,"Belle Meade, TN",0,0,https://play.champds.com/DOWNLOAD-MEDIA/bellemeadetn/eventmainmedia/200,tier3_auto_transcription_queue.txt
+broadviewheightsoh,200,https://play.champds.com/broadviewheightsoh/event/200,empty,"Broadview Heights, OH",0,0,,no segments/agenda/video
+brookfieldct,1500,https://play.champds.com/brookfieldct/event/1500,empty,"Brookfield, CT",0,0,,no segments/agenda/video
+chathamma,2500,https://play.champds.com/chathamma/event/2500,queued-tier3,"Chatham, MA",0,0,https://play.champds.com/DOWNLOAD-MEDIA/chathamma/eventmainmedia/2500,tier3_auto_transcription_queue.txt
+collegedaletn,50,https://play.champds.com/collegedaletn/event/50,queued-tier3,"Collegedale, TN",0,0,https://play.champds.com/DOWNLOAD-MEDIA/collegedaletn/eventmainmedia/50,tier3_auto_transcription_queue.txt
+crotononhudsonny,1000,https://play.champds.com/crotononhudsonny/event/1000,empty,"Croton On Hudson, NY",0,0,,no segments/agenda/video
+dczoning,1000,https://play.champds.com/dczoning/event/1000,empty,DC Zoning,0,0,,no segments/agenda/video
+demo,50,https://play.champds.com/demo/event/50,empty,Demo,0,0,,no segments/agenda/video
+desplainesil,200,https://play.champds.com/desplainesil/event/200,ingested-tier3-agenda,"Des Plaines, IL",0,0,,/m/des-plaines-il-2024-01-23-planning-and-zoning-jan-23-2024
+elpasococo,50,https://play.champds.com/elpasococo/event/50,empty,ElPaso County Colorado,0,0,,no segments/agenda/video
+esterofl,200,https://play.champds.com/esterofl/event/200,empty,EsteroFL,0,0,,no segments/agenda/video
+falmouthme,2500,https://play.champds.com/falmouthme/event/2500,empty,"Falmouth, ME",0,0,,no segments/agenda/video
+falmouthschoolsme,,,no-event-found,,,,,no valid id in probe set
+fonddulacwi,,,no-event-found,,,,,no valid id in probe set
+fultoncoga,50,https://play.champds.com/fultoncoga/event/50,empty,"Fulton County, GA",0,0,,no segments/agenda/video
+fultoncoschoolsga,50,https://play.champds.com/fultoncoschoolsga/event/50,empty,"Fulton County Schools, GA",0,0,,no segments/agenda/video
+gillettewy,500,https://play.champds.com/gillettewy/event/500,empty,"Gillette, WY",0,0,,no segments/agenda/video
+gorhamme,50,https://play.champds.com/gorhamme/event/50,empty,"Gorham, ME",0,0,,no segments/agenda/video
+guilderlandny,500,https://play.champds.com/guilderlandny/event/500,empty,"Guilderland, NY",0,0,,no segments/agenda/video
+gwinnettcoga,200,https://play.champds.com/gwinnettcoga/event/200,empty,"Gwinnett County, GA",0,0,,no segments/agenda/video
+homesteadfl,200,https://play.champds.com/homesteadfl/event/200,empty,"Homestead, FL",0,0,,no segments/agenda/video
+isleofwightcova,200,https://play.champds.com/isleofwightcova/event/200,empty,"Isle of Wight Co, VA",0,0,,no segments/agenda/video
+jamescitycova,200,https://play.champds.com/jamescitycova/event/200,empty,"James City County, VA",0,0,,no segments/agenda/video
+lakezurichil,200,https://play.champds.com/lakezurichil/event/200,empty,"Lake Zurich, IL",0,0,,no segments/agenda/video
+largofl,50,https://play.champds.com/largofl/event/50,empty,"Largo, FL",0,0,,no segments/agenda/video
+lincolnwoodil,50,https://play.champds.com/lincolnwoodil/event/50,empty,"Lincolnwood, IL",0,0,,no segments/agenda/video
+marlboroughma,500,https://play.champds.com/marlboroughma/event/500,empty,"Marlborough, MA",0,0,,no segments/agenda/video
+maurycoschoolstn,50,https://play.champds.com/maurycoschoolstn/event/50,ingested-tier3-agenda,"Maury County Schools, TN",0,0,,/m/maury-county-school-district-tn-2023-02-07-regular-board-meeting-2-7-23
+maurycotn,500,https://play.champds.com/maurycotn/event/500,empty,"Maury County, TN",0,0,,no segments/agenda/video
+maustonwi,200,https://play.champds.com/maustonwi/event/200,empty,MaustonWI,0,0,,no segments/agenda/video
+mentoroh,200,https://play.champds.com/mentoroh/event/200,queued-tier3,MentorOH,0,0,https://play.champds.com/DOWNLOAD-MEDIA/mentoroh/eventmainmedia/200,tier3_auto_transcription_queue.txt
+meridenct,50,https://play.champds.com/meridenct/event/50,empty,"Meriden, CT",0,0,,no segments/agenda/video
+millersvilletn,200,https://play.champds.com/millersvilletn/event/200,empty,MillersvilleTN,0,0,,no segments/agenda/video
+morristowntn,200,https://play.champds.com/morristowntn/event/200,empty,"Morristown, TN",0,0,,no segments/agenda/video
+moseslakeschoolswa,200,https://play.champds.com/moseslakeschoolswa/event/200,empty,"Moses Lake Schools, WA",0,0,,no segments/agenda/video
+mtprospectil,200,https://play.champds.com/mtprospectil/event/200,empty,"Mt Prospect, IL",0,0,,no segments/agenda/video
+nilesil,200,https://play.champds.com/nilesil/event/200,empty,"Niles, IL",0,0,,no segments/agenda/video
+nolensvilletn,500,https://play.champds.com/nolensvilletn/event/500,empty,"Nolensville, TN",0,0,,no segments/agenda/video
+northmiamifl,500,https://play.champds.com/northmiamifl/event/500,empty,"North Miami, FL",0,0,,no segments/agenda/video
+worcesterma,2500,https://play.champds.com/worcesterma/event/2500,empty,"Worcester, MA",0,0,,no segments/agenda/video
+yonkersny,200,https://play.champds.com/yonkersny/event/200,empty,"Yonkers, NY",0,0,,no segments/agenda/video
+yonkersschoolsny,200,https://play.champds.com/yonkersschoolsny/event/200,empty,"Yonkers Schools, NY",0,0,,no segments/agenda/video
+yubacoca,50,https://play.champds.com/yubacoca/event/50,empty,"Yuba Co, CA",0,0,,no segments/agenda/video
+yumacoaz,500,https://play.champds.com/yumacoaz/event/500,empty,"Yuma County, AZ",0,0,,no segments/agenda/video
