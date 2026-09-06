@@ -1487,6 +1487,48 @@ def test_a_state_still_settles_the_country():
     assert resolve("Abbotsford, BC").gov_id == "ca:csd:5909052"
 
 
+# --- Phase 2b: a GUESSED state can also name the wrong country ---------
+
+
+@pytest.mark.parametrize(
+    "raw,host",
+    [
+        ("Town of Erin", "pub-erin.escribemeetings.com"),  # Erin ON, hinted TN
+        ("Pickering", "pub-pickering.escribemeetings.com"),  # Pickering ON, hinted MO
+        ("Markham", "pub-markham.escribemeetings.com"),  # Markham ON, hinted IL
+        (
+            "Clarington",
+            "pub-clarington.escribemeetings.com",
+        ),  # Clarington ON, hinted OH
+        ("Cornwall", "pub-cornwall.escribemeetings.com"),  # Cornwall ON, hinted PA
+        (
+            "Northumberland County",
+            "pub-northumberland.escribemeetings.com",
+        ),  # Northumberland County ON, hinted PA
+        (
+            "Strathcona County",
+            "pub-strathcona.escribemeetings.com",
+        ),  # Strathcona County AB, hinted MN
+        ("Brockton", "pub-brockton.escribemeetings.com"),  # Brockton ON, hinted MA
+    ],
+)
+def test_a_tenant_hinted_state_does_not_settle_the_country(raw, host):
+    """A tenant-derived state is a GUESS the page's own text never made --
+    unlike `test_a_state_still_settles_the_country` above -- and
+    `tenant_hints.csv`/`tenant_overrides.csv` rows imported wholesale
+    from rtr-discovery's own ledger named the wrong COUNTRY entirely for
+    all 8 of these real, live, published tenants (2026-09-06). Before the
+    fix, each resolved confidently to a same-named US place/county
+    because the state-constrained lookup this rung does never
+    cross-checked Canada. Every raw name and host here is real: each
+    tenant's `tenant_hints.csv` row (and, for the last three, an
+    `auto_derived+inferred_unique_name` `tenant_overrides.csv` pin, since
+    removed) is exactly what produced the wrong live page."""
+    match = resolve(raw, host)
+    assert match.tier == resolver.TIER_UNRESOLVED
+    assert match.state == ""
+
+
 def test_a_real_port_agency_still_classifies_as_a_district():
     for raw in ("Port of Seattle, WA", "Port Authority of New York and New Jersey"):
         assert classify.classify_government_type(raw) == classify.SPECIAL_DISTRICT
