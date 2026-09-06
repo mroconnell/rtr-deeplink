@@ -1591,12 +1591,17 @@ def test_a_string_that_is_not_a_name_is_never_minted(raw):
 
 
 def test_a_name_made_only_of_type_words_is_not_a_name():
-    """`allentownpa.granicus.com` stores "City of Al" -- a truncated "City
-    of Allentown" whose stray "Al" the bare-state-suffix rule then read as
-    Alabama, leaving the name "City of" and minting `rtr:us:al:city-of`,
-    displayed to a reader as "City of, AL". Every step is individually
-    defensible, which is why the gate is on the outcome."""
-    match = resolve("City of Al", "allentownpa.granicus.com")
+    """`allentownpa.granicus.com` used to store "City of Al" -- a truncated
+    "City of Allentown" whose stray "Al" the bare-state-suffix rule then
+    read as Alabama, leaving the name "City of" and minting
+    `rtr:us:al:city-of`, displayed to a reader as "City of, AL". Every step
+    is individually defensible, which is why the gate is on the outcome.
+
+    That host is now pinned to "Allentown, PA" (a real fix, a pin-worklist
+    round), so it can no longer demonstrate the unresolved case -- swapped
+    to an intentionally-unpinned host with the same real truncated-name
+    shape."""
+    match = resolve("City of Al", "example-unpinned.granicus.com")
     assert match.tier == resolver.TIER_UNRESOLVED
     assert match.gov_id == ""
 
@@ -1885,3 +1890,103 @@ def test_state_suffix_from_text_finds_a_comma_prefixed_state_anywhere():
     assert resolver.state_suffix_from_text("Foo, Bar - Baz") == ""
     assert resolver.state_suffix_from_text(None) == ""
     assert resolver.state_suffix_from_text("") == ""
+
+
+# --- WO-113 (2026-09-05): `finalize_jurisdiction()`'s subdomain
+# cross-check now also fills in a raw jurisdiction that validates as
+# NOTHING at all (not just one that validates-wrong or trims-wrong), and
+# since `_resolve_government_ladder()` calls that function internally as
+# its own rung 2, the fix lands here too, not just in stored display
+# text. Every (raw, host) pair is a real, live Municode page confirmed via
+# `GET /internal/export/pages?ids=...` against production on 2026-09-05
+# (page ids 1434/1437/1444/1446/1449/1450/1454/1455, all
+# `*.municodemeetings.com`). Before WO-113 every one of these landed on
+# `unverified` with a synthetic `rtr:us:<state>:<slug>` id -- two of them
+# (1444, 1446) even collided on the exact same id despite naming two
+# different real governments in two different states.
+@pytest.mark.parametrize(
+    "raw,host,expected_gov_id",
+    [
+        ("Municode Portal", "kingsport-tn.municodemeetings.com", "us:place:4739560"),
+        (
+            "Columbus Wisconsin Meetings Hub",
+            "columbus-wi.municodemeetings.com",
+            "us:place:5516450",
+        ),
+        (
+            "July13, 2026 | Town of Bladensburg Maryland Meetings Hub",
+            "bladensburgtown-md.municodemeetings.com",
+            "us:place:2407850",
+        ),
+        ("Municode Portal", "laurel-md.municodemeetings.com", "us:place:2445900"),
+        (
+            "Madeira Beach Florida Meetings Hub",
+            "madeirabeach-fl.municodemeetings.com",
+            "us:place:1242400",
+        ),
+        (
+            "City of Richwood Texas",
+            "richwood-tx.municodemeetings.com",
+            "us:place:4861904",
+        ),
+        (
+            "Walton County Meetings Portal",
+            "waltoncounty-ga.municodemeetings.com",
+            "us:county:13297",
+        ),
+        (
+            "Willow Park Texas Meetings Hub",
+            "willowpark-tx.municodemeetings.com",
+            "us:place:4879492",
+        ),
+    ],
+)
+def test_municode_subdomain_fallback_lands_on_registry_tier(raw, host, expected_gov_id):
+    match = resolve(raw, host)
+    assert match.tier == resolver.TIER_REGISTRY
+    assert match.gov_id == expected_gov_id
+
+
+def test_municode_subdomain_fallback_does_not_regress_tenant_consistency():
+    # One of the two real regressions caught while building WO-113's first
+    # (unguarded) draft, which trusted the subdomain hint unconditionally
+    # the moment nothing validated -- see `_raw_text_explained_by_
+    # subdomain_hint()`'s own docstring in jurisdiction_enrich.py for the
+    # full account. `milwaukee.granicus.com` is real production data (no
+    # monkeypatching needed, unlike the bleed case below): "The City of
+    # Milwaukee, WI" must keep landing on the ladder's own tenant-
+    # consistency rung (`inferred`), not jump straight to a direct
+    # `registry` hit the way the unguarded draft made it do.
+    milwaukee = resolve(
+        "The City of Milwaukee, WI",
+        "milwaukee.granicus.com",
+        tenant_gov_id="us:place:5553000",
+    )
+    assert milwaukee.gov_id == "us:place:5553000"
+    assert milwaukee.tier == resolver.TIER_INFERRED
+
+
+def test_municode_subdomain_fallback_does_not_regress_bleed_rejection(monkeypatch):
+    # The second real regression from the same draft -- identical staging
+    # to `test_a_bleed_page_on_the_wrong_tenant_is_listed_not_minted`
+    # above, since the real `winston-salem.granicus.com` host carries a
+    # production pin that would short-circuit rung 5d entirely before
+    # ever reaching the code this test targets. "City of Lees Summit"
+    # doesn't name Winston-Salem, doesn't spell out its state, and isn't
+    # vendor filler -- the unguarded draft mis-filed it under
+    # Winston-Salem anyway; it must stay `unresolved`.
+    gov = registry.Government(
+        "us:place:3775000", "Winston-Salem city", classify.MUNICIPALITY, state="NC"
+    )
+    monkeypatch.setattr(registry, "governments", lambda: {gov.gov_id: gov})
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {})
+    monkeypatch.setattr(
+        registry, "tenant_hints", lambda: {"winston-salem.granicus.com": "NC"}
+    )
+    bleed = resolve(
+        "City of Lees Summit",
+        "winston-salem.granicus.com",
+        tenant_gov_id="us:place:3775000",
+    )
+    assert bleed.tier == resolver.TIER_UNRESOLVED
+    assert bleed.gov_id == ""

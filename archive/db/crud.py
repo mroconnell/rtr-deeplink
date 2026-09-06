@@ -3983,6 +3983,15 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "title": page.title,
             "date": page.date,
             "jurisdiction": page.jurisdiction,
+            # The gov_id-derived display text (see effective_jurisdiction())
+            # -- what /m/{slug} actually shows, so a page's own jurisdiction
+            # can't drift from the same government its /j/ hub already
+            # live-derives text from. `jurisdiction` above stays the raw
+            # stored string, unchanged, for existence checks and anything
+            # that wants the literal column value.
+            "jurisdiction_display": effective_jurisdiction(
+                page.gov_id, page.jurisdiction
+            ),
             # Both added 2026-08-15 alongside the columns themselves --
             # deliberately included from the start rather than repeating
             # the exact "platform" key omission this same function's own
@@ -4749,7 +4758,14 @@ async def list_pages(
                 "slug": slug,
                 "title": title,
                 "date": date,
-                "jurisdiction": jurisdiction_,
+                # effective_jurisdiction(), not the raw stored string -- a
+                # `manual_override`d row whose stored text predates always-
+                # writing the full display_name() must show the same name
+                # here (the /meetings listing, and the saved-search alert
+                # digest email via find_new_matches_for_saved_search()
+                # below, which reuses this dict as-is) as its own /j/ hub
+                # already does.
+                "jurisdiction": effective_jurisdiction(gov_id, jurisdiction_),
                 "meeting_body": meeting_body,
                 "platform": platform,
                 # WO-99 -- the identity alongside the display name, so a
@@ -6193,7 +6209,14 @@ def _featured_entry(
         # dependency on the host env's filters made the partial 500 the
         # home page while every test still passed. These also survive the
         # JSON hop to the resolver, which a Jinja filter could not.
-        "jurisdiction_display": format_jurisdiction_display(page["jurisdiction"]),
+        #
+        # effective_jurisdiction(), not a bare format_jurisdiction_display()
+        # of the raw stored string -- a card's jurisdiction must not drift
+        # from the same government its own /j/ hub already live-derives
+        # text from (see that function's docstring).
+        "jurisdiction_display": effective_jurisdiction(
+            page.get("gov_id"), page["jurisdiction"]
+        ),
         # Contains a <time> element: rendered with |safe, sound because
         # Markup.format() escapes the stored date before interpolating.
         "date_html": str(meeting_date_html(page.get("date"))),
@@ -6498,6 +6521,7 @@ async def get_home_highlights(topic_slug: Optional[str] = None) -> dict:
                     MeetingPage.title,
                     MeetingPage.date,
                     MeetingPage.meeting_body,
+                    MeetingPage.gov_id,
                 )
                 .join(
                     MeetingHighlight,
@@ -6523,8 +6547,9 @@ async def get_home_highlights(topic_slug: Optional[str] = None) -> dict:
                 "title": title,
                 "date": date,
                 "meeting_body": meeting_body,
+                "gov_id": gov_id,
             }
-            for page_id, jurisdiction, slug, title, date, meeting_body in rows
+            for page_id, jurisdiction, slug, title, date, meeting_body, gov_id in rows
         ]
         highlights = await _load_highlights(session, [p["id"] for p in pool])
         carded = await pages_with_thumbnails(session, [p["id"] for p in pool])
@@ -6670,6 +6695,18 @@ async def get_state_page_data(
                 {
                     "id": page_id,
                     "jurisdiction": jurisdiction,
+                    # For recent_pages (the "nothing has a highlight yet"
+                    # fallback list): the same gov_id-derived name as the
+                    # jurisdictions/most_active tables below (hub_display),
+                    # finished with format_jurisdiction_display() the same
+                    # way effective_jurisdiction() itself does -- this is
+                    # an individual meeting row, not a grouped-by-
+                    # government one, so it gets the same " (Canada)"
+                    # treatment /m/{slug} and /meetings do rather than the
+                    # grouped tables' bare registry name.
+                    "jurisdiction_display": format_jurisdiction_display(
+                        hub_display or jurisdiction
+                    ),
                     "slug": slug,
                     "title": title,
                     "date": date,
@@ -6976,6 +7013,7 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
                     MeetingPage.title,
                     MeetingPage.date,
                     MeetingPage.meeting_body,
+                    MeetingPage.gov_id,
                 )
                 .join(
                     MeetingHighlight,
@@ -7001,8 +7039,9 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
                 "title": title,
                 "date": date,
                 "meeting_body": meeting_body,
+                "gov_id": gov_id,
             }
-            for page_id, jurisdiction, slug, title, date, meeting_body in highlight_rows
+            for page_id, jurisdiction, slug, title, date, meeting_body, gov_id in highlight_rows
             if state_abbr_from_jurisdiction(jurisdiction) in US_50_STATE_ABBRS
         ]
         highlights = await _load_highlights(session, [p["id"] for p in pool])
@@ -7071,6 +7110,7 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
                         MeetingPage.slug,
                         MeetingPage.title,
                         MeetingPage.date,
+                        MeetingPage.gov_id,
                         TranscriptVersion.id,
                         TranscriptVersion.transcript_warnings,
                     )
@@ -7095,13 +7135,16 @@ async def get_all50_page_data(topic_slug: Optional[str] = None) -> dict:
             recent_pages = [
                 {
                     "jurisdiction": jurisdiction,
+                    "jurisdiction_display": effective_jurisdiction(
+                        gov_id, jurisdiction
+                    ),
                     "slug": slug,
                     "title": title,
                     "date": date,
                     "has_transcript": version_id is not None
                     and _has_real_warning_free_transcript(warnings),
                 }
-                for jurisdiction, slug, title, date, version_id, warnings in fallback_rows
+                for jurisdiction, slug, title, date, gov_id, version_id, warnings in fallback_rows
                 if state_abbr_from_jurisdiction(jurisdiction) in US_50_STATE_ABBRS
             ]
 
@@ -7381,6 +7424,62 @@ def hub_slug_for_page(gov_id: Optional[str], jurisdiction: Optional[str]):
     return _hub_identity(gov_id, jurisdiction)[1]
 
 
+def effective_jurisdiction(
+    gov_id: Optional[str], jurisdiction: Optional[str]
+) -> Optional[str]:
+    """The DISPLAY text for one page's jurisdiction -- the non-hub
+    counterpart of `hub_slug_for_page()` above, sharing `_hub_identity()`'s
+    exact three-case rule (see that function's docstring) so a page's own
+    displayed jurisdiction can never drift from the identity its `/j/` hub
+    already live-derives text from.
+
+    Real bug this closes: a `MeetingPage.jurisdiction` TEXT column read
+    and shown directly wherever a page's raw stored string predates (or
+    was written before) some now-fixed convention -- e.g. two
+    `manual_override` pages for Kansas City (`gov_id=us:place:2938000`)
+    stored as bare "Kansas City" because they were overridden before the
+    override endpoint always wrote the full `display_name()`. A
+    `manual_override`d row is not a special case here: the override
+    endpoint's job is fixing which government a page is assigned to, not
+    freezing whatever display text happened to get written at override
+    time -- re-running the override (or fixing `governments.csv`) is the
+    way to change the wording later, same as any other tier.
+
+    Finished with format_jurisdiction_display() rather than returning
+    `_hub_identity()`'s display form as-is: that function's own case 1
+    (a real registry row) returns gov_display_name(gov) verbatim, which
+    carries no " (Canada)" marker -- fine for a `/j/` hub title, which
+    has never shown one, but a regression for a single page display like
+    /m/{slug}, which always has (real test:
+    test_meeting_page_links_canadian_province_page). Idempotent on
+    case 2/3's output, which already went through the same function
+    inside `_hub_identity()`.
+    """
+    return format_jurisdiction_display(_hub_identity(gov_id, jurisdiction)[2])
+
+
+def effective_state_abbr(
+    gov_id: Optional[str], jurisdiction: Optional[str]
+) -> Optional[str]:
+    """The state/province abbreviation for a page's jurisdiction -- the
+    "More {State} meetings" link's counterpart to effective_jurisdiction()
+    above, and not just `state_abbr_from_jurisdiction(effective_jurisdiction(
+    ...))`: that display text ends in " (Canada)" for a Canadian
+    government (see effective_jurisdiction()'s own docstring), which
+    state_abbr_from_jurisdiction() -- an exact-suffix match -- would
+    then fail to parse. Reading `gov.state` directly off the registry row
+    when one exists sidesteps that round-trip entirely, and is exactly
+    the value effective_jurisdiction()'s own case 1 built its suffix
+    from in the first place. Falls back to parsing the raw stored string
+    the same way `state_abbr_from_jurisdiction()` always has, for the
+    same two cases effective_jurisdiction() falls back for.
+    """
+    gov = registry_governments().get(gov_id) if gov_id else None
+    if gov and gov.state:
+        return gov.state.upper()
+    return state_abbr_from_jurisdiction(jurisdiction)
+
+
 async def _hub_groups(session) -> dict[str, dict]:
     """slug -> {key, display, gov_ids, jurisdictions: [raw strings],
     page_count, last_updated, state_abbr, gov_type}, from one GROUP BY
@@ -7525,6 +7624,7 @@ async def get_jurisdiction_hub_data(
                 MeetingPage.date,
                 MeetingPage.jurisdiction,
                 MeetingPage.meeting_body,
+                MeetingPage.gov_id,
                 TranscriptVersion.id,
                 TranscriptVersion.transcript_warnings,
             )
@@ -7553,10 +7653,15 @@ async def get_jurisdiction_hub_data(
                 "date": date,
                 "jurisdiction": jurisdiction,
                 "meeting_body": meeting_body,
+                # Carried so _featured_entry() (via _build_featured() below)
+                # can derive this card's jurisdiction/hub_slug from the same
+                # gov_id its own /j/ hub is keyed on, rather than the raw
+                # per-row spelling -- see effective_jurisdiction().
+                "gov_id": gov_id,
                 "has_transcript": version_id is not None
                 and _has_real_warning_free_transcript(warnings),
             }
-            for page_id, page_slug, title, date, jurisdiction, meeting_body, version_id, warnings in rows
+            for page_id, page_slug, title, date, jurisdiction, meeting_body, gov_id, version_id, warnings in rows
         ]
         if not pages:
             return None
@@ -7726,7 +7831,10 @@ async def list_recent_pages_for_feed(
             "slug": mp.slug,
             "title": mp.title,
             "date": mp.date,
-            "jurisdiction": mp.jurisdiction,
+            # effective_jurisdiction() -- feed.xml.jinja renders this
+            # verbatim (no jurisdiction_display filter), so the raw stored
+            # string must not be handed to it directly.
+            "jurisdiction": effective_jurisdiction(mp.gov_id, mp.jurisdiction),
             "created_at": mp.created_at,
         }
         for mp in rows
@@ -9329,6 +9437,12 @@ async def list_saved_items(clerk_user_id: str) -> dict:
                     "title": title,
                     "date": date,
                     "jurisdiction": jurisdiction,
+                    # effective_jurisdiction() -- a saved meeting must not
+                    # show a stale jurisdiction any more than the meeting's
+                    # own /m/{slug} page does.
+                    "jurisdiction_display": effective_jurisdiction(
+                        gov_id, jurisdiction
+                    ),
                     "meeting_body": meeting_body,
                     "gov_id": gov_id,
                     "gov_type": gov_type,

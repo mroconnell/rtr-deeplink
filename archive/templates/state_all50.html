@@ -121,7 +121,7 @@
             <div class="calendar-candidate-main">
               <a href="/m/{{ m.slug }}">{{ m.title or "Untitled meeting" }}</a>
               <span class="calendar-candidate-date">
-                {%- if m.jurisdiction %}{{ m.jurisdiction|jurisdiction_display }}{% endif -%}
+                {%- if m.jurisdiction %}{{ m.jurisdiction_display }}{% endif -%}
                 {%- if m.date %} &middot; {{ m.date|meeting_date_html }}{% endif -%}
               </span>
             </div>

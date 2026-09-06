@@ -112,17 +112,30 @@ Standing decisions — do NOT re-raise  (7)
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+  [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (2)
-  Production actions only Ryan should take  (1)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
+  Production actions only Ryan should take  (5)
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
+    [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
+    [HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may…
+    [HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed…
+    [HUMAN] Dismiss the GitHub secret-scanning alert on…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (65)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
+  [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+  [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+  [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
+  [NEEDS-AUDIT] `RuntimeError: Response content shorter than
+  [NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+  [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
@@ -168,7 +181,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (65)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (21)
+  Adapter & platform gaps  (22)
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
     [NEEDS-AUDIT] RVTV's org-token jurisdiction override
@@ -190,14 +203,16 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (65)
     [NEEDS-AUDIT] ChampDS's VOD2 HLS case (majority of customers) has no…
     [NEEDS-AUDIT] Palm Beach County FL's SharePoint page now escalates…
     [LATER] `elpasotexas.gov/videos/` has no adapter of its own.
+    [NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a…
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
-  Media-source reliability  (3)
+  Media-source reliability  (4)
     `[NEEDS-AUDIT]` Some old/archived Granicus clips' `chunklist.m3u8`…
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
+    `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
   Transcription queue & workers  (6)
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
@@ -376,6 +391,17 @@ Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
 
+- **[JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk decodability guard `extract_chunk_audio()` has had since 2026-08-21 — confirmed 5+ real production failures across 5 distinct sources on 2 platforms.**
+  - **Issue**: WO-54/58's whole-audio-cache path (`app/platforms/media_probe.py:944-982`, `slice_cached_audio()`) only checks ffmpeg's exit code and that the output file is non-empty. It never calls `_mean_volume_db()` — the same decodability check `extract_chunk_audio()`'s `_extract_chunk_once()` already applies (see that function's own docstring, `media_probe.py:1011-1031`) — so a corrupt/undecodable byte range inside the cached whole-file audio reaches `engine.transcribe_chunk()` raw as an unhandled PyAV `InvalidDataError` instead of failing as a normal retryable `(False, reason)`. Re-confirmed by direct read of current `slice_cached_audio()` on 2026-09-05: still no guard.
+  - **Impact**: real, repeated, cross-platform — job 1157 (San Diego CA, Granicus, lost 15/25 chunks, 60% of the meeting), job 1226 (College Station TX, CivicClerk, 11/17), job 1259 (Falls Church VA, Granicus, gave up at 14/15), job 1377 (Mansfield TX, CivicClerk, gave up at 1/6), job 1766 (Alameda County CA "BOS View", Granicus, gave up at 17/22, 2026-09-05) — same exact `errno 1094995529` signature every time, not one platform's quirk. WO-54/58's whole-audio-cache path targets exactly the seek-hostile progressive sources (ChampDS, Granicus) most likely to contain a corrupt/interrupted byte range, so this sits on the path most likely to need the guard.
+  - **Next action**: add the same `_mean_volume_db()` decodability check to `slice_cached_audio()`, returning `(False, "...isn't decodable (likely truncated/corrupt)")` instead of `(True, None)` on an undecodable slice. `worker/main.py`'s existing per-chunk retry/budget logic already treats that shape as a normal retryable failure — no other code path needs to change.
+  - **History**: found by the inbox-triage Routine's 2026-08-29 run; the 2026-08-30, -31, and 2026-09-01 runs each confirmed a fresh independent occurrence on a new source.
+
+- **[JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except Exception`, which doesn't catch `asyncio.CancelledError` — a fresh, still-open instance of the "Unclosed connector" leak class the 2026-08-21 fix only partly closed.**
+  - **Issue**: `app/archive_client.py`'s `proxy_get()` (`except Exception:` around `await session.get(...)`, currently line 490) and `app/main.py`'s `_proxy_to_archive()` (`except Exception:` around `archive_client.proxy_get(...)`, currently line 1701) both leave `asyncio.CancelledError` (a `BaseException` subclass since Python 3.8) unhandled, so a request cancelled mid-fetch (client/bot disconnects while the Archive fetch is in flight) leaks the aiohttp session's connector until GC finalizes it. Re-confirmed by direct read of current code on 2026-09-05 — the gap is unchanged; only the line numbers have drifted from the original triage note (`archive_client.py:465-474`, `app/main.py:1622-1632`).
+  - **Impact**: same self-healing-via-GC leak class as the already-fixed PYTHON-FASTAPI-V/S/Q/T/W/X cases (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), not a user-visible crash — surfaced fresh as Sentry **PYTHON-FASTAPI-13** (2026-08-28, real production traffic on `/state/massachusetts`), a new issue ID confirming this is a fresh recurrence via a path that fix didn't close. Structurally open on every proxied route (`/m/*`, `/state/*`, `/j/*`, `/meetings`, `/coverage`, sitemap, feed) since they all funnel through these two functions.
+  - **Next action**: in both functions, close the session on `asyncio.CancelledError` too, before re-raising it — e.g. `except (Exception, asyncio.CancelledError):` wrapping the existing close, always re-raising the cancellation rather than swallowing it.
+  - **History**: `BACKLOG_DONE.md`'s "Five bundled easy-win fixes" (2026-08-21). Found by the inbox-triage Routine's 2026-08-29 run.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -397,6 +423,31 @@ of human step they need.
     for the full numbers and why.
   - **History**: code side shipped and already deployed — see
     `BACKLOG_DONE.md`.
+
+- **[HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health check, `delete_meeting_pages_by_slug()`'s FK cleanup) may still not be deployed — confirm and redeploy if not.**
+  - **Issue**: both fixes are confirmed present on `main` (re-checked 2026-09-05): `archive/main.py`'s `/api/health` uses `LIMIT 1` not `SELECT count(*)`, and `archive/db/crud.py:9337`'s `delete_meeting_pages_by_slug()` deletes `SocialPost`/`MeetingPageThumbnail` rows before the page. Every service has `autoDeploy: false` in `render.yaml`, so a merge ships nothing until someone deploys it by hand.
+  - **Impact**: as of the inbox-triage Routine's 2026-08-31/09-01 runs, alerts consistent with both gaps still being live kept arriving — repeated `rtr-deeplink-archive` "HTTP health check failed" Render alerts, a `ClientConnectorError` hitting real `/j/belvedere-ca` traffic 58s before one such alert, and a `ForeignKeyViolationError` on `/internal/admin/delete-pages`. No further alerts of either shape turned up in the runs reviewed through 2026-09-03 — consistent with (but not proof of) an intervening deploy.
+  - **Next action**: check the Archive service's deploy history in Render; deploy if it's still running a pre-2026-08-30 13:28 PDT build. No code change needed — this is "ship what's already on `main`."
+  - **History**: `BACKLOG_DONE.md` (WO-80); PR #577 (`delete_meeting_pages_by_slug` fix). Flagged by the inbox-triage Routine's 2026-08-31 run.
+
+- **[HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may not be deployed to the transcription worker services — confirm and redeploy if not.**
+  - **Issue**: confirmed present on `main` (`app/platforms/civicclerk.py:77`'s `_reconstruct_cdn_stream_url()`), but the auto-transcription retry path calls `finder.resolve(source_url)` **in-process** (`worker/main.py:471`), importing the platform module directly rather than calling the deployed resolver's HTTP API — so a worker instance still running a pre-fix build hits the raw-relative-path bug regardless of the resolver's own deploy state. `rtr-transcription-worker`/`-2` are `type: worker` with `autoDeploy: false` like every other service, and neither has an `/admin/schema-info`-style endpoint to check deploy state directly.
+  - **Impact**: transcription job 1308 (`kaysville-ut-2023-04-28-city-council-work-session`, 2026-08-31T13:14:37Z) failed 3/3 on chunk 0/14 with the exact pre-fix raw-path symptom the fix was built and tested against — the same event/GUID cited in the fix's own docstring. Stays stuck failing/in cooldown until a worker redeploy ships the already-merged fix; any other CivicClerk event hitting the same fallback fails the same way until then.
+  - **Next action**: confirm whether `rtr-transcription-worker`/`rtr-transcription-worker-2` have deployed since 2026-08-31 13:14 UTC; redeploy if not. No code change needed.
+  - **History**: `BACKLOG_DONE.md` (WO-88). Flagged by the inbox-triage Routine's 2026-09-01 run.
+
+- **[HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed (status 134) at least 13 times since 2026-08-30, with at least 3 confirmed real outages — and 2 of those 3 have no matching Render alert at all, so the true rate may be higher than what's counted. Needs Render's own crash logs and memory graph, which only Ryan can pull.**
+  - **Issue**: identical "Exited with status 134" Render alerts recurring roughly every 5-12 hours from 2026-08-30 16:54 UTC through at least 2026-09-05 08:45 UTC (13 occurrences counted across ~6 days). Root cause is unconfirmed — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config, and a SIGABRT from a CPython process usually means a native-extension fault (this app's C-extension deps are aiohttp/uvloop/asyncpg/PyAV) or an allocator abort under severe memory pressure. The latter has real precedent on this exact service: `rtr-deeplink` runs on `plan: starter` (512MB) — Ryan bumped it to `standard` after a 2026-08-25/26 memory-pressure crash investigation (`BACKLOG_DONE.md`, "Four Render-dashboard `[HUMAN]` items walked through live with Ryan") then reverted to starter the same day, betting that WO-80's health-check fix (landed the same night) would relieve the pressure — with an explicit note to revisit "if the same crash pattern recurs post-WO-80." It has. A second, possibly-related data point: Sentry **PYTHON-FASTAPI-1C** (`OSError: [Errno 9] Bad file descriptor` inside uvloop's `TCPTransport.get_extra_info` → `_get_socket`, 2026-09-01 20:48 UTC, same `srv-d9qhdobm8hqs738fgkog` service) is a separate C-level fault inside uvloop's own socket-handle code — no timestamp lines up with a known crash, but it's at minimum consistent with the same native-fault hypothesis.
+  - **Impact**: 3 confirmed real UptimeRobot DOWN/UP outages now — 2026-09-01 11:57:22-12:07:31 UTC (~10 min, 10-11 min after a captured 11:46:53 crash alert); 2026-09-04 22:42:30-22:47:34 UTC (~5 min, `rtr-deeplink.onrender.com/api/health/resolve-check`); 2026-09-04 23:34:12-23:39:17 UTC (~5 min, `redtaperecordings.com` itself). Only the first has a plausibly-matching Render "server failure" alert inside a tight window — the other two don't line up with any captured alert within a reasonable margin, meaning the 13-alert count is very likely an undercount of the true crash rate, not the full picture.
+  - **Next action**: pull Render's real crash/exit logs for `rtr-deeplink` — ideally around 2026-09-04 22:42 or 23:34 UTC, since neither of those has a matching alert to anchor the search on otherwise — for the actual abort traceback, and check its memory-usage graph around the same windows the same way the 2026-08-25/26 and WO-94/95 worker investigations did. This Routine's tools can't reach either.
+  - **New data point (2026-09-05, from Ryan pasting the actual around-the-crash log for the first time)**: instance `8kp2j` exited status 134 at 8:05 AM local, **several minutes after a manual redeploy** — the first time a crash has been directly correlated with a fresh deploy rather than steady-state traffic. The pasted log shows only the aftermath (`Unclosed client session`/`Unclosed connection` to the Archive, `Unexpected error 9 on netlink descriptor 20` — GC-finalizer noise from the abrupt kill, not its cause) followed by Render's restart line; the actual abort still isn't in application-level stdout, confirming this needs Render's own crash log same as before. One thing the restart sequence *does* show: the fresh instance had to runtime-self-heal a missing Chromium binary (`headless_browser.py`'s existing, documented self-heal path, `warm_up_headless_browser()` at startup) before serving normally — consistent with Render having provisioned a genuinely new container rather than restarting the same one in place, which is worth mentioning to Ryan as a possible detail for whoever reads the real crash log, not a cause on its own.
+  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence should revisit). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, and 2026-09-05 runs; redeploy-correlation data point added 2026-09-05 from Ryan's own pasted log.
+
+- **[HUMAN] Dismiss the GitHub secret-scanning alert on `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103` — confirmed false positive, no RTR secret involved.**
+  - **Issue**: the flagged "Google API Key" is Durham NC's own public `GoogleMapsKey`, embedded in a real, live-fetched HTML fixture of Durham's own CivicPlus AgendaCenter page (exactly the "real fixture from a real live page" this repo's testing convention requires) — not an RTR credential. The alert's own "Public leaks" section lists the identical key already present in five unrelated public repos that scraped the same page, confirming it was already public before this repo's fixture captured it.
+  - **Impact**: nothing to rotate, but the alert keeps showing as "Action needed" in GitHub's Security tab until dismissed.
+  - **Next action**: dismiss the alert in GitHub's Security tab with reason "Used in tests." This Routine holds no GitHub write access for this, and dismissing a secret-scanning alert is a judgment call, so it's Ryan's to close.
+  - **History**: flagged by the inbox-triage Routine's 2026-08-31 run.
 
 ### Decisions about already-live content
 
@@ -430,6 +481,293 @@ its entries appear to have been folded in here at some point without the
 routing text above being updated) — worth a real fix the next time
 someone reorganizes this file, not attempted here since it's a bigger
 structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+  lifted from an institutional-type word ("School District" → SD,
+  "Supreme Court" → SC) rather than a real state abbreviation — confirmed
+  on 2 live pages today, structurally able to recur on any of a
+  currently-small but nonzero population.**
+  - **Issue**: found live 2026-09-04 on two pages — id 757 "Arkansas
+    Supreme Court" minted as `rtr:us:sc:arkansas-supreme-court` (looks
+    like South Carolina; the real government is in Arkansas), and id
+    5218 "Oxnard School District" minted as
+    `rtr:us:sd:oxnard-school-district` (looks like South Dakota; the
+    real government is in California). Both are the same shape: the
+    mint path pulled a trailing two-letter code from inside the raw NAME
+    text itself ("...**S**chool **D**istrict", "...**S**upreme **C**ourt"),
+    not from an actual trailing state suffix, and nothing currently
+    distinguishes that from a real ", SD"/", SC".
+  - **Impact — real counts, queried live 2026-09-05, not estimated**:
+    of the 6 `rtr:us:sd:*` ids currently minted in production, 5 are
+    genuinely real South Dakota places (Brookings, Dell Rapids, Madison
+    ×2 pages, Vermillion) and exactly 1 is this bug (Oxnard). Of the 1
+    `rtr:us:sc:*` id minted, that 1 is this bug (Arkansas). For scale:
+    62 pages are correctly keyed to a real `us:sd:` **school district**
+    (the Gazetteer-backed national table, a completely different
+    namespace from the 2-letter state code — see
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md`'s "Clarification" in §7), and
+    roughly 13 pages carry a real South Carolina government. So today's
+    confirmed blast radius is small (2 wrong pages total) — the concern
+    is the mechanism, not the current count, since nothing stops a third
+    "___ Special District" or "___ Superior Court" from minting the same
+    way tomorrow.
+  - **Next action**: two tracks, not one.
+    1. **Immediate, bounded**: before minting `rtr:us:<st>:...` from a
+       cleaned name, check whether the *only* place the candidate state
+       code appears is inside an institutional-type phrase in the name
+       itself (a short, enumerable list — "school district," "supreme
+       court," and whatever else the audit below turns up) rather than
+       as a genuine trailing suffix the way `_split_state()` already
+       distinguishes elsewhere in this file. A quick scoping count first
+       (per Ryan's ask): how many minted `rtr:` ids nationally contain
+       "school district" or "supreme court" in their name — this decides
+       whether the guard needs to handle 2 known shapes or a longer tail
+       worth enumerating up front.
+    2. **Structural, for resilience going forward**: study what the
+       *tenant URL itself* already reliably carries at resolve time
+       (subdomain state suffixes are already proven reliable elsewhere —
+       see the sibling entry above on `score_gov_registry.py`'s
+       `match`-scoped blind spot and the Municode subdomain-state
+       finding from the Abbotsford investigation) and thread that
+       through the mint path as a real signal to cross-check a candidate
+       state code against, instead of trusting whatever two letters a
+       regex finds inside the name. This is the same shape as decision
+       D2/§5's existing "a plausible wrong extraction passes validation"
+       lesson, just at the minting step instead of the lookup step.
+  - **Constraint**: don't fix this by blocklisting "school district" and
+    "supreme court" alone and calling it done — that's the immediate
+    patch for the 2 confirmed cases, not the structural fix. Verify
+    whatever the audit finds before enumerating a "final" list; per this
+    repo's own standing rule, a backlog entry's central claim decays
+    fast and this one's counts should be re-checked, not assumed, by
+    whoever picks it up next.
+  - **History**: found 2026-09-04 investigating WO-110's Phase 2d
+    scoring report while answering questions about the Abbotsford
+    BC/WI fix; counts confirmed live 2026-09-05. Not yet in
+    `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+  resolutions — nothing retroactively re-applies it to already-archived
+  pages, and the one tool meant to make that reliable doesn't track
+  every pin.**
+  - **Issue**: fixing Edmonton (AB) and Niagara Falls (ON) — both the
+    same wrong-country-collision bug as Abbotsford BC/WI — required
+    deleting and resubmitting 6 pages by hand, then hand-writing 2 tenant
+    pins directly into `tenant_overrides.csv`. Checked afterward whether
+    the standard recovery path would have caught these two hosts:
+    `reports/pin_worklist_hosts.txt` (the file
+    `scripts/backfill_gov_id.py --hosts-file` is documented to use)
+    **does not contain either host**, because they were added by hand
+    outside `scripts/apply_pin_worklist.py`'s own workflow, which is the
+    only thing that currently writes that file. A pin added any way
+    other than through that one script's own run is invisible to the
+    one mechanism meant to re-sync already-ingested pages against it.
+  - **Impact**: every pin added outside a `apply_pin_worklist.py` batch
+    (which includes every pin found by direct investigation rather than
+    the worklist process — Abbotsford, Edmonton, Niagara Falls, and
+    likely others already in the file from earlier sessions) needs its
+    own by-hand `--hosts` backfill, discovered and run by whoever
+    happens to remember it exists. Nothing durable tracks "these hosts
+    have a pin newer than the last backfill that touched them."
+  - **Next action**: not settled — Ryan wants to think through the
+    right shape rather than build the first idea. **One approach
+    considered and explicitly rejected**: wiring an unscoped
+    `backfill_gov_id.py --apply` into the Archive's `preDeployCommand`
+    (the same way `alembic upgrade head` already runs there), so every
+    deploy re-syncs the whole corpus against whatever the registry
+    currently says with zero manual step. Ryan's call: not that way —
+    don't re-propose it without a new reason. Worth exploring instead:
+    something that tracks which hosts have a pin more recent than their
+    last backfill (so a human-triggered run stays complete without
+    needing `reports/pin_worklist_hosts.txt` to happen to be current),
+    or making `apply_pin_worklist.py`'s own hosts-file writer pick up
+    hand-added `tenant_overrides.csv` rows too rather than only the ones
+    it just wrote itself.
+  - **Constraint**: don't build the `preDeployCommand` version — see
+    above, already declined.
+  - **History**: found 2026-09-05 fixing Edmonton/Niagara Falls; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
+  `scripts/score_gov_signals.py`) needs a human review step before any
+  apply mode is built, not just a straight "recovered → write it"
+  pipeline — confirmed by two real wrong-level matches in its own
+  first report.**
+  - **Issue**: applying 5 of WO-110's "recovered" pages by hand
+    (2026-09-05) found 2 of the 5 were the wrong *level* of government,
+    not just the wrong place — the `org_names` signal has no way to
+    tell "this name matches a real place" apart from "this org IS that
+    place's own government." Checked both against the real archived
+    page before applying anything: id 335 "L. A. World Airports - Board
+    of Airport Commissioners" would have been folded into plain
+    `us:place:0644000` (Los Angeles, CA) — the real page names its own
+    Board of Airport Commissioners individually and cites "Los Angeles
+    City Charter Section 503(a)" as its own enabling authority, the
+    same "own governing board / own enabling statute" shape decision D2
+    already grants LADWP its own identity for. id 757 "Arkansas Supreme
+    Court" would have been folded into `us:county:05001` — a real
+    Arkansas county that coincidentally shares the word "Arkansas"; the
+    actual page is a state supreme court case ("State of Arkansas...
+    from Washington County Circuit Court"), which per decision D1
+    belongs under the State of Arkansas as a `meeting_body`, not any
+    county. The other 3 of the 5 (Oak Ridge TN, DeLand FL, Live Oak TX)
+    were clean, exact, correctly-leveled matches and were applied.
+  - **Impact**: an unreviewed apply mode built directly from WO-110's
+    scoring output would have silently written 2 wrong identities (of
+    5 checked — a 40% miss rate on this small sample, not something to
+    extrapolate a rate from, but not negligible either) alongside the 3
+    correct ones, with nothing distinguishing them in the output.
+  - **Next action**: Ryan's call, recorded here so it isn't lost —
+    **any apply mode needs a human review step between the confidence
+    score and actually writing**, at least while it's being tested.
+    Worth scoping a way to auto-sort the queue by risk rather than
+    review all of it blind: a recovered government whose name is an
+    exact or near-exact substring of the raw extracted text (Oak Ridge
+    TN, DeLand FL, Live Oak TX's shape) is a very different confidence
+    class from one where the match came from a *different* string found
+    somewhere else on the page (LAWA, Arkansas Supreme Court's shape) —
+    the second class is exactly where a name can validate against a
+    real, unrelated place. Counting how many of WO-110's 102 recovered
+    pages are which shape would say whether "auto-apply the exact-match
+    ones, queue the rest" is a small manual backlog or a large one.
+  - **Constraint**: don't build a straight apply mode (score → write)
+    without the review step above — this entry exists specifically
+    because that shape already produced 2 wrong answers out of 5 on the
+    first hand check.
+  - **History**: found 2026-09-05 applying WO-110's report by hand
+    while answering a question about the Edmonton/Niagara Falls fix;
+    not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
+  Content-Length` on the resolver, seen twice in one production log
+  (2026-09-05) on two different routes.**
+  - **Issue**: Ryan pasted a real Render log window that shows this
+    exception raised twice, both times inside
+    `starlette/middleware/base.py`'s `BaseHTTPMiddleware.__call__` →
+    `starlette/responses.py:167`'s plain (non-streaming) `Response.
+    __call__`, on `GET /api/health/resolve-check` and `GET /` — a
+    `Content-Length` header disagreeing with the actual body bytes sent.
+    `app/main.py`'s `handle_head_requests` middleware
+    (`@app.middleware("http")`, which Starlette implements via
+    `BaseHTTPMiddleware`) wraps every single request through this repo's
+    resolver service, so it's the one shared thing both failing routes
+    have in common — not confirmed as the actual cause yet, just the
+    common factor visible from the log alone.
+  - **Impact**: unconfirmed how often this fires or whether it's user-
+    visible (a broken/truncated page load vs. a clean retry) — only
+    known from this one pasted log window, not independently reproduced
+    or measured against Sentry/UptimeRobot yet.
+  - **Next action**: check Sentry for this exact `RuntimeError` string to
+    get a real occurrence count and see if it correlates with anything
+    (a specific route, a response size, gzip). If `handle_head_requests`
+    is confirmed as the trigger, the fix is probably to stop
+    unconditionally wrapping every request in `BaseHTTPMiddleware` for
+    the (rare) HEAD case and instead route HEAD handling some other way
+    that doesn't re-stream every GET too.
+  - **Constraint**: don't assume this is related to the SIGABRT/status-134
+    crash entry above just because both came out of the same pasted log
+    — they're different failure shapes (a process-level abort vs. an
+    HTTP-protocol-level assertion inside a request handler) with no
+    evidence connecting them beyond appearing in the same window.
+  - **History**: found 2026-09-05 from Ryan sharing a real Render log
+    after a redeploy; not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  wrong `gov_id` from before the cross-border name-collision guard
+  existed, and have never been re-backfilled since — the guard is
+  correct today, but a page resolved before it landed is still wrong.**
+  - **Issue**: `/m/abbotsford-wi-2025-06-24-council-meeting` (page 812)
+    is a real Abbotsford, **British Columbia** council meeting (agenda
+    items reference "Abbotsford Mission Highway 11" and real BC rezoning
+    applications; the AI transcript even mentions the Abbotsford
+    Canucks), keyed `us:place:5500100` — Abbotsford, **Wisconsin**, a
+    village of a few thousand. `app/utils/gov_registry/resolver.py`'s
+    national-table lookup has an explicit guard for exactly this shape
+    (`if not state and tables.ca_csd().lookup(name, None): return None`
+    — a bare name with no state that also exists in the Canadian table
+    declines rather than confidently picking the US one) and its own
+    code comment names this precise case among "16 real rows" a
+    2026-09-02 audit found: Abbotsford BC/WI, Edmonton AB/KY, Niagara
+    Falls ON/NY, Langford BC/SD, White Rock BC/SD, Port Hope ON/MI (3
+    more — Nampa ID, New Carlisle OH, Hawarden IA — are confirmed
+    genuinely American despite a same-named Canadian place, which is why
+    the guard declines rather than auto-picks either side). Confirmed
+    live 2026-09-04 that today's code gets it right:
+    `resolve_government("Abbotsford", tenant_host="pub-abbotsford.escribemeetings.com")`
+    returns `unresolved`, not the Wisconsin village. The guard's own
+    commit (`27e0c8f0`, WO-99/#696, merged 2026-09-03 11:26 UTC) predates
+    the page's last write (`updated_at` 2026-09-03 12:23 UTC, i.e. from
+    the WO-99/WO-100 wholesale backfill itself) by about an hour — so by
+    plain chronology the guard should have already been live when this
+    row was written, and exactly why it wasn't is still an open
+    question (a deploy-timing gap between merge and the Render rollout
+    actually used by that `--apply` run is the leading guess, not
+    confirmed). Not a currently-active resolver bug — a stale row the
+    ladder would no longer produce if asked today.
+  - **Impact**: at least one live page shows the wrong government and
+    country on its own `/m/` page and would file under the wrong state
+    on `/state/wisconsin` instead of not appearing there at all pending a
+    real fix. Scope of the other 5 named collisions is unverified — they
+    may be equally stale, already caught by a later backfill, or fine;
+    nobody has checked since 2026-09-02.
+  - **Next action**: `scripts/backfill_gov_id.py`'s own stated design
+    ("skip rows already current... a run after a registry change re-does
+    exactly the rows whose answer moved") means a plain unscoped re-run
+    from the Archive's Render shell should catch and correct this row
+    (and the other 5, if equally stale) automatically — it recomputes
+    fresh and compares, it doesn't trust the stored tier. Worth doing as
+    a full sweep rather than one-off pins, specifically because the
+    other 5 names haven't been checked. `pub-abbotsford.escribemeetings.com`
+    itself would settle to `unresolved` after a re-run (bare "Abbotsford"
+    stays ambiguous by design) unless also given a tenant pin to
+    `ca:csd:5909052` — a single-government eScribe host, no `match`
+    needed.
+  - **Constraint**: don't hand-fix this one row in isolation without
+    also re-running the backfill broadly — a one-off pin fixes the
+    symptom Ryan happened to notice and leaves the other 5 named
+    collisions (and any other page resolved in that same pre-guard
+    window) exactly as wrong and exactly as invisible.
+  - **History**: found 2026-09-04 answering a user question about
+    `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
+  `Agenda=` query-string values, and each one archives as a separate
+  page.**
+  - **Issue**: `pub-abbotsford.escribemeetings.com`'s real meeting
+    `Id=c157e0a4-351f-49f2-bd63-bc0747196fed` exists as two full,
+    separately-archived pages — `?Agenda=Merged&Id=...` (page 812) and
+    `?Agenda=Agenda&Id=...` (page 2225) — identical agenda and
+    transcript, different `source_url_normalized`, so nothing currently
+    treats them as duplicates of each other. Checked the corpus for the
+    same shape (same eScribe `Id=`, different `Agenda=` value) and found
+    **7 such pairs** across 6 hosts as of the 2026-09-03
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv` snapshot:
+    `pub-forterie` (`Agenda`/`Addendum`), `pub-oshawa`
+    (`PostMinutes`/`Agenda`), `pub-abbotsford` (`Merged`/`Agenda`),
+    `pub-peelregion` (`Agenda`/`PostAgenda`), `pub-townshipofbrock`
+    (`Merged`/`Agenda`), `pub-marvinnc` (`PostMinutes`/`Agenda`),
+    `pub-sandag` (`PostMinutes`/`Agenda`). Same shape as BACKLOG.md's
+    existing "same YouTube video, two URL forms" entry, different
+    platform.
+  - **Impact**: 7 known real duplicate archived meetings (14 pages for 7
+    real events) — double-counted in per-jurisdiction page counts,
+    double the storage/transcription cost per meeting, and a reader
+    landing on either copy has no link to the other. Likely undercounts
+    the true total since this was checked against one day's snapshot,
+    not the live corpus.
+  - **Next action**: at ingest time, treat `Agenda=`'s value as
+    something to strip (not compare) when checking whether an eScribe
+    `Meeting.aspx?Id=...` URL has already been archived — the `Id=` GUID
+    alone identifies the meeting; `Agenda=` only selects which document
+    view eScribe renders for it. Needs a real duplicate-merge pass for
+    the 7 already-archived pairs, not just a forward-looking ingest fix.
+  - **Constraint**: don't assume `Agenda=Agenda` is always the
+    "canonical" one to keep — `PostMinutes`/`PostAgenda`/`Merged` may
+    carry a fuller or more final document for some meetings; check
+    content before merging a pair.
+  - **History**: found 2026-09-04 investigating the Abbotsford
+    duplicate above; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   confidently-wrong extraction on a confirmed-misleading host — the
@@ -563,20 +901,77 @@ structural change than the two entries below.
     hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
     bare `old_slug`, computed from two different tenants' raw
     jurisdiction text at two different points in time, legitimately wants
-    two different destinations (e.g. `tvhamilton.cablecast.tv` pinned to
-    Hamilton, OH in WO-107 collides with an existing, still-live
-    `hamilton → hamilton-police-services-board-on` redirect for a real
-    Ontario police board). Any fix needs a documented tie-break rule, not
-    silent last-write-wins — WO-109 kept the incumbent in all 3 cases
-    (safe here because every runner-up tenant was `unresolved` before its
-    pin, meaning it had no live hub_slug to protect), and left `victoria`
-    flagged for Ryan specifically since `STATE_gov_identity.md` already
-    documents the committed value (`victoria-bc`) as based on a premise
-    #707 later corrected (the tenant is actually Victoria, MN) — a real
-    candidate for the OLD row being the one that's wrong, not the new one.
+    two different destinations. Any fix needs a documented tie-break
+    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
+    2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
+    live site after the WO-107 backfill and gave an explicit, direct
+    call: `hamilton` now points to `hamilton-city-oh`
+    (`us:place:3933012`) and `woodland` now points to `woodland-wa`
+    (`us:place:5379625`), superseding WO-109's cautious default. Both old
+    incumbent destinations (`hamilton-police-services-board-on`,
+    `woodland-ca`) remain real, live hubs at their own unambiguous slugs
+    — re-verified via `display.hub_slug()` on their own gov_ids before
+    the flip — so nothing is orphaned, they're just no longer reachable
+    via the bare, ambiguous slug. `victoria` is UNCHANGED: Ryan did not
+    mention it, and it stays flagged for him per the note below (a
+    genuinely different case — `victoria-bc` may itself be the wrong
+    committed value, not just the less-preferred one). A durable
+    tie-break rule for the *general* case (which of two colliding raw
+    strings wins a bare slug) is still not built — WO-112 only resolved
+    these two specific instances by direct instruction, it did not add a
+    policy the tool applies on its own next run.
   - **History**: found and worked around by hand in WO-109's PR
-    (2026-09-03); see that PR's description for the full row-by-row
-    reasoning and the before/after counts.
+    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
+    (2026-09-03) per Ryan's direct instruction. See both PRs'
+    descriptions for the full row-by-row reasoning and before/after
+    values.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
+  scoped `tenant_overrides.csv` pins, so its `hub_slug_aliases.csv` regen
+  silently drops the retiring-slug redirect for any government that was
+  only pinned that way.**
+  - **Issue**: `score_rows()` (and `_seed_governments()`) call
+    `resolve_government(jurisdiction, tenant_host=host,
+    tenant_gov_id=...)` with no `path`/`page_hints` argument. Those two
+    are exactly what `_pinned()` (`app/utils/gov_registry/resolver.py`)
+    needs to match a `tenant_overrides.csv` row whose `match` column
+    names a specific video id or TelVue org token rather than being
+    blank — so the script can only ever see host-level pins, never
+    `match`-scoped ones. WO-107 (#712) added 5 such groups (24 `youtu.be`
+    ids → Woodside CA, 10 `youtu.be` ids → Hillsborough CA, 3
+    `www.youtube.com` ids → Phoenix AZ, 2 `videoplayer.telvue.com` org
+    tokens → Centre County PA and Summit NJ), and WO-109's regen the same
+    day (#714) missed all 5 — confirmed by checking its own committed
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv`: all 5
+    pages still show `jurisdiction_confidence: unresolved` and a blank
+    `gov_id` in that snapshot.
+  - **Impact**: no live 404s today — WO-112 (2026-09-03) hand-added the
+    5 missing redirect rows to `archive/data/hub_slug_aliases.csv` from
+    that same pre-backfill snapshot before `scripts/backfill_gov_id.py
+    --apply` erased the only source that could reconstruct them. But
+    this is a real, general gap: any FUTURE `match`-scoped pin will hit
+    the identical blind spot the next time someone runs
+    `score_gov_registry.py` in the ordinary documented way, with no
+    warning that it happened (same silent-drop shape as the wholesale-
+    overwrite entry above, different root cause).
+  - **Next action**: thread `path`/`page_hints` through
+    `score_rows()`/`_seed_governments()` the way `page_hints_for()`
+    (`resolver.py`) already builds them from a `MeetingPage` in
+    production — the export payload would need the source URL fields
+    `page_hints_for()` reads (it currently fetches only the light
+    metadata shape, deliberately, per its own docstring on
+    `fetch_export_pages()`) — then re-run the script and confirm the 5
+    WO-107 rows above appear in its own regenerated output rather than
+    needing another hand-add.
+  - **Constraint**: don't build this against a fresh `/internal/
+    export/pages` pull to verify — after `backfill_gov_id.py --apply`
+    runs, every WO-107-pinned page's stored `jurisdiction` is already the
+    registry display name, so a fresh export can no longer show the
+    before/after gap this bug produces. Verify instead against the
+    committed `sheet_archive.csv` snapshot above, or a newly-crafted
+    synthetic case using a real, currently-unpinned `match` value.
+  - **History**: found and worked around in WO-112's PR (2026-09-03);
+    see that PR's description.
 
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
@@ -2045,6 +2440,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     already resolves individually (WO-29).
   - **Next action**: none scheduled; low priority.
   - **History**: `BACKLOG_DONE.md` (full investigation).
+
+- **[NEEDS-AUDIT] `[EXAMPLE]` The Phoenix Legistar canary sample is a genuinely dead meeting, and `LegistarAssetFinder._fetch()` has no handling at all for a 404/410 page.**
+  - **Issue**: `scripts/adapter_canary.py:150`'s second Legistar URL (`https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, added 2026-08-29) still 410s — re-confirmed live 2026-09-05 via `curl`, and Phoenix's own Legistar API (`webapi.legistar.com/v1/phoenix/events?$filter=EventId eq 1425831`) returns `[]`, so the event is genuinely gone, not a transient blip. `legistar.py`'s `_fetch()` (`app/platforms/legistar.py:466-471`) calls `response.raise_for_status()` unconditionally with no exception handling, so a 410'd page raises before any of the existing fallback chain (`_try_fallback_video_link()` / `_try_known_channel_video()` / `_try_granicus_view_publisher_video()`) ever runs.
+  - **Impact**: not production-facing today — every real call site wraps `finder.resolve()` in a generic `except Exception` (`app/main.py`), so a real visitor just gets an unpolished raw-exception-string error rather than a friendly "this meeting listing is no longer available" message. The real cost is the canary itself: it's failed daily (15:00 UTC) since 2026-08-29, and a genuine adapter regression elsewhere in the 30+ platform sweep risks getting lost in an already-red build.
+  - **Next action**: swap the canary's Phoenix sample for a currently-live one. Two things found while re-verifying this (2026-09-05) worth handing to whoever picks it up: (1) Phoenix's Legistar pages need the full `?ID=...&GUID=...&Options=info|&Search=` querystring to load at all — the bare `?ID=` form 410s even for a real, live ID (confirmed against three live candidates pulled from `Calendar.aspx`: `1364180`/GUID `FE7842A8-9AF7-4022-90A6-9B0247C8DAB9`, `1363991`, `1363958`); (2) Phoenix's Legistar API shows `EventVideoPath: null` for every one of its 10 most recent events, matching the existing "Phoenix has no direct Legistar video links site-wide" finding (`BACKLOG_DONE.md`, 2026-08-11 survey) — so a good replacement sample must specifically exercise the WO-30 YouTube-channel fallback (a *past* meeting whose date/title should match Phoenix's YouTube channel), not just any live page. Separately, catch 404/410 in `_fetch()` and return a `ResolvedMeeting` with a friendly `video_warnings` message, the same pattern "no video link found" already uses.
+  - **History**: `BACKLOG_DONE.md` (2026-08-11 survey first documented this meeting ID as gone). Flagged by the inbox-triage Routine's 2026-08-30 run; recurred identically on every canary run since (2026-08-30, 08-31, twice on 09-01/09-02).
+
 ## Reliability, ops & cost
 
 ### `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice, still at the allowance
@@ -2109,6 +2511,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   feasibility failures so cooldown engages instead of looping on the same
   dead candidates forever); the root 504/timeout issue and the logging
   distinction above remain open here, not touched by that fix.
+- **Untested tool, not a fix**: `ViewPublisherRSS.php?mode=vpodcast` (a
+  Granicus RSS mode found 2026-09-04, see
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §58) adds a
+  direct-download `<enclosure>` URL (`DownloadFile.php?...clip_id=N`)
+  per item, on a different origin than `archive-stream.granicus.com`'s
+  CDN — a plausible alternate source for a clip stuck on this timeout,
+  not verified against one.
 
 #### `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the same host (WO-40 falsified the round-robin fix)
 
@@ -2155,6 +2564,31 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   backlog work.
 - **History**: `BACKLOG_DONE.md` (WO-40, 2026-08-21) — same failure-
   pattern measurement this residual is drawn from.
+
+#### `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic ffmpeg filter-graph failure has no known fix
+
+- **Issue**: `eastlansing.granicus.com/player/clip/1211?view_id=2`, chunk
+  1, fails identically every time with exit 234 / "Failed to configure
+  output pad on auto_aresample_0" / "Error reinitializing filters!" —
+  reproduced twice on separate transcription attempts two days apart
+  (job 1238, 2026-08-30 05:56 UTC; job 1294, 2026-08-31 06:42 UTC), each
+  with all 3 retries hitting the exact same error text, including after
+  the WO-45 output-side-seek retry (which fixes a different, empty/
+  undecodable-file failure shape, not this one). No fix attempted yet —
+  confirmed 2026-09-05: no `aresample` reference anywhere in
+  `app/platforms/media_probe.py` or `worker/main.py`.
+- **Impact**: this meeting has zero transcript (gave up at chunk 1/27).
+  Scope beyond this one source is unmeasured — no query groups failures
+  by this exact error string yet.
+- **Next action**: run `ffmpeg` directly against the real source at the
+  chunk-1 offset to see if this reproduces outside the app's own
+  subprocess context, and whether explicitly forcing
+  `-af aresample=async=1` (already known safe from the Napa VOD
+  investigation, for a different, cosmetic dts-warning case) happens to
+  route around this filter-config failure too.
+- **History**: found by the inbox-triage Routine's 2026-08-30 run;
+  confirmed deterministic (2nd occurrence, same source/chunk) in the
+  2026-08-31 run.
 
 ### Transcription queue & workers
 

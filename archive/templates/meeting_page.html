@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction|jurisdiction_display }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
+{% block title %}{{ page.title or "Meeting" }}{% if page.jurisdiction %} — {{ page.jurisdiction_display }}{% endif %}{% if page.date %} ({{ page.date }}){% endif %} | Red Tape Recordings{% endblock %}
 {# data-version-id: read by /shared-static/deep_link.js so a line=seg-N
    deep link is only trusted when it was generated from this exact
    TranscriptVersion -- empty when there's no active_version at all
@@ -22,7 +22,7 @@
      is unique to this page. Plain text: meta content cannot carry
      markup, so this comes from meta_description() (display_text +
      trimming), never highlight_html(). -#}
-  {% set description = highlight_description or ((page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ (page.jurisdiction|jurisdiction_display)) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript.") %}
+  {% set description = highlight_description or ((page.title or "A public meeting") ~ (page.jurisdiction and (" in " ~ page.jurisdiction_display) or "") ~ (page.date and (" on " ~ page.date) or "") ~ ", with video and transcript.") %}
   <meta name="description" content="{{ description }}">
   {% if page.platform == "unknown" or page_is_empty %}
   {#- generic_fallback.py registers under platform_name = "unknown" -- the
@@ -80,7 +80,7 @@
      falls back to above -- that isn't something "people are talking
      about"). Degrades in the same order a page can be missing pieces:
      quote+jurisdiction, quote alone, jurisdiction alone, plain. #}
-  {% set _jurisdiction_name = (page.jurisdiction|jurisdiction_display) if page.jurisdiction else none %}
+  {% set _jurisdiction_name = page.jurisdiction_display if page.jurisdiction else none %}
   {% if highlight_description and _jurisdiction_name %}
   {% set image_alt = "A photo of a meeting in " ~ _jurisdiction_name ~ " where people are talking about " ~ highlight_description %}
   {% elif highlight_description %}
@@ -235,7 +235,7 @@
     {% if page.jurisdiction -%}
     "location": {
       "@type": "Place",
-      "name": {{ (page.jurisdiction|jurisdiction_display)|tojson }}
+      "name": {{ page.jurisdiction_display|tojson }}
     },
     {% endif -%}
     {% if public_base_url -%}
@@ -342,7 +342,7 @@
       </h1>
       <p>
         {%- if page.meeting_body %}{{ page.meeting_body }}{% if page.jurisdiction %} &middot; {% endif %}{% endif -%}
-        {%- if page.jurisdiction %}{{ page.jurisdiction|jurisdiction_display }}{% endif -%}
+        {%- if page.jurisdiction %}{{ page.jurisdiction_display }}{% endif -%}
         {#- Semantic <time> on the meeting date (2026-08-21, CLAUDE_BACKLOG.md's
            SEO/accessibility Tier 3) -- machine-readable for crawlers and
            assistive tech; the visible text is unchanged. See
@@ -350,7 +350,7 @@
            fallback. Meeting dates only: transcript/agenda offsets are
            durations, not datetimes -- see that filter's own note. #}
         {%- if page.date %}{% if page.jurisdiction or page.meeting_body %} &middot; {% endif %}{{ page.date|meeting_date_html }}{% endif -%}
-        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction|jurisdiction_display }} meetings</a>{% endif -%}
+        {%- if hub_slug %} &middot; <a href="/j/{{ hub_slug }}">More {{ page.jurisdiction_display }} meetings</a>{% endif -%}
         {%- if state_slug %} &middot; <a href="/state/{{ state_slug }}">More {{ state_name }} meetings</a>{% endif -%}
       </p>
       {#- Date-status notice (archive/utils/date_status.py): a page with

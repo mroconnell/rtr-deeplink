@@ -6,6 +6,8 @@ real, checked directly in the generated CSVs while building this module,
 not synthetic.
 """
 
+import pytest
+
 from app.utils import jurisdiction_enrich as je
 
 
@@ -3000,3 +3002,141 @@ def test_claimed_state_from_bleed_tail_declines_ordinary_bleed_prose():
     assert (
         je._claimed_state_from_bleed_tail("East Bay", "Regional Park District") is None
     )
+
+
+# --- WO-113 (2026-09-05): the subdomain cross-check also fills in a raw
+# jurisdiction that validates as NOTHING at all, not just one that
+# validates-wrong or trims-wrong -- see `finalize_jurisdiction()`'s own
+# docstring (case 3) and `_raw_text_explained_by_subdomain_hint()`.
+#
+# Every (raw, netloc) pair below is a real, live Municode page, confirmed
+# via `GET /internal/export/pages?ids=...` against production on
+# 2026-09-05: page 1434 (bladensburgtown-md), 1437 (columbus-wi), 1444
+# (kingsport-tn), 1446 (laurel-md), 1449 (madeirabeach-fl), 1450
+# (richwood-tx), 1454 (waltoncounty-ga), 1455 (willowpark-tx), all on
+# `*.municodemeetings.com`. Before WO-113 every one of these came back
+# `confidence="unverified"` with the raw vendor-branded title kept
+# verbatim, and `resolve_government()` minted a synthetic
+# `rtr:us:<state>:<slug>` id per page (two of them -- 1444 and 1446 --
+# even collided on the literal same id, `rtr:us:xx:municode-portal`,
+# despite naming two different real governments in two different states).
+
+
+@pytest.mark.parametrize(
+    "raw,netloc,expected",
+    [
+        ("Municode Portal", "kingsport-tn.municodemeetings.com", "Kingsport, TN"),
+        (
+            "Columbus Wisconsin Meetings Hub",
+            "columbus-wi.municodemeetings.com",
+            "Columbus, WI",
+        ),
+        (
+            "July13, 2026 | Town of Bladensburg Maryland Meetings Hub",
+            "bladensburgtown-md.municodemeetings.com",
+            "Bladensburg Town, MD",
+        ),
+        ("Municode Portal", "laurel-md.municodemeetings.com", "Laurel, MD"),
+        (
+            "Madeira Beach Florida Meetings Hub",
+            "madeirabeach-fl.municodemeetings.com",
+            "Madeira Beach, FL",
+        ),
+        (
+            "City of Richwood Texas",
+            "richwood-tx.municodemeetings.com",
+            "Richwood, TX",
+        ),
+        (
+            "Walton County Meetings Portal",
+            "waltoncounty-ga.municodemeetings.com",
+            "Walton County, GA",
+        ),
+        (
+            "Willow Park Texas Meetings Hub",
+            "willowpark-tx.municodemeetings.com",
+            "Willow Park, TX",
+        ),
+    ],
+)
+def test_finalize_jurisdiction_fills_in_from_subdomain_when_raw_text_validates_as_nothing(
+    raw, netloc, expected
+):
+    result = je.finalize_jurisdiction(raw, netloc=netloc)
+    assert result.jurisdiction == expected
+    assert result.confidence == "repaired"
+
+
+def test_finalize_jurisdiction_subdomain_fallback_full_round_trip_hits_registry():
+    # The property that makes WO-113 worth building, per its own writeup:
+    # `resolve_government()` calls `finalize_jurisdiction()` internally as
+    # ladder rung 2, so this one fix has to land BOTH the display text
+    # (asserted above) AND the actual `gov_id` the resolver assigns. Real,
+    # confirmed live 2026-09-05: before this fix, both Kingsport, TN
+    # (page 1444) and Laurel, MD (page 1446) minted the exact same
+    # colliding id, `rtr:us:xx:municode-portal` -- two different real
+    # governments in two different states sharing one synthetic id.
+    from app.utils.gov_registry.resolver import resolve_government
+
+    kingsport = resolve_government(
+        "Municode Portal", tenant_host="kingsport-tn.municodemeetings.com"
+    )
+    assert kingsport.tier == "registry"
+    assert kingsport.gov_id == "us:place:4739560"
+
+    laurel = resolve_government(
+        "Municode Portal", tenant_host="laurel-md.municodemeetings.com"
+    )
+    assert laurel.tier == "registry"
+    assert laurel.gov_id == "us:place:2445900"
+
+    # No longer colliding on the same synthetic id.
+    assert kingsport.gov_id != laurel.gov_id
+
+
+# --- The two real false-positive shapes this branch must NOT fire on,
+# both confirmed-live incidents `_subdomain_override()`'s own docstring
+# and `tests/test_gov_registry.py` already guard elsewhere -- reused here
+# to directly test `_raw_text_explained_by_subdomain_hint()`, the new
+# gate WO-113 added in front of the terminal "nothing validated" branch.
+
+
+def test_raw_text_explained_by_subdomain_hint_declines_when_hint_consumes_everything():
+    # milwaukee.granicus.com's real "The City of Milwaukee, WI" -- already
+    # correct, just missing a strip (a leading "The" defeats
+    # `_LEADING_TYPE_RE`, per `tests/test_gov_registry.py`'s own
+    # "collapses a spelling of the tenant's own name" tests). Once "The
+    # City of " is stripped, the ENTIRE remainder is the hint's own name
+    # with no state/vendor filler left over as corroborating evidence, so
+    # this declines and leaves the page to the ladder's own
+    # tenant-consistency rung rather than a direct registry hit.
+    assert not je._raw_text_explained_by_subdomain_hint(
+        "The City of Milwaukee", "Milwaukee"
+    )
+    assert not je._raw_text_explained_by_subdomain_hint(
+        "The City of Andover", "Andover"
+    )
+    assert not je._raw_text_explained_by_subdomain_hint(
+        "The City of College Park", "College Park"
+    )
+
+
+def test_raw_text_explained_by_subdomain_hint_declines_a_real_bleed_page():
+    # winston-salem.granicus.com storing "City of Lees Summit" -- a real
+    # bleed page from an unrelated Missouri government (`tests/
+    # test_gov_registry.py::test_a_bleed_page_on_the_wrong_tenant_is_listed_not_minted`).
+    # "Lees Summit" doesn't name the hint, doesn't spell out the hint's
+    # real state, and isn't vendor filler -- real, unexplained residual
+    # text, so this must decline rather than mis-file the page under
+    # Winston-Salem.
+    assert not je._raw_text_explained_by_subdomain_hint(
+        "City of Lees Summit", "Winston-Salem"
+    )
+
+
+def test_raw_text_explained_by_subdomain_hint_accepts_pure_boilerplate():
+    # "Municode Portal" carries no place-name signal of its own at all --
+    # both words are vendor/portal boilerplate, so there's nothing left
+    # over once they're stripped, and no risk of masking a different real
+    # place (there wasn't one to begin with).
+    assert je._raw_text_explained_by_subdomain_hint("Municode Portal", "Kingsport")
