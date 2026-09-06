@@ -107,6 +107,41 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-06
+
+131 candidate message IDs from `label:rtr-claude newer_than:30d` (the
+label's entire current contents), 11 new after the ledger filter. Of
+those 11, 10 were duplicates of already-tracked issues (Phoenix Legistar
+canary 410, East Lansing Granicus `aresample` ffmpeg failure, St Louis
+Park Granicus 120s ffmpeg timeout, YouTube IP-block) with no new
+information beyond "still recurring" — not written up again per this
+file's dedupe rule. One genuinely adds new data to an already-open
+`[HUMAN]` entry:
+
+- **Confirmed** — `rtr-deeplink` SIGABRT (status 134) crash-loop, already
+  tracked in `BACKLOG.md` under "Needs a human" (`[HUMAN]` entry counting
+  13 occurrences through 2026-09-05 08:45 UTC): **3 more Render
+  "Exited with status 134" alerts** since that count — 2026-09-05
+  15:05:46 UTC, 2026-09-06 06:37:19 UTC, 2026-09-06 09:29:48 UTC —
+  bringing the confirmed total to **16** since 2026-08-30. Also **one
+  more UptimeRobot DOWN/UP outage with no matching Render alert**:
+  `redtaperecordings.com` down 2026-09-06 03:58:07 UTC, up 04:03:12 UTC
+  (~5 min) — the nearest Render "server failure" alert is 2h34m later
+  (06:37:19 UTC), too far to plausibly be the same event, matching the
+  entry's existing finding that at least 2 of 3 prior confirmed outages
+  had no matching alert (this would make a 4th). No new root-cause data
+  this round (unlike 2026-09-05's redeploy correlation) — just more
+  frequency/undercount evidence for an already-open, already-`[HUMAN]`
+  investigation that needs Render's own crash logs, which only Ryan can
+  pull. **Impact**: same as the existing entry — production resolver
+  instability, ~2 crash alerts/day over the last 8 days, at least 4
+  confirmed real outages of 5-11 minutes each.
+
+Ledger: 131 message IDs reviewed and recorded this run (11 new, 120
+already seen), 0 pruned.
+
+---
+
 ## Open item
 
 **Gmail write scope — DECLINED 2026-08-21. The Routine stays read-only,
