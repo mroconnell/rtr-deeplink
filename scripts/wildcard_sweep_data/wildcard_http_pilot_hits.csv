@@ -1,0 +1,351 @@
+platform,slug,is_real,detail,source_table,name,state
+granicus,happyvalleycityor,True,HTTP 404,us_places,Happy Valley city,OR
+legistar,wauwatosacitywi,True,HTTP 200 len=372066,us_places,Wauwatosa city,WI
+granicus,wauwatosacitywi,True,HTTP 200,us_places,Wauwatosa city,WI
+granicus,orangetown,True,HTTP 200,us_places,Orange town,VA
+granicus,kittanningborough-pa,True,HTTP 503,us_places,Kittanning borough,PA
+granicus,mosineecitywi,True,HTTP 404,us_places,Mosinee city,WI
+granicus,mequoncitywi,True,HTTP 404,us_places,Mequon city,WI
+legistar,cityofgryglacity,True,HTTP 503 len=48,us_places,Grygla city,MN
+legistar,cityofgodleycity,True,HTTP 503 len=48,us_places,Godley city,TX
+granicus,grandterracecityca,True,HTTP 404,us_places,Grand Terrace city,CA
+granicus,greatneckvillage,True,HTTP 200,us_places,Great Neck village,NY
+granicus,carsoncity,True,HTTP 200,us_places,Carson city,ND
+granicus,rivertoncity,True,HTTP 200,us_places,Riverton city,MN
+granicus,fergusoncity,True,HTTP 200,us_places,Ferguson city,MO
+granicus,haymarkettownva,True,HTTP 404,us_places,Haymarket town,VA
+granicus,altuscityok,True,HTTP 404,us_places,Altus city,OK
+legistar,springfieldcitymi,True,HTTP 503 len=48,us_places,Springfield city,MI
+granicus,masoncity,True,HTTP 404,us_places,Mason city,TX
+legistar,cityoflilydalecity,True,HTTP 503 len=48,us_places,Lilydale city,MN
+granicus,lagunawoodscity,True,HTTP 200,us_places,Laguna Woods city,CA
+granicus,ogdencity,True,HTTP 404,us_places,Ogden city,UT
+granicus,rockfordcityil,True,HTTP 404,us_places,Rockford city,IL
+granicus,comptoncity,True,HTTP 404,us_places,Compton city,CA
+granicus,palatinevillageil,True,HTTP 404,us_places,Palatine village,IL
+granicus,bartlettcitytn,True,HTTP 404,us_places,Bartlett city,TN
+granicus,woodridgevillageil,True,HTTP 404,us_places,Woodridge village,IL
+granicus,eastpointcity,True,HTTP 200,us_places,East Point city,GA
+granicus,plainfieldcitynj,True,HTTP 404,us_places,Plainfield city,NJ
+granicus,californiacity,True,HTTP 200,us_places,California city,KY
+granicus,parkcityks,True,HTTP 200,us_places,Park city,KS
+granicus,parkcity,True,HTTP 200,us_places,Park city,KS
+granicus,mundeleinvillageil,True,HTTP 404,us_places,Mundelein village,IL
+granicus,baycity,True,HTTP 200,us_places,Bay city,AR
+legistar,smyrnacity,True,HTTP 200 len=164517,us_places,Smyrna city,GA
+granicus,smyrnacity,True,HTTP 404,us_places,Smyrna city,GA
+granicus,santaclaritacityca,True,HTTP 404,us_places,Santa Clarita city,CA
+granicus,buffalogrovevillageil,True,HTTP 404,us_places,Buffalo Grove village,IL
+legistar,napacity,True,HTTP 200 len=245049,us_places,Napa city,CA
+granicus,deperecitywi,True,HTTP 404,us_places,De Pere city,WI
+granicus,napacity,True,HTTP 404,us_places,Napa city,CA
+granicus,texarkanacitytx,True,HTTP 404,us_places,Texarkana city,TX
+granicus,lagunabeachcity,True,HTTP 404,us_places,Laguna Beach city,CA
+granicus,chathamborough,True,HTTP 200,us_places,Chatham borough,NJ
+granicus,keywestcity,True,HTTP 200,us_places,Key West city,FL
+legistar,mountvernoncityoh,True,HTTP 200 len=173276,us_places,Mount Vernon city,OH
+granicus,mountvernoncityoh,True,HTTP 200,us_places,Mount Vernon city,OH
+granicus,manassascity,True,HTTP 200,us_places,Manassas city,GA
+granicus,northogdencity,True,HTTP 200,us_places,North Ogden city,UT
+granicus,eastjordancity,True,HTTP 200,us_places,East Jordan city,MI
+granicus,omrocitywi,True,HTTP 404,us_places,Omro city,WI
+legistar,princetonnj,True,HTTP 200 len=215089,us_places,Princeton,NJ
+granicus,bunnellcity,True,HTTP 200,us_places,Bunnell city,FL
+legistar,cityofwalledlakecity,True,HTTP 503 len=48,us_places,Walled Lake city,MI
+granicus,jeffersoncityga,True,HTTP 404,us_places,Jefferson city,GA
+granicus,princetonnj,True,HTTP 200,us_places,Princeton,NJ
+granicus,princeton,True,HTTP 200,us_places,Princeton,NJ
+granicus,valdostacity,True,HTTP 200,us_places,Valdosta city,GA
+granicus,westwendovercity,True,HTTP 200,us_places,West Wendover city,NV
+legistar,tehamacounty,True,HTTP 200 len=349771,us_counties,Tehama County,CA
+legistar,polkcountyfl,True,HTTP 200 len=251884,us_counties,Polk County,FL
+legistar,brazoriacountytx,True,HTTP 200 len=200447,us_counties,Brazoria County,TX
+granicus,hiddenhillscity,True,HTTP 200,us_places,Hidden Hills city,CA
+legistar,albanycounty,True,HTTP 200 len=173225,us_counties,Albany County,WY
+legistar,sedgwickcounty,True,HTTP 200 len=158347,us_counties,Sedgwick County,CO
+legistar,cumberlandcounty,True,HTTP 200 len=477994,us_counties,Cumberland County,KY
+legistar,tompkinscountyny,True,HTTP 200 len=212028,us_counties,Tompkins County,NY
+legistar,douglascounty,True,HTTP 200 len=385289,us_counties,Douglas County,GA
+legistar,mauicounty,True,HTTP 200 len=230820,us_counties,Maui County,HI
+legistar,harrisoncounty,True,HTTP 200 len=176702,us_counties,Harrison County,KY
+legistar,lubbockcounty,True,HTTP 200 len=185387,us_counties,Lubbock County,TX
+legistar,westchestercountyny,True,HTTP 200 len=243977,us_counties,Westchester County,NY
+legistar,camdencounty,True,HTTP 200 len=156428,us_counties,Camden County,GA
+legistar,harriscountytx,True,HTTP 200 len=200410,us_counties,Harris County,TX
+legistar,ashecounty,True,HTTP 200 len=168074,us_counties,Ashe County,NC
+legistar,sullivancountyny,True,HTTP 200 len=336266,us_counties,Sullivan County,NY
+legistar,charlottecountyfl,True,HTTP 200 len=174096,us_counties,Charlotte County,FL
+legistar,lakecounty,True,HTTP 200 len=359534,us_counties,Lake County,TN
+legistar,kingcounty,True,HTTP 200 len=35010,us_counties,King County,WA
+granicus,tehamacounty,True,HTTP 200,us_counties,Tehama County,CA
+granicus,clevelandcounty,True,HTTP 200,us_counties,Cleveland County,AR
+granicus,polkcountyfl,True,HTTP 200,us_counties,Polk County,FL
+granicus,mercercounty,True,HTTP 404,us_counties,Mercer County,ND
+granicus,monroecounty,True,HTTP 404,us_counties,Monroe County,IA
+granicus,brazoriacountytx,True,HTTP 200,us_counties,Brazoria County,TX
+granicus,glenncounty,True,HTTP 404,us_counties,Glenn County,CA
+granicus,kitcarsoncounty,True,HTTP 200,us_counties,Kit Carson County,CO
+granicus,albanycounty,True,HTTP 200,us_counties,Albany County,WY
+granicus,johnsoncounty,True,HTTP 200,us_counties,Johnson County,WY
+legistar,brunswickcounty,True,HTTP 200 len=159694,us_counties,Brunswick County,VA
+granicus,haywoodcountync,True,HTTP 200,us_counties,Haywood County,NC
+granicus,cumberlandcounty,True,HTTP 200,us_counties,Cumberland County,KY
+granicus,parkcounty,True,HTTP 200,us_counties,Park County,WY
+granicus,tompkinscountyny,True,HTTP 200,us_counties,Tompkins County,NY
+granicus,stokescountync,True,HTTP 200,us_counties,Stokes County,NC
+granicus,douglascounty,True,HTTP 200,us_counties,Douglas County,GA
+legistar,princegeorgescountymd,True,HTTP 200 len=72490,us_counties,Prince George's County,MD
+legistar,passaiccountynj,True,HTTP 200 len=187065,us_counties,Passaic County,NJ
+granicus,howardcounty,True,HTTP 404,us_counties,Howard County,NE
+granicus,mauicounty,True,HTTP 200,us_counties,Maui County,HI
+granicus,pitkincounty,True,HTTP 404,us_counties,Pitkin County,CO
+legistar,baldwincountyal,True,HTTP 200 len=227110,us_counties,Baldwin County,AL
+legistar,durhamcounty,True,HTTP 200 len=184107,us_counties,Durham County,NC
+granicus,eauclairecountywi,True,HTTP 200,us_counties,Eau Claire County,WI
+granicus,hawaiicounty,True,HTTP 200,us_counties,Hawaii County,HI
+granicus,lubbockcounty,True,HTTP 200,us_counties,Lubbock County,TX
+granicus,taoscounty,True,HTTP 404,us_counties,Taos County,NM
+granicus,cowetacountyga,True,HTTP 404,us_counties,Coweta County,GA
+granicus,bigstonecounty,True,HTTP 404,us_counties,Big Stone County,MN
+granicus,roanokecountyva,True,HTTP 404,us_counties,Roanoke County,VA
+legistar,milwaukeecounty,True,HTTP 200 len=483790,us_counties,Milwaukee County,WI
+legistar,hernandocountyfl,True,HTTP 200 len=284420,us_counties,Hernando County,FL
+granicus,westchestercountyny,True,HTTP 200,us_counties,Westchester County,NY
+granicus,stanlycountync,True,HTTP 404,us_counties,Stanly County,NC
+legistar,rutherfordcountync,True,HTTP 200 len=182697,us_counties,Rutherford County,NC
+granicus,transylvaniacounty,True,HTTP 200,us_counties,Transylvania County,NC
+granicus,camdencounty,True,HTTP 200,us_counties,Camden County,GA
+granicus,calcasieuparishla,True,HTTP 200,us_counties,Calcasieu Parish,LA
+granicus,harriscountytx,True,HTTP 200,us_counties,Harris County,TX
+granicus,alpinecountyca,True,HTTP 404,us_counties,Alpine County,CA
+legistar,ramseycountymn,True,HTTP 200 len=256050,us_counties,Ramsey County,MN
+granicus,ashecounty,True,HTTP 404,us_counties,Ashe County,NC
+granicus,bryancountyga,True,HTTP 200,us_counties,Bryan County,GA
+granicus,modoccountyca,True,HTTP 404,us_counties,Modoc County,CA
+granicus,sullivancountyny,True,HTTP 200,us_counties,Sullivan County,NY
+legistar,eaglecounty,True,HTTP 200 len=80210,us_counties,Eagle County,CO
+granicus,yorkcounty,True,HTTP 404,us_counties,York County,ME
+granicus,sanmiguelcountyco,True,HTTP 200,us_counties,San Miguel County,CO
+granicus,buttecounty,True,HTTP 404,us_counties,Butte County,ID
+granicus,penningtoncounty,True,HTTP 200,us_counties,Pennington County,SD
+legistar,olmstedcounty,True,HTTP 200 len=163196,us_counties,Olmsted County,MN
+granicus,lakecounty,True,HTTP 200,us_counties,Lake County,TN
+granicus,greensvillecountyva,True,HTTP 200,us_counties,Greensville County,VA
+legistar,montgomerycountymd,True,HTTP 200 len=163822,us_counties,Montgomery County,MD
+legistar,calaverascounty,True,HTTP 200 len=172136,us_counties,Calaveras County,CA
+granicus,franklincountync,True,HTTP 200,us_counties,Franklin County,NC
+granicus,monocounty,True,HTTP 200,us_counties,Mono County,CA
+granicus,baltimorecountymd,True,HTTP 200,us_counties,Baltimore County,MD
+granicus,nassaucountyny,True,HTTP 404,us_counties,Nassau County,NY
+granicus,floydcountyga,True,HTTP 200,us_counties,Floyd County,GA
+granicus,alamedacounty,True,HTTP 404,us_counties,Alameda County,CA
+granicus,sarasotacounty,True,HTTP 404,us_counties,Sarasota County,FL
+granicus,landercountynv,True,HTTP 200,us_counties,Lander County,NV
+granicus,brunswickcounty,True,HTTP 200,us_counties,Brunswick County,VA
+legistar,unioncountync,True,HTTP 200 len=186587,us_counties,Union County,NC
+granicus,douglascountynv,True,HTTP 200,us_counties,Douglas County,NV
+granicus,effinghamcounty,True,HTTP 200,us_counties,Effingham County,IL
+granicus,princegeorgescountymd,True,HTTP 404,us_counties,Prince George's County,MD
+granicus,sweetwatercountywy,True,HTTP 200,us_counties,Sweetwater County,WY
+granicus,emmetcounty,True,HTTP 200,us_counties,Emmet County,IA
+granicus,passaiccountynj,True,HTTP 200,us_counties,Passaic County,NJ
+granicus,nyecounty,True,HTTP 404,us_counties,Nye County,NV
+granicus,ulstercountyny,True,HTTP 200,us_counties,Ulster County,NY
+legistar,geneseecountymi,True,HTTP 200 len=218193,us_counties,Genesee County,MI
+granicus,baldwincountyal,True,HTTP 200,us_counties,Baldwin County,AL
+granicus,durhamcounty,True,HTTP 404,us_counties,Durham County,NC
+legistar,oklahomacounty,True,HTTP 200 len=414051,us_counties,Oklahoma County,OK
+legistar,sanmateocounty,True,HTTP 200 len=519502,us_counties,San Mateo County,CA
+granicus,okaloosacountyfl,True,HTTP 404,us_counties,Okaloosa County,FL
+granicus,bureaucountyil,True,HTTP 404,us_counties,Bureau County,IL
+granicus,lumpkincounty,True,HTTP 200,us_counties,Lumpkin County,GA
+granicus,swiftcounty,True,HTTP 200,us_counties,Swift County,MN
+granicus,elkocounty,True,HTTP 404,us_counties,Elko County,NV
+granicus,berkeleycountysc,True,HTTP 200,us_counties,Berkeley County,SC
+legistar,knoxcountyoh,True,HTTP 200 len=217656,us_counties,Knox County,OH
+granicus,grandcounty-co,True,HTTP 200,us_counties,Grand County,CO
+granicus,hunterdoncounty,True,HTTP 200,us_counties,Hunterdon County,NJ
+legistar,hillsboroughcounty,True,HTTP 200 len=192310,us_counties,Hillsborough County,NH
+granicus,chemungcounty,True,HTTP 200,us_counties,Chemung County,NY
+granicus,glynncounty,True,HTTP 200,us_counties,Glynn County,GA
+granicus,milwaukeecounty,True,HTTP 404,us_counties,Milwaukee County,WI
+granicus,hernandocountyfl,True,HTTP 200,us_counties,Hernando County,FL
+legistar,thurstoncountywa,True,HTTP 200 len=163429,us_counties,Thurston County,WA
+granicus,grimescountytx,True,HTTP 200,us_counties,Grimes County,TX
+granicus,elbertcounty,True,HTTP 200,us_counties,Elbert County,CO
+granicus,pottercountytx,True,HTTP 200,us_counties,Potter County,TX
+granicus,rutherfordcountync,True,HTTP 404,us_counties,Rutherford County,NC
+granicus,charlescountymd,True,HTTP 200,us_counties,Charles County,MD
+granicus,harfordcountymd,True,HTTP 404,us_counties,Harford County,MD
+granicus,ramseycountymn,True,HTTP 200,us_counties,Ramsey County,MN
+legistar,laramiecounty,True,HTTP 200 len=193217,us_counties,Laramie County,WY
+granicus,lakecountyin,True,HTTP 200,us_counties,Lake County,IN
+granicus,eaglecounty,True,HTTP 404,us_counties,Eagle County,CO
+legistar,saratogacountyny,True,HTTP 200 len=173566,us_counties,Saratoga County,NY
+granicus,bernalillocountynm,True,HTTP 404,us_counties,Bernalillo County,NM
+legistar,grundycountyil,True,HTTP 200 len=195865,us_counties,Grundy County,IL
+legistar,galvestoncountytx,True,HTTP 200 len=561051,us_counties,Galveston County,TX
+granicus,olmstedcounty,True,HTTP 200,us_counties,Olmsted County,MN
+granicus,finneycounty,True,HTTP 200,us_counties,Finney County,KS
+granicus,daviecountync,True,HTTP 200,us_counties,Davie County,NC
+granicus,newkentcounty,True,HTTP 200,us_counties,New Kent County,VA
+granicus,montgomerycountymd,True,HTTP 404,us_counties,Montgomery County,MD
+granicus,warrencountytn,True,HTTP 200,us_counties,Warren County,TN
+granicus,calaverascounty,True,HTTP 200,us_counties,Calaveras County,CA
+legistar,riversidecountyca,True,HTTP 200 len=305184,us_counties,Riverside County,CA
+granicus,hardeecountyfl,True,HTTP 200,us_counties,Hardee County,FL
+granicus,spaldingcounty,True,HTTP 200,us_counties,Spalding County,GA
+legistar,pueblocounty,True,HTTP 200 len=159217,us_counties,Pueblo County,CO
+granicus,kentcountyde,True,HTTP 200,us_counties,Kent County,DE
+granicus,butlercountyoh,True,HTTP 404,us_counties,Butler County,OH
+granicus,unioncountync,True,HTTP 200,us_counties,Union County,NC
+legistar,clevelandcountyok,True,HTTP 200 len=332131,us_counties,Cleveland County,OK
+granicus,jimwellscountytx,True,HTTP 200,us_counties,Jim Wells County,TX
+legistar,dekalbcountyga,True,HTTP 200 len=210439,us_counties,DeKalb County,GA
+granicus,chathamcountyga,True,HTTP 200,us_counties,Chatham County,GA
+legistar,seminolecountyfl,True,HTTP 200 len=316100,us_counties,Seminole County,FL
+granicus,tarrantcounty,True,HTTP 404,us_counties,Tarrant County,TX
+granicus,sussexcountyva,True,HTTP 404,us_counties,Sussex County,VA
+granicus,summitcounty,True,HTTP 200,us_counties,Summit County,OH
+granicus,geneseecountymi,True,HTTP 200,us_counties,Genesee County,MI
+granicus,oklahomacounty,True,HTTP 200,us_counties,Oklahoma County,OK
+granicus,sanmateocounty,True,HTTP 200,us_counties,San Mateo County,CA
+legistar,dentoncounty,True,HTTP 200 len=436924,us_counties,Denton County,TX
+legistar,fresnocounty,True,HTTP 200 len=231301,us_counties,Fresno County,CA
+legistar,alleghenycounty,True,HTTP 200 len=650338,us_counties,Allegheny County,PA
+granicus,knoxcountyoh,True,HTTP 200,us_counties,Knox County,OH
+granicus,leecountync,True,HTTP 200,us_counties,Lee County,NC
+granicus,hillsboroughcounty,True,HTTP 200,us_counties,Hillsborough County,NH
+granicus,summitcountyco,True,HTTP 200,us_counties,Summit County,CO
+granicus,hoodrivercounty,True,HTTP 200,us_counties,Hood River County,OR
+granicus,thurstoncountywa,True,HTTP 200,us_counties,Thurston County,WA
+granicus,santacruzcountyca,True,HTTP 200,us_counties,Santa Cruz County,CA
+granicus,deltacountytx,True,HTTP 200,us_counties,Delta County,TX
+granicus,laramiecounty,True,HTTP 200,us_counties,Laramie County,WY
+granicus,claytoncountyga,True,HTTP 200,us_counties,Clayton County,GA
+granicus,saratogacountyny,True,HTTP 200,us_counties,Saratoga County,NY
+granicus,grundycountyil,True,HTTP 200,us_counties,Grundy County,IL
+granicus,hanovercounty,True,HTTP 200,us_counties,Hanover County,VA
+granicus,galvestoncountytx,True,HTTP 200,us_counties,Galveston County,TX
+granicus,montrosecounty,True,HTTP 404,us_counties,Montrose County,CO
+granicus,riversidecountyca,True,HTTP 200,us_counties,Riverside County,CA
+granicus,ouraycountyco,True,HTTP 200,us_counties,Ouray County,CO
+granicus,gadsdencountyfl,True,HTTP 200,us_counties,Gadsden County,FL
+granicus,horrycounty,True,HTTP 404,us_counties,Horry County,SC
+granicus,pueblocounty,True,HTTP 200,us_counties,Pueblo County,CO
+granicus,clevelandcountyok,True,HTTP 200,us_counties,Cleveland County,OK
+granicus,calvertcounty,True,HTTP 200,us_counties,Calvert County,MD
+granicus,montgomerycountypa,True,HTTP 200,us_counties,Montgomery County,PA
+granicus,currycountynm,True,HTTP 200,us_counties,Curry County,NM
+granicus,monroecounty-fl,True,HTTP 200,us_counties,Monroe County,FL
+granicus,monroecountyfl,True,HTTP 200,us_counties,Monroe County,FL
+granicus,dekalbcountyga,True,HTTP 404,us_counties,DeKalb County,GA
+granicus,seminolecountyfl,True,HTTP 200,us_counties,Seminole County,FL
+granicus,suttercountyca,True,HTTP 404,us_counties,Sutter County,CA
+granicus,dentoncounty,True,HTTP 404,us_counties,Denton County,TX
+granicus,fresnocounty,True,HTTP 200,us_counties,Fresno County,CA
+granicus,stcroixcountywi,True,HTTP 404,us_counties,St. Croix County,WI
+granicus,oregon,True,HTTP 404,us_states,Oregon,OR
+legistar,cityofappleton,True,HTTP 200 len=196058,us_school_districts,Appleton,ME
+granicus,humboldtunifiedschooldistrict258-ks,True,HTTP 503,us_school_districts,Humboldt Unified School District 258,KS
+granicus,charlotte,True,HTTP 404,us_school_districts,Charlotte,ME
+granicus,cityofappleton,True,HTTP 404,us_school_districts,Appleton,ME
+granicus,winthrop,True,HTTP 200,us_school_districts,Winthrop,ME
+granicus,alamogordopublicschools,True,HTTP 404,us_school_districts,Alamogordo Public Schools,NM
+granicus,greenville,True,HTTP 404,us_school_districts,Greenville,ME
+granicus,auburn,True,HTTP 200,us_school_districts,Auburn,ME
+granicus,surry,True,HTTP 200,us_school_districts,Surry,ME
+granicus,trenton,True,HTTP 200,us_school_districts,Trenton,ME
+granicus,sedgwick,True,HTTP 404,us_school_districts,Sedgwick,ME
+granicus,georgetown,True,HTTP 200,us_school_districts,Georgetown,ME
+legistar,jonesboro,True,HTTP 200 len=236361,us_school_districts,Jonesboro,ME
+legistar,kashiaelementaryschooldistrict,True,HTTP 503 len=48,us_school_districts,Kashia Elementary School District,CA
+granicus,ameryschooldistrictwi,True,HTTP 503,us_school_districts,Amery School District,WI
+legistar,kashiaelementaryschooldistrict-ca,True,HTTP 503 len=48,us_school_districts,Kashia Elementary School District,CA
+legistar,pawpawpublicschooldistrictmi,True,HTTP 503 len=48,us_school_districts,Paw Paw Public School District,MI
+granicus,cityofaxtellcommunityschools,True,HTTP 503,us_school_districts,Axtell Community Schools,NE
+legistar,pawpawpublicschooldistrict-mi,True,HTTP 503 len=48,us_school_districts,Paw Paw Public School District,MI
+granicus,axtellcommunityschools-ne,True,HTTP 503,us_school_districts,Axtell Community Schools,NE
+granicus,perrisunionhighschooldistrict912,True,HTTP 503,us_school_districts,Perris Union High School District (9-12),CA
+legistar,eaglepointschooldistrict9,True,HTTP 503 len=48,us_school_districts,Eagle Point School District 9,OR
+legistar,eaglepointschooldistrict9or,True,HTTP 503 len=48,us_school_districts,Eagle Point School District 9,OR
+granicus,cityofperrisunionhighschooldistrict912,True,HTTP 503,us_school_districts,Perris Union High School District (9-12),CA
+granicus,perrisunionhighschooldistrict912-ca,True,HTTP 503,us_school_districts,Perris Union High School District (9-12),CA
+legistar,marshallpublicschools-mi,True,HTTP 503 len=48,us_school_districts,Marshall Public Schools,MI
+granicus,biddeford,True,HTTP 200,us_school_districts,Biddeford,ME
+granicus,jonesboro,True,HTTP 200,us_school_districts,Jonesboro,ME
+granicus,northkingstownschooldistrict,True,HTTP 200,us_school_districts,North Kingstown School District,RI
+legistar,hillsboroindependentschooldistricttx,True,HTTP 503 len=48,us_school_districts,Hillsboro Independent School District,TX
+granicus,elizabethtownindependentschooldistrict-ky,True,HTTP 503,us_school_districts,Elizabethtown Independent School District,KY
+legistar,northfield,True,HTTP 200 len=262123,us_school_districts,Northfield,ME
+granicus,muldrowpublicschoolsok,True,HTTP 503,us_school_districts,Muldrow Public Schools,OK
+legistar,erin,True,HTTP 200 len=164250,ca_csd,Erin,ON
+granicus,cooper,True,HTTP 404,us_school_districts,Cooper,ME
+legistar,hampton,True,HTTP 200 len=221635,ca_csd,Hampton,NB
+legistar,harrison,True,HTTP 200 len=176702,ca_csd,Harris,ON
+legistar,racine,True,HTTP 200 len=165706,ca_csd,Racine,QC
+legistar,cityofracine,True,HTTP 200 len=346003,ca_csd,Racine,QC
+legistar,longview,True,HTTP 200 len=173106,ca_csd,Longview,AB
+legistar,hudson,True,HTTP 200 len=17955,ca_csd,Hudson,QC
+legistar,cityofcleveland,True,HTTP 200 len=186598,ca_csd,Cleveland,QC
+granicus,northfield,True,HTTP 404,us_school_districts,Northfield,ME
+legistar,barrie,True,HTTP 200 len=171015,ca_csd,Barrie,ON
+legistar,wellington,True,HTTP 200 len=268661,ca_csd,Wellington,PE
+legistar,russell,True,HTTP 200 len=157645,ca_csd,Russell,ON
+legistar,cityofnorthport,True,HTTP 200 len=209081,ca_csd,Northport,PE
+granicus,kirkland,True,HTTP 404,ca_csd,Kirkland,QC
+legistar,scott,True,HTTP 200 len=156759,ca_csd,Scott,SK
+legistar,clearwater,True,HTTP 200 len=449763,ca_csd,Clearwater,BC
+granicus,cityofsouthgate,True,HTTP 200,ca_csd,Southgate,ON
+granicus,belleplaine,True,HTTP 404,ca_csd,Belle Plaine,SK
+granicus,hampton,True,HTTP 404,ca_csd,Hampton,NB
+granicus,placentia,True,HTTP 404,ca_csd,Placentia,NL
+granicus,dorchester,True,HTTP 200,ca_csd,Dorchester,NB
+granicus,harrison,True,HTTP 404,ca_csd,Harris,ON
+legistar,osage,True,HTTP 200 len=157174,ca_csd,Osage,SK
+legistar,raymond,True,HTTP 200 len=157970,ca_csd,Raymond,AB
+granicus,middleton,True,HTTP 200,ca_csd,Middleton,NS
+granicus,taylor,True,HTTP 200,ca_csd,Taylor,BC
+granicus,cityofracine,True,HTTP 200,ca_csd,Racine,QC
+granicus,richmond,True,HTTP 404,ca_csd,Richmond,NB
+granicus,raleigh,True,HTTP 404,ca_csd,Raleigh,NL
+granicus,lincoln,True,HTTP 200,ca_csd,Lincoln,NB
+granicus,imperial,True,HTTP 404,ca_csd,Imperial,SK
+legistar,humboldt,True,HTTP 200 len=195964,ca_csd,Humboldt,SK
+granicus,hudson,True,HTTP 404,ca_csd,Hudson,QC
+granicus,cityofcleveland,True,HTTP 200,ca_csd,Cleveland,QC
+granicus,cumberland,True,HTTP 404,ca_csd,Cumberland,BC
+granicus,buchanan,True,HTTP 200,ca_csd,Buchanan,SK
+granicus,enterprise,True,HTTP 404,ca_csd,Enterprise,NT
+granicus,wellington,True,HTTP 404,ca_csd,Wellington,PE
+granicus,cityofnorthport,True,HTTP 404,ca_csd,Northport,PE
+legistar,alameda,True,HTTP 200 len=399562,ca_csd,Alameda,SK
+granicus,clearwater,True,HTTP 404,ca_csd,Clearwater,BC
+granicus,cityofnewport,True,HTTP 200,ca_csd,Newport,QC
+granicus,victoria,True,HTTP 200,ca_csd,Victoria,PE
+granicus,sunvalley,True,HTTP 404,ca_csd,Sun Valley,SK
+granicus,osage,True,HTTP 404,ca_csd,Osage,SK
+granicus,cityofvernon,True,HTTP 200,ca_csd,Vernon,BC
+granicus,cityofoxford,True,HTTP 404,ca_csd,Oxford,NS
+granicus,morrisville,True,HTTP 404,ca_csd,Morrisville,NL
+granicus,humboldt,True,HTTP 404,ca_csd,Humboldt,SK
+legistar,stpaul,True,HTTP 200 len=1091802,ca_csd,St. Paul,AB
+legistar,james,True,HTTP 200 len=156934,ca_csd,James,ON
+granicus,langford,True,HTTP 200,ca_csd,Langford,BC
+granicus,durham,True,HTTP 404,ca_csd,Durham,NB
+granicus,sunnyside,True,HTTP 503,ca_csd,Sunnyside,NL
+legistar,middlesex,True,HTTP 200 len=21283,ca_cd,Middlesex,ON
+granicus,halfmoonbay,True,HTTP 200,ca_csd,Half Moon Bay,AB
+granicus,dumfries,True,HTTP 200,ca_csd,Dumfries,NB
+granicus,kearney,True,HTTP 200,ca_csd,Kearney,ON
+granicus,alameda,True,HTTP 404,ca_csd,Alameda,SK
+granicus,cityofelgin,True,HTTP 404,ca_csd,Elgin,QC
+granicus,piedmont,True,HTTP 404,ca_csd,Piedmont,QC
+granicus,king,True,HTTP 404,ca_csd,King,ON
+granicus,crowsnestpass,True,HTTP 404,ca_csd,Crowsnest Pass,AB
+granicus,houston,True,HTTP 200,ca_csd,Houston,BC
+granicus,midland,True,HTTP 404,ca_csd,Midland,ON
+granicus,pasadena,True,HTTP 404,ca_csd,Pasadena,NL
+granicus,stpaul,True,HTTP 404,ca_csd,St. Paul,AB
+granicus,huron,True,HTTP 302,ca_cd,Huron,ON
+granicus,sudbury,True,HTTP 404,ca_cd,Sudbury,ON

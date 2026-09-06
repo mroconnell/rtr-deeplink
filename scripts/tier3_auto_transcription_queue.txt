@@ -623,3 +623,8 @@ https://godleytx.portal.civicclerk.com/event/6069/media
 https://inglesidetx.portal.civicclerk.com/event/591/media
 https://kermittx.portal.civicclerk.com/event/172/media
 https://rockporttx.portal.civicclerk.com/event/1101/media
+https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2264
+https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=602
+https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431
+https://eauclairecountywi.granicus.com/MediaPlayer.php?view_id=1&clip_id=221
+https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954

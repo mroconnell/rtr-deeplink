@@ -103,7 +103,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (7)
+Standing decisions — do NOT re-raise  (8)
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
@@ -111,10 +111,12 @@ Standing decisions — do NOT re-raise  (7)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
+  Don't widen the Granicus `view_id` search past 1-3 for the…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
-  [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
-  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
+  `[JUST-DO-IT]` Granicus RSS enumeration's "first item" clip is…  (2)
+    [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+    [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Production actions only Ryan should take  (5)
@@ -226,9 +228,10 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (11)
+Trust, safety & data quality  (12)
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
-  `[NEEDS-AUDIT]` California county jurisdiction names split across two…
+  `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
+  `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix…
   `[NEEDS-AUDIT]` YouTube-delegated ingests can land with…
   `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a…
   `[IMPROVEMENT-ROUND]` Low-trust queue rows have no repair workflow…
@@ -385,11 +388,54 @@ different signal entirely (`meeting_body`, real-agenda presence, page
 framing) — worth building only if the daily failure digest (WO-46) shows
 this class is actually common; as of 2026-08-31 it's one known case.
 
+### Don't widen the Granicus `view_id` search past 1-3 for the wildcard-sweep's unresolved tenants
+
+105 of the 350 tenants confirmed by the HTTP wildcard-sweep (2026-09-06,
+`scripts/adhoc_wildcard_sweep_pipeline.py`, PR #743) had no discoverable
+meeting URL — 87 Granicus tenants with "no valid view_id 1-3", 18
+Legistar tenants with no public-video event via the Web API and no
+companion Granicus domain. Tested widening the Granicus search to
+view_id 4-15 on a 20-tenant sample the same day: **0 additional hits**.
+Combined with a manual spot-check (Ryan, same day) confirming several of
+these genuinely don't host video via Granicus/Legistar at all, further
+`view_id` guessing on this cohort is a dead end, not an under-tried
+approach — `ViewPublisherRSS.php` always requires an explicit `view_id`,
+there's no id-less variant to fall back to. The full list of all 105
+(slug, platform, netloc, detail) is the durable record for this decision
+— see `scripts/wildcard_sweep_data/wildcard_sweep_no_url_found.csv`
+(PR #743). Recovering more of them would need a genuinely different
+signal per tenant (checking the government's own website for an
+alternate video host entirely) — real work, not automatable the way the
+sweep itself was, and not attempted here.
+
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
+
+### `[JUST-DO-IT]` Granicus RSS enumeration's "first item" clip is sometimes already deleted (stale link, not a real gap)
+
+- **Issue**: `scripts/adhoc_wildcard_sweep_pipeline.py`'s
+  `find_granicus_url()` (built 2026-09-06 for the 350-tenant wildcard
+  sweep, same trick as the earlier `adhoc_granicus_478_pipeline.py`)
+  takes only the first `<item>` from `ViewPublisherRSS.php?mode=video`.
+  Confirmed live: 14 of 350 tenants resolve-failed with a plain HTTP 404
+  on that exact clip URL (e.g. `fergusoncity`, `eastpointcity`,
+  `bunnellcity`, `princetonnj`, `johnsoncounty`, `tompkinscountyny`'s
+  Legistar-delegated clip, `ulstercountyny`, `spaldingcounty`), meaning
+  the RSS feed's cached first entry points at a clip the customer has
+  since deleted/rotated off their CDN — the feed itself is real and
+  live, just stale at the front.
+- **Impact**: ~4% yield loss on this enumeration method alone; each of
+  these 14 tenants is a real, live Granicus customer with no meeting
+  captured from this run.
+- **Next action**: on a 404 (or other resolve failure) for the first
+  RSS item, retry with the second/third `<item>` in the same feed
+  before giving up on that `view_id`, instead of moving straight to the
+  next `view_id`.
+- **History**: found live 2026-09-06 during the 350-tenant HTTP
+  wildcard-sweep ingest pass; not yet in `BACKLOG_DONE.md`.
 
 - **[JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk decodability guard `extract_chunk_audio()` has had since 2026-08-21 — confirmed 5+ real production failures across 5 distinct sources on 2 platforms.**
   - **Issue**: WO-54/58's whole-audio-cache path (`app/platforms/media_probe.py:944-982`, `slice_cached_audio()`) only checks ffmpeg's exit code and that the output file is non-empty. It never calls `_mean_volume_db()` — the same decodability check `extract_chunk_audio()`'s `_extract_chunk_once()` already applies (see that function's own docstring, `media_probe.py:1011-1031`) — so a corrupt/undecodable byte range inside the cached whole-file audio reaches `engine.transcribe_chunk()` raw as an unhandled PyAV `InvalidDataError` instead of failing as a normal retryable `(False, reason)`. Re-confirmed by direct read of current `slice_cached_audio()` on 2026-09-05: still no guard.
@@ -2857,40 +2903,49 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   whichever pages need real accuracy — it corrects them individually.
 - **History**: WO-21 (2026-08-21) build in `BACKLOG_DONE.md`.
 
-### `[NEEDS-AUDIT]` California county jurisdiction names split across two conventions, fragmenting hub pages
+### `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't California-specific, and the Granicus RSS-title source is now confirmed
 
-- **Issue**: some California county pages store `jurisdiction` as
-  `"County of {Name}, CA"` (a raw, unnormalized prefix form) instead of
-  this project's own majority convention, `"{Name} County, CA"`.
+- **Issue**: some county pages store `jurisdiction` as `"County of
+  {Name}, {state}"` (a raw, unnormalized prefix form) instead of this
+  project's own majority convention, `"{Name} County, {state}"`.
   Confirmed live 2026-09-02 via `GET /internal/export/pages` (all 4,923
-  archived pages): 44 counties use the suffix form correctly, but 13 —
-  Fresno, Humboldt, Imperial, Marin, Monterey, Napa, Placer, Plumas, San
-  Bernardino, San Diego, San Mateo, Santa Clara, Solano — have at least
-  one page stored as `"County of {Name}, CA"`. `jurisdiction_enrich.py`'s
-  `_split_entity_prefix()` docstring already documents a "County of X"
-  → "X County" normalization step (built for a different case, stripping
-  it out of a body-name split like "Housing Authority of the County of
-  Santa Clara"), so the raw prefix form surviving into `jurisdiction`
-  itself suggests some resolve path (a Granicus RSS channel title taken
-  verbatim is the leading suspect, not yet confirmed) bypasses that
-  normalization rather than the normalization having a bug.
-- **Impact**: real, measured fragmentation for at least 3 counties — the
-  same government's pages split across two different `/j/{slug}` hubs,
-  invisible to each other: Santa Clara (7 pages under the correct suffix
-  form, 1 stranded under the prefix form), San Diego (2 vs 1), Solano (1
-  vs 1). Marin (3 pages) and San Mateo (3 pages) aren't fragmented yet
-  only because no suffix-form page exists for them yet — the next
-  Marin/San Mateo County resolve could create the same split. Originally
-  surfaced as a user report ("Napa County was already live in prod but
-  called 'County of Napa'") — Napa itself has only the prefix form so
-  isn't fragmented, but is the same underlying bug.
-- **Next action**: find the actual resolve path producing the raw
-  `"County of {Name}"` string (check Granicus's RSS-channel-title
-  jurisdiction source first, per `_split_entity_prefix()`'s own docstring
-  reasoning) and route it through the existing normalization instead of
-  bypassing it; separately, a one-time backfill/merge is needed for the
-  3 already-fragmented counties (re-resolve or hand-correct the stranded
-  pages' `jurisdiction`, then re-check `/j/{slug}` hub grouping).
+  archived pages): 44 CA counties use the suffix form correctly, but 13
+  — Fresno, Humboldt, Imperial, Marin, Monterey, Napa, Placer, Plumas,
+  San Bernardino, San Diego, San Mateo, Santa Clara, Solano — have at
+  least one page stored as `"County of {Name}, CA"`.
+  **Update 2026-09-06**: the 350-tenant HTTP wildcard-sweep pipeline
+  (`scripts/adhoc_wildcard_sweep_pipeline.py`) confirms this is neither
+  California-specific nor unconfirmed — two brand-new non-CA tenants
+  resolved straight to the prefix form (Sedgwick County, KS via
+  `sedgwick.granicus.com`'s own channel title "County of Sedgwick", and
+  Cleveland County, NC via `clevelandcounty.granicus.com`'s "County of
+  Cleveland, North Carolina"), plus Imperial County CA re-confirmed
+  independently via `imperial.granicus.com`. In every case the value
+  traces directly to the tenant's Granicus RSS `<title>` (`granicus.py`'s
+  `channel_jurisdiction` path, ~line 654) being stored verbatim — exactly
+  the suspected-but-unconfirmed source `_split_entity_prefix()`'s
+  docstring pointed at.
+- **Impact**: real, measured fragmentation for at least 3 CA counties —
+  the same government's pages split across two different `/j/{slug}`
+  hubs, invisible to each other: Santa Clara (7 pages under the correct
+  suffix form, 1 stranded under the prefix form), San Diego (2 vs 1),
+  Solano (1 vs 1). Marin (3 pages) and San Mateo (3 pages) aren't
+  fragmented yet only because no suffix-form page exists for them yet —
+  the next Marin/San Mateo County resolve could create the same split.
+  Originally surfaced as a user report ("Napa County was already live in
+  prod but called 'County of Napa'") — Napa itself has only the prefix
+  form so isn't fragmented, but is the same underlying bug. Sedgwick
+  County, KS and Cleveland County, NC (both newly ingested 2026-09-06)
+  start life already in the prefix form with no suffix-form counterpart
+  yet.
+- **Next action**: route Granicus's `channel_jurisdiction` value (the RSS
+  `<title>` text) through the existing `_split_entity_prefix()`
+  normalization before it's stored, instead of bypassing it (confirmed
+  bypass, not just suspected, per the update above); separately, a
+  one-time backfill/merge is needed for the 3 already-fragmented CA
+  counties (re-resolve or hand-correct the stranded pages' `jurisdiction`,
+  then re-check `/j/{slug}` hub grouping) plus Sedgwick County, KS and
+  Cleveland County, NC.
 - **Constraint**: don't hand-fix only Napa/Santa Clara/San Diego/Solano
   and call it done — all 13 listed above carry the same latent risk of
   a future split. `~/Documents/rtr-upcoming/scripts/check_county_naming.py`
@@ -2902,6 +2957,39 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **History**: found live 2026-09-02 during a Bay Area corpus-expansion
   pass (`~/Documents/rtr-business/research/ENUMERATION_METHODS.md`);
   not yet in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix survives into the stored jurisdiction verbatim
+
+- **Issue**: Granicus's `channel_jurisdiction` path (`granicus.py`
+  ~line 654, RSS `<title>` taken verbatim once it passes the existing
+  domain-shape guard) has no check for descriptive/technical text a
+  customer appended to their own channel name. Two confirmed real
+  cases from the 2026-09-06 350-tenant wildcard-sweep pipeline
+  (`scripts/adhoc_wildcard_sweep_pipeline.py`): `enterprise.granicus.com`
+  stored jurisdiction `"Enterprise - H264 Only"` (a video-codec note the
+  customer appended to their own channel title, not part of the
+  jurisdiction name), and `yorkcounty.granicus.com` stored
+  `"York County Video Services"` (the customer's AV department name,
+  not the county itself).
+- **Impact**: both pages are live in production with a jurisdiction
+  string a reader would find confusing or wrong
+  (`/m/enterprise-2012-09-06-...`, `/m/york-county-video-services-2017-08-09-...`)
+  and neither hub-groups correctly with any future same-government page
+  that resolves the name cleanly.
+- **Next action**: extend `granicus.py`'s existing colon-split jurisdiction
+  guard (the one that already declines a domain-shaped title, see the
+  2026-08-29 comment right above it) with a small denylist/pattern for
+  trailing technical or department-name suffixes (` - H264 Only`,
+  ` Video Services`, similar codec/AV-department noise) — decline rather
+  than guess, consistent with the rest of that module's posture. Two
+  confirmed real examples isn't enough to know the full shape of this
+  yet; treat any fix as provisional until a few more surface.
+- **Constraint**: don't build a broad free-text jurisdiction validator
+  for this — two examples. A narrow, decline-on-match guard for the
+  specific noise patterns seen so far is enough; widen it only when a
+  third real example doesn't fit the pattern.
+- **History**: found live 2026-09-06 during the 350-tenant HTTP
+  wildcard-sweep ingest pass; not yet in `BACKLOG_DONE.md`.
 
 ### `[NEEDS-AUDIT]` YouTube-delegated ingests can land with `jurisdiction=None` when the channel doesn't self-identify
 
