@@ -2562,7 +2562,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     referers, all rejected).
   - **Impact**: VOD2 customers get full metadata + agenda link but an
     honest "no video found"; only the direct-MP4 `DownloadURL` case (2 of
-    6) plays.
+    6) plays. Confirmed at much larger scale 2026-09-06 (CDX
+    enumeration, 48 fresh tenants never seen before): 39/48 (81%) came
+    back empty for exactly this reason — this is the dominant yield
+    limiter for ChampDS specifically, well above every other platform
+    scanned the same day (Granicus 35% dead-tenant rate, IQM2/eScribe's
+    discovery-step misses).
   - **Next action**: build a real streaming reverse-proxy (fetch
     server-side with the right `Referer`, rewrite segment URLs) — the fix
     is understood and scoped, not attempted.
