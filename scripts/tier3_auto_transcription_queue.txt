@@ -628,3 +628,4 @@ https://californiacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=602
 https://valdostacity.granicus.com/MediaPlayer.php?view_id=1&clip_id=431
 https://eauclairecountywi.granicus.com/MediaPlayer.php?view_id=1&clip_id=221
 https://imperial.granicus.com/MediaPlayer.php?view_id=2&clip_id=2954
+https://pueblocounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=9
