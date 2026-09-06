@@ -127,7 +127,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (74)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
@@ -135,6 +135,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (73)
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
@@ -924,6 +925,92 @@ structural change than the two entries below.
     Phase 2d section) and, per this entry's own "add to corpus" note,
     specifically checked page 4097 against it — see Next action above for
     the (negative, expected) result.
+
+- **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
+  pages (not just the 1 Gloucester case above) -- a shared multi-
+  government tenant's "pick something recent" candidate logic has no
+  signal that distinguishes a school board from the city/county/town
+  body sharing the same channel.**
+  - **Issue**: found during a manual title-check audit of the school-
+    district enumeration effort (`rtr-business/research/
+    ENUMERATION_METHODS.md` §63), not assumed -- every one of these
+    resolved through a real per-tenant listing/candidate-pick step, to a
+    real, current meeting, on the correct platform, for the **wrong**
+    government:
+    - Canton City, OH (Cablecast) -> "The Poetry Room with Corey Lipkins
+      Jr, Episode 7" -- a talk show, not a meeting at all.
+      `/m/2026-08-03-the-poetry-room-with-corey-lipkins-jr-episode-7-the-return`
+    - Champaign CUSD 4, IL (Cablecast) -> a real City Plan Commission
+      meeting. `/m/2026-09-02-plan-commission-9-2-26`
+    - Gloucester County Public Schools, VA (eScribe) -> a real County
+      Planning Commission meeting (separate live page from the WO-106
+      entry above, same underlying name-bleed root cause -- also mistagged
+      jurisdiction as Gloucester, **MA**).
+      `/m/gloucester-ma-2026-09-03-planning-commission`
+    - Brookline, MA (CivicClerk) -> the **Town's** "Indigenous Peoples
+      Celebration Committee," not a school committee.
+      `/m/brookline-town-ma-2026-09-04-indigenous-peoples-celebration-committee-meeting`
+    - Park County, MT (Granicus) -> the **County's** "Solid Waste
+      Board." `/m/park-county-2026-08-20-solid-waste-board-8-20-2026`
+    - Brooklyn School District, CT (CivicClerk) -> the **Town's**
+      "Planning & Zoning Commission."
+      `/m/brooklyn-town-ct-2026-09-02-planning-zoning-commission-meeting`
+  - **Not yet checked**: title-checking only happened for the ~26 pages
+    this specific school-district effort touched, not this Archive's
+    full corpus of shared-tenant ingests generally -- this pattern is
+    very likely present elsewhere (any Cablecast/CivicClerk/eScribe
+    tenant shared across multiple governments), just not audited yet.
+  - **Update 2026-09-06, corrected**: 2 of 3 candidates originally
+    believed "caught before going live" (removed from
+    `scripts/tier3_auto_transcription_queue.txt` on the same audit pass)
+    really were caught in time -- Niagara Falls City SD, NY (Cablecast,
+    would-have resolved to "Mayor Restaino Weekly Update," a general PR
+    video) and St. Lucie, FL (Cablecast, a bare live-channel URL with no
+    title/date/jurisdiction) never made it into any live page, confirmed
+    by a full scan of all 5,399 pages in `/internal/export/pages` for
+    their exact source URLs -- zero matches. **The third one was wrong:
+    Prince George's County Public Schools, MD's `pgcps.cablecast.tv`
+    tenant was already live, twice, before this session's own (never
+    pushed/committed) queue-file edit could matter at all** --
+    `/m/2026-03-03-student-built-tinyhome` and a duplicate
+    `/m/2026-03-03-student-built-tinyhome-7c70cf` (same show,
+    `?site=1` query-string difference on the source URL creating a
+    second row -- a real, separate URL-normalization gap, not
+    investigated further here), both "Student Built TinyHome," not a
+    meeting. Neither came from anything in this session's own pipeline
+    runs; almost certainly a separate, concurrent effort (the wildcard-
+    sweep work, WO-115/116/117) independently swept the same
+    `pgcps.cablecast.tv` tenant and hit the identical "pick something
+    recent off a shared channel" failure mode. **A third pgcps page was
+    found the same way, never flagged by this session's own pipeline at
+    all**: `/m/2024-09-06-newsbreak-school-house-justice`, "Newsbreak:
+    School House Justice" -- also clearly not a board meeting. All 3
+    pgcps.cablecast.tv pages need the same takedown as the 6 above,
+    total 9, not 6.
+  - **Likely related, not yet confirmed as the same bug**: `jurisdiction`
+    resolved to `None` (not wrong, just entirely missing) for 3 more of
+    the same effort's pages -- Andover, MA (CivicPlus/castus.tv), Duval,
+    FL (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain
+    strongly suggests "Duval County School Board," a dedicated tenant,
+    so likely correct content just missing the tag), and East Brunswick
+    Township, NJ (NovusAgenda, where title/date also both came back
+    `None` -- possibly not a real per-meeting page at all, unconfirmed).
+  - **Next action**: not attempted here, per this project's
+    established "flag it, don't touch code" pattern for jurisdiction/
+    government-identity bugs -- these need the same kind of
+    per-candidate discriminator (title/body-name keyword match against
+    the expected government type) that `GOVERNMENT_IDENTITY_ARCHITECTURE
+    .md` §4/§5 already discusses for the single-tenant case, generalized
+    to reject a candidate outright rather than just mis-tag its
+    jurisdiction. None of the 9 live pages above have been unpublished
+    yet -- the first takedown attempt (the original 6) hit a real,
+    separate FK-violation 500 in `delete_meeting_pages_by_slug()`,
+    root-caused and fixed same-day (see that function's own crud.py
+    comment and PR #751), but the fix needs a manual deploy
+    (`rtr-deeplink-archive` has `autoDeploy: off`) before the delete can
+    be retried -- not done as of this writing. The 3 pgcps.cablecast.tv
+    pages were found afterward and should go in the same batch once the
+    deploy lands.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
