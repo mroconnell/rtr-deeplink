@@ -1,15 +1,3 @@
-https://santafe.primegov.com/Portal/Meeting?meetingTemplateId=17022&mc_cid=4797ee33f1&mc_eid=01b9d70422
-https://addingtonhighlands.civicweb.net/Portal/MeetingInformation.aspx?Id=1641&Org=Cal
-https://burienwa.civicweb.net/Portal/MeetingInformation.aspx?Id=4502&ref=thehighlinejournal.com
-http://centralsaanich.civicweb.net/Portal/MeetingInformation.aspx?Id=1058&outputType=1
-https://ciindependenceor.civicweb.net/Portal/MeetingInformation.aspx?Id=713
-https://cilovelandco.civicweb.net/Portal/MeetingInformation.aspx?Id=1461&outputType=1
-https://citymedfordwi.civicweb.net/Portal/MeetingInformation.aspx?Id=1286&outputType=1
-https://cityofholland.civicweb.net/Portal/MeetingInformation.aspx?Id=3944&Org=Cal
-https://cityofkodiak.civicweb.net/Portal/MeetingInformation.aspx?Id=11798&Org=Cal
-https://cityofpendletonor.civicweb.net/Portal/MeetingInformation.aspx?Id=8281&Org=Cal
-https://cityofvanalstyne.civicweb.net/Portal/MeetingInformation.aspx?Id=4417&Org=Cal
-https://collingwood.civicweb.net/Portal/MeetingInformation.aspx?Id=779&fbclid=IwAR0lvvzYLYmy7MQ4CX49fb_h17lvGXhpYN67Y5wuJLoS-X4bM0WQAsQ_LT8
 https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=5724&outputType=Agenda
 https://douglascountyks.civicweb.net/Portal/MeetingInformation.aspx?Id=1468&Org=Cal
 https://englewoodgov.civicweb.net/Portal/MeetingInformation.aspx?Id=20030&Org=Cal
