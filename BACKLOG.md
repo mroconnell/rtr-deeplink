@@ -3039,7 +3039,15 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   the channel-level metadata is the more promising signal, not yet
   checked.
 - **History**: found live 2026-09-02 during the same corpus-expansion
-  pass as the entry above; not yet in `BACKLOG_DONE.md`.
+  pass as the entry above; not yet in `BACKLOG_DONE.md`. Second confirmed
+  instance, 2026-09-06: all 3 sampled Ogden, UT City Council YouTube
+  videos (found via web search while manually chasing a wildcard-sweep
+  gap, `ogdencity.granicus.com`'s own guessed slug was dead) resolved
+  with real transcripts (0, 2,798, 8,304 segments) but `jurisdiction=None`
+  every time — correctly declined ingestion this round rather than
+  patched around, per the standing rule of only ingesting a YouTube
+  result when it carries both real meeting data and a resolved
+  jurisdiction.
 
 ### `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a full resolve from a partial push
 
