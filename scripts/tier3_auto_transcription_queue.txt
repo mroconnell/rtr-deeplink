@@ -1,15 +1,3 @@
-https://coshawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=5724&outputType=Agenda
-https://douglascountyks.civicweb.net/Portal/MeetingInformation.aspx?Id=1468&Org=Cal
-https://englewoodgov.civicweb.net/Portal/MeetingInformation.aspx?Id=20030&Org=Cal
-https://fortdodgeiowa.civicweb.net/Portal/MeetingInformation.aspx?Id=1190&Org=Cal
-http://gibsons.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=1413&utm_source=coast%20reporter&utm_campaign=coast%20reporter%3A%20outbound&utm_medium=referral
-http://haliburton.civicweb.net/Portal/MeetingInformation.aspx?Id=3641&outputType=1
-https://hemetca.civicweb.net/Portal/MeetingInformation.aspx?Id=6687&Org=Cal
-https://hinton.civicweb.net/Portal/MeetingInformation.aspx?Id=3335&Org=Cal
-http://ignace.civicweb.net/Portal/MeetingInformation.aspx?Id=160&outputType=1
-https://issaquah.civicweb.net/portal/meetinginformation.aspx?Id=21578&content=true
-https://johnsoncitytn.civicweb.net/Portal/MeetingInformation.aspx?Id=11358&ref=tricitiesmutualaid.org
-https://kamloops.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=1298&fbclid=IwAR2qvlK6Zx65Yg-uHSNjGb8JExPVbwXI5MbC865Ai4xugErqNt5AShmY-sI
 https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4477&Org=Cal
 https://lakeway-tx.civicweb.net/Portal/MeetingInformation.aspx?Id=2299&Org=Cal
 https://lennoxandaddington.civicweb.net/Portal/MeetingInformation.aspx?Id=895&Org=Cal
