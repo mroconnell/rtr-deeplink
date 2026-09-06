@@ -58,20 +58,48 @@ now harmless (the guard declines before trusting them) -- rather than
 edited, to keep this fix scoped to the resolver logic the report asked
 for; cleaning that data up is tracked separately.
 
-All 8 confirmed cases now correctly decline (`tier=unresolved`) instead
-of confidently resolving to the wrong country -- verified directly via
-`resolve_government()`, and regression-tested (no change) against the
-pre-existing Riverside CA / Abbotsford BC-vs-WI cases this same rung
-exists for. New parametrized test,
-`test_a_tenant_hinted_state_does_not_settle_the_country`
-(`tests/test_gov_registry.py`), covers all 8. Full test suite (2,755
-tests) passes with no regressions.
+All 8 confirmed cases correctly declined (`tier=unresolved`) instead of
+confidently resolving to the wrong country as soon as the guard shipped
+-- verified directly via `resolve_government()`, and regression-tested
+(no change) against the pre-existing Riverside CA / Abbotsford
+BC-vs-WI cases this same rung exists for.
 
-**Residual work, split back out to `BACKLOG.md`**: the 26
-already-published wrong pages need a manual fix/backfill (this change
-only stops it from happening again, doesn't correct what's already
-live), and `tenant_hints.csv`'s 8 wrong rows should eventually be
-corrected or removed for data hygiene even though they're now harmless.
+**Backfill, same day**: 29 already-published pages (not 26 -- the real
+count once actual page ids were pulled via `GET /internal/export/pages`
+filtered on each host) corrected via `POST /internal/jurisdiction/
+override` against the real `ca:csd`/`ca:cd` government id for each
+tenant (Erin 5 pages, Pickering 4, Markham 4, Clarington 3, Cornwall 4,
+Northumberland 3, Strathcona 3, Brockton 3) -- Cornwall and
+Northumberland's real province was confirmed by live-fetching each
+tenant's page text for a real, place-specific detail ("Cornwall
+Regional Airport Commission" for Cornwall, ON vs. the smaller Cornwall,
+PE; "Cobourg" -- Northumberland County's real seat -- for Northumberland,
+ON vs. NB). Then added 8 new `authoritative` `tenant_overrides.csv`
+pins (one per host, pointing at the same confirmed gov_id) so future
+ingests of these exact tenants resolve correctly too, not just decline
+safely -- closing the loop the override endpoint's own docstring
+describes ("a row stamp cannot survive re-ingest; a rule can"). One
+mapping error caught before it shipped: Strathcona County, AB's row id
+(`4811052`) is a `ca_csd` row despite reading like a county name (a
+"specialized municipality" type word, not a census division) -- the
+override endpoint's live validation rejected `ca:cd:4811052` outright,
+which is what caught it.
+
+Test coverage split three ways to match: `test_a_bare_name_with_no_pin_
+declines_rather_than_guessing_the_country` (+ the Strathcona-specific
+variant) exercise the guard function directly, independent of any pin,
+so a future host with the same collision and no pin yet is still
+provably protected; `test_a_tenant_hinted_state_no_longer_settles_the_
+country` asserts the full corrected end-to-end resolution (`TIER_PINNED`,
+the real Canadian gov_id and name) for all 8 now-pinned hosts. Full test
+suite (2,763 tests) passes with no regressions.
+
+**Residual work, split back out to `BACKLOG.md`**: `tenant_hints.csv`'s
+8 wrong rows are now harmless (both the pins and the resolver guard
+protect against them) but still objectively wrong data, and this
+investigation only checked `.escribemeetings.com` hosts against the
+Canadian gazetteer -- the same sweep hasn't been run against
+`tenant_hints.csv`'s other ~1,700 rows across other platforms.
 
 ## Wildcard-sweep retry pass: multi-candidate fallback recovers 18 of 41 previously-failed tenants [Done 2026-09-06]
 
