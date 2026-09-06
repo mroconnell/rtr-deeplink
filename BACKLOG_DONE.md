@@ -1,5 +1,60 @@
 # Backlog — done
 
+## Wildcard-sweep retry pass: multi-candidate fallback recovers 18 of 41 previously-failed tenants [Done 2026-09-06]
+
+Follow-up to PR #743's 350-tenant wildcard-sweep pipeline. That run left
+three failure buckets: 105 `no-url-found` (no candidate meeting existed
+at all), 14 `resolve-failed` (the one candidate tried 404'd/410'd), and
+27 `skipped-empty` (the one candidate resolved but had zero content).
+The last two aren't "no candidate exists" — they're "the one candidate
+tried was bad" — so `scripts/adhoc_wildcard_sweep_retry.py` refetches the
+same Granicus RSS feed / Legistar public-video-event list and tries the
+*next* candidate instead of giving up, up to 6 per tenant.
+
+**Result: 18 of 41 retried tenants (44%) recovered a real page** — 6 of
+14 `resolve-failed` (Granicus: `bunnellcity`, `charlescountymd`,
+`lumpkincounty`, `daviecountync`, `spaldingcounty`, `pueblocounty`) and
+12 of 27 `skipped-empty` (all Legistar: `wauwatosacitywi`,
+`tehamacounty`, `baldwincountyal`, `unioncountync`, `douglascountynv`,
+`sanmateocounty`, `clevelandcountyok`, `dekalbcountyga`,
+`seminolecountyfl`, `hampton`, `cityofnorthport`, plus `stpaul` and
+`alameda`), 1 queued as tier3-video-only (`pueblocounty`). Confirmed a
+Granicus feed can have well over a hundred stale items in a row before a
+live one (`princetonnj`, `charlescountymd` needed candidate #4 to
+recover) — a fixed retry cap of 6 leaves real yield on the table for a
+few tenants (`princetonnj`, several `exhausted-candidates` Legistar
+tenants tried all 6 available and found nothing), but going deeper than
+6 wasn't tested against a real cost/yield tradeoff and isn't assumed
+worth it without that measurement.
+
+Merged into the master report (`scripts/wildcard_sweep_data/
+wildcard_sweep_report.csv`), which now reads 217 ingested (36 tier1, 181
+tier3-agenda), 6 queued, 105 no-url-found (unchanged — see below), 14
+skipped-empty and 8 resolve-failed remaining as genuine exhausted cases.
+
+**Two further ideas tested against the 105 `no-url-found` cohort and
+confirmed dead ends, same day:**
+1. **Guessing the "other" Legistar slug variant** (stripping/adding
+   `cityof`/`city`/`county`/state suffixes, 21 variants tried across 10
+   tenants): 0/21 — none are valid Legistar API client ids under any
+   mechanically-derived variant.
+2. **Resolving the tenant's own `Calendar.aspx` page directly** (bypassing
+   the Web API entirely, letting `LegistarAssetFinder`'s existing page
+   parser look for a real video link) against all 28 dead Legistar
+   tenants: 0/28 found any usable content. This did surface one genuinely
+   new, useful fact: **two different guessed slugs — `erin` and
+   `raymond` — both resolve to identical content ("Wyandotte County, KS")**,
+   meaning at least some of these HTTP-200 "hits" are unclaimed Legistar
+   subdomains serving a shared generic/demo landing page, not real
+   per-government tenants — a false-positive class in the original
+   sweep's HTTP-signature check worth knowing about if that method is
+   reused for a future sweep. `BACKLOG.md`'s standing decision entry
+   for this cohort carries the durable summary of all five tricks tried
+   (the three from PR #743's own follow-up plus these two) and why none
+   apply here.
+
+**History**: `scripts/adhoc_wildcard_sweep_retry.py`, PR (this one).
+
 ## Inbox-triage promotion pass: 8 findings promoted, 2 closed as already-fixed [Done 2026-09-05]
 
 Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s dated

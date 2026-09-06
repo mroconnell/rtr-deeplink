@@ -111,12 +111,11 @@ Standing decisions — do NOT re-raise  (8)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
-  Don't widen the Granicus `view_id` search past 1-3 for the…
+  Don't re-try view_id widening, `mode=vpodcast`, Legistar slug…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
-  `[JUST-DO-IT]` Granicus RSS enumeration's "first item" clip is…  (2)
-    [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
-    [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
+  [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Production actions only Ryan should take  (5)
@@ -388,54 +387,70 @@ different signal entirely (`meeting_body`, real-agenda presence, page
 framing) — worth building only if the daily failure digest (WO-46) shows
 this class is actually common; as of 2026-08-31 it's one known case.
 
-### Don't widen the Granicus `view_id` search past 1-3 for the wildcard-sweep's unresolved tenants
+### Don't re-try view_id widening, `mode=vpodcast`, Legistar slug guessing, direct calendar-page resolve, or a looser status filter on the wildcard-sweep's 105 unresolved tenants
 
 105 of the 350 tenants confirmed by the HTTP wildcard-sweep (2026-09-06,
 `scripts/adhoc_wildcard_sweep_pipeline.py`, PR #743) had no discoverable
-meeting URL — 87 Granicus tenants with "no valid view_id 1-3", 18
+meeting URL — 77 Granicus tenants with "no valid view_id 1-3", 28
 Legistar tenants with no public-video event via the Web API and no
-companion Granicus domain. Tested widening the Granicus search to
-view_id 4-15 on a 20-tenant sample the same day: **0 additional hits**.
+companion Granicus domain. Five separate follow-up tricks were tried
+against this exact cohort, same day, and all five came back empty:
+1. **Widening Granicus `view_id` to 4-15** (20-tenant sample): 0 additional hits.
+2. **Granicus's `mode=vpodcast` alternate feed** (all 77): 0 additional hits
+   — every dead tenant's feed genuinely has zero `<item>`s in either mode,
+   confirmed by reading the raw RSS (a real channel `<title>`, just no
+   items), not a parsing gap.
+3. **Loosening Legistar's `EventVideoStatus == "Public"` filter** (all 28):
+   moot — every one of the 28 fails at the Web API level itself (HTTP 500
+   "LegistarConnectionString..." or 400), meaning the wildcard-guessed
+   slug isn't a valid Legistar API client identifier at all. There's no
+   event data to filter more loosely.
+4. **Guessing the "other" slug variant against the Legistar API**
+   (mechanically stripping/adding `cityof`/`city`/`county`/state suffixes
+   — the exact inverse of how the wildcard sweep generated each guess —
+   21 variants tried across the 10 tenants where a variant existed to
+   try): 0/21 valid. The web subdomain and the API client id aren't
+   always the same string, and nothing tried here can recover the real
+   one without a different data source (e.g. a Legistar client-id
+   directory, which doesn't exist in this repo).
+5. **Resolving the tenant's bare `Calendar.aspx` page directly**, bypassing
+   the Web API and letting `LegistarAssetFinder`'s own page parser look
+   for a real video link (all 28): 0/28 found any usable content. This
+   did surface one new fact worth keeping: two different guessed slugs,
+   `erin` and `raymond`, both resolve to identical content ("Wyandotte
+   County, KS") — meaning some of these HTTP-200 "hits" are unclaimed
+   Legistar subdomains serving a shared generic/demo landing page, not
+   real per-government tenants. A real false-positive class in the
+   original sweep's HTTP-signature check, worth knowing if that method
+   is reused for a future sweep — it doesn't change anything for this
+   cohort's outcome (still zero content either way), just its diagnosis.
+
 Combined with a manual spot-check (Ryan, same day) confirming several of
-these genuinely don't host video via Granicus/Legistar at all, further
-`view_id` guessing on this cohort is a dead end, not an under-tried
-approach — `ViewPublisherRSS.php` always requires an explicit `view_id`,
-there's no id-less variant to fall back to. The full list of all 105
-(slug, platform, netloc, detail) is the durable record for this decision
-— see `scripts/wildcard_sweep_data/wildcard_sweep_no_url_found.csv`
+these genuinely don't host video via Granicus/Legistar at all, this
+cohort is a real dead end for automated enumeration, not an under-tried
+one. The full list of all 105 (slug, platform, netloc, detail) is the
+durable record — see `scripts/wildcard_sweep_data/wildcard_sweep_no_url_found.csv`
 (PR #743). Recovering more of them would need a genuinely different
 signal per tenant (checking the government's own website for an
-alternate video host entirely) — real work, not automatable the way the
-sweep itself was, and not attempted here.
+alternate video host entirely, or a separate Legistar-client-id
+directory) — real work, not automatable the way the sweep itself was,
+and not attempted here.
+
+**What did pay off, on a related but different cohort**: the sweep's
+other two failure buckets — 14 `resolve-failed` (a specific candidate
+404'd/410'd) and 27 `skipped-empty` (a specific candidate resolved but
+had zero content) — aren't "no candidate exists," they're "the one
+candidate tried was bad." `scripts/adhoc_wildcard_sweep_retry.py`
+(2026-09-06) retries with the next candidate in the same feed/event list
+instead of giving up on the first, and recovered a real share of both —
+see `BACKLOG_DONE.md` for the fixed `[JUST-DO-IT]` entry and final
+numbers.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
 so that work reads together.
-
-### `[JUST-DO-IT]` Granicus RSS enumeration's "first item" clip is sometimes already deleted (stale link, not a real gap)
-
-- **Issue**: `scripts/adhoc_wildcard_sweep_pipeline.py`'s
-  `find_granicus_url()` (built 2026-09-06 for the 350-tenant wildcard
-  sweep, same trick as the earlier `adhoc_granicus_478_pipeline.py`)
-  takes only the first `<item>` from `ViewPublisherRSS.php?mode=video`.
-  Confirmed live: 14 of 350 tenants resolve-failed with a plain HTTP 404
-  on that exact clip URL (e.g. `fergusoncity`, `eastpointcity`,
-  `bunnellcity`, `princetonnj`, `johnsoncounty`, `tompkinscountyny`'s
-  Legistar-delegated clip, `ulstercountyny`, `spaldingcounty`), meaning
-  the RSS feed's cached first entry points at a clip the customer has
-  since deleted/rotated off their CDN — the feed itself is real and
-  live, just stale at the front.
-- **Impact**: ~4% yield loss on this enumeration method alone; each of
-  these 14 tenants is a real, live Granicus customer with no meeting
-  captured from this run.
-- **Next action**: on a 404 (or other resolve failure) for the first
-  RSS item, retry with the second/third `<item>` in the same feed
-  before giving up on that `view_id`, instead of moving straight to the
-  next `view_id`.
-- **History**: found live 2026-09-06 during the 350-tenant HTTP
-  wildcard-sweep ingest pass; not yet in `BACKLOG_DONE.md`.
 
 - **[JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk decodability guard `extract_chunk_audio()` has had since 2026-08-21 — confirmed 5+ real production failures across 5 distinct sources on 2 platforms.**
   - **Issue**: WO-54/58's whole-audio-cache path (`app/platforms/media_probe.py:944-982`, `slice_cached_audio()`) only checks ffmpeg's exit code and that the output file is non-empty. It never calls `_mean_volume_db()` — the same decodability check `extract_chunk_audio()`'s `_extract_chunk_once()` already applies (see that function's own docstring, `media_probe.py:1011-1031`) — so a corrupt/undecodable byte range inside the cached whole-file audio reaches `engine.transcribe_chunk()` raw as an unhandled PyAV `InvalidDataError` instead of failing as a normal retryable `(False, reason)`. Re-confirmed by direct read of current `slice_cached_audio()` on 2026-09-05: still no guard.
