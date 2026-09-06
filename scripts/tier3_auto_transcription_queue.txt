@@ -1,15 +1,3 @@
-https://oromedonte.civicweb.net/Portal/MeetingInformation.aspx?Id=1467&outputType=1
-https://pasco.civicweb.net/Portal/MeetingInformation.aspx?Id=6412&Org=Cal
-https://peoriagov.civicweb.net/Portal/MeetingInformation.aspx?Id=17399&outputType=Agenda
-https://perthcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=320&Org=Cal
-http://ponoka.civicweb.net/Portal/MeetingInformation.aspx?Id=402&outputType=1
-http://porthope.civicweb.net/Portal/MeetingInformation.aspx?Id=802&outputType=1
-https://princeedwardcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=2365&fbclid=IwAR2vvjcoH6oeR66uBzvK69926vFK29O7AXAN0bZpuU3yjrl70Z7wiWlL2Yo
-https://revelstoke.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=2355&fbclid=IwAR2O3NwE29N-2VjIP2a8ji-dDS6l3ToDzPgprc6QhNDx_91odkSH4516Nrs
-https://sarnia.civicweb.net/Portal/MeetingInformation.aspx?Id=1433&outputType=1
-https://sbcag.civicweb.net/Portal/MeetingInformation.aspx?Id=3462&Org=Cal
-https://severn.civicweb.net/Portal/MeetingInformation.aspx?Id=1578&Org=Cal
-https://shawanowi.civicweb.net/Portal/MeetingInformation.aspx?Id=1286&outputType=1
 https://stlouisco.civicweb.net/Portal/MeetingInformation.aspx?Id=26776&outputType=1
 https://tay.civicweb.net/Portal/MeetingInformation.aspx?Id=365&Org=Cal
 https://taylor.civicweb.net/Portal/MeetingInformation.aspx?Id=1665&Org=Cal
