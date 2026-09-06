@@ -57,7 +57,6 @@ from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
     format_jurisdiction_display,
-    state_abbr_from_jurisdiction,
     state_slug_from_abbr,
 )
 from .utils.language import language_display_name
@@ -2291,7 +2290,11 @@ async def meeting_page(
         else False
     )
 
-    state_abbr = state_abbr_from_jurisdiction(page["jurisdiction"])
+    # crud.effective_state_abbr(), not state_abbr_from_jurisdiction() on
+    # the raw stored string -- a `manual_override`d page whose stored text
+    # predates always-writing the full display_name() must still get the
+    # right "More {State} meetings" link (WO-114).
+    state_abbr = crud.effective_state_abbr(page.get("gov_id"), page["jurisdiction"])
 
     # Python twin of crud._is_empty_page_condition() (no video, no agenda
     # items, no transcript version at all) -- the template noindexes such a
