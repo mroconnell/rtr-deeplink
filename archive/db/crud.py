@@ -9633,6 +9633,21 @@ async def delete_meeting_pages_by_slug(slugs: list[str], *, dry_run: bool) -> di
             for social_post in social_posts:
                 await session.delete(social_post)
 
+            # Explicit flush before deleting the page itself -- these
+            # child models have no ORM relationship() back to MeetingPage
+            # (that's why they're deleted by hand above at all), so
+            # SQLAlchemy's unit-of-work has no dependency graph telling it
+            # the parent delete must come after the children's. Without
+            # this, autoflush can (and did, confirmed live 2026-09-06 via
+            # a real Render traceback) emit `DELETE FROM meeting_pages`
+            # before the pending child deletes, hitting a real Postgres
+            # FK violation (`social_posts_meeting_page_id_fkey`) -- this
+            # was the "unexplained, reproducible 500" noted in
+            # archive/main.py's `_SLUG_REDIRECTS` Kitchener comment and in
+            # BACKLOG_DONE.md; it wasn't a data anomaly, it was missing
+            # ordering, and it hit every call that removed a page with any
+            # child row, not just that one.
+            await session.flush()
             await session.delete(page)
 
         if not dry_run:

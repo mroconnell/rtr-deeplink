@@ -2251,9 +2251,12 @@ _SLUG_REDIRECTS: dict[str, str] = {
     # duplicate never got one). This redirect alone solves the
     # reader/search-engine-facing problem regardless of whether the
     # duplicate row itself is ever deleted -- the check below runs before
-    # the row is looked up. Deleting the duplicate row hit an
-    # unexplained, reproducible 500 from /internal/admin/delete-pages;
-    # not worth blocking this fix on that. See BACKLOG.md/BACKLOG_DONE.md.
+    # the row is looked up. Deleting the duplicate row hit a 500 from
+    # /internal/admin/delete-pages, root-caused and fixed 2026-09-06 (a
+    # missing explicit flush before the parent delete -- see
+    # crud.delete_meeting_pages_by_slug()'s own comment); this duplicate
+    # row was never gone back and cleaned up since the redirect alone
+    # already solves the user-facing problem. See BACKLOG_DONE.md.
     "city-of-kitchener-on-2026-05-05-heritage-kitchener-committee": "kitchener-2026-05-05-heritage-kitchener-committee",
 }
 
