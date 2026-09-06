@@ -1097,7 +1097,13 @@ structural change than the two entries below.
   - **History**: found during tonight's Track A tier1/2 ingest batch
     (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
     track_a_tier12_ingest_RESULTS.csv`), 2026-09-01 — not yet in
-    `BACKLOG_DONE.md`, this is the first record of it.
+    `BACKLOG_DONE.md`, this is the first record of it. Second confirmed
+    instance, cross-platform this time: Tompkins County, NY's real
+    2025-03-18 Legislature meeting was ingested once via its Granicus URL
+    and once via its Legistar URL (2026-09-06, wildcard-sweep retry
+    pass), producing two separate pages for the identical meeting —
+    same root cause, dedup keys on source URL rather than resolved
+    identity.
 
 - **[NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   exists anywhere in the resolve pipeline — the same root cause behind
