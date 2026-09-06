@@ -103,7 +103,7 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (7)
+Standing decisions — do NOT re-raise  (8)
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
@@ -111,6 +111,7 @@ Standing decisions — do NOT re-raise  (7)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
+  Don't widen the Granicus `view_id` search past 1-3 for the…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   `[JUST-DO-IT]` Granicus RSS enumeration's "first item" clip is…  (2)
@@ -386,6 +387,26 @@ Berkeley County stays an accepted miss. Separating them for real needs a
 different signal entirely (`meeting_body`, real-agenda presence, page
 framing) — worth building only if the daily failure digest (WO-46) shows
 this class is actually common; as of 2026-08-31 it's one known case.
+
+### Don't widen the Granicus `view_id` search past 1-3 for the wildcard-sweep's unresolved tenants
+
+105 of the 350 tenants confirmed by the HTTP wildcard-sweep (2026-09-06,
+`scripts/adhoc_wildcard_sweep_pipeline.py`, PR #743) had no discoverable
+meeting URL — 87 Granicus tenants with "no valid view_id 1-3", 18
+Legistar tenants with no public-video event via the Web API and no
+companion Granicus domain. Tested widening the Granicus search to
+view_id 4-15 on a 20-tenant sample the same day: **0 additional hits**.
+Combined with a manual spot-check (Ryan, same day) confirming several of
+these genuinely don't host video via Granicus/Legistar at all, further
+`view_id` guessing on this cohort is a dead end, not an under-tried
+approach — `ViewPublisherRSS.php` always requires an explicit `view_id`,
+there's no id-less variant to fall back to. The full list of all 105
+(slug, platform, netloc, detail) is the durable record for this decision
+— see `scripts/wildcard_sweep_data/wildcard_sweep_no_url_found.csv`
+(PR #743). Recovering more of them would need a genuinely different
+signal per tenant (checking the government's own website for an
+alternate video host entirely) — real work, not automatable the way the
+sweep itself was, and not attempted here.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
