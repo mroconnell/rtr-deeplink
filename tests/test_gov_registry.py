@@ -1491,42 +1491,111 @@ def test_a_state_still_settles_the_country():
 
 
 @pytest.mark.parametrize(
-    "raw,host",
+    "name",
     [
-        ("Town of Erin", "pub-erin.escribemeetings.com"),  # Erin ON, hinted TN
-        ("Pickering", "pub-pickering.escribemeetings.com"),  # Pickering ON, hinted MO
-        ("Markham", "pub-markham.escribemeetings.com"),  # Markham ON, hinted IL
+        "Erin",
+        "Pickering",
+        "Markham",
+        "Clarington",
+        "Cornwall",
+        "Northumberland",
+        "Brockton",
+    ],
+)
+def test_a_bare_name_with_no_pin_declines_rather_than_guessing_the_country(name):
+    """The guard itself, independent of any pin: `_has_canadian_namesake()`
+    is what made `_national_lookup()`/the tenant-hint rungs decline these
+    exact 7 real names instead of confidently resolving to a same-named
+    US place/county (Erin TN, Pickering MO, Markham IL, Clarington OH,
+    Cornwall PA, Northumberland PA, Brockton MA -- Strathcona is checked
+    separately below since its real row lives in `ca_csd`, not `ca_cd`,
+    for a name that reads like a county). All 7 now have a real
+    `tenant_overrides.csv` pin (see the parametrized test below), which
+    short-circuits the ladder before this guard ever runs -- this test
+    covers the guard function directly so a future host with the same
+    collision and no pin yet still declines instead of guessing."""
+    assert resolver._has_canadian_namesake(name)
+
+
+def test_strathcona_is_a_csd_not_a_cd_despite_the_county_name():
+    assert resolver._has_canadian_namesake("Strathcona")
+
+
+@pytest.mark.parametrize(
+    "raw,host,expected_gov_id,expected_gov_name",
+    [
+        ("Town of Erin", "pub-erin.escribemeetings.com", "ca:csd:3523017", "Erin, ON"),
+        (
+            "Pickering",
+            "pub-pickering.escribemeetings.com",
+            "ca:csd:3518001",
+            "Pickering, ON",
+        ),
+        (
+            "Markham",
+            "pub-markham.escribemeetings.com",
+            "ca:csd:3519036",
+            "Markham, ON",
+        ),
         (
             "Clarington",
             "pub-clarington.escribemeetings.com",
-        ),  # Clarington ON, hinted OH
-        ("Cornwall", "pub-cornwall.escribemeetings.com"),  # Cornwall ON, hinted PA
+            "ca:csd:3518017",
+            "Clarington, ON",
+        ),
+        (
+            "Cornwall",
+            "pub-cornwall.escribemeetings.com",
+            "ca:csd:3501012",
+            "Cornwall, ON",
+        ),
         (
             "Northumberland County",
             "pub-northumberland.escribemeetings.com",
-        ),  # Northumberland County ON, hinted PA
+            "ca:cd:3514",
+            "Northumberland, ON",
+        ),
         (
             "Strathcona County",
             "pub-strathcona.escribemeetings.com",
-        ),  # Strathcona County AB, hinted MN
-        ("Brockton", "pub-brockton.escribemeetings.com"),  # Brockton ON, hinted MA
+            "ca:csd:4811052",
+            "Strathcona County, AB",
+        ),
+        (
+            "Brockton",
+            "pub-brockton.escribemeetings.com",
+            "ca:csd:3541032",
+            "Brockton, ON",
+        ),
     ],
 )
-def test_a_tenant_hinted_state_does_not_settle_the_country(raw, host):
+def test_a_tenant_hinted_state_no_longer_settles_the_country(
+    raw, host, expected_gov_id, expected_gov_name
+):
     """A tenant-derived state is a GUESS the page's own text never made --
     unlike `test_a_state_still_settles_the_country` above -- and
     `tenant_hints.csv`/`tenant_overrides.csv` rows imported wholesale
     from rtr-discovery's own ledger named the wrong COUNTRY entirely for
     all 8 of these real, live, published tenants (2026-09-06). Before the
-    fix, each resolved confidently to a same-named US place/county
-    because the state-constrained lookup this rung does never
-    cross-checked Canada. Every raw name and host here is real: each
-    tenant's `tenant_hints.csv` row (and, for the last three, an
+    fix (WO-118, PR #750), each resolved confidently to a same-named US
+    place/county because the state-constrained lookup this rung does
+    never cross-checked Canada. Every raw name and host here is real:
+    each tenant's `tenant_hints.csv` row (and, for the last three, an
     `auto_derived+inferred_unique_name` `tenant_overrides.csv` pin, since
-    removed) is exactly what produced the wrong live page."""
+    removed) is exactly what produced the wrong live page.
+
+    After the fix landed, the 26 already-published wrong pages were
+    backfilled via 8 new `authoritative` `tenant_overrides.csv` pins
+    (2026-09-06) -- so the end-to-end resolution for these specific hosts
+    is now the correct Canadian government, at `TIER_PINNED` (checked
+    before the guarded rung this fix lives in even runs). A host with
+    the same collision and no pin yet still declines rather than
+    guessing -- see the two tests above, which exercise the guard
+    directly."""
     match = resolve(raw, host)
-    assert match.tier == resolver.TIER_UNRESOLVED
-    assert match.state == ""
+    assert match.tier == resolver.TIER_PINNED
+    assert match.gov_id == expected_gov_id
+    assert match.gov_name == expected_gov_name
 
 
 def test_a_real_port_agency_still_classifies_as_a_district():
