@@ -36,6 +36,7 @@ from app.utils.gov_registry import (
     TIER_UNVERIFIED,
     page_hints_for,
     resolve_government,
+    state_suffix_from_text,
 )
 from app.utils.gov_registry import display_name as gov_display_name
 from app.utils.gov_registry import government_for_id as registry_government_for_id
@@ -637,7 +638,13 @@ def _display_jurisdiction(gov, finalized: Optional[str]) -> Optional[str]:
 
 
 async def _resolve_page_government(
-    session, raw_jurisdiction, source_url_normalized, platform=None, external_id=None
+    session,
+    raw_jurisdiction,
+    source_url_normalized,
+    platform=None,
+    external_id=None,
+    meeting_location=None,
+    title=None,
 ):
     """`resolve_government()` for one page, with the one input it cannot
     see for itself.
@@ -656,6 +663,39 @@ async def _resolve_page_government(
     argument is never passed by anything" entry). Both are already real
     `MeetingPage` columns, so `page_hints_for()` builds the dict with no
     schema change and no extra query.
+
+    `meeting_location` -- a first-time tenant (no dominant gov_id yet, the
+    common case for a brand-new tenant) previously had nothing to recover
+    a missing state from and landed on `unresolved`/`unverified` even when
+    the page handed us the answer directly: Legistar's "Meeting location"
+    field is often a real street address with a zip
+    (`ResolvedMeeting.meeting_location`'s own docstring -- confirmed live
+    on Santa Clara and Alameda). `resolve_government()` already has safe
+    zip-derived state recovery via its `signals` param
+    (`_signals_recover_state()`, which validates the recovered state
+    against the government's own name before accepting it -- the same
+    "impossible pairing" guard as `jurisdiction_enrich.resolve_state()`'s
+    ZIP fallback), but no production caller has ever passed `signals`.
+
+    Deliberately NOT `jurisdiction_enrich.find_zip_addresses()`: that
+    requires a comma before the state (`"Oaks, CA 91362"`, its own
+    PrimeGov-derived shape), but Legistar's real field has no comma
+    (confirmed live: "...3rd Floor, Alameda CA 94501") and silently
+    matched nothing. `meeting_location` is already validated as
+    address-shaped before this function ever sees it
+    (`legistar.py`'s `_looks_like_street_address()`), so a bare zip
+    pull is enough -- `_signals_recover_state()`'s own name/state
+    validation is what actually guards against a wrong match, not the
+    shape of this extraction.
+
+    `title` -- same gap, different field: a Legistar meeting delegated to
+    its video platform gets a `title` like "City of Appleton, WI - Live
+    Video" while `raw_jurisdiction` for the very same meeting is just
+    "City of Appleton" (confirmed live) -- the state is on the page, the
+    adapter just doesn't carry it into the field this function reads.
+    `state_suffix_from_text()` pulls it back out, validated the same way
+    as the zip/postal signals above before `resolve_government()` will
+    ever accept it.
     """
     parsed = urlparse(source_url_normalized)
     host = (parsed.netloc or "").lower().split(":")[0]
@@ -664,8 +704,20 @@ async def _resolve_page_government(
     # and `_match_override()` looks for either inside this string.
     path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
     hints = page_hints_for(platform, external_id)
+    zip_codes = (
+        re.findall(r"\b\d{5}(?:-\d{4})?\b", meeting_location)
+        if meeting_location
+        else []
+    )
+    title_state = state_suffix_from_text(title)
+    signals = None
+    if zip_codes or title_state:
+        signals = {
+            "zip_codes": zip_codes,
+            "state_hints": [title_state] if title_state else [],
+        }
     match = resolve_government(
-        raw_jurisdiction, tenant_host=host, path=path, page_hints=hints
+        raw_jurisdiction, tenant_host=host, path=path, page_hints=hints, signals=signals
     )
     if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
         dominant = await _tenant_dominant_gov_id(session, host)
@@ -676,6 +728,7 @@ async def _resolve_page_government(
                 path=path,
                 page_hints=hints,
                 tenant_gov_id=dominant,
+                signals=signals,
             )
     return match
 
@@ -729,6 +782,8 @@ async def _find_or_create_page(
         source_url_normalized,
         platform=platform,
         external_id=external_id,
+        meeting_location=payload.get("meeting_location"),
+        title=payload.get("title"),
     )
 
     page = await _find_existing_page(
