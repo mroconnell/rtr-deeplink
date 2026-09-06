@@ -643,6 +643,36 @@ def _stateless_states(name: str, type_preference: str = "") -> set:
     return out
 
 
+def _has_canadian_namesake(name: str) -> bool:
+    """Whether `name` (bare, no state) also names at least one real
+    Canadian municipality or upper-tier division -- `lookup_all()`, not
+    `lookup()`, since even an internally-ambiguous Canadian candidate
+    (e.g. "Cornwall" is both Cornwall, PE and Cornwall, ON; "Northumberland"
+    is both NB and ON) is still real evidence the name is not US-only,
+    which is all this needs to know.
+
+    This is the same cross-border collision `_national_lookup()`'s own
+    stateless municipality branch already guards against (see its
+    2026-09-02 comment: Abbotsford BC filed as Abbotsford WI, Niagara
+    Falls ON as Niagara Falls NY, etc.) -- reused here for the two places
+    that guard didn't reach: the tenant-hint call site (which always
+    passes a non-empty, guessed state, so the existing `if not state`
+    check never fires) and the COUNTY branch (which returns before
+    reaching the existing check further down the function). Confirmed
+    live 2026-09-06: 8 real published pages -- Erin ON as Erin TN,
+    Pickering ON as Pickering MO, Markham ON as Markham IL, Clarington ON
+    as Clarington OH, Cornwall ON as Cornwall PA, Northumberland County
+    ON as Northumberland PA, Strathcona County AB as Strathcona MN,
+    Brockton ON as Brockton MA -- all from `tenant_hints.csv`/
+    `tenant_overrides.csv` rows imported wholesale from rtr-discovery's
+    own ledger, which made this exact mistake independently.
+    """
+    if tables.ca_csd().lookup_all(name, None):
+        return True
+    upper_tier_name = _CA_UPPER_TIER_AFFIX_RE.sub("", name).strip() or name
+    return bool(tables.ca_cd().lookup_all(upper_tier_name, None))
+
+
 def _national_lookup(
     name: str,
     state: str,
@@ -798,6 +828,13 @@ def _national_lookup(
         return None
 
     if gov_type == classify.COUNTY:
+        if not state and _has_canadian_namesake(name):
+            # Same cross-border collision the municipality branch below
+            # already guards (see `_has_canadian_namesake()`'s own
+            # docstring) -- this branch returns before ever reaching that
+            # guard, which is exactly how "Northumberland County" (PA)
+            # swallowed the real Northumberland County, ON.
+            return None
         hit = tables.us_counties().lookup(name, state)
         if hit:
             return (
@@ -840,7 +877,7 @@ def _national_lookup(
     # order the enricher already trusts -- place, then county (a name
     # that says "County" classified above, so this catches only a bare
     # county name), then county subdivision.
-    if not state and tables.ca_csd().lookup(name, None):
+    if not state and _has_canadian_namesake(name):
         # A name with no state is looked up NATIONALLY, and "nationally"
         # silently meant "in the United States" -- `country_for_state("")`
         # is "us", so the Canadian tables were never consulted and a name
@@ -850,6 +887,13 @@ def _national_lookup(
         # Abbotsford WI, Edmonton AB as Edmonton KY, Niagara Falls ON as
         # Niagara Falls NY, Langford and White Rock BC as two South
         # Dakota places, Port Hope ON as Port Hope MI.
+        #
+        # Widened 2026-09-06 from `tables.ca_csd().lookup()` (exactly-one
+        # within Canada) to `_has_canadian_namesake()` (lookup_all(),
+        # any Canadian candidate at all): a name ambiguous even WITHIN
+        # Canada -- "Cornwall" is both Cornwall, PE and Cornwall, ON --
+        # is still real evidence the US match isn't the only government
+        # this name could mean, which is all this guard needs to know.
         #
         # This is the exactly-one rule applied honestly rather than
         # per-country. Declining costs an `unresolved` row on the pin
@@ -1667,10 +1711,30 @@ def _resolve_government_ladder(
     #
     #     The state-constrained lookup is tried first and the stateless
     #     one still runs if it misses, so a wrong hint can only ever cost
-    #     a decline, never a wrong answer.
+    #     a decline, never a wrong answer -- true only when the hint is
+    #     wrong about the STATE, and confirmed false 2026-09-06 when it's
+    #     wrong about the COUNTRY: a tenant-derived state is a guess (the
+    #     page's own text asserted nothing), and `tenant_hints.csv`/
+    #     `tenant_overrides.csv` rows imported wholesale from
+    #     rtr-discovery's own ledger named the wrong country entirely for
+    #     8 real published pages (Erin ON as Erin TN, Pickering ON as
+    #     Pickering MO, Markham ON as Markham IL, Clarington ON as
+    #     Clarington OH, Cornwall ON as Cornwall PA, Northumberland
+    #     County ON as Northumberland PA, Strathcona County AB as
+    #     Strathcona MN, Brockton ON as Brockton MA), because a wrong
+    #     country turns a genuinely cross-border-ambiguous name into a
+    #     confidently-wrong single-country match -- `_national_lookup()`
+    #     only ever consults one country's tables per call. See
+    #     `_has_canadian_namesake()`'s own docstring for the detection.
     state_evidence = ""
     if not state and host:
         tenant_state, state_evidence = _state_from_tenant(host)
+        if (
+            tenant_state
+            and tables.country_for_state(tenant_state) == "us"
+            and _has_canadian_namesake(name)
+        ):
+            tenant_state, state_evidence = "", ""
         if tenant_state:
             tenant_country = tables.country_for_state(tenant_state)
             hit = _national_lookup(
@@ -1756,6 +1820,17 @@ def _resolve_government_ladder(
     state_from_tenant = False
     if not state and host:
         tenant_state, state_evidence = _state_from_tenant(host)
+        if (
+            tenant_state
+            and tables.country_for_state(tenant_state) == "us"
+            and _has_canadian_namesake(name)
+        ):
+            # Same cross-border risk rung 3b guards against, applied here
+            # too: minting (or the squashed lookup just below) with a
+            # wrong-country tenant state would tag a new identity with
+            # the wrong country just as confidently as a table match
+            # would. See `_has_canadian_namesake()`'s own docstring.
+            tenant_state = ""
         if tenant_state:
             state = tenant_state
             country = tables.country_for_state(state)

@@ -227,7 +227,8 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (12)
+Trust, safety & data quality  (13)
+  `[NEEDS-AUDIT]` 26 live pages carry a wrong-country jurisdiction; the…
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
   `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
   `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix…
@@ -2910,6 +2911,43 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### `[NEEDS-AUDIT]` 26 live pages carry a wrong-country jurisdiction; the hint data behind them is still uncleaned
+
+- **Issue**: the root cause (a `tenant_hints.csv`/`tenant_overrides.csv`
+  state hint naming the wrong country, not just an imprecise state) is
+  fixed — see `BACKLOG_DONE.md`'s 2026-09-06 entry for the resolver.py
+  guard and test coverage. Two things that fix does NOT touch: (1) 26
+  already-published pages across 8 tenants are still live with the wrong
+  jurisdiction (Erin ON as Erin TN, Pickering ON as Pickering MO, Markham
+  ON as Markham IL, Clarington ON as Clarington OH, Cornwall ON as
+  Cornwall PA, Northumberland County ON as Northumberland PA, Strathcona
+  County AB as Strathcona MN, Brockton ON as Brockton MA) — confirmed via
+  each host's live `/j/{slug}` hub, e.g. `/j/erin-tn` (5 pages),
+  `/j/strathcona-mn` (3 pages); (2) `tenant_hints.csv` still carries all
+  8 wrong rows (now harmless — the new guard declines before trusting
+  them — but still objectively wrong data that could bite a different
+  code path someday).
+- **Impact**: 26 real meeting pages currently show the wrong government,
+  country and all, and won't appear on the correct `/j/{slug}`/
+  `/state/{slug}` hub for their real jurisdiction.
+- **Next action**: for each of the 8 governments, confirm (or mint) a
+  `governments.csv` entry with its real Canadian identity, then either
+  (a) `POST /internal/jurisdiction/override` with that `gov_id` against
+  the affected page ids (per-page, needs the ids first — pull them via
+  `GET /internal/export/pages` filtered on `source_url` containing each
+  host), or (b) delete the 26 pages via `/internal/admin/delete-pages`
+  and let a fresh resolve recreate them correctly now that the guard is
+  in place. Separately, correct or remove the 8 wrong rows in
+  `tenant_hints.csv` (and confirm no other host in that file has the same
+  shape — this pass only checked `.escribemeetings.com` hosts specifically,
+  not every host in the file).
+- **Constraint**: don't just delete the 26 pages without deciding (a) vs
+  (b) first — a plain delete+re-resolve is simpler but loses whatever
+  transcript/segment work already exists on those pages if the source
+  video is no longer reachable at the same URL.
+- **History**: found and root-caused 2026-09-06 while manually chasing a
+  wildcard-sweep coverage gap; fix in `BACKLOG_DONE.md`, same date.
 
 ### `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort` accurate
 

@@ -1,5 +1,78 @@
 # Backlog — done
 
+## A tenant-derived state hint could name the wrong COUNTRY, not just an imprecise state -- 8 real pages confirmed [Done 2026-09-06]
+
+Found live: an eScribe-hosted meeting for the Town of Erin, **Ontario**,
+Canada (`pub-erin.escribemeetings.com`, found while manually chasing a
+wildcard-sweep gap) got ingested as **Erin, TN** (a real but unrelated
+small Tennessee town) -- confirmed live at
+`/m/erin-tn-2025-12-11-regular-council-meeting`.
+
+**Root cause was NOT the eScribe adapter** (`app/platforms/escribe.py`)
+or `jurisdiction_enrich.py`'s `resolve_state()`/`lookup_city_state()` --
+both correctly extracted the bare name "Town of Erin" (no province, the
+page's own text has nothing else to go on) and correctly declined to
+guess a state for it (the merged US+Canada `places.csv` table finds the
+name ambiguous between Erin, ON and Erin, TN, so `lookup_city_state()`
+already returns `None`). **The real bug is in
+`app/utils/gov_registry/resolver.py`**, fed by bad data in
+`app/utils/jurisdiction_data/tenant_hints.csv` -- a file imported
+wholesale from the sibling `rtr-discovery` repo's own `ledger.db`, which
+made the identical US-only name-coincidence mistake independently.
+`_state_from_tenant()`'s third and lowest-trust rung (tenant_hints.csv,
+"machine-derived and last" per its own docstring) supplied `"TN"` for
+this host; that single non-empty state then made `_national_lookup()`
+do a **state-scoped** lookup (`us_places.csv` filtered to `TN`), which
+found "Erin city, TN" uniquely -- bypassing the *existing*
+cross-country-collision guard entirely, because that guard only fires
+`if not state`, and a wrong-but-non-empty state doesn't count as empty.
+
+**8 real, already-published pages confirmed with the identical shape**
+(found by cross-referencing every `.escribemeetings.com` host in
+`tenant_hints.csv` against this repo's own Canadian gazetteer tables,
+then verifying each live): Erin ON→TN, Pickering ON→MO, Markham ON→IL,
+Clarington ON→OH, Cornwall ON→PA, Northumberland County ON→PA,
+Strathcona County AB→MN, Brockton ON→MA (the last three also had a
+matching, equally-contaminated `strength=fallback` pin in
+`tenant_overrides.csv`, `source=auto_derived+inferred_unique_name` --
+same rtr-discovery contamination, one rung higher in the ladder, already
+flagged once before for a different tenant, King County, in
+`JURISDICTION_METADATA_PLAN.md`'s Phase 2b writeup). 26 already-published
+pages total across these 8 tenants.
+
+**Fix**: added `_has_canadian_namesake()` (checks `ca_csd`/`ca_cd` via
+`lookup_all()`, not `lookup()`, so even a name ambiguous *within* Canada
+-- "Cornwall" is both PE and ON -- still counts as real cross-border
+evidence) and applied it at the three places a wrong-country state could
+slip through uncaught: the tenant-hint lookup rung (3b), the tenant-hint
+mint rung (5a), and the COUNTY branch of `_national_lookup()` (which
+returns before the pre-existing municipality-only guard is ever reached
+-- exactly how Northumberland *County* got through). Also widened the
+pre-existing municipality guard from `lookup()` to the same
+`lookup_all()`-based helper, since it had the same Cornwall-shaped gap
+latently. Removed the 3 contaminated `tenant_overrides.csv` pins
+(brockton/northumberland/strathcona) since a pin bypasses
+`_national_lookup()` entirely and the code fix alone can't protect
+against it. `tenant_hints.csv`'s 8 wrong rows were left in place --
+now harmless (the guard declines before trusting them) -- rather than
+edited, to keep this fix scoped to the resolver logic the report asked
+for; cleaning that data up is tracked separately.
+
+All 8 confirmed cases now correctly decline (`tier=unresolved`) instead
+of confidently resolving to the wrong country -- verified directly via
+`resolve_government()`, and regression-tested (no change) against the
+pre-existing Riverside CA / Abbotsford BC-vs-WI cases this same rung
+exists for. New parametrized test,
+`test_a_tenant_hinted_state_does_not_settle_the_country`
+(`tests/test_gov_registry.py`), covers all 8. Full test suite (2,755
+tests) passes with no regressions.
+
+**Residual work, split back out to `BACKLOG.md`**: the 26
+already-published wrong pages need a manual fix/backfill (this change
+only stops it from happening again, doesn't correct what's already
+live), and `tenant_hints.csv`'s 8 wrong rows should eventually be
+corrected or removed for data hygiene even though they're now harmless.
+
 ## Wildcard-sweep retry pass: multi-candidate fallback recovers 18 of 41 previously-failed tenants [Done 2026-09-06]
 
 Follow-up to PR #743's 350-tenant wildcard-sweep pipeline. That run left
