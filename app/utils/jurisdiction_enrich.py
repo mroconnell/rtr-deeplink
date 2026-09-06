@@ -2338,6 +2338,122 @@ def _claimed_state_from_bleed_tail(repaired_name: str, tail: str) -> Optional[st
     return None
 
 
+# "<optional The/The Corporation of the> <Type> of " -- the same shape
+# `_STOPRULE_TRIGGER_RE` matches, except this one ALSO tolerates a bare
+# leading "The " (not just the ceremonial "The Corporation of the"),
+# needed specifically by `_raw_text_explained_by_subdomain_hint()` below:
+# "The City of Milwaukee" has to be recognized as "<leading junk><entity>
+# of <tail>" the same way "City of Richwood Texas" already is, so the
+# leading-junk slice it computes (everything through the matched "of ")
+# drops the WHOLE "The City of " prefix, not just "City of ". Kept as its
+# own regex rather than a widened `_STOPRULE_TRIGGER_RE`, since that
+# regex's narrower tolerance is deliberate for its own two callers (see
+# its own comment) and this function has no reason to touch them.
+# Unanchored (no leading `^`) so a leading date/junk fragment before the
+# entity phrase ("July13, 2026 | Town of Bladensburg...") is swallowed by
+# the leading `.*?` for free, the same way it would need its own strip
+# otherwise.
+_ENTITY_OF_LEADING_RE = re.compile(
+    r"^.*?\b(?:the\s+)?(?:corporation of the\s+)?"
+    r"(?:city|county|town|village|borough|township|municipality|district|"
+    r"regional municipality)\s+of\s+",
+    re.IGNORECASE,
+)
+
+
+def _raw_text_explained_by_subdomain_hint(base: str, hint: str) -> bool:
+    """Whether `base` -- a raw jurisdiction string that has already failed
+    EVERY validation/repair attempt in `finalize_jurisdiction()` (nothing
+    above could make it match a real place) -- is fully accounted for by
+    `hint` (the netloc's own validated subdomain-derived candidate) plus
+    ordinary filler: a leading entity-type phrase, `hint`'s own real state
+    spelled out, and known vendor/portal boilerplate words. Used ONLY by
+    that function's final "nothing validated at all" branch (WO-113,
+    2026-09-05) to decide whether trusting `hint` outright is safe there.
+
+    This is deliberately NOT the same question the two cross-check
+    branches above `finalize_jurisdiction()`'s terminal branch ask ("does
+    an already-validated-or-repaired candidate disagree with the hint") --
+    there IS no validated candidate here to compare against; that's the
+    whole reason this branch exists. Instead it asks the more conservative
+    question a human reading the raw text would: does it look like it's
+    talking about the hint's own government (a real name plus ordinary
+    wrapping), or does it look like it's naming something else entirely,
+    with no positive evidence either way?
+
+    Two real, confirmed-live failure shapes drove requiring POSITIVE
+    filler evidence (a consumed state name or vendor word), not just an
+    empty residual -- both found running the full existing test suite
+    against WO-113's first draft, which trusted `hint` unconditionally the
+    instant nothing validated:
+
+    1. `milwaukee.granicus.com`'s "The City of Milwaukee, WI" -- a raw
+       value that's already CORRECT and just missing a strip (a leading
+       "The" defeats `_LEADING_TYPE_RE`, a known, deliberately-deferred
+       gap -- see `_resolve_government_ladder()`'s own 5c rung and
+       `tests/test_gov_registry.py`'s "collapses a spelling of the
+       tenant's own name" tests, which assert this shape lands on the
+       ladder's own, deliberately weaker `inferred` tier, not a direct
+       `registry` hit). Once "The City of " is stripped, the ENTIRE
+       remainder IS the hint's own name with nothing left over to point to
+       as corroborating evidence -- so this declines, on purpose, and
+       leaves the page to the ladder's own tenant-consistency rung.
+    2. `winston-salem.granicus.com`'s "City of Lees Summit" (`tests/
+       test_gov_registry.py`'s own bleed-page test) -- a genuine bleed
+       page from an unrelated Missouri government. Once "City of " is
+       stripped, "Lees Summit" doesn't contain the hint's name
+       ("Winston-Salem") at all, doesn't spell out Winston-Salem's real
+       state, and isn't vendor filler -- it's real, unexplained residual
+       text, so this correctly declines and leaves the page to the
+       ladder's own bleed rejection (5d) instead of mis-filing it under
+       Winston-Salem.
+
+    By contrast, every one of WO-113's 8 real Municode targets reduces to
+    an EMPTY residual with at least one piece of real filler consumed
+    along the way: "Columbus Wisconsin Meetings Hub" strips to hint
+    "Columbus" + state "Wisconsin" + filler "Meetings"/"Hub", nothing left
+    over. That "something concrete was explained away, not just silence"
+    bar is exactly what rules out Milwaukee/Andover/College Park above,
+    whose residual is ALSO empty but only because the hint happened to
+    consume the entire remainder, with nothing else to show for it.
+    """
+    text = _ENTITY_OF_LEADING_RE.sub("", base, count=1)
+
+    for candidate in _normalize_candidates(hint):
+        pattern = re.compile(r"\b" + re.escape(candidate) + r"\b", re.IGNORECASE)
+        if pattern.search(text):
+            text = pattern.sub(" ", text, count=1)
+            break
+
+    words = [w.strip(".,;:|") for w in text.split()]
+    words = [w for w in words if w]
+
+    filler_found = False
+    remaining: List[str] = []
+    i = 0
+    while i < len(words):
+        matched_state = False
+        for span in (2, 1):
+            if i + span > len(words):
+                continue
+            phrase = " ".join(words[i : i + span])
+            if resolve_claimed_state(hint, phrase):
+                filler_found = True
+                i += span
+                matched_state = True
+                break
+        if matched_state:
+            continue
+        if words[i].lower() in _JURISDICTION_TEXT_FILLER_WORDS:
+            filler_found = True
+            i += 1
+            continue
+        remaining.append(words[i])
+        i += 1
+
+    return filler_found and not remaining
+
+
 def finalize_jurisdiction(
     raw_jurisdiction: Optional[str], *, netloc: Optional[str] = None
 ) -> JurisdictionResult:
@@ -2348,11 +2464,13 @@ def finalize_jurisdiction(
     ingest time rather than being threaded through every adapter.
 
     Never loses information without evidence: a name that doesn't
-    validate and shows no bleed signal is returned completely unchanged
-    (confidence "unverified"), not discarded or guessed at -- see
-    `_looks_like_bleed()` and `_split_entity_prefix()` for the two
-    mechanisms that DO change the value, and BACKLOG.md's "Census-table
-    baseline validation" entry for the real data (649 archived rows) this
+    validate, shows no bleed signal, AND has no validated subdomain-
+    derived candidate either (see the subdomain cross-check below, WO-113)
+    is returned completely unchanged (confidence "unverified"), not
+    discarded or guessed at -- see `_looks_like_bleed()` and
+    `_split_entity_prefix()` for the two mechanisms that DO change the
+    value, and BACKLOG.md's "Census-table baseline validation" entry for
+    the real data (649 archived rows) this
     design was built and tuned against.
 
     Cross-checked against a validated subdomain-derived candidate since
@@ -2377,8 +2495,23 @@ def finalize_jurisdiction(
        is a real constituent lower-tier town inside the Peel Region
        agenda, validates outright, and used to be returned as-is before
        ever reaching the subdomain's own correct "Peel Region" identity.
+    3. A raw value can validate as NOTHING at all -- no table match, no
+       bleed to trim, no entity prefix to split -- while the subdomain
+       itself already carries a real, validated identity (WO-113,
+       2026-09-05): Municode's own generic page titles ("Municode
+       Portal", a bare state name, etc.) are the confirmed-live case,
+       across eight real tenant hosts (`kingsport-tn`, `columbus-wi`,
+       `bladensburgtown-md`, `laurel-md`, `madeirabeach-fl`,
+       `richwood-tx`, `waltoncounty-ga`, `willowpark-tx`, all
+       `.municodemeetings.com`). Before this fix the fully-unvalidated
+       terminal branch never consulted the subdomain hint at all, so
+       these fell all the way through to "unverified" with the raw,
+       useless title kept verbatim -- the one gap the "cross-check an
+       already-validated-or-repaired value" framing above didn't cover,
+       since there was no already-validated-or-repaired value to
+       cross-check in the first place.
 
-    In both cases, when a validated subdomain-derived candidate exists
+    In cases 1 and 2, when a validated subdomain-derived candidate exists
     (see `_validated_subdomain_extract_from_netloc()`) and disagrees with
     the text-derived name (`_base_name_key()`, the same identity
     comparison the chain's own cross-check uses), the subdomain's own
@@ -2389,6 +2522,11 @@ def finalize_jurisdiction(
     no subdomain hint validates at all (most non-eScribe/Granicus pages,
     or an eScribe regional-tier customer not yet in the place tables --
     see BACKLOG.md's StatsCan completeness gap), this is a pure no-op.
+    In case 3 there's no text-derived name to disagree with in the first
+    place -- the terminal branch reaches for the same hint unconditionally
+    once it exists, through the identical `_subdomain_override()` call the
+    other two cases use, so it's still declined whenever that function's
+    own guards below would decline it.
 
     That override is itself guarded, since 2026-08-21 (same day, later
     pass): `_subdomain_override()` refuses a hint whose state suffix
@@ -2587,6 +2725,44 @@ def finalize_jurisdiction(
 
     if known:
         return JurisdictionResult(f"{known.name}, {known.state}", None, "fallback")
+
+    # Nothing validated at all -- the one case the docstring above still
+    # described (pre-WO-113) as "returned completely unchanged". A
+    # validated subdomain-derived candidate is real, independent evidence
+    # even here (the customer's own registered hostname, not another
+    # parse of the same page text that already failed to validate), so try
+    # it through the SAME guarded `_subdomain_override()` the two already-
+    # validates/already-repaired branches above use -- never a bypass of
+    # the geographically-impossible-pairing check or the
+    # `_GENERIC_SUBDOMAIN_WORDS` stoplist (both apply here unchanged, since
+    # this reuses the identical hint already computed above and the
+    # identical override function).
+    #
+    # Gated by `_raw_text_explained_by_subdomain_hint()` first -- see that
+    # function's own docstring for why: unlike the two cross-check
+    # branches above, there is no already-validated candidate here to
+    # compare the hint against, so trusting it unconditionally the moment
+    # nothing validates is NOT safe in general (it regressed 4 real,
+    # existing tests in this file's own first draft, including a genuine
+    # bleed-page misattribution). Confirmed live, WO-113 (2026-09-05):
+    # eight real Municode tenants (`kingsport-tn`, `columbus-wi`,
+    # `bladensburgtown-md`, `laurel-md`, `madeirabeach-fl`, `richwood-tx`,
+    # `waltoncounty-ga`, `willowpark-tx` -- `.municodemeetings.com`, page
+    # ids 1434/1437/1444/1446/1449/1450/1454/1455) all had a raw extracted
+    # name ("Municode Portal", "<Name> <State> Meetings Hub", etc.) that
+    # validates as nothing, while their subdomain already carried the real
+    # government's identity the whole time -- and every one of them passes
+    # this gate.
+    if subdomain_hint and _raw_text_explained_by_subdomain_hint(base, subdomain_hint):
+        override = _subdomain_override(
+            subdomain_hint,
+            suffix,
+            netloc,
+            base=base,
+            hint_state=subdomain_hint_state,
+        )
+        if override:
+            return JurisdictionResult(override, None, "repaired")
 
     return JurisdictionResult(raw_jurisdiction, None, "unverified")
 
@@ -2984,6 +3160,21 @@ _GENERIC_SUBDOMAIN_WORDS = frozenset(
         "webcasts",
     }
 )
+
+# Vendor/portal boilerplate words a raw jurisdiction TEXT (not a subdomain
+# label) is built from when nothing else survives -- WO-113's own
+# "Municode Portal" / "<Name> <State> Meetings Hub" shape, consumed by
+# `_raw_text_explained_by_subdomain_hint()` above. A superset of
+# `_GENERIC_SUBDOMAIN_WORDS` (that stoplist is checked against a single
+# subdomain LABEL word; this one is checked per-word against a full page-
+# title-shaped string, so needs a little extra vocabulary -- "hub" and
+# the vendor's own name -- that never shows up as a bare subdomain label
+# on its own).
+_JURISDICTION_TEXT_FILLER_WORDS = _GENERIC_SUBDOMAIN_WORDS | {
+    "hub",
+    "hubs",
+    "municode",
+}
 
 # Trailing connector words stripped by `_validated_label_extract()`'s tier
 # 4, mirroring the LEADING strip that has always been there. Kept as its
