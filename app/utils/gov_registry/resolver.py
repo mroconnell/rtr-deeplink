@@ -300,6 +300,32 @@ def _split_state(name: str) -> Tuple[str, str]:
     return name.rstrip(".,;:").strip(), ""
 
 
+_STATE_ANYWHERE_RE = re.compile(r",\s*([A-Za-z]{2})\b")
+
+
+def state_suffix_from_text(text: Optional[str]) -> str:
+    """A state/province abbreviation found anywhere in `text`, comma-
+    prefixed -- "City of Appleton, WI - Live Video" -> "WI". Unlike
+    `_split_state()` (which only looks at a clean name's own *trailing*
+    suffix, so it needs the state to be the last thing in the string),
+    this is for real page titles, which routinely carry something after
+    the state: confirmed live, Legistar's video-delegation title is
+    literally "City of Appleton, WI - Live Video" while the adapter's own
+    `jurisdiction` field for the same meeting is just "City of Appleton"
+    -- the state exists on the page, just not in the field gov_id
+    resolution reads. First match only, checked against the same real
+    abbreviation list `_split_state()` uses, so a coincidental ", XY"
+    that isn't a real state/province can't produce a hit.
+    """
+    if not text:
+        return ""
+    for m in _STATE_ANYWHERE_RE.finditer(text):
+        code = m.group(1).upper()
+        if code in _VALID_STATE_ABBRS:
+            return code
+    return ""
+
+
 # Widened WO-105 (2026-09-03): this already covered village/borough/
 # township/municipality (a stale BACKLOG.md/brief claim that it was
 # "narrower" than jurisdiction_enrich.py's `_STOPRULE_TRIGGER_RE" turned
@@ -1924,6 +1950,14 @@ def _signals_recover_state(match: GovernmentMatch, signals: Dict[str, Any]) -> s
         for province in _CA_POSTAL_FIRST_LETTER_PROVINCES.get(letter, ()):
             if _name_validates_in_state(name, jurisdiction_type, province):
                 return province
+    # A state/province already spotted in raw page text (e.g. a delegated
+    # video page's own title -- see `state_suffix_from_text()`'s own
+    # docstring for the confirmed real Appleton case). Same validation as
+    # the zip/postal paths above; this is text a caller already found and
+    # is just as much page evidence as a zip code is.
+    for state in signals.get("state_hints") or ():
+        if state and _name_validates_in_state(name, jurisdiction_type, state):
+            return state
     return ""
 
 

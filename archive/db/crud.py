@@ -36,6 +36,7 @@ from app.utils.gov_registry import (
     TIER_UNVERIFIED,
     page_hints_for,
     resolve_government,
+    state_suffix_from_text,
 )
 from app.utils.gov_registry import display_name as gov_display_name
 from app.utils.gov_registry import government_for_id as registry_government_for_id
@@ -643,6 +644,7 @@ async def _resolve_page_government(
     platform=None,
     external_id=None,
     meeting_location=None,
+    title=None,
 ):
     """`resolve_government()` for one page, with the one input it cannot
     see for itself.
@@ -685,6 +687,15 @@ async def _resolve_page_government(
     pull is enough -- `_signals_recover_state()`'s own name/state
     validation is what actually guards against a wrong match, not the
     shape of this extraction.
+
+    `title` -- same gap, different field: a Legistar meeting delegated to
+    its video platform gets a `title` like "City of Appleton, WI - Live
+    Video" while `raw_jurisdiction` for the very same meeting is just
+    "City of Appleton" (confirmed live) -- the state is on the page, the
+    adapter just doesn't carry it into the field this function reads.
+    `state_suffix_from_text()` pulls it back out, validated the same way
+    as the zip/postal signals above before `resolve_government()` will
+    ever accept it.
     """
     parsed = urlparse(source_url_normalized)
     host = (parsed.netloc or "").lower().split(":")[0]
@@ -698,7 +709,13 @@ async def _resolve_page_government(
         if meeting_location
         else []
     )
-    signals = {"zip_codes": zip_codes} if zip_codes else None
+    title_state = state_suffix_from_text(title)
+    signals = None
+    if zip_codes or title_state:
+        signals = {
+            "zip_codes": zip_codes,
+            "state_hints": [title_state] if title_state else [],
+        }
     match = resolve_government(
         raw_jurisdiction, tenant_host=host, path=path, page_hints=hints, signals=signals
     )
@@ -766,6 +783,7 @@ async def _find_or_create_page(
         platform=platform,
         external_id=external_id,
         meeting_location=payload.get("meeting_location"),
+        title=payload.get("title"),
     )
 
     page = await _find_existing_page(

@@ -67,6 +67,7 @@ from .resolver import (
     is_own_name,
     page_hints_for,
     resolve_government,
+    state_suffix_from_text,
 )
 
 __all__ = [
@@ -90,5 +91,6 @@ __all__ = [
     "resolve_government",
     "slugify",
     "state_gov_id",
+    "state_suffix_from_text",
     "tenant_overrides",
 ]

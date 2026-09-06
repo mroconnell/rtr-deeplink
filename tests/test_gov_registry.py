@@ -1867,3 +1867,21 @@ def test_strip_trailing_paren_type_only_fires_on_an_actual_parenthetical():
     plain = resolve("Fresno, CA")
     assert plain.gov_id == "us:place:0627000"
     assert plain.tier == resolver.TIER_REGISTRY
+
+
+def test_state_suffix_from_text_finds_a_comma_prefixed_state_anywhere():
+    # The real, confirmed shape this exists for: a Legistar meeting
+    # delegated to its video platform gets a title like "City of
+    # Appleton, WI - Live Video" -- the state isn't at the end of the
+    # string, so _split_state()'s own trailing-only regex can't see it.
+    assert resolver.state_suffix_from_text("City of Appleton, WI - Live Video") == "WI"
+    assert (
+        resolver.state_suffix_from_text("Cleveland City Council, OH - Calendar") == "OH"
+    )
+    # No comma-prefixed state anywhere -- must not guess.
+    assert resolver.state_suffix_from_text("Jonesboro - Live Proceedings") == ""
+    # A coincidental ", XY" that isn't a real state/province abbreviation
+    # must not be accepted.
+    assert resolver.state_suffix_from_text("Foo, Bar - Baz") == ""
+    assert resolver.state_suffix_from_text(None) == ""
+    assert resolver.state_suffix_from_text("") == ""
