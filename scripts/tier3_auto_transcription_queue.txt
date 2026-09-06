@@ -1,15 +1,3 @@
-https://kcmn.civicweb.net/Portal/MeetingInformation.aspx?Id=4477&Org=Cal
-https://lakeway-tx.civicweb.net/Portal/MeetingInformation.aspx?Id=2299&Org=Cal
-https://lennoxandaddington.civicweb.net/Portal/MeetingInformation.aspx?Id=895&Org=Cal
-https://lewes.civicweb.net/Portal/MeetingInformation.aspx?Id=21722&Org=Cal
-https://meaford.civicweb.net/Portal/MeetingInformation.aspx?Id=2924&Org=Cal
-https://midland.civicweb.net/Portal/MeetingInformation.aspx?Id=644&Org=Cal
-https://monroewa.civicweb.net/Portal/MeetingInformation.aspx?Id=8033&Org=Cal
-https://murphytx.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=11012&fbclid=IwRlRTSAPOocRleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAo2NjI4NTY4Mzc5AAEeIUKdsa2Hz4a-cR-yZ_omjaBvmlLR0azHDE1_gqbEIHE6cJp3x10LfScWtPw_aem_q07M9N22FrKmCSbIhGZ1Xw
-https://myoldsmar.civicweb.net/Portal/MeetingInformation.aspx?Id=13001&outputType=1
-https://nngov.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=4135&ref=henricocitizen.com
-https://northernbrucepeninsula.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=841&fbclid=IwZXh0bgNhZW0CMTAAAR6MM3LPutmqbDTGkGNwiabBrqqdNcro9rGpl1Kv_mvcYfoP51y6DDWTqytQzA_aem_PvhHPFD12xvw5iQQgdpKrA
-https://northumberland.civicweb.net/Portal/MeetingInformation.aspx?Id=1319&Org=Cal
 https://oromedonte.civicweb.net/Portal/MeetingInformation.aspx?Id=1467&outputType=1
 https://pasco.civicweb.net/Portal/MeetingInformation.aspx?Id=6412&Org=Cal
 https://peoriagov.civicweb.net/Portal/MeetingInformation.aspx?Id=17399&outputType=Agenda
