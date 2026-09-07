@@ -1002,15 +1002,14 @@ structural change than the two entries below.
     the expected government type) that `GOVERNMENT_IDENTITY_ARCHITECTURE
     .md` §4/§5 already discusses for the single-tenant case, generalized
     to reject a candidate outright rather than just mis-tag its
-    jurisdiction. None of the 9 live pages above have been unpublished
-    yet -- the first takedown attempt (the original 6) hit a real,
-    separate FK-violation 500 in `delete_meeting_pages_by_slug()`,
-    root-caused and fixed same-day (see that function's own crud.py
-    comment and PR #751), but the fix needs a manual deploy
-    (`rtr-deeplink-archive` has `autoDeploy: off`) before the delete can
-    be retried -- not done as of this writing. The 3 pgcps.cablecast.tv
-    pages were found afterward and should go in the same batch once the
-    deploy lands.
+    jurisdiction. **Update 2026-09-07: all 9 wrong-content pages deleted**
+    via `POST /internal/admin/delete-pages?dry_run=false` (`"deleted":9`,
+    all 9 `found`, none `not_found`), after the FK-violation 500 fix
+    (PR #751) deployed to `rtr-deeplink-archive` (confirmed live,
+    `dep-daf2qu2d0e5s73aigg30`, commit `441388fd1c`, which includes
+    `ed59dfa`). The underlying picker bug that produced these 9 pages is
+    still open -- nothing above prevents a future enumeration pass from
+    hitting the same shared-tenant/no-discriminator failure again.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
