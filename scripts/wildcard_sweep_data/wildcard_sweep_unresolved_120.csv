@@ -1,0 +1,121 @@
+slug,platform,guessed_name,guessed_state,source_table,outcome,detail
+happyvalleycityor,granicus,Happy Valley city,OR,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+orangetown,granicus,Orange town,VA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+kittanningborough-pa,granicus,Kittanning borough,PA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+mosineecitywi,granicus,Mosinee city,WI,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+mequoncitywi,granicus,Mequon city,WI,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+cityofgryglacity,legistar,Grygla city,MN,us_places,no-url-found,no public-video event via Web API; no companion Granicus domain
+cityofgodleycity,legistar,Godley city,TX,us_places,no-url-found,no public-video event via Web API; no companion Granicus domain
+grandterracecityca,granicus,Grand Terrace city,CA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+fergusoncity,granicus,Ferguson city,MO,us_places,resolve-failed,resolve raised: HTTP 404 for https://fergusoncity.granicus.com/MediaPlayer.php?view_id=1&clip_id=5
+haymarkettownva,granicus,Haymarket town,VA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+altuscityok,granicus,Altus city,OK,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+springfieldcitymi,legistar,Springfield city,MI,us_places,no-url-found,no public-video event via Web API; no companion Granicus domain
+cityoflilydalecity,legistar,Lilydale city,MN,us_places,no-url-found,no public-video event via Web API; no companion Granicus domain
+lagunawoodscity,granicus,Laguna Woods city,CA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+ogdencity,granicus,Ogden city,UT,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+rockfordcityil,granicus,Rockford city,IL,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+palatinevillageil,granicus,Palatine village,IL,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+bartlettcitytn,granicus,Bartlett city,TN,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+woodridgevillageil,granicus,Woodridge village,IL,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+eastpointcity,granicus,East Point city,GA,us_places,resolve-failed,resolve raised: HTTP 404 for https://eastpointcity.granicus.com/MediaPlayer.php?view_id=1&clip_id=9
+plainfieldcitynj,granicus,Plainfield city,NJ,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+parkcityks,granicus,Park city,KS,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+mundeleinvillageil,granicus,Mundelein village,IL,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+santaclaritacityca,granicus,Santa Clarita city,CA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+buffalogrovevillageil,granicus,Buffalo Grove village,IL,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+deperecitywi,granicus,De Pere city,WI,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+omrocitywi,granicus,Omro city,WI,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+cityofwalledlakecity,legistar,Walled Lake city,MI,us_places,no-url-found,no public-video event via Web API; no companion Granicus domain
+jeffersoncityga,granicus,Jefferson city,GA,us_places,no-url-found,no valid view_id 1-3 on Granicus RSS
+princetonnj,granicus,Princeton,NJ,us_places,resolve-failed,resolve raised: HTTP 404 for https://princetonnj.granicus.com/MediaPlayer.php?view_id=1&clip_id=50
+albanycounty,legistar,Albany County,WY,us_counties,skipped-empty,no segments/agenda/video
+sedgwickcounty,legistar,Sedgwick County,CO,us_counties,no-url-found,no public-video event via Web API; no companion Granicus domain
+cumberlandcounty,legistar,Cumberland County,KY,us_counties,skipped-empty,no segments/agenda/video
+harrisoncounty,legistar,Harrison County,KY,us_counties,no-url-found,no public-video event via Web API; no companion Granicus domain
+harriscountytx,legistar,Harris County,TX,us_counties,skipped-empty,no segments/agenda/video
+charlottecountyfl,legistar,Charlotte County,FL,us_counties,skipped-empty,no segments/agenda/video
+mercercounty,granicus,Mercer County,ND,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+monroecounty,granicus,Monroe County,IA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+glenncounty,granicus,Glenn County,CA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+albanycounty,granicus,Albany County,WY,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+johnsoncounty,granicus,Johnson County,WY,us_counties,resolve-failed,resolve raised: HTTP 404 for https://johnsoncounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=135
+brunswickcounty,legistar,Brunswick County,VA,us_counties,no-url-found,no public-video event via Web API; no companion Granicus domain
+princegeorgescountymd,legistar,Prince George's County,MD,us_counties,skipped-empty,no segments/agenda/video
+passaiccountynj,legistar,Passaic County,NJ,us_counties,skipped-empty,no segments/agenda/video
+taoscounty,granicus,Taos County,NM,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+cowetacountyga,granicus,Coweta County,GA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+bigstonecounty,granicus,Big Stone County,MN,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+roanokecountyva,granicus,Roanoke County,VA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+stanlycountync,granicus,Stanly County,NC,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+alpinecountyca,granicus,Alpine County,CA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+modoccountyca,granicus,Modoc County,CA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+eaglecounty,legistar,Eagle County,CO,us_counties,no-url-found,no public-video event via Web API; no companion Granicus domain
+olmstedcounty,legistar,Olmsted County,MN,us_counties,skipped-empty,no segments/agenda/video
+greensvillecountyva,granicus,Greensville County,VA,us_counties,resolve-failed,resolve raised: HTTP 404 for https://greensvillecountyva.granicus.com/MediaPlayer.php?view_id=2&clip_id=5
+montgomerycountymd,legistar,Montgomery County,MD,us_counties,skipped-empty,no segments/agenda/video
+baltimorecountymd,granicus,Baltimore County,MD,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+nassaucountyny,granicus,Nassau County,NY,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+sarasotacounty,granicus,Sarasota County,FL,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+brunswickcounty,granicus,Brunswick County,VA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+ulstercountyny,granicus,Ulster County,NY,us_counties,resolve-failed,resolve raised: HTTP 404 for https://ulstercountyny.granicus.com/MediaPlayer.php?view_id=1&clip_id=2
+okaloosacountyfl,granicus,Okaloosa County,FL,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+thurstoncountywa,legistar,Thurston County,WA,us_counties,skipped-empty,no segments/agenda/video
+harfordcountymd,granicus,Harford County,MD,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+eaglecounty,granicus,Eagle County,CO,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+saratogacountyny,legistar,Saratoga County,NY,us_counties,skipped-empty,no segments/agenda/video
+bernalillocountynm,granicus,Bernalillo County,NM,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+grundycountyil,legistar,Grundy County,IL,us_counties,skipped-empty,no segments/agenda/video
+riversidecountyca,legistar,Riverside County,CA,us_counties,skipped-empty,no segments/agenda/video
+pueblocounty,legistar,Pueblo County,CO,us_counties,skipped-empty,no segments/agenda/video
+butlercountyoh,granicus,Butler County,OH,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+tarrantcounty,granicus,Tarrant County,TX,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+sussexcountyva,granicus,Sussex County,VA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+saratogacountyny,granicus,Saratoga County,NY,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+suttercountyca,granicus,Sutter County,CA,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+stcroixcountywi,granicus,St. Croix County,WI,us_counties,no-url-found,no valid view_id 1-3 on Granicus RSS
+oregon,granicus,Oregon,OR,us_states,no-url-found,no valid view_id 1-3 on Granicus RSS
+humboldtunifiedschooldistrict258-ks,granicus,Humboldt Unified School District 258,KS,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+charlotte,granicus,Charlotte,ME,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+winthrop,granicus,Winthrop,ME,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+alamogordopublicschools,granicus,Alamogordo Public Schools,NM,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+greenville,granicus,Greenville,ME,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+surry,granicus,Surry,ME,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+kashiaelementaryschooldistrict,legistar,Kashia Elementary School District,CA,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+ameryschooldistrictwi,granicus,Amery School District,WI,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+kashiaelementaryschooldistrict-ca,legistar,Kashia Elementary School District,CA,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+pawpawpublicschooldistrictmi,legistar,Paw Paw Public School District,MI,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+cityofaxtellcommunityschools,granicus,Axtell Community Schools,NE,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+pawpawpublicschooldistrict-mi,legistar,Paw Paw Public School District,MI,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+axtellcommunityschools-ne,granicus,Axtell Community Schools,NE,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+perrisunionhighschooldistrict912,granicus,Perris Union High School District (9-12),CA,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+eaglepointschooldistrict9,legistar,Eagle Point School District 9,OR,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+eaglepointschooldistrict9or,legistar,Eagle Point School District 9,OR,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+cityofperrisunionhighschooldistrict912,granicus,Perris Union High School District (9-12),CA,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+perrisunionhighschooldistrict912-ca,granicus,Perris Union High School District (9-12),CA,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+marshallpublicschools-mi,legistar,Marshall Public Schools,MI,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+northkingstownschooldistrict,granicus,North Kingstown School District,RI,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+hillsboroindependentschooldistricttx,legistar,Hillsboro Independent School District,TX,us_school_districts,no-url-found,no public-video event via Web API; no companion Granicus domain
+elizabethtownindependentschooldistrict-ky,granicus,Elizabethtown Independent School District,KY,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+muldrowpublicschoolsok,granicus,Muldrow Public Schools,OK,us_school_districts,no-url-found,no valid view_id 1-3 on Granicus RSS
+harrison,legistar,Harris,ON,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+racine,legistar,Racine,QC,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+longview,legistar,Longview,AB,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+cityofcleveland,legistar,Cleveland,QC,ca_csd,skipped-empty,no segments/agenda/video
+russell,legistar,Russell,ON,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+scott,legistar,Scott,SK,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+harrison,granicus,Harris,ON,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+raymond,legistar,Raymond,AB,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+middleton,granicus,Middleton,NS,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+cumberland,granicus,Cumberland,BC,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+clearwater,granicus,Clearwater,BC,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+morrisville,granicus,Morrisville,NL,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+james,legistar,James,ON,ca_csd,no-url-found,no public-video event via Web API; no companion Granicus domain
+langford,granicus,Langford,BC,ca_csd,resolve-failed,resolve raised: HTTP 404 for https://langford.granicus.com/MediaPlayer.php?view_id=1&clip_id=3
+sunnyside,granicus,Sunnyside,NL,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+middlesex,legistar,Middlesex,ON,ca_cd,no-url-found,no public-video event via Web API; no companion Granicus domain
+crowsnestpass,granicus,Crowsnest Pass,AB,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+houston,granicus,Houston,BC,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+pasadena,granicus,Pasadena,NL,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+stpaul,granicus,St. Paul,AB,ca_csd,no-url-found,no valid view_id 1-3 on Granicus RSS
+huron,granicus,Huron,ON,ca_cd,no-url-found,no valid view_id 1-3 on Granicus RSS

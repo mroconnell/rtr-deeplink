@@ -111,7 +111,7 @@ Standing decisions — do NOT re-raise  (8)
   Never attempt to auto-solve a Cloudflare "Verify you are human"…
   Don't lower `dedupe_rollup_transcripts.py --min-retained` below 0.05
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
-  Don't re-try view_id widening, `mode=vpodcast`, Legistar slug…
+  Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
@@ -389,14 +389,27 @@ different signal entirely (`meeting_body`, real-agenda presence, page
 framing) — worth building only if the daily failure digest (WO-46) shows
 this class is actually common; as of 2026-08-31 it's one known case.
 
-### Don't re-try view_id widening, `mode=vpodcast`, Legistar slug guessing, direct calendar-page resolve, or a looser status filter on the wildcard-sweep's 105 unresolved tenants
+### Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved — don't re-try the methods already ruled out below
 
-105 of the 350 tenants confirmed by the HTTP wildcard-sweep (2026-09-06,
-`scripts/adhoc_wildcard_sweep_pipeline.py`, PR #743) had no discoverable
-meeting URL — 77 Granicus tenants with "no valid view_id 1-3", 28
-Legistar tenants with no public-video event via the Web API and no
-companion Granicus domain. Five separate follow-up tricks were tried
-against this exact cohort, same day, and all five came back empty:
+**Status as of 2026-09-06, after 4 rounds of work (`rtr-deeplink` PRs
+#743, #746, #747, #749, #750, #752, #756; full narrative in
+`~/Documents/rtr-business/research/WILDCARD_SWEEP_NEW_TENANTS_STATUS.md`)**:
+224 of 350 tenants ingested, 120 remain across three buckets —
+**99 `no-url-found`** (no discoverable meeting URL at all), **14
+`skipped-empty`** (a real page resolved, but zero usable content), **7
+`resolve-failed`** (the one candidate tried errored). The itemized list
+of all 120 (slug, platform, guessed name/state, outcome, detail) is the
+durable handover record — see
+`scripts/wildcard_sweep_data/wildcard_sweep_unresolved_120.csv`.
+**Read this before spending more effort on this cohort** — a lot has
+already been tried and ruled out.
+
+**Against the `no-url-found` cohort specifically** (77 Granicus tenants
+with "no valid view_id 1-3", 28 Legistar tenants with no public-video
+event via the Web API and no companion Granicus domain — the count was
+105 originally, 6 recovered via manual search since, see the round-3/4
+history below), five separate follow-up tricks were tried, same day,
+and all five came back empty:
 1. **Widening Granicus `view_id` to 4-15** (20-tenant sample): 0 additional hits.
 2. **Granicus's `mode=vpodcast` alternate feed** (all 77): 0 additional hits
    — every dead tenant's feed genuinely has zero `<item>`s in either mode,
@@ -430,23 +443,29 @@ against this exact cohort, same day, and all five came back empty:
 Combined with a manual spot-check (Ryan, same day) confirming several of
 these genuinely don't host video via Granicus/Legistar at all, this
 cohort is a real dead end for automated enumeration, not an under-tried
-one. The full list of all 105 (slug, platform, netloc, detail) is the
-durable record — see `scripts/wildcard_sweep_data/wildcard_sweep_no_url_found.csv`
-(PR #743). Recovering more of them would need a genuinely different
-signal per tenant (checking the government's own website for an
-alternate video host entirely, or a separate Legistar-client-id
-directory) — real work, not automatable the way the sweep itself was,
-and not attempted here.
+one. Recovering more of them needs a genuinely different signal per
+tenant (checking the government's own website for an alternate video
+host entirely, or a separate Legistar-client-id directory) — real,
+per-tenant work, not automatable the way the sweep itself was.
+**Manual per-tenant web search did pay off for a handful** (round 3/4,
+same date): 6 of the larger/better-resourced tenants recovered this way
+(Allegheny County PA, Montgomery County PA, Texarkana TX, Barrie ON,
+Greater Sudbury ON, Erin ON — the last three all landed on a real
+eScribe subdomain the sweep never guessed), but 7 more attempts on
+smaller municipalities found nothing (3-for-3 large vs. 0-for-7 small is
+a real signal) — the remaining ~93 `no-url-found` tenants are those two
+result classes combined, so don't expect the same hit rate on what's
+left without a materially different lever.
 
-**What did pay off, on a related but different cohort**: the sweep's
-other two failure buckets — 14 `resolve-failed` (a specific candidate
-404'd/410'd) and 27 `skipped-empty` (a specific candidate resolved but
-had zero content) — aren't "no candidate exists," they're "the one
-candidate tried was bad." `scripts/adhoc_wildcard_sweep_retry.py`
+**The other two buckets aren't "no candidate exists," they're "the one
+candidate tried was bad."** `scripts/adhoc_wildcard_sweep_retry.py`
 (2026-09-06) retries with the next candidate in the same feed/event list
-instead of giving up on the first, and recovered a real share of both —
-see `BACKLOG_DONE.md` for the fixed `[JUST-DO-IT]` entry and final
-numbers.
+instead of giving up on the first, and recovered 18 of the original 41
+(44%) — see `BACKLOG_DONE.md` for that `[JUST-DO-IT]` entry. The 14
+`skipped-empty` and 7 `resolve-failed` tenants left in the CSV above are
+what remained after that retry pass; a deeper retry (past the 6-candidate
+cap already tried) was tested on 12 large-pool Legistar tenants and
+recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
