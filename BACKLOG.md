@@ -127,7 +127,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (74)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (75)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
@@ -136,6 +136,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (74)
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
+  [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
@@ -1010,6 +1011,48 @@ structural change than the two entries below.
     `ed59dfa`). The underlying picker bug that produced these 9 pages is
     still open -- nothing above prevents a future enumeration pass from
     hitting the same shared-tenant/no-discriminator failure again.
+
+- **[NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
+  wrong-content pattern at much larger scale than the 9-page school-
+  district batch, plus a second, distinct pattern: school-district
+  meetings tagged to the wrong KIND of government, not just the wrong
+  meeting.**
+  - **Issue**: a title/jurisdiction/`gov_type` heuristic screen (see
+    `rtr-business/research/archive_audit/AUDIT_REPORT.md` for full
+    method and every category) flagged 414 of 5,857 live pages (7.1%).
+    Of those, **16 are the same kind of bug as the entry above** --
+    non-meeting content (talk shows, a Granicus vendor-conference video
+    self-tagged with a fake "jurisdiction", 8 Legistar/CivicClerk staff
+    admin-*training* videos ingested as if they were public meetings) --
+    and **23 more are a real, independently-named school district
+    (DJUSD, AUSD, Hopkins School District, etc.) tagged to the city/
+    township it happens to be colocated with** (e.g. "DJUSD Board of
+    Education" tagged `jurisdiction=Davis, CA, gov_type=municipality`
+    instead of the actual school district) -- a re-tag fix, not a
+    delete, since the meeting itself is real and correctly identified,
+    just attached to the wrong government record.
+  - **Real, material uncertainty, not yet resolved**: a further 13
+    "county"-tagged school-board pages could not be classified with
+    confidence -- several states (Florida, some Virginia divisions) run
+    school districts genuinely coterminous with the county, so "county"
+    may already be correct there; needs state-by-state research, not a
+    blanket rule. Separately, 305 pages were flagged only by "no
+    meeting-shaped keyword in the title," and a 50-item random sample
+    of that bucket suggests it's a real mixed bag (~20-30% genuine
+    non-meeting content -- PR videos, ceremonies, mayoral video blogs --
+    the rest a mix of a regex limitation on plurals and a judgment call
+    about whether ceremonial/civic content like State-of-the-City
+    addresses is in scope at all) -- none of the 305 were individually
+    re-verified.
+  - **Impact**: nothing in this pass has been deleted or re-tagged.
+  - **Next action**: the 16 non-meeting-content pages are ready for the
+    same `POST /internal/admin/delete-pages` treatment as the original 9
+    once reviewed. The 23 wrong-government-type pages need either 23
+    individual `POST /internal/jurisdiction/override` calls or a new
+    bulk endpoint -- no bulk re-tag tool exists today. Both decisions
+    were left to Ryan, not made unilaterally.
+  - **History**: full per-category CSVs in `rtr-business/research/
+    archive_audit/categorized/`; raw export in `all_pages_raw.jsonl`.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
