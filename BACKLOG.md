@@ -117,9 +117,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
   [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
-  Production actions only Ryan should take  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+  Production actions only Ryan should take  (6)
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
+    [HUMAN] The New England town display fix (WO-121) changes the live…
     [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
     [HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may…
     [HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed…
@@ -127,12 +128,13 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (75)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (76)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
   [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
@@ -507,6 +509,13 @@ of human step they need.
   - **History**: code side shipped and already deployed — see
     `BACKLOG_DONE.md`.
 
+- **[HUMAN] The New England town display fix (WO-121) changes the live hub slug for ~40 already-resolved towns — `hub_slug_aliases.csv` needs a real `score_gov_registry.py` re-run before/with that deploy, not a hand edit.**
+  - **Issue**: `display.py`'s `TOWNSHIP` branch now renders a CT/ME/MA/NH/RI/VT "town" without its LSAD suffix (`Brookline, MA`, not `Brookline Town, MA`) — correct, and covered by new tests, but `app/utils/jurisdiction_data/governments.csv` already carries ~40 CT/ME/MA/NH/RI/VT cousub rows whose live hub, once this deploys, will recompute to the shorter slug (e.g. `us:cousub:5002107750` Brandon, VT: `brandon-town-vt` → `brandon-vt`). `archive/data/hub_slug_aliases.csv` — the committed old-slug→new-slug redirect map `archive/utils/hub_aliases.py` serves 301s from — already has an entry going the OTHER way for several of these (`brandon-vt` → `brandon-town-vt`, from the 2026-09-03 scoring run), which this deploy makes exactly backwards: the "old" slug in that row is about to become correct again, and the "new" slug it points to is about to go stale. Only `reports/pin_worklist.csv` (a not-yet-applied proposal sheet) was hand-corrected for this session's 4 known-affected rows (Lamoine ME, Bourne MA, Rehoboth MA, Voluntown CT) — `governments.csv`'s `aliases` column and the dated `reports/*_2026-09-03/*` snapshots were deliberately left alone (aliases still resolve correctly either way; the dated snapshots are a historical record of that run, not live config).
+  - **Impact**: unknown until measured — could be zero (if none of these ~40 towns have an archived page yet) or could be real live 301s serving a slug that no longer matches what the resolver now computes, for however many of them do.
+  - **Next action**: run `scripts/score_gov_registry.py` for real (Archive credentials, per its own docstring) after this deploy ships, the same way any registry change already requires per `archive/utils/hub_aliases.py`'s own docstring ("a future rename... needs the scoring script re-run to extend this file... regenerated wholesale"). That run will also refresh `governments.csv` and produce the correct `hub_slug_aliases.csv` rows for whichever of the ~40 towns are actually live.
+  - **Constraint**: don't hand-patch `hub_slug_aliases.csv` row-by-row for this — the file is generated wholesale from production data specifically so it can't drift out of agreement with the registry, and a handful of manual edits would reintroduce exactly that drift risk.
+  - **History**: found 2026-09-06/07 while shipping the WO-121 display fix; not yet in `BACKLOG_DONE.md`.
+
 - **[HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health check, `delete_meeting_pages_by_slug()`'s FK cleanup) may still not be deployed — confirm and redeploy if not.**
   - **Issue**: both fixes are confirmed present on `main` (re-checked 2026-09-05): `archive/main.py`'s `/api/health` uses `LIMIT 1` not `SELECT count(*)`, and `archive/db/crud.py:9337`'s `delete_meeting_pages_by_slug()` deletes `SocialPost`/`MeetingPageThumbnail` rows before the page. Every service has `autoDeploy: false` in `render.yaml`, so a merge ships nothing until someone deploys it by hand.
   - **Impact**: as of the inbox-triage Routine's 2026-08-31/09-01 runs, alerts consistent with both gaps still being live kept arriving — repeated `rtr-deeplink-archive` "HTTP health check failed" Render alerts, a `ClientConnectorError` hitting real `/j/belvedere-ca` traffic 58s before one such alert, and a `ForeignKeyViolationError` on `/internal/admin/delete-pages`. No further alerts of either shape turned up in the runs reviewed through 2026-09-03 — consistent with (but not proof of) an intervening deploy.
@@ -813,6 +822,57 @@ structural change than the two entries below.
   - **History**: found 2026-09-04 answering a user question about
     `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
     in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
+  `us_places` and `us_cousubs` tables in the same state always resolves
+  to the place, silently discarding the cousub — mostly correct, but
+  wrong for at least 4 real Connecticut towns.**
+  - **Issue**: `_general_purpose_lookup()`'s place-vs-cousub tie-break
+    (`app/utils/gov_registry/resolver.py`) only runs `if type_preference`
+    — a raw name that says "Town of X" or "City of X" is disambiguated
+    correctly, but a bare name with no type word skips that block
+    entirely, and `_national_lookup()` then returns `place` unconditionally
+    whenever it's truthy, never even considering an available `cousub`
+    match. Measured directly against the live tables (not assumed):
+    **2,373** bare names nationally resolve to exactly one row in *both*
+    tables in the same state. The large majority (~2,369, dominated by
+    Illinois) are a Midwest platting artifact — a village sits inside a
+    same-named township, and "Camp Point, IL"/"Flora, IL" colloquially
+    *does* mean the village, so today's place-wins default is actually
+    right there. But Connecticut's nested-borough tradition is the
+    opposite: `Groton`/`Newtown`/`Stonington`/`Litchfield, CT` are each a
+    **Town** (the real, encompassing government, `us:cousub:...`) that
+    also contains a much smaller incorporated **city/borough** of the
+    same base name (`us:place:...`) — confirmed live,
+    `resolve_government("Groton, CT")` returns `us:place:0934180`
+    (City of Groton) when the overwhelmingly more likely intended
+    government for an unqualified "Groton, CT" meeting is the Town of
+    Groton (`us:cousub:0918034250`). `"Town of Groton, CT"` /
+    `"City of Groton, CT"` (with the type word) already resolve
+    correctly to the two different governments — this is specifically
+    the bare-name path.
+  - **Impact**: narrow — only the 4 confirmed CT pairs (Litchfield,
+    Groton, Stonington, Newtown) are known to be wrong by this today;
+    unmeasured whether any already-archived page for one of these 4
+    hosts a bare-name jurisdiction string and is therefore mis-keyed to
+    the small city/borough instead of the town. No evidence this pattern
+    recurs outside CT — RI/MA/other New England states were not checked
+    for the same nested-government shape.
+  - **Next action**: don't blanket-flip the place-vs-cousub default —
+    that would break the ~2,369 correct Illinois-pattern resolutions.
+    Needs a name-level or state-level override (e.g. a small curated list
+    of "cousub wins over place for this bare name in this state," the
+    same mechanism `curated_aliases()` already provides) scoped to the
+    confirmed CT pairs, plus a check of whether any archived page is
+    currently mis-keyed this way before deciding it's worth a backfill.
+  - **Constraint**: verify the RI/MA/ME/NH/VT town rosters for the same
+    nested-borough pattern before assuming it's CT-only — this was found
+    incidentally while verifying the `us:cousub:` namespace for WO-121
+    (New England `us:cousub:` display fix), not from a targeted search.
+  - **History**: found 2026-09-06 while verifying
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md`/`COUSUB_REQUIREMENTS.md`'s
+    claim that Places and active-government COUSUBs are disjoint by
+    construction — they are not; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
   `Agenda=` query-string values, and each one archives as a separate
