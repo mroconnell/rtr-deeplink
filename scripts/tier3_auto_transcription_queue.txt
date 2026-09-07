@@ -1,15 +1,3 @@
-https://stlouisco.civicweb.net/Portal/MeetingInformation.aspx?Id=26776&outputType=1
-https://tay.civicweb.net/Portal/MeetingInformation.aspx?Id=365&Org=Cal
-https://taylor.civicweb.net/Portal/MeetingInformation.aspx?Id=1665&Org=Cal
-https://tiny.civicweb.net/Portal/MeetingInformation.aspx?Id=230&Org=Cal
-https://townofclaytonnc.civicweb.net/Portal/MeetingInformation.aspx?Org=Cal&Id=4470&utm_source=townofclaytonnc&utm_term=&utm_content=&utm_campaign=
-https://traversecitymi.civicweb.net/Portal/MeetingInformation.aspx?Id=28920&Org=Cal
-https://ufv.civicweb.net/Portal/MeetingInformation.aspx?Id=4961&Org=Cal
-https://uoguelph.civicweb.net/Portal/MeetingInformation.aspx?Id=2009&utm_source=guelphtoday.com&utm_campaign=guelphtoday.com%3A%20outbound&utm_medium=referral
-http://walton.civicweb.net/Portal/MeetingInformation.aspx?Id=1220&outputType=1
-https://winchesterva.civicweb.net/Portal/MeetingInformation.aspx?Id=27030&Org=Cal
-https://woonsocketri.civicweb.net/Portal/MeetingInformation.aspx?Id=112&outputType=Agenda
-http://yrdsb.civicweb.net/Portal/MeetingInformation.aspx?Id=2041&outputType=1
 http://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1924&MediaPosition=2647.545&ID=1264
 http://alamancecountync.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1628&MinutesID=1531&MediaPosition=&ID=7622&Type=30&AcceptMinutesID=1530&CssClass=%20style=
 https://alexandriacitymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1201&MediaPosition=&ID=3612&CssClass=
