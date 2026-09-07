@@ -76,8 +76,23 @@ _RULES: list[tuple[str, re.Pattern]] = [
     ),
     (
         SCHOOL_DISTRICT,
+        # cusd/uhsd added 2026-09-03: `us_school_districts.csv` has 5 real
+        # Illinois "CUSD" (Community Unified School District) rows and 5
+        # real Vermont "UHSD" (Union High School District) rows whose
+        # names carry no OTHER school-district phrase at all ("Lake
+        # Region UHSD 24", "Naperville CUSD 203") -- confirmed by grepping
+        # the real table, not assumed. Without these two, a name like
+        # Before this, "Naperville CUSD 203" classified as nothing, which
+        # is exactly the §1.3 failure shape: it falls through to a
+        # general place lookup on its own town's name ("Naperville", a
+        # real Illinois city) instead of being routed to the
+        # school-district table. `RE`/`JT` (Colorado's "School District RE-5",
+        # "School District 50-JT") were checked too and don't need their
+        # own entry -- both always appear alongside the literal phrase
+        # "school district", already matched above.
         re.compile(
-            r"\b(school district|unified|usd|cisd|elementary district|high school district|"
+            r"\b(school district|unified|usd|cusd|cisd|uhsd|elementary district|"
+            r"high school district|"
             r"board of education|school board|schools|community college|college district|"
             r"independent school|isd|public schools|school committee)\b|"
             r"\b[a-z.'-]+ college$",
