@@ -96,8 +96,18 @@ class CivicPlusAssetFinder(AssetFinder):
         candidates = self._find_video_rows(soup, final_url)
 
         if not candidates:
+            # CivicPlus is never the video host itself (see module
+            # docstring) -- when no row on this AgendaCenter page has a
+            # real delegate video link, there is no platform to report,
+            # so this must be "unknown" (the same value every other
+            # adapter's not-found case uses, e.g. telvue.py), not
+            # `self.platform_name` ("civicplus"). Confirmed real mislabel,
+            # 2026-09-07 dry run: City of Azle, TX (no meetings on the
+            # page at all) and City of Brownfield, TX (agendas but no
+            # video on any row) both landed here and both incorrectly
+            # reported platform=civicplus in the report CSV.
             return ResolvedMeeting(
-                platform=self.platform_name,
+                platform="unknown",
                 source_url=url,
                 jurisdiction=subdomain_jurisdiction,
                 video_warnings=["No video link found on this CivicPlus page."],

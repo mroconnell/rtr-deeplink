@@ -1,0 +1,761 @@
+gov_id,unit_name,web_address
+us:place:1825000,CITY OF FORT WAYNE,http://www.cityoffortwayne.org/
+us:place:3421000,CITY OF ELIZABETH,http://www.elizabethnj.org/
+us:place:4548535,TOWN OF MOUNT PLEASANT,http://www.tompsc.com
+us:place:3474000,CITY OF TRENTON,http://www.trentonnj.org/
+us:place:3413690,CITY OF CLIFTON,http://www.cliftonnj.org
+us:place:4848768,CITY OF MISSION,http://www.missiontexas.us
+us:place:0812415,TOWN OF CASTLE ROCK,http://www.crgov.com
+us:place:2241155,CITY OF LAKE CHARLES,http://www.cityoflakecharles.com/
+us:place:0680854,CITY OF TUSTIN,http://www.tustinca.org
+us:place:4530850,CITY OF GREENVILLE,http://www.greenvillesc.gov/
+us:place:1840788,CITY OF LAFAYETTE,http://www.lafayette.in.gov
+us:place:0121184,CITY OF DOTHAN,http://www.dothan.org
+us:place:4852356,CITY OF NORTH RICHLAND HILLS,http://www.nrhtx.com
+us:place:2064500,CITY OF SHAWNEE,http://www.cityofshawnee.org/
+us:place:3944856,CITY OF LORAIN,http://www.cityoflorain.org
+us:place:2239475,CITY OF KENNER,http://www.kenner.la.us/
+us:place:0639248,CITY OF LAGUNA NIGUEL,http://www.cityoflagunaniguel.org
+us:place:2208920,CITY OF BOSSIER CITY,http://www.bossiercity.org/
+us:place:2965126,CITY OF ST PETERS,http://www.stpetersmo.net/
+us:place:4048350,CITY OF MIDWEST CITY,http://www.midwestcityok.org
+us:place:2670760,CITY OF ST CLAIR SHORES,http://www.scsmi.net
+us:place:4770580,TOWN OF SPRING HILL,http://WWW.SPRINGHILLTN.ORG
+us:place:1801468,CITY OF ANDERSON,http://www.cityofanderson.com/
+us:place:1781048,CITY OF WHEATON,http://www.wheaton.il.us/
+us:place:0657526,CITY OF PLACENTIA,http://www.placentia.org
+us:place:3949840,CITY OF MIDDLETOWN,http://www.cityofmiddletown.org
+us:place:0947515,CITY OF MILFORD,http://www.ci.milford.ct.us/
+us:place:1729938,VILLAGE OF GLENVIEW,http://www.glenview.il.us/
+us:place:2854040,CITY OF OLIVE BRANCH,http://www.obms.us
+us:place:1979950,CITY OF URBANDALE,http://www.urbandale.org/
+us:place:4867496,CITY OF SHERMAN,http://www.ci.sherman.tx.us
+us:place:2436075,CITY OF HAGERSTOWN,http://www.hagerstownmd.org/
+us:place:2670520,CITY OF SAGINAW,http://www.saginaw-mi.com/
+us:place:1749867,CITY OF MOLINE,http://www.moline.il.us/
+us:place:1704845,CITY OF BELLEVILLE,http://www.belleville.net/
+us:place:1911755,CITY OF CEDAR FALLS,http://www.cedarfalls.com/
+us:place:1719161,CITY OF DE KALB,http://www.cityofdekalb.com/
+us:place:1765442,VILLAGE OF ROMEOVILLE,http://www.romeoville.org/
+us:place:3424420,BOROUGH OF FORT LEE,http://www.fortleenj.org/
+us:place:4568290,CITY OF SPARTANBURG,http://www.cityofspartanburg.org/
+us:place:5578600,CITY OF SUN PRAIRIE,http://www.cityofsunprairie.com/
+us:place:5373465,University Place,https://www.cityofup.com/
+us:place:1732746,VILLAGE OF HANOVER PARK,http://www.hanoverparkillinois.org/
+us:place:1765078,CITY OF ROCK ISLAND,http://www.rigov.org/
+us:place:1860246,TOWN OF PLAINFIELD,http://www.townofplainfield.com
+us:place:3743920,CITY OF MONROE,http://www.monroenc.org/
+us:place:1338964,CITY OF HINESVILLE,http://www.cityofhinesville.org
+us:place:1646540,CITY OF LEWISTON,http://www.cityoflewiston.org/
+us:place:4507210,TOWN OF BLUFFTON,http://www.townofbluffton.sc.gov
+us:place:2638640,CITY OF HOLLAND,http://www.cityofholland.com/
+us:place:0100820,CITY OF ALABASTER,http://www.cityofalabaster.com
+us:place:2039075,CITY OF LEAWOOD,http://www.leawood.org/
+us:place:0128696,CITY OF GADSDEN,http://cityofgadsden.com
+us:place:1729730,VILLAGE OF GLENDALE HEIGHTS,http://www.glendaleheights.org/
+us:place:1623410,CITY OF EAGLE,http://www.cityofeagle.org
+us:place:0622300,CITY OF EL PASO DE ROBLES,http://www.prcity.com
+us:place:3759280,CITY OF SANFORD,http://www.sanfordnc.net
+us:place:2546598,CITY OF NORTH ATTLEBOROUGH TOWN,http://www.north-attleboro.ma.us
+us:place:0119648,CITY OF DAPHNE,http://www.daphneal.com
+us:place:2139142,CITY OF INDEPENDENCE,http://www.cityofindependence.org/
+us:place:3929428,CITY OF GARFIELD HEIGHTS,http://www.garfieldhts.org/
+us:place:3421480,CITY OF ENGLEWOOD,http://www.cityofenglewood.org/
+us:place:0102956,CITY OF ATHENS,http://www.athensal.us
+us:place:1718563,CITY OF DANVILLE,http://www.cityofdanville.org
+us:place:4250528,MUNICIPALITY OF MONROEVILLE,http://www.monroeville.pa.us/
+us:place:1752584,VILLAGE OF NEW LENOX,http://www.newlenox.net/
+us:place:2018250,CITY OF DODGE CITY,http://www.dodgecity.org/
+us:place:4037800,CITY OF JENKS,http://www.jenks.com/
+us:place:2631420,CITY OF GARDEN CITY,http://www.gardencitymi.org
+us:place:1722697,CITY OF EDWARDSVILLE,http://www.cityofedwardsville.com/
+us:place:0667056,CITY OF SANGER,http://www.ci.sanger.ca.us
+us:place:1754638,CITY OF OAK FOREST,http://WWW.OAK-FOREST.ORG
+us:place:1654550,CITY OF MOSCOW,http://www.ci.moscow.id.us
+us:place:1744225,CITY OF LOCKPORT,http://www.lockport.org/
+us:place:1819486,CITY OF EAST CHICAGO,http://www.eastchicago.com/
+us:place:0685922,TOWN OF WINDSOR,http://www.townofwindsor.com
+us:place:3903352,CITY OF AVON,http://www.cityofavon.com/
+us:place:3988084,CITY OF ZANESVILLE,http://www.coz.org
+us:place:3980304,CITY OF WADSWORTH,http://www.wadsworthcity.com/
+us:place:3224900,CITY OF FERNLEY,http://www.cityoffernley.org
+us:place:1780645,VILLAGE OF WESTMONT,http://www.westmont.il.gov/
+us:place:1909550,CITY OF BURLINGTON,http://www.burlingtoniowa.org/
+us:place:1723724,VILLAGE OF ELMWOOD PARK,http://www.elmwoodpark.org/
+us:place:5304475,Battle Ground,https://www.cityofbg.org/
+us:place:1765338,CITY OF ROLLING MEADOWS,http://www.cityrm.org
+us:place:3936651,CITY OF HUDSON,http://www.hudson.oh.us/
+us:place:1765806,VILLAGE OF ROSELLE,http://www.roselle.il.us/
+us:place:3471430,CITY OF SUMMIT,http://www.cityofsummit.org
+us:place:1706587,VILLAGE OF BLOOMINGDALE,http://www.villageofbloomingdale.org/
+us:place:3712960,VILLAGE OF CLEMMONS,http://www.clemmons.org/
+us:place:2855360,CITY OF PASCAGOULA,http://www.cityofpascagoula.com/
+us:place:1731121,VILLAGE OF GRAYSLAKE,http://www.villageofgrayslake.com/
+us:place:4203928,BOROUGH OF BALDWIN,http://www.baldwinborough.org/
+us:place:1722073,CITY OF EAST MOLINE,http://www.eastmoline.com/
+us:place:4252432,MUNICIPALITY OF MURRYSVILLE,http://www.murrysvillegov.org
+us:place:3972424,CITY OF SIDNEY,http://www.sidneyoh.com/
+us:place:1869318,CITY OF SHELBYVILLE,http://www.cityofshelbyvillein.com
+us:place:4551280,CITY OF NORTH MYRTLE BEACH,http://www.nmb.us
+us:place:3430210,TOWN OF HARRISON,http://www.townofharrison.com
+us:place:4857980,CITY OF PLAINVIEW,http://www.ci.plainview.tx.us
+us:place:4866428,CITY OF SEAGOVILLE,http://www.seagoville.us
+us:place:3978050,CITY OF TWINSBURG,http://www.mytwinsburg.com
+us:place:1264975,CITY OF SEMINOLE,http://www.myseminole.com
+us:place:1724634,VILLAGE OF EVERGREEN PARK,http://www.evergreenpark-ill.com/
+us:place:4854708,CITY OF PALESTINE,http://www.cityofpalestinetx.com
+us:place:1718992,VILLAGE OF DEERFIELD,http://www.deerfield.il.us
+us:place:5377665,West Richland,https://www.westrichland.org/
+us:place:1774223,CITY OF SYCAMORE,http://www.cityofsycamore.com
+us:place:5376405,Washougal,https://www.cityofwashougal.us/
+us:place:0602868,CITY OF ARROYO GRANDE,http://www.arroyogrande.org
+us:place:4878544,CITY OF WHITE SETTLEMENT,http://www.wstx.us
+us:place:4767120,CITY OF SEVIERVILLE,http://www.seviervilletn.org/
+us:place:1722255,CITY OF EAST ST LOUIS,http://www.cesl.us
+us:place:4827984,CITY OF GAINESVILLE,http://www.gainesville.tx.us
+us:place:0111416,CITY OF CALERA,http://cityofcalera.org
+us:place:1711592,VILLAGE OF CARY,http://www.caryillinois.com/
+us:place:3732640,TOWN OF HOPE MILLS,http://TOWNOFHOPEMILLS.COM
+us:place:2170050,CITY OF SHELBYVILLE,http://www.shelbyvillekentucky.com
+us:place:4861196,CITY OF RED OAK,http://www.redoaktx.org
+us:place:0811810,CITY OF CANON,http://www.canoncity.org
+us:place:5323620,Ferndale,https://www.cityofferndale.org/
+us:place:5340805,Lynden,https://www.lyndenwa.org/
+us:place:1328380,CITY OF FAIRBURN,http://www.fairburn.com/
+us:place:5568275,CITY OF RIVER FALLS,http://www.rfcity.org/
+us:place:3763120,TOWN OF SOUTHERN PINES,http://www.southernpines.net/
+us:place:4000200,CITY OF ADA,http://www.adaok.com/
+us:place:2708452,CITY OF BUFFALO,http://www.ci.buffalo.mn.us
+us:place:0661026,CITY OF RIPON,http://www.cityofripon.org
+us:place:0114104,CITY OF CHELSEA,http://www.cityofchelsea.com
+us:place:3730120,CITY OF HAVELOCK,http://www.havelocknc.us
+us:place:1880306,CITY OF WARSAW,http://www.warsaw.in.gov
+us:place:4234064,CITY OF HERMITAGE,http://www.hermitage.net/
+us:place:3716400,TOWN OF DAVIDSON,http://www.townofdavidson.org
+us:place:1956505,CITY OF NEWTON,http://www.newtongov.org/
+us:place:1346356,CITY OF LILBURN,http://WWW.CITYOFLILBURN.COM
+us:place:0133448,CITY OF HARTSELLE,http://hartselle.org
+us:place:2955550,CITY OF OVERLAND,http://OVERLANDMO.ORG
+us:place:0833035,CITY OF GREENWOOD VILLAGE,http://www.greenwoodvillage.com/
+us:place:2941168,CITY OF LEBANON,http://www.lebanonmissouri.org/
+us:place:4227552,BOROUGH OF FRANKLIN PARK,http://www.franklinparkborough.us
+us:place:1778929,CITY OF WARRENVILLE,http://www.warrenville.il.us/
+us:place:4846500,CITY OF MANVEL,http://www.cityofmanvel.com
+us:place:3461680,BOROUGH OF RAMSEY,http://www.ramseynj.com/
+us:place:1676870,CITY OF STAR,http://www.staridaho.org
+us:place:3420020,BOROUGH OF EDGEWATER,http://www.edgewaternj.org
+us:place:0655856,CITY OF PARLIER,http://www.parlier.ca.us
+us:place:4837216,CITY OF JACKSONVILLE,http://www.jacksonville-texas.com
+us:place:4029600,CITY OF GLENPOOL,http://www.glenpoolonline.com
+us:place:1774119,VILLAGE OF SWANSEA,http://www.swanseail.org/
+us:place:2260530,CITY OF PINEVILLE,http://www.pineville.net/
+us:place:1714065,VILLAGE OF CHICAGO RIDGE,http://www.chicagoridge.org/
+us:place:4805168,CITY OF AZLE,http://www.cityofazle.org
+us:place:1712476,VILLAGE OF CHANNAHON,http://www.channahon.org/
+us:place:3971892,CITY OF SHARONVILLE,http://www.sharonville.org/
+us:place:2043950,CITY OF MCPHERSON,http://www.mcpcity.com
+us:place:1748892,VILLAGE OF MIDLOTHIAN,http://www.villageofmidlothian.net
+us:place:2850440,CITY OF NATCHEZ,http://www.natchez.ms.us/
+us:place:1067310,Smyrna,https://smyrna.delaware.gov
+us:place:3954562,CITY OF NEW FRANKLIN,http://www.newfranklin.org
+us:place:0828745,CITY OF FRUITA,http://www.fruita.org/
+us:place:0638520,CITY OF KING,http://www.kingcity.com
+us:place:1802674,CITY OF AUBURN,http://www.ci.auburn.in.us/
+us:place:4504690,CITY OF BEAUFORT,http://www.cityofbeaufort.org/
+us:place:3948342,CITY OF MAUMEE,http://www.maumee.org/
+us:place:3419840,BOROUGH OF EATONTOWN,http://www.eatontownnj.com/
+us:place:3451810,BOROUGH OF NEW PROVIDENCE,http://www.newprov.org/
+us:place:3908364,CITY OF BRECKSVILLE,http://www.brecksville.oh.us
+us:place:4839124,CITY OF KILGORE,http://www.cityofkilgore.com/
+us:place:3980990,CITY OF WARRENSVILLE HEIGHTS,http://www.cityofwarrensville.com
+us:place:5322045,Enumclaw,https://www.cityofenumclaw.net/
+us:place:4833212,CITY OF HENDERSON,http://www.hendersontx.us
+us:place:1780242,VILLAGE OF WESTERN SPRINGS,http://www.wsprings.com/
+us:place:3925396,CITY OF ENGLEWOOD,http://www.englewood.oh.us
+us:place:1047420,Milford,https://www.cityofmilford.com
+us:place:3915644,CITY OF CLAYTON,http://www.clayton.oh.us/
+us:place:5311825,Cheney,https://www.cityofcheney.org/
+us:place:3462940,VILLAGE OF RIDGEFIELD PARK,http://www.ridgefieldpark.org/
+us:place:1641320,CITY OF JEROME,http://www.ci.jerome.id.us/
+us:place:1740793,VILLAGE OF LA GRANGE PARK,http://WWW.LAGRANGEPARK.ORG
+us:place:1743744,VILLAGE OF LINCOLNWOOD,http://WWW.LINCOLNWOODIL.ORG
+us:place:2640860,CITY OF IONIA,http://www.ci.ionia.mi.us/
+us:place:4862588,CITY OF ROBINSON,http://www.robinsontexas.org
+us:place:2669020,CITY OF ROCHESTER,http://www.rochestermi.org
+us:place:0640438,CITY OF LARKSPUR,http://www.ci.larkspur.ca.us
+us:place:2922834,CITY OF EUREKA,http://www.eureka.mo.us/
+us:place:2810140,CITY OF BYRAM,http://www.byram-ms.us
+us:place:3932340,CITY OF GREENVILLE,http://WWW.CITYOFGREENVILLE.ORG
+us:place:2766460,CITY OF VADNAIS HEIGHTS,http://www.cityvadnaisheights.com
+us:place:0806255,TOWN OF BERTHOUD,http://www.berthoud.org
+us:place:1607840,CITY OF BLACKFOOT,http://www.cityofblackfoot.org
+us:place:0631393,CITY OF GROVER BEACH,http://www.grover.org
+us:place:3985036,CITY OF WICKLIFFE,http://www.cityofwickliffe.com/
+us:place:0124568,CITY OF EUFAULA,http://www.eufaulaalabama.com
+us:place:1763706,VILLAGE OF RICHTON PARK,http://WWW.RICHTONPARK.ORG
+us:place:2705752,CITY OF BIG LAKE,http://www.biglakemn.org
+us:place:4830416,CITY OF GRANBURY,http://www.granbury.org
+us:place:0678092,CITY OF TEHACHAPI,http://www.tehachapicityhall.com/
+us:place:1782530,VILLAGE OF WINNETKA,http://www.villageofwinnetka.org/
+us:place:4842448,CITY OF LEVELLAND,http://www.levellandtexas.org
+us:place:4237955,BOROUGH OF JEFFERSON HILLS,http://www.jeffersonhillsboro.org
+us:place:5544950,VILLAGE OF LITTLE CHUTE,http://www.littlechutewi.org
+us:place:1611260,CITY OF BURLEY,http://www.burleyidaho.org
+us:place:2657100,CITY OF NEW BALTIMORE,http://www.cityofnewbaltimore.org
+us:place:4223016,BOROUGH OF ELIZABETHTOWN,http://www.etownonline.com/
+us:place:1712164,CITY OF CENTRALIA,http://www.cityofcentralia.org
+us:place:4666700,CITY OF VERMILLION,http://www.vermillion.us/
+us:place:2627760,CITY OF FENTON,http://www.cityoffenton.org
+us:place:2857160,CITY OF PICAYUNE,http://www.picayune.ms.us
+us:place:3476490,BOROUGH OF WALLINGTON,http://www.wallingtonnj.org
+us:place:4527070,CITY OF FOUNTAIN INN,http://www.fountaininn.org
+us:place:4866704,CITY OF SELMA,http://www.ci.selma.tx.us
+us:place:3404750,BOROUGH OF BELLMAWR,http://www.bellmawr.com/
+us:place:3735880,CITY OF KINGS MOUNTAIN,http://www.cityofkm.com/
+us:place:1757381,CITY OF PALOS HEIGHTS,http://www.palosheights.org/
+us:place:4244864,CITY OF LOWER BURRELL,http://www.cityoflowerburrell.com/
+us:place:2973618,CITY OF TOWN AND COUNTRY,http://www.town-and-country.org/
+us:place:5633740,CITY OF GREEN RIVER,http://www.cityofgreenriver.com
+us:place:3957260,CITY OF NORTON,http://WWW.CITYOFNORTON.ORG
+us:place:2947648,CITY OF MEXICO,http://www.mexicomissouri.net/
+us:place:0827810,CITY OF FORT MORGAN,http://www.cityoffortmorgan.com
+us:place:4055150,CITY OF OKMULGEE,http://www.okmulgeeonline.com
+us:place:2635540,CITY OF GROSSE POINTE PARK,http://www.grossepointepark.org
+us:place:1975630,CITY OF STORM LAKE,http://www.stormlake.org/
+us:place:1768081,VILLAGE OF SCHILLER PARK,http://www.villageofschillerpark.com/
+us:place:1776199,CITY OF TROY,http://www.troyil.us
+us:place:3404180,BOROUGH OF BEACHWOOD,http://www.beachwoodusa.com/
+us:place:1761015,CITY OF PONTIAC,http://www.pontiac.org/
+us:place:1759988,VILLAGE OF PINGREE GROVE,http://www.pingreegrove.org
+us:place:3440290,BOROUGH OF LINCOLN PARK,http://www.lincolnpark.org/
+us:place:3443620,BOROUGH OF MANVILLE,http://www.manvillenj.org
+us:place:1962040,CITY OF PELLA,http://www.cityofpella.com
+us:place:2445750,TOWN OF LAPLATA,http://www.townoflaplata.org/
+us:place:3744800,CITY OF MOUNT AIRY,http://www.mountairy.org
+us:place:1944400,CITY OF LE MARS,http://www.lemarsiowa.com
+us:place:0869150,TOWN OF SEVERANCE,http://www.townofseverance.org
+us:place:0864255,CITY OF RIFLE,http://www.rifleco.org/
+us:place:2814260,CITY OF CLEVELAND,http://www.cityofclevelandms.com
+us:place:3525170,CITY OF ESPANOLA,http://www.cityofespanola.org
+us:place:0645246,CITY OF MALIBU,http://www.malibucity.org
+us:place:0107912,CITY OF BOAZ,http://www.cityofboaz.org
+us:place:1782400,VILLAGE OF WINFIELD,http://WWW.VILLAGEOFWINFIELD.COM
+us:place:1312400,CITY OF CAIRO,http://www.syrupcity.net
+us:place:5533100,VILLAGE OF HARTLAND,http://www.villageofhartland.com
+us:place:2921898,CITY OF ELLISVILLE,http://www.ellisville.mo.us/
+us:place:1376168,CITY OF THOMASTON,http://www.cityofthomaston.com
+us:place:3744320,CITY OF MOREHEAD CITY,http://www.townofmorehead.com/
+us:place:4865408,TOWN OF SANGER,http://www.sangertexas.org
+us:place:2220610,CITY OF DE RIDDER,http://WWW.CITYOFDERIDDER.ORG
+us:place:2702026,CITY OF ARDEN HILLS,http://www.ci.arden-hills.mn.us
+us:place:3956322,CITY OF NORTH COLLEGE HILL,http://WWW.NORTHCOLLEGEHILL.ORG
+us:place:5546850,VILLAGE OF MCFARLAND,http://WWW.MCFARLAND.WI.US
+us:place:1737907,VILLAGE OF ITASCA,http://www.itasca.com/
+us:place:1726571,VILLAGE OF FLOSSMOOR,http://WWW.FLOSSMOOR.ORG
+us:place:4838896,CITY OF KENNEDALE,http://www.cityofkennedale.com
+us:place:5367455,Stanwood,https://stanwoodwa.org/
+us:place:1733630,VILLAGE OF HAWTHORN WOODS,http://www.vhw.org
+us:place:4816240,CITY OF COMMERCE,http://www.commercetx.org
+us:place:4878388,CITY OF WHITEHOUSE,http://www.whitehousetx.org
+us:place:2768296,CITY OF WASECA,http://www.ci.waseca.mn.us
+us:place:2971746,CITY OF SUNSET HILLS,http://WWW.SUNSET-HILLS.COM
+us:place:1781919,VILLAGE OF WILLOWBROOK,http://www.willowbrookil.org/
+us:place:5322080,Ephrata,https://www.ephrata.org/
+us:place:2635100,CITY OF GREENVILLE,http://www.greenvillemi.org
+us:place:0833695,TOWN OF GYPSUM,http://www.townofgypsum.com/
+us:place:4849068,CITY OF MONT BELVIEU,http://www.montbelvieu.net/
+us:place:3413360,BOROUGH OF CLAYTON,http://www.claytonnj.com
+us:place:3406610,TOWN OF BOONTON,http://www.boonton.org/
+us:place:0614190,CITY OF CLOVERDALE,http://www.cloverdale.net/
+us:place:4833824,CITY OF HIGHLAND PARK,http://www.hptx.org
+us:place:4810720,CITY OF BROWNFIELD,http://www.ci.brownfield.tx.us/
+us:place:1907390,CITY OF BONDURANT,http://www.cityofbondurant.com/
+us:place:2014600,CITY OF COFFEYVILLE,http://www.coffeyville.com/
+us:place:5553675,CITY OF MONONA,http://www.mymonona.com
+us:place:3479310,BOROUGH OF WEST LONG BRANCH,http://www.westlongbranch.org
+us:place:1714572,VILLAGE OF CLARENDON HILLS,http://www.clarendonhills.us/
+us:place:2012500,CITY OF CHANUTE,http://www.chanute.org/
+us:place:5357115,Quincy,https://www.quincywashington.us/
+us:place:4815436,CITY OF CLEVELAND,http://www.clevelandtexas.com
+us:place:3706140,TOWN OF BLACK MOUNTAIN,http://www.townofblackmountain.org/
+us:place:2953624,CITY OF OAK GROVE,http://WWW.CITYOFOAKGROVE.COM
+us:place:4861844,CITY OF RICHLAND HILLS,http://www.richlandhills.com
+us:place:1812124,CITY OF CHARLESTOWN,http://www.cityofcharlestown.com
+us:place:2954650,CITY OF OLIVETTE,http://www.olivettemo.com/
+us:place:4275816,BOROUGH OF SWISSVALE,http://www.swissvaleborough.com
+us:place:4838488,CITY OF KAUFMAN,http://www.kaufmantx.org
+us:place:1747397,VILLAGE OF MARYVILLE,http://www.vil.maryville.il.us
+us:place:3436690,BOROUGH OF KENILWORTH,http://www.kenilworthborough.com
+us:place:3475140,BOROUGH OF UPPER SADDLE RIVER,http://www.usrtoday.org
+us:place:3454990,BOROUGH OF ORADELL,http://www.oradell.org
+us:place:4818092,CITY OF CUERO,http://www.cityofcuero.com
+us:place:4839448,CITY OF KIRBY,http://www.kirbytx.org
+us:place:5350570,Ocean Shores,https://www.osgov.com/
+us:place:3975602,VILLAGE OF SUNBURY,http://www.sunburyvillage.com
+us:place:4840516,TOWN OF LAKE DALLAS,http://www.lakedallas.com
+us:place:3707720,CITY OF BREVARD,http://WWW.CITYOFBREVARD.COM
+us:place:3735720,TOWN OF KILL DEVIL HILLS,http://www.kdhnc.com/
+us:place:2670960,CITY OF ST JOSEPH,http://www.sjcity.com/
+us:place:1983145,CITY OF WEBSTER CITY,http://www.webstercity.com/
+us:place:1884878,TOWN OF WINFIELD,http://www.winfieldgov.com
+us:place:4841188,CITY OF LAMPASAS,http://www.cityoflampasas.com
+us:place:5554725,VILLAGE OF MOUNT HOREB,http://www.mounthorebwi.info/
+us:place:2007975,CITY OF BONNER SPRINGS,http://www.bonnersprings.org/
+us:place:2024000,CITY OF FORT SCOTT,http://www.fscity.org
+us:place:0843110,CITY OF LAMAR,http://www.ci.lamar.co.us/
+us:place:4515295,CITY OF CLINTON,http://www.cityofclintonsc.com
+us:place:3741420,CITY OF MARION,http://www.marionnc.org/
+us:place:3428800,BOROUGH OF HADDON HEIGHTS,http://www.haddonhts.com
+us:place:4862384,CITY OF RIVER OAKS,http://www.riveroakstx.com
+us:place:4848936,CITY OF MONAHANS,http://www.cityofmonahans.org
+us:place:4840168,CITY OF LACY LAKEVIEW,http://www.lacylakeview.org
+us:place:0143120,CITY OF LINCOLN,http://www.lincolnalabama.com/
+us:place:0474190,CITY OF TOLLESON,http://www.tollesonaz.org
+us:place:3042700,CITY OF LAUREL,http://www.laurel.mt.gov/
+us:place:1767548,CITY OF SANDWICH,http://WWW.SANDWICH.IL.US
+us:place:2757130,CITY OF ST JOSEPH,http://www.cityofstjoseph.com
+us:place:1234132,VILLAGE OF ISLAMORADA,http://www.islamorada.fl.us/
+us:place:3446620,BOROUGH OF MILLTOWN,http://www.milltownnj.org
+us:place:4730960,TOWN OF GREENBRIER,http://www.greenbriertn.org
+us:place:5367770,Steilacoom,https://townofsteilacoom.org/
+us:place:4847916,CITY OF MEXIA,http://www.cityofmexia.com
+us:place:3961686,CITY OF PEPPER PIKE,http://www.pepperpike.org
+us:place:0168352,CITY OF SATSUMA,http://www.cityofsatsuma.com
+us:place:2651940,CITY OF MARSHALL,http://WWW.CITYOFMARSHALL.COM
+us:place:4875236,TOWN OF VENUS,http://www.cityofvenus.org
+us:place:4838548,CITY OF KEENE,http://www.keenetx.com/
+us:place:4811464,CITY OF BURNET,http://www.cityofburnet.com
+us:place:1743965,CITY OF LITCHFIELD,http://www.cityoflitchfieldil.com
+us:place:2737448,CITY OF LITCHFIELD,http://www.ci.litchfield.mn.us
+us:place:3452620,BOROUGH OF NORTH CALDWELL,http://WWW.NORTHCALDWELL.ORG
+us:place:2906004,CITY OF BLACK JACK,http://www.cityofblackjack.com/
+us:place:2057625,CITY OF PRATT,http://www.cityofprattks.com
+us:place:4275648,BOROUGH OF SWARTHMORE,http://www.swarthmorepa.org
+us:place:4211720,BOROUGH OF CATASAUQUA,http://www.catasauqua.org
+us:place:2919252,CITY OF DE SOTO,http://www.desotomo.com
+us:place:2000125,CITY OF ABILENE,http://www.abilenecityhall.com/
+us:place:5523575,VILLAGE OF ELM GROVE,http://www.elmgrovewi.org/
+us:place:4810264,CITY OF BRIDGEPORT,http://www.cityofbridgeport.net
+us:place:3916308,CITY OF CLYDE,http://www.clydeohio.org/
+us:place:0813845,CITY OF CHERRY HILLS VILLAGE,http://www.cherryhillsvillage.com
+us:place:3067900,CITY OF SIDNEY,http://www.cityofsidneymt.com
+us:place:3701400,TOWN OF ANGIER,http://www.angier.org/
+us:place:1949215,CITY OF MAQUOKETA,http://WWW.MAQUOKETAIA.COM
+us:place:4853130,CITY OF OAK POINT,http://www.oakpointtexas.com
+us:place:1750244,CITY OF MONTICELLO,http://www.cityofmonticello.net
+us:place:0672576,CITY OF SOLVANG,http://www.cityofsolvang.com
+us:place:0869645,CITY OF SHERIDAN,http://WWW.CI.SHERIDAN.CO.US
+us:place:2260880,CITY OF PLAQUEMINE,http://WWW.PLAQUEMINE.ORG
+us:place:3909358,CITY OF BROOKVILLE,http://WWW.BROOKVILLEOHIO.COM
+us:place:0804110,TOWN OF AVON,http://www.avon.org/
+us:place:0822860,TOWN OF EATON,http://www.eatonco.org
+us:place:4802260,CITY OF ALVARADO,http://www.cityofalvarado.org
+us:place:5308570,Buckley,https://www.cityofbuckley.com/
+us:place:2070800,CITY OF TONGANOXIE,http://www.tonganoxie.org
+us:place:4257480,BOROUGH OF OXFORD,http://www.oxfordboro.org
+us:place:2668380,CITY OF RICHMOND,http://www.cityofrichmond.net/
+us:place:4843024,CITY OF LITTLEFIELD,http://www.littlefieldtexas.org
+us:place:2054250,CITY OF PAOLA,http://www.cityofpaola.com
+us:place:4809640,CITY OF BOWIE,http://www.cityofbowietx.com
+us:place:1341596,CITY OF JACKSON,http://www.cityofjacksonga.com
+us:place:3016600,CITY OF COLUMBIA FALLS,http://www.cityofcolumbiafalls.org
+us:place:1380984,CITY OF WAYNESBORO,http://www.waynesboroga.com/
+us:place:4838332,CITY OF JUSTIN,http://www.cityofjustin.com/
+us:place:2034300,CITY OF IOLA,http://www.cityofiola.com/
+us:place:4865660,CITY OF SANSOM PARK,http://www.sansompark.org
+us:place:1734865,CITY OF HIGHWOOD,http://www.cityofhighwood.com/
+us:place:0430270,TOWN OF GUADALUPE,http://www.guadalupeaz.org
+us:place:3443890,CITY OF MARGATE,http://WWW.MARGATE-NJ.COM
+us:place:1858662,TOWN OF PENDLETON,http://WWW.TOWN.PENDLETON.IN.US
+us:place:4850376,CITY OF NASSAU BAY,http://www.nassaubay.com
+us:place:5550200,CITY OF MAYVILLE,http://www.mayvillecity.com/
+us:place:1986250,CITY OF WINDSOR HEIGHTS,http://www.windsorheights.org
+us:place:1643570,CITY OF KIMBERLY,http://www.cityofkimberly.org
+us:place:4246888,BOROUGH OF MANHEIM,http://www.manheimboro.org/
+us:place:3666047,VILLAGE OF SEA CLIFF,http://www.seacliff-ny.gov
+us:place:1349196,CITY OF MADISON,http://www.madisonga.com/
+us:place:4500100,CITY OF ABBEVILLE,http://www.abbevillecitysc.com
+us:place:2919018,CITY OF DELLWOOD,http://www.cityofdellwoodmo.com
+us:place:2902242,CITY OF ASHLAND,http://www.ashlandmo.us
+us:place:1757407,VILLAGE OF PALOS PARK,http://www.palospark.org/
+us:place:2414950,TOWN OF CENTREVILLE,http://www.townofcentreville.org
+us:place:2962660,CITY OF ROCK HILL,http://www.rockhillmo.net/
+us:place:0114464,CITY OF CHILDERSBURG,http://www.childersburg.org/
+us:place:2020000,CITY OF EDWARDSVILLE,http://edwardsvilleks.org/
+us:place:4817504,TOWN OF CRANDALL,http://www.crandalltexas.com
+us:place:1910135,CITY OF CAMANCHE,http://www.camancheia.org
+us:place:1923115,CITY OF DYERSVILLE,http://www.cityofdyersville.com
+us:place:0830340,CITY OF GLENDALE,http://www.glendale.co.us/
+us:place:4854444,CITY OF OVILLA,http://www.cityofovilla.org
+us:place:2061825,CITY OF RUSSELL,http://www.russellcity.org/
+us:place:2966368,CITY OF SCOTT CITY,http://www.scottcitymo.org
+us:place:3442630,BOROUGH OF MAGNOLIA,http://WWW.MAGNOLIA-NJ.ORG.
+us:place:4837168,CITY OF JACKSBORO,http://www.cityofjacksboro.com
+us:place:4828248,CITY OF GARDEN RIDGE,http://www.ci.garden-ridge.tx.us
+us:place:4161300,CITY OF REEDSPORT,http://www.cityofreedsport.org
+us:place:1340056,CITY OF HOSCHTON,http://CITYOFHOSCHTON.COM
+us:place:3445210,BOROUGH OF MEDFORD LAKES,http://www.medfordlakes.com/
+us:place:4847040,CITY OF MATHIS,http://www.cityofmathis.com
+us:place:3705040,TOWN OF BENSON,http://WWW.TOWNOFBENSON.COM
+us:place:4869830,VILLAGE OF SPRING VALLEY,http://www.springvalleytx.com
+us:place:4271144,BOROUGH OF SLATINGTON,http://www.slatington.org
+us:place:2053225,CITY OF OSAWATOMIE,http://www.osawatomieks.org
+us:place:3763880,TOWN OF SPINDALE,http://www.spindalenc.net
+us:place:4067950,TOWN OF SLAUGHTERVILLE,http://www.town.slaughterville.ok.us
+us:place:1860192,TOWN OF PITTSBORO,http://www.townofpittsboro.org
+us:place:2647820,CITY OF LINDEN,http://www.lindenmi.us/
+us:place:4868456,CITY OF SMITHVILLE,http://www.ci.smithville.tx.us
+us:place:0804935,TOWN OF BASALT,http://www.basalt.net/
+us:place:2923950,CITY OF FENTON,http://WWW.FENTONMO.ORG
+us:place:3764500,TOWN OF STANLEY,http://www.townofstanley.org
+us:place:5517775,VILLAGE OF CROSS PLAINS,http://CROSS-PLAINS.WI.US
+us:place:4259120,BOROUGH OF PENNSBURG,http://www.pennsburg.us
+us:place:1648790,CITY OF MCCALL,http://www.mccall.id.us/
+us:place:1015440,Clayton,https://clayton.delaware.gov
+us:place:4107200,CITY OF BOARDMAN,http://www.cityofboardman.com
+us:place:1336696,CITY OF HARLEM,http://www.harlemga.org
+us:place:3721160,TOWN OF EMERALD ISLE,http://www.emeraldisle-nc.org/
+us:place:2710648,CITY OF CENTERVILLE,http://www.centervillemn.com
+us:place:0618506,CITY OF DEL MAR,http://www.delmar.ca.us
+us:place:1671020,CITY OF ST ANTHONY,http://www.cityofstanthony.org
+us:place:4269376,BOROUGH OF SEWICKLEY,http://www.sewickleyborough.org
+us:place:5327960,Granger,https://www.grangerwashington.org/
+us:place:0685012,CITY OF WHEATLAND,http://www.wheatland.ca.gov
+us:place:1710240,CITY OF BYRON,http://www.cityofbyron.com
+us:place:1041830,Lewes,https://www.ci.lewes.de.us
+us:place:3966530,VILLAGE OF RICHFIELD,http://WWW.RICHFIELDVILLAGEOHIO.ORG
+us:place:4871960,VILLAGE OF TAYLOR LAKE,http://www.taylorlakevillage.us
+us:place:5508225,CITY OF BLOOMER,http://www.ci.bloomer.wi.us
+us:place:1842861,TOWN OF LEO-CEDARVILLE,http://www.leocedarville.com
+us:place:4815796,CITY OF COCKRELL HILL,http://www.cockrell-hill.tx.us
+us:place:5504875,CITY OF BARRON,http://www.barronwi.us
+us:place:4724480,CITY OF ETOWAH,http://www.cityofetowahtn.com
+us:place:4867400,CITY OF SHENANDOAH,http://www.shenandoahtx.us
+us:place:2614200,CITY OF CEDAR SPRINGS,http://www.cityofcedarsprings.org/
+us:place:0254920,CITY OF NOME,http://www.nomealaska.org
+us:place:1719083,VILLAGE OF DEER PARK,http://www.villageofdeerpark.com
+us:place:4877416,CITY OF WEST COLUMBIA,http://www.westcolumbiatx.org/
+us:place:4879816,CITY OF WINNSBORO,http://www.winnsborotexas.com
+us:place:2743738,CITY OF MONTGOMERY,http://www.cityofmontgomerymn.com
+us:place:4843144,CITY OF LLANO,http://www.cityofllano.com
+us:place:4814224,TOWN OF CHANDLER,http://www.chandlertx.com
+us:place:4821844,CITY OF EAGLE LAKE,http://www.coeltx.net
+us:place:3952052,VILLAGE OF MORELAND HILLS,http://www.morelandhills.com
+us:place:4246792,BOROUGH OF MALVERN,http://www.malvern.org/
+us:place:4020550,CITY OF DEWEY,http://www.cityofdewey.com
+us:place:1380788,CITY OF WATKINSVILLE,http://www.cityofwatkinsville.com
+us:place:2701684,CITY OF ANNANDALE,http://www.annandale.mn.us
+us:place:0648956,CITY OF MONTE SERENO,http://www.montesereno.org
+us:place:4249920,BOROUGH OF MILLVALE,http://www.millvalepa.com
+us:place:3439420,BOROUGH OF LAWNSIDE,http://LAWNSIDE.NET
+us:place:4058150,TOWN OF PERKINS,http://www.cityofperkins.net
+us:place:4015350,CITY OF CLEVELAND,http://www.cityofclevelandok.com
+us:place:0855980,TOWN OF ORCHARD CITY,http://www.orchardcityco.org/
+us:place:4821904,CITY OF EARLY,http://www.earlytx.net
+us:place:4154100,CITY OF OAKRIDGE,http://www.ci.oakridge.or.us
+us:place:2910240,CITY OF BYRNES MILL,http://www.byrnesmill.org
+us:place:3608323,VILLAGE OF BRIGHTWATERS,http://www.villageofbrightwaters.com
+us:place:1973875,CITY OF SOLON,http://www.solon-iowa.com
+us:place:3285400,CITY OF YERINGTON,http://www.yerington.net
+us:place:3675779,VILLAGE OF TUXEDO,https://www.tuxedogov.org/
+us:place:0810600,CITY OF BURLINGTON,http://www.burlingtoncolo.com/
+us:place:3943722,VILLAGE OF LINCOLN HEIGHTS,http://www.vlho.org
+us:place:2902674,CITY OF AVA,http://www.avamissouri.org
+us:place:4845288,CITY OF LYTLE,http://www.lytletx.org
+us:place:3922568,VILLAGE OF DOYLESTOWN,http://www.doylestown.com
+us:place:5587200,VILLAGE OF WILLIAMS BAY,http://www.williamsbay.org
+us:place:3525450,CITY OF EUNICE,http://www.cityofeunice.org
+us:place:4879624,VILLAGE OF WIMBERLEY,http://www.cityofwimberley.com
+us:place:3457600,BOROUGH OF PENNINGTON,http://WWW.PENNINGTONBORO.ORG
+us:place:3736400,TOWN OF LA GRANGE,http://www.lagrangenc.com
+us:place:1723737,CITY OF EL PASO,http://www.elpasoil.org/
+us:place:1609370,CITY OF BONNERS FERRY,http://www.bonnersferry.id.gov
+us:place:5312140,Chewelah,https://www.cityofchewelah.org/
+us:place:1935265,CITY OF HAWARDEN,http://www.cityofhawarden.com/
+us:place:4878076,VILLAGE OF WESTWORTH VILLAGE,http://www.cityofwestworth.com
+us:place:4253712,BOROUGH OF NEW HOPE,http://www.newhopeborough.org
+us:place:5379275,Winlock,https://cityofwinlock.com/
+us:place:5357220,Rainier,https://www.cityofrainierwa.org/
+us:place:1718719,VILLAGE OF DAVIS JUNCTION,http://www.davisjunction.com
+us:place:2636960,CITY OF HARTFORD,http://www.cityofhartfordmi.org
+us:place:3775820,TOWN OF WRIGHTSVILLE BEACH,http://www.towb.org
+us:place:5316970,Dayton,https://www.daytonwa.com/
+us:place:0843605,TOWN OF LA SALLE,http://www.lasalletown.com
+us:place:1925365,CITY OF ELY,http://ELYIOWA.COM
+us:place:2055675,CITY OF PHILLIPSBURG,http://www.phillipsburgks.us
+us:place:4846224,CITY OF MALAKOFF,http://www.cityofmalakoff.net
+us:place:4111150,CITY OF CARLTON,http://www.ci.carlton.or.us/
+us:place:2980098,CITY OF WILLOW SPRINGS,http://www.willowspringsmo.com
+us:place:1723945,VILLAGE OF ELWOOD,http://www.villageofelwood.com
+us:place:4853988,CITY OF OLMOS PARK,http://www.olmospark.org
+us:place:2012775,CITY OF CHENEY,http://www.cheneyks.org
+us:place:0847070,TOWN OF LYONS,http://www.townoflyons.com
+us:place:2024575,CITY OF FREDONIA,http://www.fredoniaks.org/
+us:place:2031400,CITY OF HERINGTON,http://www.cityofherington.com
+us:place:2610580,CITY OF BRIDGMAN,http://WWW.BRIDGMAN.ORG
+us:place:2650660,CITY OF MANCHESTER,http://www.vil-manchester.org
+us:place:2416787,TOWN OF CHEVY CHASE VILLAGE,http://www.chevychasevillagemd.gov
+us:place:3439210,BOROUGH OF LAUREL SPRINGS,http://www.laurelsprings-nj.com
+us:place:2044750,CITY OF MARION,http://www.marionks.net
+us:place:4875032,TOWN OF VAN HORN,http://www.vanhorntexas.org
+us:place:2647180,CITY OF LESLIE,http://www.cityofleslie.org
+us:place:2435200,TOWN OF GREENSBORO,http://www.greensboromd.org
+us:place:4830512,CITY OF GRANDVIEW,http://www.cityofgrandview.org/
+us:place:4128450,CITY OF GEARHART,http://www.cityofgearhart.com
+us:place:2957422,CITY OF PIEDMONT,http://www.cityofpiedmont.com/
+us:place:4822552,CITY OF EDEN,http://www.edentexas.com
+us:place:2020350,CITY OF ELKHART,http://WWW.CI.ELKHART.KS.US
+us:place:4805768,TOWN OF BARTONVILLE,http://www.townofbartonville.com
+us:place:0800925,TOWN OF AKRON,http://www.townofakron.com
+us:place:2717126,CITY OF DUNDAS,http://www.cityofdundas.org
+us:place:2077500,CITY OF WESTWOOD,http://www.westwoodks.org
+us:place:4830080,CITY OF GOLIAD,http://www.goliadtx.net
+us:place:2740256,CITY OF MAPLE PLAIN,http://www.mapleplain.com
+us:place:4853115,CITY OF OAK LEAF,http://www.oakleaftexas.org
+us:place:5527000,CITY OF FOX LAKE,http://www.cityoffoxlake.org
+us:place:2625320,VILLAGE OF ELK RAPIDS,http://www.elkrapids.org
+us:place:2666640,VILLAGE OF QUINCY,http://www.quincy-mi.org
+us:place:3909274,VILLAGE OF BROOKLYN HEIGHTS,http://www.brooklynhts.org
+us:place:4819648,CITY OF DEKALB,http://www.cityofdekalb.com/
+us:place:3908336,VILLAGE OF BRATENAHL,http://www.bratenahl.org
+us:place:1733851,VILLAGE OF HEBRON,http://www.villageofhebron.org
+us:place:1380228,CITY OF WALNUT GROVE,http://www.walnutgrovegeorgia.com
+us:place:1968475,CITY OF ROLAND,http://www.cityofroland.org/
+us:place:3926768,VILLAGE OF FAYETTE,http://www.villageoffayette.com
+us:place:1979770,CITY OF UNIVERSITY HEIGHTS,http://WWW.UNIVERSITY-HEIGHTS.ORG
+us:place:4824828,CITY OF EUSTACE,http://www.cityofeustace.com
+us:place:4803072,VILLAGE OF AMES,http://www.cityofamestexas.com
+us:place:4204896,BOROUGH OF BECHTELSVILLE,http://www.bechtelsville.org
+us:place:5306085,Bingen,https://www.bingenwashington.org/
+us:place:2416730,VILLAGE OF CHEVY CHASE SECTION THREE,http://www.chevychasesection3.org
+us:place:0825610,TOWN OF FAIRPLAY,http://www.fairplayco.us
+us:place:2028675,CITY OF GREENSBURG,http://www.greensburgks.org
+us:place:0870250,TOWN OF SILVER CLIFF,http://www.silvercliffco.com
+us:place:1244075,TOWN OF MELBOURNE VILLAGE,http://www.melbournevillage.org
+us:place:4522390,TOWN OF EASTOVER,http://www.eastoversc.com
+us:place:2459450,TOWN OF OXFORD,http://www.oxfordmd.net
+us:place:2650280,CITY OF MACKINAC ISLAND,http://www.cityofmi.org
+us:place:0159088,TOWN OF PERDIDO BEACH,http://www.townofperdidobeach.org
+us:place:0854880,TOWN OF NORWOOD,http://www.norwoodtown.com
+us:place:3400730,BOROUGH OF ALLENHURST,http://www.allenhurstnj.org
+us:place:5667440,TOWN OF ROLLING HILLS,http://www.rollinghillswy.org
+us:place:0852075,TOWN OF MORRISON,http://town.morrison.co.us/
+us:place:1612520,CITY OF CAMBRIDGE,http://www.cambridge.id.gov
+us:place:0680448,CITY OF TRINIDAD,http://www.trinidad.ca.gov
+us:place:3443380,BOROUGH OF MANTOLOKING,http://www.mantoloking.org/
+us:place:0636490,CITY OF INDUSTRY,http://www.cityofindustry.org
+us:place:3733460,TOWN OF INDIAN BEACH,http://www.indianbeach.org/
+us:place:3576480,VILLAGE OF TAOS SKI VALLEY,http://WWW.VTSV.ORG
+us:place:0206520,"Bethel, City of",http://www.cityofbethel.org/
+us:place:1201775,Archer,https://www.cityofarcher.com/
+us:place:1203675,Bartow,https://www.cityofbartow.net/
+us:place:1205075,Belleair,http://www.townofbelleair.com/
+us:place:1207875,Boynton Beach,https://www.boynton-beach.org/
+us:place:1209550,Bunnell,https://www.bunnellcity.us/
+us:place:1211225,Cedar Key,https://cityofcedarkey.org/
+us:place:1211925,Chiefland,https://cityofchiefland.com/
+us:place:1211975,Chipley,http://www.cityofchipley.com/
+us:place:1215475,Crestview,https://www.cityofcrestview.org/
+us:place:1216550,Daytona Beach Shores,https://www.dbshores.org/
+us:place:1222550,Flagler Beach,http://www.cityofflaglerbeach.com/
+us:place:1224500,Fort White,https://fortwhitefl.com/
+us:place:1227400,Green Cove Springs,http://www.greencovesprings.com/
+us:place:1232775,Howey-in-the-Hills,https://www.howey.org/
+us:place:1233675,Indian Shores,https://www.myindianshores.com/
+us:place:1235850,Juno Beach,https://www.juno-beach.fl.us/
+us:place:1235925,Jupiter Island,https://townofjupiterisland.com/
+us:place:1237525,Lake Alfred,https://www.mylakealfred.com/
+us:place:1237975,Lake Hamilton,https://www.townoflakehamilton.com/
+us:place:1238425,Lake Mary,https://www.lakemaryfl.com/
+us:place:1238625,Lake Placid,http://www.lakeplacidfl.net/
+us:place:1239375,Lantana,https://www.lantana.org/
+us:place:1241150,Longboat Key,https://www.longboatkey.org/
+us:place:1241250,Longwood,https://www.longwoodfl.org/
+us:place:1242625,Malabar,https://www.townofmalabar.org/
+us:place:1243175,Marianna,https://www.cityofmarianna.com/
+us:place:1243375,Mary Esther,https://www.cityofmaryesther.com/
+us:place:1243425,Mascotte,http://www.cityofmascotte.com/
+us:place:1249600,North Palm Beach,http://www.village-npb.org/
+us:place:1251075,Ocoee,https://www.ocoee.org/
+us:place:1251650,Opa-locka,https://www.opalockafl.gov/
+us:place:1254450,Palm Springs,https://www.vpsfl.org/
+us:place:1254250,Palmetto,https://www.palmettofl.org/
+us:place:1261500,Rockledge,https://www.cityofrockledge.org/
+us:place:1263375,San Antonio,https://www.sanantonioflorida.org/
+us:place:1264825,Sebastian,https://www.cityofsebastian.org/
+us:place:1264875,Sebring,https://www.mysebring.com/
+us:place:1267175,South Bay,https://www.southbaycity.com/
+us:place:1267325,South Daytona,https://www.southdaytona.org/
+us:place:1268275,Springfield,https://www.springfieldfl.net/
+us:place:1262525,St. Augustine Beach,https://www.staugbch.com/
+us:place:1268525,Starke,https://www.cityofstarke.org/
+us:place:1270345,Sweetwater,https://cityofsweetwater.fl.gov/
+us:place:1271900,Titusville,https://www.titusville.com/
+us:place:1273025,Umatilla,https://www.umatillafl.org/
+us:place:2500840,Agawam,http://www.agawam.ma.us/
+us:place:2501370,Amherst,http://www.amherstma.gov/
+us:place:2502690,Attleboro,http://www.cityofattleboro.us/
+us:place:2507740,Braintree,https://www.braintreema.gov/
+us:county:25009,Essex,http://www.essexma.org/
+us:place:2525172,Franklin,https://www.franklinma.gov/
+us:place:2534550,Lawrence,http://www.cityoflawrence.com/
+us:place:2540115,Melrose,http://www.cityofmelrose.org/
+us:place:2556000,Randolph,http://www.randolph-ma.gov/
+us:place:2563345,Southbridge,http://www.ci.southbridge.ma.us/
+us:place:2572600,Waltham,http://www.city.waltham.ma.us/
+us:place:2578972,Weymouth,http://www.weymouth.ma.us/
+us:place:3805420,Beach,http://www.beachnd.com/
+us:place:3884780,West Fargo,http://www.westfargond.gov/
+us:place:3100905,Alliance,http://www.cityofalliance.net/
+us:place:3103250,Battle Creek,http://battlecreekne.com/
+us:place:3103950,Bellevue,http://www.bellevue.net/
+us:place:3108605,Chadron,http://www.chadron-nebraska.com/
+us:place:3110110,Columbus,http://www.columbusne.us/
+us:place:3116410,Fairbury,http://www.fairburyne.org/
+us:place:3118405,Geneva,http://www.genevane.org/
+us:place:3120260,Gretna,http://www.gretnane.org/
+us:place:3121905,Hebron,http://www.hebronnebraska.us/
+us:place:3125055,Kearney,http://www.cityofkearney.org/
+us:place:3126385,La Vista,http://www.cityoflavista.org/
+us:place:3129925,McCook,http://www.cityofmccook.com/
+us:place:3132340,Minden,http://www.mindennebraska.org/
+us:place:3140605,Ralston,http://www.cityofralston.com/
+us:place:3145295,Sidney,https://cityofsidney.org/
+us:place:3151840,Wayne,https://cityofwayne.org/
+us:place:3151665,Waterloo,http://www.waterloone.com/
+us:place:4900540,Alpine,http://www.alpinecity.org/
+us:place:4908570,"Brighton, Town of",https://www.brighton.utah.gov/
+us:place:4914290,Clinton,https://www.clintoncity.net/
+us:place:4931120,Grantsville,https://www.grantsvilleut.gov/
+us:place:4934200,Heber,https://www.ci.heber.ut.us/
+us:place:4937170,Hurricane,http://www.cityofhurricane.com/
+us:place:4937500,Hyrum,https://hyrumcity.org/
+us:place:4939920,Kanab,https://kanab.utah.gov/
+us:place:4953230,Murray,https://www.murray.utah.gov/
+us:place:4954220,Nephi City,https://www.nephi.utah.gov/
+us:place:4964670,Roosevelt,https://www.rooseveltcity.com/
+us:place:4967440,Sandy,https://www.sandy.utah.gov/
+us:place:4971840,Springdale,https://www.springdaletown.com/
+us:place:4972940,Sterling,https://www.sanpete.com/sterling.html
+us:place:4983470,West Valley,https://www.wvc-ut.gov/
+us:place:5120160,"Crewe, Town of",https://townofcrewe.com/
+us:place:5122160,"Dendron, Town of",https://www.surrycountyva.gov/
+us:place:5123680,"Duffield, Town of",http://www.scottcountyva.com/
+us:place:5125808,Emporia City,https://www.ci.emporia.va.us/
+us:place:5137336,"Hillsville, Town of",https://www.townofhillsville.com/
+us:place:5138280,"Honaker, Town of",https://www.russellcountyva.us/185/Honaker
+us:place:5149464,"Marion, Town of",http://www.marionva.org/
+us:place:5148344,"McKenney, Town of",https://www.dinwiddieva.us/647/Town-of-McKenney
+us:place:5152120,"Mineral, Town of",https://www.townofmineral.com/
+us:place:5155848,"New Market, Town of",https://www.newmarketvirginia.com/
+us:place:5161208,"Pearisburg, Town of",https://www.pearisburg.org/
+us:place:5167208,"Ridgeway, Town of",https://www.henrycountyva.gov/
+us:place:5170752,"Scottsburg, Town of",https://www.halifaxcountyva.gov/
+us:place:5179024,"Toms Brook, Town of",http://www.tomsbrookva.net/
+us:place:5183680,Waynesboro City,https://www.waynesboro.va.us/
+us:place:5187072,"Wise, Town of",http://www.townofwise.net/
+wikidata:Q130153,Nephi (Utah),http://nephi.utah.gov
+wikidata:Q131908,Hanover (NH) (New Hampshire),http://www.hanovernh.org/
+wikidata:Q203263,Athens (Georgia),https://www.accgov.com/
+wikidata:Q642783,St. Marys (Ohio),http://www.cityofstmarys.net/
+wikidata:Q282822,St. Anthony (Minnesota),http://www.ci.saint-anthony.mn.us/
+wikidata:Q957506,St. Ann (Missouri),http://www.stannmo.org/
+wikidata:Q1594054,Smithtown (New York),http://www.smithtowninfo.com/
+wikidata:Q378730,Langdon (New Hampshire),http://langdonnh.org
+wikidata:Q737929,Loudon (New Hampshire),http://www.loudonnh.org/
+wikidata:Q957934,Crown Point (Indiana),http://www.crownpoint.in.gov
+wikidata:Q960402,Wiscasset (Maine),http://www.wiscasset.org
+wikidata:Q1644523,West Greenwich (Rhode Island),http://www.wgtownri.org
+wikidata:Q1626213,Littleton (New Hampshire),http://www.townoflittleton.org/
+wikidata:Q1787188,Portsmouth (Rhode Island),http://www.portsmouthri.com
+wikidata:Q467664,Butte (Montana),https://www.co.silverbow.mt.us/
+wikidata:Q973047,Luling (Texas),http://www.cityofluling.net/
+wikidata:Q969293,Mabank (Texas),http://www.cityofmabanktx.org/
+wikidata:Q1816735,Lincoln (Rhode Island),http://www.lincolnri.com
+wikidata:Q1853982,Newcastle (Maine),http://www.newcastlemaine.us/
+wikidata:Q1002388,Skowhegan (Maine),https://www.skowhegan.org/
+wikidata:Q483539,Anaconda (Montana),http://adlc.us/
+wikidata:Q995263,Woodbridge (New Jersey),http://www.twp.woodbridge.nj.us/
+wikidata:Q495369,El Centro (California),http://www.cityofelcentro.org
+wikidata:Q523619,Rye (New Hampshire),http://www.town.rye.nh.us/
+wikidata:Q508737,Deering (New Hampshire),http://www.deering.nh.us/
+wikidata:Q1003630,Liberal (Kansas),http://www.CityOfLiberal.org
+wikidata:Q1007911,Greencastle (Indiana),http://www.cityofgreencastle.com/
+wikidata:Q1873442,Weirton (West Virginia),https://www.cityofweirton.com/
+wikidata:Q574900,Yorkville (Illinois),http://www.yorkville.il.us/
+wikidata:Q527127,Fincastle (Virginia),http://www.co.botetourt.va.us
+wikidata:Q852584,Port Angeles (Washington),https://www.cityofpa.us/
+wikidata:Q1013038,Middletown (Rhode Island),https://www.middletownri.com/
+wikidata:Q1018321,Mount Pleasant (New York),http://www.mtpleasantny.com/
+wikidata:Q886915,Blythe (California),http://www.cityofblythe.ca.gov
+wikidata:Q981715,Wilmer (Texas),http://www.cityofwilmer.net/
+wikidata:Q982169,Whitesboro (Texas),http://www.whitesborotexas.com
+wikidata:Q981491,Quinlan (Texas),http://www.cityofquinlan.net/
+wikidata:Q1027996,Tiverton (Rhode Island),http://www.tiverton.ri.gov
+wikidata:Q1916979,Melvern (Kansas),http://www.melvernks.com/
+wikidata:Q575588,Genoa (Illinois),http://www.genoa-il.com/
+wikidata:Q926275,Port Royal (South Carolina),https://www.portroyal.org/
+wikidata:Q1029795,Shoshoni (Wyoming),http://www.shoshoniwyoming.org
+wikidata:Q1143667,Cumberland (Rhode Island),http://www.cumberlandri.org/
+wikidata:Q920784,Pittsfield (New Hampshire),http://www.pittsfieldnh.gov/
+wikidata:Q985301,Port Orange (Florida),http://www.port-orange.org
+wikidata:Q1077102,Martinsville (Indiana),http://www.martinsville.in.gov/
+wikidata:Q945362,Hampton (New Hampshire),http://www.hamptonnh.gov/
+wikidata:Q938755,Foster (Rhode Island),http://www.townoffoster.com
+wikidata:Q1972897,Long Beach (Indiana),http://www.longbeachin.org
+wikidata:Q1992883,Eatonville (Florida),http://www.townofeatonville.org
+wikidata:Q1330668,Shelter Island (New York),https://www.shelterislandtown.us/
+wikidata:Q2310682,Chesterfield (New Hampshire),http://www.nhchesterfield.com/
+wikidata:Q2310637,Lisbon (New Hampshire),https://www.lisbonnh.org/
+wikidata:Q1376049,Madison (Virginia),http://www.madisonco.virginia.gov/
+wikidata:Q2901559,Meade (Kansas),http://www.CityOfMeade.org/
+wikidata:Q2019815,Inola (Oklahoma),http://www.inolaok.com
+wikidata:Q2404770,Larned (Kansas),http://cityoflarned.org
+wikidata:Q2360629,Hanahan (South Carolina),http://www.cityofhanahan.com/
+wikidata:Q2384470,Lisbon (Maine),https://www.lisbonme.org/
+wikidata:Q2417020,Newton (New Hampshire),http://www.newton-nh.gov/
+wikidata:Q2417187,Salisbury (New Hampshire),http://www.salisburynh.org/
+wikidata:Q2416945,Windham (New Hampshire),http://www.windhamNH.gov
+wikidata:Q2417067,Newfields (New Hampshire),https://www.newfieldsnh.gov/
+wikidata:Q2417121,Plaistow (New Hampshire),http://www.plaistow.com/
+wikidata:Q2417104,Dunbarton (New Hampshire),http://www.dunbartonnh.org/
+wikidata:Q2417035,Sandown (New Hampshire),https://www.sandown.us/
+wikidata:Q2417176,Hudson (New Hampshire),http://www.hudsonnh.gov/
+wikidata:Q2074473,Le Claire (Iowa),http://www.leclaireiowa.gov/
+wikidata:Q3131938,New Castle (New York),http://www.mynewcastle.org
+wikidata:Q3045956,Guilderland (New York),http://www.townofguilderland.org/
+wikidata:Q3240108,Surfside Beach (South Carolina),http://www.surfsidebeach.org
+wikidata:Q3183212,Niles (New York),https://www.cayugacounty.gov/QuickLinks.aspx?CID=117
+wikidata:Q2430103,Gilmanton (New Hampshire),http://www.gilmantonnh.org/
+wikidata:Q2435123,Winthrop (Maine),http://www.winthropmaine.org/
+wikidata:Q2430201,Dublin (New Hampshire),http://www.townofdublin.org/
+wikidata:Q2430037,Barnstead (New Hampshire),http://www.barnstead.org/
+wikidata:Q2412213,Chili (New York),http://www.townofchili.org/
+wikidata:Q2076191,Farmington (New Hampshire),https://www.farmington.nh.us/
+wikidata:Q3053737,Mount Desert (Maine),http://www.mtdesert.org
+wikidata:Q3053721,Tremont (Maine),http://tremont.maine.gov/
+wikidata:Q2485680,Bedford (New York),https://www.bedfordny.gov/
+wikidata:Q2467256,Peachtree City (Georgia),http://www.peachtree-city.org/
+wikidata:Q2448480,New Shoreham (Rhode Island),http://www.new-shoreham.com
+wikidata:Q3452472,Irondequoit (New York),http://www.irondequoit.org/
+wikidata:Q3450437,Boothbay (Maine),http://www.townofboothbay.org/
+wikidata:Q3448132,Gray (Maine),http://www.graymaine.org
+wikidata:Q3448522,Rome (Maine),https://www.romemaine.com/
+wikidata:Q3451647,Fryeburg (Maine),http://www.fryeburgmaine.org/
+wikidata:Q3708700,Porter (New York),https://www.townofporter.net
+wikidata:Q3709805,Southold (New York),https://www.southoldtownny.gov/
+wikidata:Q3708490,New Scotland (New York),http://www.townofnewscotland.com
+wikidata:Q2564334,Coloma (Michigan),http://www.cityofcoloma.org/
+wikidata:Q2577621,Tyngsboro (Massachusetts),http://www.tyngsboroughma.gov/
+wikidata:Q3449292,Baileyville (Maine),http://www.baileyville.org/
+wikidata:Q3708487,Southport (New York),http://townofsouthport.com/
+wikidata:Q2669320,Mount Vernon (Georgia),http://mtvernonga.org/
+wikidata:Q5053592,Cato (New York),https://www.cayugacounty.gov/414/Cato-Town
+wikidata:Q2232393,De Soto (Kansas),http://www.desotoks.us
+wikidata:Q2276259,Meredith (New Hampshire),http://www.meredithnh.org/
+wikidata:Q2304496,Chichester (New Hampshire),http://www.chichesternh.org/
+wikidata:Q2303220,Fraser (Colorado),http://www.frasercolorado.com
+wikidata:Q2304613,Greenfield (New Hampshire),http://www.greenfield-nh.gov/
+wikidata:Q2304556,Winchester (New Hampshire),http://www.winchester-nh.gov/
+wikidata:Q2304585,Londonderry (New Hampshire),http://www.londonderrynh.org/
+wikidata:Q2304452,Goffstown (New Hampshire),https://www.goffstown.com/

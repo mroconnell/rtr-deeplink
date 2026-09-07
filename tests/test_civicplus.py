@@ -220,7 +220,7 @@ async def test_no_video_rows_returns_warning():
     with mock_session(routes):
         result = await CivicPlusAssetFinder().resolve(url)
 
-    assert result.platform == "civicplus"
+    assert result.platform == "unknown"
     assert any("no video" in w.lower() for w in result.video_warnings)
 
 

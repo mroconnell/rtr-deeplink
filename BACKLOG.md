@@ -128,7 +128,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (76)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (77)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
@@ -186,7 +186,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (76)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
-  Adapter & platform gaps  (22)
+  Adapter & platform gaps  (23)
+    [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
     [NEEDS-AUDIT] RVTV's org-token jurisdiction override
@@ -2309,6 +2310,48 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     already done.
   - **History**: `BACKLOG_DONE.md`, 2026-08-20/21.
 ### Adapter & platform gaps
+
+- **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
+  missing the real `/private/{id}` path variant — confirmed live with
+  Vero Beach, FL.**
+  - **Issue**: `castus.py`'s `_URL_RE = re.compile(r"/vod/([^/?#]+)/
+    video/([^/?#]+)")` hardcodes the literal path segment `video`. Vero
+    Beach's own government-access channel (`cloud.castus.tv/vod/
+    vero-beach/private/6a8dc49212e21f0002bd8a31`, a real 1h37m "City
+    Council 08/25/2026" meeting, verified by loading it directly —
+    full council chamber, live timestamp overlay, not a promo or
+    placeholder) uses `private` instead, so the regex never matches at
+    all and `resolve()` falls straight to `"Could not find a tenant/
+    video id in this Castus URL."`. A same-tenant second video
+    (`6a8dc49212e21f0002bd8a31`'s sibling `67d82e28352ecb0008fcf4da`)
+    uses the same `private` shape, so this isn't a one-off typo on
+    Vero Beach's side.
+  - **Impact**: a same-day nationwide candidate sweep
+    (`~/Documents/rtr-business/research/nationwide_395_ingest_log.csv`)
+    hit this exact URL and, because the direct adapter call returned no
+    video, mis-classified a real meeting as `ingested_agenda_only`
+    (no video/transcript) instead of a real tier-1/2 ingest — caught
+    and corrected by hand in `jurisdiction_coverage.csv`, but the
+    underlying adapter gap is still live and would repeat for any other
+    Castus tenant using the `private` path. Every other Castus example
+    found in this project's research corpus (Andover MA, Seabrook TX,
+    Billings MT, Fort Mitchell KY, Greene ME) uses the working `/video/`
+    path, so this looks tenant/visibility-specific (private/unlisted
+    videos) rather than a second widespread product variant — not
+    confirmed beyond Vero Beach's two videos.
+  - **Next action**: widen `_URL_RE` to accept either `video` or
+    `private` as the path segment (e.g. `/vod/([^/?#]+)/(?:video|
+    private)/([^/?#]+)`) and confirm the rest of `resolve()` (asset
+    fetch, captions) behaves the same for a `private`-path video as a
+    `video`-path one — not verified here, since this was found and
+    fixed at the research layer, not by running the adapter itself.
+  - **History**: castus.py itself shipped 2026-08-21 (`BACKLOG_DONE.md`
+    "Castus (cloud.castus.tv): investigation spike... became a full new
+    platform adapter") — this is a gap in that adapter's URL matching,
+    not a missing platform. Found 2026-09-07 in rtr-business's
+    `ENUMERATION_METHODS.md` nationwide sweep (§75-76 and the Vero Beach
+    follow-up); a prior sighting of Castus generally (Andover, MA) is
+    also noted there at §67, unrelated to this specific bug.
 
 - **[JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token pool now classified; real remaining work is verification + sign-off, not discovery.**
   - **Issue**: `collapse=urlkey:64` returns the complete 313-org-token
