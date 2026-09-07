@@ -1,15 +1,3 @@
-http://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1924&MediaPosition=2647.545&ID=1264
-http://alamancecountync.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1628&MinutesID=1531&MediaPosition=&ID=7622&Type=30&AcceptMinutesID=1530&CssClass=%20style=
-https://alexandriacitymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1201&MediaPosition=&ID=3612&CssClass=
-https://amherstny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4801&MediaPosition=&ID=31132&CssClass=
-http://antigowi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1666&MediaPosition=&ID=5910&CssClass=
-https://asburyparknj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1651&MediaPosition=&ID=6480&CssClass=
-https://ashwaubenonvillagewi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2850&MediaPosition=&ID=2836&CssClass=
-http://claytoncountyga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1456&Format=Agenda
-http://barrowcountyga.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1529&MediaPosition=&ID=2049&CssClass=
-http://bellairecitytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1893&MediaPosition=&ID=2656&CssClass=
-http://bloomfieldtownnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1191&MediaPosition=&ID=4226&CssClass=
-http://bloomingtonil.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1157&MediaPosition=&ID=1763&CssClass=
 https://boonenc.iqm2.com/Citizens/Detail_Communication.aspx?Frame=&MeetingID=1797&MediaPosition=&ID=1
 http://browardcollegefl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2173&MediaPosition=&ID=7735&CssClass=%20
 http://brsu.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1926&MediaPosition=&ID=3595&CssClass=
