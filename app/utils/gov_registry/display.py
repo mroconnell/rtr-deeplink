@@ -12,6 +12,7 @@ renders that id one way.
 | ... name collides   | `{Name} ({lsad}), {ST}`                  |
 | county              | `{Name} County, {ST}` (suffix form)      |
 | township            | `{Name} Township, {ST}`                  |
+| township (NE town)  | `{Name}, {ST}` (CT/ME/MA/NH/RI/VT "town") |
 | school_district     | official name + `, {ST}`                 |
 | special_district    | official name + `, {ST}`                 |
 | state               | `State of {Name}`                        |
@@ -52,6 +53,19 @@ _GOVERNMENT_PHRASE_RE = re.compile(
 )
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
+
+# The six states where "town" is the primary unit of general-purpose local
+# government, referred to by its bare name in ordinary usage ("Brookline,
+# MA", "Andover, CT") rather than with the Census LSAD suffix attached --
+# unlike a Midwest/mid-Atlantic township ("Chesterfield Township, MI",
+# WI's "Town of Cottage Grove"), where the suffix word is the name people
+# actually use. Confirmed against COUSUB_REQUIREMENTS.md's evidence
+# (CT/MA town lists) and spot-checked against ME/NH/RI/VT's own town
+# rosters -- all six states share the same New England town-meeting
+# tradition. Maine's "plantation" LSAD is deliberately excluded: that word
+# stays part of the common name ("Magalloway Plantation, ME"), same as a
+# Midwest township.
+_NEW_ENGLAND_TOWN_STATES = frozenset({"CT", "ME", "MA", "NH", "RI", "VT"})
 
 
 def slugify(text: str) -> str:
@@ -118,6 +132,11 @@ def display_name(gov: Government) -> str:
             # give "Cottage Grove Town", which reads as a different name
             # rather than as a disambiguator.
             return f"{base} ({word}){suffix}"
+        if word == "town" and state in _NEW_ENGLAND_TOWN_STATES:
+            # Not ambiguous, and not a Midwest-style township -- drop the
+            # LSAD word so it reads "Brookline, MA", not "Brookline Town,
+            # MA".
+            return f"{base}{suffix}"
         if word:
             return f"{base} {_titled_type_word(word)}{suffix}"
         return f"{gov.gov_name}{suffix}"

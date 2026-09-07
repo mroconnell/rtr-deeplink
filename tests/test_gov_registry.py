@@ -1961,6 +1961,34 @@ def test_resolve_government_parses_a_disambiguated_township_display_form():
     assert match.tier == resolver.TIER_REGISTRY
 
 
+@pytest.mark.parametrize(
+    "raw,gov_id,display_name",
+    [
+        # New England's "town" is the primary unit of general-purpose
+        # local government, referred to by its bare name in ordinary
+        # usage -- unlike a Midwest/mid-Atlantic township, where the LSAD
+        # suffix word ("Township") is part of the name people actually
+        # use. Real GEOIDs, per COUSUB_REQUIREMENTS.md's own evidence.
+        ("Brookline, MA", "us:cousub:2502109175", "Brookline, MA"),
+        ("Andover, CT", "us:cousub:0911001080", "Andover, CT"),
+    ],
+)
+def test_new_england_town_displays_without_the_town_suffix(raw, gov_id, display_name):
+    match = resolve(raw)
+    assert match.gov_id == gov_id
+    assert match.gov_type == classify.TOWNSHIP
+    assert display.display_name(match.government) == display_name
+
+
+def test_a_midwest_township_keeps_its_suffix_unlike_a_new_england_town():
+    # The contrast case: same gov_type, same code path, different state --
+    # confirms the New England carve-out didn't just delete the suffix
+    # for every TOWNSHIP row.
+    match = resolve("Chesterfield Township, MI")
+    assert match.gov_id == "us:cousub:2609915340"
+    assert display.display_name(match.government) == "Chesterfield Township, MI"
+
+
 def test_strip_trailing_paren_type_only_fires_on_an_actual_parenthetical():
     # The helper itself: a real `(word)` disambiguator is split off and
     # lowercased; anything else (no parens, or parens that aren't one of
