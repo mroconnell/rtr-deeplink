@@ -946,13 +946,46 @@ updated to assert the corrected `["ME", "ON"]` ambiguity instead of the
 old confidently-wrong `["ME"]`, its history preserved rather than deleted.
 All 2,660 tests green, all five CI gates pass.
 
-**Not live yet.** This is a reference-data + code change to
-`app/utils/jurisdiction_data/counties.csv` and
-`app/utils/jurisdiction_enrich.py` -- it needs a resolver deploy before
-any real page is affected, and the two currently-affected archived pages
-(`pub-brucecounty`/`pub-elgincounty`) still need
-`scripts/backfill_gov_id.py` re-run against them afterward, same as any
-other registry change. CLAUDE.md's own "merging ships nothing" rule.
+**Deployed and backfilled 2026-09-03.** `--apply` matched the dry run
+exactly: 5 changed, all `registry` tier, both hosts' hub slugs live
+(`/j/bruce-on`, `/j/elgin-on` both 200). The pin worklist shrank by
+exactly the expected amount on the next regeneration against live
+production -- 492 -> 490 rows (both hosts dropped off), 712 -> 708 pages
+(only 4 of the 5 changed pages had ever been on the worklist; the fifth,
+Welland -> Elgin, was already `registry` tier before the fix -- silently
+wrong rather than unresolved, so it was never counted as missing a pin in
+the first place).
+
+**A real gap found doing that verification: the three retired slugs
+404'd instead of 301'd.** `archive/data/hub_slug_aliases.csv` is a
+COMMITTED file, written only by `scripts/score_gov_registry.py`'s
+`_write_hub_slug_aliases()` from a full scoring run -- `backfill_gov_id.py`
+itself never writes to it (by design; see `archive/utils/hub_aliases.py`'s
+own docstring: the old spelling is only reconstructable from a scoring
+pass that runs BEFORE a backfill overwrites `jurisdiction`, and this
+`--hosts`-scoped backfill wasn't preceded by one). All three rows were
+still derivable by hand from the backfill's own printed hub-move summary
+and added directly: `bruce-county -> bruce-on`, `welland-on -> elgin-on`,
+`county-of-elgin -> elgin-on` (the last two share a target -- both were
+retired names for the same Elgin County government). Confirmed no other
+live page still uses any of the three old slugs before adding them (a
+redirect must never fire for a slug some OTHER government's hub still
+owns). This still needs its own deploy -- the file is read at Archive
+startup, not per-request.
+
+**A second real gap found in the same pass: `classify.py`'s school-district
+regex missed two real abbreviation shapes.** `us_school_districts.csv` has
+5 real Illinois "CUSD" (Community Unified School District) rows and 5 real
+Vermont "UHSD" (Union High School District) rows whose names carry no
+OTHER school-district phrase at all ("Lake Region UHSD 24", "Naperville
+CUSD 203") -- confirmed by grepping the real table, not assumed. Without
+these two, a name like "Naperville CUSD 203" classified as nothing, which
+falls through to a general place lookup on its own town's name
+("Naperville", a real Illinois city) instead of being routed to the
+school-district table. `RE`/`JT` (Colorado's "School District RE-5",
+"School District 50-JT") were checked too and don't need their own entry
+-- both always appear alongside the literal phrase "school district",
+already matched above.
 ## Granicus agenda-fallback link silently dropped on an S3 hostname/cert mismatch [Done 2026-09-02]
 
 Found live during a Bay Area corpus-expansion pass (see
