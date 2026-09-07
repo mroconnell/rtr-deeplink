@@ -1,15 +1,3 @@
-https://boonenc.iqm2.com/Citizens/Detail_Communication.aspx?Frame=&MeetingID=1797&MediaPosition=&ID=1
-http://browardcollegefl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2173&MediaPosition=&ID=7735&CssClass=%20
-http://brsu.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1926&MediaPosition=&ID=3595&CssClass=
-https://bullochga.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2771&MediaPosition=&ID=3964&CssClass=
-https://santamonicacityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1266&MediaPosition=&ID=4575&CssClass=
-http://santamonicacityca.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=1216&MediaPosition=&ID=3479&CssClass=&Print=Yes
-https://ccogca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1235&MediaPosition=&ID=2381&CssClass=
-https://chambleecityga.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1154&MediaPosition=&ID=1588&CssClass=
-https://cheektowagatownny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2851&MediaPosition=&ID=17669&CssClass
-http://chippewacountywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=5147&MediaPosition=&ID=2249&CssClass=
-https://brookhavencityga.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1086&MinutesID=1110&MediaPosition=5832.825&ID=3093&Type=50&CssClass=
-http://colliercountyfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1552&MediaPosition=&ID=9520&CssClass=
 http://columbiacitysc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1856&MediaPosition=&ID=10608&CssClass=
 http://coolidgecityaz.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2380&MediaPosition=&ID=2816&CssClass=
 http://coralspringsfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1723&MediaPosition=&ID=7039&CssClass=
