@@ -107,6 +107,72 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-07
+
+147 candidate message IDs from `label:rtr-claude newer_than:30d`, 16 new
+after the ledger filter. Most are duplicates of already-tracked issues
+with no new information; one adds real new data (including a new
+external-impact signal) to the already-open `[HUMAN]` SIGABRT/status-134
+entry.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Render `test-redtaperecordings` "Exited with status 3"
+(1 alert) — confirmed closed/expected noise per `BACKLOG_DONE.md`'s
+2026-08-30 "confirmed by Ryan" entry, an unrelated old Render instance.
+GitHub Actions "Adapter health canary" failure on `main` (c8dbdab,
+2026-09-06 17:31 UTC) — pulled the real job log (run `34048885371`):
+31/32 platforms OK, the sole failure is `ClientResponseError: 410,
+message='Gone'` on `https://phoenix.legistar.com/MeetingDetail.aspx?
+ID=1425831`, exactly the already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix
+Legistar canary sample is a genuinely dead meeting" entry (`BACKLOG.md`
+~line 2665). Search Console "Some fixes failed for Page indexing
+issues... Crawled - currently not indexed" (3 messages, 2026-09-06
+21:41-21:47 UTC) — matches the already-open `[HUMAN]` "Click Validate
+Fix in Search Console for the reslug fix" entry, which already predicts
+"don't expect it to clear 100%." One-off YouTube transcript-fetch SSL
+error (`ClientOSError: SSLV3_ALERT_BAD_RECORD_MAC`, Ryan's local
+launchd job, 2026-09-06 16:07 UTC) — single occurrence in the 30-day
+window, the script's own design already aborts rather than guessing at
+a backoff; nothing to act on without recurrence.
+
+- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
+  status-134 crash-loop entry (`BACKLOG.md` currently reads "13 times,"
+  not yet caught up to this file's 2026-09-06 update to 16 — promotion
+  hasn't run since the entry aged past 7 days yet): **2 more Render
+  "Exited with status 134" alerts** — 2026-09-06 13:58:00 UTC and
+  2026-09-07 01:08:11 UTC — bringing the running total to **18** since
+  2026-08-30. **2 more UptimeRobot DOWN/UP outages with no matching
+  Render alert**: `redtaperecordings.com` down 2026-09-06 19:54:35 UTC,
+  up 20:09:51 UTC (~15 min); down 2026-09-07 04:19:15 UTC, up 04:24:20
+  UTC (~5 min) — neither lines up with a nearby crash alert (nearest to
+  the first is 13:58:00 UTC, ~5h56m earlier; nearest to the second is
+  01:08:11 UTC, ~3h11m earlier), consistent with the entry's existing
+  finding that the alert count undercounts the true crash rate. Running
+  "no matching alert" count is now **6** (was 4 as of 2026-09-06).
+  **New this run**: Google Search Console flagged, for the first time,
+  a new reason blocking page indexing — "Server error (5xx)" — across 2
+  separate reports (page-level and sitemap-level, both 2026-09-06
+  21:41-21:46 UTC; the email itself calls this "a new reason," i.e.
+  never flagged before). **Unconfirmed** (Search Console's own dashboard
+  is auth-walled — can't pull which pages or how many), but the timing
+  is suggestive: the notification lands ~1h52m after the 19:54-20:09 UTC
+  outage above, versus ~7h50m after the nearest 134 crash alert —
+  plausibly Google's crawler hitting the resolver mid-outage. This is
+  the first evidence the crash-loop has an external SEO consequence
+  (pages failing to index) on top of the internal-alerting/outage impact
+  already tracked — worth flagging to whoever next works this entry,
+  since it raises the real-world stakes beyond "brief outages."
+  - **Impact**: same underlying issue as the existing entry — production
+    resolver instability, now with a plausible (if unconfirmed) SEO-
+    indexing consequence layered on top. No new root-cause data on the
+    crash itself; still needs Render's own crash logs, which only Ryan
+    can pull.
+
+Ledger: 147 message IDs reviewed and recorded this run (16 new, 131
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-06
 
 131 candidate message IDs from `label:rtr-claude newer_than:30d` (the
