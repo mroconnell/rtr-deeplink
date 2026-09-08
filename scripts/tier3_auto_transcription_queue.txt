@@ -1,15 +1,3 @@
-http://columbiacitysc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1856&MediaPosition=&ID=10608&CssClass=
-http://coolidgecityaz.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2380&MediaPosition=&ID=2816&CssClass=
-http://coralspringsfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1723&MediaPosition=&ID=7039&CssClass=
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1732
-http://crowwingcountymn.iqm2.com/Citizens/Detail_Communication.aspx?Frame=&MeetingID=21502&MediaPosition=&ID=26864&CssClass=
-https://decaturcityal.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1224&MediaPosition=&ID=4587&CssClass=
-http://dodgecountymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2800&MediaPosition=&ID=2693&CssClass=
-http://dodgevillecitywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2403&MediaPosition=&ID=4835&CssClass=
-https://douglascountyco.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2634&MediaPosition=&ID=6513&CssClass=
-https://easthamptontown.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=2398&MediaPosition&ID=27655&CssClass
-http://eastpointcityga.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=2253&ID=3410
-https://melrosecityma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2393&MediaPosition=&ID=15358&CssClass=
 http://framinghamma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=12160&MediaPosition=&ID=3815&CssClass=
 https://franklincountymo.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=1948
 http://fremontcityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1438&MediaPosition=&ID=2736&CssClass=
