@@ -116,6 +116,7 @@ def detect_platform(url: str) -> str:
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
+    from .invintus import is_invintus_meeting_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -437,6 +438,21 @@ def detect_platform(url: str) -> str:
         # `#mcc_agenda_video` iframe, confirmed both YouTube and Vimeo
         # destinations).
         return "municode_meetings"
+    if is_invintus_meeting_url(url):
+        # Invintus -- a general-purpose government webcasting platform
+        # (state legislatures, county boards, city councils), confirmed
+        # live 2026-09-08 against real tenants in three different states
+        # (University Place WA, Clark County WA, Leon County FL), found
+        # via a real gap on University Place's CivicPlus AgendaCenter
+        # page -- see invintus.py's own module docstring and
+        # `rtr-business/research/ENUMERATION_METHODS.md` §102 for the
+        # full investigation. Deliberately NOT a bare "invintus.com in
+        # netloc" check, the same reasoning Vimeo's own scoping gives:
+        # only claimed when a real `clientID`+`eventID` pair is present,
+        # so an unrelated page on the same apex domain (e.g.
+        # `hostedevents.invintus.com`'s one-off branded landing pages)
+        # is never claimed here.
+        return "invintus"
     return "unknown"
 
 
