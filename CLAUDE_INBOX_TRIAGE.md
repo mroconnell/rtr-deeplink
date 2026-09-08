@@ -107,6 +107,74 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-08
+
+160 candidate message IDs from `label:rtr-claude newer_than:30d`, 13 new
+after the ledger filter. All 13 are either out of scope or duplicates of
+already-tracked issues with no new information, except more data for the
+already-open `[HUMAN]` SIGABRT/status-134 entry.
+
+**Out of scope, no write-up**: 1 GitHub Actions "PR run failed: Test" for
+a non-`main` branch (`42b7336`, Archive-proxy aiohttp session fix) — per
+this file's own scope rule, feature-branch CI has its own merge gate and
+doesn't need a second look here. 2 purely informational messages
+(transcription worker daily report; Search Console "Video indexing
+issues successfully fixed").
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Render `test-redtaperecordings` "Exited with status 3"
+(1 alert, 2026-09-08 04:37 UTC) — same already-confirmed-closed noise
+per `BACKLOG_DONE.md`'s 2026-08-30 entry. GitHub Actions "Adapter health
+canary" failure on `main` (`27cc96f`, 2026-09-07 19:02 UTC) — pulled the
+real job log (run `34153996885`): 31/32 platforms OK, sole failure is
+`ClientResponseError: 410, message='Gone'` on
+`https://phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`, the exact
+same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
+sample is a genuinely dead meeting" entry cited in the 2026-09-07 run.
+YouTube transcript-fetch `IpBlocked` failure (Ryan's local launchd job,
+2026-09-07 16:05 UTC) — matches the already-confirmed
+expected/self-clearing behavior documented in `BACKLOG_DONE.md`'s
+2026-08-20 "YouTube transcript fetch `IpBlocked` alert" entry, not a new
+signal. Transcription job 2055 failed (Spartanburg, SC, CivicClerk
+source, 2026-09-07 17:15 UTC) — pulled the real error detail: `[Errno
+1094995529] Invalid data found when processing input` on chunks 6 and 7,
+retried a few times each before the job gave up. This is the exact
+signature of the `_mean_volume_db()` corruption-detection fix shipped
+2026-08-21 (`BACKLOG_DONE.md`) correctly catching an undecodable chunk
+from the source media and surfacing it — working as designed on a
+single job, not a new bug, and consistent with that fix's own documented
+"honest limit" (catches fully-undecodable chunks, not tail-truncated
+ones).
+
+- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
+  status-134 crash-loop entry (`BACKLOG.md` currently reads "13 times,"
+  still not caught up to this file's running count — promotion hasn't
+  fired yet, see below): **2 more Render "Exited with status 134"
+  alerts** — 2026-09-07 16:39:36 UTC and 2026-09-08 06:32:31 UTC —
+  bringing the running total to **20** since 2026-08-30 (was 18 as of
+  2026-09-07). **2 more UptimeRobot DOWN/UP outages with no matching
+  Render alert**: `redtaperecordings.com` down 2026-09-08 05:29:17 UTC,
+  up 05:34:23 UTC (~5 min); `rtr-deeplink.onrender.com/api/health/
+  resolve-check` down 05:43:15 UTC, up 05:53:27 UTC (~10 min) — both
+  close together, plausibly one underlying incident, but neither lines
+  up with a nearby Render alert (nearest is the 06:32:31 UTC alert,
+  39-58 minutes after these outages resolved — too far to plausibly be
+  the same event, matching the entry's existing finding that the alert
+  count undercounts the true crash rate). Running "no matching alert"
+  count is now **8** (was 6 as of 2026-09-07). No new root-cause data
+  this round — just more frequency/undercount evidence for an
+  already-open, already-`[HUMAN]` investigation that needs Render's own
+  crash logs, which only Ryan can pull.
+  - **Impact**: same underlying issue as the existing entry — production
+    resolver instability, now ~2.5 alerts/day sustained over 9 days
+    (2026-08-30 through 2026-09-08), with real outages continuing to
+    occur without a matching alert roughly as often as with one.
+
+Ledger: 160 message IDs reviewed and recorded this run (13 new, 147
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-07
 
 147 candidate message IDs from `label:rtr-claude newer_than:30d`, 16 new
