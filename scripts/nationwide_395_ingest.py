@@ -89,12 +89,12 @@ load_dotenv()
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
     CalendarPageError,
+    NoVideoCandidateFound,
     UnsupportedPlatformError,
     detect_platform,
     get_finder,
     resolve_via_platform,
 )
-from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 
@@ -583,87 +583,57 @@ async def locate_platform_url(
 
 
 async def resolve_civicplus_seed(seed_url: str):
-    """Bypasses CivicPlusAssetFinder.resolve()'s own domain gate --
-    REAL BUG, confirmed live 2026-09-07 (this run, University Place WA
+    """Calls CivicPlusAssetFinder.resolve() directly, same as `resolve_seed()`
+    below does for every other platform. Used to need its own bypass here
+    -- REAL BUG, confirmed live 2026-09-07 (this run, University Place WA
     and Klickitat County WA, both since deleted from production): that
-    adapter assumes it's only ever reached via detect_platform() dispatch,
-    so its input URL's post-redirect netloc already contains
-    "civicplus.com". This script calls get_finder("civicplus") directly
-    instead (the CSV's own two-hop scan already identified the platform,
-    and most CivicPlus tenants are white-labeled onto the government's
-    own domain, never touching civicplus.com at all -- e.g.
-    klickitatcounty.gov). That breaks the gate: `"civicplus.com" not in
-    final_url.netloc` was true, so resolve() silently deferred to
-    resolve_via_platform(final_url) -- detect_platform() on a
-    klickitatcounty.gov URL returns "unknown", which dispatches to
-    generic_fallback.py, which scraped the bare AgendaCenter page as if
-    it were a single meeting (title "Agenda Center", no video, agenda
-    junk) and even tried delegating to a "connect.civicplus.com/referral"
-    branding footer link. Ingested for real before this was caught by
-    inspecting a smoke-test log, not by inspection alone -- see this
-    file's own incident note in the module docstring.
-
-    Fix: replicate the adapter's real post-gate logic (its own
-    `_find_candidate_rows` + jurisdiction-from-subdomain helpers) directly,
-    skipping the domain gate entirely -- correct for both a genuine
-    *.civicplus.com tenant and a self-hosted one, since `_find_candidate_rows`
-    doesn't care which domain served the HTML."""
-    finder = CivicPlusAssetFinder()
-    async with aiohttp.ClientSession(headers=finder.headers) as s:
-        async with s.get(
-            seed_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=30)
-        ) as response:
-            response.raise_for_status()
-            final_url = str(response.url)
-            html = await response.text()
-
-    subdomain_jurisdiction = finder._jurisdiction_from_subdomain(seed_url)
-    soup = BeautifulSoup(html, "html.parser")
-    all_candidates = finder._find_candidate_rows(soup, final_url)
-    candidates = [c for c in all_candidates if c["url"]]
-    if not candidates:
+    adapter's `resolve()` used to divert to `resolve_via_platform()`
+    for anything whose post-redirect netloc didn't literally contain
+    "civicplus.com", assuming that meant a redirect to some other real
+    platform -- but most CivicPlus tenants are white-labeled onto the
+    government's own domain and never touch civicplus.com at all (e.g.
+    klickitatcounty.gov). `detect_platform()` on a plain klickitatcounty.gov
+    URL returns "unknown", which dispatched to generic_fallback.py, which
+    scraped the bare AgendaCenter page as if it were a single meeting
+    (title "Agenda Center", no video, agenda junk) and even tried
+    delegating to a "connect.civicplus.com/referral" branding footer link.
+    Ingested for real before this was caught by inspecting a smoke-test
+    log, not by inspection alone -- see this file's own incident note in
+    the module docstring. Now fixed at the source
+    (app/platforms/civicplus.py's own `resolve()` keys its gate off
+    `detect_platform(final_url)` instead), so this no longer needs its own
+    duplicate fetch/parse/gate-bypass -- the one remaining civicplus-
+    specific step is picking a candidate from a raised `CalendarPageError`
+    and threading its own agenda_link/packet_link through, which
+    `resolve_seed()`'s fully generic CalendarPageError handling below
+    doesn't do for any platform yet."""
+    finder = get_finder("civicplus")
+    try:
+        result = await finder.resolve(seed_url)
+        return result, seed_url
+    except NoVideoCandidateFound as e:
         raise RowSkip(
             "civicplus: no video-bearing rows found on this AgendaCenter page "
-            f"(checked {len(all_candidates)} real candidate(s))"
+            f"(checked {e.candidates_checked} real candidate(s))"
         )
-
-    if len(candidates) == 1:
-        picked = candidates[0]
-    else:
-        picked, reason = pick_calendar_candidate(candidates)
+    except CalendarPageError as e:
+        picked, reason = pick_calendar_candidate(e.candidates)
         if not picked:
             raise RowSkip(f"civicplus CalendarPageError, {reason}")
-
-    result = await resolve_via_platform(picked["url"])
-    if subdomain_jurisdiction:
-        result.jurisdiction = subdomain_jurisdiction
-    result.agenda_link = result.agenda_link or picked.get("agenda_link")
-    result.packet_link = result.packet_link or picked.get("packet_link")
-    # Real, confirmed-live gap found auditing this run's output 2026-09-07:
-    # 6 CivicPlus rows delegated to a YouTube video whose own title came
-    # back None (yt-dlp blocked in this environment -- see
-    # youtube_oembed_title()'s docstring), so both the stored page's title
-    # AND this script's own title-safety gate had nothing to check --
-    # confirmed after the fact, by re-fetching each AgendaCenter page
-    # directly, that every one WAS a real meeting (e.g. "Neosho County
-    # BoCC Regular Meeting", "Planning Commission Work Meeting"), so this
-    # wasn't a false-positive ingest, but it should never have had to be
-    # verified after the fact. CivicPlus's own per-meeting agenda row
-    # title (`picked["title"]`) is real, structured data -- exactly the
-    # same kind of fallback legistar.py's own `page_info["title"]` already
-    # provides when a delegated platform's title is weak/missing -- so
-    # it's threaded through here the same way, both to make the stored
-    # page title accurate and so downstream title-safety checks have a
-    # real signal to check instead of an empty string.
-    if (
-        not result.title
-        and picked.get("title")
-        and picked["title"] != "Untitled meeting"
-    ):
-        result.title = picked["title"]
-    if not result.date and picked.get("date"):
-        result.date = picked["date"]
-    return result, picked["url"]
+        result = await resolve_via_platform(picked["url"])
+        if e.jurisdiction_hint and not result.jurisdiction:
+            result.jurisdiction = e.jurisdiction_hint
+        result.agenda_link = result.agenda_link or picked.get("agenda_link")
+        result.packet_link = result.packet_link or picked.get("packet_link")
+        # Same fallback as CivicPlusAssetFinder.resolve()'s own
+        # single-candidate path now provides (see that module's real,
+        # confirmed-live incident note): a delegated platform's title/date
+        # extraction can come back empty even though this row's own
+        # title/date, straight from the AgendaCenter listing, is already
+        # sitting right here in `picked`.
+        result.title = result.title or picked["title"]
+        result.date = result.date or picked["date"]
+        return result, picked["url"]
 
 
 # Platforms that are general-purpose video hosts, not dedicated

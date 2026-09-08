@@ -69,6 +69,27 @@ class CivicPlusAssetFinder(AssetFinder):
     raising `NoVideoCandidateFound` -- a distinct, typed, non-error signal
     (same shape as `CalendarPageError`, see base.py) instead of ever
     fabricating a candidate.
+
+    Separate real bug fixed 2026-09-07: `resolve()` used to divert to
+    `resolve_via_platform(final_url)` for anything whose netloc didn't
+    literally contain "civicplus.com" -- but most real CivicPlus tenants
+    are white-labeled onto the government's own domain and never touch
+    civicplus.com at all (confirmed live: www.trentonnj.org,
+    www.cityofazle.org, www.cityoflagunaniguel.org, www.cityofanderson.com,
+    www.saginaw-mi.com, www.ci.brownfield.tx.us). For every one of those,
+    the old gate assumed "not civicplus.com" meant "must have redirected
+    to some other real platform," diverting into `detect_platform()`
+    (-> "unknown" for a plain gov domain) -> generic_fallback.py, which
+    has no idea what a `tr.catAgendaRow` is -- silently skipping every
+    fix above for the majority of real tenants. Since
+    `_find_candidate_rows()` only reads the page's own DOM structure, not
+    its domain, the gate is now keyed on
+    `detect_platform(final_url)` instead: only a genuinely different
+    known platform (not "unknown", and not "civicplus" itself --
+    otherwise a real *.civicplus.com final_url would recurse into this
+    same class forever) is worth deferring to `resolve_via_platform()`
+    for. See `scripts/nationwide_395_ingest.py`'s own incident note (now
+    resolved) for the same bug caught live in production.
     """
 
     platform_name = "civicplus"
@@ -116,7 +137,33 @@ class CivicPlusAssetFinder(AssetFinder):
         # documents for platforms that never leave their own domain.
         subdomain_jurisdiction = self._jurisdiction_from_subdomain(url)
 
-        if "civicplus.com" not in urlparse(final_url).netloc.lower():
+        # Real bug, confirmed live 2026-09-07: most real CivicPlus tenants
+        # are white-labeled onto the government's OWN domain (e.g.
+        # www.trentonnj.org, www.cityofazle.org -- confirmed live, direct
+        # fetch, never redirecting to any *.civicplus.com host), so the
+        # old "netloc doesn't contain civicplus.com" check treated every
+        # one of those as if it must have redirected to some other real
+        # platform, diverting to `resolve_via_platform(final_url)` --
+        # `detect_platform()` on a plain government domain returns
+        # "unknown", which dispatches to generic_fallback.py and never
+        # reaches this class's own (real, domain-agnostic) row-parsing at
+        # all. `_find_candidate_rows()` only cares about the page's own
+        # `tr.catAgendaRow` markup (confirmed live on trentonnj.org, which
+        # carries the identical structure) -- it doesn't care what domain
+        # served the HTML, so there's no reason to gate on the domain
+        # either. Deferring is only actually correct when the final URL
+        # really did land on a DIFFERENT real platform's own page (e.g. an
+        # AgendaCenter link that 301-redirects straight to a Granicus/
+        # Legistar URL, bypassing CivicPlus's HTML entirely) --
+        # `detect_platform(final_url)` returning anything other than
+        # "unknown" is exactly that signal. "civicplus" itself is excluded
+        # from that set too, since it's also what a genuine
+        # *.civicplus.com final_url detects as -- deferring on that would
+        # call `resolve_via_platform()` -> `get_finder("civicplus")` ->
+        # this same class's own `resolve()` on the same URL, recursing
+        # without bound.
+        final_platform = detect_platform(final_url)
+        if final_platform not in ("unknown", "civicplus"):
             result = await resolve_via_platform(final_url)
             if subdomain_jurisdiction:
                 result.jurisdiction = subdomain_jurisdiction
@@ -187,6 +234,21 @@ class CivicPlusAssetFinder(AssetFinder):
         # sets one of its own.
         result.agenda_link = result.agenda_link or video_candidates[0].get("agenda_link")
         result.packet_link = result.packet_link or video_candidates[0].get("packet_link")
+        # Same fallback legistar.py's own `page_info["title"]` already
+        # provides for the identical class of gap (see that module's
+        # `resolve()`): a delegated platform's own title/date extraction
+        # can come back empty (confirmed live 2026-09-07, via
+        # scripts/nationwide_395_ingest.py's own smoke test: 6 CivicPlus
+        # rows delegated to a YouTube video whose title came back None,
+        # yt-dlp blocked by anti-bot on this host -- every one confirmed a
+        # real meeting only after the fact, by re-fetching the AgendaCenter
+        # page directly) even though this row's own title/date -- real,
+        # structured data straight from the AgendaCenter listing, not a
+        # guess -- was already sitting right here. Newly load-bearing now
+        # that the domain-gate fix above means this path is reached by
+        # most real (self-hosted) CivicPlus tenants, not routed around it.
+        result.title = result.title or video_candidates[0]["title"]
+        result.date = result.date or video_candidates[0]["date"]
         return result
 
     @staticmethod
