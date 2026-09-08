@@ -613,3 +613,23 @@ https://www.youtube.com/watch?v=pE0GGrxIYHE&t=3002s
 https://portagecowi.portal.civicclerk.com/event/9410/media
 https://youtu.be/svk7OsRpw8E
 https://aac.cablecast.tv/cablecastapi/live?channel_id=1&use_cdn=true
+https://youtube.com/live/KLaCh93rKGo?feature=share	https://www.charlevoixcounty.org/
+https://www.youtube.com/embed/ESfzST-yOSM?si=4EKaKTtJZK4jTT-q	https://www.middletown.delaware.gov/events/97568/
+https://tustin.granicus.com/ViewPublisher.php?view_id=5	https://www.tustinca.org/282/Meetings-Agendas
+https://portervilleca.portal.civicclerk.com/event/542/media	https://www.ci.porterville.ca.us/government/city_council/meeting_agendas___minutes.php
+https://southelmonteca.portal.civicclerk.com/event/582/media	https://www.cityofsouthelmonte.org/129/Meeting-Agendas-Minutes
+https://carmelbytheseaca.portal.civicclerk.com/event/912/media	https://ci.carmel.ca.us/
+https://rollinghillsca.portal.civicclerk.com/event/833/media	https://www.rolling-hills.org/
+https://www.youtube.com/embed/PvV--2X7Qco?modestbranding=1&hd=1&vq=hd720&rel=0&playsinline=1	https://publicinput.com/cityofindustry
+https://caleraal.portal.civicclerk.com/event/803/media	https://www.cityofcalera.org/429/Agendas-and-Minutes
+https://eagle-id.granicus.com/ViewPublisher.php?view_id=1	https://www.cityofeagle.org/
+https://www.youtube.com/live/O0rA3d4CF84?si=hjSFoQPXVBb3-vnu	https://www.belairmd.org/
+https://townhallstreams.com/stream.php?location_id=87&id=72598	https://www.choosecambridge.com/
+https://www.youtube.com/live/uQ3rK9rI1g8	https://www.townofcentreville.org/
+https://salisburymd.granicus.com/ViewPublisher.php?view_id=1	https://salisbury.md/citizen-services/city-council
+https://youtu.be/33WZKCGJNmg	https://www.boonton.org/
+https://videoplayer.telvue.com/player/xAkU_1Eb4e9C1-YCioqZmvaGx4GumMyB/playlists/3943/stream/393	https://www.cliftonnj.org/
+https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/1298/stream/67?autostart=false&showtabssearch=true&fullscreen=false	https://www.oradell.org/oradell-public-television/pages/live-stream
+https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php
+https://youtu.be/zSh2DIrld8E	https://stoneharbornj.org/agendameetings/watch-mayor-and-council-meetings-online/borough-council-agendas-minutes/
+https://byramms.portal.civicclerk.com/event/2238/media	https://www.byram-ms.us
