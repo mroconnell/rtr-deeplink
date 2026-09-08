@@ -50,6 +50,46 @@ class CalendarPageError(Exception):
         super().__init__(message)
 
 
+class NoVideoCandidateFound(Exception):
+    """Raised when a calendar/listing page (currently: CivicPlus's own
+    AgendaCenter, see civicplus.py) was walked newest-first, up to a
+    retry limit, and none of the real (title+date) candidate rows
+    checked had a real video link -- a confident, real NEGATIVE result
+    ("this government's page(s), checked, likely has no video"), not an
+    error and not something a caller should ingest.
+
+    Distinct from `CalendarPageError` above, which signals "here's a
+    real pick-list, you choose" -- this signals "already picked as many
+    of the most recent real candidates as make sense to try (or found
+    none at all), and none had video." Real bug this replaces, confirmed
+    2026-09-07: collapsing this case into a bare "zero candidates" empty
+    list gave callers no way to tell "this page has no meetings at all"
+    apart from "this page has real meetings, just none with video yet"
+    -- and `scripts/adhoc_civicplus_pipeline.py`'s zero-candidates
+    fallback (a `ResolvedMeeting` keyed to the bare listing-page URL
+    itself, with no real title) ingested it as if it were a real
+    meeting.
+
+    `candidates_checked` is how many real candidate rows were actually
+    walked before giving up -- 0 for the true zero-candidates case (a
+    genuinely empty listing page), otherwise `min(retry_limit, number of
+    real candidate rows on the page)`. `jurisdiction_hint` carries the
+    same page-level jurisdiction signal `CalendarPageError` does (e.g.
+    CivicPlus's own subdomain), so a caller doesn't lose it just because
+    no video was found.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        candidates_checked: int,
+        jurisdiction_hint: Optional[str] = None,
+    ):
+        self.candidates_checked = candidates_checked
+        self.jurisdiction_hint = jurisdiction_hint
+        super().__init__(message)
+
+
 class AssetFinder(ABC):
     """One implementation per civic meeting platform (Granicus, Legistar, ...)."""
 

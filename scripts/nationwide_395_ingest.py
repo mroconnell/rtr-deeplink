@@ -604,9 +604,9 @@ async def resolve_civicplus_seed(seed_url: str):
     file's own incident note in the module docstring.
 
     Fix: replicate the adapter's real post-gate logic (its own
-    `_find_video_rows` + jurisdiction-from-subdomain helpers) directly,
+    `_find_candidate_rows` + jurisdiction-from-subdomain helpers) directly,
     skipping the domain gate entirely -- correct for both a genuine
-    *.civicplus.com tenant and a self-hosted one, since `_find_video_rows`
+    *.civicplus.com tenant and a self-hosted one, since `_find_candidate_rows`
     doesn't care which domain served the HTML."""
     finder = CivicPlusAssetFinder()
     async with aiohttp.ClientSession(headers=finder.headers) as s:
@@ -619,10 +619,12 @@ async def resolve_civicplus_seed(seed_url: str):
 
     subdomain_jurisdiction = finder._jurisdiction_from_subdomain(seed_url)
     soup = BeautifulSoup(html, "html.parser")
-    candidates = finder._find_video_rows(soup, final_url)
+    all_candidates = finder._find_candidate_rows(soup, final_url)
+    candidates = [c for c in all_candidates if c["url"]]
     if not candidates:
         raise RowSkip(
-            "civicplus: no video-bearing rows found on this AgendaCenter page"
+            "civicplus: no video-bearing rows found on this AgendaCenter page "
+            f"(checked {len(all_candidates)} real candidate(s))"
         )
 
     if len(candidates) == 1:
