@@ -1,5 +1,57 @@
 # Backlog — done
 
+## `detect_platform()` never routed Diligent Community's own domain to CivicWeb -- Washoe County School District, NV hit it live [Done 2026-09-08, WO-122]
+
+**The 2026-08-27 "Diligent Community domain support" fix (see this
+file's own entry below) never touched `app/platforms/base.py`.** It
+fixed two real bugs inside `CivicWebAssetFinder` itself (case-insensitive
+`id=` extraction, the `MeetingExternalMinutesLinkUrl` fallback) but left
+`detect_platform()`'s civicweb branch checking only `"civicweb.net" in
+netloc` -- so a URL on `community.diligentoneplatform.com` (the real,
+live second domain that whole fix was about) never reached
+`CivicWebAssetFinder` in the first place. It fell through every other
+branch to `"unknown"` and got `generic_fallback.py` treatment instead,
+even though the purpose-built finder was fully ready for it. Routing was
+the one thing the earlier fix's own tests didn't cover -- they called
+`CivicWebAssetFinder().resolve(url)` directly rather than going through
+`detect_platform() -> get_finder() -> resolve()`.
+
+**Real current jurisdiction hit by this gap**: Nevada's statewide
+public-meeting-notice index (notice.nv.gov) lists live "Washoe County
+School District" meetings whose outbound link is
+`washoeschools.community.diligentoneplatform.com/Portal/
+MeetingInformation.aspx?Org=Cal&Id={id}` -- a real tenant on the exact
+gap domain, distinct from the Winthrop, MN tenant the original fix was
+built against.
+
+**Fix**: `detect_platform()`'s civicweb branch now also matches
+`"diligentoneplatform.com" in netloc`.
+
+**Verified against both real domains through the actual
+`detect_platform() -> get_finder() -> resolve()` pipeline** (not
+`CivicWebAssetFinder` called directly -- the whole point of this fix is
+that the routing step was the broken part):
+- `washoeschools.community.diligentoneplatform.com` (`Id=1493`, a real
+  meeting dated 2026-09-08): routes to `civicweb`, resolves via
+  `CivicWebAssetFinder`, returns the real title ("Board of Trustees
+  Regular Meeting - Sep 08 2026") with a clean "no video found" warning
+  (this meeting genuinely has none yet) rather than falling to
+  `generic_fallback`.
+- `winthropminnesota.community.diligentoneplatform.com` (`id=63`, the
+  original 2026-08-27 fixture): routes to `civicweb`, delegates through
+  to `youtube` with the real title ("Regular Council - Aug 03 2026"),
+  matching the existing fixture-backed test's expectations end to end.
+
+New regression test in `tests/test_civicweb.py`
+(`test_detect_platform_recognizes_diligentoneplatform_domain`) covers
+the routing step directly, alongside the pre-existing
+`test_extract_meeting_id_is_case_insensitive` which only ever exercised
+`CivicWebAssetFinder`'s own extraction logic.
+
+Full suite (2773 passed / 15 skipped), `ruff check`, `ruff format
+--check`, and `alembic check` (both `app/` and `archive/`, against a
+fresh migration-built SQLite) all clean.
+
 ## A tenant-derived state hint could name the wrong COUNTRY, not just an imprecise state -- 8 real pages confirmed [Done 2026-09-06]
 
 Found live: an eScribe-hosted meeting for the Town of Erin, **Ontario**,
