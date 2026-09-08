@@ -232,8 +232,12 @@ class CivicPlusAssetFinder(AssetFinder):
         # legistar.py's delegation already threads its own agenda_link
         # through, in case a future resolve_via_platform() target ever
         # sets one of its own.
-        result.agenda_link = result.agenda_link or video_candidates[0].get("agenda_link")
-        result.packet_link = result.packet_link or video_candidates[0].get("packet_link")
+        result.agenda_link = result.agenda_link or video_candidates[0].get(
+            "agenda_link"
+        )
+        result.packet_link = result.packet_link or video_candidates[0].get(
+            "packet_link"
+        )
         # Same fallback legistar.py's own `page_info["title"]` already
         # provides for the identical class of gap (see that module's
         # `resolve()`): a delegated platform's own title/date extraction

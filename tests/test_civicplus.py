@@ -402,16 +402,21 @@ async def test_video_beyond_retry_limit_is_not_walked():
         </td>
       </tr>
     """
-    html = "<table>" + "".join(
-        no_video_row.format(date=d)
-        for d in (
-            "Sep 05, 2026",
-            "Sep 04, 2026",
-            "Sep 03, 2026",
-            "Sep 02, 2026",
-            "Sep 01, 2026",
+    html = (
+        "<table>"
+        + "".join(
+            no_video_row.format(date=d)
+            for d in (
+                "Sep 05, 2026",
+                "Sep 04, 2026",
+                "Sep 03, 2026",
+                "Sep 02, 2026",
+                "Sep 01, 2026",
+            )
         )
-    ) + video_row + "</table>"
+        + video_row
+        + "</table>"
+    )
 
     routes = {url: FakeResponse(status=200, text=html, url=url)}
 
