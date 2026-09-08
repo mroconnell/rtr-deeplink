@@ -1162,13 +1162,22 @@ structural change than the two entries below.
     about whether ceremonial/civic content like State-of-the-City
     addresses is in scope at all) -- none of the 305 were individually
     re-verified.
-  - **Impact**: nothing in this pass has been deleted or re-tagged.
-  - **Next action**: the 16 non-meeting-content pages are ready for the
-    same `POST /internal/admin/delete-pages` treatment as the original 9
-    once reviewed. The 23 wrong-government-type pages need either 23
+  - **Update 2026-09-08: the 16 non-meeting-content pages are deleted**
+    (`"deleted":16`, all 16 `found`, none `not_found`, confirmed via the
+    same `POST /internal/admin/delete-pages` treatment as the original 9).
+  - **Impact**: 25 of the original 9+16=25 wrong-content pages found by
+    this audit effort are now gone. The 23 wrong-government-*type* pages
+    (real meetings, wrong government record) are still live and untouched
+    -- these are a re-tag, not a delete. The real school districts behind
+    them (15 distinct ones) were added to `rtr-business/research/
+    master_open_candidates_deduped.csv` as their own tracked government
+    units (`us:sd:` gov_ids, real NCES LEA IDs) so they don't get lost as
+    open work.
+  - **Next action**: the 23 wrong-government-type pages need either 23
     individual `POST /internal/jurisdiction/override` calls or a new
-    bulk endpoint -- no bulk re-tag tool exists today. Both decisions
-    were left to Ryan, not made unilaterally.
+    bulk endpoint -- no bulk re-tag tool exists today. That decision, plus
+    whether to pursue the 13 state-specific-review and 305 uncategorized
+    rows further, is left to Ryan, not made unilaterally.
   - **History**: full per-category CSVs in `rtr-business/research/
     archive_audit/categorized/`; raw export in `all_pages_raw.jsonl`.
 
