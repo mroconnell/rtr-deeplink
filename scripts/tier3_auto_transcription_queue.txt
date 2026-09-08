@@ -1,15 +1,3 @@
-https://reginask.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=6584&MediaPosition=&ID=13159&CssClass=
-http://renvillecountymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1944&MediaPosition=&ID=3077&CssClass=
-http://reverema.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1656&MediaPosition=&ID=2827&CssClass=
-http://reynoldsburgcityoh.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2934&MediaPosition=&ID=3500&CssClass=
-http://ricecountymn.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1473&Format=Agenda
-http://riponcityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1112&MediaPosition=&ID=2200&CssClass=
-http://rockvillecentreschoolny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3677&MediaPosition=&ID=3266&CssClass=
-http://rockyhillnj.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1161&MinutesID=1143&MediaPosition=&ID=4331&Type=80&CssClass=%20style=
-https://rtd.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1954&MediaPosition=&ID=2051
-https://sanjacintoca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1221&MediaPosition=%20&ID=1425&CssClass=
-http://seminolecountyschoolfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame&MeetingID=1390&MediaPosition&ID=2527&CssClass
-http://somervellcountytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1230&MediaPosition=&ID=3393&CssClass=
 http://southbrunswicktownnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2773&MediaPosition=&ID=13102&CssClass=
 http://springfieldcityma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4585&MediaPosition=&ID=6380&CssClass=
 http://stmaryscityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1102&Format=
