@@ -47,11 +47,32 @@ Run from rtr-deeplink repo root with the shared venv active:
     python scripts/adhoc_civicplus_pipeline.py [candidates.csv]
 (ARCHIVE_BASE_URL / ARCHIVE_INGEST_TOKEN come from .env via cwd-walk --
 confirmed pointed at production before running for real. Set DRY_RUN=1
-to resolve/tier without ingesting or queuing anything.)
+to resolve/tier without ingesting or queuing anything -- also skips the
+jurisdiction_coverage.csv write described below, same "no side effects"
+spirit.)
 
 Candidate CSV columns: gov_id, unit_name, web_address (extra columns
 ignored). `website` is also accepted as an alias for `web_address` since
 some upstream scan files use that name instead.
+
+`NoVideoCandidateFound` (app/platforms/base.py) is a distinct, non-error
+outcome from `CivicPlusAssetFinder.resolve()`, added 2026-09-07 alongside
+that adapter's own fix for a real production bug (garbage pages ingested
+from a bare AgendaCenter URL with no real candidate ever found -- see
+civicplus.py's module docstring): a confident "this government's
+CivicPlus page(s), checked, likely has no video" result, not something to
+ingest. On that signal this script writes outcome=no-video-found to its
+own report CSV (never ingests) and additionally records the same outcome
+into `~/Documents/rtr-business/research/jurisdiction_coverage.csv` --
+that CSV already uses `reject_reason=no-video-found` for exactly this
+class of outcome elsewhere, matched here by `gov_id`. That file is a
+real, shared business artifact other sessions may be editing concurrently,
+so the update is a minimal, safe read-modify-write done fresh for each
+gov_id as it's processed (re-read immediately before write, touch only
+that one row's own `reject_reason` field, and only when it's currently
+empty -- never clobber an existing non-empty `reject_reason` or `domain`)
+rather than one batched read/write across the whole run -- see
+`update_coverage_reject_reason()` below.
 """
 
 import asyncio
@@ -72,7 +93,11 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import CalendarPageError, resolve_via_platform  # noqa: E402
+from app.platforms.base import (  # noqa: E402
+    CalendarPageError,
+    NoVideoCandidateFound,
+    resolve_via_platform,
+)
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
@@ -84,6 +109,9 @@ DEFAULT_CANDIDATES_CSV = (
 QUEUE_FILE = Path(__file__).resolve().parent / "tier3_auto_transcription_queue.txt"
 REPORT_CSV = (
     Path(__file__).resolve().parent / "civicplus_data" / "civicplus_pipeline_report.csv"
+)
+COVERAGE_CSV = Path(
+    "/Users/mroconnell/Documents/rtr-business/research/jurisdiction_coverage.csv"
 )
 
 REPORT_FIELDS = [
@@ -161,6 +189,49 @@ def load_candidates(path):
     return candidates
 
 
+def update_coverage_reject_reason(gov_id, reject_reason):
+    """Safe, minimal read-modify-write against
+    rtr-business/research/jurisdiction_coverage.csv, a real shared
+    business artifact that other sessions may be actively editing at the
+    same time this pipeline runs (confirmed live concern, 2026-09-07) --
+    NOT the same one-big-batch-read/write-at-the-end pattern
+    adhoc_granicus_478_pipeline.py already uses for the same file, which
+    assumes it's the only writer for the whole run.
+
+    Re-reads the full CSV fresh right before writing (so it reflects
+    whatever any other concurrent session already wrote), finds the one
+    row matching `gov_id` (that column already exists in this CSV, unlike
+    adhoc_granicus_478_pipeline.py's own name+state fuzzy match), and
+    touches ONLY that row's own `reject_reason` field -- and only when it
+    is currently empty, never overwriting an existing non-empty
+    `reject_reason` (this outcome should never clobber a human's or
+    another pipeline's own prior verdict) or the `domain` column (this
+    script never confirms a working domain on this outcome, so it has
+    nothing authoritative to say about `domain`). Writes the full file
+    back with every other row and column byte-for-byte untouched.
+    Returns True if a matching row was found and updated, False
+    otherwise (no matching gov_id, or its reject_reason was already set).
+    """
+    if not COVERAGE_CSV.exists():
+        return False
+    with open(COVERAGE_CSV, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        return False
+    fieldnames = list(rows[0].keys())
+    matched = next((row for row in rows if row.get("gov_id") == gov_id), None)
+    if matched is None:
+        return False
+    if (matched.get("reject_reason") or "").strip():
+        return False
+    matched["reject_reason"] = reject_reason
+    with open(COVERAGE_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return True
+
+
 def load_done_gov_ids(report_path):
     if not report_path.exists():
         return set()
@@ -194,20 +265,26 @@ async def resolve_candidate(finder, agendacenter_url):
     """Runs CivicPlusAssetFinder.resolve() against a tenant's AgendaCenter
     page and returns (result, meeting_url, detail_note).
 
-    Zero or exactly one real video-bearing row: resolve() already does
-    the full fetch + row-parse + platform-detect + delegate itself, and
-    `result.source_url` is either the AgendaCenter url (zero rows -- see
-    civicplus.py's "not found" branch) or the delegated video url (one
-    row). More than one real row: resolve() raises CalendarPageError
-    with the full pick-list (`e.candidates`, newest-first per the site's
-    own rendering) and a page-level `jurisdiction_hint` -- this picks the
+    Exactly one real video-bearing row (after resolve()'s own
+    newest-first walk with a retry limit, see civicplus.py): resolve()
+    already does the full fetch + row-parse + platform-detect + delegate
+    itself, and `result.source_url` is the delegated video url. More than
+    one real video-bearing row: resolve() raises CalendarPageError with
+    the full pick-list (`e.candidates`, newest-first per the site's own
+    rendering) and a page-level `jurisdiction_hint` -- this picks the
     first (newest) real candidate and resolves *that* through
     resolve_via_platform(), same calling pattern as
     civicplus_owndomain_sweep.py's `check_one()`, plus threading the
     row's own agenda_link/packet_link through the same way
     CivicPlusAssetFinder.resolve() itself does for its own single-
     candidate case (those come from the AgendaCenter row's `td.downloads`
-    cell, which the delegated video platform knows nothing about)."""
+    cell, which the delegated video platform knows nothing about). No
+    video found at all within the retry limit (including a genuinely
+    empty listing page): resolve() raises `NoVideoCandidateFound` instead
+    -- a confident, real negative result, handled by the caller as its
+    own distinct outcome (see the NoVideoCandidateFound except-branch in
+    process_candidate() below), never as a resolve failure or an
+    ingestable candidate."""
     result = await finder.resolve(agendacenter_url)
     return result, result.source_url, ""
 
@@ -231,6 +308,33 @@ async def process_candidate(session, finder, candidate, report):
 
     try:
         result, meeting_url, _ = await resolve_candidate(finder, agendacenter_url)
+    except NoVideoCandidateFound as e:
+        row_out.update(
+            outcome="no-video-found",
+            jurisdiction=e.jurisdiction_hint or "",
+            detail=f"checked {e.candidates_checked} candidate row(s), none had video",
+        )
+        report.write(row_out)
+        print(
+            f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)"
+        )
+        if DRY_RUN:
+            print(
+                f"[DRYRUN ] would record reject_reason=no-video-found for {gov_id} "
+                "in jurisdiction_coverage.csv"
+            )
+        else:
+            updated = update_coverage_reject_reason(gov_id, "no-video-found")
+            print(
+                f"[COVERAGE] {gov_id} {unit_name}  "
+                + (
+                    "reject_reason set to no-video-found"
+                    if updated
+                    else "no update (no gov_id match, or reject_reason already set)"
+                )
+            )
+        await asyncio.sleep(RESOLVE_DELAY_SECONDS)
+        return
     except CalendarPageError as e:
         if not e.candidates:
             row_out.update(
