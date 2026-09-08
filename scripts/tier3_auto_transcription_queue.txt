@@ -1,15 +1,3 @@
-https://mountvernoncityoh.iqm2.com/Citizens/Detail_Communication.aspx?MeetingID=2406&MediaPosition=&ID=2085&CssClass=&Print=Yes
-https://hobokennj.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=2290&MediaPosition=&ID=8256&CssClass=&Print=Yes
-http://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1924
-http://ocalafl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2840&MediaPosition=&ID=15727&CssClass=
-http://olmstedcountymn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2038&Format=Minutes
-http://pacificacityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1618&MediaPosition=&ID=5727&CssClass=
-http://pattersonca.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1184&MinutesID=1173&MediaPosition=&ID=3662&Type=50&CssClass=%20style=
-http://pec.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1397&Format=Agenda
-http://polkcountyfl.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1127&MinutesID=1119&MediaPosition=&ID=4141&Type=70&CssClass=%20style=
-http://porthuroncitymi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1427&MediaPosition=&ID=3467&CssClass=
-http://princetonnj.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=1098&MediaPosition=&ID=2785&CssClass=&Print=Yes
-http://rankincountyms.iqm2.com:80/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1502&MediaPosition=&ID=12768&CssClass=
 https://reginask.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=6584&MediaPosition=&ID=13159&CssClass=
 http://renvillecountymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1944&MediaPosition=&ID=3077&CssClass=
 http://reverema.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1656&MediaPosition=&ID=2827&CssClass=
