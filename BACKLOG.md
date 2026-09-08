@@ -128,8 +128,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (77)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+  [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
   [NEEDS-AUDIT] `RuntimeError: Response content shorter than
@@ -638,6 +639,43 @@ structural change than the two entries below.
     scoring report while answering questions about the Abbotsford
     BC/WI fix; counts confirmed live 2026-09-05. Not yet in
     `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real feasibility has collapsed to ~8%, far below the ~88% the feed script's own docstring still assumes.**
+  - **Issue**: fed the first 50 queue rows live 2026-09-07 (all IQM2) —
+    only 4 resolved a real video, 46 got `[SKIP] no video found on
+    re-resolve`. Verified this isn't an adapter bug: replicated
+    `IQM2AssetFinder.resolve()`'s own logic for all 46 skips (same
+    `MeetingID` extraction, same derived `SplitView.aspx` fetch) and
+    every single one returns a live `SetupJWPlayer(eval('[{"file":"",
+    "default":true}]'))` — the government page's own JWPlayer call with
+    a genuinely empty file URL — confirmed by direct curl against
+    6+ unrelated tenants (boonenc, browardcollegefl, douglascountyco,
+    kingslandcityga, franklincountymo, and others). One also showed
+    `hfVideo` = `"False"` on its source `Detail_LegiFile.aspx` page.
+    Real, current, live fact about these meetings, not a false
+    negative.
+  - **Impact**: at this hit rate, netting a real batch of N tier-3
+    candidates costs ~12.5x N live resolves against many distinct
+    government tenants — the remaining ~627-row queue would mostly be
+    consumed chasing a fraction of its assumed yield. The feed
+    workflow's throughput math (`feed-tier3-transcription.yml`'s own
+    comment, and this docstring's 2026-08-22 "~88% feasibility" figure)
+    is now stale and overstates real output.
+  - **Next action**: none forced yet — this session topped up its local
+    Whisper batch from the general `/internal/transcription-backlog`
+    instead of continuing to drain this queue. Worth a real fix before
+    relying on this queue again: re-probe a larger sample to size the
+    true current rate, and figure out whether it's uniform decay (old
+    Granicus-backed streams aging out — this repo already documents
+    "some old/archived Granicus clips... genuinely time out," see
+    `feed_tier3_auto_transcription.py`'s docstring) or a bug in how the
+    queue was originally built.
+  - **Constraint**: don't re-raise this queue's batch size, and don't
+    burn through the rest of it in one sweep, until the real rate is
+    known — same "verify a backlog entry's central claim" rule this
+    file's own header states.
+  - **History**: found 2026-09-07 feeding a manual 50-row batch for a
+    local Whisper run (this session).
 
 - **[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   resolutions — nothing retroactively re-applies it to already-archived
