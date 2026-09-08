@@ -1,15 +1,3 @@
-http://lumpkincountyga.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2630&MediaPosition=&ID=2035&CssClass=
-http://madisoncityal.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1172&MediaPosition=&ID=5713&CssClass=
-http://manateecountyschoolfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1745&MediaPosition=&ID=6418&CssClass=
-https://massapequaschoolny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1462&MediaPosition=&ID=6961&CssClass=
-https://melrosecityma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=7085&MediaPosition=&ID=12874&CssClass=
-http://menifeeca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1848&MediaPosition=&ID=2698&CssClass=
-https://miamifl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4129&MediaPosition=&ID=17332&CssClass=
-https://middlesexboroughnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1578&MediaPosition=&ID=5091&CssClass=
-http://monroecitymi.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=2330&ID=1211
-https://morriscountynj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1775&MediaPosition=&ID=4569&CssClass=
-http://morristownnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1005&MediaPosition=&ID=1069&CssClass
-http://mosineecitywi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1639&MediaPosition=&ID=3792&CssClass=
 https://mountvernoncityoh.iqm2.com/Citizens/Detail_Communication.aspx?MeetingID=2406&MediaPosition=&ID=2085&CssClass=&Print=Yes
 https://hobokennj.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=2290&MediaPosition=&ID=8256&CssClass=&Print=Yes
 http://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1924
