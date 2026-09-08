@@ -219,6 +219,102 @@ async def test_listing_with_single_video_delegates_to_granicus():
     )
 
 
+async def test_self_hosted_domain_parses_own_agendacenter_html():
+    # Real bug fixed 2026-09-07: most real CivicPlus tenants are
+    # white-labeled onto the government's own domain and never touch
+    # civicplus.com at all -- confirmed live (direct fetch, no redirect)
+    # on www.trentonnj.org, www.cityofazle.org, www.ci.brownfield.tx.us,
+    # among others. The old domain gate (`"civicplus.com" not in
+    # final_url netloc`) treated every one of these as if it must have
+    # redirected to some other real platform, diverting to
+    # `resolve_via_platform()` -- which detects a plain gov domain as
+    # "unknown" and hands it to generic_fallback.py, never reaching this
+    # class's own row-parsing at all. Same fixture as
+    # `test_listing_with_single_video_delegates_to_granicus` above, just
+    # served from a self-hosted, non-civicplus domain -- confirms the
+    # adapter's own `_find_candidate_rows`/delegate logic now runs
+    # regardless of which domain served the HTML.
+    url = "https://www.example-gov.org/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_single.html")
+    granicus_url = "https://westlakevillage.granicus.com/player/clip/1201?view_id=1"
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+        "https://westlakevillage.granicus.com/videos/1201/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://westlakevillage.granicus.com/AgendaViewer.php?clip_id=1201&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    assert result.platform == "granicus"
+    assert result.external_id == "granicus:westlakevillage.granicus.com:1201"
+    assert result.agenda_link == (
+        "https://www.example-gov.org/AgendaCenter/ViewFile/Agenda/"
+        "_04082026-1001?html=true"
+    )
+
+
+async def test_self_hosted_domain_with_no_video_raises_no_video_candidate_found():
+    # Same self-hosted-domain gap as above, exercised against the "no
+    # video yet" outcome specifically -- confirms `NoVideoCandidateFound`
+    # (not a generic_fallback.py fabrication) is what a self-hosted tenant
+    # with real rows but no video gets too, not just the successful-
+    # delegation case above.
+    url = "https://www.example-gov.org/AgendaCenter"
+    html = """
+    <table>
+      <tr class="catAgendaRow">
+        <td><h3><strong>Sep 01, 2026</strong></h3><p><a>Newest Meeting</a></p></td>
+        <td class="media"></td>
+      </tr>
+    </table>
+    """
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    with mock_session(routes):
+        with pytest.raises(NoVideoCandidateFound) as exc_info:
+            await CivicPlusAssetFinder().resolve(url)
+
+    assert exc_info.value.candidates_checked == 1
+
+
+async def test_final_url_redirected_to_different_platform_still_defers():
+    # The gate's real remaining purpose: an AgendaCenter link that
+    # 301-redirects straight to a different real platform's own page,
+    # bypassing CivicPlus's HTML entirely (e.g. a government that's since
+    # migrated off CivicPlus but left old links redirecting to the new
+    # system). `detect_platform(final_url)` returning a real platform
+    # (here "granicus", not "unknown" and not "civicplus") is what should
+    # still trigger deferring to `resolve_via_platform()` instead of
+    # trying to run CivicPlus's own row-parsing against a page that isn't
+    # CivicPlus HTML at all.
+    url = "https://example.civicplus.com/AgendaCenter"
+    granicus_url = "https://durham.granicus.com/player/clip/3313"
+    granicus_html = load_fixture("granicus", "napacity_clip3450.html")
+
+    routes = {
+        # The initial fetch's *final* url (post-redirect) already lands on
+        # Granicus's own domain -- the response body is irrelevant since
+        # the gate diverts before any CivicPlus HTML is ever parsed.
+        url: FakeResponse(status=200, text="<html></html>", url=granicus_url),
+        granicus_url: FakeResponse(status=200, text=granicus_html, url=granicus_url),
+    }
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    assert result.platform == "granicus"
+    assert result.source_url == granicus_url
+
+
 async def test_no_candidate_rows_raises_no_video_candidate_found():
     # The true zero-candidates case (no tr.catAgendaRow at all, e.g. City
     # of Azle, TX) -- candidates_checked is 0 since there was nothing to
@@ -407,3 +503,38 @@ async def test_subdomain_jurisdiction_overrides_delegated_platforms_own_guess(
 
     assert result.platform == "youtube"
     assert result.jurisdiction == "Westminster, MD"
+
+
+async def test_blocked_delegate_title_backfills_from_own_agenda_row(monkeypatch):
+    # Real, confirmed-live gap fixed 2026-09-07 (caught by
+    # scripts/nationwide_395_ingest.py's own smoke test): a delegated
+    # YouTube video's title extraction can come back None (yt-dlp blocked
+    # by anti-bot on this host -- see youtube.py's own docstring) even
+    # though this row's own title/date, straight from the AgendaCenter
+    # listing, was already sitting right here. Same fallback legistar.py's
+    # own `page_info["title"]` already provides for the identical gap.
+    from app.platforms.base import register
+    from app.platforms.youtube import YouTubeAssetFinder
+
+    register(YouTubeAssetFinder())
+
+    url = "https://example.civicplus.com/AgendaCenter"
+    html = load_fixture("civicplus", "agendacenter_single.html")
+    youtube_html = html.replace(
+        "https://westlakevillage.granicus.com/player/clip/1201?view_id=1",
+        "https://www.youtube.com/watch?v=abcdefghijk",
+    )
+    routes = {url: FakeResponse(status=200, text=youtube_html, url=url)}
+
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {"title": None, "uploader": None, "upload_date": None},
+    )
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    assert result.platform == "youtube"
+    assert result.title == "City Council Regular Meeting"
+    assert result.date == "2026-04-08"
