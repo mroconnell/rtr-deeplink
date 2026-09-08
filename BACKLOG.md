@@ -113,9 +113,8 @@ Standing decisions — do NOT re-raise  (8)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
-  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Production actions only Ryan should take  (6)
@@ -482,12 +481,6 @@ so that work reads together.
   - **Impact**: real, repeated, cross-platform — job 1157 (San Diego CA, Granicus, lost 15/25 chunks, 60% of the meeting), job 1226 (College Station TX, CivicClerk, 11/17), job 1259 (Falls Church VA, Granicus, gave up at 14/15), job 1377 (Mansfield TX, CivicClerk, gave up at 1/6), job 1766 (Alameda County CA "BOS View", Granicus, gave up at 17/22, 2026-09-05) — same exact `errno 1094995529` signature every time, not one platform's quirk. WO-54/58's whole-audio-cache path targets exactly the seek-hostile progressive sources (ChampDS, Granicus) most likely to contain a corrupt/interrupted byte range, so this sits on the path most likely to need the guard.
   - **Next action**: add the same `_mean_volume_db()` decodability check to `slice_cached_audio()`, returning `(False, "...isn't decodable (likely truncated/corrupt)")` instead of `(True, None)` on an undecodable slice. `worker/main.py`'s existing per-chunk retry/budget logic already treats that shape as a normal retryable failure — no other code path needs to change.
   - **History**: found by the inbox-triage Routine's 2026-08-29 run; the 2026-08-30, -31, and 2026-09-01 runs each confirmed a fresh independent occurrence on a new source.
-
-- **[JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except Exception`, which doesn't catch `asyncio.CancelledError` — a fresh, still-open instance of the "Unclosed connector" leak class the 2026-08-21 fix only partly closed.**
-  - **Issue**: `app/archive_client.py`'s `proxy_get()` (`except Exception:` around `await session.get(...)`, currently line 490) and `app/main.py`'s `_proxy_to_archive()` (`except Exception:` around `archive_client.proxy_get(...)`, currently line 1701) both leave `asyncio.CancelledError` (a `BaseException` subclass since Python 3.8) unhandled, so a request cancelled mid-fetch (client/bot disconnects while the Archive fetch is in flight) leaks the aiohttp session's connector until GC finalizes it. Re-confirmed by direct read of current code on 2026-09-05 — the gap is unchanged; only the line numbers have drifted from the original triage note (`archive_client.py:465-474`, `app/main.py:1622-1632`).
-  - **Impact**: same self-healing-via-GC leak class as the already-fixed PYTHON-FASTAPI-V/S/Q/T/W/X cases (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), not a user-visible crash — surfaced fresh as Sentry **PYTHON-FASTAPI-13** (2026-08-28, real production traffic on `/state/massachusetts`), a new issue ID confirming this is a fresh recurrence via a path that fix didn't close. Structurally open on every proxied route (`/m/*`, `/state/*`, `/j/*`, `/meetings`, `/coverage`, sitemap, feed) since they all funnel through these two functions.
-  - **Next action**: in both functions, close the session on `asyncio.CancelledError` too, before re-raising it — e.g. `except (Exception, asyncio.CancelledError):` wrapping the existing close, always re-raising the cancellation rather than swallowing it.
-  - **History**: `BACKLOG_DONE.md`'s "Five bundled easy-win fixes" (2026-08-21). Found by the inbox-triage Routine's 2026-08-29 run.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 

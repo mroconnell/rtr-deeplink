@@ -1,5 +1,54 @@
 # Backlog — done
 
+## `proxy_get()`/`_proxy_to_archive()`'s `except Exception` didn't catch `asyncio.CancelledError`, leaking the Archive-proxy aiohttp session on every cancelled request [Done 2026-09-07]
+
+Fixed the `[JUST-DO-IT]` entry filed 2026-08-29 (Sentry
+**PYTHON-FASTAPI-13**, 2026-08-28, real `/state/massachusetts` traffic):
+`app/archive_client.py`'s `proxy_get()` and `app/main.py`'s
+`_proxy_to_archive()` both caught bare `except Exception`, which has not
+caught `asyncio.CancelledError` since Python 3.8 (it's a `BaseException`
+subclass there). A request cancelled mid-fetch -- client/bot disconnects
+while the Archive fetch is in flight -- skipped the cleanup path
+entirely, leaking the aiohttp `ClientSession`/connector until GC
+finalized it and printed "Unclosed client session" /
+"Unclosed connection" (host `rtr-deeplink-archive`). This was the same
+leak class as the 2026-08-21 "Five bundled easy-win fixes" below
+(PYTHON-FASTAPI-V/S/Q/T/W/X) recurring through a path that fix didn't
+close.
+
+Triggered directly by a user-pasted Render alert (2026-09-07 10:51 PM)
+showing exactly this signature -- "Unclosed client session" / "Unclosed
+connection" to `rtr-deeplink-archive` / "Unexpected error 9 on netlink
+descriptor 21" -- alongside "Exited with status 134" (SIGABRT). Per the
+`[HUMAN]` SIGABRT entry (still open, `BACKLOG.md`), this GC-finalizer
+noise is the *aftermath* of an abrupt process kill, not its proven
+cause -- fixing this closes a real, confirmed leak but does not by
+itself confirm or rule out a causal link to the SIGABRT crashes; that
+still needs Render's own crash logs, which only Ryan can pull.
+
+**Fix**: `archive_client.py:proxy_get()` now catches
+`(Exception, asyncio.CancelledError)` around `await session.get(...)`
+and closes the session before re-raising either way. `main.py`'s
+`_proxy_to_archive()` adds an explicit `except asyncio.CancelledError:
+raise` ahead of its existing `except Exception` 503-response handler --
+no session to close there (already handled inside `proxy_get()`), the
+point is making sure a cancellation is never swallowed into a 503
+response, which would break normal `asyncio` cancellation semantics.
+Both changes exactly match the next action the 2026-08-29 entry already
+specified.
+
+**Verified**: `ruff check`/`ruff format --check` clean on both files;
+full `pytest` run (2,771 passed, 15 skipped) — the one failure seen
+(`test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own`)
+is a pre-existing in-memory-SQLite schema-reflection quirk unrelated to
+this change (touches DB/admin code, not `archive_client.py`/`main.py`'s
+proxy path). Not yet deployed -- `render.yaml` has `autoDeploy: false`
+on this service, same as every other; merging this does not ship it.
+
+**History**: filed 2026-08-29 by the inbox-triage Routine; found by
+that Routine again 2026-08-30/31/2026-09-01. Fixed 2026-09-07 in
+response to a live crash alert.
+
 ## A tenant-derived state hint could name the wrong COUNTRY, not just an imprecise state -- 8 real pages confirmed [Done 2026-09-06]
 
 Found live: an eScribe-hosted meeting for the Town of Erin, **Ontario**,
