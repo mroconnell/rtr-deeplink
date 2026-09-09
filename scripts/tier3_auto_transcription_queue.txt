@@ -1,51 +1,3 @@
-https://mountvernoncityoh.iqm2.com/Citizens/Detail_Communication.aspx?MeetingID=2406&MediaPosition=&ID=2085&CssClass=&Print=Yes
-https://hobokennj.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=2290&MediaPosition=&ID=8256&CssClass=&Print=Yes
-http://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1924
-http://ocalafl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2840&MediaPosition=&ID=15727&CssClass=
-http://olmstedcountymn.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2038&Format=Minutes
-http://pacificacityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1618&MediaPosition=&ID=5727&CssClass=
-http://pattersonca.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1184&MinutesID=1173&MediaPosition=&ID=3662&Type=50&CssClass=%20style=
-http://pec.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1397&Format=Agenda
-http://polkcountyfl.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1127&MinutesID=1119&MediaPosition=&ID=4141&Type=70&CssClass=%20style=
-http://porthuroncitymi.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1427&MediaPosition=&ID=3467&CssClass=
-http://princetonnj.iqm2.com/Citizens/Detail_LegiFile.aspx?MeetingID=1098&MediaPosition=&ID=2785&CssClass=&Print=Yes
-http://rankincountyms.iqm2.com:80/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1502&MediaPosition=&ID=12768&CssClass=
-https://reginask.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=6584&MediaPosition=&ID=13159&CssClass=
-http://renvillecountymn.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1944&MediaPosition=&ID=3077&CssClass=
-http://reverema.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1656&MediaPosition=&ID=2827&CssClass=
-http://reynoldsburgcityoh.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2934&MediaPosition=&ID=3500&CssClass=
-http://ricecountymn.iqm2.com:80/Citizens/SplitView.aspx?Mode=Video&MeetingID=1473&Format=Agenda
-http://riponcityca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1112&MediaPosition=&ID=2200&CssClass=
-http://rockvillecentreschoolny.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=3677&MediaPosition=&ID=3266&CssClass=
-http://rockyhillnj.iqm2.com/Citizens/Detail_Motion.aspx?Frame=&MeetingID=1161&MinutesID=1143&MediaPosition=&ID=4331&Type=80&CssClass=%20style=
-https://rtd.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1954&MediaPosition=&ID=2051
-https://sanjacintoca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1221&MediaPosition=%20&ID=1425&CssClass=
-http://seminolecountyschoolfl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame&MeetingID=1390&MediaPosition&ID=2527&CssClass
-http://somervellcountytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1230&MediaPosition=&ID=3393&CssClass=
-http://southbrunswicktownnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2773&MediaPosition=&ID=13102&CssClass=
-http://springfieldcityma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4585&MediaPosition=&ID=6380&CssClass=
-http://stmaryscityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1102&Format=
-http://summitcitynj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2206&MediaPosition=&ID=7529&CssClass=
-https://sunsetbeachnc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1045&MediaPosition=&ID=1245&CssClass=
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1720
-https://tonawandatownny.iqm2.com/Citizens/FileOpen.aspx?ID=52485&MeetingID=2851&Type=30
-http://troupcountyga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2377&Format=None
-http://westbendwi.iqm2.com/Citizens/Detail_Communication.aspx?Frame=&MeetingID=2257&MediaPosition=&ID=1044&CssClass=
-http://willcountyil.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4568&MediaPosition=&ID=10253&CssClass=
-https://woodridgevillageil.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2963&MediaPosition=&ID=12936&CssClass=
-https://yorkcountysc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2203&MediaPosition=&ID=7289&CssClass=
-https://clerkshq.com/agsummit-ri?docId=AGMTG2017A
-https://clerkshq.com/Barrington-ri?docId=AGENDA
-https://clerkshq.com/CentralFalls-ri?docId=sep11_23ag&path=CF_CityCouncil%2CCF_Agendas%2Csep11_23ag%2C
-https://clerkshq.com/Colchester-vt?docId=LibBoard
-https://clerkshq.com/Cumberland-ri?docId=AGENDA&path=cumberland_Docket,AGENDA,
-https://clerkshq.com/Johnston-ri?path=Johnston_Planning%2C2024_PB_Minutes%2Cdec03_24pl%2C&docId=dec03_24pl
-https://clerkshq.com/Lisbon-ME?docId=oct05_21tc&path=Lisbon_Council%2C2021_Council_Minutes%2Coct05_21tc%2C
-https://clerkshq.com/Middletown-ri?docId=sep23_25zb&path=Middletown_Zoning%2CZoning_Minutes%2C2025_ZONING_BOARD_MINUTES%2Csep23_25zb%2C
-https://www.clerkshq.com/Newport-ri?docId=may08_24dk&path=Newport_Dockets%2Cmay08_24dk%2C
-https://clerkshq.com/NewShoreham-RI?docId=NShoreAppE
-https://clerkshq.com/NorthSmithfield-ri?docId=sep19_23ag_3
-https://clerkshq.com/Pawtucket-ri?docId=AGENDA
 https://clerkshq.com/Richmond-ri?docId=Richmond_C08_6&amp;path=Richmond_Code%2CRichmond_C08%2CRichmond_C08_6%2C
 https://clerkshq.com/Smithfield-ri?docId=AGENDA&path=Smithfield_Docket,AGENDA,
 https://clerkshq.com/SouthKingstown-ri?docId=oct23_17tc&path=SouthKingstown_Council%2C2017_COUNCIL_MINUTES%2Coct23_17tc%2C
@@ -633,6 +585,8 @@ https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/129
 https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php
 https://youtu.be/zSh2DIrld8E	https://stoneharbornj.org/agendameetings/watch-mayor-and-council-meetings-online/borough-council-agendas-minutes/
 https://byramms.portal.civicclerk.com/event/2238/media	https://www.byram-ms.us
-https://salisburymd.granicus.com/ViewPublisher.php?view_id=1	https://salisbury.md
-http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1 	https://agawam.ma.us
-https://reflect-claremont.cablecast.tv/CablecastPublicSite/?site=2	https://claremontnh.com
+https://fernleynv.portal.civicclerk.com/event/480/media	http://www.cityoffernley.org
+https://churchillconv.portal.civicclerk.com/event/4000/media	https://churchillcountynv.gov
+https://churchillconv.portal.civicclerk.com/event/3990/media	https://churchillcountynv.gov
+https://churchillconv.portal.civicclerk.com/event/3900/media	https://churchillcountynv.gov
+https://churchillconv.portal.civicclerk.com/event/3850/media	https://churchillcountynv.gov

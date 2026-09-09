@@ -42,6 +42,25 @@ def test_detect_platform_recognizes_civicweb_domain():
     assert detect_platform(MEETING_URL) == "civicweb"
 
 
+def test_detect_platform_recognizes_diligentoneplatform_domain():
+    # Real gap fixed 2026-09-08: detect_platform() checked for
+    # "civicweb.net" only, so a URL on "Diligent Community"'s real second
+    # domain (community.diligentoneplatform.com -- see
+    # test_extract_meeting_id_is_case_insensitive below, and civicweb.py's
+    # own module docstring for the Winthrop, MN precedent) fell through to
+    # "unknown" and got generic_fallback.py treatment even though
+    # CivicWebAssetFinder itself already handled this domain's URL shape.
+    # Real current jurisdiction hit by this gap: Nevada's statewide
+    # public-meeting-notice index (notice.nv.gov) lists live "Washoe County
+    # School District" meetings linking to
+    # washoeschools.community.diligentoneplatform.com. See BACKLOG_DONE.md.
+    washoe_url = (
+        "https://washoeschools.community.diligentoneplatform.com/"
+        "Portal/MeetingInformation.aspx?Org=Cal&Id=1493"
+    )
+    assert detect_platform(washoe_url) == "civicweb"
+
+
 async def test_resolve_real_meeting_delegates_to_youtube(monkeypatch):
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
 

@@ -168,10 +168,25 @@ def detect_platform(url: str) -> str:
         # AgendaCenter, self-hosted on roswell-nm.gov rather than
         # *.civicplus.com, links straight to a destinyhosted.com URL.
         return "destinyhosted"
-    if "civicweb.net" in netloc:
+    if "civicweb.net" in netloc or "diligentoneplatform.com" in netloc:
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
-        # -- see civicweb.py's own module docstring.
+        # -- see civicweb.py's own module docstring. The
+        # diligentoneplatform.com domain is "Diligent Community", a second,
+        # real, live rebrand of this exact same software -- confirmed live
+        # 2026-08-27 against a real Winthrop, MN tenant
+        # (winthropminnesota.community.diligentoneplatform.com) with a real
+        # populated video link (see civicweb.py's own module docstring/
+        # _MEETING_ID_RE comments). CivicWebAssetFinder already handles this
+        # domain's URL shape (case-insensitive id=/Id= matching, and the
+        # MeetingExternalMinutesLinkUrl fallback) -- what was missing was
+        # routing here, so URLs on this domain fell through to "unknown"
+        # and got generic_fallback.py treatment instead. Real gap hit by a
+        # real current jurisdiction: Nevada's statewide public-meeting-
+        # notice index (notice.nv.gov) lists live "Washoe County School
+        # District" meetings whose outbound link is
+        # washoeschools.community.diligentoneplatform.com/Portal/
+        # MeetingInformation.aspx?Org=Cal&Id={id}. See BACKLOG_DONE.md.
         return "civicweb"
     if "assembly.ca.gov" in netloc or "senate.ca.gov" in netloc:
         return "ca_legislature"

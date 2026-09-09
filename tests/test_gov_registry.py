@@ -689,7 +689,7 @@ def test_a_pin_to_a_government_not_yet_in_governments_csv_still_applies():
     them (`us:place:0621230` Eastvale, `us:place:1248625` New Smyrna
     Beach, `us:place:4852356` North Richland Hills, `us:sd:4838730` San
     Antonio ISD, ...) and the test below turned red."""
-    gov_id = "us:county:01001"  # Autauga County, AL -- in no committed row
+    gov_id = "us:county:01005"  # Barbour County, AL -- in no committed row
     assert gov_id not in registry.governments()
     match = resolve(
         "Something The Tables Cannot Key",
