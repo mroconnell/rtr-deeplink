@@ -633,3 +633,6 @@ https://connect.telvue.com/player/1VW_MUovXoKdUW9jRAnqt0YBpoJ5zDVU/playlists/129
 https://player.vimeo.com/video/504411836?h=1dfeda2344	https://www.boroughofroselle.com/government/media/videos.php
 https://youtu.be/zSh2DIrld8E	https://stoneharbornj.org/agendameetings/watch-mayor-and-council-meetings-online/borough-council-agendas-minutes/
 https://byramms.portal.civicclerk.com/event/2238/media	https://www.byram-ms.us
+https://salisburymd.granicus.com/ViewPublisher.php?view_id=1	https://salisbury.md
+http://agawamvod.cablecast.tv/CablecastPublicSite/gallery/8?site=1 	https://agawam.ma.us
+https://reflect-claremont.cablecast.tv/CablecastPublicSite/?site=2	https://claremontnh.com
