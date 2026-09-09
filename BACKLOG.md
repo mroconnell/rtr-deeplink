@@ -113,11 +113,16 @@ Standing decisions — do NOT re-raise  (8)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (3)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+  [JUST-DO-IT] `[EASY]` A meeting page whose government is…
+  [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
-  Production actions only Ryan should take  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
+  Production actions only Ryan should take  (8)
+    [HUMAN] Run the gov_id backfill for the 114 tenant pins added…
+    [HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier…
+    [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
     [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
     [HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may…
@@ -126,7 +131,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (87)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -176,7 +181,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (16)
+  Jurisdiction extraction & backfill  (17)
+    `[JUST-DO-IT]` `[BIG]` 652 YouTube/Vimeo channel→government rules are…
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
     `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
@@ -490,6 +496,19 @@ so that work reads together.
   - **Next action**: add the same `_mean_volume_db()` decodability check to `slice_cached_audio()`, returning `(False, "...isn't decodable (likely truncated/corrupt)")` instead of `(True, None)` on an undecodable slice. `worker/main.py`'s existing per-chunk retry/budget logic already treats that shape as a normal retryable failure — no other code path needs to change.
   - **History**: found by the inbox-triage Routine's 2026-08-29 run; the 2026-08-30, -31, and 2026-09-01 runs each confirmed a fresh independent occurrence on a new source.
 
+- **[JUST-DO-IT] `[EASY]` A meeting page whose government is `rtr:unknown:<host>` links "More Unidentified government (host) meetings" to a `/j/` hub that 404s.**
+  - **Issue**: `crud._hub_identity()` renders a display name and slug for every `gov_id` with a registry row, and `governments.csv` carries 167 `rtr:unknown:<host>` rows, so the page shows "Unidentified government (vimeo.com)" and links `/j/unidentified-government-vimeo-com` — but `_hub_base_conditions()` requires `jurisdiction IS NOT NULL`, and these pages store an empty string, so `_hub_groups()` never builds that hub. Two code paths disagree about the same page.
+  - **Impact**: 289 live pages (2026-09-09 export; Cablecast 95, YouTube 78, TelVue 43, Swagit 42) carry the placeholder and a dead link. Live example: `/m/2026-08-18-commission-meeting-08-18-2026`.
+  - **Next action**: decide which side is right and make the other match — either drop the hub link/breadcrumb when the tier is `blank` (the placeholder was only ever meant as the tier-7 display, architecture doc §5), or admit blank pages into `_hub_groups()` keyed on their `gov_id`. Not both; the placeholder hub is not a page worth indexing.
+  - **History**: found in the gov-id enumeration audit, 2026-09-09; the study that surfaced it is `reports/shared_host_study_2026-09-09/`.
+
+- **[JUST-DO-IT] 82 archived YouTube meetings have embedding switched off by the owner, so our player shows "Video unavailable" while the video is alive on YouTube and the transcript renders beside it.**
+  - **Issue**: YouTube's oEmbed returns HTTP 401 for a video whose owner disabled playback on other sites (82 of 95 non-answering videos in the 2026-09-09 study; the watch page reports the video playable and all 82 pages already hold a transcript). The embed on our page then says "Playback on other websites has been disabled by the video owner — Watch on YouTube", verified live on `/m/peachtree-corners-ga-2026-08-27-peachtree-corners-city-council-meeting-august-25`. Deep links into these pages seek nothing.
+  - **Impact**: 82 pages (plus every future one from those channels) deliver the transcript but not the product's core promise, a shareable moment in the video. Separately, 13 videos are genuinely gone (7 deleted/404, 3 private/403, 3 malformed ids/400) and 11 of those pages have no transcript either.
+  - **Next action**: record embeddability at ingest (the same one-call oEmbed lookup the study used for channels; a nullable column, feature-detected the `search_tsv` way so either deploy order is safe), and render a thumbnail plus a "Watch on YouTube at 12:34" link — `youtube.com/watch?v=…&t=754s` honours the start time, so the deep link survives — in place of the dead player when it is false. The 13 dead pages want `noindex` and a removal list; that is a product call, filed under Needs a human.
+  - **Constraint**: the check is oEmbed, not the caption fetch — it is not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
+  - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer).
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -497,6 +516,24 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] Run the gov_id backfill for the 114 tenant pins added 2026-09-09 (67 discriminator + 47 host, source `archive_study_2026-09-09`).**
+  - **Issue**: pins added outside `scripts/apply_pin_worklist.py` are invisible to the re-sync path (see the Edmonton/Niagara entry under Open bugs); these 114 were appended straight into `tenant_overrides.csv` from `reports/shared_host_study_2026-09-09/`. Their hosts ARE in `reports/pin_worklist_hosts.txt` now.
+  - **Impact**: until the backfill runs, the pins only reach pages ingested after the Archive deploy; the 60 already-archived pages the study says they would key (`would_fix.csv`, 33 name-confirmed, 27 flagged REVIEW) stay unidentified.
+  - **Next action**: deploy the Archive, then from its Render shell `python scripts/backfill_gov_id.py --hosts-file reports/pin_worklist_hosts.txt --report /tmp/pins_2026-09-09.csv`, eyeball the REVIEW rows against `would_fix.csv`, then `--apply`.
+  - **History**: study and pins in commits on `claude/gov-id-enumeration-audit-da10a0`, 2026-09-09.
+
+- **[HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier pages filed as Juneau, WI; only an `authoritative` pin to the City and Borough of Juneau, AK (`us:place:0236400`) can fix them.**
+  - **Issue**: "Juneau, WI" is a real place, so the string keys to the wrong government at tier `registry` and a `fallback` pin never fires. `tests/test_gov_registry.py::test_tenant_consistency_will_not_cross_a_state_line` documents the truth, and the study's hostname-state guard rejected the automatic pin for exactly this reason.
+  - **Impact**: two live pages on the wrong state's hub; the same shape (name collision across a state line, hostname carrying the real state) is what `coloradoga.granicus.com` false-positived on, so check the pin by eye rather than automating it.
+  - **Next action**: Ryan confirms, then one `authoritative` row with source `ryan_stated`, followed by the `--hosts` backfill for that host.
+  - **History**: found 2026-09-09 while writing the 114 pins above.
+
+- **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids); 11 have no transcript.**
+  - **Issue**: per-video oEmbed statuses in `reports/shared_host_lookups.csv` (blank channel) cross-checked against the export; the video ids are the 404/403/400 rows in the study's classifier.
+  - **Impact**: pages with neither video nor transcript are indexable and offer a reader nothing.
+  - **Next action**: product call — `noindex` them, or delete via the existing delete-pages endpoint; the 2 that do have a transcript can stay with the dead-player fix from Ship next.
+  - **History**: gov-id enumeration audit, 2026-09-09.
 
 - **[HUMAN] Click Validate Fix in Search Console for the reslug fix.**
   - **Issue**: the reslugged-pages fix is deployed and live (confirmed
@@ -2169,6 +2206,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
+
+- **`[JUST-DO-IT]` `[BIG]` 652 YouTube/Vimeo channel→government rules are written and waiting on one thing: the channel is never stored on the page or passed to the resolver.**
+  - **Issue**: `reports/shared_host_study_2026-09-09/candidate_rules.csv` holds 635 `www.youtube.com` rows (`match=channel=@Handle`) and 17 `vimeo.com` rows (`match=channel=<owner slug>`), each learned from the archive's own solidly-identified pages (one page is enough — Ryan, 2026-09-09; 7 channels shared by more than one government are in `shared_discriminators.csv` and deliberately not written). `_match_override()` already accepts a `key=value` discriminator against `page_hints`, but `page_hints_for()` builds only `platform`/`external_id`: yt-dlp hands the adapter `channel_id`/`channel`/`uploader_url` on every resolve and the adapter drops them, the ingest request has no channel field, and `MeetingPage` has no column for it.
+  - **Impact**: every bare YouTube/Vimeo paste (case 2 in the audit) resolves `blank`/`unresolved` unless that exact video id was hand-pinned; 56 existing YouTube pins are one-video-each for that reason. 247 further channels appear only on unidentified pages (`weak_only_discriminators.csv`, top: `@wfrcvideo` 16, `@magnawaterdistrictmwd4909` 9) and are the real per-channel worklist once this lands.
+  - **Next action**: carry the channel handle and the permanent `UC…` id from the adapter through `ResolvedMeeting` and `IngestRequest` onto a nullable `MeetingPage.video_channel` column (feature-detected either deploy order), add it to `page_hints_for()`, then commit the 652 rows and re-run the backfill for the YouTube/Vimeo hosts. Rules stay keyed on the video host and consulted only when the page's own host IS YouTube/Vimeo — Ryan's rule, 2026-09-09: a township's page on a shared county channel belongs to the township.
+  - **Constraint**: store the channel on the page, not as a transient hint, or a rule added later cannot reach pages already archived without re-fetching them. The 82 pins already in `tenant_overrides.csv` that name a YouTube video id keep working unchanged.
+  - **History**: study in `scripts/study_shared_host_discriminators.py`; design decisions in the gov-id audit conversation, 2026-09-09.
 
 - **`[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of X"` split off as a body instead of resolving as the government.**
   - **Issue**: `jurisdiction_enrich._split_entity_prefix()` reads
