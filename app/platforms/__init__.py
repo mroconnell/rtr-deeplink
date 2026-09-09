@@ -9,6 +9,7 @@ def register_all_finders() -> None:
     same platform_name key each time).
     """
     from .aurora import AuroraTvAssetFinder
+    from .az_legislature import ArizonaLegislatureAssetFinder
     from .base import register
     from .ca_legislature import CaliforniaLegislatureAssetFinder
     from .cablecast import CablecastAssetFinder
@@ -77,6 +78,7 @@ def register_all_finders() -> None:
     register(TampaAssetFinder())
     register(MunicodeMeetingsAssetFinder())
     register(InvintusAssetFinder())
+    register(ArizonaLegislatureAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this

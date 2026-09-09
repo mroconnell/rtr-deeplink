@@ -77,6 +77,7 @@ CANARY_URLS: dict[str, list[str]] = {
     "aurora_tv": [
         "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
     ],
+    "az_legislature": ["https://www.azleg.gov/videoplayer/?eventID=2025011041"],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [

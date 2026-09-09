@@ -5029,6 +5029,14 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # reading resolve() end to end), so a real pushed row keeps its own
     # label rather than reading "youtube" the way lims/slc/clerkbase do.
     "tampa": "Tampa, FL City Council transcripts (apps.tampagov.net)",
+    # Arizona State Legislature (azleg.gov) -- WO-102, 2026-09-09. Same
+    # shape as chicago_elms/tampa above: az_legislature.py delegates to
+    # InvintusAssetFinder for the actual video but resets
+    # `resolved.platform` back to "az_legislature" afterward (confirmed
+    # by reading resolve() end to end), so a real pushed row keeps its
+    # own label rather than reading "invintus". See az_legislature.py's
+    # own module docstring for the full investigation.
+    "az_legislature": "Arizona State Legislature (azleg.gov)",
 }
 
 # Registered platforms (app/platforms/__init__.py's

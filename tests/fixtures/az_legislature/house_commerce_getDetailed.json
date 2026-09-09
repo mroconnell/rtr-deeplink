@@ -1,0 +1,231 @@
+{
+  "errors": {
+    "hasError": false,
+    "message": null
+  },
+  "data": {
+    "eventID": "2025011041",
+    "clientID": "6361162879",
+    "customID": "16763",
+    "startDateTime": "2025-01-21 14:00:00",
+    "title": "01/21/2025 - House Commerce",
+    "description": null,
+    "eventStatus": "published",
+    "videoThumbnail": "https://invintus-client-images.s3.amazonaws.com/6361162879/991291670a0bf1ecb083ecfb3697d6b97da2d510.jpg",
+    "private": false,
+    "autoStart": false,
+    "autoStop": false,
+    "preroll": "30",
+    "categories": [
+      "57,1R",
+      "House",
+      "House Commerce",
+      "House Commerce 2025"
+    ],
+    "categoriesDetail": [
+      {
+        "ID": "6823",
+        "name": "57,1R",
+        "displayName": "Fifty-seventh Legislature - First Regular Session",
+        "childOf": null,
+        "isPublic": true
+      },
+      {
+        "ID": "5777",
+        "name": "House",
+        "displayName": "House",
+        "childOf": null,
+        "isPublic": true
+      },
+      {
+        "ID": "5629",
+        "name": "House Commerce",
+        "displayName": "House Commerce",
+        "childOf": null,
+        "isPublic": true
+      },
+      {
+        "ID": "6835",
+        "name": "House Commerce 2025",
+        "displayName": "House Commerce 2025",
+        "childOf": null,
+        "isPublic": true
+      }
+    ],
+    "keywords": null,
+    "technicians": null,
+    "locationName": "HHR 5",
+    "liveCaptions": null,
+    "liveAiCaptions": null,
+    "facebookLive": false,
+    "transcripts": null,
+    "isChatEnabled": false,
+    "analyticSiteID": "32",
+    "eventNotes": null,
+    "audioDescriptionProjectID": null,
+    "estRuntime": null,
+    "breakOverride": false,
+    "metaMarkers": [
+      {
+        "itemType": "Agenda",
+        "eventID": "6361162879_2025011041",
+        "start": 0,
+        "TOD": 1737493554,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806340",
+        "itemTitle": "Introduction of Members and Staff",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "1"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 780,
+        "TOD": 0,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806511",
+        "itemTitle": "Adoption of Committee Rules",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "2"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 850,
+        "TOD": 0,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806512",
+        "itemTitle": "Bills",
+        "header": true,
+        "childOf": null,
+        "currentItem": true,
+        "sortOrder": "3"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 873,
+        "TOD": 0,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806341",
+        "itemTitle": "HB2032 - workers' compensation; assigned risk plan",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "4"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 1237,
+        "TOD": 2025,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806343",
+        "itemTitle": "HB2033 - workers' compensation; service; definition",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "5"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 1914,
+        "TOD": 0,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806345",
+        "itemTitle": "HB2054 - DIFI; financial enterprises; insurance; compact",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "6"
+      },
+      {
+        "itemType": "Index",
+        "eventID": "6361162879_2025011041",
+        "start": 2219,
+        "TOD": 0,
+        "itemText": null,
+        "publishedAssetID": null,
+        "markerID": "806348",
+        "itemTitle": "HB2076 - life insurance; illustrations",
+        "header": true,
+        "childOf": null,
+        "currentItem": false,
+        "sortOrder": "7"
+      }
+    ],
+    "captionPath": "https://m-download.invintus.com/6361162879/92111f8ea53ae0742647aea72309ee4b9bc304ca.vtt",
+    "mediaAssets": [
+      {
+        "assetID": "92111f8ea53ae0742647aea72309ee4b9bc304ca",
+        "clientID": "6361162879",
+        "eventID": "2025011041",
+        "name": "720ae6fc4a120814d878666b8216d78a-caption.vtt",
+        "type": "caption",
+        "dateCreated": "2025-01-22 08:53:10",
+        "fileSize": "52874",
+        "totalRunTime": null,
+        "totalRunTimeS": null,
+        "currentStatus": "archive",
+        "fileUrl": "https://invintus-client-media.s3.amazonaws.com/6361162879/92111f8ea53ae0742647aea72309ee4b9bc304ca.vtt",
+        "thumbnail": "",
+        "sprite": null,
+        "advancedDetails": null
+      },
+      {
+        "assetID": "29bff667e95e930863a5c3158678b4e02b932fec",
+        "clientID": "6361162879",
+        "eventID": "2025011041",
+        "name": "Agenda",
+        "type": "link",
+        "dateCreated": "2025-01-15 15:54:37",
+        "fileSize": null,
+        "totalRunTime": null,
+        "totalRunTimeS": null,
+        "currentStatus": "archive",
+        "fileUrl": "https://www.azleg.gov/agendas/0121012169129.docx.htm",
+        "thumbnail": "https://m-download.invintus.com/invAssets/512ExtDEF.png",
+        "sprite": null,
+        "advancedDetails": null
+      },
+      {
+        "assetID": "991291670a0bf1ecb083ecfb3697d6b97da2d510",
+        "clientID": "6361162879",
+        "eventID": "2025011041",
+        "name": "Edit: 2025-01-22 08:29:30",
+        "type": "video",
+        "dateCreated": "2025-01-22 08:29:30",
+        "fileSize": "572989377",
+        "totalRunTime": "00:42:51",
+        "totalRunTimeS": 2571,
+        "currentStatus": "archive",
+        "fileUrl": "https://f005.backblazeb2.com/file/invintus-client-media/6361162879/991291670a0bf1ecb083ecfb3697d6b97da2d510.mp4",
+        "thumbnail": "https://invintus-client-images.s3.amazonaws.com/6361162879/991291670a0bf1ecb083ecfb3697d6b97da2d510.jpg",
+        "sprite": null,
+        "advancedDetails": null
+      }
+    ],
+    "downloadLinks": {
+      "audioDownloadURI": "https://m-download.invintus.com/6361162879/991291670a0bf1ecb083ecfb3697d6b97da2d510_audio.mp3",
+      "videoDownloadURI": "https://m-download.invintus.com/6361162879/991291670a0bf1ecb083ecfb3697d6b97da2d510.mp4"
+    },
+    "recentlyOffBreak": false,
+    "VAST": false,
+    "streamingURIs": {
+      "main": "https://api.v3.invintus.com/StreamURI/hls/6361162879/2025011041/media.m3u8",
+      "backup": null
+    }
+  },
+  "meta": null
+}

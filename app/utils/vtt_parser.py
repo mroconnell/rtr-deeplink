@@ -36,8 +36,16 @@ def decode_vtt_bytes(raw: bytes) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+# The hours component is optional -- valid WebVTT (unlike SRT) allows a
+# bare `MM:SS.mmm` timestamp when a cue is under an hour in, confirmed
+# live 2026-09-09 on a real Arizona Legislature caption file
+# (az_legislature.py): `_parse_timestamp()` below already handled a
+# 2-part MM:SS input correctly, but this regex required all 3 HH:MM:SS
+# parts to match a line at all, so a whole real, populated caption file
+# silently produced zero cues -- every fixture this parser had been
+# tested against until now happened to use HH:MM:SS.
 _TIMESTAMP_LINE_RE = re.compile(
-    r"(\d{2}:\d{2}:\d{2}[\.\,]\d{3}) --> ((\d{2}:\d{2}:\d{2}[\.\,]\d{3}).*)"
+    r"((?:\d{2}:)?\d{2}:\d{2}[\.\,]\d{3}) --> ((?:\d{2}:)?\d{2}:\d{2}[\.\,]\d{3}.*)"
 )
 
 

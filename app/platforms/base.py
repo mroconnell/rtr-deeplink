@@ -117,6 +117,7 @@ def detect_platform(url: str) -> str:
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
     from .invintus import is_invintus_meeting_url
+    from .az_legislature import is_az_legislature_video_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -453,6 +454,18 @@ def detect_platform(url: str) -> str:
         # `hostedevents.invintus.com`'s one-off branded landing pages)
         # is never claimed here.
         return "invintus"
+    if is_az_legislature_video_url(url):
+        # Arizona State Legislature (azleg.gov) -- found 2026-09-09 while
+        # chasing the Invintus prevalence sweep above: clientID
+        # 6361162879 (a real, large, sustained Invintus client) turned
+        # out to belong to azleg.gov's own `/videoplayer/?eventID=`
+        # wrapper pages, confirmed live -- see az_legislature.py's own
+        # module docstring for the full investigation. A delegation
+        # platform like Legistar/CivicPlus, not a direct video host: the
+        # wrapper page's own markup carries no real title/date at all,
+        # only an embedded Invintus clientID+eventID this module extracts
+        # and hands to InvintusAssetFinder via resolve_via_platform().
+        return "az_legislature"
     return "unknown"
 
 
