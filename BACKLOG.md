@@ -113,15 +113,15 @@ Standing decisions — do NOT re-raise  (8)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (4)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
   [JUST-DO-IT] `[EASY]` A meeting page whose government is…
   [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
   [JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should…
+  [JUST-DO-IT] `[EASY]` `scripts/backfill_gov_id.py` needs two…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
-  Production actions only Ryan should take  (8)
-    [HUMAN] Run the gov_id backfill for the 114 tenant pins added…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
+  Production actions only Ryan should take  (7)
     [HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
@@ -132,7 +132,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (88)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (89)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] A resolve that delegates to a generic video host…
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
@@ -183,7 +183,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (88)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (17)
+  Jurisdiction extraction & backfill  (18)
+    `[NEEDS-AUDIT]` Five `youtu.be` pages for the Wasatch Front Waste &…
     `[JUST-DO-IT]` `[BIG]` 652 YouTube/Vimeo channel→government rules are…
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
     `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
@@ -518,6 +519,12 @@ so that work reads together.
   - **Constraint**: don't change this mid-run — `nationwide_2404_ingest.py` is running against production as of 2026-09-09 and should keep its current agenda-only-ingests-immediately behavior for consistency within that one run's own log; apply the change starting with the next new batch script, per this project's copy-per-batch convention. An agenda-only URL queued to tier 3 has no `video_url` today, so `_push_if_has_video()`'s existing "no video found on re-resolve" check will just skip it every drain cycle until one appears — that's the intended "recheck later" behavior, not a bug, but worth confirming with Ryan before wiring it up.
   - **History**: raised directly by Ryan, 2026-09-09, mid-run on the 2,404-candidate batch.
 
+- **[JUST-DO-IT] `[EASY]` `scripts/backfill_gov_id.py` needs two `--apply` passes to converge: pass 1 rewrites `jurisdiction` to the registry name, and pass 2 then re-keys the same rows `pinned` → `registry` off that new string.**
+  - **Issue**: measured 2026-09-09 on the 142-host run — pass 1 changed 315 rows, an immediate dry run still reported 187 "would change", all of them the same `gov_id` with only `jurisdiction_confidence` moving from `pinned` to `registry`; pass 2 applied them and pass 3 reported 0. The resolver is re-run on the *rewritten* display string, which a national table now matches directly, so the fallback pin that keyed the page on pass 1 is outranked on pass 2.
+  - **Impact**: harmless to readers (same government, same hub), but the STATE doc's "run the dry run again → expect 0" idempotence check is false after any run that changes display names, and the tier that ends up stored depends on how many times the script ran.
+  - **Next action**: resolve from the original string when the stored one is already the registry's own display form (the `_strip_trailing_paren_type()` idempotence fix from WO-110 is the model), or treat "same `gov_id`, tier `pinned` → `registry`" as already current. Add the two-pass case to `tests/test_gov_registry.py`.
+  - **History**: gov-id enumeration audit, 2026-09-09; the earlier "page 2616 already-current test disagrees with itself" loose end in `rtr-business/research/STATE_gov_identity.md` is the same bug seen once.
+
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
 Nothing here is blocked on engineering. Most are one dashboard login or
@@ -525,12 +532,6 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
-
-- **[HUMAN] Run the gov_id backfill for the 114 tenant pins added 2026-09-09 (67 discriminator + 47 host, source `archive_study_2026-09-09`).**
-  - **Issue**: pins added outside `scripts/apply_pin_worklist.py` are invisible to the re-sync path (see the Edmonton/Niagara entry under Open bugs); these 114 were appended straight into `tenant_overrides.csv` from `reports/shared_host_study_2026-09-09/`. Their hosts ARE in `reports/pin_worklist_hosts.txt` now.
-  - **Impact**: until the backfill runs, the pins only reach pages ingested after the Archive deploy; the 60 already-archived pages the study says they would key (`would_fix.csv`, 33 name-confirmed, 27 flagged REVIEW) stay unidentified.
-  - **Next action**: deploy the Archive, then from its Render shell `python scripts/backfill_gov_id.py --hosts-file reports/pin_worklist_hosts.txt --report /tmp/pins_2026-09-09.csv`, eyeball the REVIEW rows against `would_fix.csv`, then `--apply`.
-  - **History**: study and pins in commits on `claude/gov-id-enumeration-audit-da10a0`, 2026-09-09.
 
 - **[HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier pages filed as Juneau, WI; only an `authoritative` pin to the City and Borough of Juneau, AK (`us:place:0236400`) can fix them.**
   - **Issue**: "Juneau, WI" is a real place, so the string keys to the wrong government at tier `registry` and a `fallback` pin never fires. `tests/test_gov_registry.py::test_tenant_consistency_will_not_cross_a_state_line` documents the truth, and the study's hostname-state guard rejected the automatic pin for exactly this reason.
@@ -2222,6 +2223,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
+
+- **`[NEEDS-AUDIT]` Five `youtu.be` pages for the Wasatch Front Waste & Recycling District's board (channel `@WasatchFrontWaste`) are registry-tier under Wasatch **County**, UT.**
+  - **Issue**: the adapter extracted "Wasatch, UT", the place ladder keyed it to `us:county:49051`, and the 2026-09-09 backfill only changed the display to "Wasatch County, UT" (`/j/wasatch-county-ut`). WFWRD is a special district in the Salt Lake valley with its own board — decision D2 says its own `gov_id`, minted, not a body of any county.
+  - **Impact**: five live pages on the wrong hub, and a county hub whose meetings are a waste district's. Pre-existing misfile, not introduced by the backfill.
+  - **Next action**: a minted `rtr:us:ut:wasatch-front-waste-and-recycling-district` row in `governments.csv` (the override endpoint refuses an id the registry cannot render), then `POST /internal/jurisdiction/override` for the five ids, then a `channel=@WasatchFrontWaste` rule once the channel plumbing lands.
+  - **Constraint**: this is the "durable minted governments" gap from the audit in miniature — nothing but a hand-edited CSV row can create the government today.
+  - **History**: found spot-checking the 2026-09-09 backfill; the five slugs start `wasatch-ut-2026-`.
 
 - **`[JUST-DO-IT]` `[BIG]` 652 YouTube/Vimeo channel→government rules are written and waiting on one thing: the channel is never stored on the page or passed to the resolver.**
   - **Issue**: `reports/shared_host_study_2026-09-09/candidate_rules.csv` holds 635 `www.youtube.com` rows (`match=channel=@Handle`) and 17 `vimeo.com` rows (`match=channel=<owner slug>`), each learned from the archive's own solidly-identified pages (one page is enough — Ryan, 2026-09-09; 7 channels shared by more than one government are in `shared_discriminators.csv` and deliberately not written). `_match_override()` already accepts a `key=value` discriminator against `page_hints`, but `page_hints_for()` builds only `platform`/`external_id`: yt-dlp hands the adapter `channel_id`/`channel`/`uploader_url` on every resolve and the adapter drops them, the ingest request has no channel field, and `MeetingPage` has no column for it.

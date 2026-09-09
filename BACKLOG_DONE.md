@@ -1,5 +1,50 @@
 # Backlog — done
 
+## The 114 pins from the shared-host study backfilled onto already-archived pages — 315 rows keyed, one shared TelVue token caught and removed first [Done 2026-09-09]
+
+Closed the `[HUMAN]` entry filed the same day. Ryan deployed the Archive
+and asked for the backfill to run from the Mac rather than the Render
+shell (his call; the script reads only page metadata for the 142 hosts
+in `reports/pin_worklist_hosts.txt`, never `segments`). Two things
+learned before a row was written:
+
+- **The shared `.env`'s `DATABASE_URL` is the resolver's database, not
+  the Archive's.** The first dry run failed read-only with
+  `column meeting_pages.jurisdiction_confidence does not exist`, which
+  looked like a mid-deploy schema race and was not: the Archive's URL
+  lives under `ARCHIVE_DATABASE_URL`, and `archive/db/engine.py` reads
+  only `DATABASE_URL`. Mapped across in-process (a wrapper that sets
+  `os.environ["DATABASE_URL"]` from the other variable and `runpy`s the
+  script) so the value never touched the shell. Now in CLAUDE.md's
+  worktree-`.env` bullet.
+- **One of the 24 TelVue token rules was for a shared token.**
+  `player/wuZKb9gwEY7sMACIIsr7VSJglB3` is Pacifica Coast TV, which
+  carries both Pacifica and Half Moon Bay council meetings; the archive
+  held one solid Pacifica page and one blank "HMB City Council" page, so
+  the study's one-page rule would have filed Half Moon Bay under
+  Pacifica. Caught by the study's own REVIEW flag (proposed government
+  not named on the page), rule removed locally before the apply, page
+  6998 set to `us:place:0631708` via `POST /internal/jurisdiction/
+  override` (`manual_override`, verified live: "HMB City Council - 9/1/26
+  — Half Moon Bay, CA"). The endpoint's pending-rule file on the Render
+  container proposes a host-wide authoritative Pacifica→HMB rule; it is
+  wrong for a shared host and must not be committed.
+
+The run itself: dry run 315 would-change (152 NULL → national id, 79
+`rtr:` placeholder → national, 85 same id with display/tier only — the
+New England "Falmouth Town, ME" → "Falmouth, ME" form among them),
+**zero** national → different-national moves; 1,087 already current;
+216 `manual_override` untouched. Applied: 315 changed. The hosts file
+also carried 91 hosts from earlier pin batches that had never been
+backfilled — 78 of the 315 were `youtu.be`/`www.youtube.com` pages under
+the `ryan_stated` per-video pins. A second dry run then reported 187
+(same `gov_id`, `pinned` → `registry` only — a real non-idempotence,
+filed under Ship next); applied; third dry run 0. Live spot checks:
+Ashland OR (TelVue), Columbus WI, Duncan BC hubs all 200; retired slugs
+(`/j/town-of-oliver`, `/j/wasatch-ut`) still 200. One pre-existing
+misfile surfaced by the checks (WFWRD board under Wasatch County) filed
+under Jurisdiction extraction.
+
 ## `proxy_get()`/`_proxy_to_archive()`'s `except Exception` didn't catch `asyncio.CancelledError`, leaking the Archive-proxy aiohttp session on every cancelled request [Done 2026-09-07]
 
 Fixed the `[JUST-DO-IT]` entry filed 2026-08-29 (Sentry

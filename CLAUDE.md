@@ -586,6 +586,16 @@ under everything else. This repo extracts and fixes just that part.
   (no repo change) and re-measure; local then matches production
   exactly. Both cost a full round of bad measurements before being
   noticed, and neither fails loudly.
+  (3) **`DATABASE_URL` in the shared `.env` is the RESOLVER's database;
+  the Archive's is `ARCHIVE_DATABASE_URL`, and `archive/db/engine.py`
+  reads only `DATABASE_URL`** (confirmed 2026-09-09: an Archive backfill
+  run from a worktree failed read-only with `column
+  meeting_pages.jurisdiction_confidence does not exist` — the resolver's
+  Postgres has an old `meeting_pages` table, so it looked like a
+  mid-deploy schema race and was not). To run any `archive/` script
+  locally, set `DATABASE_URL` from `ARCHIVE_DATABASE_URL` in-process
+  (`BACKLOG_DONE.md`'s 2026-09-09 backfill entry has the wrapper) rather
+  than in the shell, so the value never lands in a transcript.
 - **Deploys are manual — merging ships nothing, so say so (WO-59,
   2026-08-25).** All four services carry `autoDeploy: false` in
   `render.yaml`. `main` moving does not move production, and **the gap
