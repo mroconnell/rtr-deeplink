@@ -107,6 +107,119 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-09
+
+185 candidate message IDs from `label:rtr-claude newer_than:30d` (147
+threads — the label's entire current content), 25 new after the ledger
+filter. Most add more data to already-open entries; one alert type is
+genuinely new.
+
+**Out of scope, no write-up**: 2 GitHub Actions "PR run failed: Test" for
+non-`main` branches (`9adb890`, `cfc03d7`) — feature-branch CI has its own
+merge gate. 1 Search Console "Your August performance for
+how-to-adu.com" — different property (how-to-adu.com is Ryan's own
+separate site/domain, not this repo's product). 1 transcription worker
+daily report — purely informational.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Render `test-redtaperecordings` "Exited with status 3"
+(1 alert, 2026-09-09 04:56 UTC) — same already-confirmed-closed noise per
+`BACKLOG_DONE.md`'s 2026-08-30 entry. GitHub Actions "Adapter health
+canary" failure on `main` (`a4c9187`, 2026-09-08 18:24 UTC) — pulled the
+real job log (run `34262709027`): 31/32 platforms OK, sole failure is the
+same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
+sample is a genuinely dead meeting" entry (`ClientResponseError: 410` on
+`phoenix.legistar.com/MeetingDetail.aspx?ID=1425831`); the run's "3
+annotations" is that one failure plus two pieces of unrelated cleanup
+noise (pre-existing YouTube bot-check warnings, an ignored `Event loop is
+closed` exception during subprocess teardown), not 3 real failures.
+Transcription job 2215 failed (Lake County, CA, Granicus source,
+2026-09-09 04:38-05:51 UTC) — `ffmpeg exited 8: HTTP error 404 Not Found`
+on the underlying `archive-stream.granicus.com` HLS stream, plus repeated
+120s timeouts on other chunks; this is the same already-documented "old/
+archived Granicus clips genuinely disappear or time out at Granicus's own
+origin" family (`BACKLOG.md`'s `[NEEDS-AUDIT]` "Some old/archived
+Granicus clips' `chunklist.m3u8` genuinely times out" entry, plus many
+prior `BACKLOG_DONE.md` write-ups of the same host) — a 404 here instead
+of that entry's 504 is a variant of "the source clip is gone," not a new
+failure mode.
+
+- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
+  status-134 crash-loop entry, **plus a real escalation in the
+  UptimeRobot outage pattern that's new today**: **1 more Render "Exited
+  with status 134" alert** (2026-09-09 06:34:33 UTC), bringing the
+  running total to **21** since 2026-08-30 (was 20 as of 2026-09-08).
+  Far more significant: **8 more UptimeRobot DOWN/UP outages with no
+  matching Render alert** — a tight cluster of 4 on 2026-09-08 between
+  14:38-15:01 UTC (a 23-minute window, both `redtaperecordings.com` and
+  `/api/health/resolve-check` affected, 5-10 min each) that the
+  2026-09-08 run's own cutoff missed entirely (that run only captured
+  through the 06:32 UTC alert and the 05:29-05:53 outage), plus 4 more
+  this morning, 2026-09-09 09:46-12:35 UTC (3× `redtaperecordings.com`,
+  1× `resolve-check`, ~5 min each). None of these 8 lines up with a
+  nearby Render alert (nearest is hours away in both directions).
+  Running "no matching alert" count is now **16** (was 8 as of
+  2026-09-08) — it has **doubled in a single day**.
+  - **New context worth flagging to whoever next works this**: while
+    pulling GitHub Actions data for the canary check above, I found PR
+    #795, whose commit message says it fixes exactly the `RuntimeError:
+    Response content shorter than Content-Length` bug already tracked in
+    this file's separate `[NEEDS-AUDIT]` entry (filed 2026-09-05, on `/`
+    and `/api/health/resolve-check` — the exact two routes hit by today's
+    outage burst) — **it merged to `main` at 93d6365 while this triage
+    run was in progress (not yet deployed; this repo's deploys are
+    manual, per `CLAUDE.md`)**. Per the PR's own commit message:
+    `handle_head_requests` rewrote `request.scope["method"]` to `"GET"`
+    to run the real handler but never restored it, so uvicorn enforced a
+    real Content-Length check against the empty HEAD body and raised.
+    That NEEDS-AUDIT entry's own Impact line already says this was
+    "unconfirmed how often this fires... not measured against UptimeRobot
+    yet" — today's burst (both affected routes, no matching Render
+    restart alert, consistent with a per-request exception rather than a
+    full container crash) is a plausible real-world manifestation, though
+    I haven't independently confirmed it and the existing SIGABRT entry's
+    own Constraint explicitly says not to assume the two bugs are
+    related. This is a *separate* hypothesis about the UptimeRobot
+    flapping specifically, not a claim about the SIGABRT crashes — worth
+    watching whether outage frequency drops once this fix is actually
+    deployed, and worth someone striking through/closing that
+    NEEDS-AUDIT entry now that a real fix has merged for it.
+  - **Impact**: same underlying production-resolver-instability issue as
+    the existing entry, now measurably worse — the "no matching alert"
+    undercount has doubled in one day (8→16), and today's cluster shape
+    (4 outages in 23 minutes, both monitored endpoints, no
+    container-restart alert) looks structurally different from the prior
+    single-isolated-outage pattern, consistent with a request-level bug
+    (like the one PR #795 targets) rather than only the process-level
+    SIGABRT abort.
+
+- **Confirmed, genuinely new** — first-ever Render "Approaching Bandwidth
+  Limit" alert (2026-09-09 12:09 UTC): the workspace has used **>70% of
+  the 25 GB/month bandwidth included in the Pro plan**, on day 9 of the
+  billing cycle (resets at the start of next calendar month, per the
+  alert's own text). No prior mention in `BACKLOG.md`, `BACKLOG_DONE.md`,
+  or this file — this is a different metric from the already-tracked
+  `[JUST-DO-IT]` Render *pipeline-minutes* entry (build minutes, not data
+  transfer).
+  - **Unconfirmed**: no access to the Render usage dashboard for a real
+    day-by-day trend or to see what's driving the transfer (video/
+    transcript proxying is the obvious suspect given this app's core
+    feature, but that's a guess, not a check of the dashboard or code).
+  - **Impact**: at face value, >70% of a monthly allowance by day 9 of
+    ~30 implies overshooting before the cycle resets if the rate holds;
+    Render's alert says overage bills at $15/100GB — a real, if not yet
+    large, cost exposure. Properly sizing this (bytes/day trend, which
+    service/route drives it) needs the dashboard link in the alert
+    (`https://dashboard.render.com/w/tea-d21a0h24d50c739htil0/billing`),
+    which only Ryan can open.
+  - **Open question for Ryan**: is this expected (e.g. a recent traffic
+    increase) or worth investigating as a regression?
+
+Ledger: 185 message IDs reviewed and recorded this run (25 new, 160
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-08
 
 160 candidate message IDs from `label:rtr-claude newer_than:30d`, 13 new
