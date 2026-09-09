@@ -29,6 +29,7 @@ alertbay.civicweb.net,,ca:csd:5943008,fallback,wildcard_http_sweep_2,DNS resolve
 alexandria.granicus.com,,us:place:5101000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Alexandria city
 algomacity.civicweb.net,,us:place:5501000,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Algoma city
 algonquinhighlands.civicweb.net,,ca:csd:3546018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Algonquin Highlands
+allegheny.granicus.com,,us:county:42003,fallback,archive_study_2026-09-09,2 solid page(s) all us:county:42003; 1 weak page(s) e.g. /m/subtitles-county-2026-07-14-county-council-on-2026-07-14-5-00-pm
 allentownpa.granicus.com,,us:place:4202000,fallback,ryan_stated,"Allentown, PA -- us_places.csv Allentown city"
 alnwickhaldimand.civicweb.net,,ca:csd:3514024,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Alnwick/Haldimand
 amaranth.escribemeetings.com,,ca:csd:3522008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Amaranth
@@ -46,6 +47,7 @@ armstrong.civicweb.net,,ca:csd:3554036,fallback,wildcard_http_sweep_2,DNS resolv
 arranelderslie.escribemeetings.com,,ca:csd:3541043,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Arran-Elderslie
 artesiaca.cablecast.tv,,us:place:0602896,fallback,auto_derived+visual_confirmed,"city seal reads 'City of Artesia, State of California, Incorporated 1959' (landing.png) [reports/jurisdiction_screens/artesiaca.cablecast.tv/landing.png reports/jurisdiction_screens/artesiaca.cablecast.tv/meeting.png] -> place 0602896 -> registry: us_places.csv Artesia city"
 ascensionparishla.portal.civicclerk.com,,us:county:22005,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Ascension Parish
+ashlandcowi.portal.civicclerk.com,,us:county:55003,fallback,archive_study_2026-09-09,2 solid page(s) all us:county:55003; 2 weak page(s) e.g. /m/ashland-wi-2025-06-17-planning-committee-meeting
 assiginack.escribemeetings.com,,ca:csd:3551011,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Assiginack
 assiniboia.civicweb.net,,ca:csd:4703036,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Assiniboia
 athabasca.civicweb.net,,ca:csd:4813048,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Athabasca
@@ -65,8 +67,10 @@ barrhead.escribemeetings.com,,ca:csd:4813019,fallback,wildcard_http_sweep_2,bare
 barrie.escribemeetings.com,,ca:csd:3543042,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Barrie
 bart.granicus.com,,us:county:06001,fallback,landing_page,"landing page https://bart.granicus.com/ reads ""Bay Area Rapid Transit"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 bathurst.escribemeetings.com,,rtr:ca:nb:bathurst,fallback,wildcard_http_sweep_2,"bare form resolves -> unverified: minted from 'Bathurst, NB'"
+battlegroundps.new.swagit.com,,us:sd:5300380,fallback,archive_study_2026-09-09,1 solid page(s) all us:sd:5300380; 1 weak page(s) e.g. /m/dec-08-2025-board-of-directors
 baycountyfl.primegov.com,,us:county:12005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Bay County
 bayroberts.civicweb.net,,ca:csd:1001409,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Bay Roberts
+bcnv.primegov.com,,us:place:3206500,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:3206500; 1 weak page(s) e.g. /m/2026-05-20-may-20-2026-planning-commission-meeting
 beaumont.escribemeetings.com,,ca:csd:4811013,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Beaumont
 beaumontab.civicweb.net,,ca:csd:4811013,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Beaumont
 beaumontab.escribemeetings.com,,ca:csd:4811013,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Beaumont
@@ -107,8 +111,11 @@ brisbaneca.portal.civicclerk.com,,us:place:0608310,fallback,upcoming_roster,upco
 brockton.escribemeetings.com,,ca:csd:3541032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Brockton
 brockville.civicweb.net,,ca:csd:3507015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Brockville
 brookealvinston.civicweb.net,,ca:csd:3538015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Brooke-Alvinston
+brookhavenny.portal.civicclerk.com,,us:cousub:3610310000,fallback,archive_study_2026-09-09,1 solid page(s) all us:cousub:3610310000; 1 weak page(s) e.g. /m/farmingville-ny-2026-06-11-town-board-meeting-planning-board-at-3pm-town-board-a
+brookingscountysd.gov,,us:county:46011,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:46011; 1 weak page(s) e.g. /m/2026-05-28-agenda-center
 broomfieldco.cablecast.tv,,us:place:0809280,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Broomfield city
 browardmpo.new.swagit.com,,rtr:us:fl:broward-metropolitan-planning-organization,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Broward Metropolitan Planning Organization, FL'"
+buenapark.cablecast.tv,,us:place:0608786,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:0608786; 2 weak page(s) e.g. /m/2026-07-23-bp-planning-commission-july-22-2026
 burbank.granicus.com,,us:sd:0606450,fallback,visual_confirmed,'Burbank Unified School District' logo on the player (meeting.png); the only NCES district of that name [reports/jurisdiction_screens/burbank.granicus.com/landing.png reports/jurisdiction_screens/burbank.granicus.com/meeting.png] -> nces 0606450 -> registry: us_school_districts.csv Burbank Unified School District (unified)
 burlingameca.granicus.com,,us:place:0609066,fallback,landing_page,"landing page https://burlingameca.granicus.com/ViewPublisher.php?view_id=1 reads ""Burlingame View"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 burlington.escribemeetings.com,,ca:csd:3524002,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Burlington
@@ -123,6 +130,7 @@ calistoga.civicweb.net,,us:place:0609892,fallback,auto_derived+ryan_stated+upcom
 callander.civicweb.net,,ca:csd:3549066,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Callander
 calmar.escribemeetings.com,,ca:csd:4811019,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Calmar
 calumetcounty.civicweb.net,,us:county:55015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Calumet County
+camarillo.primegov.com,,us:place:0610046,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0610046; 1 weak page(s) e.g. /m/2026-01-06-camarillo-planning-commission-1-06-2026
 cambridge.escribemeetings.com,,ca:csd:3530010,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Cambridge
 camdencounty.escribemeetings.com,,us:county:37029,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Camden County
 campbellriver.civicweb.net,,ca:csd:5924034,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Campbell River
@@ -141,8 +149,10 @@ carroll.granicus.com,,us:county:24013,fallback,ryan_stated,"Carroll County, MD -
 carson.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Carson'
 carsonca.cablecast.tv,,us:place:0611530,fallback,auto_derived+visual_confirmed,"show titles 'City of Carson CA. Planning Commission meeting' (landing.png, meeting.png) [reports/jurisdiction_screens/carsonca.cablecast.tv/landing.png reports/jurisdiction_screens/carsonca.cablecast.tv/meeting.png] -> place 0611530 -> registry: us_places.csv Carson city"
 carstairs.civicweb.net,,ca:csd:4806029,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Carstairs
+carteretcountync.gov,,us:county:37031,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:37031; 1 weak page(s) e.g. /m/2026-08-17-board-of-commissioners-meeting-august-17th
 carvercounty.primegov.com,,us:county:27019,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Carver County
 carvercountymn.primegov.com,,us:county:27019,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Carver County
+carync.cablecast.tv,,us:place:3710740,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:3710740; 2 weak page(s) e.g. /m/2026-07-24-cary-council-meeting-july-23-2026
 casselman.escribemeetings.com,,ca:csd:3502044,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Casselman
 cavanmonaghan.escribemeetings.com,,ca:csd:3515013,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Cavan Monaghan
 ccsf.granicus.com,,us:place:0667000,fallback,landing_page,"landing page https://ccsf.granicus.com/ reads ""San Francisco"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
@@ -153,9 +163,11 @@ centralhuron.civicweb.net,,ca:csd:3540025,fallback,wildcard_http_sweep_2,DNS res
 centralsaanich.escribemeetings.com,,ca:csd:5917015,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Central Saanich
 centrehastings.civicweb.net,,ca:csd:3512026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Centre Hastings
 centrewellington.civicweb.net,,ca:csd:3523025,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Centre Wellington
+cerritos.cablecast.tv,,us:place:0612552,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0612552; 1 weak page(s) e.g. /m/2026-08-18-senior-services-commission-special-meeting-august-18-2026
 champlain.escribemeetings.com,,ca:csd:2437220,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Champlain
 chapelhill.granicus.com,,us:place:3711800,fallback,ryan_stated,"Chapel Hill, NC -- us_places.csv Chapel Hill town"
 chapple.civicweb.net,,ca:csd:3559024,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Chapple
+charlescountymd.cablecast.tv,,us:county:24017,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:24017; 2 weak page(s) e.g. /m/2026-08-17-planning-commission-august-17-2026
 charlescountymd.primegov.com,,us:county:24017,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Charles County
 charlotte.cablecast.tv,,us:place:3712000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Charlotte city
 chathamcounty.primegov.com,,us:county:13051,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Chatham County
@@ -170,10 +182,13 @@ city-slp-mn.cablecast.tv,,us:place:2757220,fallback,ryan_stated,"St Louis Park, 
 citychannel-ia.cablecast.tv,,us:place:1922395,fallback,auto_derived+visual_confirmed,'CityChannel Dubuque ... local government programming'; about text names Iowa (landing.png) [reports/jurisdiction_screens/citychannel-ia.cablecast.tv/landing.png reports/jurisdiction_screens/citychannel-ia.cablecast.tv/meeting.png] -> place 1922395 -> registry: us_places.csv Dubuque city
 cityofbadger.civicweb.net,,ca:csd:1006026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Badger
 cityofbelmont.civicweb.net,,us:place:3704840,fallback,ryan_stated,"Belmont, NC -- us_places.csv Belmont city"
+cityofbrea.cablecast.tv,,us:place:0608100,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:0608100; 2 weak page(s) e.g. /m/2026-07-22-july-21-2026-brea-city-council-meeting
 cityofcampbell.granicus.com,,us:place:0610345,fallback,landing_page,"landing page https://cityofcampbell.granicus.com/ reads ""City of Campbell, California Live and Archived Content"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 cityofclintoniowa.civicweb.net,,us:place:1914430,fallback,ryan_stated,"Clinton, IA -- us_places.csv Clinton city"
 cityofdawson.escribemeetings.com,,ca:csd:6001029,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Dawson
+cityofdellrapids.granicus.com,,us:place:4615980,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:4615980; 1 weak page(s) e.g. /m/city-of-dell-rapids-sd-2020-11-16-city-council-regular-meeting
 cityofdover.civicweb.net,,ca:csd:1007057,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Dover
+cityofelgin.granicus.com,,us:place:1723074,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:1723074; 1 weak page(s) e.g. /m/city-of-elgin-il-2021-08-25-city-of-elgin-committee-of-the-whole-meeting-august
 cityofepa.granicus.com,,us:place:0620956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: East Palo Alto, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv East Palo Alto city"
 cityofevanston.civicweb.net,,us:place:1724582,fallback,ryan_stated,"Evanston, IL -- us_places.csv Evanston city"
 cityofharrington.civicweb.net,,ca:csd:2476065,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Harrington
@@ -184,14 +199,18 @@ cityofkyle.primegov.com,,ca:csd:4708044,fallback,wildcard_http_sweep_2,DNS resol
 cityoflancasterca.primegov.com,,us:place:0640130,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Lancaster city
 cityofmapleridge.escribemeetings.com,,ca:csd:5915075,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Maple Ridge
 cityofmarion.civicweb.net,,us:place:1949485,fallback,ryan_stated,"Marion, IA -- us_places.csv Marion city"
+cityofmenifee.primegov.com,,us:place:0646842,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0646842; 1 weak page(s) e.g. /m/city-of-menifee-nbsp-ca-2019-12-05-regular-meeting-12-05-2019
 cityofmillvalley.granicus.com,,us:place:0647710,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Mill Valley, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Mill Valley city"
 cityofnorthbattleford.civicweb.net,,rtr:ca:sk:north-battleford,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'North Battleford, SK'"
 cityofnsb.granicus.com,,us:place:1248625,authoritative,landing_page,"landing page https://cityofnsb.granicus.com/ViewPublisher.php?view_id=1 reads ""New Smyrna Beach FL"""
+cityofoxford.granicus.com,,us:place:3959234,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:3959234; 1 weak page(s) e.g. /m/city-of-oxford-oh-2022-09-20-city-council-meeting
 cityofpaloalto.primegov.com,,us:place:0655282,fallback,ryan_stated,"Palo Alto, CA -- us_places.csv Palo Alto city"
 cityofracine.granicus.com,,us:place:5566000,fallback,ryan_stated,"Racine, WI -- us_places.csv Racine city"
+cityofredlands.cablecast.tv,,us:place:0659962,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0659962; 2 weak page(s) e.g. /m/2026-07-22-redlands-city-council-meeting-july-21-2026
 cityofrehoboth.civicweb.net,,us:place:1060290,fallback,ryan_stated,"Rehoboth Beach, DE -- us_places.csv Rehoboth Beach city"
 cityofsalmonarm.escribemeetings.com,,ca:csd:5939032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Salmon Arm
 cityofsancarlos.primegov.com,,us:place:0665070,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0665070 match=exact -> registry: us_places.csv San Carlos city
+cityofstillwater.granicus.com,,us:place:2762824,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2762824; 1 weak page(s) e.g. /m/city-of-stillwater-2024-12-05-12-05-2024-2025-road-projects
 cityoftracy.primegov.com,,ca:csd:1303005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tracy
 cityofventura.granicus.com,,us:place:0665042,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS says Ventura, CA for this host, and the seeding run resolved that string to Ventura COUNTY -- freezing into an authoritative pin the exact bug the curated us:place:0665042 row now fixes (Census names the city San Buenaventura (Ventura) city, so the place table keys no Ventura in CA). The host says cityofventura; ventura.primegov.com is the county and keeps us:county:06111."
 cityofvernon.primegov.com,,ca:csd:5937014,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Vernon
@@ -207,6 +226,9 @@ claytoncountyga.primegov.com,,us:county:13063,fallback,wildcard_http_sweep_2,DNS
 clearfieldcity.primegov.com,,us:place:4913850,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Clearfield city
 clearview.escribemeetings.com,,ca:csd:3543005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Clearview
 clearwatercounty.civicweb.net,,ca:csd:4809002,fallback,ryan_stated,"Clearwater County, AB -- ca:csd:4809002 Clearwater County matched with spacing ignored"
+clerkshq.com,eastprovidence-ri,us:place:4422960,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/east-providence-city-council-live-stream-2023-10-03-oct-3-2023-council-meeting"
+clerkshq.com,northprovidence-ri,us:cousub:4400751760,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/north-providence-town-meetings-2026-08-04-north-providence-town-council-meeting"
+clerkshq.com,yellowsprings-oh,us:place:3986940,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/yellow-springs-oh-2022-02-07-february-7-2022-regular-village-council-meeting"
 coaldale.civicweb.net,,ca:csd:4802019,fallback,ryan_stated,"Coaldale, AB -- ca_csd.csv Coaldale"
 cobourg.escribemeetings.com,,ca:csd:3514021,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Cobourg
 cochrane.civicweb.net,,ca:csd:4806019,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Cochrane
@@ -261,6 +283,7 @@ denaliboroughak.portal.civicclerk.com,,us:county:02068,fallback,wildcard_http_sw
 denver.granicus.com,,us:place:0820000,fallback,auto_derived+visual_confirmed,'DENVER The Mile High City' logo; footer 'City and County of Denver' (landing.png) [reports/jurisdiction_screens/denver.granicus.com/landing.png] -> place 0820000 -> registry: us_places.csv Denver city
 derby.civicweb.net,,us:place:2017800,fallback,ryan_stated,"Derby, KS -- us_places.csv Derby city"
 deseronto.civicweb.net,,ca:csd:3512002,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Deseronto
+desplainesil.cablecast.tv,,us:place:1719642,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:1719642; 2 weak page(s) e.g. /m/2026-08-03-city-council-meeting-8-3-2026
 detroit-vod.cablecast.tv,,us:place:2622000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Detroit city
 dfps.new.swagit.com,,rtr:us:tx:texas,fallback,known_domains+visual_confirmed,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Texas, TX'"
 didsbury.escribemeetings.com,,ca:csd:4806032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Didsbury
@@ -281,6 +304,7 @@ dublin.granicus.com,,us:place:0620018,fallback,auto_derived+known_domains+upcomi
 dublinca.iqm2.com,,us:place:0620018,fallback,landing_page,"hostname self-declares CA; same gov_id independently confirmed live via sibling host dublin.granicus.com (known_domains) and dublinca.new.swagit.com (""Dublin, CA Video Archive"") (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 dublinca.new.swagit.com,,us:place:0620018,fallback,landing_page,"landing page https://dublinca.new.swagit.com/ reads ""Dublin, CA Video Archive / Powered by Swagit"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 dubuquecountyia.portal.civicclerk.com,,us:county:19061,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Dubuque County
+duluth-mn.granicus.com,,us:place:2717000,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2717000; 2 weak page(s) e.g. /m/city-of-duluth-2026-01-26-city-council-on-2026-01-26-6-00-pm
 duncan.civicweb.net,,ca:csd:5919012,fallback,ryan_stated,"Duncan, BC -- ca_csd.csv Duncan"
 dundeevillage.civicweb.net,,us:place:2623380,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Dundee village
 dunwoodyga.hylandcloud.com,,us:place:1324768,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Dunwoody city
@@ -427,6 +451,7 @@ hubbardcounty.civicweb.net,,us:county:27057,fallback,wildcard_http_sweep_2,DNS r
 hudson.civicweb.net,,ca:csd:3554021,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Hudson
 hudsonshope.escribemeetings.com,,ca:csd:5955025,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Hudson's Hope
 humalertca.gov,,rtr:us:ca:humboldt-county-sheriff,fallback,ryan_stated,"Ryan 2026-09-02: humalertca.gov is the Humboldt County Sheriff (CA), not a municipality; hostname alone could not establish it -> county FIPS 06023 -> unverified: minted from 'Humboldt County Sheriff, CA'"
+huntingtonny.granicus.com,,us:cousub:3610337000,fallback,archive_study_2026-09-09,4 solid page(s) all us:cousub:3610337000; 1 weak page(s) e.g. /m/town-of-huntington-long-island-ny-2026-09-03-special-town-board-workshop-meeting
 huntsvilleal.granicus.com,,us:place:0137000,fallback,ryan_stated,"Huntsville, AL -- us_places.csv Huntsville city"
 huntsvilleon.civicweb.net,,ca:csd:3544042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Huntsville
 huron-township.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Huron Township'
@@ -517,6 +542,7 @@ leduc.escribemeetings.com,,ca:csd:4811016,fallback,wildcard_http_sweep_2,bare fo
 lennoxandaddington.civicweb.net,,ca:cd:3511,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Lennox and Addington
 lethbridge.escribemeetings.com,,ca:csd:4802012,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Lethbridge
 lethcounty.civicweb.net,,ca:csd:4802012,fallback,ryan_stated,"Lethbridge, AB -- ca_csd.csv Lethbridge"
+lewisvilleisd.granicus.com,,us:sd:4827300,fallback,archive_study_2026-09-09,1 solid page(s) all us:sd:4827300; 1 weak page(s) e.g. /m/unknown-jurisdiction-2026-01-06-board-work-session-01-06-2026
 lfucg.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Lexington-Fayette Urban County Government'
 lillooet.civicweb.net,,ca:csd:5931026,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Lillooet
 limerick.civicweb.net,,ca:csd:3512051,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Limerick
@@ -565,6 +591,7 @@ madoc.escribemeetings.com,,ca:csd:3512036,fallback,wildcard_http_sweep_2,bare fo
 malibucity.primegov.com,,us:place:0645246,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Malibu city
 manhattanbeach.granicus.com,,us:place:0645400,fallback,auto_derived+visual_confirmed,"'Manhattan Beach Local Community Cable'; agenda text names California (landing.png, meeting.png) [reports/jurisdiction_screens/manhattanbeach.granicus.com/landing.png reports/jurisdiction_screens/manhattanbeach.granicus.com/meeting.png] -> place 0645400 -> registry: us_places.csv Manhattan Beach city"
 manitouwadge.civicweb.net,,ca:csd:3558066,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Manitouwadge
+manitowoc.granicus.com,,us:place:5548500,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:5548500; 2 weak page(s) e.g. /m/city-of-manitowoc-wi-2025-11-04-common-council-on-2025-11-04-5-00-pm-special-mee
 mansfieldisd.new.swagit.com,,us:sd:4828920,fallback,visual_confirmed,'MISD / Mansfield Independent School District' masthead (meeting.png) [reports/jurisdiction_screens/mansfieldisd.new.swagit.com/landing.png reports/jurisdiction_screens/mansfieldisd.new.swagit.com/meeting.png] -> nces 4828920 -> registry: us_school_districts.csv Mansfield Independent School District (unified)
 mapleridge.escribemeetings.com,,ca:csd:5915075,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Maple Ridge
 mapleridge.primegov.com,,ca:csd:5915075,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Maple Ridge
@@ -655,6 +682,7 @@ naples.granicus.com,,us:place:1247625,fallback,visual_confirmed,"'The City of Na
 nashville.cablecast.tv,,us:place:4752006,fallback,auto_derived+visual_confirmed,'Metro Nashville Network ... official channel of the Metropolitan Government of Nashville & Davidson County'; 'Davidson County Election Commission' (landing.png) [reports/jurisdiction_screens/nashville.cablecast.tv/landing.png reports/jurisdiction_screens/nashville.cablecast.tv/meeting.png] -> place 4752006 -> registry: us_places.csv Nashville-Davidson metropolitan government (balance)
 nassaucountyfl.primegov.com,,us:county:12089,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Nassau County
 nassaufl.granicus.com,,us:county:12089,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Nassau County
+natronacounty-wy.gov,,us:county:56025,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:56025; 1 weak page(s) e.g. /m/2026-07-20-natrona-county-board-of-county-commissioners-july-20-2026
 neguac.escribemeetings.com,,ca:csd:1309038,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Neguac
 nelson.civicweb.net,,ca:csd:5903015,fallback,ryan_stated,"Nelson, BC -- ca_csd.csv Nelson"
 netapps.ocfl.net,,us:county:12095,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Orange County
@@ -682,12 +710,14 @@ northmiddlesex.escribemeetings.com,,ca:csd:3539041,fallback,wildcard_http_sweep_
 northperth.escribemeetings.com,,ca:csd:3531040,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv North Perth
 northportal.portal.civicclerk.com,,ca:csd:4701018,fallback,wildcard_http_sweep_2,HTTP 200 api-supported-versions present -> registry: ca_csd.csv North Portal
 northsaanich.civicweb.net,,ca:csd:5917005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv North Saanich
+northsalemschools.granicus.com,,us:sd:3621180,fallback,archive_study_2026-09-09,1 solid page(s) all us:sd:3621180; 1 weak page(s) e.g. /m/unknown-jurisdiction-meet-the-candidates-2023
 northstormont.civicweb.net,,ca:csd:3501042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv North Stormont
 northumberland.escribemeetings.com,,ca:cd:3514,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_cd.csv Northumberland
 norwich.civicweb.net,,ca:csd:3532002,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Norwich
 novato.granicus.com,,us:place:0652582,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0652582 match=exact -> registry: us_places.csv Novato city
 nrhtx.granicus.com,,us:place:4852356,authoritative,landing_page,"landing page https://nrhtx.granicus.com/ViewPublisher.php?view_id=1 reads ""North Richland Hills TX"""
 nvleg.granicus.com,,us:state:32,fallback,visual_confirmed,'Nevada Legislature Streaming Media' (landing.png) [reports/jurisdiction_screens/nvleg.granicus.com/landing.png] ->  -> registry: us_states.csv Nevada
+nwsccc-crystal.granicus.com,,us:place:2714158,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2714158; 1 weak page(s) e.g. /m/city-of-crystal-2024-05-15-city-council-meeting
 nystateassembly.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Ny State Assembly'
 oakbay.civicweb.net,,ca:csd:5917030,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Oak Bay
 oakland.granicus.com,,us:place:0653000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Oakland city
@@ -697,6 +727,7 @@ oakwoodvillageoh.civicweb.net,,rtr:us:oh:oakwood,fallback,wildcard_http_sweep_2,
 ob.wvc-ut.gov,,us:place:4983470,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv West Valley City city
 occompt.granicus.com,,us:county:12095,fallback,auto_derived+visual_confirmed,"'BCC Meeting Video', 'Value Adjustment Board' (a Florida-only body), 'TransMAC' (landing.png) -- Orange County Comptroller, FL [reports/jurisdiction_screens/occompt.granicus.com/landing.png reports/jurisdiction_screens/occompt.granicus.com/meeting.png] -> county 12095 -> registry: us_counties.csv Orange County"
 oconeecountyga.portal.civicclerk.com,,us:county:13219,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Oconee County
+octa.granicus.com,,us:place:3957918,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:3957918; 1 weak page(s) e.g. /m/orange-county-transportation-authority-2026-08-24-board-meeting-auto-generated-t
 ogdencity.primegov.com,,us:place:1958665,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Ogden city
 okotoks.escribemeetings.com,,ca:csd:4806012,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Okotoks
 olds.escribemeetings.com,,ca:csd:4806034,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Olds
@@ -735,6 +766,7 @@ pasadena.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state
 pasadena.granicus.com,,us:place:0656000,fallback,ryan_stated,"Pasadena, CA -- us_places.csv Pasadena city"
 pasadenaedu.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Pasadena Community College'
 payson.granicus.com,,us:place:0453700,fallback,visual_confirmed,'Council Meeting' archive; agenda text names Arizona (meeting.png) [reports/jurisdiction_screens/payson.granicus.com/landing.png reports/jurisdiction_screens/payson.granicus.com/meeting.png] -> place 0453700 -> registry: us_places.csv Payson town
+pcbgov.granicus.com,,us:place:1254725,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:1254725; 1 weak page(s) e.g. /m/pcb-gov-city-council
 peaceriver.civicweb.net,,ca:csd:4819038,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Peace River
 peachland.civicweb.net,,ca:csd:5935018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Peachland
 peachland.escribemeetings.com,,ca:csd:5935018,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Peachland
@@ -763,6 +795,27 @@ pioneercommunityenergy.granicus.com,,,fallback,jurisdiction_overrides, -> unreso
 pittmeadows.escribemeetings.com,,ca:csd:5915070,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Pitt Meadows
 pittsburg.granicus.com,,us:place:0657456,fallback,landing_page,"landing page https://pittsburg.granicus.com/ViewPublisher.php?view_id=2 reads ""as published by City of Pittsburg, CA / City of Pittsburg / Pittsburg Unified School District Liaison Committee"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 pittsburgca.portal.civicclerk.com,,us:place:0657456,fallback,auto_derived+upcoming_roster,upcoming_jurisdictions.csv geoid=0657456 match=exact -> registry: us_places.csv Pittsburg city
+play.champds.com,/atlantaga/,us:place:1304000,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/atlanta-ga-2026-03-04-human-relations-commission"
+play.champds.com,/auburnny/,us:place:3603078,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/auburn-ny-2024-05-16-city-council-meeting-may-16-2024"
+play.champds.com,/bellemeadetn/,us:place:4704620,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/belle-meade-tn-2026-06-16-regular-meeting"
+play.champds.com,/chathamma/,us:cousub:2500112995,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/chatham-ma-2026-03-04-conservation-commission"
+play.champds.com,/desplainesil/,us:place:1719642,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/des-plaines-il-2024-01-23-planning-and-zoning-jan-23-2024"
+play.champds.com,/esterofl/,us:place:1221150,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/estero-fl-2023-12-13-special-village-council-meeting"
+play.champds.com,/fairviewtn/,us:place:4725440,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/fairview-tn-2025-10-02-regular-meeting"
+play.champds.com,/falmouthschoolsme/,us:cousub:2300524495,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/falmouth-schools-me-2025-03-31-2025-03-31-school-board-special-meeting"
+play.champds.com,/largofl/,us:place:1239425,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/largo-fl-2025-04-01-largo-city-commission-meeting"
+play.champds.com,/lincolnwoodil/,us:place:1743744,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/lincolnwood-il-2025-07-28-environmental-commission"
+play.champds.com,/maurycoschoolstn/,us:sd:4702760,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/maury-county-school-district-tn-2023-02-07-regular-board-meeting-2-7-23"
+play.champds.com,/maurycotn/,us:county:47119,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/maury-county-tn-2025-05-27-mcrpc"
+play.champds.com,/mentoroh/,us:place:3949056,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/mentoroh-2022-07-05-mentor-city-council-july-5-2022"
+play.champds.com,/millersvilletn/,us:place:4748980,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/millersvilletn-2024-12-20-special-called-meeting-budget-resolution"
+play.champds.com,/nolensvilletn/,us:place:4753460,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/nolensville-tn-2026-03-05-regular-meeting"
+play.champds.com,/oakhilltn/,us:place:4754780,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/oak-hill-tn-2022-03-22-board-of-commissioners"
+play.champds.com,/portchesterny/,us:place:3659223,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/portchester-ny-2022-01-18-planning-commission"
+play.champds.com,/springhilltn/,us:place:4770580,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/spring-hill-tn-2025-12-01-meeting"
+play.champds.com,/surfsidefl/,us:place:1270075,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/surfside-fl-2026-03-05-03-05-2026-commissioners-candidates-debate"
+play.champds.com,/westportct/,us:cousub:0919083500,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/westport-ct-2026-05-12-historic-district-commission"
+play.champds.com,/wilkesconc/,us:county:37193,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/wilkes-county-nc-2021-11-02-regular-meeting"
 pleasanthill.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Pleasant Hill'
 pleasanthill.granicus.com,,us:place:0657764,fallback,ryan_stated,"Pleasant Hill, CA -- us_places.csv Pleasant Hill city"
 pleasantonca.portal.civicclerk.com,,us:place:0657792,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Pleasanton, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Pleasanton city"
@@ -771,6 +824,7 @@ polkcountyia.portal.civicclerk.com,,us:county:19153,fallback,wildcard_http_sweep
 ponoka.civicweb.net,,ca:csd:4808039,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Ponoka
 ponokacounty.civicweb.net,,rtr:ca:ab:ponoka-county,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'Ponoka County, AB'"
 portagein.gov,,us:place:1861092,fallback,ryan_stated,"Portage, IN -- us_places.csv Portage city"
+portagemi.cablecast.tv,,us:place:2665560,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2665560; 2 weak page(s) e.g. /m/2026-08-06-planning-commission-meeting-8-6-26
 portcolborne.escribemeetings.com,,ca:csd:3526011,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Port Colborne
 portcoquitlam.escribemeetings.com,,ca:csd:5915039,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Port Coquitlam
 portedward.civicweb.net,,ca:csd:5947007,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Port Edward
@@ -785,6 +839,7 @@ poucecoupe.civicweb.net,,ca:csd:5955005,fallback,wildcard_http_sweep_2,DNS resol
 poucecoupe.escribemeetings.com,,ca:csd:5955005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Pouce Coupe
 powellriver.civicweb.net,,ca:csd:5927008,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Powell River
 prescott.escribemeetings.com,,ca:csd:3507008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Prescott
+prescottvalley.primegov.com,,us:place:0457450,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0457450; 1 weak page(s) e.g. /m/2026-01-08-archived-regular-town-council-meeting-thursday-january-8-2026
 princeedwardcounty.civicweb.net,,us:county:51147,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Prince Edward County
 princegeorge.escribemeetings.com,,ca:csd:5953023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Prince George
 princegeorgescountymd.granicus.com,,us:county:24033,fallback,ryan_stated,"Prince George's County, MD -- us_counties.csv Prince George's County"
@@ -795,10 +850,12 @@ pub-abbotsford.escribemeetings.com,,ca:csd:5909052,fallback,ryan_stated,"Abbotsf
 pub-acwtownship.escribemeetings.com,,ca:csd:3540063,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Ashfield-Colborne-Wawanosh
 pub-bakersfield.escribemeetings.com,,us:place:0603526,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Bakersfield city
 pub-beaumontab.escribemeetings.com,,ca:csd:4811013,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Beaumont
+pub-bradfordwestgwillimbury.escribemeetings.com,,ca:csd:3543014,fallback,archive_study_2026-09-09,1 solid page(s) all ca:csd:3543014; 1 weak page(s) e.g. /m/bradfordwestgwillimbury-2024-08-06-regular-council-and-committee-of-the-whole
 pub-brentwood.escribemeetings.com,,us:place:0608142,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Brentwood, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Brentwood city"
 pub-brockton.escribemeetings.com,,ca:csd:3541032,authoritative,manual_override,"live-fetched 2026-09-06: real page text names 'Bruce County' (Brockton's real county) -- was wrongly filed as Brockton, MA (tenant_hints.csv, since a wrong-country false positive of the guard fixed in WO-118/PR #750) -> registry: ca_csd.csv Brockton, ON. Backfilled 3 pages via POST /internal/jurisdiction/override."
 pub-brucecounty.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Bruce County'
 pub-brucecounty.escribemeetings.com,,ca:cd:3541,fallback,ryan_stated,"Bruce County, ON -- ca_cd.csv Bruce"
+pub-chulavista.escribemeetings.com,,us:place:0613392,fallback,archive_study_2026-09-09,3 solid page(s) all us:place:0613392; 1 weak page(s) e.g. /m/chula-vista-public-comments-2026-05-19-city-council-meeting
 pub-clarington.escribemeetings.com,,ca:csd:3518017,authoritative,manual_override,"was wrongly filed as Clarington, OH (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Clarington, ON. Backfilled 3 pages via POST /internal/jurisdiction/override, 2026-09-06."
 pub-cmsd.escribemeetings.com,,rtr:us:ca:costa-mesa-sanitary-district,authoritative,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Costa Mesa Sanitary District, CA'"
 pub-cornwall.escribemeetings.com,,ca:csd:3501012,authoritative,manual_override,"live-fetched 2026-09-06: real page text names 'Cornwall Regional Airport Commission'/'Cornwall Harbour Development Corporation' (Cornwall, ON bodies, not the smaller Cornwall, PE) -- was wrongly filed as Cornwall, PA (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Cornwall, ON. Backfilled 4 pages via POST /internal/jurisdiction/override."
@@ -806,9 +863,11 @@ pub-courtenay.escribemeetings.com,,ca:csd:5926010,fallback,known_domains,app/uti
 pub-delta.escribemeetings.com,,ca:csd:5915011,fallback,visual_confirmed,"agenda 'Council Chamber, Delta City Hall, 4500 Clarence Taylor Crescent, Delta, BC' (meeting.png) [reports/jurisdiction_screens/pub-delta.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-delta.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Delta"
 pub-dryden.escribemeetings.com,,ca:csd:3560027,fallback,visual_confirmed,"'The Corporation of The City of Dryden'; 'calendar.dryden.ca' in the agenda (meeting.png) [reports/jurisdiction_screens/pub-dryden.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-dryden.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Dryden"
 pub-edmonton.escribemeetings.com,,ca:csd:4811061,fallback,ryan_stated,"Edmonton, AB -- single-government eScribe tenant, confirmed live 2026-09-04 after deleting and resubmitting 3 pages that had wrongly resolved to Edmonton, KY"
+pub-elliotlake.escribemeetings.com,,ca:csd:3557041,fallback,archive_study_2026-09-09,3 solid page(s) all ca:csd:3557041; 1 weak page(s) e.g. /m/elliot-lake-gis-services-ssmic-2025-12-08-council
 pub-erin.escribemeetings.com,,ca:csd:3523017,authoritative,manual_override,"was wrongly filed as Erin, TN (tenant_hints.csv 'Erin, TN' jurisdiction_override, the WO-118/PR #750 wrong-country bug -- Erin was the original tenant that surfaced it) -> registry: ca_csd.csv Erin, ON. Backfilled 5 pages via POST /internal/jurisdiction/override, 2026-09-06."
 pub-ezt.escribemeetings.com,,ca:csd:3532038,fallback,visual_confirmed,"'CORPORATION OF THE TOWNSHIP OF EAST ZORRA-TAVISTOCK ... Hickson, Ontario, N0J 1L0' (meeting.png) [reports/jurisdiction_screens/pub-ezt.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-ezt.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv East Zorra-Tavistock"
 pub-gloucesterva.escribemeetings.com,,us:county:51073,fallback,visual_confirmed,"live-checked https://pub-gloucesterva.escribemeetings.com/ (2026-09-03, rtr-discovery Phase 3 FINDING-11) -- board/committee list shows 'Board of Supervisors' (450 meetings), 'School Board' (Thomas Calhoun Walker Education Center Auditorium), 'Wetlands Board', 'Chesapeake Bay Preservation and Erosion Commission', meeting venue 'Colonial Courthouse' -- all Gloucester County, VA bodies -> registry: us_counties.csv Gloucester County (51073). No prior override existed for this host; BACKLOG.md's 'pub-* eScribe hosts resolve to a US government of the same name' entry (WO-100) flagged it as bleeding into Gloucester, MA -- this pin resolves that for this host specifically."
+pub-hainescity.escribemeetings.com,,us:place:1228400,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:1228400; 1 weak page(s) e.g. /m/haines-city-settlement-fl-2025-07-03-city-commission-meeting
 pub-haldimandcounty.escribemeetings.com,,rtr:ca:on:haldimand-county,fallback,visual_confirmed,"'Haldimand O.P.P. Detachment Board' (Ontario Provincial Police), 'Haldimand County Administration Building' (meeting.png) [reports/jurisdiction_screens/pub-haldimandcounty.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-haldimandcounty.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> unverified: minted from 'Haldimand County, ON'"
 pub-halifax.escribemeetings.com,,ca:csd:1209034,fallback,ryan_stated,"Halifax, NS -- ca_csd.csv Halifax"
 pub-hamilton.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Hamilton'
@@ -831,6 +890,7 @@ pub-oliver.escribemeetings.com,,ca:csd:5907014,fallback,ryan_stated,"Oliver, BC 
 pub-orangeville.escribemeetings.com,,ca:csd:3522014,fallback,visual_confirmed,"agenda 'Council Chambers, Town Hall, 87 Broadway, Orangeville, ON L9W 1K1' (meeting.png) [reports/jurisdiction_screens/pub-orangeville.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-orangeville.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Orangeville"
 pub-orinda.escribemeetings.com,,us:place:0654232,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0654232 match=exact -> registry: us_places.csv Orinda city
 pub-oxfordcounty.escribemeetings.com,,ca:cd:3532,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_cd.csv Oxford
+pub-palmdesert.escribemeetings.com,,us:place:0655184,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:0655184; 1 weak page(s) e.g. /m/palm-desert-city-negotiator-2026-06-25-resolutions-related-to-the-adoption-of-th
 pub-paradise.escribemeetings.com,,ca:csd:1001517,fallback,ryan_stated,"Paradise, NL -- ca_csd.csv Paradise"
 pub-pickering.escribemeetings.com,,ca:csd:3518001,authoritative,manual_override,"was wrongly filed as Pickering, MO (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Pickering, ON. Backfilled 4 pages via POST /internal/jurisdiction/override, 2026-09-06."
 pub-pleasanthillca.escribemeetings.com,,us:place:0657764,fallback,upcoming_roster,upcoming_jurisdictions.csv geoid=0657764 match=exact -> registry: us_places.csv Pleasant Hill city
@@ -852,6 +912,23 @@ pub-trca.escribemeetings.com,,rtr:ca:on:toronto-and-region-conservation-authorit
 pub-vacaville.escribemeetings.com,,us:place:0681554,fallback,landing_page,"landing page https://pub-vacaville.escribemeetings.com/ reads ""Vacaville"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 pub-victoria.escribemeetings.com,,ca:csd:5917034,fallback,visual_confirmed,"'VICTORIA CITY COUNCIL', 'COUNCIL CHAMBERS, CITY HALL, 1 CENTENNIAL SQUARE', 'Canada Day Subcommittee' (landing.png, meeting.png) [reports/jurisdiction_screens/pub-victoria.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-victoria.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_csd.csv Victoria"
 pub-wellington.escribemeetings.com,,ca:cd:3523,fallback,visual_confirmed,"'The Corporation of the County of Wellington County Council'; Ontario in the agenda text (meeting.png) [reports/jurisdiction_screens/pub-wellington.escribemeetings.com/landing.png reports/jurisdiction_screens/pub-wellington.escribemeetings.com/meeting.png] -> Canadian, no Census validation -> registry: ca_cd.csv Wellington"
+pub-westkelowna.escribemeetings.com,,ca:csd:5935029,fallback,archive_study_2026-09-09,1 solid page(s) all ca:csd:5935029; 1 weak page(s) e.g. /m/west-kelowna-council-chambers-2023-12-12-regular-council-meeting
+public.destinyhosted.com,id=22986,us:place:4806128,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/baytown-tx-2026-08-04-aug-04-2026-baytown-redevelopment-tax-increment-reinvestme"
+public.destinyhosted.com,id=24263,us:place:0412000,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/chandler-az-2026-08-19-aug-19-2026-planning-zoning-meeting-08-19-2026"
+public.destinyhosted.com,id=33666,us:place:4023200,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/edmond-ok-2026-08-18-aug-18-2026-capital-improvement-projects-advisory-board"
+public.destinyhosted.com,id=36787,us:place:1224300,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/fort-pierce-fl-2026-08-03-aug-03-2026-city-commission-regular-meeting"
+public.destinyhosted.com,id=45363,us:place:0427820,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-glendale-az-aug-11-2026-city-council-regular"
+public.destinyhosted.com,id=48237,us:place:3936610,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/huber-heights-oh-2026-08-20-aug-20-2026-parks-and-recreation-board"
+public.destinyhosted.com,id=52729,us:county:04012,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/la-paz-county-az-2026-08-17-aug-17-2026-board-of-supervisors-regular-meeting"
+public.destinyhosted.com,id=58226,us:place:4845000,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/lubbock-tx-2026-08-11-aug-11-2026-regular-city-council-meeting"
+public.destinyhosted.com,id=62726,us:place:0444270,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/marana-az-2026-08-17-aug-17-2026-special-council-meetings"
+public.destinyhosted.com,id=62825,us:county:04017,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/navajo-county-az-2026-08-11-aug-11-2026-board-of-supervisors-regular-meeting"
+public.destinyhosted.com,id=67682,us:place:0451600,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/oro-valley-az-2026-08-20-aug-20-2026-stormwater-utility-commission"
+public.destinyhosted.com,id=68323,us:county:48355,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/nueces-county-tx-2026-08-05-aug-05-2026-commissioners-court-regular"
+public.destinyhosted.com,id=72437,us:place:4866128,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/schertz-tx-2026-08-18-aug-18-2026-city-council"
+public.destinyhosted.com,id=72672,us:county:48409,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/san-patricio-county-tx-2026-08-17-aug-17-2026-commissioners-court"
+public.destinyhosted.com,id=83927,us:place:4872392,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-texas-city-tx-2026-08-07-budget-workshop-august-5-2026"
+public.destinyhosted.com,id=94526,us:county:48491,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/williamson-county-tx-2026-08-20-aug-20-2026-commissioners-court-special-session"
 pvestates.granicus.com,,us:place:0655380,authoritative,landing_page,"landing page https://pvestates.granicus.com/ViewPublisher.php?view_id=1 reads ""Palos Verdes Estates"""
 qac.gov,,us:county:24035,fallback,auto_derived+visual_confirmed,"'Queen Anne's County, MD - Official Website'; footer '107 N Liberty Street, Centreville, MD 21617' (landing.png) [reports/jurisdiction_screens/qac.gov/landing.png reports/jurisdiction_screens/qac.gov/meeting.png] -> county 24035 -> registry: us_counties.csv Queen Anne's County"
 qualicumbeach.escribemeetings.com,,ca:csd:5921023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Qualicum Beach
@@ -878,6 +955,7 @@ reflect-detroit-vod.cablecast.tv,,us:place:2622000,fallback,known_domains,app/ut
 reflect-ontv.cablecast.tv,,rtr:us:mi:orion-township,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Orion Township, MI'"
 regina.primegov.com,,ca:csd:4706027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Regina
 renfrew.escribemeetings.com,,ca:csd:3547048,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Renfrew
+reno.primegov.com,,us:place:3260600,fallback,archive_study_2026-09-09,2 solid page(s) all us:place:3260600; 1 weak page(s) e.g. /m/city-of-reno-logo-nv-2026-01-07-reno-city-planning-commission-january-7-2026
 revelstoke.civicweb.net,,ca:csd:5939019,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Revelstoke
 ricecountymn.portal.civicclerk.com,,us:county:27131,fallback,auto_derived+wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Rice County
 ricelakecitymn.civicweb.net,,us:place:2754060,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Rice Lake city
@@ -892,6 +970,7 @@ ringwoodtv.viebit.com,,us:place:3463150,fallback,known_domains,app/utils/jurisdi
 riovista-ca.granicus.com,,us:place:0660984,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Rio Vista, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Rio Vista city"
 riversidesheriff.portal.civicclerk.com,,rtr:us:ca:riverside-county-sheriff-s-department,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from ""Riverside County Sheriff's Department, CA"""
 riverviewmi.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Riverview'
+rochestermn.granicus.com,,us:place:2754880,fallback,archive_study_2026-09-09,4 solid page(s) all us:place:2754880; 1 weak page(s) e.g. /m/rochester-mn-city-council
 rockdalecountyga.primegov.com,,us:county:13247,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Rockdale County
 rockyviewcounty.escribemeetings.com,,ca:csd:4806014,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4806014 Rocky View County matched with spacing ignored
 rossland.civicweb.net,,ca:csd:5905023,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Rossland
@@ -954,6 +1033,7 @@ sidney.civicweb.net,,ca:csd:5917010,fallback,ryan_stated,"Sidney, BC -- ca_csd.c
 silverbeach.civicweb.net,,ca:csd:4811009,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Silver Beach
 silverton.civicweb.net,,ca:csd:5903027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Silverton
 simcoe.civicweb.net,,ca:cd:3543,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_cd.csv Simcoe
+siouxcityschools.new.swagit.com,,us:place:1973335,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:1973335; 1 weak page(s) e.g. /m/jan-24-2022-special-board-meeting-sioux-city-community-school-district
 slavelake.civicweb.net,,ca:csd:4817029,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Slave Lake
 slavelake.escribemeetings.com,,ca:csd:4817029,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Slave Lake
 slc.primegov.com,,us:place:4967000,authoritative,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Salt Lake City city
@@ -974,12 +1054,14 @@ southdundas.escribemeetings.com,,ca:csd:3501020,fallback,wildcard_http_sweep_2,b
 southfrontenac.civicweb.net,,ca:csd:3510020,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv South Frontenac
 southgate.escribemeetings.com,,ca:csd:3542005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Southgate
 southglengarry.escribemeetings.com,,ca:csd:3501005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv South Glengarry
+southorangetwpnj.portal.civicclerk.com,,us:cousub:3401369274,fallback,archive_study_2026-09-09,2 solid page(s) all us:cousub:3401369274; 1 weak page(s) e.g. /m/2026-08-20-historic-preservation-commission-regular-meeting
 southstormont.escribemeetings.com,,ca:csd:3501011,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv South Stormont
 southwestmiddlesex.escribemeetings.com,,ca:csd:3539005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Southwest Middlesex
 southwestoxford.civicweb.net,,ca:csd:3532012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv South-West Oxford
 spallumcheen.civicweb.net,,ca:csd:5937024,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Spallumcheen
 sparwood.civicweb.net,,ca:csd:5901006,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Sparwood
 spb.granicus.com,,rtr:us:ca:california-state-personnel-board,fallback,visual_confirmed,"'California State Personnel Board Streaming Media' (landing.png) [reports/jurisdiction_screens/spb.granicus.com/landing.png reports/jurisdiction_screens/spb.granicus.com/meeting.png] ->  -> unverified: minted from 'California State Personnel Board, CA'"
+spokanevalley.granicus.com,,us:place:5367167,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:5367167; 2 weak page(s) e.g. /m/the-city-of-spokane-valley-2026-07-07-council-meeting
 springwater.civicweb.net,,ca:csd:3543009,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Springwater
 sprucegrove.escribemeetings.com,,ca:csd:4811049,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Spruce Grove
 squamish.civicweb.net,,ca:csd:5931006,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Squamish
@@ -1042,6 +1124,9 @@ timmins.civicweb.net,,ca:csd:3556027,fallback,wildcard_http_sweep_2,DNS resolves
 tiny.civicweb.net,,ca:csd:3543068,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tiny
 tofino.civicweb.net,,ca:csd:5923025,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Tofino
 torbay.civicweb.net,,ca:csd:1001509,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Torbay
+townhallstreams.com,location_id=169,us:cousub:3300577380,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/troy-nh-2025-05-29-board-of-selectmen"
+townhallstreams.com,location_id=69,us:cousub:0911044910,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/mansfield-ct-2020-04-20-planning-and-zoning-commission-meeting"
+townhallstreams.com,location_id=94,us:cousub:2300140035,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/lisbon-me-2026-07-28-town-council-special-meeting"
 townoffairfaxca.gov,,us:place:0623168,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Fairfax, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Fairfax town"
 townoffrisco.primegov.com,,us:place:0828690,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Frisco town
 townoftiburon.granicus.com,,us:place:0678666,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Tiburon, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Tiburon town"
@@ -1113,11 +1198,37 @@ videoplayer.telvue.com,m-2Fvz8xhxNtIFGMxiGzJrgCaIr0cVZT,us:place:2535075,fallbac
 videoplayer.telvue.com,w9sPsSE7vna3XTN_39bs1rEXjVWF0kfP,us:place:4103050,fallback,ryan_stated,"Ashland, OR -- us_places.csv Ashland city"
 videoplayer.telvue.com,bDPj0rbiOCBhmRfsFB-YifGv4qBg-ulA,us:place:3665508,fallback,ryan_stated,"Schenectady, NY -- us_places.csv Schenectady city"
 videoplayer.telvue.com,yycCAZPb0NN3zj2o5qio-YFMNC43NjCG,us:place:2523875,fallback,ryan_stated,"Fitchburg, MA -- us_places.csv Fitchburg city"
+videoplayer.telvue.com,player/2N9k9wq4NAOA4MJsS7IQS1cHA_WeZd0u,us:place:1933465,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-guttenberg-2026-07-13-city-of-guttenberg-council-meeting"
+videoplayer.telvue.com,player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05,us:place:2642160,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-kalamazoo-mi-city-of-kalamazoo-august-19-2026-environmental-concerns-com"
+videoplayer.telvue.com,player/5nQYx7H7WpbP8AVWnkzXsWu69pAXI7Yq,us:place:4649600,fallback,archive_study_2026-09-09,"2 solidly-identified archive page(s), e.g. /m/pierre-sd-pierre-city-commission"
+videoplayer.telvue.com,player/994DtmGEsi0VDYK3jJI2BJ72GfgNIpU2,us:cousub:2501743895,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/natick-natick-select-board-june-10-2026"
+videoplayer.telvue.com,player/AbfNhigIqnG-4roGCxaFupXEKfme9dfT,us:county:24035,fallback,archive_study_2026-09-09,"8 solidly-identified archive page(s), e.g. /m/queen-anne-s-county-md-county-commissioners-meeting-07-14-2026"
+videoplayer.telvue.com,player/BjiipOg61Ac-YpNM5RFZy8f49fIMR7Kq,us:cousub:3610361984,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/riverhead-ny-2026-08-18-town-board-meeting"
+videoplayer.telvue.com,player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V,us:place:3622865,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/class-of-52-reunion-77"
+videoplayer.telvue.com,player/GdKmpgaiQkyNQGt9mPxbWef1BmyvHIOm,us:cousub:2500182525,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/yarmouth-ma-school-committee-meeting-march-12-2026"
+videoplayer.telvue.com,player/KhA_ULGx1UdtbPSnwHPL0t1TrYm6rQSe,us:place:4500550,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-council-aug-24-2026"
+videoplayer.telvue.com,player/LGzST4YdA6GIkRCa0H5CwbVBptJRJ3XD,us:place:3350260,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/nashua-nh-planning-board-5-1-2025"
+videoplayer.telvue.com,player/MYHMRKXBbGFaah07vKkZ_-J4SThODdPq,us:cousub:2501767665,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/stoneham-stoneham-board-of-appeals-2-26-26"
+videoplayer.telvue.com,player/O7e6JrKKSJ3H_TX3VgEvpbSSL7Dbnrk2,us:cousub:2502144105,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/needham-ma-needham-select-board-8-11-26"
+videoplayer.telvue.com,player/P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS,us:place:0864255,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/rifle-co-rifle-city-council-sept-2-2026"
+videoplayer.telvue.com,player/SzsDk6b45y6N97eOtbGQ_hsTcS0ZfQgT,us:cousub:3301129860,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/goffstown-nh-2026-07-13-select-board"
+videoplayer.telvue.com,player/XRGvXhGamdDe6nt3IU9wLyKjf4BqK24i,us:cousub:3605537726,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/2024-03-19-town-2024-03-19-town-board-meeting"
+videoplayer.telvue.com,player/XSekkdEeRsk0JHQVHAvKJVka7_5VjxKP,us:cousub:3301552340,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/newmarket-zoning-newmarket-zoning-board-of-adjustments-meeting-january-8th-2024"
+videoplayer.telvue.com,player/YGktjFZCLukJd_8Fx53BkVRk4tAZafS4,us:place:0880040,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/vail-co-vail-planning-and-environmental-commission"
+videoplayer.telvue.com,player/_kXnKvdgxspEjD2MtLJ9bumkRAtNPxEG,us:cousub:2301516235,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/damariscotta-2026-04-01-damariscotta-select-board"
+videoplayer.telvue.com,player/cT30AQ_xtOBQF0oJM2gIVCDX9kjgfWZb,us:place:2521990,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-council-meeting-11-27-23"
+videoplayer.telvue.com,player/ngKsmvOplIehacsLE9KAR_RKX5OityeV,us:place:1021200,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/regular-03-10-2025-regular-council"
+videoplayer.telvue.com,player/sIzQDLdmoESPXu-bj6RPf3cS7BMEteKV,us:cousub:3401347500,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/montclair-nj-2026-03-11-board-of-education-meeting"
+videoplayer.telvue.com,player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH,us:cousub:3605557144,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/penfield-ny-planning-board-meeting-march-26-2026-work-session"
+videoplayer.telvue.com,player/wuZKb9gwEY7sMACIIsr7VSJglB35kNZA,us:place:0654806,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/pacifica-ca-pacifica-city-council-8-24-26"
+videoplayer.telvue.com,player/yHwj4ve7ki-YFodojv3bS3m9Y1sTcXCC,us:place:2738564,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/2026-08-25-city-council-meeting"
 viewroyalbc.civicweb.net,,ca:csd:5917047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv View Royal
+villageofgreenport.granicus.com,,us:place:3630576,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:3630576; 1 weak page(s) e.g. /m/unknown-jurisdiction-board-of-trustees-work-session-fh
 virginia-house.granicus.com,,us:state:51,fallback,visual_confirmed,'Virginia House of Delegates Internal Portal' (landing.png) [reports/jurisdiction_screens/virginia-house.granicus.com/landing.png reports/jurisdiction_screens/virginia-house.granicus.com/meeting.png] ->  -> registry: us_states.csv Virginia
 virginia-senate.granicus.com,,us:state:51,fallback,jurisdiction_overrides, -> registry: us_states.csv Virginia
 vulcancounty.civicweb.net,,rtr:ca:ab:vulcan-county,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'Vulcan County, AB'"
 walnutcreek.granicus.com,,us:place:0683346,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Walnut Creek, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Walnut Creek city"
+walworthcowi.portal.civicclerk.com,,us:county:55127,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:55127; 1 weak page(s) e.g. /m/walworth-wi-2026-07-20-july-20-2026-land-conservation-committee-lcc
 warfield.civicweb.net,,ca:csd:5905018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Warfield
 warfieldbc.civicweb.net,,ca:csd:5905018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Warfield
 warman.civicweb.net,,ca:csd:4711068,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Warman
@@ -1130,6 +1241,9 @@ wasagabeach.escribemeetings.com,,ca:csd:3543064,fallback,wildcard_http_sweep_2,b
 wasagabeachon.civicweb.net,,ca:csd:3543064,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Wasaga Beach
 washingtoncounty.civicweb.net,,us:county:41067,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Washington County
 washingtonparishla.portal.civicclerk.com,,us:county:22117,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Washington Parish
+waukee.gov,,us:place:1982695,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:1982695; 1 weak page(s) e.g. /m/2026-08-19-waukee-city-council-meeting-august-17-2026
+waukesha.granicus.com,,us:place:5584250,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:5584250; 1 weak page(s) e.g. /m/city-of-waukesha-wi-2022-05-31-finance-committee-on-2022-05-31-6-00-pm
+wausau-wi.cablecast.tv,,us:place:5584475,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:5584475; 1 weak page(s) e.g. /m/2025-07-14-wausau-school-board-meeting-7-14-25
 waverly.civicweb.net,,us:place:1982875,fallback,ryan_stated,"Waverly, IA -- us_places.csv Waverly city"
 wawa.civicweb.net,,ca:csd:3557076,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Wawa
 welland.escribemeetings.com,,ca:csd:3526032,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Welland
