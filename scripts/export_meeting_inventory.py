@@ -237,7 +237,8 @@ def write_csv(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-HTML_TEMPLATE = """<title>Archive Meeting Inventory</title>
+HTML_TEMPLATE = """<meta charset="utf-8">
+<title>Archive Meeting Inventory</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
 <style>
 :root{--bg:#F2F4F6;--panel:#FFFFFF;--ink:#1B2530;--muted:#66717D;--line:#D5DBE1;--band:#E4E9EE;--accent:#1E5A66;--ok-bg:#DDF0E3;--ok:#1F6B3E;--bad-bg:#F8DCD9;--bad:#9F2A22;--warn-bg:#FBEAD0;--warn:#8A5410;--mut-bg:#E9ECEF;--focus:#1E5A66}
@@ -262,6 +263,7 @@ header p{margin:0;color:var(--muted);max-width:70ch}
 .wrap{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--line);border-radius:6px;background:var(--panel)}
 table{border-collapse:separate;border-spacing:0;font-size:13px;white-space:nowrap;min-width:100%}
 th,td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+td{max-width:320px;overflow:hidden;text-overflow:ellipsis}
 thead th{position:sticky;background:var(--panel);z-index:3}
 thead tr.bands th{top:0;background:var(--band);color:var(--accent);text-transform:uppercase;letter-spacing:.06em;font-size:11px;border-left:1px solid var(--line);padding:4px 10px}
 thead tr.heads th{top:25px;font-weight:600;cursor:pointer;user-select:none;font-size:12px}
@@ -324,7 +326,7 @@ function cell(k, v){
   if(k==='page_id') return '<td class="id mono">'+esc(v)+'</td>';
   if(k==='created_at') return '<td class="mono">'+esc(String(v).slice(0,10))+'</td>';
   if(MONO[k]) return '<td class="mono">'+esc(v)+'</td>';
-  return '<td>'+esc(v)+'</td>';
+  return '<td title="'+esc(v)+'">'+esc(v)+'</td>';
 }
 function renderHead(){
   const bands = '<tr class="bands"><th class="id">id</th>'+BANDS.map(b=>'<th colspan="'+b[1].length+'">'+esc(b[0])+'</th>').join('')+'</tr>';
