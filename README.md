@@ -680,6 +680,25 @@ curl -X POST -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
   "$ARCHIVE_BASE_URL/internal/low-trust-pages/mark-reviewed?ids=2215,2201,2200&dry_run=false"
 ```
 
+**The meeting inventory report (WO-124, 2026-09-09)**: `GET
+/internal/meeting-inventory` (same token gate, keyset-paginated with
+`after_id`/`limit` capped at 500, `format=csv` for a CSV page with the
+cursor in `X-Next-After-Id`) returns one flat review row per archived
+page -- the stored jurisdiction next to the government registry's name
+for its `gov_id` and whether they agree, the "City, ST" convention check,
+the stored `meeting_body` (blank when nothing was stored -- nothing here
+is guessed from a title), video/transcript presence and outcome bucket,
+the page-vs-video platform split `/coverage/detail` uses plus the raw
+video host domain, and the archive/source/video links. `GET
+/internal/meeting-inventory/summary` is one aggregate query returning
+the headline missing-field counts (no stored body, no date, no gov id,
+no video, no transcript). `scripts/export_meeting_inventory.py --out-dir
+DIR` walks both over HTTP and writes `meeting_inventory.csv`, a
+self-contained sortable/filterable `meeting_inventory.html` (sticky
+headers, per-column filters, click-a-tile-to-filter, CSV download), and
+`summary.json`. Columns and derivations live in
+`archive/utils/meeting_inventory.py`.
+
 **Diagnosing transcription chunk failures**: `GET
 /internal/transcription-failure-analysis?days=N` (token-gated the same
 way, reachable only at the Archive service's own base URL) groups every
