@@ -113,9 +113,8 @@ Standing decisions — do NOT re-raise  (8)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (2)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (1)
   [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
-  [JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Production actions only Ryan should take  (5)
@@ -132,7 +131,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
-  [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
   [NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
@@ -151,6 +149,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
+  [NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
@@ -240,8 +239,7 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (13)
-  `[NEEDS-AUDIT]` `tenant_hints.csv` still carries 8 confirmed-wrong…
+Trust, safety & data quality  (12)
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
   `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
   `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix…
@@ -490,12 +488,6 @@ so that work reads together.
   - **Impact**: real, repeated, cross-platform — job 1157 (San Diego CA, Granicus, lost 15/25 chunks, 60% of the meeting), job 1226 (College Station TX, CivicClerk, 11/17), job 1259 (Falls Church VA, Granicus, gave up at 14/15), job 1377 (Mansfield TX, CivicClerk, gave up at 1/6), job 1766 (Alameda County CA "BOS View", Granicus, gave up at 17/22, 2026-09-05) — same exact `errno 1094995529` signature every time, not one platform's quirk. WO-54/58's whole-audio-cache path targets exactly the seek-hostile progressive sources (ChampDS, Granicus) most likely to contain a corrupt/interrupted byte range, so this sits on the path most likely to need the guard.
   - **Next action**: add the same `_mean_volume_db()` decodability check to `slice_cached_audio()`, returning `(False, "...isn't decodable (likely truncated/corrupt)")` instead of `(True, None)` on an undecodable slice. `worker/main.py`'s existing per-chunk retry/budget logic already treats that shape as a normal retryable failure — no other code path needs to change.
   - **History**: found by the inbox-triage Routine's 2026-08-29 run; the 2026-08-30, -31, and 2026-09-01 runs each confirmed a fresh independent occurrence on a new source.
-
-- **[JUST-DO-IT] `proxy_get()`/`_proxy_to_archive()` catch `except Exception`, which doesn't catch `asyncio.CancelledError` — a fresh, still-open instance of the "Unclosed connector" leak class the 2026-08-21 fix only partly closed.**
-  - **Issue**: `app/archive_client.py`'s `proxy_get()` (`except Exception:` around `await session.get(...)`, currently line 490) and `app/main.py`'s `_proxy_to_archive()` (`except Exception:` around `archive_client.proxy_get(...)`, currently line 1701) both leave `asyncio.CancelledError` (a `BaseException` subclass since Python 3.8) unhandled, so a request cancelled mid-fetch (client/bot disconnects while the Archive fetch is in flight) leaks the aiohttp session's connector until GC finalizes it. Re-confirmed by direct read of current code on 2026-09-05 — the gap is unchanged; only the line numbers have drifted from the original triage note (`archive_client.py:465-474`, `app/main.py:1622-1632`).
-  - **Impact**: same self-healing-via-GC leak class as the already-fixed PYTHON-FASTAPI-V/S/Q/T/W/X cases (`BACKLOG_DONE.md`'s "Five bundled easy-win fixes"), not a user-visible crash — surfaced fresh as Sentry **PYTHON-FASTAPI-13** (2026-08-28, real production traffic on `/state/massachusetts`), a new issue ID confirming this is a fresh recurrence via a path that fix didn't close. Structurally open on every proxied route (`/m/*`, `/state/*`, `/j/*`, `/meetings`, `/coverage`, sitemap, feed) since they all funnel through these two functions.
-  - **Next action**: in both functions, close the session on `asyncio.CancelledError` too, before re-raising it — e.g. `except (Exception, asyncio.CancelledError):` wrapping the existing close, always re-raising the cancellation rather than swallowing it.
-  - **History**: `BACKLOG_DONE.md`'s "Five bundled easy-win fixes" (2026-08-21). Found by the inbox-triage Routine's 2026-08-29 run.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -768,40 +760,6 @@ structural change than the two entries below.
   - **History**: found 2026-09-05 applying WO-110's report by hand
     while answering a question about the Edmonton/Niagara Falls fix;
     not yet in `BACKLOG_DONE.md`.
-
-- **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
-  Content-Length` on the resolver, seen twice in one production log
-  (2026-09-05) on two different routes.**
-  - **Issue**: Ryan pasted a real Render log window that shows this
-    exception raised twice, both times inside
-    `starlette/middleware/base.py`'s `BaseHTTPMiddleware.__call__` →
-    `starlette/responses.py:167`'s plain (non-streaming) `Response.
-    __call__`, on `GET /api/health/resolve-check` and `GET /` — a
-    `Content-Length` header disagreeing with the actual body bytes sent.
-    `app/main.py`'s `handle_head_requests` middleware
-    (`@app.middleware("http")`, which Starlette implements via
-    `BaseHTTPMiddleware`) wraps every single request through this repo's
-    resolver service, so it's the one shared thing both failing routes
-    have in common — not confirmed as the actual cause yet, just the
-    common factor visible from the log alone.
-  - **Impact**: unconfirmed how often this fires or whether it's user-
-    visible (a broken/truncated page load vs. a clean retry) — only
-    known from this one pasted log window, not independently reproduced
-    or measured against Sentry/UptimeRobot yet.
-  - **Next action**: check Sentry for this exact `RuntimeError` string to
-    get a real occurrence count and see if it correlates with anything
-    (a specific route, a response size, gzip). If `handle_head_requests`
-    is confirmed as the trigger, the fix is probably to stop
-    unconditionally wrapping every request in `BaseHTTPMiddleware` for
-    the (rare) HEAD case and instead route HEAD handling some other way
-    that doesn't re-stream every GET too.
-  - **Constraint**: don't assume this is related to the SIGABRT/status-134
-    crash entry above just because both came out of the same pasted log
-    — they're different failure shapes (a process-level abort vs. an
-    HTTP-protocol-level assertion inside a request handler) with no
-    evidence connecting them beyond appearing in the same window.
-  - **History**: found 2026-09-05 from Ryan sharing a real Render log
-    after a redeploy; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
   wrong `gov_id` from before the cross-border name-collision guard
@@ -1619,10 +1577,18 @@ structural change than the two entries below.
     access often permission-gated to the org's own tenant) may make
     public past-recording links structurally rarer than Zoom's shareable
     `rec/share` links, but that's inference, not confirmed — worth a
-    dedicated search pass before concluding either way.
+    dedicated search pass before concluding either way. Further
+    confirmation, 2026-09-08 (Utah PMN pilot, `rtr-business/research/
+    ENUMERATION_METHODS.md` §105): 4 more real `zoom.us` "Audio File
+    Location" values turned up unprompted in a 2,581-notice statewide
+    scan (`us02web.zoom.us` x3, `utah-gov.zoom.us` x1) — not yet checked
+    whether any are `rec/share`-shaped past recordings vs. live join
+    links, but a second, independent discovery channel surfacing Zoom
+    unprompted raises this past "three hits in one evening."
   - **Impact**: unknown real scope, but not zero — three independent real
     hits in one evening's research on an unrelated task, plus at least
-    one confirmed real ingestible-shaped example (Rockport MA/Zoom). Any
+    one confirmed real ingestible-shaped example (Rockport MA/Zoom), plus
+    4 more real sightings from an unrelated statewide Utah scan. Any
     jurisdiction using Teams/Zoom as its primary or sole platform is
     currently invisible to every discovery method in this file, since
     none of them check for these two at all.
@@ -1640,6 +1606,35 @@ structural change than the two entries below.
     following up on the user's question about competitor
     captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
     this is the first record of it.
+
+- **[NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
+  a general-purpose file host (Google Drive, SoundCloud) — 28 real,
+  confirmed-populated examples from one Utah scan.**
+  - **Issue**: `utah_pmn.py` (see `BACKLOG_DONE.md`'s entry on that
+    adapter) resolves a same-domain uploaded file directly, but a
+    populated "Audio File Location" pointing to `drive.google.com` (21
+    real examples) or `soundcloud.com` (7) isn't a directly-fetchable
+    media URL the way a bare `utah.gov/pmn/files/*` file is — a Drive
+    share link needs its own redirect-chain/direct-download investigation
+    first.
+  - **Impact**: 28 real, confirmed-populated links currently unresolvable
+    — a small slice on their own, but the same pattern ("just put the
+    recording on Drive") is plausible nationwide for
+    smallest/least-resourced governments generally, not just Utah's PMN
+    notices specifically.
+  - **Next action**: per this project's own rule against building an
+    adapter without a live sample, fetch a handful of the real Drive/
+    SoundCloud links logged in `rtr-business/research/
+    pmn_utah_pilot_log.csv` (`skipped` outcome, reason containing "isn't
+    on a known video/audio platform") to confirm they're actually
+    fetchable server-side (Drive's sharing-link redirect chain,
+    direct-download vs. preview-only gating) before writing anything.
+  - **Constraint**: don't assume every Drive/SoundCloud link is a full
+    meeting recording without checking — a "Public Information Handout"
+    or similar could plausibly also live on Drive.
+  - **History**: found 2026-09-08 running the Utah PMN pilot; the
+    same-domain-file half of this entry shipped 2026-09-09, see
+    `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
@@ -3478,36 +3473,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### `[NEEDS-AUDIT]` `tenant_hints.csv` still carries 8 confirmed-wrong rows, and only `.escribemeetings.com` hosts were checked for this pattern
-
-- **Issue**: the root cause AND the 26 (really 29, once the affected
-  pages were actually counted) already-published wrong pages are both
-  fixed — see `BACKLOG_DONE.md`'s 2026-09-06 entry for the resolver.py
-  guard, the 8 new `authoritative` `tenant_overrides.csv` pins, and the
-  page backfill. What's left: (1) `tenant_hints.csv` still carries all 8
-  wrong rows (erin/pickering/markham/clarington/cornwall/northumberland/
-  strathcona/brockton) — harmless now (the pins short-circuit the ladder
-  before `tenant_hints.csv` is ever consulted for these hosts, and the
-  resolver guard protects any host that isn't pinned), but still
-  objectively wrong data sitting in a file other code could reasonably
-  trust differently someday; (2) this whole investigation only checked
-  `.escribemeetings.com` hosts specifically against the Canadian
-  gazetteer — `tenant_hints.csv` has ~1,700 rows total across other
-  platforms (Granicus, Legistar, CivicWeb, etc.) that were never swept
-  for the same wrong-country shape.
-- **Impact**: low — both remaining items are data hygiene, not live
-  wrong pages. A future host hitting the same collision on an unchecked
-  platform would still be protected by the resolver.py guard itself
-  (it declines rather than guesses), just wouldn't get a pin to fully
-  resolve it the way these 8 now do.
-- **Next action**: (1) correct or remove the 8 wrong `tenant_hints.csv`
-  rows; (2) run the same cross-reference (every hint host's bare name
-  against `ca_csd`/`ca_cd` via `_has_canadian_namesake()`) across all of
-  `tenant_hints.csv`, not just the `.escribemeetings.com` subset, and
-  pin any further confirmed cases the same way.
-- **History**: found and root-caused 2026-09-06 while manually chasing a
-  wildcard-sweep coverage gap; fix + backfill in `BACKLOG_DONE.md`, same
-  date.
 
 ### `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort` accurate
 

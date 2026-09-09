@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import Any, Optional
@@ -487,12 +488,17 @@ async def proxy_get(
         response = await session.get(
             url, headers=headers or None, allow_redirects=allow_redirects
         )
-    except Exception:
+    except (Exception, asyncio.CancelledError):
         # session.get() itself can raise (timeout, connection reset, DNS
         # failure) before headers ever come back -- if we don't close the
         # session here it leaks until GC finalizes it, which is when
         # aiohttp emits its "Unclosed connector" warning (confirmed via
         # Sentry issues PYTHON-FASTAPI-V/PYTHON-FASTAPI-S, 2026-08-20/21).
+        # CancelledError is a BaseException since Python 3.8, so a bare
+        # `except Exception` misses it -- a request cancelled mid-fetch
+        # (client/bot disconnects while the Archive fetch is in flight)
+        # leaked the connector this way (Sentry PYTHON-FASTAPI-13,
+        # 2026-08-28). Always re-raised, never swallowed.
         await session.close()
         raise
     return session, response

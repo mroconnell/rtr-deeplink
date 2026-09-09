@@ -80,11 +80,17 @@ class ResolvedMeeting(BaseModel):
         None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     )
     video_format: Optional[str] = (
-        # "m3u8" | "mp4" | "youtube" | "vimeo" | "viebit" | None.
-        # "youtube" and "vimeo" each need their own iframe + cross-frame
-        # Player API pathway rather than <video>, and "viebit" needs a
-        # plain iframe reloaded with ?t= (no API exists there at all) --
-        # see app/static/player.js's initVideo() for all four branches.
+        # "m3u8" | "youtube" | "vimeo" | "viebit" get their own branch in
+        # app/static/player.js's initVideo() -- "youtube"/"vimeo" each
+        # need their own iframe + cross-frame Player API pathway rather
+        # than <video>, "viebit" needs a plain iframe reloaded with ?t=
+        # (no API exists there at all), and "m3u8" gets hls.js/native
+        # Safari HLS. Every other value ("mp4", or a bare hosted audio
+        # file's own extension -- "mp3"/"m4a"/etc, see utah_pmn.py --
+        # falls into the same plain native `<video src=...>` branch,
+        # which plays an audio-only source fine (no picture, working
+        # audio + seek), so no new branch is needed there. None when no
+        # video/audio was found at all.
         None
     )
     segments: List[TranscriptSegment] = []
