@@ -192,14 +192,16 @@ async def test_accepts_a_national_id_the_committed_file_has_not_got_yet():
     be pinned until someone re-ran the scorer -- friction for no safety
     gain, since for a national id every field is a function of the id.
 
-    Autauga County, AL: a real county FIPS, and one of the 2,856 in
+    Barbour County, AL: a real county FIPS, and one of the 2,856 in
     us_counties.csv that no archived page has ever resolved to, so the
-    committed file has no row for it."""
-    assert "us:county:01001" not in registry.governments()
-    gov = registry.government_for_id("us:county:01001")
+    committed file has no row for it. Was Autauga County (`us:county:
+    01001`) until the 2026-09-09 score_gov_registry.py re-run picked
+    that one up for real."""
+    assert "us:county:01005" not in registry.governments()
+    gov = registry.government_for_id("us:county:01005")
     assert gov is not None
     assert (gov.gov_name, gov.state, gov.gov_type) == (
-        "Autauga County",
+        "Barbour County",
         "AL",
         "county",
     )
