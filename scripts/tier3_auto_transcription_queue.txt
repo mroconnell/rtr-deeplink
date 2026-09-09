@@ -1,15 +1,3 @@
-http://southbrunswicktownnj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2773&MediaPosition=&ID=13102&CssClass=
-http://springfieldcityma.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4585&MediaPosition=&ID=6380&CssClass=
-http://stmaryscityga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1102&Format=
-http://summitcitynj.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2206&MediaPosition=&ID=7529&CssClass=
-https://sunsetbeachnc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=1045&MediaPosition=&ID=1245&CssClass=
-https://santacruzcountyca.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=None&MeetingID=1720
-https://tonawandatownny.iqm2.com/Citizens/FileOpen.aspx?ID=52485&MeetingID=2851&Type=30
-http://troupcountyga.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=2377&Format=None
-http://westbendwi.iqm2.com/Citizens/Detail_Communication.aspx?Frame=&MeetingID=2257&MediaPosition=&ID=1044&CssClass=
-http://willcountyil.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=4568&MediaPosition=&ID=10253&CssClass=
-https://woodridgevillageil.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2963&MediaPosition=&ID=12936&CssClass=
-https://yorkcountysc.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2203&MediaPosition=&ID=7289&CssClass=
 https://clerkshq.com/agsummit-ri?docId=AGMTG2017A
 https://clerkshq.com/Barrington-ri?docId=AGENDA
 https://clerkshq.com/CentralFalls-ri?docId=sep11_23ag&path=CF_CityCouncil%2CCF_Agendas%2Csep11_23ag%2C
