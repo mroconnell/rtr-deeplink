@@ -128,7 +128,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (84)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -140,6 +140,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
+  [NEEDS-AUDIT] Same source URL, different query string, two
+  [NEEDS-AUDIT] Three pages from the school-district audit resolved
+  [LATER] GovDelivery -- a proposed discovery lead for finding new
+  [LATER] Two real, scoped enumerator/adapter gaps found chasing the
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
@@ -172,7 +176,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (14)
+  Jurisdiction extraction & backfill  (16)
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
     `[NEEDS-AUDIT]` `[EASY]` `classify.py`'s SPECIAL_DISTRICT rule…
     `[NEEDS-AUDIT]` `[EASY]` `pub-*` eScribe hosts resolve to a US…
@@ -187,6 +191,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (78)
     `[NEEDS-AUDIT]` Census-table baseline validation: mid-word truncation
     `[LATER]` Domain guesser state-name collision — fixed, 6 rows still
     `[LATER]` ~25 smaller consolidated city-county governments still need
+    `[LATER]` 5 small Southampton County, VA towns (Boykins, Branchville,
+    `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
   Adapter & platform gaps  (23)
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
@@ -1129,6 +1135,13 @@ structural change than the two entries below.
     `ed59dfa`). The underlying picker bug that produced these 9 pages is
     still open -- nothing above prevents a future enumeration pass from
     hitting the same shared-tenant/no-discriminator failure again.
+  - **Priority: HIGH.** Confirmed by two independent audits (this one and
+    the full-corpus screen below) to be a real, repeating failure mode,
+    not a one-off -- every cleanup so far has been reactive (delete after
+    the fact), and nothing stops the next enumeration pass from
+    reproducing it. The per-candidate discriminator described in **Next
+    action** above is the actual fix; flagged 2026-09-09 as the highest-
+    leverage item on this whole list.
 
 - **[NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
   wrong-content pattern at much larger scale than the 9-page school-
@@ -1161,7 +1174,12 @@ structural change than the two entries below.
     the rest a mix of a regex limitation on plurals and a judgment call
     about whether ceremonial/civic content like State-of-the-City
     addresses is in scope at all) -- none of the 305 were individually
-    re-verified.
+    re-verified. **Priority: HIGH** on finishing this specific bucket --
+    the 50-item sample's ~20-30% hit rate on real non-meeting content,
+    projected across all 305, implies real live junk this audit hasn't
+    found yet; flagged 2026-09-09 as the other top-priority item
+    alongside the discriminator fix above, not because the fix is hard
+    but because nobody has looked at the other ~255 rows yet.
   - **Update 2026-09-08: the 16 non-meeting-content pages are deleted**
     (`"deleted":16`, all 16 `found`, none `not_found`, confirmed via the
     same `POST /internal/admin/delete-pages` treatment as the original 9).
@@ -1175,11 +1193,102 @@ structural change than the two entries below.
     open work.
   - **Next action**: the 23 wrong-government-type pages need either 23
     individual `POST /internal/jurisdiction/override` calls or a new
-    bulk endpoint -- no bulk re-tag tool exists today. That decision, plus
-    whether to pursue the 13 state-specific-review and 305 uncategorized
-    rows further, is left to Ryan, not made unilaterally.
+    bulk endpoint -- no bulk re-tag tool exists today. **Priority: LOW
+    (trivial)** -- the content is already correct and live, this is a
+    metadata correction with no user-facing urgency; flagged 2026-09-09.
+    The 13 state-specific-review rows are similarly **Priority: LOW
+    (trivial)** -- small count, needs desk research (state school-
+    governance structure) more than engineering time. Both left to Ryan,
+    not made unilaterally.
   - **History**: full per-category CSVs in `rtr-business/research/
     archive_audit/categorized/`; raw export in `all_pages_raw.jsonl`.
+
+- **[NEEDS-AUDIT] Same source URL, different query string, two
+  `MeetingPage` rows -- a real URL-normalization gap.**
+  - **Issue**: Prince George's County Public Schools' "Student Built
+    TinyHome" got ingested twice as two separate live pages
+    (`/m/2026-03-03-student-built-tinyhome` and a duplicate
+    `/m/2026-03-03-student-built-tinyhome-7c70cf`) from the same
+    underlying Cablecast show, `pgcps.cablecast.tv/show/3178` vs
+    `pgcps.cablecast.tv/show/3178?site=1` -- `normalize_url()` doesn't
+    treat these as the same source, so the dedupe-by-source-URL path
+    never catches it. Confirmed live 2026-09-06 while auditing the
+    wrong-government-content pages above; both copies were deleted along
+    with the rest of that batch, not investigated at the code level.
+  - **Impact**: unknown how many more duplicate pairs exist across the
+    corpus from the same class of query-string variation -- not
+    scanned for.
+  - **Next action**: none yet. **Priority: LOW (trivial)** -- a real
+    gap, but low-frequency (this is the only confirmed instance) and
+    each occurrence is cosmetic (a duplicate page, not wrong content)
+    rather than user-facing-broken; flagged 2026-09-09.
+  - **History**: found via `rtr-business/research/archive_audit/`'s
+    full-corpus screen entry above.
+
+- **[NEEDS-AUDIT] Three pages from the school-district audit resolved
+  with `jurisdiction=None` entirely -- missing, not wrong.**
+  - **Issue**: Andover, MA (CivicPlus/`cloud.castus.tv`), Duval, FL
+    (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain strongly
+    suggests "Duval County School Board," a dedicated tenant, so likely
+    correct content just missing the tag), and East Brunswick Township,
+    NJ (NovusAgenda, where title/date also both came back `None` --
+    possibly not a real per-meeting page at all, unconfirmed) all
+    resolved with no jurisdiction attached at all. Confirmed live
+    2026-09-06/07 while re-resolving candidates for the school-district
+    enumeration effort; not root-caused at the code level.
+  - **Impact**: 3 confirmed instances; likely related to the same class
+    of gap as the wrong-government-type pattern above (a tenant/platform
+    the jurisdiction-enrichment pipeline doesn't have a rule for) but not
+    confirmed as the same root cause.
+  - **Next action**: none yet. **Priority: LOW (trivial)** -- 3 known
+    instances, no user-facing harm beyond a missing metadata field;
+    flagged 2026-09-09.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §63
+    Round 7.
+
+- **[LATER] GovDelivery -- a proposed discovery lead for finding new
+  jurisdictions, never tried.**
+  - **Issue**: GovDelivery is a real government email/SMS notification
+    platform (`public.govdelivery.com/accounts/{ACCOUNT}/subscriber/new`)
+    whose subscription pages could plausibly be enumerated the same way
+    Legistar/Granicus hostnames were, and whose notices sometimes carry a
+    direct meeting/agenda link -- a lead, not a built method.
+  - **Impact**: none yet -- speculative, no candidate hosts collected.
+  - **Next action**: none planned; full writeup with the open questions
+    (does GovDelivery reliably link to a real meeting/agenda, or mostly
+    generic announcements?) already lives in the History link below --
+    start there before building anything. **Priority: LOW** -- proposed
+    only, no evidence yet it's worth the enumeration effort.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §60,
+    full detail and the "subscribe forward" idea.
+
+- **[LATER] Two real, scoped enumerator/adapter gaps found chasing the
+  school-district effort's remaining 45 leads -- CivicLive and a 4th
+  Cablecast template.**
+  - **Issue**: **CivicLive** (Conway School District, WA) -- no
+    enumerator exists in `rtr-discovery`, but `rtr-deeplink` already has
+    a real, resolvable `app/platforms/civiclive.py` adapter, so unlike a
+    platform with no adapter at all, this genuinely just needs a
+    `discovery/enumerators/civiclive.py` written -- no prior art to
+    reuse. **Cablecast FrontDoor template** (Midland Public Schools, MI;
+    Sioux Falls School District 49-5, SD) -- both fail `rtr-discovery`'s
+    `CablecastEnumerator` with "no `__remixContext` found -- unsupported
+    template," a real 4th Cablecast template (`cablecast.py` already
+    documents 3: Remix, CablecastPublicSite/Ember, and the universal
+    `cablecastapi` backend underneath both) not yet supported.
+  - **Impact**: 3 known school districts blocked (1 CivicLive, 2
+    Cablecast FrontDoor) -- likely not the only ones, since these are
+    real platform-coverage gaps, not per-tenant issues.
+  - **Next action**: CivicLive needs a new enumerator, no prior art.
+    Cablecast FrontDoor needs `cablecast.py` extended to detect and
+    handle the new template, following the same pattern as the
+    CablecastPublicSite addition -- check the real raw HTML/API for one
+    of the two known tenants first, per this project's own house rule,
+    before writing anything. **Priority: LOW** -- 3 known-blocked
+    districts, real but small.
+  - **History**: `~/Documents/rtr-discovery/
+    SCHOOL_DISTRICT_ENUMERATION_HANDOVER.md` Group 3;
+    `rtr-business/research/ENUMERATION_METHODS.md` §63.
 
 - **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
@@ -2356,6 +2465,95 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     remaining consolidated city-county, same process used for the 13
     already done.
   - **History**: `BACKLOG_DONE.md`, 2026-08-20/21.
+
+- **`[LATER]` 5 small Southampton County, VA towns (Boykins, Branchville,
+  Capron, Ivor, Newsoms) have no distinguishable video content of their
+  own — currently falls back to the county, which is benign but not
+  exact.**
+  - **Issue**: all 5 towns' only known web presence is Southampton
+    County's own site (`southamptoncounty.org`), whose live-stream page
+    embeds a single shared Swagit tenant
+    (`southamptoncountyva.new.swagit.com/views/278/`). Checked that
+    tenant's own channel listing directly (not assumed): the real,
+    non-boilerplate categories are Board of Supervisors, Planning
+    Commission, and Budget Workshops & Public Hearings — no per-town
+    channel exists for any of the 5. This isn't a shared page hiding
+    separable per-town content; the content is genuinely county-only.
+  - **Impact**: currently low/benign. `resolve_government()` already
+    lands on Southampton County's own correct `gov_id` for this host+path
+    via its normal domain/content signal — not the wrong-government
+    failure mode this project has hit elsewhere (e.g. the Gloucester
+    VA/MA collision), just an imprecise-but-honest fallback to the parent
+    government instead of the specific town. Ryan's read: fine as-is for
+    now for this one VA case. The general shape (a small town's meetings
+    genuinely living only on its county's platform, no per-town signal to
+    recover) is a real, recurring class of problem this project has seen
+    with mixed outcomes elsewhere -- worth fixing generally rather than
+    per-town if revisited.
+  - **Next action**: none required now. If revisited, a `tenant_overrides.csv`
+    entry pinning `southamptoncounty.org`'s live-stream path to
+    `us:county:51175` would make the current (correct) fallback
+    authoritative rather than incidental, protecting it against a future
+    override attempt that assumes per-town content exists. Only worth
+    doing if/when a real per-town discriminator is found, or as pure
+    hardening if this host's resolution ever changes behavior.
+  - **History**: `rtr-business` research session, 2026-09-07/08
+    (`research/ENUMERATION_METHODS.md` §96/§97/§99/§100 — StateDir-only
+    two-hop scan, Step 3 dry run, Step 2 specify pass on this
+    population).
+
+- **`[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
+  domain `_jurisdiction_from_subdomain()` can't parse loses jurisdiction
+  entirely, filing under "Unidentified government" instead of falling
+  back to the CivicPlus tenant's own government.**
+  - **Issue**: Cambridge, MD's AgendaCenter (`choosecambridge.com`) is a
+    real, live example: `resolve_civicplus_seed()`'s
+    `subdomain_jurisdiction = finder._jurisdiction_from_subdomain(seed_url)`
+    returns nothing for this domain (the town's name, "cambridge", isn't
+    recoverable from "choosecambridge"), so the override
+    `if subdomain_jurisdiction: result.jurisdiction = subdomain_jurisdiction`
+    never fires. The picked agenda row's video link pointed at a
+    Town Hall Streams URL with no video actually found there, and
+    `townhallstreams.py`'s own resolve() has no jurisdiction signal of
+    its own either — so the stored page ended up filed under
+    "Unidentified government (townhallstreams.com)" even though the
+    agenda title itself literally says "Cambridge, MD 21613" and the
+    agenda link is `choosecambridge.com/AgendaCenter/...`. Live now:
+    `/m/2026-09-03-thursday-september-3-2026-agenda-for-mayor-s-accessibility-committee`.
+    Found running `scripts/nationwide_1911_ingest.py` (rtr-business
+    batch 3, 2026-09-09) — this script's own `civicplus_seed_urls()`/
+    `resolve_civicplus_seed()` already has the input CSV row's real
+    `unit_name`/state in hand (from `nationwide_1911_confirmed_hits.csv`,
+    keyed by a Census `gov_id`) but never threads it through as a
+    fallback when the adapter-level jurisdiction guess comes back empty.
+  - **Impact**: low volume so far (1 of 486 rows this batch), but the
+    failure mode is silent — a correctly-ingested, real government page
+    lands unfindable under `/j/*`/`/state/*` for its actual jurisdiction
+    (Cambridge, MD) and instead pollutes a generic "Unidentified
+    government (townhallstreams.com)" bucket that likely has other
+    similar victims from the two prior nationwide batches (395/431) —
+    not yet checked.
+  - **Next action**: two independent fixes, either sufficient alone: (1)
+    in the app itself, extend `_jurisdiction_from_subdomain()` or its
+    caller to fall through to a Wikidata/Census place lookup keyed on the
+    resolved page's own title/state text rather than only the domain
+    string; (2) in the batch scripts specifically
+    (`nationwide_395_ingest.py`/`nationwide_431_ingest.py`/
+    `nationwide_1911_ingest.py`), thread the input CSV row's own
+    `unit_name` (and state, derivable from the `gov_id`'s FIPS/GNIS
+    prefix) through as `result.jurisdiction` whenever the adapter comes
+    back empty — these scripts already know exactly which government
+    each row is for, which is strictly more information than any
+    adapter-side domain guess.
+  - **Constraint**: don't just special-case `choosecambridge.com` — the
+    same "self-hosted domain name doesn't obviously contain the town
+    name" shape will recur (this repo has hit it before with white-labeled
+    CivicPlus tenants generally, see `resolve_civicplus_seed()`'s own
+    docstring).
+  - **History**: found spot-checking `scripts/nationwide_1911_ingest.py`'s
+    output, 2026-09-09 — not yet in `BACKLOG_DONE.md` (nothing fixed
+    yet).
+
 ### Adapter & platform gaps
 
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
