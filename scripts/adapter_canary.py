@@ -133,9 +133,7 @@ CANARY_URLS: dict[str, list[str]] = {
     "iqm2": ["https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601"],
     # University Place, WA City Council -- the real URL invintus.py's own
     # tests/test_invintus.py fixtures were built and verified against.
-    "invintus": [
-        "https://player.invintus.com/?clientID=1872740071&eventID=2026081000"
-    ],
+    "invintus": ["https://player.invintus.com/?clientID=1872740071&eventID=2026081000"],
     # Charlotte, NC -- the ordinary Legistar->Granicus delegation, plus (as
     # of 2026-08-29) a real Phoenix URL that exercises WO-30's
     # city-YouTube-channel fallback (app/platforms/youtube_channel.py)

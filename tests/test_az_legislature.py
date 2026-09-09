@@ -19,6 +19,7 @@ def _register_delegates():
     register(InvintusAssetFinder())
     register(ArizonaLegislatureAssetFinder())
 
+
 # Arizona State Legislature (azleg.gov) -- found 2026-09-09 chasing the
 # Invintus prevalence sweep (WO-102): clientID 6361162879 turned out to
 # belong to azleg.gov's own `/videoplayer/?eventID=` wrapper pages. See
@@ -65,8 +66,7 @@ async def test_resolve_real_house_commerce_committee_meeting():
     # code, not a jurisdiction) -- see module docstring.
     assert result.jurisdiction == "Arizona State House of Representatives"
     assert (
-        result.video_url
-        == "https://m-download.invintus.com/6361162879/"
+        result.video_url == "https://m-download.invintus.com/6361162879/"
         "991291670a0bf1ecb083ecfb3697d6b97da2d510.mp4"
     )
     assert result.video_format == "mp4"
@@ -99,7 +99,9 @@ def test_derive_jurisdiction_from_senate_signal():
 
 def test_derive_jurisdiction_falls_back_when_no_chamber_signal():
     assert (
-        ArizonaLegislatureAssetFinder._derive_jurisdiction("Rewind: Your Week in Review")
+        ArizonaLegislatureAssetFinder._derive_jurisdiction(
+            "Rewind: Your Week in Review"
+        )
         == "Arizona State Legislature"
     )
 
@@ -107,7 +109,9 @@ def test_derive_jurisdiction_falls_back_when_no_chamber_signal():
 def test_is_az_legislature_video_url_requires_eventid_and_host():
     assert is_az_legislature_video_url(PAGE_URL) is True
     assert is_az_legislature_video_url("https://www.azleg.gov/videoplayer/") is False
-    assert is_az_legislature_video_url("https://www.azleg.gov/archivedmeetings/") is False
+    assert (
+        is_az_legislature_video_url("https://www.azleg.gov/archivedmeetings/") is False
+    )
     assert (
         is_az_legislature_video_url("https://player.invintus.com/?clientID=1&eventID=2")
         is False

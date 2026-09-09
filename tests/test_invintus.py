@@ -1,6 +1,10 @@
 import pytest
 
-from app.platforms.invintus import InvintusAssetFinder, is_invintus_meeting_url, parse_invintus_ids
+from app.platforms.invintus import (
+    InvintusAssetFinder,
+    is_invintus_meeting_url,
+    parse_invintus_ids,
+)
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -45,14 +49,16 @@ async def test_resolve_real_university_place_city_council():
     assert result.jurisdiction == "University Place"
     assert result.meeting_body == "University Place City Council"
     assert (
-        result.video_url
-        == "https://m-download.invintus.com/1872740071/"
+        result.video_url == "https://m-download.invintus.com/1872740071/"
         "096f7a9a4fefe5971b5f2b04b34c444fba43a5ee.mp4"
     )
     assert result.video_format == "mp4"
     assert result.video_warnings == []
     assert len(result.segments) == 30
-    assert result.segments[0].text == "All right, all right good evening ladies and gentlemen."
+    assert (
+        result.segments[0].text
+        == "All right, all right good evening ladies and gentlemen."
+    )
     assert result.transcript_language == "en"
     assert result.transcript_warnings == []
 

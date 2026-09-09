@@ -9,7 +9,12 @@ from .base import AssetFinder
 from .models import ResolvedMeeting, TranscriptSegment
 
 logger = logging.getLogger("rtr_deeplink.invintus")
-from ..utils.vtt_parser import decode_vtt_bytes, detect_language_from_texts, is_likely_garbled, parse_vtt
+from ..utils.vtt_parser import (
+    decode_vtt_bytes,
+    detect_language_from_texts,
+    is_likely_garbled,
+    parse_vtt,
+)
 
 # Invintus Media (player.invintus.com) -- a general-purpose government
 # webcasting platform (state legislatures, county boards, city councils),
@@ -143,7 +148,9 @@ class InvintusAssetFinder(AssetFinder):
 
             title = data.get("title")
             date = self._parse_date(data.get("startDateTime"))
-            jurisdiction, meeting_body = self._extract_categories(data.get("categories"))
+            jurisdiction, meeting_body = self._extract_categories(
+                data.get("categories")
+            )
 
             video_warnings: List[str] = []
             download_links = data.get("downloadLinks") or {}
