@@ -92,6 +92,65 @@ suite (2,773 tests) passes.
 
 **History**: `app/utils/jurisdiction_data/tenant_hints.csv`, this PR.
 
+## `handle_head_requests` left `request.scope["method"]` mutated to `GET`, so uvicorn enforced a real Content-Length against the empty HEAD body it was sending — `RuntimeError: Response content shorter than Content-Length` on `/` and `/api/health/resolve-check` [Done 2026-09-09]
+
+Confirmed and fixed the `[NEEDS-AUDIT]` entry filed 2026-09-05 (BACKLOG.md,
+"seen twice in one production log on two different routes"), which had
+found the right common factor (`handle_head_requests`) but not yet the
+mechanism.
+
+**Root cause**: for a HEAD request, `app/main.py`'s `handle_head_requests`
+middleware rewrites `request.scope["method"] = "GET"` in place so the real
+GET handler runs unmodified, then builds a bodyless `Response(content=b"",
+headers=dict(response.headers), ...)`. That part was always correct. The
+bug is that the scope mutation was never undone. uvicorn's own HTTP
+protocol layer (`httptools_impl.py`) reads that *same* scope dict later,
+at send time — after this middleware has already returned — specifically
+to decide whether to enforce the outgoing `Content-Length` against the
+actual number of body bytes sent; it deliberately skips that enforcement
+when `scope["method"] == "HEAD"`. With the scope left at `"GET"`, uvicorn
+treated the response as a real GET and enforced the real (correct,
+non-zero) `Content-Length` a plain `Response`/`JSONResponse` route already
+computed on the downstream GET — e.g. `/`, `/api/health/resolve-check` —
+against the intentionally-empty HEAD body, and raised `RuntimeError:
+Response content shorter than Content-Length`.
+
+This also explains why the access log showed `GET /` / `GET
+/api/health/resolve-check` rather than `HEAD` — `request.scope["method"]`
+was already rewritten before uvicorn's access logger ran. The real
+trigger is almost certainly an external uptime monitor; the
+`resolve-check` route's own docstring says it exists "for an external
+uptime monitor to poll," and HEAD is a common default for those. Streaming
+proxy routes (`/m/*` via `_proxy_to_archive`'s `StreamingResponse`) were
+never affected — Starlette only auto-populates `Content-Length` from
+`self.body`, which a `StreamingResponse` never sets.
+
+**Fix**: restore `request.scope["method"] = "HEAD"` (in a `finally`)
+immediately after `call_next` returns, before building and returning the
+bodyless response — one line, no header logic needed. `Content-Length`
+itself is correctly left untouched (RFC 9110 4.2 wants the real value on
+a HEAD response); the bug was never about the header's value, only about
+which enforcement path uvicorn took to send it.
+
+**Verified**: added
+`test_resolver_head_middleware_restores_scope_method_to_head` to
+`tests/test_head_requests.py`, calling `handle_head_requests` directly
+(TestClient's in-process ASGI transport doesn't exercise uvicorn's real
+send-time Content-Length enforcement, which is why the existing HEAD
+tests in that file never caught this) — confirmed it fails against the
+pre-fix code (`scope["method"] == "GET"` after the call) and passes
+after. `ruff check`/`ruff format --check` clean; full `pytest` run (2,786
+passed, 15 skipped, same pre-existing-skip baseline as recent runs) —
+this change only touches `app/main.py` and its own test file.
+
+**History**: filed 2026-09-05 by Ryan pasting a real Render log window
+after a redeploy. Re-surfaced 2026-09-09 by a second live occurrence
+(site-wide 502, same `RuntimeError`, same log window as an unrelated
+already-fixed-but-undeployed aiohttp-session leak and a Playwright
+Chromium-missing build issue) during unrelated rtr-discovery work; traced
+to this mechanism by reading uvicorn's `httptools_impl.py` source
+directly rather than guessing from the log alone.
+
 ## `hub_slug_aliases.csv` re-run for the WO-121 New England display fix — 39 real redirects added, 3 pre-existing test fixtures went stale as a side effect [Done 2026-09-09]
 
 **The `[HUMAN]` entry this replaces** flagged that WO-121's display fix
