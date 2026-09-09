@@ -116,6 +116,8 @@ def detect_platform(url: str) -> str:
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
+    from .invintus import is_invintus_meeting_url
+    from .az_legislature import is_az_legislature_video_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -452,6 +454,33 @@ def detect_platform(url: str) -> str:
         # `#mcc_agenda_video` iframe, confirmed both YouTube and Vimeo
         # destinations).
         return "municode_meetings"
+    if is_invintus_meeting_url(url):
+        # Invintus -- a general-purpose government webcasting platform
+        # (state legislatures, county boards, city councils), confirmed
+        # live 2026-09-08 against real tenants in three different states
+        # (University Place WA, Clark County WA, Leon County FL), found
+        # via a real gap on University Place's CivicPlus AgendaCenter
+        # page -- see invintus.py's own module docstring and
+        # `rtr-business/research/ENUMERATION_METHODS.md` §102 for the
+        # full investigation. Deliberately NOT a bare "invintus.com in
+        # netloc" check, the same reasoning Vimeo's own scoping gives:
+        # only claimed when a real `clientID`+`eventID` pair is present,
+        # so an unrelated page on the same apex domain (e.g.
+        # `hostedevents.invintus.com`'s one-off branded landing pages)
+        # is never claimed here.
+        return "invintus"
+    if is_az_legislature_video_url(url):
+        # Arizona State Legislature (azleg.gov) -- found 2026-09-09 while
+        # chasing the Invintus prevalence sweep above: clientID
+        # 6361162879 (a real, large, sustained Invintus client) turned
+        # out to belong to azleg.gov's own `/videoplayer/?eventID=`
+        # wrapper pages, confirmed live -- see az_legislature.py's own
+        # module docstring for the full investigation. A delegation
+        # platform like Legistar/CivicPlus, not a direct video host: the
+        # wrapper page's own markup carries no real title/date at all,
+        # only an embedded Invintus clientID+eventID this module extracts
+        # and hands to InvintusAssetFinder via resolve_via_platform().
+        return "az_legislature"
     return "unknown"
 
 

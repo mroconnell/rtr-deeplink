@@ -77,6 +77,7 @@ CANARY_URLS: dict[str, list[str]] = {
     "aurora_tv": [
         "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
     ],
+    "az_legislature": ["https://www.azleg.gov/videoplayer/?eventID=2025011041"],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [
@@ -130,6 +131,9 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3"
     ],
     "iqm2": ["https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601"],
+    # University Place, WA City Council -- the real URL invintus.py's own
+    # tests/test_invintus.py fixtures were built and verified against.
+    "invintus": ["https://player.invintus.com/?clientID=1872740071&eventID=2026081000"],
     # Charlotte, NC -- the ordinary Legistar->Granicus delegation, plus (as
     # of 2026-08-29) a real Phoenix URL that exercises WO-30's
     # city-YouTube-channel fallback (app/platforms/youtube_channel.py)
