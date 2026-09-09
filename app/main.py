@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import html
 import io
@@ -1715,6 +1716,13 @@ async def _proxy_to_archive(
             extra_headers,
             allow_redirects=allow_redirects,
         )
+    except asyncio.CancelledError:
+        # A cancellation (client/bot disconnects mid-fetch) must propagate,
+        # never get swallowed into a 503 -- archive_client.proxy_get()
+        # already closes its own session before re-raising this, so there's
+        # nothing left to clean up here (Sentry PYTHON-FASTAPI-13,
+        # 2026-08-28; see archive_client.proxy_get()'s matching except).
+        raise
     except Exception:
         logger.exception("Archive proxy request failed for %s", internal_path)
         return Response(
