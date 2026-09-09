@@ -131,7 +131,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import certifi
 
@@ -185,7 +185,12 @@ UA_HEADERS = {
     )
 }
 MAX_ENUM_PAGES = (
-    600  # safety cap (15,000 notices) -- real volume is far lower per prior spot checks
+    2000  # safety cap (50,000 notices) -- real, measured rate is ~102 notices/day
+    # statewide (confirmed live 2026-09-08, a 30-day window returned 3,047), so
+    # a 6-month window needs ~743 pages; the original 600-page cap here would
+    # have silently truncated a 6-month run about 4,000 notices short with no
+    # warning at all -- see the print() below, added at the same time, so a
+    # future window wide enough to hit even THIS cap fails loudly instead.
 )
 
 MEETING_ALLOWLIST = (
@@ -214,6 +219,66 @@ GOV_TYPES_WITH_REGISTRY_MATCH = {"Municipality", "County"}
 _ENTITY_SUFFIX_RE = re.compile(
     r"\s+(city|town|county|metro township|township)\s*$", re.IGNORECASE
 )
+
+
+_CIVICCLERK_EVENT_ID_RE = re.compile(r"/event/(\d+)")
+
+
+def _normalize_final_seed(platform: str, seed_url: str) -> str:
+    """Two real, confirmed-live data-quality bugs, both found auditing
+    this run's own queue-file output (2026-09-09), fixed here rather than
+    trusting whatever URL a PMN "Audio File Location" field or a
+    resolve() call happened to hand back:
+
+    1. CivicClerk's own resolve() (app/platforms/civicclerk.py) extracts
+       the event id from ANY `/event/{id}/...` path via a bare regex
+       search and ignores the rest -- so it resolves fine off a PMN link
+       shaped `/event/1441/files` or `/event/1441/files/agenda/3246`, but
+       writing that non-canonical URL onward (tier1/2 ingest or the
+       tier3 queue) is wrong: every other script in this repo that deals
+       with CivicClerk (nationwide_431_ingest.py's own
+       civicclerk_latest_event_url(), for one) always produces the
+       canonical `/event/{id}/media` shape, and
+       tests/test_transcription_queue_files.py enforces it queue-wide.
+    2. A PMN Audio File Location can itself be truncated at the source --
+       confirmed live: Tooele, UT's own notice HTML has
+       `href="https://www.youtube.com/watch?v=jk1YoRffhFI&amp;t"`, a
+       real webmaster copy-paste error (a `&t=<timestamp>` cut short),
+       not something this script introduced. The URL still resolves fine
+       (YouTube ignores an empty/absent &t), but a trailing query-string
+       segment with no "=" is exactly the shape
+       test_transcription_queue_files.py's own
+       test_no_query_string_ends_mid_parameter() exists to catch, so it's
+       stripped before this URL is ever written anywhere.
+    """
+    if platform == "civicclerk":
+        match = _CIVICCLERK_EVENT_ID_RE.search(urlparse(seed_url).path)
+        if match:
+            parsed = urlparse(seed_url)
+            seed_url = urlunparse(
+                parsed._replace(path=f"/event/{match.group(1)}/media", query="")
+            )
+
+    parsed = urlparse(seed_url)
+    if parsed.query:
+        kept = [p for p in parsed.query.split("&") if "=" in p]
+        if len(kept) != len(parsed.query.split("&")):
+            seed_url = urlunparse(parsed._replace(query="&".join(kept)))
+    return seed_url
+
+
+def _dedup_key(result) -> str:
+    """Same shape as nationwide_431_ingest.py's own _dedup_key() -- two
+    different PMN notices (e.g. an amended/re-posted notice for the same
+    meeting) can resolve to the identical underlying video, which
+    nothing else here catches (this script's own resumability is keyed
+    on notice_url, not on what a notice resolves to)."""
+    if getattr(result, "external_id", None):
+        return f"ext:{result.external_id}"
+    return f"src:{normalize_url(result.source_url or '')}"
+
+
+_seen_keys: set = set()
 
 
 class RowSkip(Exception):
@@ -369,6 +434,12 @@ async def enumerate_notices(
         await asyncio.sleep(PMN_REQUEST_DELAY_SECONDS)
         if len(notices) < PAGE_SIZE:
             break
+    else:
+        print(
+            f"  WARNING: hit MAX_ENUM_PAGES ({MAX_ENUM_PAGES}) without the results "
+            "running out -- this window's real notice count is being truncated. "
+            "Raise MAX_ENUM_PAGES or narrow the date range."
+        )
     return list(all_notices.values())
 
 
@@ -633,6 +704,8 @@ async def process_notice(
             f"resolve raised: {e}",
         )
 
+    final_seed = _normalize_final_seed(platform, final_seed)
+
     segments = result.segments or []
     agenda_items = result.agenda_items or []
     if not (segments or agenda_items or result.agenda_link or result.video_url):
@@ -668,6 +741,27 @@ async def process_notice(
             "skipped",
             f"title looks like a non-meeting video, not ingested: {effective_title!r} ({final_seed})",
         )
+
+    # Real, confirmed-live gap (found auditing this run's own queue-file
+    # output, 2026-09-09): two DIFFERENT PMN notices can resolve to the
+    # SAME underlying meeting (e.g. an amended/re-posted notice for the
+    # same event), which nothing above catches -- resumability here is
+    # keyed on notice_url, not on what a notice resolves TO. Same
+    # dedup key/guard nationwide_431_ingest.py already uses, ported in
+    # after real duplicate rows (same CivicClerk URL twice) showed up in
+    # scripts/tier3_auto_transcription_queue.txt.
+    key = _dedup_key(result)
+    if key in _seen_keys:
+        return RowResult(
+            notice.notice_url,
+            entity,
+            government_type,
+            gov_id,
+            platform,
+            "skipped",
+            f"duplicate of an already-processed meeting this run ({key})",
+        )
+    _seen_keys.add(key)
 
     title = result.title or notice_title or ""
     date = result.date or event_date_text or ""

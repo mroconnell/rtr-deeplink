@@ -437,6 +437,17 @@ def detect_platform(url: str) -> str:
         # `#mcc_agenda_video` iframe, confirmed both YouTube and Vimeo
         # destinations).
         return "municode_meetings"
+    if netloc.endswith("utah.gov") and "/pmn/sitemap/notice/" in path:
+        # Utah's statutory Public Notice Website -- confirmed live
+        # 2026-09-08 via a full statewide enumeration pilot
+        # (`scripts/pmn_utah_pilot.py`, ENUMERATION_METHODS.md §105).
+        # Scoped to the specific `/pmn/sitemap/notice/{id}.html` detail-
+        # page shape (one real notice = exactly one meeting, never a
+        # listing) rather than the whole utah.gov domain, which is
+        # mostly unrelated state-government content -- see
+        # utah_pmn.py's own module docstring for the two real media
+        # shapes this handles.
+        return "utah_pmn"
     return "unknown"
 
 

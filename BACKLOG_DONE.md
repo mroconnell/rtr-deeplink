@@ -1,5 +1,67 @@
 # Backlog — done
 
+## `utah_pmn.py`: a real adapter for Utah's Public Notice Website, closing the "bare hosted audio/video file" half of a 825-example gap — and a real production `date`-column crash found and fixed the same day [Done 2026-09-09]
+
+Built in response to the Utah PMN pilot's own finding (`rtr-business/
+research/ENUMERATION_METHODS.md` §105): 825 real notices across 353
+Utah entities have their meeting audio/video hosted directly on
+`utah.gov` (`/pmn/files/{id}.m4a`/`.mp3`/`.mp4`) with no platform
+wrapper at all — a shape no adapter in this repo had ever needed to
+handle, since every other platform's whole reason for existing is a
+page to scrape a video *off of*. `app/platforms/utah_pmn.py` handles
+two real shapes: a notice's "Audio File Location" field linking off
+`utah.gov` (delegates via `resolve_via_platform()`, same wrapper
+pattern as Legistar/CivicPlus/PrimeGov, with jurisdiction/meeting_body/
+title/date overridden from PMN's own ground-truth fields), or the
+Download Attachments table carrying a bare media file with no wrapper
+(sets `video_url`/`video_format` directly — no transcription-pipeline
+change needed, since `media_probe.py` already documents 19 other real
+audio-only meetings this pipeline handles fine).
+
+**A real, live-only production bug was found and fixed testing this for
+real, not caught by unit tests or a local end-to-end test.** The exact
+same payload that ingested cleanly against a fresh local SQLite Archive
+(via `uvicorn archive.main:app` with `DATABASE_URL` pointed at a temp
+file) 500'd every time against real production. Isolating the cause by
+substituting known-safe values for platform/video_format/jurisdiction
+one at a time (down to a completely generic YouTube video with a
+mundane jurisdiction) still 500'd — which pointed away from "bad
+adapter output" and cost real time before the user pulled the actual
+Render traceback, which named it immediately:
+`asyncpg.exceptions.StringDataRightTruncationError: value too long for
+type character varying(20)`. The Archive's `date` column is
+`VARCHAR(20)` (`archive/alembic/versions/..._baseline_schema.py`); every
+existing adapter already respects that by storing a short ISO date
+(civicclerk.py's own convention: `event.get("eventDate")[:10]`), but
+this adapter's first version passed PMN's own raw "Event Start Date &
+Time" text through unchanged — e.g. "August 10, 2026 05:30 PM", 24
+characters. **Local SQLite didn't catch it** because SQLite doesn't
+enforce `VARCHAR(n)` length at all (it's a hint, not a constraint) —
+only real Postgres does, which is exactly the class of "works on SQLite,
+breaks on Postgres" gap `CLAUDE.md`'s Alembic-migration bullet already
+warns about, just via a column-length constraint rather than a schema
+migration this time.
+
+Fixed with a `_short_date()` helper (parses PMN's two confirmed date
+formats down to plain `YYYY-MM-DD`, returning `None` — never the
+original long text — on anything unparseable) applied everywhere the
+adapter sets `ResolvedMeeting.date`, plus a defensive length cap on
+`video_format` (`VARCHAR(10)`) even though every confirmed-real
+extension is well under it. Verified with two real, live production
+ingests after the fix (`/m/grand-county-ut-2026-08-10-planning-
+commission-regular-meeting-august-10-2026`,
+`/m/carbon-county-ut-2026-09-01-carbon-county-planning-commission-
+regular-meeting`), not just local tests — per this project's own "don't
+claim it works without a positive example" rule. A direct regression
+test (`test_short_date_never_exceeds_the_archive_varchar20_column`)
+exists specifically so this exact class of bug can't silently
+reappear.
+
+**Residual gap split back out to `BACKLOG.md`**: a populated "Audio File
+Location" pointing to `drive.google.com`/`soundcloud.com` (28 real
+examples) isn't a directly-fetchable file URL the way a bare
+`utah.gov/pmn/files/*` file is, and wasn't attempted here.
+
 ## A tenant-derived state hint could name the wrong COUNTRY, not just an imprecise state -- 8 real pages confirmed [Done 2026-09-06]
 
 Found live: an eScribe-hosted meeting for the Town of Erin, **Ontario**,

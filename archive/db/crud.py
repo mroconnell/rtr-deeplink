@@ -4974,6 +4974,21 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # agenda_link/video from the CivicLive page itself, so a "civiclive"
     # row is genuinely pushable, not permanently exampleless.
     "civiclive": "CivicLive",
+    # Utah's statutory Public Notice Website (utah.gov/pmn) -- ENUMERATION_
+    # METHODS.md §105, 2026-09-08. Listed here rather than under
+    # CUSTOM_PLATFORMS because it's one shared system hundreds of Utah
+    # governments (not one city) are legally required to post to, the
+    # same "one shared platform across many jurisdictions" shape vimeo/
+    # civiclive/destinyhosted already established above. Same delegation
+    # nuance as those: utah_pmn.py keeps its own "utah_pmn" label only
+    # when a notice's media is a bare file hosted directly on utah.gov
+    # (no wrapper platform to delegate to); when the notice instead links
+    # a YouTube/Vimeo/CivicClerk/etc video, resolve_via_platform() means
+    # the row lands under THAT platform's own label instead (confirmed by
+    # reading utah_pmn.py's resolve() end to end) -- so a "utah_pmn" row
+    # is genuinely pushable, not permanently exampleless, the same
+    # distinction destinyhosted/civiclive/proudcity already draw.
+    "utah_pmn": "Utah Public Notice Website (PMN)",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
