@@ -1445,10 +1445,18 @@ structural change than the two entries below.
     access often permission-gated to the org's own tenant) may make
     public past-recording links structurally rarer than Zoom's shareable
     `rec/share` links, but that's inference, not confirmed — worth a
-    dedicated search pass before concluding either way.
+    dedicated search pass before concluding either way. Further
+    confirmation, 2026-09-08 (Utah PMN pilot, `rtr-business/research/
+    ENUMERATION_METHODS.md` §105): 4 more real `zoom.us` "Audio File
+    Location" values turned up unprompted in a 2,581-notice statewide
+    scan (`us02web.zoom.us` x3, `utah-gov.zoom.us` x1) — not yet checked
+    whether any are `rec/share`-shaped past recordings vs. live join
+    links, but a second, independent discovery channel surfacing Zoom
+    unprompted raises this past "three hits in one evening."
   - **Impact**: unknown real scope, but not zero — three independent real
     hits in one evening's research on an unrelated task, plus at least
-    one confirmed real ingestible-shaped example (Rockport MA/Zoom). Any
+    one confirmed real ingestible-shaped example (Rockport MA/Zoom), plus
+    4 more real sightings from an unrelated statewide Utah scan. Any
     jurisdiction using Teams/Zoom as its primary or sole platform is
     currently invisible to every discovery method in this file, since
     none of them check for these two at all.
@@ -1466,6 +1474,45 @@ structural change than the two entries below.
     following up on the user's question about competitor
     captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
     this is the first record of it.
+
+- **[NEEDS-AUDIT] `[BIG]` No adapter for a bare hosted audio/video file
+  with no platform wrapper — 825 real, confirmed-live examples from one
+  30-day Utah scan, mostly Google Drive and same-domain uploads.**
+  - **Issue**: the Utah PMN pilot (`rtr-business/research/
+    ENUMERATION_METHODS.md` §105) found two shapes `detect_platform()`
+    correctly returns `"unknown"` for, since no `app/platforms/` module
+    handles either: (1) a same-domain uploaded file, e.g.
+    `utah.gov/pmn/files/{id}.m4a`, tagged "Audio Recording" on 825 real
+    notices across 353 distinct Utah government entities (mostly school
+    districts, also municipalities/counties/special districts) — logged
+    to `rtr-business/research/pmn_utah_native_audio_files.csv`; (2) a
+    link to a general-purpose file host, most commonly `drive.google.com`
+    (21 real "Audio File Location" values) and `soundcloud.com` (7).
+  - **Impact**: every one of these 825+28 real, confirmed-populated
+    media links is currently unresolvable — not a hypothetical gap, a
+    directly counted one from a single state's single-month scan. Likely
+    a much bigger population nationwide, since "just upload the audio
+    file/put it on Google Drive" requires zero technical setup compared
+    to any dedicated meeting platform, making it plausible for the
+    smallest/least-resourced governments specifically.
+  - **Next action**: not yet worth building blind — per this project's
+    own rule against building an adapter without a live sample, someone
+    should first fetch a handful of real `pmn_utah_native_audio_files.csv`
+    rows and a few Google Drive links to confirm they're actually
+    fetchable (Drive's sharing-link redirect chain, direct-download vs.
+    preview-only) and are real meeting audio (not, e.g., a duplicate of
+    a video already ingested via a different field). If that holds up,
+    a "bare audio file" resolver is structurally simple (no scraping, no
+    calendar-listing logic — just fetch the file and feed it straight to
+    the same Whisper transcription path tier-3 already uses) and could
+    unlock a real, currently-invisible population cheaply.
+  - **Constraint**: don't assume every Drive/SoundCloud link is a full
+    meeting recording without checking — a "Public Information Handout"
+    or similar could plausibly also live on Drive, so filtering on the
+    PMN attachment category ("Audio Recording") isn't a guarantee.
+  - **History**: found 2026-09-08 running the Utah PMN pilot
+    (`scripts/pmn_utah_pilot.py`); not yet in `BACKLOG_DONE.md`, this is
+    the first record of it.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
