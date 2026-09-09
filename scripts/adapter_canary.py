@@ -202,6 +202,16 @@ CANARY_URLS: dict[str, list[str]] = {
     # placeholder. Kept under that key so the coverage test can compare
     # registry keys directly.
     "unknown": ["https://www.crrma.org/information/meetings/board/2025-11-12"],
+    # Grand County, UT Planning Commission -- real, confirmed live
+    # 2026-09-08 via the pilot behind this adapter (ENUMERATION_METHODS.md
+    # §105). Deliberately the bare-hosted-file case (a real utah.gov
+    # `/pmn/files/*.m4a` attachment), not the delegating case (a PMN
+    # notice whose Audio File Location is a YouTube/Vimeo/etc link) --
+    # that path is already covered by whichever delegate platform's own
+    # canary URL exercises it, so this URL is the one that actually tests
+    # utah_pmn.py's own unique logic (attachment-table parsing, video
+    # format inferred from the file extension).
+    "utah_pmn": ["https://www.utah.gov/pmn/sitemap/notice/1100143.html"],
     "viebit": [
         "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4"
     ],

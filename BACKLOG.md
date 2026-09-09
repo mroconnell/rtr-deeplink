@@ -127,7 +127,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (85)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -150,6 +150,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (85)
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
+  [NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
   [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
@@ -1583,10 +1584,18 @@ structural change than the two entries below.
     access often permission-gated to the org's own tenant) may make
     public past-recording links structurally rarer than Zoom's shareable
     `rec/share` links, but that's inference, not confirmed — worth a
-    dedicated search pass before concluding either way.
+    dedicated search pass before concluding either way. Further
+    confirmation, 2026-09-08 (Utah PMN pilot, `rtr-business/research/
+    ENUMERATION_METHODS.md` §105): 4 more real `zoom.us` "Audio File
+    Location" values turned up unprompted in a 2,581-notice statewide
+    scan (`us02web.zoom.us` x3, `utah-gov.zoom.us` x1) — not yet checked
+    whether any are `rec/share`-shaped past recordings vs. live join
+    links, but a second, independent discovery channel surfacing Zoom
+    unprompted raises this past "three hits in one evening."
   - **Impact**: unknown real scope, but not zero — three independent real
     hits in one evening's research on an unrelated task, plus at least
-    one confirmed real ingestible-shaped example (Rockport MA/Zoom). Any
+    one confirmed real ingestible-shaped example (Rockport MA/Zoom), plus
+    4 more real sightings from an unrelated statewide Utah scan. Any
     jurisdiction using Teams/Zoom as its primary or sole platform is
     currently invisible to every discovery method in this file, since
     none of them check for these two at all.
@@ -1604,6 +1613,35 @@ structural change than the two entries below.
     following up on the user's question about competitor
     captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
     this is the first record of it.
+
+- **[NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
+  a general-purpose file host (Google Drive, SoundCloud) — 28 real,
+  confirmed-populated examples from one Utah scan.**
+  - **Issue**: `utah_pmn.py` (see `BACKLOG_DONE.md`'s entry on that
+    adapter) resolves a same-domain uploaded file directly, but a
+    populated "Audio File Location" pointing to `drive.google.com` (21
+    real examples) or `soundcloud.com` (7) isn't a directly-fetchable
+    media URL the way a bare `utah.gov/pmn/files/*` file is — a Drive
+    share link needs its own redirect-chain/direct-download investigation
+    first.
+  - **Impact**: 28 real, confirmed-populated links currently unresolvable
+    — a small slice on their own, but the same pattern ("just put the
+    recording on Drive") is plausible nationwide for
+    smallest/least-resourced governments generally, not just Utah's PMN
+    notices specifically.
+  - **Next action**: per this project's own rule against building an
+    adapter without a live sample, fetch a handful of the real Drive/
+    SoundCloud links logged in `rtr-business/research/
+    pmn_utah_pilot_log.csv` (`skipped` outcome, reason containing "isn't
+    on a known video/audio platform") to confirm they're actually
+    fetchable server-side (Drive's sharing-link redirect chain,
+    direct-download vs. preview-only gating) before writing anything.
+  - **Constraint**: don't assume every Drive/SoundCloud link is a full
+    meeting recording without checking — a "Public Information Handout"
+    or similar could plausibly also live on Drive.
+  - **History**: found 2026-09-08 running the Utah PMN pilot; the
+    same-domain-file half of this entry shipped 2026-09-09, see
+    `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
