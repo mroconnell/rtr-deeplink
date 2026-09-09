@@ -4989,6 +4989,19 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # is genuinely pushable, not permanently exampleless, the same
     # distinction destinyhosted/civiclive/proudcity already draw.
     "utah_pmn": "Utah Public Notice Website (PMN)",
+    # Invintus (player.invintus.com) -- a general-purpose government
+    # webcasting platform, WO-102, 2026-09-08. Found via a real gap on
+    # University Place, WA's CivicPlus AgendaCenter page; confirmed live
+    # against real, independent tenants in three different states
+    # (University Place WA, Clark County WA, Leon County FL) -- see
+    # invintus.py's own module docstring and `rtr-business/research/
+    # ENUMERATION_METHODS.md` §102 for the full investigation. Reached
+    # directly (detect_platform() claims a real clientID+eventID URL on
+    # its own domain, no router/delegation involved), and invintus.py's
+    # resolve() sets `resolved.platform = self.platform_name` on every
+    # return path, so a real pushed row keeps its own "invintus" label,
+    # same as vimeo/telvue above.
+    "invintus": "Invintus",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a
@@ -5031,6 +5044,14 @@ CUSTOM_PLATFORMS: dict[str, str] = {
     # reading resolve() end to end), so a real pushed row keeps its own
     # label rather than reading "youtube" the way lims/slc/clerkbase do.
     "tampa": "Tampa, FL City Council transcripts (apps.tampagov.net)",
+    # Arizona State Legislature (azleg.gov) -- WO-102, 2026-09-09. Same
+    # shape as chicago_elms/tampa above: az_legislature.py delegates to
+    # InvintusAssetFinder for the actual video but resets
+    # `resolved.platform` back to "az_legislature" afterward (confirmed
+    # by reading resolve() end to end), so a real pushed row keeps its
+    # own label rather than reading "invintus". See az_legislature.py's
+    # own module docstring for the full investigation.
+    "az_legislature": "Arizona State Legislature (azleg.gov)",
 }
 
 # Registered platforms (app/platforms/__init__.py's

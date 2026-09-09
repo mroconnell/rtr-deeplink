@@ -1,0 +1,469 @@
+platform,tenant_host,match_value,rows,reason,landing_url,stored_names,example_slug
+escribe,pub-gloucesterva.escribemeetings.com,,3,multiple_governments,,"us:county:51073 (Gloucester County, VA)|us:place:2526150 (Gloucester, MA)|us:sd:5101620 (Gloucester County Public Schools, VA)",
+escribe,pub-northcowichan.escribemeetings.com,,3,multiple_governments,,"ca:csd:5919008 (North Cowichan, BC)|ca:csd:5919016 (Lake Cowichan, BC)|ca:csd:5924034 (Campbell River, BC)",
+escribe,coe-pub.escribemeetings.com,,2,multiple_governments,,"ca:cd:3537 (Essex, ON)|ca:csd:3537016 (Essex, ON)",
+escribe,pub-hainescity.escribemeetings.com,,2,multiple_governments,,"rtr:us:fl:haines-city-settlement (Haines City  Settlement, FL)|us:place:1228400 (Haines City, FL)",
+escribe,pub-langleycity.escribemeetings.com,,2,multiple_governments,,"us:cousub:2005338600 (Langley Township, KS)|us:place:5338355 (Langley, WA)",
+escribe,pub-owensound.escribemeetings.com,,2,multiple_governments,,"ca:csd:3542059 (Owen Sound, ON)|us:place:5560825 (Owen, WI)",
+escribe,pub-rdco.escribemeetings.com,,2,multiple_governments,,"ca:csd:5935010 (Kelowna, BC)|rtr:ca:bc:regional-district-of-central-okanagan (Regional District of Central Okanagan, BC)",
+escribe,pub-salmonarm.escribemeetings.com,,2,multiple_governments,,"ca:csd:5939032 (Salmon Arm, BC)|us:place:1671650 (Salmon, ID)",
+escribe,pub-strathroy-caradoc.escribemeetings.com,,2,multiple_governments,,"ca:cd:3539 (Middlesex, ON)|ca:csd:3539015 (Strathroy-Caradoc, ON)",
+swagit,browardmpo.new.swagit.com,,2,multiple_governments,,"rtr:us:fl:broward-metropolitan-planning-organization (Broward Metropolitan Planning Organization, FL)|us:place:1216475 (Davie, FL)",
+telvue,videoplayer.telvue.com,,31,multiple_governments,,"us:county:24035 (Queen Anne's County, MD)|us:county:42027 (Centre County, PA)|us:cousub:2301516235 (Damariscotta, ME)|us:cousub:2500182525 (Yarmouth, MA)|us:cousub:2501743895 (Natick, MA)|us:cousub:2501767665 (Stoneham, MA)|us:cousub:2502144105 (Needham, MA)|us:cousub:3301129860 (Goffstown, NH)|us:cousub:3301517940 (Derry, NH)|us:cousub:3301552340 (Newmarket, NH)|us:cousub:3401347500 (Montclair Township, NJ)|us:cousub:3605537726 (Irondequoit Town, NY)|us:cousub:3605557144 (Penfield Town, NY)|us:cousub:3610361984 (Riverhead Town, NY)|us:place:0654806 (Pacifica, CA)|us:place:0864255 (Rifle, CO)|us:place:0880040 (Vail, CO)|us:place:1021200 (Dover, DE)|us:place:1933465 (Guttenberg, IA)|us:place:2521990 (Everett, MA)|us:place:2535075 (Leominster, MA)|us:place:2642160 (Kalamazoo, MI)|us:place:2670040 (Royal Oak, MI)|us:place:2738564 (Luverne (city), MN)|us:place:3350260 (Nashua, NH)|us:place:3471430 (Summit, NJ)|us:place:3622865 (East Rochester, NY)|us:place:3665508 (Schenectady, NY)|us:place:4103050 (Ashland, OR)|us:place:4500550 (Aiken, SC)|us:place:4649600 (Pierre, SD)",
+unknown,www.youtube.com,,181,multiple_governments,,"rtr:us:ak:juneau (Juneau, AK)|rtr:us:ut:department-of-natural-resources-dnr (Department of Natural Resources (DNR), UT)|rtr:us:ut:wasatch-front-regional-council (Wasatch Front Regional Council, UT)|us:county:01001 (Autauga County, AL)|us:county:13169 (Jones County, GA)|us:county:13297 (Walton County, GA)|us:county:19065 (Fayette County, IA)|us:county:19197 (Wright County, IA)|us:county:26155 (Shiawassee County, MI)|us:county:28089 (Madison County, MS)|us:county:34001 (Atlantic County, NJ)|us:county:37141 (Pender County, NC)|us:county:41071 (Yamhill County, OR)|us:county:42091 (Montgomery County, PA)|us:county:44001 (Bristol County, RI)|us:county:46011 (Brookings County, SD)|us:county:49005 (Cache County, UT)|us:county:49019 (Grand County, UT)|us:county:49047 (Uintah County, UT)|us:cousub:2300511125 (Casco, ME)|us:cousub:3610304000 (Babylon (town), NY)|us:place:0105980 (Bessemer, AL)|us:place:0455000 (Phoenix, AZ)|us:place:0613945 (Clearlake, CA)|us:place:0639304 (La Habra Heights, CA)|us:place:0644112 (Los Gatos, CA)|us:place:0647486 (Millbrae, CA)|us:place:0649187 (Moraga, CA)|us:place:0650734 (Needles, CA)|us:place:0660900 (Rio Dell, CA)|us:place:0665084 (San Clemente, CA)|us:place:0685600 (Willits, CA)|us:place:0685684 (Willows, CA)|us:place:0828305 (Fraser, CO)|us:place:0857025 (Palmer Lake, CO)|us:place:1202681 (Aventura, FL)|us:place:1219650 (Eatonville, FL)|us:place:1221350 (Eustis, FL)|us:place:1230200 (Highland Beach, FL)|us:place:1241577 (Loxahatchee Groves, FL)|us:place:1242400 (Madeira Beach, FL)|us:place:1253800 (Pahokee, FL)|us:place:1258575 (Port Orange, FL)|us:place:1267675 (South Pasadena, FL)|us:place:1304644 (Avondale Estates, GA)|us:place:1347196 (Loganville, GA)|us:place:1373784 (Stonecrest, GA)|us:place:1664090 (Pocatello, ID)|us:place:1732746 (Hanover Park, IL)|us:place:1735879 (Homewood, IL)|us:place:1764421 (Riverside (village), IL)|us:place:1770122 (Skokie, IL)|us:place:1802908 (Avon, IN)|us:place:1807750 (Bristol, IN)|us:place:1840788 (Lafayette (city), IN)|us:place:1869318 (Shelbyville, IN)|us:place:1885184 (Woodburn, IN)|us:place:1886372 (Zionsville, IN)|us:place:1938100 (Independence, IA)|us:place:2005337 (Bel Aire, KS)|us:place:2031100 (Hays, KS)|us:place:2057625 (Pratt, KS)|us:place:2079000 (Wichita, KS)|us:place:2404000 (Baltimore, MD)|us:place:2407850 (Bladensburg, MD)|us:place:2415925 (Chesapeake Beach, MD)|us:place:2428725 (Forest Heights, MD)|us:place:2430900 (Frostburg, MD)|us:place:2445900 (Laurel, MD)|us:place:2476550 (Sykesville, MD)|us:place:2476650 (Takoma Park, MD)|us:place:2479875 (Upper Marlboro, MD)|us:place:2622740 (Douglas, MI)|us:place:2647800 (Lincoln Park, MI)|us:place:2670520 (Saginaw, MI)|us:place:2679000 (Taylor, MI)|us:place:2706058 (Birchwood Village, MN)|us:place:2707300 (Brainerd, MN)|us:place:2713870 (Crookston (city), MN)|us:place:2717612 (East Grand Forks, MN)|us:place:2721770 (Forest Lake, MN)|us:place:2745808 (New Prague, MN)|us:place:2751388 (Pipestone, MN)|us:place:2757040 (St. James (city), MN)|us:place:2762806 (Stewartville, MN)|us:place:2766766 (Vergas, MN)|us:place:2854040 (Olive Branch, MS)|us:place:2908236 (Brentwood, MO)|us:place:2977092 (Warrensburg, MO)|us:place:2979882 (Willard, MO)|us:place:3108605 (Chadron, NE)|us:place:3421300 (Elmwood Park, NJ)|us:place:3430570 (Hawthorne, NJ)|us:place:3431500 (Highlands, NJ)|us:place:3447130 (Monmouth Beach, NJ)|us:place:3453850 (Oakland, NJ)|us:place:3460900 (Princeton, NJ)|us:place:3461680 (Ramsey, NJ)|us:place:3464050 (Rockaway (borough), NJ)|us:place:3464590 (Roseland, NJ)|us:place:3472420 (Tenafly, NJ)|us:place:3473020 (Tinton Falls, NJ)|us:place:3601000 (Albany, NY)|us:place:3602066 (Amsterdam (city), NY)|us:place:3656660 (Patchogue, NY)|us:place:3660895 (Red Hook (village), NY)|us:place:3664452 (Sagaponack, NY)|us:place:3665508 (Schenectady, NY)|us:place:3675484 (Troy, NY)|us:place:3706500 (Blowing Rock, NC)|us:place:3710500 (Carolina Beach, NC)|us:place:3720120 (Edenton, NC)|us:place:3730720 (Hendersonville, NC)|us:place:3731620 (Hillsborough, NC)|us:place:3743260 (Mills River, NC)|us:place:3763130 (Southern Shores, NC)|us:place:3766360 (Swansboro, NC)|us:place:3766500 (Sylva, NC)|us:place:3842700 (Killdeer, ND)|us:place:3918070 (Commercial Point, OH)|us:place:3926446 (Fairview Park, OH)|us:place:3929148 (Galena, OH)|us:place:3945094 (Louisville, OH)|us:place:3956154 (North Baltimore, OH)|us:place:3957260 (Norton, OH)|us:place:3975602 (Sunbury, OH)|us:place:4037800 (Jenks, OK)|us:place:4061000 (Pryor Creek, OK)|us:place:4072100 (Tahlequah, OK)|us:place:4140350 (La Grande, OR)|us:place:4141650 (Lebanon, OR)|us:place:4159850 (Prineville, OR)|us:place:4165500 (Scappoose, OR)|us:place:4165950 (Seaside, OR)|us:place:4228960 (Gettysburg, PA)|us:place:4250528 (Monroeville, PA)|us:place:4254184 (Newtown (borough), PA)|us:place:4254656 (Norristown, PA)|us:place:4514950 (Clemson, SC)|us:place:4666700 (Vermillion (city), SD)|us:place:4733280 (Hendersonville, TN)|us:place:4739560 (Kingsport, TN)|us:place:4751080 (Mount Pleasant, TN)|us:place:4810132 (Breckenridge, TX)|us:place:4821424 (Dripping Springs, TX)|us:place:4825168 (Fair Oaks Ranch, TX)|us:place:4849392 (Morgan's Point Resort, TX)|us:place:4849860 (Mount Vernon, TX)|us:place:4861904 (Richwood, TX)|us:place:4865408 (Sanger, TX)|us:place:4867400 (Shenandoah, TX)|us:place:4873316 (Tomball, TX)|us:place:4879492 (Willow Park, TX)|us:place:4900540 (Alpine, UT)|us:place:4901905 (Apple Valley, UT)|us:place:4926940 (Francis, UT)|us:place:4927490 (Fruit Heights, UT)|us:place:4931120 (Grantsville, UT)|us:place:4955100 (North Ogden, UT)|us:place:4957300 (Orem, UT)|us:place:4958510 (Parowan, UT)|us:place:4958730 (Payson, UT)|us:place:4962360 (Providence, UT)|us:place:4962470 (Provo, UT)|us:place:4967770 (Santaquin, UT)|us:place:4971180 (South Weber, UT)|us:place:4971290 (Spanish Fork, UT)|us:place:4971840 (Springdale, UT)|us:place:4976680 (Tooele, UT)|us:place:5120160 (Crewe, VA)|us:place:5159336 (Onancock, VA)|us:place:5165392 (Radford, VA)|us:place:5307380 (Bothell, WA)|us:place:5314870 (Cosmopolis, WA)|us:place:5337270 (Lake Forest Park, WA)|us:place:5346020 (Milton, WA)|us:place:5372905 (Tumwater, WA)|us:place:5516450 (Columbus (city), WI)|us:place:5517175 (Cottage Grove (village), WI)|us:place:5538675 (Juneau, WI)|us:place:5572975 (Sheboygan (city), WI)",
+unknown,youtu.be,,77,multiple_governments,,"rtr:us:ut:azure-fields-charter-high-school (Azure Fields Charter High School, UT)|rtr:us:ut:department-of-commerce-division-of-real-estate (Department of Commerce > Division of Real Estate, UT)|rtr:us:ut:department-of-natural-resources-dnr-division-of-forestry-fire-and-state-lands (Department of Natural Resources (DNR) > Division of Forestry, Fire and State Lands, UT)|rtr:us:ut:magna-water-district (Magna Water District, UT)|rtr:us:ut:wasatch-front-regional-council (Wasatch Front Regional Council, UT)|us:county:49003 (Box Elder County, UT)|us:county:49005 (Cache County, UT)|us:county:49035 (Salt Lake County, UT)|us:county:49049 (Utah County, UT)|us:county:49051 (Wasatch County, UT)|us:county:51173 (Smyth County, VA)|us:county:55113 (Sawyer County, WI)|us:cousub:5502517200 (Cottage Grove (town), WI)|us:place:0138416 (Jasper, AL)|us:place:0531090 (Heber Springs, AR)|us:place:0603302 (Avenal, CA)|us:place:0612524 (Ceres, CA)|us:place:0614190 (Cloverdale, CA)|us:place:0633798 (Hillsborough, CA)|us:place:0636546 (Inglewood, CA)|us:place:0639710 (Lakeport, CA)|us:place:0643224 (Los Alamitos, CA)|us:place:0658380 (Portola Valley, CA)|us:place:0660704 (Ridgecrest, CA)|us:place:0686440 (Woodside, CA)|us:place:0800760 (Aguilar, CO)|us:place:0828745 (Fruita, CO)|us:place:0886090 (Woodland Park, CO)|us:place:1250525 (Oakland, FL)|us:place:1380228 (Walnut Grove, GA)|us:place:1717458 (Crest Hill, IL)|us:place:1749945 (Monee (village), IL)|us:place:1812124 (Charlestown (city), IN)|us:place:1978285 (Tipton, IA)|us:place:2004400 (Basehor, KS)|us:place:2053225 (Osawatomie (city), KS)|us:place:2079000 (Wichita, KS)|us:place:2414950 (Centreville, MD)|us:place:2450965 (Martin's Additions, MD)|us:place:2454275 (Mount Rainier, MD)|us:place:2519365 (Easthampton, MA)|us:place:2559105 (Salem, MA)|us:place:2689140 (Ypsilanti, MI)|us:place:2718662 (Elko New Market, MN)|us:place:3061525 (Red Lodge, MT)|us:place:3406610 (Boonton (town), NJ)|us:place:3422440 (Fair Haven, NJ)|us:place:3432910 (Hopatcong, NJ)|us:place:3517960 (Corrales, NM)|us:place:3573260 (Silver City, NM)|us:place:3675484 (Troy, NY)|us:place:3721160 (Emerald Isle, NC)|us:place:3733560 (Indian Trail, NC)|us:place:3747880 (North Wilkesboro, NC)|us:place:3928014 (Fostoria, OH)|us:place:3952052 (Moreland Hills, OH)|us:place:3979492 (Vandalia, OH)|us:place:4115350 (Coquille, OR)|us:place:4128450 (Gearhart, OR)|us:place:4145250 (Madras, OR)|us:place:4237955 (Jefferson Hills, PA)|us:place:4243816 (Lititz, PA)|us:place:4570585 (Surfside Beach, SC)|us:place:4819900 (Denison, TX)|us:place:4901905 (Apple Valley, UT)|us:place:4936400 (Hooper, UT)|us:place:4985050 (Woodland Hills, UT)|us:place:5169456 (Rural Retreat, VA)|us:place:5307695 (Bremerton, WA)|us:place:5319035 (Duvall, WA)|us:place:5377665 (West Richland, WA)|us:place:5510375 (Brown Deer, WI)|us:place:5516450 (Columbus (city), WI)|us:place:5517775 (Cross Plains (village), WI)|us:place:5527550 (Fredonia (village), WI)|us:place:5577675 (Stoughton, WI)|us:place:5586700 (Whitefish Bay, WI)",
+unknown,play.champds.com,,22,multiple_governments,,"us:county:37193 (Wilkes County, NC)|us:county:47119 (Maury County, TN)|us:cousub:0919083500 (Westport, CT)|us:cousub:2300524495 (Falmouth, ME)|us:cousub:2500112995 (Chatham, MA)|us:place:1221150 (Estero, FL)|us:place:1239425 (Largo, FL)|us:place:1270075 (Surfside, FL)|us:place:1304000 (Atlanta, GA)|us:place:1719642 (Des Plaines, IL)|us:place:1743744 (Lincolnwood, IL)|us:place:3603078 (Auburn, NY)|us:place:3659223 (Port Chester, NY)|us:place:3949056 (Mentor, OH)|us:place:4704620 (Belle Meade, TN)|us:place:4725440 (Fairview, TN)|us:place:4748980 (Millersville, TN)|us:place:4753460 (Nolensville, TN)|us:place:4754780 (Oak Hill, TN)|us:place:4770580 (Spring Hill, TN)|us:place:5526275 (Fond du Lac (city), WI)|us:sd:4702760 (Maury County School District, TN)",
+unknown,youtube.com,,18,multiple_governments,,"ca:csd:4817029 (Slave Lake, AB)|rtr:us:ut:department-of-environmental-quality-great-salt-lake-advisory-council (Department of Environmental Quality > Great Salt Lake Advisory Council, UT)|rtr:us:ut:department-of-natural-resources-dnr (Department of Natural Resources (DNR), UT)|us:county:13179 (Liberty County, GA)|us:county:49019 (Grand County, UT)|us:place:0157504 (Owens Cross Roads, AL)|us:place:1757407 (Palos Park, IL)|us:place:2758612 (Sartell, MN)|us:place:3151770 (Waverly, NE)|us:place:3503400 (Angel Fire, NM)|us:place:3725300 (Fuquay-Varina, NC)|us:place:3819420 (Devils Lake, ND)|us:place:3976106 (Tallmadge, OH)|us:place:4037100 (Inola, OK)|us:place:4551280 (North Myrtle Beach, SC)|us:place:4931120 (Grantsville, UT)|us:place:5105544 (Bedford, VA)|us:sd:4900750 (Park City School District, UT)",
+unknown,public.destinyhosted.com,,17,multiple_governments,,"rtr:us:tx:the-woodlands-township (The Woodlands Township, TX)|us:county:04012 (La Paz County, AZ)|us:county:04017 (Navajo County, AZ)|us:county:48355 (Nueces County, TX)|us:county:48409 (San Patricio County, TX)|us:county:48491 (Williamson County, TX)|us:place:0412000 (Chandler, AZ)|us:place:0427820 (Glendale, AZ)|us:place:0444270 (Marana, AZ)|us:place:0451600 (Oro Valley, AZ)|us:place:1224300 (Fort Pierce, FL)|us:place:3936610 (Huber Heights, OH)|us:place:4023200 (Edmond, OK)|us:place:4806128 (Baytown, TX)|us:place:4845000 (Lubbock, TX)|us:place:4866128 (Schertz, TX)|us:place:4872392 (Texas City, TX)",
+unknown,vimeo.com,,7,multiple_governments,,"us:county:06073 (San Diego County, CA)|us:cousub:2500560645 (Seekonk, MA)|us:place:0659451 (Rancho Cucamonga, CA)|us:place:0672576 (Solvang, CA)|us:place:1986520 (Winterset, IA)|us:place:3451210 (New Brunswick, NJ)|us:place:3466570 (Secaucus, NJ)",
+unknown,clerkshq.com,,3,multiple_governments,,"us:cousub:4400751760 (North Providence, RI)|us:place:3986940 (Yellow Springs, OH)|us:place:4422960 (East Providence, RI)",
+unknown,townhallstreams.com,,3,multiple_governments,,"us:cousub:0911044910 (Mansfield, CT)|us:cousub:2300140035 (Lisbon, ME)|us:cousub:3300577380 (Troy, NH)",
+unknown,ashlandcowi.portal.civicclerk.com,,2,multiple_governments,,"us:county:55003 (Ashland County, WI)|us:place:5503225 (Ashland (city), WI)",
+unknown,brookhavenny.portal.civicclerk.com,,2,multiple_governments,,"rtr:us:ny:farmingville (Farmingville, NY)|us:cousub:3610310000 (Brookhaven Town, NY)",
+unknown,browardschools.granicus.com,,2,multiple_governments,,"us:county:12011 (Broward County, FL)|us:sd:1200180 (Broward County School District, FL)",
+unknown,citrusclerk.portal.civicclerk.com,,2,multiple_governments,,"us:county:12017 (Citrus County, FL)|us:place:1233950 (Inverness, FL)",
+unknown,cityofmenifee.primegov.com,,2,multiple_governments,,"rtr:us:ca:menifee-nbsp (City of Menifee&nbsp, CA)|us:place:0646842 (Menifee, CA)",
+unknown,cityofrehoboth.civicweb.net,,2,multiple_governments,,"us:cousub:2500556375 (Rehoboth, MA)|us:place:1060290 (Rehoboth Beach, DE)",
+unknown,coloradoga.granicus.com,,2,multiple_governments,,"rtr:us:ga:colorado (Colorado, GA)|us:state:08 (State of Colorado)",
+unknown,cooper.granicus.com,,2,multiple_governments,,"us:place:1214125 (Cooper City, FL)|us:place:4816564 (Cooper, TX)",
+unknown,cosumnescommunityservices.portal.civicclerk.com,,2,multiple_governments,,"rtr:us:ca:cosumnes-community-services-district (Cosumnes Community Services District, CA)|us:place:0622020 (Elk Grove, CA)",
+unknown,dallascounty.civicweb.net,,2,multiple_governments,,"us:county:48113 (Dallas County, TX)|us:place:4819000 (Dallas, TX)",
+unknown,dubuquecountyia.portal.civicclerk.com,,2,multiple_governments,,"us:county:19061 (Dubuque County, IA)|us:place:1922395 (Dubuque, IA)",
+unknown,highlands-nj.municodemeetings.com,,2,multiple_governments,,"us:county:12055 (Highlands County, FL)|us:place:3431500 (Highlands, NJ)",
+unknown,huntingtonny.granicus.com,,2,multiple_governments,,"rtr:us:ny:huntington-long-island (Town of Huntington, Long Island, NY)|us:cousub:3610337000 (Huntington Town, NY)",
+unknown,jamescitycova.portal.civicclerk.com,,2,multiple_governments,,"ca:csd:3554042 (James, ON)|us:county:51095 (James City County, VA)",
+unknown,juneauak.portal.civicclerk.com,,2,multiple_governments,,"rtr:us:ak:juneau (Juneau, AK)|us:place:5538675 (Juneau, WI)",
+unknown,lucascooh.portal.civicclerk.com,,2,multiple_governments,,"us:county:39095 (Lucas County, OH)|us:place:3945276 (Lucas, OH)",
+unknown,mncppc.granicus.com,,2,multiple_governments,,"rtr:us:md:maryland-national-capital-park-and-planning-commission (Maryland-National Capital Park and Planning Commission, MD)|us:county:24031 (Montgomery County, MD)",
+unknown,nbvillage.granicus.com,,2,multiple_governments,,"us:place:1245000 (Miami, FL)|us:place:1249225 (North Bay Village, FL)",
+unknown,oh-sunbury.civicplus.com,,2,multiple_governments,,"us:place:3929148 (Galena, OH)|us:place:3975602 (Sunbury, OH)",
+unknown,parker.granicus.com,,2,multiple_governments,,"us:county:48367 (Parker County, TX)|us:place:4855152 (Parker, TX)",
+unknown,player.invintus.com,,2,multiple_governments,,"us:county:12073 (Leon County, FL)|us:place:5373465 (University Place, WA)",
+unknown,player.vimeo.com,,2,multiple_governments,,"us:cousub:2609336100 (Hamburg Township, MI)|us:place:0654274 (Orland, CA)",
+unknown,pwcgov.granicus.com,,2,multiple_governments,,"us:county:51153 (Prince William County, VA)|us:place:5148968 (Manassas Park, VA)",
+unknown,reno.primegov.com,,2,multiple_governments,,"rtr:us:nv:reno-logo (City of Reno Logo"", NV)|us:place:3260600 (Reno, NV)",
+unknown,santarosacofl.portal.civicclerk.com,,2,multiple_governments,,"us:county:12113 (Santa Rosa County, FL)|us:place:1245750 (Milton, FL)",
+unknown,tampabaywater.granicus.com,,2,multiple_governments,,"rtr:us:fl:tampa-bay-water (Tampa Bay Water, FL)|us:place:1271000 (Tampa, FL)",
+unknown,tillamookcoor.portal.civicclerk.com,,2,multiple_governments,,"us:county:41057 (Tillamook County, OR)|us:place:4173700 (Tillamook, OR)",
+unknown,townofchenango.civicweb.net,,2,multiple_governments,,"us:county:36017 (Chenango County, NY)|us:cousub:3600715110 (Chenango Town, NY)",
+unknown,uatccta.primegov.com,,2,multiple_governments,,"us:place:0621796 (El Cerrito, CA)|us:place:0668294 (San Pablo, CA)",
+unknown,walworthcowi.portal.civicclerk.com,,2,multiple_governments,,"us:county:55127 (Walworth County, WI)|us:place:5583250 (Walworth (village), WI)",
+unknown,wi-cottagegrove.civicplus.com,,2,multiple_governments,,"us:cousub:5502517200 (Cottage Grove (town), WI)|us:place:5517175 (Cottage Grove (village), WI)",
+unknown,www.utah.gov,,2,multiple_governments,,"us:county:49007 (Carbon County, UT)|us:county:49019 (Grand County, UT)",
+escribe,pub-cambridge.escribemeetings.com,,6,unresolved,https://pub-cambridge.escribemeetings.com,Cambridge|City of Cambridge,cambridge-council-meeting-agenda-meeting-2026-02-03-council-meeting
+escribe,pub-hamilton.escribemeetings.com,,4,unresolved,https://pub-hamilton.escribemeetings.com,City of Hamilton,city-of-hamilton-2024-12-16-community-benefits-protocol-sub-committee
+escribe,pub-amherst.escribemeetings.com,,3,unresolved,https://pub-amherst.escribemeetings.com,Amherst|Town of Amherst,town-of-amherst-2025-03-04-audit-committee
+escribe,pub-creston.escribemeetings.com,,3,unresolved,https://pub-creston.escribemeetings.com,Town of Creston,creston-2025-10-14-council-meeting
+escribe,pub-norfolkcounty.escribemeetings.com,,3,unresolved,https://pub-norfolkcounty.escribemeetings.com,Norfolk County,norfolkcounty-2026-01-27-consent-items-council
+escribe,pub-porthope.escribemeetings.com,,3,unresolved,https://pub-porthope.escribemeetings.com,Port Hope,port-hope-2026-08-25-community-advisory-committee-cac
+escribe,pub-wilmot.escribemeetings.com,,3,unresolved,https://pub-wilmot.escribemeetings.com,Wilmot,wilmot-2026-08-24-council-meeting
+escribe,pub-clearview.escribemeetings.com,,2,unresolved,https://pub-clearview.escribemeetings.com,Township of Clearview,clearview-2026-08-26-special-council-meeting-planning-public-meeting
+escribe,pub-leeds1000islands.escribemeetings.com,,2,unresolved,https://pub-leeds1000islands.escribemeetings.com,Leeds1000Islands,leeds1000islands-2025-12-01-committee-of-the-whole-meeting
+escribe,pub-northbay.escribemeetings.com,,2,unresolved,https://pub-northbay.escribemeetings.com,North Bay|North Bay By,north-bay-by-2026-01-27-council-meeting
+escribe,pub-ottawa.escribemeetings.com,,2,unresolved,https://pub-ottawa.escribemeetings.com,City of Ottawa|Ottawa,city-of-ottawa-2026-09-02-planning-and-housing-committee
+escribe,pub-salinecounty.escribemeetings.com,,2,unresolved,https://pub-salinecounty.escribemeetings.com,Saline County,salinecounty-2026-01-20-board-of-county-commissioners
+escribe,pub-sd57.escribemeetings.com,,2,unresolved,https://pub-sd57.escribemeetings.com,Sd57,sd57-2026-04-14-regular-open
+escribe,pub-vermilion.escribemeetings.com,,2,unresolved,https://pub-vermilion.escribemeetings.com,Vermilion,vermilion-2026-08-18-regular-council-meeting
+escribe,pub-vernon.escribemeetings.com,,2,unresolved,https://pub-vernon.escribemeetings.com,City of Vernon,city-of-vernon-2026-07-20-public-hearing
+escribe,pub-bradfordwestgwillimbury.escribemeetings.com,,1,unresolved,https://pub-bradfordwestgwillimbury.escribemeetings.com,Town of Bradford,bradfordwestgwillimbury-2024-08-06-regular-council-and-committee-of-the-whole
+escribe,pub-chulavista.escribemeetings.com,,1,unresolved,https://pub-chulavista.escribemeetings.com,Chula Vista Public Comments,chula-vista-public-comments-2026-05-19-city-council-meeting
+escribe,pub-cofs.escribemeetings.com,,1,unresolved,https://pub-cofs.escribemeetings.com,Cofs,cofs-2023-12-12-regular-council-meeting
+escribe,pub-cvrd.escribemeetings.com,,1,unresolved,https://pub-cvrd.escribemeetings.com,Cvr D,cvrd-2026-07-08-2026-cowichan-valley-regional-district-climate-projections-commi
+escribe,pub-elliotlake.escribemeetings.com,,1,unresolved,https://pub-elliotlake.escribemeetings.com,Elliot Lake GIS Services SSMIC,elliot-lake-gis-services-ssmic-2025-12-08-council
+escribe,pub-fairfield.escribemeetings.com,,1,unresolved,https://pub-fairfield.escribemeetings.com,Fairfield,fairfield
+escribe,pub-king.escribemeetings.com,,1,unresolved,https://pub-king.escribemeetings.com,King,king-2026-08-19-committee-of-adjustment
+escribe,pub-leduc-county.escribemeetings.com,,1,unresolved,https://pub-leduc-county.escribemeetings.com,Leduc County,leduc-county-2024-04-09-council-meeting
+escribe,pub-llbc.escribemeetings.com,,1,unresolved,https://pub-llbc.escribemeetings.com,Llbc,llbc-2025-07-22-cold-mix-township-road-660a-and-range-road-134-regular-council-m
+escribe,pub-northcowichan.escribemeetings.com,,1,blank,https://pub-northcowichan.escribemeetings.com,,2026-09-02-council-regular
+escribe,pub-notl.escribemeetings.com,,1,unresolved,https://pub-notl.escribemeetings.com,Notl,notl-2026-01-27-council-meeting
+escribe,pub-oneinvestmentprogram.escribemeetings.com,,1,unresolved,https://pub-oneinvestmentprogram.escribemeetings.com,Oneinvestmentprogram,oneinvestmentprogram-2024-11-15-joint-investment-board-special-meeting
+escribe,pub-palmdesert.escribemeetings.com,,1,unresolved,https://pub-palmdesert.escribemeetings.com,Palm Desert City Negotiator,palm-desert-city-negotiator-2026-06-25-resolutions-related-to-the-adoption-of-th
+escribe,pub-prescott.escribemeetings.com,,1,unresolved,https://pub-prescott.escribemeetings.com,Prescott,prescott-2024-10-07-council-agenda
+escribe,pub-rmwb.escribemeetings.com,,1,unresolved,https://pub-rmwb.escribemeetings.com,Rmwb,rmwb-2026-01-13-council-meeting
+escribe,pub-stratford.escribemeetings.com,,1,unresolved,https://pub-stratford.escribemeetings.com,Stratford Ad,stratford-ad-2024-09-16-ad-hoc-grand-trunk-renewal-committee
+escribe,pub-townofws.escribemeetings.com,,1,unresolved,https://pub-townofws.escribemeetings.com,Townofws,townofws-2025-06-04-council-meeting
+escribe,pub-twpec.escribemeetings.com,,1,unresolved,https://pub-twpec.escribemeetings.com,Twpec,twpec-2025-11-03-committee-of-the-whole-community-development
+escribe,pub-westkelowna.escribemeetings.com,,1,unresolved,https://pub-westkelowna.escribemeetings.com,West Kelowna Council Chambers,west-kelowna-council-chambers-2023-12-12-regular-council-meeting
+escribe,pub-whiterockcity.escribemeetings.com,,1,unresolved,https://pub-whiterockcity.escribemeetings.com,City of White Rock,city-of-white-rock-2023-07-10-regular-council-meeting
+escribe,tecumseh-pub.escribemeetings.com,,1,blank,https://tecumseh-pub.escribemeetings.com,,2026-08-19-special-council-meeting
+cablecast,cityofpontiac.cablecast.tv,,3,unresolved,https://cityofpontiac.cablecast.tv,Pontiac,pontiac-2025-05-20-pontiac-city-council
+cablecast,dakotamediaaccess.cablecast.tv,,3,blank,https://dakotamediaaccess.cablecast.tv,,2026-06-30-front-avenue-sound-sessions-ep-6-with-stephen-gefroh
+cablecast,edina-mn.cablecast.tv,,3,blank,https://edina-mn.cablecast.tv,,2026-03-17-eden-prairie-music-dept-concert
+cablecast,hamiltonwenham.cablecast.tv,,3,blank,https://hamiltonwenham.cablecast.tv,,2026-08-17-hamilton-select-board-8-17-26
+cablecast,pcc.cablecast.tv,,3,blank,https://pcc.cablecast.tv,,2024-04-25-prge-community-impact
+cablecast,stcharles-mo.cablecast.tv,,3,blank,https://stcharles-mo.cablecast.tv,,2026-08-17-landmarks-board-meeting-august-17-2026
+cablecast,trojanvision.cablecast.tv,,3,blank,https://trojanvision.cablecast.tv,,2026-05-08-spring-2026-commencement-session-1
+cablecast,utvs.cablecast.tv,,3,blank,https://utvs.cablecast.tv,,2026-07-01-utvs-zen-american-flag-america-250
+cablecast,wilson-co-schools.cablecast.tv,,3,blank,https://wilson-co-schools.cablecast.tv,,2025-03-23-new-rep-dante-pittman-committee-appointments
+cablecast,buenapark.cablecast.tv,,2,blank,https://buenapark.cablecast.tv,,2026-07-23-bp-planning-commission-july-22-2026
+cablecast,capitoltvri.cablecast.tv,,2,blank,https://capitoltvri.cablecast.tv,,2026-07-29-inspector-general-independent-advisory-commission-7-29-2026
+cablecast,carync.cablecast.tv,,2,blank,https://carync.cablecast.tv,,2026-07-24-cary-council-meeting-july-23-2026
+cablecast,charlescountymd.cablecast.tv,,2,blank,https://charlescountymd.cablecast.tv,,2026-08-17-planning-commission-august-17-2026
+cablecast,cityofbrea.cablecast.tv,,2,blank,https://cityofbrea.cablecast.tv,,2026-07-22-july-21-2026-brea-city-council-meeting
+cablecast,cityofredlands.cablecast.tv,,2,blank,https://cityofredlands.cablecast.tv,,2026-07-22-redlands-city-council-meeting-july-21-2026
+cablecast,desplainesil.cablecast.tv,,2,blank,https://desplainesil.cablecast.tv,,2026-08-03-city-council-meeting-8-3-2026
+cablecast,gastoncoschools.cablecast.tv,,2,blank,https://gastoncoschools.cablecast.tv,,2026-06-16-board-of-education-good-news-and-classroom-moment-june-2026
+cablecast,hometown.cablecast.tv,,2,blank,https://hometown.cablecast.tv,,2022-04-13-westown-city-council-meeting
+cablecast,lamoineme.cablecast.tv,,2,blank,https://lamoineme.cablecast.tv,,2026-08-12-conservation-commission-august-12-2026
+cablecast,methuentv.cablecast.tv,,2,blank,https://methuentv.cablecast.tv,,2025-10-17-elections-2025-school-committee-forum
+cablecast,portagemi.cablecast.tv,,2,blank,https://portagemi.cablecast.tv,,2026-08-06-planning-commission-meeting-8-6-26
+cablecast,reflect-sttammany.cablecast.tv,,2,blank,https://reflect-sttammany.cablecast.tv,,2026-08-06-st-tammany-parish-zoning-meeting-august-4-2026
+cablecast,wbrw.cablecast.tv,,2,blank,https://wbrw.cablecast.tv,,2026-08-18-washington-township-zoning-board-of-appeals-aug-10th-2026
+cablecast,wmcf.cablecast.tv,,2,blank,https://wmcf.cablecast.tv,,2026-08-18-plan-commission-8-18-26
+cablecast,yourtown.cablecast.tv,,2,blank,https://yourtown.cablecast.tv,,2022-04-13-westown-city-council-meeting-dbc5c8
+cablecast,agawamvod.cablecast.tv,,1,blank,https://agawamvod.cablecast.tv,,2024-09-19-mayor-johnson-coffee-chat-september-18-2024
+cablecast,betv-bensenville.cablecast.tv,,1,blank,https://betv-bensenville.cablecast.tv,,2025-12-16-vob-board-meeting-12-16-2025
+cablecast,bourne.cablecast.tv,,1,blank,https://bourne.cablecast.tv,,2023-02-06-bourne-iswm-recycling-updates-february-8-2023
+cablecast,cctv-vod.cablecast.tv,,1,blank,https://cctv-vod.cablecast.tv,,2025-01-27-chs-girls-hockey-vs-westwood-jan-22-2025
+cablecast,cerritos.cablecast.tv,,1,blank,https://cerritos.cablecast.tv,,2026-08-18-senior-services-commission-special-meeting-august-18-2026
+cablecast,chabot.cablecast.tv,,1,blank,https://chabot.cablecast.tv,,2021-01-21-white-house-chronicle-the-challenges-facing-president-joe-biden-briti
+cablecast,champaign-cablecast.cablecast.tv,,1,blank,https://champaign-cablecast.cablecast.tv,,2026-08-18-champaign-city-council-8-18-26
+cablecast,champaign.cablecast.tv,,1,blank,https://champaign.cablecast.tv,,2026-08-24-board-of-fire-and-police-commissioners-8-24-26
+cablecast,cityofsantee.cablecast.tv,,1,unresolved,https://cityofsantee.cablecast.tv,Santee,santee-2025-05-19-brews-and-bites-2025-supports
+cablecast,gnat.cablecast.tv,,1,blank,https://gnat.cablecast.tv,,2025-07-09-video-announcement-good-trouble-lives-on-protest
+cablecast,ictv.cablecast.tv,,1,blank,https://ictv.cablecast.tv,,2023-11-20-laprairie-city-council-11-20-2023
+cablecast,jpschools.cablecast.tv,,1,blank,https://jpschools.cablecast.tv,,2024-10-08-we-choose-amanda-kihnemann
+cablecast,kdol.cablecast.tv,,1,blank,https://kdol.cablecast.tv,,ousd-office-of-equity-building-community-connection-and-belonging
+cablecast,lakecounty.legistar.com,,1,unresolved,https://lakecounty.legistar.com,Lake County Illinois,lake-county-illinois-2026-04-03-technology-committee-april-3-2026
+cablecast,marintv.cablecast.tv,,1,blank,https://marintv.cablecast.tv,,the-bible-study
+cablecast,marthasvineyard.cablecast.tv,,1,blank,https://marthasvineyard.cablecast.tv,,2025-10-09-tisbury-sb-10-7-25
+cablecast,metvweb.cablecast.tv,,1,blank,https://metvweb.cablecast.tv,,2025-08-06-2025-pace-center-for-girls-graduation-ceremony
+cablecast,mycommunityfocus.cablecast.tv,,1,blank,https://mycommunityfocus.cablecast.tv,,2026-04-08-macedonia-mayor-s-report-april-may-2026
+cablecast,northbrunswicktv.cablecast.tv,,1,blank,https://northbrunswicktv.cablecast.tv,,2025-04-17-township-council-meeting-4-21-2025
+cablecast,northpenn.cablecast.tv,,1,blank,https://northpenn.cablecast.tv,,2025-10-03-mornings-10-3-25
+cablecast,reflect-brunswick-me.cablecast.tv,,1,unresolved,https://reflect-brunswick-me.cablecast.tv,Town of Brunswick,town-of-brunswick-2021-12-15-brunswick-recreation-commission-12-15-21
+cablecast,reflect-charlescountymd.cablecast.tv,,1,blank,https://reflect-charlescountymd.cablecast.tv,,2025-04-29-board-of-county-commissioners-april-29-2025-morning-session
+cablecast,reflect-cityofalbertlea.cablecast.tv,,1,blank,https://reflect-cityofalbertlea.cablecast.tv,,2025-12-08-city-council-meeting-12-8-25
+cablecast,reflect-cityofloveland-co.cablecast.tv,,1,unresolved,https://reflect-cityofloveland-co.cablecast.tv,City of Loveland,city-of-loveland-city-council-meeting-november-12-2024
+cablecast,reflect-ctsbtv.cablecast.tv,,1,blank,https://reflect-ctsbtv.cablecast.tv,,2026-05-04-lenox-candidates-forum-presented-by-the-league-of-women-voters-may-4
+cablecast,reflect-fayetteville-ar.cablecast.tv,,1,blank,https://reflect-fayetteville-ar.cablecast.tv,,2024-07-18-long-range-planning-committee-7-18-2024
+cablecast,reflect-gnat.cablecast.tv,,1,blank,https://reflect-gnat.cablecast.tv,,2024-08-27-manchester-vicious-dog-hearing-08-27-24
+cablecast,reflect-harbor-media.cablecast.tv,,1,blank,https://reflect-harbor-media.cablecast.tv,,2020-07-30-hingham-water-transition-evaluation-committee-07-29-2020
+cablecast,reflect-mctv-midland-mi.cablecast.tv,,1,blank,https://reflect-mctv-midland-mi.cablecast.tv,,2021-07-20-zoning-board-of-appeals-7-20-21
+cablecast,reflect-pomona.cablecast.tv,,1,unresolved,https://reflect-pomona.cablecast.tv,City of Pomona,city-of-pomona-pomona-city-council-meeting-09-19-2022
+cablecast,reflect-savagetv-cityofsavage.cablecast.tv,,1,blank,https://reflect-savagetv-cityofsavage.cablecast.tv,,2022-03-24-planning-commission-3-24-22
+cablecast,reflect-thegrotonchannel.cablecast.tv,,1,blank,https://reflect-thegrotonchannel.cablecast.tv,,2025-05-23-groton-select-board-5-23-25-via-internet-conference
+cablecast,reflect-townofmerrimack.cablecast.tv,,1,blank,https://reflect-townofmerrimack.cablecast.tv,,2026-08-10-conservation-commission-august-10-2026
+cablecast,reflect-vod-bedfordtv.cablecast.tv,,1,blank,https://reflect-vod-bedfordtv.cablecast.tv,,2022-06-09-water-sewer-advisory-committee-meeting-thursday-june-9-2022
+cablecast,reflect-vod-cityoftybee.cablecast.tv,,1,blank,https://reflect-vod-cityoftybee.cablecast.tv,,2021-10-04-tybee-city-council-candidate-forum-10-4-2021
+cablecast,reflect-vsctv.cablecast.tv,,1,blank,https://reflect-vsctv.cablecast.tv,,2020-06-11-haddam-board-of-finance-june-11-2020
+cablecast,riverviewmi.cablecast.tv,,1,unresolved,,City of Riverview,
+cablecast,salem.cablecast.tv,,1,unresolved,https://salem.cablecast.tv,Salem,salem-2025-08-09-salembration-historical-narration-of-american-revolution-vetera
+cablecast,sapatv.cablecast.tv,,1,blank,https://sapatv.cablecast.tv,,2023-08-07-veterans-stories-paul-batchelder-7-7-23
+cablecast,sttammany.cablecast.tv,,1,blank,https://sttammany.cablecast.tv,,2026-08-28-twila
+cablecast,thurston.cablecast.tv,,1,unresolved,https://thurston.cablecast.tv,Thurston,lwv-primary-forum-2022-dist-22-pos-2
+cablecast,vod-allencounty.cablecast.tv,,1,blank,https://vod-allencounty.cablecast.tv,,2025-06-11-summit-city-singers-one-piano-four-hands-june-8th-2025
+cablecast,vod-eagan.cablecast.tv,,1,blank,https://vod-eagan.cablecast.tv,,2026-04-24-access-to-democracy
+cablecast,vod-framingham.cablecast.tv,,1,blank,https://vod-framingham.cablecast.tv,,school-committee-6-17-26
+cablecast,vsctv.cablecast.tv,,1,blank,https://vsctv.cablecast.tv,,2022-06-28-talk-of-the-town-engineering
+cablecast,wausau-wi.cablecast.tv,,1,blank,https://wausau-wi.cablecast.tv,,2025-07-14-wausau-school-board-meeting-7-14-25
+cablecast,westernhills.cablecast.tv,,1,blank,https://westernhills.cablecast.tv,,andover-summer-concert-series-07-11-2025-barney-martin-1
+swagit,dcccd.new.swagit.com,,3,unresolved,https://dcccd.new.swagit.com,City of Dallas,city-of-dallas-apr-04-2023-education-workforce-committee-meeting-dallas-county-c
+swagit,coppellisd.new.swagit.com,,2,blank,https://coppellisd.new.swagit.com,,sep-16-2024-board-workshop-coppell-independent-school-district
+swagit,dd7.new.swagit.com,,2,blank,https://dd7.new.swagit.com,,aug-05-2025-regular-commissioner-meeting-jefferson-county-drainage-district-no-7
+swagit,floodauthorityeast.new.swagit.com,,2,blank,https://floodauthorityeast.new.swagit.com,,aug-21-2025-board-meeting-flood-protection-authority-east
+swagit,harrishealthtx.new.swagit.com,,2,unresolved,https://harrishealthtx.new.swagit.com,City of Houston,city-of-houston-jun-30-2025-board-meetings-harris-health-system
+swagit,hcpsstv.new.swagit.com,,2,blank,https://hcpsstv.new.swagit.com,,jul-14-2016-board-of-education-regular-meeting-pt-2-3-consent-agenda-thru-8-adjo
+swagit,lasvirgenesmwd.new.swagit.com,,2,blank,https://lasvirgenesmwd.new.swagit.com,,feb-18-2025-las-virgenes-mwd-board-meeting-las-virgenes-municipal-water-district
+swagit,pelhampublicschoolsny.new.swagit.com,,2,blank,https://pelhampublicschoolsny.new.swagit.com,,jan-08-2025-january-8-2025-business-meeting-pelham-public-schools
+swagit,alamedausdca.new.swagit.com,,1,blank,https://alamedausdca.new.swagit.com,,jun-27-2023-school-board-meeting-alameda-unified-school-district
+swagit,alamoareampo.new.swagit.com,,1,blank,https://alamoareampo.new.swagit.com,,may-21-2018-transportation-policy-board-alamo-area-metropolitan-planning-organiz
+swagit,battlegroundps.new.swagit.com,,1,blank,https://battlegroundps.new.swagit.com,,dec-08-2025-board-of-directors
+swagit,brevardpublicschools.new.swagit.com,,1,blank,https://brevardpublicschools.new.swagit.com,,jan-20-2026-board-workshop-brevard-public-schools
+swagit,dart.new.swagit.com,,1,unresolved,https://dart.new.swagit.com,City of Plano,city-of-plano-oct-31-2023-board-meeting-dallas-area-rapid-transit-dart
+swagit,desotoisdtx.new.swagit.com,,1,blank,https://desotoisdtx.new.swagit.com,,feb-23-2026-board-meetings-desoto-isd
+swagit,galvestonparkboardtx.new.swagit.com,,1,blank,https://galvestonparkboardtx.new.swagit.com,,apr-28-2026-board-of-trustees-galveston-park-board-of-trustees
+swagit,greenburghpublicaccess.new.swagit.com,,1,blank,https://greenburghpublicaccess.new.swagit.com,,feb-19-2025-the-african-diaspora-experience-biff-henderson-greenburgh-public-acc
+swagit,hgac.new.swagit.com,,1,blank,https://hgac.new.swagit.com,,oct-01-2019-local-project-sponsor-workshop-houston-galveston-area-council
+swagit,lmctvny.new.swagit.com,,1,unresolved,https://lmctvny.new.swagit.com,"TV, NY",tv-ny-2026-01-26-jan-26-2026-village-of-mamaroneck-board-of-trustees-legislative
+swagit,lonestargcd.new.swagit.com,,1,blank,https://lonestargcd.new.swagit.com,,sep-18-2025-open-forum-for-public-water-suppliers-lone-star-groundwater-conserva
+swagit,mankatoaps.new.swagit.com,,1,blank,https://mankatoaps.new.swagit.com,,jan-23-2024-school-board-mankato-area-public-schools
+swagit,mckinneyisdtx.new.swagit.com,,1,blank,https://mckinneyisdtx.new.swagit.com,,may-18-2026-school-board-meeting-mckinney-independent-school-district
+swagit,mobilityauthority.new.swagit.com,,1,blank,https://mobilityauthority.new.swagit.com,,sep-07-2016-board-of-directors-central-texas-regional-mobility-authority
+swagit,nassaucountysd.new.swagit.com,,1,unresolved,https://nassaucountysd.new.swagit.com,Nassau County,nassau-county-dec-14-2017-december-14-2017-the-school-board-of-nassau-county-flo
+swagit,nctcog.new.swagit.com,,1,blank,https://nctcog.new.swagit.com,,jun-27-2019-white-house-opportunity-zones-and-revitalization-council-roundtable
+swagit,norfolkpublicschools.new.swagit.com,,1,blank,https://norfolkpublicschools.new.swagit.com,,feb-04-2022-school-board-retreat-norfolk-public-schools
+swagit,ntmwd.new.swagit.com,,1,blank,https://ntmwd.new.swagit.com,,aug-13-2025-legislative-committee-meeting-north-texas-municipal-water-district
+swagit,public.destinyhosted.com,,1,blank,https://public.destinyhosted.com,,aug-17-2026-school-board-mankato-area-public-schools
+swagit,rockwallisdtx.new.swagit.com,,1,blank,https://rockwallisdtx.new.swagit.com,,sep-16-2024-board-of-trustees-rockwall-isd
+swagit,scgtv.new.swagit.com,,1,blank,https://scgtv.new.swagit.com,,may-08-2019-oral-arguments
+swagit,siouxcityschools.new.swagit.com,,1,blank,https://siouxcityschools.new.swagit.com,,jan-24-2022-special-board-meeting-sioux-city-community-school-district
+swagit,tabc.new.swagit.com,,1,blank,https://tabc.new.swagit.com,,jan-20-2026-regular-commission-meeting-texas-alcoholic-beverage-commission
+swagit,tdhca.new.swagit.com,,1,blank,https://tdhca.new.swagit.com,,nov-07-2024-board-meeting-texas-department-of-housing-and-community-affairs
+swagit,texashhsc.new.swagit.com,,1,blank,https://texashhsc.new.swagit.com,,may-18-2023-state-medicaid-managed-care-advisory-committee-texas-health-and-huma
+swagit,traviscad.new.swagit.com,,1,blank,https://traviscad.new.swagit.com,,nov-06-2023-board-of-directors-meeting-travis-central-appraisal-district-25c543
+swagit,triunfo.new.swagit.com,,1,blank,https://triunfo.new.swagit.com,,jun-25-2018-tsd-board-meeting-triunfo-water-sanitation-district
+swagit,trwd.new.swagit.com,,1,blank,https://trwd.new.swagit.com,,jan-20-2026-board-meeting-tarrant-regional-water-district
+swagit,txdot.new.swagit.com,,1,blank,https://txdot.new.swagit.com,,apr-30-2026-texas-transportation-commission-meetings-texas-department-of-transpo
+swagit,woodlandscvb.new.swagit.com,,1,blank,https://woodlandscvb.new.swagit.com,,mar-18-2020-visit-the-woodlands-special-board-meeting-the-woodlands-convention-a
+swagit,wpcommunitymedia.new.swagit.com,,1,blank,https://wpcommunitymedia.new.swagit.com,,nov-14-2018-new-hope-in-the-lord-jerry-antomattei-white-plains-community-media
+telvue,videoplayer.telvue.com,CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l,2,blank,https://videoplayer.telvue.com/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l,,town-council-08-04-26
+telvue,u.peg.tv,,1,unresolved,https://u.peg.tv,Ashland,august-19-2025-ashland-city-council
+telvue,videoplayer.telvue.com,yycCAZPb0NN3zj2o5qio-YFMNC43NjCG,1,unresolved,https://videoplayer.telvue.com/player/yycCAZPb0NN3zj2o5qio-YFMNC43NjCG,"City, MA",city-ma-city-council-5-6-2025
+telvue,videoplayer.telvue.com,dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu,1,blank,https://videoplayer.telvue.com/player/dQtoDvlZYDOtqaf7eRn9z2lb1Nb6EZzu,,city-council-3-5-24
+telvue,videoplayer.telvue.com,TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc,1,blank,https://videoplayer.telvue.com/player/TDGUxXaDdkMUZKBTU1_JxP2_g1gEpRjc,,selectboard-mtg-6-16-26
+telvue,videoplayer.telvue.com,mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N,1,unresolved,https://videoplayer.telvue.com/player/mtJUUUldXjgiMF_-BUta9TSEaNgCdk_N,WB,west-bridgewater-ma-wb-board-of-selectmen-mtg-march-20th-2024
+telvue,videoplayer.telvue.com,-11ipagMwR9uJX6KR7gKxXlphFR7CXkX,1,blank,https://videoplayer.telvue.com/player/-11ipagMwR9uJX6KR7gKxXlphFR7CXkX,,chanty-jong-presents-surviving-the-killing-fields-chanty-jong-presents-surviving
+telvue,videoplayer.telvue.com,0bfLByeZXfZHVlpy5BHT5v2arkggCWuH,1,blank,https://videoplayer.telvue.com/player/0bfLByeZXfZHVlpy5BHT5v2arkggCWuH,,20180517-src-meeting
+telvue,videoplayer.telvue.com,0l61qrd2cTIyQzYJ0oHNRYLt8lmyVn7U,1,blank,https://videoplayer.telvue.com/player/0l61qrd2cTIyQzYJ0oHNRYLt8lmyVn7U,,reeling-the-movie-review-show-886-1080p
+telvue,videoplayer.telvue.com,2bm0gzQWeVRzdCgvjXziXKwO3icSKh05,1,blank,https://videoplayer.telvue.com/player/2bm0gzQWeVRzdCgvjXziXKwO3icSKh05,,all-stories-matter-katey-and-chris-why-we-love-performing-the-civic-and-life
+telvue,videoplayer.telvue.com,4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1,1,blank,https://videoplayer.telvue.com/player/4y0ZeULE62_pQWmSNIW7pHr0dygnDXt1,,2023-06-19-board-of-education-regular-meeting
+telvue,videoplayer.telvue.com,56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O,1,blank,https://videoplayer.telvue.com/player/56Yd51yoRNeGH3VD7EmsB_bfASrkIN1O,,december-5-2023-town-of-saugerties-public-hearings
+telvue,videoplayer.telvue.com,8JdGjc3XQkMBaO9P3bcFxCGYEllvhnOn,1,blank,https://videoplayer.telvue.com/player/8JdGjc3XQkMBaO9P3bcFxCGYEllvhnOn,,nov-14-2024-work-session-1-fy-2026-2035-capital-improvement-program-cip-budget
+telvue,videoplayer.telvue.com,9GoxOSjmC7wxhZd_91MzDBO_wwXycvDQ,1,blank,https://videoplayer.telvue.com/player/9GoxOSjmC7wxhZd_91MzDBO_wwXycvDQ,,township-council-mtg-8-8-23
+telvue,videoplayer.telvue.com,bHwwzKX3TkapuHPqY4J6DEAclNWGbbch,1,blank,https://videoplayer.telvue.com/player/bHwwzKX3TkapuHPqY4J6DEAclNWGbbch,,proposals-for-sale-of-commercial-land-tsakalos-realty-trust-interview
+telvue,videoplayer.telvue.com,bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9,1,blank,https://videoplayer.telvue.com/player/bjF2_CaOyvFqx0n0Wp4DVGakWmOU3Nb9,,committee-meetings
+telvue,videoplayer.telvue.com,BVZzsOwkEDxca5y_v_Nub8EKlqfYch_y,1,blank,https://videoplayer.telvue.com/player/BVZzsOwkEDxca5y_v_Nub8EKlqfYch_y,,pacconcert21124
+telvue,videoplayer.telvue.com,BYZxzRoRv7IoaYynQYVU7BGYzrtXvUiD,1,blank,https://videoplayer.telvue.com/player/BYZxzRoRv7IoaYynQYVU7BGYzrtXvUiD,,black-sci-fi-tv-05
+telvue,videoplayer.telvue.com,DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm,1,blank,https://videoplayer.telvue.com/player/DlmmPfdsX2xkVdFmHGUnNrmtSQmz1Apm,,township-committee-02-26-2024-part-1
+telvue,videoplayer.telvue.com,dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj,1,blank,https://videoplayer.telvue.com/player/dUV4zRmTRozlQCcEFvNjPG1gVU50zdtj,,lion-s-pride-guests-amy-smith-nate-zucco-ashley-antoine-maura-ricardi
+telvue,videoplayer.telvue.com,gmcC3sJ6AGUdIb568B18VQd22AGea7RE,1,blank,https://videoplayer.telvue.com/player/gmcC3sJ6AGUdIb568B18VQd22AGea7RE,,first-ward-community-resource-mtg-february-2026
+telvue,videoplayer.telvue.com,HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA,1,blank,https://videoplayer.telvue.com/player/HDwuV3is8s5nNzWpdoDe7ey1dmO7F3CA,,county-administrator-reporrt-feb-2026
+telvue,videoplayer.telvue.com,KGL-y_dHhCluQTy7c6YoVBzzQ5eHj7Lr,1,blank,https://videoplayer.telvue.com/player/KGL-y_dHhCluQTy7c6YoVBzzQ5eHj7Lr,,2026-01-27-board-of-trustees
+telvue,videoplayer.telvue.com,kt_qf7YDXf53OIbY2RvweNBwZfUjIgei,1,blank,https://videoplayer.telvue.com/player/kt_qf7YDXf53OIbY2RvweNBwZfUjIgei,,school-view-24-george-washington-carver-week-2016
+telvue,videoplayer.telvue.com,LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ,1,blank,https://videoplayer.telvue.com/player/LGze1WqTsE8jwTKC--4xu4kSh8jPjdoJ,,girls-volleyball-vs-newton-north-tigers
+telvue,videoplayer.telvue.com,Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM,1,blank,https://videoplayer.telvue.com/player/Mzn4uOy-GIuW4rtdO2jlZmP3EE1WywoM,,school-committee-meeting-6-16-26
+telvue,videoplayer.telvue.com,O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS,1,blank,https://videoplayer.telvue.com/player/O1KDXxYafTFWNyJDAq7WcuvJ9u9YH6tS,,authentic-business-adventures
+telvue,videoplayer.telvue.com,o6Qh7LIjgTymwx6gz6NDiPtbRpz9SB6B,1,unresolved,https://videoplayer.telvue.com/player/o6Qh7LIjgTymwx6gz6NDiPtbRpz9SB6B,MCS,mcs-mcs-board-mtg
+telvue,videoplayer.telvue.com,P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS,1,blank,https://videoplayer.telvue.com/player/P8wyVTR2qr3_LDUHnb_mF4AFW6RckIeS,,garfield-county-sheriff-candidate-forum-hosted-by-the-crv-chamber-at-the-ute-jun
+telvue,videoplayer.telvue.com,rb5Cd5C4A-90O1S3556SjZ8grdhFAYJy,1,blank,https://videoplayer.telvue.com/player/rb5Cd5C4A-90O1S3556SjZ8grdhFAYJy,,theater-time-tenfest-2026
+telvue,videoplayer.telvue.com,sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw,1,blank,https://videoplayer.telvue.com/player/sC8tLrxdhpB-glnrjAZCtQ9j-SiG_2lw,,3-21-23-tech-school-committee-meeting
+telvue,videoplayer.telvue.com,SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx,1,blank,https://videoplayer.telvue.com/player/SoyiaNCvnOa3EtFnUDtaDbkyi72cpHJx,,inclusion-from-the-mayflower-to-2020
+telvue,videoplayer.telvue.com,xa8kw8xwXTOpLL7Jqu2ziyDyu12QqaFy,1,blank,https://videoplayer.telvue.com/player/xa8kw8xwXTOpLL7Jqu2ziyDyu12QqaFy,,gerald-f-deconto-by-erin-hurley
+telvue,videoplayer.telvue.com,uClcIN88BHKHJoveFoaVN_8_5Tg72P0o,1,blank,https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o,,select-board-08-10-26
+telvue,videoplayer.telvue.com,c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L,1,blank,https://videoplayer.telvue.com/player/c0gKv9ZUF0uiidDafFfESDZA5EkkJp7L,,planning-board-8-19-2026
+telvue,videoplayer.telvue.com,0xevl1Y-G4MlrcS7VDCjMf9uhAElnooJ,1,blank,https://videoplayer.telvue.com/player/0xevl1Y-G4MlrcS7VDCjMf9uhAElnooJ,,fps-school-committee-meeting-07-15-26
+telvue,videoplayer.telvue.com,lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI,1,blank,https://videoplayer.telvue.com/player/lfzlfeW2jHTLCtEU2AKNyEA0B8A5stMI,,board-of-supervisors-8-21-26
+telvue,videoplayer.telvue.com,5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R,1,blank,https://videoplayer.telvue.com/player/5ZgpAPx0jUMwAvILE2CIBql85kdlcB1R,,2026-06-15-town-council
+telvue,videoplayer.telvue.com,iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2,1,blank,https://videoplayer.telvue.com/player/iE0p5N2b-Se5BhxS-3KDrHfUWzLHfku2,,select-board
+telvue,videoplayer.telvue.com,4jeRlBTetCoFJdyT5ssIvBrB9VUvRN0M,1,blank,https://videoplayer.telvue.com/player/4jeRlBTetCoFJdyT5ssIvBrB9VUvRN0M,,2026-08-19-school-committee
+telvue,videoplayer.telvue.com,UWZJjir_fJaDicoMbxYCe2L-uxkXiZpX,1,blank,https://videoplayer.telvue.com/player/UWZJjir_fJaDicoMbxYCe2L-uxkXiZpX,,let-s-talk-business-jessica-ponyrko
+telvue,videoplayer.telvue.com,Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY,1,blank,https://videoplayer.telvue.com/player/Uf_haH9SRhiC9hGsGoevnFKJwHM7n6eY,,eye-on-piscataway-august-2026
+telvue,videoplayer.telvue.com,Hejq7tDUseFZXc46e8pIxdl8NpmSEupd,1,blank,https://videoplayer.telvue.com/player/Hejq7tDUseFZXc46e8pIxdl8NpmSEupd,,2020-10-19-berkley-school-board-meeting
+telvue,videoplayer.telvue.com,LyAOBTaTsnn_CnwjwcB5-VoxQtyoKR1P,1,blank,https://videoplayer.telvue.com/player/LyAOBTaTsnn_CnwjwcB5-VoxQtyoKR1P,,planning-board-08-27-26
+telvue,videoplayer.telvue.com,wLxG13-ZqUKHD7csDRSPQnZyL6Fkk_SG,1,blank,https://videoplayer.telvue.com/player/wLxG13-ZqUKHD7csDRSPQnZyL6Fkk_SG,,2023-06-13-brooks-crossing-spring-concert
+telvue,videoplayer.telvue.com,7qWlRaZ6VN1bGk9m5qlLrPdu4-4i7cSa,1,unresolved,https://videoplayer.telvue.com/player/7qWlRaZ6VN1bGk9m5qlLrPdu4-4i7cSa,Winchester,winchester-winchester-select-board-8-10-26
+telvue,videoplayer.telvue.com,q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5,1,blank,https://videoplayer.telvue.com/player/q7D_V5L-tyPxVhi3t2I9JQQll2kXxih5,,the-best-of-mt-shasta-with-andr-e-morgana-episode-1-ayelet-segal-2-16-2020
+castus,cloud.castus.tv,,3,blank,https://cloud.castus.tv,,board-of-trustees-meeting-06-22-26
+champds,play.champds.com,,1,unresolved,https://play.champds.com,ElPaso County Colorado,elpaso-county-colorado-2025-08-05-bocc-regular-meeting
+civicclerk,lenaweecomi.portal.civicclerk.com,,2,blank,https://lenaweecomi.portal.civicclerk.com,,2024-06-11-personnel-ways-means-committee-meeting
+civicclerk,duvalcosb.portal.civicclerk.com,,1,blank,https://duvalcosb.portal.civicclerk.com,,2026-09-01-september-1-2026-regular-board-meeting-revised
+civicclerk,fsusga.portal.civicclerk.com,,1,blank,https://fsusga.portal.civicclerk.com,,2025-02-25-sga-election-executive-branch-debate
+civicclerk,macombtwpmi.portal.civicclerk.com,,1,blank,https://macombtwpmi.portal.civicclerk.com,,2025-06-03-planning-commission
+civicclerk,southorangetwpnj.portal.civicclerk.com,,1,blank,https://southorangetwpnj.portal.civicclerk.com,,2026-08-20-historic-preservation-commission-regular-meeting
+civicclerk,sumterclerkfl.portal.civicclerk.com,,1,unresolved,https://sumterclerkfl.portal.civicclerk.com,"Sumterville, FL",sumterville-fl-2026-08-25-tourist-development-council-meeting
+granicus,carson.granicus.com,,3,unresolved,https://carson.granicus.com,City of Carson,city-of-carson-2021-11-03-city-council-on-2021-11-03-5-00-pm
+granicus,actransit.granicus.com,,2,unresolved,https://actransit.granicus.com,Alameda Contra Costa Transit District|Unknown Jurisdiction,ac-transit-2024-12-11-board-of-directors
+granicus,ames.granicus.com,,2,unresolved,https://ames.granicus.com,City of Ames,city-of-ames-2026-04-02-special-meeting-of-the-ames-city-council
+granicus,centralvalleyflood.granicus.com,,2,unresolved,https://centralvalleyflood.granicus.com,Central Valley Flood Protection Board,central-valley-flood-protection-board-2020-01-24-january-24-2020-board-meeting
+granicus,cms-k12-nc.granicus.com,,2,unresolved,https://cms-k12-nc.granicus.com,Charlotte-Mecklenburg Schools of North Carolina|Unknown Jurisdiction,unknown-jurisdiction-what-is-jr0tc
+granicus,csmfo.granicus.com,,2,unresolved,https://csmfo.granicus.com,California,california-2023-11-22-csmfo-webinar-sales-tax-101-please-see-agenda-for-copy-of
+granicus,csos.granicus.com,,2,unresolved,https://csos.granicus.com,Colorado|Unknown Jurisdiction,unknown-jurisdiction-rulemaking-hearing-colorado-department-of-state-elections-r
+granicus,dupageforest.granicus.com,,2,unresolved,https://dupageforest.granicus.com,Forest,county-of-dupage-il-commission-meeting-5-16-23
+granicus,fpdcc.granicus.com,,2,unresolved,https://fpdcc.granicus.com,Cook County Forest Preserve District,cook-county-forest-preserve-district-2021-07-27-finance-committee-on-2021-07-27
+granicus,fulton.granicus.com,,2,unresolved,https://fulton.granicus.com,Fulton County,fulton-2025-12-03-board-of-commissioners-on-2025-12-03-10-00-am
+granicus,gpisd.granicus.com,,2,unresolved,https://gpisd.granicus.com,Gregory Portland Independent School District|Unknown Jurisdiction,unknown-jurisdiction-2023-10-16-regular-board-meeting-october-16-2023
+granicus,houstonisd.granicus.com,,2,unresolved,https://houstonisd.granicus.com,Houston ISD|Unknown Jurisdiction,unknown-jurisdiction-2025-04-23-school-board-on-2025-04-23-1-00-pm-special-meeti
+granicus,ieua.granicus.com,,2,unresolved,https://ieua.granicus.com,IEUA,ieua-2025-03-06-03-06-2025-regional-sewerage-policy-committee-meeting
+granicus,illinoistollway.granicus.com,,2,unresolved,https://illinoistollway.granicus.com,Illinois State Toll Highway Authority|Unknown Jurisdiction,unknown-jurisdiction-illinois-tollway-strategic-planning-committee
+granicus,kauai.granicus.com,,2,unresolved,https://kauai.granicus.com,"Kaua&apos;i County, HI",kaua-apos-i-county-hi-2025-12-29-county-council
+granicus,lfucg.granicus.com,,2,unresolved,https://lfucg.granicus.com,Lexington-Fayette Urban County Government,lexington-fayette-urban-county-government-2026-03-10-general-government-planning
+granicus,metrarr.granicus.com,,2,unresolved,https://metrarr.granicus.com,Metra Railroad,metra-railroad-2023-11-10-crd-board-meeting
+granicus,mplsk12mn.granicus.com,,2,unresolved,https://mplsk12mn.granicus.com,Minneapolis Public Schools,minneapolis-public-schools-2018-06-27-committee-of-the-whole
+granicus,mwrd.granicus.com,,2,unresolved,https://mwrd.granicus.com,Metropolitan Water Reclamation District of Greater Chicago|Unknown Jurisdiction,mw-rd-2026-01-22-board-of-commissioners-on-2026-01-22-10-30-am
+granicus,olelo.granicus.com,,2,unresolved,https://olelo.granicus.com,Olelo Community Media|Unknown Jurisdiction,unknown-jurisdiction-caring-together-ep-1-living-with-a-changing-brain
+granicus,oregonpuc.granicus.com,,2,unresolved,https://oregonpuc.granicus.com,Oregon Public Utility Commission|Unknown Jurisdiction,unknown-jurisdiction-special-public-meeting-lc-85-pac-2025-integrated-resource-p
+granicus,pasadenaedu.granicus.com,,2,unresolved,https://pasadenaedu.granicus.com,Pasadena Community College,pasadena-community-college-2016-05-04-board-of-trustees-meeting
+granicus,pioneercommunityenergy.granicus.com,,2,unresolved,https://pioneercommunityenergy.granicus.com,Pioneer Community Energy|Unknown Jurisdiction,unknown-jurisdiction-board-of-directors-special-meeting
+granicus,portofsandiego.granicus.com,,2,unresolved,https://portofsandiego.granicus.com,San Diego,unknown-jurisdiction-2022-12-13-board-of-port-commissioners-on-2022-12-13-1-00-p
+granicus,rideuta.granicus.com,,2,unresolved,https://rideuta.granicus.com,Unknown Jurisdiction|Utah Transit Authority (UTA),ride-uta-2025-09-24-board-of-trustees-on-2025-09-24-9-00-am
+granicus,sedgwick.granicus.com,,2,unresolved,https://sedgwick.granicus.com,County of Sedgwick,county-of-sedgwick-2024-07-11-board-of-sedgwick-county-commissioners
+granicus,sfha.granicus.com,,2,unresolved,https://sfha.granicus.com,San Francisco Housing Authority|Unknown Jurisdiction,unknown-jurisdiction-2024-10-24-special-housing-authority-board-of-commissioners
+granicus,sitka.granicus.com,,2,unresolved,https://sitka.granicus.com,City of Sitka,city-of-sitka-2021-09-14-city-and-borough-assembly-on-2021-09-14-6-00-pm
+granicus,spokanevalley.granicus.com,,2,unresolved,https://spokanevalley.granicus.com,The City of Spokane Valley,the-city-of-spokane-valley-2026-07-07-council-meeting
+granicus,supremestateaz.granicus.com,,2,unresolved,https://supremestateaz.granicus.com,Arizona Supreme Court,arizona-supreme-court-2025-10-15-maywald-v-toyota
+granicus,tahoecitypud.granicus.com,,2,unresolved,https://tahoecitypud.granicus.com,Tahoe City Public Utility District|Unknown Jurisdiction,unknown-jurisdiction-board-of-directors-meeting-in-person-via-zoom
+granicus,townsquaretv.granicus.com,,2,unresolved,https://townsquaretv.granicus.com,Northern Dakota County|Northern Dakota County Cable Commission,northern-dakota-county-2025-05-07-west-st-paul-environmental-committee
+granicus,allegheny.granicus.com,,1,unresolved,https://allegheny.granicus.com,Subtitles County,subtitles-county-2026-07-14-county-council-on-2026-07-14-5-00-pm
+granicus,azcc.granicus.com,,1,unresolved,https://azcc.granicus.com,Arizona Corporation Commission,arizona-corporation-commission-2026-09-02-procedural-conference-s-21409a-26-0252
+granicus,bchd.granicus.com,,1,unresolved,https://bchd.granicus.com,Beach Cities Health District,beach-cities-health-district-2022-05-12-strategic-development-half-day
+granicus,bsd405.granicus.com,,1,unresolved,https://bsd405.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2016-02-02-board-meeting-2016-2-2
+granicus,calchannel.granicus.com,,1,unresolved,https://calchannel.granicus.com,The California Channel,the-california-channel-2019-09-13-senate-floor-session
+granicus,cap-az.granicus.com,,1,unresolved,https://cap-az.granicus.com,Central Arizona Project,central-arizona-project-2025-04-08-public-policy-committee-4-3-25
+granicus,ccisd.granicus.com,,1,unresolved,https://ccisd.granicus.com,Corpus Christi ISD,corpus-christi-isd-2025-08-11-regular-board-meeting
+granicus,centralbasin.granicus.com,,1,unresolved,https://centralbasin.granicus.com,Central Basin Municipal Water District,central-basin-municipal-water-district-2026-08-31-board-of-directors-pt-3
+granicus,chapelhill.legistar.com,,1,unresolved,https://chapelhill.legistar.com,Town of Chapel Hill,town-of-chapel-hill-2026-06-23-community-design-commission-on-2026-06-23-5-30-pm
+granicus,chathamborough.granicus.com,,1,unresolved,https://chathamborough.granicus.com,Borough of Chatham,borough-of-chatham-2026-09-02-planning-board-sep-2nd-2026
+granicus,chicagoparkdistrict.granicus.com,,1,unresolved,https://chicagoparkdistrict.granicus.com,Chicago Park District,chicago-park-district-2024-12-11-public-hearing-on-2024-12-11-9-50-am-public-hea
+granicus,clearwater.legistar.com,,1,unresolved,https://clearwater.legistar.com,City of Clearwater,city-of-clearwater-2014-01-13-pre-insite-archives
+granicus,dcwasa.granicus.com,,1,unresolved,https://dcwasa.granicus.com,DC Water &amp; Sewer Authority,dc-water-amp-sewer-authority-2018-12-16-board-of-directors
+granicus,dumfries.granicus.com,,1,unresolved,https://dumfries.granicus.com,Town of Dumfries,town-of-dumfries-2026-09-02-town-of-dumfries-town-council
+granicus,edwardsaquifer.granicus.com,,1,unresolved,https://edwardsaquifer.granicus.com,Edwards Aquifer Authority,edwards-aquifer-authority-2024-07-25-2024-07-25-eahcp-implementing-committee
+granicus,emmetcounty.granicus.com,,1,unresolved,https://emmetcounty.granicus.com,Emmet County,emmet-county-2026-08-26-board-of-commissioners
+granicus,enterprise.granicus.com,,1,unresolved,https://enterprise.granicus.com,Enterprise,enterprise-2012-09-06-council-view-ps051012-sep-6th-2012
+granicus,fortworthisd.granicus.com,,1,unresolved,https://fortworthisd.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-fort-worth-isd-regular-board-meeting-august-26-2025
+granicus,fremont.granicus.com,,1,unresolved,https://fremont.granicus.com,Fremont,fremont-ccmeeting7-28-2026
+granicus,gilbert.granicus.com,,1,unresolved,https://gilbert.granicus.com,Town of Gilbert,town-of-gilbert-2021-04-06-town-council-regular-meeting
+granicus,guadalupe.granicus.com,,1,unresolved,https://guadalupe.granicus.com,Guadalupe County,guadalupe-county-2026-09-01-commissioners-court-part-2-item-7n-10
+granicus,hpwd.granicus.com,,1,unresolved,https://hpwd.granicus.com,High Plains Underground Water Conservation District No. 1,high-plains-underground-water-conservation-district-no-1-2022-11-08-board-of-dir
+granicus,icma.granicus.com,,1,unresolved,https://icma.granicus.com,Cal-ICMA,cal-icma-2019-09-11-interpreting-and-communicating-the-new-calpers-actuarial-rep
+granicus,kpb.granicus.com,,1,unresolved,https://kpb.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2024-04-02-committee-of-the-whole-on-2024-04-02-1-30-pm-mee
+granicus,lausd.granicus.com,,1,unresolved,https://lausd.granicus.com,Unknown Jurisdiction,la-usd-2024-12-10-02-11-25-regular-board-meeting-1-00-pm-spanish
+granicus,lcd.granicus.com,,1,unresolved,https://lcd.granicus.com,Unknown Jurisdiction,lcd-granicus-com-2021-07-22-july-22-23-2021-lcdc-meeting-day-1
+granicus,lcpsnm.granicus.com,,1,unresolved,https://lcpsnm.granicus.com,Unknown Jurisdiction,lc-psn-m-2026-05-19-board-of-education
+granicus,lewisvilleisd.granicus.com,,1,unresolved,https://lewisvilleisd.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2026-01-06-board-work-session-01-06-2026
+granicus,lipower.granicus.com,,1,unresolved,https://lipower.granicus.com,Long Island Power Authority,long-island-power-authority-board-meetings-view-public-comments-on-revised-pseg
+granicus,lossan.granicus.com,,1,unresolved,https://lossan.granicus.com,LOSSAN - OCTA,lossan-octa-2022-04-18-lossan-board-04-18-22
+granicus,manassascity.granicus.com,,1,unresolved,https://manassascity.granicus.com,Manassas,manassas-2026-09-04-architectural-review-board-sep-3rd-2026
+granicus,matatransit.granicus.com,,1,unresolved,https://matatransit.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2025-07-30-board-of-commissioners-on-2025-07-30-3-30-pm
+granicus,metrolink.granicus.com,,1,unresolved,https://metrolink.granicus.com,Unknown Jurisdiction,metrolink-2025-02-14-audit-and-finance-committee
+granicus,mid.granicus.com,,1,unresolved,https://mid.granicus.com,Modesto Irrigation District,modesto-irrigation-district-2026-01-13-regular-board-meeting
+granicus,minnesotapuc.granicus.com,,1,unresolved,https://minnesotapuc.granicus.com,Minnesota Public Utilities Commission,minnesota-public-utilities-commission-2026-08-20-puc-agenda-meeting-on-2026-08-2
+granicus,mojavewater.granicus.com,,1,unresolved,https://mojavewater.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2022-10-06-revised-technical-advisory-committee-remote-acce
+granicus,monroe-k12.granicus.com,,1,unresolved,https://monroe-k12.granicus.com,Monroe County School District,monroe-county-school-district-2026-08-25-school-board-meeting-csh-08-25-2026-4-1
+granicus,morrisville.granicus.com,,1,unresolved,https://morrisville.granicus.com,Morrisville,morrisville-town-council-mar-14th-2023
+granicus,mwdh2o.granicus.com,,1,unresolved,https://mwdh2o.granicus.com,Metropolitan Water District Of Southern California,metropolitan-water-district-of-southern-california-2026-08-25-subcommittee-on-im
+granicus,newbrighton.granicus.com,,1,unresolved,https://newbrighton.granicus.com,New Brighton,new-brighton-2017-10-03-october-3-2017-work-session
+granicus,northsalemschools.granicus.com,,1,unresolved,https://northsalemschools.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-meet-the-candidates-2023
+granicus,nwsccc-crystal.granicus.com,,1,unresolved,https://nwsccc-crystal.granicus.com,City of Crystal,city-of-crystal-2024-05-15-city-council-meeting
+granicus,nystateassembly.granicus.com,,1,unresolved,https://nystateassembly.granicus.com,Ny State Assembly,ny-state-assembly-10-9-25-assembly-public-hearing-on-the-impact-and-effectivenes
+granicus,octa.granicus.com,,1,unresolved,https://octa.granicus.com,Orange County Transportation Authority,orange-county-transportation-authority-2026-08-24-board-meeting-auto-generated-t
+granicus,oregon.granicus.com,,1,unresolved,https://oregon.granicus.com,Oregon,oregon-2014-09-16-house-interim-committee-on-agriculture-and-natural-resources-2
+granicus,oregonmetro.granicus.com,,1,unresolved,https://oregonmetro.granicus.com,Oregon Metro Council,oregon-metro-council-2026-03-12-council-meeting-on-2026-03-12-10-30-am
+granicus,osage.granicus.com,,1,unresolved,https://osage.granicus.com,Osage Nation,osage-nation-2013-02-12-osage-congress-on-2013-02-12-1-00-pm-feb-7th-2013
+granicus,parkcity.granicus.com,,1,unresolved,https://parkcity.granicus.com,Park City,park-city-2023-09-26-city-council-strategic-planning-retreat
+granicus,parkcounty.granicus.com,,1,unresolved,https://parkcounty.granicus.com,Park County,park-county-november-planning-board-meeting
+granicus,pcbgov.granicus.com,,1,unresolved,https://pcbgov.granicus.com,Unknown Jurisdiction,pcb-gov-city-council
+granicus,penningtoncounty.granicus.com,,1,unresolved,https://penningtoncounty.granicus.com,Pennington County,pennington-county-2025-07-18-pennington-county-board-of-commissioners
+granicus,portofla.granicus.com,,1,unresolved,https://portofla.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2022-07-28-regular-board-meeting
+granicus,psc-fl.granicus.com,,1,unresolved,https://psc-fl.granicus.com,Unknown Jurisdiction,ps-c-fl-hearing-20240026-20230090-20230139-ei-day-3
+granicus,pucnv.granicus.com,,1,unresolved,https://pucnv.granicus.com,State of Nevada Public Utilities Commission,state-of-nevada-public-utilities-commission-2024-02-13-agenda-03-24
+granicus,rdale.granicus.com,,1,unresolved,https://rdale.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2026-01-05-1-5-26-business-meeting-with-public-hearing
+granicus,rtachicago.granicus.com,,1,unresolved,https://rtachicago.granicus.com,Regional Transportation Authority (Chicago),regional-transportation-authority-chicago-2020-08-20-board-of-directors
+granicus,samtrans.granicus.com,,1,unresolved,https://samtrans.granicus.com,San Mateo County Transit District,san-mateo-county-transit-district-2025-09-04-jpb-board-of-directors-meeting
+granicus,sanantonio.granicus.com,,1,unresolved,https://sanantonio.granicus.com,City of San Antonio,city-of-san-antonio-2021-06-25-city-council-special-meeting-on-2021-06-25-9-00-a
+granicus,scag.granicus.com,,1,unresolved,https://scag.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-cannabis-banking-working-group-2-10-17
+granicus,scvwd.granicus.com,,1,unresolved,https://scvwd.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-regular-meeting-closed-session-mar-8th-2016
+granicus,scwd.granicus.com,,1,unresolved,https://scwd.granicus.com,Unknown Jurisdiction,south-coast-water-district-special-board-meting-doheny-desal-financial-assessmen
+granicus,sdcera.granicus.com,,1,unresolved,https://sdcera.granicus.com,San Diego County Retirement Association,san-diego-county-retirement-association-2017-05-25-board-meeting
+granicus,senate.granicus.com,,1,unresolved,https://senate.granicus.com,The United States Senate,the-united-states-senate-2023-03-30-senate-floor-proceedings
+granicus,sfwmd.granicus.com,,1,unresolved,https://sfwmd.granicus.com,Unknown Jurisdiction,s-fw-md-2024-12-12-february-2025-governing-board-meeting
+granicus,siouxschools.granicus.com,,1,unresolved,https://siouxschools.granicus.com,Sioux City IA Community School District,sioux-city-ia-community-school-district-2026-08-21-school-board-of-directors
+granicus,slco.granicus.com,,1,unresolved,https://slco.granicus.com,Subtitles County,subtitles-county-2022-10-25-county-council-on-2022-10-25-4-00-pm
+granicus,smud.granicus.com,,1,unresolved,https://smud.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-committee-strategic-development
+granicus,sonomamarintrain.granicus.com,,1,unresolved,https://sonomamarintrain.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-2024-01-17-board-of-directors
+granicus,stlouispark.granicus.com,,1,unresolved,https://stlouispark.granicus.com,Unknown Jurisdiction,st-louis-park-mn-st-louis-park-planning-commission-meeting-feb-7-2024
+granicus,tlchouse.granicus.com,,1,unresolved,https://tlchouse.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-civil-practices-feb-19th-2003
+granicus,townofsuperior.granicus.com,,1,unresolved,https://townofsuperior.granicus.com,Town of Superior,town-of-superior-2025-12-16-planning-commission-regular-meeting
+granicus,utc-wa.granicus.com,,1,unresolved,https://utc-wa.granicus.com,Washington,washington-2022-12-22-utc-open-meeting-for-december-22-2022
+granicus,villageofgreenport.granicus.com,,1,unresolved,https://villageofgreenport.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-board-of-trustees-work-session-fh
+granicus,westspringfieldma.granicus.com,,1,unresolved,https://westspringfieldma.granicus.com,Unknown Jurisdiction,unknown-jurisdiction-school-committee
+granicus,wsscwater.granicus.com,,1,unresolved,https://wsscwater.granicus.com,Washington Suburban Sanitary Commission,washington-suburban-sanitary-commission-2026-02-18-wssc-water-commission-meeting
+granicus,yorkcounty.granicus.com,,1,unresolved,https://yorkcounty.granicus.com,York County Video Services,york-county-video-services-2017-08-09-planning-commission-aug-9th-2017
+hyland,meetings.cob.org,,5,blank,https://meetings.cob.org,,2026-08-24-committee-of-the-whole
+iqm2,baltimorecountymd.iqm2.com,,2,unresolved,https://baltimorecountymd.iqm2.com,"Baltimore County, MD",baltimore-county-md-2017-12-12-county-council-work-session
+iqm2,mlgw.iqm2.com,,2,unresolved,https://mlgw.iqm2.com,MLGW,mlgw-2026-03-04-memphis-light-gas-water-division-board-meeting
+iqm2,mncppc.iqm2.com,,2,unresolved,https://mncppc.iqm2.com,The Maryland-National Capital Park & Planning Commission,meeting-09cf11
+iqm2,roanokecountyva.iqm2.com,,2,unresolved,https://roanokecountyva.iqm2.com,"Roanoke County, VA",roanoke-county-va-2022-12-13-board-of-supervisors-regular-meeting
+iqm2,scag.iqm2.com,,2,unresolved,https://scag.iqm2.com,Southern California Association of Governments,southern-california-association-of-governments-2025-06-05-tc-transportation-comm
+iqm2,sfwmd.iqm2.com,,2,unresolved,https://sfwmd.iqm2.com,South Florida Water Management District,south-florida-water-management-district-2016-03-10-governing-board-monthly-meeti
+iqm2,syossetsdny.iqm2.com,,1,unresolved,https://syossetsdny.iqm2.com,Syosset School District,syosset-school-district-2020-11-16-board-of-education-monthly-meeting
+townhallstreams,townhallstreams.com,,3,blank,https://townhallstreams.com,New Boston,2019-03-26-interupting-aging
+unknown,andoverks.civicweb.net,,1,unresolved,,Andover,
+unknown,brightonco.granicus.com,,1,unresolved,,Brighton,
+unknown,discover.pbc.gov,,1,blank,https://discover.pbc.gov,,meeting-890af1
+unknown,ebps.novusagenda.com,,1,blank,https://ebps.novusagenda.com,,meeting-02f1db
+unknown,ia-hawarden.civicplus.com,,1,unresolved,,City of Hawarden,
+unknown,il-northfield.civicplus.com,,1,unresolved,,Village of Northfield,
+unknown,nj-westfield.civicplus.com,,1,unresolved,,Westfield,
+unknown,oh-stmarys.civicplus.com,,1,unresolved,,City of St. Marys,
+unknown,sc-clinton.civicplus.com,,1,unresolved,,Clinton,
+unknown,scottcountymn.gov,,1,unresolved,,Scott County,
+unknown,tracy-ca.granicus.com,,1,unresolved,,Tracy,
+unknown,video.ibm.com,,1,blank,https://video.ibm.com,,08-18-2026-lafayette-consolidated-government-council-meeting
+unknown,westmont.illinois.gov,,1,unresolved,https://westmont.illinois.gov,Official Website,official-website-2026-08-30-westmont-il-official-website
+unknown,www.mediafire.com,,1,blank,https://www.mediafire.com,,03-24-26
+unknown,www.openpublica.com,,1,unresolved,https://www.openpublica.com,Open Publica,open-publica-sacramento-county-california-board-of-supervisors-may-21-2025
+viebit,biglake.viebit.com,,1,blank,https://biglake.viebit.com,,2026-08-19-city-council-regular-meeting-packet
+viebit,buffalo.viebit.com,,1,blank,https://buffalo.viebit.com,,2026-08-18-hra-special-meeting-agenda-pdf
+viebit,www.ci.buffalo.mn.us,,1,blank,https://www.ci.buffalo.mn.us,,2026-08-18-buffalo-city-council-meeting-monday-august-17-2026
+viebit,www.cityoffortwayne.in.gov,,1,blank,https://www.cityoffortwayne.in.gov,,2026-06-16-fort-wayne-redevelopment-commission
+vimeo,vimeo.com,,10,unresolved,https://vimeo.com,City of Lakeland|City of Plymouth|Covington|Hopkins|Jefferson Parish|Mason County|Peters Township|Salisbury|Town of Amherst,salisbury-2026-08-18-8-18-2026-city-council-meeting
+vimeo,www.wheaton.il.us,,1,blank,https://www.wheaton.il.us,,2026-08-17-city-council-meeting-8-17-26
+youtube,www.youtube.com,,43,blank,https://www.youtube.com,Alpine|City of Easton|City of Ventura|County of Sussex|Fulton|Greenwich Community Television|Hamden Action NOW|Harrison|Hollywood|KSAT 12|Lawrence County|Lebanon|Paynesville|Roosevelt|Westfield,meeting-27086b
+youtube,youtu.be,,19,unresolved,https://youtu.be,City of Crestview|City of Hawarden|City of New Franklin|City of St. Marys|Farmersville|Jackson|Jackson County|Tazewell County|Town of New Market,jackson-2014-11-19-jackson-county-board-of-commissioners-november-18-2014-meetin
+youtube,youtube.com,,9,unresolved,https://youtube.com,Caledonia Township|City of Easton|City of Millersburg|City of Sheridan|Malvern Borough|Springdale|Village of Northfield,city-of-millersburg-2026-05-07-budget-committee-meeting-2-may-6-2026
+youtube,clerkshq.com,,5,unresolved,https://clerkshq.com,Cumberland Town Council|Pawtucket City Council|Scituate Town Council|South Kingstown School Committee|West Warwick Town Council,scituate-town-council-2026-01-08-jan-8-2026-town-council-meeting
+youtube,cvrd.primegov.com,,4,blank,https://cvrd.primegov.com,City of Duncan Town|Duncan,2024-03-27-committee-of-the-whole-wednesday-march-27-2024
+youtube,mapleton.civicweb.net,,4,unresolved,https://mapleton.civicweb.net,Township of Mapleton,township-of-mapleton-2026-08-11-regular-council-meeting-11-aug-2026
+youtube,achdidaho.civicweb.net,,2,unresolved,https://achdidaho.civicweb.net,Ada County Highway District,ada-county-highway-district-2024-06-24-capital-investment-citizen-advisory-commi
+youtube,saratogasprings-ut.gov,,2,unresolved,https://saratogasprings-ut.gov,City of Saratoga Springs,city-of-saratoga-springs-2026-08-12-city-council-meeting-truth-in-taxation-08-11
+youtube,walton.civicweb.net,,2,unresolved,https://walton.civicweb.net,Walton County,walton-county-2026-09-03-design-review-board-sep-03-2026
+youtube,agendamgmtprod.tarrantcountytx.gov,,1,blank,https://agendamgmtprod.tarrantcountytx.gov,,2025-08-19-tarrant-county-commissioners-court
+youtube,albanycountywy.gov,,1,blank,https://albanycountywy.gov,,2026-08-12-albany-county-government-county-commissioners-regular-meeting-8-4-202
+youtube,avonindiana.gov,,1,blank,https://avonindiana.gov,,2026-08-24-town-of-avon-indiana-plan-commission-meeting-august-24th-2026
+youtube,bcnv.primegov.com,,1,blank,https://bcnv.primegov.com,,2026-05-20-may-20-2026-planning-commission-meeting
+youtube,boonton.org,,1,blank,https://boonton.org,,2026-05-18-agenda-center
+youtube,brookingscountysd.gov,,1,blank,https://brookingscountysd.gov,,2026-05-28-agenda-center
+youtube,camarillo.primegov.com,,1,blank,https://camarillo.primegov.com,,2026-01-06-camarillo-planning-commission-1-06-2026
+youtube,camdencountyga.gov,,1,blank,https://camdencountyga.gov,,2026-08-18-board-of-commissioners-regular-meeting-august-18-2026
+youtube,carteretcountync.gov,,1,blank,https://carteretcountync.gov,,2026-08-17-board-of-commissioners-meeting-august-17th
+youtube,ci.southbridge.ma.us,,1,blank,https://ci.southbridge.ma.us,,2023-04-07-ad-hoc-curbside-trash-committee-4-6-23
+youtube,cityofbuckley.com,,1,blank,https://cityofbuckley.com,,2026-05-18-agenda-center-dc5e62
+youtube,cityofcharlestown.com,,1,blank,https://cityofcharlestown.com,,2026-09-04-advisory-plan-commission-meeting-aug-10-2026
+youtube,cityofhawarden.com,,1,unresolved,https://cityofhawarden.com,City of Hawarden,city-of-hawarden-2025-12-11-hawarden-city-council-meeting-december-10-2025
+youtube,cityofhighwood.com,,1,blank,https://cityofhighwood.com,,2026-08-19-08-18-2026-city-council-meeting
+youtube,cityofoakgrove.com,,1,blank,https://cityofoakgrove.com,,2026-08-03-board-of-aldermen-8-3-2026
+youtube,cityofpella.com,,1,unresolved,https://cityofpella.com,"City of Pella, Iowa - Government",city-of-pella-iowa-government-2026-09-02-09-01-26-pella-city-council-meeting-aud
+youtube,cvrdtest.primegov.com,,1,blank,https://cvrdtest.primegov.com,,2021-01-13-special-corporate-services-committee-wednesday-january-13-2021
+youtube,dallascountyiowa.gov,,1,blank,https://dallascountyiowa.gov,,2026-09-01-september-1-2026-board-of-supervisors-regular-meeting
+youtube,fentonmo.org,,1,unresolved,https://fentonmo.org,City of Fenton,city-of-fenton-2026-08-20-august-18-2026-board-of-adjustment-meeting
+youtube,franklincountyva.gov,,1,blank,https://franklincountyva.gov,,2026-08-20-franklin-county-board-of-supervisors-work-session-8-20-2026
+youtube,gardencitymi.org,,1,blank,https://gardencitymi.org,,2025-01-16-january-15-2025-board-of-ethics-meeting
+youtube,grandcountyutah.gov,,1,blank,https://grandcountyutah.gov,,2022-10-18-10-18-22-grand-county-commission-workshop-and-regular-meeting
+youtube,hilliardohio.civicweb.net,,1,unresolved,https://hilliardohio.civicweb.net,The City of Hilliard,the-city-of-hilliard-2026-07-13-committee-of-the-whole-jul-13-2026
+youtube,hinton.civicweb.net,,1,unresolved,https://hinton.civicweb.net,Hinton,hinton-committee-of-the-whole-28-apr-2026
+youtube,inportageparks.com,,1,unresolved,https://inportageparks.com,City of Portage,portage-in-2026-08-25-cop-board-of-works-mtg-08-25-26
+youtube,jarpd.civicweb.net,,1,unresolved,https://jarpd.civicweb.net,Jurupa Area Recreation and Park District,jurupa-area-recreation-and-park-district-2026-07-23-board-of-directors-23-jul-20
+youtube,kendallcountytx.gov,,1,unresolved,https://kendallcountytx.gov,Kendall County,kendall-county-2026-08-26-commissioners-court-august-25-2026
+youtube,lagrangeil.gov,,1,blank,https://lagrangeil.gov,,2024-06-11-la-grange-village-board-meeting-6-10-24
+youtube,lcpa.primegov.com,,1,blank,https://lcpa.primegov.com,,2026-01-15-joint-board-meeting-jan-15-2026
+youtube,malibucity.primegov.com,,1,blank,https://malibucity.primegov.com,,2026-08-18-planning-commission-regular-meeting-august-17-2026
+youtube,malvern.org,,1,unresolved,https://malvern.org,Malvern Borough,malvern-borough-2026-09-01-malvern-borough-council-meeting-09-01-2026
+youtube,mc-ala.civicweb.net,,1,unresolved,https://mc-ala.civicweb.net,Montgomery County,montgomery-county-2026-08-11-county-commission-information-session-aug-11-2026
+youtube,monroecountyny.primegov.com,,1,blank,https://monroecountyny.primegov.com,,2026-08-25-08-25-26-human-services-committee-meeting
+youtube,monroeville.pa.us,,1,unresolved,https://monroeville.pa.us,Monroeville,monroeville-2026-05-05-agenda-center
+youtube,mysebring.com,,1,blank,https://mysebring.com,,2026-05-19-agenda-center
+youtube,natronacounty-wy.gov,,1,blank,https://natronacounty-wy.gov,,2026-07-20-natrona-county-board-of-county-commissioners-july-20-2026
+youtube,nr.civicweb.net,,1,unresolved,https://nr.civicweb.net,Northern Rockies Regional Municipality,northern-rockies-regional-municipality-2026-05-25-committee-of-the-whole-cotw-25
+youtube,oakdalemn.gov,,1,unresolved,https://oakdalemn.gov,Oakdale,oakdale-2026-08-25-city-council-meeting-august-25-2026
+youtube,openspaceauthority.primegov.com,,1,blank,https://openspaceauthority.primegov.com,,2026-01-08-26-01-board-of-directors-january-08-2026
+youtube,pendercountync.civicweb.net,,1,blank,https://pendercountync.civicweb.net,,2024-08-19-board-of-county-commissioners-19-aug-2024
+youtube,perth.civicweb.net,,1,unresolved,https://perth.civicweb.net,the Town of Perth,the-town-of-perth-2025-03-18-council-18-mar-2025
+youtube,pickenscountyga.gov,,1,blank,https://pickenscountyga.gov,,2026-08-18-pickens-county-board-of-commissioners-august-17-2026
+youtube,prescottvalley.primegov.com,,1,blank,https://prescottvalley.primegov.com,,2026-01-08-archived-regular-town-council-meeting-thursday-january-8-2026
+youtube,qathetrd.civicweb.net,,1,unresolved,https://qathetrd.civicweb.net,qathet Regional District,qathet-regional-district-2026-06-01-special-finance-committee-01-jun-2026
+youtube,redcliff.civicweb.net,,1,unresolved,https://redcliff.civicweb.net,The Town of Redcliff,the-town-of-redcliff-2025-04-28-town-council-28-apr-2025
+youtube,rfcity.org,,1,blank,https://rfcity.org,,2026-05-26-agenda-center
+youtube,sacog.primegov.com,,1,blank,https://sacog.primegov.com,,2022-11-03-land-use-natural-resources-committee-11-3-22
+youtube,slrd.civicweb.net,,1,unresolved,https://slrd.civicweb.net,SLRD,slrd-2026-07-22-sea-to-sky-regional-hospital-district-board-22-jul-2026
+youtube,sonomalibrary.civicweb.net,,1,unresolved,https://sonomalibrary.civicweb.net,Sonoma County Library,sonoma-county-library-2026-08-17-finance-committee-17-aug-2026
+youtube,sublettecountywy.gov,,1,blank,https://sublettecountywy.gov,,2026-03-17-3-17-2026-sublette-county-board-of-county-commissioners-meeting
+youtube,swissvaleborough.com,,1,blank,https://swissvaleborough.com,,2026-03-09-swissvale-braddock-hills-regional-police-department-commission-meetin
+youtube,techsupport.primegov.com,,1,unresolved,https://techsupport.primegov.com,City of Houston,city-of-houston-2026-01-21-city-council-meeting-january-12-2026
+youtube,town-and-country.org,,1,blank,https://town-and-country.org,,2026-08-10-board-of-aldermen-meeting-08-10-2026
+youtube,townofchevychase.org,,1,blank,https://townofchevychase.org,,2026-07-09-town-of-chevy-chase-town-council-meeting-july-8-2026
+youtube,utclermont.gov,,1,blank,https://utclermont.gov,,2026-08-11-union-township-board-of-trustees-meeting-august-11-2026-at-6-00-pm
+youtube,watertown.civicweb.net,,1,unresolved,https://watertown.civicweb.net,Watertown,watertown-2020-03-16-public-works-finance-safety-committee-mar-16-2020
+youtube,waukee.gov,,1,blank,https://waukee.gov,,2026-08-19-waukee-city-council-meeting-august-17-2026
+youtube,wcwd.civicweb.net,,1,unresolved,https://wcwd.civicweb.net,West County Wastewater,west-county-wastewater-2026-07-15-west-county-facilities-finance-authority-jul-1
+youtube,websterny.gov,,1,unresolved,https://websterny.gov,Town of Webster,town-of-webster-2026-08-20-town-board-workshop-august-20-2026
+youtube,westfieldnj.gov,,1,unresolved,https://westfieldnj.gov,Westfield,westfield-2026-01-14-tuesday-january-13-2026-town-of-westfield-council-meeting
+youtube,woodburymn.gov,,1,unresolved,https://woodburymn.gov,Woodbury,woodbury-2026-06-29-woodbury-planning-commission-6-29-26
+youtube,woodsideca.gov,,1,unresolved,https://woodsideca.gov,Town of Woodside,town-of-woodside-2026-07-29-town-council-meeting-july-28-2026
+youtube,www.aberdeenwa.gov,,1,unresolved,https://www.aberdeenwa.gov,Aberdeen,aberdeen-2026-07-27-regular-aberdeen-city-council-meeting-07-22-2026
+youtube,www.newcastlede.gov,,1,blank,https://www.newcastlede.gov,,2026-08-21-fire-ambulance-advisory-board-meeting-august-20-2026
+youtube,www.richlandcenterwi.gov,,1,unresolved,https://www.richlandcenterwi.gov,Richland Center Wisconsin,richland-center-wisconsin-2026-08-13-richland-center-utility-commission-8-12-26
+youtube,www.sulphurla.gov,,1,unresolved,https://www.sulphurla.gov,Sulphur,sulphur-la-2026-08-24-city-of-sulphur-special-council-meeting-live-stream-aug-24
+youtube,www.vermillion.us,,1,blank,https://www.vermillion.us,,2026-08-17-2026-08-17-city-council
+youtube,www.voluntown.gov,,1,unresolved,https://www.voluntown.gov,"Town of Voluntown, CT- Government",town-of-voluntown-ct-government-2026-07-21-public-hearing-7-21

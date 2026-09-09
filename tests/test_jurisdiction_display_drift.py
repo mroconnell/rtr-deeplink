@@ -21,7 +21,7 @@ test_lookup_city_state_is_none_for_a_real_ambiguous_name-style coverage:
 human had to pin it by gov_id in the first place -- the raw stored string
 alone can never disambiguate it.
 
-`us:place:2938000` and `us:county:01001` are both real ids confirmed
+`us:place:2938000` and `us:county:01005` are both real ids confirmed
 directly against this repo's own committed registry data
 (app/utils/jurisdiction_data/governments.csv and us_counties.csv) rather
 than invented -- same convention tests/test_gov_registry.py's module
@@ -49,14 +49,18 @@ _KC_GOV_ID = "us:place:2938000"
 # snapshot -- confirmed the same way
 # tests/test_jurisdiction_override.py::
 # test_accepts_a_national_id_the_committed_file_has_not_got_yet confirms
-# it (Autauga County, AL: a real county no archived page has ever
-# resolved to, so the generated snapshot never picked it up).
+# it (Barbour County, AL: a real county no archived page has ever
+# resolved to, so the generated snapshot never picked it up). Was
+# Autauga County (us:county:01001) until the 2026-09-09 score_gov_
+# registry.py re-run picked that one up for real -- see this file's own
+# test_registry_fixtures_are_real, which exists to catch exactly that
+# and force picking a fresh never-scored example.
 # effective_jurisdiction()/`_hub_identity()` both key off
 # registry_governments() (the committed-snapshot lookup), not
 # government_for_id() (which would derive this one from the national
 # table) -- so this id exercises the real "gov_id set, no registry row
 # yet" case, not a fabricated one.
-_UNSCORED_GOV_ID = "us:county:01001"
+_UNSCORED_GOV_ID = "us:county:01005"
 
 
 def test_registry_fixtures_are_real():
@@ -83,7 +87,7 @@ def test_effective_jurisdiction_derives_from_the_registry_when_a_row_exists():
 def test_effective_jurisdiction_falls_back_when_gov_id_has_no_registry_row():
     # A freshly-minted/not-yet-backfilled gov_id: falls back to the
     # stored string exactly like _hub_identity()'s own case 2.
-    assert crud.effective_jurisdiction(_UNSCORED_GOV_ID, "Autauga, AL") == "Autauga, AL"
+    assert crud.effective_jurisdiction(_UNSCORED_GOV_ID, "Barbour, AL") == "Barbour, AL"
 
 
 def test_effective_jurisdiction_falls_back_with_no_gov_id_at_all():

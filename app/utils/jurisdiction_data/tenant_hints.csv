@@ -1181,7 +1181,6 @@ pub-bradfordwestgwillimbury.escribemeetings.com,ON,ledger_state_abbr,rtr-discove
 pub-brampton.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-brant.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-brentwood.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-brockton.escribemeetings.com,MA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-burnaby.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-caledon.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-calgary.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1194,14 +1193,12 @@ pub-cityofgainesville.escribemeetings.com,FL,auto_derived,"state only, from rtr-
 pub-cityofgp.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-cityofwatsonville.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-citypa.escribemeetings.com,SK,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-clarington.escribemeetings.com,OH,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Clarington, OH'"
 pub-cmsd.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-cobourg.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-cofs.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-collingwood.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-conceptionbaysouth.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-cornerbrook.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-cornwall.escribemeetings.com,PA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Cornwall, PA'"
 pub-corona.escribemeetings.com,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Corona, CA'"
 pub-courtenay.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-cramahe.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1212,7 +1209,6 @@ pub-dryden.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tena
 pub-durhamregion.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-eastgarafraxa.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-elliotlake.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-erin.escribemeetings.com,TN,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Erin, TN'"
 pub-espanola.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-evans.escribemeetings.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-ezt.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1248,7 +1244,6 @@ pub-lethbridge.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db 
 pub-llbc.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-mackenziebc.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-mapleridge.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-markham.escribemeetings.com,IL,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Markham, IL'"
 pub-merrickville-wolford.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-milton.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-mississauga.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1262,7 +1257,6 @@ pub-nanaimo.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db ten
 pub-newwestcity.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-northcowichan.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-northgrenville.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-northumberland.escribemeetings.com,PA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-notl.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-oakville.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-okotoks.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1279,7 +1273,6 @@ pub-pasorobles.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db 
 pub-peelregion.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-penticton.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-peterborough.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-pickering.escribemeetings.com,MO,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Pickering, MO'"
 pub-pittmeadows.escribemeetings.com,BC,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-pleasanthillca.escribemeetings.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-pointedward.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
@@ -1308,7 +1301,6 @@ pub-southamptonny.escribemeetings.com,NY,auto_derived,"state only, from rtr-disc
 pub-southstormont.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-sprucegrove.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-stjohns.escribemeetings.com,NL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
-pub-strathcona.escribemeetings.com,MN,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-strathroy-caradoc.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-stthomas.escribemeetings.com,ON,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 pub-sturgeoncounty.escribemeetings.com,AB,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr

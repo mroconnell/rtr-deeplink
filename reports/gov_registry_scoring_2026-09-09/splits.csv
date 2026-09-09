@@ -1,0 +1,17 @@
+old_hub,gov_ids,gov_count,raw_names
+san-diego-ca,rtr:us:ca:san-diego-association-of-governments|us:place:0666000,2,"City of San Diego, CA|San Diego, CA"
+los-angeles-ca,rtr:us:ca:los-angeles-department-of-water-and-power|us:place:0644000,2,"City of Los Angeles, CA|Los Angeles, CA"
+los-angeles-county-ca,rtr:us:ca:los-angeles-county-metropolitan-transportation-authority|us:county:06037,2,"Los Angeles County, CA"
+horry-county-sc,us:county:45051|us:sd:4502490,2,"Horry County, SC"
+lees-summit,us:place:2941348|us:place:3775000,2,City of Lees Summit
+amarillo-tx,rtr:us:tx:amarillo|us:place:4803000,2,"Amarillo, TX|The City of Amarillo, TX"
+beaufort-county-sc,us:county:45013|us:place:4507210,2,"Beaufort County, SC"
+indio-ca,rtr:us:ca:coachella-valley-water-district|us:place:0636448,2,"City of Indio, CA|Indio, CA"
+east-lansing-mi,rtr:us:mi:east-lansing|us:place:2624120,2,"City of East Lansing, MI|East Lansing, MI|The City of East Lansing, MI"
+lincoln,ca:csd:3526057|us:place:1743536,2,City of Lincoln|Lincoln
+municode-portal,us:place:2445900|us:place:4739560,2,Municode Portal
+tarrant-county-tx,rtr:us:tx:tarrant-county-college-district|us:county:48439,2,"Tarrant County, TX"
+lincoln-park-mi,rtr:us:mi:lincoln-park|us:place:2647800,2,"Lincoln Park, MI|The City of Lincoln Park, MI"
+markham,ca:csd:3519036|rtr:ca:on:toronto-and-region-conservation-authority,2,City of Markham|Markham
+town-of-atherton-ca,rtr:us:ca:menlo-park-fire-protection-district|us:place:0603092,2,"Town of Atherton, CA"
+easton,us:place:2424475|us:place:4221648,2,City of Easton|Easton
