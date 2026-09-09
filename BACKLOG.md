@@ -127,12 +127,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (87)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (86)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
   [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
-  [NEEDS-AUDIT] `RuntimeError: Response content shorter than
   [NEEDS-AUDIT] Several already-archived pages carry a confidently-
   [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
   [NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
@@ -768,40 +767,6 @@ structural change than the two entries below.
   - **History**: found 2026-09-05 applying WO-110's report by hand
     while answering a question about the Edmonton/Niagara Falls fix;
     not yet in `BACKLOG_DONE.md`.
-
-- **[NEEDS-AUDIT] `RuntimeError: Response content shorter than
-  Content-Length` on the resolver, seen twice in one production log
-  (2026-09-05) on two different routes.**
-  - **Issue**: Ryan pasted a real Render log window that shows this
-    exception raised twice, both times inside
-    `starlette/middleware/base.py`'s `BaseHTTPMiddleware.__call__` →
-    `starlette/responses.py:167`'s plain (non-streaming) `Response.
-    __call__`, on `GET /api/health/resolve-check` and `GET /` — a
-    `Content-Length` header disagreeing with the actual body bytes sent.
-    `app/main.py`'s `handle_head_requests` middleware
-    (`@app.middleware("http")`, which Starlette implements via
-    `BaseHTTPMiddleware`) wraps every single request through this repo's
-    resolver service, so it's the one shared thing both failing routes
-    have in common — not confirmed as the actual cause yet, just the
-    common factor visible from the log alone.
-  - **Impact**: unconfirmed how often this fires or whether it's user-
-    visible (a broken/truncated page load vs. a clean retry) — only
-    known from this one pasted log window, not independently reproduced
-    or measured against Sentry/UptimeRobot yet.
-  - **Next action**: check Sentry for this exact `RuntimeError` string to
-    get a real occurrence count and see if it correlates with anything
-    (a specific route, a response size, gzip). If `handle_head_requests`
-    is confirmed as the trigger, the fix is probably to stop
-    unconditionally wrapping every request in `BaseHTTPMiddleware` for
-    the (rare) HEAD case and instead route HEAD handling some other way
-    that doesn't re-stream every GET too.
-  - **Constraint**: don't assume this is related to the SIGABRT/status-134
-    crash entry above just because both came out of the same pasted log
-    — they're different failure shapes (a process-level abort vs. an
-    HTTP-protocol-level assertion inside a request handler) with no
-    evidence connecting them beyond appearing in the same window.
-  - **History**: found 2026-09-05 from Ryan sharing a real Render log
-    after a redeploy; not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
   wrong `gov_id` from before the cross-border name-collision guard

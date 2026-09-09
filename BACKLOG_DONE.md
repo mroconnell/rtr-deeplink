@@ -62,6 +62,53 @@ Location" pointing to `drive.google.com`/`soundcloud.com` (28 real
 examples) isn't a directly-fetchable file URL the way a bare
 `utah.gov/pmn/files/*` file is, and wasn't attempted here.
 
+## WO-123 · `seed_gov_registry.py`'s full reseed silently deleted hand-added pins; made additive, then pinned 699 second-wave wildcard-sweep hosts [Done 2026-09-09]
+
+**The bug, found while doing something else.** Asked to fold 720 newly
+HTTP/DNS-confirmed real government tenant hosts (rtr-discovery's
+second-wave wildcard-substitute sweep: CivicClerk 39, CivicWeb 329,
+eScribe 291, PrimeGov 61; IQM2 excluded) into the registry via
+`scripts/seed_gov_registry.py`'s documented `../rtr-discovery/
+jurisdiction_overrides.csv` input. Before running it: `main()` starts by
+truncating `tenant_overrides.csv` to just its header and rebuilding it
+entirely from its four hardcoded sources. That was correct for WO-98's
+initial seed (330 rows), but 208 more rows have been added straight to
+the file by hand since (WO-99..WO-122: pin-worklist rounds, wrong-country
+fixes, multi-government TelVue tenants) — none of them reconstructable
+from the four sources. Running the script as documented today would have
+silently deleted all 208 on the first run.
+
+**Fixed: additive, not a full reseed.** `_read_existing_overrides()`
+reads the current file before the truncate step; the final write is
+those rows, untouched, plus a new row only for a host with no existing
+row. Verified as a true no-op first, before any new input existed: same
+537 rows in, same 537 out, identical content (order and CRLF differences
+only from `csv.DictWriter`'s defaults, not real changes).
+
+**720 candidates → 699 new pins.** Sourced from a new
+`jurisdiction_overrides.csv` built by rtr-discovery's
+`scripts/convert_wildcard_sweep_hits.py` (that file was itself retired
+2026-09-03 for rtr-discovery's own feed/roster use — revived here purely
+as this script's input, at the same `fallback` strength and its own
+`source=wildcard_http_sweep_2` tag, same as the file's pre-retirement
+rows). Of the 720: 20 hosts already had a hand-verified pin and were
+correctly left untouched by the fix above; 1
+(`oneidacounty.primegov.com`) hit a real disagreement — the sweep's
+name-derived guess (Oneida County, ID) against rtr-discovery ledger's own
+`auto_derived` guess (Oneida County, NY) — and was correctly withheld
+rather than guessed, left in `tenant_overrides_conflicts.csv` for review.
+**Scope note**: this only pins host→government mapping for if/when a
+meeting from one of these hosts is ever resolved. It does not enable
+crawling or ingesting their meetings.
+
+**Verified.** `ruff check`, `ruff format --check`, and `python -m
+pytest` all clean in an isolated worktree off `origin/main`, rebuilt
+twice more against a moving `origin/main` tip mid-session (two other
+PRs landed while this was in flight -- re-ran from scratch against each
+new tip rather than hand-resolving a diff between two runs of a script
+whose output is fully derived). Full suite green, 2,773 passed, 15
+skipped.
+
 ## Broader tenant_hints.csv collision sweep found no new bugs; cleaned up the 8 confirmed-wrong rows [Done 2026-09-09]
 
 Closes out the residual from the WO-118/PR #750 wrong-country jurisdiction
@@ -106,6 +153,65 @@ checked first in the ladder and never depended on these rows). Full test
 suite (2,773 tests) passes.
 
 **History**: `app/utils/jurisdiction_data/tenant_hints.csv`, this PR.
+
+## `handle_head_requests` left `request.scope["method"]` mutated to `GET`, so uvicorn enforced a real Content-Length against the empty HEAD body it was sending — `RuntimeError: Response content shorter than Content-Length` on `/` and `/api/health/resolve-check` [Done 2026-09-09]
+
+Confirmed and fixed the `[NEEDS-AUDIT]` entry filed 2026-09-05 (BACKLOG.md,
+"seen twice in one production log on two different routes"), which had
+found the right common factor (`handle_head_requests`) but not yet the
+mechanism.
+
+**Root cause**: for a HEAD request, `app/main.py`'s `handle_head_requests`
+middleware rewrites `request.scope["method"] = "GET"` in place so the real
+GET handler runs unmodified, then builds a bodyless `Response(content=b"",
+headers=dict(response.headers), ...)`. That part was always correct. The
+bug is that the scope mutation was never undone. uvicorn's own HTTP
+protocol layer (`httptools_impl.py`) reads that *same* scope dict later,
+at send time — after this middleware has already returned — specifically
+to decide whether to enforce the outgoing `Content-Length` against the
+actual number of body bytes sent; it deliberately skips that enforcement
+when `scope["method"] == "HEAD"`. With the scope left at `"GET"`, uvicorn
+treated the response as a real GET and enforced the real (correct,
+non-zero) `Content-Length` a plain `Response`/`JSONResponse` route already
+computed on the downstream GET — e.g. `/`, `/api/health/resolve-check` —
+against the intentionally-empty HEAD body, and raised `RuntimeError:
+Response content shorter than Content-Length`.
+
+This also explains why the access log showed `GET /` / `GET
+/api/health/resolve-check` rather than `HEAD` — `request.scope["method"]`
+was already rewritten before uvicorn's access logger ran. The real
+trigger is almost certainly an external uptime monitor; the
+`resolve-check` route's own docstring says it exists "for an external
+uptime monitor to poll," and HEAD is a common default for those. Streaming
+proxy routes (`/m/*` via `_proxy_to_archive`'s `StreamingResponse`) were
+never affected — Starlette only auto-populates `Content-Length` from
+`self.body`, which a `StreamingResponse` never sets.
+
+**Fix**: restore `request.scope["method"] = "HEAD"` (in a `finally`)
+immediately after `call_next` returns, before building and returning the
+bodyless response — one line, no header logic needed. `Content-Length`
+itself is correctly left untouched (RFC 9110 4.2 wants the real value on
+a HEAD response); the bug was never about the header's value, only about
+which enforcement path uvicorn took to send it.
+
+**Verified**: added
+`test_resolver_head_middleware_restores_scope_method_to_head` to
+`tests/test_head_requests.py`, calling `handle_head_requests` directly
+(TestClient's in-process ASGI transport doesn't exercise uvicorn's real
+send-time Content-Length enforcement, which is why the existing HEAD
+tests in that file never caught this) — confirmed it fails against the
+pre-fix code (`scope["method"] == "GET"` after the call) and passes
+after. `ruff check`/`ruff format --check` clean; full `pytest` run (2,786
+passed, 15 skipped, same pre-existing-skip baseline as recent runs) —
+this change only touches `app/main.py` and its own test file.
+
+**History**: filed 2026-09-05 by Ryan pasting a real Render log window
+after a redeploy. Re-surfaced 2026-09-09 by a second live occurrence
+(site-wide 502, same `RuntimeError`, same log window as an unrelated
+already-fixed-but-undeployed aiohttp-session leak and a Playwright
+Chromium-missing build issue) during unrelated rtr-discovery work; traced
+to this mechanism by reading uvicorn's `httptools_impl.py` source
+directly rather than guessing from the log alone.
 
 ## `hub_slug_aliases.csv` re-run for the WO-121 New England display fix — 39 real redirects added, 3 pre-existing test fixtures went stale as a side effect [Done 2026-09-09]
 

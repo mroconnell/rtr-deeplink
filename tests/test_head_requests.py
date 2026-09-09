@@ -8,7 +8,11 @@ status/headers with the body stripped, rather than annotating every route
 individually.
 """
 
+import asyncio
+
+from fastapi import Response
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 import app.main
 import archive.main
@@ -64,3 +68,29 @@ def test_resolver_get_still_returns_a_real_body_unaffected():
     response = app_client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_resolver_head_middleware_restores_scope_method_to_head():
+    # Regression test for a real production 502: `handle_head_requests`
+    # rewrites `request.scope["method"]` to "GET" to run the real handler,
+    # but was leaving it that way. uvicorn's real HTTP protocol layer
+    # (not exercised by TestClient's in-process ASGI transport, which is
+    # why the other tests in this file didn't catch this) reads that same
+    # scope dict *after* this middleware returns, at send time, to decide
+    # whether to enforce the outgoing Content-Length against actual body
+    # bytes sent -- it deliberately skips that check only for "HEAD"
+    # (uvicorn's httptools_impl.py). Left as "GET", uvicorn wrongly
+    # enforced a real (non-streaming) Content-Length against the empty
+    # body this middleware sends, raising `RuntimeError: Response content
+    # shorter than Content-Length` in production on `/` and
+    # `/api/health/resolve-check`.
+    scope = {"type": "http", "method": "HEAD", "headers": [], "query_string": b""}
+    request = Request(scope)
+
+    async def call_next(_req):
+        return Response(content=b"hello world", status_code=200)
+
+    response = asyncio.run(app.main.handle_head_requests(request, call_next))
+
+    assert response.body == b""
+    assert request.scope["method"] == "HEAD"

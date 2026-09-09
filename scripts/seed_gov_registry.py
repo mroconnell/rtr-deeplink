@@ -5,6 +5,14 @@ exist today, none of which reads any of the others.
 WO-98, 2026-09-02, architecture doc §4. Read-only against every source;
 writes only into `app/utils/jurisdiction_data/`.
 
+Additive, not a full reseed: any host already in `tenant_overrides.csv`
+is carried forward untouched, never recomputed from the sources below.
+That file has been hand-edited directly since the WO-98 seed (pin
+worklists, wrong-country fixes -- see git log), and none of those rows
+are reconstructable from the four sources, so re-deriving the file from
+scratch on every run would silently discard them. Only hosts with no
+existing row get a new one written.
+
 Sources, in the precedence the architecture doc sets:
 
   1. `_KNOWN_DOMAINS` in `app/utils/jurisdiction_enrich.py` (112 rows,
@@ -311,15 +319,36 @@ def _collapse_stateless_duplicates(entries, aliases):
     return out
 
 
+def _read_existing_overrides() -> List[dict]:
+    """Raw rows currently in `tenant_overrides.csv`, read before this run
+    truncates it. WO-98's initial seed wrote 330 rows; 208 more have been
+    added by hand since (WO-99..WO-120: pin-worklist rounds, wrong-country
+    fixes, multi-government TelVue tenants). None of those live in this
+    script's four sources -- they were written straight to the output
+    file -- so a run that doesn't carry them forward deletes them."""
+    path = DATA_DIR / registry.TENANT_OVERRIDES_FILE
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as fh:
+        return [r for r in csv.DictReader(fh) if (r.get("tenant_host") or "").strip()]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--discovery", type=Path, default=DEFAULT_DISCOVERY)
     parser.add_argument("--feed", type=Path, default=DEFAULT_FEED)
     args = parser.parse_args()
 
+    existing_rows = _read_existing_overrides()
+    existing_hosts = {
+        (r.get("tenant_host") or "").strip().lower() for r in existing_rows
+    }
+
     # Resolve against an empty override file so a half-written pin can
     # never feed its own seeding -- the ladder's rungs 2-4 (repair,
-    # classify, national table) are what assign these ids.
+    # classify, national table) are what assign these ids. The rows read
+    # above are what makes this safe to do: they're restored below
+    # regardless of what this run resolves, untouched.
     (DATA_DIR / registry.TENANT_OVERRIDES_FILE).write_text(
         ",".join(registry.TENANT_OVERRIDES_HEADER) + "\n", encoding="utf-8"
     )
@@ -441,13 +470,20 @@ def main() -> None:
             }
         )
 
+    new_kept = [r for r in kept if r["tenant_host"] not in existing_hosts]
+    skipped_already_pinned = len(kept) - len(new_kept)
+    all_rows = existing_rows + new_kept
     with open(
         DATA_DIR / registry.TENANT_OVERRIDES_FILE, "w", newline="", encoding="utf-8"
     ) as fh:
         writer = csv.DictWriter(fh, fieldnames=registry.TENANT_OVERRIDES_HEADER)
         writer.writeheader()
-        writer.writerows(sorted(kept, key=lambda r: r["tenant_host"]))
-    print(f"\n{registry.TENANT_OVERRIDES_FILE}: {len(kept)} rows")
+        writer.writerows(sorted(all_rows, key=lambda r: r["tenant_host"]))
+    print(
+        f"\n{registry.TENANT_OVERRIDES_FILE}: {len(existing_rows)} existing + "
+        f"{len(new_kept)} new = {len(all_rows)} rows "
+        f"({skipped_already_pinned} resolved candidates skipped, host already pinned)"
+    )
 
     with open(
         DATA_DIR / registry.TENANT_HINTS_FILE, "w", newline="", encoding="utf-8"
