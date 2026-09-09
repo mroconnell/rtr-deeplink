@@ -1,0 +1,37 @@
+tenant_host,governments,pages,weak_pages,top...
+www.utah.gov,12,16,4,us:county:49019 x1,us:county:49007 x1,us:place:4900540 x1,us:place:4901750 x1
+dcccd.new.swagit.com,1,3,2,"us:place:4821628 x1 (single solid page, hostname does not name it -- not pinned)"
+wmcf.cablecast.tv,1,3,2,"us:place:5546850 x1 (single solid page, hostname does not name it -- not pinned)"
+coloradoga.granicus.com,1,2,1,"us:state:08 x1 (Colorado, CO) but the hostname says GA -- not pinned, archive pages suspect"
+cvrdtest.primegov.com,1,2,1,"ca:csd:5919016 x1 (single solid page, hostname does not name it -- not pinned)"
+juneauak.portal.civicclerk.com,1,3,1,"us:place:5538675 x2 (Juneau city, WI) but the hostname says AK -- not pinned, archive pages suspect"
+kpb.granicus.com,1,2,1,"us:county:02122 x1 (single solid page, hostname does not name it -- not pinned)"
+lausd.granicus.com,1,2,1,"us:sd:0622710 x1 (single solid page, hostname does not name it -- not pinned)"
+minnesotapuc.granicus.com,1,2,1,"us:county:27007 x1 (single solid page, hostname does not name it -- not pinned)"
+mwdh2o.granicus.com,1,2,1,"us:county:06037 x1 (single solid page, hostname does not name it -- not pinned)"
+pub-cofs.escribemeetings.com,1,2,1,"ca:csd:4811056 x1 (single solid page, hostname does not name it -- not pinned)"
+pub-northcowichan.escribemeetings.com,3,5,1,ca:csd:5919008 x2,ca:csd:5924034 x1,ca:csd:5919016 x1
+pub-notl.escribemeetings.com,1,2,1,"ca:csd:3526047 x1 (single solid page, hostname does not name it -- not pinned)"
+pub-oneinvestmentprogram.escribemeetings.com,1,2,1,"ca:csd:3543007 x1 (single solid page, hostname does not name it -- not pinned)"
+pub-townofws.escribemeetings.com,1,2,1,"ca:csd:3519044 x1 (single solid page, hostname does not name it -- not pinned)"
+sacog.primegov.com,1,2,1,"us:place:0628112 x1 (single solid page, hostname does not name it -- not pinned)"
+slco.granicus.com,1,2,1,"us:county:49035 x1 (single solid page, hostname does not name it -- not pinned)"
+browardschools.granicus.com,2,3,0,us:sd:1200180 x2,us:county:12011 x1
+citrusclerk.portal.civicclerk.com,2,5,0,us:county:12017 x4,us:place:1233950 x1
+cooper.granicus.com,2,4,0,us:place:1214125 x3,us:place:4816564 x1
+dallascounty.civicweb.net,2,3,0,us:county:48113 x2,us:place:4819000 x1
+dubuquecountyia.portal.civicclerk.com,2,2,0,us:place:1922395 x1,us:county:19061 x1
+jamescitycova.portal.civicclerk.com,2,2,0,ca:csd:3554042 x1,us:county:51095 x1
+lucascooh.portal.civicclerk.com,2,3,0,us:county:39095 x2,us:place:3945276 x1
+nbvillage.granicus.com,2,3,0,us:place:1249225 x2,us:place:1245000 x1
+parker.granicus.com,2,2,0,us:county:48367 x1,us:place:4855152 x1
+player.invintus.com,2,2,0,us:place:5373465 x1,us:county:12073 x1
+pub-gloucesterva.escribemeetings.com,3,3,0,us:county:51073 x1,us:sd:5101620 x1,us:place:2526150 x1
+pub-langleycity.escribemeetings.com,2,2,0,us:place:5338355 x1,us:cousub:2005338600 x1
+pub-owensound.escribemeetings.com,2,3,0,ca:csd:3542059 x2,us:place:5560825 x1
+pub-salmonarm.escribemeetings.com,2,4,0,ca:csd:5939032 x3,us:place:1671650 x1
+pub-strathroy-caradoc.escribemeetings.com,2,2,0,ca:csd:3539015 x1,ca:cd:3539 x1
+pwcgov.granicus.com,2,3,0,us:county:51153 x2,us:place:5148968 x1
+santarosacofl.portal.civicclerk.com,2,4,0,us:place:1245750 x2,us:county:12113 x2
+tillamookcoor.portal.civicclerk.com,2,2,0,us:place:4173700 x1,us:county:41057 x1
+uatccta.primegov.com,2,2,0,us:place:0621796 x1,us:place:0668294 x1
