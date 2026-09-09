@@ -240,8 +240,7 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (13)
-  `[NEEDS-AUDIT]` `tenant_hints.csv` still carries 8 confirmed-wrong…
+Trust, safety & data quality  (12)
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
   `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
   `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix…
@@ -3478,36 +3477,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### `[NEEDS-AUDIT]` `tenant_hints.csv` still carries 8 confirmed-wrong rows, and only `.escribemeetings.com` hosts were checked for this pattern
-
-- **Issue**: the root cause AND the 26 (really 29, once the affected
-  pages were actually counted) already-published wrong pages are both
-  fixed — see `BACKLOG_DONE.md`'s 2026-09-06 entry for the resolver.py
-  guard, the 8 new `authoritative` `tenant_overrides.csv` pins, and the
-  page backfill. What's left: (1) `tenant_hints.csv` still carries all 8
-  wrong rows (erin/pickering/markham/clarington/cornwall/northumberland/
-  strathcona/brockton) — harmless now (the pins short-circuit the ladder
-  before `tenant_hints.csv` is ever consulted for these hosts, and the
-  resolver guard protects any host that isn't pinned), but still
-  objectively wrong data sitting in a file other code could reasonably
-  trust differently someday; (2) this whole investigation only checked
-  `.escribemeetings.com` hosts specifically against the Canadian
-  gazetteer — `tenant_hints.csv` has ~1,700 rows total across other
-  platforms (Granicus, Legistar, CivicWeb, etc.) that were never swept
-  for the same wrong-country shape.
-- **Impact**: low — both remaining items are data hygiene, not live
-  wrong pages. A future host hitting the same collision on an unchecked
-  platform would still be protected by the resolver.py guard itself
-  (it declines rather than guesses), just wouldn't get a pin to fully
-  resolve it the way these 8 now do.
-- **Next action**: (1) correct or remove the 8 wrong `tenant_hints.csv`
-  rows; (2) run the same cross-reference (every hint host's bare name
-  against `ca_csd`/`ca_cd` via `_has_canadian_namesake()`) across all of
-  `tenant_hints.csv`, not just the `.escribemeetings.com` subset, and
-  pin any further confirmed cases the same way.
-- **History**: found and root-caused 2026-09-06 while manually chasing a
-  wildcard-sweep coverage gap; fix + backfill in `BACKLOG_DONE.md`, same
-  date.
 
 ### `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort` accurate
 

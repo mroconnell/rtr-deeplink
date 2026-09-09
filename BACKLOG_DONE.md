@@ -1,5 +1,50 @@
 # Backlog — done
 
+## Broader tenant_hints.csv collision sweep found no new bugs; cleaned up the 8 confirmed-wrong rows [Done 2026-09-09]
+
+Closes out the residual from the WO-118/PR #750 wrong-country jurisdiction
+fix. Two things were still open: (1) whether the same wrong-country
+pattern existed anywhere in `tenant_hints.csv` beyond the
+`.escribemeetings.com` hosts already checked, and (2) the 8 confirmed-wrong
+rows (erin/pickering/markham/clarington/cornwall/northumberland/
+strathcona/brockton) were still sitting in the file, now harmless (the
+`tenant_overrides.csv` pins and the resolver guard both protect against
+them) but uncleaned.
+
+**Broader sweep**: ran `_has_canadian_namesake()` against every
+`tenant_hints.csv` row hinting a US state (not just `.escribemeetings.com`
+ones this time) — 25 candidates out of 1,699 rows. 14 were already
+directly confirmed correct via this session's own wildcard-sweep resolves
+(alameda/durham/hampton/hudson/humboldt/imperial/king/kirkland/lincoln/
+northfield/piedmont/raleigh/taylor/wellington — all real US tenants that
+just happen to share a name with a smaller Canadian place). `cumberland.
+iqm2.com` (NJ) was independently verified live (real page text names "New
+Jersey"). `pub-richmond.escribemeetings.com` was already a known, tracked
+case. `charlotte.granicus.com` (FL) 404's (dead tenant, inconclusive, and
+Charlotte NC is overwhelmingly the more likely real identity for any
+bare "Charlotte" hint regardless). The remaining 8 are the already-fixed
+originals. **No new confirmed bugs found.**
+
+One live-verified near-miss worth a footnote: a stale local copy of
+`tenant_hints.csv` in the shared checkout briefly showed a
+`severn.civicweb.net,ND` row that isn't actually present in the real,
+committed history (confirmed via `git show origin/main:...`) — a
+reminder that this checkout gets swapped under sessions mid-task (see
+`CLAUDE.md`'s multi-session section) and any finding needs re-verifying
+against `origin/main` before acting on it, not just the working directory
+in front of you. (Severn, Ontario is real and eScribe... er, CivicWeb-hosted,
+confirmed live via a real `instagram.com/severnontario` link on its
+landing page — worth a pin if `tenant_hints.csv` is ever found to
+actually hint it wrong, just not right now since no such row exists.)
+
+**Cleanup**: removed the 8 wrong rows from `tenant_hints.csv` entirely —
+verified via `resolve_government()` that all 8 tenants still resolve
+correctly afterward (the `tenant_overrides.csv` pins from PR #756 are
+checked first in the ladder and never depended on these rows). Full test
+suite (2,773 tests) passes.
+
+**History**: `app/utils/jurisdiction_data/tenant_hints.csv`, this PR.
+
 ## `hub_slug_aliases.csv` re-run for the WO-121 New England display fix — 39 real redirects added, 3 pre-existing test fixtures went stale as a side effect [Done 2026-09-09]
 
 **The `[HUMAN]` entry this replaces** flagged that WO-121's display fix
