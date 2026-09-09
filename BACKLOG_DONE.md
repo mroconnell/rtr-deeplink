@@ -1,5 +1,52 @@
 # Backlog — done
 
+## WO-123 · `seed_gov_registry.py`'s full reseed silently deleted hand-added pins; made additive, then pinned 699 second-wave wildcard-sweep hosts [Done 2026-09-09]
+
+**The bug, found while doing something else.** Asked to fold 720 newly
+HTTP/DNS-confirmed real government tenant hosts (rtr-discovery's
+second-wave wildcard-substitute sweep: CivicClerk 39, CivicWeb 329,
+eScribe 291, PrimeGov 61; IQM2 excluded) into the registry via
+`scripts/seed_gov_registry.py`'s documented `../rtr-discovery/
+jurisdiction_overrides.csv` input. Before running it: `main()` starts by
+truncating `tenant_overrides.csv` to just its header and rebuilding it
+entirely from its four hardcoded sources. That was correct for WO-98's
+initial seed (330 rows), but 208 more rows have been added straight to
+the file by hand since (WO-99..WO-122: pin-worklist rounds, wrong-country
+fixes, multi-government TelVue tenants) — none of them reconstructable
+from the four sources. Running the script as documented today would have
+silently deleted all 208 on the first run.
+
+**Fixed: additive, not a full reseed.** `_read_existing_overrides()`
+reads the current file before the truncate step; the final write is
+those rows, untouched, plus a new row only for a host with no existing
+row. Verified as a true no-op first, before any new input existed: same
+537 rows in, same 537 out, identical content (order and CRLF differences
+only from `csv.DictWriter`'s defaults, not real changes).
+
+**720 candidates → 699 new pins.** Sourced from a new
+`jurisdiction_overrides.csv` built by rtr-discovery's
+`scripts/convert_wildcard_sweep_hits.py` (that file was itself retired
+2026-09-03 for rtr-discovery's own feed/roster use — revived here purely
+as this script's input, at the same `fallback` strength and its own
+`source=wildcard_http_sweep_2` tag, same as the file's pre-retirement
+rows). Of the 720: 20 hosts already had a hand-verified pin and were
+correctly left untouched by the fix above; 1
+(`oneidacounty.primegov.com`) hit a real disagreement — the sweep's
+name-derived guess (Oneida County, ID) against rtr-discovery ledger's own
+`auto_derived` guess (Oneida County, NY) — and was correctly withheld
+rather than guessed, left in `tenant_overrides_conflicts.csv` for review.
+**Scope note**: this only pins host→government mapping for if/when a
+meeting from one of these hosts is ever resolved. It does not enable
+crawling or ingesting their meetings.
+
+**Verified.** `ruff check`, `ruff format --check`, and `python -m
+pytest` all clean in an isolated worktree off `origin/main`, rebuilt
+twice more against a moving `origin/main` tip mid-session (two other
+PRs landed while this was in flight -- re-ran from scratch against each
+new tip rather than hand-resolving a diff between two runs of a script
+whose output is fully derived). Full suite green, 2,773 passed, 15
+skipped.
+
 ## Broader tenant_hints.csv collision sweep found no new bugs; cleaned up the 8 confirmed-wrong rows [Done 2026-09-09]
 
 Closes out the residual from the WO-118/PR #750 wrong-country jurisdiction
