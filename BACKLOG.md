@@ -239,7 +239,8 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (12)
+Trust, safety & data quality  (13)
+  Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
   `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
   `[NEEDS-AUDIT]` A customer's own Granicus channel-title suffix…
@@ -3472,6 +3473,27 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]` `[BIG]`
+
+- **Issue:** `MeetingPage.meeting_body` (the governing body -- "City
+  Council", "Planning Commission") is stored on only 667 of 6,529 pages
+  (2026-09-09, `GET /internal/meeting-inventory/summary`); only Granicus
+  (RSS channel title), Legistar (`body`) and Invintus (categories) send
+  it, plus the "<Entity> of <Place>" name-split fallback, and some stored
+  values are platform folder names ("City Council View").
+- **Impact:** The user's mental model -- gov type says *what* Tampa is, body
+  says *which* body of Tampa met -- can't be reported or browsed for most
+  pages; the inventory report deliberately shows the blank rather than
+  guessing from titles.
+- **Next action:** Decide the source per platform (an adapter field where
+  the platform has one; a reviewed title-phrase table otherwise, applied
+  at ingest and backfilled with its confidence recorded, never at
+  render), then extend the report's tile to track the count down.
+- **Constraint:** Don't populate it from a title regex at read time -- the
+  report exists to count the real gap, and a guess would hide it.
+- **History:** Report built under WO-124 (`scripts/export_meeting_inventory.py`);
+  first run's numbers in this entry.
 
 
 ### `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort` accurate

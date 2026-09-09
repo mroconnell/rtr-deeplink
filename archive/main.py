@@ -53,6 +53,7 @@ from .utils.date_status import (
 )
 from .utils.highlights import meta_description
 from .utils.hub_aliases import redirect_target
+from .utils.meeting_inventory import inventory_row, rows_to_csv
 from .utils.jurisdiction_format import (
     STATE_SLUG_TO_ABBR,
     US_STATE_ABBR_TO_NAME,
@@ -619,6 +620,56 @@ async def internal_export_pages(
     )
     next_after_id = pages[-1]["id"] if len(pages) == limit else None
     return {"pages": pages, "next_after_id": next_after_id, "limit": limit}
+
+
+@app.get("/internal/meeting-inventory")
+async def internal_meeting_inventory(
+    authorization: Optional[str] = Header(None),
+    after_id: int = 0,
+    limit: int = 200,
+    format: str = "json",
+):
+    """One flat review row per archived page (WO-124): stored vs registry
+    government name and whether they agree, "City, ST" convention, stored
+    meeting body, video/transcript presence, page vs video platform, and
+    the archive/source/video links -- see archive/utils/meeting_inventory.py
+    for the columns and why nothing here is guessed. Same token gate,
+    keyset pagination (`after_id`/`limit`, capped at 500) and read path as
+    /internal/export/pages; `format=csv` returns the same page of rows as
+    text/csv with the next cursor in an `X-Next-After-Id` header (empty on
+    the last page). scripts/export_meeting_inventory.py walks this to
+    build the full CSV and the sortable review page.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    limit = max(1, min(limit, 500))
+    pages = await crud.list_pages_for_export(after_id=max(0, after_id), limit=limit)
+    rows = [inventory_row(p) for p in pages]
+    next_after_id = pages[-1]["id"] if len(pages) == limit else None
+    if format == "csv":
+        return Response(
+            content=rows_to_csv(rows),
+            media_type="text/csv",
+            headers={
+                "X-Next-After-Id": "" if next_after_id is None else str(next_after_id)
+            },
+        )
+    return {"rows": rows, "next_after_id": next_after_id, "limit": limit}
+
+
+@app.get("/internal/meeting-inventory/summary")
+async def internal_meeting_inventory_summary(
+    authorization: Optional[str] = Header(None),
+):
+    """Missing-field counts over the whole Archive in one aggregate query
+    (WO-124): total pages, and how many have no stored meeting body, date,
+    title, jurisdiction, gov id, gov type, video, or transcript. The
+    headline numbers the inventory report exists to surface, without
+    paging every row through HTTP to get them.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return await crud.get_meeting_inventory_summary()
 
 
 # The home-page payload, cached in-process. This is the busiest page on

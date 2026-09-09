@@ -10282,3 +10282,46 @@ async def list_pages_missing_default_thumbnail(
             }
             for r in rows
         ]
+
+
+async def get_meeting_inventory_summary() -> dict:
+    """Missing-field counts across EVERY archived page, for GET
+    /internal/meeting-inventory/summary (WO-124). One bounded aggregate
+    query, never a Python loop over the table -- the point is answering
+    "how many pages have no stored meeting body / date / gov id / video /
+    transcript?" in one call without paging the whole inventory through
+    HTTP first. `no_transcript` uses the same "default version with real
+    content" predicate list_pages_for_export()'s has_transcript filter
+    does, so the two agree row for row.
+    """
+    default_with_content = (
+        select(TranscriptVersion.id)
+        .where(
+            TranscriptVersion.meeting_page_id == MeetingPage.id,
+            TranscriptVersion.is_default.is_(True),
+            TranscriptVersion.content_hash != _EMPTY_CONTENT_HASH,
+        )
+        .correlate(MeetingPage)
+        .exists()
+    )
+
+    def _blank(column):
+        return or_(column.is_(None), column == "")
+
+    def _count_where(condition):
+        return func.count(case((condition, 1)))
+
+    stmt = select(
+        func.count().label("total_pages"),
+        _count_where(_blank(MeetingPage.meeting_body)).label("missing_meeting_body"),
+        _count_where(_blank(MeetingPage.date)).label("missing_date"),
+        _count_where(_blank(MeetingPage.title)).label("missing_title"),
+        _count_where(_blank(MeetingPage.jurisdiction)).label("missing_jurisdiction"),
+        _count_where(_blank(MeetingPage.gov_id)).label("missing_gov_id"),
+        _count_where(_blank(MeetingPage.gov_type)).label("missing_gov_type"),
+        _count_where(_blank(MeetingPage.video_url)).label("no_video"),
+        _count_where(~default_with_content).label("no_transcript"),
+    ).select_from(MeetingPage)
+    async with async_session() as session:
+        row = (await session.execute(stmt)).one()
+    return dict(row._mapping)
