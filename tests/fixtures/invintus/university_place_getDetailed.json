@@ -1,0 +1,99 @@
+{
+  "errors": {
+    "hasError": false,
+    "message": null
+  },
+  "data": {
+    "eventID": "2026081000",
+    "clientID": "1872740071",
+    "customID": null,
+    "startDateTime": "2026-08-03 18:30:00",
+    "title": "University Place City Council 8/3/2026",
+    "description": null,
+    "eventStatus": "published",
+    "videoThumbnail": "https://invintus-client-images.s3.amazonaws.com/1872740071/096f7a9a4fefe5971b5f2b04b34c444fba43a5ee.jpg?1785867278948",
+    "private": false,
+    "autoStart": false,
+    "autoStop": false,
+    "preroll": "10",
+    "categories": [
+      "University Place",
+      "University Place City Council"
+    ],
+    "categoriesDetail": [
+      {
+        "ID": "109",
+        "name": "University Place",
+        "displayName": "University Place",
+        "childOf": null,
+        "isPublic": true
+      },
+      {
+        "ID": "108",
+        "name": "University Place City Council",
+        "displayName": "University Place City Council",
+        "childOf": "109",
+        "isPublic": true
+      }
+    ],
+    "keywords": null,
+    "technicians": null,
+    "locationName": null,
+    "liveCaptions": null,
+    "liveAiCaptions": null,
+    "facebookLive": false,
+    "transcripts": null,
+    "isChatEnabled": false,
+    "analyticSiteID": "15",
+    "eventNotes": null,
+    "audioDescriptionProjectID": null,
+    "estRuntime": 60,
+    "breakOverride": false,
+    "captionPath": "https://m-download.invintus.com/1872740071/6ee20a1b6e41803e5e16810439a5c84076f78509.vtt",
+    "mediaAssets": [
+      {
+        "assetID": "6ee20a1b6e41803e5e16810439a5c84076f78509",
+        "clientID": "1872740071",
+        "eventID": "2026081000",
+        "name": "7cbcc626d72a42f6792c360f2c8cd649-caption.vtt",
+        "type": "caption",
+        "dateCreated": "2026-08-04 12:10:47",
+        "fileSize": "220226",
+        "totalRunTime": null,
+        "totalRunTimeS": null,
+        "currentStatus": "archive",
+        "fileUrl": "https://invintus-client-media.s3.amazonaws.com/1872740071/6ee20a1b6e41803e5e16810439a5c84076f78509.vtt",
+        "thumbnail": "",
+        "sprite": null,
+        "advancedDetails": null
+      },
+      {
+        "assetID": "096f7a9a4fefe5971b5f2b04b34c444fba43a5ee",
+        "clientID": "1872740071",
+        "eventID": "2026081000",
+        "name": "Edit: 2026-08-04 08:51:37",
+        "type": "video",
+        "dateCreated": "2026-08-04 08:51:37",
+        "fileSize": "2674039484",
+        "totalRunTime": "02:54:33",
+        "totalRunTimeS": 10473,
+        "currentStatus": "archive",
+        "fileUrl": "https://f005.backblazeb2.com/file/invintus-client-media/1872740071/096f7a9a4fefe5971b5f2b04b34c444fba43a5ee.mp4",
+        "thumbnail": "https://invintus-client-images.s3.amazonaws.com/1872740071/096f7a9a4fefe5971b5f2b04b34c444fba43a5ee.jpg?1785867278948",
+        "sprite": null,
+        "advancedDetails": null
+      }
+    ],
+    "downloadLinks": {
+      "audioDownloadURI": "https://m-download.invintus.com/1872740071/096f7a9a4fefe5971b5f2b04b34c444fba43a5ee_audio.mp3",
+      "videoDownloadURI": "https://m-download.invintus.com/1872740071/096f7a9a4fefe5971b5f2b04b34c444fba43a5ee.mp4"
+    },
+    "recentlyOffBreak": false,
+    "VAST": false,
+    "streamingURIs": {
+      "main": "https://api.v3.invintus.com/StreamURI/hls/1872740071/2026081000/media.m3u8",
+      "backup": null
+    }
+  },
+  "meta": null
+}

@@ -141,11 +141,28 @@ async def handle_head_requests(request: Request, call_next):
     `None` -- any real BackgroundTasks a route attaches (e.g. /api/resolve's
     Archive push) run as part of the real handler's own response inside
     `call_next`'s concurrent dispatch, independent of the empty response
-    built here, so there's nothing to carry over."""
+    built here, so there's nothing to carry over.
+
+    `request.scope["method"]` is restored to `HEAD` before returning
+    because uvicorn's ASGI protocol layer reads that same scope dict at
+    send time (after this middleware has already returned) to decide
+    whether to enforce the outgoing Content-Length against actual body
+    bytes sent -- it deliberately skips that check for `HEAD`
+    (httptools_impl.py: `if self.scope["method"] == "HEAD":
+    expected_content_length = 0`). Leaving it mutated to `GET` made
+    uvicorn treat this as a real GET response and enforce Content-Length
+    against a body we deliberately emptied, raising `RuntimeError:
+    Response content shorter than Content-Length` for any route whose GET
+    response carries a real (non-streaming) Content-Length -- e.g. `/`,
+    `/api/health/resolve-check` -- confirmed in production 2026-09-05 and
+    2026-09-09 (BACKLOG.md's prior `[NEEDS-AUDIT]` entry)."""
     if request.method != "HEAD":
         return await call_next(request)
     request.scope["method"] = "GET"
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    finally:
+        request.scope["method"] = "HEAD"
     return Response(
         content=b"",
         status_code=response.status_code,

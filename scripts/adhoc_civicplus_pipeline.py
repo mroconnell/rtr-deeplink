@@ -315,9 +315,7 @@ async def process_candidate(session, finder, candidate, report):
             detail=f"checked {e.candidates_checked} candidate row(s), none had video",
         )
         report.write(row_out)
-        print(
-            f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)"
-        )
+        print(f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)")
         if DRY_RUN:
             print(
                 f"[DRYRUN ] would record reject_reason=no-video-found for {gov_id} "

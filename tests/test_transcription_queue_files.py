@@ -62,10 +62,20 @@ VALUELESS_OK = {
 
 
 def _rows(path: Path) -> list[tuple[int, str]]:
+    """(line number, URL) for every non-blank line.
+
+    A row is a bare URL, or `URL<TAB>SOURCE_URL` when the queued URL is a
+    bare video link discovered via a different page (see
+    `scripts/feed_tier3_auto_transcription.py`'s `_parse_queue_line()` --
+    same split, kept in sync deliberately rather than imported, since this
+    module also covers `granicus_auto_transcription_queue.txt`, which the
+    tab convention was never extended to). Every shape check below is
+    about the video URL itself, never the source-page override.
+    """
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8")
-    return [(i, ln) for i, ln in enumerate(text.split("\n"), 1) if ln]
+    return [(i, ln.split("\t", 1)[0]) for i, ln in enumerate(text.split("\n"), 1) if ln]
 
 
 def _ids(path: Path) -> str:

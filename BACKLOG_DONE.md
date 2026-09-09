@@ -49,6 +49,343 @@ on this service, same as every other; merging this does not ship it.
 that Routine again 2026-08-30/31/2026-09-01. Fixed 2026-09-07 in
 response to a live crash alert.
 
+## `utah_pmn.py`: a real adapter for Utah's Public Notice Website, closing the "bare hosted audio/video file" half of a 825-example gap — and a real production `date`-column crash found and fixed the same day [Done 2026-09-09]
+
+Built in response to the Utah PMN pilot's own finding (`rtr-business/
+research/ENUMERATION_METHODS.md` §105): 825 real notices across 353
+Utah entities have their meeting audio/video hosted directly on
+`utah.gov` (`/pmn/files/{id}.m4a`/`.mp3`/`.mp4`) with no platform
+wrapper at all — a shape no adapter in this repo had ever needed to
+handle, since every other platform's whole reason for existing is a
+page to scrape a video *off of*. `app/platforms/utah_pmn.py` handles
+two real shapes: a notice's "Audio File Location" field linking off
+`utah.gov` (delegates via `resolve_via_platform()`, same wrapper
+pattern as Legistar/CivicPlus/PrimeGov, with jurisdiction/meeting_body/
+title/date overridden from PMN's own ground-truth fields), or the
+Download Attachments table carrying a bare media file with no wrapper
+(sets `video_url`/`video_format` directly — no transcription-pipeline
+change needed, since `media_probe.py` already documents 19 other real
+audio-only meetings this pipeline handles fine).
+
+**A real, live-only production bug was found and fixed testing this for
+real, not caught by unit tests or a local end-to-end test.** The exact
+same payload that ingested cleanly against a fresh local SQLite Archive
+(via `uvicorn archive.main:app` with `DATABASE_URL` pointed at a temp
+file) 500'd every time against real production. Isolating the cause by
+substituting known-safe values for platform/video_format/jurisdiction
+one at a time (down to a completely generic YouTube video with a
+mundane jurisdiction) still 500'd — which pointed away from "bad
+adapter output" and cost real time before the user pulled the actual
+Render traceback, which named it immediately:
+`asyncpg.exceptions.StringDataRightTruncationError: value too long for
+type character varying(20)`. The Archive's `date` column is
+`VARCHAR(20)` (`archive/alembic/versions/..._baseline_schema.py`); every
+existing adapter already respects that by storing a short ISO date
+(civicclerk.py's own convention: `event.get("eventDate")[:10]`), but
+this adapter's first version passed PMN's own raw "Event Start Date &
+Time" text through unchanged — e.g. "August 10, 2026 05:30 PM", 24
+characters. **Local SQLite didn't catch it** because SQLite doesn't
+enforce `VARCHAR(n)` length at all (it's a hint, not a constraint) —
+only real Postgres does, which is exactly the class of "works on SQLite,
+breaks on Postgres" gap `CLAUDE.md`'s Alembic-migration bullet already
+warns about, just via a column-length constraint rather than a schema
+migration this time.
+
+Fixed with a `_short_date()` helper (parses PMN's two confirmed date
+formats down to plain `YYYY-MM-DD`, returning `None` — never the
+original long text — on anything unparseable) applied everywhere the
+adapter sets `ResolvedMeeting.date`, plus a defensive length cap on
+`video_format` (`VARCHAR(10)`) even though every confirmed-real
+extension is well under it. Verified with two real, live production
+ingests after the fix (`/m/grand-county-ut-2026-08-10-planning-
+commission-regular-meeting-august-10-2026`,
+`/m/carbon-county-ut-2026-09-01-carbon-county-planning-commission-
+regular-meeting`), not just local tests — per this project's own "don't
+claim it works without a positive example" rule. A direct regression
+test (`test_short_date_never_exceeds_the_archive_varchar20_column`)
+exists specifically so this exact class of bug can't silently
+reappear.
+
+**Residual gap split back out to `BACKLOG.md`**: a populated "Audio File
+Location" pointing to `drive.google.com`/`soundcloud.com` (28 real
+examples) isn't a directly-fetchable file URL the way a bare
+`utah.gov/pmn/files/*` file is, and wasn't attempted here.
+
+## WO-123 · `seed_gov_registry.py`'s full reseed silently deleted hand-added pins; made additive, then pinned 699 second-wave wildcard-sweep hosts [Done 2026-09-09]
+
+**The bug, found while doing something else.** Asked to fold 720 newly
+HTTP/DNS-confirmed real government tenant hosts (rtr-discovery's
+second-wave wildcard-substitute sweep: CivicClerk 39, CivicWeb 329,
+eScribe 291, PrimeGov 61; IQM2 excluded) into the registry via
+`scripts/seed_gov_registry.py`'s documented `../rtr-discovery/
+jurisdiction_overrides.csv` input. Before running it: `main()` starts by
+truncating `tenant_overrides.csv` to just its header and rebuilding it
+entirely from its four hardcoded sources. That was correct for WO-98's
+initial seed (330 rows), but 208 more rows have been added straight to
+the file by hand since (WO-99..WO-122: pin-worklist rounds, wrong-country
+fixes, multi-government TelVue tenants) — none of them reconstructable
+from the four sources. Running the script as documented today would have
+silently deleted all 208 on the first run.
+
+**Fixed: additive, not a full reseed.** `_read_existing_overrides()`
+reads the current file before the truncate step; the final write is
+those rows, untouched, plus a new row only for a host with no existing
+row. Verified as a true no-op first, before any new input existed: same
+537 rows in, same 537 out, identical content (order and CRLF differences
+only from `csv.DictWriter`'s defaults, not real changes).
+
+**720 candidates → 699 new pins.** Sourced from a new
+`jurisdiction_overrides.csv` built by rtr-discovery's
+`scripts/convert_wildcard_sweep_hits.py` (that file was itself retired
+2026-09-03 for rtr-discovery's own feed/roster use — revived here purely
+as this script's input, at the same `fallback` strength and its own
+`source=wildcard_http_sweep_2` tag, same as the file's pre-retirement
+rows). Of the 720: 20 hosts already had a hand-verified pin and were
+correctly left untouched by the fix above; 1
+(`oneidacounty.primegov.com`) hit a real disagreement — the sweep's
+name-derived guess (Oneida County, ID) against rtr-discovery ledger's own
+`auto_derived` guess (Oneida County, NY) — and was correctly withheld
+rather than guessed, left in `tenant_overrides_conflicts.csv` for review.
+**Scope note**: this only pins host→government mapping for if/when a
+meeting from one of these hosts is ever resolved. It does not enable
+crawling or ingesting their meetings.
+
+**Verified.** `ruff check`, `ruff format --check`, and `python -m
+pytest` all clean in an isolated worktree off `origin/main`, rebuilt
+twice more against a moving `origin/main` tip mid-session (two other
+PRs landed while this was in flight -- re-ran from scratch against each
+new tip rather than hand-resolving a diff between two runs of a script
+whose output is fully derived). Full suite green, 2,773 passed, 15
+skipped.
+
+## Broader tenant_hints.csv collision sweep found no new bugs; cleaned up the 8 confirmed-wrong rows [Done 2026-09-09]
+
+Closes out the residual from the WO-118/PR #750 wrong-country jurisdiction
+fix. Two things were still open: (1) whether the same wrong-country
+pattern existed anywhere in `tenant_hints.csv` beyond the
+`.escribemeetings.com` hosts already checked, and (2) the 8 confirmed-wrong
+rows (erin/pickering/markham/clarington/cornwall/northumberland/
+strathcona/brockton) were still sitting in the file, now harmless (the
+`tenant_overrides.csv` pins and the resolver guard both protect against
+them) but uncleaned.
+
+**Broader sweep**: ran `_has_canadian_namesake()` against every
+`tenant_hints.csv` row hinting a US state (not just `.escribemeetings.com`
+ones this time) — 25 candidates out of 1,699 rows. 14 were already
+directly confirmed correct via this session's own wildcard-sweep resolves
+(alameda/durham/hampton/hudson/humboldt/imperial/king/kirkland/lincoln/
+northfield/piedmont/raleigh/taylor/wellington — all real US tenants that
+just happen to share a name with a smaller Canadian place). `cumberland.
+iqm2.com` (NJ) was independently verified live (real page text names "New
+Jersey"). `pub-richmond.escribemeetings.com` was already a known, tracked
+case. `charlotte.granicus.com` (FL) 404's (dead tenant, inconclusive, and
+Charlotte NC is overwhelmingly the more likely real identity for any
+bare "Charlotte" hint regardless). The remaining 8 are the already-fixed
+originals. **No new confirmed bugs found.**
+
+One live-verified near-miss worth a footnote: a stale local copy of
+`tenant_hints.csv` in the shared checkout briefly showed a
+`severn.civicweb.net,ND` row that isn't actually present in the real,
+committed history (confirmed via `git show origin/main:...`) — a
+reminder that this checkout gets swapped under sessions mid-task (see
+`CLAUDE.md`'s multi-session section) and any finding needs re-verifying
+against `origin/main` before acting on it, not just the working directory
+in front of you. (Severn, Ontario is real and eScribe... er, CivicWeb-hosted,
+confirmed live via a real `instagram.com/severnontario` link on its
+landing page — worth a pin if `tenant_hints.csv` is ever found to
+actually hint it wrong, just not right now since no such row exists.)
+
+**Cleanup**: removed the 8 wrong rows from `tenant_hints.csv` entirely —
+verified via `resolve_government()` that all 8 tenants still resolve
+correctly afterward (the `tenant_overrides.csv` pins from PR #756 are
+checked first in the ladder and never depended on these rows). Full test
+suite (2,773 tests) passes.
+
+**History**: `app/utils/jurisdiction_data/tenant_hints.csv`, this PR.
+
+## `handle_head_requests` left `request.scope["method"]` mutated to `GET`, so uvicorn enforced a real Content-Length against the empty HEAD body it was sending — `RuntimeError: Response content shorter than Content-Length` on `/` and `/api/health/resolve-check` [Done 2026-09-09]
+
+Confirmed and fixed the `[NEEDS-AUDIT]` entry filed 2026-09-05 (BACKLOG.md,
+"seen twice in one production log on two different routes"), which had
+found the right common factor (`handle_head_requests`) but not yet the
+mechanism.
+
+**Root cause**: for a HEAD request, `app/main.py`'s `handle_head_requests`
+middleware rewrites `request.scope["method"] = "GET"` in place so the real
+GET handler runs unmodified, then builds a bodyless `Response(content=b"",
+headers=dict(response.headers), ...)`. That part was always correct. The
+bug is that the scope mutation was never undone. uvicorn's own HTTP
+protocol layer (`httptools_impl.py`) reads that *same* scope dict later,
+at send time — after this middleware has already returned — specifically
+to decide whether to enforce the outgoing `Content-Length` against the
+actual number of body bytes sent; it deliberately skips that enforcement
+when `scope["method"] == "HEAD"`. With the scope left at `"GET"`, uvicorn
+treated the response as a real GET and enforced the real (correct,
+non-zero) `Content-Length` a plain `Response`/`JSONResponse` route already
+computed on the downstream GET — e.g. `/`, `/api/health/resolve-check` —
+against the intentionally-empty HEAD body, and raised `RuntimeError:
+Response content shorter than Content-Length`.
+
+This also explains why the access log showed `GET /` / `GET
+/api/health/resolve-check` rather than `HEAD` — `request.scope["method"]`
+was already rewritten before uvicorn's access logger ran. The real
+trigger is almost certainly an external uptime monitor; the
+`resolve-check` route's own docstring says it exists "for an external
+uptime monitor to poll," and HEAD is a common default for those. Streaming
+proxy routes (`/m/*` via `_proxy_to_archive`'s `StreamingResponse`) were
+never affected — Starlette only auto-populates `Content-Length` from
+`self.body`, which a `StreamingResponse` never sets.
+
+**Fix**: restore `request.scope["method"] = "HEAD"` (in a `finally`)
+immediately after `call_next` returns, before building and returning the
+bodyless response — one line, no header logic needed. `Content-Length`
+itself is correctly left untouched (RFC 9110 4.2 wants the real value on
+a HEAD response); the bug was never about the header's value, only about
+which enforcement path uvicorn took to send it.
+
+**Verified**: added
+`test_resolver_head_middleware_restores_scope_method_to_head` to
+`tests/test_head_requests.py`, calling `handle_head_requests` directly
+(TestClient's in-process ASGI transport doesn't exercise uvicorn's real
+send-time Content-Length enforcement, which is why the existing HEAD
+tests in that file never caught this) — confirmed it fails against the
+pre-fix code (`scope["method"] == "GET"` after the call) and passes
+after. `ruff check`/`ruff format --check` clean; full `pytest` run (2,786
+passed, 15 skipped, same pre-existing-skip baseline as recent runs) —
+this change only touches `app/main.py` and its own test file.
+
+**History**: filed 2026-09-05 by Ryan pasting a real Render log window
+after a redeploy. Re-surfaced 2026-09-09 by a second live occurrence
+(site-wide 502, same `RuntimeError`, same log window as an unrelated
+already-fixed-but-undeployed aiohttp-session leak and a Playwright
+Chromium-missing build issue) during unrelated rtr-discovery work; traced
+to this mechanism by reading uvicorn's `httptools_impl.py` source
+directly rather than guessing from the log alone.
+
+## `hub_slug_aliases.csv` re-run for the WO-121 New England display fix — 39 real redirects added, 3 pre-existing test fixtures went stale as a side effect [Done 2026-09-09]
+
+**The `[HUMAN]` entry this replaces** flagged that WO-121's display fix
+(`Brookline, MA` instead of `Brookline Town, MA`) would shift the live
+hub slug for every already-registered CT/ME/MA/NH/RI/VT cousub town, and
+that `archive/data/hub_slug_aliases.csv` needed a real
+`scripts/score_gov_registry.py` re-run against production to regenerate
+correctly rather than a hand patch. Ran it: 6,410 archived pages + 876
+ledger pairs scored, snapshot in `reports/gov_registry_scoring_2026-09-09/`.
+
+**39 New England town rows landed** in `archive/data/hub_slug_aliases.csv`
+(e.g. `brandon-town-vt` → `brandon-vt`), each a real 301 for a slug that
+had already gone stale in production — confirmed live before this
+shipped: `/j/brandon-town-vt` 404s on redtaperecordings.com right now,
+`/j/brandon-vt` serves the real hub. More than the ~40 estimate in the
+original entry, and directionally correcting a wrong-way alias
+(`brandon-vt` → `brandon-town-vt`) the 2026-09-03 regen had left in
+place.
+
+**A plain overwrite would have been wrong**: comparing old vs. new
+mechanically found 658 of the previous 698 rows absent from the fresh
+regen's raw output — not because they're wrong, but because
+`scripts/score_gov_registry.py` can only derive a redirect from the
+CURRENT stored `jurisdiction` string on a CURRENT archived page; it has
+no way to see a slug that was retired by a single-page manual override,
+a `match`-scoped pin, or any government whose underlying rows have since
+been re-corrected or deleted. `tests/test_hub_aliases.py` exists
+specifically to catch this (its docstrings document 8 such rows by
+name: `gloucester-ma`, `las-vegas`, `howard-county`, `hamilton`,
+`woodland`, `victoria`, `bellefonte-borough`, `town-of-woodside`) and
+all 8 went red against the raw regen output. Fixed by a real union, not
+a guess: keep every old row whose `old_slug` doesn't appear in the fresh
+run's output at all (a blind spot, not a correction), let the fresh
+run's value win wherever it has one (including 15 genuine drift cases,
+e.g. `edmonton` now correctly pointing at Edmonton, AB instead of a
+stale Edmonton, KY row), and drop any carried-forward row whose
+`old_slug` is itself a slug the fresh run says is currently live (never
+redirect away from a hub that's actually in use). Final file: 798 rows,
+all 8 named regression tests pass, full suite green (2,773 passed).
+
+**Side effect, not a regression**: `tests/test_gov_registry.py`,
+`tests/test_jurisdiction_display_drift.py`, and
+`tests/test_jurisdiction_override.py` each hardcoded `us:county:01001`
+(Autauga County, AL) as a real county FIPS *guaranteed absent* from
+`governments.csv`, to exercise the "gov_id set, no registry row yet"
+fallback path. The fresh regen picked up a real archived page that
+resolves there now, so all three went red — exactly the loud failure
+`test_registry_fixtures_are_real`'s own docstring says it exists to
+produce ("a future regeneration ... can't silently turn either into a
+... no-longer-representative case without a loud failure here first").
+Swapped the fixture to `us:county:01005` (Barbour County, AL — confirmed
+still absent) in all three files; no logic changed.
+
+**Two new, real, live resolver bugs surfaced by this run**, filed
+separately in `BACKLOG.md`'s `[NEEDS-AUDIT]` section rather than fixed
+here (out of this entry's scope): a leading `"The "` before a type
+phrase breaks resolution entirely (`"The Town of Hooksett, NH"` mints
+instead of resolving; `"Town of Hooksett, NH"` works fine), and 16 real
+municipalities nationwide (`"X Town city"` compound Census LSAD, e.g.
+West Springfield MA, Old Town ME, Charles Town WV) can't resolve by name
+at all because the type-word stripper only removes a single trailing
+word. Both confirmed against live archived pages (2 pages each) via
+`GET /internal/export/pages`, not assumed.
+
+**Also checked live, per the original entry's own explicit ask**:
+whether the 4-CT-nested-borough place-vs-cousub bug (separate
+`[NEEDS-AUDIT]` entry) is confidently wrong in production today. It is
+not — zero archived pages exist for Groton/Newtown/Stonington/
+Litchfield, CT under any spelling, confirmed against the same 6,410-page
+export. Noted directly on that entry rather than left as an open
+question.
+
+## `detect_platform()` never routed Diligent Community's own domain to CivicWeb -- Washoe County School District, NV hit it live [Done 2026-09-08, WO-122]
+
+**The 2026-08-27 "Diligent Community domain support" fix (see this
+file's own entry below) never touched `app/platforms/base.py`.** It
+fixed two real bugs inside `CivicWebAssetFinder` itself (case-insensitive
+`id=` extraction, the `MeetingExternalMinutesLinkUrl` fallback) but left
+`detect_platform()`'s civicweb branch checking only `"civicweb.net" in
+netloc` -- so a URL on `community.diligentoneplatform.com` (the real,
+live second domain that whole fix was about) never reached
+`CivicWebAssetFinder` in the first place. It fell through every other
+branch to `"unknown"` and got `generic_fallback.py` treatment instead,
+even though the purpose-built finder was fully ready for it. Routing was
+the one thing the earlier fix's own tests didn't cover -- they called
+`CivicWebAssetFinder().resolve(url)` directly rather than going through
+`detect_platform() -> get_finder() -> resolve()`.
+
+**Real current jurisdiction hit by this gap**: Nevada's statewide
+public-meeting-notice index (notice.nv.gov) lists live "Washoe County
+School District" meetings whose outbound link is
+`washoeschools.community.diligentoneplatform.com/Portal/
+MeetingInformation.aspx?Org=Cal&Id={id}` -- a real tenant on the exact
+gap domain, distinct from the Winthrop, MN tenant the original fix was
+built against.
+
+**Fix**: `detect_platform()`'s civicweb branch now also matches
+`"diligentoneplatform.com" in netloc`.
+
+**Verified against both real domains through the actual
+`detect_platform() -> get_finder() -> resolve()` pipeline** (not
+`CivicWebAssetFinder` called directly -- the whole point of this fix is
+that the routing step was the broken part):
+- `washoeschools.community.diligentoneplatform.com` (`Id=1493`, a real
+  meeting dated 2026-09-08): routes to `civicweb`, resolves via
+  `CivicWebAssetFinder`, returns the real title ("Board of Trustees
+  Regular Meeting - Sep 08 2026") with a clean "no video found" warning
+  (this meeting genuinely has none yet) rather than falling to
+  `generic_fallback`.
+- `winthropminnesota.community.diligentoneplatform.com` (`id=63`, the
+  original 2026-08-27 fixture): routes to `civicweb`, delegates through
+  to `youtube` with the real title ("Regular Council - Aug 03 2026"),
+  matching the existing fixture-backed test's expectations end to end.
+
+New regression test in `tests/test_civicweb.py`
+(`test_detect_platform_recognizes_diligentoneplatform_domain`) covers
+the routing step directly, alongside the pre-existing
+`test_extract_meeting_id_is_case_insensitive` which only ever exercised
+`CivicWebAssetFinder`'s own extraction logic.
+
+Full suite (2773 passed / 15 skipped), `ruff check`, `ruff format
+--check`, and `alembic check` (both `app/` and `archive/`, against a
+fresh migration-built SQLite) all clean.
+
 ## A tenant-derived state hint could name the wrong COUNTRY, not just an imprecise state -- 8 real pages confirmed [Done 2026-09-06]
 
 Found live: an eScribe-hosted meeting for the Town of Erin, **Ontario**,

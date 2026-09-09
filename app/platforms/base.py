@@ -116,6 +116,8 @@ def detect_platform(url: str) -> str:
     # adapter, not copy-pasted here.
     from .vimeo import is_vimeo_host, is_vimeo_listing, parse_vimeo_video
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
+    from .invintus import is_invintus_meeting_url
+    from .az_legislature import is_az_legislature_video_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -166,10 +168,25 @@ def detect_platform(url: str) -> str:
         # AgendaCenter, self-hosted on roswell-nm.gov rather than
         # *.civicplus.com, links straight to a destinyhosted.com URL.
         return "destinyhosted"
-    if "civicweb.net" in netloc:
+    if "civicweb.net" in netloc or "diligentoneplatform.com" in netloc:
         # iCompass/CivicWeb (a Diligent brand) -- confirmed live 2026-08-12
         # to be a YouTube-delegating platform, not a video host of its own
-        # -- see civicweb.py's own module docstring.
+        # -- see civicweb.py's own module docstring. The
+        # diligentoneplatform.com domain is "Diligent Community", a second,
+        # real, live rebrand of this exact same software -- confirmed live
+        # 2026-08-27 against a real Winthrop, MN tenant
+        # (winthropminnesota.community.diligentoneplatform.com) with a real
+        # populated video link (see civicweb.py's own module docstring/
+        # _MEETING_ID_RE comments). CivicWebAssetFinder already handles this
+        # domain's URL shape (case-insensitive id=/Id= matching, and the
+        # MeetingExternalMinutesLinkUrl fallback) -- what was missing was
+        # routing here, so URLs on this domain fell through to "unknown"
+        # and got generic_fallback.py treatment instead. Real gap hit by a
+        # real current jurisdiction: Nevada's statewide public-meeting-
+        # notice index (notice.nv.gov) lists live "Washoe County School
+        # District" meetings whose outbound link is
+        # washoeschools.community.diligentoneplatform.com/Portal/
+        # MeetingInformation.aspx?Org=Cal&Id={id}. See BACKLOG_DONE.md.
         return "civicweb"
     if "assembly.ca.gov" in netloc or "senate.ca.gov" in netloc:
         return "ca_legislature"
@@ -437,6 +454,44 @@ def detect_platform(url: str) -> str:
         # `#mcc_agenda_video` iframe, confirmed both YouTube and Vimeo
         # destinations).
         return "municode_meetings"
+    if netloc.endswith("utah.gov") and "/pmn/sitemap/notice/" in path:
+        # Utah's statutory Public Notice Website -- confirmed live
+        # 2026-09-08 via a full statewide enumeration pilot
+        # (`scripts/pmn_utah_pilot.py`, ENUMERATION_METHODS.md §105).
+        # Scoped to the specific `/pmn/sitemap/notice/{id}.html` detail-
+        # page shape (one real notice = exactly one meeting, never a
+        # listing) rather than the whole utah.gov domain, which is
+        # mostly unrelated state-government content -- see
+        # utah_pmn.py's own module docstring for the two real media
+        # shapes this handles.
+        return "utah_pmn"
+    if is_invintus_meeting_url(url):
+        # Invintus -- a general-purpose government webcasting platform
+        # (state legislatures, county boards, city councils), confirmed
+        # live 2026-09-08 against real tenants in three different states
+        # (University Place WA, Clark County WA, Leon County FL), found
+        # via a real gap on University Place's CivicPlus AgendaCenter
+        # page -- see invintus.py's own module docstring and
+        # `rtr-business/research/ENUMERATION_METHODS.md` §102 for the
+        # full investigation. Deliberately NOT a bare "invintus.com in
+        # netloc" check, the same reasoning Vimeo's own scoping gives:
+        # only claimed when a real `clientID`+`eventID` pair is present,
+        # so an unrelated page on the same apex domain (e.g.
+        # `hostedevents.invintus.com`'s one-off branded landing pages)
+        # is never claimed here.
+        return "invintus"
+    if is_az_legislature_video_url(url):
+        # Arizona State Legislature (azleg.gov) -- found 2026-09-09 while
+        # chasing the Invintus prevalence sweep above: clientID
+        # 6361162879 (a real, large, sustained Invintus client) turned
+        # out to belong to azleg.gov's own `/videoplayer/?eventID=`
+        # wrapper pages, confirmed live -- see az_legislature.py's own
+        # module docstring for the full investigation. A delegation
+        # platform like Legistar/CivicPlus, not a direct video host: the
+        # wrapper page's own markup carries no real title/date at all,
+        # only an embedded Invintus clientID+eventID this module extracts
+        # and hands to InvintusAssetFinder via resolve_via_platform().
+        return "az_legislature"
     return "unknown"
 
 

@@ -77,6 +77,7 @@ CANARY_URLS: dict[str, list[str]] = {
     "aurora_tv": [
         "https://www.auroratv.org/video/regular-meeting-aurora-city-council-june-22-2026"
     ],
+    "az_legislature": ["https://www.azleg.gov/videoplayer/?eventID=2025011041"],
     "ca_legislature": ["https://www.senate.ca.gov/media/senate-floor-session-20260806"],
     "cablecast": ["http://charlotte.cablecast.tv/internetchannel/show/2451?site=1"],
     "castus": [
@@ -130,6 +131,9 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://mccobagenda.databankcloud.com/AgendaOnline/Meetings/ViewMeeting?id=4694&doctype=3"
     ],
     "iqm2": ["https://sccgov.iqm2.com/citizens/Detail_Meeting.aspx?ID=17601"],
+    # University Place, WA City Council -- the real URL invintus.py's own
+    # tests/test_invintus.py fixtures were built and verified against.
+    "invintus": ["https://player.invintus.com/?clientID=1872740071&eventID=2026081000"],
     # Charlotte, NC -- the ordinary Legistar->Granicus delegation, plus (as
     # of 2026-08-29) a real Phoenix URL that exercises WO-30's
     # city-YouTube-channel fallback (app/platforms/youtube_channel.py)
@@ -198,6 +202,16 @@ CANARY_URLS: dict[str, list[str]] = {
     # placeholder. Kept under that key so the coverage test can compare
     # registry keys directly.
     "unknown": ["https://www.crrma.org/information/meetings/board/2025-11-12"],
+    # Grand County, UT Planning Commission -- real, confirmed live
+    # 2026-09-08 via the pilot behind this adapter (ENUMERATION_METHODS.md
+    # §105). Deliberately the bare-hosted-file case (a real utah.gov
+    # `/pmn/files/*.m4a` attachment), not the delegating case (a PMN
+    # notice whose Audio File Location is a YouTube/Vimeo/etc link) --
+    # that path is already covered by whichever delegate platform's own
+    # canary URL exercises it, so this URL is the one that actually tests
+    # utah_pmn.py's own unique logic (attachment-table parsing, video
+    # format inferred from the file extension).
+    "utah_pmn": ["https://www.utah.gov/pmn/sitemap/notice/1100143.html"],
     "viebit": [
         "https://councilnyc.viebit.com/vod/?s=true&v=NYCC-250-8-1_260722-110636.mp4"
     ],
