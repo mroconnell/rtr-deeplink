@@ -1,15 +1,3 @@
-https://chapelhill.legistar.com/MeetingDetail.aspx?ID=1147101&GUID=670CB61F-529A-4307-9C4F-C2B8790939FA&Options=info%7C&Search=
-https://chicago.legistar.com/MeetingDetail.aspx?ID=993203&GUID=C129D453-0CA5-4BCD-95AF-39E9E439846C&Options=&Search=
-https://fresnocounty.legistar.com/MeetingDetail.aspx?Search=&ID=1229723&GUID=5A31CC75-0C32-4D99-A791-E54C9B171854&Options=
-https://fulton.legistar.com/MeetingDetail.aspx?ID=1402269&GUID=8A3EA2EF-EB25-432E-B630-BEE442A665B4&Options=info%7C&Search=
-https://monterey.legistar.com/MeetingDetail.aspx?ID=1287494&GUID=B077CF75-51D6-44EC-A98C-35C0643D380A&Options=&Search=
-https://mountainview.legistar.com/MeetingDetail.aspx?Options=info%7C&Search=&ID=1352183&GUID=3A029A96-97AE-42BF-B462-138F5AC10F9A
-https://naperville.legistar.com/MeetingDetail.aspx?ID=1372942&GUID=7E6EE716-BF5D-4172-9BEB-2CA19CCB7DB0&Options=&Search=
-https://paradisevalleyaz.legistar.com/MeetingDetail.aspx?ID=412243&GUID=B316DD23-D04A-4383-9F30-770340DC4C91&Options=info&Search=drone
-https://phila.legistar.com/MeetingDetail.aspx?Search=&ID=1431715&GUID=7C94E7D8-E77B-4D03-9922-277BC24E5CD8&Options=info%7C
-https://richmondva.legistar.com/MeetingDetail.aspx?ID=1354765&GUID=F55FD46F-7386-4003-985E-BCE2F0AA56B5&Search=
-https://sanjose.legistar.com/MeetingDetail.aspx?Search=&ID=1427037&GUID=4B25C141-8552-48AD-8991-726A14653DC6&Options=info%7C
-https://santaclara.legistar.com/MeetingDetail.aspx?ID=1364146&GUID=446A8BA9-BEC8-4F54-836F-E14ECC2A9FC8&Options=info%7C&Search=
 https://sdcounty.legistar.com/MeetingDetail.aspx?ID=1417308&GUID=C2DEEE7E-3832-412E-8B3D-163BA2EBD492&Options=info%7C&Search=
 https://seattle.legistar.com/MeetingDetail.aspx?Options=ID%7CText%7C&Search=&ID=1432315&GUID=0A98768A-656F-4C4F-BA92-E69C6524CFDD
 https://sunnyvaleca.legistar.com/MeetingDetail.aspx?ID=1348680&GUID=F1372EEE-8B58-48F7-A8C6-C56486BE9A2D&Options=info%7C&Search=
