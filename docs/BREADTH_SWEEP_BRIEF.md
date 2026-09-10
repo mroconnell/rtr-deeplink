@@ -27,6 +27,9 @@ recorded as `no-video-found` and never ingested.
 | WO-142 | Should the platform API run before any site sweep? | Yes. On 29 untouched hosts it found real video for 8. On 20 already-swept hosts it agreed 18 of 19 times; the one miss was depth, fixed by thorough mode. |
 | WO-141 | Which access rung answers a "blocked" host first? | Plain honest HTTP answered 12 of 30. Browser headers answered 3 more. The session rung answered 0. Headless answered 0 first and did worse than browser headers on the 4 hardest firewalls. 3 were real human-verification gates. |
 | WO-143 | Can we learn a video's length, date and size without downloading it? | Yes, cheaply, on every platform in the queue. 6 of 25 queue entries were already dead links. |
+| WO-157 | Does Granicus's RSS feed have a video mode? | Yes. Any mode value but "agendas" returns the video feed, about 100 KB against up to 8 MB for the archive table. Newest clip matched the table on 11 of 12 tenants; one lagged 12 days. "(No Video)" titles are closed-session placeholders. rtr-discovery's enumerator now reads it first in fast mode (WO-160). |
+| WO-159 | Does a Legistar city's video live on a same-named Granicus tenant even when the Legistar page shows none? | Yes for 25 of 29. 16 of those 25 matched a real calendar meeting by body and date; 5 had video for a different body or government; 1 was empty. Same-name is a strong lead, never a proof. |
+| WO-158 | Can a government's YouTube channel be joined to its own calendar by body and date? | 12 of 40 "no video found" CivicPlus sites link a channel; 2 of 40 produced a real match. About 5%. Shelved for now as a future project; see the YouTube section. |
 
 Two things the pilots corrected:
 
@@ -50,6 +53,19 @@ For every government in the candidate list:
    video (a CivicPlus page linking to YouTube) keeps the government's
    identity. Take the newest meeting with a video signal. Resolve it. If
    it fails, take the next.
+   Three platform rules from the 2026-09-10 pilots:
+   - **Granicus**: read the video feed (`ViewPublisherRSS.php?view_id=N&mode=videos`)
+     before the archive table; drop "(No Video)" titles; take the newest
+     date, not the feed order. The enumerator does this now.
+   - **Legistar**: whatever the meeting page says about video, probe the
+     same-named Granicus tenant (`<slug>.granicus.com`, view ids 1 to 15)
+     and accept a clip only when its body and date match the Legistar
+     calendar. The adapter has this fallback for Yonkers (PR #858); the
+     sweep version is filed in `BACKLOG.md`.
+   - **CivicPlus**: `RSSFeed.aspx?ModID=` on a government's own domain is
+     a CivicPlus signature; the calendar feed is a cheap meeting list
+     (body, date, time) for sites without an AgendaCenter. Feeds carry no
+     video.
 2. **Plain HTTP with honest headers** for governments with a domain but
    no signature: fetch the home page and one hop of meeting links, look
    for a platform link. "Works" means the listing or a platform link was
@@ -72,6 +88,11 @@ is the source; the YouTube video is delegated from it, and the page
 carries the body, the date and the agenda. Enumerate a YouTube channel
 directly only when no delegating platform exists after rungs 1 to 4. A
 channel matched to a gov id counts as a platform signature for step 1.
+The channel-to-calendar join (WO-158: accept a channel video only when it
+matches the site's own calendar by body name and a date within one day)
+works, at about 5% yield, with some risk of off-mission video. Ryan
+shelved it on 2026-09-10 as a future project; it is documented and
+parked in `BACKLOG.md`, not part of this sweep.
 
 ### The probe before queuing
 
