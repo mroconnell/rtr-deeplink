@@ -566,6 +566,27 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 | Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
 
 **Deploy status.** Pages are re-keyed now. The pin and the alias reach production on the next deploy; until then the old county hub link may 404.
+## Kankakee County, IL and McLean County, IL: two pins made authoritative, two pages re-keyed off the city and village, one YouTube channel pin corrected [Done 2026-09-10]
+
+**What was checked and why.** WO-153 left two Archive pages on the wrong government and could not fix them with a plain `fallback` pin. The 2018 "Ethics Commission Meeting" on `kankakeecountyil.gov` was keyed to Kankakee city, IL, and "County Board 8/13/26" on `mcleancountyil.gov` was keyed to McLean village, IL. Both source URLs are the county's own agendacenter, and both landing pages say "County" in the title. Before asking Ryan, this session re-ran `backfill_gov_id.py --hosts kankakeecountyil.gov,mcleancountyil.gov` (dry run) with the existing `fallback` pins in place. Both rows came back "already current" at the wrong id, tier `registry`, confirming the inert pin.
+
+**Why a fallback pin cannot do it.** The resolver ladder (`app/utils/gov_registry/resolver.py`) tries an `authoritative` pin first, then the page's own text against the national tables, and only reaches a `fallback` pin if the tables found nothing. "Kankakee (city), IL" and "McLean, IL" are real Census places, so the tables answer and the fallback pin is never consulted. This is the same open bug the Chenango town, NY entry above hit; these two are its second and third real cases.
+
+**Decision.** Ryan authorized `authoritative` strength for both hosts (source `ryan_stated`), the same call as `townofchenango.civicweb.net`. He also noted a small town wrongly pointing at its county would not be the end of the world, meaning the downside of an authoritative pin (any future page on the county's own host is filed under the county even if its text names the city) is acceptable. The `/j/` route lets a live hub win over an alias, so a real Kankakee city page on a different host would still get its own hub.
+
+| Step | Result |
+|---|---|
+| `kankakeecountyil.gov` pin: `fallback` (wo153_identity_join) → `authoritative` (ryan_stated) | 1 row |
+| `mcleancountyil.gov` pin: `fallback` (hub_sweep_wo126) → `authoritative` (ryan_stated) | 1 row |
+| YouTube channel `@mcleancoil` pin (owner title "McLean County Illinois", live-checked) gov_id `us:place:1745811` → `us:county:17113`, stays `fallback` | 1 row, Ryan's ok; it had inherited the page's then-wrong key from the 2026-09-09 archive study |
+| `backfill_gov_id.py --hosts … --apply` (Archive DB mapped in-process from `ARCHIVE_DATABASE_URL`) | 2 pages changed, tier `pinned`, 2 rows gain a national id |
+| Second apply, third dry run | 0 changed, 0 would change |
+| Hub aliases added | `kankakee-city-il` → `kankakee-county-il`, `mclean-il` → `mclean-county-il`; the existing `kankakee-il` row re-pointed straight at `kankakee-county-il` instead of the now-retired city slug (the alias map is one hop) |
+
+**Verified live.** `/m/mclean-il-2026-08-13-county-board-8-13-26` now titles "McLean County, IL" and links `/j/mclean-county-il`; `/m/kankakee-il-2018-07-03-ethics-commission-meeting-7-3-2018` now titles "Kankakee County, IL" and links `/j/kankakee-county-il`. Both county hubs return 200.
+
+**Deploy status.** The two pages are re-keyed in the database now. The pins and the three alias rows reach production on the next deploy; until then `/j/mclean-il` and `/j/kankakee-city-il` return 404 instead of a 301.
+
 ## CivicPlus's own marketing link was mistaken for a government's video page — fixed [Done 2026-09-10] (WO-162)
 
 **What we were checking.** A coverage-triage session looking at jurisdiction
