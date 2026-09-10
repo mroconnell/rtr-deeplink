@@ -190,7 +190,24 @@ async def _push_if_has_video(
 
     normalized = normalize_url(url)
     try:
-        response = await _ingest(session, result.model_dump(), normalized)
+        # already_probed=True: the probe just above ran on this exact
+        # video_url. WO-156's gate in bulk_ingest._ingest() only honors
+        # that flag when the payload also carries real segments, though
+        # -- this queue's payloads never do (tier-3 is video-only by
+        # definition), so this still re-probes there today. That's
+        # deliberate (see _ingest()'s own docstring): a video-only
+        # payload is exactly WO-149's Boardroom-clip shape, so the final
+        # gate never skips on an upstream caller's say-so for that shape
+        # alone. Passed anyway so the call site is honest about what
+        # already happened, and so nothing changes here if segments ever
+        # do show up on a future tier-3 payload.
+        response = await _ingest(
+            session,
+            result.model_dump(),
+            normalized,
+            already_probed=True,
+            caller="feed_tier3_auto_transcription",
+        )
     except Exception as e:
         return f"[FAIL] ingest failed: {url} ({e})"
 
