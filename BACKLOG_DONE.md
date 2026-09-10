@@ -1,5 +1,111 @@
 # Backlog — done
 
+## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
+
+Third backfill of the day (the two entries below carry the pattern and
+the `ARCHIVE_DATABASE_URL` wrapper this reused). Ryan's North America
+coverage registry (`rtr-business/research/coverage_registry/`) listed
+641 governments as `ingested` with `archive_pages` 0. Joined to
+`jurisdiction_coverage.csv`'s example URLs and a fresh
+`/internal/export/pages` sweep (6,545 pages), 191 of them have a page on
+their own host under a different id -- his number reproduced exactly
+(219 (gov_id, host) pairs; 315 of the 641 have no example host at all).
+
+**The first-pass rule was wrong, and that is the finding.** A name-only
+"stored name matches the registry name" check (`_base_name_keys`) passed
+82 hosts. One GET per host (landing page title, 1s apart), the Swagit
+footers and the archived meeting bodies then contradicted 30 of them:
+the research file had matched a name without its state or its type --
+`boisecityid.iqm2.com` → Boise *County* (portal: "City of Boise"),
+`charlestonwv.portal.civicclerk.com` → Charleston County *SC*,
+`oakland.granicus.com` → Oakland County *MI*, `shelbytownmi.iqm2.com` →
+Shelby *village* (portal: "Charter Township of Shelby"), `pub-stjohns` →
+St. Johns *AZ* (page: St. John's NL), `watertown.civicweb.net` →
+Watertown *WI* (portal: ", SD 57201"). Over all 158 checkable pairs (219
+minus 61 on shared YouTube/Vimeo/Cablecast/TelVue hosts): **88 wrong, 63
+right, 7 undecidable or consolidated city-county**.
+`reports/wo125_identity_join.csv` holds every verdict with the corrected
+id and the evidence, for fixing the research file. Also worth knowing:
+many stored names on these pages are the registry's own display form
+("Emporia (city), KS") -- an adapter never writes "(city)" -- so a
+stored name that equals the registry name is not independent evidence.
+
+**Pinned: 55 hosts, 74 pages** -- 51 where research and landing page
+agree, plus 4 where the stored string is the same government mangled
+(`Kaua&apos;i County, HI`, `City of Pella, Iowa - Government`, `Richland
+Center Wisconsin`, and `Ranson, WV` vs Census "Ranson corporation").
+Written through `apply_pin_worklist.py` (55/55 `pin`, 0 open) from a
+worklist in `build_pin_worklist.py`'s own shape; all 55 display names
+round-trip through `resolve_government(name, tenant_host=host)` at tier
+`registry`. The 55 rows' `source` was then changed from `ryan_stated` to
+`identity_join+landing_page` with the evidence extended, editing only
+those lines -- a first attempt through `csv.writer` re-quoted the whole
+file (a 1,438-line diff) and was reverted.
+
+**Backfill** (from the Mac, Ryan's authorization; hosts file = the 55
+plus `redcliff.civicweb.net`/`northsaanich.civicweb.net`, two hosts
+whose existing pins had never been backfilled): dry run 76 would-change,
+0 NULL after, 0 national → different-national, 0 `manual_override` in
+scope, every `jurisdiction_after` a real display name; applied 76 (33
+`pinned`, 43 `registry` -- those 43 had been minted by an older resolver
+and key fine today, so a plain backfill of the host would have fixed
+them without a pin); second apply 33 (the known `pinned` → `registry`
+residue, Ship next); third dry run 0. Live: all 57 receiving hubs 200.
+14 old slugs retired: 11 now 404 and got `hub_slug_aliases.csv` rows
+(`fenton` → `fenton-mo`, `kaua-apos-i-county-hi` → `kauai-county-hi`,
+`kendall-county` → `kendall-county-tx`, `oakdale`, `woodbury`,
+`pella-iowa-government`, `ranson-wv`, `richland-center-wisconsin`,
+`the-town-of-bethany-beach-de`, `the-town-of-redcliff`,
+`town-of-amherst-ma`); `malvern-borough`, `westfield` and
+`meeting-portal` still serve a live hub and were not aliased
+(`meeting-portal` already has a row from an earlier regen pointing at
+North Saanich -- a generic slug still serving other pages, left alone).
+
+**Declined, by rule** (the 137 pairs outside the first pass, plus the 31
+the landing pages removed from it):
+
+- 61 pairs (50 governments) on shared hosts -- `www.youtube.com` 32,
+  `youtu.be` 14, `youtube.com` 5, `vimeo.com` 3, `player.vimeo.com` 2,
+  `videoplayer.telvue.com` 1, four `*.cablecast.tv` -- per-video and
+  per-channel pins are a later pass.
+- 36 pairs whose host already carries a pin: 33 are the research file
+  wrong and the pin right (Canadian eScribe/CivicWeb tenants filed under
+  a US namesake -- `pub-milton` → Milton GA, `pub-halifax` → Halifax NC;
+  county portals filed under their seat -- `ricecountymn.portal.
+  civicclerk.com` → Faribault); 2 are consolidated city-counties where
+  research holds the county id and the pin the place id (`sanfrancisco`,
+  `denver`); 1 is the *pin* that looks wrong -- `www.sussex.nj.us`
+  (landing title "Sussex County, NJ"), filed under Needs a human.
+- 5 already pinned and agreeing (2 backfilled here, 3 already current).
+- 40 where the page already carries a different national id and the
+  research file is wrong -- 13 county portals filed under their seat
+  city (`buttecoca.portal.civicclerk.com` → Oroville, `chestercopa` →
+  West Chester), three hosts claimed by two registry rows that are both
+  wrong (`desmoines.civicweb.net` is Des Moines WA, `pub-winona` is
+  Winona MN, `pub-courtenay` is Courtenay BC), and name collisions like
+  `douglas-mi.municodemeetings.com` → "The Village, OK". Nothing to do
+  in the Archive for these; the fix is the research file.
+- 13 hosts (22 pages) still minted or unresolved whose research id is
+  wrong -- listed with corrected ids under Needs a human. An identity
+  join has no standing to pin a host to an id the research file does
+  not hold; that is Ryan's row to write.
+- 2 pages that are a different, minted government (`arkansas-sc.
+  granicus.com` is the Arkansas Supreme Court, not Arkansas County;
+  `bedfordoh.primegov.com` is Bedford city, not Cuyahoga County), 2
+  hosts where the *page* is wrong and the research right
+  (`mcleancountyil.gov`, `kankakeecountyil.gov` -- a `fallback` pin is
+  inert on a `registry`-tier page), 3 undecidable (`walton.civicweb.net`,
+  `cityofoakgrove.com`, `camas.new.swagit.com`).
+
+Three resolver gaps found on the way, filed as `[JUST-DO-IT]` under
+Jurisdiction extraction: "Charter Township of X" keys to the village
+(`_LEADING_TYPE_RE` lacks the `charter` prefix); a literal `&apos;`
+defeats the county lookup; the Census "corporation" LSAD neither strips
+nor displays.
+
+The pins are on `main` after merge but reach new ingests only after a
+deploy; the backfill above already fixed the existing 76 pages.
+
 ## Ryan's pin worklist applied and backfilled -- 35 pins, 58 pages re-keyed, 20 hub redirects, two bugs found by the dry run [Done 2026-09-09]
 
 Second backfill of the day (see the 114-pin entry below for the first,
