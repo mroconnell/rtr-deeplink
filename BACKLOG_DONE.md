@@ -46,6 +46,17 @@ a video onto the page. Original text:
     Upcoming→Past state-switch needs to be built) preserved in this
     compaction's done-additions file, pending a real `BACKLOG_DONE.md` or
     `docs/investigations/` entry once this is built.
+## Chenango town, NY: the pin made authoritative, three pages re-keyed off Chenango County, the hub alias flipped [Done 2026-09-10]
+
+WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pages are the Town Board of the town of Chenango. Its fallback pin could not override the resolver's own county match (the open "fallback pin cannot correct" bug), so Ryan made the call: authoritative.
+
+| Step | Result |
+|---|---|
+| Pin strength changed to authoritative (source `ryan_stated`) | 1 row |
+| `backfill_gov_id.py --hosts townofchenango.civicweb.net --apply` | 3 pages moved to `us:cousub:3600715110` |
+| Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
+
+**Deploy status.** Pages are re-keyed now. The pin and the alias reach production on the next deploy; until then the old county hub link may 404.
 
 ## Yonkers, NY Legistar page had no video because its Granicus tenant was never registered as a fallback — fixed, plus a 29-tenant read-only test of whether the pattern generalizes [Done 2026-09-10] (WO-145)
 
