@@ -404,6 +404,7 @@ Render dashboard login for either `type: web` service — same pattern as
 the existing `/admin/schema-info`/`/internal/schema-info` endpoints, for
 deploy state instead of schema state. Doesn't cover the two `type: worker`
 transcription services, which run no HTTP server at all (PR #850).
+
 ## 39 pages on bare YouTube and Vimeo hosts keyed to their governments: 31 channel pins and 8 per-video pins, three off-mission pages deleted [Done 2026-09-10]
 
 Ryan's rule, stated today: nothing keys to a shared host (YouTube,
@@ -449,10 +450,18 @@ County judge), `@hamdenactionnow` (an advocacy group), and
 and Vimeo `1219645927` New Hope Borough), which is the dead-video class
 already filed under Needs a human.
 
-**Caution.** The Census places table spells three names with a
-double-encoded ñ ("CaÃ±on City", "La CaÃ±ada Flintridge", "EspaÃ±ola")
-and the counties table has 17 more; the display name on those pages is
-wrong until the table is fixed. Filed in `BACKLOG.md`.
+**Caution, now fixed.** The Census places table spelled three names
+with a double-encoded ñ ("CaÃ±on City", "La CaÃ±ada Flintridge",
+"EspaÃ±ola") and the counties table had 17 more, so the display name on
+pages keyed to those governments was wrong. A separate same-day session
+found the identical corruption independently (chasing why
+`lacanadaflintridge-ca.granicus.com` never resolved a gov_id) and fixed
+all 23 rows directly, plus 20 more across the older duplicate
+`counties.csv`/`places.csv` tables and `us_school_districts.csv` this
+pass's own count didn't cover — see "Fix double-encoded diacritics in 5
+gov-registry data files" below. The generator script's own root cause
+(a blanket Latin-1 decode of raw Census source files) is still open,
+filed in `BACKLOG.md`.
 
 **Deploy status.** The 39 pages are re-keyed in the database now. The
 pins reach new resolves only after the next deploy.
