@@ -127,6 +127,15 @@ SIDECAR_CSV_HEADER = [
     "reason",
     "probe_seconds",
     "probed_at",
+    # WO-156: which code path ran this probe -- "bulk_ingest" for the
+    # shared _ingest() gate (scripts/bulk_ingest.py), or the tier-3
+    # feed/sweep script names that already wrote rows here before WO-156
+    # existed (those keep passing no caller, which lands here as "" --
+    # appended at the end, and every existing reader uses csv.DictReader
+    # keyed by column name (wo150_finish_tier3.py's _load_probed_urls()),
+    # so an old row with no "caller" value just reads back as an empty
+    # string, not a missing column).
+    "caller",
 ]
 
 
@@ -688,12 +697,19 @@ async def probe_queue_entry(
     )
 
 
-def append_probe_row(sidecar_path: Path, result: ProbeResult) -> None:
+def append_probe_row(
+    sidecar_path: Path, result: ProbeResult, *, caller: str = ""
+) -> None:
     """Append one ProbeResult to the append-only sidecar CSV, writing the
     header first if the file doesn't exist yet. Shared by
     scripts/probe_tier3_queue.py and scripts/feed_tier3_auto_transcription.py
     (see DEFAULT_SIDECAR_PATH's own comment on why this lives here rather
-    than in either script)."""
+    than in either script).
+
+    `caller` (WO-156) names which code path ran this probe -- e.g.
+    "bulk_ingest" for the shared _ingest() gate in scripts/bulk_ingest.py.
+    Optional and defaults to "" so every pre-WO-156 call site (which
+    passes only `sidecar_path`/`result`) keeps working unchanged."""
     is_new = not sidecar_path.exists()
     sidecar_path.parent.mkdir(parents=True, exist_ok=True)
     with sidecar_path.open("a", newline="") as f:
@@ -715,5 +731,6 @@ def append_probe_row(sidecar_path: Path, result: ProbeResult) -> None:
                 result.reason or "",
                 f"{result.probe_seconds:.2f}",
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                caller,
             ]
         )

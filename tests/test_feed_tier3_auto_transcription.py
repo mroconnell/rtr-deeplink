@@ -104,7 +104,7 @@ async def test_push_if_has_video_overrides_source_url_when_given(monkeypatch):
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized):
+    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
         captured["payload"] = payload
         return {"url": "/m/example-page"}
 
@@ -135,7 +135,7 @@ async def test_push_if_has_video_leaves_source_url_alone_without_an_override(
 
     captured = {}
 
-    async def _fake_ingest(session, payload, input_url_normalized):
+    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
         captured["payload"] = payload
         return {"url": "/m/example-page-2"}
 
@@ -182,7 +182,7 @@ async def test_push_if_has_video_skips_a_probe_rejected_dead_link(monkeypatch):
 
     ingest_called = False
 
-    async def _fake_ingest(session, payload, input_url_normalized):
+    async def _fake_ingest(session, payload, input_url_normalized, **kwargs):
         nonlocal ingest_called
         ingest_called = True
         return {"url": "/m/should-not-happen"}

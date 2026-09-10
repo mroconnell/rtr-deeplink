@@ -1,5 +1,94 @@
 # Backlog — done
 
+## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
+
+**The problem.** One path already checked a video before making it a
+real page: the tier-3 queue (WO-144). Every other path that creates a
+page did not. That gap let a 59-second camera clip ("Larry J. Dix
+Boardroom") become a real county page this round (WO-149) — caught and
+deleted by hand only because a person happened to look. The only other
+check left was the worker's, and that only runs once a page already
+exists and someone tries to transcribe it — too late to stop the page
+itself.
+
+**What was tested.** Which paths create pages, and whether each one
+checked a video's length or whether the link even worked, before today
+and after this change.
+
+| Path | Gate before | Gate after |
+|---|---|---|
+| Tier-3 queue feed (`feed_tier3_auto_transcription.py`) | Yes (WO-144) | Yes (unchanged) |
+| Granicus queue feed (`feed_granicus_auto_transcription.py`) | No | Yes — it runs `bulk_ingest.py`, so it inherits the fix below automatically |
+| The shared ingest helper (`scripts/bulk_ingest.py`'s `_ingest()`) | No | Yes — new gate, on by default |
+| Every script that calls that helper (10 scripts, including `wo134_confirmed_hits_ingest.py`, which every sweep this round used for its confirmed hits) | No | Yes, automatically, with no change needed in 9 of the 10 |
+| Worker claim-time check (`worker/main.py`) | Yes | Yes (unchanged — this stays as a second, independent check) |
+
+The brief said 11 scripts import the helper. Checking the actual
+imports found 10, not 11 — `feed_tier3_auto_transcription.py` is the
+11th script this brief was likely counting, and it's covered separately
+above since it already had its own gate.
+
+**What the gate does.** When a page's payload has a video link, the
+helper now runs the same cheap check WO-144 already built (reads the
+video's length and whether the link works, without downloading it) and
+refuses to create the page if the video is dead or shorter than 60
+seconds. A very long video (multi-hour) is still allowed — a real
+council meeting can run 8 hours, and WO-143 already confirmed that. One
+script, `feed_tier3_auto_transcription.py`, already runs this same check
+itself right before calling the helper — it tells the helper "I already
+checked," but the helper still checks again when the video has no
+transcript yet, which is true for every video this particular script
+handles. That is deliberate: a video with no transcript is exactly the
+shape of the clip that slipped through before, so the last checkpoint
+never skips it just because an earlier step says it's fine. The helper
+only skips its own check when a page's payload already has a real
+transcript *and* the caller says it already checked — no script does
+both today, so in practice the check always runs. Every check is
+logged to the same shared spreadsheet-style file the tier-3 queue
+already writes to, with a new column naming which script asked for the
+check.
+
+**Two real refusals, tested against a local copy of the Archive (never
+production).**
+
+| URL | What it is | Result |
+|---|---|---|
+| A YouTube video already known to be a scheduled livestream that never started | Confirmed dead in WO-143's own testing | Refused: "This live event will begin in a few moments" |
+| A real Swagit clip from Aledo ISD, TX | Confirmed real but only 35.7 seconds long in WO-143's own testing | Refused: "duration 35.7s is below the 60s meeting-plausibility floor" |
+
+Neither attempt created a page in the local test database (checked
+directly — zero rows).
+
+**Caution.** The worker's own check, which runs later, is untouched and
+still runs — this is a second, independent layer, not a replacement.
+A page already created before today is not re-checked by this change;
+it only stops new bad pages, not clean up old ones. Also: nothing in
+`app/` changed except a small addition to `app/platforms/queue_probe.py`
+(a new column name on the shared log file) — the resolver service does
+not need a new deploy for this to work.
+
+**Recommendation.** No action needed from Ryan. The Granicus and
+tier-3 feeds both run from GitHub Actions on a schedule against `main`,
+not from a Render service, so this gate is live for them on their very
+next scheduled run — no deploy button to press. The sweep scripts pick
+it up the same way, next time someone runs one. This PR does not touch
+any Render service, so there is nothing to deploy.
+
+**Tests.** `tests/test_bulk_ingest.py` (new) covers: a dead link and a
+too-short clip are both refused before any network POST; a normal clip
+and a very long one are both accepted; a payload with no video link
+skips the check entirely (an agenda-only page); `already_probed=True`
+only skips the check when the payload also has a real transcript, and
+still re-checks a video-only payload even with that flag set (the exact
+shape of the WO-149 incident); the check is logged with the right
+caller name; and `bulk_ingest.py`'s own driver reports a refused video
+as a clean, readable failure message — the same driver
+`feed_granicus_auto_transcription.py` runs, so this also proves that
+feed is gated with no code change of its own. Two of these tests reuse
+the real HLS playlist shape WO-144's own tests already confirmed live
+(only the made-up numbers are synthetic, not the shape), matching this
+repo's synthetic-test rule.
+
 ## WO-148: headless pass on the 1,132 smaller governments WO-133 never reached [Done 2026-09-10]
 
 This tested 1,132 smaller US and Canadian governments (over 5,000

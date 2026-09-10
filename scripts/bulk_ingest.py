@@ -66,6 +66,11 @@ from app.platforms.base import (
     UnsupportedPlatformError,
     CalendarPageError,
 )  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    DEFAULT_SIDECAR_PATH,
+    append_probe_row,
+    probe_queue_entry,
+)
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
 REQUEST_DELAY_SECONDS = 1.5
@@ -140,9 +145,75 @@ def _expand_urls(urls: List[str]) -> List[str]:
     return expanded
 
 
+class IngestGateRejected(RuntimeError):
+    """Raised by _ingest() when WO-156's duration/dead-link gate refuses a
+    payload before it ever reaches the Archive. str(exception) is exactly
+    the "[SKIP] <verdict>: <reason>" shape every other probe caller in
+    this repo already logs (scripts/feed_tier3_auto_transcription.py's
+    own [SKIP] lines), so a caller's existing `except Exception as e:
+    ...f"...{e}"` handling surfaces it in the same recognizable form
+    without needing its own except clause."""
+
+
 async def _ingest(
-    session: aiohttp.ClientSession, payload: dict, input_url_normalized: str
+    session: aiohttp.ClientSession,
+    payload: dict,
+    input_url_normalized: str,
+    *,
+    already_probed: bool = False,
+    caller: str = "bulk_ingest",
 ) -> Optional[dict]:
+    """POSTs `payload` to the Archive's /internal/ingest.
+
+    WO-156: every one of this function's 10 real callers (see
+    BACKLOG_DONE.md's WO-156 entry -- feed_granicus_auto_transcription.py
+    inherits this too, since it shells out to this script) creates a real
+    Archive page with no duration/dead-link check of its own. Only the
+    tier-3 queue (WO-144's probe_queue_entry(), wired into
+    feed_tier3_auto_transcription.py) and the worker's claim-time check
+    (worker/main.py's probe_duration()/is_plausible_meeting_duration())
+    gated this before today -- meaning a tier-1/2 sweep result (real
+    segments, `_ingest_with_retry()` in scripts/wo134_confirmed_hits_
+    ingest.py and the ~9 scripts like it) walked straight past both. A
+    59-second "Larry J. Dix Boardroom" camera clip became a real county
+    page this exact way (WO-149, 2026-09-10, deleted by hand).
+
+    So: whenever `payload` carries a `video_url`, this runs WO-144's own
+    probe_queue_entry() (metadata only, never a download) and refuses a
+    `reject-dead`/`reject-short` verdict before the POST -- a
+    `flag-long` verdict (a real multi-hour meeting, see queue_probe.py's
+    own Anaheim comment) is still accepted. `already_probed=True` skips
+    this **only** when `payload` also carries real `segments` -- a
+    caller that already ran the exact same probe on a *tier-3* (video,
+    no captions) payload moments ago (feed_tier3_auto_transcription.py's
+    `_push_if_has_video()`) still gets probed again here, deliberately:
+    a video-only payload is precisely the shape WO-149's incident came
+    from, so this gate never takes an upstream caller's word for it on
+    that shape, only on a tier-1/2 (real-transcript) one where the risk
+    this WO exists for doesn't apply. No current caller passes both
+    `already_probed=True` and a `segments`-bearing payload (none probes a
+    tier-1/2 result before calling this), so today this always runs for
+    a video_url-bearing payload in practice -- documented here rather
+    than silently, so a future caller that adds that combination knows
+    exactly what it's opting out of.
+
+    The worker's own claim-time gate is untouched and stays a second,
+    independent check -- this only stops a bad payload from becoming a
+    page in the first place; it doesn't replace that check.
+    """
+    video_url = payload.get("video_url")
+    skip_probe = already_probed and bool(payload.get("segments"))
+    if video_url and not skip_probe:
+        probe = await probe_queue_entry(
+            payload.get("source_url") or input_url_normalized,
+            video_url=video_url,
+            source_page_url=payload.get("source_url"),
+            platform=payload.get("platform"),
+        )
+        append_probe_row(DEFAULT_SIDECAR_PATH, probe, caller=caller)
+        if probe.verdict.startswith("reject-"):
+            raise IngestGateRejected(f"[SKIP] {probe.verdict}: {probe.reason}")
+
     body = dict(payload)
     body["input_url_normalized"] = input_url_normalized
     async with session.post(
