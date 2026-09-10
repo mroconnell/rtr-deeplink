@@ -214,6 +214,11 @@ What the 2026-09-09 sweeps established about *where video is*:
 
 ## 7. Where to look first next time
 
+- `docs/BREADTH_SWEEP_BRIEF.md`: the brief for the next round of coverage
+  work, written 2026-09-10 from four read-only pilots. Platform API first,
+  then an honest plain client, browser headers on a 403, headless only for
+  JavaScript-drawn links, never past a challenge; a probe before queuing;
+  reject reasons split into access and content classes.
 - `BACKLOG.md`'s TOC, then the Standing decisions section.
 - `BACKLOG_DONE.md`'s 2026-09-09 and 2026-09-10 entries for every sweep's
   funnel, and `rtr-business/research/ENUMERATION_METHODS.md` §155–§180
