@@ -115,7 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
+  `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
+  WO-153's leftover Part B/C rows: 111 shared-host domains still…
   4 more wrong-government domain mappings, same fix shape as the 17…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
@@ -130,13 +132,14 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Production actions only Ryan should take  (5)
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
-    [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
+    [HUMAN] 14 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (114)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (115)
+  [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
@@ -545,6 +548,68 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+### `hub_slug_aliases.csv` can only redirect an old slug to ONE new home, and `/j/cambridge` genuinely needs two `[JUST-DO-IT]`
+
+- **Issue:** `archive/utils/hub_aliases.py`'s map is a plain
+  `old_slug -> new_slug` dict. WO-153 (2026-09-10) re-keyed 5 pages from
+  `rtr:unknown` to Cambridge, ON (`ca:csd:3530010`), all previously
+  filed under the generic hub slug `cambridge` -- the same slug an
+  *existing* alias row already redirects to `cambridge-ma` (Cambridge,
+  MA, `us:place:2511000`, which really does have 7 live pages of its
+  own). A visitor with an old `/j/cambridge` link meant for the Ontario
+  government now lands on Massachusetts's hub instead; there's no way
+  to write a second, disambiguating alias for the same old slug with
+  today's data shape.
+- **Impact:** narrow (one retired slug, one specific mix-up) but a real
+  wrong-government redirect for anyone still holding that old link.
+- **Next action:** either rerun `scripts/score_gov_registry.py` (which
+  regenerates this file wholesale and might resolve it structurally if
+  it tracks retirement order) or extend `hub_slug_aliases.csv`'s shape
+  to support more than one target per old slug (e.g. keyed by a hint in
+  the referring page) -- a bigger change, so start with the regen.
+- **Constraint:** don't hand-add a second `cambridge` row to the CSV as
+  it stands today -- `hub_slug_aliases()` is a plain dict keyed by
+  `old_slug`, so the second row silently wins or loses depending on
+  file order, not on which one is "more correct."
+- **History:** `BACKLOG_DONE.md` WO-153, 2026-09-10.
+
+### WO-153's leftover Part B/C rows: 111 shared-host domains still unresolved, 45 governments that look ready to queue `[JUST-DO-IT]`
+
+- **Issue:** WO-153's bookkeeping pass on `jurisdiction_coverage.csv`
+  left two lists of real, already-narrowed-down leads rather than
+  chasing them to zero in one session. (1) 111 rows still carry a bare
+  shared-host domain (YouTube/Facebook/Vimeo/TelVue/Cablecast) instead
+  of the government's real website --
+  `rtr-business/research/wo153_partB_resolved.csv` has every row, with
+  a `real_domain_found`/`real_domain_source` column already filled in
+  for the 37 this session settled (28 applied, 9 already fixed by a
+  concurrent session) so a follow-up doesn't redo that work. (2) 45
+  governments' `video-no-captions-queued`/`duplicate-queued` rows have
+  no matching entry in the real
+  `scripts/tier3_auto_transcription_queue.txt` but DO have a real,
+  playable-looking video URL on file (the exact Torrington WY shape this
+  WO's own brief named) -- `rtr-business/research/wo153_partC_final.csv`
+  lists them under `disposition = "should be queued"`. Neither list was
+  enqueued or further researched by WO-153 -- explicitly out of that
+  WO's scope ("do not enqueue anything").
+- **Impact:** 111 rows still mis-key to a shared host against Ryan's
+  own rule; up to 45 real meetings are sitting un-queued despite already
+  having a known-good video URL on file.
+- **Next action:** for (1), continue the WebSearch-per-government pass
+  WO-153 started (or find a faster domain-lookup source) and apply
+  through `wo153_partB_apply.py`'s pattern (re-verify the row's current
+  `domain` is still a bare shared host immediately before overwriting
+  it -- that check is what let this session's own writer skip 9 rows
+  another concurrent session had already fixed, rather than clobbering
+  them). For (2), verify each of the 45 governments' video is real and
+  has captions (Torrington WY's did) before adding it to the tier-3
+  queue -- don't bulk-enqueue from the CSV without that check.
+- **Constraint:** `jurisdiction_coverage.csv` is a live, multi-session
+  file -- follow ENUMERATION_METHODS.md §158's write protocol (`flock`,
+  fresh read, row-count floor, atomic write) for any further edit, same
+  as WO-153's own two writer scripts already do.
+- **History:** `BACKLOG_DONE.md` WO-153, 2026-09-10.
+
 ### 4 more wrong-government domain mappings, same fix shape as the 17 already corrected `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** WO-146's re-verification (`BACKLOG_DONE.md`, 2026-09-10)
@@ -571,7 +636,13 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   backfill left it alone (the standing "never overwrite a real True"
   rule) -- but a fresh `/internal/export/pages` check found ZERO live
   pages under this gov_id, so that `True` is stale, not evidence of a
-  real page. Worth a fresh look at what `transcribed=True` is actually
+  real page. WO-153 (2026-09-10) already cleared this exact staleness
+  for Providence County, RI and Winona County, MN (both were in its
+  transcribed-but-no-page sweep, confirmed the same way: the archived
+  page really is the city's, not the county's) -- their `transcribed`
+  flags are already cleared, so only the `domain` field itself still
+  needs the clear-source/set-target fix described above. Worth a fresh
+  look at what `transcribed=True` is actually
   based on for this row before trusting it elsewhere.
 - **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
@@ -693,12 +764,12 @@ of human step they need.
   - **Constraint**: slug-only, exact match (the endpoint's own design) — don't broaden to a fuzzy match.
   - **History**: WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
-- **[HUMAN] 18 hosts the coverage registry ties to the wrong government: 13 still want a pin to the *correct* one (22 pages), 2 have the right research id but a wrong page, 3 are undecidable.**
-  - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type — 88 of 158 checkable pairs name a different government from the one the host serves. Most of those pages already carry the right id. These do not: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `fishkilltownny.iqm2.com` → `us:cousub:3602725978`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (all Town Boards, filed as villages); `townofchevychase.org` → `us:place:2416620` (Town, filed as Chevy Chase Village); `pub-cambridge` → `ca:csd:3530010`, `pub-clearview` → `ca:csd:3543005`, `pub-whiterockcity` → `ca:csd:5915007`, `pub-creston` → `ca:csd:5903004` (Canadian eScribe tenants filed under US namesakes); `watertown.civicweb.net` → `us:place:4669300` (portal footer ", SD 57201", filed as WI). Two where the *page* is wrong and the research right: `mcleancountyil.gov` (`us:county:17113`; page keyed to McLean village at tier `registry`, so only an `authoritative` pin fixes it — same shape as Juneau below) and `kankakeecountyil.gov` (`us:county:17091`; page minted `rtr:us:il:kankakee-city`). Three undecidable: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY), `cityofoakgrove.com` (claimed by both Oak Grove MO and Oak Grove Village MO), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
-  - **Impact**: 22 live pages minted or unresolved on the 13 hosts, 3 on the wrong government (McLean, Kankakee, Camas); and the coverage registry's `archive_pages`/tier/hub columns are wrong for every one of the 88 rows.
-  - **Next action**: Ryan confirms the 13 and writes them as `tenant_overrides.csv` rows (source `ryan_stated`; `build_pin_worklist.py` won't list the minted ones — its `WANTED_TIERS` is unresolved/blank only), `authoritative` for McLean, then `backfill_gov_id.py --hosts …`. Separately, correct the 88 rows in `rtr-business/research/jurisdiction_coverage.csv` from `reports/wo125_identity_join.csv` (one verdict per pair, with the corrected id and the evidence).
-  - **Constraint**: never pin from the research file's gov_id without the landing-page check — 56% of its checkable host associations were wrong.
-  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09.
+- **[HUMAN] 14 hosts the coverage registry ties to the wrong government: 9 still want a pin to the *correct* one, 2 have the right research id but a wrong page a `fallback` pin can't fix, 2 are undecidable (WO-153 fixed 5 of the original 18, 2026-09-10).**
+  - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type. WO-153 fixed 5 of these live (pin + `backfill_gov_id.py`, confirmed via a landing-page or meeting-text fetch first): `townofchevychase.org` → `us:place:2416620` (Town of Chevy Chase, MD), `pub-cambridge.escribemeetings.com` → `ca:csd:3530010` (Cambridge, ON, 5 pages), `cityofoakgrove.com` → `us:place:2953624` (Oak Grove *city*, MO — the "undecidable" city-vs-village call is settled: the domain literally says "cityofoakgrove", the Village has its own separate, correct row), plus two more found the same session (`reflect-brewster-ma.cablecast.tv` → `us:cousub:2500107980` Brewster, MA; `tecumseh-pub.escribemeetings.com` → `ca:csd:3537048` Tecumseh, ON). Still open: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (Town Boards, filed as villages — not re-verified by WO-153); `pub-clearview.escribemeetings.com` → `ca:csd:3543005` (WO-153 confirmed live: this eScribe tenant serves Township of Clearview, ON, not Clearview, OK, whose own research row wrongly recorded it — not yet pinned); `pub-whiterockcity.escribemeetings.com` → `ca:csd:5915007`, `pub-creston.escribemeetings.com` → `ca:csd:5903004` (same shape, not yet pinned); `watertown.civicweb.net` → `us:place:4669300` (WO-125's own landing-page fetch already found the portal footer says ", SD 57201" — confirms Watertown SD, not WI; still not pinned). Two where the page is wrong and the research right, confirmed still blocked by WO-153: `mcleancountyil.gov` (`us:county:17113`) and `kankakeecountyil.gov` (`us:county:17091`) — both pages' own raw jurisdiction text resolves cleanly at `registry` tier (a real Census place, "McLean village, IL" / "Kankakee city, IL"), which the resolver's ladder ranks *above* a `fallback` tenant pin, so a `fallback` pin is provably inert here (WO-153 added one for `kankakeecountyil.gov` and confirmed via `backfill_gov_id.py` dry run that it changes nothing). Two undecidable, unchanged: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY — WO-153 found the archived meeting titles ("Board of County Commissioners") support Walton *County*, but not which state), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
+  - **Impact**: live pages minted or unresolved on 9 still-open hosts; 2 pages permanently wrong-government until either an `authoritative` pin or a resolver-ladder fix; the coverage registry's `archive_pages`/tier/hub columns are wrong for every one of these rows.
+  - **Next action**: Ryan confirms the 9 remaining pin candidates and writes them as `tenant_overrides.csv` rows (source `ryan_stated`), `authoritative` for McLean County IL and Kankakee County IL specifically (a plain `fallback` pin is proven inert for both — this session confirmed it, don't retry with `fallback`), then `backfill_gov_id.py --hosts …`.
+  - **Constraint**: never pin from the research file's gov_id without a landing-page or meeting-text check first — WO-125 found 56% of the research file's checkable host associations wrong, and WO-153 caught one more of the same shape (Chevy Chase Village, MD vs. the separate, real "Chevy Chase town, MD") that a name-only match would have mis-pinned.
+  - **History**: WO-125, WO-153, `BACKLOG_DONE.md` 2026-09-09/2026-09-10.
 
 - **[HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough* (`us:place:3471670`, source `ryan_stated`), but its landing page title is "Sussex County, NJ | Official Website".**
   - **Issue**: WO-125 left the row alone by rule (an identity join never overwrites an existing pin) and lists it here instead: the research file says Sussex County (`us:county:34037`), the live site agrees, and the one archived page's stored name is just "Sussex, NJ".
@@ -735,6 +806,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] A real US government's YouTube video got minted with a Canadian-province gov_id prefix (`rtr:ca:sk:bracken-county-ky-fiscal-court`).**
+  - **Issue**: WO-153 (2026-09-10) found page `bracken-county-ky-fiscal-court-sk-2026-09-09-regular-fiscal-court-meeting-septem` — a real Bracken County, Kentucky Fiscal Court meeting, confirmed by its own title and description — minted as `rtr:ca:sk:bracken-county-ky-fiscal-court` (`ca:sk` = Canada/Saskatchewan) instead of resolving to the real national-table id `us:county:21023`. The video is on `www.youtube.com`, and `wo147_access_ladder_sweep` had already written a correctly-formatted `fallback` pin for this exact video (`www.youtube.com,youtube:xC4ICFWd9E4,us:county:21023`) before WO-153 started — that pin hasn't been backfilled yet, which is a separate, ordinary next step (see below), not this bug.
+  - **Impact**: at least one real US government minted under the wrong country/province — a correctness bug in the minting path itself, not just this one page. Unknown how many other pages share it; not swept for more instances this session.
+  - **Next action**: find where a bare `name, "KY"`-shaped signal (or similar) can produce a `ca:sk:` (or any non-US) prefix in the minting code path and trace why. Then run `backfill_gov_id.py --hosts www.youtube.com` (a broad sweep — scopes in every pending pin from every concurrent session, not just this one; coordinate before running) to re-key this page and the other governments already pinned and waiting.
+  - **Constraint**: don't fix by just re-keying this one page — the minting bug that produced the wrong prefix is still live and will do this again.
+  - **History**: `BACKLOG_DONE.md` WO-153, 2026-09-10.
 
 - **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is real and ongoing — 30 occurrences since 2026-08-30, five more in one 23-minute span this morning — but dashboard/log access has hit its ceiling; memory pressure is now ruled out as the driver for the great majority of them.**
   - **Issue**: identical "Exited with status 134" Render alerts, now 30 occurrences since 2026-08-30 16:54 UTC through at least 2026-09-10 18:30 UTC (instance `zdd2t`, 11:30 AM PDT). Root cause is still unconfirmed at the application level — but two live-checked data points narrow it: (1) **the memory graph for both the last 4 hours and the last 14 days shows usage staying well under the `standard` plan's 2GB limit throughout, with exactly one exception already on record** — the 2026-09-01 morning spike (the one outage already correlated with a matching Render alert). Every other crash checked, including today's, happened with memory far from the ceiling — this rules out chronic memory pressure as the driver for the bulk of the crash-loop, leaving a native-extension fault (this app's C-extension deps: aiohttp/uvloop/asyncpg/PyAV) as the more likely explanation for most occurrences, 2026-09-01 aside. (2) **PR #795's `handle_head_requests` Content-Length fix is confirmed deployed** (Ryan verified directly) and confirmed working live — a `HEAD /m/menifee-ca-2026-09-09-planning-commission-meeting` request in a 2026-09-10 pasted log returns a clean `200 OK` with no `RuntimeError`, where the identical request shape crashed the same way in the 2026-09-01 log. That closes off PR #795 as a contributing factor going forward, distinct from (and not the cause of) the SIGABRT itself — the process survived the pre-fix version of that bug every time it was hit, per the 2026-09-01 log showing normal service resuming right after.

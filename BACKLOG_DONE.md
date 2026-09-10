@@ -1,5 +1,111 @@
 # Backlog — done
 
+## WO-153: research-file bookkeeping pass — 449 wrongly-flagged rows fixed, 6 governments' pages re-keyed, 28 shared-host domains fixed, and the queued labels checked against the real queue [Done 2026-09-10]
+
+Ryan asked for a check on `jurisdiction_coverage.csv`: does "covered"
+still match what the live site actually shows. Three checks, all
+reading the live site rather than trusting the research file's own
+claims.
+
+**Part A: rows that said "we have a transcript" but the site shows no
+page.** 459 rows said this. Most of them were simply wrong and got
+fixed. A few had a real page — it just belonged to a different, similar-
+sounding government, and that government's page has now been corrected.
+
+| Result | Count of 459 | What happened |
+|---|---|---|
+| Wrong — no page exists anywhere | 449 | The "we have a transcript" flag was removed. These governments go back into the pool for a future sweep to try again. |
+| Right government, wrong government's page | 6 | Fixed live today. See table below. |
+| Right government, page still wrong | 2 | A known software bug stops the fix from taking effect. Needs a person to fix it. |
+| Not checked | 5 | The row has no internal ID to check against yet. A separate script needs to run first. |
+
+The 6 fixed governments:
+
+| Government | What was wrong | Result |
+|---|---|---|
+| Oak Grove, Missouri (the city) | Its one video was filed under "unknown government" | Now correctly shows as Oak Grove, MO |
+| Chevy Chase, Maryland (the town) | Its video was filed under a neighboring town of almost the same name | Now correctly shows as Chevy Chase, MD |
+| Cambridge, Ontario (Canada) | 5 of its videos were filed under "unknown," because a small Iowa town of the same name had (wrongly) claimed the same web address | Now correctly shows as Cambridge, ON |
+| Brewster, Massachusetts | Its video was filed under "unknown government" | Now correctly shows as Brewster, MA |
+| Tecumseh, Ontario (Canada) | Its video was filed under "unknown," because a Michigan city of the same name had (wrongly) claimed the same web address | Now correctly shows as Tecumseh, ON |
+| Champaign, Illinois | One of its 5 videos was filed under "unknown government" | Now correctly shows as Champaign, IL |
+
+**Caution.** Two more governments (Kankakee County, IL and McLean
+County, IL) have the same kind of mistake, and it was found and
+confirmed the same way. But a software rule is stopping the fix: when a
+video's own title already names a *different*, similarly-spelled
+government, that rule wins over the fix, every time. This exact
+software rule was already found and written down once before, in
+WO-125 (see that entry below). Fixing it needs either a person to
+approve a stronger kind of fix, or a change to that software rule
+itself. Filed in `BACKLOG.md`.
+
+**Part B: research rows whose only web address on file is a shared
+video site** (YouTube, Facebook, Vimeo, and similar), instead of the
+government's own website. Ryan's rule: a shared video site never counts
+as proof of which government it is, unless it's a specific channel or a
+specific video. 148 rows had this problem.
+
+| Result | Count of 148 |
+|---|---|
+| Fixed — the government's real website was found and recorded | 28 |
+| Already fixed by someone else's work today, found and left alone rather than overwritten | 9 |
+| Still needs research | 111 |
+
+One video that was still filed under "unknown government" (a Fire and
+Police Commissioners meeting on Champaign, Illinois's shared video
+account) was also matched to the right government and fixed live.
+
+**Part C: rows that say "we found a video, it's in line to be
+transcribed," checked against the real to-do list** the transcription
+system actually uses.
+
+| Result | Count of 142 |
+|---|---|
+| Confirmed — really is on the to-do list | 69 |
+| Not on the list, but a duplicate row for the same government is confirmed | 2 |
+| Not on the list, and a real video is on file — looks like it should be added | 45 governments |
+| Not on the list, and no real video is on file either — unclear, needs a person | 4 governments |
+
+No labels were changed for Part C. None of the unclear rows had strong
+enough evidence to relabel them with confidence, so nothing was
+guessed. The 45 governments that look ready to queue, and the 4 that
+are unclear, are listed for a person to review — nothing was added to
+the to-do list in this pass.
+
+**What was NOT checked or fixed.**
+- The 111 Part B rows still needing a real website found.
+- The 45 "should be queued" and 4 "unclear" Part C governments — listed,
+  not acted on.
+- The 11 shared-video channels flagged as ambiguous earlier today
+  (`@cityofcolumbus` and 10 others) — still waiting on a person, per the
+  earlier note.
+- The 2 blocked Part A fixes (Kankakee County, McLean County) and the 5
+  not-yet-checked rows.
+
+**Recommendation.** The 449-row fix and the 6 re-keyed pages are live on
+the site now — no deploy needed. Deploy this branch to make the 7 new
+web-address rules (the "pins") apply to any *new* videos found on those
+same hosts going forward. Someone should also decide who fixes the two
+blocked cases (Kankakee County, McLean County) — either approve the
+stronger kind of fix, or fix the underlying software rule.
+
+**Deploy status.** All page re-keying happened live, directly against
+the real database, with Ryan's standing permission for this kind of
+metadata-only fix — so the corrected pages are visible today. The new
+web-address rules (pins) and the domain corrections in the research file
+only affect *future* videos once this code is deployed.
+
+Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (7 new pins:
+`cityofoakgrove.com`, `kankakeecountyil.gov`,
+`pub-cambridge.escribemeetings.com`, `townofchevychase.org`,
+`reflect-brewster-ma.cablecast.tv`, `tecumseh-pub.escribemeetings.com`,
+`champaign.cablecast.tv`); `jurisdiction_coverage.csv` (449 rows'
+`transcribed` flag cleared, 28 rows' `domain` corrected, both in
+`rtr-business`); `rtr-business/research/wo153_methods_section.md` (full
+write-up with every row's evidence) and its `wo153_part*` dry-run/
+applied CSVs.
+
 ## Ryan's decisions on the held videos and undecided pages: 5 queued, 4 off-mission pages deleted, 14 pages re-keyed [Done 2026-09-10]
 
 Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
