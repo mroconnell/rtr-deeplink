@@ -189,6 +189,34 @@ class NameStateTable:
         which reads a hostname like `pgcps` as a set of initials."""
         return list(self._by_id.values())
 
+    def lookup_typed(self, name: str, state: Optional[str]) -> Optional[TableRow]:
+        """`lookup()`, plus one tie-break the exactly-one rule declines:
+        when the query's own trailing type word ("Baltimore COUNTY")
+        singles out exactly one of the tied rows ("Baltimore County" vs
+        "Baltimore city"), that row wins.
+
+        Real (2026-09-09): `us_counties.csv` lists independent cities as
+        county-equivalents, so every county that shares a name with one --
+        Baltimore MD, Roanoke/Fairfax/Richmond VA, St. Louis MO, Carson
+        City NV -- keyed to two rows in its state, `lookup()` returned None,
+        and `_is_impossible_county()` then declared a real county
+        impossible. A query with no type word ("Baltimore", "Kansas City")
+        still declines exactly as before; only a query that says which
+        kind it means gets that kind."""
+        hit = self.lookup(name, state)
+        if hit is not None:
+            return hit
+        want = name.strip().rstrip(",").rsplit(" ", 1)
+        if len(want) != 2:
+            return None
+        word = want[1].lower()
+        typed = [
+            r
+            for r in self.lookup_all(name, state)
+            if r.name.rsplit(" ", 1)[-1].lower() == word
+        ]
+        return typed[0] if len(typed) == 1 else None
+
     def lookup_all(self, name: str, state: Optional[str]) -> List[TableRow]:
         """Every row matching `name`, at the first normalization key that
         matches anything -- so a caller can break a tie the exactly-one

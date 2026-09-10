@@ -737,23 +737,29 @@ def test_a_footer_name_that_does_not_resolve_stays_off_proposed_name_but_visible
     `propose()` correctly declines to put it in `proposed_name` -- but the
     raw self-declared name still belongs on the sheet for Ryan to read
     without opening `landing_url`."""
+    # DART's real host (dart.new.swagit.com) has been PINNED since
+    # 2026-09-09 (Ryan's worklist, `rtr:us:tx:dallas-area-rapid-transit-dart`),
+    # so resolving against it now answers from the pin. The footer name is
+    # still the real one; the host is a synthetic unpinned Swagit tenant so
+    # this keeps testing the no-pin path it was written for.
     footer = "Dallas Area Rapid Transit (DART)"
-    match = resolve_government(footer, tenant_host="dart.new.swagit.com")
+    host = "unpinned-transit-example.new.swagit.com"
+    match = resolve_government(footer, tenant_host=host)
     assert match.gov_id == ""  # confirms it stays unresolved, not a fluke
     assert match.tier == "unresolved"
     groups = [
         {
             "platform": "swagit",
-            "tenant_host": "dart.new.swagit.com",
+            "tenant_host": host,
             "match": "",
             "pages": 1,
             "_names": set(),
             "_pages": [],
             "example_slug": "",
-            "landing_url": "https://dart.new.swagit.com",
+            "landing_url": f"https://{host}",
         }
     ]
-    build_pin_worklist.add_proposals(groups, {}, {"dart.new.swagit.com": footer})
+    build_pin_worklist.add_proposals(groups, {}, {host: footer})
     assert groups[0]["swagit_footer"] == footer
     assert groups[0]["proposed_gov_id"] == ""
 

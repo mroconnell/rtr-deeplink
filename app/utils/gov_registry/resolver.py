@@ -835,7 +835,7 @@ def _national_lookup(
             # guard, which is exactly how "Northumberland County" (PA)
             # swallowed the real Northumberland County, ON.
             return None
-        hit = tables.us_counties().lookup(name, state)
+        hit = tables.us_counties().lookup_typed(name, state)
         if hit:
             return (
                 _as_government(
@@ -947,7 +947,7 @@ def _national_lookup(
     hit = (
         None
         if (type_preference or _curated_alias(name, state))
-        else tables.us_counties().lookup(name, state)
+        else tables.us_counties().lookup_typed(name, state)
     )
     if hit:
         return (
@@ -1525,7 +1525,7 @@ def _is_impossible_county(name: str, state: str, country: str) -> bool:
     """
     if country != "us" or not state or not _COUNTY_SHAPED_RE.search(name):
         return False
-    return tables.us_counties().lookup(name, state) is None
+    return tables.us_counties().lookup_typed(name, state) is None
 
 
 def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
