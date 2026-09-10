@@ -185,6 +185,17 @@ def _as_government(
     from the table hit. Deriving is safe because for a national id every
     field is a function of the id.
     """
+    # A consolidated city-county has two national rows for one
+    # government; `consolidated_governments.csv` says which one the
+    # Archive uses. Redirect here, at the single point every table hit
+    # passes through, so "Philadelphia County, PA" (county branch) and
+    # "Philadelphia, PA" (place branch) become the same government
+    # rather than two hubs (gov-id audit, 2026-09-10).
+    canonical = registry.consolidated().get(gov_id)
+    if canonical:
+        target = registry.government_for_id(canonical)
+        if target:
+            return target
     existing = registry.governments().get(gov_id)
     if existing:
         return existing

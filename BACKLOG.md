@@ -137,7 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -191,8 +191,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (22)
-    `[NEEDS-AUDIT]` `[EXAMPLE]` The county-form name of a fully…
+  Jurisdiction extraction & backfill  (21)
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
@@ -2429,11 +2428,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
-
-- **`[NEEDS-AUDIT]` `[EXAMPLE]` The county-form name of a fully consolidated city-county ("Philadelphia County, PA", "San Francisco County, CA", "Denver County, CO") would key to the county row and open a second hub for one government.**
-  - **Issue**: the ladder's county branch answers a county-typed name before any curated alias is consulted (by design -- "Boise County, ID" must not become the city), so an alias on the place row cannot collapse the county form. The 2026-09-10 consolidated-government audit found **no** archived page carrying such a form yet, which is why this is filed rather than built.
-  - **Next action**: when a real page does, add a curated row that makes the county id itself resolve to the place id (or the reverse where the county id is the canonical one -- Honolulu, Terrebonne, Macon-Bibb's county neighbours), rather than widening alias precedence.
-  - **History**: audit in `BACKLOG_DONE.md` ("Consolidated governments"), 2026-09-10.
 
 - **`[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village or city of the same name: `_LEADING_TYPE_RE` knows "Township of" but not "Charter Township of".**
   - **Issue**: `resolve_government("Charter Township of Shelby, MI")` → `us:place:2672840` (Shelby *village*, Oceana County), while "Shelby Charter Township, MI" → `us:cousub:2609972820` correctly. `resolver.py`'s `_LEADING_TYPE_RE` lists `city|town|village|borough|township|…` without the `(?:charter\s+)?` prefix that `_TRAILING_TYPE_RE` and `_TRAILING_PAREN_TYPE_RE` already allow, so no township preference reaches the lookup and the place wins the tie. Michigan has ~130 charter townships and their IQM2/CivicClerk portals title themselves exactly this way.

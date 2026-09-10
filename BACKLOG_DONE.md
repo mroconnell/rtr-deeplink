@@ -1,5 +1,33 @@
 # Backlog — done
 
+## The county form of a consolidated city-county keys to the same government as the city [Done 2026-09-10]
+
+Closed the entry filed earlier the same day. `app/utils/jurisdiction_data/
+consolidated_governments.csv` (35 rows, one evidence line each) maps the
+Census row the Archive does NOT use to the one it does -- San Francisco,
+Denver, Philadelphia, DC, Carson City, the five NYC boroughs, Nashville-
+Davidson, Louisville-Jefferson, Indianapolis-Marion, Jacksonville-Duval,
+the Alaska city-and-boroughs, New Orleans, Baton Rouge and Lafayette's
+parishes, the Georgia and Montana consolidations, Lexington-Fayette,
+Wyandotte/KCK, Lynchburg-Moore, and Greeley KS in the reverse direction.
+`registry.consolidated()` reads it and `resolver._as_government()` --
+the single point every national-table hit passes through -- redirects,
+so the county, place and cousub branches all agree without touching
+alias precedence (the "Boise County must not become Boise" guard is
+intact; ordinary same-name counties are untouched, pinned by test).
+Whole-archive dry run moved exactly one page (Quitman County, GA ->
+Georgetown-Quitman County unified government), applied -- and the
+second dry run then UN-keyed it: the new display "Georgetown-Quitman
+County, GA" reads like a county name, no such county exists, and the
+resolver's exhaustive-counties rule declared it impossible. Curated
+rows for the two hyphenated Georgia governments (Georgetown-Quitman,
+Cusseta-Chattahoochee) close that loop, and a test now walks the whole
+map asserting every canonical display re-resolves to itself. Third dry
+run 0. The same map makes rtr-business's `add_gov_id_to_coverage.py` key
+"Philadelphia County" and "Philadelphia city" to one id, which is what
+lets its duplicate rows collapse -- handed to the coverage-registry
+session.
+
 ## Consolidated governments: every one the archive holds sits on one id; the bare names that minted now key; 11 hosts pinned; the subdomain reader's state must hold a government of that name [Done 2026-09-10]
 
 Ryan's two questions, answered with data rather than a name-only pass

@@ -2640,7 +2640,11 @@ app/
                            curated_governments.csv (hand-written, and
                            the ONLY source of lookup aliases) and
                            tenant_overrides.csv (the "hard-code a public
-                           name" pins)
+                           name" pins),
+                           and consolidated_governments.csv (the ~40 US
+                           city-counties the Census keeps two rows for;
+                           says which row IS the government, applied at
+                           the resolver's single table-hit choke point)
   utils/url_normalize.py   normalize_url() — the cache/log dedup key
   utils/clerk_auth.py      get_clerk_user_id()/clerk_frontend_api_url() --
                            see "Accounts (Clerk)" above; deliberately
