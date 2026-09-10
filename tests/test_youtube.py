@@ -1,7 +1,12 @@
 import pytest
 import yt_dlp
 
-from app.platforms.youtube import YouTubeAssetFinder
+from app.platforms.youtube import (
+    YOUTUBE_CAPTIONS_DISABLED_MARKER,
+    YOUTUBE_EMBED_DISABLED_MARKER,
+    YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
+    YouTubeAssetFinder,
+)
 
 # No fixture-based tests existed for this adapter before this file (see
 # BACKLOG.md's "zero test coverage" note). YouTube's real dependency,
@@ -164,6 +169,128 @@ async def test_resolve_video_id_no_captions_available(monkeypatch):
     assert any("no captions found" in w.lower() for w in result.transcript_warnings)
 
 
+async def test_resolve_video_id_flags_channel_disabled_captions(monkeypatch):
+    # WO-135, 2026-09-09. Real, confirmed-live sample (2026-09-09): Salt
+    # Lake City, UT's own YouTube video xA_MRdCBaF4 (an Archive page with
+    # no transcript at the time) really has BOTH `subtitles` and
+    # `automatic_captions` completely empty in yt-dlp's own metadata --
+    # this is the genuine "the channel has captions disabled" signal, not
+    # just "nothing in English" (that's the older, more generic
+    # test_resolve_video_id_no_captions_available case above, which
+    # doesn't set no_captions_at_all at all and must keep getting the
+    # older, more generic message).
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": REAL_TITLE,
+            "uploader": REAL_UPLOADER,
+            "upload_date": REAL_UPLOAD_DATE,
+            "playable_in_embed": True,
+            "no_captions_at_all": True,
+        },
+    )
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "xA_MRdCBaF4", source_url="https://example.com"
+    )
+
+    assert result.segments == []
+    assert result.transcript_warnings == [YOUTUBE_CAPTIONS_DISABLED_MARKER]
+
+
+async def test_resolve_video_id_flags_embed_disabled(monkeypatch):
+    # Real, confirmed-live sample (2026-09-09): video id 5IoXmnqr72Y (an
+    # Archive page with no transcript at the time) really has
+    # `playable_in_embed: False` while ALSO having real automatic
+    # captions available (`automatic_captions` non-empty, `subtitles`
+    # empty) -- confirming embedding restriction and caption availability
+    # are independent facts, not "no captions means no embed" or vice
+    # versa. The chosen-track VTT content itself is still the fixture's
+    # synthetic sample text (this test isolates the embed-disabled wiring,
+    # not caption content), but the video id and the playable_in_embed/
+    # captions-exist combination are real and observed, not invented.
+    info = _info_with_track(is_manual=False)
+    info["playable_in_embed"] = False
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "5IoXmnqr72Y", source_url="https://example.com"
+    )
+
+    assert result.video_warnings == [YOUTUBE_EMBED_DISABLED_MARKER]
+    # Unaffected: a real caption track is still returned even when the
+    # video can't be embedded -- embed restriction and caption
+    # availability are independent facts.
+    assert result.segments
+
+
+async def test_resolve_video_id_marks_removed_video_unavailable(monkeypatch):
+    # WO-135, 2026-09-09. Real, confirmed-live yt-dlp error message
+    # (2026-09-09) for one of the 96 real no-transcript YouTube pages:
+    # video id `_RZBcYEbQr4` (an Archive page under
+    # /m/2026-05-19-agenda-center) raised exactly this DownloadError.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [youtube] _RZBcYEbQr4: This video has been removed by the uploader"
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "_RZBcYEbQr4", source_url="https://example.com"
+    )
+
+    assert result.segments == []
+    assert result.transcript_warnings == [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
+    assert result.video_url == "https://www.youtube.com/embed/_RZBcYEbQr4"
+
+
+async def test_resolve_video_id_marks_private_video_unavailable(monkeypatch):
+    # Real, confirmed-live yt-dlp error message (2026-09-09) for two
+    # separate real Archive pages (video ids VGCR9XxsIVw and
+    # Eh1JO9zT_u0) -- both raised this identical DownloadError shape.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [youtube] VGCR9XxsIVw: Private video. If the owner of this "
+            "video has granted you access, please sign in."
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "VGCR9XxsIVw", source_url="https://example.com"
+    )
+
+    assert result.transcript_warnings == [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
+
+
+async def test_resolve_video_id_does_not_mark_scheduled_live_event_as_unavailable(
+    monkeypatch,
+):
+    # Real, confirmed-live yt-dlp error message (2026-09-09) for a real
+    # Archive page (bossier-city-la-...-jul-07-2026, video id
+    # 6I6Mk2SlgaI) whose meeting is simply scheduled but hasn't started
+    # streaming yet -- NOT a permanent failure (the exact same video will
+    # resolve fine once it goes live), so this must degrade to the
+    # existing generic "blocked" message, never the permanent marker.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [youtube] 6I6Mk2SlgaI: This live event will begin in a few moments."
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        "6I6Mk2SlgaI", source_url="https://example.com"
+    )
+
+    assert result.transcript_warnings != [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
+    assert any(
+        "blocking automated caption requests" in w for w in result.video_warnings
+    )
+
+
 async def test_resolve_video_id_missing_upload_date_leaves_date_none(monkeypatch):
     monkeypatch.setattr(
         YouTubeAssetFinder,
@@ -272,6 +399,92 @@ async def test_resolve_delegates_to_resolve_video_id_for_a_standalone_url(monkey
 async def test_resolve_raises_for_a_non_youtube_url():
     with pytest.raises(ValueError, match="Could not find a YouTube video ID"):
         await YouTubeAssetFinder().resolve("https://example.com/not-youtube")
+
+
+# check_permanent_failure() -- the metadata-only precheck WO-135
+# (2026-09-09) added for scripts/fetch_youtube_transcripts.py to use
+# BEFORE any real (rate-limited) transcript request. Reuses the exact
+# same _extract_info()/_is_permanently_gone() seams as resolve_video_id()
+# itself, so these tests mirror the ones above rather than duplicating
+# real samples.
+
+
+def test_check_permanent_failure_flags_captions_disabled(monkeypatch):
+    # Real, confirmed-live sample -- same xA_MRdCBaF4 (Salt Lake City, UT)
+    # video as test_resolve_video_id_flags_channel_disabled_captions above.
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {
+            "title": REAL_TITLE,
+            "playable_in_embed": True,
+            "no_captions_at_all": True,
+        },
+    )
+    transcript_marker, video_marker = YouTubeAssetFinder.check_permanent_failure(
+        "xA_MRdCBaF4"
+    )
+    assert transcript_marker == YOUTUBE_CAPTIONS_DISABLED_MARKER
+    assert video_marker is None
+
+
+def test_check_permanent_failure_flags_video_gone(monkeypatch):
+    # Real, confirmed-live yt-dlp error -- same _RZBcYEbQr4 sample as
+    # test_resolve_video_id_marks_removed_video_unavailable above.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [youtube] _RZBcYEbQr4: This video has been removed by the uploader"
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    transcript_marker, video_marker = YouTubeAssetFinder.check_permanent_failure(
+        "_RZBcYEbQr4"
+    )
+    assert transcript_marker == YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+    assert video_marker is None
+
+
+def test_check_permanent_failure_does_not_flag_scheduled_live_event(monkeypatch):
+    # Real, confirmed-live yt-dlp error -- same 6I6Mk2SlgaI sample as
+    # test_resolve_video_id_does_not_mark_scheduled_live_event_as_unavailable
+    # above: a transient, not-yet-started scheduled stream must never be
+    # recorded as a permanent failure.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            "ERROR: [youtube] 6I6Mk2SlgaI: This live event will begin in a few moments."
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    transcript_marker, video_marker = YouTubeAssetFinder.check_permanent_failure(
+        "6I6Mk2SlgaI"
+    )
+    assert transcript_marker is None
+    assert video_marker is None
+
+
+def test_check_permanent_failure_flags_embed_disabled(monkeypatch):
+    # Real, confirmed-live sample -- same 5IoXmnqr72Y video as
+    # test_resolve_video_id_flags_embed_disabled above (playable_in_embed
+    # False, real automatic captions present so no_captions_at_all False).
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: {"playable_in_embed": False, "no_captions_at_all": False},
+    )
+    transcript_marker, video_marker = YouTubeAssetFinder.check_permanent_failure(
+        "5IoXmnqr72Y"
+    )
+    assert transcript_marker is None
+    assert video_marker == YOUTUBE_EMBED_DISABLED_MARKER
+
+
+def test_check_permanent_failure_returns_none_for_a_healthy_video(monkeypatch):
+    monkeypatch.setattr(
+        YouTubeAssetFinder,
+        "_extract_info",
+        lambda video_id: _info_with_track(is_manual=True),
+    )
+    assert YouTubeAssetFinder.check_permanent_failure(REAL_VIDEO_ID) == (None, None)
 
 
 # _jurisdiction() coverage. Real, live examples throughout -- a CivicPlus

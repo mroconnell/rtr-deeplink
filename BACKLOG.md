@@ -114,12 +114,14 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (4)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
   Dashboard filters: exclude a string, and filter on blank / non-blank…
-  Coverage registry: per-state view and other dashboard additions…  (3)
+  Coverage registry: per-state view and other dashboard additions…  (5)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
     [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
-    [JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should…
+    [JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result…
+    [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
+    [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Production actions only Ryan should take  (9)
@@ -135,7 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (95)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -170,6 +172,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
   [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
   [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
+  `YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -208,7 +211,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (93)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (24)
+  Adapter & platform gaps  (25)
+    [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
@@ -564,12 +568,26 @@ so that work reads together.
   - **Constraint**: the check is oEmbed, not the caption fetch — it is not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
   - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer).
 
-- **[JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should queue to tier 3 instead of ingesting immediately, and `feed_tier3_auto_transcription.py`'s per-line result needs a durable log.**
-  - **Issue**: two related pipeline gaps, both confirmed by reading current code. (1) `process_row()` (in every `scripts/nationwide_*_ingest.py` batch script, e.g. `nationwide_2404_ingest.py:963-982`) POSTs a real page to Archive immediately whenever a resolve has `agenda_items`/`agenda_link` but no `segments`/`video_url` (`ingested_agenda_only` outcome) — Ryan wants this queued to tier 3 instead, so it waits for a video rather than going live with no media at all. (2) `feed_tier3_auto_transcription.py`'s `_push_if_has_video()` already returns a real `[OK]`/`[SKIP]`/`[FAIL]` reason string per queue line, but `main()` only `print()`s it — nothing writes it to a durable file, so once a line is dropped from `tier3_auto_transcription_queue.txt` (the queue always advances "regardless of individual outcomes," `feed_tier3_auto_transcription.py:203-206`) its outcome only survives in that day's GitHub Actions run transcript.
-  - **Impact**: agenda-only pages currently go live with zero video/transcript content instead of waiting for one; tier-3 drain failures are invisible after the fact, unlike the `nationwide_*_ingest.py` scripts' own resumable per-row CSV log.
-  - **Next action**: (1) in the next new `nationwide_NNNN_ingest.py` copy, change the agenda-only branch to append to `TIER3_QUEUE_FILE` (`queued_tier3` outcome) instead of calling `_ingest_with_retry()`; (2) add a durable per-line result log to `feed_tier3_auto_transcription.py` (append each `[OK]/[SKIP]/[FAIL]` line + URL + timestamp to a CSV alongside the queue file, mirroring the ingest scripts' own resumable-log pattern) instead of only printing to stdout.
-  - **Constraint**: don't change this mid-run — `nationwide_2404_ingest.py` is running against production as of 2026-09-09 and should keep its current agenda-only-ingests-immediately behavior for consistency within that one run's own log; apply the change starting with the next new batch script, per this project's copy-per-batch convention. An agenda-only URL queued to tier 3 has no `video_url` today, so `_push_if_has_video()`'s existing "no video found on re-resolve" check will just skip it every drain cycle until one appears — that's the intended "recheck later" behavior, not a bug, but worth confirming with Ryan before wiring it up.
-  - **History**: raised directly by Ryan, 2026-09-09, mid-run on the 2,404-candidate batch.
+- **[JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result needs a durable log, not just stdout.**
+  - **Issue**: `_push_if_has_video()` already returns a real `[OK]`/`[SKIP]`/`[FAIL]` reason string per queue line, but `main()` only `print()`s it — nothing writes it to a durable file, so once a line is dropped from `tier3_auto_transcription_queue.txt` (the queue always advances "regardless of individual outcomes," `feed_tier3_auto_transcription.py:203-206`) its outcome only survives in that day's GitHub Actions run transcript.
+  - **Impact**: tier-3 drain failures are invisible after the fact, unlike the `nationwide_*_ingest.py`/`wo130_county_ingest.py` scripts' own resumable per-row CSV log.
+  - **Next action**: add a durable per-line result log to `feed_tier3_auto_transcription.py` (append each `[OK]/[SKIP]/[FAIL]` line + URL + timestamp to a CSV alongside the queue file, mirroring the ingest scripts' own resumable-log pattern) instead of only printing to stdout.
+  - **Constraint**: none known.
+  - **History**: raised directly by Ryan, 2026-09-09, mid-run on the 2,404-candidate batch. This entry originally bundled a second item — agenda-only rows going straight to Archive instead of queuing to tier 3 — resolved differently than either option it posed: WO-130 (2026-09-09, same day) got an explicit, more specific rule directly from Ryan for the county population, "ONLY meetings with video," and implemented it in `wo130_county_ingest.py` as a THIRD outcome, `no_video_found` — recorded (reject_reason `no-video-found`) and left out of the Archive entirely, not queued to tier 3 either. Queuing was rejected on the merits, not just deferred: an agenda-only resolve has no `video_url`, so `_push_if_has_video()`'s "no video found on re-resolve" check would skip it every drain cycle forever — a queue entry that can structurally never succeed. Apply the same three-way split (ingest tier1/2, queue tier3, record-not-ingest agenda-only) to the next `nationwide_NNNN_ingest.py` copy too, per this project's copy-per-batch convention — `nationwide_2404_ingest.py` itself keeps its original `ingested_agenda_only` behavior unchanged, consistent with its own already-running log.
+
+- **[JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube channel-URL fallback into the next `nationwide_NNNN_ingest.py` copy.**
+  - **Issue**: a `known_platform=youtube` hit (or a two-hop scan hit) is very often the CHANNEL itself (`youtube.com/@CountyName`), not a specific video — confirmed live 2026-09-09, WO-130: every one of ~30 county rows with a channel-shaped hit failed outright under `nationwide_2404_ingest.py`'s original logic (`YouTubeAssetFinder.resolve()` only extracts a video id, raises `ValueError` otherwise). Fixed for counties in `wo130_county_ingest.py`'s `youtube_channel_latest_video()` + the `_looks_like_channel_url()` gate in `resolve_seed()`: list the channel's `/videos` tab (flat, capped, same yt-dlp options as `youtube_channel.py`'s own listing) and pick the newest entry passing the existing governing-body title allowlist.
+  - **Impact**: without this, every channel-shaped YouTube hit across any future `nationwide_NNNN_ingest.py` batch silently fails as `resolve raised: Could not find a YouTube video ID in ...` instead of finding the real, playable meeting that's actually there.
+  - **Next action**: copy `youtube_channel_latest_video()`, `_looks_like_channel_url()`, and the `resolve_seed()` branch that calls them (plus the `yt_dlp`/`YouTubeAssetFinder` imports) from `wo130_county_ingest.py` into the next new batch script. Two real bugs already fixed in that copy, worth carrying forward exactly as fixed rather than re-discovering: (1) gate on `_looks_like_channel_url()` alone, never "no video id found" alone — the latter also matches a non-channel, non-video URL (a `youtube.com/results?search_query=...` "search our channel" widget link matched and got yt-dlp'd as if it were a channel, live-caught on Dubois County, IN); (2) return the actual resolved `https://www.youtube.com/watch?v={video_id}` as the seed/final URL, never the channel URL itself — the channel can never be re-resolved later, so a tier-3-queued channel URL would sit failing forever (live-caught on Knox County, IN, queued as `youtube.com/@knoxcountycouncil?streams`).
+  - **Constraint**: still bounded by the same allowlist-title gate as every other high-risk-title platform — a channel with no recent video whose title reads as a real governing-body meeting correctly finds nothing rather than guessing.
+  - **History**: WO-130, 2026-09-09 (`rtr-deeplink` PR for this work order); see `BACKLOG_DONE.md`'s WO-130 entry for the funnel this closed.
+
+- **[JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s onclick/href/src regex can capture a truncated, dangling query string straight from an iframe's HTML attribute.**
+  - **Issue**: confirmed live 2026-09-09 (WO-130, Lake County OH): the extracted YouTube embed URL came back as `.../embed/AscWHEa0ay4?enablejsapi=1&...&disablekb=0&` — a trailing bare `&` with nothing after it, straight from the source page's own iframe `src` attribute. Functionally harmless (the video id is in the path, unaffected), but it fails `tests/test_transcription_queue_files.py`'s dangling-query-separator and mid-parameter-truncation checks once such a URL reaches `tier3_auto_transcription_queue.txt`, and would confuse a human skimming the queue.
+  - **Impact**: low-frequency (one confirmed instance across ~660 real rows this session) but will recur with any other adapter/attribute source that copies a raw `src`/`href` value verbatim; currently caught only by the test suite after the fact, one row at a time, by hand.
+  - **Next action**: strip a trailing `&` (and any `key=` with an empty value immediately before end-of-string, per `VALUELESS_OK`'s own exception list) when `find_specific_platform_link()` (or whichever helper ends up owning URL extraction) returns a URL, rather than leaving each batch script to notice via a failed test.
+  - **Constraint**: don't strip query strings generally — some platforms need theirs intact (e.g. a real `?v=` parameter).
+  - **History**: WO-130, 2026-09-09; fixed by hand for the one Lake County, OH row this run produced (`tier3_auto_transcription_queue.txt`), not yet fixed at the source.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -1958,6 +1976,43 @@ of human step they need.
     truncation.
   - **History**: WO-25 (`BACKLOG_DONE.md`).
 
+### `YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own special-purpose embed tokens as if they were real video ids `[NEEDS-AUDIT]`
+
+- **Issue**: WO-135 (2026-09-09) probing yt-dlp against all 96 real
+  no-transcript YouTube Archive pages found 3 whose stored `video_url`
+  isn't a real 11-character video id at all: `bamberg-county-sc-livestream`
+  (`youtube.com/embed/live_stream` — YouTube's "this channel's current
+  livestream" embed shortcut), `daviess-county-ky-fiscal-court-...`
+  (`youtube.com/embed/videoseries` — a whole-playlist embed, no single
+  video), and `mount-vernon-tx` (source URL
+  `youtube.com/embed/livestreaming?rel=0` — `_VIDEO_ID_RE`'s
+  `{11}`-character regex truncates this to the nonsense id
+  `livestreami`, since `live_stream`/`videoseries` are exactly 11
+  characters and `livestreaming` is 13). yt-dlp naturally raises "This
+  video is unavailable" against each fake id, which the WO-135 permanent-
+  failure classifier would otherwise mark `YouTube: video is unavailable
+  (removed or private)` — technically true in effect but wrong about why,
+  so these 3 were deliberately excluded from that backfill rather than
+  mismarked.
+- **Impact**: 3 real pages whose actual video (or channel livestream) is
+  genuinely reachable never get a transcript, because nothing here can
+  resolve a real single video from a live-stream/playlist embed shape.
+  Likely not limited to these 3 — any jurisdiction whose government
+  channel embeds `live_stream`/`videoseries` directly (rather than a
+  specific archived video) would hit the same bug.
+- **Next action**: decide the right resolution for each shape —
+  `embed/live_stream` needs the channel's *current* live video id (a
+  different yt-dlp/API call than a fixed video id), `embed/videoseries`
+  needs the playlist's most relevant real video, and `_VIDEO_ID_RE`
+  should stop matching a truncated prefix of a longer non-id token in the
+  first place (e.g. require a word boundary or exact-length match rather
+  than a bare `{11}` capture).
+- **Constraint**: don't guess which real video these should point to —
+  verify against the real channel/playlist first, per CLAUDE.md's "test
+  against a real, live URL first" rule.
+- **History**: found 2026-09-09 building WO-135's captions/embed/
+  video-unavailable markers (`BACKLOG_DONE.md`).
+
 ### WO-34's roll-up calibration gap: a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
 
 - **Issue**: `_looks_like_rollup()`'s roll-up detector threshold (0.401) was
@@ -2159,25 +2214,30 @@ actionability sections above.
   survived both of `fetch_youtube_transcripts.py`'s built-in backoff
   retries (30s, 120s) — see `docs/investigations/youtube_429_block.md`.
   Per that script's own design, the whole run then aborted rather than
-  continuing to poll. 0 transcripts were pushed.
-- **Impact**: 63 candidates (62 never attempted + the one that hit the
-  block) still want a transcript fetch. Given the investigation doc's
-  own data (a 9-minute-idle retry once still failed 10/10 on the same
-  block), retrying minutes later would very likely just extend whatever
-  is causing it — WO-131 deliberately did not re-run today.
-- **Next action**: from this Mac, re-run
-  `python scripts/fetch_youtube_transcripts.py --slugs-file
-  <corrected list>` after a real cooldown (hours, not minutes — no
-  reliable duration is known; see the investigation doc), excluding the
-  15 slugs above (their failures are per-video, not block-related, and
-  won't succeed on retry). The corrected 78/63-slug lists WO-131 built
-  aren't checked in (derived data, easily regenerated) — rebuild them
-  with `scripts/export_meeting_inventory.py --source export` plus this
-  entry's filter criteria, or ask the session that ran WO-131.
+  continuing to poll. 0 transcripts were pushed. WO-135 (same day) closed
+  the *reason* this kept happening every day: those 15 (and every other
+  page hitting the same 3 exception types) now get a permanent marker
+  (`YouTube: captions are disabled by the channel` /
+  `YouTube: video is unavailable (removed or private)`) recorded on the
+  page and are never re-queued again — see `BACKLOG_DONE.md`. What's
+  still open here is narrower: the IP-block cooldown itself, which no
+  code change can skip.
+- **Impact**: once WO-135 is deployed, only genuinely-untried or
+  genuinely-transient (scheduled-but-not-live) candidates keep re-
+  appearing in the queue — the 15 known-permanent failures drop out on
+  the next run. The remaining wait is for the block to clear before the
+  62-never-attempted (plus the one that hit the block) can even be tried.
+- **Next action**: after WO-135 is merged **and deployed** (deploys are
+  manual — check before assuming this landed), from this Mac run
+  `python scripts/fetch_youtube_transcripts.py` with no `--slugs-file` at
+  all once a real cooldown has passed (hours, not minutes — no reliable
+  duration is known; see the investigation doc) — the daily script's own
+  `/internal/transcript-wanted` queue now excludes the 15 automatically,
+  so the old corrected-slug-list workaround is no longer needed.
 - **Constraint**: don't run a bulk sweep just to test whether the block
   has cleared — a single isolated fetch is enough signal, per the
   investigation doc.
-- **History**: WO-131, `BACKLOG_DONE.md`.
+- **History**: WO-131, WO-135, `BACKLOG_DONE.md`.
 
 ### ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred `[WAIT]`
 
@@ -2829,6 +2889,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `BACKLOG_DONE.md` since nothing is fixed yet.
 
 ### Adapter & platform gaps
+
+- **[JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path) resolves "successfully" with zero content instead of finding a real meeting — confirmed on ~29 of 43 WO-128 candidates.**
+  - **Issue**: `escribe.py`'s `resolve()` fetches whatever URL it's given and never raises `CalendarPageError` for a listing/root page the way `civicplus.py`/`municode_meetings.py`/`vimeo.py` do, so `nationwide_*_ingest.py`'s `resolve_seed()` has no candidate list to pick from — it just returns an empty `ResolvedMeeting` (no agenda items, no video, no metadata), logged as `"resolved but no transcript/agenda/video"`. Real examples: `pub-southdundas.escribemeetings.com`, `pub-hawkesbury.escribemeetings.com`, `pub-smithsfalls.escribemeetings.com` (all real Ontario municipalities whose only known seed is the bare tenant host).
+  - **Impact**: any candidate list whose eScribe lead is a tenant host rather than a specific `Meeting.aspx?Id=...` URL — jurisdiction_coverage.csv's own `domain` column holds the bare tenant host for many Canadian eScribe governments — silently reads as "no content" instead of "never actually checked a real meeting."
+  - **Next action**: `scripts/adhoc_cdx_escribe_pipeline.py` already solved this for its own tenant-list input via `discover_candidate_ids()` (`POST {domain}/MeetingsCalendarView.aspx/GetCalendarMeetings`, most-recent-first, `HasVideo`-only). `scripts/wo128_known_platform_sweep.py` reuses that function directly for its own bare-tenant-root case (`_discover_escribe_meeting()`) — port the same pattern into `nationwide_2404_ingest.py`'s (or its next copy's) `locate_platform_url()`/`resolve_seed()`, the way `civicclerk_latest_event_url()` already handles the analogous bare-tenant-link case for CivicClerk.
+  - **Constraint**: `GetCalendarMeetings` is a real but undocumented tenant API — keep the same 120-day lookback and polite delay `adhoc_cdx_escribe_pipeline.py` already uses.
+  - **History**: found live 2026-09-09, WO-128 (known-platform sweep); worked around locally in `scripts/wo128_known_platform_sweep.py` rather than fixed at the shared-helper level, since `nationwide_2404_ingest.py` was mid-run against production the same day (same "don't change this mid-run" constraint as the agenda-only-ingest entry above).
 
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
   missing the real `/private/{id}` path variant — confirmed live with

@@ -2007,6 +2007,47 @@ async def internal_promote_version(
     return result
 
 
+class VideoStatusRequest(BaseModel):
+    # Both optional and independent -- a caller sets whichever it just
+    # confirmed. Free text is deliberately NOT accepted here: this route
+    # exists to record one of the three known WO-135 permanent-failure
+    # markers (app/platforms/youtube.py's YOUTUBE_CAPTIONS_DISABLED_MARKER
+    # / YOUTUBE_EMBED_DISABLED_MARKER / YOUTUBE_VIDEO_UNAVAILABLE_MARKER),
+    # not a general-purpose warnings-editor -- see crud.
+    # record_youtube_video_status()'s own docstring for why this can't
+    # just go through the ordinary /internal/ingest path.
+    transcript_marker: Optional[str] = None
+    video_marker: Optional[str] = None
+
+
+@app.post("/internal/pages/{slug}/video-status")
+async def internal_video_status(
+    slug: str, req: VideoStatusRequest, authorization: Optional[str] = Header(None)
+):
+    """Records a confirmed-permanent YouTube failure reason on a page --
+    see crud.record_youtube_video_status()'s docstring. Keyed by slug, not
+    a numeric page id: every other admin write in this file (promote,
+    drop-segments, jurisdiction override) already takes a slug, and
+    scripts/fetch_youtube_transcripts.py's transcript-wanted queue already
+    hands slugs back, so this avoids a caller needing a separate id
+    lookup first.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    result = await crud.record_youtube_video_status(
+        slug=slug,
+        transcript_marker=req.transcript_marker,
+        video_marker=req.video_marker,
+    )
+    if result is None:
+        return JSONResponse(
+            {"error": "not_found", "message": "No matching meeting page."},
+            status_code=404,
+        )
+    return result
+
+
 class DropSegmentsRequest(BaseModel):
     slug: str
     # sha256 of the raw /m/{slug}/transcript.srt body the caller scanned

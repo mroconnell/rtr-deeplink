@@ -1796,6 +1796,179 @@ async def test_has_good_transcript_treats_early_truncation_as_not_good():
             assert await crud._has_good_transcript(session, page_id) is expected, slug
 
 
+async def test_has_good_transcript_treats_youtube_captions_disabled_as_not_good():
+    # WO-135, 2026-09-09. Unlike the garbled/hallucinated/truncation
+    # markers above (which all sit on a version that has REAL content,
+    # just bad), a YouTube permanent-failure marker sits on a version
+    # with NO content at all -- so it can't be written via
+    # ingest_resolution() (see that function's own docstring: it only
+    # creates/touches a TranscriptVersion `if segments:`). This is why
+    # record_youtube_video_status() exists as its own write path, and
+    # this test exercises that path directly rather than ingest_resolution.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage, TranscriptVersion
+    from sqlalchemy import select
+
+    url = "https://www.youtube.com/watch?v=wo135-captions-disabled"
+    await crud.ingest_resolution(
+        {
+            "platform": "youtube",
+            "source_url": url,
+            "external_id": "youtube:wo135-captions-disabled",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://www.youtube.com/embed/wo135-captions-disabled",
+            "video_format": "youtube",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    async with async_session() as session:
+        page_id = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+        # No default version at all yet -- ingest_resolution() never
+        # created one for a zero-segment push.
+        assert await crud._has_good_transcript(session, page_id) is False
+        assert (
+            await crud._has_youtube_permanent_transcript_failure(session, page_id)
+            is False
+        )
+
+    result = await crud.record_youtube_video_status(
+        slug=slug, transcript_marker=crud._YOUTUBE_CAPTIONS_DISABLED_MARKER
+    )
+    assert result["slug"] == slug
+    assert result["version_id"] is not None
+
+    # Calling it again with the same marker is a no-op, not a duplicate.
+    result2 = await crud.record_youtube_video_status(
+        slug=slug, transcript_marker=crud._YOUTUBE_CAPTIONS_DISABLED_MARKER
+    )
+    assert result2["version_id"] == result["version_id"]
+
+    async with async_session() as session:
+        page_id = (
+            await session.execute(
+                select(MeetingPage.id).where(MeetingPage.slug == slug)
+            )
+        ).scalar_one()
+        # Still not a good transcript -- the marker sits on an
+        # empty-content version, which is already disqualified on
+        # content_hash alone.
+        assert await crud._has_good_transcript(session, page_id) is False
+        row = (
+            await session.execute(
+                select(MeetingPage.slug, crud._good_default_transcript_exists()).where(
+                    MeetingPage.id == page_id
+                )
+            )
+        ).one()
+        assert bool(row[1]) is False
+
+        # ...but the new permanent-failure predicates DO now agree it's
+        # been confirmed, not just "not yet posted".
+        assert (
+            await crud._has_youtube_permanent_transcript_failure(session, page_id)
+            is True
+        )
+        exists_row = (
+            await session.execute(
+                select(
+                    MeetingPage.slug,
+                    crud._youtube_permanent_transcript_failure_exists(),
+                ).where(MeetingPage.id == page_id)
+            )
+        ).one()
+        assert bool(exists_row[1]) is True
+
+        version = (
+            await session.execute(
+                select(TranscriptVersion).where(
+                    TranscriptVersion.meeting_page_id == page_id,
+                    TranscriptVersion.is_default.is_(True),
+                )
+            )
+        ).scalar_one()
+        assert version.transcript_warnings == [crud._YOUTUBE_CAPTIONS_DISABLED_MARKER]
+        assert version.segments == []
+
+    # And the outcome classifier calls this its own honest bucket, not
+    # the generic "blank_transcript" a reader can't tell apart from "not
+    # posted yet".
+    outcome = crud._classify_page_outcome(
+        video_url="https://www.youtube.com/embed/wo135-captions-disabled",
+        agenda_items=[],
+        default_content_hash=crud._EMPTY_CONTENT_HASH,
+        default_transcript_warnings=[crud._YOUTUBE_CAPTIONS_DISABLED_MARKER],
+        default_transcript_language=None,
+    )
+    assert outcome == "captions_disabled"
+
+    # This page must also stop being handed back by the transcript-wanted
+    # queue -- the actual mechanism that stops the daily script re-trying
+    # it forever.
+    wanted_slugs = {
+        p["slug"] for p in await crud.list_youtube_pages_missing_transcripts()
+    }
+    assert slug not in wanted_slugs
+
+
+async def test_record_youtube_video_status_appends_video_warning():
+    # video_marker goes on MeetingPage.video_warnings, additively -- not
+    # the truthy-gated wholesale-replace semantics ingest_resolution()'s
+    # own video_warnings handling uses.
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+    from sqlalchemy import select
+
+    url = "https://www.youtube.com/watch?v=wo135-embed-disabled"
+    await crud.ingest_resolution(
+        {
+            "platform": "youtube",
+            "source_url": url,
+            "external_id": "youtube:wo135-embed-disabled",
+            "title": "T",
+            "date": "2026-01-01",
+            "jurisdiction": "City of Test",
+            "video_url": "https://www.youtube.com/embed/wo135-embed-disabled",
+            "video_format": "youtube",
+            "segments": [],
+            "agenda_items": [],
+            "transcript_language": None,
+            "transcript_warnings": [],
+            "video_warnings": ["Some pre-existing warning."],
+        },
+        url,
+    )
+    slug = (await crud.lookup_page_for_url(url))["slug"]
+
+    await crud.record_youtube_video_status(
+        slug=slug, video_marker=crud._YOUTUBE_EMBED_DISABLED_MARKER
+    )
+    # Idempotent -- calling it again doesn't duplicate the marker.
+    await crud.record_youtube_video_status(
+        slug=slug, video_marker=crud._YOUTUBE_EMBED_DISABLED_MARKER
+    )
+
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+        assert page.video_warnings == [
+            "Some pre-existing warning.",
+            crud._YOUTUBE_EMBED_DISABLED_MARKER,
+        ]
+
+
 # --- Early-truncation detection: a scraped transcript that simply stops --
 # early, with no round-number tell (2026-08-29) --------------------------
 

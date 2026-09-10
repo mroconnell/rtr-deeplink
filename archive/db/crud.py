@@ -167,6 +167,37 @@ _EARLY_TRUNCATION_MARKER = "may end before the meeting did"
 # practice, loosen back toward "tens of minutes," don't tighten further.
 _EARLY_TRUNCATION_SHORTFALL_SECONDS = 600
 
+# YouTube-specific PERMANENT-FAILURE markers (WO-135, 2026-09-09) -- a
+# different kind of marker than every one above: those are all about
+# transcript QUALITY (a version that has real content, just bad/short
+# content). These three mean "there is no content, and there never will
+# be, for a specific known reason" -- confirmed via a yt-dlp metadata
+# check (app/platforms/youtube.py's resolve_video_id(), and the same
+# check scripts/fetch_youtube_transcripts.py runs before ever attempting
+# a transcript fetch). Exact strings, used verbatim so WO-136 (the page
+# treatment for these pages) and a human reading transcript_warnings/
+# video_warnings can key on them; do not reword without updating both
+# that work order and every place these constants are checked below.
+#
+# Recorded via crud.record_youtube_video_status() -- see that function's
+# docstring for why this can't go through ordinary ingest_resolution()
+# (segments is empty, and that function only ever creates/updates a
+# TranscriptVersion `if segments:`).
+_YOUTUBE_CAPTIONS_DISABLED_MARKER = "YouTube: captions are disabled by the channel"
+_YOUTUBE_EMBED_DISABLED_MARKER = (
+    "YouTube: embedding is disabled by the channel; watch on YouTube"
+)
+_YOUTUBE_VIDEO_UNAVAILABLE_MARKER = "YouTube: video is unavailable (removed or private)"
+# The two TRANSCRIPT-side markers above (embed-disabled is a video_warnings
+# marker, not a transcript one -- a video can still be transcribable even
+# when our own iframe can't play it). Grouped so every call site that needs
+# "does this page have a YouTube permanent-failure marker" can iterate one
+# tuple instead of naming both markers separately and risking a drift.
+_YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS = (
+    _YOUTUBE_CAPTIONS_DISABLED_MARKER,
+    _YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
+)
+
 # Every warning substring meaning "the transcript we have stops before the
 # meeting did". A tuple, so a newly-detected form of truncation is one
 # line here rather than a parallel bucket (see _OUTCOME_LABELS below).
@@ -232,6 +263,39 @@ def _good_default_transcript_exists():
     )
 
 
+def _youtube_permanent_transcript_failure_exists():
+    """SQL `EXISTS` for "this MeetingPage's default TranscriptVersion
+    carries a confirmed-permanent YouTube transcript-failure marker" --
+    used only by find_auto_transcription_candidate() (WO-135, 2026-09-09)
+    to keep the cloud worker (running on Render, a server IP YouTube
+    blocks -- see CLAUDE.md's yt-dlp bullet) from repeatedly trying, and
+    re-resolving via yt-dlp, a page a real metadata check has already
+    confirmed will never succeed that way. `record_youtube_video_status()`
+    is the only writer of these markers.
+
+    Deliberately NOT folded into `_good_default_transcript_exists()`
+    itself: that predicate answers "does this page already have a good
+    transcript" for every other reader (page badges, /meetings filtering,
+    /coverage, the daily fetch script's own transcript-wanted queue) and
+    must keep saying No for these pages -- they genuinely have no
+    transcript, and a local Whisper run (WO-136) may still be able to fix
+    that from a residential IP where YouTube isn't blocked. This is a
+    narrower, additional exclusion specific to cloud auto-transcription
+    candidate selection.
+    """
+    warnings_text = cast(TranscriptVersion.transcript_warnings, Text)
+    return exists().where(
+        TranscriptVersion.meeting_page_id == MeetingPage.id,
+        TranscriptVersion.is_default.is_(True),
+        or_(
+            *[
+                warnings_text.like(f"%{marker}%")
+                for marker in _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
+            ]
+        ),
+    )
+
+
 async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     """True if this page's default TranscriptVersion has real, non-garbled
     content -- used to pick the Archive recheck cadence (see
@@ -257,6 +321,37 @@ async def _has_good_transcript(session, meeting_page_id: int) -> bool:
     if row is None or row[0] == _EMPTY_CONTENT_HASH:
         return False
     return _has_real_warning_free_transcript(row[1])
+
+
+async def _has_youtube_permanent_transcript_failure(
+    session, meeting_page_id: int
+) -> bool:
+    """True if this page's default TranscriptVersion carries a confirmed
+    YouTube permanent-failure transcript marker (WO-135, 2026-09-09) --
+    see record_youtube_video_status(), the only writer of these markers.
+    Used by list_youtube_pages_missing_transcripts() to actually stop
+    handing a known-permanent page back to scripts/
+    fetch_youtube_transcripts.py every day; the SQL-EXISTS sibling of this
+    is _youtube_permanent_transcript_failure_exists(), used instead by
+    find_auto_transcription_candidate() (a single WHERE clause over many
+    pages, rather than one page at a time inside an existing Python loop
+    the way this function's one caller already works)."""
+    row = (
+        await session.execute(
+            select(TranscriptVersion.transcript_warnings).where(
+                TranscriptVersion.meeting_page_id == meeting_page_id,
+                TranscriptVersion.is_default.is_(True),
+            )
+        )
+    ).first()
+    if row is None:
+        return False
+    warnings = row[0] or []
+    return any(
+        marker in w
+        for w in warnings
+        for marker in _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
+    )
 
 
 async def lookup_page_for_url(url_normalized: str) -> Optional[dict]:
@@ -1841,6 +1936,15 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
     Returns exactly the identity fields a push needs for
     _find_or_create_page() to match the existing page rather than
     creating a duplicate: platform, external_id, source_url_normalized.
+
+    Also excludes a page carrying a confirmed YouTube permanent-failure
+    transcript marker (WO-135, 2026-09-09) -- see
+    _has_youtube_permanent_transcript_failure()'s own docstring. This is
+    the actual mechanism that stops scripts/fetch_youtube_transcripts.py
+    re-queuing a page forever once it's confirmed the failure and called
+    record_youtube_video_status(): without this, the marker would be
+    recorded but never actually consulted, and this queue would keep
+    handing the same known-permanent page back out every single day.
     """
     async with async_session() as session:
         pages = (
@@ -1858,6 +1962,8 @@ async def list_youtube_pages_missing_transcripts() -> list[dict]:
         wanted = []
         for page in pages:
             if await _has_good_transcript(session, page.id):
+                continue
+            if await _has_youtube_permanent_transcript_failure(session, page.id):
                 continue
             wanted.append(
                 {
@@ -1908,6 +2014,19 @@ async def list_transcription_backlog_candidates(
     out cheaply using the same video_format field returned here, rather
     than this function silently dropping a real candidate a future caller
     might handle differently.
+
+    Deliberately does NOT exclude a page carrying a WO-135 (2026-09-09)
+    YouTube permanent-failure transcript marker, unlike
+    find_auto_transcription_candidate()'s
+    ~_youtube_permanent_transcript_failure_exists() -- that exclusion
+    exists specifically because the CLOUD worker runs from a server IP
+    YouTube blocks, so retrying there is pointless. This function feeds a
+    LOCAL script run from a residential IP (same reasoning
+    scripts/fetch_youtube_transcripts.py already relies on), where a
+    "captions disabled by the channel" page is still a real, honest
+    audio-based-Whisper candidate once that mechanism exists (WO-136) --
+    the channel not having its own captions says nothing about whether
+    this app can still generate one from the audio track.
 
     Full Python-side scan over every page, same "fine at today's scale,
     revisit at real scale" reasoning as find_auto_transcription_candidate()
@@ -5691,6 +5810,16 @@ _OUTCOME_LABELS: dict[str, str] = {
     "truncated_transcript": "Truncated transcript",
     "non_english_transcript": "Transcript (non-English)",
     "success": "Transcript (English)",
+    # Added 2026-09-09 (WO-135) alongside the two YouTube permanent-
+    # failure transcript markers. Deliberately its own bucket rather than
+    # folded into "blank_transcript": both look identical to a reader
+    # scanning /internal/transcript-quality-audit (zero segments) but mean
+    # very different things -- blank_transcript is "the government's own
+    # source hasn't produced a transcript yet, might tomorrow";
+    # captions_disabled is "confirmed, via a real yt-dlp metadata check,
+    # that this will never happen on its own" -- and only one of those two
+    # is worth a human's attention or a local Whisper run (WO-136).
+    "captions_disabled": "Captions disabled / video unavailable",
 }
 # Lower is better -- used to pick which of a jurisdiction's several pages
 # best represents it (same "prefer the most convincing real example"
@@ -5707,7 +5836,11 @@ _OUTCOME_RANK: dict[str, int] = {
     "truncated_transcript": 3,
     "agenda_fallback": 4,
     "blank_transcript": 5,
-    "no_video": 6,
+    # Ranked worse than blank_transcript (which might still improve on its
+    # own) but better than no_video (there's at least a real, playable
+    # video here) -- added WO-135, 2026-09-09.
+    "captions_disabled": 6,
+    "no_video": 7,
 }
 
 
@@ -5721,6 +5854,19 @@ def _classify_page_outcome(
 ) -> str:
     if not video_url:
         return "no_video"
+    # Checked BEFORE the empty-content branch below on purpose (WO-135):
+    # both YouTube permanent-failure transcript markers only ever sit on
+    # an empty-content default version (see record_youtube_video_status()),
+    # so without this ordering they'd silently fall into
+    # blank_transcript/agenda_fallback -- correct in the narrow "zero
+    # segments" sense, but losing the one fact (this is CONFIRMED
+    # permanent, not just not-yet-posted) that bucket exists to surface.
+    if default_transcript_warnings and any(
+        marker in w
+        for w in default_transcript_warnings
+        for marker in _YOUTUBE_PERMANENT_TRANSCRIPT_FAILURE_MARKERS
+    ):
+        return "captions_disabled"
     if default_content_hash is None or default_content_hash == _EMPTY_CONTENT_HASH:
         if agenda_items:
             return "agenda_fallback"
@@ -8360,6 +8506,115 @@ async def manually_promote_transcript_version(
         return {"slug": slug, "promoted_version_id": version_id}
 
 
+async def record_youtube_video_status(
+    *,
+    slug: str,
+    transcript_marker: Optional[str] = None,
+    video_marker: Optional[str] = None,
+) -> Optional[dict]:
+    """Admin write backing POST /internal/pages/{slug}/video-status
+    (WO-135, 2026-09-09): records a PERMANENT-failure reason on a
+    YouTube-backed page, confirmed via a real yt-dlp metadata check (see
+    app/platforms/youtube.py and scripts/fetch_youtube_transcripts.py),
+    so scripts/fetch_youtube_transcripts.py's daily run can skip this page
+    forever afterward instead of re-queuing (and re-failing, and burning
+    its request budget on) it every single day.
+
+    Why this can't go through the ordinary POST /internal/ingest ->
+    ingest_resolution() path: that function only ever creates or touches a
+    TranscriptVersion `if segments:` is truthy (see its own docstring) --
+    a permanently-empty transcript (captions disabled, video gone) has no
+    real segments to push, so there is no way to record *why* through the
+    normal ingest pipeline. This is the narrow, explicit write that closes
+    that gap, kept off ingest_resolution() itself so its shared, heavily-
+    depended-on segment-gating logic doesn't need touching for a YouTube-
+    specific case.
+
+    Two independent, optional appends -- passing neither is a no-op that
+    still returns the page's identity, so a caller can use this as a plain
+    existence check too:
+
+      * `video_marker` appends to MeetingPage.video_warnings, deduped
+        (calling this twice with the same marker is a no-op the second
+        time -- the daily script calls this unconditionally on every
+        matching page, not just the first time a reason is confirmed).
+        Deliberately additive, unlike IngestRequest.video_warnings' own
+        truthy-gated wholesale-*replace* semantics (_find_or_create_page())
+        -- this write's whole purpose is to ADD a newly-confirmed permanent
+        reason onto a page a normal resolve already gave up on, not to
+        redo a full resolve's worth of warnings.
+
+      * `transcript_marker` appends to the page's default TranscriptVersion's
+        transcript_warnings, also deduped. Creates an empty-content
+        (segments=[], content_hash==_EMPTY_CONTENT_HASH) default version if
+        the page has none yet -- the same "no good transcript" outcome
+        `_has_good_transcript()`/`_good_default_transcript_exists()` already
+        give a page with zero segments, so this changes no gating decision,
+        only which (if any) TranscriptVersion the marker is recorded on.
+        Appending rather than replacing is safe even if the existing
+        default already carries unrelated real content or other quality
+        markers: this only ever fires for a page already confirmed to lack
+        a good transcript (see list_youtube_pages_missing_transcripts()),
+        so a marker saying "no real YouTube captions exist" is an
+        additional true fact, never a contradiction of what's already
+        there (e.g. a lower-quality Whisper fallback transcript).
+
+    Returns None if no MeetingPage matches `slug`.
+    """
+    async with async_session() as session:
+        page = (
+            (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
+            .scalars()
+            .first()
+        )
+        if page is None:
+            return None
+
+        if video_marker:
+            existing_video_warnings = page.video_warnings or []
+            if video_marker not in existing_video_warnings:
+                page.video_warnings = [*existing_video_warnings, video_marker]
+
+        version_id = None
+        if transcript_marker:
+            default_version = (
+                (
+                    await session.execute(
+                        select(TranscriptVersion).where(
+                            TranscriptVersion.meeting_page_id == page.id,
+                            TranscriptVersion.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if default_version is None:
+                default_version = TranscriptVersion(
+                    meeting_page_id=page.id,
+                    language=None,
+                    source="sourced",
+                    is_default=True,
+                    segments=[],
+                    transcript_warnings=[transcript_marker],
+                    content_hash=_EMPTY_CONTENT_HASH,
+                )
+                session.add(default_version)
+            else:
+                existing_transcript_warnings = default_version.transcript_warnings or []
+                if transcript_marker not in existing_transcript_warnings:
+                    default_version.transcript_warnings = [
+                        *existing_transcript_warnings,
+                        transcript_marker,
+                    ]
+            await session.flush()  # assigns default_version.id when newly created
+            version_id = default_version.id
+
+        page.updated_at = datetime.now(timezone.utc)
+        await session.commit()
+        return {"slug": slug, "page_id": page.id, "version_id": version_id}
+
+
 async def create_segment_drop_version(
     *, slug: str, expected_srt_hash: str, drop_segment_indices: list[int]
 ) -> Optional[dict]:
@@ -8890,6 +9145,16 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
     history in one query; then the cooldown rule in Python per candidate
     until one passes. Same "oldest page without a good transcript and not
     in cooldown" result as before.
+
+    Also excludes a page carrying a confirmed YouTube permanent-failure
+    transcript marker (WO-135, 2026-09-09) via
+    `_youtube_permanent_transcript_failure_exists()` -- see that
+    function's own docstring. Without this, every one of those pages
+    would otherwise surface here forever (a `captions_disabled` page has
+    zero segments, same as any other blank_transcript candidate) and the
+    worker would burn a re-resolve (a real yt-dlp call from Render, the
+    exact server IP YouTube blocks) and a full cooldown cycle on a page a
+    real metadata check already confirmed can't be fixed that way.
     """
     async with async_session() as session:
         candidates = (
@@ -8900,7 +9165,10 @@ async def find_auto_transcription_candidate() -> Optional[dict]:
                     MeetingPage.source_url_normalized,
                     MeetingPage.platform,
                 )
-                .where(~_good_default_transcript_exists())
+                .where(
+                    ~_good_default_transcript_exists(),
+                    ~_youtube_permanent_transcript_failure_exists(),
+                )
                 .order_by(MeetingPage.created_at.asc())
             )
         ).all()
