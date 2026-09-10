@@ -1,5 +1,126 @@
 # Backlog — done
 
+## WO-154: a tool that recognizes which company built a government's website, and where its meeting page usually lives [Done 2026-09-10]
+
+Ryan's idea: about 9,600 governments in our research file loaded fine
+for us, but we never found a meeting or video link on their site. Most
+of the time the reason is simple — the site's menu is drawn by
+JavaScript, so a plain fetch never sees the link. A full browser finds
+it, but that's slow to run on thousands of sites.
+
+Most government websites are not custom-built. A handful of companies
+build most of them — CivicPlus, Revize, Granicus's "OpenCities"
+product, and a few smaller ones. Ryan's idea was: if we can tell which
+company built a government's site from the page we already have, we
+often already know, from other governments on that same company's
+platform, where the meeting page usually sits. Then a plain fetch can
+go straight there instead of guessing or paying for a slow browser.
+
+This work built the tool that recognizes the company, and a table that
+records what each company's sites usually look like. It does not use
+either one yet — no new pages were added, no sweep was run. That is the
+next piece of work.
+
+**What we built and how we tested it.** A script
+(`scripts/cms_fingerprint.py`) reads one page and says which company
+built it, based on real markers we found by fetching real pages: a
+footer credit, a company's own web address showing up in the page's
+own code, or a distinctive company tag in the page's metadata. A table
+(`app/utils/jurisdiction_data/cms_families.csv`) records, per company,
+how many real examples we found, how well the recognition rule did on
+examples we held back for testing, and where that company's meeting
+page tends to live.
+
+We built the recognition rules from 213 real government pages we
+already knew the answer for, then tested each rule two ways: on a
+held-back 20% of its own examples, and against every other company's
+examples, to check for false alarms.
+
+| Company | Real examples we found | Correct on held-back examples | False alarms on other companies' pages |
+| --- | --- | --- | --- |
+| CivicPlus | 47 | 10 of 10 | 1 of 160 (see caution) |
+| Revize | 27 | 6 of 6 | 0 of 180 |
+| OpenCities (Granicus) | 10 | 2 of 2 | 0 of 197 |
+| Municode's meeting module | 8 | 2 of 2 | 1 of 199 (see caution) |
+| ProudCity | 6 | 6 of 6 (all 6, no held-back split — too few) | 0 of 445 |
+| Town Web | 2 | too few to test | 0 |
+| CivicLive | 1 | too few to test | 0 |
+| Streamline | 0 — no real example found in about 240 pages checked | not applicable | not applicable |
+
+**Result: how many of the 9,600 "no link found" governments does this
+actually help with, right now?** We took a random sample of 300 of
+them (governments we already tried and found nothing), fetched each
+one's homepage again, and ran the new tool on it.
+
+| What the tool found | Count of 238 pages we could fetch | Share |
+| --- | --- | --- |
+| A recognized company | 20 | 8% |
+| Nothing recognized | 218 | 92% |
+
+Twenty out of 238 is a real, modest win, not a big one. It tells us
+these 20 governments' sites are built by a company we understand,
+which narrows down where to look next. It does not, by itself, find
+their meeting pages yet.
+
+**Result: does knowing the company actually let us skip straight to
+the meeting page?** We tried, on those same 20 governments, using each
+company's usual page address.
+
+| Company | Governments tried | Found a real meeting page |
+| --- | --- | --- |
+| CivicPlus | 2 | 1 of 2 |
+| Revize | 17 | 0 of 17 |
+| Town Web | 1 | 0 of 1 |
+| **Total** | **20** | **1 of 20 (5%)** |
+
+We had planned to test 30 governments, not 20 — only 20 of the 300
+sampled had a company we could recognize, so we tested all of them
+rather than padding the number.
+
+**Caution.** Revize's result needs explaining, because our first pass
+at this test got it wrong and we caught it before writing it down here.
+When you guess a wrong web address on a Revize-built site, it doesn't
+say "page not found" the normal way — it shows a real page back to you
+that just echoes your guess inside a generic sharing box. Our first
+check only looked for the word "agenda" anywhere on the page, and every
+Revize page has that word in its menu whether the guess was right or
+not. Once we tightened the check to ignore that generic page, the real
+count of successful Revize guesses dropped from 4 to 0. The honest
+finding is: CivicPlus always puts its meeting page at the same web
+address (`/AgendaCenter`), so guessing works. Revize does not — each
+government picks its own address, so guessing does not work; we would
+need to read the government's own menu instead. The two "false alarms"
+in the table above are not mistakes either — they're real pages built
+by one company whose footer also happens to link to a second company's
+meeting module; both statements about the same page are true.
+
+Ninety-two percent of the sample still isn't explained. Most of those
+are sites built by companies too small or too different for this table
+to know about yet (WordPress, Wix, hand-built sites, and others).
+
+**Recommendation.** Start the next round of work with CivicPlus and
+Revize, since they're the only two companies with enough real examples
+to trust. CivicPlus can be trusted to jump straight to its meeting
+page. Revize cannot — it needs to read the government's own menu for
+the real link, not guess an address. The other companies need more
+real examples before we can trust their meeting-page addresses at
+all — the table says this plainly for each one rather than guessing.
+
+**Deploy status.** This adds a new script and a new data file only.
+The website that visitors see does not read either one yet, so there
+is nothing to deploy. The next piece of work (not started) is teaching
+the site to actually use this table on a real sweep.
+
+Files: `scripts/cms_fingerprint.py` (new), `app/utils/jurisdiction_data/
+cms_families.csv` (new), `docs/CMS_FAMILIES.md` (new field guide),
+`tests/test_cms_fingerprint.py` + `tests/fixtures/cms_fingerprint/` (new,
+8 real fixture pages, one per company plus the WO-163 false-positive
+case), `BACKLOG.md` (two new open items: Streamline has no example yet;
+guessing a fixed address only works for CivicPlus). Full numbers,
+including the training-page list and every real government checked, are
+in `~/Documents/rtr-business/research/wo154_methods_section.md`,
+`wo154_family_sample_300.csv`, and `wo154_path_test_30.csv`.
+
 ## WO-153: research-file bookkeeping pass — 449 wrongly-flagged rows fixed, 6 governments' pages re-keyed, 28 shared-host domains fixed, and the queued labels checked against the real queue [Done 2026-09-10]
 
 Ryan asked for a check on `jurisdiction_coverage.csv`: does "covered"
