@@ -83,7 +83,13 @@ _TRAILING_TYPE_RE = re.compile(
 # general pattern.
 _BALANCE_SUFFIX_RE = re.compile(r"\s*\(balance\)\s*$", re.IGNORECASE)
 _GOVERNMENT_TYPE_RE = re.compile(
-    r"\s+(?:metropolitan government|metro government|unified government|consolidated government)$",
+    r"\s+(?:metropolitan government|metro government|unified government|consolidated government|"
+    # Alaska's "Juneau city and borough" / "Sitka city and borough" and
+    # Kentucky's "Lexington-Fayette urban county" are the same kind of
+    # Census type phrase: without stripping them, "Juneau, AK" minted
+    # rtr:us:ak:juneau beside the real us:place:0236400 (found in the
+    # 2026-09-10 consolidated-government audit).
+    r"city and borough|urban county)$",
     re.IGNORECASE,
 )
 

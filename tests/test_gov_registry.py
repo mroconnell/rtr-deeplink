@@ -1353,8 +1353,11 @@ def test_a_tenant_hint_ranks_below_a_subdomain_or_known_domain(monkeypatch):
     `king.granicus.com`. A validated subdomain reading or a
     `_KNOWN_DOMAINS` entry must win."""
     monkeypatch.setattr(registry, "tenant_hints", lambda: {"x.granicus.com": "NC"})
+    # A real Washington name: since 2026-09-10 the reader's (name, state)
+    # claim is checked against the tables, so a made-up "X" would be
+    # declined for the right reason and mask what this test is about.
     monkeypatch.setattr(
-        resolver, "_validated_subdomain_hint_with_state", lambda h: ("X", "WA")
+        resolver, "_validated_subdomain_hint_with_state", lambda h: ("Tacoma", "WA")
     )
     assert resolver._state_from_tenant("x.granicus.com")[0] == "WA"
     monkeypatch.setattr(
@@ -2278,3 +2281,67 @@ def test_the_general_assembly_still_reaches_its_state():
     Colorado (decision D1)."""
     match = resolve("Colorado General Assembly", "coloradoga.granicus.com")
     assert match.gov_id == "us:state:08"
+
+
+@pytest.mark.parametrize(
+    "host, name, state, expected",
+    [
+        ("oxnardsd.granicus.com", "Oxnard", "SD", False),
+        ("arkansas-sc.granicus.com", "Arkansas", "SC", False),
+        ("coloradoga.granicus.com", "Colorado", "GA", False),
+        ("aberdeensd.example.com", "Aberdeen", "SD", True),
+        ("baltimoremd.example.com", "Baltimore", "MD", True),
+        ("calgaryab.example.com", "Calgary", "AB", True),
+    ],
+)
+def test_a_subdomain_state_must_hold_a_government_of_that_name(
+    host, name, state, expected
+):
+    """The general rule behind "SC is sometimes Supreme Court, sometimes
+    South Carolina" (Ryan, 2026-09-10): the two letters the subdomain
+    reader strips off a label are a state only if some government of
+    that name exists there. Baltimore has a city and a county row, and
+    both count -- this is looser than lookup()'s exactly-one rule."""
+    assert resolver._name_exists_in_state(name, state) is expected
+    tenant_state, _evidence = resolver._state_from_tenant(host)
+    if expected:
+        assert tenant_state == state
+    else:
+        assert tenant_state != state
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Juneau, AK", "us:place:0236400"),
+        ("City and Borough of Juneau, AK", "us:place:0236400"),
+        ("Sitka, AK", "us:place:0270540"),
+        ("Lexington, KY", "us:place:2146027"),
+        ("Lexington-Fayette Urban County Government, KY", "us:place:2146027"),
+        ("Athens, GA", "us:place:1303440"),
+        ("Augusta, GA", "us:place:1304204"),
+        ("Macon, GA", "us:place:1349008"),
+        ("Butte, MT", "us:place:3011397"),
+        ("Anaconda, MT", "us:place:3001675"),
+        ("Lynchburg, TN", "us:place:4744382"),
+        ("Hartsville, TN", "us:county:47169"),
+        ("Kansas City, KS", "us:place:2036000"),
+        ("Lafayette, LA", "us:place:2240735"),
+        ("Municipality of Anchorage, AK", "us:place:0203000"),
+        ("Tribune-Greeley County, KS", "us:county:20071"),
+        # Same short names elsewhere must not be captured by the aliases.
+        ("Lexington, TN", "us:place:4741980"),
+        ("Augusta, KS", "us:place:2003300"),
+    ],
+)
+def test_consolidated_governments_key_to_one_id_from_every_name_form(raw, gov_id):
+    """The ~40 consolidated city-counties are spelled by the Census in a
+    form no page writes ("Juneau city and borough", "Lexington-Fayette
+    urban county", "Athens-Clarke County unified government (balance)");
+    before the 2026-09-10 audit every bare form here minted a second
+    government. "city and borough" / "urban county" are stripped like
+    the other type phrases, and the hyphenated ones carry curated
+    aliases. The two trailing cases pin that an alias is state-scoped."""
+    match = resolve(raw, None)
+    assert match.gov_id == gov_id
+    assert match.tier == resolver.TIER_REGISTRY

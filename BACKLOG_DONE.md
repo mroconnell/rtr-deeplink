@@ -1,5 +1,51 @@
 # Backlog — done
 
+## Consolidated governments: every one the archive holds sits on one id; the bare names that minted now key; 11 hosts pinned; the subdomain reader's state must hold a government of that name [Done 2026-09-10]
+
+Ryan's two questions, answered with data rather than a name-only pass
+(his correction: "what does it give us to run gov names through the
+resolver without websites?").
+
+**Audit** of ~30 consolidated city-counties against a fresh
+`/internal/export/pages`: every one with pages already sat on ONE id
+(Nashville 14, Washington DC 13, Indianapolis 12, Jacksonville 11, San
+Francisco 8, Louisville 6, Baton Rouge 5, ...). The two apparent splits
+were different governments (South San Francisco; West Baton Rouge
+Parish). Thirteen have no pages at all and are enumeration leads, not
+resolver cases -- and `jurisdiction_coverage.csv` holds **no row** for
+Philadelphia, Lexington-Fayette, Athens-Clarke, Augusta-Richmond,
+Columbus-Muscogee, Macon-Bibb, Butte-Silver Bow, Anaconda-Deer Lodge,
+Lafayette LA, Kansas City KS, Lynchburg-Moore, Hartsville-Trousdale or
+Terrebonne, and keys Sitka to the county form (`us:county:02220`) where
+the archive uses the place (`us:place:0270540`) -- passed to the
+coverage-registry session.
+
+**What was actually wrong** was the bare names: "Juneau, AK", "Sitka,
+AK", "Lexington, KY", "Athens, GA", "Butte, MT", "Anaconda, MT",
+"Lynchburg, TN", "Hartsville, TN" all MINTED, because the Census spells
+them "Juneau city and borough", "Lexington-Fayette urban county",
+"Athens-Clarke County unified government (balance)". Fixed two ways:
+`jurisdiction_enrich._GOVERNMENT_TYPE_RE` strips "city and borough" and
+"urban county" like the other type phrases, and 17 curated rows carry
+the hyphenated and short forms as aliases (state-scoped: "Lexington, TN"
+and "Augusta, KS" still go to their own cities). One live page moved:
+the YouTube Juneau Assembly page, `rtr:us:ak:juneau` ->
+`us:place:0236400`.
+
+**Pins**: 11 hosts whose pages all keyed to the right consolidated id
+with no pin (nashville/louisville/indianapolis/cityofno/carsoncity
+.granicus.com, louisvilleky.primegov.com, councilnyc.viebit.com,
+milfordct.us, greeleycounty.org, batonrougela.new.swagit.com,
+brla.gov), source `consolidated_government`.
+
+**The subdomain rule** behind "SC is sometimes Supreme Court, sometimes
+South Carolina": `_state_from_tenant()` now requires the reader's
+(name, state) pair to exist in that state's own tables
+(`_name_exists_in_state()`; looser than `lookup()`'s exactly-one rule so
+Baltimore's city + county both count). `oxnardsd`, `arkansas-sc`,
+`coloradoga` decline; `aberdeensd`, `siouxfallssd`, `calgaryab` pass.
+Finite lists of courts and assemblies were not needed.
+
 ## A two-province name counts for both province pages, and no longer 500s its own meeting page [Done 2026-09-10]
 
 Follow-up to the Lloydminster pin (entry below). Once the deploy carried
