@@ -260,6 +260,130 @@ above, and a small `[EASY]` YouTube video-ID regex gap (a generic "live
 stream" embed placeholder like `embed/live_stream` matches the same
 11-char pattern as a real video ID) — both in `BACKLOG.md`'s Trust &
 data quality section.
+## WO-127: CivicPlus own-domain sweep of `no-platform-link-found` rejects -- 1,946 probed, 348 real CivicPlus hits, 4 ingested, 10 queued [Done 2026-09-09]
+
+Ryan's ask: among the governments the coverage registry rejected as
+`no-platform-link-found` (population >= 5000, non-county, zero Archive
+pages -- 1,947 rows in `coverage_registry.csv`, confirmed 1,946 still
+un-archived against a fresh `export_meeting_inventory.py --source
+export` pull, one row stale), find the ones that actually run
+CivicPlus's AgendaCenter on their own domain, enumerate their meetings,
+and push the ones with real video into the Archive. Counties were out of
+scope (WO-130, run in parallel the same day).
+
+**Method, two stages.** (1) A read-only detection probe
+(`rtr-business/research/coverage_gap_2026-09-09/
+wo127_civicplus_owndomain_probe.py`, following
+`civicplus_owndomain_sweep.py`'s 2026-09-01 precedent): one GET to
+`https://{host}/AgendaCenter` per government (a `www.`/`http://` variant
+tried only on a connection-level failure, never on a clean non-CivicPlus
+response), accepted as a hit only if the final URL's netloc contains
+`civicplus.com` or the raw HTML contains the literal string
+`catAgendaRow` -- the same acceptance rule
+`deep_recheck_civicplus_no_meetings_found.py` already established,
+verified here against two live known-CivicPlus tenants
+(`www.cityofazle.org`, `nc-durham.civicplus.com`) before trusting a 0-hit
+pilot batch (the first 25 candidates were all small Atlantic-Canada/
+Quebec towns, where CivicPlus genuinely has near-zero presence). Result:
+**348 of 1,946 (17.9%) are real, confirmed CivicPlus AgendaCenter
+tenants on their own domain** -- see the open BACKLOG.md entry below for
+why this ran well above the ~11% BuiltWith-sample baseline. (2) A new
+resolve+ingest pipeline (`scripts/wo127_civicplus_pipeline.py`, following
+`adhoc_civicplus_pipeline.py`'s pattern) for the 348 hits, `resolve()`'s
+own `_RETRY_LIMIT=5` walking the AgendaCenter listing's most recent real
+candidate rows for a video link.
+
+**Two real differences from the `adhoc_civicplus_pipeline.py` precedent,
+both deliberate:**
+1. **Stricter ingest gate, per Ryan's explicit instruction.** The
+   precedent ingests an agenda-only result (no video, real agenda_items/
+   agenda_link) directly; WO-127 does not -- "ONLY meetings with video"
+   was the brief, so agenda-only is recorded as `no-video-found` and
+   never ingested, matching the treatment of a genuine
+   `NoVideoCandidateFound`.
+2. **Known-jurisdiction pin, unconditional.** Every candidate comes from
+   the coverage registry, which already carries a validated `"{name},
+   {state}"` for that exact government -- stronger ground truth than any
+   delegated platform's own metadata guess. `result.jurisdiction` is
+   overwritten with it after every resolve, always, not just as an
+   empty-guess fallback -- the same "wins outright" precedent
+   `_jurisdiction_from_subdomain()` already sets for `*.civicplus.com`
+   tenants, generalized to every white-labeled tenant and every
+   delegated platform. Motivated directly by a real, already-shipped bug
+   this exact gap caused twice (PR #805/#807's Branford CT/Hartwick NY
+   writeup, both filed under the wrong state because the candidate's own
+   known city/state was never threaded through) -- see BACKLOG.md's
+   still-open matching entry, now cross-referenced both ways.
+
+**Funnel**: 1,946 probed -> 348 CivicPlus hits (17.9%) -> 348 resolved
+(342 succeeded, 6 real site errors -- SSL hostname-mismatch certs and one
+connection reset, confirmed real on a retry, not this pipeline's bug) ->
+**4 ingested (tier 1)**, one each on Granicus/Vimeo/TelVue/Cablecast
+(South St. Paul MN, Franklin NH, Grants Pass OR, Murfreesboro TN) -> **10
+queued tier 3** (7 YouTube, 2 Viebit, 1 Vimeo) -> 328 no-video-found
+(agenda-only or an empty/videoless listing within the retry limit).
+
+**Verified live**, not just via the ingest response: all 4 tier-1 pages
+return 200 and render the correct `"More {jurisdiction} meetings"` link
+(South St. Paul MN, Franklin NH, Grants Pass OR, Murfreesboro TN) --
+zero landed as `rtr:unknown`.
+
+**Tier-3 queue jurisdiction gap, caught and mitigated.** The queue file
+carries only a bare URL (+ optional `source_url` override) -- no
+jurisdiction hint reaches `feed_tier3_auto_transcription.py`'s later
+re-resolve, so the 10 queued items would have lost their already-known
+government entirely (same root cause as BACKLOG.md's open
+YouTube-`jurisdiction=None` entry, third confirmed instance). Fixed by
+writing 10 `app/utils/jurisdiction_data/tenant_overrides.csv` pins
+(`strength=fallback`, `source=wo127_civicplus_pipeline`) -- 8 per-video
+(YouTube video id / Vimeo path id) and 2 host-level (the two Viebit
+tenant subdomains, same shape as the existing `ringwoodtv.viebit.com`
+row). Verified directly against `resolve_government()`: all 10 resolve
+to the correct `gov_id` regardless of what the video's own metadata
+says. Full test suite for the registry/pin machinery
+(`test_gov_registry.py`, `test_jurisdiction_override.py`,
+`test_pin_worklist.py`) still green, 292 passed.
+
+**Real mid-run failure, fixed live, not worked around.** The pipeline
+crashed once on a torn read of `jurisdiction_coverage.csv` (`csv.
+DictReader` saw a row with more fields than the header --
+`ValueError: dict contains fields not in fieldnames: None` -- only
+possible if a concurrent writer's own rewrite was caught mid-flight;
+WO-130 runs against the same file in parallel). Hardened all three
+coverage-file helpers with a `_safe_coverage_call()` wrapper: one retry
+after a short pause, and a failed write is skipped (logged, not fatal)
+rather than crashing the whole run -- the candidate's own REPORT_CSV row
+already has the real outcome either way. The file was also found
+`chmod 444` (read-only) partway through the same run for an unrelated
+reason -- restored to `644` and the two affected rows patched by hand
+afterward. Two new, real findings from the same investigation are filed
+as their own open BACKLOG.md entries (see "Platform & jurisdiction
+coverage" / open bugs): the file's duplicate-`gov_id` scale (1,339, not
+just the one Clay City KY case ENUMERATION_METHODS.md §132 already
+found) and the third confirmed instance of the shared-host
+jurisdiction-loss gap.
+
+**Files**: `rtr-business/research/coverage_gap_2026-09-09/
+wo127_civicplus_owndomain_probe.py` + `wo127_probe_results.csv` (1,946
+rows), `scripts/wo127_civicplus_pipeline.py` +
+`scripts/civicplus_data/wo127_civicplus_hits.csv` (348 hits) +
+`wo127_pipeline_report.csv` (full per-candidate outcome), 10 lines
+appended to `scripts/tier3_auto_transcription_queue.txt`, 10 pins in
+`app/utils/jurisdiction_data/tenant_overrides.csv`,
+`rtr-business/research/ENUMERATION_METHODS.md` §140.
+
+**Verified**: `ruff check`/`ruff format --check` clean on the new
+script; `pytest tests/test_gov_registry.py tests/
+test_jurisdiction_override.py tests/test_pin_worklist.py` 292 passed;
+full suite run before merge; BACKLOG TOC rebuilt.
+
+**Not deployed by this PR** -- no `app/`/`archive/`/`worker/` code
+changed, only a one-off script plus data files (`tenant_overrides.csv`,
+the tier3 queue, `jurisdiction_coverage.csv`). The 4 tier-1 pages are
+already live in production (ingested directly via `/internal/ingest`
+against the running Archive); the 10 tier-3 URLs will surface once
+`feed_tier3_auto_transcription.py`'s next scheduled run picks them up --
+no deploy needed for either.
 
 ## Ryan's pin worklist applied and backfilled -- 35 pins, 58 pages re-keyed, 20 hub redirects, two bugs found by the dry run [Done 2026-09-09]
 
