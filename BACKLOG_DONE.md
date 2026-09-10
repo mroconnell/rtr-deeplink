@@ -1,5 +1,78 @@
 # Backlog — done
 
+## Dashboard checklist for 2026-09-10 — five `[HUMAN]` entries closed via a live walkthrough with Ryan [Done 2026-09-10]
+
+The weekday dashboard-checklist Routine (`CLAUDE_DASHBOARD_CHECKLIST.md`,
+PR #840) surfaced six `[HUMAN]` entries; Ryan worked through them live in
+the same session. Five closed outright; the sixth (the SIGABRT crash-loop)
+stays open in `BACKLOG.md` with corrected, narrower findings — see that
+entry.
+
+**Click Validate Fix in Search Console for the reslug fix — closed, no
+click needed.** Checking the actual GSC "Page indexing" report (screenshot
+walkthrough) found neither the "Page with redirect" category (3 pages, all
+unrelated homepage variants) nor the "Not found (404)" category (3 pages:
+`/j/independence-ks`, `/j/beaumont-regular-council-meeting-agenda-tuesday`,
+`/j/brampton-meeting` — none matching any known reslugged old slug) actually
+contains the reslugged pages the entry was about. Combined with the direct
+`curl` verification below, the redirect fix is confirmed working and there
+was nothing left to validate. Note: the 404 list *did* surface a real,
+separate-looking issue worth a fresh look later — two `/j/` (jurisdiction
+hub) slugs that read like meeting-title text leaked into a hub slug
+(`beaumont-regular-council-meeting-agenda-tuesday`, `brampton-meeting`) —
+not filed as its own entry yet, flagging here so it isn't lost.
+
+**Search Console "Reasons preventing pages from being indexed" (Not found
+404 re-check) — closed, redirect fix confirmed working end-to-end.**
+Rather than relying on GSC's own "Not found (404)" export (which, per
+above, doesn't contain the actual reslugged pages), directly `curl`'d
+every known old slug from both reslug batches:
+
+| old slug | result |
+|---|---|
+| `/m/meeting` | `301` → `tucson-az-2026-08-05-regular-meeting` |
+| `/m/meeting-1e9bac` | `301` → `maricopa-county-az-2026-07-15-formal` |
+| `/m/meeting-38ca49` | `301` → `sacramento-county-ca-2026-08-11-board-of-supervisors-meeting` |
+| `/m/meeting-ef5ba6` | `301` → `maricopa-county-az-2026-04-08-formal` |
+| `/m/welcome-to-clerkbase` | `301` → `yellow-springs-oh-2022-02-07-february-7-2022-regular-village-council-meeting` |
+| `/m/2026-08-11-council-meeting` | `301` → `modesto-ca-2026-08-11-council-meeting` |
+
+All 6 (the 2026-08-28 batch of 5 plus the 2026-08-30 Modesto one) correctly
+301-redirect to their real new slugs. The redirect fix is fully deployed
+and working for every known reslugged page — nothing left to check.
+
+**Two Archive fixes merged 2026-08-30 (WO-80, `delete_meeting_pages_by_slug`
+FK cleanup) — closed, Ryan confirmed deployed.**
+
+**WO-88's CivicClerk `mediaStreamPath` fix on the transcription workers —
+closed, Ryan confirmed deployed** (checked both `rtr-transcription-worker`
+and `rtr-transcription-worker-2` independently, per the checklist's own
+note that their deploy histories can differ).
+
+**GitHub secret-scanning alert on `tests/fixtures/civicplus/
+durham_agendacenter_citycouncil.html:103` — closed, dismissed by Ryan**
+in GitHub's Security tab with reason "Used in tests," per the entry's own
+confirmed-false-positive writeup (Durham NC's own already-public
+`GoogleMapsKey`).
+
+**Not closed — SIGABRT crash-loop.** See the corrected, still-open
+`BACKLOG.md` entry: memory pressure ruled out as the driver for the bulk
+of the 25 occurrences (14-day + today's graphs both show usage far from
+the 2GB ceiling except the already-known 2026-09-01 spike); PR #795
+confirmed deployed and working; app-level/dashboard investigation has hit
+its ceiling, next step (if pursued) is Render support's own infra-level
+crash diagnostics.
+
+Two small supporting endpoints landed the same session, unrelated to any
+one entry above but built to make future checklist runs cheaper: `GET
+/admin/version` (resolver) and `GET /internal/version` (Archive) report
+`RENDER_GIT_COMMIT`/`RENDER_GIT_BRANCH`/`RENDER_SERVICE_NAME` so
+confirming an already-merged fix has actually deployed no longer needs a
+Render dashboard login for either `type: web` service — same pattern as
+the existing `/admin/schema-info`/`/internal/schema-info` endpoints, for
+deploy state instead of schema state. Doesn't cover the two `type: worker`
+transcription services, which run no HTTP server at all (PR #850).
+
 ## Pins for two YouTube-hosted pages that were keyed to no government: Greenlee County, AZ and Fortuna, CA [Done 2026-09-10]
 
 Ryan's ask, from the WO-153 planning discussion: pin the two pages now.
