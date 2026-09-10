@@ -1,5 +1,138 @@
 # Backlog — done
 
+## WO-135: permanent-failure markers for YouTube captions-disabled/embed-disabled/video-gone pages, so the daily fetch stops re-queuing them forever [Done 2026-09-09]
+
+Closes the residual WO-131 left open: its 78-candidate push got through
+15 real per-video failures (`TranscriptsDisabled` x8, `VideoUnplayable`
+x4, `VideoUnavailable` x3) before a real IP block aborted the run — none
+of those 15 were ever going to succeed on retry, but nothing recorded
+that, so every future daily run would have re-attempted (and re-failed
+on) them forever, burning request budget that matters precisely because
+burning it risks the IP-level block described in
+`docs/investigations/youtube_429_block.md`.
+
+**Three exact-string markers**, checked in `archive/db/crud.py` next to
+`_GARBLED_MARKER`/`_HALLUCINATION_MARKER`/`_GRANICUS_TRUNCATION_MARKER`
+per CLAUDE.md's convention, and independently re-declared (not imported)
+in `app/platforms/youtube.py` and `app/db/outcomes.py` with cross-
+reference comments, same pattern `_GARBLED_MARKER` already uses across
+that boundary:
+
+- `YouTube: captions are disabled by the channel` (transcript_warnings)
+- `YouTube: embedding is disabled by the channel; watch on YouTube`
+  (video_warnings)
+- `YouTube: video is unavailable (removed or private)` (transcript_warnings)
+
+**Where they're checked**: `_classify_page_outcome()`/`_OUTCOME_LABELS`/
+`_OUTCOME_RANK` gained a new `captions_disabled` bucket (ranked worse
+than `blank_transcript`, better than `no_video`) so a reader can tell
+"confirmed, permanent" apart from "government hasn't posted yet" —
+mirrored in `app/db/outcomes.py::classify_outcome()`. Deliberately did
+**not** add the two transcript markers to `_has_real_warning_free_
+transcript()`'s marker tuple — they only ever sit on an empty-content
+version, which that function's callers (`_good_default_transcript_
+exists()`, `_has_good_transcript()`) already exclude via the
+`_EMPTY_CONTENT_HASH` check, so adding them there would be redundant at
+best and risks over-triggering if a real content version were ever
+touched by mistake. Added a **new**, narrower predicate instead —
+`_youtube_permanent_transcript_failure_exists()` (SQL) and
+`_has_youtube_permanent_transcript_failure()` (Python) — used in exactly
+two places: `list_youtube_pages_missing_transcripts()` (so a marked page
+actually stops coming back from `/internal/transcript-wanted` — the real
+mechanism that makes "never re-queued" true, not just the marker's
+existence) and `find_auto_transcription_candidate()` (so the *cloud*
+worker, running on a server IP YouTube blocks, never burns a re-resolve
+and a full cooldown cycle on a page already confirmed unfixable that
+way). Deliberately did **not** exclude these pages from
+`list_transcription_backlog_candidates()` — that feeds the *local*
+Whisper script (WO-136), run from a residential IP where "the channel's
+own captions don't exist" says nothing about whether this app can still
+generate one from the audio track.
+
+**Write path**: a new `POST /internal/pages/{slug}/video-status`
+(`crud.record_youtube_video_status()`), not the existing `/internal/
+ingest`. Checked first, per the work order's own instruction:
+`ingest_resolution()` only ever creates/touches a `TranscriptVersion` `if
+segments:` is truthy, and a permanent failure has none — a zero-segment
+push through the ordinary path leaves no way to record *why*, and (for
+an already-existing empty-content default version) dedupes by content
+hash before ever reaching the warnings field, so even a same-shape
+re-push can't update it. The new endpoint appends (never replaces) to
+`video_warnings`/`transcript_warnings`, deduped, creating an
+empty-content default `TranscriptVersion` only if the page has none yet.
+
+**The daily script** (`scripts/fetch_youtube_transcripts.py`) now runs a
+zero-rate-limit-cost yt-dlp metadata precheck
+(`YouTubeAssetFinder.check_permanent_failure()`, the same `_extract_
+info()`/`_is_permanently_gone()` seam `resolve_video_id()` itself uses)
+BEFORE every real transcript request; a confirmed permanent transcript
+failure skips the request entirely and records the marker. A confirmed
+embed-disabled-only result records the video_warnings marker but does
+**not** skip the fetch — a real, confirmed-live case
+(`meeting-cccc7f`/`5IoXmnqr72Y`) has real automatic captions despite
+`playable_in_embed: False`, so embedding restriction and caption
+availability are independent facts. If the precheck comes back clean but
+the real `youtube-transcript-api` fetch still raises `TranscriptsDisabled`
+/ `VideoUnavailable` / `VideoUnplayable` (a different InnerTube recipe
+than yt-dlp, so it can catch what the precheck missed), that's treated
+the same way — matched by exception class name, with a `reason`-text
+transient guard (`"will begin in"`) so a scheduled-but-not-yet-live
+stream is never mismarked. A real rate-limit/`IpBlocked` signal is
+untouched — still aborts the whole run, exactly as before.
+
+**app/platforms/youtube.py** also gained the same markers at resolve
+time (`_extract_info()` now reads yt-dlp's already-fetched
+`playable_in_embed`/`subtitles`/`automatic_captions` fields at zero extra
+request cost), and a `_is_permanently_gone()` classifier distinguishing a
+genuinely-gone video from the existing generic "YouTube is blocking us"
+degrade path — both matched against **real, live-confirmed** yt-dlp
+error text (not invented): `"This video has been removed by the
+uploader"`, `"Private video. If the owner..."`, vs. the transient
+`"This live event will begin in ..."`, which must never be marked
+permanent.
+
+**Live verification, 2026-09-09**: a fresh `export_meeting_inventory.py
+--source export` (6,569 pages) found **96** YouTube-video pages with no
+transcript and zero warnings (grown from the 81 CLAUDE.md/task intro
+cited hours earlier — continuous ingestion). A read-only yt-dlp metadata
+check (`_wo135_probe.py`, not checked in) against all 96 real videos:
+
+| Outcome | Count |
+|---|---|
+| `captions_disabled` (zero subtitles + zero automatic_captions) | 26 |
+| `video_unavailable`, genuinely removed/private | 9 |
+| `video_unavailable`-shaped but actually a different bug (see `BACKLOG.md`'s new "Open bugs" entry — `embed/live_stream`/`embed/videoseries`/a truncated-id match, not a real removed video) — deliberately excluded from marking | 3 |
+| transient (scheduled livestream not yet started) — correctly left unmarked | 3 |
+| `embed_disabled` but has real captions — video_warnings only, stays a normal fetch candidate | 1 |
+| no known permanent-failure signal — genuinely untried, real captions available | 54 |
+
+**These counts are a projection, not a completed backfill** — the write
+path is the new endpoint above, which per the work order's own
+instruction only gets exercised **after this PR is merged and deployed**
+(deploys are manual, `render.yaml`'s `autoDeploy: false`). No separate
+one-off backfill script is needed: `scripts/fetch_youtube_transcripts.py`
+IS the backfill — its very next scheduled run, once the code is live,
+will precheck all 96 currently-queued pages and mark the permanent ones
+in the same pass it fetches the 54-55 genuinely-fetchable ones. See
+`BACKLOG.md`'s WO-131 `[WAIT]` entry for what's still gated on the
+separate IP-block cooldown.
+
+**Tests**: 2 new cases in `tests/test_transcription_jobs.py` (the
+`_has_good_transcript()`/`_classify_page_outcome()`/`record_youtube_
+video_status()` family, real markers, real predicate agreement — same
+shape as the existing garbled/hallucinated/truncation tests), 10 in
+`tests/test_youtube.py` (real confirmed video ids/error text where found
+— `xA_MRdCBaF4` Salt Lake City UT for captions-disabled,
+`5IoXmnqr72Y`/`meeting-cccc7f` for embed-disabled-with-real-captions,
+`_RZBcYEbQr4`/`VGCR9XxsIVw`/`Eh1JO9zT_u0` for removed/private,
+`6I6Mk2SlgaI` for the transient scheduled-live guard), 6 in
+`tests/test_fetch_youtube_transcripts.py` (classification +
+`process_one()` integration, including the embed-disabled-doesn't-skip-
+fetch case). Full suite: 2821 passed, 15 skipped. All 4 CI gates green
+locally (`ruff check`, `ruff format --check`, `python -m pytest`,
+`alembic check` for both `archive/` and `app/` — no model/schema change
+was needed, both JSON columns already existed).
+
 ## WO-132 · Resolved WO-123's 4 second-wave sweep conflicts live, caught a 3/4 wrong-guess rate, pinned the first-wave sweep's 27 Granicus/Legistar hosts [Done 2026-09-09]
 
 **The 4 conflicts WO-123 left in `tenant_overrides_conflicts.csv`,

@@ -16,6 +16,7 @@ import aiohttp
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from fetch_youtube_transcripts import (  # noqa: E402
+    _classify_transcript_api_failure,
     _is_rate_limit_signal,
     _restrict_to_slugs,
     process_one,
@@ -135,6 +136,77 @@ def test_is_rate_limit_signal_false_for_ordinary_per_video_failures():
     assert not _is_rate_limit_signal(RuntimeError("ingest failed (500)"))
 
 
+def test_classify_transcript_api_failure_maps_confirmed_permanent_exceptions():
+    # WO-135, 2026-09-09: real, confirmed-live counts from this module's
+    # own top docstring (8 TranscriptsDisabled / 4 VideoUnplayable / 3
+    # VideoUnavailable in the first 15 real permanent failures). Synthetic
+    # stand-in exception classes, same convention as
+    # test_is_rate_limit_signal_true_for_request_blocked_and_subclasses
+    # above -- matched by class name so this stays testable without
+    # youtube-transcript-api installed.
+    from app.platforms.youtube import (
+        YOUTUBE_CAPTIONS_DISABLED_MARKER,
+        YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
+    )
+
+    class TranscriptsDisabled(Exception):
+        pass
+
+    class VideoUnavailable(Exception):
+        pass
+
+    class VideoUnplayable(Exception):
+        def __init__(self, reason):
+            self.reason = reason
+            super().__init__(
+                f"The video is unplayable for the following reason: {reason}"
+            )
+
+    assert (
+        _classify_transcript_api_failure(TranscriptsDisabled("abc"))
+        == YOUTUBE_CAPTIONS_DISABLED_MARKER
+    )
+    assert (
+        _classify_transcript_api_failure(VideoUnavailable("abc"))
+        == YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+    )
+    assert (
+        _classify_transcript_api_failure(
+            VideoUnplayable("Sign in to confirm you are not a bot")
+        )
+        == YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+    )
+
+
+def test_classify_transcript_api_failure_does_not_flag_scheduled_live_event():
+    # Real, confirmed-live VideoUnplayable `reason` text (2026-09-09, see
+    # this module's own top docstring) for a scheduled-but-not-yet-live
+    # stream -- must NOT be treated as permanent (the same video resolves
+    # fine once it starts).
+    class VideoUnplayable(Exception):
+        def __init__(self, reason):
+            self.reason = reason
+            super().__init__(
+                f"The video is unplayable for the following reason: {reason}"
+            )
+
+    assert (
+        _classify_transcript_api_failure(
+            VideoUnplayable("This live event will begin in a few moments.")
+        )
+        is None
+    )
+
+
+def test_classify_transcript_api_failure_ignores_language_mismatch():
+    # NoTranscriptFound means captions exist in some OTHER language --
+    # a different, already-handled outcome, not a permanent failure.
+    class NoTranscriptFound(Exception):
+        pass
+
+    assert _classify_transcript_api_failure(NoTranscriptFound("no en track")) is None
+
+
 class _FakePostResponse:
     def __init__(self, json_body):
         self._json_body = json_body
@@ -180,6 +252,14 @@ async def test_process_one_promotes_after_a_successful_push(monkeypatch):
     # explicitly follow up with POST /internal/transcript-version/promote.
     base = "https://archive.example.com"
     monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    # WO-135's precheck (a real yt-dlp metadata call) would otherwise run
+    # for real against this test's fake video id -- stub it clean/healthy
+    # so this test still isolates only the promote-after-push behavior it
+    # was written for.
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.YouTubeAssetFinder.check_permanent_failure",
+        lambda video_id: (None, None),
+    )
     monkeypatch.setattr(
         "fetch_youtube_transcripts.fetch_transcript",
         lambda video_id: ([{"start": 0.0, "end": 1.0, "text": "hello"}], "en"),
@@ -237,6 +317,10 @@ async def test_process_one_skips_promote_when_ingest_had_no_segments(monkeypatch
     base = "https://archive.example.com"
     monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
     monkeypatch.setattr(
+        "fetch_youtube_transcripts.YouTubeAssetFinder.check_permanent_failure",
+        lambda video_id: (None, None),
+    )
+    monkeypatch.setattr(
         "fetch_youtube_transcripts.fetch_transcript",
         lambda video_id: ([{"start": 0.0, "end": 1.0, "text": "hello"}], "en"),
     )
@@ -262,6 +346,172 @@ async def test_process_one_skips_promote_when_ingest_had_no_segments(monkeypatch
     assert result["status"] == "ingested"
     assert "(promoted to default)" not in result["detail"]
     assert [url for url, _body in calls] == [f"{base}/internal/ingest"]
+
+
+async def test_process_one_skips_via_precheck_without_calling_fetch_transcript(
+    monkeypatch,
+):
+    # WO-135, 2026-09-09: the metadata-only precheck confirms a permanent
+    # failure BEFORE any real (rate-limited) transcript request -- assert
+    # fetch_transcript() is never even called, and the marker is recorded
+    # via POST /internal/pages/{slug}/video-status rather than
+    # /internal/ingest (see record_youtube_video_status()'s docstring for
+    # why that route can't do this).
+    from app.platforms.youtube import YOUTUBE_CAPTIONS_DISABLED_MARKER
+
+    base = "https://archive.example.com"
+    monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.YouTubeAssetFinder.check_permanent_failure",
+        lambda video_id: (YOUTUBE_CAPTIONS_DISABLED_MARKER, None),
+    )
+
+    def _unexpected_fetch(video_id):
+        raise AssertionError(
+            "fetch_transcript() must not be called after a precheck hit"
+        )
+
+    monkeypatch.setattr("fetch_youtube_transcripts.fetch_transcript", _unexpected_fetch)
+    page = {
+        "slug": "captions-disabled-meeting",
+        "platform": "youtube",
+        "external_id": "youtube:captions-disabled",
+        "source_url_normalized": "https://www.youtube.com/watch?v=CCCCCCCCCCC",
+        "video_url": "https://www.youtube.com/embed/CCCCCCCCCCC",
+    }
+    routes = {
+        f"{base}/internal/pages/captions-disabled-meeting/video-status": {
+            "slug": "captions-disabled-meeting",
+            "page_id": 1,
+            "version_id": 99,
+        },
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with _mock_post(routes) as calls:
+            result = await process_one(session, page, dry_run=False)
+
+    assert result["status"] == "skipped"
+    assert "will never be re-queued" in result["detail"]
+    assert calls == [
+        (
+            f"{base}/internal/pages/captions-disabled-meeting/video-status",
+            {"transcript_marker": YOUTUBE_CAPTIONS_DISABLED_MARKER},
+        )
+    ]
+
+
+async def test_process_one_records_permanent_failure_from_real_fetch_exception(
+    monkeypatch,
+):
+    # The precheck can come back clean while the real youtube-transcript-api
+    # fetch still raises a confirmed-permanent exception (different
+    # InnerTube recipe than yt-dlp's -- see this module's own top
+    # docstring) -- that must ALSO be recorded and skipped, not just
+    # reported as an ordinary "failed".
+    from app.platforms.youtube import YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+
+    class VideoUnavailable(Exception):
+        pass
+
+    base = "https://archive.example.com"
+    monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.YouTubeAssetFinder.check_permanent_failure",
+        lambda video_id: (None, None),
+    )
+
+    def _raise(video_id):
+        raise VideoUnavailable("gone")
+
+    monkeypatch.setattr("fetch_youtube_transcripts.fetch_transcript", _raise)
+    page = {
+        "slug": "video-gone-meeting",
+        "platform": "youtube",
+        "external_id": "youtube:video-gone",
+        "source_url_normalized": "https://www.youtube.com/watch?v=DDDDDDDDDDD",
+        "video_url": "https://www.youtube.com/embed/DDDDDDDDDDD",
+    }
+    routes = {
+        f"{base}/internal/pages/video-gone-meeting/video-status": {
+            "slug": "video-gone-meeting",
+            "page_id": 2,
+            "version_id": 100,
+        },
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with _mock_post(routes) as calls:
+            result = await process_one(session, page, dry_run=False)
+
+    assert result["status"] == "skipped"
+    assert "will never be re-queued" in result["detail"]
+    assert calls == [
+        (
+            f"{base}/internal/pages/video-gone-meeting/video-status",
+            {"transcript_marker": YOUTUBE_VIDEO_UNAVAILABLE_MARKER},
+        )
+    ]
+
+
+async def test_process_one_records_embed_disabled_but_still_fetches_transcript(
+    monkeypatch,
+):
+    # Real, confirmed-live case found probing all 96 real no-transcript
+    # YouTube pages 2026-09-09 (video id 5IoXmnqr72Y): embedding disabled
+    # and captions disabled are independent facts -- this real page has
+    # real automatic_captions available despite playable_in_embed being
+    # False. A video_marker-only precheck result must record that marker
+    # for visibility but still proceed to the real transcript fetch below
+    # -- unlike a transcript_marker hit, which skips the fetch entirely.
+    from app.platforms.youtube import YOUTUBE_EMBED_DISABLED_MARKER
+
+    base = "https://archive.example.com"
+    monkeypatch.setattr("fetch_youtube_transcripts._base_url", lambda: base)
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.YouTubeAssetFinder.check_permanent_failure",
+        lambda video_id: (None, YOUTUBE_EMBED_DISABLED_MARKER),
+    )
+    monkeypatch.setattr(
+        "fetch_youtube_transcripts.fetch_transcript",
+        lambda video_id: ([{"start": 0.0, "end": 1.0, "text": "hello"}], "en"),
+    )
+    page = {
+        "slug": "embed-disabled-meeting",
+        "platform": "youtube",
+        "external_id": "youtube:embed-disabled",
+        "source_url_normalized": "https://www.youtube.com/watch?v=5IoXmnqr72Y",
+        "video_url": "https://www.youtube.com/embed/5IoXmnqr72Y",
+    }
+    routes = {
+        f"{base}/internal/pages/embed-disabled-meeting/video-status": {
+            "slug": "embed-disabled-meeting",
+            "page_id": 3,
+            "version_id": None,
+        },
+        f"{base}/internal/ingest": {
+            "slug": "embed-disabled-meeting",
+            "url": "/m/embed-disabled-meeting",
+            "version_id": 200,
+        },
+        f"{base}/internal/transcript-version/promote": {
+            "slug": "embed-disabled-meeting",
+            "promoted_version_id": 200,
+        },
+    }
+
+    async with aiohttp.ClientSession() as session:
+        with _mock_post(routes) as calls:
+            result = await process_one(session, page, dry_run=False)
+
+    assert result["status"] == "ingested"
+    urls_called = [url for url, _body in calls]
+    assert urls_called == [
+        f"{base}/internal/pages/embed-disabled-meeting/video-status",
+        f"{base}/internal/ingest",
+        f"{base}/internal/transcript-version/promote",
+    ]
+    assert calls[0][1] == {"video_marker": YOUTUBE_EMBED_DISABLED_MARKER}
 
 
 def test_restrict_to_slugs_no_file_returns_all_pages():

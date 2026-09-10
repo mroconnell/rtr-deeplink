@@ -172,6 +172,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (95)
   [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
   [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
+  `YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -1976,6 +1977,43 @@ of human step they need.
     truncation.
   - **History**: WO-25 (`BACKLOG_DONE.md`).
 
+### `YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own special-purpose embed tokens as if they were real video ids `[NEEDS-AUDIT]`
+
+- **Issue**: WO-135 (2026-09-09) probing yt-dlp against all 96 real
+  no-transcript YouTube Archive pages found 3 whose stored `video_url`
+  isn't a real 11-character video id at all: `bamberg-county-sc-livestream`
+  (`youtube.com/embed/live_stream` — YouTube's "this channel's current
+  livestream" embed shortcut), `daviess-county-ky-fiscal-court-...`
+  (`youtube.com/embed/videoseries` — a whole-playlist embed, no single
+  video), and `mount-vernon-tx` (source URL
+  `youtube.com/embed/livestreaming?rel=0` — `_VIDEO_ID_RE`'s
+  `{11}`-character regex truncates this to the nonsense id
+  `livestreami`, since `live_stream`/`videoseries` are exactly 11
+  characters and `livestreaming` is 13). yt-dlp naturally raises "This
+  video is unavailable" against each fake id, which the WO-135 permanent-
+  failure classifier would otherwise mark `YouTube: video is unavailable
+  (removed or private)` — technically true in effect but wrong about why,
+  so these 3 were deliberately excluded from that backfill rather than
+  mismarked.
+- **Impact**: 3 real pages whose actual video (or channel livestream) is
+  genuinely reachable never get a transcript, because nothing here can
+  resolve a real single video from a live-stream/playlist embed shape.
+  Likely not limited to these 3 — any jurisdiction whose government
+  channel embeds `live_stream`/`videoseries` directly (rather than a
+  specific archived video) would hit the same bug.
+- **Next action**: decide the right resolution for each shape —
+  `embed/live_stream` needs the channel's *current* live video id (a
+  different yt-dlp/API call than a fixed video id), `embed/videoseries`
+  needs the playlist's most relevant real video, and `_VIDEO_ID_RE`
+  should stop matching a truncated prefix of a longer non-id token in the
+  first place (e.g. require a word boundary or exact-length match rather
+  than a bare `{11}` capture).
+- **Constraint**: don't guess which real video these should point to —
+  verify against the real channel/playlist first, per CLAUDE.md's "test
+  against a real, live URL first" rule.
+- **History**: found 2026-09-09 building WO-135's captions/embed/
+  video-unavailable markers (`BACKLOG_DONE.md`).
+
 ### WO-34's roll-up calibration gap: a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
 
 - **Issue**: `_looks_like_rollup()`'s roll-up detector threshold (0.401) was
@@ -2177,25 +2215,30 @@ actionability sections above.
   survived both of `fetch_youtube_transcripts.py`'s built-in backoff
   retries (30s, 120s) — see `docs/investigations/youtube_429_block.md`.
   Per that script's own design, the whole run then aborted rather than
-  continuing to poll. 0 transcripts were pushed.
-- **Impact**: 63 candidates (62 never attempted + the one that hit the
-  block) still want a transcript fetch. Given the investigation doc's
-  own data (a 9-minute-idle retry once still failed 10/10 on the same
-  block), retrying minutes later would very likely just extend whatever
-  is causing it — WO-131 deliberately did not re-run today.
-- **Next action**: from this Mac, re-run
-  `python scripts/fetch_youtube_transcripts.py --slugs-file
-  <corrected list>` after a real cooldown (hours, not minutes — no
-  reliable duration is known; see the investigation doc), excluding the
-  15 slugs above (their failures are per-video, not block-related, and
-  won't succeed on retry). The corrected 78/63-slug lists WO-131 built
-  aren't checked in (derived data, easily regenerated) — rebuild them
-  with `scripts/export_meeting_inventory.py --source export` plus this
-  entry's filter criteria, or ask the session that ran WO-131.
+  continuing to poll. 0 transcripts were pushed. WO-135 (same day) closed
+  the *reason* this kept happening every day: those 15 (and every other
+  page hitting the same 3 exception types) now get a permanent marker
+  (`YouTube: captions are disabled by the channel` /
+  `YouTube: video is unavailable (removed or private)`) recorded on the
+  page and are never re-queued again — see `BACKLOG_DONE.md`. What's
+  still open here is narrower: the IP-block cooldown itself, which no
+  code change can skip.
+- **Impact**: once WO-135 is deployed, only genuinely-untried or
+  genuinely-transient (scheduled-but-not-live) candidates keep re-
+  appearing in the queue — the 15 known-permanent failures drop out on
+  the next run. The remaining wait is for the block to clear before the
+  62-never-attempted (plus the one that hit the block) can even be tried.
+- **Next action**: after WO-135 is merged **and deployed** (deploys are
+  manual — check before assuming this landed), from this Mac run
+  `python scripts/fetch_youtube_transcripts.py` with no `--slugs-file` at
+  all once a real cooldown has passed (hours, not minutes — no reliable
+  duration is known; see the investigation doc) — the daily script's own
+  `/internal/transcript-wanted` queue now excludes the 15 automatically,
+  so the old corrected-slug-list workaround is no longer needed.
 - **Constraint**: don't run a bulk sweep just to test whether the block
   has cleared — a single isolated fetch is enough signal, per the
   investigation doc.
-- **History**: WO-131, `BACKLOG_DONE.md`.
+- **History**: WO-131, WO-135, `BACKLOG_DONE.md`.
 
 ### ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred `[WAIT]`
 

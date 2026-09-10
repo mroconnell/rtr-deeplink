@@ -23,6 +23,53 @@ _VIDEO_ID_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})"
 )
 
+# Permanent-failure markers (WO-135, 2026-09-09) -- confirmed via a real
+# yt-dlp metadata check (`_extract_info()` below) against the 96 real
+# Archive YouTube pages with no transcript at the time. Unlike every other
+# transcript_warnings/video_warnings message in this file, these are exact
+# strings, not free text: scripts/fetch_youtube_transcripts.py and
+# archive/db/crud.py's record_youtube_video_status() key on them verbatim
+# (as does WO-136, the page treatment for a page carrying one), and a
+# human reading either warnings list can tell "not fetched yet" apart from
+# "confirmed, this will never succeed". Independently defined (not
+# imported) in archive/db/crud.py and app/db/outcomes.py -- same
+# duplicate-with-a-cross-reference-comment convention this file's own
+# is_likely_garbled()/_GARBLED_MARKER pair already uses across the
+# app/archive boundary. Keep all three in sync if the wording ever
+# changes.
+YOUTUBE_CAPTIONS_DISABLED_MARKER = "YouTube: captions are disabled by the channel"
+YOUTUBE_EMBED_DISABLED_MARKER = (
+    "YouTube: embedding is disabled by the channel; watch on YouTube"
+)
+YOUTUBE_VIDEO_UNAVAILABLE_MARKER = "YouTube: video is unavailable (removed or private)"
+
+# Real yt-dlp error-message signatures, confirmed live 2026-09-09 (WO-135)
+# by running a metadata-only extract against all 96 real YouTube-backed
+# Archive pages that had no transcript at the time. `_extract_info()`
+# raises the identical `DownloadError` for a genuinely-gone video
+# ("Private video. If the owner...", "This video has been removed by the
+# uploader", "This video is unavailable") as for a scheduled livestream
+# that simply hasn't started yet ("This live event will begin in a few
+# moments." / "...in 11 days.") -- the second case is NOT a permanent
+# failure (the same video will resolve fine once it starts) and must
+# never be marked as unavailable. `_TRANSIENT` is checked first and wins
+# on overlap, so a phrasing this hasn't seen yet degrades to the existing
+# generic "blocked" message (safe: costs one more retry) rather than
+# risking a real, still-pending meeting being marked permanently gone.
+_YOUTUBE_PERMANENTLY_GONE_SIGNATURES = (
+    "private video",
+    "this video has been removed",
+    "this video is unavailable",
+)
+_YOUTUBE_TRANSIENT_SIGNATURES = ("will begin in",)
+
+
+def _is_permanently_gone(exc: BaseException) -> bool:
+    message = str(exc).lower()
+    if any(sig in message for sig in _YOUTUBE_TRANSIENT_SIGNATURES):
+        return False
+    return any(sig in message for sig in _YOUTUBE_PERMANENTLY_GONE_SIGNATURES)
+
 
 class YouTubeAssetFinder(AssetFinder):
     """Resolves a standalone YouTube URL -- or a video id handed to it
@@ -86,7 +133,37 @@ class YouTubeAssetFinder(AssetFinder):
 
         try:
             info = await asyncio.to_thread(cls._extract_info, video_id)
-        except yt_dlp.utils.YoutubeDLError:
+        except yt_dlp.utils.YoutubeDLError as e:
+            if _is_permanently_gone(e):
+                # WO-135, 2026-09-09: a real, confirmed-gone video (removed
+                # by the uploader, or private) is a different, permanent
+                # answer from "YouTube is blocking us right now" below --
+                # see _is_permanently_gone()'s own docstring for the real
+                # yt-dlp message shapes this was verified against. Getting
+                # this right matters specifically because
+                # scripts/fetch_youtube_transcripts.py and
+                # archive/db/crud.py key on the exact
+                # YOUTUBE_VIDEO_UNAVAILABLE_MARKER text to stop re-queuing
+                # this page forever -- misclassifying a transient failure
+                # (a scheduled-but-not-yet-live stream) as this would
+                # wrongly bury a meeting that will genuinely resolve later.
+                logger.info(
+                    "YouTube video %s is permanently unavailable: %s",
+                    video_id,
+                    str(e)[:200],
+                )
+                return ResolvedMeeting(
+                    platform=cls.platform_name,
+                    source_url=source_url,
+                    external_id=f"youtube:{video_id}",
+                    video_url=video_url,
+                    video_format="youtube",
+                    video_warnings=[
+                        "This video is no longer available on YouTube "
+                        "(removed or private)."
+                    ],
+                    transcript_warnings=[YOUTUBE_VIDEO_UNAVAILABLE_MARKER],
+                )
             # Real production incident, 2026-08-09: YouTube's anti-bot
             # check ("Sign in to confirm you're not a bot") blocks
             # Render's server IP outright, regardless of which internal
@@ -195,7 +272,30 @@ class YouTubeAssetFinder(AssetFinder):
                         "bug on our end) — treat it as approximate."
                     )
         if not segments:
-            transcript_warnings.append("No captions found on this video.")
+            # WO-135, 2026-09-09: `info["no_captions_at_all"]` (set in
+            # _extract_info() below) is True only when yt-dlp's raw
+            # `subtitles`/`automatic_captions` are BOTH completely empty --
+            # no caption track in ANY language, not just none in
+            # TARGET_LANGUAGE. That is the real, channel-level "captions
+            # are disabled" signal (matching youtube-transcript-api's own
+            # TranscriptsDisabled, confirmed by scripts/
+            # fetch_youtube_transcripts.py's own precheck); a video with
+            # captions in some other language only still hits the more
+            # generic message below, since captions clearly aren't
+            # disabled there.
+            if info.get("no_captions_at_all"):
+                transcript_warnings.append(YOUTUBE_CAPTIONS_DISABLED_MARKER)
+            else:
+                transcript_warnings.append("No captions found on this video.")
+
+        # WO-135, 2026-09-09: `playable_in_embed` is yt-dlp's own signal for
+        # whether the uploader has restricted this video to be unplayable
+        # inside a third-party iframe -- exactly what our own player.js
+        # embed does. Explicitly `False`, not falsy/missing: yt-dlp omits
+        # the key entirely for some extractions rather than asserting True,
+        # and "unknown" must not be treated as "disabled".
+        if info.get("playable_in_embed") is False:
+            video_warnings.append(YOUTUBE_EMBED_DISABLED_MARKER)
 
         return ResolvedMeeting(
             platform=cls.platform_name,
@@ -211,6 +311,49 @@ class YouTubeAssetFinder(AssetFinder):
             video_warnings=video_warnings,
             transcript_warnings=transcript_warnings,
         )
+
+    @classmethod
+    def check_permanent_failure(
+        cls, video_id: str
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Returns (transcript_marker, video_marker) -- either or both
+        `None` when nothing permanent is confirmed. WO-135, 2026-09-09:
+        lets a caller check BEFORE attempting a real transcript fetch
+        (scripts/fetch_youtube_transcripts.py) whether a video is a known
+        permanent failure, reusing the exact same metadata-only yt-dlp
+        extraction (`_extract_info()`, `skip_download=True`) and
+        classification (`_is_permanently_gone()`) resolve_video_id()
+        itself uses above -- one source of truth for what counts as
+        "permanent", and zero extra request/rate-limit cost beyond the
+        single metadata call already needed either way (no captions are
+        actually downloaded here).
+
+        Synchronous, like `_extract_info()` -- callers already running
+        inside an event loop should wrap this in `asyncio.to_thread()`
+        (resolve_video_id() does; a plain sequential script like
+        fetch_youtube_transcripts.py can call it directly, same as it
+        already does for the synchronous youtube-transcript-api calls).
+        """
+        try:
+            info = cls._extract_info(video_id)
+        except yt_dlp.utils.YoutubeDLError as e:
+            if _is_permanently_gone(e):
+                return YOUTUBE_VIDEO_UNAVAILABLE_MARKER, None
+            # Ambiguous or a server-IP block signal -- let the real fetch
+            # attempt (or the resolver's own resolve()) make the call
+            # rather than guessing here.
+            return None, None
+        if not info:
+            return None, None
+        transcript_marker = (
+            YOUTUBE_CAPTIONS_DISABLED_MARKER if info.get("no_captions_at_all") else None
+        )
+        video_marker = (
+            YOUTUBE_EMBED_DISABLED_MARKER
+            if info.get("playable_in_embed") is False
+            else None
+        )
+        return transcript_marker, video_marker
 
     @staticmethod
     def _jurisdiction(uploader: Optional[str]) -> Optional[str]:
@@ -326,6 +469,17 @@ class YouTubeAssetFinder(AssetFinder):
                 "uploader": info.get("uploader"),
                 "upload_date": info.get("upload_date"),
                 "release_date": info.get("release_date"),
+                # Both read at zero extra request cost (WO-135) -- this is
+                # the same metadata-only extract_info() call already made
+                # for title/date/captions above, not a second network hit.
+                "playable_in_embed": info.get("playable_in_embed"),
+                # True only when NEITHER manual nor auto-generated captions
+                # exist in ANY language -- see resolve_video_id()'s own
+                # comment on why that's the real "channel disabled
+                # captions" signal, distinct from "no TARGET_LANGUAGE
+                # track".
+                "no_captions_at_all": not (info.get("subtitles") or {})
+                and not (info.get("automatic_captions") or {}),
             }
             chosen = YouTubeAssetFinder._pick_caption_track(ydl, info)
             if chosen:
