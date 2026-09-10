@@ -135,7 +135,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (109)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (110)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
