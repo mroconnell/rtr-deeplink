@@ -105,6 +105,24 @@ Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (7 new pins:
 `rtr-business`); `rtr-business/research/wo153_methods_section.md` (full
 write-up with every row's evidence) and its `wo153_part*` dry-run/
 applied CSVs.
+## The four flagged county pages replaced with real commission meetings where one exists, then deleted [Done 2026-09-10]
+
+WO-149's hand audit flagged four ingested county pages as not meetings. Ryan asked for a standard public-agency meeting for each county first, then deletion of all four.
+
+**What was found.** All four flagged videos sat on state-level channels, not the county's (Nebraska Association of Counties, Utah Association of Counties, PA Fish and Boat Commission, Missouri Ethics Commission). A YouTube search per county found the county's own channel for three of them; Adams County, NE has none (only candidate forums on a public-access station).
+
+| County | Replacement | Length | Result |
+|---|---|---|---|
+| Osage County, MO | Commission Meeting Dec 31 (2020), own channel | 17 min | captions, page live; backfilled to `us:county:29151` |
+| Perry County, PA | Perry Commissioners Mtg. 3-30-2020, own channel | 22 min | captions, page live |
+| Millard County, UT | Commission Meeting Live Stream 11-18-2025, own channel (live-stream tab) | 18 min | captions, page live |
+| Adams County, NE | none found | | deleted only; the county stays `meeting-without-video` in the research file until a real source appears |
+
+Picks followed Ryan's rule of the day: prefer a complete meeting between 9 and 40 minutes, else the shortest available; probed before ingest, all three accepted. Per-video pins written for all three. The four flagged pages were then deleted through the admin endpoint.
+
+**Caution.** Osage's and Perry's replacements are 2020 meetings, the newest short complete ones on those channels; newer meetings there run two to three hours.
+
+**Deploy status.** Pages are live now; the three pins reach production on the next deploy.
 
 ## Three channels settled from their meeting captions, Yucaipa given a real council meeting [Done 2026-09-10]
 

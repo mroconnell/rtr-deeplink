@@ -2685,3 +2685,6 @@ www.youtube.com,channel=@cityofsheridan1890,us:place:0869645,fallback,ryan_state
 www.youtube.com,JqON_-LqX4Y,us:place:0869645,fallback,ryan_stated,"Sheridan, CO -- per-video pin (page stored no channel); same evidence"
 www.youtube.com,channel=@villageofnorthfield,us:place:1753663,fallback,ryan_stated,"Northfield, IL -- own channel; state settled from the meeting captions (captions name Cook County, Illinois, Willow Road); Ryan asked for the caption check 2026-09-10"
 www.youtube.com,HYFm0ASULYo,us:place:1753663,fallback,ryan_stated,"Northfield, IL -- per-video pin (page stored no channel); same evidence"
+www.youtube.com,youtube:kGepCh07dg4,us:county:29151,fallback,ryan_flagged_replacement_2026-09-10,"Osage County, MO -- WO-134 confirmed hit, gov_id=us:county:29151"
+www.youtube.com,youtube:JCiKfYUACv4,us:county:42099,fallback,ryan_flagged_replacement_2026-09-10,"Perry County, PA -- WO-134 confirmed hit, gov_id=us:county:42099"
+www.youtube.com,youtube:LxGksltTzbw,us:county:49027,fallback,ryan_flagged_replacement_2026-09-10,"Millard County, UT -- WO-134 confirmed hit, gov_id=us:county:49027"
