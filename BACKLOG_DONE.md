@@ -1,5 +1,119 @@
 # Backlog — done
 
+## WO-176: own-domain path and feed pilot for ProudCity, WordPress, CivicLive and OpenCities, sitemap first, on 600 no-platform-link governments [Done 2026-09-10]
+
+WO-154 found that only CivicPlus has a reliably guessable meetings path
+(`/AgendaCenter`). Ryan wanted to know if any other website builder
+also has a guessable path, because a sweep that switches between
+several builders never has to wait on one host's rate limit — it can
+always move to a different host. This pilot tested four builders
+(ProudCity, WordPress, CivicLive, OpenCities) plus a generic list of
+paths and feeds, on 600 real governments whose site loaded fine but
+had no meeting link a plain fetch could see.
+
+**What was tried.** For 600 governments (WO-154's own 238 plus a fresh
+random 362, all from the same pool), we first checked the homepage to
+learn which company built the site, then tried a list of common paths
+in order — a sitemap first (a sitemap is a page that lists every other
+page on a site, so it can point straight at the meetings page instead
+of guessing), then `/calendar`, `/events`, `/minutes`, `/agendas`,
+`/archive`, and a few more — stopping as soon as one produced a real
+meetings list. "Real" required actual dates and a real agenda or video
+link, not just a page that loaded — a wrong guess can still return a
+real-looking page (WO-154 found this on Revize), so we checked for
+real content every time. A second, smaller pass, `/?s=agenda`
+(WordPress's own search box), was added after the first pass showed
+WordPress sites often ran out of allowed tries before ever reaching a
+WordPress-specific guess.
+
+**Result: which path answered first, by builder.**
+
+| Builder | Sites | Sitemap | Calendar/events/archive | Minutes/agendas | Feed | Builder's own guess | None |
+|---|---|---|---|---|---|---|---|
+| CivicPlus | 23 | 7 | 2 | 0 | 0 | 0 | 14 |
+| Revize | 32 | 0 | 0 | 0 | 0 | 0 | 32 |
+| OpenCities | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
+| Town Web | 13 | 0 | 2 | 0 | 0 | 0 | 11 |
+| WordPress | 175 | 0 | 25 | 14 | 4 | 35 | 97 |
+| Not recognised | 356 | 4 | 8 | 13 | 0 | 0 | 331 |
+
+**Result: what happened to all 600, start to finish.**
+
+| Stage | Count of 600 |
+|---|---|
+| Builder recognised | 244 |
+| Real meetings list or video link found | 119 |
+| A specific meeting/video link could be identified from that page | 14 |
+| Real video, captions found, page live now | 5 |
+| Real meeting, confirmed no video | 1 |
+| Already had a page | 4 |
+| Checked, found nothing usable | 4 |
+| Meetings list found, but no video link on that page itself | 105 |
+| Nothing found at all, or blocked | 481 |
+
+WordPress was the clear winner. Its own search box, `/?s=agenda`, found
+35 more real meetings lists on the 137 WordPress sites where the whole
+generic list above had already found nothing (25.5% of those 137). Two
+of the hits were checked by hand: both were real WordPress search
+results with real board-meeting posts, not the search page just
+echoing the word "agenda" back. Counting both passes together,
+WordPress found a real meetings list on 73 of 175 sites (41.7%) — the
+best rate of any builder measured so far, CivicPlus included.
+
+CivicLive's one known meetings path (from an earlier pilot, confirmed
+on a city in Washington State) was tested on the only other real
+CivicLive government on file, in Massachusetts, and it did not work
+there — same as Revize, each CivicLive site appears to pick its own
+path. ProudCity and CivicLive turned up zero fresh examples in this
+random sample of 600 — both are rare enough builders that a random
+sample won't reliably contain any; testing them needs a hand-picked
+list of known examples instead.
+
+**Caution.** Of the 119 sites where a real meetings list was found,
+105 were a list page with no video link visible ON that page itself —
+the video might be one click deeper, on each meeting's own page, which
+this pilot did not follow into. We deliberately did NOT mark those 105
+as "confirmed no video" in the coverage file — finding a meetings list
+is not the same as confirming there is no video, and marking it that
+way would have been a guess. Two governments (Spencer County and
+Shelby County, both Indiana) accidentally matched the same unrelated
+statewide video link picked up from a shared state webpage — a real
+mistake in how this pilot picks links off a page, flagged below, not
+something wrong with the video itself.
+
+**Recommendation.** Run WordPress's `/?s=agenda` at scale now.
+WordPress is the single most common builder in the leftover pool (175
+of 600, more than CivicPlus and Revize combined), and 41.7% is a real,
+checked-by-hand rate. It is also cheap: a WordPress hit can take as
+few as 2 requests (homepage, then the search box), against roughly 14
+for a miss on the full generic list. Running it alongside the CivicPlus
+sweep already under way is worth doing — different hosts, so one
+never waits on the other. Revize, OpenCities, CivicLive, and ProudCity
+are not ready to run at scale from this pilot: Revize confirmed (again)
+that no path guess works there, and the other three simply did not
+turn up enough real examples in a random sample to trust a rate from.
+
+**Deploy status.** 5 real pages are live on the Archive right now —
+this needed no deploy, since sending a finished page to the Archive is
+a normal web request, not a code change. 4 pins were added so a shared
+video host (YouTube) points at the right government on the next
+ingest; those take effect after the next deploy of the resolver, same
+as any other pin. `cms_families.csv` and its field guide are data and
+documentation only — also no deploy needed.
+
+Files: `scripts/wo176_path_pilot.py` (new), `scripts/
+wo176_ingest_hits.py` (new), `app/utils/jurisdiction_data/
+cms_families.csv` (WordPress row added; CivicLive/Town Web rows
+updated), `docs/CMS_FAMILIES.md` (WordPress section added; CivicLive/
+Town Web sections updated), `scripts/cms_fingerprint.py` (WordPress
+detection rule added), `app/utils/jurisdiction_data/
+tenant_overrides.csv` (4 pins added);
+`~/Documents/rtr-business/research/wo176_pilot_report.csv` (600 rows),
+`wo176_path_stats.csv`, `wo176_confirmed_hits.csv`,
+`wo176_confirmed_hits_ingest_log.csv`, `wo176_apply_to_jc.py`,
+`jurisdiction_coverage.csv` (6 rows changed), `wo176_methods_section.md`
+(full write-up, pending promotion into `ENUMERATION_METHODS.md`).
+
 ## WO-170: pick a 9-to-40-minute meeting when the first one fails, else the shortest; 44 governments wrongly marked "queued" run for real [Done 2026-09-10]
 
 Two pieces of work, both requested by Ryan on 2026-09-10, building on

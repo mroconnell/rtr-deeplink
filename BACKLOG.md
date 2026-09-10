@@ -115,7 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (13)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (15)
+  WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
+  A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
@@ -560,6 +562,68 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### WordPress's own `/?s=agenda` search is a confirmed, cheap way to find a real meetings list at scale — run it beyond this pilot's 600 `[JUST-DO-IT]`
+
+- **Issue:** WO-176 (2026-09-10) measured `/?s=agenda` (WordPress's
+  built-in search box) on 137 real WordPress governments where a full
+  generic path/feed list had already found nothing: 35 more real
+  meetings lists (25.5%), each spot-checked against real WordPress
+  post/category markup, not just the search page echoing "agenda"
+  back. Combined with the generic list's own WordPress hits, that's
+  73/175 (41.7%) — the best confirmed rate of any CMS family so far.
+  This has only been run on 600 governments; the no-platform-link pool
+  has ~11,300 more.
+- **Impact:** WordPress is the single most common builder in that pool
+  (175/600 in this sample, more than CivicPlus + Revize combined), so
+  scaling this one path is likely the single biggest remaining
+  "guess a path" win available, bigger than the CivicPlus sweep
+  (WO-174) it's meant to interleave with.
+- **Next action:** run `scripts/wo176_path_pilot.py` (or a purpose-built
+  successor) against every no-platform-link government, WordPress
+  detection only, trying `/?s=agenda` directly (skip the rest of the
+  generic list once WordPress is recognised — it rarely answers first
+  for this family anyway per WO-176's own per-path table). Then extend
+  `scripts/wo176_ingest_hits.py`'s one-level listing scan to follow
+  into an individual search-result post, not just the search page
+  itself, since most `/?s=agenda` hits list agenda pages rather than
+  linking a video directly (see the next entry below — 105 of 176's
+  own 119 "found" rows never converted to a resolvable candidate for
+  exactly this reason).
+- **Constraint:** `/category/agendas` and `/category/meetings` were
+  tried on the same 137 sites and found zero — don't bother repeating
+  those two guesses at scale.
+- **History:** [Done 2026-09-10], `BACKLOG_DONE.md`.
+
+### A generic "scan the listing page for any platform link" step can pick up an unrelated statewide/shared link, not the government's own `[NEEDS-AUDIT]`
+
+- **Issue:** WO-176's ingest step (`scripts/wo176_ingest_hits.py`,
+  `_find_any_platform_link()`) fetches a listing page it found via
+  path/feed guessing and scans every link on it for a recognised video
+  platform, with no check that the link is actually specific to the
+  government being processed. Confirmed live 2026-09-10: two different
+  Indiana counties (Spencer County, Shelby County) both had their
+  listing page link to the exact same statewide `in.gov/fssa/ddars/...`
+  page, which itself linked to one shared YouTube video — neither
+  county's own meeting.
+- **Impact:** low blast radius today (WO-134's own dedup-by-video-id
+  caught the second occurrence and skipped it rather than ingesting a
+  duplicate/wrong page), but a future run that processes counties in a
+  different order, or that lacks that dedup check, could ingest a
+  shared statewide video under one county's own gov_id.
+- **Next action:** add a check to `_find_any_platform_link()` (or fold
+  it into `find_specific_platform_link()` in
+  `scripts/wo134_confirmed_hits_ingest.py`, since the same risk applies
+  there for any hop2_urls-derived link) that skips a link whose netloc
+  or path pattern looks like a shared statewide/regional aggregator
+  page rather than a per-government one — worth checking whether
+  `in.gov`, `.gov` state-portal subdomains, or similar shared hosts show
+  up elsewhere in the corpus before deciding the exact filter shape.
+- **Constraint:** don't just blocklist `in.gov` — Indiana counties'
+  real per-government pages often live ON `in.gov` subdomains too, so
+  the filter needs to distinguish a state-agency aggregator page from a
+  county's own page, not the domain alone.
+- **History:** `BACKLOG_DONE.md`'s WO-176 entry, 2026-09-10.
 
 ### `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so WO-170's "prefer 9-40 minutes, else shortest" video-picking rule has nothing to pick among there yet `[JUST-DO-IT]`
 
