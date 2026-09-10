@@ -1,5 +1,73 @@
 # Backlog — done
 
+## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
+
+Ryan asked why a batch of ~40 Granicus pages (all the newer
+`/player/clip/{id}` URL format, no `view_id`) archived as "Unknown
+Jurisdiction." Confirmed live: that page format has no jurisdiction
+text anywhere in its visible body, and the existing RSS-channel-title
+lookup can't fire without a `view_id`. But every Granicus page's own
+`<meta name="description">` follows the same template regardless of
+tenant type -- "Live and Recorded Public meetings of {meeting title}
+for {ORGANIZATION NAME}" -- confirmed live on 4 distinct real tenants:
+a water district (`sfwmd` → "South Florida Water Management
+District"), a transit authority (`rideuta` → "Utah Transit Authority
+(UTA)"), a council of governments (`scag` → "Southern California
+Association of Governments"), and an ordinary city (`pcbgov` →
+"Panama City Beach").
+
+**What was done.** Added a new fallback tier to `granicus.py`, tried
+only after page-text extraction and subdomain humanization both
+decline (never overriding the higher-trust RSS channel title when a
+`view_id` is present). Rejects a domain-shaped result the same way the
+RSS-title tier already does -- confirmed live that `lcd.granicus.com`'s
+own meta description echoes its own hostname ("...for
+lcd.granicus.com"), the identical misconfigured-customer shape already
+guarded against on that tenant's RSS title. Special districts still get
+no auto-assigned `gov_id` (by design -- no national table covers them),
+but now get their real name instead of a bare placeholder, which feeds
+the mint/pin worklist with something a human can act on. Fixture-backed
+regression tests added (extraction, domain-shaped rejection, priority
+vs. the RSS channel title); full suite (2920) and `ruff` clean. PR:
+"Granicus: extract organization name from meta description" (#857).
+
+## Fixed double-encoded diacritics in 5 gov-registry data files: 23 real government names [Done 2026-09-10]
+
+Found chasing Ryan's "why is `lacanadaflintridge-ca.granicus.com`
+Unknown Jurisdiction" question. `us_places.csv` stored the government's
+real name as "La CaÃ±ada Flintridge city" instead of "La Cañada
+Flintridge city" -- UTF-8 bytes for "ñ" decoded as Latin-1 and
+re-encoded. A separate same-day session (the shared-host pin pass, see
+"39 pages on bare YouTube and Vimeo hosts" below) independently found
+the same corruption and filed it in `BACKLOG.md` without fixing it;
+this session found 3 more affected rows they hadn't checked
+(`us_school_districts.csv`) and the same corruption duplicated in the
+older `counties.csv`/`places.csv` tables, for 23 unique names / 43
+total row fixes across 5 files (mostly Puerto Rico municipios --
+Bayamón, Mayagüez, Añasco, etc. -- plus Doña Ana County NM, Cañon City
+CO, Española NM, La Cañada Flintridge CA).
+
+**What was done.** A surgical byte-level repair (`line.encode("latin-1").
+decode("utf-8")` applied only to the corrupted characters, never
+rewriting the file's own CRLF line endings the way a naive line-by-line
+rewrite first did) -- row/line counts unchanged in every file, verified
+reversible and correct on every affected row. `pytest tests/
+test_gov_registry.py` (275) and the full suite (2917) both pass, `ruff`
+clean. PR: "Fix double-encoded diacritics in 5 gov-registry data files."
+
+**What's still open, filed in `BACKLOG.md`'s Open bugs.** The generator
+(`scripts/build_jurisdiction_data.py`)'s own blanket `.decode("latin-1")`
+on raw Census source files is the actual root cause and will re-corrupt
+the same rows (or any other UTF-8-sourced row not yet noticed) on a
+future regeneration -- not fixed here, needs per-row encoding detection.
+Separately: even with the table now correctly accented, a real
+government's own page text almost always spells its name WITHOUT the
+accent (confirmed on La Cañada Flintridge's own Granicus page: "La
+Canada Flintridge"), and `finalize_jurisdiction()`'s table validation
+requires an exact character match -- so this fix alone does not make
+that specific example auto-resolve. Filed separately since it's a
+different, riskier fix (touches heavily-tuned validation code).
+
 ## YouTube Atom-feed polling as a re-check trigger -- superseded by the video-to-calendar join [Superseded 2026-09-10]
 
 Filed 2026-08-26 under Growth, audience & discoverability; never built.
@@ -404,6 +472,7 @@ Render dashboard login for either `type: web` service — same pattern as
 the existing `/admin/schema-info`/`/internal/schema-info` endpoints, for
 deploy state instead of schema state. Doesn't cover the two `type: worker`
 transcription services, which run no HTTP server at all (PR #850).
+
 ## 39 pages on bare YouTube and Vimeo hosts keyed to their governments: 31 channel pins and 8 per-video pins, three off-mission pages deleted [Done 2026-09-10]
 
 Ryan's rule, stated today: nothing keys to a shared host (YouTube,
@@ -449,10 +518,18 @@ County judge), `@hamdenactionnow` (an advocacy group), and
 and Vimeo `1219645927` New Hope Borough), which is the dead-video class
 already filed under Needs a human.
 
-**Caution.** The Census places table spells three names with a
-double-encoded ñ ("CaÃ±on City", "La CaÃ±ada Flintridge", "EspaÃ±ola")
-and the counties table has 17 more; the display name on those pages is
-wrong until the table is fixed. Filed in `BACKLOG.md`.
+**Caution, now fixed.** The Census places table spelled three names
+with a double-encoded ñ ("CaÃ±on City", "La CaÃ±ada Flintridge",
+"EspaÃ±ola") and the counties table had 17 more, so the display name on
+pages keyed to those governments was wrong. A separate same-day session
+found the identical corruption independently (chasing why
+`lacanadaflintridge-ca.granicus.com` never resolved a gov_id) and fixed
+all 23 rows directly, plus 20 more across the older duplicate
+`counties.csv`/`places.csv` tables and `us_school_districts.csv` this
+pass's own count didn't cover — see "Fix double-encoded diacritics in 5
+gov-registry data files" below. The generator script's own root cause
+(a blanket Latin-1 decode of raw Census source files) is still open,
+filed in `BACKLOG.md`.
 
 **Deploy status.** The 39 pages are re-keyed in the database now. The
 pins reach new resolves only after the next deploy.
