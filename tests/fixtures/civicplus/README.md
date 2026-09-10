@@ -39,3 +39,29 @@ YouTube-channel-link bug fixed the same day: see `_is_real_video_link()`
 in `app/platforms/civicplus.py` and
 `test_real_desoto_listing_page_finds_zero_video_candidates` in
 `tests/test_civicplus.py`.
+
+**2026-09-10 (WO-162): `temple_city_agendacenter.html`** — another real,
+raw-saved page, this one **self-hosted** rather than on a
+`*.civicplus.com` subdomain: `www.templecityca.gov/agendacenter`, fetched
+live 2026-09-10 (same `<script>`/`<style>`/comment stripping as the two
+above, 295KB -> 202KB). This is the fixture for the corporate-host bug
+fixed the same day (see `CIVICPLUS_CORPORATE_HOSTS` in
+`app/platforms/base.py`): its real footer carries the same
+`<a href="https://connect.civicplus.com/referral">CivicPlus (r)</a>`
+credit every CivicPlus tenant's page does, confirmed here verbatim. Used
+by `test_find_platform_link_skips_civicplus_corporate_footer_link_on_a_
+real_page` in `tests/test_base.py`.
+
+**Caution for future readers**: this real page's own 103
+`tr.catAgendaRow` rows all link their `td.media` video to
+`templecity.ec1c24.com/citycouncil/...` — a video-index wrapper domain
+`detect_platform()` doesn't recognize at all (confirmed live 2026-09-10:
+that wrapper page itself embeds a real YouTube video,
+`youtube.com/embed/hXcwEqIekkc`, with per-agenda-item start-time links).
+So fixing the corporate-host bug does NOT by itself make this specific
+real page resolve to a video end-to-end — it only stops the scan from
+wasting a request on CivicPlus's own corporate host (confirmed live: a
+403 on `https://www.civicplus.com/referral`) before correctly finding
+nothing else recognizable on the page. The `ec1c24.com` gap is a
+separate, real platform-coverage gap, filed in `BACKLOG.md` rather than
+fixed here.
