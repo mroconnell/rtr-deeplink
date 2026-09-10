@@ -1,5 +1,141 @@
 # Backlog — done
 
+## WO-148: headless pass on the 1,132 smaller governments WO-133 never reached [Done 2026-09-10]
+
+This tested 1,132 smaller US and Canadian governments (over 5,000
+people) that an earlier plain-HTTP scan had rejected as "no meeting
+platform found." The question was simple: does a real browser, and
+then a search of the platform's own listing, find video that a plain
+web request missed?
+
+Each government went through the same four-step check, in order.
+First, a plain web request with an honest, identifying header. Second,
+the same request with normal browser headers, tried only after a
+blocked or dropped connection. Third, a real headless browser, for any
+page that loaded but showed no meeting link — this is the step that
+finds links a page draws in with JavaScript, which a plain request
+never sees. Fourth, if any step hit a human-verification wall (a
+"prove you're human" page), the check stopped there for good; we never
+try to get past one of those.
+
+Once a video platform was found, the next step was to search that
+platform's own meeting listing (through a shared tool this project
+already has) rather than guessing a single URL, and take the newest
+meeting with real video.
+
+**Result.**
+
+| Outcome | Count of 1,132 | Detail |
+|---|---|---|
+| Already covered | 1 | Already had a page before this run started |
+| Ingested tier 1/2 (captions available, page live now) | 19 | Real transcript, live now; 2 of these carry a separate identity bug, filed below |
+| Video with no captions queued (after probe) | 6 | Real video confirmed playable; added to the real transcription queue |
+| Wrong domain mapping | 3 | The government's own homepage pointed to a *different* real government's meeting system (usually its county); that government's content went live or was queued, not this one's |
+| No video found | 178 | A real, current meeting exists, just no video attached (176), plus 2 where the "video" turned out to be a document link or an audio-only file, not a real video |
+| No platform link found | 759 | Checked the full ladder, including the real browser step; no meeting-video system found on the site |
+| Blocked at browser headers | 62 | Site refused even a normal browser request |
+| Blocked at the real browser step | 27 | Site refused even a real headless browser |
+| Human-verification wall | 73 | Site showed a "prove you're human" page; never attempted to pass it |
+| Timed out | 4 | Site never answered in time, at any step |
+| Error | 0 | None |
+
+**Governments with video found, split the way Ryan asked:** 19 got
+captions and a live page today. 6 more have real video but no captions
+yet, so they were added to the queue that turns them into transcripts
+over the next few days. 3 more found real video, but for the wrong
+government (see caution below) and are not counted as either of those.
+
+**Where the video was found, and how (plain request, browser headers,
+or the real browser step):**
+
+| Platform | Plain | Browser headers | Real browser |
+|---|---|---|---|
+| YouTube | 39 | 4 | 40 |
+| Granicus | 24 | 14 | 6 |
+| CivicPlus | 21 | 0 | 4 |
+| CivicWeb | 17 | 0 | 1 |
+| Vimeo | 13 | 2 | 5 |
+| CivicClerk | 13 | 0 | 5 |
+| Municode Meetings | 8 | 0 | 0 |
+| BoardDocs (no adapter) | 3 | 0 | 1 |
+| CivicLive | 3 | 0 | 0 |
+| Cablecast | 2 | 1 | 0 |
+| NovusAgenda (no adapter) | 2 | 0 | 0 |
+| TelVue | 2 | 0 | 0 |
+| eScribe | 1 | 0 | 1 |
+| IQM2 | 1 | 1 | 0 |
+| Legistar | 1 | 0 | 1 |
+| Swagit | 1 | 0 | 1 |
+| AgendaSuite (no adapter) | 1 | 0 | 0 |
+| ChampDS (no adapter) | 1 | 0 | 0 |
+| ClerkBase (no adapter) | 1 | 0 | 0 |
+
+Most platforms were found by a plain request once it used an honest,
+identifying header — the real browser step mattered most for YouTube
+and Granicus specifically, and it recovered a meaningful share of
+CivicClerk and Vimeo links too.
+
+**Caution.** Three real bugs were found and checked by hand, not
+guessed:
+
+1. **Cape Canaveral, FL** got a real, live page today — but the meeting
+   is Brevard County's Board of County Commissioners, not Cape
+   Canaveral's own. Cape Canaveral's homepage links out to the
+   county's meeting system, and this tool correctly followed that link
+   and correctly found the county's real meeting — it just isn't the
+   government we were checking. Confirmed by loading the live page: its
+   title reads "Brevard County, FL." No fix needed on our side; this is
+   the same known "small government links to a bigger one" pattern
+   already documented for Legistar and CivicPlus.
+2. **Hermantown, MN** got a real, live page with a real transcript
+   (2,174 segments) — but the page's stored government name reads
+   "Herman Town, MN," a different, much smaller township. The video
+   really is Hermantown's own city council meeting; only the internal
+   label is wrong. This looks like the same kind of bug already fixed
+   once for names like "city and borough" — something on our side is
+   treating the "town" at the end of "Hermantown" as a type of
+   government to strip off, the same way it correctly strips "town"
+   from "Smithville Town." Filed in `BACKLOG.md` for a human to fix the
+   underlying rule.
+3. **Albion, MI** also got a real, live page with a real transcript
+   (1,177 segments) — but it has no government label attached at all.
+   Several states have a real Albion, so this may be a genuine "which
+   one is it" case nobody has answered yet. Filed in `BACKLOG.md`.
+
+Two more real video links did **not** make it into the transcription
+queue: a Fairview, TX page whose "video" was actually a link to a
+document viewer, and a Wyoming, MN page whose "video" was an
+audio-only file. Both were confirmed by the same probe tool that checks
+a video before queuing it, and correctly rejected — nothing was queued
+that can't actually be played.
+
+**Recommendation.** Merge and deploy this branch — 19 real pages and 6
+queued transcripts are sitting on `main`, not live, until that happens.
+Separately, a person should decide what to do about Hermantown and
+Albion's two live-but-mislabeled pages; both need the underlying
+name-handling rule fixed, not just the two pages by hand, since the
+same rule will keep mislabeling any other real town whose name happens
+to end the same way.
+
+**Deploy status:** not deployed. This PR's changes live only in
+`app/utils/jurisdiction_data/tenant_overrides.csv` and
+`scripts/tier3_auto_transcription_queue.txt` in this repo — the 19 live
+Archive pages and 6 queued transcripts already happened for real
+through the *production* Archive during this run (this script POSTs to
+`/internal/ingest` directly; it does not go through a deploy). Nothing
+here needs a deploy to take effect; the queue file feeds the existing,
+already-deployed cloud worker, which drains it on its own schedule.
+
+Files: `scripts/wo148_headless_sweep.py` (the sweep itself — the access
+ladder, the discovery-enumerator-first / wo134-fallback resolve, the
+tier-3-pending gate ahead of WO-144's probe);
+`rtr-business/research/wo148_report.csv` (one row per government, the
+full record this table is built from), `wo148_confirmed_hits.csv`,
+`wo148_discovery_seeds.csv`, `wo148_host_access_modes.csv`,
+`wo148_tier3_pending.csv`, `wo148_apply_to_jc.py` /
+`wo148_apply_tier3_probe_to_jc.py` (the two `jurisdiction_coverage.csv`
+writers, §158 protocol).
+
 ## WO-154: a tool that recognizes which company built a government's website, and where its meeting page usually lives [Done 2026-09-10]
 
 Ryan's idea: about 9,600 governments in our research file loaded fine

@@ -228,3 +228,11 @@ https://youtu.be/MW7uV8fohm0,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ER
 https://youtube.com/live/PXKok51AZiE?feature=share,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] PXKok51AZiE: This live event will begin in 100 minutes.,1.48,2026-09-10T21:20:00+00:00
 https://youtube.com/live/xvaOhtkf-_c?feature=share,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] xvaOhtkf-_c: This live event will begin in 99 minutes.,1.81,2026-09-10T21:20:06+00:00
 https://greatfallsmt.viebit.com/watch?hash=ZGTmixA15HNtvFkM,viebit,,,,,0,reject-dead,no probe recipe for this media shape: https://greatfallsmt.viebit.com/embed/vod?v=ZGTmixA15HNtvFkM,0.00,2026-09-10T21:20:08+00:00
+https://www.youtube.com/watch?v=jnHV1mqRQFc,youtube,yt-dlp-metadata,6658.00,2026-02-13,117626589,1,accept,,4.31,2026-09-10T22:24:39+00:00
+https://www.youtube.com/watch?v=TopVL6GwVZQ,youtube,yt-dlp-metadata,4841.00,2026-08-05,128998982,1,accept,,4.21,2026-09-10T22:24:43+00:00
+https://brecksvilleoh.portal.civicclerk.com/event/1389/media,civicclerk,head+ffprobe,5597.67,2026-09-02,2257986805,1,accept,,6.65,2026-09-10T22:24:49+00:00
+https://spenceria.portal.civicclerk.com/event/65/media,civicclerk,head+ffprobe,1911.87,2026-09-09,635634536,1,accept,,5.61,2026-09-10T22:24:55+00:00
+https://fairviewtx.portal.civicclerk.com/event/986/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://portal.laserfiche.com/Portal/Browse.aspx?id=%20290125&repo=r-195a81ce,2.98,2026-09-10T22:24:58+00:00
+https://wyomingmn.portal.civicclerk.com/event/666/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://cpmedia.azureedge.net/wyomingmn/7bd9036d-625f-4bc5-b054-f9211c2b1a9b.mp3,2.04,2026-09-10T22:25:00+00:00
+https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English,escribe,hls-master+variant,3300.24,,,1,accept,,2.19,2026-09-10T22:25:02+00:00
+https://lmctvny.new.swagit.com/videos/169569,swagit,hls-master+variant,290.46,,,0,accept,,2.02,2026-09-10T22:25:04+00:00
