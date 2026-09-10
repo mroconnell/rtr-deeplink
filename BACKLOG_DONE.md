@@ -1,5 +1,95 @@
 # Backlog — done
 
+## WO-164: three sharper content reject reasons, and the retag of WO-145's 772-government sweep [Done 2026-09-10]
+
+Ryan asked for three new reject reasons in
+`~/Documents/rtr-business/research/jurisdiction_coverage.csv`. The old
+`no-video-found` and `no-meetings-found` tags were each folding two
+different findings into one label. In Ryan's words: "real meetings,
+none with video" is one thing, "no meetings listed" is another.
+
+**What was done.** Added three new content reasons and backfilled them
+onto WO-145's own 772-government sweep (`wo145_report.csv`, PR #859),
+the sweep that just wrote most of those old-style tags:
+
+- `meeting-without-video` — a real, current meeting was found, and it
+  has no video.
+- `no-meeting-nor-video` — no meeting was found at all, so no video
+  either.
+- `video-without-meeting` — a real video exists but no meeting to
+  attach it to (a channel or feed with recordings but no listing, date,
+  or body).
+
+`no-platform-link-found` stays its own reason. The access reasons
+(`blocked-*`, `cloudflare-challenge-blocked`, `dns-unresolvable`,
+`timeout`), `wrong-domain-mapping`, `off-mission`,
+`unsupported-platform-no-adapter`, `already-covered`, and the
+queued/ingested outcomes are unchanged.
+
+**Result.** Of WO-145's 772 rows, only 629 had actually gotten a
+`reject_reason` written (the rest either succeeded, or already carried
+a different, older reason from an earlier sweep and were correctly left
+alone by WO-145's own apply script). Of those 629, 365 changed:
+
+| Old outcome and reason | New tag | Count of 629 |
+|---|---|---|
+| `no-video-found`, real meeting found (`meeting_url` set or a candidate was tried) | `meeting-without-video` | 299 |
+| `no-meetings-found` | `no-meeting-nor-video` | 66 |
+| `no-video-found`, no meeting evidence either way | unchanged (`no-video-found`) | 1 |
+| `no-platform-link-found` | unchanged | 156 |
+| `cloudflare-challenge-blocked` | unchanged | 69 |
+| `wrong-domain-mapping` | unchanged | 34 |
+| `blocked-browser-headers` | unchanged | 2 |
+| `dns-unresolvable` | unchanged | 2 |
+| (any row, checked first) | `video-without-meeting` | 0 |
+
+`video-without-meeting` came out to zero on this sweep. That was
+checked directly, not assumed: every WO-145 row with a real video link
+also had real meeting evidence attached to it, so nothing genuinely fit
+"a video with no meeting at all." A zero count here is a real finding,
+not a sign the tag is unused — a later sweep (a channel-only source,
+for example) may well produce some.
+
+One row kept its old tag on purpose: North Smithfield town, RI had a
+real listing (3 items) but none were usable and none carried a meeting
+URL or a tried candidate, so it didn't cleanly fit either new tag. Left
+as `no-video-found` rather than forced into one.
+
+20 of the 365 changed rows were checked by hand against the sweep's own
+notes before writing. `git diff --numstat` on
+`jurisdiction_coverage.csv` showed exactly 365 insertions and 365
+deletions, matching the dry run, and only `reject_reason` values
+changed — every other column, and every row outside these 629, is
+untouched.
+
+**Caution.** Rows written by every other sweep still carry the older
+`no-video-found` / `no-meetings-found` spellings until that sweep's own
+close-out applies the same mapping. They mean the same thing, but a
+report or dashboard reading `reject_reason` today will see both old and
+new spellings side by side until WO-153 and the other running sweeps
+retag their own rows.
+
+**Recommendation.** WO-153 and the other running sweeps' close-outs
+should retag their own rows using
+`~/Documents/rtr-business/research/wo164_retag_rules.md` (the exact
+mapping, written for exactly this handoff) rather than re-deriving the
+rule. `coverage_registry.py` passes `reject_reason` through as a
+free-form string with no hardcoded reason list, so the new tags already
+show up on the coverage dashboard with no code change needed.
+
+**Deploy status.** None needed. This is a research-file and docs-only
+change — no code in `app/`, `archive/`, `worker/`, or `render.yaml`
+touched.
+
+Files: `~/Documents/rtr-business/research/wo164_build_retag.py` (new,
+dry-run builder), `wo164_retag_dryrun.csv` (new, 365 rows),
+`wo164_apply_to_jc.py` (new, §158-compliant writer),
+`wo164_apply_applied.csv` (apply log), `wo164_retag_rules.md` (new, the
+mapping for later sweeps), `jurisdiction_coverage.csv` (365 rows
+retagged, commit `41c75a6`); `ENUMERATION_METHODS.md` §23's addendum
+extended and new §199; `rtr-deeplink/docs/BREADTH_SWEEP_BRIEF.md`'s
+"Reject reasons, two classes" section updated.
+
 ## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
 
 Ryan asked why a batch of ~40 Granicus pages (all the newer
