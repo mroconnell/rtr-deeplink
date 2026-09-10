@@ -318,13 +318,14 @@ dataset — using the existing WO-144 checker that confirms a video is
 real and watchable without downloading it. 438 of the 439 worked on the
 very first try.
 
-**A second mistake found and fixed before anything was written:** the
-obvious way to record "this video belongs to this government" turned out
-to be silently broken. The correct format
-(`youtube:VIDEO_ID`, confirmed against the site's own code and tests) was
-used instead once this was caught. About 65 older records in the same
-file use the broken format and likely do nothing — flagged in
-`BACKLOG.md` for someone to check, not fixed here.
+**A correction made by the conductor before merge.** The pin writer first
+recorded each video as `youtube:<video id>`, reasoning from the adapter's
+internal id string; a live check against the resolver showed that shape
+matches nothing, while the bare video id (the shape every other pin this
+round uses, and the shape the day's backfills re-keyed pages with) matches
+correctly. All 843 per-video rows were rewritten to the bare id and three
+were re-verified against the resolver before this merged. The entry this
+agent filed calling the bare shape broken was wrong and has been removed.
 
 **What was written:** 439 real meetings added to the transcription queue;
 862 new identity records (439 per-video, 423 also get a whole-channel
