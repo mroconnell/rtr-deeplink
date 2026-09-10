@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (15)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (16)
+  WO-175's LocalView channel recheck: 15 governments never got an…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
@@ -133,8 +134,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (15)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
-  Production actions only Ryan should take  (5)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+  Production actions only Ryan should take  (6)
+    [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
     [HUMAN] 11 hosts the coverage registry ties to the wrong government:…
@@ -563,6 +565,41 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+### WO-175's LocalView channel recheck: 15 governments never got an honest second look, and 4 queued own-channel governments have no channel-level pin `[JUST-DO-IT]` `[WAIT]`
+
+- **Issue:** WO-175 (2026-09-10) hand-checked the 287 LocalView channels
+  WO-171 rejected. A bug (a blank `handle` field building a malformed
+  `/videos` URL, since fixed in `scripts/wo175_find_and_queue_video.py`
+  and `scripts/wo175_fetch_about_pages.py`) gave a false "no on-mission
+  video" result for 23 governments; re-running the fixed script recovered
+  5 real meetings before a YouTube block signature (429 / "confirm
+  you're not a bot") stopped every further YouTube call this session,
+  per CLAUDE.md's standing rule. 15 governments were never honestly
+  re-checked at all (see `rtr-business/research/wo175_queue_outcomes.csv`,
+  `outcome == "blocked_before_reverify"`). Separately, 4 of the governments
+  that DID queue a real video this session (Dacono city CO, Calhoun city
+  GA, Romulus city MI, Roseville city MI — all `own-channel` verdicts)
+  have no channel-level `tenant_overrides.csv` pin, only a per-video one,
+  because their real `@handle` is still unknown (WO-171 never resolved
+  one, and a channel-level pin only ever matches a resolved video's real
+  `@handle`, never a bare `UC...` channel_id — see `page_hints_for()` in
+  `app/utils/gov_registry/resolver.py`).
+- **Impact:** 15 real governments sit un-rechecked with a stale, known-
+  wrong "nothing found" result; 4 real government channels get only
+  one video pinned instead of the whole channel.
+- **Next action:** re-run `scripts/wo175_find_and_queue_video.py` (or a
+  small filtered re-run, same pattern as this session's own
+  `wo175_channel_recheck.csv`-filtered approach) for the 15
+  `blocked_before_reverify` gov_ids once YouTube's block has cleared;
+  separately, look up the real `@handle` for the 4 gov_ids above (a
+  single About-page fetch each) and add a `channel=@handle` pin for
+  each once found.
+- **Constraint:** one channel at a time, 2 seconds between YouTube
+  calls, stop again immediately on the same block signature — don't
+  assume the block has cleared just because some time has passed.
+- **History:** `BACKLOG_DONE.md` WO-175, 2026-09-10;
+  `rtr-business/research/wo175_methods_section.md` has the full method
+  and every number's derivation.
 ### WordPress's own `/?s=agenda` search is a confirmed, cheap way to find a real meetings list at scale — run it beyond this pilot's 600 `[JUST-DO-IT]`
 
 - **Issue:** WO-176 (2026-09-10) measured `/?s=agenda` (WordPress's
@@ -895,6 +932,33 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
+  - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
+    `new_verdict == "same-name-same-state-ambiguous"`: `@CityofSantaClara`
+    (assigned to Santa Clarita city, CA -- its own title literally says
+    "City of Santa Clara", a real, different California city);
+    `@JeffCityCouncil` (Jeffersonville city, IN -- "Jeff" is a plausible
+    informal abbreviation, not confirmed); `@haltrammell` (Cleveland
+    County, NC -- a political-news channel covering "both Carolinas",
+    mentions county commissioner/board of education meetings but never
+    names Cleveland County specifically); `@AbingtonTownship` (assigned
+    to "North Abington township", PA -- the channel's own title is just
+    "Abington Township", no "North", and a real "Abington Township, PA"
+    exists in Montgomery County -- worth checking whether the dataset's
+    place name itself is right before treating the channel as wrong).
+  - **Impact**: 4 real governments with no video queued, sitting on a
+    channel that is very likely either a real match or a real,
+    different government -- not safe to decide by an automated name
+    match either way (this is exactly the collision class WO-175 found
+    and fixed automated false-positives on for other rows in the same
+    batch).
+  - **Next action**: Ryan (or a session with a live YouTube check)
+    looks at each channel directly and says own-channel / different-
+    government / not-government; if own-channel or shared, queue a
+    real meeting the same way WO-175 did for the other 55.
+  - **History**: `BACKLOG_DONE.md` WO-175, 2026-09-10;
+    `rtr-business/research/wo175_methods_section.md`.
 
 - **[HUMAN] One live page is keyed to the wrong government: a real Chenango TOWN, NY meeting displays as Chenango COUNTY, NY -- fixed for future ingests, needs a deploy + backfill for this one page.**
   - **Issue**: WO-145's breadth sweep ingested `townofchenango.civicweb.net`'s real Town Board meeting under `us:cousub:3600715110` (Chenango town, NY), but `key_check()` couldn't resolve that jurisdiction string to the intended id at registry/pinned confidence (Chenango County, NY is a real, different, larger New York county with the same base name) -- the page live-keyed to the county instead. A `strength=fallback` pin (`townofchenango.civicweb.net` -> `us:cousub:3600715110`) is now in `tenant_overrides.csv` (this PR), which fixes every future ingest/re-resolve of this tenant, but does nothing for the page that already exists.
