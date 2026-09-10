@@ -1,5 +1,22 @@
 # Backlog — done
 
+## Ryan's decisions on the held videos and undecided pages: 5 queued, 4 off-mission pages deleted, 14 pages re-keyed [Done 2026-09-10]
+
+Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
+
+| Decision | Result |
+|---|---|
+| Keep all seven held videos | 5 probed and queued with per-video pins (Federal Way WA 6.3h flagged long but accepted, Caldwell ID, Minnetonka MN, Wenatchee WA, Cottonwood Heights UT); Cornelius NC was already queued by WO-150 and now carries a per-video pin to the town; Yucaipa CA's "A Minute Moore" is a 48-second recap, under the 60-second floor (a standing decision), so it stays out |
+| Not government channels: delete | 4 pages deleted through the admin endpoint (KSAT news clip, Hamden Action Now, Abdul El-Sayed interview, Shelby County video posted by a private account) |
+| Settle the state from the channel | Columbus OH (channel About page), Westfield NJ (channel About page), Jackson County MI (video description names co.jackson.mi.us): channel pins plus per-video pins, because those pages stored no channel |
+| Still open | Lawrence County, Sheridan, Northfield: channel pages name no state. Harrison and Taylor County: the videos are now unavailable on YouTube; Ryan confirms @misdirector5910 is Taylor County's official account but the state is unknown. Vimeo pages for "Commission Meeting 08/18/2026" and DCRSD School Committee: a Vimeo domain cannot be pinned to one government; leave unless a per-video government is known |
+
+`backfill_gov_id.py --hosts www.youtube.com,youtu.be,youtube.com --apply` re-keyed 14 pages: the 3 above plus 11 pages whose pins today's merged sweeps had written but not yet backfilled (Caledonia MI, Lenoir NC, Clayton MO, Iowa County IA, Hamilton Township NJ, North Miami FL, Mayflower AR, Memphis TX, Roy UT, Sandusky OH, and Cañon City's display fix). 11 hub slugs retired; alias rows added so the old links redirect.
+
+**Caution.** A channel pin only re-keys an existing page if that page stored its video's channel; pages ingested before channel storage need a per-video pin as well.
+
+**Deploy status.** Pages are re-keyed now. The 5 queue lines, the pins and the hub aliases reach production on the next deploy.
+
 ## WO-164: three sharper content reject reasons, and the retag of WO-145's 772-government sweep [Done 2026-09-10]
 
 Ryan asked for three new reject reasons in
