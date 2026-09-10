@@ -102,6 +102,7 @@ BANDS = [
             ("best_effort_resolve", "Best-effort"),
             ("video_platform", "Video platform"),
             ("video_host_domain", "Video host"),
+            ("video_channel", "Video channel"),
         ],
     ),
     (

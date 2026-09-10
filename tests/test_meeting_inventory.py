@@ -97,6 +97,24 @@ def test_inventory_row_reports_stored_and_derived_values_without_guessing():
     )
 
 
+def test_inventory_row_prefers_the_raw_adapter_string_and_carries_the_channel():
+    """After PR #818 `jurisdiction` holds the registry display name on every
+    keyed page and the adapter's own string moves to `jurisdiction_raw`;
+    the report compares the RAW string to the registry, or the match
+    column would always say yes. PR #822 adds the video channel."""
+    page = {
+        **YOUNTVILLE,
+        "jurisdiction": "Yountville, CA",
+        "jurisdiction_raw": "Town of Yountville",
+        "video_channel": "@TownofYountville",
+        "video_channel_id": "UCabc",
+    }
+    row = inventory_row(page)
+    assert row["stored_jurisdiction"] == "Town of Yountville"
+    assert row["names_match"] == "state missing"
+    assert row["video_channel"] == "@TownofYountville"
+
+
 def test_inventory_row_without_video_or_versions():
     page = {**YOUNTVILLE, "video_url": None, "video_format": None, "versions": []}
     row = inventory_row(page)

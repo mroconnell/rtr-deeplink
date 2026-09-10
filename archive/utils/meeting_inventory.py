@@ -63,6 +63,7 @@ COLUMNS: tuple[str, ...] = (
     "best_effort_resolve",
     "video_platform",
     "video_host_domain",
+    "video_channel",
     "archive_url",
     "source_url",
     "video_url",
@@ -199,11 +200,20 @@ def inventory_row(page: dict) -> dict:
 
     return {
         "page_id": page["id"],
-        "stored_jurisdiction": page.get("jurisdiction") or "",
+        # jurisdiction_raw (PR #818) is the adapter's own string; since that
+        # PR `jurisdiction` holds the registry display name for every keyed
+        # page, so comparing it to the registry would always say yes.
+        "stored_jurisdiction": page.get("jurisdiction_raw")
+        or page.get("jurisdiction")
+        or "",
         "page_display_name": page_display,
         "gov_id": gov_id,
         "gov_display_name": gov_display,
-        "names_match": names_match(page.get("jurisdiction"), gov_id, gov_display),
+        "names_match": names_match(
+            page.get("jurisdiction_raw") or page.get("jurisdiction"),
+            gov_id,
+            gov_display,
+        ),
         "follows_city_st": follows_city_st(page_display),
         "gov_type": page.get("gov_type") or "",
         "jurisdiction_confidence": page.get("jurisdiction_confidence") or "",
@@ -225,6 +235,9 @@ def inventory_row(page: dict) -> dict:
         "best_effort_resolve": "yes" if page.get("best_effort") else "no",
         "video_platform": video_label if video_url else "",
         "video_host_domain": urlparse(video_url).netloc if video_url else "",
+        "video_channel": page.get("video_channel")
+        or page.get("video_channel_id")
+        or "",
         "archive_url": f"{PUBLIC_BASE}/m/{page['slug']}",
         "source_url": source_url,
         "video_url": video_url,
