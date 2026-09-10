@@ -1,5 +1,52 @@
 # Backlog — done
 
+## YouTube Atom-feed polling as a re-check trigger -- superseded by the video-to-calendar join [Superseded 2026-09-10]
+
+Filed 2026-08-26 under Growth, audience & discoverability; never built.
+On 2026-09-10 Ryan named and shelved the broader idea it was a narrow
+form of: `docs/VIDEO_TO_CALENDAR_JOIN.md`, which joins a government's
+video source (channel, playlist or feed) to its own calendar by body and
+date. The parts of this entry that survive into that document: the
+Atom feed as the cheapest video listing (a plain request with real
+timestamps and no bot-check surface), the four cities whose shipped
+channel fallback is already a narrow join, and the rule that an attach
+goes through re-resolving the meeting page's own URL rather than writing
+a video onto the page. Original text:
+
+- **`[IMPROVEMENT-ROUND]` YouTube Atom-feed polling as a narrower, lower-risk re-check trigger — separate from the general crawler question above.**
+  - **Issue**: a transcript-less page whose city just posted a new video
+    today only gets re-checked on the existing passive hourly cadence
+    (`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, `app/main.py`) or a human visit
+    — nothing proactively triggers a re-check when the city actually posts.
+  - **Impact**: scoped to the 4 cities `youtube_channel.py` already curates
+    a `netloc→channel_id` map for (Phoenix, Philadelphia, Baltimore,
+    Albuquerque — cities whose Legistar page never gets a video link at
+    all). Their Atom feed (`youtube.com/feeds/videos.xml?channel_id={id}`)
+    is a plain unauthenticated GET — no yt-dlp, no bot-check surface — and
+    a live fetch against Phoenix's real feed confirmed real `<published>`
+    timestamps on every recent upload.
+  - **Next action**: build a small scheduled script (no live worker exists
+    in this app, deliberately) that polls those 4 feeds periodically and,
+    on a new video whose date matches a known meeting page for that city,
+    triggers a re-resolve of *that page's own original URL* (not the
+    YouTube URL) — so the existing adapter chain (Legistar → city-YouTube-
+    channel fallback) does the actual match/attach, the same way a manual
+    visit already does, just sooner.
+  - **Constraint**: doesn't fix the underlying attach — caption fetch still
+    goes through yt-dlp at resolve time, the same call hitting the live,
+    unresolved Render YouTube IP block (184 real jurisdictions on
+    `platform="YouTube"` ride through it — see that entry under
+    **Reliability, ops & cost** and `docs/investigations/
+    youtube_429_block.md`). Deliberately scoped to only these 4 curated
+    cities — broadening past the existing last-resort fallback list is a
+    separate, real cost (see `youtube_channel.py`'s own docstring).
+  - **History**: not built. Addendum written 2026-08-26. Full design
+    reasoning (why route the re-resolve through the existing page URL
+    rather than writing Atom data directly onto the page; why no
+    Upcoming→Past state-switch needs to be built) preserved in this
+    compaction's done-additions file, pending a real `BACKLOG_DONE.md` or
+    `docs/investigations/` entry once this is built.
+
 ## Yonkers, NY Legistar page had no video because its Granicus tenant was never registered as a fallback — fixed, plus a 29-tenant read-only test of whether the pattern generalizes [Done 2026-09-10] (WO-145)
 
 **The bug.** `https://yonkersny.legistar.com/MeetingDetail.aspx?ID=1233215` (a

@@ -56,6 +56,37 @@ Script: `rtr-business/research/wo158_channel_calendar_join.py`. Result
 files: `rtr-business/research/wo158_*.csv` (candidates, home pages,
 channel videos, calendar meetings, join results).
 
+## The earlier form of this idea, 2026-08-26
+
+A BACKLOG entry proposed polling four cities' YouTube feeds and, when a
+new video's date matched a known meeting page, re-resolving that page.
+It was never built and is now superseded by this document; its text is
+in `BACKLOG_DONE.md`. Three parts of it carry forward:
+
+- **The Atom feed is the cheapest listing.**
+  `youtube.com/feeds/videos.xml?channel_id={id}` is a plain request that
+  returns real published timestamps for recent uploads, with no yt-dlp
+  and no bot-check surface. A live fetch against Phoenix's feed confirmed
+  it. For the join, this beats a yt-dlp channel listing for recent
+  videos; yt-dlp is still needed for older uploads and for the title-date
+  parsing rtr-discovery already has.
+- **Four cities already run a narrow join.** `app/platforms/youtube_channel.py`
+  keeps a host-to-channel map for Phoenix, Philadelphia, Baltimore and
+  Albuquerque, whose Legistar pages never link video; the adapter matches
+  a channel video to the page by name and date as a last resort. That is
+  the shipped, decline-on-uncertainty version of this join, and the
+  matching rules to reuse.
+- **Attach through the page, not onto it.** When a video is found, the
+  right move is to re-resolve the meeting page's own URL so the adapter
+  chain does the match and the page keeps its source, body, date and
+  agenda. Do not write a video URL onto a page directly. No separate
+  "upcoming to past" state switch is needed; the re-resolve is the switch.
+
+One constraint from that entry still holds: caption fetch at resolve time
+goes through yt-dlp, which the Render server's address cannot reach for
+YouTube. A joined video gets its captions from the daily local run or the
+local Whisper path, not at resolve time.
+
 ## The rules that make it safe
 
 - A match needs the body name in the video title (or a clear alias,
@@ -93,7 +124,8 @@ channel videos, calendar meetings, join results).
   CivicPlus calendar feed (`RSSFeed.aspx?ModID=`), Granicus's video feed,
   CivicClerk's events, and the generic feed a home page advertises.
 - The channel listing promoted out of a scratch script, with the strict
-  tie-break, reusing rtr-discovery's enumerator.
+  tie-break, reusing rtr-discovery's enumerator; the Atom feed for recent
+  uploads, yt-dlp only for the older ones.
 - A per-source listing for playlists, Vimeo accounts and video feeds.
 - Results written as candidates for a person to confirm first, then
   ingested through the normal pipeline with the government's gov id

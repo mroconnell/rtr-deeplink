@@ -284,7 +284,7 @@ Trust, safety & data quality  (15)
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -292,10 +292,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
   Product direction & open strategic questions  (1)
     `[IMPROVEMENT-ROUND]` `[BIG]` "Feed cities" — should this app ever…
   `[IMPROVEMENT-ROUND]` `[BIG]` Accounts + token billing, phases 2-6 —…
-  Growth, audience & discoverability  (9)
+  Growth, audience & discoverability  (8)
     `[IMPROVEMENT-ROUND]` Zero-signal jurisdiction rows are the real…
     `[IMPROVEMENT-ROUND]` Proactive transcription crawler — grow the…
-    `[IMPROVEMENT-ROUND]` YouTube Atom-feed polling as a narrower,…
     [IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
     [IMPROVEMENT-ROUND] Whether the resolver's existing `GET /admin/log`
     [IMPROVEMENT-ROUND] `[BIG]` Video highlight clips + algorithmic
@@ -4426,40 +4425,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     Atom-feed polling; `CORPUS_EXPANSION_PLAN.md`) for scoped-down/adjacent
     versions of this same question.
 
-- **`[IMPROVEMENT-ROUND]` YouTube Atom-feed polling as a narrower, lower-risk re-check trigger — separate from the general crawler question above.**
-  - **Issue**: a transcript-less page whose city just posted a new video
-    today only gets re-checked on the existing passive hourly cadence
-    (`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, `app/main.py`) or a human visit
-    — nothing proactively triggers a re-check when the city actually posts.
-  - **Impact**: scoped to the 4 cities `youtube_channel.py` already curates
-    a `netloc→channel_id` map for (Phoenix, Philadelphia, Baltimore,
-    Albuquerque — cities whose Legistar page never gets a video link at
-    all). Their Atom feed (`youtube.com/feeds/videos.xml?channel_id={id}`)
-    is a plain unauthenticated GET — no yt-dlp, no bot-check surface — and
-    a live fetch against Phoenix's real feed confirmed real `<published>`
-    timestamps on every recent upload.
-  - **Next action**: build a small scheduled script (no live worker exists
-    in this app, deliberately) that polls those 4 feeds periodically and,
-    on a new video whose date matches a known meeting page for that city,
-    triggers a re-resolve of *that page's own original URL* (not the
-    YouTube URL) — so the existing adapter chain (Legistar → city-YouTube-
-    channel fallback) does the actual match/attach, the same way a manual
-    visit already does, just sooner.
-  - **Constraint**: doesn't fix the underlying attach — caption fetch still
-    goes through yt-dlp at resolve time, the same call hitting the live,
-    unresolved Render YouTube IP block (184 real jurisdictions on
-    `platform="YouTube"` ride through it — see that entry under
-    **Reliability, ops & cost** and `docs/investigations/
-    youtube_429_block.md`). Deliberately scoped to only these 4 curated
-    cities — broadening past the existing last-resort fallback list is a
-    separate, real cost (see `youtube_channel.py`'s own docstring).
-  - **History**: not built. Addendum written 2026-08-26. Full design
-    reasoning (why route the re-resolve through the existing page URL
-    rather than writing Atom data directly onto the page; why no
-    Upcoming→Past state-switch needs to be built) preserved in this
-    compaction's done-additions file, pending a real `BACKLOG_DONE.md` or
-    `docs/investigations/` entry once this is built.
-
 - **[IMPROVEMENT-ROUND] Batch lookup — accept multiple meeting URLs at
   once instead of one at a time.**
   - **Issue**: no way to submit multiple meeting URLs in one request —
@@ -4833,7 +4798,8 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   back. Metadata-only video calls until a match is confirmed; ties
   decline; the government's gov id is passed into ingest.
 - **History:** `ENUMERATION_METHODS.md` §193 (rtr-business); script and
-  result files `research/wo158_*`.
+  result files `research/wo158_*`. Supersedes the 2026-08-26 "YouTube
+  Atom-feed polling" entry, now in `BACKLOG_DONE.md`.
 
 ### Friday-night queue (2026-09-12): the token-heavy coverage passes `[PARK]`
 
