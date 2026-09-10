@@ -304,6 +304,8 @@ class YouTubeAssetFinder(AssetFinder):
             title=info.get("title"),
             date=date,
             jurisdiction=cls._jurisdiction(info.get("uploader")),
+            video_channel=cls._channel_handle(info),
+            video_channel_id=(info.get("channel_id") or None),
             video_url=video_url,
             video_format="youtube",
             segments=segments,
@@ -354,6 +356,27 @@ class YouTubeAssetFinder(AssetFinder):
             else None
         )
         return transcript_marker, video_marker
+
+    @staticmethod
+    def _channel_handle(info: dict) -> Optional[str]:
+        """The channel's public handle ("@TownofWoodside"), the key a
+        `tenant_overrides.csv` `match=channel=@Handle` row is written
+        against -- the same value YouTube's oEmbed `author_url` ends in,
+        which is what `scripts/study_shared_host_discriminators.py` learned
+        the 635 channel rules from. yt-dlp spells it two ways depending on
+        version: `uploader_id` is the bare handle on current releases, and
+        `uploader_url` / `channel_url` carry it as the last path segment.
+        None when neither is handle-shaped (an old numeric uploader id, or
+        a channel with no handle) -- `video_channel_id` still carries the
+        permanent UC id in that case."""
+        uploader_id = (info.get("uploader_id") or "").strip()
+        if uploader_id.startswith("@"):
+            return uploader_id
+        for key in ("uploader_url", "channel_url"):
+            tail = (info.get(key) or "").rstrip("/").rsplit("/", 1)[-1].strip()
+            if tail.startswith("@"):
+                return tail
+        return None
 
     @staticmethod
     def _jurisdiction(uploader: Optional[str]) -> Optional[str]:

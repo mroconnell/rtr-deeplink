@@ -30,12 +30,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from app.utils.gov_registry import (
+    TIER_PINNED,
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
+    GovernmentMatch,
     page_hints_for,
     resolve_government,
     state_suffix_from_text,
 )
+from app.utils.gov_registry.classify import NON_PLACE_TYPES
 from app.utils.gov_registry import display_name as gov_display_name
 from app.utils.gov_registry import government_for_id as registry_government_for_id
 from app.utils.gov_registry import governments as registry_governments
@@ -753,6 +756,57 @@ def _display_jurisdiction(gov, finalized: Optional[str]) -> Optional[str]:
     return finalized
 
 
+class UnknownGovernmentId(ValueError):
+    """An ingest payload named a `gov_id` the registry cannot render --
+    neither a national id derivable from the tables nor a committed
+    minted row. Refused loudly (HTTP 400) rather than ignored: a caller
+    asserting an identity we cannot look up is a bug on the caller's
+    side, and silently falling back to the name ladder would hide it."""
+
+    def __init__(self, gov_id: str):
+        super().__init__(gov_id)
+        self.gov_id = gov_id
+
+
+class GovernmentMismatch(ValueError):
+    """The page a push matched already carries a DIFFERENT real
+    government from the one the caller supplied. Refused (HTTP 409)
+    rather than overwritten in either direction: the existing id may be
+    a human's manual override, or the two may be unrelated governments
+    that share a generic embed id (`youtube:videoseries`,
+    `youtube:live_stream` -- ENUMERATION_METHODS.md §98 found four such
+    collisions, nine governments, on one push run)."""
+
+    def __init__(self, page_id: int, slug: str, existing: str, supplied: str):
+        super().__init__(f"page {page_id} is {existing}, push says {supplied}")
+        self.page_id = page_id
+        self.slug = slug
+        self.existing_gov_id = existing
+        self.supplied_gov_id = supplied
+
+
+def _caller_pinned_match(gov_id: str, split_body: Optional[str]) -> GovernmentMatch:
+    """A `pinned`-tier match for an id the ingest caller supplied -- the
+    same shape the ladder's rung 1 produces for a `tenant_overrides.csv`
+    row, with the registry row rendering the display name. The body is
+    `finalize_jurisdiction()`'s split for a place government and None for
+    a non-place one, exactly as the ladder decides it."""
+    gov = registry_government_for_id(gov_id)
+    if gov is None:
+        raise UnknownGovernmentId(gov_id)
+    return GovernmentMatch(
+        gov_id=gov.gov_id,
+        gov_name=gov_display_name(gov),
+        gov_type=gov.gov_type,
+        tier=TIER_PINNED,
+        evidence="gov_id supplied by the ingest caller",
+        meeting_body=None if gov.gov_type in NON_PLACE_TYPES else split_body,
+        country=gov.country,
+        state=gov.state,
+        government=gov,
+    )
+
+
 async def _resolve_page_government(
     session,
     raw_jurisdiction,
@@ -761,9 +815,17 @@ async def _resolve_page_government(
     external_id=None,
     meeting_location=None,
     title=None,
+    video_channel=None,
+    caller_gov_id=None,
+    split_body=None,
 ):
     """`resolve_government()` for one page, with the one input it cannot
     see for itself.
+
+    `caller_gov_id` (gov-id audit, 2026-09-10) short-circuits the whole
+    thing: an ingest payload that names the government is a pin, and
+    the ladder is not consulted. `video_channel` rides into `page_hints`
+    so a `match=channel=...` row can fire for a bare YouTube/Vimeo paste.
 
     Two calls at most. The first resolves the page on its own evidence;
     only if that lands on a tier the tenant could improve -- `unverified`
@@ -819,7 +881,9 @@ async def _resolve_page_government(
     # discriminated by a path prefix or a query parameter (`view_id=5`),
     # and `_match_override()` looks for either inside this string.
     path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-    hints = page_hints_for(platform, external_id)
+    if caller_gov_id:
+        return _caller_pinned_match(caller_gov_id, split_body)
+    hints = page_hints_for(platform, external_id, channel=video_channel)
     zip_codes = (
         re.findall(r"\b\d{5}(?:-\d{4})?\b", meeting_location)
         if meeting_location
@@ -900,7 +964,16 @@ async def _find_or_create_page(
         external_id=external_id,
         meeting_location=payload.get("meeting_location"),
         title=payload.get("title"),
+        video_channel=payload.get("video_channel"),
+        caller_gov_id=payload.get("gov_id"),
+        split_body=jx_result.meeting_body,
     )
+    caller_gov_id = payload.get("gov_id") or None
+    # A caller-supplied id counts as "identity supplied" for the update
+    # gates below, exactly like a jurisdiction string does (WO-102's
+    # truthy gate exists so a transcript-only push, which carries
+    # neither, can never wipe or rewrite an identity).
+    identity_supplied = bool(jurisdiction) or bool(caller_gov_id)
 
     page = await _find_existing_page(
         session,
@@ -909,6 +982,14 @@ async def _find_or_create_page(
         source_url_normalized=source_url_normalized,
         input_url_normalized=input_url_normalized,
     )
+    if (
+        page is not None
+        and caller_gov_id
+        and page.gov_id
+        and not page.gov_id.startswith("rtr:unknown:")
+        and page.gov_id != caller_gov_id
+    ):
+        raise GovernmentMismatch(page.id, page.slug, page.gov_id, caller_gov_id)
 
     created = page is None
     if page is None:
@@ -930,6 +1011,8 @@ async def _find_or_create_page(
             date=payload.get("date"),
             jurisdiction=_display_jurisdiction(gov, jurisdiction),
             jurisdiction_raw=payload.get("jurisdiction") or None,
+            video_channel=payload.get("video_channel") or None,
+            video_channel_id=payload.get("video_channel_id") or None,
             # An adapter that names the governing body itself (Granicus's
             # RSS channel title, 2026-08-23) beats the split-from-
             # jurisdiction fallback finalize_jurisdiction() produces.
@@ -1006,7 +1089,7 @@ async def _find_or_create_page(
         # test_a_transcript_only_push_cannot_wipe_a_gov_id --
         # `napa.granicus.com` is pinned to Napa COUNTY, so the City of
         # Napa's pages were renamed "Napa County, CA" by a caption run.
-        if jurisdiction and page.jurisdiction_confidence != (
+        if identity_supplied and page.jurisdiction_confidence != (
             _MANUAL_OVERRIDE_CONFIDENCE
         ):
             page.jurisdiction = (
@@ -1016,7 +1099,10 @@ async def _find_or_create_page(
         # real new jurisdiction value -- same truthy-gated pattern as
         # jurisdiction itself just above, so a later resolve with no
         # jurisdiction at all can't silently wipe a previously-split body.
-        if jurisdiction and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
+        if (
+            identity_supplied
+            and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE
+        ):
             page.meeting_body = payload.get("meeting_body") or _resolved_meeting_body(
                 gov, jx_result
             )
@@ -1053,11 +1139,17 @@ async def _find_or_create_page(
         # carries a jurisdiction, i.e. a real re-resolve rather than a
         # partial push. That is the same contract the columns beside it
         # have always had.
-        if jurisdiction and page.jurisdiction_confidence != (
+        if identity_supplied and page.jurisdiction_confidence != (
             _MANUAL_OVERRIDE_CONFIDENCE
         ):
             page.gov_id = gov.gov_id or None
             page.gov_type = gov.gov_type or None
+        # Channel columns: truthy-gated and never cleared, like
+        # meeting_kind below -- a transcript-only push carries neither.
+        if payload.get("video_channel"):
+            page.video_channel = payload["video_channel"]
+        if payload.get("video_channel_id"):
+            page.video_channel_id = payload["video_channel_id"]
         # Truthy-gated and never cleared: no adapter sets this today, so
         # an ingest that omits it must not wipe a kind an override wrote
         # (decision D2a -- NULL means `meeting`, and a press conference
@@ -1620,6 +1712,8 @@ _EXPORT_PAGE_COLUMNS = (
     MeetingPage.date,
     MeetingPage.jurisdiction,
     MeetingPage.jurisdiction_raw,
+    MeetingPage.video_channel,
+    MeetingPage.video_channel_id,
     MeetingPage.meeting_body,
     MeetingPage.jurisdiction_confidence,
     MeetingPage.gov_id,
@@ -1780,6 +1874,11 @@ async def list_pages_for_export(
             # older rows. The inventory report and the pin worklist read
             # this to judge a borrowed (`inferred`) or pinned identity.
             "jurisdiction_raw": row.jurisdiction_raw,
+            # The publishing account on a shared video host, and YouTube's
+            # permanent channel id -- the keys channel rules are written
+            # against (gov-id audit, 2026-09-10).
+            "video_channel": row.video_channel,
+            "video_channel_id": row.video_channel_id,
             "meeting_body": row.meeting_body,
             "jurisdiction_confidence": row.jurisdiction_confidence,
             # WO-99. The export is how rtr-discovery's feed roster and
@@ -4145,6 +4244,8 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "date": page.date,
             "jurisdiction": page.jurisdiction,
             "jurisdiction_raw": page.jurisdiction_raw,
+            "video_channel": page.video_channel,
+            "video_channel_id": page.video_channel_id,
             # The gov_id-derived display text (see effective_jurisdiction())
             # -- what /m/{slug} actually shows, so a page's own jurisdiction
             # can't drift from the same government its /j/ hub already

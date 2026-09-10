@@ -1658,6 +1658,26 @@ class IngestRequest(BaseModel):
     # exactly that reason (see _find_or_create_page()).
     best_effort: bool = False
     input_url_normalized: str
+    # Gov-id audit, 2026-09-10. The caller's own answer to "whose meeting
+    # is this", when it has one with certainty -- every enumeration method
+    # in rtr-business starts from a known `gov_id` and goes looking for a
+    # website, so by the time a candidate reaches this endpoint the
+    # government was never in doubt. Until now it had to be passed as a
+    # NAME and the seven-rung ladder re-derived the id, which measured
+    # 0/9 right without a workaround (ENUMERATION_METHODS.md §98). Treated
+    # as a pin: must exist in the registry (400 otherwise), and if the
+    # matched page already carries a DIFFERENT real government the push is
+    # refused (409) rather than overwriting -- which also catches the
+    # generic-YouTube-embed collision where unrelated governments land on
+    # one shared page. Absent (every existing caller) = unchanged
+    # behaviour.
+    gov_id: Optional[str] = None
+    # The publishing account on a shared video host (YouTube handle, Vimeo
+    # owner slug) and YouTube's permanent channel id, from
+    # ResolvedMeeting; stored on the page and passed to the resolver as a
+    # page_hint so `match=channel=...` override rows can fire.
+    video_channel: Optional[str] = None
+    video_channel_id: Optional[str] = None
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
     # call simply omits it and gets the "sourced" default crud.
@@ -1680,7 +1700,27 @@ async def internal_ingest(
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     payload = req.model_dump(exclude={"input_url_normalized"})
-    result = await crud.ingest_resolution(payload, req.input_url_normalized)
+    try:
+        result = await crud.ingest_resolution(payload, req.input_url_normalized)
+    except crud.UnknownGovernmentId as e:
+        return JSONResponse(
+            {"detail": "unknown gov_id", "gov_id": e.gov_id}, status_code=400
+        )
+    except crud.GovernmentMismatch as e:
+        # The page this push matched already belongs to a different real
+        # government. Not overwritten: the caller is told which page and
+        # which government, and a human decides (usually this means two
+        # governments share a generic embed id -- see BACKLOG.md).
+        return JSONResponse(
+            {
+                "detail": "gov_id mismatch with the existing page",
+                "page_id": e.page_id,
+                "slug": e.slug,
+                "existing_gov_id": e.existing_gov_id,
+                "supplied_gov_id": e.supplied_gov_id,
+            },
+            status_code=409,
+        )
     # Social auto-announce -- only a freshly *created* page can trigger it
     # (re-ingests/backfills never can, see _find_or_create_page()'s
     # docstring); the quality gate, env-based enablement, and per-network

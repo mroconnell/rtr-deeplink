@@ -61,6 +61,15 @@ class MeetingPage(Base):
     # column existed -- never reconstructed. Text: the adapter's output
     # is not bounded by anything this schema controls.
     jurisdiction_raw: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # The account that published this page's video on a SHARED host: a
+    # YouTube channel handle ("@TownofWoodside") or a Vimeo owner slug, and
+    # YouTube's permanent channel id -- gov-id audit, 2026-09-10 (see the
+    # migration's docstring). Stored, not just checked in passing, so a
+    # channel rule added later reaches pages already archived through the
+    # ordinary backfill. Truthy-gated on write and never cleared: a
+    # transcript-only push carries neither.
+    video_channel: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    video_channel_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Both added 2026-08-15 (JURISDICTION_METADATA_PLAN.md), populated by
     # app/utils/jurisdiction_enrich.py's finalize_jurisdiction() in
     # _find_or_create_page() -- never set directly from a raw adapter

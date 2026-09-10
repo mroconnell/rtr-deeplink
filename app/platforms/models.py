@@ -76,6 +76,19 @@ class ResolvedMeeting(BaseModel):
     # below), so no Archive schema change is needed for this field to
     # exist here.
     meeting_location: Optional[str] = None
+    # The account that published the video on a SHARED host -- a YouTube
+    # channel handle ("@TownofWoodside") or a Vimeo owner slug
+    # ("citysalisburync") -- and, for YouTube, the permanent channel id
+    # ("UC..."), which survives a rename where the handle does not. Gov-id
+    # audit, 2026-09-10: the identifying detail for a bare YouTube/Vimeo
+    # paste is never in the address, and the adapter had it all along
+    # (yt-dlp / oEmbed hand it over on every resolve) and dropped it. The
+    # Archive stores both on the page and passes the handle to the
+    # resolver as a `page_hint`, so a `tenant_overrides.csv` row with
+    # `match=channel=@Handle` can key the page. None on every other
+    # platform, and on a YouTube resolve that yt-dlp could not complete.
+    video_channel: Optional[str] = None
+    video_channel_id: Optional[str] = None
     video_url: Optional[str] = (
         None  # m3u8/mp4 URL playable by hls.js/<video>, OR a youtube.com/embed/{id} URL
     )
