@@ -1,5 +1,87 @@
 # Backlog — done
 
+## WO-175: hand-check of the 287 LocalView channels WO-171 rejected; an on-mission meeting queued where the channel is the government's [Done 2026-09-10]
+
+**What this checked, and why.** WO-171 matched 1,010 YouTube channels
+from the LocalView dataset to real governments, using one quick check:
+does the channel's public "author" name plainly say which government it
+is? 287 failed that check. Ryan asked to look at each one by hand,
+because that single check can be wrong two ways: it can miss a real
+government channel whose name is written oddly, and it can miss a
+channel that is not the government's own but still carries the
+government's real meetings.
+
+**What was checked instead.** Each channel's own "About" page, which
+carries its real title, description, and topic words. This is a
+stronger signal than the single field WO-171 used, because a channel's
+title is what it calls itself.
+
+| Verdict | Count of 287 | What it means |
+|---|---|---|
+| Not government | 154 | a person, business, campaign, or unrelated channel with no tie to this government |
+| No government assigned | 67 | this place named more than one government at once in the original dataset, so there is nothing to check the channel against |
+| Shared | 36 | the government's name shows up in the channel's own description or topic words, alongside real meeting language, but not in its title (a community-media channel, or a citizen who posts a government's meetings) |
+| Own channel | 19 | the channel's own title plainly says which government it is |
+| Different government | 6 | the channel is a real, different government (another place, or in two cases a Native American tribal nation whose name happens to match the place name) |
+| Same name, needs a person | 4 | an official-looking channel in the right state, but the name is not an exact or confident match |
+| Could not check | 1 | no channel information came back even after a second try |
+
+**What was found for the 55 "own channel" and "shared" ones.** For each,
+a search for a real meeting video on that channel — a regular council,
+commission, or board meeting, not a campaign ad or a tour. Every pick
+was checked to make sure it actually plays and is long enough to be a
+real meeting, the same check WO-144 built.
+
+| Outcome | Count of 55 | Detail |
+|---|---|---|
+| Queued after check | 23 | a real, watchable meeting found and added to the queue |
+| Already has a page | 16 | this government's site already has a real page |
+| Blocked before a second try | 15 | a bug (below) meant the first try gave a false "nothing found"; YouTube's own block signal stopped the retry before these could be checked honestly |
+| No real meeting on the channel | 1 | videos exist, but none looked like a real meeting |
+
+**A bug found and fixed along the way.** 31 of the 287 channels had no
+username on file — only an internal ID. The first attempt to look them
+up used a blank username by mistake, so all 31 came back as "nothing
+found" when in fact 30 of them were real, working channels — several
+obviously official ("City of Dacono", "Official City of Lincolnton NC
+Youtube"). Fixed by looking them up by their internal ID instead. The
+same mistake also hid real meetings from being found on 23 of the 55
+channels searched for a meeting; fixing it and re-checking recovered 5
+real meetings on the first 6 tries before YouTube's own block signal (a
+"429" / "confirm you're not a bot" response) stopped all further
+YouTube requests for the rest of this session, per this project's
+standing rule. The remaining 15 are marked as not honestly re-checked,
+not as "nothing found" — that earlier result is known to be wrong.
+
+**Caution.** Nothing goes live from this work yet. A queued meeting
+becomes a real page only after this project's next deploy, and only
+once the cloud worker fetches its captions — this project does not
+fetch YouTube captions from this Mac today (a known, separate block; see
+`docs/investigations/youtube_429_block.md`). Four of the 23 queued
+governments (Dacono CO, Calhoun GA, Romulus MI, Roseville MI) are real
+"own channel" matches whose exact channel address is still unknown, so
+only the single video is tied to the government, not the whole channel
+— filed below so it is not lost. The "different government" list above
+found two real tribal-nation channels wrongly matched to a same-named
+city or town in the original dataset — a reminder that a name match
+alone, even a strong one, is not proof.
+
+**Recommendation.** Deploy this project so the 23 queued meetings start
+moving through captioning. Someone should also hand-check the 4
+"same name, needs a person" rows, since two are the same kind of
+one-word-name collision found and fixed here (e.g. a channel plainly
+named "City of Santa Clara" wrongly assigned to "Santa Clarita").
+
+**Deploy status.** Nothing is live from this work yet. The 23 queue
+lines and their pins take effect on the next deploy.
+
+- **History**: builds on WO-171 (the dataset and its own channel check,
+  whose 287 rejects this hand-checks), WO-144 (the video check used
+  here), WO-134 (the meeting-title rules), and WO-145 (the "is this
+  really the same government" checks this session's own tribal-nation
+  and named-place checks extend). Full method, every fix, and every
+  number's derivation:
+  `rtr-business/research/wo175_methods_section.md`.
 ## WO-176: own-domain path and feed pilot for ProudCity, WordPress, CivicLive and OpenCities, sitemap first, on 600 no-platform-link governments [Done 2026-09-10]
 
 WO-154 found that only CivicPlus has a reliably guessable meetings path
