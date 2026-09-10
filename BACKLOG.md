@@ -124,21 +124,17 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Production actions only Ryan should take  (9)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
+  Production actions only Ryan should take  (4)
     [HUMAN] Two live pages need deleting: real video, zero transcript…
     [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
-    [HUMAN] Click Validate Fix in Search Console for the reslug fix.
-    [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
-    [HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may…
-    [HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed…
-    [HUMAN] Dismiss the GitHub secret-scanning alert on…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
+  [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -246,7 +242,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
     [NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found…
     [NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows…
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (4)
@@ -261,8 +257,7 @@ Reliability, ops & cost  (14)
     [NEEDS-AUDIT] Backlog keeps shrinking — re-derived 2026-08-31.
     [LATER] `list_transcription_backlog_candidates()` still does a real
     [LATER] Second transcription worker's auto-generation TOCTOU race —
-  Search Console, structured data & SEO plumbing  (2)
-    [HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
+  Search Console, structured data & SEO plumbing  (1)
     [NEEDS-AUDIT] New "Missing field" flags — Videos `uploadDate`, Events
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
@@ -661,44 +656,6 @@ of human step they need.
   - **Next action**: product call — `noindex` them, or delete via the existing delete-pages endpoint; the 2 that do have a transcript can stay with the dead-player fix from Ship next.
   - **History**: gov-id enumeration audit, 2026-09-09.
 
-- **[HUMAN] Click Validate Fix in Search Console for the reslug fix.**
-  - **Issue**: the reslugged-pages fix is deployed and live (confirmed
-    2026-08-31: reslugged pages serve real content), but Search Console
-    hasn't been told to re-check them.
-  - **Impact**: Google keeps flagging pages as broken that are actually
-    fixed until Validate Fix is clicked.
-  - **Next action**: click Validate Fix in Search Console now — this is
-    actionable today, not "once it completes." Don't expect it to clear
-    100%; see `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` writeup
-    for the full numbers and why.
-  - **History**: code side shipped and already deployed — see
-    `BACKLOG_DONE.md`.
-
-- **[HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health check, `delete_meeting_pages_by_slug()`'s FK cleanup) may still not be deployed — confirm and redeploy if not.**
-  - **Issue**: both fixes are confirmed present on `main` (re-checked 2026-09-05): `archive/main.py`'s `/api/health` uses `LIMIT 1` not `SELECT count(*)`, and `archive/db/crud.py:9337`'s `delete_meeting_pages_by_slug()` deletes `SocialPost`/`MeetingPageThumbnail` rows before the page. Every service has `autoDeploy: false` in `render.yaml`, so a merge ships nothing until someone deploys it by hand.
-  - **Impact**: as of the inbox-triage Routine's 2026-08-31/09-01 runs, alerts consistent with both gaps still being live kept arriving — repeated `rtr-deeplink-archive` "HTTP health check failed" Render alerts, a `ClientConnectorError` hitting real `/j/belvedere-ca` traffic 58s before one such alert, and a `ForeignKeyViolationError` on `/internal/admin/delete-pages`. No further alerts of either shape turned up in the runs reviewed through 2026-09-03 — consistent with (but not proof of) an intervening deploy.
-  - **Next action**: check the Archive service's deploy history in Render; deploy if it's still running a pre-2026-08-30 13:28 PDT build. No code change needed — this is "ship what's already on `main`."
-  - **History**: `BACKLOG_DONE.md` (WO-80); PR #577 (`delete_meeting_pages_by_slug` fix). Flagged by the inbox-triage Routine's 2026-08-31 run.
-
-- **[HUMAN] WO-88's CivicClerk `mediaStreamPath` relative-path fix may not be deployed to the transcription worker services — confirm and redeploy if not.**
-  - **Issue**: confirmed present on `main` (`app/platforms/civicclerk.py:77`'s `_reconstruct_cdn_stream_url()`), but the auto-transcription retry path calls `finder.resolve(source_url)` **in-process** (`worker/main.py:471`), importing the platform module directly rather than calling the deployed resolver's HTTP API — so a worker instance still running a pre-fix build hits the raw-relative-path bug regardless of the resolver's own deploy state. `rtr-transcription-worker`/`-2` are `type: worker` with `autoDeploy: false` like every other service, and neither has an `/admin/schema-info`-style endpoint to check deploy state directly.
-  - **Impact**: transcription job 1308 (`kaysville-ut-2023-04-28-city-council-work-session`, 2026-08-31T13:14:37Z) failed 3/3 on chunk 0/14 with the exact pre-fix raw-path symptom the fix was built and tested against — the same event/GUID cited in the fix's own docstring. Stays stuck failing/in cooldown until a worker redeploy ships the already-merged fix; any other CivicClerk event hitting the same fallback fails the same way until then.
-  - **Next action**: confirm whether `rtr-transcription-worker`/`rtr-transcription-worker-2` have deployed since 2026-08-31 13:14 UTC; redeploy if not. No code change needed.
-  - **History**: `BACKLOG_DONE.md` (WO-88). Flagged by the inbox-triage Routine's 2026-09-01 run.
-
-- **[HUMAN] `rtr-deeplink` (the production resolver) has SIGABRT-crashed (status 134) at least 13 times since 2026-08-30, with at least 3 confirmed real outages — and 2 of those 3 have no matching Render alert at all, so the true rate may be higher than what's counted. Needs Render's own crash logs and memory graph, which only Ryan can pull.**
-  - **Issue**: identical "Exited with status 134" Render alerts recurring roughly every 5-12 hours from 2026-08-30 16:54 UTC through at least 2026-09-05 08:45 UTC (13 occurrences counted across ~6 days). Root cause is unconfirmed — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config, and a SIGABRT from a CPython process usually means a native-extension fault (this app's C-extension deps are aiohttp/uvloop/asyncpg/PyAV) or an allocator abort under severe memory pressure. The latter has real precedent on this exact service: `rtr-deeplink` runs on `plan: starter` (512MB) — Ryan bumped it to `standard` after a 2026-08-25/26 memory-pressure crash investigation (`BACKLOG_DONE.md`, "Four Render-dashboard `[HUMAN]` items walked through live with Ryan") then reverted to starter the same day, betting that WO-80's health-check fix (landed the same night) would relieve the pressure — with an explicit note to revisit "if the same crash pattern recurs post-WO-80." It has. A second, possibly-related data point: Sentry **PYTHON-FASTAPI-1C** (`OSError: [Errno 9] Bad file descriptor` inside uvloop's `TCPTransport.get_extra_info` → `_get_socket`, 2026-09-01 20:48 UTC, same `srv-d9qhdobm8hqs738fgkog` service) is a separate C-level fault inside uvloop's own socket-handle code — no timestamp lines up with a known crash, but it's at minimum consistent with the same native-fault hypothesis.
-  - **Impact**: 3 confirmed real UptimeRobot DOWN/UP outages now — 2026-09-01 11:57:22-12:07:31 UTC (~10 min, 10-11 min after a captured 11:46:53 crash alert); 2026-09-04 22:42:30-22:47:34 UTC (~5 min, `rtr-deeplink.onrender.com/api/health/resolve-check`); 2026-09-04 23:34:12-23:39:17 UTC (~5 min, `redtaperecordings.com` itself). Only the first has a plausibly-matching Render "server failure" alert inside a tight window — the other two don't line up with any captured alert within a reasonable margin, meaning the 13-alert count is very likely an undercount of the true crash rate, not the full picture.
-  - **Next action**: pull Render's real crash/exit logs for `rtr-deeplink` — ideally around 2026-09-04 22:42 or 23:34 UTC, since neither of those has a matching alert to anchor the search on otherwise — for the actual abort traceback, and check its memory-usage graph around the same windows the same way the 2026-08-25/26 and WO-94/95 worker investigations did. This Routine's tools can't reach either.
-  - **New data point (2026-09-05, from Ryan pasting the actual around-the-crash log for the first time)**: instance `8kp2j` exited status 134 at 8:05 AM local, **several minutes after a manual redeploy** — the first time a crash has been directly correlated with a fresh deploy rather than steady-state traffic. The pasted log shows only the aftermath (`Unclosed client session`/`Unclosed connection` to the Archive, `Unexpected error 9 on netlink descriptor 20` — GC-finalizer noise from the abrupt kill, not its cause) followed by Render's restart line; the actual abort still isn't in application-level stdout, confirming this needs Render's own crash log same as before. One thing the restart sequence *does* show: the fresh instance had to runtime-self-heal a missing Chromium binary (`headless_browser.py`'s existing, documented self-heal path, `warm_up_headless_browser()` at startup) before serving normally — consistent with Render having provisioned a genuinely new container rather than restarting the same one in place, which is worth mentioning to Ryan as a possible detail for whoever reads the real crash log, not a cause on its own.
-  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence should revisit). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, and 2026-09-05 runs; redeploy-correlation data point added 2026-09-05 from Ryan's own pasted log.
-
-- **[HUMAN] Dismiss the GitHub secret-scanning alert on `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html:103` — confirmed false positive, no RTR secret involved.**
-  - **Issue**: the flagged "Google API Key" is Durham NC's own public `GoogleMapsKey`, embedded in a real, live-fetched HTML fixture of Durham's own CivicPlus AgendaCenter page (exactly the "real fixture from a real live page" this repo's testing convention requires) — not an RTR credential. The alert's own "Public leaks" section lists the identical key already present in five unrelated public repos that scraped the same page, confirming it was already public before this repo's fixture captured it.
-  - **Impact**: nothing to rotate, but the alert keeps showing as "Action needed" in GitHub's Security tab until dismissed.
-  - **Next action**: dismiss the alert in GitHub's Security tab with reason "Used in tests." This Routine holds no GitHub write access for this, and dismissing a secret-scanning alert is a judgment call, so it's Ryan's to close.
-  - **History**: flagged by the inbox-triage Routine's 2026-08-31 run.
-
 ### Decisions about already-live content
 
 - **[NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population — residual work after the 2026-08-31 repair run.**
@@ -722,6 +679,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is real and ongoing — 25 occurrences since 2026-08-30 — but dashboard/log access has hit its ceiling; memory pressure is now ruled out as the driver for the great majority of them.**
+  - **Issue**: identical "Exited with status 134" Render alerts, now 25 occurrences since 2026-08-30 16:54 UTC through at least 2026-09-10 15:44 UTC (instance `zdd2t`, 8:44 AM PDT). Root cause is still unconfirmed at the application level — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config — but two live-checked-today data points narrow it: (1) **the memory graph for both the last 4 hours (including the 15:44 UTC crash window) and the last 14 days shows usage staying well under the `standard` plan's 2GB limit throughout, with exactly one exception already on record** — the 2026-09-01 morning spike (the one outage already correlated with a matching Render alert). Every other crash in 14 days, today's included, happened with memory far from the ceiling — this rules out chronic memory pressure as the driver for the bulk of the crash-loop, leaving a native-extension fault (this app's C-extension deps: aiohttp/uvloop/asyncpg/PyAV) as the more likely explanation for most occurrences, 2026-09-01 aside. (2) **PR #795's `handle_head_requests` Content-Length fix is confirmed deployed** (Ryan verified directly) and confirmed working live — a `HEAD /m/menifee-ca-2026-09-09-planning-commission-meeting` request in today's pasted log returns a clean `200 OK` with no `RuntimeError`, where the identical request shape crashed the same way in the 2026-09-01 log. That closes off PR #795 as a contributing factor going forward, distinct from (and not the cause of) the SIGABRT itself — the process survived the pre-fix version of that bug every time it was hit, per the 2026-09-01 log showing normal service resuming right after.
+  - **Impact**: unchanged in kind from before — a genuine recurring resolver crash-loop, now with the memory-pressure hypothesis substantially weakened rather than confirmed. 2026-09-01 remains the one occurrence where memory did spike; every other occurrence checked (14-day graph, today's 4-hour graph) shows no such spike.
+  - **Next action**: app-level and dashboard-level investigation is now exhausted — stdout logs never carry the actual abort (confirmed again today, two separate pasted logs, both only show the post-restart boot sequence), and Render's Events tab carries no more specific exit reason than the generic "Exited with status 134." The only remaining avenue is Render's own infra-level crash diagnostics (kernel `dmesg`/OOM-killer output), which isn't self-serve from either the dashboard or this repo's own tooling — would need Render support directly if this is worth pursuing further. Alternatively, treat as accepted background noise if the outage rate stays low (3 confirmed real UptimeRobot outages against 25 alerts, most auto-recovering in minutes).
+  - **New data points (2026-09-10, live dashboard walkthrough with Ryan)**: today's alert (instance `zdd2t`, exited 134 at 8:44 AM PDT / 15:44 UTC) is occurrence #25 (was 24 as of this morning's inbox-triage run). Two production logs pasted (2026-09-01 and 2026-09-10 mornings) both independently confirm the abort itself is never visible in application stdout — only the Chromium self-heal + restart sequence, same limitation as every prior data point. Considered and checked a new hypothesis this session — that `warm_up()` (`app/platforms/headless_browser.py`, called unconditionally at every startup per `app/main.py`'s lifespan) relaunching a full Chromium process on every restart could be tipping a memory-constrained instance over — but the graphs don't support it: post-restart memory/CPU spikes are real (visible in today's 4-hour graph) but "far from 100%," so this isn't the driver either.
+  - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence already revisited, current plan is `standard`/2GB). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, 2026-09-05, and 2026-09-10 (this entry) runs/sessions. Moved here from "Needs a human" 2026-09-10 — the human/dashboard step is done; what's left (if anything) is either Render-support escalation or accepting it as background noise, not a quick dashboard glance.
 
 - **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   lifted from an institutional-type word ("School District" → SD,
@@ -3819,30 +3783,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     setup.
 
 ### Search Console, structured data & SEO plumbing
-
-- **[HUMAN] `[LOGIN]` `[WAIT]` "Reasons preventing pages from being
-  indexed" — three of four categories settled, one still open.**
-  - **Issue**: the 2026-08-23 alert named four categories with no URLs
-    attached. Three are now resolved or explained; "Not found (404)" is
-    the one still without a URL list.
-  - **Impact**: unknown how much of the "Not found (404)" category is
-    real de-indexed content vs. explained noise. `/state/{slug}`,
-    `/j/{slug}`, and `/m/{slug}` all correctly 404 for an unknown slug, so
-    genuine 404s are expected after a de-index — and a related but
-    distinct bug (a reslugged old permalink serving 200 with a different
-    canonical instead of a real 301) was found and fixed 2026-08-31.
-  - **Next action**: re-check a future Search Console export for whether
-    any reslugged old permalinks now show up as 301s, now that the
-    redirect fix has landed.
-  - **Constraint**: the other two categories — "Alternate page with
-    proper canonical tag" and "Duplicate, Google chose different
-    canonical than user" — are the deliberate, documented consequence of
-    `state_page.html:10-17` and `meeting_list.html:8-11`'s
-    canonicalization. Do not "fix" these without deciding to reverse
-    those choices.
-  - **History**: `BACKLOG_DONE.md` — WO-62 (Soft 404 fix, Fairview TN's
-    `agenda_link`-only page), "Five frozen-slug pages reslugged"
-    (2026-08-28), and the 2026-08-31 redirect fix.
 
 - **[NEEDS-AUDIT] New "Missing field" flags — Videos `uploadDate`, Events
   `startDate` (both 2026-08-31) — likely trade-off of the 2026-08-21
