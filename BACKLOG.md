@@ -136,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -190,8 +190,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (22)
-    `[NEEDS-AUDIT]` `[EASY]` Lloydminster's hub (`/j/lloydminster-ab-sk`,…
+  Jurisdiction extraction & backfill  (21)
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
@@ -2421,11 +2420,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
-
-- **`[NEEDS-AUDIT]` `[EASY]` Lloydminster's hub (`/j/lloydminster-ab-sk`, display "Lloydminster, AB/SK") appears on neither `/state/alberta` nor `/state/saskatchewan`.**
-  - **Issue**: the city is one government on both sides of the border and Ryan chose to display both provinces rather than pick one (`rtr:ca:ab-sk:lloydminster`, state `AB/SK`). `state_abbr_from_jurisdiction()` reads no province from "AB/SK", so the state pages' grouping and the "(Canada)" marker both miss it.
-  - **Next action**: let a two-code state contribute to both province pages (split on `/` where the state is read), and treat it as Canadian for the marker. Two pages today.
-  - **History**: pinned 2026-09-10 (`BACKLOG_DONE.md`, "Pins for the type-initial hosts and Lloydminster").
 
 - **`[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village or city of the same name: `_LEADING_TYPE_RE` knows "Township of" but not "Charter Township of".**
   - **Issue**: `resolve_government("Charter Township of Shelby, MI")` → `us:place:2672840` (Shelby *village*, Oceana County), while "Shelby Charter Township, MI" → `us:cousub:2609972820` correctly. `resolver.py`'s `_LEADING_TYPE_RE` lists `city|town|village|borough|township|…` without the `(?:charter\s+)?` prefix that `_TRAILING_TYPE_RE` and `_TRAILING_PAREN_TYPE_RE` already allow, so no township preference reaches the lookup and the place wins the tie. Michigan has ~130 charter townships and their IQM2/CivicClerk portals title themselves exactly this way.

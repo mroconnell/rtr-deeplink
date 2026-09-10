@@ -61,6 +61,7 @@ from ..utils.jurisdiction_format import (
     match_us_state_or_province,
     normalize_state_suffix,
     state_abbr_from_jurisdiction,
+    state_abbrs_from_jurisdiction,
     state_slug_from_abbr,
 )
 from ..utils.gov_groups import GROUP_LABELS, GROUP_ORDER, group_for_page
@@ -6382,6 +6383,19 @@ async def get_full_jurisdiction_coverage() -> list[dict]:
     return result
 
 
+def _jurisdiction_in_state(abbr: str):
+    """SQL for "this page's display name ends in state `abbr`" -- the
+    plain `, AB` suffix, plus the two shapes a two-province name takes
+    (`, AB/SK` and `, AB/SK` seen from the SK side). Always re-checked in
+    Python with `state_abbrs_from_jurisdiction()` because SQLite's LIKE
+    is case-insensitive."""
+    return or_(
+        MeetingPage.jurisdiction.like(f"%, {abbr}"),
+        MeetingPage.jurisdiction.like(f"%, {abbr}/%"),
+        MeetingPage.jurisdiction.like(f"%/{abbr}"),
+    )
+
+
 async def get_state_coverage_index() -> list[dict]:
     """One row per US state or Canadian province/territory with >= 1
     indexable archived meeting, for the /state/{slug} landing pages:
@@ -6406,16 +6420,16 @@ async def get_state_coverage_index() -> list[dict]:
 
     by_state: dict[str, dict] = {}
     for jurisdiction, updated_at in rows:
-        abbr = state_abbr_from_jurisdiction(jurisdiction)
-        if not abbr:
-            continue
-        entry = by_state.setdefault(
-            abbr, {"jurisdictions": set(), "page_count": 0, "last_updated": updated_at}
-        )
-        entry["jurisdictions"].add(jurisdiction)
-        entry["page_count"] += 1
-        if updated_at > entry["last_updated"]:
-            entry["last_updated"] = updated_at
+        # A two-province name (Lloydminster, AB/SK) counts for both.
+        for abbr in state_abbrs_from_jurisdiction(jurisdiction):
+            entry = by_state.setdefault(
+                abbr,
+                {"jurisdictions": set(), "page_count": 0, "last_updated": updated_at},
+            )
+            entry["jurisdictions"].add(jurisdiction)
+            entry["page_count"] += 1
+            if updated_at > entry["last_updated"]:
+                entry["last_updated"] = updated_at
 
     result = [
         {
@@ -6954,7 +6968,7 @@ def _state_scope_condition(abbr: str):
     browser check of the rebuilt page: the new "State government" heading
     could never have held a row without this.
     """
-    conditions = [MeetingPage.jurisdiction.like(f"%, {abbr}")]
+    conditions = [_jurisdiction_in_state(abbr)]
     gov_id = state_gov_id(abbr)
     if gov_id:
         conditions.append(MeetingPage.gov_id == gov_id)
@@ -7034,7 +7048,7 @@ async def get_state_page_data(
             # matched by its id instead and skips the suffix check, since
             # "State of California" deliberately has no ", CA" on it.
             if gov_id != state_gov_id(abbr) and (
-                state_abbr_from_jurisdiction(jurisdiction) != abbr
+                abbr not in state_abbrs_from_jurisdiction(jurisdiction)
             ):
                 continue
             has_transcript = (
@@ -7587,7 +7601,7 @@ async def _top_jurisdictions_in_state(abbr: str, limit: int) -> list[tuple[str, 
             await session.execute(
                 select(MeetingPage.jurisdiction, MeetingPage.gov_id).where(
                     MeetingPage.jurisdiction.is_not(None),
-                    MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                    _jurisdiction_in_state(abbr),
                 )
             )
         ).all()
@@ -7595,7 +7609,7 @@ async def _top_jurisdictions_in_state(abbr: str, limit: int) -> list[tuple[str, 
     examples: dict[str, str] = {}
     for jurisdiction, gov_id in rows:
         # Same SQLite case-insensitive-LIKE re-check as elsewhere.
-        if state_abbr_from_jurisdiction(jurisdiction) != abbr:
+        if abbr not in state_abbrs_from_jurisdiction(jurisdiction):
             continue
         _key, hub_slug, hub_display, _type = _hub_identity(gov_id, jurisdiction)
         if not hub_slug:
@@ -7838,7 +7852,10 @@ def effective_state_abbr(
     """
     gov = registry_governments().get(gov_id) if gov_id else None
     if gov and gov.state:
-        return gov.state.upper()
+        # A two-province registry state ("AB/SK") yields its first code
+        # here, like state_abbr_from_jurisdiction() does for the display
+        # form -- the meeting page has one "More ... meetings" link.
+        return gov.state.upper().split("/")[0]
     return state_abbr_from_jurisdiction(jurisdiction)
 
 
@@ -7942,7 +7959,7 @@ async def _state_topic_chips(session, abbr: Optional[str]) -> list[dict]:
             )
             .join(MeetingPage, MeetingPage.id == MeetingHighlight.meeting_page_id)
             .where(
-                MeetingPage.jurisdiction.like(f"%, {abbr}"),
+                _jurisdiction_in_state(abbr),
                 MeetingPage.platform != "unknown",
             )
             .order_by(MeetingPage.date.desc(), MeetingPage.id.desc())
@@ -7954,7 +7971,7 @@ async def _state_topic_chips(session, abbr: Optional[str]) -> list[dict]:
     highlights = {
         page_id: {"topic_moments": moments or {}}
         for page_id, moments, jurisdiction in rows
-        if state_abbr_from_jurisdiction(jurisdiction) == abbr
+        if abbr in state_abbrs_from_jurisdiction(jurisdiction)
     }
     return _topic_chips(highlights, None)
 

@@ -172,13 +172,28 @@ def state_abbr_from_jurisdiction(jurisdiction: Optional[str]) -> Optional[str]:
     deliberately doesn't re-run full-name or case repairs. Callers that
     need to know which country an abbr belongs to should follow up with
     `is_canadian_abbr()`."""
+    abbrs = state_abbrs_from_jurisdiction(jurisdiction)
+    return abbrs[0] if abbrs else None
+
+
+def state_abbrs_from_jurisdiction(jurisdiction: Optional[str]) -> list:
+    """Every state/province a display name belongs to -- one for almost
+    every page, two for Lloydminster ("Lloydminster, AB/SK": one city
+    under one charter on both sides of the Alberta/Saskatchewan border,
+    shown with both provinces on purpose -- Ryan, 2026-09-10). A page
+    with a two-code suffix belongs on BOTH province pages, which is why
+    this exists beside the single-value form: `state_abbr_from_
+    jurisdiction()` returns the first code (so the "(Canada)" marker and
+    the meeting page's one "More ... meetings" link keep working), and
+    the state pages ask this one. Empty when the text after the last
+    comma is not made of valid codes."""
     if not jurisdiction or "," not in jurisdiction:
-        return None
+        return []
     _, _, suffix = jurisdiction.rpartition(",")
-    suffix = suffix.strip()
-    if suffix in _VALID_STATE_ABBRS:
-        return suffix
-    return None
+    codes = [c.strip() for c in suffix.strip().split("/")]
+    if codes and all(c in _VALID_STATE_ABBRS for c in codes):
+        return codes
+    return []
 
 
 def state_slug_from_abbr(abbr: str) -> str:

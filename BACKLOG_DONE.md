@@ -1,5 +1,21 @@
 # Backlog — done
 
+## A two-province name counts for both province pages, and no longer 500s its own meeting page [Done 2026-09-10]
+
+Follow-up to the Lloydminster pin (entry below). Once the deploy carried
+the `rtr:ca:ab-sk:lloydminster` row (state "AB/SK"), `crud.
+effective_state_abbr()` returned "AB/SK" and the meeting page did
+`US_STATE_ABBR_TO_NAME["AB/SK"]` -- a live 500 on every Lloydminster
+page, found while fixing the province-page gap. Now:
+`state_abbrs_from_jurisdiction()` returns every code in a suffix
+(`["AB", "SK"]`), the single-value `state_abbr_from_jurisdiction()`
+returns the first (so the "(Canada)" marker and the page's one "More
+Alberta meetings" link keep working), a registry state is split the same
+way, and the state pages' SQL suffix match (`_jurisdiction_in_state()`,
+three LIKE shapes) plus their Python re-checks and the coverage index
+all ask for membership rather than equality. Pinned by
+`test_a_two_province_city_sits_on_both_province_pages_and_renders`.
+
 ## Pins for the type-initial hosts and Lloydminster — the right state shows on every page the 2026-09-10 dry run had flagged [Done 2026-09-10]
 
 Ryan: minted names being displayed is right, and the exceptions get

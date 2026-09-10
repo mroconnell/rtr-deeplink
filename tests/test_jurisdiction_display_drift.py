@@ -209,3 +209,20 @@ def test_an_unknown_host_id_renders_no_placeholder_and_no_hub():
     assert crud.effective_jurisdiction("rtr:unknown:vimeo.com", "Somewhere") == (
         "Somewhere"
     )
+
+
+def test_state_abbrs_from_jurisdiction_handles_a_two_province_suffix():
+    from archive.utils.jurisdiction_format import (
+        format_jurisdiction_display,
+        state_abbr_from_jurisdiction,
+        state_abbrs_from_jurisdiction,
+    )
+
+    assert state_abbrs_from_jurisdiction("Lloydminster, AB/SK") == ["AB", "SK"]
+    assert state_abbr_from_jurisdiction("Lloydminster, AB/SK") == "AB"
+    assert format_jurisdiction_display("Lloydminster, AB/SK") == (
+        "Lloydminster, AB/SK (Canada)"
+    )
+    assert state_abbrs_from_jurisdiction("Napa, CA") == ["CA"]
+    assert state_abbrs_from_jurisdiction("Nowhere, XX/YY") == []
+    assert state_abbrs_from_jurisdiction("Kansas City") == []
