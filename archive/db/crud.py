@@ -6428,8 +6428,8 @@ async def get_state_coverage_index() -> list[dict]:
             )
             entry["jurisdictions"].add(jurisdiction)
             entry["page_count"] += 1
-        if updated_at > entry["last_updated"]:
-            entry["last_updated"] = updated_at
+            if updated_at > entry["last_updated"]:
+                entry["last_updated"] = updated_at
 
     result = [
         {
