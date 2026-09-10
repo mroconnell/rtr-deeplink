@@ -1335,6 +1335,92 @@ batch script) — nothing here is blocked on a deploy. The 133 tier-3
 queue entries will surface as real pages over the coming days as the
 existing cloud auto-transcription worker drains them, on its own
 schedule.
+## WO-126: re-worked 973 AgendaCenter/calendar hubs previously rejected as zero-page -- 7 real ingests, 64 tier-3 queue adds, 51 government-identity pins, no adapter defects found [Done 2026-09-10]
+
+Population: `coverage_registry.csv` rows whose `hub_url` contains
+"agendacenter" or "calendar" (case-insensitive) and `archive_pages ==
+0` -- 973 governments, 886 already rejected by earlier passes (602
+`no-platform-link-found`, 228 `no-video-found`) after checking only a
+hub's first listing page. Ryan clicked through several by hand and
+found real meetings behind them (Youngstown NY's AgendaCenter had real
+agenda rows with no video; South Miami FL's calendar page linked out to
+a real Granicus clip), so this WO re-worked the whole population going
+deeper per hub: CivicPlus AgendaCenter's `UpdateCategoryList` year
+fragments (governing body first, newest year first, up to a per-
+government budget), and for every other calendar a scan for a known-
+platform link plus one hop into same-site agenda/meeting/video-hinted
+pages. **Only meetings with video became Archive pages** (Ryan's
+explicit correction before the real run) -- an agenda-only hub, however
+real and current, is recorded `no-video-found` and never ingested, so
+the site isn't flooded with video-less pages.
+
+**Funnel, all 950 rows attempted** (pilot of 25 verified clean first,
+then the rest in sequential chunks; population shrank 973 -> 946
+mid-run from a concurrent session's `coverage_registry.csv` refresh,
+confirmed zero gaps against the live population at the end): `skipped`
+858 (`no-video-found` 459, `no-platform-link-found` 246, `no-meetings-
+found` 66, `resolve-failed` 65, `cloudflare-challenge-blocked` 11,
+`off-mission` 11), `queued_tier3` 64, `duplicate_queued` 13,
+`already_covered` 8, `ingested_tier1_2` 7 (4 Vimeo, 1 Granicus, plus
+Charlotte MI and Wyandotte MI). Tier-3 adds by platform: YouTube 44,
+Granicus 9, CivicClerk 7, Vimeo 6, Viebit 4, TelVue 1.
+
+**No adapter defect found.** `resolve-failed`'s 65 rows are almost all
+generic bot-defense reached before any platform could be detected --
+plain `HTTP 403` from unbranded WAFs on ordinary `.gov` calendar pages
+(Fort Collins CO, Littleton CO, Bell CA, Yellville AR) and connection
+timeouts on small-town sites -- plus exactly 2 individual cases where a
+known platform *was* reached and still failed for an external reason
+(a stale Granicus `clip_id` on Garden City KS, a DNS failure on an
+eScribe tenant for Mayville WI). Both are link-rot, not a reproducible
+code gap, so no BACKLOG adapter-gap entry was filed. The 11
+`off-mission` rows show the existing title-gate logic transferring
+cleanly to this new population (a financial-disclosure tutorial, a
+historic-cemetery tour, a Christmas parade, a city-hall tour, all
+correctly declined).
+
+**Government identity**: every ingest/queue payload carries the
+registry's own `"Name, ST"` as `jurisdiction`; a bare shared-host
+video's queued `source_url` is overridden to the government's own hub
+page, not the video-host URL. 51 governments needed a `fallback` pin
+(own-domain or shared-host+video-id) to key correctly --
+applied to `app/utils/jurisdiction_data/tenant_overrides.csv` the same
+run; live for new resolves after the next deploy.
+
+**Cross-repo note**: `rtr-business/research/apply_hub_sweep_wo126_to_jc.py`
+(applies this run's outcomes to `jurisdiction_coverage.csv`) predated
+that repo's §158 write protocol (a real cross-session `flock` +
+atomic-write standard adopted 2026-09-09 after a truncation incident);
+updated to match before its first real, non-dry-run apply -- 641 rows
+changed cleanly, 13 left alone because another session had already
+marked them ingested/covered. Full methodology and per-platform detail:
+`rtr-business/research/ENUMERATION_METHODS.md` §179.
+
+Files: `scripts/hub_sweep_wo126.py` (kept in this repo -- it imports the
+real platform adapters directly). 51 pins in
+`app/utils/jurisdiction_data/tenant_overrides.csv`. Report/pins/updates
+CSVs live in `rtr-business/research/` (a fresh dedupe export, 950-row
+report, 51-row pins file).
+
+**Not deployed yet** -- the 51 pins and the tier-3 queue additions take
+effect only after the next deploy of this repo (`autoDeploy: false`
+everywhere); the 7 tier-1/2 pages are already live since ingest POSTs
+straight to production.
+
+**Real overlap found rebasing onto `main`**: this branch was 23 commits
+behind by the time the sweep finished (WO-127/128/130/134/136/137/138
+all landed concurrently, targeting overlapping "zero-page" populations
+by different heuristics). Merging the two hotspot files by hand found
+16 rows this sweep's own report counted as new that another session had
+already added independently -- 2 pins (`delano.viebit.com`,
+`monticello.viebit.com`, both agreeing on the same `gov_id` WO-127
+found) and 14 tier-3 queue lines. Kept the earlier session's row in
+every case; this sweep's **net new** contribution after dedup is 49
+pins and 50 tier-3 queue entries, not the 51/64 the raw run reported --
+both numbers are real, they're just measuring before vs. after the
+merge. The 7 tier-1/2 ingests had no such overlap (production's own
+ingest endpoint already deduped one of them, Newark CA, against an
+existing page rather than double-creating).
 
 ## Ryan's pin worklist applied and backfilled -- 35 pins, 58 pages re-keyed, 20 hub redirects, two bugs found by the dry run [Done 2026-09-09]
 
