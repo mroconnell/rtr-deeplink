@@ -2030,6 +2030,42 @@ async def admin_schema_info(authorization: Optional[str] = Header(None)):
     }
 
 
+@app.get("/admin/version")
+async def admin_version(authorization: Optional[str] = Header(None)):
+    """Reports which commit this running instance was actually built from,
+    so confirming a merged fix has been deployed doesn't require a Render
+    dashboard login -- same motivation as `/admin/schema-info` above, for
+    deploy state instead of schema state. Built 2026-09-10 after a
+    dashboard-checklist run needed a human to manually check Render's
+    Events tab for two separate "has this already-merged fix shipped?"
+    questions (WO-80/FK-cleanup on the Archive, WO-88 on the transcription
+    workers) with no cheaper way to answer either one.
+
+    `RENDER_GIT_COMMIT`/`RENDER_GIT_BRANCH`/`RENDER_SERVICE_NAME` are
+    documented as automatically set by Render on every service -- this
+    endpoint is what actually confirms that's true here rather than
+    assuming it, in the spirit of the `/admin/schema-info` incident this
+    docstring already points to (a doc's unverified claim about
+    production caused a real mistake). If `commit` comes back `None`,
+    that assumption was wrong and the vars are unset for this service.
+
+    Deliberately covers `type: web` services only. `rtr-transcription-
+    worker`/`-2` (`type: worker`, render.yaml) run no HTTP server at all,
+    so this same trick doesn't reach them -- confirming their deploy
+    state still needs a Render login or a different mechanism (e.g. a
+    startup heartbeat row), not built here.
+    """
+    if not _admin_token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {
+        "commit": os.environ.get("RENDER_GIT_COMMIT"),
+        "branch": os.environ.get("RENDER_GIT_BRANCH"),
+        "service_name": os.environ.get("RENDER_SERVICE_NAME"),
+        "instance_id": os.environ.get("RENDER_INSTANCE_ID"),
+    }
+
+
 @app.get("/admin/daily-report")
 async def admin_daily_report(
     dry_run: bool = False, authorization: Optional[str] = Header(None)

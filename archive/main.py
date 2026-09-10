@@ -433,6 +433,35 @@ async def internal_schema_info(authorization: Optional[str] = Header(None)):
     }
 
 
+@app.get("/internal/version")
+async def internal_version(authorization: Optional[str] = Header(None)):
+    """Reports which commit this running instance was actually built
+    from, so confirming an already-merged fix has actually deployed
+    doesn't require a Render dashboard login -- same motivation as
+    `/internal/schema-info` above, for deploy state instead of schema
+    state. See `app/main.py`'s `/admin/version` (its resolver-side
+    counterpart, added the same day) for the full reasoning; ported here
+    because this is exactly the kind of "may still not be deployed --
+    confirm and redeploy if not" BACKLOG.md item this service gets too
+    (e.g. the WO-80/FK-cleanup fix).
+
+    `RENDER_GIT_COMMIT`/`RENDER_GIT_BRANCH`/`RENDER_SERVICE_NAME` are
+    documented as automatically set by Render on every service -- this
+    endpoint is what actually confirms that here rather than assuming
+    it. A `None` commit means that assumption was wrong for this
+    service.
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return {
+        "commit": os.environ.get("RENDER_GIT_COMMIT"),
+        "branch": os.environ.get("RENDER_GIT_BRANCH"),
+        "service_name": os.environ.get("RENDER_SERVICE_NAME"),
+        "instance_id": os.environ.get("RENDER_INSTANCE_ID"),
+    }
+
+
 @app.get("/internal/db-size")
 async def internal_db_size(authorization: Optional[str] = Header(None)):
     """Read-only storage report for the Postgres server this service is on,
