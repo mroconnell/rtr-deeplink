@@ -167,6 +167,25 @@ async def main() -> None:
     existing_queue_urls = wo134._existing_tier3_queue_urls()
     existing_override_keys = _existing_override_keys()
 
+    # A CAUTION-flagged row (channel_scan_caution() in
+    # wo147_access_ladder_sweep.py -- this WO's own 40-government pilot
+    # found 3/8 bare-channel-scan hits were not real meetings despite
+    # passing the title gate) needs a human to read the title before it
+    # earns a queue line, not just a clean probe -- the probe only knows
+    # duration/date/size, nothing about content. Held back here, not
+    # accepted or rejected, so a human pass can revisit them.
+    caution_gov_ids = set()
+    if REPORT_CSV.exists():
+        with REPORT_CSV.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if "CAUTION" in r.get("note", ""):
+                    caution_gov_ids.add(r["gov_id"])
+    print(
+        f"{len(caution_gov_ids)} pending gov_id(s) are CAUTION-flagged "
+        "(bare YouTube channel scan) -- held back from auto-accept regardless "
+        "of probe verdict."
+    )
+
     by_gov: Dict[str, List[tuple]] = defaultdict(list)
     consecutive_access_errors = 0
     last_call_by_host: Dict[str, float] = {}
@@ -180,11 +199,24 @@ async def main() -> None:
                 await asyncio.sleep(remaining)
         last_call_by_host[host] = time.monotonic()
 
+        # Real, confirmed-live bug caught in this script's own smoke test:
+        # the pending row's own `platform` column names whatever platform
+        # the ORIGINAL hit was (e.g. "civicplus"), not the actual video
+        # host after delegation (CLAUDE.md's documented "Legistar/
+        # CivicPlus's delegation ends up with the delegated platform's
+        # URL as source_url" quirk) -- passing that stale label forced
+        # probe_queue_entry() to dispatch on the wrong platform (tried
+        # "civicplus" against a youtube.com video_url, landing on "no
+        # probe recipe for this media shape" for a perfectly probeable
+        # YouTube video). meeting_url is always the real, resolved video
+        # page (e.g. a youtube.com/watch URL even for a civicplus-hit
+        # row), so detect_platform() on it is the correct source of
+        # truth -- not passed explicitly at all, letting
+        # probe_queue_entry() derive it the same way.
         result = await probe_queue_entry(
             row["meeting_url"],
             video_url=row.get("video_url") or None,
             source_page_url=row.get("source_url") or None,
-            platform=row.get("platform") or None,
         )
         append_probe_row(DEFAULT_SIDECAR_PATH, result)
         print(
@@ -215,7 +247,11 @@ async def main() -> None:
     # most one pending row.
     accepted: Dict[str, tuple] = {}
     rejected: Dict[str, tuple] = {}
+    held_for_review: Dict[str, tuple] = {}
     for gov_id, candidates in by_gov.items():
+        if gov_id in caution_gov_ids:
+            held_for_review[gov_id] = candidates[0]
+            continue
         accepted_candidates = [
             (row, result)
             for row, result in candidates
@@ -226,6 +262,14 @@ async def main() -> None:
             accepted[gov_id] = accepted_candidates[0]
         else:
             rejected[gov_id] = candidates[0]
+
+    if held_for_review:
+        print(f"\n{len(held_for_review)} government(s) held for manual title review:")
+        for gov_id, (row, result) in held_for_review.items():
+            print(
+                f"  {gov_id} {row['meeting_url']} -- probe: "
+                f"{result.verdict}, {result.reason or f'{result.duration_seconds:.1f}s'}"
+            )
 
     queue_lines_added = 0
     for gov_id, (row, result) in accepted.items():
@@ -245,7 +289,8 @@ async def main() -> None:
 
     print(
         f"\n{len(accepted)} government(s) accepted -> {queue_lines_added} new queue "
-        f"line(s), {len(rejected)} government(s) rejected (dead/short)."
+        f"line(s), {len(rejected)} government(s) rejected (dead/short), "
+        f"{len(held_for_review)} held for manual title review."
     )
 
     # Rewrite the matching wo147_report.csv rows in place.
