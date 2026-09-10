@@ -132,7 +132,7 @@ expected value is the host's own government) and `open` rows (honestly
 unkeyed, awaiting a pin) are reported but never fail it. First run: 78
 ok, 0 drift, 2 known-wrong still wrong, exit 0. Documented in README
 beside the backfill.
-## WO-146: re-listed 144 governments a prior sweep gave up on, through their own platform's listing instead of one guessed page — 1 real transcript, 10 more real videos queued, and 21 governments turned out to be a different government entirely [Done 2026-09-10]
+## WO-146: re-listed 144 governments a prior sweep gave up on, through their own platform's listing instead of one guessed page — 1 real transcript, 8 more real videos queued, and 21 governments turned out to be a different government entirely [Done 2026-09-10]
 
 **What this was.** Last night's sweeps checked one guessed web page per
 government and moved on if it looked empty. This run went back to 144
@@ -153,8 +153,8 @@ reached you (see Caution below).
 | Outcome | Count of 144 | Detail |
 |---|---|---|
 | Ingested tier 1/2 (captions available, page live now) | 1 | Loudoun County, VA — 76 real transcript lines |
-| Video with no captions, queued for review | 10 | written to a holding file, not the live queue yet — see Caution |
-| No video found | 17 | a real, current meeting exists, just no video attached |
+| Video with no captions, queued for transcription | 8 | checked for a real, watchable video first (WO-144's probe), then added to the live queue |
+| No video found | 19 | 17 real current meetings with no video, plus 2 more where the "video" the probe checked turned out to be a dead link (a PDF mislabeled as video, one link format the probe can't check yet) |
 | No meetings found at all | 5 | the government's own listing is empty |
 | Wrong government entirely | 21 | see below |
 | No way to reach the platform | 86 | the address on file doesn't lead anywhere usable |
@@ -222,12 +222,13 @@ either reached a wide audience:
    the county this run was looking for.
 
 **Recommendation.** Once a person deletes the two bad pages above, no
-further action is needed on this batch. The video-with-no-captions
-queue (10 governments) is deliberately not in the live queue yet — it
-is waiting on WO-144's separate check that confirms a video is real and
-watchable before it gets queued for transcription; that check was not
-finished on `main` when this run ended, so the queue step is picked up
-by whoever finishes WO-144.
+further action is needed on this batch. WO-144's video-check tool
+landed on `main` while this run was still going, so this run used it
+before queuing anything: it checked all 9 candidate videos, rejected 2
+as dead links (one was a PDF mislabeled as a video, one was a video
+link format the tool doesn't check yet), and queued the 7 real ones for
+transcription, plus 1 more that turned out to already be queued from
+an earlier sweep — 8 total.
 
 **Deploy status.** This work only touched research files, the sweep
 script, and one already-live production database through its normal

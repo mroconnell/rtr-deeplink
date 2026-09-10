@@ -548,6 +548,13 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   for the two state-entity cases (Colorado, Arkansas), there is no local
   government to redirect to, so just clear the domain and record
   `reject_reason=off-mission`, not `wrong-domain-mapping`.
+- **Constraint:** Colorado County, TX's row already has `transcribed=
+  True` from an older, unrelated sweep, which is why WO-146's own
+  backfill left it alone (the standing "never overwrite a real True"
+  rule) -- but a fresh `/internal/export/pages` check found ZERO live
+  pages under this gov_id, so that `True` is stale, not evidence of a
+  real page. Worth a fresh look at what `transcribed=True` is actually
+  based on for this row before trusting it elsewhere.
 - **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
 ### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
