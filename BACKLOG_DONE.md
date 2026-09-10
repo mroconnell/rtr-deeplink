@@ -28,6 +28,83 @@ run 0. The same map makes rtr-business's `add_gov_id_to_coverage.py` key
 lets its duplicate rows collapse -- handed to the coverage-registry
 session.
 
+## WO-144: a tier-3 queue candidate can be checked before it becomes a page — built the probe, ran it on the real 25-entry sample [Done 2026-09-10]
+
+**What this is.** WO-143 found that every tier-3 platform (YouTube,
+Granicus, Swagit, Cablecast, CivicClerk, Vimeo, TelVue) lets us learn a
+video's length, date, and file size without downloading it. This work
+turns that finding into code: a shared checker plus a command-line tool,
+so a dead link or a too-short clip can be caught before it becomes a
+real page on the site.
+
+**What was built.**
+
+- `app/platforms/queue_probe.py` — the shared checker. One function,
+  `probe_queue_entry()`, picks the right method for each platform (five
+  methods, matching WO-143's recipe exactly) and returns a plain
+  duration/date/size/verdict result.
+- `scripts/probe_tier3_queue.py` — a command you can run by hand against
+  a file of URLs, or against the whole tier-3 queue. It writes one row
+  per URL to a CSV log (`scripts/tier3_auto_transcription_queue_probe.csv`)
+  and skips URLs it already checked, so it can be re-run safely.
+- `scripts/feed_tier3_auto_transcription.py` now runs this same check
+  automatically, right after it resolves a queued URL and right before
+  it would turn that URL into a page. A dead or too-short result is
+  skipped instead of becoming a page.
+
+**Result: re-ran the real 25-entry sample from WO-143.** Same 25 real
+URLs, same tool, run again today.
+
+| Result | Count of 25 |
+|---|---|
+| Accept (real, usable meeting) | 18 |
+| Accept, but flagged as long (Anaheim's real 8.45-hour meeting) | 1 |
+| Reject — too short (35.7 seconds, below the 60-second floor) | 1 |
+| Reject — dead link or not available | 5 |
+
+19 of 25 (accept + flagged-long) are real, usable meetings. All the
+numbers matched WO-143's original measurements almost exactly — same
+durations, same file sizes, same dates. One real difference: a
+Bainbridge Island, WA CivicClerk meeting that timed out in WO-143 came
+back fine this time (145.7 minutes) — a real government site being slow
+once, not a bug in the checker.
+
+**Caution.** This checker was tested only against the same 25 real URLs
+WO-143 already found, plus one small live spot-check with one URL per
+platform. It has not been run against the rest of the 2,100-line tier-3
+queue yet — that is a bigger job for a later work order, not this one.
+No YouTube block signature (the "429" or "confirm you're not a bot"
+errors tracked in `docs/investigations/youtube_429_block.md`) showed up
+during any of this session's real YouTube checks.
+
+**What is not built.** The worker's own check at claim time
+(`worker/main.py`'s `probe_duration()`/`is_plausible_meeting_duration()`)
+is untouched — it still runs as a second, independent check after a
+page already exists. `scripts/feed_granicus_auto_transcription.py` was
+not changed: unlike `feed_tier3_auto_transcription.py`, it does not
+resolve URLs itself — it hands a batch straight to `bulk_ingest.py` as a
+separate process — so there is no in-process point to add the same check
+without changing `bulk_ingest.py` itself, which is a bigger, separate
+piece of work used by several other scripts. No sweep of the full
+2,100-line tier-3 queue was run.
+
+**Deploy status.** This is all `scripts/` and `app/platforms/` code, so
+it ships the next time someone deploys the resolver — merging this PR
+does not put it live on its own (see `CLAUDE.md`'s "Deploys are manual"
+section).
+
+**Recommendation.** Point WO-145/WO-146's breadth-sweep candidates
+through `scripts/probe_tier3_queue.py` before they get added to the
+tier-3 queue, using the shared sidecar CSV so every session's checks
+land in one place. A later work order should run the checker over the
+rest of the existing queue and record what fraction is actually dead.
+
+- **History**: WO-143 (this file's "can a queued video's duration/
+  date/size be learned cheaply" entry below) found the recipe and ran
+  the original 25-entry probe; this entry (WO-144) built the shared
+  checker and command-line tool from that recipe and re-verified it
+  against the same 25 URLs.
+
 ## `reports/gov_id_problem_cases.csv`: the hand-picked regression corpus behind the whole-archive backfill dry run [Done 2026-09-10]
 
 Ryan's idea after the audit: "a list of fewer than 6000 meetings ...

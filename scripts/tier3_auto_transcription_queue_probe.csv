@@ -1,0 +1,26 @@
+url,platform,probe_method,duration_seconds,date,size_bytes,over_nine_minutes,verdict,reason,probe_seconds,probed_at
+https://www.youtube.com/watch?v=KF4N78Gz64g,youtube,yt-dlp-metadata,4163.00,2026-01-16,113897164,1,accept,,4.82,2026-09-10T14:34:26+00:00
+https://www.youtube.com/watch?v=jX5Z82N_X3o,youtube,yt-dlp-metadata,587.00,2026-07-06,17905421,1,accept,,6.81,2026-09-10T14:34:30+00:00
+https://www.youtube.com/watch?v=3J2iFWUlD1w,youtube,yt-dlp-metadata,1749.00,2025-04-29,45131606,1,accept,,5.41,2026-09-10T14:34:30+00:00
+https://www.youtube.com/watch?v=8Fxfcd47cFA,youtube,yt-dlp-metadata,1446.00,2026-07-27,44381296,1,accept,,4.30,2026-09-10T14:34:30+00:00
+https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,3.91,2026-09-10T14:34:31+00:00
+https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790,granicus,hls-master+variant,2058.06,,,1,accept,,6.08,2026-09-10T14:34:37+00:00
+https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731,granicus,hls-master+variant,3601.19,,,1,accept,,7.94,2026-09-10T14:34:37+00:00
+https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3665,granicus,hls-master+variant,30411.54,,,1,flag-long,"duration 8.45h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",9.88,2026-09-10T14:34:40+00:00
+https://anacorteswa.portal.civicclerk.com/event/1452/media,civicclerk,head+ffprobe,8139.26,2026-09-09,4051753490,1,accept,,3.07,2026-09-10T14:34:40+00:00
+https://antiochca.portal.civicclerk.com/event/12/media,civicclerk,head+ffprobe,8261.43,2026-09-09,2210597811,1,accept,,4.79,2026-09-10T14:34:42+00:00
+https://bainbridgeislandwa.portal.civicclerk.com/event/1071/media,civicclerk,head+ffprobe,8741.91,2026-09-09,5127654833,1,accept,,5.09,2026-09-10T14:34:45+00:00
+https://vimeo.com/1219072948,vimeo,vimeo-oembed,2228.00,2026-08-17,,1,accept,,5.05,2026-09-10T14:34:45+00:00
+https://vimeo.com/537299140,vimeo,vimeo-oembed,2245.00,2021-04-15,,1,accept,,5.23,2026-09-10T14:34:48+00:00
+https://ryeny.new.swagit.com/videos/80201,swagit,hls-master+variant,1279.71,,,1,accept,,2.45,2026-09-10T14:34:48+00:00
+https://sanbernardino.cablecast.tv/internetchannel/show/3557?site=1,cablecast,resolve,,,,0,reject-dead,resolve returned no video_url,0.31,2026-09-10T14:34:48+00:00
+https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true,telvue,telvue-page-json,,,,0,reject-dead,"TelVue duration is 0 -- a live placeholder, not an archived recording",0.71,2026-09-10T14:34:49+00:00
+https://salem.cablecast.tv/internetchannel/show/19115,cablecast,hls-master+variant,757.41,,,1,accept,,1.40,2026-09-10T14:34:49+00:00
+https://albemarle.granicus.com/player/clip/1452,granicus,hls-master+variant,18279.96,,,1,accept,,19.84,2026-09-10T14:34:49+00:00
+https://videoplayer.telvue.com/player/KPxII4Dm-djtTqV7JZXpXeOM2kiyqvRV/stream/983?fullscreen=true&showtabssearch=true&autostart=true,telvue,telvue-page-json,,,,0,reject-dead,"TelVue duration is 0 -- a live placeholder, not an archived recording",0.73,2026-09-10T14:34:50+00:00
+https://www.youtube.com/watch?v=hhU7j0za5So,youtube,yt-dlp-metadata,5833.00,2026-08-29,212552975,1,accept,,3.87,2026-09-10T14:34:53+00:00
+https://www.youtube.com/watch?v=ESfzST-yOSM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] ESfzST-yOSM: This live event will begin in 4 days.,3.23,2026-09-10T14:34:54+00:00
+https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,2.42,2026-09-10T14:34:56+00:00
+https://alleganycomd.portal.civicclerk.com/event/1049/media,civicclerk,head+ffprobe,1895.43,2025-12-18,1235055102,1,accept,,3.83,2026-09-10T14:34:57+00:00
+https://agourahills.granicus.com/MediaPlayer.php?view_id=2&clip_id=2084,granicus,hls-master+variant,5211.78,,,1,accept,,8.10,2026-09-10T14:34:58+00:00
+https://rowletttx.new.swagit.com/videos/385912,swagit,hls-master+variant,10644.00,,,1,accept,,14.39,2026-09-10T14:34:59+00:00

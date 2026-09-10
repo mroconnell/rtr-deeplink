@@ -117,6 +117,11 @@ from app.platforms.base import (
     UnsupportedPlatformError,
     CalendarPageError,
 )  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    DEFAULT_SIDECAR_PATH,
+    append_probe_row,
+    probe_queue_entry,
+)
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import (  # noqa: E402
     _base_url,
@@ -162,6 +167,23 @@ async def _push_if_has_video(
 
     if not result.video_url:
         return f"[SKIP] no video found on re-resolve: {url}"
+
+    # WO-144: probe the resolved video before it becomes a real Archive
+    # page -- the worker's own claim-time duration gate
+    # (worker/main.py's probe_duration()/is_plausible_meeting_duration())
+    # still runs later as a second, independent check, but only a probe
+    # here stops a dead link or an implausibly short clip from becoming a
+    # page at all. Same sidecar CSV scripts/probe_tier3_queue.py writes
+    # to, so a row from either path tells the same story.
+    probe = await probe_queue_entry(
+        url,
+        video_url=result.video_url,
+        source_page_url=result.source_url,
+        platform=platform,
+    )
+    append_probe_row(DEFAULT_SIDECAR_PATH, probe)
+    if probe.verdict.startswith("reject-"):
+        return f"[SKIP] {probe.verdict}: {probe.reason} ({url})"
 
     if source_url_override:
         result.source_url = source_url_override
