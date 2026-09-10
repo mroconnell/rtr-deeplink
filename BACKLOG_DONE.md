@@ -1,5 +1,1362 @@
 # Backlog — done
 
+## Counties that share a name with an independent city never resolved -- "Baltimore County, MD" was "impossible" [Done 2026-09-09]
+
+Filed and fixed the same day, found while dry-running Ryan's pin
+worklist: his hand-typed "Baltimore County, MD" came back `unresolved`
+with "no 'Baltimore County' in MD -- counties are exhaustively listed",
+although `us_counties.csv` row 24005 is exactly that.
+
+**Cause.** `us_counties.csv` lists independent cities as
+county-equivalents (`Baltimore city` 24510, `Roanoke city` 51770), and
+`NameStateTable` keys rows with the trailing type word stripped, so
+"Baltimore County" and "Baltimore city" both keyed to "baltimore" in MD.
+`lookup()`'s exactly-one rule returned None on the tie, and
+`_is_impossible_county()` read that None as "no such county". Every
+county shadowed by an independent city in its own state failed the same
+way: Virginia's 38, plus Baltimore MD, St. Louis MO, Carson City NV.
+
+**Fix (PR #807).** `NameStateTable.lookup_typed()`: `lookup()`, plus one
+tie-break -- when the query's own trailing type word singles out exactly
+one of the tied rows, that row wins. The resolver's three county lookups
+use it. A query with no type word ("Baltimore", "Kansas City") still
+declines as before; a county that does not exist ("King County, NC") is
+still refused. `tests/test_gov_registry.py::
+test_county_sharing_a_name_with_an_independent_city_resolves` pins the
+four real cases and both guards.
+
+Original open-entry text, for the record:
+
+- **Issue:** `resolve_government("Baltimore County, MD")`, `"Roanoke County,
+  VA"`, `"Fairfax County, VA"`, `"Richmond County, VA"` all come back
+  `unresolved` with "no 'X County' in ST -- counties are exhaustively
+  listed", although `us_counties.csv` has every one of them (24005, 51161,
+  51059, 51159); "Montgomery County, MD" and "Prince George's County, MD"
+  resolve fine. Every failing case has an independent city of the same
+  name in the same state (`Baltimore city` 24510, `Roanoke city` 51770), so
+  the county lookup appears to treat the collision as "not found" rather
+  than preferring the row whose type word matches the input. Found
+  2026-09-09 while dry-running Ryan's pin worklist: his hand-typed
+  "Baltimore County, MD" was rejected by the same path.
+- **Impact:** Virginia's 38 independent cities plus Baltimore, St. Louis and
+  Carson City each shadow a county; pages for those counties stay
+  `unresolved`/minted, and a correct pin worklist entry cannot fix them
+  because the pin resolves through the same function.
+- **Next action:** Reproduce with the four names above in `tests/`, find
+  where the county-table lookup drops a multi-hit, and prefer the county
+  row when the input carries the word "County".
+- **Constraint:** Don't "fix" by relaxing ambiguity handling generally --
+  Kansas City KS/MO and Rye town/city NY rely on it refusing to guess.
+- **History:** none yet; first seen in the WO-124 inventory review.
+
+Reproduced against real data, but the fix is a genuine open question.
+Jurisdiction-extraction bugs live under **Platform & jurisdiction
+coverage** instead — that section name is currently stale (no `##
+Platform & jurisdiction coverage` heading actually exists in this file;
+its entries appear to have been folded in here at some point without the
+routing text above being updated) — worth a real fix the next time
+someone reorganizes this file, not attempted here since it's a bigger
+structural change than the two entries below.
+
+- **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+  lifted from an institutional-type word ("School District" → SD,
+  "Supreme Court" → SC) rather than a real state abbreviation — confirmed
+  on 2 live pages today, structurally able to recur on any of a
+  currently-small but nonzero population.**
+  - **Issue**: found live 2026-09-04 on two pages — id 757 "Arkansas
+    Supreme Court" minted as `rtr:us:sc:arkansas-supreme-court` (looks
+    like South Carolina; the real government is in Arkansas), and id
+    5218 "Oxnard School District" minted as
+    `rtr:us:sd:oxnard-school-district` (looks like South Dakota; the
+    real government is in California). Both are the same shape: the
+    mint path pulled a trailing two-letter code from inside the raw NAME
+    text itself ("...**S**chool **D**istrict", "...**S**upreme **C**ourt"),
+    not from an actual trailing state suffix, and nothing currently
+    distinguishes that from a real ", SD"/", SC".
+  - **Impact — real counts, queried live 2026-09-05, not estimated**:
+    of the 6 `rtr:us:sd:*` ids currently minted in production, 5 are
+    genuinely real South Dakota places (Brookings, Dell Rapids, Madison
+    ×2 pages, Vermillion) and exactly 1 is this bug (Oxnard). Of the 1
+    `rtr:us:sc:*` id minted, that 1 is this bug (Arkansas). For scale:
+    62 pages are correctly keyed to a real `us:sd:` **school district**
+    (the Gazetteer-backed national table, a completely different
+    namespace from the 2-letter state code — see
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md`'s "Clarification" in §7), and
+    roughly 13 pages carry a real South Carolina government. So today's
+    confirmed blast radius is small (2 wrong pages total) — the concern
+    is the mechanism, not the current count, since nothing stops a third
+    "___ Special District" or "___ Superior Court" from minting the same
+    way tomorrow.
+  - **Next action**: two tracks, not one.
+    1. **Immediate, bounded**: before minting `rtr:us:<st>:...` from a
+       cleaned name, check whether the *only* place the candidate state
+       code appears is inside an institutional-type phrase in the name
+       itself (a short, enumerable list — "school district," "supreme
+       court," and whatever else the audit below turns up) rather than
+       as a genuine trailing suffix the way `_split_state()` already
+       distinguishes elsewhere in this file. A quick scoping count first
+       (per Ryan's ask): how many minted `rtr:` ids nationally contain
+       "school district" or "supreme court" in their name — this decides
+       whether the guard needs to handle 2 known shapes or a longer tail
+       worth enumerating up front.
+    2. **Structural, for resilience going forward**: study what the
+       *tenant URL itself* already reliably carries at resolve time
+       (subdomain state suffixes are already proven reliable elsewhere —
+       see the sibling entry above on `score_gov_registry.py`'s
+       `match`-scoped blind spot and the Municode subdomain-state
+       finding from the Abbotsford investigation) and thread that
+       through the mint path as a real signal to cross-check a candidate
+       state code against, instead of trusting whatever two letters a
+       regex finds inside the name. This is the same shape as decision
+       D2/§5's existing "a plausible wrong extraction passes validation"
+       lesson, just at the minting step instead of the lookup step.
+  - **Constraint**: don't fix this by blocklisting "school district" and
+    "supreme court" alone and calling it done — that's the immediate
+    patch for the 2 confirmed cases, not the structural fix. Verify
+    whatever the audit finds before enumerating a "final" list; per this
+    repo's own standing rule, a backlog entry's central claim decays
+    fast and this one's counts should be re-checked, not assumed, by
+    whoever picks it up next.
+  - **History**: found 2026-09-04 investigating WO-110's Phase 2d
+    scoring report while answering questions about the Abbotsford
+    BC/WI fix; counts confirmed live 2026-09-05. Not yet in
+    `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A resolve that delegates to a generic video host (Vimeo/YouTube) can mint the wrong state for an ambiguous city name, even when the originating government page already unambiguously names the right one — confirmed live on 2 real pages from the 2026-09-09 2,404-candidate batch, two different mechanisms.**
+  - **Issue**: (1) `rtr-deeplink.onrender.com/m/branford-fl-2026-07-01-board-of-selectmen-07-01-2026` — real content confirmed live (Connecticut General Statute cited on-camera, agenda link `branford-ct.gov/AgendaCenter/...`, closing line "town of Branford... branfordtd.org") but filed under Branford, **FL** instead of the real Branford, **CT**. Root cause: the candidate's own site is a white-labeled CivicPlus install (`www.branford-ct.gov`, no `civicplus.com` anywhere), whose AgendaCenter row delegated to a Vimeo video. `resolve_civicplus_seed()` (`scripts/nationwide_2404_ingest.py`, copied unchanged from `nationwide_1911_ingest.py`) computes `subdomain_jurisdiction = finder._jurisdiction_from_subdomain(seed_url)` specifically to override whatever the delegated platform guesses — but `CivicPlusAssetFinder._jurisdiction_from_subdomain()` (`app/platforms/civicplus.py:259-282`) only recognizes the `{state}-{name}.civicplus.com` tenant-subdomain shape: `netloc.split(".")[0]` on `www.branford-ct.gov` is `"www"`, which has no `-` to split on, so it returns `None` immediately — for *every* white-labeled CivicPlus domain, not just this one. With no override, Vimeo's own `_jurisdiction()` (`app/platforms/vimeo.py:641`, an oEmbed-`author_name` guess run through Census-validated `validated_label_extract()`) won with the wrong state for an ambiguous "Branford". (2) `rtr-deeplink.onrender.com/m/hartwick-ia-2026-09-02-planning-board-meeting-september-2026` — the candidate CSV's own row already names it unambiguously (`domain: hartwickny.gov`, `state_or_province: New York`, `hit_source_urls: vimeo=https://hartwickny.gov`), but the page is filed under Hartwick, **IA**. Different mechanism, same shape: this was a *direct* `platform=vimeo` hit (no CivicPlus wrapper), and `resolve_seed()`/`process_row()` never pass the CSV's own already-known city/state through as a hint or a post-resolve correction — the resolved `result.jurisdiction` is whatever Vimeo's own account-name guess produced, full stop.
+  - **Impact**: both are live, real, currently-served pages under the wrong jurisdiction (wrong "More {place} meetings" / "More {state} meetings" links, wrong `/state/*` and `/j/*` attribution). Scope is broader than these 2 rows: (1) affects *every* white-labeled (non-`*.civicplus.com`) CivicPlus tenant whose delegated platform's own jurisdiction guess is wrong, not just Branford — self-hosted CivicPlus domains are the majority case this whole `resolve_civicplus_seed()` bypass function exists for (see its own docstring: "most CivicPlus tenants are white-labeled... e.g. klickitatcounty.gov"), so the override silently never fires for most of them. (2) affects any direct YouTube/Vimeo resolve nationwide-batch-wide, not just this run — the nationwide ingest scripts have never threaded the candidate CSV's own known city/state through to the resolved result at all, in any of the 4 batches (395/431/1911/2404). A follow-up automated check (comparing each ingested/queued row's resolved-page slug against the candidate CSV's own `state_or_province`, US states only) found no additional mismatches, but it's a partial check, not a real sweep: only 25 of the batch's ~412 ingested/queued rows have a slug shape a 2-letter state code can be pattern-matched out of at all (most slugs carry no state code, e.g. `/m/2026-09-08-county-commissioners-meeting-09-08-2026`) — a real sweep would need to compare each row's actual stored `jurisdiction` field via the Archive API, not guess from slug text.
+  - **Next action**: two independent fixes, don't conflate them. (1) Either broaden `_jurisdiction_from_subdomain()` to also recognize a non-`civicplus.com` domain's own city/state (e.g. from the candidate's known `city_name`/`state_or_province`, threaded through as a parameter) or have `resolve_civicplus_seed()` treat "not a `{state}-name.civicplus.com` subdomain" as a signal to trust the caller's own known jurisdiction over whatever the delegated platform guesses, rather than silently declining to override. (2) In the next `nationwide_NNNN_ingest.py` copy, thread the candidate row's own `city_name`/`state_or_province` through to `process_row()`'s ingest payload as a jurisdiction hint/override for direct video-host resolves (youtube/vimeo), at minimum when the platform's own guess disagrees with (or can't validate) the known value — the CSV already has ground truth for every row in this batch shape, unlike a cold resolve with no other signal.
+  - **Constraint**: don't patch these 2 rows by hand and call it done — the mechanism is what's broken, not just these two governments. Before fixing, consider whether a systematic sweep of this batch's other ~36 ingested + ~396 queued rows for a similar mismatch (resolved jurisdiction's state vs. the candidate CSV's own `state_or_province`) is worth doing first, to size the real blast radius rather than guessing from 2 examples.
+  - **History**: found 2026-09-09 spot-checking live pages from the 2,404-candidate platform-detection batch (see this session's own resolve/ingest report). Not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real feasibility has collapsed to ~8%, far below the ~88% the feed script's own docstring still assumes.**
+  - **Issue**: fed the first 50 queue rows live 2026-09-07 (all IQM2) —
+    only 4 resolved a real video, 46 got `[SKIP] no video found on
+    re-resolve`. Verified this isn't an adapter bug: replicated
+    `IQM2AssetFinder.resolve()`'s own logic for all 46 skips (same
+    `MeetingID` extraction, same derived `SplitView.aspx` fetch) and
+    every single one returns a live `SetupJWPlayer(eval('[{"file":"",
+    "default":true}]'))` — the government page's own JWPlayer call with
+    a genuinely empty file URL — confirmed by direct curl against
+    6+ unrelated tenants (boonenc, browardcollegefl, douglascountyco,
+    kingslandcityga, franklincountymo, and others). One also showed
+    `hfVideo` = `"False"` on its source `Detail_LegiFile.aspx` page.
+    Real, current, live fact about these meetings, not a false
+    negative.
+  - **Impact**: at this hit rate, netting a real batch of N tier-3
+    candidates costs ~12.5x N live resolves against many distinct
+    government tenants — the remaining ~627-row queue would mostly be
+    consumed chasing a fraction of its assumed yield. The feed
+    workflow's throughput math (`feed-tier3-transcription.yml`'s own
+    comment, and this docstring's 2026-08-22 "~88% feasibility" figure)
+    is now stale and overstates real output.
+  - **Next action**: none forced yet — this session topped up its local
+    Whisper batch from the general `/internal/transcription-backlog`
+    instead of continuing to drain this queue. Worth a real fix before
+    relying on this queue again: re-probe a larger sample to size the
+    true current rate, and figure out whether it's uniform decay (old
+    Granicus-backed streams aging out — this repo already documents
+    "some old/archived Granicus clips... genuinely time out," see
+    `feed_tier3_auto_transcription.py`'s docstring) or a bug in how the
+    queue was originally built.
+  - **Constraint**: don't re-raise this queue's batch size, and don't
+    burn through the rest of it in one sweep, until the real rate is
+    known — same "verify a backlog entry's central claim" rule this
+    file's own header states.
+  - **History**: found 2026-09-07 feeding a manual 50-row batch for a
+    local Whisper run (this session).
+
+- **[NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+  resolutions — nothing retroactively re-applies it to already-archived
+  pages, and the one tool meant to make that reliable doesn't track
+  every pin.**
+  - **Issue**: fixing Edmonton (AB) and Niagara Falls (ON) — both the
+    same wrong-country-collision bug as Abbotsford BC/WI — required
+    deleting and resubmitting 6 pages by hand, then hand-writing 2 tenant
+    pins directly into `tenant_overrides.csv`. Checked afterward whether
+    the standard recovery path would have caught these two hosts:
+    `reports/pin_worklist_hosts.txt` (the file
+    `scripts/backfill_gov_id.py --hosts-file` is documented to use)
+    **does not contain either host**, because they were added by hand
+    outside `scripts/apply_pin_worklist.py`'s own workflow, which is the
+    only thing that currently writes that file. A pin added any way
+    other than through that one script's own run is invisible to the
+    one mechanism meant to re-sync already-ingested pages against it.
+  - **Impact**: every pin added outside a `apply_pin_worklist.py` batch
+    (which includes every pin found by direct investigation rather than
+    the worklist process — Abbotsford, Edmonton, Niagara Falls, and
+    likely others already in the file from earlier sessions) needs its
+    own by-hand `--hosts` backfill, discovered and run by whoever
+    happens to remember it exists. Nothing durable tracks "these hosts
+    have a pin newer than the last backfill that touched them."
+  - **Next action**: not settled — Ryan wants to think through the
+    right shape rather than build the first idea. **One approach
+    considered and explicitly rejected**: wiring an unscoped
+    `backfill_gov_id.py --apply` into the Archive's `preDeployCommand`
+    (the same way `alembic upgrade head` already runs there), so every
+    deploy re-syncs the whole corpus against whatever the registry
+    currently says with zero manual step. Ryan's call: not that way —
+    don't re-propose it without a new reason. Worth exploring instead:
+    something that tracks which hosts have a pin more recent than their
+    last backfill (so a human-triggered run stays complete without
+    needing `reports/pin_worklist_hosts.txt` to happen to be current),
+    or making `apply_pin_worklist.py`'s own hosts-file writer pick up
+    hand-added `tenant_overrides.csv` rows too rather than only the ones
+    it just wrote itself.
+  - **Constraint**: don't build the `preDeployCommand` version — see
+    above, already declined.
+  - **History**: found 2026-09-05 fixing Edmonton/Niagara Falls; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
+  `scripts/score_gov_signals.py`) needs a human review step before any
+  apply mode is built, not just a straight "recovered → write it"
+  pipeline — confirmed by two real wrong-level matches in its own
+  first report.**
+  - **Issue**: applying 5 of WO-110's "recovered" pages by hand
+    (2026-09-05) found 2 of the 5 were the wrong *level* of government,
+    not just the wrong place — the `org_names` signal has no way to
+    tell "this name matches a real place" apart from "this org IS that
+    place's own government." Checked both against the real archived
+    page before applying anything: id 335 "L. A. World Airports - Board
+    of Airport Commissioners" would have been folded into plain
+    `us:place:0644000` (Los Angeles, CA) — the real page names its own
+    Board of Airport Commissioners individually and cites "Los Angeles
+    City Charter Section 503(a)" as its own enabling authority, the
+    same "own governing board / own enabling statute" shape decision D2
+    already grants LADWP its own identity for. id 757 "Arkansas Supreme
+    Court" would have been folded into `us:county:05001` — a real
+    Arkansas county that coincidentally shares the word "Arkansas"; the
+    actual page is a state supreme court case ("State of Arkansas...
+    from Washington County Circuit Court"), which per decision D1
+    belongs under the State of Arkansas as a `meeting_body`, not any
+    county. The other 3 of the 5 (Oak Ridge TN, DeLand FL, Live Oak TX)
+    were clean, exact, correctly-leveled matches and were applied.
+  - **Impact**: an unreviewed apply mode built directly from WO-110's
+    scoring output would have silently written 2 wrong identities (of
+    5 checked — a 40% miss rate on this small sample, not something to
+    extrapolate a rate from, but not negligible either) alongside the 3
+    correct ones, with nothing distinguishing them in the output.
+  - **Next action**: Ryan's call, recorded here so it isn't lost —
+    **any apply mode needs a human review step between the confidence
+    score and actually writing**, at least while it's being tested.
+    Worth scoping a way to auto-sort the queue by risk rather than
+    review all of it blind: a recovered government whose name is an
+    exact or near-exact substring of the raw extracted text (Oak Ridge
+    TN, DeLand FL, Live Oak TX's shape) is a very different confidence
+    class from one where the match came from a *different* string found
+    somewhere else on the page (LAWA, Arkansas Supreme Court's shape) —
+    the second class is exactly where a name can validate against a
+    real, unrelated place. Counting how many of WO-110's 102 recovered
+    pages are which shape would say whether "auto-apply the exact-match
+    ones, queue the rest" is a small manual backlog or a large one.
+  - **Constraint**: don't build a straight apply mode (score → write)
+    without the review step above — this entry exists specifically
+    because that shape already produced 2 wrong answers out of 5 on the
+    first hand check.
+  - **History**: found 2026-09-05 applying WO-110's report by hand
+    while answering a question about the Edmonton/Niagara Falls fix;
+    not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Several already-archived pages carry a confidently-
+  wrong `gov_id` from before the cross-border name-collision guard
+  existed, and have never been re-backfilled since — the guard is
+  correct today, but a page resolved before it landed is still wrong.**
+  - **Issue**: `/m/abbotsford-wi-2025-06-24-council-meeting` (page 812)
+    is a real Abbotsford, **British Columbia** council meeting (agenda
+    items reference "Abbotsford Mission Highway 11" and real BC rezoning
+    applications; the AI transcript even mentions the Abbotsford
+    Canucks), keyed `us:place:5500100` — Abbotsford, **Wisconsin**, a
+    village of a few thousand. `app/utils/gov_registry/resolver.py`'s
+    national-table lookup has an explicit guard for exactly this shape
+    (`if not state and tables.ca_csd().lookup(name, None): return None`
+    — a bare name with no state that also exists in the Canadian table
+    declines rather than confidently picking the US one) and its own
+    code comment names this precise case among "16 real rows" a
+    2026-09-02 audit found: Abbotsford BC/WI, Edmonton AB/KY, Niagara
+    Falls ON/NY, Langford BC/SD, White Rock BC/SD, Port Hope ON/MI (3
+    more — Nampa ID, New Carlisle OH, Hawarden IA — are confirmed
+    genuinely American despite a same-named Canadian place, which is why
+    the guard declines rather than auto-picks either side). Confirmed
+    live 2026-09-04 that today's code gets it right:
+    `resolve_government("Abbotsford", tenant_host="pub-abbotsford.escribemeetings.com")`
+    returns `unresolved`, not the Wisconsin village. The guard's own
+    commit (`27e0c8f0`, WO-99/#696, merged 2026-09-03 11:26 UTC) predates
+    the page's last write (`updated_at` 2026-09-03 12:23 UTC, i.e. from
+    the WO-99/WO-100 wholesale backfill itself) by about an hour — so by
+    plain chronology the guard should have already been live when this
+    row was written, and exactly why it wasn't is still an open
+    question (a deploy-timing gap between merge and the Render rollout
+    actually used by that `--apply` run is the leading guess, not
+    confirmed). Not a currently-active resolver bug — a stale row the
+    ladder would no longer produce if asked today.
+  - **Impact**: at least one live page shows the wrong government and
+    country on its own `/m/` page and would file under the wrong state
+    on `/state/wisconsin` instead of not appearing there at all pending a
+    real fix. Scope of the other 5 named collisions is unverified — they
+    may be equally stale, already caught by a later backfill, or fine;
+    nobody has checked since 2026-09-02.
+  - **Next action**: `scripts/backfill_gov_id.py`'s own stated design
+    ("skip rows already current... a run after a registry change re-does
+    exactly the rows whose answer moved") means a plain unscoped re-run
+    from the Archive's Render shell should catch and correct this row
+    (and the other 5, if equally stale) automatically — it recomputes
+    fresh and compares, it doesn't trust the stored tier. Worth doing as
+    a full sweep rather than one-off pins, specifically because the
+    other 5 names haven't been checked. `pub-abbotsford.escribemeetings.com`
+    itself would settle to `unresolved` after a re-run (bare "Abbotsford"
+    stays ambiguous by design) unless also given a tenant pin to
+    `ca:csd:5909052` — a single-government eScribe host, no `match`
+    needed.
+  - **Constraint**: don't hand-fix this one row in isolation without
+    also re-running the backfill broadly — a one-off pin fixes the
+    symptom Ryan happened to notice and leaves the other 5 named
+    collisions (and any other page resolved in that same pre-guard
+    window) exactly as wrong and exactly as invisible.
+  - **History**: found 2026-09-04 answering a user question about
+    `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
+    in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
+  `us_places` and `us_cousubs` tables in the same state always resolves
+  to the place, silently discarding the cousub — mostly correct, but
+  wrong for at least 4 real Connecticut towns.**
+  - **Issue**: `_general_purpose_lookup()`'s place-vs-cousub tie-break
+    (`app/utils/gov_registry/resolver.py`) only runs `if type_preference`
+    — a raw name that says "Town of X" or "City of X" is disambiguated
+    correctly, but a bare name with no type word skips that block
+    entirely, and `_national_lookup()` then returns `place` unconditionally
+    whenever it's truthy, never even considering an available `cousub`
+    match. Measured directly against the live tables (not assumed):
+    **2,373** bare names nationally resolve to exactly one row in *both*
+    tables in the same state. The large majority (~2,369, dominated by
+    Illinois) are a Midwest platting artifact — a village sits inside a
+    same-named township, and "Camp Point, IL"/"Flora, IL" colloquially
+    *does* mean the village, so today's place-wins default is actually
+    right there. But Connecticut's nested-borough tradition is the
+    opposite: `Groton`/`Newtown`/`Stonington`/`Litchfield, CT` are each a
+    **Town** (the real, encompassing government, `us:cousub:...`) that
+    also contains a much smaller incorporated **city/borough** of the
+    same base name (`us:place:...`) — confirmed live,
+    `resolve_government("Groton, CT")` returns `us:place:0934180`
+    (City of Groton) when the overwhelmingly more likely intended
+    government for an unqualified "Groton, CT" meeting is the Town of
+    Groton (`us:cousub:0918034250`). `"Town of Groton, CT"` /
+    `"City of Groton, CT"` (with the type word) already resolve
+    correctly to the two different governments — this is specifically
+    the bare-name path.
+  - **Impact**: narrow — only the 4 confirmed CT pairs (Litchfield,
+    Groton, Stonington, Newtown) are known to be wrong by this today.
+    **Checked 2026-09-09 via `GET /internal/export/pages` (6,410 pages):
+    zero archived pages exist for any of the 4 under any name variant**
+    (no `/j/groton-ct`, `/j/newtown-ct`, `/j/stonington-ct`, or
+    `/j/litchfield-ct` hub is live) — so this is not confidently wrong in
+    production today, it is a live landmine that will misfire the first
+    time one of these four towns' meetings gets ingested with a bare
+    (no-type-word) jurisdiction string. No evidence this pattern recurs
+    outside CT — RI/MA/other New England states were not checked for the
+    same nested-government shape.
+  - **Next action**: don't blanket-flip the place-vs-cousub default —
+    that would break the ~2,369 correct Illinois-pattern resolutions.
+    Needs a name-level or state-level override (e.g. a small curated list
+    of "cousub wins over place for this bare name in this state," the
+    same mechanism `curated_aliases()` already provides) scoped to the
+    confirmed CT pairs, plus a check of whether any archived page is
+    currently mis-keyed this way before deciding it's worth a backfill.
+  - **Constraint**: verify the RI/MA/ME/NH/VT town rosters for the same
+    nested-borough pattern before assuming it's CT-only — this was found
+    incidentally while verifying the `us:cousub:` namespace for WO-121
+    (New England `us:cousub:` display fix), not from a targeted search.
+  - **History**: found 2026-09-06 while verifying
+    `GOVERNMENT_IDENTITY_ARCHITECTURE.md`/`COUSUB_REQUIREMENTS.md`'s
+    claim that Places and active-government COUSUBs are disjoint by
+    construction — they are not; not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
+  type phrase (`"The Town of X, ST"`) fails to resolve at all, even
+  though `"Town of X, ST"` (same government, no "The") resolves
+  correctly.**
+  - **Issue**: `resolve_government("The Town of Hooksett, NH")` mints
+    `rtr:us:nh:hooksett`; `resolve_government("Town of Hooksett, NH")`
+    and `resolve_government("Hooksett, NH")` both correctly return
+    `us:cousub:3301337300`. Hooksett is a real, active-government NH
+    town, present in `us_cousubs.csv` — the leading article alone is
+    what breaks the match. Found nationwide-measuring the `us:cousub:`
+    resolver ladder for WO-121; not a New-England-only search, just the
+    one real example turned up so far.
+  - **Impact**: small but real and live — `hooksett.granicus.com` (2
+    archived pages, confirmed via `GET /internal/export/pages`) is
+    minted instead of keyed to the real NH town today. Unmeasured how
+    many other hosts/pages carry the same "The Town/City/Village of X"
+    phrasing.
+  - **Next action**: find where the raw name is stripped of its type
+    phrase (`resolver.py`'s name-normalization path) and confirm whether
+    a leading "The " is handled there at all before deciding the fix —
+    don't blindly strip every leading "The": at least one real
+    government (`The Woodlands, TX`) legitimately keeps "The" as part of
+    its common name, so the fix needs to distinguish "The" as an article
+    in front of a type phrase from "The" as the first word of the name
+    itself.
+  - **Constraint**: verify the fix against both directions before
+    landing — `"The Town of Hooksett, NH"` must resolve, and a genuine
+    "The"-prefixed place name must not get mangled.
+  - **History**: found 2026-09-09 while running `scripts/
+    score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
+    not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] 16 real municipalities nationwide have a compound
+  Census LSAD ("X Town city") that the resolver's type-word stripper
+  can't parse, so none of them resolve by name at all.**
+  - **Issue**: `us_places.csv` stores these as e.g. `"West Springfield
+    Town city, MA"`, `"Agawam Town city, MA"`, `"Old Town city, ME"`,
+    `"Charles Town city, WV"` — Census's LSAD for a Massachusetts-style
+    town that is legally a "city" for some purposes appends TWO words
+    ("Town city"), not one. `_census_type_word()`
+    (`app/utils/gov_registry/resolver.py`) strips only the single
+    trailing word, so `"West Springfield Town city"` normalizes to
+    `"west springfield town"`, which matches neither `"West Springfield"`
+    nor `"Town of West Springfield"`. Confirmed live:
+    `resolve_government("West Springfield, MA")` and
+    `resolve_government("Town of West Springfield, MA")` both mint
+    `rtr:us:ma:west-springfield` instead of finding the real place row.
+    Full list of the 16 affected (`grep "Town city," us_places.csv`):
+    14 in MA (Agawam, Amherst, Barnstable, Braintree, Bridgewater,
+    Franklin, North Attleborough, Palmer, Randolph, Southbridge, West
+    Springfield, Weymouth, Winthrop) plus Old Town, ME; New Town, ND;
+    Charles Town, WV.
+  - **Impact**: small but real and live — `westspringfieldma.granicus.com`
+    (2 archived pages, confirmed via `GET /internal/export/pages`) is
+    minted instead of keyed to the real place today. The other 15 are
+    unmeasured for archived-page impact.
+  - **Next action**: teach `_census_type_word()` (or wherever the
+    normalized lookup key is built) to recognize "Town city" as a single
+    two-word LSAD phrase, the same way it already has to special-case
+    other multi-word LSADs if any exist — check `us_places.csv`'s
+    `lsad`/`funcstat` build script (`scripts/build_gov_registry_data.py`)
+    for whether the LSAD code itself (not just the rendered name) is
+    available to key off instead of pattern-matching the name string.
+  - **History**: found 2026-09-09 while running `scripts/
+    score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
+    not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
+  `Agenda=` query-string values, and each one archives as a separate
+  page.**
+  - **Issue**: `pub-abbotsford.escribemeetings.com`'s real meeting
+    `Id=c157e0a4-351f-49f2-bd63-bc0747196fed` exists as two full,
+    separately-archived pages — `?Agenda=Merged&Id=...` (page 812) and
+    `?Agenda=Agenda&Id=...` (page 2225) — identical agenda and
+    transcript, different `source_url_normalized`, so nothing currently
+    treats them as duplicates of each other. Checked the corpus for the
+    same shape (same eScribe `Id=`, different `Agenda=` value) and found
+    **7 such pairs** across 6 hosts as of the 2026-09-03
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv` snapshot:
+    `pub-forterie` (`Agenda`/`Addendum`), `pub-oshawa`
+    (`PostMinutes`/`Agenda`), `pub-abbotsford` (`Merged`/`Agenda`),
+    `pub-peelregion` (`Agenda`/`PostAgenda`), `pub-townshipofbrock`
+    (`Merged`/`Agenda`), `pub-marvinnc` (`PostMinutes`/`Agenda`),
+    `pub-sandag` (`PostMinutes`/`Agenda`). Same shape as BACKLOG.md's
+    existing "same YouTube video, two URL forms" entry, different
+    platform.
+  - **Impact**: 7 known real duplicate archived meetings (14 pages for 7
+    real events) — double-counted in per-jurisdiction page counts,
+    double the storage/transcription cost per meeting, and a reader
+    landing on either copy has no link to the other. Likely undercounts
+    the true total since this was checked against one day's snapshot,
+    not the live corpus.
+  - **Next action**: at ingest time, treat `Agenda=`'s value as
+    something to strip (not compare) when checking whether an eScribe
+    `Meeting.aspx?Id=...` URL has already been archived — the `Id=` GUID
+    alone identifies the meeting; `Agenda=` only selects which document
+    view eScribe renders for it. Needs a real duplicate-merge pass for
+    the 7 already-archived pairs, not just a forward-looking ingest fix.
+  - **Constraint**: don't assume `Agenda=Agenda` is always the
+    "canonical" one to keep — `PostMinutes`/`PostAgenda`/`Merged` may
+    carry a fuller or more final document for some meetings; check
+    content before merging a pair.
+  - **History**: found 2026-09-04 investigating the Abbotsford
+    duplicate above; not yet in `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  confidently-wrong extraction on a confirmed-misleading host — the
+  ladder validates a plausible wrong answer before the pin ever gets a
+  chance to apply.**
+  - **Issue**: `pub-gloucesterva.escribemeetings.com` is Gloucester
+    County, VA's eScribe host, pinned `strength=fallback` to
+    `us:county:51073` (added in #707, fixing a name-only host-matching
+    bug). Fallback strength only applies when steps 2-4 of the resolver
+    ladder (`GOVERNMENT_IDENTITY_ARCHITECTURE.md` §5) produce nothing —
+    by design, so a real per-page extraction always wins over a tenant
+    default. But eScribe GUID meeting URLs give `match` nothing to
+    discriminate on, and this host's own page text ("School Board
+    Meeting") resolves confidently, and wrongly, to `us:place:2526150`
+    (Gloucester, **MA** — the exact name-bleed #707 fixed upstream,
+    still baked into that one already-ingested candidate/page). The
+    fallback pin never even gets consulted, because the ladder didn't
+    fail — it succeeded at the wrong government. §4 predicted this
+    exactly: "a plausible wrong extraction passes validation, so
+    validation alone can never fix a confirmed-misleading host."
+  - **Impact**: **the one live instance is fixed** — page 4097 (the
+    `/j/gloucester-ma` page) was moved to `us:sd:5101620` via
+    `POST /internal/jurisdiction/override` on 2026-09-03, confirmed live
+    over `/internal/export/pages` (`gov_id: us:sd:5101620,
+    jurisdiction_confidence: manual_override`); the tenant pin's proposed
+    blank-`match`/`authoritative` rule was **not** copied into
+    `tenant_overrides.csv`, per the constraint below. The `/j/gloucester-
+    ma` → `/j/gloucester-county-public-schools-va` redirect needed a
+    second fix: `scripts/score_gov_registry.py` cannot regenerate that
+    row on its own (verified — it re-derives old/new from the same
+    stored `jurisdiction` string, so a single-page manual override is
+    invisible to it either before or after the override runs), so the
+    row was **hand-added** to `archive/data/hub_slug_aliases.csv`, marked
+    in its own `evidence` field as a deliberate exception. **This means a
+    future wholesale regen of that file will silently drop the row** —
+    whoever next runs `score_gov_registry.py` needs to re-add it (or fix
+    the tool to be `manual_override`-aware first). This entry tracks the
+    general failure mode, which stays open: any tenant whose URL shape
+    carries no discriminator (eScribe GUIDs are the known case) and whose
+    page text names a real place that collides with a different
+    government's name is exposed the same way, and a `strength=fallback`
+    pin gives no signal that it happened — the ladder reports `registry`
+    tier (confidently resolved), not `unresolved` or `blank`.
+  - **Next action**: **checked against Phase 2d's live run (WO-110,
+    2026-09-04) — the current signals mechanism does NOT recover this
+    case, and that's expected, not a gap in that pass.** Page 4097 is
+    `manual_override` tier today, so it isn't in 2d's live corpus (only
+    `unresolved`/`unverified` are); reconstructing its pre-override raw
+    string ("Gloucester, MA", the exact bled value this entry describes)
+    and running it through `extract_gov_signals()` +
+    `resolve_government(signals=...)` confirms why: the plain ladder
+    still lands `registry` tier on `us:place:2526150` (confidently, and
+    wrongly) with no `signals` at all, and `resolve_government()`'s own
+    hard constraint (`resolver.py`'s WO-105 comment block) skips the
+    signals-enhancement pass entirely whenever the plain ladder already
+    answered `registry`/`pinned` — by design, so it can't be the thing
+    that catches a *confidently wrong* national-table hit. This is
+    exactly the "validation alone can never fix a confirmed-misleading
+    host" problem this entry already names, now confirmed against the
+    real page rather than reasoned about in the abstract, and it's a
+    Step B question (does something get to run to challenge an
+    already-`registry` answer, and on what evidence) — not a Phase 2d
+    Step A defect. A secondary, minor finding from the same check:
+    `gov_signals.py`'s `_TYPE_WORDS` list has "Board of Education" but
+    not the bare "School Board" this page's own title/nav actually use —
+    moot for Step A either way (extracted `type_words` aren't consumed by
+    any resolution decision yet, per that module's own docstring), worth
+    fixing whenever Step B starts consuming them. The hand-added
+    hub-alias row is a real, separate tooling gap worth its own small fix
+    eventually (teach `score_gov_registry.py` to pass a `manual_override`
+    row's DB gov_id straight through as "new" instead of re-deriving it),
+    but not attempted here — out of scope for a two-page live fix.
+  - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
+    existing tenant pin to `strength=authoritative`, or copy
+    `POST /internal/jurisdiction/override`'s proposed
+    `tenant_overrides.csv` rule (blank `match`, `strength=authoritative`,
+    `gov_id=us:sd:5101620`) into the committed registry when applying
+    WO-106's fix. Either one pins the whole tenant, including the Board
+    of Supervisors' own meetings on that host (2 pages archived today —
+    one county, one this wrongly-keyed one — plus every one this
+    Archive hasn't ingested yet), to whichever single government wins,
+    misfiling the other. The fallback pin is correctly doing its one job
+    (a sane default where `dominant_gov_id()` ties 1-1) and should stay
+    exactly as it is; the school-district fix belongs on the one
+    affected page only, via that same endpoint's per-page write.
+  - **History**: `~/Documents/rtr-business/research/
+    STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
+    review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.
+    WO-110 (2026-09-04) ran Phase 2d's live corpus scan (604 target pages,
+    300-page control, 102 real recoveries, 0 control regressions after a
+    resolver round-trip fix — see `JURISDICTION_METADATA_PLAN.md`'s
+    Phase 2d section) and, per this entry's own "add to corpus" note,
+    specifically checked page 4097 against it — see Next action above for
+    the (negative, expected) result.
+
+- **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
+  pages (not just the 1 Gloucester case above) -- a shared multi-
+  government tenant's "pick something recent" candidate logic has no
+  signal that distinguishes a school board from the city/county/town
+  body sharing the same channel.**
+  - **Issue**: found during a manual title-check audit of the school-
+    district enumeration effort (`rtr-business/research/
+    ENUMERATION_METHODS.md` §63), not assumed -- every one of these
+    resolved through a real per-tenant listing/candidate-pick step, to a
+    real, current meeting, on the correct platform, for the **wrong**
+    government:
+    - Canton City, OH (Cablecast) -> "The Poetry Room with Corey Lipkins
+      Jr, Episode 7" -- a talk show, not a meeting at all.
+      `/m/2026-08-03-the-poetry-room-with-corey-lipkins-jr-episode-7-the-return`
+    - Champaign CUSD 4, IL (Cablecast) -> a real City Plan Commission
+      meeting. `/m/2026-09-02-plan-commission-9-2-26`
+    - Gloucester County Public Schools, VA (eScribe) -> a real County
+      Planning Commission meeting (separate live page from the WO-106
+      entry above, same underlying name-bleed root cause -- also mistagged
+      jurisdiction as Gloucester, **MA**).
+      `/m/gloucester-ma-2026-09-03-planning-commission`
+    - Brookline, MA (CivicClerk) -> the **Town's** "Indigenous Peoples
+      Celebration Committee," not a school committee.
+      `/m/brookline-town-ma-2026-09-04-indigenous-peoples-celebration-committee-meeting`
+    - Park County, MT (Granicus) -> the **County's** "Solid Waste
+      Board." `/m/park-county-2026-08-20-solid-waste-board-8-20-2026`
+    - Brooklyn School District, CT (CivicClerk) -> the **Town's**
+      "Planning & Zoning Commission."
+      `/m/brooklyn-town-ct-2026-09-02-planning-zoning-commission-meeting`
+  - **Not yet checked**: title-checking only happened for the ~26 pages
+    this specific school-district effort touched, not this Archive's
+    full corpus of shared-tenant ingests generally -- this pattern is
+    very likely present elsewhere (any Cablecast/CivicClerk/eScribe
+    tenant shared across multiple governments), just not audited yet.
+  - **Update 2026-09-06, corrected**: 2 of 3 candidates originally
+    believed "caught before going live" (removed from
+    `scripts/tier3_auto_transcription_queue.txt` on the same audit pass)
+    really were caught in time -- Niagara Falls City SD, NY (Cablecast,
+    would-have resolved to "Mayor Restaino Weekly Update," a general PR
+    video) and St. Lucie, FL (Cablecast, a bare live-channel URL with no
+    title/date/jurisdiction) never made it into any live page, confirmed
+    by a full scan of all 5,399 pages in `/internal/export/pages` for
+    their exact source URLs -- zero matches. **The third one was wrong:
+    Prince George's County Public Schools, MD's `pgcps.cablecast.tv`
+    tenant was already live, twice, before this session's own (never
+    pushed/committed) queue-file edit could matter at all** --
+    `/m/2026-03-03-student-built-tinyhome` and a duplicate
+    `/m/2026-03-03-student-built-tinyhome-7c70cf` (same show,
+    `?site=1` query-string difference on the source URL creating a
+    second row -- a real, separate URL-normalization gap, not
+    investigated further here), both "Student Built TinyHome," not a
+    meeting. Neither came from anything in this session's own pipeline
+    runs; almost certainly a separate, concurrent effort (the wildcard-
+    sweep work, WO-115/116/117) independently swept the same
+    `pgcps.cablecast.tv` tenant and hit the identical "pick something
+    recent off a shared channel" failure mode. **A third pgcps page was
+    found the same way, never flagged by this session's own pipeline at
+    all**: `/m/2024-09-06-newsbreak-school-house-justice`, "Newsbreak:
+    School House Justice" -- also clearly not a board meeting. All 3
+    pgcps.cablecast.tv pages need the same takedown as the 6 above,
+    total 9, not 6.
+  - **Likely related, not yet confirmed as the same bug**: `jurisdiction`
+    resolved to `None` (not wrong, just entirely missing) for 3 more of
+    the same effort's pages -- Andover, MA (CivicPlus/castus.tv), Duval,
+    FL (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain
+    strongly suggests "Duval County School Board," a dedicated tenant,
+    so likely correct content just missing the tag), and East Brunswick
+    Township, NJ (NovusAgenda, where title/date also both came back
+    `None` -- possibly not a real per-meeting page at all, unconfirmed).
+  - **Next action**: not attempted here, per this project's
+    established "flag it, don't touch code" pattern for jurisdiction/
+    government-identity bugs -- these need the same kind of
+    per-candidate discriminator (title/body-name keyword match against
+    the expected government type) that `GOVERNMENT_IDENTITY_ARCHITECTURE
+    .md` §4/§5 already discusses for the single-tenant case, generalized
+    to reject a candidate outright rather than just mis-tag its
+    jurisdiction. **Update 2026-09-07: all 9 wrong-content pages deleted**
+    via `POST /internal/admin/delete-pages?dry_run=false` (`"deleted":9`,
+    all 9 `found`, none `not_found`), after the FK-violation 500 fix
+    (PR #751) deployed to `rtr-deeplink-archive` (confirmed live,
+    `dep-daf2qu2d0e5s73aigg30`, commit `441388fd1c`, which includes
+    `ed59dfa`). The underlying picker bug that produced these 9 pages is
+    still open -- nothing above prevents a future enumeration pass from
+    hitting the same shared-tenant/no-discriminator failure again.
+  - **Priority: HIGH.** Confirmed by two independent audits (this one and
+    the full-corpus screen below) to be a real, repeating failure mode,
+    not a one-off -- every cleanup so far has been reactive (delete after
+    the fact), and nothing stops the next enumeration pass from
+    reproducing it. The per-candidate discriminator described in **Next
+    action** above is the actual fix; flagged 2026-09-09 as the highest-
+    leverage item on this whole list.
+
+- **[NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
+  wrong-content pattern at much larger scale than the 9-page school-
+  district batch, plus a second, distinct pattern: school-district
+  meetings tagged to the wrong KIND of government, not just the wrong
+  meeting.**
+  - **Issue**: a title/jurisdiction/`gov_type` heuristic screen (see
+    `rtr-business/research/archive_audit/AUDIT_REPORT.md` for full
+    method and every category) flagged 414 of 5,857 live pages (7.1%).
+    Of those, **16 are the same kind of bug as the entry above** --
+    non-meeting content (talk shows, a Granicus vendor-conference video
+    self-tagged with a fake "jurisdiction", 8 Legistar/CivicClerk staff
+    admin-*training* videos ingested as if they were public meetings) --
+    and **23 more are a real, independently-named school district
+    (DJUSD, AUSD, Hopkins School District, etc.) tagged to the city/
+    township it happens to be colocated with** (e.g. "DJUSD Board of
+    Education" tagged `jurisdiction=Davis, CA, gov_type=municipality`
+    instead of the actual school district) -- a re-tag fix, not a
+    delete, since the meeting itself is real and correctly identified,
+    just attached to the wrong government record.
+  - **Real, material uncertainty, not yet resolved**: a further 13
+    "county"-tagged school-board pages could not be classified with
+    confidence -- several states (Florida, some Virginia divisions) run
+    school districts genuinely coterminous with the county, so "county"
+    may already be correct there; needs state-by-state research, not a
+    blanket rule. Separately, 305 pages were flagged only by "no
+    meeting-shaped keyword in the title," and a 50-item random sample
+    of that bucket suggests it's a real mixed bag (~20-30% genuine
+    non-meeting content -- PR videos, ceremonies, mayoral video blogs --
+    the rest a mix of a regex limitation on plurals and a judgment call
+    about whether ceremonial/civic content like State-of-the-City
+    addresses is in scope at all) -- none of the 305 were individually
+    re-verified. **Priority: HIGH** on finishing this specific bucket --
+    the 50-item sample's ~20-30% hit rate on real non-meeting content,
+    projected across all 305, implies real live junk this audit hasn't
+    found yet; flagged 2026-09-09 as the other top-priority item
+    alongside the discriminator fix above, not because the fix is hard
+    but because nobody has looked at the other ~255 rows yet.
+  - **Update 2026-09-08: the 16 non-meeting-content pages are deleted**
+    (`"deleted":16`, all 16 `found`, none `not_found`, confirmed via the
+    same `POST /internal/admin/delete-pages` treatment as the original 9).
+  - **Impact**: 25 of the original 9+16=25 wrong-content pages found by
+    this audit effort are now gone. The 23 wrong-government-*type* pages
+    (real meetings, wrong government record) are still live and untouched
+    -- these are a re-tag, not a delete. The real school districts behind
+    them (15 distinct ones) were added to `rtr-business/research/
+    master_open_candidates_deduped.csv` as their own tracked government
+    units (`us:sd:` gov_ids, real NCES LEA IDs) so they don't get lost as
+    open work.
+  - **Next action**: the 23 wrong-government-type pages need either 23
+    individual `POST /internal/jurisdiction/override` calls or a new
+    bulk endpoint -- no bulk re-tag tool exists today. **Priority: LOW
+    (trivial)** -- the content is already correct and live, this is a
+    metadata correction with no user-facing urgency; flagged 2026-09-09.
+    The 13 state-specific-review rows are similarly **Priority: LOW
+    (trivial)** -- small count, needs desk research (state school-
+    governance structure) more than engineering time. Both left to Ryan,
+    not made unilaterally.
+  - **History**: full per-category CSVs in `rtr-business/research/
+    archive_audit/categorized/`; raw export in `all_pages_raw.jsonl`.
+
+- **[NEEDS-AUDIT] Same source URL, different query string, two
+  `MeetingPage` rows -- a real URL-normalization gap.**
+  - **Issue**: Prince George's County Public Schools' "Student Built
+    TinyHome" got ingested twice as two separate live pages
+    (`/m/2026-03-03-student-built-tinyhome` and a duplicate
+    `/m/2026-03-03-student-built-tinyhome-7c70cf`) from the same
+    underlying Cablecast show, `pgcps.cablecast.tv/show/3178` vs
+    `pgcps.cablecast.tv/show/3178?site=1` -- `normalize_url()` doesn't
+    treat these as the same source, so the dedupe-by-source-URL path
+    never catches it. Confirmed live 2026-09-06 while auditing the
+    wrong-government-content pages above; both copies were deleted along
+    with the rest of that batch, not investigated at the code level.
+  - **Impact**: unknown how many more duplicate pairs exist across the
+    corpus from the same class of query-string variation -- not
+    scanned for.
+  - **Next action**: none yet. **Priority: LOW (trivial)** -- a real
+    gap, but low-frequency (this is the only confirmed instance) and
+    each occurrence is cosmetic (a duplicate page, not wrong content)
+    rather than user-facing-broken; flagged 2026-09-09.
+  - **History**: found via `rtr-business/research/archive_audit/`'s
+    full-corpus screen entry above.
+
+- **[NEEDS-AUDIT] Three pages from the school-district audit resolved
+  with `jurisdiction=None` entirely -- missing, not wrong.**
+  - **Issue**: Andover, MA (CivicPlus/`cloud.castus.tv`), Duval, FL
+    (CivicClerk, `duvalcosb.portal.civicclerk.com` -- subdomain strongly
+    suggests "Duval County School Board," a dedicated tenant, so likely
+    correct content just missing the tag), and East Brunswick Township,
+    NJ (NovusAgenda, where title/date also both came back `None` --
+    possibly not a real per-meeting page at all, unconfirmed) all
+    resolved with no jurisdiction attached at all. Confirmed live
+    2026-09-06/07 while re-resolving candidates for the school-district
+    enumeration effort; not root-caused at the code level.
+  - **Impact**: 3 confirmed instances; likely related to the same class
+    of gap as the wrong-government-type pattern above (a tenant/platform
+    the jurisdiction-enrichment pipeline doesn't have a rule for) but not
+    confirmed as the same root cause.
+  - **Next action**: none yet. **Priority: LOW (trivial)** -- 3 known
+    instances, no user-facing harm beyond a missing metadata field;
+    flagged 2026-09-09.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §63
+    Round 7.
+
+- **[LATER] GovDelivery -- a proposed discovery lead for finding new
+  jurisdictions, never tried.**
+  - **Issue**: GovDelivery is a real government email/SMS notification
+    platform (`public.govdelivery.com/accounts/{ACCOUNT}/subscriber/new`)
+    whose subscription pages could plausibly be enumerated the same way
+    Legistar/Granicus hostnames were, and whose notices sometimes carry a
+    direct meeting/agenda link -- a lead, not a built method.
+  - **Impact**: none yet -- speculative, no candidate hosts collected.
+  - **Next action**: none planned; full writeup with the open questions
+    (does GovDelivery reliably link to a real meeting/agenda, or mostly
+    generic announcements?) already lives in the History link below --
+    start there before building anything. **Priority: LOW** -- proposed
+    only, no evidence yet it's worth the enumeration effort.
+  - **History**: `rtr-business/research/ENUMERATION_METHODS.md` §60,
+    full detail and the "subscribe forward" idea.
+
+- **[LATER] Two real, scoped enumerator/adapter gaps found chasing the
+  school-district effort's remaining 45 leads -- CivicLive and a 4th
+  Cablecast template.**
+  - **Issue**: **CivicLive** (Conway School District, WA) -- no
+    enumerator exists in `rtr-discovery`, but `rtr-deeplink` already has
+    a real, resolvable `app/platforms/civiclive.py` adapter, so unlike a
+    platform with no adapter at all, this genuinely just needs a
+    `discovery/enumerators/civiclive.py` written -- no prior art to
+    reuse. **Cablecast FrontDoor template** (Midland Public Schools, MI;
+    Sioux Falls School District 49-5, SD) -- both fail `rtr-discovery`'s
+    `CablecastEnumerator` with "no `__remixContext` found -- unsupported
+    template," a real 4th Cablecast template (`cablecast.py` already
+    documents 3: Remix, CablecastPublicSite/Ember, and the universal
+    `cablecastapi` backend underneath both) not yet supported.
+  - **Impact**: 3 known school districts blocked (1 CivicLive, 2
+    Cablecast FrontDoor) -- likely not the only ones, since these are
+    real platform-coverage gaps, not per-tenant issues.
+  - **Next action**: CivicLive needs a new enumerator, no prior art.
+    Cablecast FrontDoor needs `cablecast.py` extended to detect and
+    handle the new template, following the same pattern as the
+    CablecastPublicSite addition -- check the real raw HTML/API for one
+    of the two known tenants first, per this project's own house rule,
+    before writing anything. **Priority: LOW** -- 3 known-blocked
+    districts, real but small.
+  - **History**: `~/Documents/rtr-discovery/
+    SCHOOL_DISTRICT_ENUMERATION_HANDOVER.md` Group 3;
+    `rtr-business/research/ENUMERATION_METHODS.md` §63.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+  `archive/data/hub_slug_aliases.csv` wholesale every run, so a second
+  run can silently drop or corrupt a real, currently-serving redirect
+  from an earlier run — not just the known `manual_override` blind spot
+  above, but any row whose source page has since been re-backfilled.**
+  - **Issue**: the script never reads the file it's about to overwrite —
+    it derives every row fresh, per run, from `old_hub_slug =
+    jurisdiction_hub_slug(CURRENT stored jurisdiction string)` vs `new_
+    hub_slug = resolve_government(that same string)`. The FIRST run after
+    a backfill can see genuine pre-backfill/post-backfill pairs; every
+    run after that sees only ALREADY-backfilled strings, so a page whose
+    retirement was captured once becomes permanently invisible to future
+    runs (exactly what `hub_aliases.py`'s own docstring warns about, but
+    the blast radius turned out to be the whole file, not one row). WO-109
+    (2026-09-03) re-ran the script against production and confirmed
+    it directly: of 672 previously-committed rows, a naive overwrite
+    with the fresh run's 57-row output would have dropped **615** of
+    them — real, currently-necessary redirects with no way to
+    reconstruct them from the database again.
+  - **Impact**: no damage today — WO-109 wrote a merge (keep every
+    existing row, add only genuinely-new `old_slug`s) by hand instead of
+    running the script's own overwrite, so the committed file lost
+    nothing. But that merge is currently a one-off manual step, not
+    something the tool does, so the very next person who runs
+    `scripts/score_gov_registry.py` in the ordinary documented way (no
+    special care) will regress this — silently, since the script prints
+    a row count and nothing else, and a smaller "57 retired slugs"
+    number reads as normal output, not a warning.
+  - **Next action**: teach `_write_hub_slug_aliases()` to read the
+    existing committed file first and union with the freshly-derived
+    rows (existing row wins unless proven stale) instead of overwriting,
+    the same merge WO-109 did by hand — see that PR's description for
+    the exact logic and the three ambiguous cases (below) it had to
+    reason through manually.
+  - **Constraint**: a union isn't quite enough on its own — WO-109 also
+    hit 3 real cases (`hamilton`, `victoria`, `woodland`) where the SAME
+    bare `old_slug`, computed from two different tenants' raw
+    jurisdiction text at two different points in time, legitimately wants
+    two different destinations. Any fix needs a documented tie-break
+    rule, not silent last-write-wins. **Update (WO-112, 2026-09-03):**
+    2 of the 3 are no longer "kept safe at incumbent" — Ryan reviewed the
+    live site after the WO-107 backfill and gave an explicit, direct
+    call: `hamilton` now points to `hamilton-city-oh`
+    (`us:place:3933012`) and `woodland` now points to `woodland-wa`
+    (`us:place:5379625`), superseding WO-109's cautious default. Both old
+    incumbent destinations (`hamilton-police-services-board-on`,
+    `woodland-ca`) remain real, live hubs at their own unambiguous slugs
+    — re-verified via `display.hub_slug()` on their own gov_ids before
+    the flip — so nothing is orphaned, they're just no longer reachable
+    via the bare, ambiguous slug. `victoria` is UNCHANGED: Ryan did not
+    mention it, and it stays flagged for him per the note below (a
+    genuinely different case — `victoria-bc` may itself be the wrong
+    committed value, not just the less-preferred one). A durable
+    tie-break rule for the *general* case (which of two colliding raw
+    strings wins a bare slug) is still not built — WO-112 only resolved
+    these two specific instances by direct instruction, it did not add a
+    policy the tool applies on its own next run.
+  - **History**: found and worked around by hand in WO-109's PR
+    (2026-09-03); hamilton/woodland flipped by hand in WO-112's PR
+    (2026-09-03) per Ryan's direct instruction. See both PRs'
+    descriptions for the full row-by-row reasoning and before/after
+    values.
+
+- **[NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
+  scoped `tenant_overrides.csv` pins, so its `hub_slug_aliases.csv` regen
+  silently drops the retiring-slug redirect for any government that was
+  only pinned that way.**
+  - **Issue**: `score_rows()` (and `_seed_governments()`) call
+    `resolve_government(jurisdiction, tenant_host=host,
+    tenant_gov_id=...)` with no `path`/`page_hints` argument. Those two
+    are exactly what `_pinned()` (`app/utils/gov_registry/resolver.py`)
+    needs to match a `tenant_overrides.csv` row whose `match` column
+    names a specific video id or TelVue org token rather than being
+    blank — so the script can only ever see host-level pins, never
+    `match`-scoped ones. WO-107 (#712) added 5 such groups (24 `youtu.be`
+    ids → Woodside CA, 10 `youtu.be` ids → Hillsborough CA, 3
+    `www.youtube.com` ids → Phoenix AZ, 2 `videoplayer.telvue.com` org
+    tokens → Centre County PA and Summit NJ), and WO-109's regen the same
+    day (#714) missed all 5 — confirmed by checking its own committed
+    `reports/gov_registry_scoring_2026-09-03/sheet_archive.csv`: all 5
+    pages still show `jurisdiction_confidence: unresolved` and a blank
+    `gov_id` in that snapshot.
+  - **Impact**: no live 404s today — WO-112 (2026-09-03) hand-added the
+    5 missing redirect rows to `archive/data/hub_slug_aliases.csv` from
+    that same pre-backfill snapshot before `scripts/backfill_gov_id.py
+    --apply` erased the only source that could reconstruct them. But
+    this is a real, general gap: any FUTURE `match`-scoped pin will hit
+    the identical blind spot the next time someone runs
+    `score_gov_registry.py` in the ordinary documented way, with no
+    warning that it happened (same silent-drop shape as the wholesale-
+    overwrite entry above, different root cause).
+  - **Next action**: thread `path`/`page_hints` through
+    `score_rows()`/`_seed_governments()` the way `page_hints_for()`
+    (`resolver.py`) already builds them from a `MeetingPage` in
+    production — the export payload would need the source URL fields
+    `page_hints_for()` reads (it currently fetches only the light
+    metadata shape, deliberately, per its own docstring on
+    `fetch_export_pages()`) — then re-run the script and confirm the 5
+    WO-107 rows above appear in its own regenerated output rather than
+    needing another hand-add.
+  - **Constraint**: don't build this against a fresh `/internal/
+    export/pages` pull to verify — after `backfill_gov_id.py --apply`
+    runs, every WO-107-pinned page's stored `jurisdiction` is already the
+    registry display name, so a fresh export can no longer show the
+    before/after gap this bug produces. Verify instead against the
+    committed `sheet_archive.csv` snapshot above, or a newly-crafted
+    synthetic case using a real, currently-unpinned `match` value.
+  - **History**: found and worked around in WO-112's PR (2026-09-03);
+    see that PR's description.
+
+- **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+  on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
+  - **Issue**: `CivicPlusAssetFinder.resolve()` (`app/platforms/
+    civicplus.py:68`) calls `await response.text()` with no `encoding=`
+    argument and no fallback; a real CivicPlus `DocumentCenter` PDF-view
+    response came back non-UTF8 and raised a raw `UnicodeDecodeError:
+    'utf-8' codec can't decode byte 0xe2 in position 10: invalid
+    continuation byte`, confirmed live 2026-09-01 resolving
+    `https://ga-richmondhill2.civicplus.com/DocumentCenter/View/5032/
+    City-Charter-Updated-2021` (reached via `generic_fallback.py`
+    delegating a candidate link it found on `richmondhill-ga.gov/
+    agendacenter`).
+  - **Impact**: not a production crash today — both call sites that can
+    reach this (`/api/resolve`'s top-level `except Exception` in
+    `app/main.py`, and `generic_fallback._try_delegate_to_known_platform`'s
+    own `except Exception` swallow) already catch it gracefully. The real
+    cost is a silently-failed delegation attempt (logged as a `warning`,
+    not surfaced) on any CivicPlus tenant whose only outbound-link
+    candidate happens to be a non-UTF8 document view rather than a real
+    meeting page — an undercount in exactly the kind of has_video=yes
+    CivicPlus resolve this project is trying to get right (see the
+    §49/coverage_map.csv Phase 1 sweep, `~/Documents/rtr-business/
+    research/ENUMERATION_METHODS.md`).
+  - **Next action**: decode with `encoding=response.get_encoding()` (or
+    a `charset_normalizer`/`chardet` guess) falling back to `errors=
+    "replace"` rather than raising, the way a real browser would render
+    a mis-served page instead of refusing it outright; needs a second
+    real non-UTF8 CivicPlus sample beyond this one before generalizing
+    the fix, per this project's own "never build from one example" rule.
+  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
+    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
+    record of it).
+
+- **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
+  forms creates two separate Archive pages instead of deduping.**
+  - **Issue**: Yamhill County, OR's real meeting video
+    (`youtube.com/live/3dVHe0r2utc`) was submitted twice during tonight's
+    tier1/2 ingest batch — once via the jurisdiction's plain
+    `AgendaCenter` URL (which delegates to the YouTube video), once via
+    the video's own direct YouTube URL. Both real-ingested successfully,
+    but instead of the second submission recognizing the same underlying
+    video and updating/reusing the existing page, it created a second,
+    separate `MeetingPage` with a different segment count (1,726 vs 757)
+    and a title/slug mismatch on the older of the two.
+  - **Impact**: two live pages for the same real meeting — confusing for
+    a reader who finds either one, and it undercounts real dedup
+    coverage the same way a naive per-URL cache key would (the two
+    submitted URLs are textually different even though they resolve to
+    the identical video). Segment-count divergence (1,726 vs 757) also
+    suggests the two ingests captured the transcript at different
+    completeness, worth checking which is the better version before any
+    fix consolidates them.
+  - **Next action**: dedup key should be the resolved video identity
+    (e.g. the YouTube video ID) rather than (or in addition to) the
+    submitted source URL, so a second submission that resolves to an
+    already-ingested video updates/merges rather than creating a new
+    page. Needs a decision on which of the two existing Yamhill County
+    pages to keep (or how to merge) before any fix ships, plus a
+    one-time cleanup pass for this specific pair via the existing
+    `POST /internal/admin/delete-pages` / reslug tooling.
+  - **History**: found during tonight's Track A tier1/2 ingest batch
+    (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
+    track_a_tier12_ingest_RESULTS.csv`), 2026-09-01 — not yet in
+    `BACKLOG_DONE.md`, this is the first record of it. Second confirmed
+    instance, cross-platform this time: Tompkins County, NY's real
+    2025-03-18 Legislature meeting was ingested once via its Granicus URL
+    and once via its Legistar URL (2026-09-06, wildcard-sweep retry
+    pass), producing two separate pages for the identical meeting —
+    same root cause, dedup keys on source URL rather than resolved
+    identity.
+
+- **[NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
+  exists anywhere in the resolve pipeline — the same root cause behind
+  the Yamhill duplicate above and several other real bugs from the same
+  night.**
+  - **Issue**: `app/platforms/base.py`'s `CalendarPageError` mechanism
+    already does real candidate-scanning inline inside `resolve()` for 5
+    platforms (`civicplus.py`, `legistar.py`, `municode_meetings.py`,
+    `tampa.py`, `vimeo.py`) — it finds every real meeting candidate on a
+    listing/calendar page, but the moment there's more than one, it
+    raises with the candidate list and stops. That's built entirely for
+    a human viewer to click on the frontend. There is no code path that
+    automatically picks a candidate for an unattended batch/ingestion
+    script. Confirmed live 2026-09-01 across two full sweeps
+    (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
+    track_a_tier12_ingest_RESULTS.csv` and
+    `track_a_964_resolve_known_url_RESULTS.csv`) and one enumeration
+    session's full read of all 7 `CalendarPageError`-using platform
+    files.
+  - **Impact**: real, repeated damage in a single night's tier1/2 ingest
+    batch alone — two fake pages ingested as real meetings (Chester
+    County SC's tourism promo, Douglas County WI's instructional video,
+    both from a bare "most recent" pick with no verification), 3 rows
+    that resolved to a different meeting than what was reviewed because
+    "most recent" is re-evaluated fresh every run with no stable
+    candidate list to point at, the Yamhill County OR duplicate-page bug
+    above, and 56 rows across two sweeps (5 + 51) that came back as
+    errors specifically because a guessed link landed on a tenant's
+    homepage rather than a specific meeting — a real candidate list was
+    never built for any of these, so nothing had anything to pick from.
+  - **Next action**: two real, independent fixes, either worth doing on
+    its own: (1) build an automated picker (title/date heuristics, or
+    "prefer the most recent title that looks like a real government
+    meeting") that consumes the same candidate list `CalendarPageError`
+    already produces for its 5 platforms, so a batch script gets a real
+    answer instead of either guessing outside this mechanism or failing;
+    (2) port the proactive per-tenant listing technique already
+    live-verified in the sibling `rtr-discovery` repo
+    (`~/Documents/rtr-discovery/discovery/enumerators/*.py` — 11
+    platforms: primegov, civicclerk, civicweb, escribe, legistar,
+    youtube_channel, granicus, swagit, iqm2, proudcity, cablecast) into
+    this project's own step 2, since the technique (call the tenant's
+    own listing API/feed) is proven and reusable even though that repo's
+    own job (adding depth to already-covered jurisdictions) is out of
+    scope here — only the technique transfers, not the depth-chasing
+    behavior. CivicPlus's own general listing (beyond the `/AgendaCenter`
+    direct check), TownHallStreams, BoardDocs, TelVue, ChampDS, and
+    CivicLive (beyond the reactive picker) still have nothing anywhere,
+    not even in `rtr-discovery`; Hyland is a confirmed dead end.
+  - **History**: found and written up during a long enumeration-strategy
+    session, 2026-09-01 — full detail in
+    `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`'s "Step
+    2's real weak spot" section (end of file) and its "5 Steps"/"Key
+    Scripts" intro. Not yet in `BACKLOG_DONE.md`, this is the first
+    record of it.
+
+- **[NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
+  government meeting platforms with zero adapter support — no
+  `app/platforms/` module for either.**
+  - **Issue**: tonight's StreamText-candidate research (see the entry
+    above) independently surfaced multiple real government bodies whose
+    actual meeting platform is Teams or Zoom, not any platform this
+    project currently resolves: NYC Water Board (Microsoft Teams, live
+    join link `teams.microsoft.com/meet/282741341051726`, found in a real
+    Sept 2026 meeting-notice PDF), LA County Dept of Mental Health
+    Commission (Microsoft Teams meetup-join link, found on
+    `dmh.lacounty.gov`), Georgia Vocational Rehabilitation Services board
+    (Zoom, `us06web.zoom.us/j/86536611218`, found on `gvs.georgia.gov`).
+    Those three are all *live join links*, not archived recordings, so
+    none are directly ingestible even with an adapter. Separately
+    confirmed live, 2026-09-02: **Rockport, MA's own `.gov` site hosts
+    real, archived past-meeting recordings via Zoom's cloud-recording
+    share links** —
+    [rockportma.gov/598/Recorded-Zoom-Meetings](https://www.rockportma.gov/598/Recorded-Zoom-Meetings)
+    lists multiple real `zoom.us/rec/share/...` links across several
+    boards (Board of Health, Cultural Council, Historical Commission,
+    Planning Board) — this is the shape that would actually be
+    ingestible. **No equivalent past-recording example was found for
+    Microsoft Teams** despite real search effort (multiple queries,
+    2026-09-02) — every real Teams hit found so far is a live join link;
+    Teams' own recording model (OneDrive/SharePoint "Recordings" folder,
+    access often permission-gated to the org's own tenant) may make
+    public past-recording links structurally rarer than Zoom's shareable
+    `rec/share` links, but that's inference, not confirmed — worth a
+    dedicated search pass before concluding either way. Further
+    confirmation, 2026-09-08 (Utah PMN pilot, `rtr-business/research/
+    ENUMERATION_METHODS.md` §105): 4 more real `zoom.us` "Audio File
+    Location" values turned up unprompted in a 2,581-notice statewide
+    scan (`us02web.zoom.us` x3, `utah-gov.zoom.us` x1) — not yet checked
+    whether any are `rec/share`-shaped past recordings vs. live join
+    links, but a second, independent discovery channel surfacing Zoom
+    unprompted raises this past "three hits in one evening."
+  - **Impact**: unknown real scope, but not zero — three independent real
+    hits in one evening's research on an unrelated task, plus at least
+    one confirmed real ingestible-shaped example (Rockport MA/Zoom), plus
+    4 more real sightings from an unrelated statewide Utah scan. Any
+    jurisdiction using Teams/Zoom as its primary or sole platform is
+    currently invisible to every discovery method in this file, since
+    none of them check for these two at all.
+  - **Next action**: (1) a small, cheap discovery pass — dork for
+    `"zoom.us/rec/share"` + the standard 5 governance-context phrases
+    (same proven pattern as TelVue/Cablecast/Vimeo) to gauge real
+    population size before committing to adapter work; (2) if that comes
+    back with real density, a Zoom adapter is straightforward (the
+    `rec/share` URL is a stable, directly-fetchable link) — a Teams
+    adapter is a separate, harder question given the permission-gating
+    concern above and deserves its own investigation, not an assumed
+    parallel build.
+  - **History**: found 2026-09-01/02 during the same enumeration session
+    as the entry above, while researching StreamText candidates and
+    following up on the user's question about competitor
+    captioning/accessibility platforms. Not yet in `BACKLOG_DONE.md`,
+    this is the first record of it.
+
+- **[NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
+  a general-purpose file host (Google Drive, SoundCloud) — 28 real,
+  confirmed-populated examples from one Utah scan.**
+  - **Issue**: `utah_pmn.py` (see `BACKLOG_DONE.md`'s entry on that
+    adapter) resolves a same-domain uploaded file directly, but a
+    populated "Audio File Location" pointing to `drive.google.com` (21
+    real examples) or `soundcloud.com` (7) isn't a directly-fetchable
+    media URL the way a bare `utah.gov/pmn/files/*` file is — a Drive
+    share link needs its own redirect-chain/direct-download investigation
+    first.
+  - **Impact**: 28 real, confirmed-populated links currently unresolvable
+    — a small slice on their own, but the same pattern ("just put the
+    recording on Drive") is plausible nationwide for
+    smallest/least-resourced governments generally, not just Utah's PMN
+    notices specifically.
+  - **Next action**: per this project's own rule against building an
+    adapter without a live sample, fetch a handful of the real Drive/
+    SoundCloud links logged in `rtr-business/research/
+    pmn_utah_pilot_log.csv` (`skipped` outcome, reason containing "isn't
+    on a known video/audio platform") to confirm they're actually
+    fetchable server-side (Drive's sharing-link redirect chain,
+    direct-download vs. preview-only gating) before writing anything.
+  - **Constraint**: don't assume every Drive/SoundCloud link is a full
+    meeting recording without checking — a "Public Information Handout"
+    or similar could plausibly also live on Drive.
+  - **History**: found 2026-09-08 running the Utah PMN pilot; the
+    same-domain-file half of this entry shipped 2026-09-09, see
+    `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
+  `ValueError` instead of a clean "not a specific video" message.**
+  - **Issue**: `YouTubeAssetFinder`'s `resolve_video_id()` (`app/
+    platforms/youtube.py:78`) raises `ValueError(f"Could not find a
+    YouTube video ID in {url}")` for a URL shaped like `/channel/<id>/
+    live` or a bare `/channel/<id>` with no parseable video ID. Confirmed
+    live 2026-09-01 against `https://www.youtube.com/channel/
+    UCWnFQlV4Fi0Pv5aqZy_fcPA/live` (Borough of Bernardsville, NJ) during
+    the §49 Phase 1 resolve sweep; a second, related shape (`Could not
+    find an event ID in URL path: /`) hit repeatedly on CivicClerk/
+    Legistar-style URLs missing their event id, same underlying pattern.
+  - **Impact**: not a production crash — `/api/resolve`'s top-level
+    `except Exception` (`app/main.py:677`) already turns this into a
+    `{"error": "resolve_failed", "message": "Could not find a YouTube
+    video ID in ..."}` response rather than a 500. The gap is message
+    quality: the surfaced text is a raw internal exception string, not
+    something a reader (or this project's own resolve-sweep tooling)
+    can tell apart from a genuine unexpected failure without string-
+    matching on "Could not find".
+  - **Next action**: decide whether this is worth a dedicated exception
+    type (e.g. `NotASingleVideoError`) that `/api/resolve` renders as a
+    distinct, friendlier `error` code — same shape as `CalendarPageError`
+    already gets — versus leaving it as-is since the generic
+    `resolve_failed` path already prevents a hard crash either way.
+  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
+    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
+    record of it).
+
+- **[NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
+  item per page.**
+  - **Issue**: a page's single "highlight" story uses a different HTML
+    shape (a promo box, topic text in a preceding heading) than the plain
+    pattern other items use, confirmed live.
+  - **Impact**: one real item silently skipped per affected page — safe
+    failure mode (skipped, not garbage), but a real known gap.
+  - **Next action**: walk up to a preceding heading when same-container
+    text comes back empty; needs a real design decision about how much
+    heuristic fragility on a differently-shaped page is acceptable before
+    attempting it.
+  - **History**: moved out of Dormant 2026-08-30.
+
+- **[NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
+  re-transcription sweep.**
+  - **Issue**: corrected 2026-08-31 — this entry was framed as if a manual
+    refresh and an auto-requeue mechanism didn't exist; WO-15 (2026-08-16)
+    already built both. `POST /api/refresh-archived-page` (`app/main.py:425`,
+    public, 1hr cooldown) already lets anyone re-trigger a refresh on any
+    archived URL, and `list_youtube_pages_missing_transcripts()`
+    (`archive/db/crud.py:1186`) already uses `_has_good_transcript()`, so a
+    garbled **YouTube** transcript already resurfaces in
+    `fetch_youtube_transcripts.py`'s daily queue and gets auto-promoted.
+  - **Impact**: the 11 Granicus-truncation-marked pages (of 31 flagged, per
+    the 2026-08-30 `/internal/transcript-quality-audit` count) can't use
+    that YouTube-only auto-queue; how many of the 20 garbled-marker pages
+    are non-YouTube is unconfirmed.
+  - **Next action**: decide whether to build an equivalent automated sweep
+    for non-YouTube garbled/truncated pages, or treat the existing manual
+    refresh button as sufficient at this bounded (31-page) scale.
+  - **History**: WO-15 (`BACKLOG_DONE.md`, 2026-08-16); this entry's own
+    framing corrected 2026-08-31 after being moved out of Dormant without
+    being re-derived first.
+
+- **[NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
+  2026-08-30.**
+  - **Issue**: the 2026-08-09 missing-binary failure (`BrowserType.launch:
+    Executable doesn't exist at /opt/render/.cache/ms-playwright/
+    chromium_headless_shell-1234/...`) recurred during that day's
+    four-service redeploy — root cause still unconfirmed, same as
+    `app/platforms/headless_browser.py`'s own docstring has recorded since
+    2026-08-09.
+  - **Impact**: likely self-healed in-process by `_get_browser()`
+    (`playwright install chromium`, once, then retry) — `/api/health`
+    polls and startup continued normally — but at the cost of a browser
+    download on the first Cloudflare-gated resolve after every deploy.
+  - **Next action**: read the resolver's actual build log for the
+    `playwright install chromium` step (does it list
+    `chromium_headless_shell`?), then hit a known headless-gated resolve
+    (Minneapolis LIMS / Wayne County MI) and confirm it works without a
+    mid-request download; if the build step skips the headless shell, the
+    likely fix is `playwright install chromium --with-shell` or pinning
+    `PLAYWRIGHT_BROWSERS_PATH` into the project dir — confirm from the
+    build log first rather than guessing a fourth time.
+  - **Constraint**: `[LOGIN]` — needs the Render dashboard to read the
+    build log.
+  - **History**: original finding in `app/platforms/headless_browser.py`'s
+    docstring, 2026-08-09.
+
+- **[NEEDS-AUDIT] Search Console "video isn't on a watch page" — Granicus
+  and CivicClerk's Azure video host are confirmed, not fixable in this
+  app's code.**
+  - **Issue**: Granicus's CDN blocks Googlebot's own User-Agent outright
+    (real browsers get 200, Googlebot/Bingbot/curl get 403, confirmed on
+    two independent tenants); CivicClerk's Azure-hosted video
+    (`cpmedia.azureedge.net`) serves `Content-Disposition: attachment`,
+    which Google's validator plausibly can't treat as embeddable.
+  - **Impact**: together these explain 65% of the real failing population
+    in a 1,000-row GSC export (real total 1,764 rows, flat since
+    2026-08-24) — Granicus 51.6%, CivicClerk Azure 13.4%. This app's own
+    templates already render correct, matching video markup in both cases,
+    so there is no template bug to fix. The same Granicus block also shows
+    up as Events/Videos rich-result "invalid item" flags in URL
+    Inspection, confirmed 2026-08-31 on
+    `/m/beaufort-board-of-education-academics-committee` — its "Page
+    resources couldn't be loaded" panel shows the Granicus media stream
+    itself failing Googlebot's fetch ("Other error"), matching the 403
+    finding above; not a new bug, another symptom of the same one.
+  - **Next action**: none identified in-app.
+  - **Constraint**: the only real lever (proxying video bytes through our
+    own domain) is not recommended without a real cost check — see
+    `BACKLOG_DONE.md`'s `ARCHIVE_BASE_URL` entry on double-proxied-HTML
+    bandwidth overage found elsewhere.
+  - **History**: full investigation (7 findings, real quantified breakdown
+    from Ryan's own GSC export) in `BACKLOG_DONE.md`'s
+    `[Investigated 2026-08-30]` entry. IQM2 (9.5%) and the `/j/`/`/state/`
+    hub-page fix (6.5%) are already built, deployed, and confirmed live
+    2026-08-31 — only a Search Console Validate Fix click remains, tracked
+    under "Needs a human". eScribe/isilive (10.1%) needs only a fresh
+    Google recrawl, not code — traced to a display artifact, not a real
+    bug. The same Granicus block also shows up as Events/Videos
+    rich-result "invalid item" flags in URL Inspection, not just the
+    watch-page issue — its "Page resources couldn't be loaded" panel
+    shows the same Granicus media stream failing Googlebot's fetch
+    ("Other error"), matching the 403-to-Googlebot finding above; not a
+    new bug, another symptom of the same one.
+
+- **[NEEDS-AUDIT] Search Console "video isn't on a watch page" — Cablecast
+  and the long tail remain unexplained.**
+  - **Issue**: Cablecast (6.6% of the failing population, many small
+    tenants) is fully reachable and correctly rendered but its root cause
+    is still unconfirmed; champds (11), townhallstreams (5), and a long
+    one-off tail remain unswept.
+  - **Impact**: roughly 10% of the real failing GSC population stays
+    unexplained; each individual platform is too small to prioritize on
+    its own.
+  - **Next action**: chase the one unverified lead for Cablecast — a
+    possible minor HLS spec deviation in its own generated manifest, not
+    something this app produces — before sweeping the smaller unswept
+    platforms.
+  - **History**: same investigation as the Granicus/CivicClerk entry
+    above, `BACKLOG_DONE.md`'s `[Investigated 2026-08-30]` entry.
+
+- **[NEEDS-AUDIT] Garbled source transcripts still produce garbled
+  highlight snippets.**
+  - **Issue**: the coherence guards catch a hammered content word and an
+    interleaved roll-up phrase, but a *fluently wrong* transcription (real
+    live example: Santa Rosa, CA — "brought for their concerns and need
+    for essential anti displacement home parks and aims of protections
+    for the mobile emergency concerns") has no repetition signal to
+    detect and reads as word salad.
+  - **Impact**: affects `/state/*` and `/j/*` hub-page snippets (see
+    `STATE_HUB_PAGES.md`).
+  - **Next action**: would need a coherence model, not a regex; a
+    threshold-based approach was tried and misfires on good snippets —
+    measured, see `tests/test_highlights.py`'s frozen cases.
+  - **Constraint**: this is transcription quality surfacing, not a
+    snippet-selection bug — framing matters for where a real fix would
+    land.
+  - **History**: deliberately left open by the 2026-08-23 state/hub
+    rebuild; see `STATE_HUB_PAGES.md`.
+
+- **[NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
+  demand.**
+  - **Issue**: `/meetings` topic chips are ranked by corpus hit count.
+    `search_queries` now logs every keyword (identity-free) and
+    `crud.top_search_keywords()` can read it, but nothing ranks chips by
+    it yet.
+  - **Impact**: chip ordering doesn't reflect what people actually search
+    for.
+  - **Next action**: wire chip ranking to `top_search_keywords()` once the
+    table has real volume — there is no data yet, the table just started
+    filling.
+  - **History**: deliberately left open by the 2026-08-23 state/hub
+    rebuild; see `STATE_HUB_PAGES.md`.
+
+- **[NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever clears, and whether pacing avoids it, is unresolved.**
+  - **Issue**: YouTube caption fetching sometimes returns `HTTP 429` even
+    on a single, isolated, cold request — not just under bulk load.
+  - **Impact**: hits every one of the **184** real jurisdictions on
+    `platform="YouTube"` (confirmed 2026-08-26 via `/coverage`, not just
+    the curated `youtube_channel.py` cities), since all of them share the
+    same yt-dlp caption-fetch call.
+  - **Next action**: a single isolated `resolve()` call from Render's own
+    outbound IP (not a residential one — untried so far) to test whether
+    the block is IP-specific.
+  - **Constraint**: do not re-run a bulk YouTube sweep to test this —
+    one isolated check is enough, more risks extending the block.
+  - **History**: `docs/investigations/youtube_429_block.md`.
+
+- **[NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
+  fixed.**
+  - **Issue**: `_pick()`'s only tie-break for >1 match is the "(Part N)"
+    identical-token-set case; two real Aug 6 Philadelphia videos on
+    different channel tabs have overlapping-but-different titles
+    (durations differing ~18 min) and correctly decline rather than
+    guess.
+  - **Impact**: that Philadelphia Aug 6 meeting can't be auto-matched.
+  - **Next action**: needs a second same-shape ambiguous-match case before
+    a tie-break rule is trustworthy — this repo's own WO-34 lesson (a
+    single case isn't enough to safely generalize a matching-logic
+    change) applies directly.
+  - **History**: full diagnosis in `BACKLOG_DONE.md`'s WO-77–82 entry
+    (2026-08-30); this entry compacted 2026-08-31. Albuquerque re-checked
+    2026-08-31 and confirmed working correctly on a fresh real example —
+    see `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] A chunk truncated only at its tail still passes the
+  decodability guard.**
+  - **Issue**: confirmed with real ffmpeg 2026-08-21 — the first 1000
+    bytes of a real 12.6KB mp3 decode cleanly and PyAV opens such files
+    too, so a valid-but-short chunk reaches Whisper and silently
+    transcribes only the surviving part.
+  - **Impact**: not observed in production yet, but the underlying gap is
+    real and unguarded.
+  - **Next action**: measure real per-chunk `probe_duration()` deltas
+    across live HLS and direct-file jobs before picking a tolerance.
+  - **Constraint**: the obvious guard (compare `probe_duration()` against
+    requested duration) was considered during WO-25 and deliberately not
+    built — two legitimate cases also produce a short chunk (the fast
+    input-side `-ss` seek makes real HLS chunk durations differ from
+    requested, and a job's final chunk is legitimately short); a
+    tolerance loose enough for both may not catch a meaningful
+    truncation.
+  - **History**: WO-25 (`BACKLOG_DONE.md`).
+
 ## The 114 pins from the shared-host study backfilled onto already-archived pages — 315 rows keyed, one shared TelVue token caught and removed first [Done 2026-09-09]
 
 Closed the `[HUMAN]` entry filed the same day. Ryan deployed the Archive
