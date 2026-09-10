@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
+  4 more wrong-government domain mappings, same fix shape as the 17…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   Coverage registry: per-state view and other dashboard additions…  (5)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
@@ -123,8 +124,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
-  Production actions only Ryan should take  (8)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+  Production actions only Ryan should take  (9)
+    [HUMAN] Two live pages need deleting: real video, zero transcript…
     [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
@@ -525,6 +527,36 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+### 4 more wrong-government domain mappings, same fix shape as the 17 already corrected `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** WO-146's re-verification (`BACKLOG_DONE.md`, 2026-09-10)
+  found `jurisdiction_coverage.csv` rows whose `domain` actually belongs
+  to a different, same-named or same-CDN-slug government: Providence
+  County, RI (`providenceri.iqm2.com` is really the City of Providence
+  -- and Rhode Island has no functioning county governments at all, so
+  there may be no real target row to move the domain to), Winona
+  County, MN (`pub-winona.escribemeetings.com` is really Winona city),
+  Imperial city, CA (`imperial.granicus.com` is really Imperial
+  COUNTY), Colorado County, TX (`coloradoga.granicus.com` is the
+  Colorado state legislature's own Granicus tenant, not a local
+  government at all), and Arkansas County, AR
+  (`arkansas-sc.granicus.com` is the Arkansas Supreme Court's).
+- **Impact:** these 4 domains stay wrongly attributed and will keep
+  producing the same wrong "found it" result if anyone re-sweeps them.
+- **Next action:** apply the same clear-source/set-target pattern
+  `research/wo146_wrong_domain_fix.py` already used for the other 17 --
+  for the two state-entity cases (Colorado, Arkansas), there is no local
+  government to redirect to, so just clear the domain and record
+  `reject_reason=off-mission`, not `wrong-domain-mapping`.
+- **Constraint:** Colorado County, TX's row already has `transcribed=
+  True` from an older, unrelated sweep, which is why WO-146's own
+  backfill left it alone (the standing "never overwrite a real True"
+  rule) -- but a fresh `/internal/export/pages` check found ZERO live
+  pages under this gov_id, so that `True` is stale, not evidence of a
+  real page. Worth a fresh look at what `transcribed=True` is actually
+  based on for this row before trusting it elsewhere.
+- **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
+
 ### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** Both review pages -- the meeting inventory
@@ -602,6 +634,13 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] Two live pages need deleting: real video, zero transcript segments, created by a WO-146 script bug (fixed, but the sandbox can't run the delete).**
+  - **Issue**: `scripts/wo146_api_relist_sweep.py`'s first version treated rtr-discovery's ledger status `resolved_ok` as "has real captions" when it was actually called with `require_captions=False` (deliberate, so a video-only outcome stays visible) — `post_resolve()` marks a video-only candidate `resolved_ok` too, no captions required. That shipped two pages with real video and 0 transcript segments as if they were tier-1/2: `loudoun-county-va-2013-01-11-video04-maptab` and `waukesha-city-wi-2026-09-08-finance-committee-on-2026-09-08-6-00-pm`. Caught by hand-checking the pilot's own report per this WO's own instructions, within the first 20 rows. The script now splits tier 1/2 vs tier 3 on the payload's own `segments` field, not ledger status.
+  - **Impact**: two indexable pages with a video but no transcript — the exact "agenda-only page a sweep shouldn't have made" shape Ryan already had to correct once, just for video-only instead of video-less.
+  - **Next action**: `POST /internal/admin/delete-pages` with `{"slugs": ["loudoun-county-va-2013-01-11-video04-maptab", "waukesha-city-wi-2026-09-08-finance-committee-on-2026-09-08-6-00-pm"]}`, `dry_run=true` first to confirm (already confirmed once, both found, matching titles/URLs), then `dry_run=false`. The auto-mode safety classifier in this sandbox refuses the real delete call even with a confirmed dry run, so this needs a human or a differently-permissioned session.
+  - **Constraint**: slug-only, exact match (the endpoint's own design) — don't broaden to a fuzzy match.
+  - **History**: WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
 - **[HUMAN] 18 hosts the coverage registry ties to the wrong government: 13 still want a pin to the *correct* one (22 pages), 2 have the right research id but a wrong page, 3 are undecidable.**
   - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type — 88 of 158 checkable pairs name a different government from the one the host serves. Most of those pages already carry the right id. These do not: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `fishkilltownny.iqm2.com` → `us:cousub:3602725978`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (all Town Boards, filed as villages); `townofchevychase.org` → `us:place:2416620` (Town, filed as Chevy Chase Village); `pub-cambridge` → `ca:csd:3530010`, `pub-clearview` → `ca:csd:3543005`, `pub-whiterockcity` → `ca:csd:5915007`, `pub-creston` → `ca:csd:5903004` (Canadian eScribe tenants filed under US namesakes); `watertown.civicweb.net` → `us:place:4669300` (portal footer ", SD 57201", filed as WI). Two where the *page* is wrong and the research right: `mcleancountyil.gov` (`us:county:17113`; page keyed to McLean village at tier `registry`, so only an `authoritative` pin fixes it — same shape as Juneau below) and `kankakeecountyil.gov` (`us:county:17091`; page minted `rtr:us:il:kankakee-city`). Three undecidable: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY), `cityofoakgrove.com` (claimed by both Oak Grove MO and Oak Grove Village MO), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
