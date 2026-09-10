@@ -220,6 +220,8 @@ not the same government under a new name. Each name in this app's
 school-district list matched WO-172's research file exactly, so no
 name correction was needed.
 
+**Close-out, added by the conductor.** WO-172's second pass found a fifth RegionalWebTV client after this WO ran: Spotsylvania County Public Schools (`us:sd:5103640`, channel `n7mt6z7d4z`, 212 episodes). Its regular School Board meetings all run two to four hours, so the rule chose the newest in-window one: "Spotsylvania School Board Work Session 6-22-2026", 11 minutes, 190 caption segments, probed and ingested; page live now at `/m/spotsylvania-county-public-schools-va-2026-06-22-spotsylvania-school-board-work`; per-media pin on the shared `amsva.wistia.com` account. That makes five Virginia school boards and four Virginia general governments on Wistia today.
+
 **Caution: Los Angeles Unified School District.** WO-172's research
 found real video for two of this district's committees (a Bond
 Oversight Committee, and a special-education advisory committee) on
