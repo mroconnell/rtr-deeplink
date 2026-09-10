@@ -1203,6 +1203,24 @@ human to commit, so an override becomes a rule rather than a stamp on N
 rows — `BACKLOG.md`'s Santa Clara entry is a hub that re-fragmented
 within two days of a row-level fix.
 
+**`reports/gov_id_problem_cases.csv` + `scripts/check_gov_id_problem_
+cases.py` (gov-id audit, 2026-09-10)** — a hand-picked regression corpus
+of ~80 archived pages whose identity a human verified and which are
+known to be hard: the shared TelVue token that filed Half Moon Bay under
+Pacifica, Juneau AK keyed to Juneau WI, a special district under its
+county, subdomains whose two letters are a type ("arkansas-sc"), the
+consolidated city-counties, Lloydminster's two provinces, the nine
+tenants that are not the government whose name they carry (LADWP,
+SANDAG, ...), and controls that must *not* move (South San Francisco is
+not San Francisco). The checker compares each case with a fresh export
+and, given a `backfill_gov_id.py --report` file, with what the backfill
+*would* write — run it before every `--apply`, since that is the moment a
+resolver change re-breaking a settled case is still cheap. Rows carry a
+`status`: `verified` rows fail the run on drift; `known_wrong` (the
+generic-embed collisions) and `open` (honestly unkeyed) rows are reported
+but never fail it. Expected values are what a person verified, never
+what the resolver happens to say today.
+
 **`GET /j/{slug}` (per-government hub pages, added 2026-08-17)** — one
 landing page per government ("Napa, CA public meeting videos &
 transcripts", `/j/napa-ca`), proxied like `/state/*`. Grouped by
