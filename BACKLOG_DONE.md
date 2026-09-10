@@ -256,6 +256,110 @@ guessing a fixed address only works for CivicPlus). Full numbers,
 including the training-page list and every real government checked, are
 in `~/Documents/rtr-business/research/wo154_methods_section.md`,
 `wo154_family_sample_300.csv`, and `wo154_path_test_30.csv`.
+## WO-171: LocalView's 989 YouTube meeting channels as signatures; one probed meeting queued for each of 439 governments with no video [Done 2026-09-10]
+
+**What this is.** LocalView is a public, peer-reviewed dataset (Harvard
+Dataverse, CC0) of about 301,000 US local-government YouTube meeting
+videos, organized into 1,010 channels covering 989 places. Each video
+already carries the place it belongs to (a Census FIPS code), a real
+YouTube video id, a title, and a date. That is exactly the shape this
+project needs: a government, and a specific real meeting on YouTube. This
+work checked all 989 places against what we already have, verified every
+channel actually belongs to the government it claims to, and queued one
+real meeting for every government that had none.
+
+**Step 1: matched every place to a government.** The dataset's own place
+code decoded cleanly for 901 of 989 places (829 direct city matches, 76
+counties, and 26 New England/New Jersey towns that needed one extra
+lookup step). 83 places named more than one government at once and were
+dropped, per the work order's rule. 5 places did not match anything. Of
+the 901 matched places, 317 already have a page on our site. That left
+584 places with no page at all — the target for this work.
+
+**A note on the lead's own numbers.** The work order that started this
+said an earlier check found 797 matched places, 462 with no video, and
+192 unmatched. This session's own from-scratch check does not reproduce
+those numbers (901 / 584 / 88, respectively) and no earlier file was
+found to compare against. Reported here as this session's own, directly
+re-derived count, not adjusted to match the earlier figure.
+
+**Step 2: checked every channel actually belongs to its government.** A
+YouTube channel's name is not proof by itself — it could be the
+government's own channel, a shared community-TV or news channel that
+posts many governments' meetings, or something else entirely. Checked
+all 1,010 channels (one lightweight public lookup per channel, 2 seconds
+apart, zero blocks from YouTube the whole time).
+
+| Verdict | Count of 989 places | What it means |
+|---|---|---|
+| Own channel | 666 | the channel's own name plainly says which government it is |
+| Per-video only | 45 | a shared channel (community media, public access, news, or one serving several governments) — only specific videos should count, not the whole channel |
+| Rejected | 278 | names a different government, a private person, or could not be checked at all |
+
+A mistake was found and fixed partway through: channel names written with
+no spaces ("CityofTucson", "cityofminneapolis") were being misread as a
+private person's name before the check ever looked at whether the name
+matched the government. Fixed by checking the government-name match
+first. A 30-channel hand check after the fix agreed with the tool every
+time.
+
+**Step 3: picked one meeting per government, checked it's real, queued
+it.**
+
+| Outcome | Count of 584 | Detail |
+|---|---|---|
+| Queued after probe | 439 | a real, checked, watchable meeting picked and queued |
+| Channel failed verification | 144 | every channel for this government came back rejected above |
+| No plausible meeting in the dataset | 1 | nothing in its channel looked like a real meeting by title |
+| Rejected by probe, candidates exhausted | 0 | every government that reached the probe step had a working video within 6 tries |
+
+Every queued video was checked first — not just trusted from the
+dataset — using the existing WO-144 checker that confirms a video is
+real and watchable without downloading it. 438 of the 439 worked on the
+very first try.
+
+**A correction made by the conductor before merge.** The pin writer first
+recorded each video as `youtube:<video id>`, reasoning from the adapter's
+internal id string; a live check against the resolver showed that shape
+matches nothing, while the bare video id (the shape every other pin this
+round uses, and the shape the day's backfills re-keyed pages with) matches
+correctly. All 843 per-video rows were rewritten to the bare id and three
+were re-verified against the resolver before this merged. The entry this
+agent filed calling the bare shape broken was wrong and has been removed.
+
+**What was written:** 439 real meetings added to the transcription queue;
+862 new identity records (439 per-video, 423 also get a whole-channel
+record since those channels belong to one government only); the research
+tracking file updated for every one of the 439, with the video link, plus
+a note that YouTube is the source and it's waiting on captions. 65 of the
+439 already had a better lead on file (a platform Ryan prefers over
+YouTube) and were left untouched, exactly as instructed.
+
+**Caution.** This project doesn't fetch YouTube captions today (a known,
+temporary block — see `docs/investigations/youtube_429_block.md`), so
+none of these 439 meetings are on the site yet. They become real pages
+only after the site is deployed and the cloud worker picks them up from
+the queue. The channel checks are a name-matching judgment, not a human
+review of all 989 channels — built to be cautious (when in doubt, reject
+rather than guess), consistent with a past incident where a looser check
+put six meetings under the wrong government. Some older YouTube video ids
+in this dataset may no longer exist; the check step already screens for
+that live, so anything queued today was confirmed to still exist today.
+
+**Recommendation.** Deploy the site so these 439 meetings start moving
+through captioning. Someone should also check the ~65 possibly-broken
+older records flagged above, and decide whether to hand-review the 278
+rejected channels for any that were too cautiously rejected.
+
+**Deploy status.** Nothing is live from this work yet. The queue lines
+and identity records take effect on the next deploy, and captioning is
+paused until then anyway (see Caution).
+
+- **History**: builds on WO-144 (the video-checking tool used here),
+  WO-134 (the meeting-title rules for picking a real meeting), and
+  `docs/BREADTH_SWEEP_BRIEF.md`'s probe-before-queue method. Full method
+  and every number's derivation:
+  `rtr-business/research/wo171_methods_section.md`.
 
 ## WO-153: research-file bookkeeping pass — 449 wrongly-flagged rows fixed, 6 governments' pages re-keyed, 28 shared-host domains fixed, and the queued labels checked against the real queue [Done 2026-09-10]
 
