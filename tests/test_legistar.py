@@ -1306,3 +1306,91 @@ async def test_view_publisher_fallback_does_not_run_for_an_unregistered_instance
 
     assert result.platform == "legistar"
     assert result.video_warnings == ["No video link found on this Legistar page."]
+
+
+# Real Yonkers, NY page shape, confirmed live 2026-09-10 (WO-145,
+# tests/fixtures/legistar/yonkersny_meeting_detail.html is the actual full
+# page body). Different failure shape than Kansas City's: <title> and the
+# RSS <link title> both parse fine (this is NOT a "no title" bug), but the
+# page's single a.videolink carries no onclick at all -- just a
+# data-event-id and "Not available" text, since this template only wires
+# up a real Video.aspx link client-side for a *live* event via
+# running_events.php. So _find_video_links() correctly finds zero
+# candidates, and the page's own real title/date/jurisdiction/body were
+# being read by _extract_page_meeting_info() and then discarded, because
+# no fallback ever ran to reach them -- yonkersny.legistar.com wasn't in
+# granicus_channel.py's curated tenant map. The Granicus domain
+# (yonkersny.granicus.com) is read off the same page's own <script>
+# (`running_events.php`), not guessed from the Legistar slug; view_id=1
+# is confirmed live to be the tenant's real "New View" channel, carrying
+# this exact meeting under clip_id=53.
+_YONKERS_URL = (
+    "https://yonkersny.legistar.com/MeetingDetail.aspx"
+    "?ID=1233215&GUID=4ECC04E9-1F48-49EC-8917-054A2E9FCF86"
+)
+_YONKERS_RSS_URL = (
+    "https://yonkersny.granicus.com/ViewPublisherRSS.php?view_id=1&mode=video"
+)
+_YONKERS_GRANICUS_URL = (
+    "https://yonkersny.granicus.com/MediaPlayer.php?view_id=1&clip_id=53"
+)
+# Real (trimmed) Granicus clip page shape -- enough for GranicusAssetFinder's
+# own already-tested parsing, same convention _KC_GRANICUS_HTML above uses,
+# not a captured real page (see test_granicus.py for that).
+_YONKERS_GRANICUS_HTML = (
+    "<html><head><title>City Council of Yonkers Stated Meeting</title></head>"
+    '<body><script>var url = "https://archive-stream.granicus.com/'
+    'yonkersny/playlist.m3u8";</script></body></html>'
+)
+
+
+async def test_view_publisher_fallback_finds_yonkers_unlinked_recording():
+    html = load_fixture("legistar", "yonkersny_meeting_detail.html")
+    xml = load_fixture("granicus_channel", "yonkersny_viewpublisher_rss.xml")
+    routes = {
+        _YONKERS_URL: FakeResponse(status=200, text=html, url=_YONKERS_URL),
+        _YONKERS_RSS_URL: FakeResponse(status=200, text=xml),
+        _YONKERS_GRANICUS_URL: FakeResponse(
+            status=200, text=_YONKERS_GRANICUS_HTML, url=_YONKERS_GRANICUS_URL
+        ),
+    }
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(_YONKERS_URL)
+
+    assert result.platform == "granicus"
+    assert result.video_url == (
+        "https://archive-stream.granicus.com/yonkersny/playlist.m3u8"
+    )
+    assert result.source_url == _YONKERS_URL
+    # Legistar's own page wins over the matched Granicus clip's page --
+    # same posture as the Kansas City case above.
+    assert result.title == "City Council of Yonkers Stated Meeting"
+    assert result.date == "2024-10-08"
+    assert result.jurisdiction == "Yonkers, NY"
+    assert result.meeting_body == "City Council of Yonkers Stated Meeting"
+    warning = result.video_warnings[0]
+    assert "not linked from the meeting page" in warning
+
+
+async def test_extract_page_meeting_info_reads_real_yonkers_page_despite_no_video():
+    # Isolates the parsing half of the bug from the fallback-registry half
+    # above: even before WO-145's granicus_channel.py fix, this page's own
+    # title/date/body/jurisdiction were never the problem -- confirms that
+    # directly against the real fixture, so a future regression in the
+    # fallback wiring doesn't get misdiagnosed as a parsing regression.
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(
+        load_fixture("legistar", "yonkersny_meeting_detail.html"), "html.parser"
+    )
+    info = LegistarAssetFinder._extract_page_meeting_info(soup, _YONKERS_URL)
+    assert info["title"] == "City Council of Yonkers Stated Meeting"
+    assert info["body"] == "City Council of Yonkers Stated Meeting"
+    assert info["jurisdiction"] == "Yonkers, NY"
+    assert info["date"] == "2024-10-08"
+
+    # And the page's one a.videolink really does carry no onclick at all --
+    # confirms _find_video_links() declining is correct behavior here, not
+    # a separate bug alongside the fallback-registry one.
+    assert LegistarAssetFinder()._find_video_links(soup, _YONKERS_URL) == []

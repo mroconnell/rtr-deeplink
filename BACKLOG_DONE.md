@@ -1,5 +1,87 @@
 # Backlog — done
 
+## Yonkers, NY Legistar page had no video because its Granicus tenant was never registered as a fallback — fixed, plus a 29-tenant read-only test of whether the pattern generalizes [Done 2026-09-10] (WO-145)
+
+**The bug.** `https://yonkersny.legistar.com/MeetingDetail.aspx?ID=1233215` (a
+real City Council meeting, 2024-10-08) resolved to nothing: no title, no
+date, no video, just "No video link found on this Legistar page." The
+page's own title and RSS `<link>` title parsed fine the whole time —
+`_extract_page_meeting_info()` was never broken. The real problem: the
+page's one `a.videolink` never carries a real link for a past meeting —
+its `onclick` only gets wired up client-side (against
+`running_events.php`) for a *live* event, so `_find_video_links()`
+correctly found nothing, and the existing Granicus-listing fallback
+(`_try_granicus_view_publisher_video()`, built 2026-08-29 for Kansas
+City) never ran because `yonkersny.legistar.com` wasn't in its curated
+tenant map.
+
+**The fix.** Added `yonkersny.legistar.com` →
+`yonkersny.granicus.com`, view_id 1 to
+`granicus_channel._VIEW_PUBLISHER_FALLBACKS` — one dict entry, zero
+other code changes. The Granicus host came from the page's own
+`<script>` (it calls `yonkersny.granicus.com/running_events.php` by
+name), not a guessed slug swap. View_id=1 is confirmed live to be the
+tenant's real "New View," carrying 13 real video items including this
+exact meeting (clip_id=53). Verified end-to-end live: the page now
+resolves to a real, playable `archive-stream.granicus.com` video with
+the correct title, date, jurisdiction, body and agenda link.
+
+**Tests added**, fixture-backed per `CLAUDE.md`'s synthetic-test rule:
+`tests/fixtures/legistar/yonkersny_meeting_detail.html` (the real page,
+fetched live 2026-09-10) and
+`tests/fixtures/granicus_channel/yonkersny_viewpublisher_rss.xml` (a
+real trimmed excerpt of the tenant's video RSS feed, 5 of its 13 real
+items — including a genuine same-date multi-body case and a genuine
+same-date-and-body duplicate, both real feed content, not fixture
+authoring). Six new tests across `tests/test_legistar.py` and
+`tests/test_granicus_channel.py`. All four CI gates pass: `ruff check`,
+`ruff format --check`, `pytest` (2,926 passed, 16 skipped), `alembic
+check` (both `app` and `archive`, against a fresh migration-built
+SQLite).
+
+**Does the pattern generalize? Tested read-only on 29 other Legistar
+tenants** (from `rtr-business/research/jurisdiction_coverage.csv`'s
+Legistar-signature rows plus `rtr-discovery`'s ledger), probing each
+one's same-named `*.granicus.com` tenant for a real video listing, then
+checking whether the newest video's body and date matched a real
+Legistar-tracked meeting. Full method and per-tenant results:
+`rtr-business/research/ENUMERATION_METHODS.md`, 2026-09-10 section.
+
+| Result | Count of 29 |
+|---|---|
+| Same-named Granicus tenant found, with real recent video | 25 |
+| No same-named Granicus tenant found (empty or dead-end) | 4 |
+
+| Result (of the 25 tenants found) | Count |
+|---|---|
+| Newest video's body and date matched a real Legistar meeting | 16 |
+| Legistar's own API rejected the tenant's client name (can't verify — 2 of 3 already had an independently-confirmed real Granicus URL on file) | 3 |
+| Body and date did not match any Legistar-tracked meeting | 5 |
+| Tenant found, but zero video clips published under it | 1 |
+
+**Caution, confirmed live during this sweep, not theoretical:** a
+same-named tenant can be the wrong channel (Lee's Summit, MO: the first
+hit was a "Fire Department Training" channel, not the real council
+video, which is already known to live elsewhere), a dead one (Chapel
+Hill, NC: newest clip was from 2016), or a tenant shared across more
+than one government (Pinellas, FL: video existed but didn't match this
+city's own Legistar-tracked bodies). One tenant's own body-name wording
+(DeKalb County, GA: Granicus titled it "Board of Commissioners -
+Committee of the Whole", Legistar just "Committee of the Whole") needed
+a substring match, not the prefix-only check this sweep's own analysis
+script first used — `granicus_channel.py`'s real matcher already does
+substring/prefix normalization, this was specific to the sweep's
+analysis code, not a product bug.
+
+**Not added to production**: none of the 29 swept tenants were added to
+`_VIEW_PUBLISHER_FALLBACKS` — this was a read-only test of the pattern,
+not a data-entry pass. See the matching `BACKLOG.md` entry for the
+proposed next step.
+
+**Deploy note**: this fix is merged to `main` but needs a deploy
+(`app/` changed) before it affects real resolves — see `render.yaml`'s
+`autoDeploy: false`.
+
 ## Dashboard checklist for 2026-09-10 — five `[HUMAN]` entries closed via a live walkthrough with Ryan [Done 2026-09-10]
 
 The weekday dashboard-checklist Routine (`CLAUDE_DASHBOARD_CHECKLIST.md`,
