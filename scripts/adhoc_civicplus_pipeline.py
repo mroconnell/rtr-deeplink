@@ -73,12 +73,48 @@ that one row's own `reject_reason` field, and only when it's currently
 empty -- never clobber an existing non-empty `reject_reason` or `domain`)
 rather than one batched read/write across the whole run -- see
 `update_coverage_reject_reason()` below.
+
+Homepage-CivicClerk fallback (WO-137, 2026-09-09): a `NoVideoCandidateFound`
+from the bare `{domain}/AgendaCenter` page does NOT always mean the
+government has no video -- a real, repeatable pattern found live across 3
+of a 30-government sample (Arvada CO, Westfield IN, St. Joseph MO): the
+government's AgendaCenter module is empty or video-less, but its own
+homepage links directly to a CivicClerk portal for meeting video (a
+platform this app already fully supports), one click away. Two real
+shapes confirmed: a homepage link straight to a specific
+`.../event/{id}/overview` page (St. Joseph MO -- `civicclerk.py`'s own
+`/event/(\\d+)/` regex doesn't care about the trailing path segment, so
+this resolves with zero extra code), and a homepage link to just the bare
+CivicClerk portal root (Arvada, Westfield IN -- needs the tenant's own
+public Events API to find its most recent real past event, since
+`CivicClerkAssetFinder.resolve()` requires a specific `/event/{id}` URL
+and raises on a bare tenant link). `homepage_civicclerk_fallback()` below
+handles both, using `app/platforms/base.py`'s own `find_platform_link()`
+to scan the homepage (already-tested, already handles the same-page-
+anchor/same-platform-internal-nav traps -- see its own docstring) and a
+trimmed copy of `civicclerk_latest_event_url()` (the same, real,
+live-verified technique `scripts/nationwide_2404_ingest.py` and its three
+sibling `nationwide_*_ingest.py` scripts each already carry their own
+copy of, per this repo's existing convention of independent per-pipeline
+copies rather than a shared import across these one-off scripts) for the
+bare-root case. Two other real, confirmed platform gaps found the same
+night are deliberately NOT fixed here, per CLAUDE.md's own
+never-build-from-one-sample rule: `spectrumstream.com` (Alhambra, CA --
+real per-meeting video links sitting directly in `td.media`, well within
+`_RETRY_LIMIT`, silently rejected only because the platform isn't
+registered in `detect_platform()`) and `12milesout.com` (Escondido, CA --
+a real, plain-HTTP, per-meeting video listing reached from the
+government's own homepage nav, AgendaCenter itself empty). Both are filed
+in `BACKLOG.md` with their one confirmed sample each, explicitly flagged
+as needing more live samples before an adapter is worth building.
 """
 
 import asyncio
 import csv
 import os
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -96,6 +132,7 @@ from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
     CalendarPageError,
     NoVideoCandidateFound,
+    find_platform_link,
     resolve_via_platform,
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
@@ -171,6 +208,205 @@ def domain_from_web_address(web_address):
         web_address = "https://" + web_address
     netloc = urlparse(web_address).netloc.strip()
     return netloc or None
+
+
+# Same real, confirmed-live false-positive shapes
+# scripts/nationwide_2404_ingest.py's own MEETING_ALLOWLIST/PROMO_BLOCKLIST
+# guard against (see that file's module docstring and
+# ENUMERATION_METHODS.md's "Step 2's real weak spot" section) -- copied
+# rather than imported, matching this repo's existing convention of each
+# adhoc/nationwide pipeline script carrying its own copy (see
+# civicclerk_latest_event_url()'s own docstring below).
+_MEETING_ALLOWLIST = (
+    "council",
+    "commission",
+    "board",
+    "committee",
+    "meeting",
+    "session",
+    "hearing",
+    "authority",
+    "trustees",
+    "supervisors",
+    "assembly",
+    "selectboard",
+    "select board",
+)
+_PROMO_BLOCKLIST = (
+    "promo",
+    "advertisement",
+    "commercial",
+    "psa",
+    "public service announcement",
+    "how to",
+    "tutorial",
+    "instructional",
+    "training video",
+    "orientation video",
+    "welcome",
+    "message from the mayor",
+    "highlight reel",
+    "sizzle reel",
+    "ribbon cutting",
+    "parade",
+    "test stream",
+    "test broadcast",
+    "sample video",
+    "demo video",
+    "career",
+    "job fair",
+    "recruitment",
+    "state of the city",
+    "year in review",
+    "commercial break",
+    "tour of",
+)
+
+
+def _looks_like_real_meeting(title: str) -> bool:
+    t = (title or "").lower()
+    if any(b in t for b in _PROMO_BLOCKLIST):
+        return False
+    return any(kw in t for kw in _MEETING_ALLOWLIST)
+
+
+async def civicclerk_latest_event_url(session, tenant_url: str):
+    """Finds the most recent real (past, has real media) CivicClerk event
+    for a bare tenant portal link and returns its canonical
+    `/event/{id}/media` URL -- `CivicClerkAssetFinder.resolve()` requires
+    that exact shape (raises `ValueError` on a bare tenant link, which is
+    all a homepage nav link to a CivicClerk portal root ever is -- the
+    portal itself is a client-rendered SPA with no server-rendered event
+    list, confirmed live 2026-09-09 on arvadaco.portal.civicclerk.com and
+    westfieldin.portal.civicclerk.com: a plain GET returns a ~1KB
+    "You need to enable JavaScript" shell, nothing else).
+
+    A trimmed copy of the identical, real, live-verified technique
+    `scripts/nationwide_2404_ingest.py` (and its three
+    `nationwide_{395,431,1911}_ingest.py` siblings) each already carry
+    their own copy of -- see that file's own docstring, which in turn
+    traces to `scripts/find_tier3_short_meeting_substitutes.py`'s
+    `cc_list_past_events()`/`cc_past_candidates()`. Copied rather than
+    imported, matching this repo's existing convention for these one-off
+    pipeline scripts (four independent copies already exist; this makes a
+    fifth, not a new pattern).
+
+    Returns (url, "") on success or (None, reason) when the tenant's own
+    public Events API has nothing real and recent to offer.
+    """
+    subdomain = urlparse(tenant_url).netloc.split(".")[0]
+    api_base = f"https://{subdomain}.api.civicclerk.com/v1"
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    filtered = (
+        f"{api_base}/Events?$filter=startDateTime lt {now_iso}"
+        "&$orderby=startDateTime desc&$top=25"
+    )
+    plain = f"{api_base}/Events?$orderby=startDateTime desc&$top=25"
+    try:
+        async with session.get(
+            filtered, timeout=aiohttp.ClientTimeout(total=25)
+        ) as resp:
+            if resp.status >= 400:
+                async with session.get(
+                    plain, timeout=aiohttp.ClientTimeout(total=25)
+                ) as resp2:
+                    resp2.raise_for_status()
+                    payload = await resp2.json(content_type=None)
+            else:
+                payload = await resp.json(content_type=None)
+    except Exception as e:
+        return None, f"civicclerk Events API failed: {e}"
+
+    events = payload.get("value") if isinstance(payload, dict) else payload
+    events = events or []
+    real = []
+    for ev in events:
+        if ev.get("isDeleted"):
+            continue
+        has_media = (
+            ev.get("hasMedia")
+            or ev.get("mediaStreamPath")
+            or ev.get("mediaSourcePathMp4")
+            or ev.get("externalMediaUrl")
+        )
+        if not has_media:
+            continue
+        start = ev.get("startDateTime") or ev.get("eventDate") or ""
+        if not start or start >= now_iso:
+            continue
+        real.append(ev)
+    if not real:
+        return (
+            None,
+            "no past CivicClerk events with real media found via tenant Events API",
+        )
+
+    real.sort(key=lambda e: e.get("startDateTime") or e.get("eventDate") or "")
+    top = real[-1]
+    title = top.get("eventName") or ""
+    if not _looks_like_real_meeting(title):
+        return (
+            None,
+            f"most recent CivicClerk event looked like a non-meeting video: {title!r}",
+        )
+    event_id = top.get("id")
+    if event_id is None:
+        return None, "most recent CivicClerk event had no id"
+    return f"https://{subdomain}.portal.civicclerk.com/event/{event_id}/media", ""
+
+
+async def homepage_civicclerk_fallback(session, domain: str):
+    """Real, repeatable pattern found live 2026-09-09 (WO-137) across 3 of
+    a 30-government sample of CivicPlus `NoVideoCandidateFound` verdicts
+    (Arvada CO, Westfield IN, St. Joseph MO): the AgendaCenter module
+    itself is empty or has no video-bearing row, but the government's own
+    homepage links directly to a CivicClerk portal for meeting video --
+    a platform this app already fully supports, one click away from the
+    exact page the sweep already checked. Scoped to CivicClerk
+    specifically (not "any known platform found on the homepage") because
+    it's the one confirmed pattern with a real, non-headless resolution
+    path all the way through (`find_platform_link()` for discovery,
+    `civicclerk_latest_event_url()`'s tenant Events API for a bare portal
+    root). Two other new platforms found the same night
+    (spectrumstream.com, 12milesout.com) are deliberately NOT handled
+    here -- see this module's own docstring and BACKLOG.md: one confirmed
+    live sample each is not enough to build an adapter from per CLAUDE.md.
+
+    Returns (url, "") on success, (None, reason) otherwise -- never
+    raises; a homepage fetch failing, or having no CivicClerk link at all,
+    is a normal, expected outcome for most tenants, not an error.
+    """
+    homepage_url = f"https://{domain}/"
+    try:
+        async with session.get(
+            homepage_url, timeout=aiohttp.ClientTimeout(total=25)
+        ) as resp:
+            if resp.status >= 400:
+                return None, f"homepage fetch returned {resp.status}"
+            final_url = str(resp.url)
+            html = await resp.text(errors="replace")
+    except Exception as e:
+        return None, f"homepage fetch failed: {e}"
+
+    match = find_platform_link(html, final_url, exclude=frozenset({"youtube"}))
+    if not match:
+        return None, "no known-platform link found on homepage"
+    link, platform = match
+    if platform != "civicclerk":
+        return None, f"homepage links to {platform}, not civicclerk (not handled yet)"
+
+    if _is_specific_civicclerk_event_url(link):
+        return link, ""
+    return await civicclerk_latest_event_url(session, link)
+
+
+def _is_specific_civicclerk_event_url(url: str) -> bool:
+    """True when `url` already points at a specific CivicClerk event
+    (`/event/{id}`, any trailing path segment -- `civicclerk.py`'s own
+    resolve() regex doesn't care whether it's `/media`, `/overview`, or
+    nothing at all), as opposed to a bare tenant portal root that still
+    needs `civicclerk_latest_event_url()`'s own Events-API lookup."""
+    return re.search(r"/event/\d+", urlparse(url).path) is not None
 
 
 def load_candidates(path):
@@ -309,30 +545,57 @@ async def process_candidate(session, finder, candidate, report):
     try:
         result, meeting_url, _ = await resolve_candidate(finder, agendacenter_url)
     except NoVideoCandidateFound as e:
-        row_out.update(
-            outcome="no-video-found",
-            jurisdiction=e.jurisdiction_hint or "",
-            detail=f"checked {e.candidates_checked} candidate row(s), none had video",
+        # WO-137 homepage-CivicClerk fallback (see this module's own
+        # docstring): a bare AgendaCenter page with no video doesn't mean
+        # the government has none -- try the one confirmed, non-headless
+        # path to a real video before giving up.
+        fallback_url, fallback_reason = await homepage_civicclerk_fallback(
+            session, domain
         )
-        report.write(row_out)
-        print(f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)")
-        if DRY_RUN:
-            print(
-                f"[DRYRUN ] would record reject_reason=no-video-found for {gov_id} "
-                "in jurisdiction_coverage.csv"
-            )
-        else:
-            updated = update_coverage_reject_reason(gov_id, "no-video-found")
-            print(
-                f"[COVERAGE] {gov_id} {unit_name}  "
-                + (
-                    "reject_reason set to no-video-found"
-                    if updated
-                    else "no update (no gov_id match, or reject_reason already set)"
+        if fallback_url:
+            try:
+                result = await resolve_via_platform(fallback_url)
+                meeting_url = fallback_url
+                row_out["detail"] = (
+                    "found via homepage CivicClerk link "
+                    f"(bare AgendaCenter had {e.candidates_checked} candidate row(s), "
+                    "none with video)"
                 )
+            except Exception as e2:
+                fallback_url = None
+                fallback_reason = f"homepage CivicClerk link raised: {e2}"
+        if not fallback_url:
+            row_out.update(
+                outcome="no-video-found",
+                jurisdiction=e.jurisdiction_hint or "",
+                detail=(
+                    f"checked {e.candidates_checked} candidate row(s), none had "
+                    f"video; homepage fallback: {fallback_reason}"
+                ),
             )
-        await asyncio.sleep(RESOLVE_DELAY_SECONDS)
-        return
+            report.write(row_out)
+            print(
+                f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)  "
+                f"({fallback_reason})"
+            )
+            if DRY_RUN:
+                print(
+                    f"[DRYRUN ] would record reject_reason=no-video-found for {gov_id} "
+                    "in jurisdiction_coverage.csv"
+                )
+            else:
+                updated = update_coverage_reject_reason(gov_id, "no-video-found")
+                print(
+                    f"[COVERAGE] {gov_id} {unit_name}  "
+                    + (
+                        "reject_reason set to no-video-found"
+                        if updated
+                        else "no update (no gov_id match, or reject_reason already set)"
+                    )
+                )
+            await asyncio.sleep(RESOLVE_DELAY_SECONDS)
+            return
+        print(f"[HOMEPAGE-FALLBACK] {gov_id} {unit_name}  {fallback_url}")
     except CalendarPageError as e:
         if not e.candidates:
             row_out.update(

@@ -1,0 +1,37 @@
+{
+  "value": [
+    {
+      "id": 4021,
+      "eventName": "City Council Meeting",
+      "startDateTime": "2026-08-17T18:00:00Z",
+      "eventDate": "2026-08-17T18:00:00Z",
+      "isDeleted": false,
+      "hasMedia": true,
+      "mediaStreamPath": "https://cpmedia.azureedge.net/exampletenant/abc123.mp4",
+      "mediaSourcePathMp4": "",
+      "externalMediaUrl": ""
+    },
+    {
+      "id": 4019,
+      "eventName": "Planning Commission Work Session",
+      "startDateTime": "2026-08-10T18:00:00Z",
+      "eventDate": "2026-08-10T18:00:00Z",
+      "isDeleted": false,
+      "hasMedia": false,
+      "mediaStreamPath": "",
+      "mediaSourcePathMp4": "",
+      "externalMediaUrl": ""
+    },
+    {
+      "id": 4005,
+      "eventName": "City Council Meeting (duplicate, deleted)",
+      "startDateTime": "2026-08-03T18:00:00Z",
+      "eventDate": "2026-08-03T18:00:00Z",
+      "isDeleted": true,
+      "hasMedia": true,
+      "mediaStreamPath": "https://cpmedia.azureedge.net/exampletenant/deleted.mp4",
+      "mediaSourcePathMp4": "",
+      "externalMediaUrl": ""
+    }
+  ]
+}
