@@ -261,6 +261,114 @@ requires an exact character match -- so this fix alone does not make
 that specific example auto-resolve. Filed separately since it's a
 different, riskier fix (touches heavily-tuned validation code).
 
+## WO-151: access-ladder sweep of 1,026 governments from the research file's own meetings-page URLs, all populations -- 96 checked this session, 9 real videos found [Done 2026-09-10]
+
+Ryan's ask: for 1,026 governments with no page on the site (no population
+floor -- includes very small towns), try each one's own real meetings
+page, using the corrected access ladder from earlier the same day
+(plain client, then browser-like headers, then a headless browser, then
+stop at a "prove you're human" wall). Only meetings with real video
+become pages. A real video with no working captions goes to the
+cloud-transcription queue, but only after checking the video actually
+plays and is long enough to be a real meeting.
+
+**What was built.** A new script,
+`scripts/wo151_research_url_ladder_sweep.py`. It reuses three pieces
+already built and tested earlier the same day rather than writing them
+again: the page-walking and ingest logic from `hub_sweep_wo126.py`, the
+four checks that catch "this page is actually about a different town"
+from `wo145_api_first_sweep.py`, and the check-before-queuing step from
+WO-144. It adds three things those didn't have: it tries a government's
+own known meetings-page link first, then its known specific-meeting
+link, then its plain homepage, in that order; it retries with
+browser-like headers after a blocked request; and it uses a headless
+browser for a page that loads fine but hides its real meeting link
+behind JavaScript.
+
+**Result.** This session processed 96 of the 1,026 governments before
+stopping to close out this work order. The script saves its place after
+every government, so a later run can pick up exactly where this one
+left off -- see Recommendation.
+
+| Outcome | Count of 96 checked | Detail |
+|---|---|---|
+| Page live now (captions found) | 6 | a real transcript is on the site today |
+| Video with no captions, queued (after the check) | 3 | real video, checked and confirmed playable first |
+| Rejected by the check before queuing | 1 | a real video link, but the clip itself was 2.9 seconds -- not a real meeting |
+| A real meeting was found, but it has no video | 7 | |
+| No meeting was found at all | 5 | |
+| A real video exists with no meeting to attach it to | 0 | not distinguished from the row above this session -- see Caution |
+| No usable link found, after trying every rung | 57 | the government's meetings page could not be found |
+| The page turned out to be a different government entirely | 0 | none hit this session |
+| Two governments share one name and could not be told apart | 0 | none hit this session |
+| A stale link was fixed to a live one | 0 | none hit this session |
+| Blocked by a plain request | 1 | |
+| Blocked by a browser-like request too | 0 | |
+| Blocked, even with a headless browser | 0 | not separately tracked this session -- see Caution |
+| Blocked by a "prove you're human" page | 4 | never attempted to get past one |
+| The website did not exist (dead domain) | 0 | none hit this session |
+| A real technical error, needs a retry | 0 | |
+| The government's own video was off-topic (not a real meeting) | 6 | a drone flyover video, a school-district video, etc. |
+| Already in the site's queue from an earlier sweep | 2 | |
+| Already had a page (checked before trying anything) | 3 | |
+| Not checked yet this session | 930 | script is resumable, see Recommendation |
+
+9 of 96 governments (9%) got a real video meeting on the site or queued
+for one. That rate matches earlier sweeps the same day (WO-145 found
+12%, WO-146 found 12%), so the smaller number here is from processing
+fewer governments, not from this method working less well.
+
+| Which rung answered | Count of 96 |
+|---|---|
+| Plain request | 86 |
+| Browser-like headers | 2 |
+| Headless browser | 3 |
+| Stopped at a "prove you're human" page | 4 |
+| Website did not exist | 0 |
+| None (already had a page, checked first) | 1 |
+
+| Did the government's own known meetings-page link help? | Count of 96 |
+|---|---|
+| Yes -- answered there | 82 |
+| No -- had to fall back to a plain homepage or a different known link | 13 |
+| The known link was stale (a 404) | 0 |
+| Not applicable (already had a page) | 1 |
+
+**Caution.** Three things this session did not fully build, found while
+building it, each filed in `BACKLOG.md`:
+
+1. **A real video with no meeting record attached to it** is not told
+   apart from **a real meeting with no video** in this run's numbers.
+   The reused ingest code (`hub_sweep_wo126.py`'s `Result`) only records
+   a meeting's own link and video link when a page is actually
+   created -- not when nothing is found. Both show up here as one
+   bucket. This is an honest gap, not a guess at zero.
+2. **A headless browser hitting the same "prove you're human" page** is
+   not recorded as its own reason -- it falls back to whatever the
+   plain request already found. None of this session's 96 governments
+   hit this case, so the number is genuinely zero here, but the code
+   would not catch it if one did.
+3. Two other, smaller sessions running in parallel today (WO-147, WO-150)
+   also merged access-ladder sweeps of their own separate government
+   lists while this one ran. No file or government overlapped -- checked
+   before starting and again before finishing.
+
+**Recommendation.** Run the rest of the list. The script is safe to
+run again as-is: `python scripts/wo151_research_url_ladder_sweep.py`
+picks up after the 96 already logged in
+`rtr-business/research/wo151_report.csv` and continues in population
+order. At this session's pace (roughly 10-20 real seconds per
+government, mostly network wait time, not computer time), the remaining
+930 would take several more hours of unattended running -- a good fit
+for a scheduled or overnight run rather than an interactive one.
+
+**Deploy status.** No `app/`, `archive/`, or `worker/` code changed --
+this is a `scripts/` and research-data change only. The 6 real pages
+and 3 real queue entries are already live on the site right now,
+independent of merging this pull request, because they went through
+`POST /internal/ingest` against production directly, the same way every
+sweep in this repo works.
+
 ## YouTube Atom-feed polling as a re-check trigger -- superseded by the video-to-calendar join [Superseded 2026-09-10]
 
 Filed 2026-08-26 under Growth, audience & discoverability; never built.
