@@ -718,6 +718,116 @@ filed in `BACKLOG.md`.
 
 **Deploy status.** The 39 pages are re-keyed in the database now. The
 pins reach new resolves only after the next deploy.
+## WO-150: access-ladder sweep of 1,155 municipalities over 5,000 people with no Archive page — 25 real videos found, 436 of 1,155 governments worked before this session stopped [Done 2026-09-10]
+
+Ryan's goal: one meeting with video per government, breadth not depth,
+across 1,155 US and Canadian municipalities that had no Archive page at
+all. This built the sweep, ran it for real, found and fixed two real
+bugs along the way, and stopped partway through — the run is fully
+resumable.
+
+**What was done and why.** Built `scripts/wo150_muni_ladder_sweep.py`.
+For a government with no known platform, it tries a plain honest
+request first, then browser headers only after a block, then a headless
+browser only for a page that loads but shows no meeting link, stopping
+for good at any human-verification wall. Once a platform is found (or
+was already known from an earlier sweep), it hands off to
+`wo146_api_relist_sweep.process_government()` (reused, not copied) to
+list real meetings and resolve the newest one with video. A meeting only
+becomes a page when it has real captions. A meeting with video but no
+captions goes into a holding file and is checked one more time — a
+probe that reads the video's real length and size without downloading it
+— before it is added to the transcription queue. Ryan's rule held
+throughout: no meeting without video ever became a page or a queue
+entry.
+
+**Two real bugs found and fixed while running it.** First: 95 of the
+371 governments that already had a suspected platform from an earlier
+sweep were labeled "youtube" in a way our video-listing tool didn't
+recognize, and a handful of others (Vimeo, TelVue, ChampDS, Castus,
+CivicLive) have no listing tool built for them at all — before the fix,
+these either found nothing or crashed the government's whole check.
+Fixed by sending those specific platforms through a different, working
+path instead. This fix alone is why 15 of the 20 real pages below came
+through — without it, the "youtube" governments would have stayed
+broken. Second: a save file this script writes (the video-no-captions
+holding list) lost its column-name header when an earlier test run was
+force-stopped before it wrote a single row — the very next real entry
+then looked like a header to anything reading the file back. Fixed by
+saving that header to disk immediately instead of waiting.
+
+**A third, unrelated incident during the same session**: another
+session's own save to the shared research file
+(`jurisdiction_coverage.csv`) landed while this one's second save was
+still uncommitted, and reverted a few of this session's rows (Florence
+city AL, Lake Havasu City AZ, and others) back to blank. Caught by
+checking the file against this session's own last save; fixed by
+re-running the save step fresh and recording right away. No permanent
+data was lost. Filed in `BACKLOG.md`'s Open bugs — the shared save
+tool's own safety check doesn't catch two saves landing at the same
+row count.
+
+**Result, of the 436 governments actually worked (719 of the 1,155 were
+never reached and remain exactly as they were):**
+
+| Outcome | Count of 436 worked | Detail |
+|---|---|---|
+| Real video found, page live now (captions available) | 20 | includes 15 recovered specifically by the youtube fix above |
+| Real video found, no captions, queued for transcription (after probe) | 5 | |
+| Rejected by probe (looked like a real video, wasn't) | 1 | a dead link the probe caught before it reached the queue — Great Falls, MT |
+| Already had a page (found through a different route) | 2 | no change made |
+| No video found (real, current meeting, nothing to attach) | 11 | |
+| No meetings found at all | 69 | |
+| No usable platform link found, after the full ladder | 287 | 253 direct, 34 more via the platform-listing tool's own "nothing findable" path |
+| Blocked — could not even look | 37 | 32 the address simply does not resolve, 5 a human-verification wall |
+| Blocked by a human-verification wall, hit via the platform-listing tool itself | 1 | a separate, later access point than the ladder's own wall-check above |
+| Same government, different domain than expected | 0 | none confirmed this batch |
+| Same name, city and county, real ambiguity — not ingested either way | 1 | Cornelius, NC (town vs. county) — flagged for a person to settle, listed below |
+| Off-mission (real video, not a real government meeting) | 2 | |
+| Domain corrected to a working address found live | 117 | old address recorded, new one saved as well — nothing deleted |
+| Errored (crashed, not just "nothing found") | 0 | |
+
+**Which rung of the access ladder answered, US vs. Canada (436 worked
+total; 139 of those already had a known platform from an earlier sweep
+and skipped the ladder entirely — shown as its own row):**
+
+| Rung that answered | Count, US | Count, Canada |
+|---|---|---|
+| Already had a known platform (ladder skipped) | 133 | 6 |
+| A headless browser, after the plain request came back empty | 180 | 57 |
+| A plain, honest request alone | 17 | 0 |
+| A real page loaded, but genuinely no meeting link on it | 3 | 1 |
+| The domain never resolved at all | 31 | 1 |
+| Blocked by a human-verification wall (never retried past it) | 5 | 0 |
+| Unclassified (an internal edge case, 2 rows) | 2 | 0 |
+
+**One government needs a person's decision, not code**: Cornelius, NC
+resolved a real YouTube video titled "Town of Cornelius County
+Commissioners" — real content, but for the *county*, not the *town* this
+row is tracking, and both are real governments with the same name in the
+same state. Not ingested under either id. A human should decide which
+government (if either) that video actually belongs to on this site.
+
+**Caution.** 719 of the 1,155 governments were never reached — the
+script stopped partway through a very long run, not because it failed.
+Re-running `python scripts/wo150_muni_ladder_sweep.py` picks up exactly
+where it left off (it skips every government already in
+`wo150_report.csv`). No YouTube caption-fetch or download block
+(`docs/investigations/youtube_429_block.md`) was seen this run — every
+YouTube-delegated resolve succeeded.
+
+**Recommendation.** Someone should run the same script again to work
+through the remaining 719 governments — it needs no further changes to
+do so, and the earlier "youtube" bug fix means that pass should recover
+even more of the roughly 95 previously-broken "youtube" governments than
+this one did (this batch reached most, not all, of them). Two follow-ups
+are already filed: a `BACKLOG.md` entry on the shared-save-file
+weakness, and Cornelius, NC above for a person to settle.
+
+**Deploy status.** Nothing in this entry touches the resolver, Archive,
+or worker code paths — it only calls the existing, already-deployed
+`POST /internal/ingest` endpoint and writes to shared research files.
+Nothing here needs a deploy.
 
 ## Pins for two YouTube-hosted pages that were keyed to no government: Greenlee County, AZ and Fortuna, CA [Done 2026-09-10]
 
