@@ -7,6 +7,14 @@ findings across sessions without being close to "done," so it doesn't fit
 `BACKLOG.md` entry stays short and links here; this file is where new
 findings get added as new dated sections, oldest first.
 
+**Scope note (2026-09-09, WO-136):** this file was originally scoped to
+the caption-fetch endpoint specifically. A second, related-but-distinct
+symptom on the *audio download* path (yt-dlp's own "Sign in to confirm
+you're not a bot" check, not an HTTP 429) is now tracked here too — see
+that section below — since both are the same underlying YouTube
+anti-bot system reacting to sustained request volume from one IP, just
+tripped by different request shapes.
+
 **Why it matters**: `/coverage`'s live jurisdiction data puts **184** real
 jurisdictions on `platform="YouTube"` (confirmed 2026-08-26) — not just
 the four curated `youtube_channel.py` cities, but every jurisdiction whose
@@ -79,3 +87,49 @@ the most likely way to separate "this IP is blocked" from "YouTube caption
 fetching is blocked more broadly" — no session so far has had that vantage
 point. A single isolated `resolve()` call against one real YouTube-backed
 meeting, run from Render's shell, would be enough; still not a bulk sweep.
+
+## 2026-09-09: the *audio download* path hits the same anti-bot system too, after only 3 real downloads
+
+WO-136 added `scripts/transcribe_backlog_locally.py --urls-file`
+support for downloading a YouTube video's audio via yt-dlp when the
+video has no fetchable captions. Before the bulk run, a single isolated
+download (a real ~100MB/79-minute file) and a metadata-only check both
+worked cleanly on the same day this Mac's caption-fetch calls were
+independently 429-blocked (see the 63-identity-checked-pages `[WAIT]`
+entry in `BACKLOG.md`) — real evidence the two request shapes have at
+least *some* independent budget, which the code comment in
+`_yt_dlp_download_best_audio()` reads as "the two are expected to have
+independent availability."
+
+**That held for exactly 3 real downloads, not indefinitely.** A real,
+unattended `--urls-file` run against 17 candidates succeeded on meetings
+1-3 (952, 3, and 2,631 real segments, all live on production) — total
+wall time ~44 minutes, meeting 3 alone a ~4-hour recording (16 real
+chunks). Every one of the remaining 14 meetings then failed on its very
+first yt-dlp call with `ERROR: [youtube] <id>: Sign in to confirm you're
+not a bot.` — the same anti-bot check `app/platforms/youtube.py`'s own
+module docstring already documents hitting Render's server IP
+(2026-08-09), now hit from a residential Mac after real, moderate
+audio-download volume rather than a burst of caption requests. This is
+a **different mechanism from the 429 above** (no HTTP 429 in the error
+text, a distinct yt-dlp-reported message, and it followed real
+successful downloads rather than failing cold), but it's the same
+practical shape: this IP's relationship with YouTube degrades under
+sustained use and nothing here has measured what "sustained" means or
+how long recovery takes for *this* symptom specifically.
+
+**Open questions, unmeasured**: does this clear on its own (like the
+caption 429 did, 8 days later, in the original finding above), and if
+so how fast — a short cooldown between meetings would make a real
+difference to `--chunk-cooldown-seconds`-style pacing if the block is
+per-download-burst rather than a long-lived ban. Whether a smaller
+`--cpu-threads`/slower pace changes anything (unlikely, since the block
+is presumably about request pattern, not local CPU load, but unconfirmed).
+Whether it's tied to the *volume of bytes* downloaded (3 real files,
+combined several hundred MB to ~1GB+) or simply *elapsed wall time*
+active against YouTube (~44 minutes).
+
+**Do not re-run a bulk `--urls-file` sweep to test this** — same
+standing rule as the caption-fetch block above; a single isolated
+`--url` retry against one of the 14 skipped meetings, after some idle
+time, is the right next probe, not another full batch.
