@@ -1501,164 +1501,30 @@ https://danvilleva.portal.civicclerk.com/event/2582/media
 https://eagle-id.granicus.com/MediaPlayer.php?view_id=1&clip_id=2294
 https://elmonte.granicus.com/MediaPlayer.php?view_id=2&clip_id=1532
 https://emeryville.granicus.com/MediaPlayer.php?view_id=3&clip_id=2707
-https://encinitas.granicus.com/MediaPlayer.php?view_id=2&clip_id=3909
-https://enid.civicweb.net/Portal/MeetingInformation.aspx?Id=6100
-https://erie.granicus.com/MediaPlayer.php?view_id=5&clip_id=3528
-https://fortluptonco.portal.civicclerk.com/event/1267/media
-https://fortwaltonbeachcityfl.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2271
-https://frederickco.portal.civicclerk.com/event/777/media
-https://fresnocounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=1537
-https://frostburgcity.civicweb.net/Portal/MeetingInformation.aspx?Id=4350
-https://gigharborwa.portal.civicclerk.com/event/861/media
-https://gilroyca.portal.civicclerk.com/event/1788/media
-https://glendaleca.primegov.com/Portal/Meeting?meetingTemplateId=40629
-https://goleta.granicus.com/MediaPlayer.php?view_id=2&clip_id=2228
-https://grandjunctionco.portal.civicclerk.com/event/3878/media
-https://greeleyco.portal.civicclerk.com/event/3353/media
-https://greenbeltmd.granicus.com/MediaPlayer.php?view_id=2&clip_id=1929
-https://hawthorne-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=563
-https://hgcity.primegov.com/Portal/Meeting?meetingTemplateId=4476
-https://hopkinsmn.granicus.com/MediaPlayer.php?view_id=2&clip_id=1114
-https://hunterdonconj.portal.civicclerk.com/event/1496/media
-https://huntingtonpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=669
-https://indianwells.granicus.com/MediaPlayer.php?view_id=2&clip_id=640
-https://iredellcounty.civicweb.net/Portal/MeetingInformation.aspx?Id=2694
-https://jordan-mn.granicus.com/MediaPlayer.php?view_id=1&clip_id=907
-https://kentwa.iqm2.com/Citizens/Detail_Meeting.aspx?ID=6137
-https://kingwilliamcova.portal.civicclerk.com/event/1957/media
-https://kissimmeefl.portal.civicclerk.com/event/2506/media
-https://laconnerwa.portal.civicclerk.com/event/703/media
-https://lagunabeachcity.granicus.com/MediaPlayer.php?view_id=3&clip_id=3090
-https://lahabra.granicus.com/MediaPlayer.php?view_id=2&clip_id=578
-https://lakecountyfl.portal.civicclerk.com/event/4035/media
-https://lancova.civicweb.net/Portal/MeetingInformation.aspx?Id=5267
-https://lapuente.granicus.com/MediaPlayer.php?view_id=2&clip_id=2409
-https://lasvegas.primegov.com/Portal/Meeting?meetingTemplateId=42440
-https://longwoodfl.portal.civicclerk.com/event/961/media
-https://los-altos.granicus.com/MediaPlayer.php?view_id=4&clip_id=1904
-https://losaltoshills.granicus.com/MediaPlayer.php?view_id=2&clip_id=563
-https://louisacova.portal.civicclerk.com/event/1101/media
-https://lynchburgva.portal.civicclerk.com/event/3025/media
-https://malibucity.primegov.com/Portal/Meeting?meetingTemplateId=5965
-https://mammothlakes.granicus.com/MediaPlayer.php?view_id=2&clip_id=1115
-https://manteca-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=1232
-https://marlboroughma.portal.civicclerk.com/event/2010/media
-https://marysvilleca.granicus.com/MediaPlayer.php?view_id=1&clip_id=801
-https://miamigardens.civicweb.net/Portal/MeetingInformation.aspx?Id=317
-https://millcreek.civicweb.net/Portal/MeetingInformation.aspx?Id=12912
-https://minotnd.portal.civicclerk.com/event/1574/media
-https://missionviejo.granicus.com/MediaPlayer.php?view_id=4&clip_id=2630
-https://monterey-park.granicus.com/MediaPlayer.php?view_id=2&clip_id=1201
-https://montroseco.portal.civicclerk.com/event/979/media
-https://moorpark.granicus.com/MediaPlayer.php?view_id=2&clip_id=265
-https://morgan-hill.granicus.com/MediaPlayer.php?view_id=2&clip_id=674
-https://murrieta.granicus.com/MediaPlayer.php?view_id=1&clip_id=1116
-https://mwdh2o.granicus.com/MediaPlayer.php?view_id=2&clip_id=12130
-https://napacity.granicus.com/MediaPlayer.php?view_id=2&clip_id=3486
-https://newark.granicus.com/MediaPlayer.php?view_id=2&clip_id=800
-https://nwsccc-osseo.granicus.com/MediaPlayer.php?view_id=2&clip_id=1631
-https://nyecounty.granicus.com/MediaPlayer.php?view_id=3&clip_id=2138
-https://oakley.granicus.com/MediaPlayer.php?view_id=1&clip_id=781
-https://ojai.granicus.com/MediaPlayer.php?view_id=1&clip_id=1612
-https://okaloosacountyfl.iqm2.com/Citizens/Detail_Meeting.aspx?ID=2003
-https://perris.granicus.com/MediaPlayer.php?view_id=3&clip_id=1916
-https://petaluma.granicus.com/MediaPlayer.php?view_id=3&clip_id=3138
-https://pinole.granicus.com/MediaPlayer.php?view_id=2&clip_id=2346
-https://pismobeach.granicus.com/MediaPlayer.php?view_id=5&clip_id=1925
-https://pitkincounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=691
-https://pittsburg.granicus.com/MediaPlayer.php?view_id=2&clip_id=2290
-https://plainfieldcitynj.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1317
-https://pub-arcata.escribemeetings.com/Meeting.aspx?Id=bf615852-0150-4b91-b415-bacb05fbc811
-https://pub-brentwood.escribemeetings.com/Meeting.aspx?Id=c6b59ced-4be5-483a-a0b6-44ead23ae650
-https://pub-cityofwatsonville.escribemeetings.com/Meeting.aspx?Id=cd95d409-822c-4f87-85f9-57228228076a
-https://pub-cutlerbay-fl.escribemeetings.com/Meeting.aspx?Id=4164701d-4d98-4d9e-9c71-52e5e5b7773a
-https://pub-healdsburg.escribemeetings.com/Meeting.aspx?Id=8e900236-5a75-47cb-b53a-ec21a60f8e0b
-https://pub-hermosabeach.escribemeetings.com/Meeting.aspx?Id=e7f67c7b-d413-466a-af98-0f9ff9bef1d1
-https://pub-hollister.escribemeetings.com/Meeting.aspx?Id=95cadcfb-3309-464b-b69f-3c94d73e2c1c
-https://pub-oakville.escribemeetings.com/Meeting.aspx?Id=1b6527f5-95b7-45e5-a80c-47819ae91ac6
-https://pub-pittmeadows.escribemeetings.com/Meeting.aspx?Id=90a9f519-7861-4fcf-91da-a3c2a2a3617c
-https://pub-raleighnc.escribemeetings.com/Meeting.aspx?Id=e2c19671-8dd7-491d-8ff6-08959a989029
-https://pub-richmond.escribemeetings.com/Meeting.aspx?Id=109ce607-21c0-4495-9bfc-e2024d85afac
-https://pub-santamaria.escribemeetings.com/Meeting.aspx?Id=33f037e1-492d-4f6f-9593-dbeb41692918
-https://pueblo.granicus.com/MediaPlayer.php?view_id=2&clip_id=993
-https://ranchocucamonga.granicus.com/MediaPlayer.php?view_id=3&clip_id=1257
-https://redbluffca.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1446
-https://redondo.granicus.com/MediaPlayer.php?view_id=3&clip_id=2331
-https://redwoodcity-ca.granicus.com/MediaPlayer.php?view_id=2&clip_id=3710
-https://reno.primegov.com/Portal/Meeting?meetingTemplateId=8112
-https://ricecountymn.portal.civicclerk.com/event/1510/media
-https://riversideca.granicus.com/MediaPlayer.php?view_id=2&clip_id=6840
-https://rollinghillsestatesca.granicus.com/MediaPlayer.php?view_id=1&clip_id=982
-https://rpv.granicus.com/MediaPlayer.php?view_id=1&clip_id=5054
-https://sanleandro.granicus.com/MediaPlayer.php?view_id=2&clip_id=3216
-https://sanpablo.granicus.com/MediaPlayer.php?view_id=1&clip_id=707
-https://santa-paula.granicus.com/MediaPlayer.php?view_id=4&clip_id=353
-https://santaana.granicus.com/MediaPlayer.php?view_id=2&clip_id=3070
-https://santamonica.granicus.com/MediaPlayer.php?view_id=2&clip_id=5573
-https://santarosacofl.portal.civicclerk.com/event/1689/media
-https://sarpy.civicweb.net/Portal/MeetingInformation.aspx?Id=5261
-https://sausalito.granicus.com/MediaPlayer.php?view_id=2&clip_id=1908
-https://scottsbluffne.portal.civicclerk.com/event/883/media
-https://sealbeach.primegov.com/Portal/Meeting?meetingTemplateId=7700
-https://silverthorne.civicweb.net/Portal/MeetingInformation.aspx?Id=2103
-https://sjc.granicus.com/MediaPlayer.php?view_id=2&clip_id=3293
-https://slc.primegov.com/Portal/Meeting?meetingTemplateId=3952
-https://slocounty.granicus.com/MediaPlayer.php?view_id=2&clip_id=4489
-https://solanabeach.granicus.com/MediaPlayer.php?view_id=2&clip_id=1650
-https://sonomacity.civicweb.net/Portal/MeetingInformation.aspx?Id=8524
-https://southelmonteca.portal.civicclerk.com/event/516/media
-https://sparks.granicus.com/MediaPlayer.php?view_id=2&clip_id=1703
-https://sthelenaca.portal.civicclerk.com/event/1469/media
-https://takomapark.granicus.com/MediaPlayer.php?view_id=2&clip_id=2372
-https://tequesta.civicweb.net/Portal/MeetingInformation.aspx?Id=6756
-https://thurmont.granicus.com/MediaPlayer.php?view_id=2&clip_id=1257
-https://toaks.primegov.com/Portal/Meeting?meetingTemplateId=9045
-https://townoftiburon.granicus.com/MediaPlayer.php?view_id=1&clip_id=1504
-https://tulsa-ok.granicus.com/MediaPlayer.php?view_id=2&clip_id=7762
-https://tustin.granicus.com/MediaPlayer.php?view_id=2&clip_id=2956
-https://twinfalls.granicus.com/MediaPlayer.php?view_id=2&clip_id=677
-https://visalia.granicus.com/MediaPlayer.php?view_id=1&clip_id=843
-https://washoe-nv.granicus.com/MediaPlayer.php?view_id=2&clip_id=5086
-https://westfargond.portal.civicclerk.com/event/1032/media
-https://westlakevillage.granicus.com/MediaPlayer.php?view_id=2&clip_id=1694
-https://wheatridge.granicus.com/MediaPlayer.php?view_id=2&clip_id=1176
-https://winterparkfl.portal.civicclerk.com/event/2741/media
-https://woodlandca.portal.civicclerk.com/event/2421/media
-https://yorbalinda.granicus.com/MediaPlayer.php?view_id=2&clip_id=1631
 https://youtu.be/MW7uV8fohm0	https://www.macomb-mi.gov/
 https://www.youtube.com/embed/fMfmeh2OtQY?feature=oembed	https://bramptonbot.com/
 https://youtu.be/V_Yb9586WDU	https://sccmo.org
-https://acpl.viebit.com/watch?hash=u8S8VID9AvKh9H6Z	https://www.cityoffortwayne.in.gov
 https://www.youtube.com/watch?v=L0Pa2H_7EhU&source_ve_path=OTY3MTQ&embeds_referring_euri=https%3A%2F%2Fwww.williamsoncounty-tn.gov%2F	https://williamsoncounty-tn.gov
-https://pub-kitchener.escribemeetings.com/Meeting.aspx?Id=b1eb34de-32d0-453b-91eb-acd699a4dd44&Agenda=Agenda&lang=English	https://www.kitchener.ca/council-and-city-administration/council-and-committee-meetings/watch-a-meeting/
 https://www.youtube.com/watch?v=_YDGZgukBe8&list=PLjhh1GFL47dQVKr39-yPdcB_1vTkimWO3	https://kcgov.us
 https://www.youtube.com/watch?v=fApeL8BGY6s	https://www.tippecanoe.in.gov
 https://youtu.be/32QIE_RB3Ag	https://www.peoriacounty.gov
 https://youtu.be/3QMg2tenXEg	https://dallascountyiowa.gov
 https://youtu.be/A9FiQOaLGSI	https://casscounty.com
-https://lsmo.legistar.com/Video.aspx?Mode=Granicus&ID1=4385&Mode2=Video	https://cityofls.net
 https://www.youtube.com/live/WesxA9CGs9A	https://stclairco.com
 https://youtu.be/6-F1o9b3hgI	https://ogdencity.gov
-https://cityofracine.legistar.com/Calendar.aspx	https://cityofracinewi.gov/
 https://www.youtube.com/live/7Ll50I6Y1L0?si=6vtowUqE8W3szcxZ	https://lafayette.in.gov
 https://youtube.com/live/Wi3BbioubH4	https://libertycountyga.gov
 https://www.youtube.com/watch?v=QT27hX7vd9E	https://www.port-orange.org/
-http://rutherfordcountync.granicus.com/ViewPublisher.php?view_id=2	https://rutherfordcountync.gov
-https://play.champds.com/springhilltn/event/1248	https://springhilltn.org
 https://youtube.com/live/BO0rwux7xxU?feature=share	https://cityofanderson.com
 https://www.youtube.com/watch?v=51tgvAFakE4	https://cityofmiddletown.org
 https://www.youtube.com/watch?v=a75lLi0o51s&list=PLO7otJ2vgBoU3rzuI-5IihQ1by7W8OtTG	https://www.milfordct.us/
 https://www.youtube.com/embed/wvb17rmcMxA?showinfo=0&autoplay=0&rel=0&wmode=opaque&autohide=1	https://www.cityoflawrence.org/lawrencetelevision
-https://bristol-ri.municodemeetings.com/bc-towncouncil/page/town-council-meeting-278	https://www.bristolri.gov/
-https://glenview.granicus.com/ViewPublisher.php?view_id=7	https://www.glenview.il.us/574/Meeting-Agendas-Minutes-Video
 https://www.youtube.com/live/u0fJIlBgJLA?si=VXqCE3Dd7ivgKpYE	https://beverlyma.gov
 https://www.youtube.com/watch?v=5_NMYokiUZw	https://saginaw-mi.com
 https://www.youtube.com/watch?v=xUQgC8-bjLg&t=160s	https://monroenc.org/m/newsflash/home/detail/841
 https://www.youtube.com/watch?v=Wts1NtEOgtM	https://muscatinecountyiowa.gov/supervisors/meetings_minutes/
 https://www.youtube.com/embed/eAQusyLISpY?feature=oembed	https://tallaco.com/commission-meetings/
 https://www.youtube.com/watch?v=ITohWV8kaMI	https://clatsopcounty.gov
-https://harrisoncountyin.portal.civicclerk.com/event/1067/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/
-https://spartanburgsc.portal.civicclerk.com/event/533/media	https://cityofspartanburg.org/316/City-Council
 https://www.youtube.com/live/8gR_xahCwkM​	https://www.crawfordcountykansas.org/
 https://www.youtube.com/live/_AMTDCs6-hU	https://romega.gov
 https://www.youtube.com/watch?v=pAFyYoYXa30	https://www.pickenscountyga.gov
@@ -1668,49 +1534,38 @@ https://youtu.be/VhlRRqRhMvE	https://morrisoncountymn.gov/
 https://www.youtube.com/live/dmK4SmG3hyQ?si=ZnIW_t6GpJCAH9Ko	https://jeffersoncounty.in.gov
 https://youtu.be/B8vAw-ETB34	https://www.sheridancountywy.gov/county_government/elected_offices/county_commissioners/agenda_minutes.php
 https://youtu.be/wnTQtEYWTfA	https://www.stratford.ca/inside-city-hall/city-council/
-https://shawneeok.portal.civicclerk.com/event/2124/media	https://www.shawneeok.org/government/departments/city_clerk/minutes_and_agendas.php
-https://player.vimeo.com/video/309810765	https://evangelineparishpolicejury.com
 https://www.youtube.com/watch?v=Hv2wxs2Ru-E&list=PL5HvRKG7w0v7FC7A55X10Pf3cpW1KSdr-&index=1	https://prcity.com
 https://www.youtube.com/watch?v=_pBBH7YsAvY	https://jacksonvillear.gov
 https://www.youtube.com/watch?v=nSXDBqPN-pE	https://ellisco.net
-https://wbrla.portal.civicclerk.com/event/907/media	https://wbrcouncil.org/129/Agendas-Minutes
 https://youtu.be/FaEen8cqYJA	https://www.garrettcountymd.gov/commissioners/public-meeting-notice
 https://youtu.be/ytrl6JtUBsU?si=LDdDWF_NAAMuRMeb	https://www.wytheco.org
 https://youtu.be/gZ8FkOTxR0E	https://www.unioncountyga.gov
 https://www.youtube.com/watch?v=V7rxx4cPu4s	https://hendersonky.gov
 https://www.youtube.com/watch?v=ZBcrFQPd4HQ	https://monroeville.pa.us
 https://www.youtube.com/watch?v=M6q1LC099aQ	https://vernonhills.org
-https://delnortecoca.portal.civicclerk.com/event/203/media	https://www.co.del-norte.ca.us/
 https://youtu.be/JGTjaKtTlA0	https://www.franklincoks.org/agendacenter
 https://youtu.be/jekd_Z0GqMY?si=ocBmcy3Qk8ziaUOI	https://gardencitymi.org
 https://www.youtube.com/embed/6qCKRV4tuTQ?feature=oembed	https://fannincountyga.com
-https://www.utah.gov/pmn/sitemap/notice/1106069.html	https://paysonutah.gov
 https://youtu.be/oehXf7FLYo8	https://www.cityofzion.com/agendas-and-meetings/
 https://www.youtube.com/watch?v=p6Dxe3VnOYo	https://www.hoodrivercounty.gov/meetings
 https://youtu.be/rb4zNFKq0QY	https://tetoncountywy.gov
 https://www.youtube.com/watch?v=Qj4jqjhOc6M	https://clemmons.org
-https://lynnhavenfl.portal.civicclerk.com/event/1067/media	https://cityoflynnhaven.gov
 https://youtube.com/live/mKJ7-VZl3uQ	https://nmb.us
 https://youtu.be/3BXFaPrisIg	https://geneva.il.us
 https://www.youtube.com/watch?v=835iIyT6Wfw	https://alamotexas.org/government/board-meetings-and-agendas/
 https://www.youtube.com/watch?v=qzK5wzBqiEY	https://russell.ca/news-and-notices/council-meeting-highlights-august-31-2026-2/
-https://kentcountymd.portal.civicclerk.com/event/946/media	https://kentcounty.com
 https://youtu.be/VyFa2_x_ktQ	https://crispcounty.com/agendas-minutes/commissioner-meeting-recordings
 https://www.youtube.com/watch?v=W3nC4RnxCGI	https://santaquin.gov
 https://www.youtube.com/watch?v=WqeSyLlu8UM	https://mytwinsburg.com
 https://youtu.be/9QFv5VzO0fg	https://townofhopemills.com
 https://youtube.com/live/9QjAc2eyDKI?feature=share	https://caryillinois.com
 https://youtube.com/live/Z3IQ8Fj2Nxc?feature=share	https://rfcity.org
-https://southernpinesnc.portal.civicclerk.com/event/484/media	https://southernpines.net/235/Council-Agendas
 https://www.youtube.com/watch?v=m3pCgGTc7pQ	https://fortthomasky.org/government/council-committees/archive-council-meetings/
 https://youtu.be/zj8Q_t6_HGg	https://canoncity.org
 https://www.youtube.com/watch?v=s7epsezMTkE	https://clearlake.ca.us
-https://davidsonnc.portal.civicclerk.com/event/315/media	https://townofdavidson.org
 https://www.youtube.com/embed/aV2B9l85IzM?wmode=transparent&autoplay=0	https://rockcastlecountyky.com
 https://youtu.be/qkLrKX1r1no	https://sikeston.org/news_detail_T70_R618.php
 https://www.youtube.com/watch?v=PnjR8n5V300	https://cityofbeaufort.org
-https://newtonia.portal.civicclerk.com/event/843/media	https://newtongov.org
-https://lebanonmo.portal.civicclerk.com/event/625/media	https://lebanonmissouri.org
 https://youtu.be/oBGajmNxGVs	https://overlandmo.org
 https://www.youtube.com/watch?v=hJQnSwAxAYY	https://warrenville.il.us
 https://youtu.be/5IoXmnqr72Y	https://franklinparkborough.us
@@ -1718,42 +1573,31 @@ https://www.youtube.com/watch?v=CeP30mT1730	https://fountaininn.org
 https://www.youtube.com/watch?v=jcFF6kXFJI4	https://brainerdmn.gov
 https://youtu.be/ISkBky2s0BY	https://co.price.wi.us
 https://youtu.be/fsYQnrV6qUM	https://newfranklin.org
-https://brecksvilleoh.portal.civicclerk.com/event/1389/media	https://brecksville.oh.us
-https://westernspringsil.portal.civicclerk.com/event/274/media	https://wsprings.com
 https://www.youtube.com/watch?v=-oUp9G1a0sM&list=PLaiU-CIUt-4YUI3VfcWgyegXXloXPOOko&index=1	https://lagrangepark.org
 https://www.youtube.com/live/kImbFINq0T4?si=cHjYJPC9R3LUYS-k	https://eureka.mo.us
-https://bastrop-tx.municodemeetings.com/bc-citycouncil/page/regular-city-council-meeting-69	https://www.cityofbastrop.org
 https://www.youtube.com/embed/afHjTksIFEo?si=RUb24MBz_SkPODBl	https://www.smithfield-nc.com/page/mobile.council_meeting_video
 https://www.youtube.com/watch?v=fGbYPtbQi74	https://robinsontexas.org
 https://youtu.be/39WMC-cBUcA	https://www.boroughofjeffersonhills.org/
-https://martinsvillein.portal.civicclerk.com/event/506/media	https://www.martinsville.in.gov/129/Agendas-Minutes
 https://www.youtube.com/watch?v=1mNVWJymais&t=6s	https://lindon.gov
 https://www.youtube.com/watch?v=asqdyhY3Bbk	https://www.vermillion.us/
 https://www.youtube.com/watch?v=2Gs8s7qJxjI	https://www.marioncoks.net
 https://youtube.com/live/C0QyWAFz7R8?feature=share	https://town-and-country.org
 https://youtu.be/5KoPxWS1uxE?si=I2OYEBOhhedU7AkO	https://www.owencountyky.us/copy-of-budget-summary
 https://www.youtube.com/live/Rb1vSpz-c5E?si=xtBe8ybtHgEFHHih	https://cityofnorton.org
-https://mindenla.portal.civicclerk.com/event/113/media	https://mindenla.org/all-agendas/
 https://youtu.be/mlT_5_DHSIM	https://cityofpella.com
 https://youtu.be/i_il1XI_Nnk	https://taylorville.net/council-video-meetings/
 https://youtu.be/V_3b1mrv31Y	https://moreheadcitync.gov
 https://www.youtube.com/watch?v=G2cQUCYo9ZE	https://munhallpa.us/p/council-videos
-https://sanger-tx.municodemeetings.com/bc-citycouncil/page/city-council-regular-meeting-97	https://sangertexas.org/129/Agendas-Minutes
 https://youtube.com/live/kdW9YVTD0p8?feature=share	https://clevelandtexas.com
-https://greencastlein.portal.civicclerk.com/event/1585/media	https://cityofgreencastle.com
 https://www.youtube.com/watch?v=IpJSU_3cF9g	https://itasca.com
 https://www.youtube.com/embed/AcNy0diJug4	https://townofmono.com/government/town-council
 https://youtu.be/GJfYao7CmKk	https://www.humboldtcounty.iowa.gov/offices/administrative/board_of_supervisors/agendas_minutes_videos.php
 https://www.youtube.com/watch?v=8qePLwulFwk	https://cityofoakgrove.com
 https://www.youtube.com/embed/-pNyufIO7xM?feature=oembed	https://www.cityofjennings.com/council-meetings/
-https://tollesonaz.portal.civicclerk.com/event/234/media	https://www.tolleson.az.gov/
 https://youtube.com/live/XpILexVHL5E	https://prattcounty.org
 https://www.youtube.com/watch?v=VHiiKGACBwM	https://sunset-hills.com
 https://youtu.be/Psn_AOc_Tj4	https://olivettemo.com
-https://venustx.portal.civicclerk.com/event/295/media	https://www.cityofvenus.org/
-https://sunburyoh.portal.civicclerk.com/event/44/media	https://sunburyvillage.com/224/Live-Virtual-Meetings
 https://youtu.be/H3MWWMotORM	https://cityofcharlestown.com
-https://carljunctionmo.portal.civicclerk.com/event/1035/media	https://www.carljunction.org/vnews/display.v/SEC/Government%7CCouncil%20Meetings
 https://youtu.be/QGHE5dMzMxk	https://warrencounty.in.gov/how_do_i/general_information/meeting_minutes.php
 https://youtu.be/B4_A2tV1rEk	https://cityofstmarys.net
 https://youtu.be/l4smdTzD9Us	https://mountrainiermd.org
@@ -1761,25 +1605,19 @@ https://youtu.be/8zgCd-eRfKA	https://cityofbasehor.org
 https://youtu.be/Ij2O9pgpPbk	https://www.barrecity.org/city-council/
 https://www.youtube.com/watch?v=7QwYdTW6BRg	https://www.kirbytx.org/government/city-council/
 https://www.youtube.com/watch?v=Ecl8rQgVQJs	https://swissvaleborough.com
-https://independenceks.portal.civicclerk.com/event/1967/media	https://independenceks.gov/calendar.aspx?view=list&year=2026&month=9&day=10&CID=14,22,23,34
 https://www.youtube.com/watch?v=uJWGuSO98Zc	https://farrwestcity.gov/government/city-council-new/city-council-agendas-minutes
-https://wyomingmn.portal.civicclerk.com/event/666/media	https://www.wyomingmn.org/agendasminutes
 https://www.youtube.com/watch?v=BHIQQfdGmZ4	https://cityofbrevard.com
 https://youtu.be/-yGxfsjzjm8	https://www.southbeloit.org/agendas-minutes
 https://youtu.be/lsiYRjJddCI	https://bonnersprings.org
 https://www.youtube.com/watch?v=xbr5XhABFew	https://www.cityofclintonsc.com
-https://lakedallastx.portal.civicclerk.com/event/2493/media	https://lakedallas.com
 https://youtu.be/lA7ZsP3k6yA	https://www.webstercity.com
 https://www.youtube.com/live/E8a8mb6VkdM?si=wh0GUCWuUYf8_WII	https://kdhnc.com/593/Agendas-Packets-and-Minutes
 https://youtube.com/live/thK5WnnKDlU?feature=share	https://crandalltexas.com
 https://www.youtube.com/watch?v=IxKhIHcloIk	https://www.cityofhitchcock.org/agendas___minutes/index.php
 https://www.youtube.com/watch?v=C4DA0gduaUw	https://www.cariboumaine.org/council-meetings-2026/
 https://www.youtube.com/embed/ZdFPHNoK46o	https://woboro.com/
-https://laurelmt.portal.civicclerk.com/event/2386/media	https://www.cityoflaurelmontana.com/
 https://www.youtube.com/live/jwmTot-hoeE?si=N4aqt86YtFz-9zn6	https://utclermont.gov
-https://vimeo.com/1037615779?share=copy#t=0	https://rocklandmaine.gov
 https://www.youtube.com/live/Q96jkh9XJ4E	https://cityofseaside.us
-https://bridgeporttx.portal.civicclerk.com/event/950/media	https://cityofbridgeport.net/607/Meeting-Live-Stream
 https://www.youtube.com/watch?v=7OCWidpKJ08	https://www.wainfleet.ca/town-hall/council/council-meeting-calendar/regular-meeting-council-68
 https://youtu.be/H5mqD6ZYgzw?si=yc8J6YaggiFKsi6P	https://cityofprattks.com
 https://www.youtube.com/watch?v=hrG2RzUj78A	https://www.cityofcherryville.com/council-meeting-minutes
@@ -1802,15 +1640,12 @@ https://youtu.be/Mf7sfXwAS5s	https://jenkintownboro.com/meeting-agendas-and-minu
 https://youtu.be/TzLasTBn1MU	https://www.hanwell.nb.ca/council/council-meetings/
 https://youtu.be/px8QNbEOM7o	https://greentreeboro.com/government/borough_council_mayor/agendas_minutes.php
 https://youtu.be/D8JFxbst21c	https://www.cityofboardman.com/meetings/recent?boards-commissions=136
-https://springvalleytx.portal.civicclerk.com/event/304/media	https://springvalleytx.com
 https://youtu.be/0w3JA00vKHg	https://surfsidebeach.org
-https://gardenridgetx.portal.civicclerk.com/event/811/media	https://ci.garden-ridge.tx.us/111/Agendas-Minutes
 https://www.youtube.com/watch?v=IeHKW7bHlow&t=529s	https://www.cityofwalhalla.com/government/city-council/
 https://www.youtube.com/watch?v=uLdoeTmPTv0	https://storeycounty.org
 https://youtu.be/x60ykiYvPk8	https://www.cityofbaldwin.org/council-meetings
 https://youtu.be/lLhCexaZBMk?si=31P7oL-tCEGeTdZ-	https://www.osawatomieks.org
 https://youtu.be/uyqDYCPSmQE	https://cross-plains.wi.us
-https://swansboro-nc.municodemeetings.com/bc-boardcommissioners/page/board-commissioners-116	https://swansboro-nc.org
 https://youtu.be/tzmTtHJYHgA	https://fentonmo.org
 https://youtu.be/GsVi-Lru84A	https://emeraldisle-nc.org
 https://www.youtube.com/watch?v=Zqebch7aGk4	https://www.bonnecherevalleytwp.com/council-and-staff/agenda/
@@ -1821,7 +1656,6 @@ https://www.youtube.com/watch?v=6U_2S0h673k	https://lytletx.org
 https://www.youtube.com/watch?v=zh2fP6-5awU	https://cityoffulton.us/council-meetings/
 https://youtu.be/bO4TBORmRlM	https://cityofmyrtlecreek.com/government/city_council/agendas_and_minutes.php
 https://youtu.be/qc1sqhYXFt4	https://morelandhills.com
-https://toledoor.portal.civicclerk.com/event/168/media	https://www.cityoftoledo.org
 https://youtube.com/live/LuhRRe_kqC0	https://malvern.org
 https://www.youtube.com/watch?v=qBVdyjjimAI	https://www.parowan.gov
 https://www.youtube.com/embed/n-7ixnwZ5WY?feature=oembed	https://www.sables-spanish.ca/
@@ -1829,14 +1663,11 @@ https://youtu.be/RayYiKoN_b8	https://jeffersonohio.gov/committee-meetings/
 https://youtu.be/ka5cHEEF-3k	https://eastdundee.net/government/meeting_agendas___minutes.php
 https://youtu.be/nVoqTpN5upo?si=NFe77iIatGxpvDa6	https://www.tiptoniowa.org
 https://www.youtube.com/watch?v=NK9fFbNIrkM	https://westbranchiowa.org/city-of-west-branch/mayor-city-council/meetings/
-https://wimberleytx.portal.civicclerk.com/event/1497/media	https://cityofwimberley.com
 https://www.youtube.com/watch?v=jm4AftbOdxU	https://www.cityofeufaulaok.com/meeting-agendas/
 https://youtu.be/GmwMkHaQSx0?si=QLSaSb96RcHTk3nW	https://cityofhawarden.com
 https://youtu.be/C2S_e4p_xbk	https://townshipofperry.ca/agendas-minutes/
 https://www.youtube.com/embed/FoF8epxWCjg	https://jesupiowa.com/meetings
 https://youtu.be/-dtav9g0l4I	https://eddystoneborough.org/meeting-videos/
-https://eatonville-fl.municodemeetings.com/bc-towncouncil/page/regular-council-meeting-71	https://townofeatonville.org
-https://OLMOSPARKTX.portal.civicclerk.com/event/347/media	https://www.olmospark.org
 https://www.youtube.com/live/tk6JvDvnfu8?si=vvosXq27vg0gndRd	https://www.cityofherington.com
 https://youtu.be/e6-O1fv5wqQ	https://chevychasevillagemd.gov
 https://youtu.be/CwJuTGwsDXI	https://lakeisabellami.org/your_government/meeting_minutes/index.php
@@ -1857,35 +1688,25 @@ https://youtu.be/RVxA79NFLDQ	https://alburnettia.org/council-meetings
 https://www.youtube.com/watch?v=hGkHytoAVlE	https://www.lancaster.ne.gov
 https://youtu.be/o3qdNG-zNjs?si=VpBGIRjPL19F7mRL	https://hydeparkvt.com/boardscommissions/selectboard/agendas_and_minutes.php
 https://www.youtube.com/embed/f8RzDE7tzu8?rel=0&fs=1&wmode=transparent	https://mycountyline.org
-https://www.utah.gov/pmn/sitemap/notice/1051133.html	https://magna.utah.gov
 https://www.youtube.com/watch?v=mPG3g1DbLaY	https://ashfordtownhall.org/
 https://www.youtube.com/live/-9vm1M_twqs	https://www.bloomfieldct.gov/
-https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council	https://clintonct.org/agendacenter
 https://www.youtube.com/watch?v=GswtF4v6CfM	https://townofcolebrook.org/
 https://www.youtube.com/watch?v=xqAjH84Un1w&list=PLKZOA8LbpZNyhqR-5eQ3YXX4zlN56ABqj&index=1	https://www.darienct.gov/
 https://www.youtube.com/live/g4PAoFyp-nE	https://www.ellington-ct.gov/government/budget-process/schedule-of-budget-related-meetings
-https://enfieldct.portal.civicclerk.com/event/5871/media	https://enfield-ct.gov
 https://www.youtube.com/watch?v=o9Uhdad-M-I	https://www.greenwichct.gov/
-https://hamdenct.portal.civicclerk.com/event/7728/media	https://www.hamden.com/
 https://youtu.be/hi24D_LydNo	https://www.hartlandct.org/boards-commissions/board-of-finance-page
 https://youtu.be/1LliJEzNLRU?si=Z114pyhbyPGTGdKG	https://www.lisbonct.gov
 https://youtu.be/dEoH6q9y90U	https://www.madisonct.org/
 https://www.youtube.com/watch?v=xVt1kQNuhjM	https://www.townofmorrisct.com/events-list-past
 https://youtu.be/KV8oQTi5Eu8	https://www.oldlyme-ct.gov/
-https://reflect-vsctv.cablecast.tv/internetchannel/show/7442?site=1	https://www.oldsaybrookct.gov/
-https://videoplayer.telvue.com/player/BUJHRRxhCf0u3AtXMrx7Sx7CjdW8zUFT/stream/851?autostart=false&showtabssearch=true	https://www.orange-ct.gov/164/Orange-Government-Access-Television-OGAT
 https://www.youtube.com/watch?v=bNELfyS-1i0	https://www.simsbury-ct.gov/
 https://www.youtube.com/watch?v=cQcsHDhRVkY&t=1771s	https://www.voluntown.gov/
 https://www.youtube.com/watch?v=_EpSAgzON9A	https://www.washingtonct.org/
-https://westhartfordct.portal.civicclerk.com/event/3299/media	https://www.westhartfordct.gov/government-services/boards-commisions/board-of-assessment-appeals
-https://cloud.castus.tv/vod/andover/video/626b2f024f42bd0009432b0e?page=RECENT	https://andoverma.gov
 https://youtu.be/3lZUXRC8Bxs?si=PvbEf8bgbFTdsYso	https://www.ayer.ma.us
 https://www.youtube.com/watch?v=Yb-dOTijlfU	https://www.bedfordma.gov/
 https://youtu.be/xkYuiPKdU1M?si=0nATzND85ApHyuSD	https://www.belchertown.org/
 https://www.youtube.com/watch?v=mtiv9BSkBC4	https://www.bellinghamma.org/
-https://videoplayer.telvue.com/player/uClcIN88BHKHJoveFoaVN_8_5Tg72P0o/media/1042555?showtabssearch=true&fullscreen=false	https://www.belmont-ma.gov/
 https://www.youtube.com/watch?v=4s2K5eFRgyc	https://www.boxborough-ma.gov/
-https://brooklinema.portal.civicclerk.com/event/16777/media	https://www.brooklinema.gov/agendas
 https://www.youtube.com/live/GvuFLziqUmc?si=A-ui9NsFPVpwV8dy	https://chelmsfordma.gov/agendacenter
 https://www.youtube.com/watch?v=Vwc-DvBnIfc	https://concordma.gov/
 https://www.youtube.com/watch?v=89xKLsCjtC4&list=PL97Cp8D5oEfmM_ow6xQxqNzV3za_cjv3t&index=1	https://conwayma.gov/p/119/TOWN-MEETING
@@ -1895,15 +1716,12 @@ https://www.youtube.com/embed/n4lM3gWnun4?si=rXVdCbwlP_dVfLZb	https://www.easton
 https://www.youtube.com/embed/3J2iFWUlD1w?feature=oembed	https://fairhaven-ma.gov/town-meeting-information/
 https://youtu.be/rGPIr-1QA6k?si=GS6tM1X98yyElkBT	http://www.grafton-ma.gov/
 https://www.youtube.com/watch?v=_VWbH4lpcuA	https://www.ci.lancaster.ma.us/
-https://cloud.castus.tv/vod/littleton/video/6a9053da9d467600023d010f?page=HOME	https://www.littletonma.org/
 https://youtu.be/xRalLU1Fzrk	http://www.manchester.ma.us/
 https://www.youtube.com/watch?v=4Q9Qupm1-ts	https://mashpeema.gov
 https://youtu.be/VvCsG7hcfaY	https://www.townofmaynard-ma.gov/
 https://youtu.be/tfbJXO5IHUI	http://www.town.medfield.net/
 https://youtu.be/wA5YzqTNnEE	https://www.middleboroughma.gov/
 https://www.youtube.com/watch?v=_FFpAbPbZI4	https://northbrookfield.net
-https://vimeo.com/1199438213?share=copy&fl=sv&fe=ci	https://www.oakbluffsma.gov/
-https://vimeo.com/686379028?turnstile=0.BQW_Zq17hkF0z_z3zMPD-pqsqiG2bfJhp7fTRnnp_VV2_e_bpn0q55ThTrdJ11k78n20yJTuvliOKXde0n_aGdglVXRQBvx2X5tMZXbwqRDniqO8nucIoerBG8BSqYYkT6fk3zgVHjhBcUrdTTXYYxBNjIN24VJkXoSeAAetkbq8e1QGMFp2c9dhb6OdXtTO0dxX97W1Pv1gMTDipAeg0bl	https://www.saugus-ma.gov/
 https://youtu.be/zKkrgXCpdAE?si=cKssnRbdlzm4K3Pv	https://www.sherbornma.org/
 https://youtu.be/nrHr00ClIjk?si=hZwf1TzkLRQAYclF	https://shrewsburyma.gov/
 https://www.youtube.com/watch?v=VX4x4JqZKMg	https://www.townofsomerset.org/
@@ -1922,22 +1740,16 @@ https://www.youtube.com/watch?v=16QaIfTuWOc	https://www.townofwinchendon.com/
 https://www.youtube.com/watch?v=io2rmvBjmFs	https://www.wrentham.gov/
 https://www.youtube.com/watch?v=rXjrOpaYKqE&list=PLICeyXrJUk8g3Qb3_pVmPqZioMqcs3i9l	https://www.erving-ma.gov
 https://youtube.com/watch?v=XykzEivIKJI	https://www.westhartfordct.gov/
-https://reflect-fctv3.cablecast.tv/internetchannel/show/825?channel=1	https://freeportmaine.com
-https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1	https://brunswickme.gov/agendacenter
-https://cloud.castus.tv/vod/hampsteadcabletv/video/6a99d8d999edc50002606997?page=ALL	https://www.hampsteadnh.us
 https://youtu.be/O062YJCkeoY?si=HZMBKM2o9I5VsnfB	https://southeast-ny.gov
 https://youtu.be/tFSeTvDlVuU	https://cedargrovenj.org/
 https://www.youtube.com/watch?v=BUo-yztYN3U	https://www.ourclark.com/
-https://videoplayer.telvue.com/player/lvaCg7Kr3jl7ZsMSDSyHpNlwayHh8l0R/stream/1009?fullscreen=false&showtabssearch=true&show_title_description_summary=true&autostart=true	https://www.cranfordnj.org/
 https://youtube.com/live/i5xtQ6x6uE8	https://www.eastamwelltownship.com/
 https://www.youtube.com/watch?v=N0BpMNSZsM0&t=1s	https://www.eastbrunswick.org/
 https://youtu.be/DlyesU9apFY	https://www.hamiltonnj.com/
 https://youtu.be/V487mYma6uU	https://www.hanovertownship.com/
-https://hillsboroughnj.portal.civicclerk.com/event/1318/media	https://hillsboroughnj.gov/
 https://youtu.be/lr9RTRYl3gs	https://www.twp.howell.nj.us/
 https://youtube.com/live/Mgfc9hJBC0U?feature=share	https://www.jacksontwpnj.net/
 https://www.youtube.com/watch?v=8y4JOLjcRqA	https://www.laceytownship.org/
-https://moorestowntwpnj.portal.civicclerk.com/event/1324/media	https://www.moorestown.nj.us/129/Agendas-Minutes-Meetings-Recordings
 https://www.youtube.com/live/nNkMDIgraWU?si=ucgtOHgPoo1nllB3&t=2822	https://orangenj.gov/
 https://www.youtube.com/watch?v=LPz-m1kbFxk	https://www.spartanj.org/
 https://www.youtube.com/watch?v=6m9ZDv_U1Bw	https://www.tabernacle-nj.gov/agendas_and_minutes/index.php
@@ -1952,19 +1764,14 @@ https://www.youtube.com/watch?v=gP8aIzUc8pc&list=PL19629C231AF5032B&index=1	http
 https://www.youtube.com/watch?v=BD8AP4EtUoM	https://pittsfield-mi.gov
 https://www.youtube.com/watch?v=VDx4bwC-wBc	https://www.canadiceny.gov/
 https://www.youtube.com/watch?v=nZN7jjP-p8g	http://www.camdenmaine.gov/select_board/2026_agendas___minutes___packets/index.php
-https://northhempsteadny.portal.civicclerk.com/event/2369/media	https://northhempsteadny.gov
 https://youtu.be/GLABBLwpnuo	https://georgetown-mi.gov
 https://www.youtube.com/embed/kXRMiKgnj2Y?feature=oembed	https://calaisvermont.gov/governance/boards-commissions/board-of-abatement/
-https://ogunquitme.portal.civicclerk.com/event/1963/media	https://ogunquit.gov
 https://youtu.be/6T8ammMeYhQ	https://www.townofjayny.gov/meeting-minutes/
 https://youtube.com/live/HAgy5Xmd2AY?feature=share	https://bownh.gov
-https://videoplayer.telvue.com/player/talMNRSs41kuvSjXkD0nTr30kDZRGcjH/playlists/1641/stream/117	https://www.penfieldny.gov/public_meeting/index.php
 https://youtu.be/1rZGxLUgWy0	https://newton-nh.gov
 https://www.youtube.com/watch?v=65NANNXGFeA	https://bankstownshipmi.gov
 https://www.youtube.com/watch?v=0NcoauIbmFw	https://www.mendonvt.gov
-https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1978?channel=1	https://hamptonnh.gov
 https://www.youtube.com/watch?v=keVEP85fA4w	https://wheatfield-ny.gov
-https://southoldny.portal.civicclerk.com/event/1654/media	https://southoldtownny.gov
 https://www.youtube.com/watch?v=xEmi_xXcSpQ	https://www.chiliny.gov
 https://youtu.be/4AIf6JVpzFM	https://www.canaannh.gov
 https://youtube.com/live/sWUkyx7R7XA?feature=share	https://www.pittsfieldnh.gov/
@@ -1973,23 +1780,17 @@ https://youtu.be/iLANebBysP8	https://shelterislandtown.gov
 https://www.youtube.com/watch?v=wuPdqXeOKFI	https://rockportmaine.gov/pathways2026agendasandminutes
 https://youtu.be/iROqXBmQBFs	https://hydeparkny.gov
 https://www.youtube.com/watch?v=-HkLGr86420	https://vernontwp-pa.gov/minutes-2022/
-https://brookhavenny.portal.civicclerk.com/event/4293/media	https://www.brookhavenny.gov/
 https://youtu.be/qU2bI6djfgc	https://kensingtonnh.gov
 https://youtu.be/yxwWK85jQA0	https://lincolnnh.gov
-https://upperprovidencetwppa.portal.civicclerk.com/event/1908/media	https://upperprovmcpa.gov/129/Agendas-Minutes
 https://www.youtube.com/watch?v=HCXq0G0R-nw	https://www.townshendvt.gov/boards-meetings/selectboard/town-meeting
 https://www.youtube.com/watch?v=F_pAL2il-0Y	https://townofsalemny.gov/town-board-meetings/
 https://youtu.be/7mrNRtI8YCQ?si=7FEoaX0mMGulOAYh	https://townofghent.org/quicklinks/town-board-minutes/
-https://nccmc.ompnetwork.org/sessions/127277/town-of-new-castle-board-meeting-1-28-20	https://mynewcastleny.gov
-https://doverny.portal.civicclerk.com/event/1082/media	https://www.doverny.gov
 https://youtu.be/3szTLclX0t4	https://guilfordvt.gov/documents-and-maps/meeting-minutes/
 https://www.youtube.com/watch?v=nqVamczLc8M	https://bristolnh.gov
 https://www.youtube.com/embed/n23mUEIJQ-E	https://fortwinn.gov
-https://northsalem.granicus.com/ViewPublisher.php?view_id=3	https://northsalemny.gov
 https://www.youtube.com/watch?v=IkAL7ob8mr8	https://www.canterburynh.gov/departments/administration/town-meeting/
 https://youtu.be/3csdRVYqUeE	https://www.brandonvermont.gov
 https://youtu.be/vO5gBZq6JS0	https://lubecme.gov/boards/board-of-selectmen/
-https://ontariocony.portal.civicclerk.com/event/2019/media	https://www.ontariocountyny.gov/107/Board-of-Elections
 https://www.youtube.com/embed/SUTgjBgTU_A?si=KiI7spq2jNgDWZbC	https://www.lyndenmn.gov/meeting-video/
 https://youtu.be/PnjzsFGT7Co	https://www.jerichovt.org
 https://www.youtube.com/watch?v=Yb4-U8Ne-rY	https://loudonnh.org
@@ -1997,7 +1798,6 @@ https://youtu.be/us2Aj0JNFfM	https://mtdesert.org
 https://www.youtube.com/live/a6tJWMRZgoE?feature=share
 https://youtu.be/j7IU5HyEetU?si=4QI4U9vEU-rgmyEX	https://www.bedfordchartertwpmi.gov/government/township_board/agendas___minutes.php
 https://www.youtube.com/watch?v=3AZLoUiAqts&t=15s	https://www.meridian.mi.us/news/posts/haslett-road-public-meeting-video-now-available/
-https://hamburg-mi.municodemeetings.com/bc-zboa/page/zoning-board-appeals-12	https://www.hamburg.mi.us/
 https://youtu.be/i3jgHflUFHs	https://www.boisblanctownship.org/boards-and-commissions/meeting-documents/
 https://youtu.be/I0PSbsgUEMg?list=PL1FNTHBBwsYsZDEGIw0wQo2wEYCgu_qG5	https://www.clintontownship.com/
 https://www.youtube.com/watch?v=lAG1c3ldxx4	https://www.eastchinatownship.org/nav/new_page/clerks_office/board_meeting_agendas_and_minutes.php
