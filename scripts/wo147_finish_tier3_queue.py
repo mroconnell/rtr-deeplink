@@ -316,12 +316,24 @@ async def main() -> None:
             ).strip("; ")
             updated += 1
         elif r["gov_id"] in rejected:
-            _, result = rejected[r["gov_id"]]
-            r["outcome"] = "no_video_found"
-            r["reject_reason"] = "no-video-found"
+            rejected_row, result = rejected[r["gov_id"]]
+            # WO-169: a real video existed here -- this belongs on its own
+            # `rejected_by_probe` outcome, not folded into no_video_found
+            # (which means no video ever existed). And meeting_url/
+            # video_url must survive this rewrite, not be blanked: a real,
+            # confirmed-live bug this WO fixes -- `r["meeting_url"] = ""`
+            # here is exactly the gap WO-151 found (a real video address
+            # silently lost on a skip/reject), just at a different stage
+            # of this pipeline than wo134_confirmed_hits_ingest.py's own
+            # version of the same bug. See CLAUDE.md's WO-169 entry.
+            r["outcome"] = "rejected_by_probe"
+            r["reject_reason"] = "rejected_by_probe"
             r["reject_class"] = "content"
             r["tier"] = ""
-            r["meeting_url"] = ""
+            r["meeting_url"] = rejected_row.get("meeting_url") or r.get(
+                "meeting_url", ""
+            )
+            r["video_url"] = rejected_row.get("video_url") or r.get("video_url", "")
             r["note"] = (
                 r["note"]
                 + f"; WO-144 probe rejected: {result.verdict} -- {result.reason}"

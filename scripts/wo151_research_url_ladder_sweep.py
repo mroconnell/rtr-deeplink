@@ -603,11 +603,25 @@ async def act_on_resolved_wo151(
         setattr(res, "probe_reason", probe.reason or "")
         setattr(res, "probe_duration_seconds", probe.duration_seconds)
         if probe.verdict in ("reject-dead", "reject-short"):
-            res.outcome = "rejected_by_probe"
-            res.reject_reason = (
-                "no-video-found" if probe.verdict == "reject-dead" else "reject-short"
+            # WO-169: raise instead of returning res directly -- a plain
+            # return here used to END the whole government's attempt the
+            # moment ONE lead's video failed the probe, even when another
+            # platform lead on the same government's page was sitting
+            # right there untried (the real WO-151 case this WO's own
+            # BACKLOG_DONE.md entry counts: 1 of the 16 governments
+            # dropped this way). Raising hs.ProbeRejected lets
+            # hs._process_gov()'s `for lead in leads:` loop catch it (it's
+            # a Skip subclass) and move on to the next lead; only once
+            # every lead is exhausted does that loop's own
+            # probe_rejected_skip tracking report `rejected_by_probe`.
+            raise hs.ProbeRejected(
+                "no-video-found" if probe.verdict == "reject-dead" else "reject-short",
+                f"{lead.platform}: probe verdict={probe.verdict} "
+                f"duration={probe.duration_seconds} reason={probe.reason or ''} "
+                f"({queue_url})",
+                meeting_url=meeting_url,
+                video_url=result.video_url or "",
             )
-            return hs._fill(res, result, meeting_url, effective_title)
 
         if dry_run:
             res.outcome = "dry_run_tier3"
@@ -733,9 +747,7 @@ async def maybe_try_headless(
             timeout=hs.PER_GOV_WALL_CLOCK_SECONDS,
         )
     except hs.Skip as e:
-        res.outcome = "skipped"
-        res.reject_reason = e.reject_reason
-        res.detail = e.detail
+        res = hs._apply_skip(res, e)
     except hs.FetchError as e:
         res.outcome = "skipped"
         res.reject_reason = "resolve-failed"
@@ -825,9 +837,7 @@ async def process_candidate(
             row["rung_answered"] = fetcher.last_rung
             break
         except hs.Skip as e:
-            res.outcome = "skipped"
-            res.reject_reason = e.reject_reason
-            res.detail = e.detail
+            res = hs._apply_skip(res, e)
             last = (res, fetcher, url, source_tag, "skip")
             row["rung_answered"] = fetcher.last_rung
             if e.reject_reason in CONTENT_STOP_REASONS:
@@ -863,9 +873,7 @@ async def process_candidate(
                         row["rung_answered"] = v_fetcher.last_rung
                         break
                     except hs.Skip as ve:
-                        v_res.outcome = "skipped"
-                        v_res.reject_reason = ve.reject_reason
-                        v_res.detail = ve.detail
+                        v_res = hs._apply_skip(v_res, ve)
                         row["corrected_domain"] = variant
                         last = (v_res, v_fetcher, variant, source_tag, "skip")
                         row["rung_answered"] = v_fetcher.last_rung

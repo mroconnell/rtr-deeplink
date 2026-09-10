@@ -696,11 +696,33 @@ async def process_via_seed_resolve(
         result, final_seed, high_risk_title = await resolve_seed(
             session, platform, seed_url
         )
+    except w134.ProbeRejected as e:
+        # WO-169: resolve_seed() now probes each tier-3 candidate itself
+        # and only raises this once every candidate for this platform hit
+        # is exhausted (see w134.PROBE_HOOK's own comment) -- a real video
+        # existed here, so this gets its own outcome/reason rather than
+        # folding into no_video_found, and keeps the URLs the exception
+        # carries instead of dropping them (WO-151's own finding).
+        base["outcome"] = "rejected_by_probe"
+        base["reject_reason"] = "rejected_by_probe"
+        base["reject_class"] = "content"
+        base["note"] = f"{platform}: {e}"
+        base["meeting_url"] = e.meeting_url or seed_url
+        base["video_url"] = e.video_url
+        return base
     except RowSkip as e:
         base["outcome"] = "no_video_found"
         base["reject_reason"] = "no-video-found"
         base["reject_class"] = "content"
         base["note"] = f"{platform}: {e}"
+        # WO-169: RowSkip now carries real URL evidence even on a skip
+        # (see RowSkip's own docstring in wo134_confirmed_hits_ingest.py)
+        # -- keep it instead of leaving these blank, the exact gap WO-151
+        # found. seed_url is still a real fallback: locate_platform_url()
+        # already found a real listing/page even when resolve_seed()
+        # itself never got as far as a specific meeting.
+        base["meeting_url"] = e.meeting_url or seed_url
+        base["video_url"] = e.video_url
         return base
     except Exception as e:  # noqa: BLE001
         base["outcome"] = "error"

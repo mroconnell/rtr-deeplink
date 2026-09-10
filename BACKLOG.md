@@ -115,9 +115,10 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (10)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
+  `wo150_finish_tier3.py` never writes a probe reject back into…
   4 more wrong-government domain mappings, same fix shape as the 17…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
@@ -609,6 +610,38 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   fresh read, row-count floor, atomic write) for any further edit, same
   as WO-153's own two writer scripts already do.
 - **History:** `BACKLOG_DONE.md` WO-153, 2026-09-10.
+
+### `wo150_finish_tier3.py` never writes a probe reject back into `wo150_report.csv` `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo150_finish_tier3.py` probes every WO-150 tier-3
+  candidate and logs the verdict to its own
+  `wo150_tier3_finish_log.csv`, but never rewrites the matching row in
+  `wo150_report.csv` the way `wo147_finish_tier3_queue.py` already does
+  (`queued_tier3_pending` -> `queued_tier3`/`rejected_by_probe`). Found
+  building WO-169's re-run candidate list: the one WO-150 probe-rejected
+  government (Great Falls city, MT) still reads `outcome=queued_tier3`
+  in `wo150_report.csv`, with the real reject verdict visible only by
+  cross-referencing the separate finish log.
+- **Impact:** `wo150_report.csv` overstates how many governments were
+  actually queued -- a government whose only candidate failed the probe
+  looks identical, in that file, to one that's really in the queue. Any
+  later pass that trusts `wo150_report.csv`'s own `outcome` column
+  (a `jurisdiction_coverage.csv` apply script, a funnel count) will be
+  wrong until this is fixed.
+- **Next action:** Port `wo147_finish_tier3_queue.py`'s own
+  report-rewrite step (see that file, lines ~296-330) into
+  `wo150_finish_tier3.py`: on accept, `queued_tier3_pending` ->
+  `queued_tier3`; on reject, `queued_tier3_pending` -> `rejected_by_probe`
+  (not `no_video_found` -- WO-169 gave this its own outcome since a real
+  video existed), keeping `meeting_url`/`video_url` rather than blanking
+  them (the exact bug WO-169 fixed in `wo147_finish_tier3_queue.py`
+  itself, `BACKLOG_DONE.md` 2026-09-10).
+- **Constraint:** `wo150_muni_ladder_sweep.py`/`wo150_finish_tier3.py`
+  had an active continuation session at the time this was found --
+  coordinate before editing, or confirm no other session is mid-edit on
+  either file.
+- **History:** Found and worked around (not fixed) during WO-169,
+  `BACKLOG_DONE.md` 2026-09-10.
 
 ### 4 more wrong-government domain mappings, same fix shape as the 17 already corrected `[JUST-DO-IT]` `[EASY]`
 

@@ -112,8 +112,8 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from typing import Awaitable, Callable, Dict, List, Optional, Tuple
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import certifi
 
@@ -138,6 +138,7 @@ from app.platforms.base import (  # noqa: E402
     resolve_via_platform,
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
+from app.platforms import granicus_channel  # noqa: E402
 from app.platforms.youtube_channel import is_publishable  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -268,18 +269,51 @@ TIER3_HANDLER = None
 # overwrites or rejects).
 JURISDICTION_CHECK_HOOK = None
 
+# WO-169 hook (2026-09-10): when set, resolve_seed()'s internal candidate
+# loops (civicplus, granicus, civicclerk, the generic CalendarPageError
+# walk, and the youtube-channel depth search) call this for every
+# candidate that resolves with a real video_url but no captions (a
+# tier-3 shape) BEFORE accepting it as the row's chosen candidate. This
+# closes the real, confirmed gap this WO was filed for: the probe used
+# to run once, AFTER a candidate was already committed to (in a separate
+# *_finish_tier3*.py pass or inline right after resolve_seed() returned),
+# so a `reject-dead`/`reject-short` verdict ended the government's whole
+# attempt even when several more candidates from the same listing were
+# sitting right there untried -- 16 governments were dropped this way
+# across WO-145/147/150/151 (see BACKLOG_DONE.md's WO-169 entry). Returns
+# True to accept the candidate, False to reject it and keep searching the
+# remaining candidates; only once every candidate (across every platform
+# hit on the row) is exhausted does process_row() report
+# `rejected_by_probe` -- never before. None (the default) preserves this
+# module's original "first candidate with real video wins" behavior
+# exactly, so a caller that never sets this hook (the existing
+# TIER3_HANDLER-based flow every driver used before WO-169) is
+# unaffected. Signature: async hook(result, candidate_url: str) -> bool.
+# See scripts/wo169_probe_rejected_rerun.py for the real hook, which
+# calls app.platforms.queue_probe.probe_queue_entry() and logs to the
+# same append-only sidecar (tier3_auto_transcription_queue_probe.csv)
+# every other probe caller already uses.
+PROBE_HOOK: Optional[Callable[[object, str], Awaitable[bool]]] = None
+
 
 @dataclass
 class RowResult:
     gov_id: str
     unit_name: str
     platform: str
-    outcome: str  # ingested_tier1_2 | queued_tier3 | queued_tier3_pending | no_video_found | already_covered | skipped | error
+    outcome: str  # ingested_tier1_2 | queued_tier3 | queued_tier3_pending | rejected_by_probe | no_video_found | already_covered | skipped | error
     reason: str
     seed_url: str = ""
     title: str = ""
     date: str = ""
     page_url: str = ""
+    # WO-169: the real video address, when one was found, even on a row
+    # that ends up skipped/rejected_by_probe -- appended at the end so
+    # every existing positional RowResult(...) call site (9 args) still
+    # works unchanged. See RowSkip's own docstring for why this matters:
+    # a skip with no video_url meant a real video address was silently
+    # lost for the day a listing appears, per WO-151's finding.
+    video_url: str = ""
 
 
 def _read_csv_rows(path: Path) -> List[dict]:
@@ -336,6 +370,7 @@ def _log_writer(path: Path):
         "title",
         "date",
         "page_url",
+        "video_url",
     ]
     is_new = not path.exists()
     f = path.open("a", newline="", encoding="utf-8")
@@ -512,6 +547,25 @@ def _has_video(result) -> bool:
     return bool(result.segments or result.video_url)
 
 
+async def _candidate_passes_probe(result, candidate_url: str) -> bool:
+    """True when a video-bearing candidate should be accepted as the
+    row's chosen one. Real captions (tier 1/2, `result.segments`) always
+    pass -- WO-144's queue probe exists specifically to vet a tier-3
+    (video, no captions) candidate before it reaches the queue, so a
+    caption-bearing result never needs it. A tier-3 candidate passes when
+    PROBE_HOOK accepts it, or unconditionally when no hook is set --
+    preserving this module's pre-WO-169 behavior for any caller that
+    hasn't opted in yet. See PROBE_HOOK's own comment for the full
+    reasoning."""
+    if result.segments:
+        return True
+    if not result.video_url:
+        return False
+    if PROBE_HOOK is None:
+        return True
+    return await PROBE_HOOK(result, candidate_url)
+
+
 async def civicclerk_candidate_event_urls(
     session: aiohttp.ClientSession, tenant_url: str, limit: int = MAX_CANDIDATES_TRIED
 ) -> Tuple[List[Tuple[str, dict]], str]:
@@ -660,6 +714,73 @@ def granicus_candidate_rows(html: str, final_url: str) -> List[dict]:
     return out
 
 
+# WO-157's pilot (docs/BREADTH_SWEEP_BRIEF.md,
+# ~/Documents/rtr-business/research/ENUMERATION_METHODS.md §191): a
+# Granicus tenant's own ViewPublisherRSS.php?view_id=N&mode=video feed
+# lists every archived clip, newest first, in about 100 KB -- against up
+# to 8 MB for the ViewPublisher.php archive table this module used to
+# fetch on every candidate search. "(No Video)" titles are closed-session
+# placeholders (confirmed live, same pilot), never a real candidate.
+_GRANICUS_NO_VIDEO_TITLE_RE = re.compile(r"\(no video\)", re.I)
+
+
+def granicus_rss_candidate_rows(xml: str, base_url: str) -> List[dict]:
+    """Parses a Granicus ViewPublisherRSS.php?mode=video feed into the
+    same {title, date, url} candidate shape granicus_candidate_rows()
+    already returns from the (up to 8 MB) ViewPublisher.php archive
+    table, so both feed pick_calendar_candidates() identically. Reuses
+    app/platforms/granicus_channel.py's own RSS <item> parsing
+    (_ITEM_RE/_item_body_and_clip_url/_item_local_date) -- the same real,
+    already-tested regex set legistar.py's own Granicus delegation
+    already depends on -- rather than a second parser that could drift
+    from it (CLAUDE.md's WO-34 roll-up-caption note: reuse the shared
+    parser, don't reimplement it per caller). The RSS <link> is passed
+    through UNMODIFIED, matching legistar.py's own
+    find_view_publisher_match() usage: granicus.py's own
+    _extract_clip_id() already understands every real link shape this
+    feed uses, so no AgendaViewer.php->MediaPlayer.php rewrite is needed
+    here the way the HTML table's own links need (see
+    granicus_candidate_rows()'s docstring for that one).
+
+    Sorted newest-first by the feed's own structured
+    <gran:pubDateParts> date, not raw feed order -- WO-157's own pilot
+    found one of 12 tenants' feed order lagged its true newest clip by
+    12 days."""
+    out = []
+    for m in granicus_channel._ITEM_RE.finditer(xml):
+        item_xml = m.group(1)
+        parsed = granicus_channel._item_body_and_clip_url(item_xml)
+        if not parsed:
+            continue
+        body, clip_url = parsed
+        if _GRANICUS_NO_VIDEO_TITLE_RE.search(body):
+            continue
+        date = granicus_channel._item_local_date(item_xml) or ""
+        # urljoin() is a no-op on the real, already-absolute link every
+        # confirmed feed has used so far (a bare urljoin(base, absolute)
+        # returns the absolute URL unchanged) -- kept as a defensive join
+        # rather than a bare pass-through in case a tenant's feed ever
+        # emits a relative <link>, not yet confirmed live either way.
+        out.append({"title": body, "date": date, "url": urljoin(base_url, clip_url)})
+    out.sort(key=lambda c: c["date"] or "", reverse=True)
+    return out
+
+
+async def granicus_fetch_rss_candidates(
+    session: aiohttp.ClientSession, netloc: str, view_id: str
+) -> List[dict]:
+    """The cheap (~100 KB) RSS-first check -- see granicus_rss_candidate_
+    rows()'s own docstring. Returns [] on any failure (unreachable feed,
+    no real <item>s, every item "(No Video)") -- never an error; callers
+    fall back to the ViewPublisher.php table walk exactly as before this
+    WO."""
+    rss_url = f"https://{netloc}/ViewPublisherRSS.php?view_id={view_id}&mode=video"
+    final_url, xml = await fetch_html(session, rss_url)
+    if not xml or "<item>" not in xml:
+        return []
+    return granicus_rss_candidate_rows(xml, final_url or rss_url)
+
+
 async def granicus_locate_listing(
     session: aiohttp.ClientSession, hit_url: str
 ) -> Tuple[Optional[str], str]:
@@ -674,6 +795,13 @@ async def granicus_locate_listing(
         return None, "no domain to guess a ViewPublisher.php listing from"
     for view_id in range(1, 6):
         seed = f"https://{domain}/ViewPublisher.php?view_id={view_id}"
+        # WO-169: RSS first, cheap -- see granicus_fetch_rss_candidates()'s
+        # own docstring. A real, non-"(No Video)"-only feed at this
+        # view_id means it's populated; skip straight past the expensive
+        # HTML-table check below for it.
+        rss_rows = await granicus_fetch_rss_candidates(session, domain, str(view_id))
+        if rss_rows:
+            return seed, ""
         final_url, html = await fetch_html(session, seed)
         if html and "AgendaViewer.php" in html:
             return seed, ""
@@ -831,10 +959,12 @@ async def resolve_youtube_channel(session: aiohttp.ClientSession, channel_url: s
     if not candidates:
         raise RowSkip(
             f"youtube channel: {len(entries)} video(s) listed, none looked like a "
-            f"real meeting ({channel_url})"
+            f"real meeting ({channel_url})",
+            meeting_url=channel_url,
         )
     finder = get_finder("youtube")
     best_no_video = None
+    probe_rejected = None  # (result, video_url) -- WO-169, see PROBE_HOOK
     for i, entry in enumerate(candidates):
         if i:
             await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -844,13 +974,26 @@ async def resolve_youtube_channel(session: aiohttp.ClientSession, channel_url: s
         except Exception:
             continue
         if _has_video(result):
-            return result, video_url, False
+            if await _candidate_passes_probe(result, video_url):
+                return result, video_url, False
+            if probe_rejected is None:
+                probe_rejected = (result, video_url)
+            continue
         if best_no_video is None and (result.agenda_items or result.agenda_link):
             best_no_video = (result, video_url, False)
     if best_no_video:
         return best_no_video
+    if probe_rejected:
+        result, video_url = probe_rejected
+        raise ProbeRejected(
+            f"youtube channel: checked {len(candidates)} real-looking video(s), the "
+            f"best one failed WO-144's queue probe ({video_url})",
+            meeting_url=video_url,
+            video_url=result.video_url or video_url,
+        )
     raise RowSkip(
-        f"youtube channel: checked {len(candidates)} real-looking video(s), none had video"
+        f"youtube channel: checked {len(candidates)} real-looking video(s), none had video",
+        meeting_url=channel_url,
     )
 
 
@@ -858,7 +1001,36 @@ class RowSkip(Exception):
     """Raised internally to short-circuit a row to a content-based skip
     (no video found within the depth budget, ambiguous listing, ...) --
     NOT a network/resolve error, so this does not trip the consecutive-
-    error circuit breaker. See RowError below for that."""
+    error circuit breaker. See RowError below for that.
+
+    `meeting_url`/`video_url` (WO-169, both default "" -- backward
+    compatible with every existing single-positional-arg raise site) let
+    process_row() carry real URL evidence onto a skipped RowResult
+    instead of dropping it, the exact gap WO-151 found: a skip with no
+    URLs meant a real, current listing or a real video address could
+    never be told apart from "found absolutely nothing" once it reached
+    a report."""
+
+    def __init__(self, message: str, *, meeting_url: str = "", video_url: str = ""):
+        self.meeting_url = meeting_url
+        self.video_url = video_url
+        super().__init__(message)
+
+
+class ProbeRejected(RowSkip):
+    """Raised when every video-bearing candidate resolve_seed() tried for
+    this platform hit failed WO-144's queue probe (dead link, or below
+    the meeting-plausibility floor) -- a REAL video existed here, unlike
+    a plain RowSkip's "nothing at all found." process_row() catches this
+    ahead of the plain RowSkip case (it's a subclass, so the more
+    specific except clause must come first) and, once every supported
+    platform hit on the row is exhausted with no accepted video, reports
+    a distinct `rejected_by_probe` outcome rather than folding it into
+    the generic `no_video_found` -- Ryan's 2026-09-10 rule: "a probe
+    reject must move to the next candidate, not drop the government,"
+    and the next candidate is exactly what this lets resolve_seed() try,
+    since raising this (instead of just returning) keeps every enclosing
+    candidate loop's `continue` in play."""
 
 
 class RowError(Exception):
@@ -887,7 +1059,8 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
     if not candidates:
         raise RowSkip(
             "civicplus: no video-bearing rows found on this AgendaCenter page "
-            f"(checked {len(all_candidates)} real candidate(s))"
+            f"(checked {len(all_candidates)} real candidate(s))",
+            meeting_url=seed_url,
         )
 
     if len(candidates) == 1:
@@ -895,9 +1068,12 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
     else:
         tried, reason = pick_calendar_candidates(candidates)
         if not tried:
-            raise RowSkip(f"civicplus CalendarPageError, {reason}")
+            raise RowSkip(
+                f"civicplus CalendarPageError, {reason}", meeting_url=seed_url
+            )
 
     best_no_video = None
+    probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
     for i, picked in enumerate(tried):
         if i:
             await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -918,14 +1094,27 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
         if not result.date and picked.get("date"):
             result.date = picked["date"]
         if _has_video(result):
-            return result, picked["url"]
+            if await _candidate_passes_probe(result, picked["url"]):
+                return result, picked["url"]
+            if probe_rejected is None:
+                probe_rejected = (result, picked["url"])
+            continue
         if best_no_video is None and (result.agenda_items or result.agenda_link):
             best_no_video = (result, picked["url"])
 
     if best_no_video:
         return best_no_video
+    if probe_rejected:
+        result, url = probe_rejected
+        raise ProbeRejected(
+            f"civicplus: checked {len(tried)} candidate(s), the best video-bearing "
+            f"one failed WO-144's queue probe ({url})",
+            meeting_url=url,
+            video_url=result.video_url or "",
+        )
     raise RowSkip(
-        f"civicplus: checked {len(tried)} candidate(s), no video and no agenda content"
+        f"civicplus: checked {len(tried)} candidate(s), no video and no agenda content",
+        meeting_url=seed_url,
     )
 
 
@@ -944,17 +1133,30 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
         return await resolve_youtube_channel(session, seed_url)
 
     if platform == "granicus" and "ViewPublisher.php" in seed_url:
-        final_url, html = await fetch_html(session, seed_url)
-        if not html:
-            raise RowSkip(
-                f"granicus: ViewPublisher.php listing unreachable ({seed_url})"
-            )
-        rows = granicus_candidate_rows(html, final_url or seed_url)
+        # WO-169: RSS first (~100 KB), falling back to the ViewPublisher.php
+        # archive table (up to 8 MB) only when the feed has nothing --
+        # see granicus_fetch_rss_candidates()'s own docstring.
+        seed_parsed = urlparse(seed_url)
+        view_id = (parse_qs(seed_parsed.query).get("view_id") or [None])[0]
+        rows = (
+            await granicus_fetch_rss_candidates(session, seed_parsed.netloc, view_id)
+            if view_id
+            else []
+        )
+        if not rows:
+            final_url, html = await fetch_html(session, seed_url)
+            if not html:
+                raise RowSkip(
+                    f"granicus: ViewPublisher.php listing unreachable ({seed_url})",
+                    meeting_url=seed_url,
+                )
+            rows = granicus_candidate_rows(html, final_url or seed_url)
         tried, reason = pick_calendar_candidates(rows)
         if not tried:
-            raise RowSkip(f"granicus listing, {reason}")
+            raise RowSkip(f"granicus listing, {reason}", meeting_url=seed_url)
         finder = get_finder(platform)
         best_no_video = None
+        probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
         for i, picked in enumerate(tried):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -963,21 +1165,37 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
             except Exception:
                 continue
             if _has_video(result):
-                return result, picked["url"], False
+                if await _candidate_passes_probe(result, picked["url"]):
+                    return result, picked["url"], False
+                if probe_rejected is None:
+                    probe_rejected = (result, picked["url"])
+                continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, picked["url"], False)
         if best_no_video:
             return best_no_video
+        if probe_rejected:
+            result, url = probe_rejected
+            raise ProbeRejected(
+                f"granicus: checked {len(tried)} candidate(s) from ViewPublisher.php, "
+                f"the best video-bearing one failed WO-144's queue probe ({url})",
+                meeting_url=url,
+                video_url=result.video_url or "",
+            )
         raise RowSkip(
-            f"granicus: checked {len(tried)} candidate(s) from ViewPublisher.php, none had video"
+            f"granicus: checked {len(tried)} candidate(s) from ViewPublisher.php, none had video",
+            meeting_url=seed_url,
         )
 
     if platform == "civicclerk" and "/event/" not in urlparse(seed_url).path:
         candidates, reason = await civicclerk_candidate_event_urls(session, seed_url)
         if not candidates:
-            raise RowSkip(reason or "civicclerk: no resolvable event")
+            raise RowSkip(
+                reason or "civicclerk: no resolvable event", meeting_url=seed_url
+            )
         finder = get_finder(platform)
         best_no_video = None
+        probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
         for i, (event_url, ev) in enumerate(candidates):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -986,21 +1204,32 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
             except Exception:
                 continue
             if _has_video(result):
-                return result, event_url, False
+                if await _candidate_passes_probe(result, event_url):
+                    return result, event_url, False
+                if probe_rejected is None:
+                    probe_rejected = (result, event_url)
+                continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, event_url, False)
         if best_no_video:
             return best_no_video
+        if probe_rejected:
+            result, url = probe_rejected
+            raise ProbeRejected(
+                f"civicclerk: checked {len(candidates)} past event(s) with hasMedia "
+                f"set, the best video-bearing one failed WO-144's queue probe ({url})",
+                meeting_url=url,
+                video_url=result.video_url or "",
+            )
         raise RowSkip(
             f"civicclerk: checked {len(candidates)} past event(s) with hasMedia set, "
-            "none actually resolved a video"
+            "none actually resolved a video",
+            meeting_url=seed_url,
         )
 
     finder = get_finder(platform)
     try:
         result = await finder.resolve(seed_url)
-        high_risk = platform in HIGH_RISK_TITLE_PLATFORMS
-        return result, seed_url, high_risk
     except ValueError as e:
         # Real, confirmed-live case (O'Fallon MO, Reedsburg WI, WO-134
         # 2026-09-09): a legacy vanity channel URL
@@ -1016,8 +1245,9 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
     except CalendarPageError as e:
         tried, reason = pick_calendar_candidates(e.candidates)
         if not tried:
-            raise RowSkip(f"CalendarPageError, {reason}")
+            raise RowSkip(f"CalendarPageError, {reason}", meeting_url=seed_url)
         best_no_video = None
+        probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
         for i, picked in enumerate(tried):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -1043,14 +1273,37 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
                 # blocklist-only check is enough even for a
                 # HIGH_RISK_TITLE_PLATFORMS platform (e.g. a Vimeo
                 # channel/showcase listing).
-                return result, candidate_url, False
+                if await _candidate_passes_probe(result, candidate_url):
+                    return result, candidate_url, False
+                if probe_rejected is None:
+                    probe_rejected = (result, candidate_url)
+                continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, candidate_url, False)
         if best_no_video:
             return best_no_video
+        if probe_rejected:
+            result, url = probe_rejected
+            raise ProbeRejected(
+                f"checked {len(tried)} candidate(s) from this listing, the best "
+                f"video-bearing one failed WO-144's queue probe ({url})",
+                meeting_url=url,
+                video_url=result.video_url or "",
+            )
         raise RowSkip(
-            f"checked {len(tried)} candidate(s) from this listing, none had video"
+            f"checked {len(tried)} candidate(s) from this listing, none had video",
+            meeting_url=seed_url,
         )
+
+    high_risk = platform in HIGH_RISK_TITLE_PLATFORMS
+    if _has_video(result) and not await _candidate_passes_probe(result, seed_url):
+        raise ProbeRejected(
+            f"{platform}: resolved a real video but it failed WO-144's queue probe "
+            f"({seed_url})",
+            meeting_url=seed_url,
+            video_url=result.video_url or "",
+        )
+    return result, seed_url, high_risk
 
 
 async def _ingest_with_retry(
@@ -1248,8 +1501,13 @@ async def process_row(
         )
 
     last_reason = ""
+    last_seed_url = ""  # WO-169: best-effort meeting_url for a fully-skipped row
+    last_video_url = ""  # WO-169: best-effort video_url for a fully-skipped row
     best_no_video_result = (
         None  # (platform, result, final_seed) across ALL hits on this row
+    )
+    best_probe_rejected_result = (
+        None  # (platform, meeting_url, video_url, reason) -- WO-169
     )
     for platform, hit_url in supported_hits:
         try:
@@ -1264,16 +1522,41 @@ async def process_row(
         if not seed_url:
             last_reason = f"{platform}: {reason}"
             continue
+        last_seed_url = seed_url
 
         try:
             result, final_seed, high_risk_title = await resolve_seed(
                 session, platform, seed_url
             )
+        except ProbeRejected as e:
+            # A real video existed for this platform hit, but every
+            # candidate resolve_seed() tried for it failed WO-144's queue
+            # probe -- Ryan's rule is "take the next candidate, only
+            # report rejected_by_probe once everything is exhausted," so
+            # this keeps trying the row's OTHER platform hits (the outer
+            # loop's own `continue`) before ever giving up on the whole
+            # government. See ProbeRejected's own docstring.
+            last_reason = f"{platform}: {e}"
+            last_seed_url = e.meeting_url or last_seed_url
+            last_video_url = e.video_url or last_video_url
+            if best_probe_rejected_result is None:
+                best_probe_rejected_result = (
+                    platform,
+                    e.meeting_url or seed_url,
+                    e.video_url,
+                    str(e),
+                )
+            continue
         except RowSkip as e:
             last_reason = f"{platform}: {e}"
+            last_seed_url = e.meeting_url or last_seed_url
+            last_video_url = e.video_url or last_video_url
             continue
         except Exception as e:
             raise RowError(f"{platform}: resolve raised: {e}") from e
+
+        last_seed_url = final_seed
+        last_video_url = result.video_url or last_video_url
 
         segments = result.segments or []
         agenda_items = result.agenda_items or []
@@ -1405,6 +1688,7 @@ async def process_row(
                     title,
                     date,
                     "",
+                    video_url=result.video_url or "",
                 )
 
             # video_url present, no segments -- tier 3, queue it, don't
@@ -1449,6 +1733,7 @@ async def process_row(
                 title,
                 date,
                 "",
+                video_url=result.video_url or "",
             )
 
         # Real meeting resolved (agenda_items/agenda_link), but no video
@@ -1459,6 +1744,28 @@ async def process_row(
             best_no_video_result = (platform, final_seed, title, date)
         last_reason = (
             f"{platform}: resolved real agenda content, no video found ({final_seed})"
+        )
+
+    # A real video existed on at least one of this row's platform hits, but
+    # every candidate for it failed WO-144's queue probe -- report this
+    # ahead of a no-video-at-all agenda result (stronger, more actionable
+    # evidence: something real was there, just not currently playable/
+    # long enough), and only now that every hit on the row is exhausted
+    # (Ryan's "take the next candidate, report rejected_by_probe only
+    # once candidates are exhausted" rule).
+    if best_probe_rejected_result:
+        platform, meeting_url, video_url, reason = best_probe_rejected_result
+        return RowResult(
+            gov_id,
+            unit_name,
+            platform,
+            "rejected_by_probe",
+            reason,
+            meeting_url,
+            "",
+            "",
+            "",
+            video_url=video_url,
         )
 
     if best_no_video_result:
@@ -1482,6 +1789,11 @@ async def process_row(
         ", ".join(p for p, _ in supported_hits),
         "skipped",
         last_reason or "no usable platform link found",
+        last_seed_url,
+        "",
+        "",
+        "",
+        video_url=last_video_url,
     )
 
 

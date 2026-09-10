@@ -714,12 +714,63 @@ def _hint_links(html: str, page_url: str, limit: int) -> List[str]:
 # Resolving a lead through the real adapters
 # --------------------------------------------------------------------------
 
+# WO-169 hook: when set, act_on_resolved() calls this for a video-only
+# (tier-3, no captions) result BEFORE queuing it, matching every other
+# sweep's "probe before queue" rule (docs/BREADTH_SWEEP_BRIEF.md). Returns
+# True to accept and queue, False to reject (act_on_resolved() then
+# raises ProbeRejected so `_process_gov()`'s lead loop tries the next
+# platform instead of ending the government's attempt here). None (the
+# default) preserves this module's original behavior exactly -- queue
+# immediately, no probe -- so a caller that never sets this (this
+# module's own main()) is unaffected. Signature: async hook(result,
+# queue_url: str) -> bool. See scripts/wo169_probe_rejected_rerun.py for
+# the real hook.
+PROBE_HOOK = None
+
 
 class Skip(Exception):
-    def __init__(self, reject_reason: str, detail: str):
+    """`meeting_url`/`video_url` (WO-169, both default "" -- backward
+    compatible with every existing 2-positional-arg raise site) let
+    process_gov()'s `except Skip` handler carry real URL evidence onto a
+    skipped Result instead of dropping it -- the exact gap WO-151 found:
+    Result already had meeting_url/video_url columns, but a Skip's own
+    catch site never copied anything onto them, so a real, current
+    listing or a real video address was silently lost on every skipped
+    row. See Result's own field comments and CLAUDE.md's WO-169 entry."""
+
+    def __init__(
+        self,
+        reject_reason: str,
+        detail: str,
+        *,
+        meeting_url: str = "",
+        video_url: str = "",
+    ):
         self.reject_reason = reject_reason
         self.detail = detail
+        self.meeting_url = meeting_url
+        self.video_url = video_url
         super().__init__(detail)
+
+
+class ProbeRejected(Skip):
+    """Raised when a video-bearing lead resolved real content but failed
+    WO-144's queue probe (dead link, or below the meeting-plausibility
+    floor) -- a REAL video existed, unlike a plain Skip's "nothing at all
+    found." `_process_gov()`'s `for lead in leads:` loop catches this the
+    same way it catches any other Skip (moving on to the next lead/
+    platform), so raising it here -- instead of act_on_resolved() just
+    returning a `rejected_by_probe` Result directly, which used to end
+    the whole government's attempt right there -- is what lets a
+    DIFFERENT platform lead on the same government still be tried after
+    a probe reject. Ryan's 2026-09-10 rule: "a probe reject must move to
+    the next candidate, not drop the government." `_apply_skip()` always
+    reports the Result's own `outcome` as `rejected_by_probe` for any
+    instance of this class regardless of the `reject_reason` string
+    passed in -- a caller is free to keep a finer-grained reject_reason
+    (e.g. "reject-dead" vs "reject-short", the shape
+    wo151_research_url_ladder_sweep.py's probe already produced before
+    this class existed) for its own reporting."""
 
 
 async def granicus_listing_newest_clip(
@@ -790,13 +841,13 @@ async def resolve_lead(
         else:
             event_url, reason = await civicclerk_latest_event_url(session, url)
             if not event_url:
-                raise Skip("no-video-found", f"civicclerk: {reason}")
+                raise Skip("no-video-found", f"civicclerk: {reason}", meeting_url=url)
             url = event_url
             lead.structured = True
     if platform == "granicus" and "viewpublisher.php" in urlparse(url).path.lower():
         clip_url, reason = await granicus_listing_newest_clip(session, url)
         if not clip_url:
-            raise Skip("no-video-found", f"granicus: {reason}")
+            raise Skip("no-video-found", f"granicus: {reason}", meeting_url=url)
         url = clip_url
         lead.structured = True
     finder = get_finder(platform)
@@ -805,18 +856,22 @@ async def resolve_lead(
         high_risk = platform in HIGH_RISK_TITLE_PLATFORMS and not lead.structured
         return result, url, high_risk
     except NoVideoCandidateFound as e:
-        raise Skip("no-video-found", f"{platform}: {e}")
+        raise Skip("no-video-found", f"{platform}: {e}", meeting_url=url)
     except CalendarPageError as e:
         picked, reason = pick_calendar_candidate(e.candidates)
         if not picked:
-            raise Skip("off-mission", f"{platform} listing, {reason}")
+            raise Skip("off-mission", f"{platform} listing, {reason}", meeting_url=url)
         cand_url = picked["url"]
         try:
             result = await resolve_via_platform(cand_url)
         except CalendarPageError as e2:
             picked2, reason2 = pick_calendar_candidate(e2.candidates)
             if not picked2:
-                raise Skip("off-mission", f"{platform} nested listing, {reason2}")
+                raise Skip(
+                    "off-mission",
+                    f"{platform} nested listing, {reason2}",
+                    meeting_url=cand_url,
+                )
             cand_url = picked2["url"]
             result = await resolve_via_platform(cand_url)
         if e.jurisdiction_hint and not result.jurisdiction:
@@ -957,6 +1012,7 @@ async def act_on_resolved(
         raise Skip(
             "no-video-found",
             f"{lead.platform}: resolved but no transcript/agenda/video ({meeting_url})",
+            meeting_url=meeting_url,
         )
 
     # Title gate (the nationwide scripts' own, blocklist for structured
@@ -968,6 +1024,8 @@ async def act_on_resolved(
         raise Skip(
             "off-mission",
             f"{lead.platform}: title looks like a non-meeting video: {effective_title!r} ({meeting_url})",
+            meeting_url=meeting_url,
+            video_url=result.video_url or "",
         )
 
     covered = index.covered(result, meeting_url)
@@ -1009,6 +1067,8 @@ async def act_on_resolved(
                 raise Skip(
                     "resolve-failed",
                     f"{lead.platform}: resolved {len(segments)} segments but POST to Archive failed twice",
+                    meeting_url=meeting_url,
+                    video_url=result.video_url or "",
                 )
             res.page_url = response.get("url") or ""
             res.outcome = "ingested_tier1_2"
@@ -1048,6 +1108,27 @@ async def act_on_resolved(
             if pin:
                 stage_pin(pin, dry_run)
                 res.pin = f"{pin['tenant_host']}|{pin['match']}"
+
+        # WO-169: probe before queue, same rule as every other sweep
+        # (docs/BREADTH_SWEEP_BRIEF.md's "probe before queuing"). PROBE_HOOK
+        # is None by default -- see its own comment -- so a caller that
+        # never sets it keeps this function's original behavior exactly
+        # (queue immediately, no probe). On a reject, raise ProbeRejected
+        # instead of queuing: `_process_gov()`'s `for lead in leads:` loop
+        # catches any Skip subclass and moves on to the NEXT lead (a
+        # different platform found on the same government's page) rather
+        # than ending the government's attempt here -- Ryan's "take the
+        # next candidate, only report rejected_by_probe once leads are
+        # exhausted" rule.
+        if PROBE_HOOK is not None and not await PROBE_HOOK(result, queue_url):
+            raise ProbeRejected(
+                "rejected_by_probe",
+                f"{lead.platform}: resolved real video but it failed WO-144's "
+                f"queue probe ({queue_url})",
+                meeting_url=meeting_url,
+                video_url=result.video_url or "",
+            )
+
         line = f"{queue_url}\t{source_override}" if source_override else queue_url
         if dry_run:
             res.outcome = "dry_run_tier3"
@@ -1069,6 +1150,7 @@ async def act_on_resolved(
         "no-video-found",
         f"{lead.platform}: resolved a real agenda/meeting record but no video "
         f"anywhere ({meeting_url}) -- agenda-only is never ingested by this sweep",
+        meeting_url=meeting_url,
     )
 
 
@@ -1098,6 +1180,30 @@ def _agenda_only_meeting(gov: Gov, row: dict) -> ResolvedMeeting:
     )
 
 
+def _apply_skip(res: Result, e: Skip) -> Result:
+    """Copies a Skip's reject_reason/detail/meeting_url/video_url onto a
+    skipped Result -- the shared WO-169 fix for the "URLs dropped on
+    skip" gap (see Skip's own docstring: Result already had these
+    columns, nothing ever copied a Skip's own evidence onto them) -- and
+    applies WO-164's video-without-meeting tag when it fits: a real video
+    existed but no meeting/listing evidence did
+    (docs/BREADTH_SWEEP_BRIEF.md's "Reject reasons, two classes";
+    ~/Documents/rtr-business/research/wo164_retag_rules.md's rule 1).
+    `ProbeRejected` gets its own `rejected_by_probe` outcome rather than
+    `skipped` -- see that class's own docstring. Shared by this module's
+    own process_gov() and every driver that reuses hs.Skip/hs._process_gov
+    directly (wo151_research_url_ladder_sweep.py) so the same rule
+    applies everywhere, not just here."""
+    res.outcome = "rejected_by_probe" if isinstance(e, ProbeRejected) else "skipped"
+    res.reject_reason = e.reject_reason
+    res.detail = e.detail
+    res.meeting_url = e.meeting_url or res.meeting_url
+    res.video_url = e.video_url or res.video_url
+    if res.outcome == "skipped" and res.video_url and not res.meeting_url:
+        res.reject_reason = "video-without-meeting"
+    return res
+
+
 async def process_gov(
     session: aiohttp.ClientSession,
     gov: Gov,
@@ -1110,9 +1216,7 @@ async def process_gov(
     try:
         res = await _process_gov(fetcher, session, gov, index, finder, res, dry_run)
     except Skip as e:
-        res.outcome = "skipped"
-        res.reject_reason = e.reject_reason
-        res.detail = e.detail
+        res = _apply_skip(res, e)
     except FetchError as e:
         res.outcome = "skipped"
         res.reject_reason = {
@@ -1248,6 +1352,13 @@ async def _process_gov(
         )
     )
     last_skip: Optional[Skip] = None
+    # WO-169: the first ProbeRejected seen across every lead, tracked
+    # separately so it survives even if a LATER lead's plain Skip (a
+    # weaker "nothing at all found" signal) would otherwise overwrite
+    # `last_skip` last -- a real video existing beats no video existing,
+    # same priority order as wo134_confirmed_hits_ingest.process_row()'s
+    # best_probe_rejected_result.
+    probe_rejected_skip: Optional[ProbeRejected] = None
     tried = 0
     for lead in leads:
         if tried >= 4:
@@ -1262,6 +1373,8 @@ async def _process_gov(
             result, meeting_url, high_risk = await resolve_lead(session, lead)
         except Skip as e:
             last_skip = e
+            if isinstance(e, ProbeRejected) and probe_rejected_skip is None:
+                probe_rejected_skip = e
             continue
         except Exception as e:  # adapter raised
             last_skip = Skip("resolve-failed", f"{lead.platform}: resolve raised: {e}")
@@ -1290,6 +1403,8 @@ async def _process_gov(
             )
         except Skip as e:
             last_skip = e
+            if isinstance(e, ProbeRejected) and probe_rejected_skip is None:
+                probe_rejected_skip = e
             continue
 
     # No lead produced content. CivicPlus agenda-only fallback.
@@ -1324,18 +1439,23 @@ async def _process_gov(
         raise Skip(
             "no-video-found",
             f"civicplus: {len(civicplus_rows)} real row(s), none with video or a usable agenda link; {civicplus_note}",
+            meeting_url=civicplus_rows[0].get("found_on") or gov.hub_url,
         )
 
+    if probe_rejected_skip:
+        raise probe_rejected_skip
     if last_skip:
         raise last_skip
     if is_civicplus_site:
         raise Skip(
             "no-meetings-found",
             f"civicplus site, AgendaCenter had no real (title+date) rows; {civicplus_note or 'root only'}",
+            meeting_url=gov.hub_url,
         )
     raise Skip(
         "no-platform-link-found",
         f"no known-platform link on the hub or {fetcher.fetches - 1} hinted page(s)",
+        meeting_url=gov.hub_url,
     )
 
 
