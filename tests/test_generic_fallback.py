@@ -1241,3 +1241,138 @@ async def test_sharepoint_shell_trigger_never_fires_when_disabled(monkeypatch):
 
     assert calls == []
     assert result.video_url is None
+
+
+# --- Direct media detection (WO-166, 2026-09-10) ----------------------------
+#
+# A meeting URL sometimes points straight at the recording itself rather
+# than at a page linking to one -- before this, `_fetch_page()` always
+# tried to read the response as HTML text, whose 10MB size cap exists for
+# an oversized *page* and used to trip on a real multi-hundred-MB
+# recording, recorded upstream as `unsupported-platform-no-adapter`. See
+# `app/platforms/generic_fallback.py`'s own module comment above
+# `_classify_direct_media()` and BACKLOG_DONE.md's WO-166 entry for the
+# full investigation this was built from.
+
+# Real headers captured live 2026-09-10 (WO-166) from Cheney, WA's own
+# DocumentCenter link for its September 8, 2026 city council meeting
+# recording (`cityofcheney.org/DocumentCenter/View/4867/9-8-26-Recording`)
+# -- a Zoom-style export filename, only ever visible in Content-Disposition,
+# never in the URL itself.
+CHENEY_WA_URL = "https://www.cityofcheney.org/DocumentCenter/View/4867/9-8-26-Recording"
+CHENEY_WA_HEADERS = {
+    "Content-Type": "application/octet-stream",
+    "Content-Disposition": "inline;filename=GMT20260909-004934_Recording_1920x1080.mp4",
+}
+
+# Real headers captured live 2026-09-10 (WO-166) from Burley, ID's own
+# DocumentCenter link for its September 1, 2026 council meeting video
+# (`burleyidaho.org/DocumentCenter/View/1151/2026-09-01-Council-Meeting-Video`)
+# -- a plain (non-Zoom-named) filename, URL-encoded in the real response.
+BURLEY_ID_URL = (
+    "https://burleyidaho.org/DocumentCenter/View/1151/2026-09-01-Council-Meeting-Video"
+)
+BURLEY_ID_HEADERS = {
+    "Content-Type": "application/octet-stream",
+    "Content-Disposition": (
+        "inline;filename=2026%2009%2001%20Council%20Meeting%20Video.mp4"
+    ),
+}
+
+
+async def test_direct_media_zoom_style_recording_cheney_wa():
+    """Real fixture 1/2 -- Cheney, WA, also the Zoom-style-filename case:
+    Content-Type is generic `application/octet-stream`, and the real
+    filename (a Zoom export name) only ever shows up in
+    Content-Disposition. This is real video, not a page -- it must resolve
+    directly to a playable video_url, not an attempted HTML parse."""
+    routes = {CHENEY_WA_URL: FakeResponse(status=200, headers=CHENEY_WA_HEADERS)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(CHENEY_WA_URL)
+
+    assert result.video_url == CHENEY_WA_URL
+    assert result.video_format == "mp4"
+    assert result.source_url == CHENEY_WA_URL
+    assert result.best_effort is True
+    assert result.segments == []
+
+
+async def test_direct_media_octet_stream_recording_burley_id():
+    """Real fixture 2/2 -- Burley, ID: same generic octet-stream shape,
+    a URL-encoded (not Zoom-named) filename, confirming the fix isn't
+    narrowly tied to Zoom's own naming convention."""
+    routes = {BURLEY_ID_URL: FakeResponse(status=200, headers=BURLEY_ID_HEADERS)}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(BURLEY_ID_URL)
+
+    assert result.video_url == BURLEY_ID_URL
+    assert result.video_format == "mp4"
+
+
+async def test_direct_media_bare_mp3_audio_only():
+    """Synthetic -- no hand-built field invented: this reuses the exact
+    Content-Type/Content-Disposition shape already confirmed real on
+    several OTHER governments in the same batch2 triage (e.g. Long
+    Branch, NJ: `Content-Type: audio/mpeg`,
+    `Content-Disposition: inline;filename=9-09.mp3`), just not one of
+    this WO's own seven video cases. An audio-only direct file is still a
+    real, queueable tier-3 candidate -- the on-demand pipeline is already
+    format-agnostic (see utah_pmn.py's own module docstring)."""
+    url = "https://example-county.gov/DocumentCenter/View/900/Board-Meeting-Audio"
+    routes = {
+        url: FakeResponse(
+            status=200,
+            headers={
+                "Content-Type": "audio/mpeg",
+                "Content-Disposition": "inline;filename=board-meeting.mp3",
+            },
+        )
+    }
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(url)
+
+    assert result.video_url == url
+    assert result.video_format == "mp3"
+
+
+async def test_direct_media_zoom_style_video_content_type_no_extension():
+    """Synthetic -- a server that labels the response `video/mp4`
+    correctly (unlike the 7 real octet-stream cases above) but whose
+    Content-Disposition carries no filename at all, and whose URL has no
+    extension either. Content-Type alone must still be enough (confirmed
+    real separately on Craighead County, AR's `Content-Type: video/mp4`
+    recording, per BACKLOG_DONE.md's WO-166 entry) -- this exercises the
+    no-filename-at-all edge of that same real shape."""
+    url = "https://example-county.gov/files/recording-of-meeting"
+    routes = {url: FakeResponse(status=200, headers={"Content-Type": "video/mp4"})}
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(url)
+
+    assert result.video_url == url
+    assert result.video_format == "mp4"
+
+
+async def test_html_page_whose_url_ends_in_mp4_is_still_parsed_as_a_page():
+    """Negative control (synthetic) -- a URL ending in `.mp4` is NOT on its
+    own enough to be treated as direct media; a real page (Content-Type:
+    text/html) at that URL must still go through ordinary HTML parsing,
+    exactly like every other generic_fallback page. Guards against the
+    naive "URL-suffix-only" version of this fix, which would have
+    misclassified a page like this one."""
+    url = "https://example-city.gov/meetings/council-2026-09-08.mp4"
+    html = (
+        "<html><body><video src='https://cdn.example.gov/real-video.mp4'>"
+        "</video></body></html>"
+    )
+    routes = {
+        url: FakeResponse(status=200, text=html, headers={"Content-Type": "text/html"})
+    }
+
+    with mock_session(routes):
+        result = await GenericFallbackAssetFinder().resolve(url)
+
+    assert result.video_url == "https://cdn.example.gov/real-video.mp4"

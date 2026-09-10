@@ -2362,7 +2362,15 @@ platform share the same page/API structure. Detection lives in
 `platform_name = "unknown"` — rebuilt 2026-08-14 (see `BACKLOG_DONE.md`
 for the full build, backtested against every real coverage-gap example
 in `BACKLOG.md`) as a *diagnostic router*: figure out what the page
-needs, then hand off to machinery that already exists. Video tiers, in
+needs, then hand off to machinery that already exists. Before any of the
+tiers below run at all, the fetch itself is checked (WO-166,
+2026-09-10): when the URL resolves straight to a direct video/audio file
+rather than a page — a Zoom export, a bare `.mp4`/`.mp3` — the response's
+`Content-Type`/`Content-Disposition` say so before the page-text read
+ever happens, and the result is a plain playable `video_url` with no
+HTML parsing attempted at all (this is what fixed `unsupported-platform-
+no-adapter` on a real direct-media file, which used to trip the 10MB
+page-text size cap instead). Video tiers, in
 order: (1–2) an embedded YouTube video in any confirmed shape — a
 URL-shaped id (raw or HTML-entity-escaped, youtube-nocookie included),
 or a bare `videoId = '...'` JS assignment gated on the page actually
