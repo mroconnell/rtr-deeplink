@@ -681,6 +681,7 @@ meadowlake.civicweb.net,,ca:csd:4717052,fallback,wildcard_http_sweep_2,DNS resol
 meaford.civicweb.net,,ca:csd:3542047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Meaford
 medicinehat.escribemeetings.com,,ca:csd:4801006,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Medicine Hat
 meeting.reddeer.ca,,rtr:ca:ab:red-deer,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from 'Red Deer, AB'"
+meetings.cob.org,,us:place:5305280,authoritative,manual_override,set by POST /internal/jurisdiction/override on 2026-09-10; example page /m/2026-08-24-committee-of-the-whole
 meetings.muni.org,,us:place:0203000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Anchorage municipality
 meetings.redwoodcity.org,,us:place:0660102,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Redwood City city
 melville.civicweb.net,,ca:csd:4705074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Melville
