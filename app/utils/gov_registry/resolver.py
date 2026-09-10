@@ -1187,6 +1187,48 @@ def _state_is_type_initials(name: Optional[str], state: str) -> bool:
     )
 
 
+_TYPE_WORD_TAIL_RE = re.compile(
+    r"\s+(city|town|township|village|borough|county|parish|municipality|"
+    r"charter township|city and borough|cdp)$",
+    re.I,
+)
+
+
+def _name_exists_in_state(name: str, state: str) -> bool:
+    """True when some general-purpose government called `name` exists in
+    `state` according to the national tables -- the check the subdomain
+    reader itself never made. It validates that a NAME is a real place
+    somewhere and returns whatever two letters it stripped off the label
+    as the state, so `oxnardsd` came back as ("Oxnard", "SD"),
+    `arkansas-sc` as ("Arkansas", "SC") and `coloradoga` as ("Colorado",
+    "GA"): no Oxnard in South Dakota, no Arkansas in South Carolina, no
+    Colorado in Georgia. Requiring the pair to exist is the general rule
+    behind every such case (Ryan's "SC is sometimes Supreme Court,
+    sometimes South Carolina", 2026-09-10) and keeps the real ones --
+    Sioux Falls really is in SD. Looser than `lookup()`'s exactly-one
+    rule on purpose: "Baltimore, MD" has a city AND a county row, and
+    both prove the pair is real."""
+    if not name or not state:
+        return False
+    state = state.upper()
+    wanted = _TYPE_WORD_TAIL_RE.sub("", name.strip().lower())
+    if not wanted:
+        return False
+    country = tables.country_for_state(state)
+    table_fns = (
+        (tables.us_places, tables.us_counties, tables.us_cousubs)
+        if country == "us"
+        else (tables.ca_csd, tables.ca_cd)
+    )
+    for fn in table_fns:
+        for row in fn().rows():
+            if row.state.upper() != state:
+                continue
+            if _TYPE_WORD_TAIL_RE.sub("", row.name.strip().lower()) == wanted:
+                return True
+    return False
+
+
 def _state_from_tenant(host: str) -> Tuple[str, str]:
     """(state, evidence) recovered from the tenant alone, or ("", "").
 
@@ -1208,7 +1250,7 @@ def _state_from_tenant(host: str) -> Tuple[str, str]:
     if not host:
         return "", ""
     hit = _validated_subdomain_hint_with_state(host)
-    if hit and hit[1]:
+    if hit and hit[1] and _name_exists_in_state(hit[0], hit[1]):
         return hit[1].upper(), f"from subdomain {host}"
     known = lookup_by_domain(host)
     if known and known.state:
