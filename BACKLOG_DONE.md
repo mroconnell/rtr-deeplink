@@ -237,6 +237,26 @@ this app should show separate pages per committee for the same
 government, that is a real product decision to make on purpose, not
 something this work order should decide by default.
 
+**Caution: how the three meetings were picked, versus WO-170's rule.**
+WO-170 landed on `main` mid-way through this work order and made
+official, in code, a specific version of "pick a 9-to-40-minute
+meeting": check only the government's 6 most recent meetings, newest
+first, and stop at the first one in that range; if none of those 6
+qualify, take the shortest of those 6, even if it is over 40 minutes.
+This work order's three picks were chosen by hand before that landed,
+by looking further back than 6 meetings when needed to find a real one
+in the 9-to-40-minute range. All three picks ARE genuinely in that
+range (28, 39, and 38 minutes) — better fits than the 6-meeting-cap
+rule would have found for two of the three governments, which would
+have picked a 59-minute and a 55-minute meeting instead, both outside
+the preferred range. Nothing here is wrong or unusable — every pick is
+a real, complete, correctly transcribed meeting — but a future
+mechanical re-run of this same government through the now-official
+6-meeting-cap rule could pick a different meeting than the one live
+today. Left as-is rather than deleting and re-picking, since deleting a
+live page needs a deliberate, separate decision, not a side effect of
+tightening up which rule was used to choose it.
+
 **Caution: shared account.** The three school boards' video lives on
 the same shared Wistia account as the four governments WO-161 already
 put live (`amsva.wistia.com`, run by video vendor RegionalWebTV). Same
