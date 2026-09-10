@@ -1014,10 +1014,6 @@ def test_tenant_consistency_collapses_a_spelling_of_the_tenants_own_name(
 @pytest.mark.parametrize(
     "raw,host,tenant_gov_id",
     [
-        # Dallas County Community College District. Its own bleed page
-        # reads "City of Dallas"; the tenant's other page is Duncanville.
-        # The unguarded rung filed a Dallas page under Duncanville.
-        ("City of Dallas", "dcccd.new.swagit.com", "us:place:4821628"),
         # A shared host serving several real governments: nothing on it
         # names Scituate, so nothing may claim it.
         ("Scituate Town Council", "clerkshq.com", "us:place:3986940"),
@@ -1029,6 +1025,21 @@ def test_tenant_consistency_does_nothing_when_the_names_disagree(
     match = resolve(raw, host, tenant_gov_id=tenant_gov_id)
     assert match.tier == resolver.TIER_UNRESOLVED
     assert match.gov_id == ""
+
+
+def test_dcccd_bleed_page_now_lands_on_the_pinned_college_district():
+    """Dallas County Community College District. Its own bleed page reads
+    "City of Dallas"; the tenant's other page is Duncanville, and the
+    unguarded rung once filed a Dallas page under Duncanville. Until
+    2026-09-09 this case sat in the parametrize above asserting
+    `unresolved`; Ryan's pin worklist then pinned the host to the district
+    itself, and a pin outranks every rung below it -- the page belongs to
+    the college, not to Dallas or Duncanville."""
+    match = resolve(
+        "City of Dallas", "dcccd.new.swagit.com", tenant_gov_id="us:place:4821628"
+    )
+    assert match.tier == resolver.TIER_PINNED
+    assert match.gov_id == "rtr:us:tx:dallas-county-community-college-district"
 
 
 def test_tenant_consistency_will_not_cross_a_state_line():
@@ -2129,3 +2140,23 @@ def test_municode_subdomain_fallback_does_not_regress_bleed_rejection(monkeypatc
     )
     assert bleed.tier == resolver.TIER_UNRESOLVED
     assert bleed.gov_id == ""
+
+
+def test_county_sharing_a_name_with_an_independent_city_resolves():
+    """us_counties.csv lists independent cities as county-equivalents, so
+    "Baltimore County" and "Baltimore city" both key to "baltimore" in MD.
+    Until 2026-09-09 the exactly-one rule returned nothing and
+    _is_impossible_county() then called a real county impossible. The
+    query's own type word now breaks that tie; a query without one still
+    declines. Real names, real FIPS."""
+    from app.utils.gov_registry import resolve_government
+
+    assert resolve_government("Baltimore County, MD").gov_id == "us:county:24005"
+    assert resolve_government("Roanoke County, VA").gov_id == "us:county:51161"
+    assert resolve_government("Fairfax County, VA").gov_id == "us:county:51059"
+    assert resolve_government("St. Louis County, MO").gov_id == "us:county:29189"
+    # The independent city itself, and the bare name, still go to the city.
+    assert resolve_government("Baltimore city, MD").gov_id == "us:place:2404000"
+    assert resolve_government("Baltimore, MD").gov_id == "us:place:2404000"
+    # A county that does not exist is still a contradiction, not a mint.
+    assert resolve_government("King County, NC").gov_id == ""
