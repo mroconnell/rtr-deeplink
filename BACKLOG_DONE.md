@@ -82,6 +82,99 @@ proposed next step.
 (`app/` changed) before it affects real resolves — see `render.yaml`'s
 `autoDeploy: false`.
 
+## WO-145: API-first breadth sweep of 772 never-listed governments — 96 real videos found, and a real identity-safety bug caught and fixed mid-run that had already put wrong content on 6 live pages [Done 2026-09-10]
+
+Ryan's ask: find one meeting with video for as many of 772 small
+governments as possible. Each one has a known meeting platform but has
+never been listed through that platform's own API. Breadth mattered
+more than depth — one meeting per government was enough.
+
+**What was built.** A new script,
+`scripts/wo145_api_first_sweep.py`, tries the platform's own API first
+(rtr-discovery's listing tools) for every platform except CivicPlus.
+CivicPlus (577 of the 772 governments) reused an existing script instead,
+because CivicPlus's own listing tool does the same page-reading work a
+tool this project already had — building a second one would have found
+nothing new. For a government whose meeting host could not be found
+automatically, the script tried a plain web request, then a second
+request that looks more like an ordinary browser, before giving up.
+
+**The result.**
+
+| Outcome | Count of 772 | Detail |
+|---|---|---|
+| Page live now (captions found) | 74 | a real transcript is on the site today |
+| Queued, video only (transcript to follow) | 22 | real video, no captions yet; goes out automatically over the next few days |
+| Wrong government caught and skipped | 48 | see below — this is the big finding |
+| No video found | 299 | a real, current meeting, just no video |
+| No usable link found | 168 | the government's meeting platform could not be found |
+| No meetings found | 70 | the platform was reachable, but empty |
+| Blocked by a "prove you're human" page | 69 | never attempted to get past one |
+| Already had a page | 3 | no change needed |
+| Blocked, tried a browser-like request too | 3 | |
+| Domain did not resolve | 2 | |
+| Not a real meeting | 1 | |
+
+96 of 772 governments (12%) got a real video meeting on the site or
+queued for one, on top of the 3 that already had one.
+
+**The important finding: a name match is not proof of the right
+government, and this cost 6 pages before it was caught.** Several
+platforms only ever return a bare place name for a meeting — no state,
+no province, nothing else to check it against. When a candidate list
+guesses which government a website belongs to purely by matching a
+name string, a same-named but different government elsewhere can slip
+through. This happened for real, twice, in this run:
+
+- A real Citrus County, Florida meeting was briefly published under
+  Crystal River, Florida's page (both are in Florida, so the usual
+  state check did not catch it).
+- Five real Ontario, Canada meetings (Cornwall, Erin, Clarington,
+  Pickering, and Strathcona County) were briefly published under
+  same-named but much smaller towns in Pennsylvania, Tennessee, Ohio,
+  Missouri, and Minnesota.
+
+All 6 pages were deleted the same session, as soon as each one was
+found. The check that would have caught them from the start is now
+built into the script and was re-run against everything the check-less
+version had already touched. Two more mistakes of the same shape were
+also caught before anything went live: 7 tiny Nebraska villages all
+pointed to one Nebraska county's meeting video by mistake, and one
+website turned out to be a software company's demo site, not a real
+town's website. Both were stopped before they became pages.
+
+**Caution.** One already-published page is still wrong: a real
+Chenango, New York town meeting shows as "Chenango County, New York" (a
+different, real county with a similar name). The fix for future
+meetings from this town is already in this PR; fixing this one page
+needs a deploy first, then a follow-up step, filed in `BACKLOG.md`.
+Separately, once the new check was in place, the same two platforms
+(eScribe and CivicWeb) found far fewer new meetings than before —
+2–3% instead of the 10–17% seen on every other platform. That is very
+likely a sign that whatever list first put these small towns' names
+next to these particular websites was not checking country or state
+either, not a flaw in the new check. That is filed as its own
+`BACKLOG.md` item for someone to fix at the source.
+
+**Recommendation.** Deploy this PR so the queued meetings start
+publishing and the new pins take effect, then run the one Chenango
+fix-up step. Because this same name-matching risk could affect any
+future sweep, not just this one, the fix was written as its own
+reusable check and filed in `BACKLOG.md` so the next script can reuse
+it instead of re-discovering the same problem.
+
+**Deploy status.** The 74 pages with captions are live now — no deploy
+needed for those. The queued meetings and the new pins take effect only
+after this PR is deployed.
+
+Files: `scripts/wo145_api_first_sweep.py` (new),
+`app/utils/jurisdiction_data/tenant_overrides.csv` (22 new pins),
+`scripts/tier3_auto_transcription_queue.txt` (13 new lines),
+`rtr-business/research/wo145_report.csv` (772 rows),
+`wo145_tier3_pending.csv`, `wo145_discovery_seeds.csv`,
+`wo145_apply_to_jc.py`, `jurisdiction_coverage.csv` (725 rows updated),
+`ENUMERATION_METHODS.md` §184.
+
 ## Dashboard checklist for 2026-09-10 — five `[HUMAN]` entries closed via a live walkthrough with Ryan [Done 2026-09-10]
 
 The weekday dashboard-checklist Routine (`CLAUDE_DASHBOARD_CHECKLIST.md`,
