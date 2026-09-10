@@ -115,8 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
   4 more wrong-government domain mappings, same fix shape as the 17…
+  `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   Coverage registry: per-state view and other dashboard additions…  (5)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
@@ -135,9 +136,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (110)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (111)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
+  [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -569,6 +571,32 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   based on for this row before trusting it elsewhere.
 - **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
+### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo150_muni_ladder_sweep.py`'s access ladder calls
+  `wo141_access_ladder_pilot.try_headless()` for a page that loaded
+  cleanly with no visible link, but that helper returns only a
+  classification (`platform_link`/`listing`/`none`/`challenge`), not the
+  raw HTML `page.content()` returned. When headless *does* classify a
+  page as `platform_link`, `run_access_ladder()` has no text left to run
+  `_extract_platform_hit()` against, so it falls through to
+  `no-platform-link-found` instead of actually finding the government's
+  platform.
+- **Impact:** Every WO-150 government whose real platform link is only
+  drawn by JavaScript is undercounted as `no_platform_link_found` even
+  though the fix WO-133 already proved (headless finds JS-drawn links)
+  would have worked here. See `wo150_report.csv` rows whose `note`
+  contains "raw content wasn't retained for host extraction".
+- **Next action:** Change `try_headless()` (or add a sibling) to return
+  the page's HTML alongside its classification, and have
+  `run_access_ladder()` call `_extract_platform_hit()` on it the same
+  way the plain/browser-headers rungs already do.
+- **Constraint:** `wo141_access_ladder_pilot.py` is a read-only pilot
+  script another WO may still be running against; coordinate before
+  changing its return shape, or make the change in a wo150-local copy
+  of just `try_headless()` instead.
+- **History:** WO-150, `BACKLOG_DONE.md` 2026-09-10.
+
 ### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** Both review pages -- the meeting inventory
@@ -751,6 +779,39 @@ of human step they need.
     `scripts/wo147_access_ladder_sweep.py` (`_is_vendor_marketing_apex()`),
     not yet applied to the shared `find_specific_platform_link()`/
     `detect_platform()` path. See `BACKLOG_DONE.md`'s WO-147 entry.
+- **[NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
+  concurrent write to `jurisdiction_coverage.csv`.**
+  - **Issue**: every `*_apply_to_jc.py` script (wo146/148/149/150's)
+    guards against a stale write with a pre-write re-check that compares
+    the file's row COUNT and header fieldnames against what it read at
+    the start of its lock hold. Real, confirmed-live collision,
+    2026-09-10: WO-150's second apply run (uncommitted at the time) and
+    WO-147's own apply run (a different candidate list) both touched the
+    file around the same time. WO-147's own read-modify-write cycle
+    apparently captured a snapshot that predated WO-150's second run,
+    then WO-147 committed that snapshot — silently reverting WO-150's
+    uncommitted row updates (Florence city AL, Lake Havasu City AZ, and
+    others) even though the row count and fieldnames never changed, so
+    the existing re-check never fired.
+  - **Impact**: a same-row-count concurrent write from another session
+    can silently clobber uncommitted work on this shared file, with no
+    error raised by either writer. Recovered here only because WO-150
+    diffed the file against its own last commit and noticed values it
+    had just written were gone; a less careful session wouldn't catch
+    this at all.
+  - **Next action**: strengthen the pre-write re-check in the shared
+    pattern (ideally factored into one real shared helper, per
+    `docs/BREADTH_SWEEP_BRIEF.md`'s own "optional next steps" note) to
+    compare a hash of the full file content (or at minimum the exact
+    rows each run is about to touch) against what was read at
+    lock-acquisition time, not just row count and fieldnames.
+  - **Constraint**: committing immediately after every write (already
+    the convention) shrinks the collision window but doesn't close it —
+    WO-150's own collision happened inside that window, before its
+    commit landed.
+  - **History**: WO-150, `BACKLOG_DONE.md` 2026-09-10. Recovered by
+    re-running `wo150_apply_to_jc.py` fresh against the post-collision
+    state and committing immediately; no data was permanently lost.
 
 - **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   lifted from an institutional-type word ("School District" → SD,

@@ -85,3 +85,9 @@ https://jodaviesscoil.portal.civicclerk.com/event/2389/media,civicclerk,,,,,0,re
 https://www.youtube.com/watch?v=9WJSOshUnXI,youtube,yt-dlp-metadata,22.00,2023-03-08,1003546,0,reject-short,duration 22.0s is below the 60s meeting-plausibility floor,1.86,2026-09-10T18:36:51+00:00
 https://www.youtube.com/watch?v=fCrNiL-BMH8,youtube,yt-dlp-metadata,7742.00,2026-09-02,87132832,1,accept,,1.38,2026-09-10T18:36:53+00:00
 https://www.youtube.com/watch?v=FpEQDdaoNKE,youtube,yt-dlp-metadata,5064.00,2026-08-12,149959722,1,accept,,1.99,2026-09-10T18:36:55+00:00
+https://wycokck.portal.civicclerk.com/event/3554/media,civicclerk,head+ffprobe,13288.66,2026-09-04,326425614,1,accept,,3.57,2026-09-10T17:05:00+00:00
+https://greatfallsmt.viebit.com/watch?hash=ZGTmixA15HNtvFkM,viebit,,,,,0,reject-dead,no probe recipe for this media shape: https://greatfallsmt.viebit.com/embed/vod?v=ZGTmixA15HNtvFkM,0.00,2026-09-10T18:45:29+00:00
+https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1,granicus,hls-master+variant,4125.33,,,1,accept,,6.83,2026-09-10T18:45:36+00:00
+https://shawneeok.portal.civicclerk.com/event/2124/media,civicclerk,head+ffprobe,306.17,2026-08-26,97501138,0,accept,,2.48,2026-09-10T18:45:38+00:00
+https://saratogaspringsny.new.swagit.com/videos/306992,swagit,hls-master+variant,9065.88,,,1,accept,,11.63,2026-09-10T18:45:50+00:00
+https://www.youtube.com/watch?v=ADl2lGtXofs,youtube,yt-dlp-metadata,386.00,2026-05-28,10117005,0,accept,,2.00,2026-09-10T18:45:52+00:00
