@@ -136,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (98)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (100)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -211,7 +211,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (98)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (27)
+  Adapter & platform gaps  (29)
     [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
@@ -239,6 +239,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (98)
     [NEEDS-AUDIT] A resolve that delegates to a generic video host…
     [NEEDS-AUDIT] `granicus.py`'s `_fetch_page()` raises an unhandled…
     [NEEDS-AUDIT] `[EXAMPLE]` A newer CivicPlus product generation…
+    [NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found…
+    [NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows…
 
 Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
@@ -3401,6 +3403,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: per this project's own "test against a real, live URL first" rule — find 2-3 more confirmed HCMS tenants before building anything, then check whether `content.civicplus.com`'s API (the same one the JWT scopes into, `civicplus.apps.{tenant}.contents.*.read`) is reachable without the page's own browser session, the way other SPA-fronted platforms in this repo (CivicClerk, eScribe) already resolve via their tenant's own API rather than scraping rendered HTML.
   - **Constraint**: `[EXAMPLE]` — needs more real samples before any adapter work, not just El Mirage alone.
   - **History**: WO-134, 2026-09-09.
+
+- **[NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found live sitting one click from a CivicPlus AgendaCenter page that `adhoc_civicplus_pipeline.py` marked `no-video-found` — `spectrumstream.com` (in the AgendaCenter row itself) and `12milesout.com` (on the government's own homepage nav).**
+  - **Issue**: resolving the WO-127/WO-128 "no video" contradiction (WO-137, 2026-09-09 — see `BACKLOG_DONE.md`) turned up two new video platforms, confirmed live, one sample each. (1) Alhambra, CA (`alhambraca.gov/AgendaCenter`) has real, recent (within days) per-meeting `td.media` links to `spectrumstream.com/streaming/alhambra/meeting_{date}.cfm` — well within `_RETRY_LIMIT`, so `_find_candidate_rows()` reads them fine, but `detect_platform()` doesn't recognize `spectrumstream.com` at all, so `_is_real_video_link()` rejects every one and the page reads as having zero video candidates. The page itself is a real "Video Player" wrapping a JW-Player-style `file:` pointing at a real S3-hosted MP4 (`spectrum_streaming.s3.amazonaws.com/alhambra/alhambra_2026_07_27.mp4`) — confirmed by fetching one directly. (2) Escondido, CA's AgendaCenter module is genuinely empty (zero `catAgendaRow`s, zero configured categories — not a JS-hidden case), but its homepage links to "City Council Meeting Broadcasts" → `escondido.12milesout.com`, a real, plain-HTTP, server-rendered per-meeting video archive (`/Video/Meeting/{uuid}` links, real recent dates through 9/2/2026) that no code in this repo recognizes.
+  - **Impact**: both governments are currently counted among the 521 CivicPlus `no-video-found` verdicts; both actually have real, resolvable video. Unknown how many of the other 519 share either shape — this was found via a 30-government live sample, not a targeted search for either domain.
+  - **Next action**: per this project's own "test against a real, live URL first" rule, find 2-3 more confirmed samples of each domain before building either adapter (`external_hosts.txt` in `rtr-business/research` already has 2 unexamined `spectrumstream.com` hits from an earlier crawl — check those first). Once confirmed on multiple tenants: `spectrumstream.com` needs a `detect_platform()` entry plus a small adapter (the `.cfm` page's embedded JW-Player `file:` URL is the direct MP4, per Alhambra); `12milesout.com` needs the same plus per-meeting date/title matching against its `/Video/Meeting/{uuid}` listing.
+  - **Constraint**: `[EXAMPLE]` — one confirmed live sample each is not enough to build an adapter from; don't generalize the page shape from a single tenant.
+  - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
+
+- **[NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows render "newest-first" across the whole page — real, confirmed false for multi-category tenants; rows are newest-first *within* each category, with categories concatenated, not globally date-sorted.**
+  - **Issue**: confirmed live 2026-09-09 (WO-137) on lowellma.gov/AgendaCenter (330 rows): each `tr.catAgendaRow` sits inside a `<div id="category-panel-{N}">` wrapper (City Council rows 0-28, then several unrelated boards, then the Lowell License Commission's own rows starting at index 199) — each category's own rows are newest-first, but the categories themselves are concatenated in some category-ID order, not merged by date. `_find_candidate_rows()`'s and `resolve()`'s `_RETRY_LIMIT`-bounded walk (both `civicplus.py` and `adhoc_civicplus_pipeline.py`) assumes the first 5 DOM rows are the 5 most recent meetings on the whole page; for a tenant whose first-rendered category doesn't happen to have a recent video-bearing row, this can never reach a genuinely more-recent video sitting in a later category, no matter how small or large `_RETRY_LIMIT` is.
+  - **Impact**: measured on Lowell specifically: even walking the full 330-row page and correctly excluding `@handle`-only channel links (not real single-video links), the most recent genuinely resolvable per-meeting video is 6+ months old (License Commission, March 2026) — so this bug did not actually flip Lowell's real "no video" verdict in this instance, but the wrong assumption is real and would matter for a tenant whose first category is stale while a later category has a currently-active video-bearing series.
+  - **Next action**: sort `_find_candidate_rows()`'s returned list by parsed date (falling back to original DOM order for the unparseable minority) before `resolve()`'s retry walk uses it, so "the 5 most recent candidates" is true globally, not just within whichever category the DOM happens to render first. Update the class docstring's "same rendering order this page already uses" claim once fixed.
+  - **Constraint**: low priority on its own (didn't change any real verdict in the one confirmed case) — worth doing opportunistically alongside other `civicplus.py` work, not urgent by itself.
+  - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
 
 ## Reliability, ops & cost
 

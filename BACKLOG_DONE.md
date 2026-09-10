@@ -1,5 +1,137 @@
 # Backlog — done
 
+## WO-137: resolved the "CivicPlus AgendaCenter has no video" contradiction — both sweeps were mostly right, one real fixable miss found and shipped, two new platforms found and filed [Done 2026-09-09]
+
+Ryan's question: WO-127 (328/348 no-video) and WO-128 (193/242 no-video)
+both concluded CivicPlus AgendaCenter sites are mostly video-less, but
+the coverage dashboard shows 210 governments whose `hub_url` is an
+AgendaCenter page and that ARE in the Archive with real video. Which is
+right?
+
+**Verdict: both, for different tenants.** The dashboard's 210 successes
+are not proof the sweeps under-tried — most of them (8 of 10 spot-checked
+below) went through the exact same bare-`{domain}/AgendaCenter` ->
+`td.media` delegation `adhoc_civicplus_pipeline.py` already uses, which
+means that mechanism already works correctly when a government actually
+links video per-meeting. Two of the ten bypassed AgendaCenter entirely —
+their video was found and ingested by a *different* pipeline entirely, via
+a direct Granicus/CivicClerk URL never derived from the AgendaCenter page
+at all. Live-rechecking a 30-government sample of the sweeps' own
+"no-video-found" verdicts (spread across states, larger populations
+preferred) found the sweeps correct for 27 of 30 — with one narrower,
+real, repeatable miss (not the one Ryan guessed) and two brand-new,
+unsupported video platforms.
+
+### Table 1 — how the dashboard's 10 example successes actually got their video
+
+| Government | Dashboard tier/video host | Real `source_url` in Archive | Path |
+|---|---|---|---|
+| Yamhill County, OR | tier 1, YouTube | `yamhillcounty.gov/AgendaCenter` | AgendaCenter `td.media` delegation |
+| Brookings County, SD | tier 1, YouTube | `brookingscountysd.gov/AgendaCenter` (x2 pages) | AgendaCenter `td.media` delegation |
+| Denton County, TX | tier 1, YouTube | 1 page via `dentoncounty.gov/agendacenter`; 1 page via `dentoncounty.granicus.com/player/clip/1955` | mixed — 1 delegation, 1 direct Granicus (not via AgendaCenter) |
+| Maumelle, AR | tier 1, YouTube | `maumelle.gov/AgendaCenter` | AgendaCenter `td.media` delegation |
+| Escalon, CA | tier 1, YouTube | `escalon.gov/agendacenter` | AgendaCenter `td.media` delegation |
+| Westmelbourne, FL | tier 1 | `westmelbourne.gov/agendacenter` (x2 pages) | AgendaCenter `td.media` delegation |
+| Pocatello, ID | tier 1 | `pocatello.gov/agendacenter` | AgendaCenter `td.media` delegation |
+| Zionsville, IN | tier 1 | `zionsville-in.gov/AgendaCenter` | AgendaCenter `td.media` delegation |
+| Glenview, IL | tier 2, Granicus | `glenview.granicus.com/player/clip/3040` and `.../MediaPlayer.php?clip_id=3144` | direct Granicus ingest — never touched AgendaCenter |
+| Sherman, TX | tier 2, CivicClerk | `shermantx.portal.civicclerk.com/event/{1258,87}/media` | direct CivicClerk ingest — never touched AgendaCenter |
+
+(Confirmed via a fresh `export_meeting_inventory.py --source export` pull,
+6,574 rows, matched by `source_url` substring against each government's
+domain.) 8 of 10 are the CivicPlus adapter's own delegation working as
+designed; 2 of 10 got their video from a completely separate discovery
+path — the dashboard's `hub_url` column names where the *agenda* lives,
+not necessarily how the *video* was found.
+
+### Table 2 — 30-government live recheck of WO-127/WO-128's "no-video-found" verdict
+
+Sample: 30 governments across both sweeps' no-video-found lists, spread
+across ~20 states, larger populations preferred (Yonkers NY down to
+North Miami FL, populations 211k-62k). Checked live: the bare
+`/AgendaCenter` page the sweeps already fetch, plus the homepage
+(nav links, YouTube/CivicClerk/other known-platform links) a person would
+actually click.
+
+| Outcome bucket | Count | Governments | Verdict on the original sweep |
+|---|---|---|---|
+| Genuinely no video anywhere reachable | 8 | Pasadena TX, Westminster CO, Waukegan IL, Westland MI, Parma OH, Apex NC, Rogers AR, East Orange NJ | **Sweep correct** (3 of these have a long-abandoned/stale AgendaCenter module — Waukegan's newest row is dated 2017 — but the *government*, not just the page, genuinely has no video anywhere else either) |
+| Government has an active video channel, but no link ties any specific meeting to a specific video (AgendaCenter row or homepage) | 17 | Yonkers NY, Eugene OR, Charleston SC, Savannah GA, Billings MT, Lowell MA, San Angelo TX, Roanoke VA, Mount Pleasant SC, Deerfield Beach FL, Homestead FL, Ankeny IA, St. Cloud FL, Shawnee KS, Kenner LA, Lynwood CA, North Miami FL | **Sweep correct for this page/meeting** — a real, already-tracked gap (`BACKLOG.md`'s "City-YouTube-channel fallback" entries), not new |
+| CivicClerk portal linked from the homepage, but its own public Events API shows zero real media on the last 15 events | 2 | Arvada CO, Westfield IN | **Sweep correct** — verified against the real tenant API, not assumed |
+| **Real miss, now fixed**: homepage links to a CivicClerk event/portal with real video, but AgendaCenter itself has none | 1 | St. Joseph MO | **Sweep wrong** — fixed this session |
+| **Real miss, new unsupported platform found, not yet fixed** | 2 | Alhambra CA (`spectrumstream.com`, linked from the AgendaCenter row itself), Escondido CA (`12milesout.com`, linked from the homepage) | **Sweep wrong** — filed in `BACKLOG.md`, needs more samples before an adapter |
+
+27 of 30 (90%) verdicts were correct as originally rendered. 3 of 30 were
+wrong, in a narrower and different shape than "the adapter doesn't look
+hard enough at the same page": one already-supported platform (CivicClerk)
+reachable one click from the homepage, and two brand-new platforms never
+seen before.
+
+### What shipped
+
+`scripts/adhoc_civicplus_pipeline.py`'s `NoVideoCandidateFound` handling
+now tries a homepage-CivicClerk fallback before recording
+`no-video-found`: fetch the tenant's own homepage, use
+`app/platforms/base.py`'s existing `find_platform_link()` to look for a
+CivicClerk link, and — for a bare portal-root link with no specific event
+— a trimmed copy of `nationwide_2404_ingest.py`'s own
+`civicclerk_latest_event_url()` (already proven in production, per this
+repo's existing convention of each `adhoc_*`/`nationwide_*` pipeline
+script carrying its own copy) to find the tenant's most recent real,
+undeleted, media-bearing event via its public API. Deliberately scoped to
+CivicClerk only — the one platform with a confirmed non-headless
+resolution path — not "any known platform on the homepage." 9 new tests
+in `tests/test_adhoc_civicplus_pipeline.py`, using a schema-confirmed
+synthetic Events-API fixture (`tests/fixtures/civicclerk/
+synthetic_events_listing.json`, field names copied from the real
+`clovisca_event17.json` fixture) plus two small reconstructed
+homepage-link snippets from the real, confirmed hrefs.
+
+Re-ran the fixed pipeline (DRY_RUN, isolated report file, never touched
+the shared `jurisdiction_coverage.csv`) against all 517 unique gov_ids
+from both sweeps' no-video-found lists (521 verdicts, 4 duplicate
+gov_ids across the two sweeps): **507 correctly remain no-video-found;
+10 flipped**. Of those 10, **8 are attributable to this fix** (`detail`
+field reads "found via homepage CivicClerk link" — real video confirmed
+for 6: Fountain Hills AZ, North Branch MN (2,260 real transcript
+segments, a genuine tier-1 result), St. Joseph MO, Northwood OH, North
+Bend WA, New Berlin WI, all with a specific per-meeting MP4/YouTube-embed
+`video_url`; 2 more, Elmsford NY and St. Francis MN, resolved with a
+`video_url` that's a bare YouTube channel/streams link rather than a
+specific video — an existing `civicclerk.py` field-mapping property this
+fix didn't introduce, not a false positive of the new code). **The other
+2 (Cudahy CA, Roswell NM) are unrelated to this fix** — their `detail`
+field reads "picked 1 of N real video rows," the pre-existing
+`CalendarPageError` multi-candidate path, meaning their live
+AgendaCenter page now genuinely has video-bearing rows that weren't
+there (or weren't posted yet) when the original sweep ran; re-running
+the *unmodified* pipeline today would have found these too. Every other
+homepage-known-platform link found (champds, civicplus-self, viebit,
+castus, granicus, escribe, etc.) is correctly left alone, since none of
+those have the same non-headless resolution path this fix built.
+
+**Next action once deployed**: re-run `scripts/adhoc_civicplus_pipeline.py`
+for real (no `DRY_RUN`) against the same 517 gov_ids to actually ingest
+the 8 real fix-attributable finds (6 tier1/tier3-agenda with a specific
+video, 2 tier3-agenda with a channel-only `video_url` — Ryan's call on
+whether those 2 clear the ingest bar as-is) — this session deliberately
+ran DRY_RUN only, per the "do not ingest anything" instruction. No need
+to re-run the other ~509; nothing about them changed.
+
+**Not done**: `spectrumstream.com` and `12milesout.com` adapters (need
+more samples first, see `BACKLOG.md`); the `civicplus.py` docstring's
+false "newest-first across the whole page" claim (see `BACKLOG.md`, low
+priority — didn't change any real verdict in the one case it was
+checked against); a homepage fallback for any platform besides
+CivicClerk (Granicus/eScribe/etc. links were seen on other sample
+homepages but none had a proven non-headless path built for this pass).
+
+Nothing was ingested — Ryan's rule stands, and this was a DRY_RUN
+verification pass, not a production sweep. `scripts/civicplus_data/
+wo127_pipeline_report.csv` and `scripts/civicplus_data/
+civicplus_pipeline_report.csv` (the two real sweep outputs this
+investigation read) are untouched.
+
 ## WO-135: permanent-failure markers for YouTube captions-disabled/embed-disabled/video-gone pages, so the daily fetch stops re-queuing them forever [Done 2026-09-09]
 
 Closes the residual WO-131 left open: its 78-candidate push got through
