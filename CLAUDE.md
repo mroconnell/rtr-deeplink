@@ -26,7 +26,12 @@ saved-search alert emails, billing) — split out of `BACKLOG.md`
 incidents hit switching from a Clerk development instance to production —
 worth reading before ever touching Clerk env vars/DNS again.
 
-**See `README.md` for architecture, the resolve flow, supported platforms,
+**Read `docs/COVERAGE_HANDOVER.md` before any coverage, identity, or
+dashboard work** — it explains the two coverage dashboards, how `gov_id`s
+are assigned and repaired, the sweep pattern and Ryan's video-only ingest
+rule, and the breakthroughs of 2026-09-09/10 (headless browsing for
+JS-rendered meeting links, identity joins, the research-file write
+protocol). **See `README.md` for architecture, the resolve flow, supported platforms,
 and frontend features**, and **`STATE_HUB_PAGES.md` before touching
 `/state/*` or `/j/*`** — it carries the design reasoning, the
 tried-and-rejected list with measurements, a tuning table, and the
