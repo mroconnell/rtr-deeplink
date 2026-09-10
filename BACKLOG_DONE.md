@@ -279,6 +279,157 @@ district` row (Ryan, 2026-09-10 -- the WFWRD board pages sit under
 Wasatch County; the override waits for the deploy that carries the
 row), and a README rewrite of the display rule plus a one-paragraph
 "how identity flows" overview Ryan asked for at the start of the audit.
+## WO-134: the WO-129 confirmed-hit batch, resolved deep for real video -- 156 governments, 82 got a real video (1 live, 81 queued), 71 confirmed video-less [Done 2026-09-09]
+
+Ryan's ask: take the 156 governments WO-129's two-hop scan confirmed
+have a recognized meeting-platform signature
+(`rtr-business/research/wo129_confirmed_hits.csv`) and get a meeting
+WITH VIDEO into the Archive for each one, going deep enough per tenant
+to find a real video rather than settling for whatever the newest
+listing row happens to be. WO-133's own headless re-check batch
+(`wo133_confirmed_hits.csv`) never landed before this run finished, so
+only WO-129's 156 were processed.
+
+**Funnel (156 candidates):**
+
+| Outcome | Count | Detail |
+|---|---|---|
+| Already covered | 1 | Bellingham, WA (`us:place:5305280`) already had an archived page |
+| Ingested tier 1/2 | 1 | Whitewater, WI -- `municode_meetings`, 1,469 real transcript segments |
+| Queued tier 3 | 81 | real video, no reachable captions yet -- drips onto the site via the cloud auto-transcription worker |
+| No video found | 2 | a real, current meeting resolved -- genuinely no video attached (Winter Garden FL, Brewer ME) |
+| Skipped (no usable link / off-mission / resolve failed) | 71 | see breakdown below |
+| **Real yield (ingested + queued)** | **82 / 156 (52.6%)** | a real, confirmed video now reaches the Archive or its queue |
+
+**Tier-3 queue additions by platform (81):** YouTube 44, CivicPlus 22,
+CivicClerk 10, Granicus 3, TelVue 1, Municode Meetings 1.
+
+**Skipped-71 breakdown (by real cause, not platform):** no usable
+platform link found on the government's own page, 17; title
+blocklisted/off-mission (promo, recruitment, tourism, budget-breakdown,
+etc.), 14 + a further 5 from an empty/off-mission YouTube channel
+listing; CivicPlus `AgendaCenter` reachable but zero video-bearing rows
+(checked as deep as 28 real candidates on one tenant), 14; resolved but
+genuinely empty (no segments/agenda/video at all), 14; CivicPlus
+`AgendaCenter` unreachable at all (3, one of which is the real HCMS gap
+below); Granicus listing with no real candidates, 2; one ambiguous
+CivicClerk listing.
+
+**What worked best:** CivicPlus and CivicClerk (both structured,
+per-meeting agenda/event systems) converted at roughly 60-70% once a
+real seed URL was found -- the CivicPlus depth-search (below) alone
+recovered several tenants a single-candidate check would have missed.
+YouTube converted well too (44 of ~85 hits queued) but carried the
+widest real failure surface -- channel links with no recent meeting,
+off-mission titles, and three genuinely new URL shapes the adapter
+didn't handle at all (below).
+
+**Real bugs found and fixed building this batch's own script**
+(`rtr-deeplink/scripts/wo134_confirmed_hits_ingest.py`, modeled on
+`nationwide_2404_ingest.py`, this project's own "test against real
+data" rule in action -- every one of these came from a real failure in
+a live smoke test, not from reading the adapters cold):
+
+1. **YouTube channel/vanity/playlist links crashed instead of depth-
+   searching.** A government page commonly links to a whole channel
+   (`/channel/UC...`, `/@handle`, a legacy vanity URL like
+   `youtube.com/OFallonTV`, or a `?list=` playlist), not one specific
+   video -- `YouTubeAssetFinder.resolve()` raises a plain `ValueError`
+   ("Could not find a YouTube video ID") on every one of these, which
+   would have burned rows as hard errors. Fixed with an upfront regex
+   fast-path plus an exhaustive fallback (catch that exact `ValueError`
+   and retry as a channel/playlist listing) -- confirmed live on South
+   Euclid OH, O'Fallon MO, and Reedsburg WI.
+2. **Granicus's `AgendaViewer.php` raises `UnicodeDecodeError`** on a
+   real response (Harrisonburg VA, clip 1369) -- `_fetch_page()`'s
+   `response.text()` has no `errors=` argument. Every row on a Granicus
+   `ViewPublisher.php` listing links to `AgendaViewer.php`, so this hit
+   by default; worked around by rewriting the link to `MediaPlayer.php`
+   (same clip, resolves cleanly) before calling the adapter. Filed as
+   an open adapter bug, see `BACKLOG.md`.
+3. **A Granicus hit URL is often just a login-redirect page**
+   (`/account/login?ReturnUrl=/`), not a real listing -- `granicus.py`
+   has no notion of a listing page at all (no `CalendarPageError`).
+   Fixed by guessing `ViewPublisher.php?view_id=1..5` and scraping its
+   real `tr.even`/`tr.odd` rows into the same candidate shape the other
+   platforms' `CalendarPageError` already provides -- confirmed live
+   (Harrisonburg VA: `view_id=1` empty, `view_id=2` held a real 505-row
+   table).
+4. **CivicPlus's `/AgendaCenter` seed guess only ever tried the CSV's
+   `homepage` domain**, which can be a different, non-live domain from
+   the one actually serving the site (Peachtree City, GA: CSV homepage
+   `peachtreecityga.gov`, real site `peachtree-city.org`) -- fixed by
+   also guessing off the hit URL's own domain, not just `homepage`.
+5. **A real duplicate-line bug in this session's own testing, not the
+   pipeline design**: `tier3_auto_transcription_queue.txt` had no
+   existing-queue check before appending, so three separate smoke-test
+   runs during development each re-appended the same real URLs --
+   caught by `tests/test_transcription_queue_files.py`'s
+   `test_no_duplicate_rows` (61 duplicate lines removed by a one-off
+   dedupe; the script itself now checks the queue file's current
+   contents before appending, so a re-run/resume can't do this again).
+
+**Real, confirmed-but-unfixed adapter gap found, not built (per this
+project's "verify against real data before building" rule -- see
+`BACKLOG.md`):** El Mirage, AZ's CivicPlus tenant is on a newer,
+JS-rendered "HCMS" product generation that never server-renders its
+`AgendaCenter` table at all -- a plain fetch (what every seed-guesser in
+this repo does) sees an empty shell. Two other WO-129 CivicPlus tenants
+checked the same session (Bremen GA, Peachtree City GA) are still the
+legacy server-rendered product, so this looks like a partial migration,
+not a platform-wide shift -- needs 2-3 more confirmed samples before any
+adapter work.
+
+**Shared-host jurisdiction pins:** every tier-1/2 ingest or tier-3 queue
+add on YouTube/Vimeo/TelVue/Cablecast got (a) `result.jurisdiction` set
+to a real "Name, ST" string derived directly from the CSV's own
+`gov_id` via `government_for_id()` (exact, not a guess), and (b) a
+`fallback`-strength pin appended to `tenant_overrides.csv` keyed on the
+video id (YouTube/Vimeo) or URL path (TelVue) -- 44 YouTube pins, 1
+TelVue pin (Savannah, GA), all still `source=wo129_confirmed_hits`.
+**These pins take effect for ingests only after the next deploy** --
+`app/utils/gov_registry/registry.py` reads its committed CSV, not this
+worktree's live edits, so today's own ingests relied on the free-text
+jurisdiction hint resolving correctly on its own; the pins are the
+durable, exact fix for any future re-resolve/backfill of the same
+video.
+
+**`jurisdiction_coverage.csv` backfill, and a real correction to the
+naive "already attempted, don't touch" rule**: matched on
+(`city_name`, `state_or_province`, `domain`) per Ryan's instruction, via
+a new `rtr-business/research/backfill_wo134_ingest_into_jc.py`. 131 of
+the 156 rows already carried a non-blank `shares_video`/`reject_reason`
+going in -- checking where those came from (traced through
+`ENUMERATION_METHODS.md`'s "Key Files" section) showed every one of
+those 131 also had a **blank `transcribed`**, meaning the existing value
+was a coarse crawl-era guess (or an old, now-stale `reject_reason` from
+before WO-129's own scan confirmed a real platform hit), never a
+confirmed real transcript -- weaker evidence than this run's own
+multi-candidate-depth adapter-verified outcome. The backfill was
+corrected to overwrite on anything short of a real `transcribed=True`,
+not skip on any prior signal (`backfill_2404_ingest_into_jc.py`'s
+original gate, copied wholesale at first, was too conservative for a
+batch whose entire job is re-checking already-scanned rows) -- 155 of
+156 rows updated. Also rewritten to follow `ENUMERATION_METHODS.md`
+§158's cross-session write protocol (agreed the same day, after a real
+multi-session truncation incident on this exact file): a real `flock`
+held around the entire read-modify-write, a `MIN_SANE_ROW_COUNT` floor,
+and an atomic temp-file + `os.replace()` write, mirroring
+`tie_and_apply_territories.py`'s reference implementation.
+
+**Not deployed by this batch**: all writes were pure content (a page
+POST via the already-deployed `/internal/ingest`, a tier-3 queue-file
+append the already-deployed worker reads, research-repo CSV edits) --
+no `app/`/`archive/`/`worker/` code shipped from this PR needs a deploy
+to take effect *for today's own outcomes*. The 45 `tenant_overrides.csv`
+pins and the Granicus/CivicPlus/YouTube-channel bug fixes in
+`wo134_confirmed_hits_ingest.py` itself only matter for a FUTURE re-run
+or backfill, once merged and (for the pins specifically) deployed.
+
+Files: `rtr-deeplink/scripts/wo134_confirmed_hits_ingest.py` (new),
+`rtr-business/research/backfill_wo134_ingest_into_jc.py` (new),
+`rtr-business/research/wo134_confirmed_hits_ingest_log.csv` (new, full
+per-row log), `rtr-business/research/ENUMERATION_METHODS.md` §166.
 
 ## PR #807's squashed commit deleted the entire "Open bugs" section (89 entries) instead of just its own one fixed entry — 34 restored to BACKLOG.md after checking a day of PRs found none of them actually fixed [Done 2026-09-10]
 
