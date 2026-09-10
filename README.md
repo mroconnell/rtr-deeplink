@@ -640,6 +640,31 @@ silence itself is a signal the job stopped firing. A run that fails to
 complete at all (an IP-level block, or any unhandled exception) sends a
 different, explicitly-flagged failure email instead.
 
+**The page itself degrades gracefully too, instead of staying dead
+(WO-136, 2026-09-09), consuming the `YouTube: embedding is disabled by
+the channel; watch on YouTube` marker from the block above.**
+`archive/templates/meeting_page.html` renders a "Watch on YouTube" link
+(honoring the page's own `?t=` deep link) in place of the dead iframe,
+server-side, whenever that marker is already known; `app/static/
+player.js` renders the identical link both proactively (marker present
+in the resolve response) and reactively, from the YouTube IFrame
+Player's own `onError` — live-verified against a real embedding-disabled
+video that by the time `onError` fires had already had its `<div>`
+replaced by YT.Player's own `<iframe>` of the same id, so the fallback
+swaps that iframe out for a fresh element rather than writing invisible
+fallback content into it. A page in this state is folded into the
+existing "empty page" rule (`crud._is_empty_page_condition()`, and its
+Python twin in `archive/main.py`'s `/m/{slug}` route — the same
+predicate that already `noindex`es and hides from `/meetings`, the
+sitemap and the feed a page with no video, no agenda and no transcript
+at all, `tests/test_thin_page_audit.py`'s own lockstep test keeps the
+two copies honest) *only while it has no transcript* — `scripts/
+transcribe_backlog_locally.py`'s local Whisper run (below) can still
+produce one by downloading the audio directly, since an embedding
+restriction doesn't stop an audio download the way it stops playback or
+the caption endpoint — and the page returns to `/meetings`, the sitemap
+and the feed on its own the moment one lands, with no un-hide step.
+
 **Checking the Archive's real production schema**: `GET /internal/schema-info`
 (token-gated the same way as every other `/internal/*` route — a bearer
 token matching `ARCHIVE_INGEST_TOKEN`, 404 rather than 401/403 on a
@@ -1412,7 +1437,7 @@ caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chu
   duration()` (the same 5-minute-to-14-hour bounds the worker already
   uses) skip an infeasible candidate cheaply, before spending real
   transcription time on it.
-- **No full download** — reuses `extract_chunk_audio()`
+- **No full download for most platforms** — reuses `extract_chunk_audio()`
   (`app/platforms/media_probe.py`) for direct remote extraction (an HTTP
   Range fetch for a direct file, just the covering `.ts` segments for
   HLS), same as the worker. **Chunking is kept** (900 seconds — no longer
@@ -1424,6 +1449,25 @@ caffeinate -s python scripts/transcribe_backlog_locally.py --cpu-threads 2 --chu
   individual `ffmpeg`/`ffprobe` call under `media_probe.py`'s shared
   120-second subprocess timeout, proven safe at 900s in production but
   untested at a full multi-hour single pass.
+- **YouTube is the one platform that IS a full download (WO-136,
+  2026-09-09).** A `youtube.com/embed/{id}` URL isn't ffmpeg-readable
+  directly, so `transcribe_meeting()` downloads the video's audio once via
+  yt-dlp (`_yt_dlp_download_best_audio()`, same `player_client` fallback
+  order as `YouTubeAssetFinder`), converts it through the same
+  `extract_full_audio()` step every other platform's whole-audio-cache
+  path uses, and every chunk after that is a local slice — no per-chunk
+  network. This exists specifically for a YouTube channel that disabled
+  embedding elsewhere (dead in our iframe, see "Permanent pages" above)
+  or disabled captions: an audio *download* isn't blocked by either
+  restriction the way playback and the caption endpoint are, and this is
+  a genuinely different request shape from the caption-fetch endpoint
+  that's separately, sometimes IP-blocked (see `docs/investigations/
+  youtube_429_block.md`) — confirmed live, 2026-09-09, on a Mac where
+  caption fetches were failing that same day: the audio download worked
+  fine. `--urls-file path.txt` (one URL per line, `#`-comments and blank
+  lines skipped) feeds a specific pre-filtered candidate list through
+  this same pipeline in one run, bypassing the oldest-first backlog queue
+  the same way `--url` does for a single meeting.
 - **Pushes with `"source": "transcribed"` explicitly** via
   `POST /internal/ingest` (now accepts an optional `source` field,
   default `"scraped"` for every other caller) — the same real AI-transcript
@@ -2466,7 +2510,11 @@ What you can actually do once a meeting page has loaded:
   transcript click-to-seek, "Copy link to current time", "Go to time",
   and deep-link-on-load all work identically either way, since both are
   wrapped behind the same `{currentTime, play, pause, addEventListener}`
-  adapter shape (`createNativeAdapter` / `createYouTubeAdapter`).
+  adapter shape (`createNativeAdapter` / `createYouTubeAdapter`). When a
+  channel has disabled embedding elsewhere, `renderYouTubeEmbedFallback()`
+  swaps the dead iframe for a "Watch on YouTube" link instead (see
+  "Permanent pages (the Archive)" above for the full mechanism, shared
+  with `archive/static/meeting_page.js`).
 - **Playback speed**: a chip in the top-right of the video frame opens
   0.75x-3x. It is drawn by this app rather than delegated to the player's
   own control bar because a native `<video>` bar is browser shadow DOM and

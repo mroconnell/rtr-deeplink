@@ -96,6 +96,10 @@ Usage (from the repo root, with the venv active):
     # version the page's default immediately instead of leaving it as a
     # non-default version nothing points to. See --promote's own --help text.
     python scripts/transcribe_backlog_locally.py --url "https://example.com/meeting" --promote
+    # A specific, pre-filtered candidate list (WO-136, 2026-09-09) -- one
+    # URL per line, bypassing the oldest-first backlog queue the same way
+    # --url does, but for many meetings in one run instead of one.
+    python scripts/transcribe_backlog_locally.py --urls-file /tmp/wo136_candidates.txt --cpu-threads 2 --chunk-cooldown-seconds 30
 
 **Thermal pacing, for a real unattended run against a 1000+-meeting queue
 on an older/fanless Mac (2026-08-21).** Nothing above throttles CPU usage
@@ -165,12 +169,14 @@ import certifi
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
 import aiohttp  # noqa: E402
+import yt_dlp  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import UnsupportedPlatformError, detect_platform, get_finder  # noqa: E402
+from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
 from app.platforms.media_probe import (
     chunk_size_seconds_for_platform,
     extract_chunk_audio,
@@ -927,6 +933,76 @@ async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -
     )
 
 
+def _yt_dlp_download_best_audio(
+    video_id: str, out_dir: Path
+) -> Tuple[Optional[Path], Optional[str]]:
+    """Downloads the best available audio-only (or muxed, if a video's
+    formats don't include an audio-only one) stream for a YouTube video
+    via yt-dlp, into a file inside `out_dir` -- the raw container yt-dlp
+    picks (typically webm/opus or m4a), NOT yet resampled to this
+    pipeline's standard 16kHz mono mp3 shape.
+
+    WO-136 (2026-09-09): this is the "future yt-dlp-audio fallback" this
+    script's own transcribe_meeting() used to cite in its YouTube-rejection
+    reason (see BACKLOG.md) -- embedding restrictions block playback in
+    our iframe, not an audio download, so a channel that disabled
+    embedding (or disabled captions) doesn't have to mean "no transcript
+    possible," only "no transcript from the daily caption fetch."
+
+    Deliberately returns the raw file rather than converting here: the
+    caller runs it through extract_full_audio() (app/platforms/
+    media_probe.py) -- the exact same ffmpeg step every other platform's
+    whole-audio-cache path already uses, which now reads a local file
+    path exactly as readily as a remote URL (media_probe.py's
+    `_ffmpeg_input_header_args()` skips the `-headers` pair for anything
+    that isn't an http(s) URL -- confirmed live 2026-09-09 that ffmpeg's
+    local-file demuxer doesn't just ignore an unrecognized `-headers`
+    option the way an HTTP client library would, it hard-fails with
+    "Option headers not found", which this whole YouTube path was the
+    first caller ever to hit) -- so a YouTube-sourced whole-audio file is
+    indistinguishable from any other platform's by the time
+    slice_cached_audio() touches it, with no separate conversion path to
+    maintain.
+
+    Same `player_client` fallback order as YouTubeAssetFinder._extract_info()
+    (app/platforms/youtube.py) -- android/ios/tv before web, since those
+    have historically not enforced YouTube's "Sign in to confirm you're
+    not a bot" check that hit Render's server IP (see that function's own
+    docstring). This is a genuinely different request shape from the
+    caption-fetch endpoint currently 429-blocked from this Mac (see
+    docs/investigations/youtube_429_block.md) -- a real media/audio
+    stream download, not the caption-track JSON/VTT endpoint -- so the
+    two are expected to have independent availability, which is exactly
+    what main()'s own one-URL confirmation step before a full run exists
+    to check rather than assume.
+
+    Blocking (yt-dlp's downloader is synchronous, like
+    YouTubeAssetFinder._extract_info()) -- callers must run this via
+    asyncio.to_thread().
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    template = str(out_dir / "yt_audio.%(ext)s")
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "outtmpl": template,
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "extractor_args": {
+            "youtube": {"player_client": ["android", "ios", "tv", "web"]}
+        },
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+    except yt_dlp.utils.YoutubeDLError as e:
+        return None, f"{type(e).__name__}: {str(e)[:300]}"
+    matches = sorted(out_dir.glob("yt_audio.*"))
+    if not matches:
+        return None, "yt-dlp reported success but wrote no file"
+    return matches[0], None
+
+
 async def transcribe_meeting(
     engine,
     source_url: str,
@@ -1031,26 +1107,71 @@ async def transcribe_meeting(
         # about this meeting, not a transient failure -- no retry.
         return {"ok": False, "reason": "no usable audio/video source on re-resolve"}
 
+    # WO-136 (2026-09-09): a YouTube-backed video used to be rejected
+    # outright here -- ffprobe/ffmpeg can't read a youtube.com/embed/
+    # page at all (confirmed live on ashlandcowi event 395: resolved
+    # video_format="youtube" correctly, then failed with the opaque
+    # "ffprobe couldn't read the media" instead of a clear reason,
+    # 2026-08-23) -- with the caption-fetch path
+    # (scripts/fetch_youtube_transcripts.py) cited as the only real
+    # option. But a channel that disables embedding elsewhere (or
+    # disables captions) doesn't stop an audio *download* the way it
+    # stops playback in our iframe or the caption endpoint -- see
+    # _yt_dlp_download_best_audio()'s own docstring for the full
+    # reasoning and how this reuses extract_full_audio() for the actual
+    # conversion. Downloaded once, whole, same as every other seek-
+    # hostile progressive source (WO-54/58's whole-audio-cache path) --
+    # there's no meaningful "seek within a chunk" against a video id.
+    youtube_audio_path: Optional[Path] = None
+    youtube_audio_tmpdir: Optional[tempfile.TemporaryDirectory] = None
     if result.video_format == "youtube":
-        # Real, confirmed gap (2026-08-23): process_one()'s own pre-filter
-        # below only catches this using the *stale* video_format on the
-        # original candidate dict -- which --url mode leaves unset on
-        # purpose (see main()'s own comment) and which the backlog-list
-        # path can't guarantee still matches after this fresh re-resolve
-        # either. Without this check, a page whose video delegates to
-        # YouTube (e.g. CivicClerk's own externalMediaUrl-is-a-youtu.be-
-        # link delegation) falls straight through to probe_duration()
-        # below, where ffprobe can't read a youtube.com/embed/ page at
-        # all -- confirmed live on ashlandcowi event 395, which resolved
-        # video_format="youtube" correctly but then failed with the
-        # opaque "ffprobe couldn't read the media" rather than this clear
-        # message.
-        return {
-            "ok": False,
-            "reason": "YouTube-backed video -- needs fetch_youtube_transcripts.py's caption-fetch "
-            "path (or a future yt-dlp-audio fallback, see BACKLOG.md), not direct URL audio "
-            "extraction",
-        }
+        video_id = YouTubeAssetFinder.extract_video_id(
+            result.video_url
+        ) or YouTubeAssetFinder.extract_video_id(source_url)
+        if not video_id:
+            return {
+                "ok": False,
+                "reason": "YouTube-backed video, but no video id could be extracted from "
+                f"{result.video_url!r}",
+            }
+        youtube_audio_tmpdir = tempfile.TemporaryDirectory(
+            prefix="rtr_local_transcribe_yt_"
+        )
+        try:
+            raw_path, dl_reason = await retry_async(
+                lambda: asyncio.to_thread(
+                    _yt_dlp_download_best_audio,
+                    video_id,
+                    Path(youtube_audio_tmpdir.name),
+                ),
+                label=f"yt-dlp audio download for {video_id}",
+                attempts=MEDIA_ATTEMPTS,
+                base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+                max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+                logger=logger,
+                retryable_failure=lambda r: None if r[0] is not None else r[1],
+            )
+        except Exception as e:
+            youtube_audio_tmpdir.cleanup()
+            return {
+                "ok": False,
+                "reason": f"yt-dlp audio download failed after {MEDIA_ATTEMPTS} attempt(s): "
+                f"{type(e).__name__}: {str(e)[:200]}",
+            }
+        if raw_path is None:
+            youtube_audio_tmpdir.cleanup()
+            return {"ok": False, "reason": f"yt-dlp audio download failed: {dl_reason}"}
+
+        youtube_audio_path = Path(youtube_audio_tmpdir.name) / "full_audio.mp3"
+        ok, reason = await extract_full_audio(
+            str(raw_path), source_page_url=source_url, out_path=youtube_audio_path
+        )
+        if not ok:
+            youtube_audio_tmpdir.cleanup()
+            return {
+                "ok": False,
+                "reason": f"converting downloaded YouTube audio failed: {reason}",
+            }
 
     # WO-79 port (this repo's "two independent transcription paths"
     # convention -- CLAUDE.md -- the cloud worker's own fix for this
@@ -1091,6 +1212,27 @@ async def transcribe_meeting(
         if chunk_plan:
             duration = chunk_plan[-1]["start"] + chunk_plan[-1]["duration"]
 
+    if duration is None and youtube_audio_path is not None:
+        # result.video_url is the useless youtube.com/embed/ shell here,
+        # not readable media -- probe the file we already downloaded and
+        # converted instead. A failure at this point is conclusive (the
+        # file exists on local disk, already ffmpeg-validated non-empty
+        # by extract_full_audio() above), so this returns directly rather
+        # than falling through to the generic probe_duration(result.
+        # video_url, ...) below, which would just fail the same way for
+        # the wrong reason.
+        duration = await probe_duration(
+            str(youtube_audio_path), source_page_url=source_url
+        )
+        if duration is None:
+            youtube_audio_tmpdir.cleanup()
+            return {
+                "ok": False,
+                "reason": "ffprobe couldn't read the downloaded YouTube audio "
+                "(this is a real bug, not a transient failure, since the file "
+                "was already validated non-empty)",
+            }
+
     if duration is None:
         duration = await retry_async(
             lambda: probe_duration(result.video_url, source_page_url=source_url),
@@ -1112,6 +1254,8 @@ async def transcribe_meeting(
             "reason": "ffprobe couldn't read the media (unreachable, or not real media)",
         }
     if not is_plausible_meeting_duration(duration):
+        if youtube_audio_tmpdir is not None:
+            youtube_audio_tmpdir.cleanup()
         return {
             "ok": False,
             "reason": f"implausible duration ({duration:.0f}s) -- not a real meeting recording",
@@ -1197,8 +1341,15 @@ async def transcribe_meeting(
     # reasoning to worker/main.py's process_next_chunk() (see its own
     # comment, and tests/test_worker_multi_clip_chunk_plan.py's
     # test_process_next_chunk_does_not_cache_whole_audio_for_a_chunk_plan_job).
-    use_whole_audio_cache = (not chunk_plan) and should_cache_whole_audio(
-        result.video_url, total_chunks
+    # A YouTube meeting always uses the whole-audio-cache path -- there's
+    # no meaningful per-chunk seek against a video id the way there is
+    # against a real progressive/HLS URL, and youtube_audio_path (already
+    # downloaded + converted above) stands in for what extract_full_audio()
+    # would otherwise pull on the first chunk, so should_cache_whole_audio()'s
+    # own is_hls()/multi-chunk gate (meaningless against a youtube.com/
+    # embed/ URL) is bypassed rather than consulted.
+    use_whole_audio_cache = youtube_audio_path is not None or (
+        (not chunk_plan) and should_cache_whole_audio(result.video_url, total_chunks)
     )
     whole_audio_cache_failed = False
 
@@ -1247,103 +1398,118 @@ async def transcribe_meeting(
         )
 
     chunks_done = first_chunk
-    with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
-        whole_audio_path = Path(tmpdir) / "full_audio.mp3"
-        try:
-            for idx in range(first_chunk, total_chunks):
-                chunk_wall_start = time.time()
-                chunk_mono_start = time.monotonic()
-                if chunk_plan:
-                    # WO-79 port: this meeting's chunks are real per-clip
-                    # boundaries, not the usual fixed chunk_size_seconds
-                    # windows -- idx maps directly onto chunk_plan[idx],
-                    # whose own `start` is already this clip's cumulative
-                    # MEETING-relative offset (used below for
-                    # shift_segments(), not the extraction's own start,
-                    # which is always 0.0 -- a whole-clip chunk always
-                    # extracts from the start of that clip's own file).
-                    # Identical split to worker/main.py's
-                    # process_next_chunk() -- see
-                    # tests/test_worker_multi_clip_chunk_plan.py.
-                    entry = chunk_plan[idx]
-                    chunk_media_url = entry["media_url"]
-                    # WO-95: a window WITHIN a clip now, not necessarily a
-                    # whole clip -- .get(..., 0.0) keeps a pre-WO-95 plan
-                    # working (every entry there is a whole clip).
-                    start = entry.get("media_start", 0.0)
-                    dur = entry["duration"]
-                    meeting_offset = entry["start"]
-                else:
-                    chunk_media_url = result.video_url
-                    start = chunk_start(idx, chunk_size_seconds)
-                    dur = chunk_duration(idx, chunk_size_seconds, duration)
-                    meeting_offset = start
-                audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
-                extracted, extraction_error = await retry_async(
-                    lambda: _extract_chunk(
-                        chunk_media_url, whole_audio_path, start, dur, audio_path
-                    ),
-                    label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
-                    attempts=MEDIA_ATTEMPTS,
-                    base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
-                    max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
-                    logger=logger,
-                    retryable_failure=_retryable_extraction_failure,
-                )
-                if not extracted:
-                    reason = (
-                        f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"
-                        + (f": {extraction_error}" if extraction_error else "")
+    try:
+        with tempfile.TemporaryDirectory(prefix="rtr_local_transcribe_") as tmpdir:
+            # Already downloaded + converted above (a separate, longer-lived
+            # tmpdir -- youtube_audio_tmpdir, cleaned up in the `finally`
+            # below) -- cache_path.exists() being true from the start is what
+            # makes _extract_chunk() skip straight to slice_cached_audio()
+            # for every chunk, never calling extract_full_audio() again.
+            whole_audio_path = (
+                youtube_audio_path
+                if youtube_audio_path is not None
+                else Path(tmpdir) / "full_audio.mp3"
+            )
+            try:
+                for idx in range(first_chunk, total_chunks):
+                    chunk_wall_start = time.time()
+                    chunk_mono_start = time.monotonic()
+                    if chunk_plan:
+                        # WO-79 port: this meeting's chunks are real per-clip
+                        # boundaries, not the usual fixed chunk_size_seconds
+                        # windows -- idx maps directly onto chunk_plan[idx],
+                        # whose own `start` is already this clip's cumulative
+                        # MEETING-relative offset (used below for
+                        # shift_segments(), not the extraction's own start,
+                        # which is always 0.0 -- a whole-clip chunk always
+                        # extracts from the start of that clip's own file).
+                        # Identical split to worker/main.py's
+                        # process_next_chunk() -- see
+                        # tests/test_worker_multi_clip_chunk_plan.py.
+                        entry = chunk_plan[idx]
+                        chunk_media_url = entry["media_url"]
+                        # WO-95: a window WITHIN a clip now, not necessarily a
+                        # whole clip -- .get(..., 0.0) keeps a pre-WO-95 plan
+                        # working (every entry there is a whole clip).
+                        start = entry.get("media_start", 0.0)
+                        dur = entry["duration"]
+                        meeting_offset = entry["start"]
+                    else:
+                        chunk_media_url = result.video_url
+                        start = chunk_start(idx, chunk_size_seconds)
+                        dur = chunk_duration(idx, chunk_size_seconds, duration)
+                        meeting_offset = start
+                    audio_path = Path(tmpdir) / f"chunk_{idx}.mp3"
+                    extracted, extraction_error = await retry_async(
+                        lambda: _extract_chunk(
+                            chunk_media_url, whole_audio_path, start, dur, audio_path
+                        ),
+                        label=f"chunk {idx + 1}/{total_chunks} extraction for {source_url}",
+                        attempts=MEDIA_ATTEMPTS,
+                        base_delay=MEDIA_RETRY_BASE_DELAY_SECONDS,
+                        max_delay=MEDIA_RETRY_MAX_DELAY_SECONDS,
+                        logger=logger,
+                        retryable_failure=_retryable_extraction_failure,
                     )
-                    return {"ok": False, "reason": reason + _checkpoint(reason)}
+                    if not extracted:
+                        reason = (
+                            f"ffmpeg extraction failed on chunk {idx + 1}/{total_chunks}"
+                            + (f": {extraction_error}" if extraction_error else "")
+                        )
+                        return {"ok": False, "reason": reason + _checkpoint(reason)}
 
-                raw_segments = await engine.transcribe_chunk(audio_path)
-                # merge_chunk_segments() (not a plain .extend()) -- HLS sources
-                # can restate the previous chunk's last sentence at the head of
-                # this one (extract_chunk_audio()'s fast seek lands on the
-                # nearest preceding HLS segment boundary, not the exact
-                # requested second; confirmed live 2026-08-16 against this same
-                # backlog, Boulder County CO -- see worker/segment_utils.py's
-                # "Seam-duplication dedup" note and BACKLOG_DONE.md). Shifted
-                # by meeting_offset, not `start` -- these are deliberately
-                # different values for a chunk_plan meeting (see above).
-                before = len(all_segments)
-                all_segments = merge_chunk_segments(
-                    all_segments, shift_segments(raw_segments, meeting_offset)
-                )
-                chunks_done = idx + 1
-                dropped = before + len(raw_segments) - len(all_segments)
-                audio_path.unlink(missing_ok=True)
-                dedup_note = (
-                    f", dropped {dropped} seam-duplicate segment(s)" if dropped else ""
-                )
-                logger.info(
-                    "    chunk %d/%d transcribed (%d segments%s)",
-                    idx + 1,
-                    total_chunks,
-                    len(raw_segments),
-                    dedup_note,
-                )
-                _note_if_suspended(
-                    chunk_wall_start,
-                    chunk_mono_start,
-                    f"chunk {idx + 1}/{total_chunks} of {source_url}",
-                )
-                await _thermal_pace(
-                    cooldown_seconds=chunk_cooldown_seconds,
-                    poll_seconds=thermal_poll_seconds,
-                    context=f"chunk {idx + 1}/{total_chunks} of {source_url}",
-                )
-        except BaseException as e:
-            # Deliberately BaseException, not Exception: a Ctrl-C or an
-            # asyncio cancellation three hours into an overnight run is
-            # exactly as expensive to discard as a failed chunk is, and the
-            # checkpoint costs nothing on the way out. Re-raised unchanged
-            # -- this only saves the work, it never swallows the failure
-            # (main()'s own per-meeting except still records it, and a real
-            # interrupt still stops the run).
-            _checkpoint(f"{type(e).__name__}: {str(e)[:200]}")
-            raise
+                    raw_segments = await engine.transcribe_chunk(audio_path)
+                    # merge_chunk_segments() (not a plain .extend()) -- HLS sources
+                    # can restate the previous chunk's last sentence at the head of
+                    # this one (extract_chunk_audio()'s fast seek lands on the
+                    # nearest preceding HLS segment boundary, not the exact
+                    # requested second; confirmed live 2026-08-16 against this same
+                    # backlog, Boulder County CO -- see worker/segment_utils.py's
+                    # "Seam-duplication dedup" note and BACKLOG_DONE.md). Shifted
+                    # by meeting_offset, not `start` -- these are deliberately
+                    # different values for a chunk_plan meeting (see above).
+                    before = len(all_segments)
+                    all_segments = merge_chunk_segments(
+                        all_segments, shift_segments(raw_segments, meeting_offset)
+                    )
+                    chunks_done = idx + 1
+                    dropped = before + len(raw_segments) - len(all_segments)
+                    audio_path.unlink(missing_ok=True)
+                    dedup_note = (
+                        f", dropped {dropped} seam-duplicate segment(s)"
+                        if dropped
+                        else ""
+                    )
+                    logger.info(
+                        "    chunk %d/%d transcribed (%d segments%s)",
+                        idx + 1,
+                        total_chunks,
+                        len(raw_segments),
+                        dedup_note,
+                    )
+                    _note_if_suspended(
+                        chunk_wall_start,
+                        chunk_mono_start,
+                        f"chunk {idx + 1}/{total_chunks} of {source_url}",
+                    )
+                    await _thermal_pace(
+                        cooldown_seconds=chunk_cooldown_seconds,
+                        poll_seconds=thermal_poll_seconds,
+                        context=f"chunk {idx + 1}/{total_chunks} of {source_url}",
+                    )
+            except BaseException as e:
+                # Deliberately BaseException, not Exception: a Ctrl-C or an
+                # asyncio cancellation three hours into an overnight run is
+                # exactly as expensive to discard as a failed chunk is, and the
+                # checkpoint costs nothing on the way out. Re-raised unchanged
+                # -- this only saves the work, it never swallows the failure
+                # (main()'s own per-meeting except still records it, and a real
+                # interrupt still stops the run).
+                _checkpoint(f"{type(e).__name__}: {str(e)[:200]}")
+                raise
+    finally:
+        if youtube_audio_tmpdir is not None:
+            youtube_audio_tmpdir.cleanup()
 
     # Every chunk is done -- drop any checkpoint from an earlier partial run
     # of this same meeting, so it can't be resumed from later (a --url
@@ -1455,26 +1621,16 @@ async def process_one(
     """
     slug = page.get("slug", "?")
 
-    # Cheap pre-filter before any real work: a YouTube-backed page's
-    # video_url is a youtube.com/embed/{id} URL, not a direct-streamable
-    # one -- ffprobe/ffmpeg can't extract audio from it at all. Only an
-    # optimization now, not the sole defense -- it uses the *stale*
-    # video_format on this candidate dict (accurate for the normal
-    # backlog-list path, deliberately left unset for --url, see main()'s
-    # own comment), so it can skip a network round-trip when it already
-    # knows the answer, but transcribe_meeting() below re-checks against
-    # the fresh re-resolve's own video_format regardless -- see that
-    # check's own comment for the real incident (ashlandcowi event 395)
-    # this pre-filter alone didn't catch. See crud.list_transcription_backlog_
-    # candidates()'s own docstring for why these are still returned by the
-    # endpoint rather than filtered server-side.
-    if (page.get("video_format") or "") == "youtube":
-        return {
-            "slug": slug,
-            "status": "skipped",
-            "detail": "YouTube-backed page -- needs fetch_youtube_transcripts.py's caption-fetch path "
-            "(or a future yt-dlp-audio fallback, see BACKLOG.md), not direct URL audio extraction",
-        }
+    # WO-136 (2026-09-09): a YouTube-backed page used to be skipped right
+    # here, cheaply, before any real work -- ffprobe/ffmpeg can't read a
+    # youtube.com/embed/{id} URL directly, and at the time nothing in
+    # this script downloaded audio any other way. transcribe_meeting()
+    # now does (see _yt_dlp_download_best_audio()'s own docstring), so
+    # this pre-filter would just be an incorrect, stale gate on real
+    # capability -- removed rather than updated. See
+    # crud.list_transcription_backlog_candidates()'s own docstring for
+    # why a YouTube page is still returned by the backlog endpoint rather
+    # than filtered server-side.
 
     # detect_platform() fresh, not page["platform"] -- that field is whatever
     # was true at original ingest time, and a domain added to an adapter's
@@ -1604,7 +1760,19 @@ async def main() -> None:
         "without waiting for it to come up in queue order). Same "
         "GET /internal/transcription-backlog "
         "-vs- '/admin/recheck-archive-page?url=' pattern app/main.py already offers for a live "
-        "resolve. Ignores --limit when set.",
+        "resolve. Ignores --limit when set. Mutually exclusive with --urls-file.",
+    )
+    parser.add_argument(
+        "--urls-file",
+        default=None,
+        help="Transcribe every URL in this file (one per line; blank lines and lines starting "
+        "with '#' are skipped), bypassing the oldest-first backlog queue the same way --url "
+        "does -- for a specific, pre-filtered candidate list (e.g. WO-136's 'YouTube pages with "
+        "no transcript and no captions available' list) rather than either one URL or the whole "
+        "backlog. Same per-meeting resume/checkpoint behavior, and the same --chunk-cooldown-"
+        "seconds/--cpu-threads thermal pacing, as every other path through this script -- a long "
+        "file gets exactly the same overnight-safe treatment the plain backlog queue does. "
+        "Mutually exclusive with --url; ignores --limit/--newest-first the same way --url does.",
     )
     parser.add_argument(
         "--engine",
@@ -1722,6 +1890,10 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.url and args.urls_file:
+        logger.error("--url and --urls-file are mutually exclusive.")
+        sys.exit(1)
+
     if not _base_url():
         logger.error("ARCHIVE_BASE_URL is not set (check the repo's .env). Stopping.")
         sys.exit(1)
@@ -1801,7 +1973,12 @@ async def main() -> None:
         chunk_seconds_display,
         args.promote,
         not args.no_resume,
-        args.url or "(oldest-first backlog queue)",
+        args.url
+        or (
+            f"--urls-file {args.urls_file}"
+            if args.urls_file
+            else "(oldest-first backlog queue)"
+        ),
     )
 
     register_all_finders()
@@ -1850,6 +2027,36 @@ async def main() -> None:
                     "video_url": None,
                     "video_format": None,
                 }
+            ]
+        elif args.urls_file:
+            # Same shape as the --url branch above, one dict per line --
+            # see that branch's own comment for why the other fields can
+            # stay unset (process_one() re-resolves fresh regardless).
+            try:
+                raw_lines = Path(args.urls_file).read_text().splitlines()
+            except OSError as e:
+                logger.error("Could not read --urls-file %s: %s", args.urls_file, e)
+                sys.exit(1)
+            urls = [
+                line.strip()
+                for line in raw_lines
+                if line.strip() and not line.strip().startswith("#")
+            ]
+            if not urls:
+                logger.info(
+                    "%s has no URLs to process -- nothing to do.", args.urls_file
+                )
+                return
+            pages = [
+                {
+                    "slug": normalize_url(u),
+                    "platform": detect_platform(u),
+                    "external_id": None,
+                    "source_url_normalized": normalize_url(u),
+                    "video_url": None,
+                    "video_format": None,
+                }
+                for u in urls
             ]
         else:
             # Retries transient failures internally (see _request_json());

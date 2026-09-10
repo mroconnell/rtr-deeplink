@@ -136,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (97)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (98)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -172,6 +172,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (97)
   [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
   [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
   `YouTubeAssetFinder.extract_video_id()`'s regex matches YouTube's own…
+  6 `best_effort` YouTube pages archived a promotional/off-topic video…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -565,9 +566,9 @@ so that work reads together.
 - **[JUST-DO-IT] 82 archived YouTube meetings have embedding switched off by the owner, so our player shows "Video unavailable" while the video is alive on YouTube and the transcript renders beside it.**
   - **Issue**: YouTube's oEmbed returns HTTP 401 for a video whose owner disabled playback on other sites (82 of 95 non-answering videos in the 2026-09-09 study; the watch page reports the video playable and all 82 pages already hold a transcript). The embed on our page then says "Playback on other websites has been disabled by the video owner — Watch on YouTube", verified live on `/m/peachtree-corners-ga-2026-08-27-peachtree-corners-city-council-meeting-august-25`. Deep links into these pages seek nothing.
   - **Impact**: 82 pages (plus every future one from those channels) deliver the transcript but not the product's core promise, a shareable moment in the video. Separately, 13 videos are genuinely gone (7 deleted/404, 3 private/403, 3 malformed ids/400) and 11 of those pages have no transcript either.
-  - **Next action**: record embeddability at ingest (the same one-call oEmbed lookup the study used for channels; a nullable column, feature-detected the `search_tsv` way so either deploy order is safe), and render a thumbnail plus a "Watch on YouTube at 12:34" link — `youtube.com/watch?v=…&t=754s` honours the start time, so the deep link survives — in place of the dead player when it is false. The 13 dead pages want `noindex` and a removal list; that is a product call, filed under Needs a human.
-  - **Constraint**: the check is oEmbed, not the caption fetch — it is not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
-  - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer).
+  - **Next action**: both halves shipped, but only reach *future* resolves, not these 82 already-archived pages. WO-135 (2026-09-09) made the detection real — `YouTubeAssetFinder.resolve_video_id()` reads yt-dlp's own `playable_in_embed` field (not oEmbed, which this entry's Issue line got wrong) at zero extra request cost and sets `YOUTUBE_EMBED_DISABLED_MARKER` (`app/platforms/youtube.py`) on `video_warnings`, and `check_permanent_failure()` lets a caller check it ahead of time. WO-136 (2026-09-09) shipped the consuming side — `archive/templates/meeting_page.html` and `app/static/player.js` both render a "Watch on YouTube" link (`youtube.com/watch?v=…&t=754s`, honouring the deep-linked start time) in place of the dead player whenever `video_warnings` carries that marker, or the player errors at runtime. **Still open**: neither path re-checks a page that already has a transcript — `scripts/fetch_youtube_transcripts.py`'s daily precheck only ever looks at `/internal/transcript-wanted`'s no-transcript queue, and these 82 pages are excluded from it by definition (they already hold one) — so a one-time backfill sweep (call `YouTubeAssetFinder.check_permanent_failure()` per page, POST the video marker to `/internal/pages/{slug}/video-status`) is what's left to actually reach them. The 13 dead pages want `noindex` and a removal list; that is a product call, filed under Needs a human.
+  - **Constraint**: the check reuses the same metadata-only yt-dlp extraction WO-135 already added, not the caption fetch — not the request shape behind `docs/investigations/youtube_429_block.md`, but keep it off the cloud worker's hot path all the same; a periodic sweep from the Mac is a few thousand light requests.
+  - **History**: gov-id enumeration audit, 2026-09-09; per-video statuses in the study's lookup cache `reports/shared_host_lookups.csv` (blank `channel` = did not answer). WO-135's detection and WO-136's consuming side + thin-page fold-in (a *second* shape — a dead embed with no transcript at all, noindexed/delisted until a transcript lands) are both `BACKLOG_DONE.md`.
 
 - **[JUST-DO-IT] `feed_tier3_auto_transcription.py`'s per-line result needs a durable log, not just stdout.**
   - **Issue**: `_push_if_has_video()` already returns a real `[OK]`/`[SKIP]`/`[FAIL]` reason string per queue line, but `main()` only `print()`s it — nothing writes it to a durable file, so once a line is dropped from `tier3_auto_transcription_queue.txt` (the queue always advances "regardless of individual outcomes," `feed_tier3_auto_transcription.py:203-206`) its outcome only survives in that day's GitHub Actions run transcript.
@@ -2007,6 +2008,35 @@ of human step they need.
   against a real, live URL first" rule.
 - **History**: found 2026-09-09 building WO-135's captions/embed/
   video-unavailable markers (`BACKLOG_DONE.md`).
+
+### 6 `best_effort` YouTube pages archived a promotional/off-topic video instead of the real meeting `[NEEDS-AUDIT]`
+
+- **Issue**: while building WO-136's local-transcription candidate list
+  (2026-09-09), 6 of 91 YouTube-no-transcript pages turned out to hold a
+  video that plainly isn't the claimed meeting: "Welcome to Crowley
+  County!" (`/m/crowley-county-co-2025-09-08-welcome-to-crowley-county`),
+  "Greenwood County, Kansas" (generic channel intro, no meeting-shaped
+  title at all), "VFW Appreciation 2025"
+  (`/m/athens-county-oh-2025-09-23-vfw-appreciation-2025`),
+  "HugeDomains.com - Location Matters" (a domain-parking sales video, on
+  a page whose own source URL is `hugedomains.com/domain_profile.cfm`),
+  "Welcome to Rolling Meadows 2019", and "Drone footage over New Haven,
+  Indiana". All 6 are `best_effort_resolve=yes` (generic_fallback) and
+  all 6 resolved from a generic government homepage or an
+  `.../AgendaCenter` root, not a specific meeting's own page.
+- **Impact**: 6 live pages misrepresent a promotional/unrelated video as
+  a named government meeting on a specific date; excluded from WO-136's
+  transcription run for exactly this reason (transcribing a drone video
+  or a domain-parking pitch is not this product's job). Likely a larger,
+  uncounted population — this is only the slice inside one 91-page study.
+- **Next action**: decide a real signal generic_fallback's video-guessing
+  path (`app/platforms/generic_fallback.py`) could check before attaching
+  a homepage's YouTube embed as *the* meeting video — e.g. an implausible
+  duration for the claimed meeting type, or the video's own title/
+  description having no meeting-shaped words at all. Until then, these 6
+  pages want a manual look (unpublish or re-point at a real recording if
+  one exists).
+- **History**: WO-136, 2026-09-09 (`BACKLOG_DONE.md`).
 
 ### WO-34's roll-up calibration gap: a second, smaller defect shape sits below the threshold `[NEEDS-AUDIT]`
 

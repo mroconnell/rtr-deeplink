@@ -15,6 +15,14 @@ the suite would notice.
 
 Seeded rows use a jurisdiction and external_ids no other test uses, per
 this suite's shared-session-DB convention (tests/conftest.py).
+
+WO-136 (2026-09-09) extended both copies of the rule to fold in a second
+shape: a video whose channel disabled embedding elsewhere (WO-135's
+`crud._YOUTUBE_EMBED_DISABLED_MARKER`) counts as empty too, but only
+while the page has no transcript -- see the two `agree:embed-disabled-*`
+shapes in the lockstep test below, and
+test_embedding_disabled_page_is_thin_only_until_a_transcript_lands for
+the "comes back on its own" behavior specifically.
 """
 
 from fastapi.testclient import TestClient
@@ -169,6 +177,30 @@ async def test_sql_predicate_and_python_twin_agree_on_every_shape():
             "agenda_link": "https://example.com/y.pdf",
             "agenda_items": [{"start": 0, "text": "Roll call"}],
         },
+        # WO-136: a video whose channel disabled embedding elsewhere
+        # (WO-135's marker) is folded into the same empty/thin shape --
+        # but only while there's no transcript to redeem it.
+        "agree:embed-disabled-no-transcript": {
+            "video_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            "video_format": "youtube",
+            "video_warnings": [crud._YOUTUBE_EMBED_DISABLED_MARKER],
+        },
+        "agree:embed-disabled-with-transcript": {
+            "video_url": "https://www.youtube.com/embed/dQw4w9WgXcR",
+            "video_format": "youtube",
+            "video_warnings": [crud._YOUTUBE_EMBED_DISABLED_MARKER],
+            "segments": [{"start": 0, "end": 1, "text": "hello"}],
+            "transcript_language": "en",
+        },
+        # Agenda items present alongside the dead embed don't cure it --
+        # the broken promise (no deep-linkable transcript) is the thing
+        # being hidden, and an agenda is a different axis entirely.
+        "agree:embed-disabled-with-agenda-no-transcript": {
+            "video_url": "https://www.youtube.com/embed/dQw4w9WgXcS",
+            "video_format": "youtube",
+            "video_warnings": [crud._YOUTUBE_EMBED_DISABLED_MARKER],
+            "agenda_items": [{"start": 0, "text": "Call to order"}],
+        },
     }
 
     listed = set()
@@ -188,3 +220,40 @@ async def test_sql_predicate_and_python_twin_agree_on_every_shape():
             f"{external_id}: SQL says empty={sql_says_empty}, "
             f"Python says empty={python_says_empty}"
         )
+
+
+async def test_embedding_disabled_page_is_thin_only_until_a_transcript_lands():
+    """Correctness, not just agreement (WO-136): a page whose channel
+    disabled embedding elsewhere is noindexed and excluded from listings
+    while it holds no transcript, and comes back on its own -- with no
+    un-hide step -- the moment one is pushed (the local Whisper run, or
+    the daily caption fetch, landing a real TranscriptVersion)."""
+    slug = await _seed(
+        "thin:embed-disabled-recheck",
+        video_url="https://www.youtube.com/embed/dQw4w9WgXcT",
+        video_format="youtube",
+        video_warnings=[crud._YOUTUBE_EMBED_DISABLED_MARKER],
+    )
+
+    result = await crud.list_pages(jurisdiction=JX, page_size=100)
+    assert slug not in {p["slug"] for p in result["pages"]}
+    page = client.get(f"/m/{slug}")
+    assert '<meta name="robots" content="noindex">' in page.text
+
+    # A transcript lands (e.g. pushed by scripts/transcribe_backlog_locally.py)
+    # -- the video is still not embeddable (video_warnings is untouched),
+    # but the page is no longer thin.
+    payload = _payload(
+        "thin:embed-disabled-recheck",
+        video_url="https://www.youtube.com/embed/dQw4w9WgXcT",
+        video_format="youtube",
+        video_warnings=[crud._YOUTUBE_EMBED_DISABLED_MARKER],
+        segments=[{"start": 0, "end": 1, "text": "hello"}],
+        transcript_language="en",
+    )
+    await crud.ingest_resolution(payload, payload["source_url"])
+
+    result = await crud.list_pages(jurisdiction=JX, page_size=100)
+    assert slug in {p["slug"] for p in result["pages"]}
+    page = client.get(f"/m/{slug}")
+    assert '<meta name="robots" content="noindex">' not in page.text

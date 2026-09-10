@@ -575,7 +575,7 @@ function wireReportProblemForm() {
   });
 }
 
-function initVideo(videoUrl, videoFormat) {
+function initVideo(videoUrl, videoFormat, videoWarnings) {
   const section = document.getElementById('videoSection');
 
   if (!videoUrl) {
@@ -583,6 +583,15 @@ function initVideo(videoUrl, videoFormat) {
     return;
   }
   section.hidden = false;
+
+  // Marker already known from this resolve (WO-135) -- skip the iframe
+  // entirely rather than attempting a load we already know will fail.
+  // See renderYouTubeEmbedFallback()'s own comment for why this must
+  // render identically to the onError path below.
+  if (videoFormat === 'youtube' && (videoWarnings || []).includes(EMBEDDING_DISABLED_VIDEO_WARNING)) {
+    renderYouTubeEmbedFallback(videoUrl);
+    return;
+  }
 
   if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
@@ -715,6 +724,20 @@ function initNativeVideo(videoUrl, videoFormat) {
 // --- YouTube (PrimeGov delegates here too) -- no direct video file URL
 // exists, so playback goes through an embedded iframe + the YouTube
 // IFrame Player API instead of the native <video>/hls.js pathway above.
+
+// Exact string WO-135 writes into video_warnings when a channel has
+// disabled embedding outside YouTube -- must match
+// app/platforms/youtube.py's YOUTUBE_EMBED_DISABLED_MARKER (also
+// independently re-declared as archive/db/crud.py's
+// _YOUTUBE_EMBED_DISABLED_MARKER -- WO-135's own "duplicate with a
+// cross-reference comment" convention across the app/archive service
+// boundary, same as is_likely_garbled()/_GARBLED_MARKER) byte-for-byte,
+// or a page carrying it silently falls back to the generic onError
+// message below
+// instead of renderYouTubeEmbedFallback().
+const EMBEDDING_DISABLED_VIDEO_WARNING =
+  'YouTube: embedding is disabled by the channel; watch on YouTube';
+
 let _youtubeApiLoadPromise = null;
 
 function loadYouTubeIframeApi() {
@@ -736,6 +759,80 @@ function loadYouTubeIframeApi() {
 function extractYouTubeVideoId(embedUrl) {
   const match = /\/embed\/([A-Za-z0-9_-]{11})/.exec(embedUrl || '');
   return match ? match[1] : null;
+}
+
+// Renders a "Watch on YouTube" link in place of the dead iframe -- used
+// both proactively (initVideo(), when EMBEDDING_DISABLED_VIDEO_WARNING is
+// already present in video_warnings from the resolve itself) and
+// reactively (initYouTubeVideo()'s onError, when a channel disables
+// embedding sometime after WO-135's own oEmbed check last ran). Both
+// paths call this same function so the page reads identically either
+// way, per WO-136. youtube.com/watch?v=...&t=NNs honors the deep-linked
+// moment (getDeepLinkTime(), shared_static/deep_link.js) the same way
+// buildYouTubePlayerVars() does for a working embed, so a shared link
+// still lands the reader at the right point in the meeting.
+function renderYouTubeEmbedFallback(embedUrl) {
+  document.getElementById('meetingVideo').hidden = true;
+  document.getElementById('bigPlayButton').hidden = true;
+  let container = document.getElementById('youtubePlayerContainer');
+  if (!container) return;
+  if (container.tagName === 'IFRAME') {
+    // Live-verified 2026-09-09 against a real embedding-disabled video
+    // (WO-136): by the time onError fires, YT.Player has already replaced
+    // the original <div id="youtubePlayerContainer"> with an <iframe>
+    // carrying the same id (its normal construction behavior, not
+    // specific to an error). Appending content into an <iframe> element
+    // only ever produces invisible "browser doesn't support iframes"
+    // fallback nodes -- YouTube's own in-frame "Video unavailable...
+    // disabled by the video owner" placard still renders on top,
+    // unchanged, which is what a real browser check caught that reading
+    // the resolve JSON alone would not have. Swap the dead iframe out for
+    // a fresh element instead of writing into it.
+    const replacement = document.createElement('div');
+    replacement.id = 'youtubePlayerContainer';
+    replacement.className = container.className;
+    container.replaceWith(replacement);
+    container = replacement;
+  }
+  container.hidden = false;
+  container.innerHTML = '';
+
+  const note = document.createElement('p');
+  note.className = 'youtube-embed-disabled-note';
+  note.textContent = 'This channel has disabled embedding outside YouTube, so playback only works on youtube.com.';
+  container.appendChild(note);
+
+  const videoId = extractYouTubeVideoId(embedUrl);
+  if (videoId) {
+    const deepLinkTime = getDeepLinkTime();
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
+      + (deepLinkTime !== null ? `&t=${Math.max(0, Math.floor(deepLinkTime))}s` : '');
+    const link = document.createElement('a');
+    link.href = watchUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'watch-on-youtube-link';
+    link.textContent = 'Watch on YouTube ↗';
+    container.appendChild(link);
+  }
+
+  // No live adapter exists once this has run, whether that was known in
+  // advance (the proactive initVideo() check) or only just discovered
+  // (this onError callback firing). handleResolveResponse() already
+  // decided noTranscriptLive vs. noTranscriptManual before initVideo()
+  // ever runs, using data.video_warnings alone -- which the reactive
+  // case has no way to have anticipated -- so this corrects it
+  // unconditionally rather than trusting that earlier decision. Live-
+  // verified 2026-09-09: a real embedding-disabled video reached exactly
+  // this reactive path (no marker in video_warnings yet, a genuine
+  // runtime onError) and would otherwise have left a frozen "0:00" and a
+  // "Copy link to this moment" button with no click handler wired.
+  const noTranscriptLive = document.getElementById('noTranscriptLive');
+  const noTranscriptManual = document.getElementById('noTranscriptManual');
+  if (noTranscriptLive && noTranscriptManual) {
+    noTranscriptLive.hidden = true;
+    noTranscriptManual.hidden = false;
+  }
 }
 
 function createYouTubeAdapter(ytPlayer) {
@@ -822,9 +919,13 @@ async function initYouTubeVideo(embedUrl) {
         wireSharedControls(adapter);
         applyDeepLink(adapter);
       },
+      // A live YT.PlayerError -- most commonly the channel disabling
+      // embedding sometime after this page's own data was last resolved
+      // (WO-135's oEmbed check runs periodically, not on every view).
+      // Same fallback as the proactive marker-present case above, per
+      // this file's "must render identically either way" rule.
       onError: () => {
-        errorEl.textContent = 'Video failed to load; source link only.';
-        errorEl.hidden = false;
+        renderYouTubeEmbedFallback(embedUrl);
       },
     },
   });
@@ -1348,6 +1449,12 @@ async function init() {
   // "nothing on this page is guaranteed" -- see ResolvedMeeting's own
   // docstring.
   const bestEffort = !!data.best_effort;
+  // WO-136: no player adapter is ever created for this page (see
+  // initVideo()'s own check above) -- used below to keep the
+  // no-transcript block from claiming a live playhead it doesn't have.
+  const videoEmbeddingDisabled = (data.video_warnings || []).includes(
+    EMBEDDING_DISABLED_VIDEO_WARNING
+  );
 
   metaEl.innerHTML = `<h1>${escapeHtml(data.title || 'Meeting')}</h1>` +
     `<p class="source-link"><a href="${escapeHtml(data.source_url)}" target="_blank" rel="noopener noreferrer">View original source &#8599;</a></p>` +
@@ -1404,10 +1511,20 @@ async function init() {
       document.getElementById('noTranscriptManual').hidden = false;
     } else {
       renderWarnings(document.getElementById('transcriptMissingWarnings'), transcriptWarnings);
+      if (videoEmbeddingDisabled) {
+        // Same "no live playhead" problem as the best-effort case above,
+        // a different reason (WO-136): initVideo() never creates a player
+        // adapter for a dead YouTube embed either, so #noTranscriptTime
+        // would sit frozen at 0:00 and "Copy link to this moment" would
+        // have no click handler at all (both only ever wired from a real
+        // adapter's onReady, via wireSharedControls()).
+        document.getElementById('noTranscriptLive').hidden = true;
+        document.getElementById('noTranscriptManual').hidden = false;
+      }
     }
   }
 
-  initVideo(data.video_url, data.video_format);
+  initVideo(data.video_url, data.video_format, data.video_warnings);
 }
 
 // The best-effort page's video line: a plain, tentative "here's what we

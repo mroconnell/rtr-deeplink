@@ -4586,9 +4586,12 @@ def _has_agenda_condition():
 
 
 def _is_empty_page_condition():
-    """SQL predicate for a "zero-value" page: no video, no agenda items and
-    no TranscriptVersion of any kind. Such a page has nothing a visitor can
-    watch or read -- just a title/date shell.
+    """SQL predicate for a "zero-value" page. Two shapes match, both
+    lacking any TranscriptVersion: (1) no video, no agenda items either --
+    a bare title/date shell -- or (2) a video whose embed is permanently
+    dead (carries WO-135's `_YOUTUBE_EMBED_DISABLED_MARKER`) with no
+    transcript to redeem it, added WO-136 (see below). Either way there's
+    nothing a visitor can watch or read.
 
     `agenda_link` is deliberately NOT counted as content (2026-08-25, WO-62
     -- it was, until Google flagged /m/fairview-tn-2025-10-02-regular-meeting
@@ -4623,6 +4626,19 @@ def _is_empty_page_condition():
 
     "Any TranscriptVersion", not "a default one": a version that exists
     but was demoted still means the page holds real text.
+
+    A second shape counts as empty too (WO-136, 2026-09-09): a page whose
+    video carries _YOUTUBE_EMBED_DISABLED_MARKER (WO-135's marker for
+    "this channel disabled embedding elsewhere") and has no transcript.
+    Unlike the no-video/no-agenda/no-transcript shape above, this one
+    ignores agenda_items on purpose -- an agenda doesn't fix the broken
+    promise (a dead player, no deep-linkable transcript), so a page with
+    one is still folded in here. It's a query-time OR with the original
+    shape rather than a replacement, for the same reason the whole
+    predicate is query-time (see above): the moment a local Whisper run
+    (or the daily caption fetch) pushes a transcript, `~has_any_version`
+    flips and the page reappears in /meetings, the sitemap and the feed
+    with no un-hide step.
     """
     # Aliased + explicitly correlated to MeetingPage only: list_pages()
     # already outer-joins TranscriptVersion (the default version) in the
@@ -4635,10 +4651,20 @@ def _is_empty_page_condition():
         .correlate(MeetingPage)
         .exists()
     )
-    return and_(
-        or_(MeetingPage.video_url.is_(None), MeetingPage.video_url == ""),
-        ~_has_agenda_condition(),
-        ~has_any_version,
+    # video_warnings is a JSON list, cast to text the same way
+    # _has_agenda_condition() casts agenda_items -- portable across
+    # Postgres and SQLite, and a plain substring check is safe here since
+    # the marker string contains no `%`/`_` LIKE metacharacters.
+    video_embedding_disabled = cast(MeetingPage.video_warnings, Text).like(
+        f"%{_YOUTUBE_EMBED_DISABLED_MARKER}%"
+    )
+    return or_(
+        and_(
+            or_(MeetingPage.video_url.is_(None), MeetingPage.video_url == ""),
+            ~_has_agenda_condition(),
+            ~has_any_version,
+        ),
+        and_(video_embedding_disabled, ~has_any_version),
     )
 
 

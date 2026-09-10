@@ -32,7 +32,7 @@ import logging
 import re
 import tempfile
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Union
 
 from .video_formats import is_audio_only_format, is_iframe_embed_format
 
@@ -61,6 +61,39 @@ def youtube_thumbnail_url(video_url: Optional[str]) -> Optional[str]:
     if not match:
         return None
     return f"https://i.ytimg.com/vi/{match.group(1)}/hqdefault.jpg"
+
+
+def youtube_watch_url(
+    video_url: Optional[str], t: Optional[Union[str, int, float]] = None
+) -> Optional[str]:
+    """The real youtube.com/watch link for a stored (iframe-embed)
+    `video_url` -- WO-136's "Watch on YouTube" fallback, rendered by
+    meeting_page.html in place of the dead iframe when video_warnings
+    carries WO-135's EMBEDDING_DISABLED_VIDEO_WARNING marker.
+
+    `t` is the request's own `?t=` deep-link query param (archive/main.py's
+    `/m/{slug}` route already types it `Optional[int]`; a plain numeric
+    string works too) -- youtube.com/watch honors `&t=NNs` the same way the
+    working embed's `start` playerVar does (see
+    shared_static/deep_link.js's buildYouTubePlayerVars()), so a shared
+    deep link still lands the reader at the right moment even off-site.
+    Malformed/negative input degrades to no `&t=` rather than raising --
+    a slightly-wrong query param on an already-broken embed shouldn't be
+    what breaks the one link that still works.
+    """
+    if not video_url:
+        return None
+    match = _YOUTUBE_ID_RE.search(video_url)
+    if not match:
+        return None
+    url = f"https://www.youtube.com/watch?v={match.group(1)}"
+    if t is not None:
+        try:
+            seconds = max(0, int(float(t)))
+            url += f"&t={seconds}s"
+        except (TypeError, ValueError):
+            pass
+    return url
 
 
 # --- Which frame to grab -------------------------------------------------
