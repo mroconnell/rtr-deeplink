@@ -16,6 +16,180 @@ three LIKE shapes) plus their Python re-checks and the coverage index
 all ask for membership rather than equality. Pinned by
 `test_a_two_province_city_sits_on_both_province_pages_and_renders`.
 
+## WO-143: can a queued video's duration/date/size be learned cheaply without downloading it? Yes, on every tier-3 platform — real 25-entry probe, per-platform recipe, and cost table [Investigated 2026-09-10]
+
+Ryan's pilot ask, 2026-09-10: can the cloud auto-transcription queue
+(`scripts/tier3_auto_transcription_queue.txt`) learn a queued video's
+duration/date/size cheaply enough to prefer short-but-plausible meetings
+("over nine minutes, or the equivalent file size for video, or the
+appropriate file size for audio") and refuse dead links, before spending
+a real ingest + transcription job on it? Read-only pilot — no ingests, no
+queue edits, no media downloads; results feed a `BACKLOG.md` entry
+(above, under Ship next), not code yet.
+
+**Method.** 20 entries added to the queue 2026-09-09/10 (via `git show`
+on the commits that touched `tier3_auto_transcription_queue.txt` in that
+window, intersected with what's still actually queued) plus 5 older
+entries, picked to span every platform the queue carries: YouTube,
+Granicus (both `MediaPlayer.php` and `player/clip/` URL shapes),
+CivicClerk, Vimeo, Swagit, Cablecast, and TelVue. Each line was run
+through the real `detect_platform()` + `finder.resolve(url)` path (the
+same resolve `feed_tier3_auto_transcription.py` already does before
+ingest — a real page/API fetch, not a media download) to get the actual
+`video_url`, then probed once per platform-appropriate method: YouTube
+via `yt_dlp.YoutubeDL(skip_download=True).extract_info(download=False)`
+(same `android/ios/tv/web` `player_client` fallback order
+`app/platforms/youtube.py`'s `_extract_info` already uses, but without
+that function's caption-track fetch — metadata only); an `.m3u8` URL via
+one GET on the master playlist plus one GET on the variant playlist it
+names (see below — the master alone reports 0 segments); a direct
+`.mp4`/`.mov` via one HEAD (`Content-Length`/`Last-Modified`) plus
+`app/platforms/media_probe.py`'s existing `probe_duration()` (ffprobe,
+already used by the worker at claim time); Vimeo via its own public
+oEmbed endpoint (`vimeo.com/api/oembed.json`, the same one
+`app/platforms/vimeo.py`'s module docstring documents as the only
+server-fetchable metadata Vimeo allows); TelVue via the page's own
+embedded `Player.setupData` JSON, which carries a `duration` field
+directly (see `app/platforms/telvue.py`'s module docstring).
+
+**A `.m3u8` URL needs 2 GETs, not 1 — confirmed live on all 9 HLS
+entries in this sample.** Granicus, Swagit (which resolves through
+Granicus's own `archive-stream.granicus.com` CDN — already documented in
+`swagit.py`), and Cablecast all hand back a *master* playlist
+(`#EXT-X-STREAM-INF` + one nested URI per quality rendition, 125-595
+bytes) with **zero** `#EXTINF` entries — the real segment list, and the
+real summed duration, lives one level down in the variant playlist the
+master names (`chunklist.m3u8` / `1080p.m3u8` / etc, 193B-442KB
+depending on meeting length). Neither playlist carries a total media
+size — HLS has no single `Content-Length`. YouTube's `filesize` field is
+likewise populated only for the specific low-quality progressive format
+the anti-bot-safe `android`/`ios`/`tv`
+clients return (confirmed on one sample, KF4N78Gz64g: format `18`,
+360p, `113,897,164` bytes at zero extra request cost — but not
+representative of what a viewer actually streams, and not populated on
+every video).
+
+**6 of 25 (24%) were dead**, by four different real signals: 2 YouTube
+videos were scheduled-but-not-started live events (yt-dlp's own error:
+"This live event will begin in a few moments" / "...in 4 days" — a
+real, current, correct rejection, not a probe failure); 1 CivicClerk
+resolve (Bainbridge Island WA, event 1071) hit a 20.2s timeout and never
+returned; 1 Cablecast resolve (San Bernardino CA, show 3557) succeeded
+but returned no `video_url` at all; and both TelVue samples resolved to
+`livestream.telvue.com` (a live-broadcast placeholder host, not an
+archived VOD) whose page JSON reported `"duration": 0` — a real trap for
+a naive "duration present" check, since the field exists and parses
+fine, it's just describing a live stream, not a recording. One more
+alive entry (Aledo ISD, TX, Swagit, `play/08082019-1085`) resolved to a
+real but 35.7-second clip — under every duration rule tried below, and
+also under the codebase's existing `MIN_PLAUSIBLE_MEETING_SECONDS`
+(60s) floor, a useful cross-check that the two independently-derived
+floors agree on this case.
+
+### The 25 entries
+
+Duration is ffprobe/EXTINF-sum/yt-dlp/oEmbed/page-JSON as appropriate;
+Size is a real `Content-Length` only where one exists (CivicClerk mp4)
+or a real `filesize` from yt-dlp's metadata (1 YouTube sample, to show
+it's sometimes free) — HLS has no single Content-Length to report (see
+above), and Vimeo's real media file is unreachable at all (403, see
+`vimeo.com`'s adapter docstring), so those cells are blank rather than
+guessed. "Rules kept" is `A` = duration > 9 min, `B` = 9 min-6 h
+(implies A); "dead" entries keep neither.
+
+**Added 2026-09-09/10 (20):**
+
+| Platform | Probe method | Duration | Date | Size | Probe time | Probe bytes | Dead/alive | Rules kept |
+|---|---|---|---|---|---|---|---|---|
+| YouTube (`KF4N78Gz64g`) | yt-dlp metadata | 69.4 min | 2026-01-16 | 113.9 MB (360p) | 1.66s | 0 | alive | A, B |
+| YouTube (`jX5Z82N_X3o`) | yt-dlp metadata | 9.8 min | 2026-07-06 | — | 2.71s | 0 | alive | A, B |
+| YouTube (`3J2iFWUlD1w`) | yt-dlp metadata | 29.2 min | 2025-04-29 | — | 1.85s | 0 | alive | A, B |
+| YouTube (`8Fxfcd47cFA`) | yt-dlp metadata | 24.1 min | 2026-07-27 | — | 1.68s | 0 | alive | A, B |
+| YouTube (`-pNyufIO7xM`) | yt-dlp metadata | — | — | — | 1.56s | 0 | **dead** — live event not yet started | none |
+| Granicus (albanyca) | HLS master+variant GET | 60.0 min | 2021-08-04 | — | ~2.3s | ~49.1 KB | alive | A, B |
+| Granicus (albemarle) | HLS master+variant GET | 304.7 min (5.1h) | 2026-03-04 | — | 5.70s | 87.4 KB | alive | A, B |
+| Granicus (anaheim) | HLS master+variant GET | 506.9 min (8.45h) | 2026-08-25 | — | 1.65s | 442.0 KB | alive | A only — real meeting, over a 6h ceiling |
+| Granicus (ashland-va) | HLS master+variant GET | 34.3 min | 2026-09-01 | — | 1.96s | 28.9 KB | alive | A, B |
+| CivicClerk (anacorteswa) | HEAD + ffprobe | 135.7 min (2.26h) | 2026-09-08 | 4,051.8 MB | 3.14s | — | alive | A, B |
+| CivicClerk (antiochca) | HEAD + ffprobe | 137.7 min (2.29h) | 2026-09-08 | 2,210.6 MB | 0.67s | — | alive | A, B |
+| CivicClerk (bainbridgeislandwa) | resolve() only | — | — | — | 20.2s (timeout) | — | **dead** — resolve timed out | none |
+| Vimeo (`1219072948`) | oEmbed | 37.1 min | 2026-08-17 | unreachable (403) | 0.26s | 1.2 KB | alive | A, B |
+| Vimeo (`537299140`) | oEmbed | 37.4 min | 2021-04-15 | unreachable (403) | 0.17s | 1.3 KB | alive | A, B |
+| Swagit (rowletttx) | HLS master+variant GET | 177.4 min (2.96h) | 2026-05-05 | — | 7.24s | 139.5 KB | alive | A, B |
+| Swagit (ryeny) | HLS master+variant GET | 21.3 min | 2014-01-29 | — | 1.04s | 4.1 KB | alive | A, B |
+| Cablecast (salem) | HLS master+variant GET | 12.6 min | 2025-08-09 | — | 0.36s | 7.7 KB | alive | A, B |
+| Cablecast (sanbernardino) | resolve() only | — | 2020-10-20 | — | 0.37s | 0 | **dead** — no `video_url` returned | none |
+| TelVue (stream/819, erochesterny2) | page JSON | 0.0 min | — | — | 0.40s | 10.6 KB | **dead/suspect** — live placeholder, not archived VOD | none |
+| TelVue (stream/983, savannahga.gov) | page JSON | 0.0 min | — | — | 0.21s | 11.0 KB | **dead/suspect** — live placeholder | none |
+
+**Older entries (5):**
+
+| Platform | Probe method | Duration | Date | Size | Probe time | Probe bytes | Dead/alive | Rules kept |
+|---|---|---|---|---|---|---|---|---|
+| YouTube (`hhU7j0za5So`) | yt-dlp metadata | 97.2 min (1.62h) | 2026-08-29 | — | 1.69s | 0 | alive | A, B |
+| YouTube (`ESfzST-yOSM`, middletown.delaware.gov) | yt-dlp metadata | — | — | — | 1.85s | 0 | **dead** — future live event (begins in 4 days) | none |
+| Granicus (agourahills) | HLS master+variant GET | 86.9 min (1.45h) | 2025-06-25 | — | 3.4s | 74.5 KB | alive | A, B |
+| CivicClerk (alleganycomd) | HEAD + ffprobe | 31.6 min (0.53h) | 2025-12-18 | 1,235.1 MB | 1.81s | — | alive | A, B |
+| Swagit (aledoisdtx) | HLS master+variant GET | 0.6 min | 2019-08-08 | — | 0.45s | 318 B | alive, **implausible** — 35.7s clip, also under the app's own 60s floor | none |
+
+### Cost per platform, and what to build from it
+
+- **YouTube**: cheapest and most complete — one metadata-only yt-dlp
+  call, 1.6-2.7s, **zero video bytes**, real duration/date/availability
+  every time, occasionally a real size too. No platform this session
+  probed was cheaper.
+- **Granicus / Swagit / Cablecast (all HLS)**: 2 small GETs
+  (0.3-7.2s, 127B-442KB total, scaling with meeting length since the
+  variant playlist is one `#EXTINF` line per segment), real duration.
+  **No cheap total-size signal** — HLS has no single `Content-Length`;
+  a per-segment HEAD (one extra request) gives a real bytes/segment
+  sample, and the master playlist's own `EXT-X-STREAM-INF BANDWIDTH`
+  attribute (already fetched, free) is a rougher zero-cost proxy for the
+  same thing per rendition.
+- **CivicClerk**: one HEAD + one ffprobe call, 0.7-3.1s, real duration
+  **and** real exact size (`Content-Length`) — the only platform in this
+  sample with both for free.
+- **Vimeo**: one oEmbed GET, ~0.2-0.3s, real duration/date — but **no
+  size signal exists at all**, ever, on this platform (the real media
+  file and its signed config both 403 to a non-browser client, per
+  `app/platforms/vimeo.py`'s own module docstring; this isn't a probe
+  limitation, it's the platform).
+- **TelVue**: one page GET, ~0.2-0.4s, real duration when the resolved
+  stream is an actual archived VOD — **but treat `duration == 0`, or a
+  `livestream.telvue.com` host, as suspect, not a real zero-length
+  meeting**; both TelVue samples here were live placeholders.
+
+**Observed bytes/minute** (real, this session, single- or few-sample —
+flagged where only one measurement exists, per this repo's "don't claim
+a data path works without a positive example" rule):
+CivicClerk direct mp4 **~28 MB/min** (3 samples: 29.9, 16.1, 39.1);
+Granicus/Swagit HLS **~14.7 MB/min** (1 segment sample, albanyca);
+Cablecast HLS **~24.1 MB/min** (1 segment sample, salem's 1080p
+rendition — the top one; lower renditions are proportionally smaller
+per their own declared `BANDWIDTH`); YouTube **~1.6 MB/min** (1 sample,
+360p only — not representative of playback quality); this app's own
+**audio**-extraction target, `media_probe.extract_full_audio()`'s
+32kbps mono mp3, is **0.24 MB/min** — the only real "appropriate file
+size for audio" number available, since no platform probed here serves
+an audio-only source directly.
+
+**Recommendation** (written up as the `BACKLOG.md` entry above): probe
+at **queue-feed time** (inside `feed_tier3_auto_transcription.py`'s
+`_push_if_has_video()`, right after `resolve()` and before `_ingest()`,
+plus the same spot in `feed_granicus_auto_transcription.py`), not only
+at worker claim time. The worker's existing `probe_duration()` +
+`is_plausible_meeting_duration()` gate is real and should stay — but it
+only protects a transcription job's cost, and runs after a page already
+exists in the Archive. A queue-time probe, logged to an append-only
+sidecar CSV beside the queue file (the queue itself stays a plain URL
+list), can reject a dead link or an implausible clip *before* it ever
+becomes a page. Use duration as the primary signal everywhere it's
+cheaply available (every platform here) and treat size as a fallback
+only, since a size floor never had to do real work in this sample.
+Don't hard-reject on a 6-hour ceiling — Anaheim's real 8.45h meeting
+in this sample is the counterexample; log/flag long durations instead,
+the way the existing 14h ceiling already does.
+
 ## Pins for the type-initial hosts and Lloydminster — the right state shows on every page the 2026-09-10 dry run had flagged [Done 2026-09-10]
 
 Ryan: minted names being displayed is right, and the exceptions get
