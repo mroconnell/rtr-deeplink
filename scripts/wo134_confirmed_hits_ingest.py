@@ -139,6 +139,7 @@ from app.platforms.base import (  # noqa: E402
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.platforms import granicus_channel  # noqa: E402
+from app.platforms import queue_probe  # noqa: E402
 from app.platforms.youtube_channel import is_publishable  # noqa: E402
 from app.utils.gov_registry.registry import government_for_id  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
@@ -294,6 +295,95 @@ JURISDICTION_CHECK_HOOK = None
 # same append-only sidecar (tier3_auto_transcription_queue_probe.csv)
 # every other probe caller already uses.
 PROBE_HOOK: Optional[Callable[[object, str], Awaitable[bool]]] = None
+
+# WO-170 hook (2026-09-10): Ryan's rule -- "after it rejects the first
+# video, it would be ideal if the probe selected another video and
+# actually checked the size of that video file or its duration to
+# ensure that it was at least 9 minutes long but not longer than 40
+# minutes. It could check several videos this way and if all the videos
+# were over 40 minutes, then select the shortest available video in the
+# list." When set, this REPLACES PROBE_HOOK's plain accept/reject for
+# every tier-3 (video, no captions) candidate resolve_seed()'s candidate
+# loops try: instead of returning on the first candidate that merely
+# passes the probe, each loop probes every candidate it resolves (still
+# capped at MAX_CANDIDATES_TRIED, still newest-first, still
+# CANDIDATE_DELAY_SECONDS apart -- no change to the politeness budget),
+# stopping early only once it finds a newest-first in-window match (no
+# later, older candidate could ever beat that one -- see
+# queue_probe.select_best_probe_result()'s own docstring), and hands
+# every candidate it did probe to that function once the loop ends.
+# Real captions (tier 1/2) still short-circuit immediately without ever
+# calling this hook, same as PROBE_HOOK.
+#
+# Signature: async hook(result, candidate_url: str) ->
+# queue_probe.ProbeResult (NOT a bool -- this is what lets the caller
+# compare durations across several candidates instead of only knowing
+# pass/fail on one). None (the default) preserves the exact WO-169
+# behavior for every existing caller, PROBE_HOOK included -- see
+# _probe_candidate_for_selection()'s own comment. build_probe_select_hook()
+# below is the one real implementation (wired to the shared sidecar);
+# this module's own main() and scripts/hub_sweep_wo126.py's main() both
+# set it by default so a direct run of either pipeline gets Ryan's rule
+# automatically, per BACKLOG_DONE.md's WO-170 entry.
+PROBE_SELECT_HOOK: Optional[
+    Callable[[object, str], Awaitable["queue_probe.ProbeResult"]]
+] = None
+
+
+def build_probe_select_hook() -> Callable[
+    [object, str], Awaitable["queue_probe.ProbeResult"]
+]:
+    """The one real PROBE_SELECT_HOOK implementation -- calls the real
+    WO-144 probe (app.platforms.queue_probe.probe_queue_entry()), same as
+    scripts/wo169_probe_rejected_rerun.py's own _real_probe_hook, but
+    returns the whole ProbeResult instead of a bool and does NOT write to
+    the sidecar itself (see _finish_probe_selection()'s own comment for
+    why that write is deferred until the selection among candidates is
+    actually made). A single definition, reused by this module's own
+    main(), scripts/hub_sweep_wo126.py's main(), and any future driver
+    that wants Ryan's selection rule -- not one ad hoc hook per script."""
+
+    async def _hook(result, candidate_url: str) -> "queue_probe.ProbeResult":
+        return await queue_probe.probe_queue_entry(
+            candidate_url,
+            video_url=result.video_url,
+            source_page_url=result.source_url or candidate_url,
+        )
+
+    return _hook
+
+
+async def _probe_candidate_for_selection(result, candidate_url: str):
+    """Returns a queue_probe.ProbeResult for a tier-3 candidate when
+    PROBE_SELECT_HOOK is set, else None -- meaning "no selection hook is
+    active, fall back to _candidate_passes_probe's plain accept/reject
+    (PROBE_HOOK or the unconditional pre-WO-169 pass)." Never called for
+    a candidate with real captions -- every call site below checks
+    `result.segments` first, same as _candidate_passes_probe."""
+    if PROBE_SELECT_HOOK is None:
+        return None
+    return await PROBE_SELECT_HOOK(result, candidate_url)
+
+
+def _finish_probe_selection(probed: List["queue_probe.ProbeResult"]):
+    """Given every ProbeResult a candidate loop probed under
+    PROBE_SELECT_HOOK (empty if the hook is unset, or if every candidate
+    either had real captions or none needed probing), writes each one to
+    the shared sidecar CSV exactly once -- marking whichever
+    queue_probe.select_best_probe_result() picked as `chosen` -- and
+    returns that pick (or None if nothing here was selectable, e.g. every
+    candidate was dead or too short). Writing here, once, after the whole
+    candidate set is known, is what lets the sidecar show "chose shorter
+    alternative": writing inside the hook itself (WO-169's own
+    _real_probe_hook did this) would have no way to know the choice yet."""
+    if not probed:
+        return None
+    choice = queue_probe.select_best_probe_result(probed)
+    chosen_url = choice.url if choice else None
+    for pr in probed:
+        pr.chosen = pr.url == chosen_url
+        queue_probe.append_probe_row(queue_probe.DEFAULT_SIDECAR_PATH, pr)
+    return choice
 
 
 @dataclass
@@ -965,6 +1055,8 @@ async def resolve_youtube_channel(session: aiohttp.ClientSession, channel_url: s
     finder = get_finder("youtube")
     best_no_video = None
     probe_rejected = None  # (result, video_url) -- WO-169, see PROBE_HOOK
+    probed: List["queue_probe.ProbeResult"] = []  # WO-170
+    selected_results: Dict[str, object] = {}  # WO-170: url -> result
     for i, entry in enumerate(candidates):
         if i:
             await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -974,6 +1066,21 @@ async def resolve_youtube_channel(session: aiohttp.ClientSession, channel_url: s
         except Exception:
             continue
         if _has_video(result):
+            if result.segments:
+                return result, video_url, False
+            probe_result = await _probe_candidate_for_selection(result, video_url)
+            if probe_result is not None:
+                selected_results[video_url] = result
+                probe_result.url = video_url
+                probed.append(probe_result)
+                if (
+                    probe_result.duration_seconds is not None
+                    and queue_probe.IN_WINDOW_MIN_SECONDS
+                    <= probe_result.duration_seconds
+                    <= queue_probe.IN_WINDOW_MAX_SECONDS
+                ):
+                    break  # newest-first in-window match -- see PROBE_SELECT_HOOK
+                continue
             if await _candidate_passes_probe(result, video_url):
                 return result, video_url, False
             if probe_rejected is None:
@@ -981,8 +1088,20 @@ async def resolve_youtube_channel(session: aiohttp.ClientSession, channel_url: s
             continue
         if best_no_video is None and (result.agenda_items or result.agenda_link):
             best_no_video = (result, video_url, False)
+    choice = _finish_probe_selection(probed)
+    if choice:
+        chosen_url = choice.url
+        return selected_results[chosen_url], chosen_url, False
     if best_no_video:
         return best_no_video
+    if probed:
+        rejected_url = probed[-1].url
+        raise ProbeRejected(
+            f"youtube channel: checked {len(probed)} tier-3 candidate(s), all failed "
+            f"WO-144's probe or exceeded the plausible window",
+            meeting_url=rejected_url,
+            video_url=selected_results[rejected_url].video_url or rejected_url,
+        )
     if probe_rejected:
         result, video_url = probe_rejected
         raise ProbeRejected(
@@ -1074,6 +1193,8 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
 
     best_no_video = None
     probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
+    probed: List["queue_probe.ProbeResult"] = []  # WO-170
+    selected_results: Dict[str, object] = {}  # WO-170: url -> result
     for i, picked in enumerate(tried):
         if i:
             await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -1094,6 +1215,21 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
         if not result.date and picked.get("date"):
             result.date = picked["date"]
         if _has_video(result):
+            if result.segments:
+                return result, picked["url"]
+            probe_result = await _probe_candidate_for_selection(result, picked["url"])
+            if probe_result is not None:
+                selected_results[picked["url"]] = result
+                probe_result.url = picked["url"]
+                probed.append(probe_result)
+                if (
+                    probe_result.duration_seconds is not None
+                    and queue_probe.IN_WINDOW_MIN_SECONDS
+                    <= probe_result.duration_seconds
+                    <= queue_probe.IN_WINDOW_MAX_SECONDS
+                ):
+                    break
+                continue
             if await _candidate_passes_probe(result, picked["url"]):
                 return result, picked["url"]
             if probe_rejected is None:
@@ -1102,8 +1238,20 @@ async def resolve_civicplus_seed(session: aiohttp.ClientSession, seed_url: str):
         if best_no_video is None and (result.agenda_items or result.agenda_link):
             best_no_video = (result, picked["url"])
 
+    choice = _finish_probe_selection(probed)
+    if choice:
+        chosen_url = choice.url
+        return selected_results[chosen_url], chosen_url
     if best_no_video:
         return best_no_video
+    if probed:
+        rejected_url = probed[-1].url
+        raise ProbeRejected(
+            f"civicplus: checked {len(probed)} tier-3 candidate(s), all failed "
+            f"WO-144's probe or exceeded the plausible window",
+            meeting_url=rejected_url,
+            video_url=selected_results[rejected_url].video_url or "",
+        )
     if probe_rejected:
         result, url = probe_rejected
         raise ProbeRejected(
@@ -1157,6 +1305,8 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
         finder = get_finder(platform)
         best_no_video = None
         probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
+        probed: List["queue_probe.ProbeResult"] = []  # WO-170
+        selected_results: Dict[str, object] = {}  # WO-170: url -> result
         for i, picked in enumerate(tried):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -1165,6 +1315,23 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
             except Exception:
                 continue
             if _has_video(result):
+                if result.segments:
+                    return result, picked["url"], False
+                probe_result = await _probe_candidate_for_selection(
+                    result, picked["url"]
+                )
+                if probe_result is not None:
+                    selected_results[picked["url"]] = result
+                    probe_result.url = picked["url"]
+                    probed.append(probe_result)
+                    if (
+                        probe_result.duration_seconds is not None
+                        and queue_probe.IN_WINDOW_MIN_SECONDS
+                        <= probe_result.duration_seconds
+                        <= queue_probe.IN_WINDOW_MAX_SECONDS
+                    ):
+                        break
+                    continue
                 if await _candidate_passes_probe(result, picked["url"]):
                     return result, picked["url"], False
                 if probe_rejected is None:
@@ -1172,8 +1339,21 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
                 continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, picked["url"], False)
+        choice = _finish_probe_selection(probed)
+        if choice:
+            chosen_url = choice.url
+            return selected_results[chosen_url], chosen_url, False
         if best_no_video:
             return best_no_video
+        if probed:
+            rejected_url = probed[-1].url
+            raise ProbeRejected(
+                f"granicus: checked {len(probed)} tier-3 candidate(s) from "
+                f"ViewPublisher.php, all failed WO-144's probe or exceeded the "
+                f"plausible window",
+                meeting_url=rejected_url,
+                video_url=selected_results[rejected_url].video_url or "",
+            )
         if probe_rejected:
             result, url = probe_rejected
             raise ProbeRejected(
@@ -1196,6 +1376,8 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
         finder = get_finder(platform)
         best_no_video = None
         probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
+        probed: List["queue_probe.ProbeResult"] = []  # WO-170
+        selected_results: Dict[str, object] = {}  # WO-170: url -> result
         for i, (event_url, ev) in enumerate(candidates):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -1204,6 +1386,21 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
             except Exception:
                 continue
             if _has_video(result):
+                if result.segments:
+                    return result, event_url, False
+                probe_result = await _probe_candidate_for_selection(result, event_url)
+                if probe_result is not None:
+                    selected_results[event_url] = result
+                    probe_result.url = event_url
+                    probed.append(probe_result)
+                    if (
+                        probe_result.duration_seconds is not None
+                        and queue_probe.IN_WINDOW_MIN_SECONDS
+                        <= probe_result.duration_seconds
+                        <= queue_probe.IN_WINDOW_MAX_SECONDS
+                    ):
+                        break
+                    continue
                 if await _candidate_passes_probe(result, event_url):
                     return result, event_url, False
                 if probe_rejected is None:
@@ -1211,8 +1408,20 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
                 continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, event_url, False)
+        choice = _finish_probe_selection(probed)
+        if choice:
+            chosen_url = choice.url
+            return selected_results[chosen_url], chosen_url, False
         if best_no_video:
             return best_no_video
+        if probed:
+            rejected_url = probed[-1].url
+            raise ProbeRejected(
+                f"civicclerk: checked {len(probed)} tier-3 candidate(s), all failed "
+                f"WO-144's probe or exceeded the plausible window",
+                meeting_url=rejected_url,
+                video_url=selected_results[rejected_url].video_url or "",
+            )
         if probe_rejected:
             result, url = probe_rejected
             raise ProbeRejected(
@@ -1248,6 +1457,8 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
             raise RowSkip(f"CalendarPageError, {reason}", meeting_url=seed_url)
         best_no_video = None
         probe_rejected = None  # (result, url) -- WO-169, see PROBE_HOOK
+        probed: List["queue_probe.ProbeResult"] = []  # WO-170
+        selected_results: Dict[str, object] = {}  # WO-170: url -> result
         for i, picked in enumerate(tried):
             if i:
                 await asyncio.sleep(CANDIDATE_DELAY_SECONDS)
@@ -1273,6 +1484,23 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
                 # blocklist-only check is enough even for a
                 # HIGH_RISK_TITLE_PLATFORMS platform (e.g. a Vimeo
                 # channel/showcase listing).
+                if result.segments:
+                    return result, candidate_url, False
+                probe_result = await _probe_candidate_for_selection(
+                    result, candidate_url
+                )
+                if probe_result is not None:
+                    selected_results[candidate_url] = result
+                    probe_result.url = candidate_url
+                    probed.append(probe_result)
+                    if (
+                        probe_result.duration_seconds is not None
+                        and queue_probe.IN_WINDOW_MIN_SECONDS
+                        <= probe_result.duration_seconds
+                        <= queue_probe.IN_WINDOW_MAX_SECONDS
+                    ):
+                        break
+                    continue
                 if await _candidate_passes_probe(result, candidate_url):
                     return result, candidate_url, False
                 if probe_rejected is None:
@@ -1280,8 +1508,20 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
                 continue
             if best_no_video is None and (result.agenda_items or result.agenda_link):
                 best_no_video = (result, candidate_url, False)
+        choice = _finish_probe_selection(probed)
+        if choice:
+            chosen_url = choice.url
+            return selected_results[chosen_url], chosen_url, False
         if best_no_video:
             return best_no_video
+        if probed:
+            rejected_url = probed[-1].url
+            raise ProbeRejected(
+                f"checked {len(probed)} tier-3 candidate(s) from this listing, all "
+                f"failed WO-144's probe or exceeded the plausible window",
+                meeting_url=rejected_url,
+                video_url=selected_results[rejected_url].video_url or "",
+            )
         if probe_rejected:
             result, url = probe_rejected
             raise ProbeRejected(
@@ -1296,13 +1536,35 @@ async def resolve_seed(session: aiohttp.ClientSession, platform: str, seed_url: 
         )
 
     high_risk = platform in HIGH_RISK_TITLE_PLATFORMS
-    if _has_video(result) and not await _candidate_passes_probe(result, seed_url):
-        raise ProbeRejected(
-            f"{platform}: resolved a real video but it failed WO-144's queue probe "
-            f"({seed_url})",
-            meeting_url=seed_url,
-            video_url=result.video_url or "",
-        )
+    if _has_video(result) and not result.segments:
+        # A single, already-known candidate -- no listing to depth-search,
+        # so WO-170's selection has nothing to choose AMONG, but it still
+        # has to run: without this, a caller that sets PROBE_SELECT_HOOK
+        # but never sets the older PROBE_HOOK would see this, the single
+        # most common real shape (one already-known video, not a
+        # listing), sail through with NO probe at all -- _candidate_passes_
+        # probe() only consults PROBE_HOOK, and PROBE_HOOK being None
+        # makes it return True unconditionally. Route through the same
+        # probe-and-select machinery as every candidate loop, just with a
+        # list of one.
+        probe_result = await _probe_candidate_for_selection(result, seed_url)
+        if probe_result is not None:
+            probe_result.url = seed_url
+            choice = _finish_probe_selection([probe_result])
+            if not choice:
+                raise ProbeRejected(
+                    f"{platform}: resolved a real video but it failed WO-144's "
+                    f"queue probe ({seed_url})",
+                    meeting_url=seed_url,
+                    video_url=result.video_url or "",
+                )
+        elif not await _candidate_passes_probe(result, seed_url):
+            raise ProbeRejected(
+                f"{platform}: resolved a real video but it failed WO-144's queue probe "
+                f"({seed_url})",
+                meeting_url=seed_url,
+                video_url=result.video_url or "",
+            )
     return result, seed_url, high_risk
 
 
@@ -1807,6 +2069,15 @@ async def main() -> None:
         default=DEFAULT_INVENTORY_CSV,
         help="meeting_inventory.csv from export_meeting_inventory.py --source export",
     )
+    parser.add_argument(
+        "--no-probe-select",
+        action="store_true",
+        help=(
+            "disable WO-170's 'check several candidates, prefer 9-40 minutes, "
+            "else shortest' selection and fall back to WO-169's plain "
+            "accept/reject probing -- for comparing behavior, not normal use"
+        ),
+    )
     args = parser.parse_args()
 
     if not _base_url() or not os.environ.get("ARCHIVE_INGEST_TOKEN"):
@@ -1817,6 +2088,16 @@ async def main() -> None:
         sys.exit(1)
 
     register_all_finders()
+
+    # WO-170: on by default for a direct run of this pipeline -- see
+    # PROBE_SELECT_HOOK's own comment. A caller that imports this module
+    # and sets its own PROBE_HOOK/PROBE_SELECT_HOOK (wo147/wo150/wo151/
+    # wo169's re-run script, WO-170's own 45-government re-run) is
+    # unaffected either way, since main() is never what those scripts
+    # call.
+    global PROBE_SELECT_HOOK
+    if not args.no_probe_select:
+        PROBE_SELECT_HOOK = build_probe_select_hook()
 
     covered_gov_ids = _load_covered_gov_ids(args.inventory_csv)
     print(f"{len(covered_gov_ids)} gov_ids already have an archived page.")

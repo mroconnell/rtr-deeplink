@@ -109,6 +109,17 @@ _OVER_NINE_MINUTES_SECONDS = 9 * 60
 # same reason.
 _FLAG_LONG_SECONDS = 6 * 3600
 
+# WO-170 (2026-09-10): Ryan's rule for picking among several tier-3
+# candidates from the same government, once a probe rejects the first
+# one -- "check the size of that video file or its duration to ensure
+# that it was at least 9 minutes long but not longer than 40 minutes...
+# if all the videos were over 40 minutes, then select the shortest
+# available video in the list." The lower bound reuses the existing
+# "prefer meetings over nine minutes" constant above rather than a
+# second literal that could drift from it.
+IN_WINDOW_MIN_SECONDS = _OVER_NINE_MINUTES_SECONDS  # 540 (9 minutes)
+IN_WINDOW_MAX_SECONDS = 40 * 60  # 2400 (40 minutes)
+
 
 # The append-only sidecar CSV both scripts/probe_tier3_queue.py (the
 # standalone CLI) and scripts/feed_tier3_auto_transcription.py's
@@ -142,6 +153,10 @@ SIDECAR_CSV_HEADER = [
     # so an old row with no "caller" value just reads back as an empty
     # string, not a missing column).
     "caller",
+    # WO-170: see ProbeResult.chosen's own comment. Appended last so
+    # WO-156's "caller" column above keeps its position for any reader
+    # already keyed on it by name.
+    "chosen",
 ]
 
 
@@ -157,6 +172,13 @@ class ProbeResult:
     reason: Optional[str]
     probe_seconds: float
     over_nine_minutes: bool = False
+    # WO-170: set by a caller AFTER select_best_probe_result() has picked
+    # among several probed candidates for the same government -- True on
+    # the one it picked, False (the default) on every rejected sibling
+    # and on an ordinary single-candidate probe with nothing to choose
+    # among. Recorded in the sidecar CSV so the funnel can show "chose
+    # shorter alternative" without a second file.
+    chosen: bool = False
 
 
 def _dead(
@@ -808,5 +830,52 @@ def append_probe_row(
                 f"{result.probe_seconds:.2f}",
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 caller,
+                "1" if result.chosen else "0",
             ]
         )
+
+
+# --- WO-170 selection among several probed candidates ---------------------
+
+
+def is_plausible(result: ProbeResult) -> bool:
+    """True for a verdict that WO-170's selection can choose from at all.
+    `reject-dead`/`reject-short` are never selectable -- the standing
+    dead-link rule and the 60-second meeting-plausibility floor both stay
+    absolute. `flag-long` (WO-143's real 8.45-hour Anaheim meeting) stays
+    selectable, same as it's always been accepted outright."""
+    return result.verdict in ("accept", "flag-long")
+
+
+def select_best_probe_result(
+    candidates: list[ProbeResult],
+) -> Optional[ProbeResult]:
+    """Ryan's 2026-09-10 rule (BACKLOG_DONE.md's WO-170 entry): given
+    several tier-3 candidates already probed for one government, in the
+    same newest-first order every resolve_seed() candidate loop already
+    searches in (`candidates[i].url` is that candidate's own address --
+    every probe_queue_entry() call already sets `.url` to the url it was
+    asked to probe), prefer the newest one whose duration falls in
+    [IN_WINDOW_MIN_SECONDS, IN_WINDOW_MAX_SECONDS] (9 to 40 minutes). If
+    none does -- every plausible candidate is either under that window or
+    over 40 minutes -- fall back to the single shortest plausible
+    candidate ("if all the videos were over 40 minutes, then select the
+    shortest available video in the list," Ryan's own words, applied to
+    the whole plausible set rather than only the over-40-minutes case, so
+    a mix of too-short and too-long candidates still resolves to one
+    answer instead of none).
+
+    Returns None when nothing here is selectable at all (every candidate
+    dead or below the floor) -- the caller reports rejected_by_probe.
+    `candidates` may be empty (no tier-3 candidate needed probing, e.g.
+    every one had real captions) -- also returns None then.
+    """
+    plausible = [
+        r for r in candidates if is_plausible(r) and r.duration_seconds is not None
+    ]
+    if not plausible:
+        return None
+    for r in plausible:
+        if IN_WINDOW_MIN_SECONDS <= r.duration_seconds <= IN_WINDOW_MAX_SECONDS:
+            return r
+    return min(plausible, key=lambda r: r.duration_seconds)

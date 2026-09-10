@@ -136,6 +136,7 @@ from app.platforms.granicus_channel import (  # noqa: E402
     _item_body_and_clip_url,
 )
 from app.platforms.models import ResolvedMeeting  # noqa: E402
+from app.platforms import queue_probe  # noqa: E402
 from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
 from app.utils.gov_registry import registry as gov_registry  # noqa: E402
 from app.utils.gov_registry import resolver as gov_resolver  # noqa: E402
@@ -721,11 +722,45 @@ def _hint_links(html: str, page_url: str, limit: int) -> List[str]:
 # raises ProbeRejected so `_process_gov()`'s lead loop tries the next
 # platform instead of ending the government's attempt here). None (the
 # default) preserves this module's original behavior exactly -- queue
-# immediately, no probe -- so a caller that never sets this (this
-# module's own main()) is unaffected. Signature: async hook(result,
-# queue_url: str) -> bool. See scripts/wo169_probe_rejected_rerun.py for
-# the real hook.
+# immediately, no probe -- so a caller that never sets this is
+# unaffected. Signature: async hook(result, queue_url: str) -> bool. See
+# scripts/wo169_probe_rejected_rerun.py for the original real hook, and
+# _default_probe_hook() below (WO-170) for the one this module's own
+# main() now wires by default.
 PROBE_HOOK = None
+
+
+async def _default_probe_hook(result, queue_url: str) -> bool:
+    """WO-170 (2026-09-10): the real WO-144 probe, wired on by default in
+    this module's own main() -- see PROBE_HOOK's own comment -- reusing
+    app.platforms.queue_probe.probe_queue_entry(), the same recipe every
+    other probe caller in this repo already uses, and logging to the
+    same append-only sidecar (tier3_auto_transcription_queue_probe.csv).
+
+    Ryan's 2026-09-10 rule ("check several videos... prefer 9 to 40
+    minutes... if all are over 40 minutes, select the shortest," see
+    BACKLOG_DONE.md's WO-170 entry) is implemented in full in
+    scripts/wo134_confirmed_hits_ingest.py's own resolve_seed() candidate
+    loops, which already depth-search several rows from the same
+    listing (PROBE_SELECT_HOOK there). This module's own candidate
+    picking (pick_calendar_candidate(), singular -- imported from
+    nationwide_2404_ingest.py) only ever surfaces ONE row per listing, so
+    there is nothing to select among here yet; this hook degenerates to
+    Ryan's rule's floor -- accept a plausible candidate
+    (queue_probe.is_plausible(): not dead, not below the 60-second
+    floor), reject a dead link or a too-short clip -- rather than
+    silently doing nothing. Extending civicplus_walk()/pick_calendar_
+    candidate() to try several rows the way wo134's resolve_seed() does
+    is real follow-up work, filed to BACKLOG.md rather than built here to
+    avoid a larger change to a file with its own active history."""
+    probe = await queue_probe.probe_queue_entry(
+        queue_url,
+        video_url=result.video_url,
+        source_page_url=result.source_url or queue_url,
+    )
+    probe.chosen = queue_probe.is_plausible(probe)
+    queue_probe.append_probe_row(queue_probe.DEFAULT_SIDECAR_PATH, probe)
+    return queue_probe.is_plausible(probe)
 
 
 class Skip(Exception):
@@ -1492,6 +1527,11 @@ async def main() -> None:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--refresh-export", action="store_true")
     ap.add_argument("--write-pins", action="store_true")
+    ap.add_argument(
+        "--no-probe",
+        action="store_true",
+        help="disable the WO-144/WO-170 probe before queuing a tier-3 candidate",
+    )
     args = ap.parse_args()
 
     if args.write_pins:
@@ -1505,6 +1545,15 @@ async def main() -> None:
     if args.refresh_export or not EXPORT_JSON.exists():
         n = await refresh_export(EXPORT_JSON)
         print(f"export refreshed: {n} pages -> {EXPORT_JSON}")
+
+    # WO-170: on by default for a direct run of this pipeline -- see
+    # PROBE_HOOK's own comment and _default_probe_hook()'s. A caller that
+    # imports this module and sets its own PROBE_HOOK
+    # (wo151_research_url_ladder_sweep.py) is unaffected, since main() is
+    # never what that script calls.
+    global PROBE_HOOK
+    if not args.no_probe:
+        PROBE_HOOK = _default_probe_hook
 
     register_all_finders()
     finder = CivicPlusAssetFinder()

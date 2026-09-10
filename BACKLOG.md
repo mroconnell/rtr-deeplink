@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (11)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (12)
+  `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
@@ -556,6 +557,36 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so WO-170's "prefer 9-40 minutes, else shortest" video-picking rule has nothing to pick among there yet `[JUST-DO-IT]`
+
+- **Issue:** WO-170 (2026-09-10) added a real selection rule to
+  `scripts/wo134_confirmed_hits_ingest.py`'s own candidate loops:
+  probe up to 6 recent meetings per government, prefer the newest one
+  between 9 and 40 minutes, else the shortest. `hub_sweep_wo126.py`
+  finds real candidates too, but its own CivicPlus/generic-listing walk
+  (`pick_calendar_candidate()`, singular, imported from
+  `nationwide_2404_ingest.py`) only ever surfaces ONE row per listing --
+  there's nothing for the new rule to choose *among* there, so its own
+  `_default_probe_hook()` only ever gets to accept or reject that one
+  candidate.
+- **Impact:** every government this sweep resolves through a CivicPlus
+  AgendaCenter or a generic hop-based listing (its main real-world
+  case) gets the old "first candidate or nothing" behavior, even though
+  the identical fix already exists one file over and is proven live
+  (WO-170's own re-run picked a shorter alternative for real, more than
+  once, using `wo134_confirmed_hits_ingest.py`'s CivicClerk path).
+- **Next action:** change `pick_calendar_candidate()`'s call sites in
+  `hub_sweep_wo126.py` (`civicplus_walk()`'s own picking, and the
+  generic-listing branch) to try several ordered candidates the way
+  `wo134_confirmed_hits_ingest.pick_calendar_candidates()` (plural)
+  already does, then route them through the same
+  `queue_probe.select_best_probe_result()` WO-170 built -- reuse it, do
+  not reimplement it.
+- **Constraint:** `hub_sweep_wo126.py` is a file other sessions work in
+  actively (see this file's own multi-session notes) -- coordinate
+  before a large restructure of `_process_gov()`'s lead loop.
+- **History:** `BACKLOG_DONE.md`'s WO-170 entry.
 
 ### `hub_slug_aliases.csv` can only redirect an old slug to ONE new home, and `/j/cambridge` genuinely needs two `[JUST-DO-IT]`
 
