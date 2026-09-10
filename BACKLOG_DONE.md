@@ -106,6 +106,64 @@ nor displays.
 The pins are on `main` after merge but reach new ingests only after a
 deploy; the backfill above already fixed the existing 76 pages.
 
+## WO-131: identity-checked YouTube transcript-fetch list built and `--slugs-file` added; push run aborted after 0 successes on a real IP block signature [Done 2026-09-09]
+
+Goal was to fetch missing transcripts for archived pages whose video is
+YouTube and whose government identity is good, via the existing local
+`scripts/fetch_youtube_transcripts.py` (tier 2), and push them live.
+
+**Identity filter, from a fresh `export_meeting_inventory.py --source
+export` run (6,545 pages total)**: 86 pages are YouTube-video +
+no-transcript. Excluded per Ryan's stated criteria (no gov_id, `rtr:`
+minted/unknown ids, `names_match=no`) — 7 total:
+
+| Reason | Count |
+|---|---|
+| No `gov_id` at all | 5 |
+| `rtr:unknown:*` id | 2 |
+| Non-national-table `gov_id` prefix | 0 |
+| `names_match=no` | 0 |
+
+79 passed that filter. Manual inspection then caught one more that
+shouldn't have: `bamberg-county-sc-livestream` carries `names_match=yes`
+against Nottoway County, VA, but its real source
+(`bambergcounty.sc.gov`) has zero mentions of Nottoway — a corrupted row,
+not a good match; see the new `BACKLOG.md` Trust & data quality entry.
+Excluded by hand, leaving **78** real candidates.
+
+**Script change**: `scripts/fetch_youtube_transcripts.py` had no
+per-slug targeting mode (only the full `transcript-wanted` queue or
+`--limit N` from its head), so a minimal `--slugs-file <path>` option was
+added (one slug per line, `#`-comments/blank lines ignored) — filters the
+queue the Archive already returns rather than adding a per-slug API
+lookup, mirroring `backfill_meeting_cards.py`'s own `--slugs-file`
+pattern. Selection/pacing/backoff logic untouched. Two new unit tests
+(`tests/test_fetch_youtube_transcripts.py`); full suite 2803 passed / 15
+skipped.
+
+**Push run**: from this Mac, a real (non-dry-run) run against the 78
+(as 79, before the manual exclusion was found — the excluded page was at
+position 51, never reached) got through 15 pages, all genuine per-video
+failures (`TranscriptsDisabled` x8, `VideoUnplayable` x4,
+`VideoUnavailable` x3 — disabled captions, private, live-not-started, or
+deleted videos), then hit a real `IpBlocked` signature on the 16th. Both
+of the script's built-in backoff retries (30s, then 120s) failed
+identically, so the run aborted itself rather than continuing to poll —
+exactly the behavior `docs/investigations/youtube_429_block.md` and the
+script were built for. **0 ingested, 0 skipped, 15 failed, 1 blocked,
+63 never attempted.** No transcript was pushed this session — a bulk
+YouTube sweep was not re-attempted afterward (the investigation doc: a
+9-minute-idle retry once still failed 10/10 on the same kind of block;
+minutes is nowhere near long enough to expect it cleared). The remaining
+63-page list and next-step guidance live in `BACKLOG.md`'s "Open bugs"
+`[WAIT]` entry.
+
+Also found and filed, not fixed: the Bamberg/Nottoway mis-keyed page
+above, and a small `[EASY]` YouTube video-ID regex gap (a generic "live
+stream" embed placeholder like `embed/live_stream` matches the same
+11-char pattern as a real video ID) — both in `BACKLOG.md`'s Trust &
+data quality section.
+
 ## Ryan's pin worklist applied and backfilled -- 35 pins, 58 pages re-keyed, 20 hub redirects, two bugs found by the dry run [Done 2026-09-09]
 
 Second backfill of the day (see the 114-pin entry below for the first,
