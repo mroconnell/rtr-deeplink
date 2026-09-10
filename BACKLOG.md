@@ -133,41 +133,42 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (89)
-  [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
-  [NEEDS-AUDIT] A resolve that delegates to a generic video host…
-  [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
-  [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
-  [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
-  [NEEDS-AUDIT] Several already-archived pages carry a confidently-
-  [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
-  [NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
-  [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
-  [NEEDS-AUDIT] eScribe serves the same meeting under multiple
-  [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
-  [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
-  [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
-  [NEEDS-AUDIT] Same source URL, different query string, two
-  [NEEDS-AUDIT] Three pages from the school-district audit resolved
-  [LATER] GovDelivery -- a proposed discovery lead for finding new
-  [LATER] Two real, scoped enumerator/adapter gaps found chasing the
-  [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
-  [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
-  [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
-  [NEEDS-AUDIT] The same YouTube video submitted via two different URL
-  [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
-  [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
-  [NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
-  [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
-  [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
-  [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
-  [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
-  [NEEDS-AUDIT] Search Console "video isn't on a watch page" — Granicus
-  [NEEDS-AUDIT] Search Console "video isn't on a watch page" — Cablecast
-  [NEEDS-AUDIT] Garbled source transcripts still produce garbled
-  [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
-  [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
-  [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
-  [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
+  Counties that share a name with an independent city never resolve…  (35)
+    [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
+    [NEEDS-AUDIT] A resolve that delegates to a generic video host…
+    [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
+    [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
+    [NEEDS-AUDIT] Phase 2d's signal-based recovery (WO-110,
+    [NEEDS-AUDIT] Several already-archived pages carry a confidently-
+    [NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
+    [NEEDS-AUDIT] A jurisdiction string with a leading "The " before the
+    [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
+    [NEEDS-AUDIT] eScribe serves the same meeting under multiple
+    [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+    [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
+    [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
+    [NEEDS-AUDIT] Same source URL, different query string, two
+    [NEEDS-AUDIT] Three pages from the school-district audit resolved
+    [LATER] GovDelivery -- a proposed discovery lead for finding new
+    [LATER] Two real, scoped enumerator/adapter gaps found chasing the
+    [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
+    [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
+    [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
+    [NEEDS-AUDIT] The same YouTube video submitted via two different URL
+    [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
+    [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
+    [NEEDS-AUDIT] No adapter for a PMN "Audio File Location" pointing at
+    [NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
+    [NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
+    [NEEDS-AUDIT] Non-YouTube garbled/truncated pages have no automated
+    [NEEDS-AUDIT] `[LOGIN]` Missing-Playwright-binary error recurred
+    [NEEDS-AUDIT] Search Console "video isn't on a watch page" — Granicus
+    [NEEDS-AUDIT] Search Console "video isn't on a watch page" — Cablecast
+    [NEEDS-AUDIT] Garbled source transcripts still produce garbled
+    [NEEDS-AUDIT] Topic chips are ranked by corpus hits, not real search
+    [NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever…
+    [NEEDS-AUDIT] Philadelphia's `_pick()` ambiguity gap — real, not yet
+    [NEEDS-AUDIT] A chunk truncated only at its tail still passes the
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -606,6 +607,30 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+### Counties that share a name with an independent city never resolve `[NEEDS-AUDIT]`
+
+- **Issue:** `resolve_government("Baltimore County, MD")`, `"Roanoke County,
+  VA"`, `"Fairfax County, VA"`, `"Richmond County, VA"` all come back
+  `unresolved` with "no 'X County' in ST -- counties are exhaustively
+  listed", although `us_counties.csv` has every one of them (24005, 51161,
+  51059, 51159); "Montgomery County, MD" and "Prince George's County, MD"
+  resolve fine. Every failing case has an independent city of the same
+  name in the same state (`Baltimore city` 24510, `Roanoke city` 51770), so
+  the county lookup appears to treat the collision as "not found" rather
+  than preferring the row whose type word matches the input. Found
+  2026-09-09 while dry-running Ryan's pin worklist: his hand-typed
+  "Baltimore County, MD" was rejected by the same path.
+- **Impact:** Virginia's 38 independent cities plus Baltimore, St. Louis and
+  Carson City each shadow a county; pages for those counties stay
+  `unresolved`/minted, and a correct pin worklist entry cannot fix them
+  because the pin resolves through the same function.
+- **Next action:** Reproduce with the four names above in `tests/`, find
+  where the county-table lookup drops a multi-hit, and prefer the county
+  row when the input carries the word "County".
+- **Constraint:** Don't "fix" by relaxing ambiguity handling generally --
+  Kansas City KS/MO and Rye town/city NY rely on it refusing to guess.
+- **History:** none yet; first seen in the WO-124 inventory review.
 
 Reproduced against real data, but the fix is a genuine open question.
 Jurisdiction-extraction bugs live under **Platform & jurisdiction
