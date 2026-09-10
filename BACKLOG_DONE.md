@@ -224,6 +224,101 @@ live in production until the next resolver deploy — deploys are manual
 in this repo. The running coverage sweeps use this worktree's own
 checked-out code directly, so they pick up the fix on their next run
 without waiting for a deploy.
+## WO-147: access-ladder sweep of 850 governments we could not even reach before -- 30 pages live now, 33 more videos queued, and a real gap found in how we check a video is a real meeting [Done 2026-09-10]
+
+**What we did and why.** 850 governments (569 cities/towns, 279
+counties, 2 townships) had failed earlier checks for one reason: we
+could not read their website at all. A timeout, a blocked request, or a
+web address that no longer works. This work tried harder to get in the
+door — a plain request first, then one that looks like a real web
+browser, then a real browser (Playwright) for pages that only draw
+their menu with JavaScript. We never tried to get past a site's own
+"prove you're human" wall. Once in, we looked for a real meeting video.
+Only meetings with video became pages, per Ryan's rule.
+
+**What we found.**
+
+| Outcome | Count of 849 | Detail |
+|---|---|---|
+| Already on the site | 2 | |
+| Captions available, page live now | 30 | 27 on YouTube, 3 on other platforms |
+| Video, no captions, checked and queued | 33 | checked for a dead link and a too-short clip first (see Caution) |
+| Held back for a person to check the title | 6 | see Caution |
+| No video found | 33 | a real, current meeting with no video attached |
+| No meetings found | 7 | |
+| Not a real meeting (found, but wrong) | 55 | see Caution |
+| Got in, found nothing | 339 | reached the page (or a real browser did), no meeting-video link anywhere on it |
+| Blocked at the door | 341 | 156 dead web addresses, 110 timeouts, 53 "prove you're human" walls, 21 other blocks |
+| A real error (not a finding) | 3 | same one cause each time, see below |
+
+We checked 849, not 850 — the file we started from has 849 rows, not
+850; we did not pad it to match.
+
+**Which try got us in**, split by city/town vs. county (counting only
+governments we actually reached, blocked, or found nothing on — this
+excludes the 2 already on the site):
+
+| Which try got us in | Cities/towns | Counties |
+|---|---|---|
+| Plain request | 275 | 148 |
+| Browser-like headers | 22 | 2 |
+| A real browser (Playwright) | 40 | 18 |
+| Site blocked us at the door | 49 | 4 |
+| Web address dead | 169 | 97 |
+| Reached, found nothing | 14 | 9 |
+
+A plain, honest request alone got us in on about half of both — even
+though every one of these governments had already failed an earlier
+check. Dead web addresses hit counties hardest; "prove you're human"
+walls hit cities/towns hardest.
+
+**Caution.** Two real things went wrong along the way, both caught and
+fixed before this went out, both worth knowing about.
+
+First: some of our "video, no captions" finds came from scanning a
+government's whole YouTube channel for its newest videos, not from a
+specific meeting link the government itself gave us. We checked 8 of
+those by hand early on, and 3 of the 8 were not real meetings — a
+community workshop, a video of touring a building, a "how to join the
+meeting" explainer — even though the words "council" or "board" showed
+up in their titles. When we ran the full sweep, this pattern showed up
+62 times, not 8, so we checked all of them by hand this time (not a
+sample): 24 were real and are now queued, 6 were not real meetings and
+we marked them as such, and 6 are genuine judgment calls (a "council
+workshop," a "council retreat," a "study session") that a person should
+decide, not a computer — we left those alone for you to look at.
+
+Second: the tool that checks whether a video is dead or too short
+(built by a different session, landed partway through our work) only
+knows about length and whether the link works — it knows nothing about
+whether the video is actually the right meeting. That is exactly the
+gap the first Caution describes. We are telling you this so nobody
+assumes "it passed the check" means "it's definitely the right video."
+
+**A small number of real errors.** All 3 came from the same cause: we
+retried an old guess about which video system a government uses, and
+that guess turned out to be wrong for a page that isn't running that
+system at all. Not a bug worth fixing — it is what happens when you
+retry an old, possibly-stale guess, and the request fails cleanly
+either way.
+
+**Recommendation.** Merge and deploy this branch so the 33 queued
+videos and their government tags take effect (deploys are manual — see
+CLAUDE.md). Someone should spend about 20 minutes looking at the 6
+governments held back for a title check
+(`rtr-business/research/wo147_report.csv`, rows still marked "queued,
+not yet decided") — the titles are things like "City Council Workshop"
+and "Council Retreat," and only a person can say whether those count as
+real meetings for this government. The channel-scan pattern itself (a
+computer guessing a video is real because it shares a word with the
+title) is a real, ongoing risk worth fixing properly — filed in
+`BACKLOG.md` as its own item, not something we tried to solve here with
+only 62 examples.
+
+**Deploy status.** Not deployed yet. The 30 live pages already went out
+through the normal ingest path and are visible now; everything else in
+this PR (the 33 queued videos, their tags, this script) needs the next
+deploy to take effect, same as any other code change here.
 
 ## Yonkers, NY Legistar page had no video because its Granicus tenant was never registered as a fallback — fixed, plus a 29-tenant read-only test of whether the pattern generalizes [Done 2026-09-10] (WO-145)
 
