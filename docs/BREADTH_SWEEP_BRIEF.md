@@ -116,10 +116,21 @@ Access reasons mean we could not look: `blocked-plain-http`,
 `dns-unresolvable`, `timeout`. A later rung is worth trying.
 
 Content reasons mean we looked and it was not there:
-`no-platform-link-found` (after the full ladder), `no-meetings-found`,
-`no-video-found`, `off-mission`, `unsupported-platform-no-adapter`. Do not
-re-run these. Re-run a content reason only when a platform gains a new
-video signal we did not check.
+`no-platform-link-found` (after the full ladder), `meeting-without-video`
+(a real, current meeting found, no video), `no-meeting-nor-video` (no
+meeting found at all, so no video either), `video-without-meeting` (a
+real video exists but no meeting to attach it to — a channel or feed
+with recordings but no listing, date, or body; use only when that is
+what actually happened), `off-mission`, `unsupported-platform-no-adapter`.
+Do not re-run these. Re-run a content reason only when a platform gains a
+new video signal we did not check.
+
+`no-video-found` and `no-meetings-found` are older spellings of
+`meeting-without-video` and `no-meeting-nor-video` respectively, still
+present on rows written before 2026-09-10 (WO-164). They mean the same
+thing; a sweep's own close-out retags its rows onto the newer names —
+see `~/Documents/rtr-business/research/wo164_retag_rules.md` for the
+exact mapping.
 
 ### After each government
 
