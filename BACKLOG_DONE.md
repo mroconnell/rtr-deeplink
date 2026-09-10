@@ -34580,3 +34580,36 @@ never see (the raw slug isn't rendered as a label anywhere). Same
 already-accepted "slugs don't regenerate on re-ingest" tradeoff as
 Fitchburg and Everett MA (see this file's earlier entries). Revisit only
 if a slug like this ever becomes reader-visible somewhere.
+
+## [Done 2026-09-09] WO-128: known-platform / no-Archive-page sweep -- 682 candidates, 130 real ingests/queues, three real pipeline bugs caught before merging
+
+- **Issue**: `coverage_registry.csv` had 727 governments (population
+  >= 5,000, non-county) whose meeting platform is already known but no
+  Archive page exists.
+- **Impact**: real, resolvable government video/transcript content sitting
+  unindexed. Confirmed against a fresh `export_meeting_inventory.py`
+  export (6,545 pages): 45 of the 727 were already stale, leaving 682
+  real candidates.
+- **Next action**: none -- funnel below is final. A residual eScribe
+  bare-tenant-root gap is filed separately in `BACKLOG.md`'s Adapter &
+  platform gaps section (shared-helper fix, not done here since
+  `nationwide_2404_ingest.py` was mid-run against production the same
+  day). One agenda-only page (Mobile, AL,
+  `mobile-al-2026-09-01-city-council-meeting`) needs a manual
+  `POST /internal/admin/delete-pages` -- flagged to Ryan, not deleted by
+  this session.
+- **Constraint**: 505 of the 682 (74%) were already `test_status=rejected`
+  in the registry from earlier work -- re-checked anyway per this WO's
+  own instructions (a stale "no video" can go stale the other way too),
+  but a future sweep of this shape should expect most of its pool to be
+  a re-check, not a first look.
+- **History**: full funnel, the three real pipeline bugs found and fixed
+  (an agenda-only-ingest mistake, a stale-report-file collision that
+  wrongly touched 11 out-of-scope governments, a backfill guard that
+  silently dropped 168 real positive results behind a stale reject
+  reason), and the platform/eScribe/YouTube gaps found are in
+  `rtr-business/research/ENUMERATION_METHODS.md` §168. Built
+  `scripts/wo128_known_platform_sweep.py` (new, covers every platform
+  CivicPlus's own dedicated pipeline doesn't) and
+  `rtr-business/research/wo128_backfill_into_jc.py` (new, the
+  `jurisdiction_coverage.csv` merge).
