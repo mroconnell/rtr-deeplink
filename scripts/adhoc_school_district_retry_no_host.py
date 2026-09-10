@@ -44,7 +44,12 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import CalendarPageError, detect_platform, get_finder  # noqa: E402
+from app.platforms.base import (  # noqa: E402
+    CIVICPLUS_CORPORATE_HOSTS,
+    CalendarPageError,
+    detect_platform,
+    get_finder,
+)
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
 sys.path.insert(0, str(Path.home() / "Documents" / "rtr-discovery"))
@@ -115,7 +120,12 @@ PLATFORM_DOMAINS = {
     "champds": "champds.com",
     "civiclive": "civiclive.com",
 }
-_GENERIC_VENDOR_HOSTS = {"connect.civicplus.com", "www.civicplus.com", "civicplus.com"}
+# Shared with app/platforms/base.py's own `find_platform_link()` (and
+# scripts/wo134_confirmed_hits_ingest.py's `find_specific_platform_link()`)
+# as of WO-162 (2026-09-10) -- this used to be its own separate copy of
+# the same rule; see CIVICPLUS_CORPORATE_HOSTS' own docstring for the
+# full writeup of the bug this fixes at the source.
+_GENERIC_VENDOR_HOSTS = CIVICPLUS_CORPORATE_HOSTS
 
 _JUNK_TITLE_RE = re.compile(r"\btest\b|\btraining\b", re.IGNORECASE)
 _PUBDATE_PARTS_RE = re.compile(

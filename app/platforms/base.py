@@ -101,6 +101,52 @@ class AssetFinder(ABC):
         raise NotImplementedError
 
 
+# CivicPlus's own corporate/marketing hosts -- confirmed live 2026-09-10
+# (WO-162) to NEVER be a per-government tenant, even though a bare
+# "civicplus" substring match treats them as one. Nearly every real
+# CivicPlus-hosted government site's own page footer carries a
+# "Government Websites by CivicPlus®" credit linking to
+# `https://connect.civicplus.com/referral` (a real, live 301 redirect to
+# CivicPlus's own marketing site, not a government page at all).
+# Confirmed present verbatim in two independently-fetched real tenant
+# fixtures: `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html`
+# and `tests/fixtures/civicplus/ks_desoto_agendacenter.html`.
+#
+# Real bug this fixes: when a link-scan looking for "the CivicPlus link"
+# on a government's own page (`find_platform_link()` below, or the
+# similar scan in `scripts/wo134_confirmed_hits_ingest.py`'s
+# `find_specific_platform_link()`) reaches this footer link before the
+# government's own real content link, the old bare substring check
+# classified it as "civicplus" too -- so the government got resolved
+# against CivicPlus's own corporate host instead of its real tenant
+# page, coming back as a bogus "no video found" or a 403. Confirmed live
+# on Temple City, CA: recorded `no-video-found`, and the pre-fix scan
+# really did try (and get a real 403 from) CivicPlus's own corporate
+# host -- confirmed live 2026-09-10. This specific tenant's video
+# doesn't actually surface end-to-end from this fix alone (a second,
+# separate gap -- see `tests/fixtures/civicplus/README.md`'s 2026-09-10
+# note and the matching `BACKLOG.md` entry), but the corporate-host
+# misclassification itself, and the wasted request it caused, is real
+# and is what this fixes.
+#
+# A host in this set is never classified as "civicplus" by
+# `detect_platform()` below, and is skipped outright (not just left to
+# fall through to "unknown") by every link-scan that also checks this
+# set directly -- see `find_platform_link()`'s own use of it. Exported
+# (not a leading-underscore name) so `scripts/wo134_confirmed_hits_
+# ingest.py` and the `adhoc_school_district_retry_*.py` scripts share
+# this one definition instead of each keeping their own copy, which is
+# what let five separate sweep scripts patch around this bug
+# individually before it was fixed at the source.
+CIVICPLUS_CORPORATE_HOSTS = frozenset(
+    {
+        "civicplus.com",
+        "www.civicplus.com",
+        "connect.civicplus.com",
+    }
+)
+
+
 def detect_platform(url: str) -> str:
     """Classify a meeting URL by hosting platform, based on domain/path shape.
 
@@ -142,7 +188,15 @@ def detect_platform(url: str) -> str:
         return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
-    if "civicplus.com" in netloc or "civicplus" in netloc:
+    if netloc in CIVICPLUS_CORPORATE_HOSTS:
+        # Never a per-government tenant -- see CIVICPLUS_CORPORATE_HOSTS'
+        # own comment above (WO-162, 2026-09-10). Falls through to the
+        # same "unknown" every other unmatched host gets, rather than
+        # "civicplus" -- none of the checks below it match this host
+        # either, so this is the honest classification, not a special
+        # case that needs its own return value.
+        pass
+    elif "civicplus.com" in netloc or "civicplus" in netloc:
         return "civicplus"
     if "primegov.com" in netloc:
         return "primegov"
@@ -613,6 +667,14 @@ def find_platform_link(
                 urlparse(candidate)._replace(fragment="").geturl()
                 == page_url_no_fragment
             ):
+                continue
+            if urlparse(candidate).netloc.lower() in CIVICPLUS_CORPORATE_HOSTS:
+                # Explicit skip, not just relying on detect_platform()
+                # returning "unknown" for these hosts -- see
+                # CIVICPLUS_CORPORATE_HOSTS' own comment (WO-162,
+                # 2026-09-10) for the real bug this closes: a
+                # government's own "Government Websites by CivicPlus"
+                # footer credit reached before its real content link.
                 continue
             platform = detect_platform(candidate)
             if platform == "unknown" or platform in exclude or platform == own_platform:

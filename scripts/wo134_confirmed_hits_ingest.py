@@ -130,6 +130,7 @@ load_dotenv()
 
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
+    CIVICPLUS_CORPORATE_HOSTS,
     CalendarPageError,
     UnsupportedPlatformError,
     detect_platform,
@@ -354,6 +355,17 @@ def find_specific_platform_link(
                 continue
             candidate = urljoin(page_url, value)
             if urlparse(candidate)._replace(fragment="").geturl() == page_url_no_frag:
+                continue
+            if urlparse(candidate).netloc.lower() in CIVICPLUS_CORPORATE_HOSTS:
+                # Explicit skip, same as base.py's own find_platform_link()
+                # -- CivicPlus's own corporate/marketing hosts (e.g. every
+                # tenant's "Government Websites by CivicPlus" footer
+                # credit) are never a real per-government destination.
+                # See CIVICPLUS_CORPORATE_HOSTS' own docstring in
+                # app/platforms/base.py (WO-162, 2026-09-10) for the real
+                # bug this closes -- Temple City, CA was recorded
+                # `no-video-found` because this scan picked the footer
+                # link before it ever fixed this.
                 continue
             if detect_platform(candidate) == target_platform:
                 return candidate

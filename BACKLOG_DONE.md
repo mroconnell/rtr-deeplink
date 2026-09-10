@@ -57,6 +57,105 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 | Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
 
 **Deploy status.** Pages are re-keyed now. The pin and the alias reach production on the next deploy; until then the old county hub link may 404.
+## CivicPlus's own marketing link was mistaken for a government's video page — fixed [Done 2026-09-10] (WO-162)
+
+**What we were checking.** A coverage-triage session looking at jurisdiction
+identity work found a bug in how this app tells platforms apart. The
+code that decides "which video system is this government using?" had
+one rule: if the web address contains the word "civicplus," call it
+CivicPlus. That rule was too loose. Nearly every CivicPlus government
+site has a small footer credit reading "Government Websites by
+CivicPlus," and that link also contains the word "civicplus" — but it
+points at CivicPlus the company, not at the government's own page.
+
+**What we found.** Temple City, CA is a real example. Its meeting page
+is real CivicPlus software, and a scan of that page can reach the
+company's own footer link before it reaches the government's real
+content. When that happens, the app tries to resolve a video from
+CivicPlus's own marketing page instead of Temple City's page. That
+marketing page has no video, and in some cases it even returns an
+error (403, meaning "access denied"). Either way, the result was a
+wrong, confusing "no video found."
+
+**What we fixed.** We taught the code to recognize CivicPlus's own
+company pages (`civicplus.com`, `www.civicplus.com`,
+`connect.civicplus.com`) and skip them, so a scan keeps looking for the
+government's real page instead of stopping at the footer link. This
+one shared rule now lives in one place (`app/platforms/base.py`) and
+replaces five separate patches that different sessions had each written
+on their own to work around the same bug.
+
+**Live verification.**
+
+| Check | Result |
+| --- | --- |
+| Temple City's real meeting page, before the fix | Confirmed the bug: the scan picked CivicPlus's own marketing link and got a real 403 error trying to use it. |
+| Temple City's real meeting page, after the fix | The 403 error is gone — the scan correctly skips CivicPlus's marketing link. |
+| A real, working CivicPlus government page (Durham, NC), after the fix | Still works exactly as before — no regression. |
+
+**A separate problem we found, not fixed here.** Even after this fix,
+Temple City's page still doesn't show a video, for an unrelated reason:
+its real video links point through a video-hosting service
+(`ec1c24.com`) this app doesn't recognize yet. That service does have
+a real, working video — we confirmed it holds an embedded YouTube
+video — but teaching the app to follow that extra hop is separate work.
+We logged it as its own item in `BACKLOG.md` rather than fixing it in
+this change, so it doesn't get lost.
+
+**How many other pages were affected right now.** Five sweep sessions
+are currently running searches across many governments at once. We
+checked their result files for any row that hit this exact bug.
+
+| Sweep | Rows affected by this bug |
+| --- | --- |
+| wo145 | 0 |
+| wo146 | 0 |
+| wo147 | 0 |
+| wo148 | 0 |
+| wo149 | 0 |
+| wo150 | 0 |
+
+None of the current sweeps hit this bug in practice. That's because
+their shared code routes CivicPlus governments through a different path
+that never reaches the buggy check. The bug is still real — it affects
+anyone visiting a self-hosted CivicPlus page directly through this
+app's own resolver — just not something that shows up in these five
+sweeps' results today. Full list (empty, by design):
+`~/Documents/rtr-business/research/wo162_rows_to_rerun.csv`.
+
+**Caution.** Any row already recorded as `no-video-found` because of
+this bug, from *before* this fix, is not automatically corrected by
+this change. Those rows would need to be checked again by hand or by a
+future sweep — this PR does not re-run anything.
+
+**Tests added**, fixture-backed per `CLAUDE.md`'s synthetic-test rule: a
+real page fetch of Temple City, CA's meeting page
+(`tests/fixtures/civicplus/temple_city_agendacenter.html`, fetched live
+2026-09-10 — see that folder's `README.md` for the fetch note and the
+`ec1c24.com` finding), used to confirm the real footer link is now
+correctly skipped. A second, synthetic test (clearly marked as such)
+checks that when a real, already-supported video link and the CivicPlus
+footer link both appear on the same page, the scan picks the real link
+regardless of which one comes first in the page. New `detect_platform`
+cases cover each CivicPlus company page (now correctly unrecognized)
+and each real government page shape (still correctly recognized). All
+four CI gates pass: `ruff check`, `ruff format --check`, `pytest` (2,934
+passed, 16 skipped) — no Alembic check needed, no database tables were
+touched.
+
+**Where else this rule was duplicated, now pointing at one shared
+definition** (`CIVICPLUS_CORPORATE_HOSTS` in `app/platforms/base.py`):
+`app/platforms/base.py`'s own `find_platform_link()`,
+`scripts/wo134_confirmed_hits_ingest.py`'s `find_specific_platform_link()`,
+and `scripts/adhoc_school_district_retry_60.py` /
+`scripts/adhoc_school_district_retry_no_host.py`'s own copies of the
+same three-host set.
+
+**Deploy status.** The `app/` code change is merged to `main` but not
+live in production until the next resolver deploy — deploys are manual
+in this repo. The running coverage sweeps use this worktree's own
+checked-out code directly, so they pick up the fix on their next run
+without waiting for a deploy.
 
 ## Yonkers, NY Legistar page had no video because its Granicus tenant was never registered as a fallback — fixed, plus a 29-tenant read-only test of whether the pattern generalizes [Done 2026-09-10] (WO-145)
 

@@ -51,7 +51,12 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import CalendarPageError, detect_platform, get_finder  # noqa: E402
+from app.platforms.base import (  # noqa: E402
+    CIVICPLUS_CORPORATE_HOSTS,
+    CalendarPageError,
+    detect_platform,
+    get_finder,
+)
 from app.utils.url_normalize import normalize_url  # noqa: E402
 
 REPORT_CSV = Path(
@@ -239,7 +244,13 @@ PLATFORM_DOMAINS = {
 # "powered by CivicPlus" footer credit links to CivicPlus's own login
 # portal or marketing site, not the district's real
 # "{state}-{name}.civicplus.com" tenant. Skip these when picking a host.
-_GENERIC_VENDOR_HOSTS = {"connect.civicplus.com", "www.civicplus.com", "civicplus.com"}
+# Shared with app/platforms/base.py's own `find_platform_link()` (and
+# scripts/wo134_confirmed_hits_ingest.py's `find_specific_platform_link()`)
+# as of WO-162 (2026-09-10) -- this used to be its own separate copy of
+# the same rule, one of five independent per-script patches around the
+# same underlying `detect_platform()` bug (see that constant's own
+# docstring for the full writeup).
+_GENERIC_VENDOR_HOSTS = CIVICPLUS_CORPORATE_HOSTS
 
 
 async def _find_enumerable_host(session, website, wanted_platforms):

@@ -2,12 +2,15 @@ import pytest
 
 from app.platforms import base
 from app.platforms.base import (
+    CIVICPLUS_CORPORATE_HOSTS,
     UnsupportedPlatformError,
     detect_platform,
     find_platform_link,
     get_finder,
     register,
 )
+
+from conftest import load_fixture
 
 
 @pytest.mark.parametrize(
@@ -18,6 +21,26 @@ from app.platforms.base import (
         ("https://legistar.council.nyc.gov/Calendar.aspx", "legistar"),
         ("https://clovisca.portal.civicclerk.com/event/20/media", "civicclerk"),
         ("https://ca-westlakevillage.civicplus.com/AgendaCenter", "civicplus"),
+        # Real tenant shapes, still classified as "civicplus" -- WO-162
+        # (2026-09-10) regression coverage, added alongside the corporate-
+        # host fix below to confirm it didn't also break these. The bare
+        # "{slug}.civicplus.com" shape (no state prefix)...
+        ("https://example.civicplus.com/AgendaCenter", "civicplus"),
+        # ...and the "{state}-{name}.civicplus.com" shape.
+        ("https://nc-durham.civicplus.com/AgendaCenter/City-Council-4", "civicplus"),
+        # CivicPlus's own corporate/marketing hosts -- confirmed live
+        # 2026-09-10 (WO-162) to NEVER be a per-government tenant, even
+        # though a bare "civicplus" substring match used to treat them as
+        # one. `connect.civicplus.com` is the real one every CivicPlus
+        # tenant's own page footer links to ("Government Websites by
+        # CivicPlus (r)") -- see CIVICPLUS_CORPORATE_HOSTS' own docstring
+        # in app/platforms/base.py for the real bug this fixes (Temple
+        # City, CA: a link-scan reaching this footer link before any real
+        # content link got a bogus "no video found"/403 instead of
+        # continuing the scan).
+        ("https://connect.civicplus.com/referral", "unknown"),
+        ("https://www.civicplus.com/some-marketing-page", "unknown"),
+        ("https://civicplus.com/", "unknown"),
         ("https://lacity.primegov.com/Portal/Meeting?id=1", "primegov"),
         ("https://yountvilleca.new.swagit.com/videos/394093", "swagit"),
         ("https://dublin.ca.gov/swagit-video-player?video_id=1", "swagit"),
@@ -196,3 +219,90 @@ def test_find_platform_link_skips_same_page_absolute_self_link():
     page_url = "https://columbus.legistar.com/MeetingDetail.aspx?ID=1"
     html = f'<html><body><a href="{page_url}#mainContent">Skip</a></body></html>'
     assert find_platform_link(html, page_url) is None
+
+
+def test_civicplus_corporate_hosts_matches_the_real_fixture_footer_link():
+    # The exact string this whole fix is built around -- confirmed
+    # present verbatim (not guessed) in two independently-fetched real
+    # CivicPlus tenant fixtures, plus a third, self-hosted one added for
+    # WO-162 -- see CIVICPLUS_CORPORATE_HOSTS' own docstring.
+    assert "connect.civicplus.com" in CIVICPLUS_CORPORATE_HOSTS
+
+
+def test_find_platform_link_skips_civicplus_corporate_footer_link_on_a_real_page():
+    # Real page, fetched live 2026-09-10 (WO-162):
+    # www.templecityca.gov/agendacenter -- see
+    # tests/fixtures/civicplus/README.md for the full fetch note. Real
+    # bug this is a regression test for: before the fix, this real
+    # page's own "Government Websites by CivicPlus" footer credit
+    # (`<a href="https://connect.civicplus.com/referral">`) was
+    # misclassified as a genuine "civicplus" platform link by
+    # detect_platform()'s bare substring match -- confirmed live, this
+    # exact scan used to return that footer link, and delegating to it
+    # hit a real 403 on https://www.civicplus.com/referral.
+    #
+    # This real page's own 103 `tr.catAgendaRow` rows all point their
+    # `td.media` video link at `templecity.ec1c24.com` -- a video-index
+    # wrapper domain detect_platform() doesn't recognize at all (a
+    # separate, real gap, filed in BACKLOG.md -- see the fixture
+    # README's caution note). So the correct, honest result of this scan
+    # on this real page is `None` -- no known-platform link exists on it
+    # at all once the corporate host is correctly excluded -- not a
+    # positive pick. The "picks the real link instead" half of this bug
+    # is covered separately below, using synthetic HTML that places a
+    # real, already-supported platform link where this real page has
+    # none (see that test's own docstring for why it's synthetic).
+    # Called the same way generic_fallback.py's own
+    # _try_delegate_to_known_platform() does -- excluding "youtube" (this
+    # real page also has a "Watch us on YouTube" channel footer icon,
+    # `youtube.com/ConnectwithTC`, the same bare-channel-link false
+    # positive class find_platform_link()'s own docstring already
+    # documents, unrelated to the corporate-host bug this test covers).
+    html = load_fixture("civicplus", "temple_city_agendacenter.html")
+    result = find_platform_link(
+        html,
+        "https://www.templecityca.gov/agendacenter",
+        exclude=frozenset({"youtube"}),
+    )
+    assert result is None
+
+
+def test_find_platform_link_skips_civicplus_footer_before_a_real_platform_link():
+    # Synthetic HTML (per this repo's convention: fine for exercising one
+    # already-confirmed logic branch -- the DOM-order priority between
+    # two links -- not as a stand-in for "test against a real page
+    # first"). The footer link's own shape is the real one confirmed in
+    # tests/fixtures/civicplus/temple_city_agendacenter.html; the Swagit
+    # link reuses the real, already-verified Austin, TX shape from
+    # test_find_platform_link_finds_a_swagit_link_in_a_plain_a_tag above.
+    # No real fixture combines a corporate footer credit with a directly
+    # resolvable known-platform link on the same page (Temple City's own
+    # real per-meeting links point at an unrecognized wrapper domain
+    # instead -- see the test above), so this is the ordering variant the
+    # WO's own test plan allows building synthetically.
+    html = (
+        "<html><body>"
+        '<a href="http://austintx.swagit.com/play/1/0/">Video</a>'
+        '<span class="cpBylineTextTS">Government Websites by '
+        '<a href="https://connect.civicplus.com/referral">CivicPlus&reg;</a></span>'
+        "</body></html>"
+    )
+    result = find_platform_link(html, "https://www.example-gov.org/AgendaCenter")
+    assert result == ("http://austintx.swagit.com/play/1/0/", "swagit")
+
+    # And the reverse order -- the footer appearing FIRST in the DOM,
+    # the real shape confirmed live on Temple City's own page (the
+    # footer sits at the very bottom of the page, but a different real
+    # tenant could plausibly render it earlier) -- confirms the fix isn't
+    # order-dependent by accident.
+    html_footer_first = (
+        "<html><body>"
+        '<span class="cpBylineTextTS">Government Websites by '
+        '<a href="https://connect.civicplus.com/referral">CivicPlus&reg;</a></span>'
+        '<a href="http://austintx.swagit.com/play/1/0/">Video</a>'
+        "</body></html>"
+    )
+    result_footer_first = find_platform_link(
+        html_footer_first, "https://www.example-gov.org/AgendaCenter"
+    )
+    assert result_footer_first == ("http://austintx.swagit.com/play/1/0/", "swagit")
