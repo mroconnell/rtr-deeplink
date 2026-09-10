@@ -171,6 +171,32 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
+      # Added 2026-09-10 for the still-unconfirmed SIGABRT crash-loop
+      # (BACKLOG.md, "rtr-deeplink's SIGABRT crash-loop (status 134)" --
+      # 30 occurrences since 2026-08-30 as of this comment). That entry's
+      # own investigation notes nothing in this codebase does explicit
+      # signal handling, and stdout across every pasted crash log only
+      # ever shows the boot sequence before and after the restart, never
+      # the abort itself -- because SIGABRT/SIGSEGV/etc. kill the process
+      # before a normal Python exception (and therefore Sentry, which only
+      # sees exceptions) ever gets a chance to fire. `faulthandler`
+      # installs a C-level handler for exactly those fatal signals that
+      # dumps every thread's Python stack to stderr in the instant before
+      # the process dies -- the standard tool for "what was running when
+      # a non-Python-exception crash happened," and it writes via a raw fd
+      # write, not the buffered IO path, so it isn't at risk of being lost
+      # the way a regular buffered print()  might be. This does not
+      # explain or fix the crash -- it's purely diagnostic, added so the
+      # *next* occurrence (of, per the backlog entry, an already-ongoing
+      # and frequent crash-loop) has a real stack trace to read instead of
+      # another silent restart. A literal value, not sync:false -- a
+      # diagnostic flag, not a secret. Same var added to
+      # rtr-deeplink-archive/rtr-transcription-worker/-worker-2 below,
+      # since all four share the same C-extension dependencies
+      # (aiohttp/uvloop/asyncpg/PyAV) the backlog entry names as the
+      # likely fault surface.
+      - key: PYTHONFAULTHANDLER
+        value: "1"
       # Enables the generic fallback's headless-browser escalation
       # (app/platforms/generic_fallback.py -- one real-Chromium retry for
       # a blocked/challenge/empty-shell fetch). Flipped on 2026-08-14
@@ -342,6 +368,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
+      # Diagnostic for the ongoing SIGABRT crash-loop -- see
+      # rtr-deeplink's own copy of this var above for the full reasoning.
+      - key: PYTHONFAULTHANDLER
+        value: "1"
       - key: DATABASE_URL
         sync: false
       # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): the real internal
@@ -466,6 +496,10 @@ services:
     # same 900s/"tiny" combination -- not a guess this time.
     plan: standard
     envVars:
+      # Diagnostic for the ongoing SIGABRT crash-loop -- see
+      # rtr-deeplink's own copy of this var above for the full reasoning.
+      - key: PYTHONFAULTHANDLER
+        value: "1"
       - key: DATABASE_URL
         sync: false  # MUST be the exact same value as rtr-deeplink-archive's DATABASE_URL above -- not a separate database
       # WO-4 (AUDIT_EXECUTION_BRIEF.md, 2026-08-16): same real, checked
@@ -550,6 +584,10 @@ services:
         - "**/*.md"
     plan: standard
     envVars:
+      # Diagnostic for the ongoing SIGABRT crash-loop -- see
+      # rtr-deeplink's own copy of this var above for the full reasoning.
+      - key: PYTHONFAULTHANDLER
+        value: "1"
       - key: DATABASE_URL
         sync: false  # MUST be the exact same value as rtr-deeplink-archive's / rtr-transcription-worker's DATABASE_URL -- not a separate database
       - key: EXPECTED_DB_HOST
