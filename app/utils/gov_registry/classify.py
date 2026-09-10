@@ -95,7 +95,16 @@ _RULES: list[tuple[str, re.Pattern]] = [
             r"high school district|"
             r"board of education|school board|schools|community college|college district|"
             r"independent school|isd|public schools|school committee)\b|"
-            r"\b[a-z.'-]+ college$",
+            # "<word> College" is a community-college district ("Foothill
+            # College") -- except for the two incorporated places in
+            # us_places.csv whose NAME ends that way: State College
+            # borough, PA and Rutherford College town, NC (grep 2026-09-10,
+            # the only two nationally). Without the exclusion "State
+            # College, PA" classified as a school district and keyed to
+            # State College Area School District -- found by the first
+            # full backfill dry run after display-from-gov_id, which would
+            # have moved a real borough page onto the district's hub.
+            r"\b(?!state\b)(?!rutherford\b)[a-z.'-]+ college$",
             re.I,
         ),
     ),

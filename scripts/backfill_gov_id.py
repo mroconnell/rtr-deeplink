@@ -118,6 +118,7 @@ async def main() -> None:
     from sqlalchemy import select
 
     from app.utils.gov_registry import (
+        TIER_INFERRED,
         TIER_PINNED,
         TIER_REGISTRY,
         TIER_UNRESOLVED,
@@ -320,7 +321,15 @@ async def main() -> None:
         # 315-row run re-proposed exactly this on a second dry run.
         # Treating the pair as equivalent is what makes "dry run again ->
         # expect 0" true after one apply.
-        tier_equivalent = {confidence, new_confidence} <= {TIER_PINNED, TIER_REGISTRY}
+        # `inferred` joins the set (2026-09-10, second full run): pass 1
+        # rewrote "The City of Milwaukee, WI" to the registry's
+        # "Milwaukee, WI" on an inferred row, and pass 2 keys that string
+        # straight to the table -- same gov_id, same name, only the label.
+        tier_equivalent = {confidence, new_confidence} <= {
+            TIER_PINNED,
+            TIER_REGISTRY,
+            TIER_INFERRED,
+        }
         if (
             new_gov_id == current_gov_id
             and new_gov_type == current_gov_type
@@ -377,7 +386,7 @@ async def main() -> None:
                     page.meeting_body = new_meeting_body
                     if not (
                         {page.jurisdiction_confidence, match.tier}
-                        <= {TIER_PINNED, TIER_REGISTRY}
+                        <= {TIER_PINNED, TIER_REGISTRY, TIER_INFERRED}
                     ):
                         page.jurisdiction_confidence = match.tier
                 await write_session.commit()
