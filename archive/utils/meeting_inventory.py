@@ -21,6 +21,7 @@ path with /internal/export/pages.
 from __future__ import annotations
 
 import csv
+import html
 import io
 import re
 from typing import Optional
@@ -69,16 +70,46 @@ COLUMNS: tuple[str, ...] = (
 )
 
 _CANADA_SUFFIX = " (Canada)"
-# A stored name that only differs from the registry's by a leading entity
-# phrase ("City of Napa, CA" vs "Napa, CA") is reported as "prefix only"
-# rather than "no": the page already displays the registry form, so the
-# stored string is stale, not wrong about which government it names.
+# A stored name that differs from the registry's only in FORM -- a leading
+# entity phrase ("The City of Joliet, IL"), a Census type word carried
+# after the name ("Meredith Town, NH"), a parenthetical disambiguator
+# ("Joliet (city), IL"), an HTML entity -- names the same government. The
+# page already shows the registry form, so the stored string is stale,
+# not wrong. Reported as "stale form" rather than "no" so the "no" bucket
+# holds only real disagreements (WO-124 follow-up, 2026-09-09: 330 "no"
+# rows were 257 unidentified pages, 37 "X Town, NH" township forms, and
+# a handful of state-less or prefixed names; the real disagreements were
+# fewer than ten).
 _LEADING_ENTITY = re.compile(
-    r"^(?:the\s+)?(?:city|town|village|county|township|borough|municipality)"
-    r"\s+of\s+",
+    r"^(?:the\s+)?(?:city|town|village|county|township|borough|municipality"
+    r"|regional municipality|district|municipal district)\s+(?:of\s+)?(?:the\s+)?",
     re.IGNORECASE,
 )
+_TRAILING_TYPE = re.compile(
+    r"\s+(?:city|town|village|township|charter township|borough|plantation"
+    r"|county|parish)(?=,|$)",
+    re.IGNORECASE,
+)
+_PARENTHETICAL = re.compile(r"\s*\([^)]*\)")
 _CITY_ST = re.compile(r"^[^,]+, [A-Z]{2}$")
+
+
+def _normalize_name(text: str) -> str:
+    text = html.unescape(_strip_canada(text)).strip()
+    text = _PARENTHETICAL.sub("", text)
+    text = _LEADING_ENTITY.sub("", text)
+    text = _TRAILING_TYPE.sub("", text)
+    return re.sub(r"\s+", " ", text).strip().lower().rstrip(",").strip()
+
+
+def _split_state(text: str) -> tuple[str, str]:
+    """ "napa, ca" -> ("napa", "ca"); a name with no ", ST" -> (name, "")."""
+    if "," in text:
+        head, _, tail = text.rpartition(",")
+        tail = tail.strip()
+        if len(tail) == 2 and tail.isalpha():
+            return head.strip(), tail
+    return text, ""
 
 
 def _strip_canada(text: Optional[str]) -> str:
@@ -86,21 +117,28 @@ def _strip_canada(text: Optional[str]) -> str:
 
 
 def names_match(stored: Optional[str], gov_id: Optional[str], gov_display: str) -> str:
-    """ "yes" / "prefix only" / "no" / "no gov_id". Compares the STORED
+    """One of: "yes", "stale form", "state missing", "no", "no gov_id",
+    "unidentified", "gov_id not in registry". Compares the STORED
     jurisdiction string to the registry's display name, not the page's
     displayed label -- that label is itself derived from gov_id, so
-    comparing it would always say yes."""
+    comparing it would always say yes. See _LEADING_ENTITY's comment for
+    what counts as a stale form rather than a disagreement."""
     if not gov_id:
         return "no gov_id"
+    if gov_id.startswith("rtr:unknown:"):
+        return "unidentified"
     if not gov_display:
-        # gov_id set but not in the committed registry -- a minted or
-        # since-removed id. Worth seeing, so it's its own value.
         return "gov_id not in registry"
     stored = stored or ""
     if stored == gov_display:
         return "yes"
-    if _LEADING_ENTITY.sub("", stored).lower() == gov_display.lower():
-        return "prefix only"
+    a, b = _normalize_name(stored), _normalize_name(gov_display)
+    if a == b:
+        return "stale form"
+    a_name, a_state = _split_state(a)
+    b_name, b_state = _split_state(b)
+    if a_name == b_name and not a_state and b_state:
+        return "state missing"
     return "no"
 
 

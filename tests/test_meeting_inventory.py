@@ -109,15 +109,36 @@ def test_inventory_row_without_video_or_versions():
     assert row["outcome"] == "No video"
 
 
-def test_names_match_distinguishes_prefix_only_from_wrong():
+def test_names_match_tells_stale_forms_from_real_disagreements():
+    # Real stored/registry pairs from the 2026-09-09 inventory run.
     assert names_match("Napa, CA", "us:place:0650258", "Napa, CA") == "yes"
-    assert names_match("City of Napa, CA", "us:place:0650258", "Napa, CA") == (
-        "prefix only"
+    assert (
+        names_match("City of Napa, CA", "us:place:0650258", "Napa, CA") == "stale form"
+    )
+    assert names_match(
+        "The City of Joliet, IL", "us:place:1738570", "Joliet (city), IL"
+    ) == ("stale form")
+    assert names_match("Meredith Town, NH", "us:cousub:3300146900", "Meredith, NH") == (
+        "stale form"
+    )
+    assert names_match(
+        "Kaua&apos;i County, HI", "us:county:15007", "Kaua'i County, HI"
+    ) == ("stale form")
+    assert names_match("County of Clark", "us:county:32003", "Clark County, NV") == (
+        "state missing"
+    )
+    assert names_match("Kansas City", "us:place:2938000", "Kansas City, MO") == (
+        "state missing"
     )
     assert names_match("Duncanville, TX", "us:place:4821628", "Dallas, TX") == "no"
     assert names_match("Anything", None, "") == "no gov_id"
-    assert names_match("Anything", "rtr:us:tx:minted-slug", "") == (
-        "gov_id not in registry"
+    assert names_match(
+        "",
+        "rtr:unknown:videoplayer.telvue.com",
+        "Unidentified government (videoplayer.telvue.com)",
+    ) == ("unidentified")
+    assert (
+        names_match("Anything", "rtr:us:tx:minted-slug", "") == "gov_id not in registry"
     )
 
 
