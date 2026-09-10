@@ -136,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (113)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (114)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
@@ -217,12 +217,13 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (113)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (36)
+  Adapter & platform gaps  (37)
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
     [NEEDS-AUDIT] `HIGH_RISK_TITLE_PLATFORMS` (`{"youtube", "vimeo"}`,…
     [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
+    [NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
@@ -255,7 +256,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (113)
     [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
     [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
 
-Reliability, ops & cost  (13)
+Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (4)
@@ -263,7 +264,8 @@ Reliability, ops & cost  (13)
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
     `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
-  Transcription queue & workers  (6)
+  Transcription queue & workers  (7)
+    [JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
     [NEEDS-AUDIT] WO-57's claim heartbeat has no cap, and transcription
@@ -3129,6 +3131,37 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: `GetCalendarMeetings` is a real but undocumented tenant API — keep the same 120-day lookback and polite delay `adhoc_cdx_escribe_pipeline.py` already uses.
   - **History**: found live 2026-09-09, WO-128 (known-platform sweep); worked around locally in `scripts/wo128_known_platform_sweep.py` rather than fixed at the shared-helper level, since `nationwide_2404_ingest.py` was mid-run against production the same day (same "don't change this mid-run" constraint as the agenda-only-ingest entry above).
 
+- **[NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
+  on a bare tenant homepage instead of finding a real event — confirmed
+  live on 3 counties in one run.**
+  - **Issue**: `SuiteOneAssetFinder.resolve()` requires a URL that
+    already carries an `event`/`id` query parameter (`_extract_ids()`);
+    given a bare tenant root (`https://floydcoin.suiteonemedia.com/web/
+    live`, `https://lunaconm.suiteonemedia.com/`, `https://
+    rushcoin.suiteonemedia.com/?embed=1`) it raises `ValueError("Could
+    not find a SuiteOne tenant/event id in URL: ...")`, uncaught by
+    `wo134_confirmed_hits_ingest.py`'s `process_row()`, which surfaces
+    as a hard `RowError` rather than a content-classified skip. Same
+    shape as this section's own eScribe bare-tenant-root entry above and
+    the Granicus bare-homepage-fallback entry a few sections down — a
+    third adapter with the identical "given a listing/root page instead
+    of a specific meeting URL, crash instead of degrading" gap.
+  - **Impact**: confirmed live 2026-09-10, WO-149's county sweep: Floyd
+    County IN, Luna County NM, Rush County IN all counted as `error`
+    (not `skipped`) purely because their only known SuiteOne lead was
+    the tenant's homepage/live-stream URL, not a specific
+    `/event/?id=...` link.
+  - **Next action**: give `SuiteOneAssetFinder` (or its caller) a real
+    event-listing lookup for a bare tenant root, the way
+    `civicclerk_latest_event_url()`/`_discover_escribe_meeting()` already
+    do for their platforms — module docstring doesn't document a listing
+    endpoint yet, so check for one on a live tenant (`floydcoin.
+    suiteonemedia.com`) before assuming none exists.
+  - **Constraint**: only 3 tenants confirmed so far, all from one sweep
+    — a real second example before generalizing further, per this
+    repo's "test against a real URL first" rule.
+  - **History**: WO-149, 2026-09-10 (`BACKLOG_DONE.md`).
+
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
   missing the real `/private/{id}` path variant — confirmed live with
   Vero Beach, FL.**
@@ -3789,6 +3822,37 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Transcription queue & workers
 
+- **[JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
+  string match, so two differently-formatted URLs for the SAME video can
+  both queue — confirmed live, one real duplicate line produced and
+  removed by hand.**
+  - **Issue**: `scripts/wo134_confirmed_hits_ingest.py`'s
+    `_existing_tier3_queue_urls()` (shared by every WO-130/134/139/145-149
+    -style sweep) compares the new URL against the queue file's existing
+    first-tab-field values as plain strings. WO-149's county sweep queued
+    `https://www.youtube.com/embed/AscWHEa0ay4?enablejsapi=1&autoplay=0&
+    ...&disablekb=0&` (Lake County, OH) as a "new" URL even though the
+    exact same video (`AscWHEa0ay4`) was already on the queue from
+    earlier work as a slightly differently-formatted string — same video
+    id, different player-widget query parameters attached. Caught by
+    `tests/test_transcription_queue_files.py`'s dangling-query-separator
+    check (the messy URL also had a trailing bare `&`), not by the dedup
+    logic itself, which is the actual bug.
+  - **Impact**: a real, exact-content duplicate line reached the queue
+    file in this WO's own run (removed by hand, see `BACKLOG_DONE.md`'s
+    WO-149 entry) — the dedup check gave false confidence that "not an
+    exact string match" meant "not a duplicate."
+  - **Next action**: extract each platform's stable video id (YouTube:
+    the 11-char id already extracted by `_YT_ID_RE`/`canonicalize_
+    youtube_url()`-style logic in `scripts/wo149_county_ladder_sweep.py`;
+    Vimeo/TelVue/Cablecast have their own id shapes already used by
+    `_tenant_override_match()`) and dedup on that instead of the raw URL
+    string.
+  - **Constraint**: don't over-generalize from one confirmed case yet —
+    worth checking whether the existing ~2,180-line queue file has more
+    of these before committing to a specific normalization function.
+  - **History**: WO-149, 2026-09-10.
+
 - **[NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
   `IS NOT NULL` matches 63 rows that aren't multi-clip jobs at all.**
   - **Issue**: `TranscriptionJob.chunk_plan` is
@@ -4017,25 +4081,44 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     2026-08-15/16).
 ## Trust, safety & data quality
 
-### A bare YouTube channel-listing scan measurably ingests non-meeting videos — 3 of 8 real examples, all matching the title allowlist by accident `[NEEDS-AUDIT]`
+### A bare YouTube channel-listing scan measurably ingests non-meeting videos — 7 of 16 real examples across two independent sessions, all matching the title allowlist by accident `[NEEDS-AUDIT]`
 
 - **Issue**: `wo134_confirmed_hits_ingest.py`'s `resolve_youtube_channel()`
   (used by every `nationwide_*`/`wo1*_confirmed_hits_ingest`-style sweep,
-  including WO-130/134/139 and this WO) lists a government's YouTube
-  channel's most recent uploads and keeps the first that passes
-  `_looks_like_real_meeting(..., require_allowlist=True)` — a single
-  substring match against `MEETING_ALLOWLIST` ("council", "board",
-  "commission", ...). WO-147's own 40-government pilot found 3 of 8
+  including WO-130/134/139/149) lists a government's YouTube channel's
+  most recent uploads and keeps the first that passes
+  `_looks_like_real_meeting(..., require_allowlist=True)` — a word match
+  against `MEETING_ALLOWLIST` ("council", "board", "commission", ...).
+  Two independent same-day sessions found the identical gap from
+  different angles. **WO-147's** 40-government pilot found 3 of 8
   channel-sourced hits are not real meetings despite passing that check,
   because a body name shows up in an unrelated video's own title too:
   "HAIRitage 2026 CROWN Act Workshop: Advice from Our Commissioner
   Board" (Union County, NJ), "Commissioners Tour Picatinny Arsenal's
   Revolutionary Roots" (Morris County, NJ), "Council Participation
-  Instructions" (Fort Collins, CO). The other 5 pilot hits — a specific
-  already-linked video, a curated playlist, or a non-YouTube platform —
-  were all real meetings; a curated "Board Meetings" playlist is a much
-  stronger signal than a channel's raw upload list, which mixes
-  everything the government ever posts.
+  Instructions" (Fort Collins, CO). **WO-149's** full county sweep found
+  4 of its own 159 tier-1/2 ingests were not real meetings, all via the
+  same channel-listing fallback: "Larry J. Dix Boardroom" (Adams County,
+  NE, a 59-second room-name livestream title — this one was a plain
+  substring bug, `"board" in title` matching "Boardroom", now fixed with
+  word-boundary matching, `_contains_word()`), "What Does a County
+  Commissioner or Council Member Do?" (Millard County, UT, a 2017,
+  2m51s civics explainer), "Pennsylvania Fish and Boat Commission Water
+  Conservation Officer training: Boating Scenarios" (Perry County, PA —
+  a *state* agency's own training video, wrong government entirely),
+  and "Senate Bill 152: Foreign Funding Restrictions of Ballot Measures
+  for Entities Other Than Committees" (Osage County, MO, a state-
+  legislation explainer clip). The Adams County bug is fixed; the other
+  6 are the same still-open, harder gap: a real allowlist word
+  ("commissioner"/"council"/"commission"/"committees"/"board") appears
+  in a title that a human would instantly recognize as not a meeting.
+  WO-149's 3 remaining pages are flagged for deletion in
+  `~/Documents/rtr-business/research/wo149_flagged_for_review.csv`. The
+  other 5 of WO-147's 8 pilot hits — a specific already-linked video, a
+  curated playlist, or a non-YouTube platform — were all real meetings;
+  a curated "Board Meetings" playlist is a much stronger signal than a
+  channel's raw upload list, which mixes everything the government ever
+  posts.
 - **Impact**: a wrong video can reach a live tier-1/2 page immediately
   (this path has no probe/review gate at all, unlike tier 3) or sit in
   the tier-3 queue as a real, current-looking but wrong "meeting" —
@@ -4043,27 +4126,38 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   project makes across every WO write-up. Scope is unknown: this
   resolution path has been in production since WO-130 (2026-09-09) with
   no equivalent check, so already-ingested/queued pages may carry the
-  same defect; nobody has audited them for it.
-- **Next action**: before loosening/tightening `MEETING_ALLOWLIST`
-  itself (risking false negatives on real meetings titled unusually —
-  "LCBOC CM 8 25 26" in this same pilot has no allowlist word spelled
-  out and is real), gather more real examples of both classes, then
-  design a check specific to *channel-listing* resolution (which the
-  playlist/direct-link paths don't need, since they were 5/5 clean in
-  this sample) — e.g. requiring a date-shaped token in the title, or a
-  match against `PROMO_BLOCKLIST`-style negative signals for
-  tour/explainer/instructional content. WO-147's own driver
-  (`scripts/wo147_access_ladder_sweep.py`) adds a non-blocking
+  same defect; nobody has audited them for it. Confirmed rate so far:
+  7 of 167 combined channel-sourced hits across the two pilots/sweeps —
+  roughly 4%, not a one-off.
+- **Next action**: a duration floor alone does not fix this — WO-149's 3
+  still-open cases ran 77s/171s/206s, all above the existing 60s
+  `MIN_PLAUSIBLE_MEETING_SECONDS` floor used elsewhere (see the
+  "Duration alone..." entry below, a related but distinct problem;
+  WO-147's 3 examples' durations were not recorded). The
+  real signal is topical, not temporal: before loosening/tightening
+  `MEETING_ALLOWLIST` itself (risking false negatives on real meetings
+  titled unusually — "LCBOC CM 8 25 26" in WO-147's pilot has no
+  allowlist word spelled out and is real), design a check specific to
+  *channel-listing* resolution (the playlist/direct-link paths don't
+  need it, 5/5 and clean elsewhere in both sessions' samples) — e.g. a
+  date-shaped token requirement, a `PROMO_BLOCKLIST`-style negative
+  signal for explainer/training/state-level content, or holding
+  channel-listing results for a lower-trust review queue rather than a
+  direct tier-1/2 ingest. WO-147's own driver
+  (`scripts/wo147_access_ladder_sweep.py`) already adds a non-blocking
   `channel_scan_caution()` note (`is_bare_youtube_channel_hit()`) to any
-  row that came from a bare channel/handle/vanity URL rather than a
-  specific video/playlist/non-YouTube platform — a mechanical proxy for
-  "needs a human title check," reusable by whoever builds the real fix.
+  row from a bare channel/handle/vanity URL — a mechanical proxy for
+  "needs a human title check," reusable by whoever builds the real fix;
+  WO-149's own driver (`scripts/wo149_county_ladder_sweep.py`) does not
+  yet call it.
 - **Constraint**: `MEETING_ALLOWLIST`/`PROMO_BLOCKLIST` are shared by
-  every existing sweep script — don't change either from an 8-example
-  pilot; the false-negative risk on real, unusually-titled meetings is
-  as real as the false-positive risk this entry documents.
-- **History**: found live during WO-147's required pilot hand-verification
-  step, 2026-09-10. See `BACKLOG_DONE.md`'s WO-147 entry.
+  every existing sweep script — don't change either from a 16-example
+  combined sample; the false-negative risk on real, unusually-titled
+  meetings is as real as the false-positive risk this entry documents.
+  Don't hard-delete WO-149's 3 flagged pages without a human decision.
+- **History**: found live during WO-147's and WO-149's required pilot/
+  full-run hand-verification steps, both 2026-09-10. See
+  `BACKLOG_DONE.md`'s WO-147 and WO-149 entries.
 
 ### A live page is keyed to the wrong government entirely — Bamberg County, SC's YouTube livestream page displays as Nottoway County, VA `[NEEDS-AUDIT]`
 
