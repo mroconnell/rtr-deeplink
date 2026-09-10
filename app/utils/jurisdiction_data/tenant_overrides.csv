@@ -1293,6 +1293,7 @@ town-and-country.org,,us:place:2973618,fallback,identity_join+landing_page,"Town
 townhallstreams.com,location_id=169,us:cousub:3300577380,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/troy-nh-2025-05-29-board-of-selectmen"
 townhallstreams.com,location_id=69,us:cousub:0911044910,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/mansfield-ct-2020-04-20-planning-and-zoning-commission-meeting"
 townhallstreams.com,location_id=94,us:cousub:2300140035,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/lisbon-me-2026-07-28-town-council-special-meeting"
+townofchenango.civicweb.net,,us:cousub:3600715110,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:3600715110 (Chenango town, NY); hub ; meeting found via civicweb at https://townofchenango.civicweb.net/Portal/MeetingInformation.aspx?Id=2288"
 townoffairfaxca.gov,,us:place:0623168,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Fairfax, Marin County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Fairfax town"
 townoffrisco.primegov.com,,us:place:0828690,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Frisco town
 townofhorseheads.gov,,us:place:3635694,fallback,hub_sweep_wo126,"coverage registry row us:place:3635694 (Horseheads village, NY); hub https://townofhorseheads.gov/AgendaCenter; meeting found via youtube at https://townofhorseheads.gov/AgendaCenter"
@@ -1497,6 +1498,7 @@ www.youtube.com,8kp3yvBFpJ4,us:place:3408170,fallback,ryan_stated,"Brooklawn, NJ
 www.youtube.com,A1MaBraZRJU,us:place:0665042,fallback,ryan_stated,"Ventura, CA (YouTube channel @cityofventura) -- governments.csv curated alias 'Ventura'"
 www.youtube.com,B4v--VTMH-I,us:place:0665042,fallback,ryan_stated,"Ventura, CA (YouTube channel @cityofventura) -- governments.csv curated alias 'Ventura'"
 www.youtube.com,BKjZ9IOD2GU,us:place:3665508,fallback,ryan_stated,"Schenectady, NY -- video on shared OPEN STAGE MEDIA channel; 'Special City Council Committee Meeting, February 15, 2024' (conductor 2026-09-10; Ryan: nothing keys to a shared host without a channel/playlist/video match)"
+www.youtube.com,DlyesU9apFY,us:cousub:3400129280,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:3400129280 (Hamilton township, NJ); hub ; meeting found via youtube at https://youtu.be/DlyesU9apFY"
 www.youtube.com,EndUb-bwgwY,us:place:4514950,fallback,ryan_stated+proposal,"Clemson, SC (YouTube channel @CityofClemsonSouthCarolina) -- accepted proposal: YouTube channel @CityofClemsonSouthCarolina is ""City of Clemson South Carolina"" -> ""City Of Clemson"""
 www.youtube.com,I0PSbsgUEMg,us:cousub:2609916520,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:2609916520 (Clinton charter township, MI); hub ; meeting found via youtube at https://youtu.be/I0PSbsgUEMg?list=PL1FNTHBBwsYsZDEGIw0wQo2wEYCgu_qG5"
 www.youtube.com,IEZoIxA87S8,us:place:3471670,fallback,ryan_stated,"Sussex, NJ (YouTube channel @SussexNJ) -- us_places.csv Sussex borough"
@@ -1505,6 +1507,7 @@ www.youtube.com,Kj8xnou6W2o,us:place:0455000,fallback,ryan_stated,"Phoenix, AZ (
 www.youtube.com,ME-g4YWUuHU,us:place:3464650,fallback,ryan_stated,"Roselle Park, NJ (YouTube channel @roselleparktv2399) -- us_places.csv Roselle Park borough"
 www.youtube.com,OzamGwPq88Q,us:place:3647636,fallback,wo127_civicplus_pipeline,"Mineola village, NY -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 www.youtube.com,PSIXTeon-hA,us:place:4221648,fallback,ryan_stated,"Easton, PA (YouTube channel @cityofeaston) -- us_places.csv Easton city"
+www.youtube.com,Qn0NeuuOpjg,us:cousub:2608112500,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:2608112500 (Caledonia township, MI); hub ; meeting found via youtube at https://youtube.com/live/Qn0NeuuOpjg?feature=share"
 www.youtube.com,RQ3pxTLZdZo,us:cousub:2609946900,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:2609946900 (Lenox township, MI); hub ; meeting found via youtube at https://youtu.be/RQ3pxTLZdZo?si=F5vj7kM9cOrddCZ1"
 www.youtube.com,RvW6t6ADwsc,us:place:4108650,fallback,ryan_stated,"Brookings, OR (YouTube channel @cityofbrookingsoregon8039) -- us_places.csv Brookings city"
 www.youtube.com,U42L2C_XMnY,us:place:4141650,fallback,ryan_stated,"Lebanon, OR (YouTube channel @CityofLebanonOR) -- us_places.csv Lebanon city"

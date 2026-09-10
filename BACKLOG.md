@@ -125,8 +125,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
-  Production actions only Ryan should take  (4)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
+  Production actions only Ryan should take  (5)
+    [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
     [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
@@ -640,6 +641,13 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] One live page is keyed to the wrong government: a real Chenango TOWN, NY meeting displays as Chenango COUNTY, NY -- fixed for future ingests, needs a deploy + backfill for this one page.**
+  - **Issue**: WO-145's breadth sweep ingested `townofchenango.civicweb.net`'s real Town Board meeting under `us:cousub:3600715110` (Chenango town, NY), but `key_check()` couldn't resolve that jurisdiction string to the intended id at registry/pinned confidence (Chenango County, NY is a real, different, larger New York county with the same base name) -- the page live-keyed to the county instead. A `strength=fallback` pin (`townofchenango.civicweb.net` -> `us:cousub:3600715110`) is now in `tenant_overrides.csv` (this PR), which fixes every future ingest/re-resolve of this tenant, but does nothing for the page that already exists.
+  - **Impact**: one live page, `/m/chenango-county-ny-2026-09-02-town-board-02-sep-2026`, displays and is keyed as "Chenango County, NY" instead of the real Chenango town whose meeting it actually is.
+  - **Next action**: after this PR deploys, run `backfill_gov_id.py --hosts townofchenango.civicweb.net` to re-key the one existing page.
+  - **Constraint**: the pin must be live (deployed) before the backfill runs, or it re-resolves to the same wrong id.
+  - **History**: WO-145, `BACKLOG_DONE.md` 2026-09-10.
 
 - **[HUMAN] Two live pages need deleting: real video, zero transcript segments, created by a WO-146 script bug (fixed, but the sandbox can't run the delete).**
   - **Issue**: `scripts/wo146_api_relist_sweep.py`'s first version treated rtr-discovery's ledger status `resolved_ok` as "has real captions" when it was actually called with `require_captions=False` (deliberate, so a video-only outcome stays visible) — `post_resolve()` marks a video-only candidate `resolved_ok` too, no captions required. That shipped two pages with real video and 0 transcript segments as if they were tier-1/2: `loudoun-county-va-2013-01-11-video04-maptab` and `waukesha-city-wi-2026-09-08-finance-committee-on-2026-09-08-6-00-pm`. Caught by hand-checking the pilot's own report per this WO's own instructions, within the first 20 rows. The script now splits tier 1/2 vs tier 3 on the payload's own `segments` field, not ledger status.
