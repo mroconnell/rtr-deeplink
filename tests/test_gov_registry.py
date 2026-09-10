@@ -2228,3 +2228,53 @@ def test_a_per_video_pin_on_youtu_be_still_fires_for_the_www_form(monkeypatch):
         None, tenant_host="www.youtube.com", path="/watch?v=0qVUwGeJ2P4"
     )
     assert match.gov_id == "us:place:0686440"
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("State College, PA", "us:place:4273808"),
+        ("Rutherford College, NC", "us:place:3758440"),
+    ],
+)
+def test_the_two_real_places_named_college_are_places_not_school_districts(raw, gov_id):
+    """`classify`'s "<word> College" rule is for community-college
+    districts; us_places.csv holds exactly two incorporated places whose
+    name ends that way (grep, 2026-09-10). Before the exclusion "State
+    College, PA" keyed to State College Area School District -- caught
+    by the first full backfill dry run after display-from-gov_id, which
+    would have moved a real borough page onto the district's hub."""
+    match = resolve(raw, None)
+    assert match.gov_id == gov_id
+    assert match.gov_type == "municipality"
+    assert classify.classify_government_type("Foothill College") == "school_district"
+
+
+@pytest.mark.parametrize(
+    "raw, host, forbidden_state",
+    [
+        ("Arkansas Supreme Court", "arkansas-sc.granicus.com", "SC"),
+        ("Oxnard School District", "oxnardsd.granicus.com", "SD"),
+        ("Colorado", "coloradoga.granicus.com", "GA"),
+    ],
+)
+def test_a_subdomain_type_abbreviation_is_not_a_state(raw, host, forbidden_state):
+    """arkansas-sc is the Arkansas Supreme Court, oxnardsd the Oxnard
+    School District, coloradoga the Colorado General Assembly. The
+    subdomain reader returns ("Arkansas", "SC") for the first, and the
+    mint rung wrote `rtr:us:sc:arkansas-supreme-court` / "Arkansas
+    Supreme Court, SC" -- hidden while an unverified page kept the
+    adapter's string, live the day display-from-gov_id started rendering
+    minted names (2026-09-10). Unresolved is the honest answer."""
+    match = resolve(raw, host)
+    assert match.state.upper() != forbidden_state
+    assert not match.gov_id.startswith(f"rtr:us:{forbidden_state.lower()}:")
+    assert forbidden_state not in (match.gov_name or "").split(",")[-1]
+
+
+def test_the_general_assembly_still_reaches_its_state():
+    """The guard removes only the wrong state; the name's own type still
+    resolves -- the Colorado General Assembly is a body of the State of
+    Colorado (decision D1)."""
+    match = resolve("Colorado General Assembly", "coloradoga.granicus.com")
+    assert match.gov_id == "us:state:08"

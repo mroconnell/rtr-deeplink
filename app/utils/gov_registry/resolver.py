@@ -1122,6 +1122,71 @@ def _fallback_contradicts_type(gov: Government, raw_type: Optional[str]) -> bool
     )
 
 
+# Two-word phrases whose initials are also a US state code, and which
+# tenants abbreviate into their subdomain: arkansas-sc.granicus.com is the
+# Arkansas Supreme Court, oxnardsd.granicus.com the Oxnard School
+# District, coloradoga.granicus.com the Colorado General Assembly. The
+# enricher's subdomain reading returns ("Arkansas", "SC") for the first,
+# and the mint rung then wrote `rtr:us:sc:arkansas-supreme-court` and the
+# display "Arkansas Supreme Court, SC" -- hidden while an unverified
+# page kept the adapter's string, live the moment display-from-gov_id
+# (2026-09-10) started rendering minted names. Found by that day's first
+# full backfill dry run. Only the SUBDOMAIN source is second-guessed;
+# _KNOWN_DOMAINS and tenant_hints.csv are human or learned and keep
+# their say.
+_TYPE_PHRASE_INITIALS = {
+    "supreme court": "SC",
+    "superior court": "SC",
+    "school district": "SD",
+    "sanitary district": "SD",
+    "sewer district": "SD",
+    "general assembly": "GA",
+    "municipal district": "MD",
+    "metropolitan district": "MD",
+    "mosquito district": "MD",
+    "national capital": "NC",
+    "natural district": "ND",
+    "conservation district": "CD",
+    "water authority": "WA",
+    "port authority": "PA",
+    "park authority": "PA",
+    "planning agency": "PA",
+    "housing authority": "HA",
+    "improvement district": "ID",
+    "irrigation district": "ID",
+    "public authority": "PA",
+    "public agency": "PA",
+    "regional district": "RD",
+}
+
+
+def _name_is_another_us_state(name: Optional[str], state: str) -> bool:
+    """True when `name` is itself the name of a US state and `state` is a
+    different one -- "Colorado" on coloradoga.granicus.com (the Colorado
+    General Assembly) must not become "Colorado, GA"."""
+    if not name or not state:
+        return False
+    wanted = name.strip().lower()
+    for row in tables.us_states().rows():
+        if row.name.lower() == wanted:
+            return row.state.upper() != state.upper()
+    return False
+
+
+def _state_is_type_initials(name: Optional[str], state: str) -> bool:
+    """True when `state` is the initials of a type phrase that appears in
+    `name` -- the shape a tenant abbreviates into its own subdomain
+    ("arkansas-sc"), which the subdomain reader then mistakes for a
+    state. See `_TYPE_PHRASE_INITIALS`."""
+    if not name or not state:
+        return False
+    lowered = re.sub(r"[^a-z ]+", " ", name.lower())
+    return any(
+        phrase in lowered and code == state.upper()
+        for phrase, code in _TYPE_PHRASE_INITIALS.items()
+    )
+
+
 def _state_from_tenant(host: str) -> Tuple[str, str]:
     """(state, evidence) recovered from the tenant alone, or ("", "").
 
@@ -1758,6 +1823,15 @@ def _resolve_government_ladder(
             and _has_canadian_namesake(name)
         ):
             tenant_state, state_evidence = "", ""
+        if (
+            tenant_state
+            and state_evidence.startswith("from subdomain")
+            and (
+                _state_is_type_initials(name, tenant_state)
+                or _name_is_another_us_state(name, tenant_state)
+            )
+        ):
+            tenant_state, state_evidence = "", ""
         if tenant_state:
             tenant_country = tables.country_for_state(tenant_state)
             hit = _national_lookup(
@@ -1853,6 +1927,19 @@ def _resolve_government_ladder(
             # wrong-country tenant state would tag a new identity with
             # the wrong country just as confidently as a table match
             # would. See `_has_canadian_namesake()`'s own docstring.
+            tenant_state = ""
+        if (
+            tenant_state
+            and state_evidence.startswith("from subdomain")
+            and (
+                _state_is_type_initials(name, tenant_state)
+                or _name_is_another_us_state(name, tenant_state)
+            )
+        ):
+            # The subdomain's "state" is the government's own type
+            # initials (arkansas-sc, oxnardsd, coloradoga) -- minting on
+            # it wrote `rtr:us:sc:arkansas-supreme-court`. Unresolved is
+            # the honest answer; it goes on the pin worklist.
             tenant_state = ""
         if tenant_state:
             state = tenant_state

@@ -1,5 +1,48 @@
 # Backlog — done
 
+## Full gov_id backfill after display-from-gov_id — 216 pages, two resolver bugs found and fixed first [Done 2026-09-10]
+
+Ryan deployed at #824 + #818/#822/#826 and asked for the full backfill
+and the five WFWRD overrides. The overrides went first (five pages ->
+`rtr:us:ut:wasatch-front-waste-recycling-district`, `manual_override`,
+district hub live with 5 meetings, county hub down to 1). The first
+whole-archive dry run (219 would-change) then showed what
+display-from-gov_id was about to put on live pages for minted rows,
+which the old rule had hidden behind the adapter's string:
+
+- **"Arkansas Supreme Court, SC", "Oxnard School District, SD",
+  "Colorado, GA".** `_validated_subdomain_hint_with_state()` reads
+  `arkansas-sc` / `oxnardsd` / `coloradoga` as name + state, and the
+  mint rung trusted it. Fixed in `resolver.py`: a subdomain-sourced
+  state is dropped when it is the initials of a type phrase in the
+  government's own name (`_TYPE_PHRASE_INITIALS`: supreme court,
+  school district, general assembly, ...) or when the name IS a US
+  state and the hint is a different one. Only the subdomain source is
+  second-guessed; `_KNOWN_DOMAINS` and `tenant_hints.csv` keep their
+  say. Those pages are now `unresolved` (want a pin) instead of
+  confidently wrong; "Colorado General Assembly" still reaches
+  `us:state:08`.
+- **"State College, PA" -> State College Area School District.**
+  `classify`'s "<word> College" rule (for community-college districts)
+  matched the borough's name; us_places.csv holds exactly two places
+  named that way (State College, PA; Rutherford College, NC), now
+  excluded by name. The one national-to-different-national move in the
+  dry run was this page, on a TelVue token.
+- **Lloydminster, AB/SK** (two pages, one bi-provincial city) would have
+  displayed a doubled suffix; excluded from the apply by host and filed
+  under Needs a human.
+
+Applied with the fixed local resolver: `changed 216`, `already current
+1038`, `manual_override 223`; 102 minted/unknown -> national, 19 NULL ->
+national, 90 same id (display/body/tier), 4 wrong mints -> NULL
+(honest), 0 national -> different national. Live spot checks passed
+(Housing Authority of the County of Santa Clara page now matches its
+hub; the blank Vimeo page shows no placeholder and no hub link). The
+second dry run reported 25 `inferred -> registry` label-only flips --
+same shape as the 2026-09-09 pinned/registry case -- so the backfill's
+already-current equivalence now includes `inferred`; the whole-archive
+dry run then reports exactly Lloydminster's two rows.
+
 ## WO-139: the 158 WO-133 headless finds WO-127 hadn't already worked — 14 tier-1/2 ingests, 15 queued to tier 3, and a real Granicus resolve-error class found and filed [Done 2026-09-10]
 
 Ryan's ask: WO-133's headless re-check (`rtr-business/research/
