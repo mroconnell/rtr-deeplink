@@ -156,6 +156,7 @@ async def main() -> None:
             # reachable at all -- see that function's own docstring.
             MeetingPage.platform,
             MeetingPage.external_id,
+            MeetingPage.video_channel,
         ).order_by(MeetingPage.id.asc())
         if args.limit:
             stmt = stmt.limit(args.limit)
@@ -201,6 +202,7 @@ async def main() -> None:
             source_url,
             platform,
             external_id,
+            video_channel,
         ) = row
         parsed = urlparse(source_url or "")
         host = (parsed.netloc or "").lower().split(":")[0]
@@ -218,7 +220,7 @@ async def main() -> None:
         # WO-105: same page_hints_for() build as crud._resolve_page_
         # government() -- see that function's docstring for why this was
         # previously always empty in production.
-        hints = page_hints_for(platform, external_id)
+        hints = page_hints_for(platform, external_id, channel=video_channel)
         keep.append((row, host, path, raw, hints))
         resolved[page_id] = resolve_government(
             raw, tenant_host=host or None, path=path, page_hints=hints
@@ -259,6 +261,7 @@ async def main() -> None:
             _source_url,
             _platform,
             _external_id,
+            _video_channel,
         ) = row
         match = resolved[page_id]
         if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):

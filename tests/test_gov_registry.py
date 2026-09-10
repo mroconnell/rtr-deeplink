@@ -2172,3 +2172,59 @@ def test_alaska_city_and_borough_displays_as_the_bare_name():
     assert display_name(government_for_id("us:place:0270540")) == "Sitka, AK"
     assert display_name(government_for_id("us:place:0236400")) == "Juneau, AK"
     assert display_name(government_for_id("us:place:0203000")) == "Anchorage, AK"
+
+
+def test_a_channel_hint_fires_a_channel_rule_on_every_youtube_host(monkeypatch):
+    """Gov-id audit, 2026-09-10. The identifying detail for a bare YouTube
+    paste is the channel, which is never in the address; the adapter now
+    carries it and `page_hints_for(..., channel=)` hands it to the
+    matcher. A rule keyed on www.youtube.com must also fire for a paste
+    that arrived as youtu.be or youtube.com -- the 2026-09-09 export held
+    YouTube pages under all three and nothing normalises them."""
+    row = registry.TenantOverride(
+        tenant_host="www.youtube.com",
+        match="channel=@TownofWoodside",
+        gov_id="us:place:0686440",  # Woodside, CA -- real place row
+        strength="fallback",
+        source="archive_study_2026-09-09",
+        evidence="test",
+    )
+    monkeypatch.setattr(
+        registry, "tenant_overrides", lambda: {"www.youtube.com": [row]}
+    )
+    hints = resolver.page_hints_for(
+        "youtube", "youtube:0qVUwGeJ2P4", channel="@TownofWoodside"
+    )
+    assert hints["channel"] == "@TownofWoodside"
+    for host in ("www.youtube.com", "youtu.be", "youtube.com"):
+        match = resolver.resolve_government(
+            None, tenant_host=host, path="/watch?v=0qVUwGeJ2P4", page_hints=hints
+        )
+        assert match.gov_id == "us:place:0686440", host
+        assert match.tier == resolver.TIER_PINNED
+    # A different channel on the same host does not match the rule.
+    other = resolver.page_hints_for("youtube", "youtube:x", channel="@SomeoneElse")
+    assert (
+        resolver.resolve_government(
+            None, tenant_host="youtu.be", path="/x", page_hints=other
+        ).gov_id
+        != "us:place:0686440"
+    )
+
+
+def test_a_per_video_pin_on_youtu_be_still_fires_for_the_www_form(monkeypatch):
+    """The 56 earlier YouTube pins are keyed on whichever host name that
+    paste used; the host-family lookup must not orphan them."""
+    row = registry.TenantOverride(
+        tenant_host="youtu.be",
+        match="0qVUwGeJ2P4",
+        gov_id="us:place:0686440",
+        strength="fallback",
+        source="ryan_stated",
+        evidence="test",
+    )
+    monkeypatch.setattr(registry, "tenant_overrides", lambda: {"youtu.be": [row]})
+    match = resolver.resolve_government(
+        None, tenant_host="www.youtube.com", path="/watch?v=0qVUwGeJ2P4"
+    )
+    assert match.gov_id == "us:place:0686440"

@@ -1,5 +1,56 @@
 # Backlog — done
 
+## Identity rides along with the page: `gov_id` accepted on ingest, the video's channel stored and passed as a page_hint, 649 channel rules committed [Done 2026-09-10]
+
+The ingest-facing half of the gov-id audit (the display half is the
+entry below). Checked with the Fable - Report session first: its eight
+ingest agents POST in `nationwide_2404_ingest.py`'s shape and send no
+`gov_id`, so the new refusal cannot fire for them; it asked that the
+deploy of the 409 wait until those agents report (morning of
+2026-09-10), and that `meeting_inventory.py` / `coverage_registry.py` be
+left to it -- both honoured.
+
+- **`IngestRequest.gov_id`** (optional). A supplied id is a pin:
+  `_caller_pinned_match()` renders it through `government_for_id()`
+  (400 `UnknownGovernmentId` if the registry cannot), tier `pinned`,
+  body = `finalize_jurisdiction()`'s split for a place government and
+  None for a non-place one, exactly as the ladder decides. If the page
+  the push matched already carries a *different* real government
+  (`manual_override` included), `GovernmentMismatch` -> 409 with both
+  ids -- the collision detector ENUMERATION_METHODS.md §98 asked for
+  (four generic-embed collisions, nine governments, one run). A
+  caller id counts as "identity supplied" for WO-102's truthy gates, so
+  it can fill a NULL id on an existing page; a transcript-only push
+  still carries nothing and changes nothing.
+- **`meeting_pages.video_channel` / `video_channel_id`** (migration
+  `aaf88dc886a4`): the YouTube handle (`@TownofWoodside`, from yt-dlp's
+  `uploader_id`/`uploader_url`) or Vimeo owner slug (from oEmbed
+  `author_url`) and YouTube's permanent UC id, carried on
+  `ResolvedMeeting`, stored truthy-gated, exported. Stored rather than
+  checked in passing so a rule added later reaches archived pages
+  through the ordinary backfill (Ryan, 2026-09-09).
+- **`page_hints_for(..., channel=)`** and **host families** in
+  `_match_override()`: a rule on `www.youtube.com` fires for `youtu.be`
+  and `youtube.com` pastes too (the export held pages under all three),
+  and the 56 earlier per-video pins keyed on `youtu.be` keep firing for
+  the `www` form. Rules stay keyed on the video host and are consulted
+  only when the page's own host IS that host -- a township's page on a
+  shared county channel is the township's (Ryan, 2026-09-09).
+- **649 rules committed** from `reports/shared_host_study_2026-09-09/
+  candidate_rules.csv`: 633 YouTube, 16 Vimeo, all `fallback`. Left out:
+  the 7 channels the study saw under more than one government, and 4
+  REVIEW rows that were wrong on inspection -- `acnewsonline` (a news
+  outlet), `@SacramentoAreaCOG` (a COG, not Galt), `@accesshumboldt`
+  (public access, not Rio Dell), `@cowichanvalleyregionaldistrict` (the
+  regional district, not Lake Cowichan).
+
+After the deploy: `backfill_gov_id.py --hosts www.youtube.com,youtu.be,
+youtube.com,vimeo.com,player.vimeo.com` re-keys the pages whose
+channel is already stored -- which is none until their next resolve, so
+the practical path is the next transcript/caption sweep populating the
+column, then the backfill. The 247 channels seen only on unidentified
+pages (`weak_only_discriminators.csv`) are the per-channel worklist.
+
 ## WO-132 · Resolved WO-123's 4 second-wave sweep conflicts live, caught a 3/4 wrong-guess rate, pinned the first-wave sweep's 27 Granicus/Legistar hosts [Done 2026-09-09]
 
 **The 4 conflicts WO-123 left in `tenant_overrides_conflicts.csv`,

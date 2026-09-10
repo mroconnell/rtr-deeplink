@@ -1097,8 +1097,20 @@ video's channel: a township that posts to a shared county channel is
 still the township's page. Enumeration runs the other way round: it
 starts from a known `gov_id` and goes looking for a website, so by the
 time a candidate reaches ingest the government was never in doubt —
-which is why ingest should accept the id directly rather than a name
-(filed, not yet built; see `BACKLOG.md`).
+which is why `POST /internal/ingest` accepts a **`gov_id`** directly
+(gov-id audit, 2026-09-10): a supplied id is treated as a pin (tier
+`pinned`, display name from the registry row; 400 if the registry cannot
+render it), and if the page the push matched already carries a
+*different* real government the push is refused with 409 rather than
+overwriting — which is also the detector for two unrelated governments
+sharing a generic embed id (`youtube:videoseries`). Absent, every existing
+caller behaves exactly as before. The same pass stores the video's
+publishing account on the page (**`video_channel`** — a YouTube handle or
+Vimeo owner slug — and **`video_channel_id`**) and passes the handle to
+the resolver as a `page_hint`, so a `match=channel=@Handle` override row
+fires for a bare YouTube/Vimeo paste; YouTube's three host names
+(`www.youtube.com`, `youtube.com`, `youtu.be`) and Vimeo's two are looked
+up as one host family so a rule written against one fires for all.
 
 **The word is "government"** in code and column names — `gov_id`,
 `gov_type` — because that is the Census of Governments' own term for

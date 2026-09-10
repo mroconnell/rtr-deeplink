@@ -208,6 +208,8 @@ async def test_export_never_exposes_account_or_derived_fields():
         "meeting_body",
         "jurisdiction_confidence",
         "jurisdiction_raw",
+        "video_channel",
+        "video_channel_id",
         # WO-99: the identity, its type, and what kind of event the page
         # is. Asserted here on purpose -- this test exists to catch a
         # column being added to the model and left out of the hand-built

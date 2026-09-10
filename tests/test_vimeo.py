@@ -665,3 +665,15 @@ def test_jurisdiction_still_resolves_an_unambiguous_state_shaped_name():
         )
         == "City of Sebastopol, California"
     )
+
+
+def test_owner_slug_comes_from_oembed_author_url():
+    """Gov-id audit, 2026-09-10: the owner slug is the key a vimeo.com
+    `match=channel=<slug>` override row is written against -- the real
+    Salisbury, NC shape from the study (author_url
+    https://vimeo.com/citysalisburync)."""
+    f = VimeoAssetFinder._owner_slug
+    assert f({"author_url": "https://vimeo.com/citysalisburync"}) == "citysalisburync"
+    assert f({"author_url": "https://vimeo.com/CitySalisburyNC/"}) == "citysalisburync"
+    assert f({"author_name": "CitySalisburyNC"}) is None
+    assert f(None) is None

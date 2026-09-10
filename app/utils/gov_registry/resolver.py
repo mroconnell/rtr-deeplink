@@ -203,6 +203,34 @@ def _as_government(
     )
 
 
+# A shared host reaches the Archive under several names and nothing
+# normalises them: the 2026-09-09 export held YouTube pages under
+# www.youtube.com (653), youtu.be (232) and youtube.com (47). A channel
+# rule written against one name must fire for the others -- and the 56
+# earlier per-video pins, keyed on whichever name that paste happened to
+# use, must keep firing too. So override rows are looked up for the whole
+# family, the page's own host first.
+_SHARED_HOST_FAMILIES = (
+    frozenset({"www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"}),
+    frozenset({"vimeo.com", "player.vimeo.com", "www.vimeo.com"}),
+)
+
+
+def _override_rows_for_host(host: str) -> List[TenantOverride]:
+    host = host.lower()
+    table = registry.tenant_overrides()
+    rows = list(table.get(host) or [])
+    for family in _SHARED_HOST_FAMILIES:
+        if host in family:
+            for other in sorted(family - {host}):
+                rows.extend(table.get(other) or [])
+            break
+    # Keep the loader's own order within each host: a `match` row before
+    # the catch-all, so a discriminator always beats a whole-host pin.
+    rows.sort(key=lambda o: (o.match is None, o.match or ""))
+    return rows
+
+
 def _match_override(
     host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
 ) -> List[TenantOverride]:
@@ -214,7 +242,7 @@ def _match_override(
     three shapes §4 names (path prefix, `view_id=5`, channel id). A row
     with no `match` always applies.
     """
-    rows = registry.tenant_overrides().get(host.lower()) or []
+    rows = _override_rows_for_host(host)
     if not rows:
         return []
     haystack = (path or "").lower()
@@ -1562,37 +1590,32 @@ def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Gover
 
 
 def page_hints_for(
-    platform: Optional[str], external_id: Optional[str]
+    platform: Optional[str],
+    external_id: Optional[str],
+    channel: Optional[str] = None,
 ) -> Dict[str, str]:
     """The `page_hints` dict a caller can build from a `MeetingPage`'s own
-    `platform`/`external_id` columns -- WO-105's narrow fix for
-    BACKLOG.md's "`resolve_government()`'s `page_hints` argument is never
-    passed by anything" entry.
+    columns -- `platform`/`external_id` (WO-105), and since the gov-id
+    audit (2026-09-10) `channel`: the YouTube handle or Vimeo owner slug
+    the adapter now carries in `ResolvedMeeting.video_channel` and the
+    Archive stores in `MeetingPage.video_channel`.
 
-    Before this, `page_hints` was consumed only by `_match_override()`'s
-    `key=value` discriminator, and nothing anywhere ever built or passed
-    one -- so a `tenant_overrides.csv` row using `match=platform=youtube`
-    or similar was dead on arrival however it was written, and WO-103
-    nearly shipped 46 pins that depended on exactly that. Both `platform`
-    and `external_id` are already real `MeetingPage` columns available at
-    both call sites (`archive/db/crud.py`'s `_resolve_page_government()`,
-    `scripts/backfill_gov_id.py`) with no schema change needed.
-
-    A `channel` hint for a shared YouTube host (the other real multi-
-    government-tenant shape architecture doc §1.5 names, alongside the
-    Cottage Grove path-prefix case) is deliberately NOT included here:
-    the cheapest lookup this repo has for it,
-    `app/platforms/youtube_channel.py`, only offers a full, network-
-    fetching channel listing, not a per-video reverse lookup -- adding it
-    would mean a real fetch on the ingest/backfill hot path, which is out
-    of scope for this pass. Left as a documented gap rather than guessed
-    at.
+    `_match_override()` tests a `key=value` discriminator against this
+    dict, so a `tenant_overrides.csv` row `www.youtube.com,channel=
+    @TownofWoodside,...` fires for any page whose video that channel
+    published -- the 635 YouTube and 17 Vimeo rows learned from the
+    archive's own pages by `scripts/study_shared_host_discriminators.py`.
+    Before WO-105 nothing built a hints dict at all, so every `key=value`
+    row was dead on arrival; before this change the channel was the one
+    key those rows needed and the adapter dropped it on every resolve.
     """
     hints: Dict[str, str] = {}
     if platform:
         hints["platform"] = platform
     if external_id:
         hints["external_id"] = external_id
+    if channel:
+        hints["channel"] = channel
     return hints
 
 

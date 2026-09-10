@@ -535,6 +535,7 @@ class VimeoAssetFinder(AssetFinder):
             title=title,
             date=_date_from_title(title) or cls._upload_date(oembed),
             jurisdiction=cls._jurisdiction(oembed),
+            video_channel=cls._owner_slug(oembed),
             video_url=embed_url(video_id, privacy_hash),
             video_format="vimeo",
             transcript_warnings=[_NO_CAPTIONS_WARNING],
@@ -636,6 +637,18 @@ class VimeoAssetFinder(AssetFinder):
         Archive sorts and dates every permanent page."""
         raw = (oembed or {}).get("upload_date") or ""
         return raw[:10] if re.match(r"^\d{4}-\d{2}-\d{2}", raw) else None
+
+    @staticmethod
+    def _owner_slug(oembed: Optional[dict]) -> Optional[str]:
+        """The owning account's URL slug ("citysalisburync" from
+        `author_url` https://vimeo.com/citysalisburync) -- the key a
+        `tenant_overrides.csv` `match=channel=<slug>` row for vimeo.com is
+        written against (gov-id audit, 2026-09-10; the 17 Vimeo rules in
+        the shared-host study were learned from exactly this field). None
+        when oEmbed was blocked or carried no author."""
+        author_url = ((oembed or {}).get("author_url") or "").rstrip("/")
+        slug = author_url.rsplit("/", 1)[-1].strip().lower() if author_url else ""
+        return slug or None
 
     @staticmethod
     def _jurisdiction(oembed: Optional[dict]) -> Optional[str]:

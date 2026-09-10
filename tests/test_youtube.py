@@ -385,3 +385,28 @@ def test_first_cue_start_logs_a_parse_failure(monkeypatch, caplog):
 
     assert result is None
     assert any("first-cue-start parse failed" in r.message for r in caplog.records)
+
+
+def test_channel_handle_from_the_shapes_yt_dlp_actually_returns():
+    """Gov-id audit, 2026-09-10: the handle is the key a
+    `match=channel=@Handle` override row is written against, so it must
+    come out the same whichever field yt-dlp put it in."""
+    f = YouTubeAssetFinder._channel_handle
+    assert f({"uploader_id": "@TownofWoodside"}) == "@TownofWoodside"
+    assert f({"uploader_url": "https://www.youtube.com/@TownofWoodside"}) == (
+        "@TownofWoodside"
+    )
+    assert f({"channel_url": "https://www.youtube.com/@TownofWoodside/"}) == (
+        "@TownofWoodside"
+    )
+    # An old numeric uploader id and a UC channel url are not handles.
+    assert (
+        f(
+            {
+                "uploader_id": "UC1234",
+                "channel_url": "https://www.youtube.com/channel/UC1234",
+            }
+        )
+        is None
+    )
+    assert f({}) is None
