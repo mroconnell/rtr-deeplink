@@ -239,6 +239,109 @@ expected value is the host's own government) and `open` rows (honestly
 unkeyed, awaiting a pin) are reported but never fail it. First run: 78
 ok, 0 drift, 2 known-wrong still wrong, exit 0. Documented in README
 beside the backfill.
+## WO-146: re-listed 144 governments a prior sweep gave up on, through their own platform's listing instead of one guessed page — 1 real transcript, 8 more real videos queued, and 21 governments turned out to be a different government entirely [Done 2026-09-10]
+
+**What this was.** Last night's sweeps checked one guessed web page per
+government and moved on if it looked empty. This run went back to 144
+of those "nothing found" governments and asked the platform itself
+(Granicus, CivicClerk, and nine others) for its own list of meetings,
+the way you'd check a company's own event calendar instead of guessing
+one link off their homepage. The idea, and the method, both came from
+two small tests Ryan approved yesterday (WO-140, WO-142) — this is that
+method run for real, at full size.
+
+**Rule enforced throughout: a page only goes live if it has real
+video.** No video, no page — the meeting is just recorded as "no video
+found." That rule caught two of this run's own mistakes before they
+reached you (see Caution below).
+
+**Result.**
+
+| Outcome | Count of 144 | Detail |
+|---|---|---|
+| Ingested tier 1/2 (captions available, page live now) | 1 | Loudoun County, VA — 76 real transcript lines |
+| Video with no captions, queued for transcription | 8 | checked for a real, watchable video first (WO-144's probe), then added to the live queue |
+| No video found | 19 | 17 real current meetings with no video, plus 2 more where the "video" the probe checked turned out to be a dead link (a PDF mislabeled as video, one link format the probe can't check yet) |
+| No meetings found at all | 5 | the government's own listing is empty |
+| Wrong government entirely | 21 | see below |
+| No way to reach the platform | 86 | the address on file doesn't lead anywhere usable |
+| Not a real public meeting | 3 | a court case or a state legislature session, not a local meeting |
+| Blocked by the site | 1 | one real access refusal |
+
+**The single biggest finding: 21 of 144 governments (about 1 in 7) had
+the wrong web address on file — it belonged to a different, same-named
+government somewhere else.** Two counties named "Greenville" exist, one
+in South Carolina and one in North Carolina, and our records had South
+Carolina's meeting listed at North Carolina's address. Same pattern hit
+a Waukesha (city vs. county, same state), a Reno (Kansas county vs.
+Nevada city), and 18 more. Two were worse than a wrong city: Colorado
+County, Texas's address on file actually belongs to the Colorado state
+legislature, and Arkansas County, Arkansas's belongs to the Arkansas
+Supreme Court — neither is a local government meeting at all. None of
+these 21 were turned into pages. A separate, same-day review already
+fixed the web address for 17 of the 21 in our records; the other 4
+(Providence County RI, Winona County MN, Imperial city CA, plus the two
+above) still need that same fix.
+
+**Verdict against last night's sweep, by platform:**
+
+| Platform | Same result | Found real video | Wrong label, now corrected |
+|---|---|---|---|
+| Granicus | 35 | 3 | — |
+| CivicClerk | 33 | 7 | 5 |
+| CivicWeb | 26 | 1 | — |
+| eScribe | 11 | — | — |
+| IQM2 | 9 | — | — |
+| PrimeGov | 4 | — | — |
+| Municode Meetings | 3 | — | — |
+| Legistar | 3 | — | — |
+| Swagit | 2 | — | — |
+| Cablecast | 1 | — | — |
+| CivicPlus | 1 | — | — |
+
+The "wrong label, now corrected" column is a real finding from
+yesterday's work: CivicClerk governments marked "no meetings found"
+usually did have meetings — just none with video. That label is now
+fixed to "no video found," which is the accurate reason.
+
+**Caution.** Two mistakes were made and fixed during this run, before
+either reached a wide audience:
+
+1. Early in the run, two real pages went live with a real video but
+   zero real transcript lines — a video-only page, which breaks the
+   video-must-have-captions rule above. The bug is fixed (later pages
+   in the same run did not repeat it), but the two bad pages are still
+   live and need deleting: `loudoun-county-va-2013-01-11-video04-
+   maptab` and `waukesha-city-wi-2026-09-08-finance-committee-on-2026-
+   09-08-6-00-pm`. I tried the delete tool myself and it was blocked by
+   a safety check in my own environment — this needs a person to run
+   it. Filed in `BACKLOG.md` under "Needs a human."
+2. Because fixes landed partway through the run, every government this
+   run called a real find (17 of them) was checked again by hand at the
+   end against the final, corrected rules. That second check caught 5
+   more wrong-government cases the first pass missed (Providence
+   County RI, Winona County MN, Imperial city CA, and the two state-
+   government cases above) — all corrected before this report was
+   written. One case (Menifee County, Kentucky) could not be told apart
+   from Menifee, California by any automatic check — its real,
+   correctly-labeled page for Menifee, California is already live and
+   was left alone, since the content itself is genuine, just not for
+   the county this run was looking for.
+
+**Recommendation.** Once a person deletes the two bad pages above, no
+further action is needed on this batch. WO-144's video-check tool
+landed on `main` while this run was still going, so this run used it
+before queuing anything: it checked all 9 candidate videos, rejected 2
+as dead links (one was a PDF mislabeled as a video, one was a video
+link format the tool doesn't check yet), and queued the 7 real ones for
+transcription, plus 1 more that turned out to already be queued from
+an earlier sweep — 8 total.
+
+**Deploy status.** This work only touched research files, the sweep
+script, and one already-live production database through its normal
+ingest path (the one new page went live immediately, the way every
+meeting page on the site does) — there is no separate code deploy
+needed for this to take effect.
 
 ## Consolidated governments: every one the archive holds sits on one id; the bare names that minted now key; 11 hosts pinned; the subdomain reader's state must hold a government of that name [Done 2026-09-10]
 
