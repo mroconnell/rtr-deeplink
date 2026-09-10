@@ -193,6 +193,68 @@ the real HLS playlist shape WO-144's own tests already confirmed live
 (only the made-up numbers are synthetic, not the shape), matching this
 repo's synthetic-test rule.
 
+## WO-173: the three Virginia school boards and LAUSD from WO-172's Wistia list, through the new adapter [Done 2026-09-10]
+
+WO-161 built the Wistia video adapter and put four Virginia governments
+live (Warrenton, Manassas city, Fredericksburg city, Stafford County).
+It finished before a separate research task, WO-172, found more
+governments on the same video vendor. This work order ran that
+remaining list through the adapter.
+
+We checked a fresh export of every page already live before touching
+anything, so we would not redo work that was already done. Three
+governments needed new pages. A fourth, Los Angeles Unified School
+District, turned out to already have a page from a different video
+source, so we left it alone.
+
+| Government | Registry id | Meeting chosen | Length | Captions | Result |
+|---|---|---|---|---|---|
+| Manassas City Public Schools, VA | us:sd:5102360 | School Board, 6/23/2026 | 28 min | Yes, real | Page live now |
+| Fredericksburg City Public Schools, VA | us:sd:5101510 | Special School Board meeting, 8/3/2026 | 39 min | Yes, real | Page live now |
+| Stafford County Public Schools, VA | us:sd:5103660 | School Board, 2/26/2026 | 38 min | Yes, real | Page live now |
+| Los Angeles Unified School District, CA | us:sd:0622710 | Not applicable | Not applicable | No (checked, none of 4 sample videos have any) | Already covered by an existing page (a different video source); nothing new queued |
+
+All three school boards are separate governments from the cities/county
+already live (their own school district, with their own registry id),
+not the same government under a new name. Each name in this app's
+school-district list matched WO-172's research file exactly, so no
+name correction was needed.
+
+**Caution: Los Angeles Unified School District.** WO-172's research
+found real video for two of this district's committees (a Bond
+Oversight Committee, and a special-education advisory committee) on
+this same video vendor, but confirmed none of it has captions. We
+checked again today: still true, on all four sample videos named in
+the research file. Normally that would make one of them a queued
+"video-only" candidate. But this district already has a real page,
+with a real transcript, from a different, older source (its main
+school-board meetings, not these two committees). This app tracks
+coverage by government, not by which specific committee meets, so a
+government that already has one real page does not get a second one
+queued just because a different committee's video turned up elsewhere.
+Nothing was queued for LAUSD as a result. If a future person decides
+this app should show separate pages per committee for the same
+government, that is a real product decision to make on purpose, not
+something this work order should decide by default.
+
+**Caution: shared account.** The three school boards' video lives on
+the same shared Wistia account as the four governments WO-161 already
+put live (`amsva.wistia.com`, run by video vendor RegionalWebTV). Same
+as before, each new page needed its own specific pinning rule naming
+that exact video, not the shared account, so the app never guesses
+which government a future video on that account belongs to.
+
+**Recommendation.** No further action needed on this specific list —
+WO-172's 11 rows are now fully worked through. A future coverage sweep
+should skip Wistia's `amsva.wistia.com`/`lausd.wistia.com` accounts and
+these five governments' domains, since they are already checked.
+
+**Deploy status.** The three new pages are live right now — they were
+pushed directly into the page database, which needs no deploy. The
+three new pinning rules, and the Wistia adapter itself, still need a
+person to click deploy before they take effect (the adapter's own
+deploy was already outstanding from WO-161, see that entry).
+
 ## WO-148: headless pass on the 1,132 smaller governments WO-133 never reached [Done 2026-09-10]
 
 This tested 1,132 smaller US and Canadian governments (over 5,000
