@@ -241,3 +241,25 @@ https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1372,iqm2,hls-mast
 https://www.youtube.com/watch?v=ZdFPHNoK46o,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] ZdFPHNoK46o: This live event will begin in 11 days.,1.51,2026-09-10T22:14:40+00:00
 https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,1.57,2026-09-10T22:55:57+00:00,bulk_ingest
 https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,0.67,2026-09-10T22:56:00+00:00,bulk_ingest
+https://delnortecoca.portal.civicclerk.com/event/203/media,civicclerk,head+ffprobe,13070.92,2026-09-09,9895749037,1,accept,,3.55,2026-09-10T22:05:45+00:00,,0
+https://delnortecoca.portal.civicclerk.com/event/215/media,civicclerk,head+ffprobe,5346.20,2026-08-25,3791010824,1,accept,,2.42,2026-09-10T22:05:45+00:00,,0
+https://delnortecoca.portal.civicclerk.com/event/190/media,civicclerk,head+ffprobe,2004.72,2026-08-11,1481910519,1,accept,,2.51,2026-09-10T22:05:45+00:00,,1
+https://greencastlein.portal.civicclerk.com/event/1585/media,civicclerk,head+ffprobe,1059.07,2026-09-03,352427464,1,accept,,3.32,2026-09-10T22:06:33+00:00,,1
+https://lebanonmo.portal.civicclerk.com/event/625/media,civicclerk,head+ffprobe,2854.29,2026-09-09,1293024015,1,accept,,1.62,2026-09-10T22:08:38+00:00,,0
+https://lebanonmo.portal.civicclerk.com/event/601/media,civicclerk,head+ffprobe,6876.35,2026-08-25,3899284205,1,accept,,1.77,2026-09-10T22:08:38+00:00,,0
+https://lebanonmo.portal.civicclerk.com/event/553/media,civicclerk,head+ffprobe,521.20,2026-08-19,646520345,0,accept,,3.24,2026-09-10T22:08:38+00:00,,0
+https://lebanonmo.portal.civicclerk.com/event/460/media,civicclerk,head+ffprobe,2067.30,2026-08-13,2624538610,1,accept,,2.47,2026-09-10T22:08:38+00:00,,1
+https://davidsonnc.portal.civicclerk.com/event/315/media,civicclerk,head+ffprobe,39.97,2026-09-09,3118644,0,reject-short,duration 40.0s is below the 60s meeting-plausibility floor,0.87,2026-09-10T22:09:34+00:00,,0
+https://davidsonnc.portal.civicclerk.com/event/340/media,civicclerk,head+ffprobe,227.24,2026-08-31,88630137,0,accept,,2.31,2026-09-10T22:09:34+00:00,,0
+https://davidsonnc.portal.civicclerk.com/event/327/media,civicclerk,head+ffprobe,3170.01,2026-08-25,1063849158,1,accept,,2.81,2026-09-10T22:09:34+00:00,,0
+https://davidsonnc.portal.civicclerk.com/event/355/media,civicclerk,head+ffprobe,3647.57,2026-08-19,1426579445,1,accept,,3.03,2026-09-10T22:09:34+00:00,,0
+https://davidsonnc.portal.civicclerk.com/event/314/media,civicclerk,head+ffprobe,2332.86,2026-08-11,839843462,1,accept,,3.15,2026-09-10T22:09:34+00:00,,1
+https://bridgeporttx.portal.civicclerk.com/event/950/media,civicclerk,head+ffprobe,3720.00,2026-08-18,990041733,1,accept,,2.87,2026-09-10T22:10:07+00:00,,0
+https://bridgeporttx.portal.civicclerk.com/event/935/media,civicclerk,head+ffprobe,1619.97,2026-08-11,430958329,1,accept,,2.23,2026-09-10T22:10:07+00:00,,1
+https://springvalleytx.portal.civicclerk.com/event/304/media,civicclerk,head+ffprobe,3438.98,2026-08-26,148567882,1,accept,,2.35,2026-09-10T22:11:04+00:00,,0
+https://springvalleytx.portal.civicclerk.com/event/357/media,civicclerk,head+ffprobe,3693.00,2026-08-26,110702058,1,accept,,3.08,2026-09-10T22:11:04+00:00,,0
+https://springvalleytx.portal.civicclerk.com/event/398/media,civicclerk,head+ffprobe,2569.90,2026-08-05,94579629,1,accept,,2.92,2026-09-10T22:11:04+00:00,,1
+https://springvalleytx.portal.civicclerk.com/event/302/media,civicclerk,head+ffprobe,5166.81,2026-07-21,275152759,1,accept,,3.27,2026-09-10T22:11:04+00:00,,0
+https://springvalleytx.portal.civicclerk.com/event/354/media,civicclerk,head+ffprobe,2585.32,2026-07-21,116498944,1,accept,,3.01,2026-09-10T22:11:04+00:00,,0
+https://springvalleytx.portal.civicclerk.com/event/355/media,civicclerk,head+ffprobe,2828.76,2026-07-27,100914123,1,accept,,2.39,2026-09-10T22:11:04+00:00,,0
+https://venustx.portal.civicclerk.com/event/295/media,civicclerk,head+ffprobe,1845.00,2026-09-01,544446230,1,accept,,2.58,2026-09-10T22:11:14+00:00,,1

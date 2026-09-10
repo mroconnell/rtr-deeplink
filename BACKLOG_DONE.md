@@ -1,5 +1,109 @@
 # Backlog — done
 
+## WO-170: pick a 9-to-40-minute meeting when the first one fails, else the shortest; 44 governments wrongly marked "queued" run for real [Done 2026-09-10]
+
+Two pieces of work, both requested by Ryan on 2026-09-10, building on
+WO-169 (probe rejects move to the next candidate instead of dropping a
+government).
+
+**Part 1: which video to pick when the first one fails a check.**
+Before this, the sweep tried one meeting video at a time and stopped at
+the first one that was not dead and not too short. Ryan asked for more:
+check a video's length. Prefer one between 9 and 40 minutes. If several
+videos are available and none are in that range, and all of them are
+over 40 minutes, use the shortest one available.
+
+This is now built into the shared code every sweep script uses. It
+checks up to 6 of a government's most recent meetings, newest first,
+and stops as soon as it finds one in the 9-to-40-minute range. If none
+qualify, it picks the shortest one it checked. A dead link or a video
+under 60 seconds is never picked, no matter what.
+
+This actually happened, for real, while running Part 2 below.
+
+| Government | What happened |
+|---|---|
+| Spring Valley Village, Texas | Checked all 6 of its most recent meetings. Every single one ran over 40 minutes (43 to 86 minutes). Picked the shortest, 43 minutes. |
+| Del Norte County, California | The two newest meetings were too long (33 minutes over the limit, then over an hour). The third one, 33 minutes, was in range and got picked. |
+| Lebanon, Missouri | The two newest meetings were too long. The next one was only 8.7 minutes — just under the 9-minute preference, so still passed over. The one after that, 34 minutes, was picked. |
+
+**Part 2: the 44 governments.** A separate check (WO-153) had found
+governments whose research notes said "we found a video, it's in line
+to be transcribed" — but the video was never actually put in that line.
+Ryan asked to run every one of them for real, using the fixed code from
+Part 1.
+
+The research notes said 45 such governments. Checking the real file
+directly found 44, not 45 — one extra government in the count didn't
+actually have a video address recorded at all. This is noted for
+whoever wrote "45," but 44 is the correct number and what was actually
+run.
+
+| Result | Count of 44 | What this means |
+|---|---|---|
+| Captions found, page live now | 30 | The video turned out to have a real transcript after all. Includes Torrington, Wyoming — the one case that started this whole check. |
+| Queued for transcription | 10 | Real video, no transcript available yet. Now correctly in the to-do line. |
+| Already had a page | 3 | Someone else's work already covered these since the notes were written. Left alone. |
+| No video after all | 1 | Pacific City, Missouri. The video's title came back blank, and a separate check said the video itself is gone. Not added. |
+
+**Caution.** One of the 44 (Pacific City, MO) doesn't fit any of the
+existing short labels used for this kind of "why didn't it work" note,
+so its old label was left in place rather than guessing a new one.
+
+**Recommendation.** No action needed — this is done. If another batch
+of "should be queued but isn't" governments turns up later, the same
+script and the same Part 1 video-picking logic can run again.
+
+**Deploy status.** The code that picks a better video (Part 1) is in
+this PR, on `main`, not yet deployed — it takes effect the next time
+this pipeline runs after a deploy. The 30 new pages from Part 2 are
+already live (the ingest step talks to the production site directly).
+The 10 queued videos and their pins will start being used after the
+next deploy.
+
+### What was actually built
+
+`app/platforms/queue_probe.py`: `select_best_probe_result()` (the
+picking rule above), `is_plausible()`, `IN_WINDOW_MIN_SECONDS`/
+`IN_WINDOW_MAX_SECONDS`, and a `chosen` column added to the shared probe
+log file so a "picked the shorter one" case is visible without a second
+file.
+
+`scripts/wo134_confirmed_hits_ingest.py`: a new `PROBE_SELECT_HOOK`
+(returns the real probe result, not just yes/no) wired into every one
+of its own candidate-checking loops — CivicPlus, Granicus, CivicClerk,
+the generic listing walk, the YouTube-channel search, and the plain
+single-video case. Setting `PROBE_HOOK` (the older, simpler check) still
+works exactly as before for any script that hasn't switched over. A
+direct run of this script now turns the new picking rule on by default.
+
+`scripts/hub_sweep_wo126.py`: probing is now on by default for a direct
+run of this script too, using the same real check. This script does not
+yet try several candidate videos per government the way the script
+above does — it only ever finds one candidate per government's page —
+so today it can only accept or reject that one, not pick among several.
+Making it try several is real follow-up work, filed to `BACKLOG.md`.
+
+New: `scripts/wo170_mislabelled_queued_rerun.py` (the Part 2 re-run
+script) and `tests/test_wo170_probe_selection.py` (12 tests: the picking
+rule itself with hand-built, clearly-marked-synthetic test data covering
+all three required cases — picks the in-range video over a longer newer
+one, falls back to the shortest when everything is too long, and gives
+up cleanly when everything is dead — plus the same rule wired through a
+sample YouTube-channel listing and a single-video case, since a real
+gap was found and fixed there: the single-video case was not consulting
+the new picking rule at all before this fix).
+
+Research files (`rtr-business` repo, not this one): `wo170_candidates.csv`
+(the 44-government input), `wo170_report.csv` (the outcome for each
+one), `wo170_apply_to_jc.py` and its per-outcome logs (the
+`jurisdiction_coverage.csv` updater, following that file's own write
+rules), and `wo170_methods_section.md` (the write-up, section number to
+be assigned when merged into `ENUMERATION_METHODS.md`). That commit
+landed through a separate, isolated copy of the `rtr-business` repository
+rather than the shared one, since another session's own unfinished work
+was sitting in the shared copy's same file at the time — this way,
+neither session's work was disturbed.
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
 **The problem.** One path already checked a video before making it a
