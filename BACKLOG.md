@@ -137,7 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (61)
   [NEEDS-AUDIT] PR #807's squashed "move the shadowed-county resolver…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
@@ -155,7 +155,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (21)
+  Jurisdiction extraction & backfill  (22)
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
@@ -177,6 +177,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
     `[LATER]` ~25 smaller consolidated city-county governments still need
     `[LATER]` 5 small Southampton County, VA towns (Boykins, Branchville,
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
+    `[NEEDS-AUDIT]` A same-state place/county name collision falls…
   Adapter & platform gaps  (24)
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
@@ -1474,6 +1475,49 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: found spot-checking `scripts/nationwide_1911_ingest.py`'s
     output, 2026-09-09 — not yet in `BACKLOG_DONE.md` (nothing fixed
     yet).
+
+- **`[NEEDS-AUDIT]` A same-state place/county name collision falls through to the county even when the place table has a genuine, unique match.**
+  - **Issue**: `resolve_government("Waukesha city, WI")` and
+    `resolve_government("Jefferson borough, PA")` both return the
+    **county** (`us:county:55133` Waukesha County, `us:county:42065`
+    Jefferson County) even though `classify.classify_government_type()`
+    correctly tags both `municipality`, and `us_places.csv` has a real,
+    unique-looking place row for the first (`5584250,Waukesha
+    city,WI`) — the second has two real "Jefferson borough, PA" rows
+    (`4237880`/`4237944`, genuinely two different boroughs, which is
+    plausibly why place lookup declines and falls through). For Waukesha
+    there's no such excuse: `us_places.csv` has exactly one "Waukesha
+    city, WI" row and a differently-named "Waukesha village, WI"
+    row — something in the place-lookup path still fails to return that
+    single match and falls through to the county table where "Waukesha
+    County, WI" is the sole hit. Four other same-pattern names tested
+    clean (`Marquette city, MI`, `Marinette city, WI`, `Manitowoc city,
+    WI`, `Oconto city, WI` all resolved correctly to their place), so
+    this isn't a blanket "place lookup is broken" bug — it's narrower,
+    tied to whatever makes these two names' lookup path fail even though
+    a unique/near-unique place hit exists.
+  - **Impact**: `jurisdiction_coverage.csv` had both wrong (assigned by
+    an earlier, less careful pass — the same failure mode this file's
+    `gov_id` column now correctly declines to reproduce, WO-132). Any
+    live tenant serving Waukesha city, WI or Jefferson borough, PA
+    meetings would key to the county today, not the city/borough.
+  - **Next action**: instrument `_national_lookup()`/`NameStateTable.
+    lookup()` for these two specific name+state pairs to see exactly why
+    the place-table hit isn't returned before the county fallthrough
+    fires — this needs step-through, not another blanket regex change,
+    per this file's own adapter-testing convention.
+  - **Constraint**: don't fix by just checking "was there a unique place
+    hit" ahead of the county table in the general case without checking
+    it against the real Alaska/Ontario dual-nature governments (Anchorage
+    Municipality, Prince Edward County, ON) that legitimately have valid
+    rows in BOTH tables for the same real government — those need the
+    dual match kept, not silently narrowed to whichever table is checked
+    first.
+  - **History**: found while re-deriving `gov_id` for every
+    `jurisdiction_coverage.csv` row from scratch (WO-132, 2026-09-09,
+    rtr-business `ENUMERATION_METHODS.md` §159 / `GOV_ID_MATCH_REPORT.md`)
+    — both rows were blanked rather than left wrong; not yet in
+    `BACKLOG_DONE.md` since nothing is fixed yet.
 
 ### Adapter & platform gaps
 
