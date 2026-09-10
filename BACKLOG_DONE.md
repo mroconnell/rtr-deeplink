@@ -97,6 +97,52 @@ Wasatch County; the override waits for the deploy that carries the
 row), and a README rewrite of the display rule plus a one-paragraph
 "how identity flows" overview Ryan asked for at the start of the audit.
 
+## PR #807's squashed commit deleted the entire "Open bugs" section (89 entries) instead of just its own one fixed entry — 34 restored to BACKLOG.md after checking a day of PRs found none of them actually fixed [Done 2026-09-10]
+
+`git show 7b0a171 -- BACKLOG.md` showed the whole `## Open bugs` section
+removed from `BACKLOG.md` in one diff and the identical content appended
+verbatim to this file — every moved entry still read `[NEEDS-AUDIT]`/
+"Not yet in `BACKLOG_DONE.md`", meaning nobody had actually fixed them,
+they were just relocated by mistake inside a squashed multi-commit PR
+whose own title only described its one real fix (the shadowed-county
+resolver bug, which genuinely *was* fixed by that same PR's code —
+confirmed against its commit message and left as `[Done]` elsewhere in
+this file, not restored).
+
+Recovered the exact pre-move section via `git show 7b0a171^:BACKLOG.md`,
+diffed it against the current `BACKLOG.md` (a small script splitting
+both into individual entry blocks and comparing normalized signatures,
+not eyeballing 89 entries by hand — a first manual pass over-counted
+"88 missing" before this found the real number), and confirmed **35
+entries were genuinely gone**, not 88 — the rest of the original section
+had, in fact, survived into the file's current `## Open bugs` (a later
+PR had reconstructed a section that mostly overlapped, not started from
+scratch as first assumed).
+
+Of those 35, one (the shadowed-county bug itself) really was fixed by
+the same PR and correctly stays out. The other **34** were checked
+individually against every PR merged in the surrounding ~37-hour window
+(2026-09-08 08:41 through 2026-09-09 21:13, PRs #782–#810) for a
+genuine, independently-landed fix — not just topical overlap. Several
+PRs touched adjacent ground (Utah PMN adapter, two `score_gov_registry.py`
+reruns, a shared-host/tenant-pin study, two inventory reports) but none
+of them built the specific fix any of these 34 entries call for; a few
+of the 34 were actually *filed* by one of those PRs as new findings,
+which made the "already fixed" question briefly confusing but resolved
+the same way — still open. Zero of the 34 had real evidence of being
+fixed. All 34 restored to `BACKLOG.md`'s `## Open bugs` section, in
+their original relative order, immediately after the section header
+(their original position in the file, confirmed by line-range, not
+guessed).
+
+**Why this matters beyond the one-time recovery**: a squash-merged PR
+whose title describes only one of several bundled changes is a real risk
+for exactly this failure mode again — a large section-level edit buried
+inside a squash's diff is easy to review at the PR-title level and miss
+entirely. No process change proposed here beyond noting it; worth
+remembering next time a `BACKLOG.md` reorganization rides inside a PR
+that's *mostly* about something else.
+
 ## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
 
 Third backfill of the day (the two entries below carry the pattern and
