@@ -1,0 +1,36 @@
+gov_id,canonical_gov_id,evidence
+us:county:06075,us:place:0667000,"City and County of San Francisco, CA: one government; the Census carries both a county row and a place row for it."
+us:county:08031,us:place:0820000,"City and County of Denver, CO."
+us:county:42101,us:place:4260000,"Philadelphia, PA: city and county consolidated since 1854."
+us:county:11001,us:place:1150000,District of Columbia: the county-equivalent row is the same government as Washington city.
+us:county:32510,us:place:3209700,"Carson City, NV: an independent city the county table lists as a county-equivalent."
+us:county:36005,us:place:3651000,The Bronx is a borough of the City of New York; no separate county government.
+us:county:36047,us:place:3651000,"Kings County = Brooklyn, a borough of the City of New York."
+us:county:36061,us:place:3651000,"New York County = Manhattan, a borough of the City of New York."
+us:county:36081,us:place:3651000,"Queens County, a borough of the City of New York."
+us:county:36085,us:place:3651000,"Richmond County = Staten Island, a borough of the City of New York."
+us:county:47037,us:place:4752006,Davidson County = Metropolitan Government of Nashville and Davidson County.
+us:county:21111,us:place:2148006,Jefferson County KY = Louisville/Jefferson County Metro Government (a few small cities inside opted out; the county government is Metro).
+us:county:18097,us:place:1836003,Marion County IN = Indianapolis (Unigov); the county government is the consolidated one.
+us:county:12031,us:place:1235000,Duval County = Consolidated City of Jacksonville.
+us:county:02020,us:place:0203000,Anchorage Municipality is the Municipality of Anchorage.
+us:county:02110,us:place:0236400,Juneau City and Borough (county row) = City and Borough of Juneau.
+us:county:02220,us:place:0270540,Sitka City and Borough (county row) = City and Borough of Sitka.
+us:county:02275,us:place:0286380,Wrangell City and Borough (county row) = City and Borough of Wrangell.
+us:county:22071,us:place:2255000,Orleans Parish = City of New Orleans.
+us:county:22033,us:place:2205000,East Baton Rouge Parish government is the City of Baton Rouge/Parish of East Baton Rouge (City-Parish).
+us:county:22055,us:place:2240735,Lafayette Parish government is Lafayette Consolidated Government.
+us:county:13215,us:place:1319000,"Muscogee County = Columbus Consolidated Government, GA."
+us:county:13059,us:place:1303440,Clarke County = Athens-Clarke County Unified Government.
+us:county:13245,us:place:1304204,Richmond County GA = Augusta-Richmond County Consolidated Government.
+us:county:13021,us:place:1349008,Bibb County = Macon-Bibb County.
+us:county:13053,us:place:1321017,Chattahoochee County = Cusseta-Chattahoochee County Unified Government.
+us:county:13239,us:place:1332528,Quitman County = Georgetown-Quitman County Unified Government.
+us:county:13101,us:place:1326156,Echols County consolidated government (the place row is the government).
+us:county:13307,us:place:1381128,Webster County GA unified government (the place row is the government).
+us:county:21067,us:place:2146027,Fayette County KY = Lexington-Fayette Urban County Government.
+us:county:30093,us:place:3011397,Silver Bow County = Butte-Silver Bow.
+us:county:30023,us:place:3001675,Deer Lodge County = Anaconda-Deer Lodge County.
+us:county:20209,us:place:2036000,"Wyandotte County = Unified Government of Wyandotte County and Kansas City, KS."
+us:county:47127,us:place:4744382,Moore County TN = Metropolitan Government of Lynchburg-Moore County.
+us:place:2028412,us:county:20071,Greeley County unified government (balance) place row -> the county row the Archive already uses.

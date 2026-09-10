@@ -2345,3 +2345,56 @@ def test_consolidated_governments_key_to_one_id_from_every_name_form(raw, gov_id
     match = resolve(raw, None)
     assert match.gov_id == gov_id
     assert match.tier == resolver.TIER_REGISTRY
+
+
+@pytest.mark.parametrize(
+    "raw, gov_id",
+    [
+        ("Philadelphia County, PA", "us:place:4260000"),
+        ("San Francisco County, CA", "us:place:0667000"),
+        ("City and County of San Francisco, CA", "us:place:0667000"),
+        ("Denver County, CO", "us:place:0820000"),
+        ("Kings County, NY", "us:place:3651000"),
+        ("Davidson County, TN", "us:place:4752006"),
+        ("Orleans Parish, LA", "us:place:2255000"),
+        ("Fayette County, KY", "us:place:2146027"),
+        ("Wyandotte County, KS", "us:place:2036000"),
+        ("Greeley County unified government (balance), KS", "us:county:20071"),
+        # Ordinary counties that merely share a name are untouched.
+        ("Jefferson County, CO", "us:county:08059"),
+        ("Richmond County, GA", "us:place:1304204"),
+        ("Richmond County, VA", "us:county:51159"),
+    ],
+)
+def test_the_county_form_of_a_consolidated_government_keys_to_the_same_id(raw, gov_id):
+    """The Census keeps a county row AND a place row for each of the ~40
+    consolidated city-counties; `consolidated_governments.csv` says which
+    one the Archive treats as the government, and `_as_government()`
+    redirects every table hit through it. Before this, "Philadelphia
+    County, PA" would have opened a second hub beside "Philadelphia, PA"
+    (filed 2026-09-10 after the consolidated-government audit; no
+    archived page had used the county form yet)."""
+    match = resolve(raw, None)
+    assert match.gov_id == gov_id, match
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_every_consolidated_row_points_at_a_renderable_government():
+    for gov_id, canonical in registry.consolidated().items():
+        assert registry.government_for_id(canonical) is not None, (gov_id, canonical)
+        assert gov_id != canonical
+
+
+def test_every_consolidated_display_name_re_resolves_to_itself():
+    """Idempotence for the backfill: the display the registry writes for a
+    consolidated government must key straight back to that government.
+    "Georgetown-Quitman County, GA" reads like a county name and no such
+    county exists, so the second backfill pass declared it impossible and
+    UN-keyed the page it had just keyed (2026-09-10) -- the curated alias
+    is what closes that loop, and this test walks the whole map."""
+    from app.utils.gov_registry import display_name, government_for_id
+
+    for _gov_id, canonical in registry.consolidated().items():
+        shown = display_name(government_for_id(canonical))
+        match = resolve(shown, None)
+        assert match.gov_id == canonical, (shown, match.gov_id, match.tier)

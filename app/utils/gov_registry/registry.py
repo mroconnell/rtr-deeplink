@@ -260,6 +260,32 @@ def curated_aliases() -> Dict[Tuple[str, str], str]:
     return out
 
 
+CONSOLIDATED_FILE = "consolidated_governments.csv"
+
+
+@lru_cache(maxsize=1)
+def consolidated() -> Dict[str, str]:
+    """gov_id -> the gov_id that IS this government, for the ~40 US
+    consolidated city-counties where the Census keeps two rows -- a
+    county (or county-equivalent) and a place -- for one legal entity:
+    San Francisco, Denver, Philadelphia, the five NYC boroughs, Nashville-
+    Davidson, Louisville-Jefferson, Indianapolis-Marion, ... The map says
+    which row the Archive treats as the government (the one its pages,
+    curated rows and hubs already use), so "Philadelphia County, PA" and
+    "Philadelphia, PA" key to ONE id instead of opening two hubs. Applied
+    at `resolver._as_government()`, the single point every national-table
+    hit passes through, so it holds for the county, place and cousub
+    branches alike. Committed data, hand-written, one evidence line per
+    row (gov-id audit, 2026-09-10, Ryan's "about 40 of these")."""
+    out: Dict[str, str] = {}
+    for r in _read(CONSOLIDATED_FILE):
+        gov_id = (r.get("gov_id") or "").strip()
+        canon = (r.get("canonical_gov_id") or "").strip()
+        if gov_id and canon and gov_id != canon:
+            out[gov_id] = canon
+    return out
+
+
 @lru_cache(maxsize=1)
 def tenant_hints() -> Dict[str, str]:
     """tenant_host -> state abbreviation.
