@@ -431,6 +431,111 @@ against the running Archive); the 10 tier-3 URLs will surface once
 `feed_tier3_auto_transcription.py`'s next scheduled run picks them up --
 no deploy needed for either.
 
+## WO-130: full first-pass sweep of every US county with no Archive page -- 2,363 counties touched, 6 real resolves, 133 queued for auto-transcription [Done 2026-09-09]
+
+Ryan's ask: US counties (population ≥ 5,000, `archive_pages == 0` in
+`coverage_registry.csv`) were the deepest funnel gap — 2,367 of 3,222 —
+and PR #807 (same day) had just fixed a resolver bug that made every
+county sharing a name with an independent city (Baltimore MD, St. Louis
+MO, Carson City NV, Roanoke/Fairfax/Richmond VA) "impossible" to
+resolve. Get as many as possible listed with a real video, ONLY meetings
+with video (agenda-only recorded, never ingested).
+
+**Every one of the 2,363 reachable target counties got processed** (4
+of the original 2,367 were already covered per a fresh export check) —
+this is a complete first pass over the whole population, not a sample.
+Three steps, in the work order's own priority order:
+
+1. **300 counties with a known platform on file** (10 more had no
+   adapter — onbase/boarddocs/novusagenda/agendaquick — recorded
+   `unsupported-platform-no-adapter`) went to a direct resolve attempt,
+   after a live re-scan (`wo130_kp_two_hop_scan`) found a specific
+   in-page hit URL for 256 of them instead of guessing from the bare
+   domain.
+2. **1,899 counties with a domain but no known platform** went through
+   `wo130_two_hop_scan.py` — a county-population copy of WO-129's own
+   scanner (same signatures, explicitly excludes counties per that
+   script's docstring), plus an explicit `/AgendaCenter` probe for a
+   self-hosted CivicPlus tenant that never says "civicplus.com"
+   anywhere. 375 of 1,899 (19.8%) had a real platform hit.
+3. **165 counties had no domain at all**, even falling back to
+   `naco_county_websites.csv`'s `website` column — recorded `no-domain`
+   (a genuinely new taxonomy value; no prior sweep needed it).
+
+Real resolve attempts: 660 (289 known-platform + 371 two-hop hits), via
+`scripts/wo130_county_ingest.py` — a fork of `nationwide_2404_ingest.py`
+(same CalendarPageError picking, CivicPlus/CivicClerk special-casing,
+title-safety allowlist, dedup, retry-wrapped ingest — reused, not
+reimplemented) with three real differences: agenda-only is recorded
+`no-video-found` and never ingested (stricter than that script's own
+`ingested_agenda_only`, and rejected on the merits, not deferred — an
+agenda-only URL has no `video_url`, so queuing to tier 3 would sit
+failing every drain cycle forever; see the updated entry below this
+one); `result.jurisdiction` is forced to the registry's own exact county
+name before ingest, which is what makes `gov_id` resolve server-side to
+the right county via PR #807's fix instead of drifting to `rtr:unknown`;
+and a new YouTube channel-URL fallback (`youtube_channel_latest_video()`)
+for the common case where a `known_platform=youtube` hit is the channel
+itself, not a video — lists the channel's `/videos` tab and picks the
+newest entry passing the existing title allowlist.
+
+**Two real bugs caught and fixed mid-run**, both from inspecting the
+tier-3 queue file directly (not caught by any test): the channel
+fallback's first version fired on any youtube.com URL with no video id,
+not just a real channel, so a county homepage's "search our channel"
+widget link got yt-dlp'd as if it were the county's own channel (Dubois
+County, IN, queued an unrelated search result); and it returned the
+CHANNEL url as the resolved meeting's identity rather than the actual
+video, so a tier-3 line for Knox County, IN read
+`youtube.com/@knoxcountycouncil?streams` — permanently unresolvable.
+Both fixed (gate on a real channel-shape only; return the constructed
+`watch?v=` URL). A confirmed **data bug**, not a resolve failure:
+Charleston County, SC's own `domain` in `coverage_registry.csv` points
+at `charlestonwv.portal.civicclerk.com` — Charleston, WEST VIRGINIA's
+real tenant — recorded `wrong-domain-mapping`, not ingested; the domain
+column itself still needs a human fix. 32 rows hit a genuine
+**duplicate-queued**: the exact video a county's own pipeline found was
+already sitting in `tier3_auto_transcription_queue.txt` from earlier
+work (shared regional/city YouTube channels, mostly) — the duplicate
+line was removed, keeping the original.
+
+**Funnel**:
+
+| Bucket | Count |
+|---|---|
+| Total target counties | 2,363 |
+| No domain at all | 165 |
+| Known platform, no adapter | 10 |
+| Domain-only, two-hop scanned | 1,899 (375 hit, 1,524 no hit) |
+| Real resolve attempted | 660 |
+| **Ingested tier 1/2 (live now)** | **6** (2 brand-new: Waldo County ME, Nicollet County MN; 4 matched an already-existing page) |
+| **Queued tier 3 (real video, awaiting captions)** | **133** |
+| Duplicate-queued | 32 |
+| Wrong-domain-mapping | 1 |
+| Resolved, no video (not ingested) | 4 |
+| Skipped, various reasons | 484 |
+
+Platform mix of the 139 real outcomes: YouTube 86, CivicPlus 32,
+CivicClerk 17, one each of Legistar/Granicus/Municode Meetings/TelVue.
+Best states (8 each): NC, TN, VA — broadly national, no single region
+dominated. Backfilled into `jurisdiction_coverage.csv` in one pass at
+the end (`wo130_backfill_into_jc.py`, always overwrites rather than
+skipping already-set rows, since most of this population already
+carried a stale pre-PR-807 reject_reason) — 2,319 gov_ids updated, 44
+appended fresh (mostly VA independent cities and DC, which had no
+`jurisdiction_coverage.csv` row at all). Full writeup:
+`rtr-business/research/ENUMERATION_METHODS.md` section 33.
+
+**Still not deployed as of this writing**: `scripts/
+wo130_county_ingest.py` and `scripts/tier3_auto_transcription_queue.txt`
+changes are code/data that ship with a deploy, but every real ingest/
+queue action this entry describes already happened against production
+over HTTP (`POST /internal/ingest`, same as every other `nationwide_*`
+batch script) — nothing here is blocked on a deploy. The 133 tier-3
+queue entries will surface as real pages over the coming days as the
+existing cloud auto-transcription worker drains them, on its own
+schedule.
+
 ## Ryan's pin worklist applied and backfilled -- 35 pins, 58 pages re-keyed, 20 hub redirects, two bugs found by the dry run [Done 2026-09-09]
 
 Second backfill of the day (see the 114-pin entry below for the first,
