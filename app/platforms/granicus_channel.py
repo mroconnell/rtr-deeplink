@@ -43,10 +43,23 @@ platform limit or just this feed's current size), so an older meeting
 than the feed covers won't be found here either.
 
 Curated per-tenant, same as `youtube_channel.py`'s `_CHANNEL_FALLBACKS`
--- this is real, confirmed live for exactly one tenant so far (Kansas
-City), not a general Legistar+Granicus rule. Add a second entry once
-another real Legistar tenant with the same "video exists on Granicus,
-just not linked from the meeting page" shape is confirmed.
+-- confirmed live for two real tenants so far (Kansas City, MO;
+Yonkers, NY, added 2026-09-10 WO-145), not a general Legistar+Granicus
+rule applied automatically at resolve time. WO-145's own read-only sweep
+of ~29 other Legistar tenants (not yet added here -- see
+`docs/investigations/` or `BACKLOG.md` for the sweep's own findings)
+found a same-named Granicus tenant with real, recent video for the large
+majority of them, and a body+date match against Legistar confirmed the
+majority of those -- but not all: a same-named tenant can also be a
+dead/legacy channel (stale years-old clips), the wrong channel entirely
+(e.g. an internal training channel unrelated to council meetings), or
+belong to a Granicus tenant genuinely shared across more than one
+government (so the same-named guess finds real video, just not
+necessarily *this* government's). That's why this stays a curated,
+individually-verified dict rather than a live per-request probe --
+same decline-on-uncertainty posture as everything else in this file.
+Add an entry only once a candidate tenant's own body+date match has been
+confirmed the way Kansas City's and Yonkers's were.
 
 Real wording drift confirmed live between Legistar's own body name and
 Granicus's own RSS item title for the SAME committee (see `_normalize()`
@@ -82,6 +95,26 @@ class ViewPublisherFallback:
 _VIEW_PUBLISHER_FALLBACKS: Dict[str, ViewPublisherFallback] = {
     "kansascity.legistar.com": ViewPublisherFallback(
         granicus_domain="kansascity.granicus.com", view_id="2"
+    ),
+    # Second real tenant, confirmed live 2026-09-10 (WO-145): Yonkers, NY's
+    # Legistar MeetingDetail.aspx page never gets a real onclick on its
+    # a.videolink -- the "Not available" placeholder text and
+    # data-event-id it does carry are wired up client-side against
+    # running_events.php for *live* events only, so a page for a past
+    # meeting is left with no video mechanism at all, structurally, not
+    # as a rare gap. The Granicus domain here isn't a guessed
+    # legistar->granicus slug swap: it's read straight from the page's
+    # own <script>, which calls
+    # `yonkersny.granicus.com/running_events.php` by name. view_id=1 is
+    # confirmed live to be the tenant's real "New View" (its
+    # ViewPublisherRSS.php channel title literally says so), carrying 13
+    # real video items including this exact meeting
+    # (clip_id=53, "City Council of Yonkers Stated Meeting on
+    # 2024-10-08 7:00 PM - Oct 08, 2024", gran:pubDateParts
+    # yr=2024 mo=10 day=08) -- view_id=2 on this tenant is a real but
+    # unrelated "Training View", and view_id 3-5 both 404.
+    "yonkersny.legistar.com": ViewPublisherFallback(
+        granicus_domain="yonkersny.granicus.com", view_id="1"
     ),
 }
 

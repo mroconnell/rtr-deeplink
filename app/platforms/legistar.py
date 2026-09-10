@@ -106,12 +106,17 @@ class LegistarAssetFinder(AssetFinder):
     video at all, which is why every uncertain case declines.
 
     Last resort: `_try_granicus_view_publisher_video()` (added
-    2026-08-29) -- for a confirmed real tenant (Kansas City, MO) whose
-    recordings are real and on Granicus, just under a different meeting
-    id than this page names, reachable only via the tenant's own public
-    Granicus RSS listing. Same name+date matching philosophy and same
-    decline-on-uncertainty posture as the YouTube case; see
-    `granicus_channel.py` for the evidence and matching rules.
+    2026-08-29, second tenant added 2026-09-10 WO-145) -- for a confirmed
+    real tenant (Kansas City, MO; also Yonkers, NY) whose recordings are
+    real and on Granicus, just under a different meeting id than this
+    page names (or, for Yonkers, under no id at all -- its own
+    a.videolink never gets a real onclick for a past meeting, only a
+    "Not available" placeholder wired up client-side for live events),
+    reachable only via the tenant's own public Granicus RSS listing. Same
+    name+date matching philosophy and same decline-on-uncertainty posture
+    as the YouTube case; see `granicus_channel.py` for the evidence and
+    matching rules, including WO-145's read-only sweep of ~30 other
+    Legistar tenants testing whether this generalizes.
     """
 
     platform_name = "legistar"

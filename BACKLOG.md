@@ -134,7 +134,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (5)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (104)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
@@ -211,7 +211,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (30)
+  Adapter & platform gaps  (31)
+    [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
@@ -2959,6 +2960,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     `BACKLOG_DONE.md` since nothing is fixed yet.
 
 ### Adapter & platform gaps
+
+- **[NEEDS-AUDIT] A same-named Granicus tenant is a real video source for most "no video" Legistar cities — worth a standing sweep, confirmed on 25 of 29 tenants tested.**
+  - **Issue**: WO-145 (2026-09-10) fixed Yonkers, NY's Legistar page having no video by finding its recording on a same-named Granicus tenant (`granicus_channel.py`, joining Kansas City, MO from 2026-08-29). A read-only test on 29 other Legistar tenants (no video previously found, or status unknown) found a same-named `*.granicus.com` tenant with real recent video for 25 of them; of those, 16 had a newest video whose body and date matched a real Legistar-tracked meeting outright, 3 more likely match but couldn't be checked (Legistar's own API rejected the guessed client name), and 5 were real misses (wrong channel, a dead channel, or a Granicus tenant shared across more than one government). Full numbers and per-tenant table: `rtr-business/research/ENUMERATION_METHODS.md`, 2026-09-10 section; `BACKLOG_DONE.md`'s matching entry.
+  - **Impact**: an unknown number of the "no video found" Legistar rows in `jurisdiction_coverage.csv` likely have a real, findable Granicus recording today, the same shape as Yonkers.
+  - **Next action**: build an offline sweep script (same shape as WO-103's `scripts/sweep_tenant_landing_pages.py` pin-worklist pattern) that runs this probe against every Legistar tenant marked no-video-found, and writes candidates needing a human/session look — not a direct write to `_VIEW_PUBLISHER_FALLBACKS` or `jurisdiction_coverage.csv`, since a same-named tenant needs its body+date match confirmed per candidate the way Kansas City's and Yonkers's were (WO-145's sweep found real false leads: a wrong channel, a dead channel, a shared-tenant case). Keep this a periodic offline sweep, not a live probe inside `legistar.py`'s `resolve()` path — a 15-view-id probe per unmatched page is too slow and too unreliable to run on a real user request.
+  - **Constraint**: don't add an unverified tenant straight to `_VIEW_PUBLISHER_FALLBACKS` — confirm the body+date match by hand first, same bar as the two tenants already in it.
+  - **History**: `BACKLOG_DONE.md`, WO-145 (2026-09-10).
 
 - **[JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path) resolves "successfully" with zero content instead of finding a real meeting — confirmed on ~29 of 43 WO-128 candidates.**
   - **Issue**: `escribe.py`'s `resolve()` fetches whatever URL it's given and never raises `CalendarPageError` for a listing/root page the way `civicplus.py`/`municode_meetings.py`/`vimeo.py` do, so `nationwide_*_ingest.py`'s `resolve_seed()` has no candidate list to pick from — it just returns an empty `ResolvedMeeting` (no agenda items, no video, no metadata), logged as `"resolved but no transcript/agenda/video"`. Real examples: `pub-southdundas.escribemeetings.com`, `pub-hawkesbury.escribemeetings.com`, `pub-smithsfalls.escribemeetings.com` (all real Ontario municipalities whose only known seed is the bare tenant host).
