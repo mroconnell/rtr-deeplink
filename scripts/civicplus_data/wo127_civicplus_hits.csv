@@ -1,0 +1,349 @@
+gov_id,unit_name,web_address
+us:place:0100820,"Alabaster city, AL",cityofalabaster.com
+us:place:0115136,"Clanton city, AL",clantonal.gov
+us:place:0118976,"Cullman city, AL",cullmanal.gov
+us:place:0132272,"Gulf Shores city, AL",gulfshoresal.gov
+us:place:0136448,"Hueytown city, AL",hueytownal.gov
+us:place:0141968,"Leeds city, AL",leedsalabama.gov
+us:place:0155200,"Northport city, AL",northportal.gov
+us:place:0157048,"Opelika city, AL",opelika-al.gov
+us:place:0157144,"Orange Beach city, AL",orangebeachal.gov
+us:place:0181720,"Wetumpka city, AL",wetumpkaal.gov
+us:place:0405770,"Benson city, AZ",bensonaz.gov
+us:place:0411300,"Cave Creek town, AZ",cavecreekaz.gov
+us:place:0416410,"Cottonwood city, AZ",cottonwoodaz.gov
+us:place:0420050,"Douglas city, AZ",douglasaz.gov
+us:place:0422360,"Eloy city, AZ",eloyaz.gov
+us:place:0425300,"Fountain Hills town, AZ",fountainhillsaz.gov
+us:place:0482740,"Wickenburg town, AZ",wickenburgaz.gov
+us:place:0501870,"Arkadelphia city, AR",arkadelphia.gov
+us:place:0510300,"Cabot city, AR",cabotar.gov
+us:place:0543610,"Malvern city, AR",malvernar.gov
+us:place:0560410,"Rogers city, AR",rogersar.gov
+us:place:0561670,"Russellville city, AR",russellvillear.gov
+us:place:0564370,"Siloam Springs city, AR",siloamsprings.gov
+us:place:0571480,"Van Buren city, AR",cityofvanburenar.gov
+us:place:0574540,"West Memphis city, AR",westmemphisar.gov
+us:place:0600884,"Alhambra city, CA",alhambraca.gov
+us:place:0609864,"Calimesa city, CA",calimesa.gov
+us:place:0614890,"Colton city, CA",coltonca.gov
+us:place:0617498,"Cudahy city, CA",cityofcudahyca.gov
+us:place:0622804,"Escondido city, CA",escondido.gov
+us:place:0630994,"Greenfield city, CA",greenfieldca.gov
+us:place:0638226,"Kerman city, CA",cityofkerman.gov
+us:place:0638562,"Kingsburg city, CA",cityofkingsburg-ca.gov
+us:place:0644574,"Lynwood city, CA",lynwoodca.gov
+us:place:0669154,"Santa Fe Springs city, CA",santafesprings.gov
+us:place:0670588,"Scotts Valley city, CA",scottsvalley.gov
+us:place:0671106,"Shafter city, CA",shafterca.gov
+us:place:0671225,"Shasta Lake city, CA",cityofshastalake.gov
+us:place:0673108,"South Lake Tahoe city, CA",cityofslt.gov
+us:place:0678148,"Temple City city, CA",templecityca.gov
+us:place:0803455,"Arvada city, CO",arvadaco.gov
+us:place:0817375,"Cortez city, CO",cortezco.gov
+us:place:0819080,"Dacono city, CO",daconoco.gov
+us:place:0883230,"Wellington town, CO",wellingtoncolorado.gov
+us:place:0883835,"Westminster city, CO",westminsterco.gov
+us:place:0885485,"Windsor town, CO",windsorco.gov
+us:place:1050670,"Newark city, DE",newarkde.gov
+us:place:1212925,"Clermont city, FL",clermontfl.gov
+us:place:1213000,"Clewiston city, FL",clewiston-fl.gov
+us:place:1216725,"Deerfield Beach city, FL",deerfieldbeachfl.gov
+us:place:1222975,"Florida City city, FL",floridacityfl.gov
+us:place:1227322,"Greenacres city, FL",greenacresfl.gov
+us:place:1232275,"Homestead city, FL",homesteadfl.gov
+us:place:1233450,"Indian Harbour Beach city, FL",indianharbourbeach.gov
+us:place:1248200,"Newberry city, FL",newberryfl.gov
+us:place:1248750,"Niceville city, FL",nicevillefl.gov
+us:place:1249450,"North Miami city, FL",northmiamifl.gov
+us:place:1251350,"Oldsmar city, FL",oldsmarfl.gov
+us:place:1253875,"Palatka city, FL",palatka-fl.gov
+us:place:1256975,"Pinellas Park city, FL",pinellaspark.gov
+us:place:1262625,"St. Cloud city, FL",stcloudfl.gov
+us:place:1268525,"Starke city, FL",cityofstarke.org
+us:place:1271400,"Temple Terrace city, FL",templeterrace.gov
+us:place:1313688,"Cartersville city, GA",cartersvillega.gov
+us:place:1317776,"College Park city, GA",collegeparkga.gov
+us:place:1321324,"Dallas city, GA",dallasga.gov
+us:place:1321380,"Dalton city, GA",daltonga.gov
+us:place:1323872,"Douglas city, GA",cityofdouglasga.gov
+us:place:1328968,"Fayetteville city, GA",fayetteville-ga.gov
+us:place:1338964,"Hinesville city, GA",cityofhinesville.org
+us:place:1341988,"Jefferson city, GA",jeffersonga.gov
+us:place:1342268,"Jesup city, GA",jesupga.gov
+us:place:1365464,"Riverdale city, GA",riverdalega.gov
+us:place:1376476,"Tifton city, GA",tiftonga.gov
+us:place:1664810,"Post Falls city, ID",postfalls.gov
+us:place:1676870,"Star city, ID",staridaho.org
+us:place:1715833,"Columbia city, IL",columbiail.gov
+us:place:1729639,"Glen Carbon village, IL",glencarbonil.gov
+us:place:1735086,"Hillside village, IL",hillside-il.gov
+us:place:1740767,"La Grange village, IL",lagrangeil.gov
+us:place:1748892,"Midlothian village, IL",villageofmidlothian.net
+us:place:1753234,"Normal town, IL",normalil.gov
+us:place:1763706,"Richton Park village, IL",richtonpark.org
+us:place:1764343,"River Grove village, IL",rivergroveil.gov
+us:place:1777993,"Villa Park village, IL",villaparkil.gov
+us:place:1779293,"Waukegan city, IL",waukeganil.gov
+us:place:1781087,"Wheeling village, IL",wheelingil.gov
+us:place:1782075,"Wilmette village, IL",wilmette.gov
+us:place:1829520,"Greenfield city, IN",greenfieldin.gov
+us:place:1882700,"Westfield city, IN",westfieldin.gov
+us:place:1902305,"Ankeny city, IA",ankenyiowa.gov
+us:place:1911755,"Cedar Falls city, IA",cedarfalls.com
+us:place:1933060,"Grimes city, IA",grimesiowa.gov
+us:place:1942015,"Knoxville city, IA",knoxvilleia.gov
+us:place:1955110,"Muscatine city, IA",muscatineiowa.gov
+us:place:2002300,"Arkansas City city, KS",arkansascityks.gov
+us:place:2014650,"Colby city, KS",cityofcolbyks.gov
+us:place:2021675,"Eudora city, KS",cityofeudoraks.gov
+us:place:2042875,"Louisburg city, KS",louisburgkansas.gov
+us:place:2049100,"Mulvane city, KS",mulvaneks.gov
+us:place:2054450,"Park City city, KS",parkcityks.gov
+us:place:2067625,"Spring Hill city, KS",springhillks.gov
+us:place:2130700,"Georgetown city, KY",georgetownky.gov
+us:place:2139142,"Independence city, KY",cityofindependence.org
+us:place:2243010,"Leesville city, LA",leesvillela.gov
+us:place:2371990,"South Portland city, ME",southportland.gov
+us:place:2380740,"Waterville city, ME",waterville-me.gov
+us:place:2453875,"Mount Airy town, MD",mountairymd.gov
+us:place:2455400,"New Carrollton city, MD",newcarrolltonmd.gov
+us:place:2462850,"Poolesville town, MD",poolesvillemd.gov
+us:place:2501185,"Amesbury city, MA",amesburyma.gov
+us:place:2513660,"Chicopee city, MA",chicopeema.gov
+us:place:2540675,"Methuen city, MA",methuen.gov
+us:place:2546330,"Northampton city, MA",northamptonma.gov
+us:place:2553960,"Pittsfield city, MA",pittsfieldma.gov
+us:place:2569170,"Taunton city, MA",taunton-ma.gov
+us:place:2606020,"Bay City city, MI",baycitymi.gov
+us:place:2617020,"Coldwater city, MI",coldwatermi.gov
+us:place:2621020,"Dearborn Heights city, MI",dearbornheightsmi.gov
+us:place:2623980,"East Grand Rapids city, MI",eastgrmi.gov
+us:place:2640960,"Iron Mountain city, MI",ironmountainmi.gov
+us:place:2643300,"Kingsford city, MI",kingsfordmi.gov
+us:place:2650560,"Madison Heights city, MI",madisonheightsmi.gov
+us:place:2650720,"Manistee city, MI",manisteemi.gov
+us:place:2658980,"Northville city, MI",cityofnorthvillemi.gov
+us:place:2701486,"Andover city, MN",andovermn.gov
+us:place:2701720,"Anoka city, MN",anokamn.gov
+us:place:2710846,"Champlin city, MN",champlinmn.gov
+us:place:2710972,"Chaska city, MN",chaskamn.gov
+us:place:2713456,"Cottage Grove city, MN",cottagegrovemn.gov
+us:place:2715454,"Delano city, MN",delanomn.gov
+us:place:2718674,"Elk River city, MN",elkrivermn.gov
+us:place:2720420,"Falcon Heights city, MN",falconheightsmn.gov
+us:place:2724308,"Golden Valley city, MN",goldenvalleymn.gov
+us:place:2728790,"Hibbing city, MN",hibbingmn.gov
+us:place:2734244,"Lake Elmo city, MN",lakeelmo.gov
+us:place:2737322,"Lino Lakes city, MN",linolakes.gov
+us:place:2737502,"Little Canada city, MN",littlecanada.gov
+us:place:2739428,"Mahtomedi city, MN",mahtomedimn.gov
+us:place:2740382,"Maplewood city, MN",maplewoodmn.gov
+us:place:2743774,"Monticello city, MN",monticellomn.gov
+us:place:2745430,"New Brighton city, MN",newbrightonmn.gov
+us:place:2746042,"New Ulm city, MN",newulmmn.gov
+us:place:2746798,"North Branch city, MN",northbranchmn.gov
+us:place:2747104,"North Oaks city, MN",northoaksmn.gov
+us:place:2749138,"Otsego city, MN",otsegomn.gov
+us:place:2749300,"Owatonna city, MN",owatonna.gov
+us:place:2754214,"Richfield city, MN",richfieldmn.gov
+us:place:2756950,"St. Francis city, MN",stfrancismn.gov
+us:place:2761492,"South St. Paul city, MN",southstpaulmn.gov
+us:place:2767432,"Waconia city, MN",waconiamn.gov
+us:place:2826860,"Gautier city, MS",gautier-ms.gov
+us:place:2853520,"Ocean Springs city, MS",oceansprings-ms.gov
+us:place:2919252,"De Soto city, MO",desotomo.com
+us:place:2935648,"Jackson city, MO",cityofjacksonmo.gov
+us:place:2945668,"Manchester city, MO",manchestermo.gov
+us:place:2949196,"Monett city, MO",monettmo.gov
+us:place:2951644,"Nevada city, MO",nevadamo.gov
+us:place:2955244,"Osage Beach city, MO",osagebeach-mo.gov
+us:place:2955910,"Pacific city, MO",pacificmo.gov
+us:place:2959096,"Poplar Bluff city, MO",poplarbluff-mo.gov
+us:place:2964550,"St. Joseph city, MO",stjosephmo.gov
+us:place:2978154,"Webster Groves city, MO",webstergrovesmo.gov
+us:place:3006550,"Billings city, MT",billingsmt.gov
+us:place:3032800,"Great Falls city, MT",greatfallsmt.gov
+us:place:3135000,"North Platte city, NE",northplattene.gov
+us:place:3138295,"Papillion city, NE",papillion.gov
+us:place:3305140,"Berlin city, NH",berlinnh.gov
+us:place:3327380,"Franklin city, NH",franklinnh.gov
+us:place:3340180,"Laconia city, NH",laconianh.gov
+us:place:3407600,"Bridgeton city, NJ",cityofbridgetonnj.gov
+us:place:3419390,"East Orange city, NJ",eastorange-nj.gov
+us:place:3440440,"Lindenwold borough, NJ",lindenwoldnj.gov
+us:place:3440770,"Little Silver borough, NJ",littlesilvernj.gov
+us:place:3446680,"Millville city, NJ",millvillenj.gov
+us:place:3455950,"Paramus borough, NJ",paramusborough.gov
+us:place:3461530,"Rahway city, NJ",rahwaynj.gov
+us:place:3477270,"Washington borough, NJ",washingtonboro-nj.gov
+us:place:3480270,"Westwood borough, NJ",westwoodnj.gov
+us:place:3503820,"Anthony city, NM",cityofanthonynm.gov
+us:place:3505220,"Artesia city, NM",artesianm.gov
+us:place:3506480,"Belen city, NM",belen-nm.gov
+us:place:3528460,"Gallup city, NM",gallupnm.gov
+us:place:3543370,"Los Lunas village, NM",loslunasnm.gov
+us:place:3564930,"Roswell city, NM",roswell-nm.gov
+us:place:3576200,"Taos town, NM",taosnm.gov
+us:place:3602044,"Amityville village, NY",amityville.gov
+us:place:3603408,"Babylon village, NY",townofbabylonny.gov
+us:place:3608103,"Briarcliff Manor village, NY",briarcliffmanor.gov
+us:place:3608532,"Bronxville village, NY",villageofbronxville.gov
+us:place:3616749,"Cohoes city, NY",cohoes-ny.gov
+us:place:3624295,"Elmsford village, NY",elmsford.gov
+us:place:3628640,"Geneva city, NY",cityofgenevany.gov
+us:place:3629333,"Glens Falls city, NY",cityofglensfallsny.gov
+us:place:3631643,"Hamburg village, NY",townofhamburgny.gov
+us:place:3632710,"Hastings-on-Hudson village, NY",hohny.gov
+us:place:3633139,"Hempstead village, NY",hempsteadny.gov
+us:place:3635694,"Horseheads village, NY",townofhorseheads.gov
+us:place:3644831,"Mamaroneck village, NY",townofmamaroneckny.gov
+us:place:3646019,"Massena village, NY",massenany.gov
+us:place:3647042,"Middletown city, NY",middletownny.gov
+us:place:3647636,"Mineola village, NY",mineola-ny.gov
+us:place:3657023,"Pelham Manor village, NY",pelhammanor.gov
+us:place:3659641,"Poughkeepsie city, NY",cityofpoughkeepsie.gov
+us:place:3665255,"Saratoga Springs city, NY",saratogaspringsny.gov
+us:place:3667638,"Sleepy Hollow village, NY",sleepyhollowny.gov
+us:place:3675583,"Tuckahoe village, NY",tuckahoe.gov
+us:place:3684000,"Yonkers city, NY",yonkersny.gov
+us:place:3701520,"Apex town, NC",apexnc.gov
+us:place:3701720,"Archdale city, NC",archdale-nc.gov
+us:place:3709060,"Burlington city, NC",burlingtonnc.gov
+us:place:3714340,"Conover city, NC",conovernc.gov
+us:place:3738320,"Lincolnton city, NC",lincolntonnc.gov
+us:place:3739700,"Lumberton city, NC",lumbertonnc.gov
+us:place:3757500,"Rocky Mount city, NC",rockymountnc.gov
+us:place:3759540,"Sawmills town, NC",townofsawmillsnc.gov
+us:place:3761860,"Siler City town, NC",silercity.gov
+us:place:3840580,"Jamestown city, ND",jamestownnd.gov
+us:place:3907972,"Bowling Green city, OH",bgohio.gov
+us:place:3909246,"Brooklyn city, OH",brooklynohio.gov
+us:place:3913190,"Centerville city, OH",centervilleohio.gov
+us:place:3913554,"Chardon city, OH",cityofchardon.gov
+us:place:3916014,"Cleveland Heights city, OH",clevelandheights.gov
+us:place:3921000,"Dayton city, OH",daytonohio.gov
+us:place:3921308,"Defiance city, OH",cityofdefiance.gov
+us:place:3929106,"Gahanna city, OH",gahanna.gov
+us:place:3931304,"Grandview Heights city, OH",grandviewheights.gov
+us:place:3935252,"Highland Heights city, OH",highlandhtsohio.gov
+us:place:3948482,"Mayfield Heights city, OH",mayfieldheightsohio.gov
+us:place:3955216,"New Philadelphia city, OH",newphiladelphiaoh.gov
+us:place:3957190,"Northwood city, OH",northwoodoh.gov
+us:place:3974076,"Springboro city, OH",cityofspringboro.gov
+us:place:3976876,"Tipp City city, OH",tippcityohio.gov
+us:place:3977322,"Trenton city, OH",trentonoh.gov
+us:place:3986730,"Wyoming city, OH",wyomingohio.gov
+us:place:4006400,"Bixby city, OK",bixbyok.gov
+us:place:4006600,"Blackwell city, OK",blackwellok.gov
+us:place:4013950,"Chickasha city, OK",chickasha.gov
+us:place:4017800,"Coweta city, OK",cityofcoweta-ok.gov
+us:place:4021900,"Duncan city, OK",duncanok.gov
+us:place:4023700,"El Reno city, OK",elrenook.gov
+us:place:4031600,"Grove city, OK",cityofgroveok.gov
+us:place:4048000,"Miami city, OK",miamiok.gov
+us:place:4058700,"Piedmont city, OK",piedmont-ok.gov
+us:place:4059850,"Ponca City city, OK",poncacityok.gov
+us:place:4061150,"Purcell city, OK",purcellok.gov
+us:place:4065300,"Sand Springs city, OK",sandspringsok.gov
+us:place:4075450,"Tuttle city, OK",tuttleok.gov
+us:place:4082150,"Woodward city, OK",cityofwoodward-ok.gov
+us:place:4112400,"Central Point city, OR",centralpointoregon.gov
+us:place:4123850,"Eugene city, OR",eugene-or.gov
+us:place:4124250,"Fairview city, OR",fairvieworegon.gov
+us:place:4130550,"Grants Pass city, OR",grantspassoregon.gov
+us:place:4164600,"St. Helens city, OR",sthelensoregon.gov
+us:place:4177050,"Veneta city, OR",venetaoregon.gov
+us:place:4183750,"Woodburn city, OR",woodburn-or.gov
+us:place:4223584,"Emmaus borough, PA",emmauspa.gov
+us:place:4246256,"McKeesport city, PA",mckeesport-pa.gov
+us:place:4283512,"West Mifflin borough, PA",westmifflin.gov
+us:place:4513330,"Charleston city, SC",charleston-sc.gov
+us:place:4528060,"Gaffney city, SC",cityofgaffney-sc.gov
+us:place:4539310,"Lake City city, SC",lakecitysc.gov
+us:place:4570270,"Summerville town, SC",summervillesc.gov
+us:place:4627260,"Harrisburg city, SD",harrisburgsd.gov
+us:place:4631060,"Huron city, SD",huronsd.gov
+us:place:4700540,"Alcoa city, TN",cityofalcoa-tn.gov
+us:place:4728540,"Gallatin city, TN",gallatintn.gov
+us:place:4741200,"La Vergne city, TN",lavergnetn.gov
+us:place:4741340,"Lawrenceburg city, TN",lawrenceburgtn.gov
+us:place:4751560,"Murfreesboro city, TN",murfreesborotn.gov
+us:place:4758080,"Pigeon Forge city, TN",cityofpigeonforgetn.gov
+us:place:4761960,"Red Bank city, TN",redbanktn.gov
+us:place:4780200,"White House city, TN",whitehousetn.gov
+us:place:4802260,"Alvarado city, TX",cityofalvarado.org
+us:place:4803600,"Aransas Pass city, TX",aptx.gov
+us:place:4804504,"Athens city, TX",athenstx.gov
+us:place:4804600,"Aubrey city, TX",aubreytx.gov
+us:place:4810780,"Brownwood city, TX",brownwoodtexas.gov
+us:place:4812532,"Canyon city, TX",canyontx.gov
+us:place:4816624,"Copperas Cove city, TX",copperascovetx.gov
+us:place:4821892,"Eagle Pass city, TX",eaglepasstx.gov
+us:place:4831592,"Gun Barrel City city, TX",gunbarrelcity.gov
+us:place:4833320,"Hereford city, TX",herefordtexas.gov
+us:place:4836092,"Iowa Colony village, TX",iowacolonytx.gov
+us:place:4841116,"La Marque city, TX",cityoflamarque.gov
+us:place:4841440,"La Porte city, TX",laportetx.gov
+us:place:4842820,"Lindale city, TX",lindaletx.gov
+us:place:4846584,"Marble Falls city, TX",marblefallstx.gov
+us:place:4855080,"Paris city, TX",paristexas.gov
+us:place:4856000,"Pasadena city, TX",pasadenatx.gov
+us:place:4859748,"Providence Village town, TX",pvtx.gov
+us:place:4864472,"San Angelo city, TX",sanangelo.gov
+us:place:4865726,"Santa Fe city, TX",santafetx.gov
+us:place:4868624,"Snyder city, TX",snydertx.gov
+us:place:4869020,"South Houston city, TX",southhoustontx.gov
+us:place:4870208,"Stephenville city, TX",stephenvilletx.gov
+us:place:4871540,"Sweetwater city, TX",sweetwatertx.gov
+us:place:4875308,"Vernon city, TX",vernontx.gov
+us:place:4876864,"Weatherford city, TX",weatherfordtx.gov
+us:place:4876948,"Webster city, TX",webstertx.gov
+us:place:4877956,"West University Place city, TX",westutx.gov
+us:place:4955210,"North Salt Lake city, UT",nslcity.gov
+us:place:5085150,"Winooski city, VT",winooskivt.gov
+us:place:5129600,"Franklin city, VA",franklinva.gov
+us:place:5129744,"Fredericksburg city, VA",fredericksburgva.gov
+us:place:5168000,"Roanoke city, VA",roanokeva.gov
+us:place:5170000,"Salem city, VA",salemva.gov
+us:place:5173200,"Smithfield town, VA",smithfieldva.gov
+us:place:5181280,"Vinton town, VA",vintonva.gov
+us:place:5183136,"Warrenton town, VA",warrentonva.gov
+us:place:5187712,"Woodstock town, VA",woodstockva.gov
+us:place:5306330,"Black Diamond city, WA",blackdiamondwa.gov
+us:place:5308920,"Burlington city, WA",burlingtonwa.gov
+us:place:5318965,"DuPont city, WA",dupontwa.gov
+us:place:5320155,"East Wenatchee city, WA",eastwenatcheewa.gov
+us:place:5320645,"Edgewood city, WA",edgewoodwa.gov
+us:place:5323795,"Fife city, WA",fifewa.gov
+us:place:5335065,"Kelso city, WA",kelso.gov
+us:place:5346685,"Monroe city, WA",monroewa.gov
+us:place:5347245,"Moses Lake city, WA",moseslakewa.gov
+us:place:5347560,"Mount Vernon city, WA",mountvernonwa.gov
+us:place:5349485,"North Bend city, WA",northbendwa.gov
+us:place:5355785,"Port Orchard city, WA",portorchardwa.gov
+us:place:5356695,"Puyallup city, WA",puyallupwa.gov
+us:place:5363280,"Selah city, WA",selahwa.gov
+us:place:5368260,"Sultan city, WA",sultanwa.gov
+us:place:5379590,"Woodinville city, WA",woodinville.gov
+us:place:5426452,"Fairmont city, WV",fairmontwv.gov
+us:place:5511200,"Burlington city, WI",burlington-wi.gov
+us:place:5514575,"Chippewa Falls city, WI",chippewafalls-wi.gov
+us:place:5519350,"DeForest village, WI",deforestwi.gov
+us:place:5519400,"Delafield city, WI",cityofdelafieldwi.gov
+us:place:5536250,"Hudson city, WI",hudsonwi.gov
+us:place:5551025,"Menomonie city, WI",menomonie-wi.gov
+us:place:5556375,"New Berlin city, WI",newberlinwi.gov
+us:place:5559250,"Oconomowoc city, WI",oconomowoc-wi.gov
+us:place:5560200,"Oregon village, WI",oregonwi.gov
+us:place:5563525,"Plover village, WI",ploverwi.gov
+us:place:5563700,"Plymouth city, WI",plymouthwi.gov
+us:place:5567475,"Richfield village, WI",richfieldwi.gov
+us:place:5575125,"South Milwaukee city, WI",southmilwaukee.gov
+us:place:5581250,"Twin Lakes village, WI",twinlakeswi.gov
+us:place:5583825,"Waterford village, WI",waterfordwi.gov
+us:place:5584425,"Waupun city, WI",cityofwaupunwi.gov
+us:place:5586025,"Weston village, WI",westonwi.gov
+us:place:5588200,"Wisconsin Rapids city, WI",wirapids.gov
+us:place:5663900,"Rawlins city, WY",rawlinswy.gov
+us:place:5677530,"Torrington city, WY",torringtonwy.gov

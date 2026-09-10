@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from fetch_youtube_transcripts import (  # noqa: E402
     _is_rate_limit_signal,
+    _restrict_to_slugs,
     process_one,
     snippets_to_segments,
 )
@@ -261,3 +262,21 @@ async def test_process_one_skips_promote_when_ingest_had_no_segments(monkeypatch
     assert result["status"] == "ingested"
     assert "(promoted to default)" not in result["detail"]
     assert [url for url, _body in calls] == [f"{base}/internal/ingest"]
+
+
+def test_restrict_to_slugs_no_file_returns_all_pages():
+    pages = [{"slug": "a"}, {"slug": "b"}]
+    assert _restrict_to_slugs(pages, None) is pages
+
+
+def test_restrict_to_slugs_filters_to_requested_slugs(tmp_path, capsys):
+    slugs_file = tmp_path / "slugs.txt"
+    slugs_file.write_text("a\n# a comment\n\nc\n")
+    pages = [{"slug": "a"}, {"slug": "b"}, {"slug": "d"}]
+
+    kept = _restrict_to_slugs(pages, slugs_file)
+
+    assert kept == [{"slug": "a"}]
+    out = capsys.readouterr().out
+    assert "2 slug(s) requested, 1 found" in out
+    assert "not in transcript-wanted queue (1): c" in out

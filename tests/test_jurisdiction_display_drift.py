@@ -187,3 +187,25 @@ async def test_meeting_page_json_ld_uses_the_registry_derived_name():
     r = client.get(f"/m/{slug}")
     assert r.status_code == 200
     assert '"name": "Kansas City, MO"' in r.text
+
+
+def test_an_unknown_host_id_renders_no_placeholder_and_no_hub():
+    """Gov-id audit, 2026-09-10. `rtr:unknown:<host>` is a real,
+    distinguishable id -- "nothing was extracted on this host" -- with a
+    registry row whose display form is "Unidentified government (host)".
+    Rendering that on a meeting page linked "More Unidentified government
+    (vimeo.com) meetings" to a /j/ hub `_hub_base_conditions()` never
+    builds (a blank page stores an empty `jurisdiction`), a 404 on 289
+    live pages. A blank page now behaves exactly like a page with no id:
+    the stored string (empty) is the display, and there is no hub."""
+    # Falsy either way -- an empty stored string passes through
+    # format_jurisdiction_display() as "", None as None; the template
+    # tests `page.jurisdiction` for truth, so both render nothing.
+    assert not crud.effective_jurisdiction("rtr:unknown:vimeo.com", "")
+    assert not crud.effective_jurisdiction("rtr:unknown:vimeo.com", None)
+    assert not crud.hub_slug_for_page("rtr:unknown:vimeo.com", "")
+    # A stored string, if one exists, still shows -- the id is what is
+    # ignored, not the page's own text.
+    assert crud.effective_jurisdiction("rtr:unknown:vimeo.com", "Somewhere") == (
+        "Somewhere"
+    )
