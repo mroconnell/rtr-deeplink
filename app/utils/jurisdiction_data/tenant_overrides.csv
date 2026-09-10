@@ -164,7 +164,6 @@ carletonplace.escribemeetings.com,,ca:csd:3509028,fallback,wildcard_http_sweep_2
 carlowmayo.civicweb.net,,ca:csd:3512065,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Carlow/Mayo
 carroll.granicus.com,,us:county:24013,fallback,ryan_stated,"Carroll County, MD -- us_counties.csv Carroll County"
 carson.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Carson'
-carson.granicus.com,,us:place:3209700,fallback,ryan_stated,"Carson City, NV -- us_places.csv Carson City"
 carsonca.cablecast.tv,,us:place:0611530,fallback,auto_derived+visual_confirmed,"show titles 'City of Carson CA. Planning Commission meeting' (landing.png, meeting.png) [reports/jurisdiction_screens/carsonca.cablecast.tv/landing.png reports/jurisdiction_screens/carsonca.cablecast.tv/meeting.png] -> place 0611530 -> registry: us_places.csv Carson city"
 carstairs.civicweb.net,,ca:csd:4806029,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Carstairs
 carteretcountync.gov,,us:county:37031,fallback,archive_study_2026-09-09,1 solid page(s) all us:county:37031; 1 weak page(s) e.g. /m/2026-08-17-board-of-commissioners-meeting-august-17th
@@ -313,6 +312,7 @@ dcwasa.granicus.com,,rtr:us:dc:dc-water-sewer-authority,fallback,ryan_stated,"DC
 dearborn.gov,,us:place:2621000,fallback,ryan_stated,"Dearborn, MI -- us_places.csv Dearborn city"
 decaturil.new.swagit.com,,us:place:1718823,fallback,identity_join+landing_page,"Decatur (city), IL -- us_places.csv Decatur city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 deepriver.civicweb.net,,ca:csd:3547096,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Deep River
+delano.viebit.com,,us:place:2715454,fallback,wo127_civicplus_pipeline,"Delano city, MN -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 delta.civicweb.net,,ca:csd:5915011,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Delta
 delta.escribemeetings.com,,ca:csd:5915011,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Delta
 denaliboroughak.portal.civicclerk.com,,us:county:02068,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Denali Borough
@@ -445,7 +445,6 @@ greenbaywi.portal.civicclerk.com,,us:place:5531000,fallback,identity_join+landin
 greencountywi.portal.civicclerk.com,,us:county:55045,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_counties.csv Green County
 greenstone.civicweb.net,,ca:csd:3558075,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Greenstone
 greenville.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Greenville'
-greenville.granicus.com,,us:place:3728080,fallback,ryan_stated,"Greenville, NC -- us_places.csv Greenville city"
 greenwood.escribemeetings.com,,ca:csd:5905042,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Greenwood
 grey.escribemeetings.com,,ca:csd:4609018,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Grey
 greyhighlands.civicweb.net,,ca:csd:3542015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Grey Highlands
@@ -454,7 +453,6 @@ grimsby.escribemeetings.com,,ca:csd:3526065,fallback,wildcard_http_sweep_2,bare 
 grimshaw.civicweb.net,,ca:csd:4819074,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Grimshaw
 guelph.escribemeetings.com,,ca:csd:3523008,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Guelph
 gulfport.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Gulfport'
-gulfport.granicus.com,,us:place:1228175,fallback,ryan_stated,"Gulfport, FL -- us_places.csv Gulfport city"
 hacsc.granicus.com,,us:county:06085,fallback,landing_page,"landing page https://hacsc.granicus.com/ reads ""County of Santa Clara Streaming Media Archive"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 hainescity.escribemeetings.com,,us:place:4131600,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_places.csv Haines city
 halfmoonbay.granicus.com,,us:place:0631708,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Half Moon Bay, San Mateo County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Half Moon Bay city"
@@ -478,7 +476,6 @@ hayward.granicus.com,,us:place:0633000,fallback,landing_page,"landing page https
 hazelton.escribemeetings.com,,ca:csd:5949022,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Hazelton
 hcjfsonbase.jfs.hamilton-co.org,,us:place:3933012,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Hamilton city
 hctv.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Holden'
-hctv.cablecast.tv,,us:cousub:2502730560,fallback,ryan_stated,"Holden, MA -- us_cousubs.csv Holden town"
 healdsburgca.iqm2.com,,us:place:0633056,fallback,landing_page,"landing page https://healdsburgca.iqm2.com/ reads ""City of Healdsburg"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
 hearst.civicweb.net,,ca:csd:3556076,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Hearst
 hebercityut.portal.civicclerk.com,,us:place:4934200,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_places.csv Heber city
@@ -498,7 +495,6 @@ hotspringsar.gov,,us:place:0533400,fallback,ryan_stated,"Hot Springs, AR -- us_p
 houston.civicweb.net,,ca:csd:5951034,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Houston
 houstonisdtx.new.swagit.com,,us:sd:4823640,fallback,visual_confirmed,'Houston Independent School District / HISD TV' masthead (meeting.png) [reports/jurisdiction_screens/houstonisdtx.new.swagit.com/landing.png reports/jurisdiction_screens/houstonisdtx.new.swagit.com/meeting.png] -> nces 4823640 -> registry: us_school_districts.csv Houston Independent School District (unified)
 howardcounty.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Howard County'
-howardcounty.granicus.com,,us:county:24027,fallback,ryan_stated,"Howard County, MD -- us_counties.csv Howard County"
 hubbardcounty.civicweb.net,,us:county:27057,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Hubbard County
 hudson.civicweb.net,,ca:csd:3554021,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Hudson
 hudsonshope.escribemeetings.com,,ca:csd:5955025,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Hudson's Hope
@@ -507,7 +503,6 @@ huntingtonny.granicus.com,,us:cousub:3610337000,fallback,archive_study_2026-09-0
 huntsvilleal.granicus.com,,us:place:0137000,fallback,ryan_stated,"Huntsville, AL -- us_places.csv Huntsville city"
 huntsvilleon.civicweb.net,,ca:csd:3544042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Huntsville
 huron-township.cablecast.tv,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Huron Township'
-huron-township.cablecast.tv,,us:cousub:2606340020,fallback,ryan_stated,"Huron Township, MI -- us_cousubs.csv Huron township"
 huron.granicus.com,,ca:cd:3540,fallback,wildcard_http_sweep_1,HTTP 302 -> registry: ca_cd.csv Huron
 huronkinloss.escribemeetings.com,,ca:csd:3541015,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron-Kinloss
 huronshores.escribemeetings.com,,ca:csd:3557035,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Huron Shores
@@ -526,7 +521,6 @@ iroquoisfalls.civicweb.net,,ca:csd:3556031,fallback,wildcard_http_sweep_2,DNS re
 irricana.civicweb.net,,ca:csd:4806022,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Irricana
 irvine.granicus.com,,us:place:0636770,fallback,ryan_stated,"Irvine, CA -- us_places.csv Irvine city"
 irvington.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Village of Irvington'
-irvington.granicus.com,,us:place:3637803,fallback,ryan_stated,"Irvington, NY -- us_places.csv Irvington village"
 isearchmonterey.org,,us:place:0648872,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Monterey city
 ituna.civicweb.net,,ca:csd:4710004,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Ituna
 jacksonco.granicus.com,,us:county:29095,fallback,auto_derived+visual_confirmed,"'JCMO - Boards and Commissions'; 'County Legislature ... INDEPENDENCE'; agenda text names Missouri (landing.png, meeting.png) [reports/jurisdiction_screens/jacksonco.granicus.com/landing.png reports/jurisdiction_screens/jacksonco.granicus.com/meeting.png] -> county 29095 -> registry: us_counties.csv Jackson County"
@@ -534,6 +528,7 @@ jaxcityc.granicus.com,,us:place:1235000,fallback,auto_derived+known_domains,app/
 jcc.granicus.com,,rtr:us:ca:judicial-council-of-california,fallback,visual_confirmed,"'CALIFORNIA COURTS MEETING INFORMATION CENTER' / 'Judicial Council Meeting' (landing.png) [reports/jurisdiction_screens/jcc.granicus.com/landing.png reports/jurisdiction_screens/jcc.granicus.com/meeting.png] ->  -> unverified: minted from 'California, CA'"
 jimwellscountytx.granicus.com,,us:county:48249,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Jim Wells County
 johnsoncounty.granicus.com,,us:county:56019,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Johnson County
+juneauak.portal.civicclerk.com,,us:place:0236400,authoritative,ryan_stated,"City and Borough of Juneau, AK -- us_places.csv 0236400. Authoritative, not fallback: two archived pages on this host keyed 'Juneau, WI' at tier registry (a real Wisconsin city, so the table hit outranks a fallback pin); tests/test_gov_registry.py::test_tenant_consistency_will_not_cross_a_state_line documents the truth and the 2026-09-09 shared-host study's hostname-state guard refused the automatic pin for this reason. Ryan, 2026-09-10."
 kamloops.civicweb.net,,ca:csd:5933042,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Kamloops
 kansascity.granicus.com,,us:place:2938000,fallback,auto_derived+visual_confirmed,title 'KCMO.gov'; 'Video on Demand: Meetings' (landing.png) [reports/jurisdiction_screens/kansascity.granicus.com/landing.png reports/jurisdiction_screens/kansascity.granicus.com/meeting.png] -> place 2938000 -> registry: us_places.csv Kansas City city
 kapuskasing.civicweb.net,,ca:csd:3556066,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Kapuskasing
@@ -620,6 +615,7 @@ lipower.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state 
 lisbonme.portal.civicclerk.com,,us:cousub:2300140035,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_cousubs.csv Lisbon town
 lisbonwi.gov,,us:place:5544847,fallback,identity_join+landing_page,"Lisbon (village), WI -- us_places.csv Lisbon village [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 liveoakcity.primegov.com,,us:place:1240875,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Live Oak city
+livestream.telvue.com,savannah1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8,us:place:1369000,fallback,wo129_confirmed_hits,"Savannah city -- WO-134 confirmed hit, gov_id=us:place:1369000"
 livingstoncounty.civicweb.net,,us:county:17105,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Livingston County
 lockport.granicus.com,,us:place:1744225,fallback,ryan_stated,"Lockport, IL -- us_places.csv Lockport city"
 logancity.escribemeetings.com,,us:place:2042100,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_places.csv Logan city
@@ -732,6 +728,7 @@ monroecountyny.primegov.com,,us:county:36055,fallback,wildcard_http_sweep_2,DNS 
 montague.civicweb.net,,ca:csd:3509001,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Montague
 montesereno.civicweb.net,,us:place:0648956,fallback,auto_derived+ryan_stated+upcoming_roster,"rtr-upcoming roster: Monte Sereno, Santa Clara County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Monte Sereno city"
 montgomerycountypa.primegov.com,,us:county:42091,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Montgomery County
+monticello.viebit.com,,us:place:2743774,fallback,wo127_civicplus_pipeline,"Monticello city, MN -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 moonbeam.civicweb.net,,ca:csd:3556056,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Moonbeam
 moonbeam.escribemeetings.com,,ca:csd:3556056,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Moonbeam
 moosejaw.escribemeetings.com,,ca:csd:4707039,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Moose Jaw
@@ -798,7 +795,6 @@ nrhtx.granicus.com,,us:place:4852356,authoritative,landing_page,"landing page ht
 nvleg.granicus.com,,us:state:32,fallback,visual_confirmed,'Nevada Legislature Streaming Media' (landing.png) [reports/jurisdiction_screens/nvleg.granicus.com/landing.png] ->  -> registry: us_states.csv Nevada
 nwsccc-crystal.granicus.com,,us:place:2714158,fallback,archive_study_2026-09-09,1 solid page(s) all us:place:2714158; 1 weak page(s) e.g. /m/city-of-crystal-2024-05-15-city-council-meeting
 nystateassembly.granicus.com,,,fallback,auto_derived+jurisdiction_overrides, -> unresolved: no state for 'Ny State Assembly'
-nystateassembly.granicus.com,,us:state:36,fallback,ryan_stated,State of New York -- us_states.csv New York
 oakbay.civicweb.net,,ca:csd:5917030,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Oak Bay
 oakdalemn.gov,,us:place:2747680,fallback,identity_join+landing_page,"Oakdale, MN -- us_places.csv Oakdale city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 oakland.granicus.com,,us:place:0653000,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Oakland city
@@ -847,7 +843,6 @@ paramountcity.primegov.com,,us:place:0655618,fallback,wildcard_http_sweep_2,DNS 
 parksville.civicweb.net,,ca:csd:5921018,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Parksville
 pasadena.civicweb.net,,ca:csd:1005012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Pasadena
 pasadena.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Pasadena'
-pasadena.granicus.com,,us:place:0656000,fallback,ryan_stated,"Pasadena, CA -- us_places.csv Pasadena city"
 pasadenaedu.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Pasadena Community College'
 passaiccountynj.granicus.com,,us:county:34031,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Passaic County
 passaiccountynj.legistar.com,,us:county:34031,fallback,wildcard_http_sweep_1,HTTP 200 len=186131 -> registry: us_counties.csv Passaic County
@@ -903,7 +898,6 @@ play.champds.com,/surfsidefl/,us:place:1270075,fallback,archive_study_2026-09-09
 play.champds.com,/westportct/,us:cousub:0919083500,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/westport-ct-2026-05-12-historic-district-commission"
 play.champds.com,/wilkesconc/,us:county:37193,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/wilkes-county-nc-2021-11-02-regular-meeting"
 pleasanthill.granicus.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of Pleasant Hill'
-pleasanthill.granicus.com,,us:place:0657764,fallback,ryan_stated,"Pleasant Hill, CA -- us_places.csv Pleasant Hill city"
 pleasantonca.portal.civicclerk.com,,us:place:0657792,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Pleasanton, Alameda County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Pleasanton city"
 pointedward.escribemeetings.com,,ca:csd:3538031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Point Edward
 polkcountyfl.granicus.com,,us:county:12105,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Polk County
@@ -943,7 +937,6 @@ pub-bradfordwestgwillimbury.escribemeetings.com,,ca:csd:3543014,fallback,archive
 pub-brentwood.escribemeetings.com,,us:place:0608142,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Brentwood, Contra Costa County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Brentwood city"
 pub-brockton.escribemeetings.com,,ca:csd:3541032,authoritative,manual_override,"live-fetched 2026-09-06: real page text names 'Bruce County' (Brockton's real county) -- was wrongly filed as Brockton, MA (tenant_hints.csv, since a wrong-country false positive of the guard fixed in WO-118/PR #750) -> registry: ca_csd.csv Brockton, ON. Backfilled 3 pages via POST /internal/jurisdiction/override."
 pub-brucecounty.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'Bruce County'
-pub-brucecounty.escribemeetings.com,,ca:cd:3541,fallback,ryan_stated,"Bruce County, ON -- ca_cd.csv Bruce"
 pub-chulavista.escribemeetings.com,,us:place:0613392,fallback,archive_study_2026-09-09,3 solid page(s) all us:place:0613392; 1 weak page(s) e.g. /m/chula-vista-public-comments-2026-05-19-city-council-meeting
 pub-cityofbaraboo.escribemeetings.com,,us:place:5504625,fallback,identity_join+landing_page,"Baraboo (city), WI -- us_places.csv Baraboo city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 pub-clarington.escribemeetings.com,,ca:csd:3518017,authoritative,manual_override,"was wrongly filed as Clarington, OH (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Clarington, ON. Backfilled 3 pages via POST /internal/jurisdiction/override, 2026-09-06."
@@ -970,7 +963,6 @@ pub-langleycity.escribemeetings.com,,us:cousub:2005338600,fallback,jurisdiction_
 pub-lincoln.escribemeetings.com,,ca:csd:3526057,fallback,ryan_stated,"Lincoln, ON -- ca_csd.csv Lincoln"
 pub-lloydminster.escribemeetings.com,,,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unresolved: no state for 'Lloydminster, AB/SK'"
 pub-london.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of London'
-pub-london.escribemeetings.com,,ca:csd:3539036,fallback,ryan_stated,"London, ON -- ca_csd.csv London"
 pub-markham.escribemeetings.com,,ca:csd:3519036,authoritative,manual_override,"was wrongly filed as Markham, IL (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Markham, ON. Backfilled 4 pages via POST /internal/jurisdiction/override, 2026-09-06."
 pub-milton.escribemeetings.com,,ca:csd:3524009,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: ca_csd.csv Milton
 pub-mission.escribemeetings.com,,ca:csd:5909056,fallback,ryan_stated,"Mission, BC -- ca_csd.csv Mission"
@@ -1218,6 +1210,7 @@ telkwa.civicweb.net,,ca:csd:5951038,fallback,wildcard_http_sweep_2,DNS resolves 
 temagami.escribemeetings.com,,ca:csd:3548069,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Temagami
 temiskamingshores.escribemeetings.com,,ca:csd:3554020,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Temiskaming Shores
 tempe.hylandcloud.com,,us:place:0473000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tempe city
+tenant_host,match,gov_id,strength,source,evidence
 terrace.civicweb.net,,ca:csd:5949011,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Terrace
 terracebay.civicweb.net,,ca:csd:3558054,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Terrace Bay
 tetoncounty.escribemeetings.com,,us:county:16081,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Teton County
@@ -1350,6 +1343,7 @@ vimeo.com,channel=user206352800,us:place:0654274,fallback,archive_study_2026-09-
 vimeo.com,channel=user258259098,us:place:1986520,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/city-of-winterset-ia-2026-06-03-winterset-city-council-6-1-26; owner title ""City of Winterset"""
 vimeo.com,channel=user34615714,us:place:4818092,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/cuero-tx-2026-08-12-08-10-26-cm; owner title ""City of Cuero"""
 vimeo.com,channel=user90262164,us:place:4878544,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/white-settlement-tx-2026-09-01-sep-1-2026-council; owner title ""City of White Settlement"""
+vimeo.com,1219072948,us:place:3657023,fallback,wo127_civicplus_pipeline,"Pelham Manor village, NY -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 virginia-house.granicus.com,,us:state:51,fallback,visual_confirmed,'Virginia House of Delegates Internal Portal' (landing.png) [reports/jurisdiction_screens/virginia-house.granicus.com/landing.png reports/jurisdiction_screens/virginia-house.granicus.com/meeting.png] ->  -> registry: us_states.csv Virginia
 virginia-senate.granicus.com,,us:state:51,fallback,jurisdiction_overrides, -> registry: us_states.csv Virginia
 vulcancounty.civicweb.net,,rtr:ca:ab:vulcan-county,fallback,wildcard_http_sweep_2,"DNS resolves -> unverified: minted from 'Vulcan County, AB'"
@@ -2063,66 +2057,9 @@ www.youtube.com,channel=@wrightcountyminnesota,us:county:27171,fallback,archive_
 www.youtube.com,channel=@wstotv12,us:place:5577675,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/stoughton-wi-2026-08-12-city-council-8-11-26; owner title ""WSTO TV"""
 www.youtube.com,channel=@yanktoncounty8223,us:county:46135,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/yankton-county-sd-2026-commission-meetings; owner title ""Yankton County"""
 www.youtube.com,channel=@youngcounty8857,us:county:48503,fallback,archive_study_2026-09-09,"1 solidly-identified archive page(s), e.g. /m/young-county-tx-young-county-texas; owner title ""Young County"""
-yellowheadcounty.civicweb.net,,ca:csd:4814003,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca:csd:4814003 Yellowhead County matched with spacing ignored
-yellowknife.escribemeetings.com,,ca:csd:6106023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Yellowknife
-york.escribemeetings.com,,us:county:23031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv York County
-yorkton.escribemeetings.com,,ca:csd:4709012,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Yorkton
-yountvilleca.new.swagit.com,,us:place:0686930,fallback,landing_page,"landing page https://yountvilleca.new.swagit.com/ reads ""Yountville"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
-youtu.be,0qVUwGeJ2P4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,25zduRlwm58,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,5lztrGVw990,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,D6qlUpnhS1Y,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,DCr_zIZE5rw,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,HDpQnKoeqHI,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,NI8MNxhN9mE,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,OowB9_NPv5U,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,RW3bEODDmrc,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,YKEFAMFCqlw,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,ZtCflIInee4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,_pL607VuwW0,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,c1Dz970QWbM,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,c6RClXE5icQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,gm8xxrR3fFg,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,kpUXoVyxcfs,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,pBrOL4VIxiE,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,r_m-SBCNlFQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,sPC_y46hCDQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,uO1OQnRMr5k,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,wc417YUn1J0,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,xmEufCW1bh4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,yFfXyoX69Bk,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,zAM4zJRBwrM,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
-youtu.be,6Gl0SM_iouo,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,7PKKJq8MPIQ,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,JAP-qNvz8BE,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,MFAF0jMGBAY,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,P6BJmMrH70M,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,UyXDMdA_nq0,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,Vntxi7sueiw,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,bL5pgCwnyAA,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,uXwBvWhzj_k,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,xoiFSvNlKPs,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
-youtu.be,B4_A2tV1rEk,us:place:3969680,fallback,ryan_stated,"St Marys, OH (YouTube channel @CityOfStMarys) -- us:place:3969680 St. Marys city matched with spacing ignored"
-youtu.be,k1Q2QlP6QtQ,us:place:0623616,fallback,ryan_stated,"Farmersville, CA (YouTube channel @CityofFarmersvilleCA) -- us_places.csv Farmersville city"
-youtu.be,1YQk7Xy7Hhk,us:place:1215475,fallback,ryan_stated,"Crestview, FL (YouTube channel @cityofcrestview1916) -- us_places.csv Crestview city"
-youtu.be,GmwMkHaQSx0,us:place:1935265,fallback,ryan_stated,"Hawarden, IA (YouTube channel @cityofhawarden295) -- us_places.csv Hawarden city"
-youtu.be,SPbCcVyUXx0,us:place:3954562,fallback,ryan_stated,"New Franklin, OH (YouTube channel @cityofnewfranklin2587) -- us_places.csv New Franklin city"
-youtube.com,Jn6LMgmif0g,us:place:4148300,fallback,ryan_stated,"Millersburg, OR (YouTube channel @cityofmillersburg611) -- us_places.csv Millersburg city"
-youtube.com,LCBCIhK_C3o,us:place:4148300,fallback,ryan_stated,"Millersburg, OR (YouTube channel @cityofmillersburg611) -- us_places.csv Millersburg city"
-youtube.com,skPDOsETu3k,us:place:4221648,fallback,ryan_stated,"Easton, PA (YouTube channel @cityofeaston) -- us_places.csv Easton city"
-zavalacounty.escribemeetings.com,,us:county:48507,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Zavala County
-zorra.civicweb.net,,ca:csd:3532027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Zorra
-youtu.be,C7xyE4XVMPw,us:place:1376476,fallback,wo127_civicplus_pipeline,"Tifton city, GA -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 www.youtube.com,UY7iMN0YIiM,us:place:1740767,fallback,wo127_civicplus_pipeline,"La Grange village, IL -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-delano.viebit.com,,us:place:2715454,fallback,wo127_civicplus_pipeline,"Delano city, MN -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-monticello.viebit.com,,us:place:2743774,fallback,wo127_civicplus_pipeline,"Monticello city, MN -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 www.youtube.com,OzamGwPq88Q,us:place:3647636,fallback,wo127_civicplus_pipeline,"Mineola village, NY -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-vimeo.com,1219072948,us:place:3657023,fallback,wo127_civicplus_pipeline,"Pelham Manor village, NY -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-youtu.be,2FvcBKFbrm4,us:place:3921000,fallback,wo127_civicplus_pipeline,"Dayton city, OH -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
 www.youtube.com,wQaL-QSoAu0,us:place:4223584,fallback,wo127_civicplus_pipeline,"Emmaus borough, PA -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-youtu.be,Zh5fxIRXQRA,us:place:4804600,fallback,wo127_civicplus_pipeline,"Aubrey city, TX -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-youtu.be,2BEGEZeHzS0,us:place:5586025,fallback,wo127_civicplus_pipeline,"Weston village, WI -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
-livestream.telvue.com,savannah1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8,us:place:1369000,fallback,wo129_confirmed_hits,"Savannah city -- WO-134 confirmed hit, gov_id=us:place:1369000"
 www.youtube.com,youtube:vEYcAon81TU,us:place:0908000,fallback,wo129_confirmed_hits,"Bridgeport city -- WO-134 confirmed hit, gov_id=us:place:0908000"
 www.youtube.com,youtube:835iIyT6Wfw,us:place:4801576,fallback,wo129_confirmed_hits,"Alamo city -- WO-134 confirmed hit, gov_id=us:place:4801576"
 www.youtube.com,youtube:qobK8hBVjXQ,ca:csd:4602044,fallback,wo129_confirmed_hits,"Steinbach -- WO-134 confirmed hit, gov_id=ca:csd:4602044"
@@ -2167,3 +2104,56 @@ www.youtube.com,youtube:jQN6jrz8kXI,ca:csd:1202001,fallback,wo129_confirmed_hits
 www.youtube.com,youtube:7QwYdTW6BRg,us:place:4839448,fallback,wo129_confirmed_hits,"Kirby city -- WO-134 confirmed hit, gov_id=us:place:4839448"
 www.youtube.com,youtube:_QHJvvBO9NI,us:place:2954074,fallback,wo129_confirmed_hits,"O'Fallon city -- WO-134 confirmed hit, gov_id=us:place:2954074"
 www.youtube.com,youtube:iJn9InK2GQw,us:place:5566800,fallback,wo129_confirmed_hits,"Reedsburg city -- WO-134 confirmed hit, gov_id=us:place:5566800"
+yellowheadcounty.civicweb.net,,ca:csd:4814003,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca:csd:4814003 Yellowhead County matched with spacing ignored
+yellowknife.escribemeetings.com,,ca:csd:6106023,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Yellowknife
+york.escribemeetings.com,,us:county:23031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv York County
+yorkton.escribemeetings.com,,ca:csd:4709012,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Yorkton
+yountvilleca.new.swagit.com,,us:place:0686930,fallback,landing_page,"landing page https://yountvilleca.new.swagit.com/ reads ""Yountville"" (re-verified 2026-09-03, WO-108 CA-roster pin audit; prior source was auto_derived+ryan_stated+upcoming_roster, which falsely credited rtr-upcoming roster.csv even though that host is not the roster's calendar_url for this jurisdiction)"
+youtu.be,0qVUwGeJ2P4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,25zduRlwm58,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,5lztrGVw990,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,D6qlUpnhS1Y,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,DCr_zIZE5rw,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,HDpQnKoeqHI,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,NI8MNxhN9mE,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,OowB9_NPv5U,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,RW3bEODDmrc,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,YKEFAMFCqlw,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,ZtCflIInee4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,_pL607VuwW0,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,c1Dz970QWbM,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,c6RClXE5icQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,gm8xxrR3fFg,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,kpUXoVyxcfs,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,pBrOL4VIxiE,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,r_m-SBCNlFQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,sPC_y46hCDQ,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,uO1OQnRMr5k,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,wc417YUn1J0,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,xmEufCW1bh4,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,yFfXyoX69Bk,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,zAM4zJRBwrM,us:place:0686440,fallback,ryan_stated,"Woodside, CA (YouTube channel @TownofWoodside) -- us_places.csv Woodside town"
+youtu.be,6Gl0SM_iouo,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,7PKKJq8MPIQ,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,JAP-qNvz8BE,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,MFAF0jMGBAY,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,P6BJmMrH70M,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,UyXDMdA_nq0,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,Vntxi7sueiw,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,bL5pgCwnyAA,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,uXwBvWhzj_k,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,xoiFSvNlKPs,us:place:0633798,fallback,ryan_stated,"Hillsborough, CA (YouTube channel @townofhillsborough4333) -- us_places.csv Hillsborough town"
+youtu.be,B4_A2tV1rEk,us:place:3969680,fallback,ryan_stated,"St Marys, OH (YouTube channel @CityOfStMarys) -- us:place:3969680 St. Marys city matched with spacing ignored"
+youtu.be,k1Q2QlP6QtQ,us:place:0623616,fallback,ryan_stated,"Farmersville, CA (YouTube channel @CityofFarmersvilleCA) -- us_places.csv Farmersville city"
+youtu.be,1YQk7Xy7Hhk,us:place:1215475,fallback,ryan_stated,"Crestview, FL (YouTube channel @cityofcrestview1916) -- us_places.csv Crestview city"
+youtu.be,GmwMkHaQSx0,us:place:1935265,fallback,ryan_stated,"Hawarden, IA (YouTube channel @cityofhawarden295) -- us_places.csv Hawarden city"
+youtu.be,SPbCcVyUXx0,us:place:3954562,fallback,ryan_stated,"New Franklin, OH (YouTube channel @cityofnewfranklin2587) -- us_places.csv New Franklin city"
+youtu.be,C7xyE4XVMPw,us:place:1376476,fallback,wo127_civicplus_pipeline,"Tifton city, GA -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
+youtu.be,2FvcBKFbrm4,us:place:3921000,fallback,wo127_civicplus_pipeline,"Dayton city, OH -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
+youtu.be,Zh5fxIRXQRA,us:place:4804600,fallback,wo127_civicplus_pipeline,"Aubrey city, TX -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
+youtu.be,2BEGEZeHzS0,us:place:5586025,fallback,wo127_civicplus_pipeline,"Weston village, WI -- WO-127: resolved via this government's own CivicPlus AgendaCenter page (coverage_registry.csv gov_id, population>=5000, non-county), queued tier3-video-only 2026-09-09"
+youtube.com,Jn6LMgmif0g,us:place:4148300,fallback,ryan_stated,"Millersburg, OR (YouTube channel @cityofmillersburg611) -- us_places.csv Millersburg city"
+youtube.com,LCBCIhK_C3o,us:place:4148300,fallback,ryan_stated,"Millersburg, OR (YouTube channel @cityofmillersburg611) -- us_places.csv Millersburg city"
+youtube.com,skPDOsETu3k,us:place:4221648,fallback,ryan_stated,"Easton, PA (YouTube channel @cityofeaston) -- us_places.csv Easton city"
+zavalacounty.escribemeetings.com,,us:county:48507,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Zavala County
+zorra.civicweb.net,,ca:csd:3532027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Zorra

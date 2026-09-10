@@ -132,6 +132,22 @@ fetch case). Full suite: 2821 passed, 15 skipped. All 4 CI gates green
 locally (`ruff check`, `ruff format --check`, `python -m pytest`,
 `alembic check` for both `archive/` and `app/` — no model/schema change
 was needed, both JSON columns already existed).
+
+## `juneauak.portal.civicclerk.com` pinned to the City and Borough of Juneau, AK; three pages re-keyed off the Wisconsin hub [Done 2026-09-10]
+
+Ryan's call ("write the juneau pin"). An `authoritative` row, not
+`fallback`: "Juneau, WI" is a real Wisconsin city, so the place table
+keyed two pages on this host to `us:place:5538675` at tier `registry`,
+which a fallback pin can never outrank. The hostname carries the real
+state, `test_tenant_consistency_will_not_cross_a_state_line` documents
+the truth, and the 2026-09-09 shared-host study's hostname-state guard
+had refused the automatic pin for exactly this reason. With the row,
+`resolve_government()` returns `us:place:0236400` for "Juneau, WI",
+"Juneau, AK" and no name at all. The three archived pages (1130 and 3948
+as Juneau, WI; 3129 on a minted `rtr:us:ak:juneau`) were moved by
+`POST /internal/jurisdiction/override` the same night, so the fix did
+not wait for the deploy carrying the row.
+
 ## Identity rides along with the page: `gov_id` accepted on ingest, the video's channel stored and passed as a page_hint, 649 channel rules committed [Done 2026-09-10]
 
 The ingest-facing half of the gov-id audit (the display half is the
