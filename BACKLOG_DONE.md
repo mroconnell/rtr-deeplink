@@ -1,5 +1,39 @@
 # Backlog — done
 
+## Pins for two YouTube-hosted pages that were keyed to no government: Greenlee County, AZ and Fortuna, CA [Done 2026-09-10]
+
+Ryan's ask, from the WO-153 planning discussion: pin the two pages now.
+
+**What was done and why.** Two live pages sat on `rtr:unknown:www.youtube.com`
+because a bare YouTube host says nothing about the government. Both
+research-file rows carried `www.youtube.com` as the government's domain,
+which is the same mistake from the other side. One oEmbed call each
+confirmed the owner: the Greenlee video is on the county's own channel
+(`@GreenleeCountyAZ`, "Official Channel of Greenlee County AZ"); the
+Fortuna video is on Access Humboldt's shared community channel, so only
+the video is pinned, never that channel.
+
+| Page | Before | After |
+|---|---|---|
+| Regular Board Meeting August 25th 2026 (`UjFUgyTYZd4`) | Unidentified government | Greenlee County, AZ (`us:county:04011`) |
+| City of Fortuna Live Stream: Special Fortuna City Council Meeting (`khQRJOdWjTM`) | Unidentified government | Fortuna, CA (`us:place:0625296`) |
+
+Three `tenant_overrides.csv` rows (`fallback`, `ryan_stated`): the Greenlee
+channel, the Greenlee video, the Fortuna video. `backfill_gov_id.py
+--hosts www.youtube.com` dry run showed exactly 2 rows changing out of
+680 on that host; applied; both pages verified live ("More Greenlee
+County, AZ meetings" / "More Fortuna, CA meetings").
+
+**Caution.** 43 more pages sit on `rtr:unknown` YouTube or Vimeo hosts,
+and 109 research-file rows carry a bare shared host (YouTube, Facebook,
+Vimeo, TelVue, Cablecast) as the government's domain with no channel or
+playlist. Ryan's rule: nothing matches to a shared host without a channel
+or playlist match. Those are folded into WO-153 (the transcribed-but-no-
+page identity join), queued after WO-152.
+
+**Deploy status.** The two pages are re-keyed in the database now. The
+pins reach new resolves only after the next deploy.
+
 ## The county form of a consolidated city-county keys to the same government as the city [Done 2026-09-10]
 
 Closed the entry filed earlier the same day. `app/utils/jurisdiction_data/
