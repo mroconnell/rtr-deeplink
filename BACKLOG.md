@@ -123,8 +123,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
     [JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should…
     [JUST-DO-IT] `[EASY]` `scripts/backfill_gov_id.py` needs two…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
-  Production actions only Ryan should take  (7)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+  Production actions only Ryan should take  (9)
+    [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
+    [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
@@ -135,7 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -151,7 +153,10 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (18)
+  Jurisdiction extraction & backfill  (21)
+    `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
+    `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
+    `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
     `[NEEDS-AUDIT]` Five `youtu.be` pages for the Wasatch Front Waste &…
     `[JUST-DO-IT]` `[BIG]` 652 YouTube/Vimeo channel→government rules are…
     `[NEEDS-AUDIT]` `[EASY]` `"Regional Municipality of X"`/`"Region of…
@@ -550,6 +555,19 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] 18 hosts the coverage registry ties to the wrong government: 13 still want a pin to the *correct* one (22 pages), 2 have the right research id but a wrong page, 3 are undecidable.**
+  - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type — 88 of 158 checkable pairs name a different government from the one the host serves. Most of those pages already carry the right id. These do not: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `fishkilltownny.iqm2.com` → `us:cousub:3602725978`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (all Town Boards, filed as villages); `townofchevychase.org` → `us:place:2416620` (Town, filed as Chevy Chase Village); `pub-cambridge` → `ca:csd:3530010`, `pub-clearview` → `ca:csd:3543005`, `pub-whiterockcity` → `ca:csd:5915007`, `pub-creston` → `ca:csd:5903004` (Canadian eScribe tenants filed under US namesakes); `watertown.civicweb.net` → `us:place:4669300` (portal footer ", SD 57201", filed as WI). Two where the *page* is wrong and the research right: `mcleancountyil.gov` (`us:county:17113`; page keyed to McLean village at tier `registry`, so only an `authoritative` pin fixes it — same shape as Juneau below) and `kankakeecountyil.gov` (`us:county:17091`; page minted `rtr:us:il:kankakee-city`). Three undecidable: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY), `cityofoakgrove.com` (claimed by both Oak Grove MO and Oak Grove Village MO), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
+  - **Impact**: 22 live pages minted or unresolved on the 13 hosts, 3 on the wrong government (McLean, Kankakee, Camas); and the coverage registry's `archive_pages`/tier/hub columns are wrong for every one of the 88 rows.
+  - **Next action**: Ryan confirms the 13 and writes them as `tenant_overrides.csv` rows (source `ryan_stated`; `build_pin_worklist.py` won't list the minted ones — its `WANTED_TIERS` is unresolved/blank only), `authoritative` for McLean, then `backfill_gov_id.py --hosts …`. Separately, correct the 88 rows in `rtr-business/research/jurisdiction_coverage.csv` from `reports/wo125_identity_join.csv` (one verdict per pair, with the corrected id and the evidence).
+  - **Constraint**: never pin from the research file's gov_id without the landing-page check — 56% of its checkable host associations were wrong.
+  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09.
+
+- **[HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough* (`us:place:3471670`, source `ryan_stated`), but its landing page title is "Sussex County, NJ | Official Website".**
+  - **Issue**: WO-125 left the row alone by rule (an identity join never overwrites an existing pin) and lists it here instead: the research file says Sussex County (`us:county:34037`), the live site agrees, and the one archived page's stored name is just "Sussex, NJ".
+  - **Impact**: one page and its hub on the wrong government.
+  - **Next action**: Ryan confirms, changes that row's gov_id to `us:county:34037`, and runs `backfill_gov_id.py --hosts www.sussex.nj.us`.
+  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09.
+
 - **[HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier pages filed as Juneau, WI; only an `authoritative` pin to the City and Borough of Juneau, AK (`us:place:0236400`) can fix them.**
   - **Issue**: "Juneau, WI" is a real place, so the string keys to the wrong government at tier `registry` and a `fallback` pin never fires. `tests/test_gov_registry.py::test_tenant_consistency_will_not_cross_a_state_line` documents the truth, and the study's hostname-state guard rejected the automatic pin for exactly this reason.
   - **Impact**: two live pages on the wrong state's hub; the same shape (name collision across a state line, hostname carrying the real state) is what `coloradoga.granicus.com` false-positived on, so check the pin by eye rather than automating it.
@@ -933,6 +951,24 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
+
+- **`[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village or city of the same name: `_LEADING_TYPE_RE` knows "Township of" but not "Charter Township of".**
+  - **Issue**: `resolve_government("Charter Township of Shelby, MI")` → `us:place:2672840` (Shelby *village*, Oceana County), while "Shelby Charter Township, MI" → `us:cousub:2609972820` correctly. `resolver.py`'s `_LEADING_TYPE_RE` lists `city|town|village|borough|township|…` without the `(?:charter\s+)?` prefix that `_TRAILING_TYPE_RE` and `_TRAILING_PAREN_TYPE_RE` already allow, so no township preference reaches the lookup and the place wins the tie. Michigan has ~130 charter townships and their IQM2/CivicClerk portals title themselves exactly this way.
+  - **Impact**: `shelbytownmi.iqm2.com`'s two pages were minted `rtr:us:mi:shelby-village` from this; every charter-township tenant will repeat it.
+  - **Next action**: add `(?:charter\s+)?` before `township` in `_LEADING_TYPE_RE` and a test with the Shelby pair. The page fix is in the `[HUMAN]` entry under Needs a human.
+  - **History**: found by WO-125's landing-page check, 2026-09-09.
+
+- **`[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored jurisdiction (`Kaua&apos;i County, HI`) is never unescaped, so the county lookup fails on an apostrophe.**
+  - **Issue**: `kauai.granicus.com`'s two pages store `Kaua&apos;i County, HI` verbatim; `resolve_government()` on it is `unresolved` ("no 'Kaua&apos;i County' in HI"), while `Kaua'i County, HI` and `Kauai County, HI` both key to `us:county:15007` — `tables.lookup_keys()` already strips the ʻokina, it's only the entity that defeats it. Nothing on the path calls `html.unescape()`.
+  - **Impact**: two pages sat on `/j/kaua-apos-i-county-hi` until WO-125 pinned the host; any adapter that passes an entity-encoded title through (Granicus RSS titles do) will repeat it.
+  - **Next action**: `html.unescape()` the raw name at the top of the ladder (or in `finalize_jurisdiction()`), a test on the Kauaʻi string, and store the unescaped form at ingest.
+  - **History**: WO-125, 2026-09-09; the `kaua-apos-i-county-hi` → `kauai-county-hi` alias is already in `hub_slug_aliases.csv`.
+
+- **`[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped on lookup nor on display: "Ranson, WV" mints, and the registry renders "Ranson corporation, WV".**
+  - **Issue**: `us_places.csv` spells West Virginia's Ranson as "Ranson corporation" — the only row in the table with that LSAD (`grep -c ' corporation,'` = 1). `resolve_government("Ranson, WV")` → `rtr:us:wv:ranson` (unverified), and `display_name()` gives "Ranson corporation, WV" because `display._TRAILING_TYPE_RE` doesn't list `corporation`. Same shape as the Sitka "city and borough" fix (`BACKLOG_DONE.md` 2026-09-09).
+  - **Impact**: `ransonwv.iqm2.com`'s two pages now live at `/j/ranson-corporation-wv` (pinned by WO-125).
+  - **Next action**: add `corporation` to the lookup-side trailing-type strip and to `display._TRAILING_TYPE_RE`, add the Ranson pair to the Sitka test, then add a `ranson-corporation-wv` → `ranson-wv` alias row (the reverse of the one WO-125 wrote).
+  - **History**: WO-125, 2026-09-09.
 
 - **`[NEEDS-AUDIT]` Five `youtu.be` pages for the Wasatch Front Waste & Recycling District's board (channel `@WasatchFrontWaste`) are registry-tier under Wasatch **County**, UT.**
   - **Issue**: the adapter extracted "Wasatch, UT", the place ladder keyed it to `us:county:49051`, and the 2026-09-09 backfill only changed the display to "Wasatch County, UT" (`/j/wasatch-county-ut`). WFWRD is a special district in the Salt Lake valley with its own board — decision D2 says its own `gov_id`, minted, not a body of any county.

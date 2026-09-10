@@ -1,0 +1,220 @@
+registry_gov_id,registry_name,host,archive_pages_on_host,verdict,correct_gov_id,correct_name,evidence
+ca:csd:5917005,"North Saanich, BC",northsaanich.civicweb.net,1,existing_pin_agrees,ca:csd:5917005,"North Saanich, BC",pin already carries this gov_id
+ca:csd:4801018,"Redcliff, AB",redcliff.civicweb.net,1,existing_pin_agrees,ca:csd:4801018,"Redcliff, AB",pin already carries this gov_id
+us:county:51161,"Roanoke County, VA",roanokecountyva.iqm2.com,2,existing_pin_agrees,us:county:51161,"Roanoke County, VA",pin already carries this gov_id
+us:place:4967825,"Saratoga Springs, UT",saratogasprings-ut.gov,1,existing_pin_agrees,us:place:4967825,"Saratoga Springs, UT",pin already carries this gov_id
+us:place:5300100,"Aberdeen, WA",www.aberdeenwa.gov,1,existing_pin_agrees,us:place:5300100,"Aberdeen, WA",pin already carries this gov_id
+us:county:08031,"Denver County, CO",denver.granicus.com,2,existing_pin_consolidated,us:place:0820000,"Denver, CO","consolidated city-county: research holds the county id, the pin the place id"
+us:county:06075,"San Francisco County, CA",sanfrancisco.granicus.com,3,existing_pin_consolidated,us:place:0667000,"San Francisco, CA","consolidated city-county: research holds the county id, the pin the place id"
+us:county:34037,"Sussex County, NJ",www.sussex.nj.us,1,existing_pin_looks_wrong,us:county:34037,"Sussex County, NJ","landing title 'Sussex County, NJ | Official Website'; pin says Sussex borough us:place:3471670, research says us:county:34037"
+us:county:17091,"Kankakee County, IL",kankakeecountyil.gov,1,page_wrong_research_right,us:county:17091,"Kankakee County, IL","host is the county; page minted rtr:us:il:kankakee-city from stored 'Kankakee (city), IL'"
+us:county:17113,"McLean County, IL",mcleancountyil.gov,1,page_wrong_research_right,us:county:17113,"McLean County, IL","landing 'McLean County, IL - Official Website'; page keyed to McLean village at tier registry from stored 'McLean, IL' -- fallback pin inert"
+us:place:1700243,"Addison (village), IL",addison.granicus.com,2,pinned,us:place:1700243,"Addison (village), IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:2501370,"Amherst Town, MA",amherstma.gov,1,pinned,us:place:2501370,"Amherst Town, MA",research gov_id confirmed by landing page / footer / meeting body
+us:place:3901798,"Amherst (city), OH",amherstoh.new.swagit.com,1,pinned,us:place:3901798,"Amherst (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:3902736,"Athens (city), OH",athensoh.new.swagit.com,1,pinned,us:place:3902736,"Athens (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:0603204,"Auburn, CA",auburn.granicus.com,2,pinned,us:place:0603204,"Auburn, CA",research gov_id confirmed by landing page / footer / meeting body
+us:place:1703012,"Aurora (city), IL",aurora-il.granicus.com,1,pinned,us:place:1703012,"Aurora (city), IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:3904720,"Beavercreek (city), OH",beavercreekohio.gov,1,pinned,us:place:3904720,"Beavercreek (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:1005690,"Bethany Beach, DE",bethanybeach.granicus.com,1,pinned,us:place:1005690,"Bethany Beach, DE",research gov_id confirmed by landing page / footer / meeting body
+us:place:1708576,"Brookfield (village), IL",brookfieldil.civicweb.net,2,pinned,us:place:1708576,"Brookfield (village), IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:3611000,"Buffalo, NY",buffalony.iqm2.com,2,pinned,us:place:3611000,"Buffalo, NY",research gov_id confirmed by landing page / footer / meeting body
+us:place:3911360,"Canfield (city), OH",canfieldoh.new.swagit.com,1,pinned,us:place:3911360,"Canfield (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:2709730,"Cannon Falls (city), MN",cannonfallsmn.gov,1,pinned,us:place:2709730,"Cannon Falls (city), MN",research gov_id confirmed by landing page / footer / meeting body
+us:place:1711163,"Carbondale (city), IL",carbondaleil.new.swagit.com,1,pinned,us:place:1711163,"Carbondale (city), IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:2563345,"Southbridge Town, MA",ci.southbridge.ma.us,1,pinned,us:place:2563345,"Southbridge Town, MA",research gov_id confirmed by landing page / footer / meeting body
+us:place:4607580,"Brookings (city), SD",cityofbrookings.granicus.com,1,pinned,us:place:4607580,"Brookings (city), SD",research gov_id confirmed by landing page / footer / meeting body
+us:place:5308570,"Buckley, WA",cityofbuckley.com,1,pinned,us:place:5308570,"Buckley, WA",research gov_id confirmed by landing page / footer / meeting body
+us:place:1734865,"Highwood, IL",cityofhighwood.com,1,pinned,us:place:1734865,"Highwood, IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:5540775,"La Crosse, WI",cityoflacrosse.granicus.com,2,pinned,us:place:5540775,"La Crosse, WI",research gov_id confirmed by landing page / footer / meeting body
+us:place:1962040,"Pella, IA",cityofpella.com,1,pinned,us:place:1962040,"Pella, IA",research gov_id confirmed by landing page / footer / meeting body
+us:place:2616160,"Clawson, MI",clawson.granicus.com,1,pinned,us:place:2616160,"Clawson, MI",research gov_id confirmed by landing page / footer / meeting body
+us:place:1814734,"Columbus (city), IN",columbusin.granicus.com,1,pinned,us:place:1814734,"Columbus (city), IN",research gov_id confirmed by landing page / footer / meeting body
+us:place:1718823,"Decatur (city), IL",decaturil.new.swagit.com,1,pinned,us:place:1718823,"Decatur (city), IL",research gov_id confirmed by landing page / footer / meeting body
+us:place:3922694,"Dublin (city), OH",dublinoh.new.swagit.com,2,pinned,us:place:3922694,"Dublin (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:2021275,"Emporia (city), KS",emporiaks.portal.civicclerk.com,3,pinned,us:place:2021275,"Emporia (city), KS",research gov_id confirmed by landing page / footer / meeting body
+us:place:3925970,"Fairfield (city), OH",fairfieldoh.iqm2.com,2,pinned,us:place:3925970,"Fairfield (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:2923950,"Fenton, MO",fentonmo.org,1,pinned,us:place:2923950,"Fenton, MO",research gov_id confirmed by landing page / footer / meeting body
+us:place:2631420,"Garden City (city), MI",gardencitymi.org,1,pinned,us:place:2631420,"Garden City (city), MI",research gov_id confirmed by landing page / footer / meeting body
+us:place:5531000,"Green Bay (city), WI",greenbaywi.portal.civicclerk.com,3,pinned,us:place:5531000,"Green Bay (city), WI",research gov_id confirmed by landing page / footer / meeting body
+us:county:15007,"Kauai County, HI",kauai.granicus.com,2,pinned,us:county:15007,"Kauai County, HI",research gov_id confirmed by landing page / footer / meeting body
+us:place:2036225,"Kechi (city), KS",kechiks.gov,1,pinned,us:place:2036225,"Kechi (city), KS",research gov_id confirmed by landing page / footer / meeting body
+us:county:48259,"Kendall County, TX",kendallcountytx.gov,1,pinned,us:county:48259,"Kendall County, TX",research gov_id confirmed by landing page / footer / meeting body
+us:place:2038900,"Lawrence (city), KS",lawrenceks.civicweb.net,1,pinned,us:place:2038900,"Lawrence (city), KS",research gov_id confirmed by landing page / footer / meeting body
+us:place:2942032,"Liberty (city), MO",libertymo.portal.civicclerk.com,1,pinned,us:place:2942032,"Liberty (city), MO",research gov_id confirmed by landing page / footer / meeting body
+us:place:5544847,"Lisbon (village), WI",lisbonwi.gov,1,pinned,us:place:5544847,"Lisbon (village), WI",research gov_id confirmed by landing page / footer / meeting body
+us:place:1845990,"Madison (city), IN",madison-in.gov,1,pinned,us:place:1845990,"Madison (city), IN",research gov_id confirmed by landing page / footer / meeting body
+us:place:4640220,"Madison (city), SD",madisonsd.portal.civicclerk.com,2,pinned,us:place:4640220,"Madison (city), SD",research gov_id confirmed by landing page / footer / meeting body
+us:place:4246792,"Malvern, PA",malvern.org,1,pinned,us:place:4246792,"Malvern, PA",research gov_id confirmed by landing page / footer / meeting body
+us:place:2739878,"Mankato (city), MN",mankatomn.new.swagit.com,1,pinned,us:place:2739878,"Mankato (city), MN",research gov_id confirmed by landing page / footer / meeting body
+us:place:5551250,"Merrill (city), WI",merrillwi.iqm2.com,1,pinned,us:place:5551250,"Merrill (city), WI",research gov_id confirmed by landing page / footer / meeting body
+us:place:1264875,"Sebring, FL",mysebring.com,1,pinned,us:place:1264875,"Sebring, FL",research gov_id confirmed by landing page / footer / meeting body
+us:place:3650034,"Newburgh (city), NY",newburghny.new.swagit.com,1,pinned,us:place:3650034,"Newburgh (city), NY",research gov_id confirmed by landing page / footer / meeting body
+us:place:2747680,"Oakdale, MN",oakdalemn.gov,1,pinned,us:place:2747680,"Oakdale, MN",research gov_id confirmed by landing page / footer / meeting body
+us:place:3959416,"Painesville (city), OH",painesvilleoh.new.swagit.com,3,pinned,us:place:3959416,"Painesville (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:5504625,"Baraboo (city), WI",pub-cityofbaraboo.escribemeetings.com,2,pinned,us:place:5504625,"Baraboo (city), WI",research gov_id confirmed by landing page / footer / meeting body
+us:place:5466988,"Ranson corporation, WV",ransonwv.iqm2.com,2,pinned,us:place:5466988,"Ranson corporation, WV",research gov_id confirmed by landing page / footer / meeting body
+us:place:5568275,"River Falls (city), WI",rfcity.org,1,pinned,us:place:5568275,"River Falls (city), WI",research gov_id confirmed by landing page / footer / meeting body
+us:place:2755186,"Rogers (city), MN",rogersmn.gov,1,pinned,us:place:2755186,"Rogers (city), MN",research gov_id confirmed by landing page / footer / meeting body
+us:place:3664309,"Rye (city), NY",ryeny.new.swagit.com,1,pinned,us:place:3664309,"Rye (city), NY",research gov_id confirmed by landing page / footer / meeting body
+us:place:1267550,"South Miami, FL",southmiami.granicus.com,3,pinned,us:place:1267550,"South Miami, FL",research gov_id confirmed by landing page / footer / meeting body
+us:place:4275816,"Swissvale, PA",swissvaleborough.com,1,pinned,us:place:4275816,"Swissvale, PA",research gov_id confirmed by landing page / footer / meeting body
+us:place:2973618,"Town and Country, MO",town-and-country.org,1,pinned,us:place:2973618,"Town and Country, MO",research gov_id confirmed by landing page / footer / meeting body
+us:place:3479040,"Westfield, NJ",westfieldnj.gov,1,pinned,us:place:3479040,"Westfield, NJ",research gov_id confirmed by landing page / footer / meeting body
+us:place:2771428,"Woodbury, MN",woodburymn.gov,1,pinned,us:place:2771428,"Woodbury, MN",research gov_id confirmed by landing page / footer / meeting body
+us:place:3986604,"Worthington (city), OH",worthingtonoh.new.swagit.com,1,pinned,us:place:3986604,"Worthington (city), OH",research gov_id confirmed by landing page / footer / meeting body
+us:place:5567625,"Richland Center, WI",www.richlandcenterwi.gov,1,pinned,us:place:5567625,"Richland Center, WI",research gov_id confirmed by landing page / footer / meeting body
+us:county:21165,"Menifee County, KY",cityofmenifee.primegov.com,3,research_wrong_existing_pin_right,us:place:0646842,"Menifee, CA","pin us:place:0646842; stored Menifee, CA×3"
+us:county:55101,"Racine County, WI",cityofracine.granicus.com,2,research_wrong_existing_pin_right,us:place:5566000,"Racine, WI","pin us:place:5566000; stored Racine, WI×2"
+us:county:30095,"Stillwater County, MT",cityofstillwater.granicus.com,2,research_wrong_existing_pin_right,us:place:2762824,"Stillwater (city), MN","pin us:place:2762824; stored Stillwater (city), MN×2"
+us:county:45045,"Greenville County, SC",greenville.granicus.com,2,research_wrong_existing_pin_right,us:place:3728080,"Greenville, NC","pin us:place:3728080; stored Greenville, NC×2"
+us:county:18069,"Huntington County, IN",huntingtonny.granicus.com,5,research_wrong_existing_pin_right,us:cousub:3610337000,"Huntington Town, NY","pin us:cousub:3610337000; stored Huntington Town, NY×5"
+us:place:3544490,"Lovington, NM",leacountynm.portal.civicclerk.com,1,research_wrong_existing_pin_right,us:county:35025,"Lea County, NM","pin us:county:35025; stored Lea County, NM×1"
+us:place:2740310,"Mapleton (city), MN",mapleton.civicweb.net,3,research_wrong_existing_pin_right,ca:csd:3523033,"Mapleton, ON",pin ca:csd:3523033; stored Township of Mapleton×3
+us:county:51125,"Nelson County, VA",nelson.civicweb.net,2,research_wrong_existing_pin_right,ca:csd:5903015,"Nelson, BC","pin ca:csd:5903015; stored Nelson, BC×2"
+us:place:3651055,"Niagara Falls, NY",niagarafalls.civicweb.net,3,research_wrong_existing_pin_right,ca:csd:3526043,"Niagara Falls, ON",pin ca:csd:3526043; stored City of Niagara Falls×3
+us:county:26125,"Oakland County, MI",oakland.granicus.com,15,research_wrong_existing_pin_right,us:place:0653000,"Oakland, CA","pin us:place:0653000; stored Oakland, CA×15"
+us:county:40121,"Pittsburg County, OK",pittsburg.granicus.com,2,research_wrong_existing_pin_right,us:place:0657456,"Pittsburg, CA","pin us:place:0657456; stored Pittsburg, CA×2"
+us:place:2163138,"Princeton, KY",princeton.civicweb.net,3,research_wrong_existing_pin_right,ca:csd:5907024,"Princeton, BC","pin ca:csd:5907024; stored Princeton, BC×3"
+us:place:5500100,"Abbotsford, WI",pub-abbotsford.escribemeetings.com,1,research_wrong_existing_pin_right,ca:csd:5909052,"Abbotsford, BC","pin ca:csd:5909052; stored Abbotsford, BC×1"
+us:county:34005,"Burlington County, NJ",pub-courtenay.escribemeetings.com,4,research_wrong_existing_pin_right,ca:csd:5926010,"Courtenay, BC","pin ca:csd:5926010; stored Courtenay, BC×4"
+us:place:3816380,"Courtenay (city), ND",pub-courtenay.escribemeetings.com,4,research_wrong_existing_pin_right,ca:csd:5926010,"Courtenay, BC","pin ca:csd:5926010; stored Courtenay, BC×4"
+us:place:3620951,"Dryden (village), NY",pub-dryden.escribemeetings.com,5,research_wrong_existing_pin_right,ca:csd:3560027,"Dryden, ON","pin ca:csd:3560027; stored Dryden, ON×5"
+us:place:2123968,"Edmonton, KY",pub-edmonton.escribemeetings.com,4,research_wrong_existing_pin_right,ca:csd:4811061,"Edmonton, AB","pin ca:csd:4811061; stored Edmonton, AB×3 | City of Edmonton×1"
+us:place:3728920,"Halifax, NC",pub-halifax.escribemeetings.com,4,research_wrong_existing_pin_right,ca:csd:1209034,"Halifax, NS","pin ca:csd:1209034; stored Halifax, NS×4"
+us:place:4635820,"Langford, SD",pub-langford.escribemeetings.com,3,research_wrong_existing_pin_right,ca:csd:5917044,"Langford, BC","pin ca:csd:5917044; stored Langford, BC×3"
+us:place:3128000,"Lincoln (city), NE",pub-lincoln.escribemeetings.com,4,research_wrong_existing_pin_right,ca:csd:3526057,"Lincoln, ON","pin ca:csd:3526057; stored Lincoln, ON×4"
+us:place:1351670,"Milton, GA",pub-milton.escribemeetings.com,5,research_wrong_existing_pin_right,ca:csd:3524009,"Milton, ON","pin ca:csd:3524009; stored Milton, ON×5"
+us:county:38065,"Oliver County, ND",pub-oliver.escribemeetings.com,3,research_wrong_existing_pin_right,ca:csd:5907014,"Oliver, BC","pin ca:csd:5907014; stored Oliver, BC×3"
+us:place:1864260,"Richmond, IN",pub-richmond.escribemeetings.com,5,research_wrong_existing_pin_right,us:place:0660620,"Richmond, CA","pin us:place:0660620; stored Richmond, CA×5"
+ca:csd:3529006,"Brantford, ON",pub-shelburne.escribemeetings.com,3,research_wrong_existing_pin_right,ca:csd:3522021,"Shelburne, ON","pin ca:csd:3522021; stored Town of Shelburne×2 | Shelburne, ON×1"
+us:county:20155,"Reno County, KS",reno.primegov.com,3,research_wrong_existing_pin_right,us:place:3260600,"Reno, NV","pin us:place:3260600; stored Reno, NV×3"
+us:place:2720546,"Faribault, MN",ricecountymn.portal.civicclerk.com,3,research_wrong_existing_pin_right,us:county:27131,"Rice County, MN","pin us:county:27131; stored Rice County, MN×3"
+us:county:41059,"Umatilla County, OR",umatilla.civicweb.net,1,research_wrong_existing_pin_right,us:place:4175650,"Umatilla, OR","pin us:place:4175650; stored Umatilla, OR×1"
+us:place:1980580,"Ventura, IA",ventura.primegov.com,3,research_wrong_existing_pin_right,us:county:06111,"Ventura County, CA","pin us:county:06111; stored Ventura County, CA×3"
+us:place:1980805,"Victor, IA",victoria.civicweb.net,2,research_wrong_existing_pin_right,us:place:2767036,"Victoria, MN","pin us:place:2767036; stored Victoria, MN×2"
+us:county:55133,"Waukesha County, WI",waukesha.granicus.com,2,research_wrong_existing_pin_right,us:place:5584250,"Waukesha (city), WI","pin us:place:5584250; stored Waukesha (city), WI×2"
+us:place:2768764,"Waverly (city), MN",waverly.civicweb.net,2,research_wrong_existing_pin_right,us:place:1982875,"Waverly, IA","pin us:place:1982875; stored Waverly, IA×2"
+us:place:1985845,"Williamsburg, IA",williamsburg.civicweb.net,2,research_wrong_existing_pin_right,us:place:5186160,"Williamsburg, VA","pin us:place:5186160; stored Williamsburg, VA×2"
+us:county:50027,"Windsor County, VT",windsor-ca.granicus.com,7,research_wrong_existing_pin_right,us:place:0685922,"Windsor, CA","pin us:place:0685922; stored Windsor, CA×7"
+us:county:05001,"Arkansas County, AR",arkansas-sc.granicus.com,2,research_wrong_page_other_minted,,,"page is a different, minted government rtr:us:sc:arkansas-supreme-court; stored Arkansas Supreme Court×2"
+us:county:39035,"Cuyahoga County, OH",bedfordoh.primegov.com,1,research_wrong_page_other_minted,,,"page is a different, minted government rtr:us:oh:bedford-city; stored Bedford (city), OH×1"
+us:place:1200375,"Alachua, FL",alachua.granicus.com,4,research_wrong_page_right,us:county:12001,"Alachua County, FL","page already keyed us:county:12001; stored Alachua County, FL×4"
+us:place:3700680,"Albemarle, NC",albemarle.granicus.com,3,research_wrong_page_right,us:county:51003,"Albemarle County, VA","page already keyed us:county:51003; stored Albemarle County, VA×3"
+us:place:2421325,"Cumberland, MD",alleganycomd.portal.civicclerk.com,2,research_wrong_page_right,us:county:24001,"Allegany County, MD","page already keyed us:county:24001; stored Allegany County, MD×2"
+us:county:51009,"Amherst County, VA",amherstny.iqm2.com,1,research_wrong_page_right,us:cousub:3602902000,"Amherst Town, NY","page already keyed us:cousub:3602902000; stored Amherst Town, NY×1"
+us:place:4115800,"Corvallis, OR",bentoncoor.portal.civicclerk.com,2,research_wrong_page_right,us:county:41003,"Benton County, OR","page already keyed us:county:41003; stored Benton County, OR×2"
+us:place:1832242,"Hartford City, IN",blackfordcoin.portal.civicclerk.com,1,research_wrong_page_right,us:county:18009,"Blackford County, IN","page already keyed us:county:18009; stored Blackford County, IN×1"
+us:county:16015,"Boise County, ID",boisecityid.iqm2.com,1,research_wrong_page_right,us:place:1608830,"Boise, ID","page already keyed us:place:1608830; stored Boise, ID×1"
+us:place:3706820,"Bolivia, NC",brunswickconc.portal.civicclerk.com,2,research_wrong_page_right,us:county:37019,"Brunswick County, NC","page already keyed us:county:37019; stored Brunswick County, NC×2"
+us:place:4219784,"Doylestown (borough), PA",buckscopa.portal.civicclerk.com,2,research_wrong_page_right,us:county:42017,"Bucks County, PA","page already keyed us:county:42017; stored Bucks County, PA×2"
+us:place:0654386,"Oroville, CA",buttecoca.portal.civicclerk.com,3,research_wrong_page_right,us:county:06007,"Butte County, CA","page already keyed us:county:06007; stored Butte County, CA×3"
+us:place:0810105,"Buena Vista, CO",chaffeecoco.portal.civicclerk.com,1,research_wrong_page_right,us:county:08015,"Chaffee County, CO","page already keyed us:county:08015; stored Chaffee County, CO×1"
+us:place:4803144,"Anahuac, TX",chamberscotx.portal.civicclerk.com,1,research_wrong_page_right,us:county:48071,"Chambers County, TX","page already keyed us:county:48071; stored Chambers County, TX×1"
+us:county:45019,"Charleston County, SC",charlestonwv.portal.civicclerk.com,3,research_wrong_page_right,us:place:5414600,"Charleston, WV","page already keyed us:place:5414600; stored Charleston, WV×3"
+us:place:4282704,"West Chester, PA",chestercopa.portal.civicclerk.com,4,research_wrong_page_right,us:county:42029,"Chester County, PA","page already keyed us:county:42029; stored Chester County, PA×4"
+us:place:3224100,"Fallon, NV",churchillconv.portal.civicclerk.com,2,research_wrong_page_right,us:county:32001,"Churchill County, NV","page already keyed us:county:32001; stored Churchill County, NV×2"
+us:place:1215775,"Crystal River, FL",citrusclerk.portal.civicclerk.com,5,research_wrong_page_right,us:county:12017,"Citrus County, FL","page already keyed us:county:12017; stored Citrus County, FL×4 | Inverness, FL×1"
+us:county:48037,"Bowie County, TX",cityofbowietx.civicweb.net,2,research_wrong_page_right,us:place:4809640,"Bowie, TX","page already keyed us:place:4809640; stored Bowie, TX×2"
+us:county:48177,"Gonzales County, TX",cityofgonzales.granicus.com,2,research_wrong_page_right,us:place:0630392,"Gonzales, CA","page already keyed us:place:0630392; stored Gonzales, CA×2"
+us:county:48089,"Colorado County, TX",coloradoga.granicus.com,2,research_wrong_page_right,us:state:08,State of Colorado,page already keyed us:state:08; stored Colorado×1 | State of Colorado×1
+us:county:56009,"Converse County, WY",conversetx.granicus.com,2,research_wrong_page_right,us:place:4816468,"Converse, TX","page already keyed us:place:4816468; stored Converse, TX×2"
+us:place:5518700,"Dane (village), WI",dane.granicus.com,2,research_wrong_page_right,us:county:55025,"Dane County, WI","page already keyed us:county:55025; stored Dane County, WI×2"
+us:county:19057,"Des Moines County, IA",desmoines.civicweb.net,2,research_wrong_page_right,us:place:5317635,"Des Moines, WA","page already keyed us:place:5317635; stored Des Moines, WA×2"
+us:place:1921000,"Des Moines, IA",desmoines.civicweb.net,2,research_wrong_page_right,us:place:5317635,"Des Moines, WA","page already keyed us:place:5317635; stored Des Moines, WA×2"
+us:place:4073250,"The Village, OK",douglas-mi.municodemeetings.com,1,research_wrong_page_right,us:place:2622740,"Douglas, MI","page already keyed us:place:2622740; stored Douglas, MI×1"
+us:place:3932956,"Hamden, OH",hamdenct.portal.civicclerk.com,1,research_wrong_page_right,us:cousub:0917035650,"Hamden, CT","page already keyed us:cousub:0917035650; stored Hamden Town, CT×1"
+us:place:3423700,"Flemington, NJ",hunterdonconj.portal.civicclerk.com,1,research_wrong_page_right,us:county:34019,"Hunterdon County, NJ","page already keyed us:county:34019; stored Hunterdon County, NJ×1"
+us:place:2641420,"Jackson, MI",jacksoncomi.portal.civicclerk.com,1,research_wrong_page_right,us:county:26075,"Jackson County, MI","page already keyed us:county:26075; stored Jackson County, MI×1"
+us:place:2838600,"Lake, MS",lakecountyil.new.swagit.com,1,research_wrong_page_right,us:county:17097,"Lake County, IL","page already keyed us:county:17097; stored Lake County, IL×1"
+us:place:2841680,"Long Beach, MS",longbeach.primegov.com,3,research_wrong_page_right,us:place:0643000,"Long Beach, CA","page already keyed us:place:0643000; stored Long Beach, CA×3"
+us:place:5147144,"Louisa, VA",louisacova.portal.civicclerk.com,2,research_wrong_page_right,us:county:51109,"Louisa County, VA","page already keyed us:county:51109; stored Louisa County, VA×2"
+us:place:1217325,"Destin, FL",okaloosacountyfl.iqm2.com,4,research_wrong_page_right,us:county:12091,"Okaloosa County, FL","page already keyed us:county:12091; stored Okaloosa County, FL×4"
+us:county:44007,"Providence County, RI",providenceri.iqm2.com,2,research_wrong_page_right,us:place:4459000,"Providence, RI","page already keyed us:place:4459000; stored Providence, RI×2"
+ca:csd:3526032,"Welland, ON",pub-elgincounty.escribemeetings.com,3,research_wrong_page_right,ca:cd:3534,"Elgin, ON","page already keyed ca:cd:3534; stored Elgin, ON×3"
+us:place:2932662,"Hollister, MO",pub-hollister.escribemeetings.com,4,research_wrong_page_right,us:place:0634120,"Hollister, CA","page already keyed us:place:0634120; stored Hollister, CA×4"
+us:county:37147,"Pitt County, NC",pub-pittmeadows.escribemeetings.com,1,research_wrong_page_right,ca:csd:5915070,"Pitt Meadows, BC","page already keyed ca:csd:5915070; stored Pitt Meadows, BC×1"
+us:county:54081,"Raleigh County, WV",pub-raleighnc.escribemeetings.com,1,research_wrong_page_right,us:place:3755000,"Raleigh, NC","page already keyed us:place:3755000; stored Raleigh, NC×1"
+us:place:0462350,"St. Johns, AZ",pub-stjohns.escribemeetings.com,4,research_wrong_page_right,ca:csd:1001519,"St. John's, NL","page already keyed ca:csd:1001519; stored St. John's, NL×4"
+us:county:27169,"Winona County, MN",pub-winona.escribemeetings.com,3,research_wrong_page_right,us:place:2771032,"Winona, MN","page already keyed us:place:2771032; stored Winona, MN×3"
+us:place:2980512,"Winona, MO",pub-winona.escribemeetings.com,3,research_wrong_page_right,us:place:2771032,"Winona, MN","page already keyed us:place:2771032; stored Winona, MN×3"
+us:place:3984770,"Whitehouse, OH",whitehouse.civicweb.net,2,research_wrong_page_right,us:place:4878388,"Whitehouse, TX","page already keyed us:place:4878388; stored Whitehouse, TX×2"
+us:place:3617332,"Colonie (village), NY",colonieny.iqm2.com,1,research_wrong_page_unkeyed,us:cousub:3600117343,"Colonie (town), NY",page 'Town Board Regular Meeting'
+us:place:3625967,"Fishkill (village), NY",fishkilltownny.iqm2.com,2,research_wrong_page_unkeyed,us:cousub:3602725978,"Fishkill (town), NY","host and stored 'Fishkill (town), NY'"
+us:place:1910225,"Cambridge, IA",pub-cambridge.escribemeetings.com,5,research_wrong_page_unkeyed,ca:csd:3530010,"Cambridge, ON",eScribe pub-* tenant; stored 'City of Cambridge'; Cambridge IA is a town of ~800
+us:place:4015050,"Clearview, OK",pub-clearview.escribemeetings.com,2,research_wrong_page_unkeyed,ca:csd:3543005,"Clearview, ON",stored 'Township of Clearview' (Ontario)
+us:place:5315710,"Creston, WA",pub-creston.escribemeetings.com,3,research_wrong_page_unkeyed,ca:csd:5903004,"Creston, BC",stored 'Town of Creston' (BC)
+us:place:4671380,"White Rock (town), SD",pub-whiterockcity.escribemeetings.com,1,research_wrong_page_unkeyed,ca:csd:5915007,"White Rock, BC",stored 'City of White Rock' (BC)
+us:place:2672840,"Shelby (village), MI",shelbytownmi.iqm2.com,2,research_wrong_page_unkeyed,us:cousub:2609972820,"Shelby (charter township), MI","portal title 'Charter Township of Shelby, Michigan'"
+us:place:3668462,"Southampton (village), NY",southamptonny.iqm2.com,1,research_wrong_page_unkeyed,us:cousub:3610368473,"Southampton (town), NY","stored 'Town of Southampton, Long Island, NY'"
+us:cousub:5503178675,"Superior (town), WI",superiorwi.gov,1,research_wrong_page_unkeyed,us:place:5578650,"Superior (city), WI","landing 'Superior, WI'; page 'Common Council Meeting' = the city"
+us:place:2416787,"Chevy Chase Village, MD",townofchevychase.org,1,research_wrong_page_unkeyed,us:place:2416620,"Chevy Chase, MD",host and page 'Town of Chevy Chase Town Council'
+us:place:3677376,"Victor (village), NY",townofvictorny.gov,1,research_wrong_page_unkeyed,us:cousub:3606977387,"Victor (town), NY",host and page 'Town Board Meeting'
+us:place:5583975,"Watertown (city), WI",watertown.civicweb.net,1,research_wrong_page_unkeyed,us:place:4669300,"Watertown, SD","portal footer ', SD 57201'"
+us:place:3678960,"Webster (village), NY",websterny.gov,1,research_wrong_page_unkeyed,us:cousub:3605578971,"Webster (town), NY",stored 'Town of Webster'; page 'Town Board Workshop'
+us:place:2500840,"Agawam Town, MA",agawamvod.cablecast.tv,1,shared_host,,,per-video/channel pins are a later pass
+us:place:2503690,"Barnstable Town, MA",barnstable.cablecast.tv,2,shared_host,,,per-video/channel pins are a later pass
+us:place:1712385,"Champaign (city), IL",champaign.cablecast.tv,2,shared_host,,,per-video/channel pins are a later pass
+us:place:1735866,"Hometown, IL",hometown.cablecast.tv,2,shared_host,,,per-video/channel pins are a later pass
+us:place:1781048,"Wheaton, IL",player.vimeo.com,18,shared_host,,,per-video/channel pins are a later pass
+us:place:3464620,"Roselle, NJ",player.vimeo.com,18,shared_host,,,per-video/channel pins are a later pass
+us:place:4273808,"State College, PA",videoplayer.telvue.com,98,shared_host,,,per-video/channel pins are a later pass
+us:place:1200950,"Altamonte Springs, FL",vimeo.com,21,shared_host,,,per-video/channel pins are a later pass
+us:place:2382105,"Westbrook, ME",vimeo.com,21,shared_host,,,per-video/channel pins are a later pass
+us:place:4115800,"Corvallis, OR",vimeo.com,21,shared_host,,,per-video/channel pins are a later pass
+us:county:04011,"Greenlee County, AZ",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:county:19165,"Shelby County, IA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:county:28047,"Harrison County, MS",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:county:42073,"Lawrence County, PA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:0625296,"Fortuna, CA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:0636490,"Industry, CA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:0869645,"Sheridan, CO",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:1264875,"Sebring, FL",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:1734865,"Highwood, IL",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:1962040,"Pella, IA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2273640,"Sulphur, LA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2405550,"Bel Air, MD",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2416787,"Chevy Chase Village, MD",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2501370,"Amherst Town, MA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2563345,"Southbridge Town, MA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2631420,"Garden City (city), MI",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2676960,"Sturgis (city), MI",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2743810,"Montrose, MN",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2749966,"Paynesville (city), MN",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2923950,"Fenton, MO",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2953624,"Oak Grove, MO",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2953650,"Oak Grove Village, MO",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:2973618,"Town and Country, MO",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:3408170,"Brooklawn, NJ",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:3459640,"Pleasantville, NJ",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:3479040,"Westfield, NJ",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:3978624,"Union City (village), OH",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:4246792,"Malvern, PA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:4275816,"Swissvale, PA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:4964670,"Roosevelt, UT",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:5308570,"Buckley, WA",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+us:place:5568275,"River Falls (city), WI",www.youtube.com,663,shared_host,,,per-video/channel pins are a later pass
+ca:csd:3534042,"West Elgin, ON",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:county:12123,"Taylor County, FL",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:county:19097,"Jackson County, IA",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:county:51185,"Tazewell County, VA",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:1665260,"Preston, ID",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:1734865,"Highwood, IL",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:1962040,"Pella, IA",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2416787,"Chevy Chase Village, MD",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2501370,"Amherst Town, MA",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2563345,"Southbridge Town, MA",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2631420,"Garden City (city), MI",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2669800,"Roseville, MI",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:2923950,"Fenton, MO",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:place:3471010,"Stone Harbor, NJ",youtu.be,241,shared_host,,,per-video/channel pins are a later pass
+us:county:20143,"Ottawa County, KS",youtube.com,50,shared_host,,,per-video/channel pins are a later pass
+us:place:0869645,"Sheridan, CO",youtube.com,50,shared_host,,,per-video/channel pins are a later pass
+us:place:2973618,"Town and Country, MO",youtube.com,50,shared_host,,,per-video/channel pins are a later pass
+us:place:4246792,"Malvern, PA",youtube.com,50,shared_host,,,per-video/channel pins are a later pass
+us:place:5568275,"River Falls (city), WI",youtube.com,50,shared_host,,,per-video/channel pins are a later pass
+us:place:5309480,"Camas, WA",camas.new.swagit.com,1,undecidable,,,research says Camas city; page keyed to Camas School District us:sd:5300810 -- check the Swagit footer
+us:place:2953624,"Oak Grove, MO",cityofoakgrove.com,1,undecidable,,,blank page; registry claims Oak Grove MO and Oak Grove Village MO for the same host
+us:place:2953650,"Oak Grove Village, MO",cityofoakgrove.com,1,undecidable,,,blank page; registry claims Oak Grove MO and Oak Grove Village MO for the same host
+us:county:12131,"Walton County, FL",walton.civicweb.net,2,undecidable,,,stored 'Walton County' with no state; registry claims Walton County FL and Walton village NY for the same host
+us:place:3678036,"Walton (village), NY",walton.civicweb.net,2,undecidable,,,stored 'Walton County' with no state; registry claims Walton County FL and Walton village NY for the same host
