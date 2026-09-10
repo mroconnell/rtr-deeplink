@@ -6,6 +6,19 @@ from .models import MeetingResolution
 _GARBLED_MARKER = "looks garbled at the source"
 TARGET_LANGUAGE = "en"
 
+# Mirrors app/platforms/youtube.py's YOUTUBE_CAPTIONS_DISABLED_MARKER /
+# YOUTUBE_VIDEO_UNAVAILABLE_MARKER (WO-135, 2026-09-09) -- independently
+# defined here, same "duplicate the literal string with a cross-reference
+# comment" convention _GARBLED_MARKER above already uses across this
+# module/archive/db/crud.py. These mean "there is no transcript, and a
+# real yt-dlp metadata check confirmed there never will be" -- worth its
+# own bucket for the same reason archive/db/crud.py's matching
+# `captions_disabled` bucket is: it looks identical to blank_transcript
+# (zero segments) but is a permanent, confirmed answer rather than "the
+# government source hasn't posted captions yet".
+_YOUTUBE_CAPTIONS_DISABLED_MARKER = "YouTube: captions are disabled by the channel"
+_YOUTUBE_VIDEO_UNAVAILABLE_MARKER = "YouTube: video is unavailable (removed or private)"
+
 
 def classify_outcome(row: MeetingResolution) -> str:
     """Map a logged row to a content-quality outcome, not just whether
@@ -31,6 +44,11 @@ def classify_outcome(row: MeetingResolution) -> str:
 
     if not row.video_found:
         return "no_video"
+    if row.transcript_warnings and any(
+        _YOUTUBE_CAPTIONS_DISABLED_MARKER in w or _YOUTUBE_VIDEO_UNAVAILABLE_MARKER in w
+        for w in row.transcript_warnings
+    ):
+        return "captions_disabled"
     if not row.transcript_found:
         payload = row.resolved_payload or {}
         if payload.get("agenda_items"):

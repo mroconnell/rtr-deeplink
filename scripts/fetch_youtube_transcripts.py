@@ -36,6 +36,30 @@ requirements-dev.txt` for youtube-transcript-api -- deliberately a dev
 requirement, not a deploy one, since it's useless from the server's own
 blocked IP.
 
+Permanent failures are recorded and never re-queued (WO-135, 2026-09-09).
+Before this, a page whose channel disables captions, or whose video has
+been removed/made private, was re-queued and re-attempted every single
+day forever -- confirmed live the day this was built: 8 TranscriptsDisabled,
+4 VideoUnplayable, 3 VideoUnavailable in the first 15 real failures of one
+run, none of which will ever succeed no matter how many times this script
+retries them, plus (see docs/investigations/youtube_429_block.md) a real
+risk that burning through a whole queue of doomed requests earns the
+IP-level block this script otherwise carefully paces around. Now, for each
+page: (1) a metadata-only yt-dlp check
+(YouTubeAssetFinder.check_permanent_failure(), zero rate-limit cost) runs
+BEFORE any real transcript request; if it already confirms the failure,
+the request is skipped entirely; (2) if the check comes back clean but the
+real youtube-transcript-api fetch itself still raises TranscriptsDisabled/
+VideoUnavailable/VideoUnplayable, that's treated the same way. Either path
+writes a permanent marker onto the page via POST
+/internal/pages/{slug}/video-status (archive/db/crud.py's
+record_youtube_video_status() -- see that docstring for why this can't go
+through the ordinary /internal/ingest path) and the page is excluded from
+future runs by list_youtube_pages_missing_transcripts()'s own queue logic
+from then on. A real rate-limit/IP-block signal is NOT treated as
+permanent -- see RATE_LIMIT_BACKOFF_SECONDS below, unchanged: that still
+aborts the whole run rather than marking anything.
+
 On every real (non-dry-run) completion, emails a report to
 YOUTUBE_FETCH_REPORT_EMAIL (default ryan@how-to-adu.com) via the
 Archive's existing Resend integration (archive/utils/email.py) --
@@ -71,7 +95,11 @@ from dotenv import load_dotenv  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
+from app.platforms.youtube import (  # noqa: E402
+    YOUTUBE_CAPTIONS_DISABLED_MARKER,
+    YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
+    YouTubeAssetFinder,
+)
 from app.utils.vtt_parser import normalize_shouting_caption, unescape_caption_entities  # noqa: E402
 from archive.utils.email import (
     send_youtube_transcript_failure,
@@ -247,6 +275,50 @@ def fetch_transcript(video_id: str):
     return snippets_to_segments(transcript.snippets), transcript.language_code
 
 
+def _classify_transcript_api_failure(exc: BaseException) -> Optional[str]:
+    """Returns the transcript_warnings PERMANENT-failure marker to record
+    for a real youtube-transcript-api failure, or None if `exc` isn't one
+    of the confirmed-permanent exception types below (WO-135, 2026-09-09).
+    A rate-limit/block signal (_is_rate_limit_signal() above) is handled
+    entirely separately, before this is ever reached -- see process_one().
+
+    Matched by class name (not isinstance/import) for the same reason
+    _is_rate_limit_signal() is: this module stays importable, and its
+    pure functions stay testable, without youtube-transcript-api
+    installed. Confirmed live against youtube_transcript_api._errors (this
+    venv's installed copy) -- all three are real, distinct subclasses of
+    its shared `CouldNotRetrieveTranscript`, not made up:
+
+      * TranscriptsDisabled -- "Subtitles are disabled for this video."
+        Real, observed count: 8 of the first 15 permanent failures the
+        day this was built (see this module's own top docstring).
+      * VideoUnavailable -- "The video is no longer available." 3 of 15.
+      * VideoUnplayable -- "The video is unplayable for the following
+        reason: {reason}", 4 of 15. `reason` uses this library's own
+        vocabulary, not yt-dlp's (a different InnerTube recipe -- see
+        this module's top docstring) -- checked for the one confirmed
+        transient shape (a scheduled stream that hasn't started, same
+        "will begin in" phrasing app/platforms/youtube.py's
+        _is_permanently_gone() already guards against for the separate
+        yt-dlp error vocabulary) before treating it as permanent.
+
+    NoTranscriptFound (a real language-mismatch case, not covered here)
+    is deliberately excluded: it means captions exist in some OTHER
+    language, which is a different, already-handled outcome (see
+    snippets_to_segments()'s docstring), not a permanent "never fetchable"
+    one.
+    """
+    name = type(exc).__name__
+    if name == "TranscriptsDisabled":
+        return YOUTUBE_CAPTIONS_DISABLED_MARKER
+    if name in ("VideoUnavailable", "VideoUnplayable"):
+        reason = f"{getattr(exc, 'reason', '') or ''} {exc}".lower()
+        if "will begin in" in reason:
+            return None
+        return YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+    return None
+
+
 def _restrict_to_slugs(pages: List[dict], slugs_file: Optional[Path]) -> List[dict]:
     """Narrow the transcript-wanted queue to --slugs-file, if given.
 
@@ -309,6 +381,58 @@ async def _ingest(
         raise RuntimeError(f"ingest failed ({response.status}): {text[:300]}")
 
 
+async def _record_video_status(
+    session: aiohttp.ClientSession,
+    slug: str,
+    *,
+    transcript_marker: Optional[str] = None,
+    video_marker: Optional[str] = None,
+) -> bool:
+    """POST /internal/pages/{slug}/video-status -- WO-135, 2026-09-09. See
+    archive/db/crud.py's record_youtube_video_status() docstring for why
+    this exists as its own write instead of going through POST
+    /internal/ingest (that path only ever touches a TranscriptVersion `if
+    segments:`, and a permanent failure has none).
+
+    Best-effort: unlike a real rate-limit/block signal (which aborts the
+    whole run -- see _is_rate_limit_signal()'s own reasoning), a failure
+    writing this bookkeeping marker is logged and the run continues --
+    the page simply gets re-checked (and, if still permanently failing,
+    re-attempted to record) on tomorrow's run instead. Returns True on a
+    confirmed write, False otherwise, so the caller's own report line can
+    say honestly whether this page will actually stop being re-queued.
+    """
+    body = {}
+    if transcript_marker:
+        body["transcript_marker"] = transcript_marker
+    if video_marker:
+        body["video_marker"] = video_marker
+    if not body:
+        return True
+    try:
+        async with session.post(
+            f"{_base_url()}/internal/pages/{slug}/video-status",
+            json=body,
+            headers=_headers(),
+            timeout=INGEST_TIMEOUT,
+        ) as response:
+            if response.status == 200:
+                return True
+            text = await response.text()
+            print(
+                f"  WARNING: video-status write failed for {slug} "
+                f"({response.status}): {text[:200]}",
+                file=sys.stderr,
+            )
+            return False
+    except Exception as e:
+        print(
+            f"  WARNING: video-status write raised for {slug}: {type(e).__name__}: {e}",
+            file=sys.stderr,
+        )
+        return False
+
+
 async def _promote(session: aiohttp.ClientSession, slug: str, version_id: int) -> dict:
     """POST /internal/transcript-version/promote -- makes `version_id` the
     page's default TranscriptVersion. Real gap fixed 2026-08-16 (WO-15,
@@ -366,6 +490,51 @@ async def process_one(
             "detail": f"no video id in video_url={page.get('video_url')!r}",
         }
 
+    # WO-135, 2026-09-09: one metadata-only yt-dlp call -- zero
+    # rate-limit/request cost against youtube-transcript-api's own budget,
+    # since no captions are actually downloaded here (see
+    # YouTubeAssetFinder.check_permanent_failure()'s own docstring) --
+    # BEFORE ever attempting a real transcript fetch below. Catches the
+    # common case up front so a page already confirmed permanently broken
+    # never even reaches the rate-limited request that would just fail
+    # identically (and did, every day, before this existed -- see this
+    # module's top docstring for the real counts that motivated this).
+    precheck_transcript_marker, precheck_video_marker = (
+        YouTubeAssetFinder.check_permanent_failure(video_id)
+    )
+    # Real, confirmed-live case found probing all 96 real no-transcript
+    # pages 2026-09-09 (video id 5IoXmnqr72Y): embedding disabled and
+    # captions disabled are INDEPENDENT facts -- that page has real
+    # automatic_captions available despite playable_in_embed being False.
+    # So a video_marker alone (no transcript_marker) is recorded for
+    # visibility but must NOT skip the real transcript attempt below --
+    # only a confirmed transcript_marker means there is nothing left to
+    # fetch.
+    if precheck_video_marker and not dry_run:
+        await _record_video_status(session, slug, video_marker=precheck_video_marker)
+    if precheck_transcript_marker:
+        recorded = True
+        if not dry_run:
+            recorded = await _record_video_status(
+                session,
+                slug,
+                transcript_marker=precheck_transcript_marker,
+            )
+        outcome = (
+            "will never be re-queued"
+            if recorded
+            else "FAILED TO RECORD marker, will be retried tomorrow"
+        )
+        prefix = "[dry-run] would record" if dry_run else "recorded"
+        return {
+            "slug": slug,
+            "status": "skipped",
+            "detail": (
+                f"{prefix} permanent failure via yt-dlp metadata "
+                f"({precheck_transcript_marker}) -- {outcome}"
+            ),
+        }
+
     try:
         # fetch_transcript is synchronous (the library has no async API);
         # fine for a sequential local batch script.
@@ -376,6 +545,27 @@ async def process_one(
         # through the queue generating identical failures.
         if type(e).__name__ in ("IpBlocked", "RequestBlocked"):
             raise
+        permanent_marker = _classify_transcript_api_failure(e)
+        if permanent_marker:
+            recorded = True
+            if not dry_run:
+                recorded = await _record_video_status(
+                    session, slug, transcript_marker=permanent_marker
+                )
+            outcome = (
+                "will never be re-queued"
+                if recorded
+                else "FAILED TO RECORD marker, will be retried tomorrow"
+            )
+            prefix = "[dry-run] would record" if dry_run else "recorded"
+            return {
+                "slug": slug,
+                "status": "skipped",
+                "detail": (
+                    f"{prefix} permanent failure via youtube-transcript-api "
+                    f"({type(e).__name__}: {str(e)[:150]}) -- {outcome}"
+                ),
+            }
         return {
             "slug": slug,
             "status": "failed",

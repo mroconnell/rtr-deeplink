@@ -437,6 +437,11 @@ unreachable database.
     was found instead (Granicus, CivicClerk, or Swagit) — still deep-linkable,
     but not a real transcript
   - `blank_transcript` — video found, nothing usable for a transcript at all
+  - `captions_disabled` — a YouTube video confirmed (via a real yt-dlp
+    metadata check) to have no captions at all, or to be removed/private
+    (WO-135, 2026-09-09) — distinct from `blank_transcript`: this is a
+    *confirmed permanent* answer, not "the government source hasn't
+    posted captions yet"
   - `garbled_transcript` — a real transcript, but flagged as likely garbled
     at the source (see `is_likely_garbled()` in `vtt_parser.py`)
   - `non_english_transcript` — a real transcript, just not in the target
@@ -575,6 +580,49 @@ identically. Prints per-item timing (wall-clock timestamp + elapsed
 seconds) and a final total/average — fetching an already-generated
 caption track is one API call, so run time is independent of how long
 the actual meeting is.
+
+**Permanent failures are recorded and never re-queued (WO-135,
+2026-09-09).** Before this, a page whose channel disables captions, or
+whose video was removed or made private, was re-attempted from scratch
+every single day forever — real, confirmed counts: 8 `TranscriptsDisabled`,
+4 `VideoUnplayable`, 3 `VideoUnavailable` in the first 15 real failures of
+one run (see `BACKLOG_DONE.md`). Before every real transcript request,
+the script runs a metadata-only yt-dlp check
+(`YouTubeAssetFinder.check_permanent_failure()`, zero rate-limit cost —
+no captions are actually downloaded) and skips the request entirely if
+it already confirms a permanent failure; if the check comes back clean
+but the real `youtube-transcript-api` fetch itself still raises one of
+those three exceptions, that's treated the same way. Either path records
+one of three exact marker strings via `POST /internal/pages/{slug}/
+video-status` (not the ordinary `/internal/ingest` path — see
+`archive/db/crud.py`'s `record_youtube_video_status()` docstring for why
+a permanently-empty transcript has no way to record *why* through that
+route) and the page then drops out of `GET /internal/transcript-wanted`
+for good:
+
+- `YouTube: captions are disabled by the channel` (transcript_warnings)
+  — confirmed via yt-dlp: no manual or auto-generated captions exist in
+  any language.
+- `YouTube: embedding is disabled by the channel; watch on YouTube`
+  (video_warnings) — the video may still have real, fetchable captions;
+  this does **not** skip the transcript attempt (a real, confirmed-live
+  case has both facts true at once).
+- `YouTube: video is unavailable (removed or private)` (transcript_warnings)
+  — a real yt-dlp/`youtube-transcript-api` error confirms the video is
+  genuinely gone, distinguished from a merely scheduled-but-not-yet-live
+  stream (which must never be marked permanent).
+
+A marked page still counts as "no good transcript" everywhere else on
+the site (a captions-disabled page never falsely shows a transcript
+checkmark) — the marker only changes whether `fetch_youtube_
+transcripts.py` and the cloud auto-transcription worker
+(`find_auto_transcription_candidate()`) keep trying it. It stays
+eligible for a local Whisper run (`scripts/
+transcribe_backlog_locally.py`, WO-136) from this same residential Mac,
+since the channel not having its own captions says nothing about
+whether this app can still generate one from the audio track — only the
+cloud worker is excluded, since it runs from a server IP YouTube blocks
+and could never fetch that audio anyway.
 
 Runs automatically once a day via `launchd` on the user's own Mac (must
 be that machine specifically — the residential IP is the whole point).
