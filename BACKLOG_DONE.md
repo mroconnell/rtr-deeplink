@@ -1,5 +1,52 @@
 # Backlog — done
 
+## WO-132 · Resolved WO-123's 4 second-wave sweep conflicts live, caught a 3/4 wrong-guess rate, pinned the first-wave sweep's 27 Granicus/Legistar hosts [Done 2026-09-09]
+
+**The 4 conflicts WO-123 left in `tenant_overrides_conflicts.csv`,
+checked against the real tenant, not guessed.** `dallascounty.civicweb.net`:
+neither existing candidate was right -- the pre-existing `known_domains`
+pin said Dallas, TX (the city), the sweep guessed Dallas County, MO;
+the live portal reads "Welcome to Dallas County" / "Dallas County
+Commissioners Court", 500 Elm St, Dallas, Texas -- it's Dallas County,
+**TX** (`us:county:48113`), a third answer neither candidate had.
+`oneidacounty.primegov.com`: the ledger's `auto_derived` guess (NY) was
+right, the sweep's (ID) wasn't -- confirmed by its own meeting video
+domain, `oneidacountyny.new.swagit.com`. `unioncity.primegov.com` and
+`washingtoncounty.civicweb.net` already had a correct hand-verified pin
+sitting untouched the whole time (Union City, CA; Washington County, OR)
+-- the "conflict" was pure noise from the candidate-merge layer, which
+checks the four source tables against each other and has no way to know
+a host is already pinned. **3 of 4 disagreements were the sweep's own
+guess being wrong** -- consistent with the second-wave sweep's own
+caveat that it confirms a host is real, not which government it serves.
+
+**A duplicate-catch-all bug found while fixing this, in my own edit, not
+the codebase**: hand-appending the correction rows via a raw CSV append
+briefly left `dallascounty` and `washingtoncounty` with two `match=""`
+rows each -- the seed script's additive write only protects *existing*
+rows from being overwritten, it doesn't check for a second one being
+added, and `_match_override()` in `resolver.py` returns *both*, with
+`_pinned()` then depending on file order to pick between them. Caught
+before committing: removed the wrong/redundant row on each pair rather
+than shipping a coin-flip. (Confirmed en route: 12 *other* hosts already
+carry this exact same duplicate-catch-all shape, pre-existing on `main`,
+unrelated to this change -- flagged separately, not fixed here.)
+
+**First-wave sweep, 27 Granicus/Legistar hosts, same treatment as the
+second wave**: `jurisdiction_overrides.csv` gained 27 rows via a new
+`scripts/convert_first_wave_wildcard_hits.py` (rtr-discovery PR #13),
+tagged `wildcard_http_sweep_1`. 25 landed as new pins; 2
+(`howardcounty.granicus.com`, `richmond.granicus.com`) were silently and
+correctly protected by the additive fix -- both already pinned to a
+*different* government than the sweep guessed (Howard County MD not AR;
+Richmond CA not NS) -- the same wrong-guess pattern as above, caught by
+the existing-row guard rather than a live check this time.
+
+**Verified.** `ruff check`, `ruff format --check`, `python -m pytest`
+all clean (2,803 passed, 15 skipped). Confirmed zero *new*
+duplicate-catch-all rows introduced, by diffing against the pre-existing
+set on `origin/main`.
+
 ## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
 
 Third backfill of the day (the two entries below carry the pattern and
