@@ -91,7 +91,6 @@ charlestown-town-ri,us:cousub:4400914500,charlestown-ri,"'Charlestown Town, RI' 
 charlotte,us:county:12015,charlotte-county-fl,"'Charlotte' now resolves to us:county:12015 (Charlotte County, FL)"
 chatham-kent,ca:csd:3536020,chatham-kent-on,"'Chatham Kent' now resolves to ca:csd:3536020 (Chatham-Kent, ON)"
 chatham-town-ma,us:cousub:2500112995,chatham-ma,"'Chatham Town, MA' now resolves to us:cousub:2500112995 (Chatham, MA)"
-chenango-town-ny,us:county:36017,chenango-county-ny,"'Chenango Town, NY' now resolves to us:county:36017 (Chenango County, NY)"
 chesterfield,us:county:51041,chesterfield-county-va,"'Chesterfield' now resolves to us:county:51041 (Chesterfield County, VA)"
 chesterfield-township,us:cousub:2609915340,chesterfield-township-mi,"'Chesterfield Township' now resolves to us:cousub:2609915340 (Chesterfield Township, MI)"
 cheyenne,us:place:5613900,cheyenne-wy,"'City of Cheyenne' now resolves to us:place:5613900 (Cheyenne, WY)"
@@ -828,3 +827,4 @@ the-town-of-bethany-beach-de,us:place:1005690,bethany-beach-de,"'the-town-of-bet
 the-town-of-redcliff,ca:csd:4801018,redcliff-ab,"'the-town-of-redcliff' retired by the 2026-09-09 WO-125 identity-join backfill; now ca:csd:4801018 (Redcliff, AB)"
 town-of-amherst-ma,us:place:2501370,amherst-town-ma,"'town-of-amherst-ma' retired by the 2026-09-09 WO-125 identity-join backfill; now us:place:2501370 (Amherst Town, MA)"
 woodbury,us:place:2771428,woodbury-mn,"'woodbury' retired by the 2026-09-09 WO-125 identity-join backfill; now us:place:2771428 (Woodbury, MN)"
+chenango-county-ny,us:cousub:3600715110,chenango-town-ny,"'Chenango County, NY' hub retired 2026-09-10: its 3 pages were the Town of Chenango's Town Board (townofchenango.civicweb.net, authoritative pin); the stale reverse alias from the earlier mis-keying is removed in the same change"
