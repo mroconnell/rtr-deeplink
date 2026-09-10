@@ -89,6 +89,109 @@ mapping for later sweeps), `jurisdiction_coverage.csv` (365 rows
 retagged, commit `41c75a6`); `ENUMERATION_METHODS.md` §23's addendum
 extended and new §199; `rtr-deeplink/docs/BREADTH_SWEEP_BRIEF.md`'s
 "Reject reasons, two classes" section updated.
+## A vendor's own marketing or login page is never a government's video page, for every platform we check [Done 2026-09-10] (WO-163)
+
+**What we were checking.** WO-162 fixed this for one platform, CivicPlus:
+the code that guesses "which video system is this government using?" was
+matching a government's own page by looking for a company name in the web
+address. That rule also matched the company's own marketing and login
+pages, not just real government pages. A coverage-triage session looking
+at jurisdiction identity work found the same mistake repeated for about
+twenty other platforms, not just CivicPlus. This work order fixes all of
+them at once.
+
+**What we found.** The triage session ran a scan across 400 governments
+and found 12 whose own calendar page links to Granicus's own product
+page (`granicus.com/solution/govaccess/opencities/`) — a real company
+page, not a real government meeting. The old rule would have matched
+that link as if it were a real "Granicus" video page for every one of
+those 12 governments: Morris County NJ, Mesa AZ, Sioux Falls SD, Fort
+Collins CO, Lakewood CO, Syracuse NY, Clearwater FL, Lewis and Clark
+County MT, Palo Alto CA, Chapel Hill NC, Genesee County NY, and Littleton
+CO.
+
+**What we built.** One shared list in `app/platforms/base.py`
+(`CORPORATE_HOSTS_BY_PLATFORM`) names every vendor's own real marketing,
+login, or referral web address, confirmed by visiting each one directly.
+The code now checks this list once, before it tries to match any
+platform, so it never mistakes a vendor's own page for a government's
+page. `CIVICPLUS_CORPORATE_HOSTS`, WO-162's original name, still works
+exactly as before — it now points at one entry inside the new shared
+list, so the three scripts that already used it did not need to change.
+
+Three platforms were checked and left alone on purpose. ClerkBase and
+Town Hall Streams put a real government's page on the vendor's *main*
+web address itself (the government name is part of the page's path, not
+a separate address) — removing the vendor's main address would have
+broken every real government on those two platforms, not just fixed a
+marketing page. Aurora, CO's video site belongs to Aurora alone; there
+is no separate company page to mistake it for. Cablecast, Castus, and
+Vimeo already only match a specific page shape, not just a company name
+in the address, so they were never at risk of this mistake and were left
+unchanged.
+
+**How we confirmed each web address is real.** We visited each vendor's
+own homepage directly (one at a time, waiting 2 seconds between each,
+identifying ourselves honestly) rather than guessing. Four vendors
+turned out to be owned by Granicus now and redirect straight to
+Granicus's own site — a fact we only learned by visiting them.
+
+| Platform | Web addresses confirmed as the vendor's own, not a government's |
+| --- | --- |
+| Granicus | `granicus.com`, `www.granicus.com` |
+| Legistar | `legistar.com`, `www.legistar.com` (redirects to Granicus) |
+| CivicClerk | `www.civicclerk.com` (redirects to a CivicPlus page) |
+| PrimeGov | `primegov.com`, `www.primegov.com` (redirects to Granicus) |
+| Swagit | `swagit.com`, `www.swagit.com` (redirects to Granicus) |
+| eScribe | `escribemeetings.com`, `www.escribemeetings.com` |
+| CivicWeb / Diligent Community | `civicweb.net`, `www.civicweb.net`, `diligentoneplatform.com`, `www.diligentoneplatform.com`, `oidc.diligentoneplatform.com` (a real sign-in page) |
+| IQM2 | `iqm2.com`, `www.iqm2.com` (redirects to Granicus) |
+| ClerkBase | `www.clerkshq.com` only — the company's main address (no `www`) is where real governments live, so that one stays untouched |
+| ChampDS | `champds.com`, `www.champds.com` |
+| Destiny AgendaQuick | `destinyhosted.com`, `www.destinyhosted.com` |
+| TelVue | `telvue.com`, `www.telvue.com` |
+| Viebit | `viebit.com`, `www.viebit.com` (redirects to Leightronix, Viebit's parent company) |
+| SuiteOne Media | `suiteonemedia.com`, `www.suiteonemedia.com` (redirects to a renamed site, getsuiteone.com) |
+| CivicPlus (from WO-162, unchanged) | `civicplus.com`, `www.civicplus.com`, `connect.civicplus.com` |
+
+**Live check on three of the twelve affected governments.** We fetched
+each government's own real calendar page and ran the fixed scan on it,
+read-only — no data was saved or changed.
+
+| Government | Scan result before the fix | Scan result after the fix |
+| --- | --- | --- |
+| Mesa, AZ | Wrongly picked Granicus's own product page | Correctly finds nothing — this page's real video system isn't one we recognize yet, which is an honest result, not a bug |
+| Fort Collins, CO | Wrongly picked Granicus's own product page | Correctly finds nothing, same reason as Mesa |
+| Palo Alto, CA | Correctly found a real PrimeGov page | Still correctly finds the same real PrimeGov page — no regression |
+
+Mesa's and Fort Collins's pages still have no real video result after
+this fix. That is expected and correct: this fix only stops the scan
+from picking the wrong page. Finding out what video system those two
+governments actually use, if any, is separate work.
+
+**Caution.** Governments already recorded as "no video found" because of
+this bug, from before this fix, are not automatically corrected. The 12
+governments the triage session found keep their original reject reason
+for now — they are the natural list to re-check once the planned
+CMS-signature scan runs. Two platforms, ClerkBase and Town Hall Streams,
+still share one web address between the company's own page and real
+government pages; telling them apart needs a different fix (reading the
+page's path, not just its address) and was not built here.
+
+**Tests.** Every platform's real government-page shape and its new
+excluded company/login page are both tested in `tests/test_base.py`,
+including the exact Granicus product-page address the triage scan found.
+A new test also confirms `CIVICPLUS_CORPORATE_HOSTS` still points at the
+same shared data WO-162 built. All four required checks pass: code style
+(`ruff check`), code formatting (`ruff format --check`), and the full
+test suite (2,974 passed, 16 skipped). No database tables changed, so no
+migration check was needed.
+
+**Deploy status.** This change is in the `app/` code, merged to `main`
+but not live in production until the next resolver deploy — deploys in
+this repo are manual. The five sweep sessions running right now use this
+worktree's own code directly, so they pick up the fix on their next run
+without waiting for a deploy.
 
 ## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
 
