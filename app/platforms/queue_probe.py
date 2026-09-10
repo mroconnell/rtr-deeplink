@@ -76,6 +76,12 @@ from .base import (
 )
 from .telvue import TelvueAssetFinder
 from .vimeo import VimeoAssetFinder, parse_vimeo_video
+from .wistia import (
+    WistiaAssetFinder,
+    _date_from_title as _wistia_date_from_title,
+    _date_from_unix as _wistia_date_from_unix,
+    parse_wistia_account_url,
+)
 from .youtube import YouTubeAssetFinder
 
 logger = logging.getLogger("rtr_deeplink.queue_probe")
@@ -429,6 +435,72 @@ async def _probe_telvue(
     return _finish(url, "telvue", method, float(duration), None, None, start)
 
 
+# --- Wistia ----------------------------------------------------------
+
+
+async def _probe_wistia(
+    url: str, external_id: Optional[str], start: float
+) -> ProbeResult:
+    """Reads Wistia's own media JSON directly (`fast.wistia.com/embed/
+    medias/{id}.json`) rather than HEAD+ffprobe-ing the real public MP4 --
+    the JSON already carries a real `duration` for free (see wistia.py's
+    own docstring), and it's the same request that also catches a dead/
+    pruned id (`{"error": true}`, a real HTTP 200 -- confirmed live on
+    several 2019/2021 RegionalWebTV archive links) before anything more
+    expensive runs.
+
+    `external_id` (`"wistia:{hashedId}"`, `ResolvedMeeting.external_id`)
+    is how the hashedId reaches here when a fresh resolve just ran --
+    `wistia.py`'s own `video_url` is a direct asset-delivery URL (an
+    opaque content hash, `embed-ssl.wistia.com/deliveries/{hash}.bin`,
+    confirmed live to carry no hashedId of its own), so unlike Vimeo's
+    `video_url` (which IS the id-bearing embed URL, see `_probe_vimeo`
+    above), Wistia can't recover the hashedId from `video_url` alone.
+    When no fresh resolve ran (a caller passing a pre-known `video_url`
+    directly), fall back to parsing `url` itself as a direct Wistia
+    media URL."""
+    method = "wistia-media-json"
+    hashed_id = None
+    if external_id and external_id.startswith("wistia:"):
+        hashed_id = external_id.split(":", 1)[1]
+    if not hashed_id:
+        parsed = parse_wistia_account_url(url)
+        if parsed and parsed[0] == "media":
+            hashed_id = parsed[1]
+    if not hashed_id:
+        return _dead(
+            url, "wistia", method, start, "could not find a Wistia media id to probe"
+        )
+
+    payload = await WistiaAssetFinder._fetch_media_json(hashed_id)
+    if not payload or payload.get("error"):
+        return _dead(
+            url,
+            "wistia",
+            method,
+            start,
+            "Wistia media JSON reported this id as dead/pruned",
+        )
+
+    media = payload.get("media") or {}
+    duration = media.get("duration")
+    if not duration:
+        return _dead(
+            url, "wistia", method, start, "Wistia media JSON carried no duration"
+        )
+
+    date = _wistia_date_from_title(media.get("name")) or _wistia_date_from_unix(
+        media.get("createdAt")
+    )
+
+    size_bytes = None
+    for asset in media.get("assets") or []:
+        if asset.get("public") and asset.get("size"):
+            size_bytes = max(size_bytes or 0, int(asset["size"]))
+
+    return _finish(url, "wistia", method, float(duration), date, size_bytes, start)
+
+
 # --- HLS (Granicus, Swagit, Cablecast) --------------------------------
 
 
@@ -623,6 +695,7 @@ async def probe_queue_entry(
     """
     start = time.monotonic()
     resolved_platform = platform
+    external_id = None
 
     if video_url is None:
         try:
@@ -648,6 +721,7 @@ async def probe_queue_entry(
             )
 
         video_url = result.video_url
+        external_id = getattr(result, "external_id", None)
         if not source_page_url:
             source_page_url = getattr(result, "source_url", None) or url
         if not video_url:
@@ -668,6 +742,8 @@ async def probe_queue_entry(
         return await _probe_vimeo(url, video_url, start)
     if resolved_platform == "telvue":
         return await _probe_telvue(url, video_url, source_page_url, start)
+    if resolved_platform == "wistia":
+        return await _probe_wistia(url, external_id, start)
 
     media_path = urlparse(video_url).path.lower()
     if media_probe.is_hls(video_url):

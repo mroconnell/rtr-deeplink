@@ -3638,3 +3638,7 @@ www.youtube.com,youtube:WNXXw04jxvg,us:place:4271856,fallback,wo150_muni_ladder_
 www.youtube.com,youtube:fnnKLtVdaFo,us:place:3448510,fallback,wo150_muni_ladder_sweep,"Mountainside borough -- WO-150 muni ladder sweep, gov_id=us:place:3448510"
 www.youtube.com,youtube:pGvACCBJwbQ,us:place:1924600,fallback,wo150_muni_ladder_sweep,"Eldridge city -- WO-150 muni ladder sweep, gov_id=us:place:1924600"
 www.youtube.com,youtube:e0_-HCYDTyM,ca:csd:3526014,fallback,wo150_muni_ladder_sweep,"Wainfleet -- WO-150 muni ladder sweep, gov_id=ca:csd:3526014"
+amsva.wistia.com,external_id=wistia:i2vooa0pno,us:place:5183136,fallback,wo161_wistia,"Warrenton town, VA -- Warrenton Town Council Evening Session 8/11/2026, real segments+video live; amsva.wistia.com is a shared RegionalWebTV account across 4+ VA governments, so pinned per-media, not per-host"
+amsva.wistia.com,external_id=wistia:rku5thibnd,us:place:5148952,fallback,wo161_wistia,"Manassas city, VA -- Manassas City Council 2/25/2026, real segments+video live; shared amsva.wistia.com account, pinned per-media"
+amsva.wistia.com,external_id=wistia:cxq6loi58u,us:place:5129744,fallback,wo161_wistia,"Fredericksburg city, VA -- Fredericksburg City Council Worksession 4/28/2026, real segments+video live; shared amsva.wistia.com account, pinned per-media"
+amsva.wistia.com,external_id=wistia:yfyf2q9szj,us:county:51179,fallback,wo161_wistia,"Stafford County, VA -- Stafford Board of Supervisors 1/6/2026, real segments+video live; shared amsva.wistia.com account, pinned per-media"
