@@ -56,7 +56,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import certifi
 
@@ -247,6 +247,36 @@ def fetch_transcript(video_id: str):
     return snippets_to_segments(transcript.snippets), transcript.language_code
 
 
+def _restrict_to_slugs(pages: List[dict], slugs_file: Optional[Path]) -> List[dict]:
+    """Narrow the transcript-wanted queue to --slugs-file, if given.
+
+    Filters the queue the Archive already returned rather than asking for
+    those slugs directly -- there's no per-slug lookup on
+    /internal/transcript-wanted, and this keeps the same "still surveyed,
+    paced and reported exactly like a full run" property scripts/
+    backfill_meeting_cards.py's own --slugs-file established. A slug in
+    the file that isn't in the queue (already has a good transcript, not
+    YouTube, or just a typo) is reported rather than silently ignored.
+    """
+    if not slugs_file:
+        return pages
+    wanted: Set[str] = {
+        line.strip()
+        for line in slugs_file.read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    kept = [p for p in pages if p.get("slug") in wanted]
+    missing = wanted - {p.get("slug") for p in kept}
+    print(
+        f"--slugs-file {slugs_file}: {len(wanted)} slug(s) requested, {len(kept)} found in the queue."
+    )
+    if missing:
+        print(
+            f"  not in transcript-wanted queue ({len(missing)}): {', '.join(sorted(missing))}"
+        )
+    return kept
+
+
 async def _get_wanted(session: aiohttp.ClientSession) -> List[dict]:
     async with session.get(
         f"{_base_url()}/internal/transcript-wanted",
@@ -424,6 +454,16 @@ async def main() -> None:
     parser.add_argument(
         "--limit", type=int, default=None, help="Process at most this many pages"
     )
+    parser.add_argument(
+        "--slugs-file",
+        type=Path,
+        default=None,
+        help="Process only the slugs listed in this file, one per line "
+        "(blank lines and '#' comments ignored), instead of the full "
+        "transcript-wanted queue. For a targeted run (e.g. a pre-vetted "
+        "identity-checked list) without touching the selection logic "
+        "that builds the queue itself.",
+    )
     args = parser.parse_args()
 
     if not _base_url():
@@ -446,6 +486,7 @@ async def main() -> None:
     try:
         async with aiohttp.ClientSession() as session:
             pages = await _get_wanted(session)
+            pages = _restrict_to_slugs(pages, args.slugs_file)
             if args.limit is not None:
                 pages = pages[: args.limit]
             if not pages:

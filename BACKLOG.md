@@ -137,7 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (58)
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -148,6 +148,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (57)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can…
     `[NEEDS-AUDIT]` CivicPlus's subdomain jurisdiction hint is lost…
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely…
+  63 identity-checked pages still need a YouTube-transcript fetch —…
   ChampDS symptom B — instant 0.2s failures from the JSON API,…
   `[JUST-DO-IT]` ~10 OnBase/Hyland-family pages still resolve with no…
   Duration alone cannot separate a very short real meeting from an ad…
@@ -221,7 +222,9 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (13)
+Trust, safety & data quality  (15)
+  A live page is keyed to the wrong government entirely — Bamberg…
+  `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed…
   Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
   `[LATER]` No blanket backfill can make pre-2026-08-21 `best_effort`…
   `[NEEDS-AUDIT]` "County of {Name}" jurisdiction prefix form isn't…
@@ -828,6 +831,40 @@ actionability sections above.
     `barnstable.cablecast.tv` answered normally (200) in the same check.
   - **History**: none yet — confirmed directly 2026-08-23, no prior
     BACKLOG_DONE entry.
+
+### 63 identity-checked pages still need a YouTube-transcript fetch — blocked mid-run by a real IP block signature `[WAIT]`
+
+- **Issue**: WO-131 (2026-09-09) built the identity-checked YouTube
+  transcript-fetch list per Ryan's criteria (national-table `gov_id`,
+  `names_match` in yes/stale form/state missing, minus one page found to
+  be mis-keyed — see the Trust & data quality entry above) — 78 good
+  candidates. A real (non-dry-run) push attempt against them got through
+  15 pages (all genuine per-video failures: `TranscriptsDisabled` x8,
+  `VideoUnplayable` x4, `VideoUnavailable` x3 — disabled captions,
+  private, live-not-yet-started, or deleted videos, not YouTube-side
+  blocking) before the 16th page hit a real `IpBlocked` signature, which
+  survived both of `fetch_youtube_transcripts.py`'s built-in backoff
+  retries (30s, 120s) — see `docs/investigations/youtube_429_block.md`.
+  Per that script's own design, the whole run then aborted rather than
+  continuing to poll. 0 transcripts were pushed.
+- **Impact**: 63 candidates (62 never attempted + the one that hit the
+  block) still want a transcript fetch. Given the investigation doc's
+  own data (a 9-minute-idle retry once still failed 10/10 on the same
+  block), retrying minutes later would very likely just extend whatever
+  is causing it — WO-131 deliberately did not re-run today.
+- **Next action**: from this Mac, re-run
+  `python scripts/fetch_youtube_transcripts.py --slugs-file
+  <corrected list>` after a real cooldown (hours, not minutes — no
+  reliable duration is known; see the investigation doc), excluding the
+  15 slugs above (their failures are per-video, not block-related, and
+  won't succeed on retry). The corrected 78/63-slug lists WO-131 built
+  aren't checked in (derived data, easily regenerated) — rebuild them
+  with `scripts/export_meeting_inventory.py --source export` plus this
+  entry's filter criteria, or ask the session that ran WO-131.
+- **Constraint**: don't run a bulk sweep just to test whether the block
+  has cleared — a single isolated fetch is enough signal, per the
+  investigation doc.
+- **History**: WO-131, `BACKLOG_DONE.md`.
 
 ### ChampDS symptom B — instant 0.2s failures from the JSON API, instrumented but not yet recurred `[WAIT]`
 
@@ -2287,6 +2324,61 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### A live page is keyed to the wrong government entirely — Bamberg County, SC's YouTube livestream page displays as Nottoway County, VA `[NEEDS-AUDIT]`
+
+- **Issue**: `/m/bamberg-county-sc-livestream` (page_id 6124, `source_url`
+  `https://www.bambergcounty.sc.gov/county-council/livestream`) is stored
+  with `gov_id=us:county:51135` (Nottoway County, VA), `names_match=yes`,
+  `jurisdiction_confidence=registry`, and `meeting_name="Welcome to
+  Nottoway County, Virginia"` — and the live page's `<title>`, meta
+  description and JSON-LD all render as Nottoway County, VA. Confirmed
+  the source page itself says none of this: `curl` of the real Bamberg
+  County SC URL contains "Bamberg" 96 times and "Nottoway" zero times, so
+  the wrong jurisdiction/meeting-name text didn't come from the page —
+  it was attached to this row somewhere in our own pipeline. No other row
+  in the 2026-09-09 inventory export shares `gov_id=us:county:51135` or a
+  `bambergcounty.sc.gov` source, so this isn't a clean two-row swap; it
+  looks like a single corrupted row, cause not yet found.
+- **Impact**: a real government (Bamberg County, SC) is invisible under
+  this URL, and a reader who finds this page via search or a Nottoway
+  County link sees a livestream and meeting name that have nothing to do
+  with Virginia. Exactly the "mediocre outcome" Ryan flagged for bad
+  gov-id/display-name enrichment — this passed WO-131's stated identity
+  filter (`names_match=yes`, national-table `gov_id`) despite being
+  wrong, so that filter alone isn't sufficient proof of a good page.
+  WO-131 manually excluded this one page from its YouTube-transcript
+  push list rather than trusting the filter here.
+- **Next action**: find which ingest step wrote Nottoway's identity onto
+  Bamberg's URL (a likely candidate: a `nationwide_NNNN_ingest.py` batch
+  run processing adjacent CSV rows with an off-by-one or shared-buffer
+  bug), fix the row by hand once found, and spot-check nearby rows from
+  the same ingest batch for the same contamination.
+- **History**: found while building WO-131's identity-checked slug list,
+  2026-09-09; not otherwise investigated.
+
+### `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed placeholder as if it were a real 11-character video ID
+
+- **Issue**: `_VIDEO_ID_RE` in `app/platforms/youtube.py` captures any
+  `[A-Za-z0-9_-]{11}` following `embed/` (etc.). A source page whose
+  embed is a generic "watch whatever's live now" widget rather than a
+  specific archived video — `.../embed/live_stream` (YouTube's own
+  reserved literal for "current live stream on this channel", exactly 11
+  characters) or `.../embed/livestreaming?rel=0` (truncates to the
+  11-char `livestreami`) — matches the same as a real ID, so
+  `resolve_video_id()` treats it as a real video and only fails later, at
+  transcript-fetch time (`VideoUnavailable`/`VideoUnplayable`).
+- **Impact**: low — confirmed on 2 live pages in the 2026-09-09 export
+  (`mount-vernon-tx`, `bamberg-county-sc-livestream` — the latter is also
+  the mis-keyed-government entry above), both of which already show no
+  video/transcript to readers, so the reader-facing outcome is the same
+  as a correctly-detected "no real video." This is a diagnostic-accuracy
+  gap, not a content-correctness one. Found while building WO-131's
+  YouTube-transcript identity filter, not chased further.
+- **Next action**: reject the literal `live_stream` outright, and treat
+  an extracted ID containing "livestream" as suspect rather than a real
+  video ID.
+- **History**: found 2026-09-09, WO-131.
 
 ### Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]` `[BIG]`
 
