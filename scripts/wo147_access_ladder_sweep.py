@@ -1327,6 +1327,7 @@ async def process_candidate(
                 **base_report,
                 "outcome": "queued_tier3_pending",
                 "meeting_url": result.seed_url,
+                "video_url": result.video_url,
                 "tier": "tier3_pending",
                 "note": note,
             }
@@ -1341,7 +1342,29 @@ async def process_candidate(
                 **base_report,
                 "outcome": "queued_tier3",
                 "meeting_url": result.seed_url,
+                "video_url": result.video_url,
                 "tier": "tier3",
+                "note": (base_report["note"] + "; " + result.reason).strip("; "),
+            }
+        )
+        return "ok"
+
+    if outcome == "rejected_by_probe":
+        # WO-169: a real video existed on this row (wo134.resolve_seed()
+        # already tried every candidate on every platform hit and probed
+        # each tier-3 one -- see PROBE_HOOK) but none passed WO-144's
+        # queue probe. Distinct from no_video_found (no video ever
+        # existed) per Ryan's "video existed, take the next candidate,
+        # only report this once candidates are exhausted" rule -- see
+        # CLAUDE.md's WO-169 entry and app/platforms/queue_probe.py.
+        writer.writerow(
+            {
+                **base_report,
+                "outcome": "rejected_by_probe",
+                "reject_reason": "rejected_by_probe",
+                "reject_class": "content",
+                "meeting_url": result.seed_url,
+                "video_url": result.video_url,
                 "note": (base_report["note"] + "; " + result.reason).strip("; "),
             }
         )
@@ -1355,6 +1378,7 @@ async def process_candidate(
                 "reject_reason": "no-video-found",
                 "reject_class": "content",
                 "meeting_url": result.seed_url,
+                "video_url": result.video_url,
                 "note": (base_report["note"] + "; " + result.reason).strip("; "),
             }
         )
@@ -1370,7 +1394,27 @@ async def process_candidate(
         )
         return "error"
 
-    # outcome == "skipped"
+    # outcome == "skipped" -- WO-169: result.seed_url/result.video_url now
+    # carry real URL evidence even on a fully-skipped row (see RowSkip's
+    # own docstring in wo134_confirmed_hits_ingest.py), so this report
+    # keeps them instead of leaving meeting_url/video_url blank. Applies
+    # WO-164's tag rule directly: a video with no meeting/listing evidence
+    # is video-without-meeting, checked before the substring-based
+    # classifier below (which can't see result.video_url at all).
+    if result.video_url and not result.seed_url:
+        writer.writerow(
+            {
+                **base_report,
+                "outcome": "skipped",
+                "reject_reason": "video-without-meeting",
+                "reject_class": "content",
+                "meeting_url": "",
+                "video_url": result.video_url,
+                "note": (base_report["note"] + "; " + result.reason).strip("; "),
+            }
+        )
+        return "ok"
+
     reject_reason = classify_skip_reason(result.reason)
     writer.writerow(
         {
@@ -1386,6 +1430,8 @@ async def process_candidate(
             else "skipped",
             "reject_reason": reject_reason,
             "reject_class": "content",
+            "meeting_url": result.seed_url,
+            "video_url": result.video_url,
             "note": (base_report["note"] + "; " + result.reason).strip("; "),
         }
     )

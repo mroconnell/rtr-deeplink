@@ -103,6 +103,11 @@ load_dotenv()
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import detect_platform  # noqa: E402
 from app.platforms.models import ResolvedMeeting  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    DEFAULT_SIDECAR_PATH,
+    append_probe_row,
+    probe_queue_entry,
+)
 from app.utils.url_normalize import normalize_url  # noqa: E402
 from scripts.bulk_ingest import _base_url, _ingest  # noqa: E402
 import scripts.hub_sweep_wo126 as hs  # noqa: E402
@@ -749,6 +754,41 @@ def _pin_for_pending(
     return hs.pin_for(gov, source_url, video_url, platform)
 
 
+def _apply_skip_to_report(rep: Report, e: "hs.Skip") -> Report:
+    """WO-169: mirrors hs._apply_skip() for this script's own Report
+    dataclass (not hs.Result -- Report's field set differs, so this is a
+    small duplicate rather than a shared function). Carries a Skip's
+    meeting_url/video_url onto the report row instead of dropping them
+    (the exact gap WO-151 found -- see hs.Skip's own docstring), and
+    gives an hs.ProbeRejected instance its own `rejected_by_probe`
+    outcome rather than folding it into `skipped`."""
+    rep.outcome = "rejected_by_probe" if isinstance(e, hs.ProbeRejected) else "skipped"
+    rep.reject_reason = e.reject_reason
+    rep.note = e.detail
+    rep.meeting_url = e.meeting_url or rep.meeting_url
+    rep.video_url = e.video_url or rep.video_url
+    if rep.outcome == "skipped" and rep.video_url and not rep.meeting_url:
+        rep.reject_reason = "video-without-meeting"
+    return rep
+
+
+async def _passes_probe(
+    platform: str, result: ResolvedMeeting, meeting_url: str
+) -> bool:
+    """WO-169: "probe before queue," same rule as every other sweep
+    (docs/BREADTH_SWEEP_BRIEF.md). Real captions (segments) never reach
+    here -- see act_on_result()'s own call site -- so this only ever
+    probes a tier-3 (video, no captions) candidate."""
+    probe = await probe_queue_entry(
+        meeting_url,
+        video_url=result.video_url,
+        source_page_url=result.source_url or meeting_url,
+        platform=platform,
+    )
+    append_probe_row(DEFAULT_SIDECAR_PATH, probe)
+    return probe.verdict not in ("reject-dead", "reject-short")
+
+
 async def act_on_result(
     session: aiohttp.ClientSession,
     cand: Cand,
@@ -882,6 +922,26 @@ async def act_on_result(
         return rep
 
     if result.video_url:
+        # WO-169: probe before this candidate is even written to the
+        # pending sink -- the real, confirmed bug this closes is that
+        # wo145_tier3_pending.csv committed to the FIRST candidate with a
+        # video_url and never revisited it, so a later probe reject (in
+        # whatever process reads that pending file) ended the government's
+        # whole attempt. Raising hs.ProbeRejected here instead lets this
+        # function's own CALLERS -- process_enumerator_platform()'s
+        # `for row in resolved_rows:` loop already has `except hs.Skip as
+        # e: ...; continue`, and process_civicplus()'s own except-Skip
+        # sites -- try the next candidate exactly the way any other Skip
+        # already does. 10 of this WO's own governments were dropped this
+        # way (see BACKLOG_DONE.md's WO-169 entry).
+        if not await _passes_probe(platform, result, meeting_url):
+            raise hs.ProbeRejected(
+                "rejected_by_probe",
+                f"{platform}: resolved real video but it failed WO-144's queue "
+                f"probe ({meeting_url})",
+                meeting_url=meeting_url,
+                video_url=result.video_url or "",
+            )
         pin = _pin_for_pending(
             cand, result.source_url or meeting_url, result.video_url, platform
         )
@@ -994,10 +1054,7 @@ async def process_civicplus(
                     tier3_writer,
                 )
             except hs.Skip as e:
-                rep.outcome = "skipped"
-                rep.reject_reason = e.reject_reason
-                rep.note = e.detail
-                return rep
+                return _apply_skip_to_report(rep, e)
             except Exception as e:  # noqa: BLE001
                 rep.outcome = "skipped"
                 rep.reject_reason = "resolve-failed"
@@ -1029,10 +1086,7 @@ async def process_civicplus(
                 tier3_writer,
             )
         except hs.Skip as e:
-            rep.outcome = "skipped"
-            rep.reject_reason = e.reject_reason
-            rep.note = e.detail
-            return rep
+            return _apply_skip_to_report(rep, e)
     rep.outcome = "skipped"
     rep.reject_reason = "no-meetings-found" if not civicplus_rows else "no-video-found"
     rep.note = note
@@ -1146,8 +1200,16 @@ async def process_enumerator_platform(
                 tier3_writer,
             )
         except hs.Skip as e:
-            rep.reject_reason = e.reject_reason
-            rep.note = e.detail
+            # WO-169: a probe reject here no longer ends the tenant's
+            # attempt -- `_apply_skip_to_report()` records the verdict
+            # (rejected_by_probe gets its own outcome; see that helper's
+            # docstring) and this loop's own `continue` moves on to the
+            # next `resolved_rows` candidate, exactly Ryan's "take the
+            # next candidate" rule. A later candidate's outcome still
+            # overwrites this one if the loop keeps going -- same
+            # last-one-wins semantics this loop already had before this
+            # WO for a plain Skip.
+            rep = _apply_skip_to_report(rep, e)
             continue
 
     # Nothing with video among the resolved_ok candidates; nothing_to_ingest

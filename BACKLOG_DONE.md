@@ -141,6 +141,156 @@ Channel pins and per-video pins for all three (the pages stored no channel, so t
 
 **Deploy status.** Pages re-keyed now; the queue line and pins reach production on the next deploy.
 
+## WO-169: probe rejects now move to the next candidate, skipped rows keep their web addresses, Granicus reads a cheap RSS feed first — 16 dropped governments re-run [Done 2026-09-10]
+
+Three bugs in the shared sweep pipeline, found while WO-145/147/150/151
+were running this week. All three are fixed now. The 16 governments the
+bugs dropped were re-run.
+
+**Fix 1: a bad video no longer drops the whole government.** Each sweep
+checks up to six recent meetings per government and picks the first one
+with a real video. A second check (the "probe") then looks at that one
+video to see if it actually plays and is long enough to be a real
+meeting. Before this fix, if the probe said no, the sweep gave up on the
+whole government — even when five other recent meetings were sitting
+right there, untried. Now the probe runs on each candidate in turn, and
+only gives up once it has checked all of them.
+
+Example: Polk County, TX had a real meeting on CivicClerk that pointed
+to a YouTube video. The old check used the wrong label for that video,
+so the probe rejected it as broken. Once the code asks the right
+question, the video probes fine, and the meeting is now a real page on
+the site with 922 transcript lines.
+
+**Fix 2: a rejected meeting now keeps its web address.** When a sweep
+gave up on a meeting, it used to erase the two web addresses that
+mattered most — the page where the meeting was found, and the video
+itself. That meant we lost the addresses for meetings that really do
+have video, right when we most needed to check them again later. Now
+every rejected row keeps both addresses.
+
+Example: four Texas and Illinois counties had this happen. We had to
+dig into an older, unpublished file to recover their video addresses
+before we could even attempt this re-run.
+
+**Fix 3: Granicus listings load a small file first, not a big one.**
+Granicus is a video platform many governments use. To find a
+government's meetings, the sweep used to download the platform's full
+meeting archive page, which can be up to 8 megabytes. A cheaper page
+exists — about 100 kilobytes — that lists the same videos. The sweep
+now tries the cheap page first and only falls back to the big page if
+the cheap one has nothing.
+
+**The re-run.** We pulled the 16 governments the bugs had dropped and
+ran them again with all three fixes in place.
+
+| Result | Count of 16 |
+|---|---|
+| Real meeting added to the site | 1 |
+| Sent to cloud transcription | 2 |
+| Still rejected, but for a real reason | 12 |
+| Failed for an unrelated reason (a dead web page) | 1 |
+
+The 12 still-rejected ones are real, confirmed problems, not more bugs:
+two point to a YouTube channel instead of one video, two point to Zoom
+recordings we can't read at all, one points to a video service
+(viebit) we can't check at all, three are YouTube livestreams that
+hadn't started yet when we checked, one video was removed, one video
+link timed out, and two are real meeting recordings that are too short
+to be a real meeting (34 seconds and 3 seconds).
+
+**Caution.** Five of the 16 governments had the wrong platform label in
+our records — the label said "CivicPlus" (the page where we first found
+the video) instead of the actual video service the video sits on. We
+caught this only because those five all came back as "the page for this
+video doesn't exist," which was itself a giveaway. Anyone re-running a
+dropped-government list by hand should check that the platform label
+matches the video's own address, not just the address where it was
+first noticed.
+
+**Recommendation.** Deploy the three pipeline scripts so future sweep
+runs get these fixes automatically. Nothing about the 16 re-run
+governments needs a deploy — that data is already saved.
+
+**Deploy status.** Code changes are on `main`, not yet deployed —
+`scripts/wo134_confirmed_hits_ingest.py`, `scripts/hub_sweep_wo126.py`,
+`scripts/wo145_api_first_sweep.py`, `scripts/wo147_access_ladder_sweep.py`,
+`scripts/wo147_finish_tier3_queue.py`, `scripts/wo150_muni_ladder_sweep.py`,
+`scripts/wo151_research_url_ladder_sweep.py`, and the new
+`scripts/wo169_probe_rejected_rerun.py`. None of these run as a live
+service — they're one-off scripts other sessions run from their own
+worktree copy of this repo, so they pick up the fix automatically the
+next time each one is run; no deploy is required for the fix itself to
+take effect. The one new queue line and one new page from this re-run
+are already live in the database (the ingest script talks to production
+directly). `jurisdiction_coverage.csv` and the research files are
+updated in the separate `rtr-business` repo, committed there.
+
+### What was actually built
+
+`scripts/wo134_confirmed_hits_ingest.py`:
+- `PROBE_HOOK` (new, default `None` — every existing caller keeps its
+  old behavior unless it sets this). `resolve_seed()`'s own candidate
+  loops (CivicPlus, Granicus, CivicClerk, the generic listing walk, the
+  YouTube-channel search) call it before accepting a video-only
+  candidate; a reject moves on to the next candidate instead of ending
+  the row.
+- `ProbeRejected` (new exception, a `RowSkip` subclass): raised once
+  every candidate on a platform hit has been probed and rejected.
+  `process_row()` reports this as its own `rejected_by_probe` outcome,
+  ranked above the older, vaguer `no_video_found`.
+- `RowSkip`/`RowResult` now carry `meeting_url`/`video_url` (both
+  optional, default blank — every existing call site still works).
+- `granicus_rss_candidate_rows()`/`granicus_fetch_rss_candidates()`
+  (new): read `ViewPublisherRSS.php?mode=video`, reusing
+  `app/platforms/granicus_channel.py`'s already-tested feed parser,
+  sorted newest-first by the feed's own date field, filtering
+  "(No Video)" closed-session placeholders. `granicus_locate_listing()`
+  and `resolve_seed()`'s own Granicus branch try this before the
+  8-megabyte archive-table page.
+
+`scripts/hub_sweep_wo126.py`: `Skip` gained the same
+`meeting_url`/`video_url` fields; a new `ProbeRejected` subclass and a
+shared `_apply_skip()` helper apply the same fix to every script built
+on this module's `Result`/`_process_gov()` (including
+`wo151_research_url_ladder_sweep.py`, which reuses them directly).
+`PROBE_HOOK` added here too, for parity.
+
+`scripts/wo145_api_first_sweep.py`: probes inline before writing to its
+own pending file, instead of only in a later, separate pass — this is
+what let 10 of the 16 dropped governments be retried by candidate
+instead of dropped outright.
+
+`scripts/wo147_finish_tier3_queue.py`: its own probe-reject step used to
+blank `meeting_url` when rewriting a row — the same Fix 2 bug, one stage
+later in that pipeline. Now restores the real address and marks the row
+`rejected_by_probe` instead of the vaguer `no_video_found`.
+
+`scripts/wo150_muni_ladder_sweep.py`: the one place this WO touched in a
+file another session is actively working on — a small, additive change
+(kept meeting/video addresses on a rejected row; recognizes the new
+`ProbeRejected` outcome) that doesn't touch anything else in that file.
+`wo150_finish_tier3.py` itself was left alone: it writes its own
+separate log file rather than updating `wo150_report.csv`, a real,
+separate gap filed in `BACKLOG.md`, not fixed here to avoid a larger
+change to a file under active work.
+
+New: `scripts/wo169_probe_rejected_rerun.py` (the re-run script) and
+`tests/test_wo169_probe_loop_and_granicus_rss.py` (12 tests: real-feed
+Granicus parsing including the "(No Video)" filter with one clearly
+marked synthetic item, a probe-reject-then-next-candidate test with a
+synthetic two-candidate YouTube channel, and a URL-carried-on-skip test
+for both the shared `Result` type and `process_row()`'s own final skip).
+
+Research files (`rtr-business` repo, not this one):
+`wo169_rerun_candidates.csv` (the 16-government input, with each row's
+real recovered web addresses and where they came from),
+`wo169_report.csv` (the re-run's own outcome per government),
+`wo169_apply_to_jc.py` and its log files (`jurisdiction_coverage.csv`
+updater, following that file's own write-safety rules), and
+`wo169_methods_section.md` (the methods write-up, section number to be
+assigned when merged into `ENUMERATION_METHODS.md`).
+
 ## Ryan's decisions on the held videos and undecided pages: 5 queued, 4 off-mission pages deleted, 14 pages re-keyed [Done 2026-09-10]
 
 Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
