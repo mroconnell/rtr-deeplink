@@ -1619,7 +1619,7 @@ filed in `BACKLOG.md`.
 
 **Deploy status.** The 39 pages are re-keyed in the database now. The
 pins reach new resolves only after the next deploy.
-## WO-150: access-ladder sweep of 1,155 municipalities over 5,000 people with no Archive page — 25 real videos found, 436 of 1,155 governments worked before this session stopped [Done 2026-09-10]
+## WO-150: access-ladder sweep of 1,155 municipalities over 5,000 people with no Archive page — 80 real videos found across both sessions, all 1,155 worked [Done 2026-09-10]
 
 Ryan's goal: one meeting with video per government, breadth not depth,
 across 1,155 US and Canadian municipalities that had no Archive page at
@@ -1728,7 +1728,119 @@ weakness, and Cornelius, NC above for a person to settle.
 **Deploy status.** Nothing in this entry touches the resolver, Archive,
 or worker code paths — it only calls the existing, already-deployed
 `POST /internal/ingest` endpoint and writes to shared research files.
-Nothing here needs a deploy.
+Nothing here needs a deploy. *(Corrected below — this was wrong for the
+transcription queue and the two pins.)*
+
+### Continuation: the remaining 719 governments (2026-09-10, second session)
+
+**What we did and why.** The first session stopped partway through,
+after checking 436 of 1,155 governments. This session picked up exactly
+where it left off and ran the same script, unchanged, against the
+remaining 719. We refreshed the list of pages the Archive already has
+first, so we would not recheck anything that had gone live since the
+first session (6,887 pages by the time this session started, up from
+3,084 at the start of the day). No code changes were needed — the two
+bugs the first session found and fixed stayed fixed for this whole
+batch.
+
+**Result.** All 719 were checked. Zero crashed. The script never hit its
+own "stop after 6 errors in a row" safety switch. No sign of the YouTube
+block described in `docs/investigations/youtube_429_block.md`.
+
+| Outcome | Count of 1,155 | Detail |
+|---|---|---|
+| Already covered | 12 | already had a real page, found a different way |
+| Captions available, page live now | 69 | a real transcript, ready to read |
+| Video, no captions, queued for transcription | 9 | checked first so a dead link doesn't get queued (see Caution) |
+| Rejected by probe | 2 | looked like a real video, checked, wasn't |
+| Meeting without video | 31 | a real, current meeting, nothing to attach |
+| No meeting nor video | 180 | no meeting listed at all |
+| Video without meeting | 0 | checked directly, none found |
+| No usable platform link found, after the full ladder | 621 | tried a plain request, then a browser-like one, then a real browser; still nothing |
+| Wrong domain mapping | 1 | Rock Springs, WY (see below) |
+| Same-name ambiguous | 1 | Cornelius, NC, carried over from the first session, still unresolved |
+| Off-mission (real video, not a real meeting) | 4 | |
+| No adapter for this video system yet | 1 | |
+| Blocked at a plain request | 0 | |
+| Blocked at a browser-like request | 2 | |
+| Blocked at a real browser | 0 | folded into "no usable platform link found" above — the tool doesn't separate this case out on its own yet |
+| Stopped by a "prove you're human" wall | 31 | |
+| Address never resolved | 184 | |
+| A real crash (not just "nothing found") | 0 | |
+| Left as the older, unclear label ("no video found"), no evidence either way | 7 | see Caution |
+
+Those rows add up to all 1,155 governments this work order covers.
+
+Separately, 316 of the 1,155 governments had a dead web address on file
+that we found a live replacement for. We saved the new address without
+deleting the old one, the same rule as the first session. This is not
+its own outcome — a domain-corrected row also appears in one of the
+rows above.
+
+**Which check found the way in, US vs. Canada, for the whole 1,155**
+(361 of the 1,155 already knew their video system from an earlier check
+and skipped straight to it; 12 already had a page and needed no check at
+all):
+
+| Check that found the way in | Count, US | Count, Canada |
+|---|---|---|
+| Already knew the video system | 336 | 25 |
+| A real browser, after a plain request came back with nothing | 394 | 114 |
+| A plain, honest request alone | 51 | 8 |
+| A browser-like request | 3 | 0 |
+| Stopped by a "prove you're human" wall | 24 | 5 |
+| Address never resolved | 179 | 4 |
+| Already had a page (no check needed) | 12 | 0 |
+
+**A new cross-jurisdiction mismatch.** Rock Springs city, WY's on-file
+video turned out to be for a different "City of Rock Springs" — in
+Indiana, not Wyoming. The same check that caught Cornelius, NC in the
+first session caught this one too. Not saved under either government's
+id.
+
+**Caution.** Two things a person should look at.
+
+First, one of the 9 rows above marked "queued for transcription" is not
+a clean win. Jennings city, LA's video already had a web address sitting
+in the real transcription line-up before this session started — put
+there by something else, not by this work. When we checked that video
+today, it turned out to be a placeholder for a livestream that has not
+started yet, not a real recording. We are telling you this so nobody
+assumes "it's in the line-up" means "it's a real meeting." Filed in
+`BACKLOG.md` so someone can check it and remove it if it is really dead.
+
+Second, 7 rows above are left with an older, unclear label ("no video
+found") instead of one of the two clearer labels from a separate,
+earlier request (WO-164). We checked: these 7 have no meeting listed and
+no video link either, so neither clearer label fits honestly. Left
+alone rather than guessed at — the same rule the earlier relabeling work
+used for the one row like it that it found.
+
+**Recommendation.** This closes out WO-150 — all 1,155 governments have
+now been checked. The 9 queued videos and the government pins that go
+with them need the next deploy to actually reach the transcription
+line-up and take effect (see the corrected Deploy status below). Someone
+should also spend a minute on the Jennings, LA line above.
+
+**Deploy status, corrected.** The first half of this entry said nothing
+here needed a deploy. That was right for the live pages (they went out
+immediately, the normal way) but wrong for the transcription queue and
+the government pins — both are files in this code repository
+(`scripts/tier3_auto_transcription_queue.txt`,
+`app/utils/jurisdiction_data/tenant_overrides.csv`), and a file in this
+repository only takes effect after a deploy, which is manual (see
+`CLAUDE.md`). The queued videos will not actually get transcribed, and
+the pinned pages will not show the right government, until someone
+deploys this branch.
+
+Files: `~/Documents/rtr-business/research/wo150_report.csv` (now 1,155
+rows), `wo150_tier3_pending.csv`/`wo150_tier3_finish_log.csv` (10 tier-3
+candidates probed, 7 fresh accepts), `wo150_discovery_seeds.csv`,
+`wo150_host_access_modes.csv`, the `wo150_jc_*.csv` apply logs
+(regenerated against the full 1,155-row report), `jurisdiction_coverage.csv`
+(commits `0c73ec5` and `08fe993`), `wo150_methods_section.md` and
+`ENUMERATION_METHODS.md` §189 (both extended with a matching
+continuation section).
 
 ## Pins for two YouTube-hosted pages that were keyed to no government: Greenlee County, AZ and Fortuna, CA [Done 2026-09-10]
 

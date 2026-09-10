@@ -236,3 +236,6 @@ https://fairviewtx.portal.civicclerk.com/event/986/media,civicclerk,,,,,0,reject
 https://wyomingmn.portal.civicclerk.com/event/666/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://cpmedia.azureedge.net/wyomingmn/7bd9036d-625f-4bc5-b054-f9211c2b1a9b.mp3,2.04,2026-09-10T22:25:00+00:00
 https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English,escribe,hls-master+variant,3300.24,,,1,accept,,2.19,2026-09-10T22:25:02+00:00
 https://lmctvny.new.swagit.com/videos/169569,swagit,hls-master+variant,290.46,,,0,accept,,2.02,2026-09-10T22:25:04+00:00
+https://tonawandatownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3023,iqm2,hls-master+variant,412.46,,,0,accept,,1.80,2026-09-10T22:14:19+00:00
+https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1372,iqm2,hls-master+variant,13412.47,,,1,accept,,19.71,2026-09-10T22:14:38+00:00
+https://www.youtube.com/watch?v=ZdFPHNoK46o,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] ZdFPHNoK46o: This live event will begin in 11 days.,1.51,2026-09-10T22:14:40+00:00

@@ -139,11 +139,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (120)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (121)
   [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
   [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
+  [NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
@@ -871,6 +872,13 @@ of human step they need.
   - **Next action**: either raise the budget for a dedicated follow-up pass restricted to `no-platform-link-found` rows from this WO's own report, or measure headless's actual yield on a larger sample before spending more wall-clock time on it (this WO's own 30-row pilot found 0/25 headless renders recovered a link — a small, possibly unrepresentative sample; the larger governments this coverage-registry note was based on may behave differently than the small towns this candidate list skews toward).
   - **Constraint**: one headless browser at a time, real delay — don't parallelize past a single browser without re-checking whether that changes a host's own rate-limiting behavior.
   - **History**: `BACKLOG_DONE.md`'s WO-151 entry has the pilot's exact headless numbers.
+
+- **[NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live `tier3_auto_transcription_queue.txt`, added by an unidentified source before WO-150's continuation ever touched it.**
+  - **Issue**: `https://www.youtube.com/embed/-pNyufIO7xM?feature=oembed` (Jennings city, LA) is already in `scripts/tier3_auto_transcription_queue.txt`. WO-150's continuation sweep (2026-09-10) independently found the same government's meeting and, per its own tier-3 gate, tried to probe it before queuing — but `scripts/wo150_finish_tier3.py` found the normalized `watch?v=` form already probed (by some other process, the same day) with a `reject-dead` verdict: `yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments` — a livestream placeholder, not a real recording. Neither WO-150 script wrote this queue line; its origin is unknown.
+  - **Impact**: `scripts/feed_tier3_auto_transcription.py` will eventually pop this line and burn a transcription attempt on a dead video — same failure shape as the "queue feasibility collapsed to ~8%" entry below, just one specifically-confirmed instance rather than the aggregate trend.
+  - **Next action**: re-check the video a few days out (the probe's own error text implies a livestream that hasn't started, not necessarily one that never will), then remove the one line from `tier3_auto_transcription_queue.txt` by hand if it's still dead.
+  - **Constraint**: don't remove queue lines in bulk off one probe run — this is a single, specifically-confirmed case, not a signal to re-probe the whole file.
+  - **History**: found running `wo150_finish_tier3.py` during WO-150's continuation. `rtr-deeplink/BACKLOG_DONE.md`'s WO-150 entry (Continuation block); `rtr-business/research/wo150_tier3_finish_log.csv`.
 
 - **[NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   domain (`"granicus.com" in netloc`, etc.) false-positives on the
