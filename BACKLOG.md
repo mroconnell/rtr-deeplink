@@ -115,8 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (7)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (8)
   4 more wrong-government domain mappings, same fix shape as the 17…
+  `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   Coverage registry: per-state view and other dashboard additions…  (5)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
@@ -135,8 +136,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (107)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (113)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
+  [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
+  [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
+  [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
+  [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -212,7 +217,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (107)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (34)
+  Adapter & platform gaps  (36)
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
@@ -247,6 +252,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (107)
     [NEEDS-AUDIT] `[EXAMPLE]` A newer CivicPlus product generation…
     [NEEDS-AUDIT] `[EXAMPLE]` Two real, unsupported video platforms found…
     [NEEDS-AUDIT] `civicplus.py`'s own docstring claims AgendaCenter rows…
+    [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
+    [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
 
 Reliability, ops & cost  (13)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
@@ -268,7 +275,8 @@ Reliability, ops & cost  (13)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (15)
+Trust, safety & data quality  (16)
+  A bare YouTube channel-listing scan measurably ingests non-meeting…
   A live page is keyed to the wrong government entirely — Bamberg…
   `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed…
   Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
@@ -565,6 +573,32 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   based on for this row before trusting it elsewhere.
 - **History:** WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
+### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo150_muni_ladder_sweep.py`'s access ladder calls
+  `wo141_access_ladder_pilot.try_headless()` for a page that loaded
+  cleanly with no visible link, but that helper returns only a
+  classification (`platform_link`/`listing`/`none`/`challenge`), not the
+  raw HTML `page.content()` returned. When headless *does* classify a
+  page as `platform_link`, `run_access_ladder()` has no text left to run
+  `_extract_platform_hit()` against, so it falls through to
+  `no-platform-link-found` instead of actually finding the government's
+  platform.
+- **Impact:** Every WO-150 government whose real platform link is only
+  drawn by JavaScript is undercounted as `no_platform_link_found` even
+  though the fix WO-133 already proved (headless finds JS-drawn links)
+  would have worked here. See `wo150_report.csv` rows whose `note`
+  contains "raw content wasn't retained for host extraction".
+- **Next action:** Change `try_headless()` (or add a sibling) to return
+  the page's HTML alongside its classification, and have
+  `run_access_ladder()` call `_extract_platform_hit()` on it the same
+  way the plain/browser-headers rungs already do.
+- **Constraint:** `wo141_access_ladder_pilot.py` is a read-only pilot
+  script another WO may still be running against; coordinate before
+  changing its return shape, or make the change in a wo150-local copy
+  of just `try_headless()` instead.
+- **History:** WO-150, `BACKLOG_DONE.md` 2026-09-10.
+
 ### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** Both review pages -- the meeting inventory
@@ -701,10 +735,99 @@ of human step they need.
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
 - **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is real and ongoing — 30 occurrences since 2026-08-30, five more in one 23-minute span this morning — but dashboard/log access has hit its ceiling; memory pressure is now ruled out as the driver for the great majority of them.**
-  - **Issue**: identical "Exited with status 134" Render alerts, now 30 occurrences since 2026-08-30 16:54 UTC through at least 2026-09-10 18:30 UTC (instance `zdd2t`, 11:30 AM PDT). Root cause is still unconfirmed at the application level — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config — but two live-checked data points narrow it: (1) **the memory graph for both the last 4 hours and the last 14 days shows usage staying well under the `standard` plan's 2GB limit throughout, with exactly one exception already on record** — the 2026-09-01 morning spike (the one outage already correlated with a matching Render alert). Every other crash checked, including today's, happened with memory far from the ceiling — this rules out chronic memory pressure as the driver for the bulk of the crash-loop, leaving a native-extension fault (this app's C-extension deps: aiohttp/uvloop/asyncpg/PyAV) as the more likely explanation for most occurrences, 2026-09-01 aside. (2) **PR #795's `handle_head_requests` Content-Length fix is confirmed deployed** (Ryan verified directly) and confirmed working live — a `HEAD /m/menifee-ca-2026-09-09-planning-commission-meeting` request in a 2026-09-10 pasted log returns a clean `200 OK` with no `RuntimeError`, where the identical request shape crashed the same way in the 2026-09-01 log. That closes off PR #795 as a contributing factor going forward, distinct from (and not the cause of) the SIGABRT itself — the process survived the pre-fix version of that bug every time it was hit, per the 2026-09-01 log showing normal service resuming right after.
+  - **Issue**: identical "Exited with status 134" Render alerts, now 30 occurrences since 2026-08-30 16:54 UTC through at least 2026-09-10 18:30 UTC (instance `zdd2t`, 11:30 AM PDT). Root cause is still unconfirmed at the application level — but two live-checked data points narrow it: (1) **the memory graph for both the last 4 hours and the last 14 days shows usage staying well under the `standard` plan's 2GB limit throughout, with exactly one exception already on record** — the 2026-09-01 morning spike (the one outage already correlated with a matching Render alert). Every other crash checked, including today's, happened with memory far from the ceiling — this rules out chronic memory pressure as the driver for the bulk of the crash-loop, leaving a native-extension fault (this app's C-extension deps: aiohttp/uvloop/asyncpg/PyAV) as the more likely explanation for most occurrences, 2026-09-01 aside. (2) **PR #795's `handle_head_requests` Content-Length fix is confirmed deployed** (Ryan verified directly) and confirmed working live — a `HEAD /m/menifee-ca-2026-09-09-planning-commission-meeting` request in a 2026-09-10 pasted log returns a clean `200 OK` with no `RuntimeError`, where the identical request shape crashed the same way in the 2026-09-01 log. That closes off PR #795 as a contributing factor going forward, distinct from (and not the cause of) the SIGABRT itself — the process survived the pre-fix version of that bug every time it was hit, per the 2026-09-01 log showing normal service resuming right after.
   - **Impact**: unchanged in kind from before — a genuine recurring resolver crash-loop, now with the memory-pressure hypothesis substantially weakened rather than confirmed, and today showing the crash-loop can cluster tightly (five separate "Instance failed" alerts between 11:08 AM and 11:31 AM PDT, each followed by "Service recovered," rather than being spread evenly across the day). 2026-09-01 remains the one occurrence where memory did spike; every other occurrence checked (14-day graph, multiple same-day graphs) shows no such spike.
-  - **Next action**: app-level and dashboard-level investigation is exhausted — stdout logs never carry the actual abort (confirmed across three separate pasted logs now, 2026-09-01, and two from 2026-09-10, all only showing the post-restart boot sequence: Chromium self-heal install, then normal traffic, then the next restart), and Render's Events tab carries no more specific exit reason than the generic "Exited with status 134." The only remaining avenue is Render's own infra-level crash diagnostics (kernel `dmesg`/OOM-killer output), which isn't self-serve from either the dashboard or this repo's own tooling — would need Render support directly if this is worth pursuing further. Given today's tighter clustering (5 in 23 minutes vs. the ~2.5/day average implied by 30 over 11 days), worth a decision from Ryan: escalate to Render support now, or keep treating it as accepted background noise as long as it keeps auto-recovering within minutes (3 confirmed real UptimeRobot outages against 30 alerts to date).
+  - **Next action**: app-level and dashboard-level investigation is exhausted — stdout logs never carry the actual abort (confirmed across three separate pasted logs now, 2026-09-01, and two from 2026-09-10, all only showing the post-restart boot sequence: Chromium self-heal install, then normal traffic, then the next restart), and Render's Events tab carries no more specific exit reason than the generic "Exited with status 134." The only remaining avenue is Render's own infra-level crash diagnostics (kernel `dmesg`/OOM-killer output), which isn't self-serve from either the dashboard or this repo's own tooling — would need Render support directly if this is worth pursuing further. Given today's tighter clustering (5 in 23 minutes vs. the ~2.5/day average implied by 30 over 11 days), worth a decision from Ryan: escalate to Render support now, or keep treating it as accepted background noise as long as it keeps auto-recovering within minutes (3 confirmed real UptimeRobot outages against 30 alerts to date). **`PYTHONFAULTHANDLER=1` was added to all four services' `render.yaml` env vars 2026-09-10 specifically to close the "nothing in `app/` shows explicit signal handling" gap** — it dumps every thread's stack to stderr the instant a fatal signal like this one hits, before the process dies. Diagnostic only, not yet deployed (deploys are manual, WO-59) and not yet confirmed to have caught anything — the next real occurrence after deploy is what confirms whether this actually surfaces the cause.
   - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence already revisited, current plan is `standard`/2GB). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, 2026-09-05, and 2026-09-10 (two updates same day — a live dashboard walkthrough with Ryan that morning, then five more alerts within the same day) runs/sessions. Moved to "Needs a human" -> `[NEEDS-AUDIT]` 2026-09-10 once the dashboard-only step was done; what's left is either Render-support escalation or accepting it as background noise, not a quick dashboard glance.
+
+- **[NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills `meeting_url`/`video_url` on a success path, so a skipped/no-video row carries no signal to tell "video with no meeting" apart from "meeting with no video."**
+  - **Issue**: `act_on_resolved()`'s `_fill()` helper (`scripts/hub_sweep_wo126.py`) is the only place that writes `res.meeting_url`/`res.video_url`, and it only runs when a candidate is actually ingested/queued/already-covered. Every `raise Skip(...)` path (agenda-only, no-video, off-mission) leaves those fields at their dataclass default (`""`).
+  - **Impact**: WO-164's three sharper content reject reasons (`meeting-without-video`/`no-meeting-nor-video`/`video-without-meeting`, `wo164_retag_rules.md`) can't be assigned precisely by anything built on `hub_sweep_wo126`'s reused `Result`/`act_on_resolved` — WO-151's own sweep (`scripts/wo151_research_url_ladder_sweep.py`) worked around this with a coarser reason-string-only mapping and reports 0 `video-without-meeting` rows as an honest gap, not a real absence.
+  - **Next action**: have `act_on_resolved()` (and its WO-151 override) record `meeting_url`/`video_url`/a candidates-tried count on `res` before raising `Skip`, not only on success, so a future sweep reusing this module can apply WO-164's exact field-based mapping instead of a reason-string approximation.
+  - **Constraint**: touch the shared `hub_sweep_wo126.py` copy, not just WO-151's patched override, so every future sweep that reuses it benefits.
+  - **History**: found 2026-09-10 building WO-151 (`docs/BREADTH_SWEEP_BRIEF.md`'s access-ladder sweep); see `BACKLOG_DONE.md`'s WO-151 entry.
+
+- **[NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless rung is capped at 150 renders for the whole run — most of the 1,026-government candidate list will exhaust that budget before it's reached.**
+  - **Issue**: `HEADLESS_BUDGET = 150` is a whole-run cap, and the pilot showed ~80% of "no-platform-link-found" candidates trigger a headless attempt (25 of 30). At that rate the budget runs out well before the full candidate list is processed.
+  - **Impact**: governments processed after the cap is hit get no headless second opinion — `docs/COVERAGE_HANDOVER.md`'s breakthrough #1 found headless recovers a real platform link on ~41% of "no platform" verdicts for JS-rendered navigation, so some real coverage is left on the table for the tail of any run past 150 no-platform-link-found candidates.
+  - **Next action**: either raise the budget for a dedicated follow-up pass restricted to `no-platform-link-found` rows from this WO's own report, or measure headless's actual yield on a larger sample before spending more wall-clock time on it (this WO's own 30-row pilot found 0/25 headless renders recovered a link — a small, possibly unrepresentative sample; the larger governments this coverage-registry note was based on may behave differently than the small towns this candidate list skews toward).
+  - **Constraint**: one headless browser at a time, real delay — don't parallelize past a single browser without re-checking whether that changes a host's own rate-limiting behavior.
+  - **History**: `BACKLOG_DONE.md`'s WO-151 entry has the pilot's exact headless numbers.
+
+- **[NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
+  domain (`"granicus.com" in netloc`, etc.) false-positives on the
+  vendor's own marketing/support pages when used to scan arbitrary page
+  links, not just to classify an already-known real meeting URL.**
+  - **Issue**: confirmed live in WO-147's 30-row pilot: Oceanside, CA's
+    page links to `https://www.granicus.com/` (a "Powered by Granicus"
+    footer badge) and New Haven, CT's links to
+    `support.granicus.com/s/article/...` (a Granicus help-center
+    article) — `detect_platform()` returns `"granicus"` for both, since
+    its rule is a bare netloc substring test with no tenant-subdomain or
+    marketing-subdomain check. `wo134_confirmed_hits_ingest.py`'s
+    `find_specific_platform_link()` calls `detect_platform()` the same
+    way and has the identical exposure; it just hadn't been hit before
+    because every prior sweep already knew its *target* platform ahead
+    of time (a marketing link only false-positives when scanning for
+    *any* platform, which no caller did before this WO's
+    `find_platform_link()` in `scripts/wo147_access_ladder_sweep.py`).
+  - **Impact**: a government whose page merely credits a vendor in a
+    footer/support link gets misclassified as a live tenant of that
+    vendor, wasting a resolve attempt and landing a wrong
+    `no-video-found`/`resolve-failed` outcome instead of the correct
+    `no-platform-link-found`. Not known to have caused a wrong *ingest*
+    yet (the resolve step still fails cleanly on a non-tenant URL), but
+    it corrupts the reject-reason signal a later sweep would read.
+  - **Next action**: give `detect_platform()` (or a thin wrapper used by
+    every *scanning* caller, as opposed to *classifying* an
+    already-known URL) the same guard `wo147_access_ladder_sweep.py`'s
+    `_is_vendor_marketing_apex()` now has — exclude a bare vendor apex
+    domain and its known marketing/support subdomains (`www`, `connect`,
+    `support`, `help`, `university`, `go`, `info`, `status`, `docs`,
+    `developer(s)`, `blog` — the same set `wo141_access_ladder_pilot.py`
+    already validated) before trusting a scanned link as a real tenant.
+  - **Constraint**: don't just harden `detect_platform()` itself without
+    checking every existing caller's expectations first — some may rely
+    on it recognizing a bare vendor URL on purpose (e.g. classifying an
+    already-known real Granicus stream URL that happens to be on the
+    apex domain, if one exists).
+  - **History**: found and worked around locally in
+    `scripts/wo147_access_ladder_sweep.py` (`_is_vendor_marketing_apex()`),
+    not yet applied to the shared `find_specific_platform_link()`/
+    `detect_platform()` path. See `BACKLOG_DONE.md`'s WO-147 entry.
+- **[NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
+  concurrent write to `jurisdiction_coverage.csv`.**
+  - **Issue**: every `*_apply_to_jc.py` script (wo146/148/149/150's)
+    guards against a stale write with a pre-write re-check that compares
+    the file's row COUNT and header fieldnames against what it read at
+    the start of its lock hold. Real, confirmed-live collision,
+    2026-09-10: WO-150's second apply run (uncommitted at the time) and
+    WO-147's own apply run (a different candidate list) both touched the
+    file around the same time. WO-147's own read-modify-write cycle
+    apparently captured a snapshot that predated WO-150's second run,
+    then WO-147 committed that snapshot — silently reverting WO-150's
+    uncommitted row updates (Florence city AL, Lake Havasu City AZ, and
+    others) even though the row count and fieldnames never changed, so
+    the existing re-check never fired.
+  - **Impact**: a same-row-count concurrent write from another session
+    can silently clobber uncommitted work on this shared file, with no
+    error raised by either writer. Recovered here only because WO-150
+    diffed the file against its own last commit and noticed values it
+    had just written were gone; a less careful session wouldn't catch
+    this at all.
+  - **Next action**: strengthen the pre-write re-check in the shared
+    pattern (ideally factored into one real shared helper, per
+    `docs/BREADTH_SWEEP_BRIEF.md`'s own "optional next steps" note) to
+    compare a hash of the full file content (or at minimum the exact
+    rows each run is about to touch) against what was read at
+    lock-acquisition time, not just row count and fieldnames.
+  - **Constraint**: committing immediately after every write (already
+    the convention) shrinks the collision window but doesn't close it —
+    WO-150's own collision happened inside that window, before its
+    commit landed.
+  - **History**: WO-150, `BACKLOG_DONE.md` 2026-09-10. Recovered by
+    re-running `wo150_apply_to_jc.py` fresh against the post-collision
+    state and committing immediately; no data was permanently lost.
 
 - **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   lifted from an institutional-type word ("School District" → SD,
@@ -3507,6 +3630,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: low priority on its own (didn't change any real verdict in the one confirmed case) — worth doing opportunistically alongside other `civicplus.py` work, not urgent by itself.
   - **History**: `BACKLOG_DONE.md`, WO-137, 2026-09-09.
 
+- **[NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket `.decode("latin-1")` on raw Census source files double-corrupts the handful of rows whose real source bytes are UTF-8 — confirmed live, 23 real government names affected, root cause traced but not fixed at the generator.**
+  - **Issue**: found 2026-09-10 investigating why `lacanadaflintridge-ca.granicus.com` never resolves a gov_id — `us_places.csv` stored the government's real name as `La CaÃ±ada Flintridge city` instead of `La Cañada Flintridge city`. That's classic double-encoding: the real source bytes for this row are UTF-8 (0xC3 0xB1 for "ñ"), but `build_jurisdiction_data.py` (line ~92/94) blanket-decodes every raw Census source file as `latin-1`, so those two UTF-8 bytes get read as two separate Latin-1 characters and re-encoded wrong. Same corruption hit 22 more rows across `us_places.csv`, `us_counties.csv` (mostly Puerto Rico municipios — Bayamón, Mayagüez, Añasco, etc. — plus Doña Ana County, NM), and `us_school_districts.csv`.
+  - **Impact**: a corrupted name can never validate against real page text or a subdomain hint, so every one of these 23 governments was permanently unmatchable by name regardless of URL-parsing quality — not a rare edge case, since Puerto Rico's entire county-equivalent table (78 municipios) is disproportionately exposed (17 of 78 already confirmed corrupted).
+  - **Next action**: the 23 already-corrupted rows are fixed directly in the checked-in CSVs (see the PR from this session, 2026-09-10) — this entry is about the generator itself, which will re-corrupt the same rows (and any other UTF-8-sourced row not yet noticed) on the next regeneration. Needs a per-row encoding detection (try UTF-8 first, fall back to `latin-1`, or an explicit list of known-UTF-8 source rows) rather than the current blanket decode — the fix must not touch the thousands of rows that genuinely are Latin-1 and decode correctly today.
+  - **Constraint**: don't blanket-switch the decode to `utf-8` either — that would break whichever rows are genuinely Latin-1 (the Census source files predate consistent UTF-8 encoding, hence the original choice). Needs verification against real source bytes, not a guess.
+  - **History**: gov-id enumeration audit, 2026-09-10 (this session).
+
+- **[NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't fold diacritics, so a real government's own page text (almost always spelled without the accent) can't match its own correctly-accented Census table entry.**
+  - **Issue**: confirmed live 2026-09-10 on La Cañada Flintridge, CA — even after fixing the table's own encoding corruption (see the sibling entry above), the government's real Granicus page spells its name "La Canada Flintridge" (no tilde, confirmed via the page's own meta description). `finalize_jurisdiction("City of La Canada Flintridge", ...)` returns `confidence="unverified"`, while the identical string WITH the accent returns `confidence="validated"` — a byte-for-byte match is required, so the overwhelmingly common real-world spelling never validates against the table's official one. (Separately, `_table_lookup()`'s own subdomain-tier matching for `validated_subdomain_extract()` appears to fold accents already — `canoncityco` → `Canon City` succeeded post-fix without the accent — so the inconsistency is specifically in `finalize_jurisdiction()`'s own validation path, not universal across this file.)
+  - **Impact**: every government with a diacritic in its official Census name (not just the 23 rows the sibling entry fixed — this is the more general, ongoing gap) will keep failing to auto-resolve from real page text, landing as "Unknown Jurisdiction" or requiring a manual pin, purely because real-world text drops accents and the validator doesn't account for that.
+  - **Next action**: add accent-folding (e.g. NFKD-normalize and strip combining marks) to whichever comparison `finalize_jurisdiction()`'s table-validation step uses, so an accent-free candidate can still validate against an accented table row — mirroring whatever `_table_lookup()` already does for the subdomain tier. Needs care: `finalize_jurisdiction()` is heavily tuned (see this file's own tournament-testing comments), so verify against the existing test suite and the tournament data before changing it, not just the one confirmed case.
+  - **Constraint**: don't fold accents in a way that creates a new collision (two distinctly-named real governments that only differ by a diacritic) — check for that before shipping.
+  - **History**: gov-id enumeration audit, 2026-09-10 (this session).
+
 ## Reliability, ops & cost
 
 ### `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice, still at the allowance
@@ -3879,6 +4016,54 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### A bare YouTube channel-listing scan measurably ingests non-meeting videos — 3 of 8 real examples, all matching the title allowlist by accident `[NEEDS-AUDIT]`
+
+- **Issue**: `wo134_confirmed_hits_ingest.py`'s `resolve_youtube_channel()`
+  (used by every `nationwide_*`/`wo1*_confirmed_hits_ingest`-style sweep,
+  including WO-130/134/139 and this WO) lists a government's YouTube
+  channel's most recent uploads and keeps the first that passes
+  `_looks_like_real_meeting(..., require_allowlist=True)` — a single
+  substring match against `MEETING_ALLOWLIST` ("council", "board",
+  "commission", ...). WO-147's own 40-government pilot found 3 of 8
+  channel-sourced hits are not real meetings despite passing that check,
+  because a body name shows up in an unrelated video's own title too:
+  "HAIRitage 2026 CROWN Act Workshop: Advice from Our Commissioner
+  Board" (Union County, NJ), "Commissioners Tour Picatinny Arsenal's
+  Revolutionary Roots" (Morris County, NJ), "Council Participation
+  Instructions" (Fort Collins, CO). The other 5 pilot hits — a specific
+  already-linked video, a curated playlist, or a non-YouTube platform —
+  were all real meetings; a curated "Board Meetings" playlist is a much
+  stronger signal than a channel's raw upload list, which mixes
+  everything the government ever posts.
+- **Impact**: a wrong video can reach a live tier-1/2 page immediately
+  (this path has no probe/review gate at all, unlike tier 3) or sit in
+  the tier-3 queue as a real, current-looking but wrong "meeting" —
+  undermining the "we ingested a real government meeting" claim this
+  project makes across every WO write-up. Scope is unknown: this
+  resolution path has been in production since WO-130 (2026-09-09) with
+  no equivalent check, so already-ingested/queued pages may carry the
+  same defect; nobody has audited them for it.
+- **Next action**: before loosening/tightening `MEETING_ALLOWLIST`
+  itself (risking false negatives on real meetings titled unusually —
+  "LCBOC CM 8 25 26" in this same pilot has no allowlist word spelled
+  out and is real), gather more real examples of both classes, then
+  design a check specific to *channel-listing* resolution (which the
+  playlist/direct-link paths don't need, since they were 5/5 clean in
+  this sample) — e.g. requiring a date-shaped token in the title, or a
+  match against `PROMO_BLOCKLIST`-style negative signals for
+  tour/explainer/instructional content. WO-147's own driver
+  (`scripts/wo147_access_ladder_sweep.py`) adds a non-blocking
+  `channel_scan_caution()` note (`is_bare_youtube_channel_hit()`) to any
+  row that came from a bare channel/handle/vanity URL rather than a
+  specific video/playlist/non-YouTube platform — a mechanical proxy for
+  "needs a human title check," reusable by whoever builds the real fix.
+- **Constraint**: `MEETING_ALLOWLIST`/`PROMO_BLOCKLIST` are shared by
+  every existing sweep script — don't change either from an 8-example
+  pilot; the false-negative risk on real, unusually-titled meetings is
+  as real as the false-positive risk this entry documents.
+- **History**: found live during WO-147's required pilot hand-verification
+  step, 2026-09-10. See `BACKLOG_DONE.md`'s WO-147 entry.
 
 ### A live page is keyed to the wrong government entirely — Bamberg County, SC's YouTube livestream page displays as Nottoway County, VA `[NEEDS-AUDIT]`
 

@@ -3,6 +3,7 @@ import pytest
 from app.platforms import base
 from app.platforms.base import (
     CIVICPLUS_CORPORATE_HOSTS,
+    CORPORATE_HOSTS_BY_PLATFORM,
     UnsupportedPlatformError,
     detect_platform,
     find_platform_link,
@@ -74,6 +75,82 @@ from conftest import load_fixture
             "castus",
         ),
         ("https://example.com/some/random/page", "unknown"),
+        # WO-163 (2026-09-10): generalizing WO-162's CivicPlus-only
+        # corporate-host fix to every other platform in this function
+        # that shares the same bare-substring shape. Each pair below is a
+        # vendor's own real, confirmed corporate/marketing/login host
+        # (expecting "unknown") next to a real tenant shape for the same
+        # platform (expecting the platform stays correctly recognized) --
+        # see CORPORATE_HOSTS_BY_PLATFORM's own comment in
+        # app/platforms/base.py for how each corporate host was
+        # confirmed. The real evidence row this WO was built to fix: a
+        # 400-row scan found 12 governments (Mesa AZ, Fort Collins CO,
+        # Palo Alto CA among them) whose own calendar page links to
+        # exactly this Granicus marketing URL.
+        (
+            "https://granicus.com/solution/govaccess/opencities/",
+            "unknown",
+        ),
+        ("https://www.granicus.com/", "unknown"),
+        # legistar.com, primegov.com, swagit.com and iqm2.com all now
+        # redirect straight to granicus.com -- confirmed live, all four
+        # products were acquired by Granicus.
+        ("https://legistar.com/", "unknown"),
+        ("https://www.legistar.com/", "unknown"),
+        ("https://webapi.legistar.com/v1/phoenix/events", "legistar"),
+        (
+            "https://www.civicclerk.com/civicclerk/agenda-meeting-management",
+            "unknown",
+        ),
+        ("https://primegov.com/", "unknown"),
+        ("https://www.primegov.com/", "unknown"),
+        ("https://swagit.com/", "unknown"),
+        ("https://www.swagit.com/", "unknown"),
+        ("https://www.escribemeetings.com/", "unknown"),
+        ("https://escribemeetings.com/", "unknown"),
+        ("https://www.civicweb.net/", "unknown"),
+        ("https://civicweb.net/", "unknown"),
+        ("https://townofchenango.civicweb.net/Portal/", "civicweb"),
+        ("https://www.diligentoneplatform.com/", "unknown"),
+        ("https://oidc.diligentoneplatform.com/login", "unknown"),
+        (
+            "https://winthropminnesota.community.diligentoneplatform.com"
+            "/Portal/MeetingInformation.aspx?Org=Cal&Id=1",
+            "civicweb",
+        ),
+        ("https://iqm2.com/", "unknown"),
+        ("https://www.iqm2.com/", "unknown"),
+        ("https://atlantacityga.iqm2.com/Detail_Meeting.aspx?ID=1", "iqm2"),
+        # ClerkBase/ClerkHQ tenants live on the bare clerkshq.com domain
+        # (a path segment, not a subdomain) -- only www is a real,
+        # separate, non-tenant host, confirmed live.
+        ("https://www.clerkshq.com/", "unknown"),
+        (
+            "https://clerkshq.com/YellowSprings-OH?docId=feb07_22ag",
+            "clerkbase",
+        ),
+        ("https://champds.com/", "unknown"),
+        ("https://www.champds.com/", "unknown"),
+        ("https://play.champds.com/atlantaga/event/1227", "champds"),
+        ("https://www.destinyhosted.com/", "unknown"),
+        ("https://destinyhosted.com/", "unknown"),
+        ("https://telvue.com/", "unknown"),
+        ("https://www.telvue.com/", "unknown"),
+        ("https://videoplayer.telvue.com/player/abc123", "telvue"),
+        # www.viebit.com is a real host that redirects to
+        # www.leightronix.com, Viebit's real corporate parent -- confirmed
+        # live.
+        ("https://www.viebit.com/", "unknown"),
+        ("https://viebit.com/", "unknown"),
+        ("https://councilnyc.viebit.com/vod/?v=x", "viebit"),
+        # The bare suiteonemedia.com host redirects to getsuiteone.com (a
+        # rebrand) -- confirmed live.
+        ("https://suiteonemedia.com/", "unknown"),
+        ("https://www.suiteonemedia.com/", "unknown"),
+        (
+            "https://pacificgroveca.suiteonemedia.com/event/?id=1",
+            "suiteone",
+        ),
     ],
 )
 def test_detect_platform(url, expected):
@@ -306,3 +383,48 @@ def test_find_platform_link_skips_civicplus_footer_before_a_real_platform_link()
         html_footer_first, "https://www.example-gov.org/AgendaCenter"
     )
     assert result_footer_first == ("http://austintx.swagit.com/play/1/0/", "swagit")
+
+
+def test_civicplus_corporate_hosts_alias_still_points_at_the_shared_map():
+    # WO-163 (2026-09-10) replaced CIVICPLUS_CORPORATE_HOSTS's standalone
+    # definition with CORPORATE_HOSTS_BY_PLATFORM["civicplus"], keeping
+    # the old name as an alias so scripts/wo134_confirmed_hits_ingest.py
+    # and the two adhoc_school_district_retry_*.py scripts keep working
+    # unchanged.
+    assert CIVICPLUS_CORPORATE_HOSTS is CORPORATE_HOSTS_BY_PLATFORM["civicplus"]
+
+
+def test_find_platform_link_skips_a_granicus_marketing_link_on_a_real_page():
+    # Real evidence this WO was built to fix: a 400-row coverage-triage
+    # scan found 12 real governments (Morris County NJ, Mesa AZ, Sioux
+    # Falls SD, Fort Collins CO, Lakewood CO, Syracuse NY, Clearwater FL,
+    # Lewis and Clark County MT, Palo Alto CA, Chapel Hill NC, Genesee
+    # County NY, Littleton CO) whose own calendar page links to Granicus's
+    # own product page, https://granicus.com/solution/govaccess/
+    # opencities/ -- and the old bare "granicus.com in netloc" check
+    # would have matched every one of those as a real "granicus" tenant.
+    # Synthetic page shape (per this repo's synthetic-test convention):
+    # the marketing link's own URL is the real, confirmed one from the
+    # evidence above; the real content link reuses the already-verified
+    # real Granicus tenant shape from test_detect_platform.
+    html = (
+        "<html><body>"
+        '<a href="https://granicus.com/solution/govaccess/opencities/">'
+        "Powered by OpenCities</a>"
+        '<a href="https://sandiego.granicus.com/player/clip/123">Watch</a>'
+        "</body></html>"
+    )
+    result = find_platform_link(html, "https://www.example-gov.org/calendar")
+    assert result == ("https://sandiego.granicus.com/player/clip/123", "granicus")
+
+
+def test_find_platform_link_returns_none_when_only_a_granicus_marketing_link_exists():
+    # The honest negative result for a page that links only to Granicus's
+    # own marketing page and nothing else this app recognizes -- no
+    # known-platform link exists on it once the corporate host is
+    # correctly excluded, which is a correct "not found," not a bug.
+    html = (
+        '<html><body><a href="https://granicus.com/solution/govaccess/'
+        'opencities/">Powered by OpenCities</a></body></html>'
+    )
+    assert find_platform_link(html, "https://www.example-gov.org/calendar") is None

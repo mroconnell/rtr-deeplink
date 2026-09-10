@@ -33,3 +33,65 @@ https://richfieldmn.portal.civicclerk.com/event/2593/media,civicclerk,head+ffpro
 https://hcnv.granicus.com/MediaPlayer.php?clip_id=44&view_id=2,granicus,hls-master+variant,5735.74,,,1,accept,,3.30,2026-09-10T16:01:45+00:00
 https://bighorncomt.portal.civicclerk.com/event/1058/media,civicclerk,head+ffprobe,3625.21,2026-09-03,963564460,1,accept,,5.54,2026-09-10T16:01:48+00:00
 https://lumbertonnc.portal.civicclerk.com/event/267/media,civicclerk,head+ffprobe,4113.56,2026-07-13,1828917322,1,accept,,18.26,2026-09-10T16:01:56+00:00
+https://www.youtube.com/watch?v=qFuwr-662-U,youtube,yt-dlp-metadata,291.00,2026-06-16,11815120,0,accept,,1.71,2026-09-10T18:30:57+00:00
+https://www.youtube.com/watch?v=Rr13U7shSj0,civicplus,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/Rr13U7shSj0,0.00,2026-09-10T18:30:57+00:00
+https://www.youtube.com/watch?v=k4jOBDp2XYI,youtube,yt-dlp-metadata,422.00,2026-06-29,26877144,0,accept,,2.99,2026-09-10T18:31:02+00:00
+https://www.youtube.com/watch?v=qFuwr-662-U,youtube,yt-dlp-metadata,291.00,2026-06-16,11815120,0,accept,,1.94,2026-09-10T18:34:45+00:00
+https://www.youtube.com/watch?v=Rr13U7shSj0,youtube,yt-dlp-metadata,7409.00,2024-08-29,278100917,1,accept,,1.96,2026-09-10T18:34:47+00:00
+https://www.youtube.com/watch?v=k4jOBDp2XYI,youtube,yt-dlp-metadata,422.00,2026-06-29,26877144,0,accept,,3.02,2026-09-10T18:34:50+00:00
+https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1,granicus,hls-master+variant,,,,0,reject-dead,HLS variant playlist was unreachable (timeout or connection error),33.65,2026-09-10T18:35:24+00:00
+https://www.youtube.com/watch?v=J1KW9CL_u9I,youtube,yt-dlp-metadata,147.00,2026-04-16,4708204,0,accept,,1.55,2026-09-10T18:35:25+00:00
+https://www.youtube.com/watch?v=1eeyITPL75I,youtube,yt-dlp-metadata,11278.00,2026-06-09,350214218,1,accept,,2.25,2026-09-10T18:35:28+00:00
+https://www.youtube.com/watch?v=MqHP5haO8kc,youtube,yt-dlp-metadata,4147.00,2025-11-27,167867884,1,accept,,1.95,2026-09-10T18:35:30+00:00
+https://youtu.be/LBHd4IE_M1k,youtube,yt-dlp-metadata,9819.00,2026-09-08,284960498,1,accept,,1.90,2026-09-10T18:35:32+00:00
+https://youtu.be/Cbo0XwMd12U,youtube,yt-dlp-metadata,3585.00,2026-08-26,96388095,1,accept,,2.06,2026-09-10T18:35:34+00:00
+https://www.youtube.com/watch?v=gJ8xgqDs-gM,youtube,yt-dlp-metadata,15151.00,2026-08-27,236836813,1,accept,,2.05,2026-09-10T18:35:36+00:00
+https://www.youtube.com/watch?v=W0TrzjOXol4,youtube,yt-dlp-metadata,6881.00,2026-03-06,206470755,1,accept,,1.79,2026-09-10T18:35:38+00:00
+https://www.youtube.com/watch?v=PLamAmOKp9k,youtube,yt-dlp-metadata,4887.00,2026-09-09,130877972,1,accept,,2.00,2026-09-10T18:35:40+00:00
+https://www.youtube.com/watch?v=rvl6aumK-X8,youtube,yt-dlp-metadata,22738.00,2026-02-05,710282429,1,flag-long,"duration 6.32h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",1.93,2026-09-10T18:35:42+00:00
+https://www.youtube.com/watch?v=ChznrUpI7pQ,youtube,yt-dlp-metadata,3293.00,2026-09-03,102820024,1,accept,,3.18,2026-09-10T18:35:45+00:00
+https://www.youtube.com/watch?v=jFIWJI_xt54,youtube,yt-dlp-metadata,1955.00,2022-04-28,100729967,1,accept,,1.93,2026-09-10T18:35:47+00:00
+https://www.youtube.com/watch?v=GCavK1jfGuU,youtube,yt-dlp-metadata,6772.00,2026-04-08,99718152,1,accept,,1.77,2026-09-10T18:35:49+00:00
+https://www.youtube.com/watch?v=UNKQkJiffNg,youtube,yt-dlp-metadata,5780.00,2023-07-19,211805765,1,accept,,1.69,2026-09-10T18:35:51+00:00
+https://www.youtube.com/watch?v=X4u-R5Wtke0,youtube,yt-dlp-metadata,6214.00,2026-08-18,84994384,1,accept,,1.73,2026-09-10T18:35:53+00:00
+https://www.youtube.com/watch?v=ZSmQi9C4BFs,youtube,yt-dlp-metadata,1271.00,2026-08-04,24490154,1,accept,,3.13,2026-09-10T18:35:56+00:00
+https://www.youtube.com/watch?v=P3ewYzEdQA0,youtube,yt-dlp-metadata,3618.00,2024-06-05,147714741,1,accept,,1.80,2026-09-10T18:35:58+00:00
+https://www.youtube.com/watch?v=Emf0-SGduzs,youtube,yt-dlp-metadata,1305.00,2024-10-03,58890215,1,accept,,2.01,2026-09-10T18:36:00+00:00
+https://www.youtube.com/watch?v=jOS1M_NYgJo,youtube,yt-dlp-metadata,6038.00,2026-09-09,203936262,1,accept,,2.05,2026-09-10T18:36:03+00:00
+https://www.youtube.com/watch?v=wPfGkmjJyec,youtube,yt-dlp-metadata,11128.00,2026-07-09,241964950,1,accept,,1.78,2026-09-10T18:36:04+00:00
+https://www.youtube.com/watch?v=VqVGq6AOo2w,youtube,yt-dlp-metadata,208.00,2026-08-26,10175947,0,accept,,1.88,2026-09-10T18:36:06+00:00
+https://www.youtube.com/watch?v=WYX-3BOJw3c,youtube,yt-dlp-metadata,4333.00,2026-09-03,137809766,1,accept,,1.92,2026-09-10T18:36:08+00:00
+https://www.youtube.com/watch?v=YHDb9bRhEZs,youtube,yt-dlp-metadata,48.00,2026-04-01,1774650,0,reject-short,duration 48.0s is below the 60s meeting-plausibility floor,1.95,2026-09-10T18:36:10+00:00
+https://polkcotx.portal.civicclerk.com/event/1931/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/hnJeoKTX0-E,0.00,2026-09-10T18:36:10+00:00
+https://www.youtube.com/watch?v=3oNW8ai-LYI,youtube,yt-dlp-metadata,3497.00,2026-09-10,29716583,1,accept,,1.68,2026-09-10T18:36:12+00:00
+https://www.youtube.com/watch?v=wdjOWGKSD0o,youtube,yt-dlp-metadata,3177.00,2020-05-06,78159967,1,accept,,2.11,2026-09-10T18:36:15+00:00
+https://www.youtube.com/embed/tMRNPU5m5y4?autoplay=1,youtube,yt-dlp-metadata,1950.00,2022-09-15,48805740,1,accept,,1.72,2026-09-10T18:36:16+00:00
+https://www.youtube.com/watch?v=QknbDa1mvv0,youtube,yt-dlp-metadata,1941.00,2026-09-02,62883324,1,accept,,2.20,2026-09-10T18:36:19+00:00
+https://www.youtube.com/watch?v=utKFTIrxl2U,youtube,yt-dlp-metadata,7380.00,2026-08-03,251490777,1,accept,,2.09,2026-09-10T18:36:21+00:00
+https://www.youtube.com/watch?v=s54kxOirdFo,youtube,yt-dlp-metadata,5671.00,2026-07-29,240738103,1,accept,,3.52,2026-09-10T18:36:24+00:00
+https://www.youtube.com/watch?v=4vl9l6MWEuw,youtube,yt-dlp-metadata,1078.00,2026-08-28,31247852,1,accept,,2.14,2026-09-10T18:36:27+00:00
+https://www.youtube.com/watch?v=l1kKWRFhWWs,youtube,yt-dlp-metadata,1478.00,2024-09-11,24216263,1,accept,,1.89,2026-09-10T18:36:28+00:00
+https://www.youtube.com/watch?v=19uWchEOe1w,youtube,yt-dlp-metadata,3651.00,2026-09-09,110867370,1,accept,,2.03,2026-09-10T18:36:31+00:00
+https://www.youtube.com/watch?v=1d86T-4DWU8,youtube,yt-dlp-metadata,722.00,2021-08-12,38164648,1,accept,,1.77,2026-09-10T18:36:32+00:00
+https://www.youtube.com/watch?v=3ike8lKixCI,youtube,yt-dlp-metadata,9042.00,2026-02-20,255022776,1,accept,,1.94,2026-09-10T18:36:35+00:00
+https://www.youtube.com/watch?v=wPwtSAKPYW4,youtube,yt-dlp-metadata,1193.00,2026-05-15,30450617,1,accept,,3.40,2026-09-10T18:36:38+00:00
+https://www.youtube.com/watch?v=steJb4YdIQg,youtube,yt-dlp-metadata,1236.00,2026-01-20,27575274,1,accept,,1.92,2026-09-10T18:36:40+00:00
+https://www.youtube.com/watch?v=xxIkBEGAEI8,youtube,yt-dlp-metadata,12680.00,2026-04-23,111088709,1,accept,,1.83,2026-09-10T18:36:42+00:00
+https://bellca.new.swagit.com/videos/137526,swagit,hls-master+variant,33.65,,,0,reject-short,duration 33.6s is below the 60s meeting-plausibility floor,0.75,2026-09-10T18:36:43+00:00
+https://www.youtube.com/watch?v=R6df4R7eYJc,youtube,yt-dlp-metadata,901.00,2026-09-08,25804626,1,accept,,1.57,2026-09-10T18:36:44+00:00
+https://howardcotx.portal.civicclerk.com/event/206/media,civicclerk,head+ffprobe,3416.28,2026-05-28,587734234,1,accept,,2.58,2026-09-10T18:36:47+00:00
+https://kenmorewa.portal.civicclerk.com/event/812/media,civicclerk,head+ffprobe,4791.87,2026-06-23,1003282217,1,accept,,2.60,2026-09-10T18:36:49+00:00
+https://jodaviesscoil.portal.civicclerk.com/event/2389/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://us06web.zoom.us/j/95049110807?pwd=TW9JaDhxQVRuZzdTMUZ3dStOVU1vQT09,0.00,2026-09-10T18:36:49+00:00
+https://www.youtube.com/watch?v=9WJSOshUnXI,youtube,yt-dlp-metadata,22.00,2023-03-08,1003546,0,reject-short,duration 22.0s is below the 60s meeting-plausibility floor,1.86,2026-09-10T18:36:51+00:00
+https://www.youtube.com/watch?v=fCrNiL-BMH8,youtube,yt-dlp-metadata,7742.00,2026-09-02,87132832,1,accept,,1.38,2026-09-10T18:36:53+00:00
+https://www.youtube.com/watch?v=FpEQDdaoNKE,youtube,yt-dlp-metadata,5064.00,2026-08-12,149959722,1,accept,,1.99,2026-09-10T18:36:55+00:00
+https://wycokck.portal.civicclerk.com/event/3554/media,civicclerk,head+ffprobe,13288.66,2026-09-04,326425614,1,accept,,3.57,2026-09-10T17:05:00+00:00
+https://greatfallsmt.viebit.com/watch?hash=ZGTmixA15HNtvFkM,viebit,,,,,0,reject-dead,no probe recipe for this media shape: https://greatfallsmt.viebit.com/embed/vod?v=ZGTmixA15HNtvFkM,0.00,2026-09-10T18:45:29+00:00
+https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1,granicus,hls-master+variant,4125.33,,,1,accept,,6.83,2026-09-10T18:45:36+00:00
+https://shawneeok.portal.civicclerk.com/event/2124/media,civicclerk,head+ffprobe,306.17,2026-08-26,97501138,0,accept,,2.48,2026-09-10T18:45:38+00:00
+https://saratogaspringsny.new.swagit.com/videos/306992,swagit,hls-master+variant,9065.88,,,1,accept,,11.63,2026-09-10T18:45:50+00:00
+https://www.youtube.com/watch?v=ADl2lGtXofs,youtube,yt-dlp-metadata,386.00,2026-05-28,10117005,0,accept,,2.00,2026-09-10T18:45:52+00:00
+https://pueblococo.portal.civicclerk.com/event/10402/media,civicclerk,head+ffprobe,279.57,2026-09-10,192276958,0,accept,,2.77,2026-09-10T19:06:16+00:00
+https://columbiasc.portal.civicclerk.com/event/1840/media,civicclerk,head+ffprobe,3395.42,2026-09-08,1179787962,1,accept,,1.98,2026-09-10T19:20:12+00:00
+https://hendersontx.portal.civicclerk.com/event/184/media,civicclerk,head+ffprobe,2.94,2026-09-08,2377351,0,reject-short,duration 2.9s is below the 60s meeting-plausibility floor,1.13,2026-09-10T19:21:40+00:00
+https://whiteville.granicus.com/MediaPlayer.php?view_id=1&clip_id=388,granicus,hls-master+variant,827.03,,,1,accept,,0.59,2026-09-10T19:31:51+00:00

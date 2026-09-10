@@ -101,49 +101,101 @@ class AssetFinder(ABC):
         raise NotImplementedError
 
 
-# CivicPlus's own corporate/marketing hosts -- confirmed live 2026-09-10
-# (WO-162) to NEVER be a per-government tenant, even though a bare
-# "civicplus" substring match treats them as one. Nearly every real
-# CivicPlus-hosted government site's own page footer carries a
-# "Government Websites by CivicPlus®" credit linking to
-# `https://connect.civicplus.com/referral` (a real, live 301 redirect to
-# CivicPlus's own marketing site, not a government page at all).
-# Confirmed present verbatim in two independently-fetched real tenant
-# fixtures: `tests/fixtures/civicplus/durham_agendacenter_citycouncil.html`
-# and `tests/fixtures/civicplus/ks_desoto_agendacenter.html`.
+# A vendor's own corporate/marketing/login host is never a per-government
+# tenant -- for every platform detect_platform() recognizes by a bare
+# domain/subdomain match below, not just CivicPlus. WO-162 (2026-09-10)
+# found and fixed this for CivicPlus alone: nearly every CivicPlus-hosted
+# government site's own page footer carries a "Government Websites by
+# CivicPlus®" credit linking to `https://connect.civicplus.com/referral`
+# (a real, live redirect to CivicPlus's own marketing site, not a
+# government page), and a link-scan reaching that footer link before the
+# government's own real content got a bogus "no video found"/403 --
+# confirmed live on Temple City, CA. WO-163 (2026-09-10) generalizes the
+# same fix to every other platform below that shares the same shape: a
+# bare "vendorhost.com in netloc" substring check with no path/subdomain
+# narrowing, which also matches the vendor's own homepage, login portal,
+# or referral subdomain.
 #
-# Real bug this fixes: when a link-scan looking for "the CivicPlus link"
-# on a government's own page (`find_platform_link()` below, or the
-# similar scan in `scripts/wo134_confirmed_hits_ingest.py`'s
-# `find_specific_platform_link()`) reaches this footer link before the
-# government's own real content link, the old bare substring check
-# classified it as "civicplus" too -- so the government got resolved
-# against CivicPlus's own corporate host instead of its real tenant
-# page, coming back as a bogus "no video found" or a 403. Confirmed live
-# on Temple City, CA: recorded `no-video-found`, and the pre-fix scan
-# really did try (and get a real 403 from) CivicPlus's own corporate
-# host -- confirmed live 2026-09-10. This specific tenant's video
-# doesn't actually surface end-to-end from this fix alone (a second,
-# separate gap -- see `tests/fixtures/civicplus/README.md`'s 2026-09-10
-# note and the matching `BACKLOG.md` entry), but the corporate-host
-# misclassification itself, and the wasted request it caused, is real
-# and is what this fixes.
+# Each host below was confirmed real by one honest fetch of the vendor's
+# own homepage (2026-09-10, WO-163) -- a realistic User-Agent, one host
+# at a time, 2 seconds apart, following redirects -- never invented.
+# Several turned up real, load-bearing evidence beyond "the homepage
+# answers": `legistar.com`, `primegov.com`, `swagit.com` and `iqm2.com`
+# all now redirect straight to `granicus.com` (all four products were
+# acquired by Granicus and folded into its own marketing site);
+# `www.civicclerk.com` redirects to a CivicPlus marketing page (CivicClerk
+# is also a CivicPlus product; the bare `civicclerk.com` doesn't resolve
+# at all); `www.viebit.com` redirects to `www.leightronix.com` (Viebit's
+# real corporate parent); the bare `suiteonemedia.com` redirects to
+# `getsuiteone.com` (a rebrand); `www.diligentoneplatform.com` redirects
+# to a real `oidc.diligentoneplatform.com` single-sign-on login host.
+# None of these are guesses -- each is the literal `curl -L` redirect
+# target seen live.
 #
-# A host in this set is never classified as "civicplus" by
-# `detect_platform()` below, and is skipped outright (not just left to
-# fall through to "unknown") by every link-scan that also checks this
-# set directly -- see `find_platform_link()`'s own use of it. Exported
-# (not a leading-underscore name) so `scripts/wo134_confirmed_hits_
-# ingest.py` and the `adhoc_school_district_retry_*.py` scripts share
-# this one definition instead of each keeping their own copy, which is
-# what let five separate sweep scripts patch around this bug
-# individually before it was fixed at the source.
-CIVICPLUS_CORPORATE_HOSTS = frozenset(
-    {
-        "civicplus.com",
-        "www.civicplus.com",
-        "connect.civicplus.com",
-    }
+# Two platforms in this function share the bare-substring shape but are
+# deliberately NOT here: `clerkshq.com` (ClerkBase) and
+# `townhallstreams.com` both address real tenants directly on the BARE
+# vendor domain -- a tenant is a path segment
+# (`clerkshq.com/YellowSprings-OH`) or a query parameter
+# (`townhallstreams.com/stream.php?location_id=...`), not a subdomain --
+# so excluding the bare host would break every real tenant, not just a
+# marketing page. `clerkshq.com`'s own `www` subdomain IS a separate,
+# real, non-tenant host (confirmed live to answer distinctly from the
+# bare tenant-hosting domain) and is excluded below under "clerkbase";
+# `townhallstreams.com` has no confirmed distinct marketing host at all,
+# so nothing is excluded for it -- see BACKLOG.md for this residual gap
+# on both. `auroratv.org` is Aurora, CO's own single-tenant government
+# site (not a multi-tenant vendor), so there's no separate corporate host
+# to exclude. Cablecast (`cablecast.tv`), Castus (`castus.tv`) and Vimeo
+# are unaffected by this bug in the first place -- each already requires
+# a specific path/URL shape rather than a bare domain substring, so a
+# marketing homepage never matches -- left unchanged per this WO's scope.
+#
+# A host in this map is never classified as its platform by
+# `detect_platform()` below (see `_ALL_CORPORATE_HOSTS`'s use there), and
+# is skipped outright by `find_platform_link()`'s own link-scan too.
+# `CIVICPLUS_CORPORATE_HOSTS` (WO-162's original name) is kept as an
+# alias for `CORPORATE_HOSTS_BY_PLATFORM["civicplus"]` so `scripts/
+# wo134_confirmed_hits_ingest.py` and the two `adhoc_school_district_
+# retry_*.py` scripts keep working unchanged.
+CORPORATE_HOSTS_BY_PLATFORM: dict[str, FrozenSet[str]] = {
+    "civicplus": frozenset(
+        {"civicplus.com", "www.civicplus.com", "connect.civicplus.com"}
+    ),
+    "granicus": frozenset({"granicus.com", "www.granicus.com"}),
+    "legistar": frozenset({"legistar.com", "www.legistar.com"}),
+    # `civicclerk.com` itself doesn't resolve at all (confirmed: DNS
+    # lookup failure) -- only `www.civicclerk.com` is a real, distinct
+    # host, and it redirects straight to a CivicPlus marketing page.
+    "civicclerk": frozenset({"www.civicclerk.com"}),
+    "primegov": frozenset({"primegov.com", "www.primegov.com"}),
+    "swagit": frozenset({"swagit.com", "www.swagit.com"}),
+    "escribe": frozenset({"escribemeetings.com", "www.escribemeetings.com"}),
+    "civicweb": frozenset(
+        {
+            "civicweb.net",
+            "www.civicweb.net",
+            "diligentoneplatform.com",
+            "www.diligentoneplatform.com",
+            "oidc.diligentoneplatform.com",
+        }
+    ),
+    "iqm2": frozenset({"iqm2.com", "www.iqm2.com"}),
+    # ClerkBase/ClerkHQ tenants live on the BARE `clerkshq.com` domain
+    # (path-based -- see the module comment above) -- only `www` is a
+    # real, separate, non-tenant host, confirmed live.
+    "clerkbase": frozenset({"www.clerkshq.com"}),
+    "champds": frozenset({"champds.com", "www.champds.com"}),
+    "destinyhosted": frozenset({"destinyhosted.com", "www.destinyhosted.com"}),
+    "telvue": frozenset({"telvue.com", "www.telvue.com"}),
+    "viebit": frozenset({"viebit.com", "www.viebit.com"}),
+    "suiteone": frozenset({"suiteonemedia.com", "www.suiteonemedia.com"}),
+}
+
+CIVICPLUS_CORPORATE_HOSTS = CORPORATE_HOSTS_BY_PLATFORM["civicplus"]
+
+_ALL_CORPORATE_HOSTS: FrozenSet[str] = frozenset().union(
+    *CORPORATE_HOSTS_BY_PLATFORM.values()
 )
 
 
@@ -168,6 +220,16 @@ def detect_platform(url: str) -> str:
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
 
+    if netloc in _ALL_CORPORATE_HOSTS:
+        # A vendor's own corporate/marketing/login host is never a
+        # per-government tenant -- see CORPORATE_HOSTS_BY_PLATFORM's own
+        # comment above (WO-163, 2026-09-10, generalizing WO-162's
+        # CivicPlus-only fix). Checked once, up front, rather than inside
+        # each platform branch below, since the honest answer ("unknown")
+        # is the same regardless of which vendor's corporate host this
+        # is -- none of the checks below would match it either.
+        return "unknown"
+
     if "granicus.com" in netloc:
         return "granicus"
     if "legistar.com" in netloc:
@@ -188,15 +250,10 @@ def detect_platform(url: str) -> str:
         return "legistar"
     if "civicclerk.com" in netloc:
         return "civicclerk"
-    if netloc in CIVICPLUS_CORPORATE_HOSTS:
-        # Never a per-government tenant -- see CIVICPLUS_CORPORATE_HOSTS'
-        # own comment above (WO-162, 2026-09-10). Falls through to the
-        # same "unknown" every other unmatched host gets, rather than
-        # "civicplus" -- none of the checks below it match this host
-        # either, so this is the honest classification, not a special
-        # case that needs its own return value.
-        pass
-    elif "civicplus.com" in netloc or "civicplus" in netloc:
+    if "civicplus.com" in netloc or "civicplus" in netloc:
+        # CivicPlus's own corporate/marketing hosts (connect.civicplus.com
+        # etc.) already returned "unknown" above, via _ALL_CORPORATE_HOSTS
+        # -- this branch is only reached for a real per-government tenant.
         return "civicplus"
     if "primegov.com" in netloc:
         return "primegov"
@@ -668,13 +725,16 @@ def find_platform_link(
                 == page_url_no_fragment
             ):
                 continue
-            if urlparse(candidate).netloc.lower() in CIVICPLUS_CORPORATE_HOSTS:
+            if urlparse(candidate).netloc.lower() in _ALL_CORPORATE_HOSTS:
                 # Explicit skip, not just relying on detect_platform()
                 # returning "unknown" for these hosts -- see
-                # CIVICPLUS_CORPORATE_HOSTS' own comment (WO-162,
+                # CORPORATE_HOSTS_BY_PLATFORM's own comment (WO-162 for
+                # CivicPlus, generalized to every vendor in WO-163,
                 # 2026-09-10) for the real bug this closes: a
-                # government's own "Government Websites by CivicPlus"
-                # footer credit reached before its real content link.
+                # government's own page reaching a vendor's corporate/
+                # marketing/login link (e.g. CivicPlus's own "Government
+                # Websites by CivicPlus" footer credit) before its real
+                # content link.
                 continue
             platform = detect_platform(candidate)
             if platform == "unknown" or platform in exclude or platform == own_platform:
