@@ -721,12 +721,17 @@ still failing that one meeting cleanly.
 queue's caption-fetch calls were hitting a real `IpBlocked` signature
 (see `docs/investigations/youtube_429_block.md` and the identity-checked-
 pages `[WAIT]` entry)**: a plain yt-dlp metadata call (no caption-content
-fetch) and a full audio download both worked cleanly — confirming the
-audio-download path is a genuinely different request shape from the
-blocked caption endpoint, not a re-run of the same block. End-to-end
-pipeline verified against a real 79-minute Snoqualmie WA meeting:
-downloaded, converted, chunked, transcribed (887 real segments, `tiny`
-model for the speed check) in ~2.5 minutes wall time.
+fetch) and one isolated full audio download both worked cleanly — real
+evidence the audio-download path has at least some request budget
+independent of the blocked caption endpoint. End-to-end pipeline
+verified against a real 79-minute Snoqualmie WA meeting: downloaded,
+converted, chunked, transcribed (887 real segments, `tiny` model for the
+speed check) in ~2.5 minutes wall time. **That independence turned out
+to be partial, not total** — see the candidate-funnel paragraph below
+and `docs/investigations/youtube_429_block.md`'s new section: a real
+bulk run hit YouTube's anti-bot check after 3 real downloads, a
+previously-unmeasured limit this isolated test alone couldn't have
+shown.
 
 **The candidate funnel, from a fresh `export_meeting_inventory.py --source
 export` (6,568 total pages, 2026-09-09)**: 91 YouTube-platform pages with
@@ -749,11 +754,18 @@ homepage or an AgendaCenter root) — excluded from the run and filed as
 its own new Open-bugs entry rather than silently transcribing them.
 **17 real candidates** were queued via the new `--urls-file` against
 production (`small` model, `--cpu-threads 2 --chunk-cooldown-seconds 30`,
-`caffeinate -s` — a multi-hour run by design, per this script's own
-thermal-pacing convention); still in progress as this PR was opened —
-see the PR description for the live count of how many had finished by
-merge time, and `/tmp/wo136_transcribe_run.log` / a resumed
-`--urls-file` run for the rest.
+`caffeinate -s`). **Real outcome, run to completion**: 3 ingested (952,
+3, and 2,631 segments — all three live on production, meeting 3 alone a
+~4-hour recording), then all 14 remaining meetings failed immediately
+with yt-dlp's `Sign in to confirm you're not a bot.` — a real,
+previously-unmeasured limit on how much audio-download volume this
+Mac's IP tolerates before YouTube's anti-bot check engages, distinct
+from (and, it turns out, not fully independent of) the caption-fetch
+429 this same day's other queue hit. See the live-updated `BACKLOG.md`
+open-bugs entry and `docs/investigations/youtube_429_block.md`'s new
+2026-09-09 section for the full write-up and what's still unmeasured
+(whether/how fast it clears). `/tmp/wo136_transcribe_run.log` has the
+full per-meeting log.
 
 ## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
 

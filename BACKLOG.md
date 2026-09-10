@@ -136,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (100)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (101)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -183,6 +183,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (100)
     `[NEEDS-AUDIT]` `jurisdiction_enrich.validated_label_extract()` can…
     `[NEEDS-AUDIT]` CivicPlus's subdomain jurisdiction hint is lost…
     `[NEEDS-AUDIT]` `appalachian.cablecast.tv` (show/3841) is genuinely…
+  `transcribe_backlog_locally.py`'s new yt-dlp audio download also hits…
   63 identity-checked pages still need a YouTube-transcript fetch —…
   ChampDS symptom B — instant 0.2s failures from the JSON API,…
   `[JUST-DO-IT]` ~10 OnBase/Hyland-family pages still resolve with no…
@@ -2226,6 +2227,36 @@ actionability sections above.
     `barnstable.cablecast.tv` answered normally (200) in the same check.
   - **History**: none yet — confirmed directly 2026-08-23, no prior
     BACKLOG_DONE entry.
+
+### `transcribe_backlog_locally.py`'s new yt-dlp audio download also hits YouTube's anti-bot check after ~3 real downloads, not just the caption endpoint `[WAIT]`
+
+- **Issue**: WO-136 (2026-09-09) added a yt-dlp audio-download path for
+  YouTube meetings with no captions, on the premise (documented in
+  `_yt_dlp_download_best_audio()`'s own docstring) that it's a
+  "genuinely different request shape" from the caption-fetch endpoint
+  that's separately 429-blocked (`docs/investigations/
+  youtube_429_block.md`) — true for one isolated test download, but not
+  for sustained use: a real unattended `--urls-file` run against 17
+  candidates succeeded on the first 3 (952/3/2,631 real segments, all
+  live) over ~44 minutes, then every one of the remaining 14 failed
+  immediately with yt-dlp's `Sign in to confirm you're not a bot.`
+  message — the same anti-bot check that hit Render's server IP in the
+  original 2026-08-09 incident, now hit from a residential Mac.
+- **Impact**: 14 of the 17 WO-136 candidates never got a real download
+  attempt; the local-transcription path for YouTube is not yet reliable
+  for a batch bigger than a handful of meetings in one run.
+- **Next action**: after some idle time (untested how much), retry the
+  14 skipped meetings with `--urls-file` narrowed to just them (their
+  URLs are the `SKIPPED` lines in `/tmp/wo136_transcribe_run.log` /
+  this entry's own History) one at a time, watching for how many succeed
+  before the check reappears — that's the measurement neither this run
+  nor the caption-fetch investigation has: does it clear, and after how
+  long/how many successful downloads.
+- **Constraint**: don't re-run a bulk sweep to test this — same standing
+  rule as the caption-fetch block; one isolated retry is the right probe.
+- **History**: `docs/investigations/youtube_429_block.md`'s new
+  2026-09-09 section has the full write-up; `BACKLOG_DONE.md`'s WO-136
+  entry has the real funnel numbers.
 
 ### 63 identity-checked pages still need a YouTube-transcript fetch — blocked mid-run by a real IP block signature `[WAIT]`
 
