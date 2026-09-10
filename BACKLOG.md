@@ -103,7 +103,8 @@ verbatim prefix of a real line further down, so any entry opens with
 
 ```text
 
-Standing decisions — do NOT re-raise  (8)
+Standing decisions — do NOT re-raise  (9)
+  Video-less meetings are not ingested by sweeps -- record "no video"…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
@@ -113,12 +114,14 @@ Standing decisions — do NOT re-raise  (8)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (5)
-  [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
-  [JUST-DO-IT] `[EASY]` A meeting page whose government is…
-  [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
-  [JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should…
-  [JUST-DO-IT] `[EASY]` `scripts/backfill_gov_id.py` needs two…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
+  Dashboard filters: exclude a string, and filter on blank / non-blank…
+  Coverage registry: per-state view and other dashboard additions…  (5)
+    [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
+    [JUST-DO-IT] `[EASY]` A meeting page whose government is…
+    [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
+    [JUST-DO-IT] `nationwide_NNNN_ingest.py`'s agenda-only rows should…
+    [JUST-DO-IT] `[EASY]` `scripts/backfill_gov_id.py` needs two…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Production actions only Ryan should take  (7)
@@ -262,14 +265,31 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
 Parked deliberately — allowed back `[PARK]`  (3)
-  [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
-  [PARK] MPO / transit-authority / utility-district name table.
-  [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for…
+  Friday-night queue (2026-09-12): the token-heavy coverage passes…  (3)
+    [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
+    [PARK] MPO / transit-authority / utility-district name table.
+    [PARK] `[BIG]` "Request Transcript from Audio" doesn't work for…
 ```
 
 <!-- TOC-END -->
 
 ## Standing decisions — do NOT re-raise
+
+### Video-less meetings are not ingested by sweeps -- record "no video" instead `[STANDING]`
+
+- **Issue:** Ryan's rule, 2026-09-09, for every enumeration/ingest sweep:
+  only meetings WITH video become Archive pages. Tier 1/2 (captions
+  reachable) ingest with segments; tier 3 (video, no captions) goes to
+  the cloud auto-transcription queue and drips in; agenda-only meetings
+  are NOT ingested.
+- **Impact:** A host with no video is a legitimate, recorded outcome
+  (`no-video-found` in `jurisdiction_coverage.csv`, "No video" on the
+  coverage dashboards) -- not a page. The 789 governments over 5,000
+  people already rejected as no-video-found stay where they are.
+- **Next action:** None; cite this before proposing an agenda-only ingest.
+- **Constraint:** The Archive still accepts agenda-only pages from a
+  reader's own paste; this rule is about bulk sweeps flooding the site.
+- **History:** Coverage registry review, 2026-09-09 (WO-124 thread).
 
 Durable calls worth carrying into any session, not narrow one-offs.
 **Single-incident decisions** — one adapter's domain override, one SEO
@@ -453,6 +473,38 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Dashboard filters: exclude a string, and filter on blank / non-blank `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** Both review pages -- the meeting inventory
+  (`scripts/export_meeting_inventory.py`'s HTML) and the coverage
+  registry (`rtr-business/research/coverage_registry.py`'s HTML) -- only
+  filter a column by "contains". Ryan wants (1) filter OUT a string per
+  column, (2) show only blanks, (3) hide blanks.
+- **Impact:** Finding "governments with a domain but no hub" or "pages
+  whose body is blank" needs the CSV today; the page can't express it.
+- **Next action:** In each page's filter row accept `!text` (exclude),
+  `=` (blank only) and `!=` (non-blank), documented in the placeholder;
+  the `matches()` function in both templates is the only place to touch.
+  Same small change in both files; keep the two templates' JS aligned.
+- **Constraint:** None.
+- **History:** Asked 2026-09-09 in the WO-124 review.
+
+### Coverage registry: per-state view and other dashboard additions `[JUST-DO-IT]`
+
+- **Issue:** `rtr-business/research/coverage_registry.py`'s dashboard
+  groups by government kind only. Wanted: a state/province picker that
+  recomputes the same funnel for one state (IL, TX, QC, PA, MO each have
+  1,000+ governments with no page and their state directories are the
+  lists to work from), plus a "known platform but no page" tile and a
+  tier breakdown tile.
+- **Impact:** Picking a state to work is a CSV exercise today.
+- **Next action:** Add the picker beside the population dropdown; the
+  dashboard is computed client-side from the rows, so it is a filter on
+  `state` before `renderDash()`.
+- **Constraint:** Keep the page under the publisher's size limit (the
+  hosted copy omits two URL columns for that reason, see the script).
+- **History:** Asked 2026-09-09 in the WO-124 review.
 
 Small, self-contained, no open design question. Jurisdiction-extraction
 items that also qualify live under **Platform & jurisdiction coverage**
@@ -3075,6 +3127,26 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
 ## Parked deliberately — allowed back `[PARK]`
+
+### Friday-night queue (2026-09-12): the token-heavy coverage passes `[PARK]`
+
+- **Issue:** Three passes from the 2026-09-09 coverage review were
+  explicitly held for the weekly reset because they burn tokens or
+  compute: (a) a headless-browser re-check of the 3,144 governments over
+  5,000 people rejected as `no-platform-link-found` (a small trial
+  recovered ~55% of 403s; the plain-HTTP CivicPlus AgendaCenter probe,
+  WO-127, runs first and shrinks this list); (b) repairing the 475
+  `dns-unresolvable` domains against the state directories and CISA's
+  .gov list; (c) anything needing Playwright.
+- **Impact:** Together these are most of the remaining "has a domain,
+  no page" gap for larger governments.
+- **Next action:** After WO-127..131 report, rebuild the coverage
+  registry (`research/refresh_coverage_registry.sh`), re-count these
+  groups, and run (a) then (b) as separate agents.
+- **Constraint:** Headless browsing is resource-intensive; not before
+  the Friday reset. Never on a host behind an explicit human-verification
+  gate.
+- **History:** WO-124 review thread, 2026-09-09.
 
 Parked by the user during the jurisdiction/title extraction planning
 conversation. Not rejected — explicitly allowed to return.
