@@ -135,7 +135,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (61)
   [NEEDS-AUDIT] PR #807's squashed "move the shadowed-county resolver…
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
@@ -153,7 +153,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (21)
+  Jurisdiction extraction & backfill  (22)
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
@@ -174,6 +174,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (60)
     `[LATER]` ~25 smaller consolidated city-county governments still need
     `[LATER]` 5 small Southampton County, VA towns (Boykins, Branchville,
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
+    `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
   Adapter & platform gaps  (24)
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
@@ -1427,7 +1428,52 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     docstring).
   - **History**: found spot-checking `scripts/nationwide_1911_ingest.py`'s
     output, 2026-09-09 — not yet in `BACKLOG_DONE.md` (nothing fixed
-    yet).
+    yet). `scripts/wo127_civicplus_pipeline.py` (WO-127, same day)
+    implements fix (2) unconditionally rather than as an empty-guess
+    fallback — every candidate's known `"{name}, {state}"` overwrites
+    whatever the delegated platform guessed, always — and validated it
+    at real scale: 4 tier-1 ingests across 4 different delegated
+    platforms (Granicus/Vimeo/TelVue/Cablecast) landed on the correct
+    jurisdiction, zero `rtr:unknown`. The named `nationwide_*` scripts
+    here are still unfixed; this is a second, independent script proving
+    the approach, not a fix to the ones named above.
+
+- **`[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has 1,339 duplicated `gov_id`s (2,132 extra rows), and some already-confirmed platform rows never got their stale `reject_reason` cleared.**
+  - **Issue**: measured directly 2026-09-09 (WO-127) — `Counter(gov_id
+    for row in csv)` finds 1,339 `gov_id` values with 2+ rows, on top of
+    the single Clay City, KY duplicate ENUMERATION_METHODS.md §132
+    already named (that one's real, this is the same defect at 40x the
+    scale nobody had counted). Separately, several rows already carry a
+    real `suspected_calendar_provider` (e.g. `civicplus`, with a working
+    `example_agenda_or_calendar_url`) while `reject_reason` still reads
+    `no-platform-link-found` from before that provider was confirmed —
+    Alabaster city, AL and Rawlins/Torrington city, WY are three
+    confirmed examples. A duplicate-row write also silently picks
+    whichever row a plain dict lookup hits first (arbitrary file order),
+    so two different pipelines can each "confirm" the same gov_id on two
+    different rows and neither sees the other's write.
+  - **Impact**: `coverage_registry.csv`'s `no-platform-link-found` slice
+    (the WO-127/WO-130 candidate source) is measurably contaminated with
+    governments already known to run a platform — this is the leading
+    explanation for why WO-127's CivicPlus-own-domain hit rate (348/1946
+    = 17.9%) ran well above the ~11% BuiltWith-sample baseline in
+    `CIVICPLUS_FIRST_RUN.md`'s Addendum 4. Any future sweep filtering on
+    `reject_reason` inherits the same contamination.
+  - **Next action**: a one-time reconciliation script over
+    `jurisdiction_coverage.csv`: merge rows sharing a `gov_id` (prefer
+    the row with more non-blank fields; flag, don't guess, if both have
+    conflicting non-blank values for the same column), then clear
+    `reject_reason` on any row where `suspected_calendar_provider`,
+    `suspected_meeting_link_provider`, `suspected_video_provider`, or
+    `shares_video=True` is already populated.
+  - **Constraint**: run from the Render shell / locally against a copy,
+    never blind — this file is a live multi-session hotspot (see
+    `CLAUDE.md`'s coordination bullet); re-read fresh immediately before
+    writing, same as every other script that touches it.
+  - **History**: `wo127_civicplus_pipeline.py`'s own coverage-file
+    helpers were hardened the same day to update every matching `gov_id`
+    row (not just the first) specifically because of this, after hitting
+    it live mid-run.
 
 - **`[NEEDS-AUDIT]` A same-state place/county name collision falls through to the county even when the place table has a genuine, unique match.**
   - **Issue**: `resolve_government("Waukesha city, WI")` and
@@ -2551,7 +2597,18 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   every time — correctly declined ingestion this round rather than
   patched around, per the standing rule of only ingesting a YouTube
   result when it carries both real meeting data and a resolved
-  jurisdiction.
+  jurisdiction. Third confirmed instance, 2026-09-09 (WO-127): the same
+  gap applies at tier3-queue time too, not just direct ingest — 10
+  CivicPlus-delegated YouTube/Vimeo/Viebit tier3-video-only candidates
+  would lose their known government entirely when
+  `feed_tier3_auto_transcription.py` re-resolves the bare video URL
+  later (no jurisdiction hint travels with a queued URL, only an
+  optional `source_url` override). Mitigated per-video via 10
+  `app/utils/jurisdiction_data/tenant_overrides.csv` pins
+  (`source=wo127_civicplus_pipeline`) rather than left to self-correct —
+  same "per-page patch, not a fix" caveat as Portola Valley above; a
+  future tier3-queue entry with an unpinned, self-unidentifying channel
+  will hit this same gap again.
 
 ### `[LATER]` `best_effort` is sticky — nothing at ingest distinguishes a full resolve from a partial push
 
