@@ -33,9 +33,14 @@ from .registry import Government
 # in the display form (§4's municipality row is a bare name); for a
 # county subdivision it is the display form (§4's township row keeps it),
 # so it is title-cased rather than dropped.
+# "city and borough" is listed before "city"/"borough": Alaska's
+# consolidated governments (Sitka, Juneau, Wrangell, Yakutat) carry that
+# two-word phrase, and matching only the trailing "borough" left
+# "Sitka city and, AK" on the hub (caught by the 2026-09-09 pin backfill
+# dry run).
 _TRAILING_TYPE_RE = re.compile(
     r"\s+((?:charter\s+|urban\s+|unified\s+)?"
-    r"(?:city|town|township|village|borough|municipality|plantation|"
+    r"(?:city and borough|city|town|township|village|borough|municipality|plantation|"
     r"gore|grant|location|purchase|reservation|district|precinct|"
     r"CDP|comunidad|zona urbana))$"
 )

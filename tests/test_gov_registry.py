@@ -2160,3 +2160,15 @@ def test_county_sharing_a_name_with_an_independent_city_resolves():
     assert resolve_government("Baltimore, MD").gov_id == "us:place:2404000"
     # A county that does not exist is still a contradiction, not a mint.
     assert resolve_government("King County, NC").gov_id == ""
+
+
+def test_alaska_city_and_borough_displays_as_the_bare_name():
+    """Census names Alaska's consolidated governments "Sitka city and
+    borough"; the display must drop the whole two-word phrase, not just
+    "borough" -- the 2026-09-09 pin backfill dry run would have written
+    "Sitka city and, AK" onto two real pages."""
+    from app.utils.gov_registry import display_name, government_for_id
+
+    assert display_name(government_for_id("us:place:0270540")) == "Sitka, AK"
+    assert display_name(government_for_id("us:place:0236400")) == "Juneau, AK"
+    assert display_name(government_for_id("us:place:0203000")) == "Anchorage, AK"
