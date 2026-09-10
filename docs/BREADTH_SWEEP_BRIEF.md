@@ -88,11 +88,11 @@ is the source; the YouTube video is delegated from it, and the page
 carries the body, the date and the agenda. Enumerate a YouTube channel
 directly only when no delegating platform exists after rungs 1 to 4. A
 channel matched to a gov id counts as a platform signature for step 1.
-The channel-to-calendar join (WO-158: accept a channel video only when it
+The video-to-calendar join (WO-158: accept a channel video only when it
 matches the site's own calendar by body name and a date within one day)
 works, at about 5% yield, with some risk of off-mission video. Ryan
-shelved it on 2026-09-10 as a future project; it is documented and
-parked in `BACKLOG.md`, not part of this sweep.
+shelved it on 2026-09-10 as a future project; see
+`docs/VIDEO_TO_CALENDAR_JOIN.md` and the parked entry in `BACKLOG.md`.
 
 ### The probe before queuing
 

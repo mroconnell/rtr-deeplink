@@ -214,6 +214,10 @@ What the 2026-09-09 sweeps established about *where video is*:
 
 ## 7. Where to look first next time
 
+- `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
+  government's video channel, playlist or feed to its own calendar by body
+  and date (pilot WO-158, about 5% yield). Read it before touching
+  channel enumeration.
 - `docs/BREADTH_SWEEP_BRIEF.md`: the brief for the next round of coverage
   work, written 2026-09-10 from four read-only pilots. Platform API first,
   then an honest plain client, browser headers on a 403, headless only for

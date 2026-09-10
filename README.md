@@ -2866,6 +2866,11 @@ worker/
 
 ## Known limitations
 
+Governments that publish meeting video only on a channel, playlist or
+video feed, with no link from the meeting page, are not reached by any
+adapter; the join that would recover them is documented and shelved in
+`docs/VIDEO_TO_CALENDAR_JOIN.md`.
+
 Nothing here is finished — this is a fast-moving project with real,
 tracked gaps rather than silently-assumed correctness. See `BACKLOG.md`
 for the full, up-to-date list of open issues (completed
