@@ -118,6 +118,80 @@ whether those 2 clear the ingest bar as-is) — this session deliberately
 ran DRY_RUN only, per the "do not ingest anything" instruction. No need
 to re-run the other ~509; nothing about them changed.
 
+**WO-138 addendum (2026-09-09): ran the 10 for real, funnel below.**
+Ryan's rule for this run was stricter than
+`adhoc_civicplus_pipeline.py`'s own default gate: "ONLY meetings with
+video" — an agenda-only result is `no-video-found`, never ingested. That
+gate already exists as `scripts/wo127_civicplus_pipeline.py` (built for
+WO-127), so this run ported WO-137's homepage-CivicClerk fallback into
+that script (imported from `adhoc_civicplus_pipeline`, not re-copied —
+already covered by its own tests) rather than reusing
+`adhoc_civicplus_pipeline.py` directly and hand-filtering its looser
+tier3-agenda ingests after the fact. Candidates CSV and isolated report:
+`scripts/civicplus_data/wo138_pipeline_report.csv`.
+
+Before running, a fresh `export_meeting_inventory.py --source export`
+pull (6,576 rows) found **North Branch, MN already ingested** — a real
+tier-1 page with 2,260 transcript segments
+(`/m/north-branch-city-mn-2026-09-09-city-council-first-monthly-meeting`),
+committed to `jurisdiction_coverage.csv` by a concurrent session shortly
+before this run started. Excluded from this run as already done.
+
+**Funnel, the remaining 9**: 9 attempted -> **0 ingested (tier 1/2)** ->
+**5 queued tier 3** (Fountain Hills AZ, St. Joseph MO, Northwood OH,
+North Bend WA, New Berlin WI — all real per-meeting CivicClerk video via
+the homepage fallback, zero segments; YouTube caption fetch hit the
+usual "Sign in to confirm you're not a bot" 429-style block on Fountain
+Hills' embedded video, see the standing YouTube-block entry) -> **4
+no-video-found**: Cudahy CA and Roswell NM both delegate to
+already-supported platforms, correctly, and both still land no-video
+for real per-platform reasons, not a gap in this fix: Cudahy's
+`townhallstreams.com` row resolves (platform correctly detected) but
+`resolve()` itself returns `video_url=None` with the warning "Could not
+find Town Hall Streams' video configuration on this page" — verified
+directly against the live URL, a real per-page parsing miss in
+`townhallstreams.py`, not an unsupported platform (worth a look, not
+filed as new since it's one page); Roswell's `destinyhosted.com` row is
+correctly agenda-only by design (`destinyhosted.py`'s own docstring:
+it's a pure agenda/minutes CMS with no video of its own to find).
+Elmsford NY and St. Francis MN resolved to a bare YouTube channel/handle
+link
+(`youtube.com/@VillageofElmsfordNY`, `youtube.com/@saintfrancismn2028/
+streams`) rather than a specific video — not this meeting's video, so
+treated as no-video-found rather than queuing an unresolvable channel
+URL (a new guard added to `wo127_civicplus_pipeline.py` for this:
+strips any non-specific YouTube URL — no `watch?v=`/`youtu.be/`/`/embed/`/
+`/shorts/` — back to empty before the video-only gate runs).
+
+Real bug caught by the existing test suite before it shipped: the
+homepage fallback's CivicClerk link for St. Joseph MO pointed at
+`/event/1310/overview`, not `/media` —
+`tests/test_transcription_queue_files.py::
+test_civicclerk_rows_use_the_event_media_shape` failed on it. Fixed at
+the source (`_canonical_civicclerk_event_url()`, new in
+`wo127_civicplus_pipeline.py`) rather than patched after the fact, and
+the one already-written queue/report/coverage-CSV row was corrected by
+hand to match.
+
+`jurisdiction_coverage.csv` updated per ENUMERATION_METHODS.md §158's
+protocol (lock, fresh re-read, row-count floor, temp file + rename, LF):
+5 rows' `reject_reason` cleared from `no-platform-link-found` (real
+video now confirmed) via `update_coverage_on_success()`; the 4
+no-video-found rows were left alone (`reject_reason` already
+non-empty, never overwritten). Two rtr-business commits, each isolated
+to exactly the rows this session touched (git diff --stat verified
+before each commit) alongside other sessions' own concurrent,
+still-uncommitted edits to the same file.
+
+**Deploy note**: `scripts/tier3_auto_transcription_queue.txt` (5 new
+rows) and `scripts/wo127_civicplus_pipeline.py` are on `main` but need a
+deploy of the cloud transcription worker to actually process the new
+queue entries — the 5 pages ingested via HTTP for North Branch, MN
+(done before this WO, by a concurrent session) were already live at
+ingest time; nothing in this addendum's own 9-candidate run touched
+`app/`/`archive/`/`worker/` request-serving code, only the one-off
+pipeline script and data files.
+
 **Not done**: `spectrumstream.com` and `12milesout.com` adapters (need
 more samples first, see `BACKLOG.md`); the `civicplus.py` docstring's
 false "newest-first across the whole page" claim (see `BACKLOG.md`, low

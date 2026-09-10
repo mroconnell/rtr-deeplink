@@ -47,21 +47,38 @@ with two real differences specific to this task:
    on an `rtr:unknown:<host>` page.
 
 Run from rtr-deeplink repo root with the shared venv active:
-    python scripts/wo127_civicplus_pipeline.py [hits.csv]
+    python scripts/wo127_civicplus_pipeline.py [hits.csv] [report.csv]
 (ARCHIVE_BASE_URL / ARCHIVE_INGEST_TOKEN come from .env via cwd-walk.
 Set DRY_RUN=1 to resolve/tier without ingesting, queuing, or touching
-jurisdiction_coverage.csv.)
+jurisdiction_coverage.csv. The optional second positional arg overrides
+REPORT_CSV -- added for WO-138's real re-run of exactly 10 gov_ids so
+that sub-run gets its own isolated report file rather than colliding
+with the persisted 348-row `wo127_pipeline_report.csv`, whose
+already-non-empty `outcome` for those same gov_ids would otherwise make
+`load_done_gov_ids()` skip them entirely on this script's normal
+resumability contract.)
 
 Candidate CSV columns: gov_id, unit_name (already "{name}, {state}"),
 web_address (bare host, no scheme -- the probe script's own output
 shape). Resumable: REPORT_CSV is flushed after every candidate, and a
 completed one (any non-empty outcome) is skipped on restart.
+
+Homepage-CivicClerk fallback (WO-138, 2026-09-09): same fix
+`scripts/adhoc_civicplus_pipeline.py` shipped for WO-137 -- a
+`NoVideoCandidateFound` from the bare `{domain}/AgendaCenter` page
+doesn't always mean no video; some tenants link a CivicClerk portal
+straight from their own homepage. Imported directly from
+`adhoc_civicplus_pipeline` (already covered by
+`tests/test_adhoc_civicplus_pipeline.py`) rather than re-copied here --
+see that module's own docstring for the full reasoning and the two real
+homepage-link shapes it handles.
 """
 
 import asyncio
 import csv
 import fcntl
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -76,6 +93,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.base import (  # noqa: E402
     CalendarPageError,
@@ -84,13 +102,18 @@ from app.platforms.base import (  # noqa: E402
 )
 from app.platforms.civicplus import CivicPlusAssetFinder  # noqa: E402
 from app.utils.url_normalize import normalize_url  # noqa: E402
+from adhoc_civicplus_pipeline import homepage_civicclerk_fallback  # noqa: E402
 
 DEFAULT_HITS_CSV = (
     Path(__file__).resolve().parent / "civicplus_data" / "wo127_civicplus_hits.csv"
 )
 QUEUE_FILE = Path(__file__).resolve().parent / "tier3_auto_transcription_queue.txt"
 REPORT_CSV = (
-    Path(__file__).resolve().parent / "civicplus_data" / "wo127_pipeline_report.csv"
+    Path(sys.argv[2])
+    if len(sys.argv) > 2
+    else Path(__file__).resolve().parent
+    / "civicplus_data"
+    / "wo127_pipeline_report.csv"
 )
 COVERAGE_CSV = Path(
     "/Users/mroconnell/Documents/rtr-business/research/jurisdiction_coverage.csv"
@@ -374,6 +397,20 @@ class ReportWriter:
         self._f.close()
 
 
+def _canonical_civicclerk_event_url(url: str) -> str:
+    """Rewrites any `/event/{id}/{suffix}` CivicClerk link to the
+    canonical `/event/{id}/media` shape -- `CivicClerkAssetFinder.
+    resolve()` itself doesn't care about the trailing segment (see
+    `adhoc_civicplus_pipeline.py`'s `_is_specific_civicclerk_event_url()`
+    docstring), but `tests/test_transcription_queue_files.py::
+    test_civicclerk_rows_use_the_event_media_shape` enforces this exact
+    shape for every CivicClerk row in the tier3 queue, so a homepage
+    link landing on `/event/{id}/overview` (confirmed live, St. Joseph
+    MO) needs normalizing before it's queued. No-op for any non-matching
+    URL."""
+    return re.sub(r"(/event/\d+)(/[^/?#]*)?$", r"\1/media", url)
+
+
 async def process_candidate(session, finder, candidate, report):
     gov_id = candidate["gov_id"]
     unit_name = candidate["unit_name"]
@@ -395,26 +432,53 @@ async def process_candidate(session, finder, candidate, report):
         result = await finder.resolve(agendacenter_url)
         meeting_url = result.source_url
     except NoVideoCandidateFound as e:
-        row_out.update(
-            outcome="no-video-found",
-            jurisdiction=e.jurisdiction_hint or "",
-            detail=f"checked {e.candidates_checked} candidate row(s), none had video",
+        # WO-138 homepage-CivicClerk fallback (see module docstring): a
+        # bare AgendaCenter page with no video doesn't mean the
+        # government has none -- try the one confirmed, non-headless
+        # path WO-137 built before giving up.
+        fallback_url, fallback_reason = await homepage_civicclerk_fallback(
+            session, domain
         )
-        report.write(row_out)
-        print(f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)")
-        if not DRY_RUN:
-            updated = _safe_coverage_call(
-                update_coverage_reject_reason, gov_id, "no-video-found"
+        if fallback_url:
+            try:
+                result = await resolve_via_platform(fallback_url)
+                meeting_url = _canonical_civicclerk_event_url(fallback_url)
+                row_out["detail"] = (
+                    "found via homepage CivicClerk link "
+                    f"(bare AgendaCenter had {e.candidates_checked} candidate row(s), "
+                    "none with video)"
+                )
+            except Exception as e2:
+                fallback_url = None
+                fallback_reason = f"homepage CivicClerk link raised: {e2}"
+        if not fallback_url:
+            row_out.update(
+                outcome="no-video-found",
+                jurisdiction=e.jurisdiction_hint or "",
+                detail=(
+                    f"checked {e.candidates_checked} candidate row(s), none had "
+                    f"video; homepage fallback: {fallback_reason}"
+                ),
             )
-            _safe_coverage_call(
-                update_coverage_calendar_confirmed, gov_id, agendacenter_url
-            )
+            report.write(row_out)
             print(
-                f"[COVERAGE] {gov_id} {unit_name}  "
-                + ("reject_reason=no-video-found" if updated else "no update")
+                f"[NO-VID ] {gov_id} {unit_name}  checked {e.candidates_checked} row(s)  "
+                f"({fallback_reason})"
             )
-        await asyncio.sleep(RESOLVE_DELAY_SECONDS)
-        return
+            if not DRY_RUN:
+                updated = _safe_coverage_call(
+                    update_coverage_reject_reason, gov_id, "no-video-found"
+                )
+                _safe_coverage_call(
+                    update_coverage_calendar_confirmed, gov_id, agendacenter_url
+                )
+                print(
+                    f"[COVERAGE] {gov_id} {unit_name}  "
+                    + ("reject_reason=no-video-found" if updated else "no update")
+                )
+            await asyncio.sleep(RESOLVE_DELAY_SECONDS)
+            return
+        print(f"[HOMEPAGE-FALLBACK] {gov_id} {unit_name}  {fallback_url}")
     except CalendarPageError as e:
         if not e.candidates:
             row_out.update(
@@ -461,6 +525,24 @@ async def process_candidate(session, finder, candidate, report):
     row_out["segments"] = len(result.segments)
     row_out["agenda_items"] = len(result.agenda_items)
     row_out["video_url"] = result.video_url or ""
+
+    # WO-138: a bare YouTube channel/handle/streams-listing link (no
+    # specific video id -- confirmed live for Elmsford NY
+    # (youtube.com/@VillageofElmsfordNY) and St. Francis MN
+    # (youtube.com/@saintfrancismn2028/streams), a pre-existing
+    # civicclerk.py field-mapping quirk, not something WO-137's fallback
+    # introduced) is not this meeting's video -- it's not resolvable to
+    # any specific recording, so it must not be queued to
+    # tier3_auto_transcription_queue.txt (which expects a URL the worker
+    # can actually transcribe) or counted as "has video" for the ingest
+    # gate below.
+    _is_youtube_url = re.search(r"youtube\.com|youtu\.be", result.video_url or "")
+    _is_specific_youtube_video = re.search(
+        r"(watch\?v=|youtu\.be/|/embed/|/shorts/)", result.video_url or ""
+    )
+    if _is_youtube_url and not _is_specific_youtube_video:
+        row_out["video_url"] = ""
+        result.video_url = ""
 
     # Ryan's rule, exactly: ONLY meetings with video get ingested here.
     # Agenda-only (no video at all) is recorded as no-video-found, never
