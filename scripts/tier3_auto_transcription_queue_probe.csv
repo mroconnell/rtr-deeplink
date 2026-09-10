@@ -91,3 +91,7 @@ https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1,granic
 https://shawneeok.portal.civicclerk.com/event/2124/media,civicclerk,head+ffprobe,306.17,2026-08-26,97501138,0,accept,,2.48,2026-09-10T18:45:38+00:00
 https://saratogaspringsny.new.swagit.com/videos/306992,swagit,hls-master+variant,9065.88,,,1,accept,,11.63,2026-09-10T18:45:50+00:00
 https://www.youtube.com/watch?v=ADl2lGtXofs,youtube,yt-dlp-metadata,386.00,2026-05-28,10117005,0,accept,,2.00,2026-09-10T18:45:52+00:00
+https://pueblococo.portal.civicclerk.com/event/10402/media,civicclerk,head+ffprobe,279.57,2026-09-10,192276958,0,accept,,2.77,2026-09-10T19:06:16+00:00
+https://columbiasc.portal.civicclerk.com/event/1840/media,civicclerk,head+ffprobe,3395.42,2026-09-08,1179787962,1,accept,,1.98,2026-09-10T19:20:12+00:00
+https://hendersontx.portal.civicclerk.com/event/184/media,civicclerk,head+ffprobe,2.94,2026-09-08,2377351,0,reject-short,duration 2.9s is below the 60s meeting-plausibility floor,1.13,2026-09-10T19:21:40+00:00
+https://whiteville.granicus.com/MediaPlayer.php?view_id=1&clip_id=388,granicus,hls-master+variant,827.03,,,1,accept,,0.59,2026-09-10T19:31:51+00:00

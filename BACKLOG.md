@@ -136,7 +136,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (111)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (113)
+  [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
+  [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
@@ -731,6 +733,20 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills `meeting_url`/`video_url` on a success path, so a skipped/no-video row carries no signal to tell "video with no meeting" apart from "meeting with no video."**
+  - **Issue**: `act_on_resolved()`'s `_fill()` helper (`scripts/hub_sweep_wo126.py`) is the only place that writes `res.meeting_url`/`res.video_url`, and it only runs when a candidate is actually ingested/queued/already-covered. Every `raise Skip(...)` path (agenda-only, no-video, off-mission) leaves those fields at their dataclass default (`""`).
+  - **Impact**: WO-164's three sharper content reject reasons (`meeting-without-video`/`no-meeting-nor-video`/`video-without-meeting`, `wo164_retag_rules.md`) can't be assigned precisely by anything built on `hub_sweep_wo126`'s reused `Result`/`act_on_resolved` — WO-151's own sweep (`scripts/wo151_research_url_ladder_sweep.py`) worked around this with a coarser reason-string-only mapping and reports 0 `video-without-meeting` rows as an honest gap, not a real absence.
+  - **Next action**: have `act_on_resolved()` (and its WO-151 override) record `meeting_url`/`video_url`/a candidates-tried count on `res` before raising `Skip`, not only on success, so a future sweep reusing this module can apply WO-164's exact field-based mapping instead of a reason-string approximation.
+  - **Constraint**: touch the shared `hub_sweep_wo126.py` copy, not just WO-151's patched override, so every future sweep that reuses it benefits.
+  - **History**: found 2026-09-10 building WO-151 (`docs/BREADTH_SWEEP_BRIEF.md`'s access-ladder sweep); see `BACKLOG_DONE.md`'s WO-151 entry.
+
+- **[NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless rung is capped at 150 renders for the whole run — most of the 1,026-government candidate list will exhaust that budget before it's reached.**
+  - **Issue**: `HEADLESS_BUDGET = 150` is a whole-run cap, and the pilot showed ~80% of "no-platform-link-found" candidates trigger a headless attempt (25 of 30). At that rate the budget runs out well before the full candidate list is processed.
+  - **Impact**: governments processed after the cap is hit get no headless second opinion — `docs/COVERAGE_HANDOVER.md`'s breakthrough #1 found headless recovers a real platform link on ~41% of "no platform" verdicts for JS-rendered navigation, so some real coverage is left on the table for the tail of any run past 150 no-platform-link-found candidates.
+  - **Next action**: either raise the budget for a dedicated follow-up pass restricted to `no-platform-link-found` rows from this WO's own report, or measure headless's actual yield on a larger sample before spending more wall-clock time on it (this WO's own 30-row pilot found 0/25 headless renders recovered a link — a small, possibly unrepresentative sample; the larger governments this coverage-registry note was based on may behave differently than the small towns this candidate list skews toward).
+  - **Constraint**: one headless browser at a time, real delay — don't parallelize past a single browser without re-checking whether that changes a host's own rate-limiting behavior.
+  - **History**: `BACKLOG_DONE.md`'s WO-151 entry has the pilot's exact headless numbers.
 
 - **[NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is real and ongoing — 25 occurrences since 2026-08-30 — but dashboard/log access has hit its ceiling; memory pressure is now ruled out as the driver for the great majority of them.**
   - **Issue**: identical "Exited with status 134" Render alerts, now 25 occurrences since 2026-08-30 16:54 UTC through at least 2026-09-10 15:44 UTC (instance `zdd2t`, 8:44 AM PDT). Root cause is still unconfirmed at the application level — nothing in `app/` shows explicit signal handling, `faulthandler`, or a multi-worker uvicorn config — but two live-checked-today data points narrow it: (1) **the memory graph for both the last 4 hours (including the 15:44 UTC crash window) and the last 14 days shows usage staying well under the `standard` plan's 2GB limit throughout, with exactly one exception already on record** — the 2026-09-01 morning spike (the one outage already correlated with a matching Render alert). Every other crash in 14 days, today's included, happened with memory far from the ceiling — this rules out chronic memory pressure as the driver for the bulk of the crash-loop, leaving a native-extension fault (this app's C-extension deps: aiohttp/uvloop/asyncpg/PyAV) as the more likely explanation for most occurrences, 2026-09-01 aside. (2) **PR #795's `handle_head_requests` Content-Length fix is confirmed deployed** (Ryan verified directly) and confirmed working live — a `HEAD /m/menifee-ca-2026-09-09-planning-commission-meeting` request in today's pasted log returns a clean `200 OK` with no `RuntimeError`, where the identical request shape crashed the same way in the 2026-09-01 log. That closes off PR #795 as a contributing factor going forward, distinct from (and not the cause of) the SIGABRT itself — the process survived the pre-fix version of that bug every time it was hit, per the 2026-09-01 log showing normal service resuming right after.
