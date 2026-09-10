@@ -133,11 +133,18 @@ Discovery today seeds only from Archive pages, so this needs a small
   state (Ventura IA carries Ventura County CA's domain).
 - About 1,300 gov ids appear on more than one research-file row; 87
   are genuinely ambiguous and need a human.
-- A dozen consolidated city-counties (Philadelphia, Lexington-Fayette,
-  Athens-Clarke, and others) have no research-file row at all; the
-  Fable - Q&A session is adding registry rows with the ids the Archive
-  uses. Sitka is keyed as a borough in the research file and as a place
-  in the Archive.
+- Consolidated city-counties are in the research file but keyed badly,
+  two ways. (1) Blank gov id on the Census long-form names
+  ("Lexington-Fayette urban county", "Athens-Clarke County unified
+  government (balance)", Macon-Bibb, Butte-Silver Bow, Anaconda-Deer
+  Lodge, Hartsville/Trousdale, Greeley County). PR #842 makes those
+  names resolve; re-run `rtr-business/research/add_gov_id_to_coverage.py`
+  against a checkout at or after becf0f3 to fill them. (2) Two rows for
+  one government with different ids (Philadelphia, San Francisco,
+  Denver, Lafayette LA: a county id on one row, a city id on the other).
+  The Fable - Q&A session is adding a county-to-city map in the
+  resolver; after it lands, the same re-run keys both rows to one id and
+  the duplicate pass can collapse them. Sitka is fine.
 
 ## Optional next steps, not yet tested
 
