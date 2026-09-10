@@ -93,6 +93,14 @@ directly -- app.platforms imports pull in code that does):
     python scripts/wo134_confirmed_hits_ingest.py --limit 10        # smoke test
     # after the run:
     python3 ~/Documents/rtr-business/research/backfill_wo134_ingest_into_jc.py
+
+WO-139 (2026-09-09) update: INPUT_CSVS now reads wo139_confirmed_hits.csv
+instead of the raw wo133_confirmed_hits.csv it replaces -- run
+`python scripts/wo139_build_input.py` first if that derived file is
+missing or stale. See that script's own docstring for why (WO-127
+already worked most of wo133_confirmed_hits.csv's CivicPlus AgendaCenter
+rows; re-running this general pipeline against those would just repeat
+WO-127's own real requests).
 """
 
 import argparse
@@ -139,14 +147,20 @@ import yt_dlp  # noqa: E402
 RESEARCH_DIR = Path("/Users/mroconnell/Documents/rtr-business/research")
 INPUT_CSVS = [
     RESEARCH_DIR / "wo129_confirmed_hits.csv",
-    RESEARCH_DIR / "wo133_confirmed_hits.csv",  # may not exist yet -- see main()
+    # WO-139: raw wo133_confirmed_hits.csv (503 rows) is superseded here
+    # by wo139_confirmed_hits.csv, the same 503 rows minus the 345 that
+    # are CivicPlus AgendaCenter tenants WO-127 already worked (see
+    # scripts/wo139_build_input.py's docstring for the filter and why
+    # re-running this pipeline against those 345 would just repeat
+    # WO-127's own real requests against tenants already investigated).
+    RESEARCH_DIR / "wo139_confirmed_hits.csv",  # may not exist yet -- see main()
 ]
 LOG_CSV = RESEARCH_DIR / "wo134_confirmed_hits_ingest_log.csv"
 TIER3_QUEUE_FILE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
 TENANT_OVERRIDES_CSV = (
     REPO_ROOT / "app" / "utils" / "jurisdiction_data" / "tenant_overrides.csv"
 )
-DEFAULT_INVENTORY_CSV = Path("/tmp/wo134_inventory/meeting_inventory.csv")
+DEFAULT_INVENTORY_CSV = Path("/tmp/wo139_inventory/meeting_inventory.csv")
 
 REQUEST_DELAY_SECONDS = 1.5  # between governments
 CANDIDATE_DELAY_SECONDS = 0.75  # between depth-search attempts on the SAME tenant

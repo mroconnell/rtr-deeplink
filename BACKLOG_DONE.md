@@ -1,5 +1,107 @@
 # Backlog — done
 
+## WO-139: the 158 WO-133 headless finds WO-127 hadn't already worked — 14 tier-1/2 ingests, 15 queued to tier 3, and a real Granicus resolve-error class found and filed [Done 2026-09-10]
+
+Ryan's ask: WO-133's headless re-check (`rtr-business/research/
+wo133_confirmed_hits.csv`, 503 governments with a recognized platform)
+overlaps WO-127's dedicated CivicPlus AgendaCenter pipeline almost
+entirely — resolve and ingest the genuinely new part the same way
+WO-134 did for `wo129_confirmed_hits.csv`.
+
+**Filtering step, before touching the network.** 345 of the 503 rows
+are `platform_hits` containing "civicplus" with
+`detail=civicplus-agendacenter`, and every one already has a row in
+`scripts/civicplus_data/wo127_pipeline_report.csv` (348 rows total —
+the other 3 are non-AgendaCenter WO-127 rows). Re-running the general
+pipeline against those 345 would just repeat WO-127's own real
+requests against tenants it already investigated. New script
+`scripts/wo139_build_input.py` does a pure gov_id-membership filter (no
+network) and writes `rtr-business/research/wo139_confirmed_hits.csv`,
+158 rows, which `wo134_confirmed_hits_ingest.py`'s `INPUT_CSVS` now
+points at instead of the raw `wo133_confirmed_hits.csv` it supersedes.
+Confirmed both WO-138 protections (canonical CivicClerk `/event/{id}
+/media` URLs, the bare-YouTube-channel-link guard) were already present
+in `wo134_confirmed_hits_ingest.py` before running — no code needed for
+either.
+
+**Funnel (158 candidates):**
+
+| Outcome | Count | Detail |
+|---|---|---|
+| Ingested tier 1/2 | 14 | all YouTube (local caption fetch succeeded) |
+| Queued tier 3 | 15 | YouTube 9, CivicClerk 5, Granicus 1 |
+| No video found | 2 | real, current meeting, genuinely no video |
+| Already covered | 1 | already had an archived page |
+| Skipped (content-classified) | 104 | no-platform-link-found 45, no-video-found (content) 30, off-mission 23, no-meetings-found 4, unsupported-platform-no-adapter 1, resolve-failed 1 |
+| Error (real failure, needs a fix first) | 22 | one root cause — see below |
+| **Real yield (ingested + queued)** | **29 / 158 (18.4%)** | lower than WO-134's 52.6% on wo129 — see below |
+
+**Attempted-by-platform, from `wo139_confirmed_hits.csv`'s own
+`platform_hits` (a row can carry more than one):** YouTube 66, Granicus
+45, CivicPlus 34 (non-AgendaCenter shapes — AgendaCenter is the 345
+already excluded), CivicClerk 22, CivicWeb 7, Vimeo 7, CivicLive 6,
+Legistar 5, Cablecast 4, Municode Meetings 4, PrimeGov 4, Swagit 4,
+IQM2 4, BoardDocs 4, eScribe 3, ClerkBase 3, ChampDS 1, NovusAgenda 1.
+
+**Why the yield is lower than WO-134's wo129 batch.** wo129 came from a
+real two-hop crawl hit; this post-CivicPlus-filter subset skews toward
+platforms that convert worst without a structured per-meeting listing:
+Granicus (11 skipped, 22 errored, 1 queued — 3% real yield on 34 rows),
+CivicPlus non-AgendaCenter hits (25 skipped, 0 converted), and YouTube
+channel/vanity links with no recent meeting (37 of 66 skipped).
+CivicClerk, a structured per-event API, converted best: 5 of ~7 hits
+queued to tier 3.
+
+**Real bug found and filed, not fixed in this pass (per this project's
+"verify before building" rule and to keep this batch's own scope
+small): all 22 `error` outcomes share one root cause.** Each row's
+`hit_source_urls[granicus]` is the government's bare homepage, not a
+real `*.granicus.com`/`ViewPublisher.php` URL — a WO-133 headless-scan
+artifact. `granicus_locate_listing()`'s `ViewPublisher.php?view_id=1..5`
+guess (built for exactly this case in WO-134) also came up empty for
+all 22, so it fell back to fetching the bare homepage directly through
+`GranicusAssetFinder.resolve()` — 21 got a flat 403, one a 520, one an
+`SSLCertVerificationError`, the same Akamai/WAF-style bot-blocking
+pattern this file already documents elsewhere. The exception
+propagates as a hard `RowError`, not a content-classified `RowSkip`,
+which excludes the row from `jurisdiction_coverage.csv` (errors mean
+"retry me," but re-running these 22 unchanged hits the identical wall
+every time). Filed in `BACKLOG.md` (`Platform & jurisdiction coverage`
+section) with the exact fix shape and all 22 gov_ids.
+
+**`jurisdiction_coverage.csv` backfill: this was the first real run of
+`backfill_wo134_ingest_into_jc.py`.** WO-134's own wo129 batch (156
+rows, done 2026-09-09) had been logged but never actually folded into
+`jurisdiction_coverage.csv` — the backfill script existed but hadn't
+been run for real. Running it now against the combined 314-row log
+(156 wo129 + 158 wo139) applied both batches in one pass, following
+ENUMERATION_METHODS.md §158's write protocol (flock, fresh read after
+the lock, the 33,000-row floor, atomic temp-file + `os.replace`): 113
+real value changes, confirmed via `git diff` that every changed row's
+`gov_id` is in the wo129 or wo139 input set and nothing else. The gap
+between "289 rows attempted" and "113 rows actually changed" is real
+writes that happened to match already-present values, not a bug.
+
+**Shared-host pins:** 23 `tenant_overrides.csv` rows added
+(`strength=fallback`), all YouTube — 14 for the tier-1/2 ingests, 9 for
+the tier-3 queue additions. Granicus and CivicClerk hits get a real
+per-tenant subdomain already, so neither needed a pin.
+
+**Deploy status:** `tier3_auto_transcription_queue.txt` (14 new lines)
+and `tenant_overrides.csv` (23 new pins) need a deploy before they take
+effect (the queue drains via the cloud worker's own schedule; a pin
+only affects ingests after the next deploy). The 14 tier-1/2 pages were
+ingested via a real HTTP `POST /internal/ingest` against production and
+are live on redtaperecordings.com already — no deploy needed for those.
+
+Files: `rtr-deeplink/scripts/wo139_build_input.py` (new),
+`rtr-deeplink/scripts/wo134_confirmed_hits_ingest.py` (`INPUT_CSVS`
+swap, updated docstring), `rtr-business/research/
+wo139_confirmed_hits.csv` (new, 158 rows), `rtr-business/research/
+wo134_confirmed_hits_ingest_log.csv` (314 rows), `jurisdiction_
+coverage.csv`, `backfill_wo134_*.csv`, `rtr-business/research/
+ENUMERATION_METHODS.md` §160.
+
 ## WO-137: resolved the "CivicPlus AgendaCenter has no video" contradiction — both sweeps were mostly right, one real fixable miss found and shipped, two new platforms found and filed [Done 2026-09-09]
 
 Ryan's question: WO-127 (328/348 no-video) and WO-128 (193/242 no-video)
