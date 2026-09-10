@@ -141,8 +141,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (124)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (125)
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
+  [NEEDS-AUDIT]…
   [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
@@ -894,6 +895,13 @@ of human step they need.
   - **Next action**: build a dedicated SharePoint-stream adapter, following this repo's own "test against a real URL first" rule — start from the confirmed Plainfield URL above, and check whether headless rendering (already built for LIMS/SLC) recovers the real media URL from `stream.aspx`'s client-rendered player, or whether SharePoint exposes a plain API/JSON endpoint the way Wistia/CivicClerk's JS-embed cases do.
   - **Constraint**: don't fold this into WO-166's `_classify_direct_media()` — that function is deliberately scoped to a response that IS the media file (Content-Type/Content-Disposition detection), not a page that merely points at one; a SharePoint page needs its own detection and its own resolve path, the same way LIMS/SLC got their own platform entries in `detect_platform()` rather than being handled generically.
   - **History**: `BACKLOG_DONE.md` WO-166, 2026-09-10 (recorded distinctly per that WO's own scope, not built there); `rtr-business/research/ENUMERATION_METHODS.md` §186/§191 for the original finding.
+
+- **[NEEDS-AUDIT] `tests/test_admin_schema_info_endpoint.py::test_schema_info_ignores_tables_this_service_does_not_own` fails or passes depending on test collection order, not on any change to the code it tests.**
+  - **Issue**: found live 2026-09-10 (WO-166) while rebasing onto `main` — this test failed both on a fresh `origin/main` checkout run alone and in a full `pytest` run, then passed cleanly in a later full run with no code change in between. The test asserts `"meeting_pages" in data["actual_columns"]`, relying on `archive.main`'s `init_models()` having already run (via some other test module's import) to populate that table in the shared SQLite file — whether that's true depends on which test files pytest happens to collect and import first, not on anything this test or `/admin/schema-info` itself controls.
+  - **Impact**: an occasional false-positive red CI run on an unrelated PR, with no real regression behind it — the exact "flaky test masks a real one" risk this repo's own testing conventions try to avoid.
+  - **Next action**: give this test its own explicit fixture that calls `archive.main`'s `init_models()` (or the equivalent used elsewhere in this suite) before asserting on `actual_columns`, rather than relying on import-order luck from unrelated test modules.
+  - **Constraint**: none known — this is a test-isolation fix, not a change to `/admin/schema-info` itself.
+  - **History**: found incidentally rebasing WO-166 (`BACKLOG_DONE.md`, 2026-09-10) onto `main`; not caused by that PR — confirmed by running the same test against a clean `origin/main` worktree with no WO-166 changes present at all.
 
 - **[NEEDS-AUDIT] A real US government's YouTube video got minted with a Canadian-province gov_id prefix (`rtr:ca:sk:bracken-county-ky-fiscal-court`).**
   - **Issue**: WO-153 (2026-09-10) found page `bracken-county-ky-fiscal-court-sk-2026-09-09-regular-fiscal-court-meeting-septem` — a real Bracken County, Kentucky Fiscal Court meeting, confirmed by its own title and description — minted as `rtr:ca:sk:bracken-county-ky-fiscal-court` (`ca:sk` = Canada/Saskatchewan) instead of resolving to the real national-table id `us:county:21023`. The video is on `www.youtube.com`, and `wo147_access_ladder_sweep` had already written a correctly-formatted `fallback` pin for this exact video (`www.youtube.com,youtube:xC4ICFWd9E4,us:county:21023`) before WO-153 started — that pin hasn't been backfilled yet, which is a separate, ordinary next step (see below), not this bug.
