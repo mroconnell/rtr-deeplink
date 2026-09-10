@@ -1210,7 +1210,6 @@ telkwa.civicweb.net,,ca:csd:5951038,fallback,wildcard_http_sweep_2,DNS resolves 
 temagami.escribemeetings.com,,ca:csd:3548069,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Temagami
 temiskamingshores.escribemeetings.com,,ca:csd:3554020,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Temiskaming Shores
 tempe.hylandcloud.com,,us:place:0473000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tempe city
-tenant_host,match,gov_id,strength,source,evidence
 terrace.civicweb.net,,ca:csd:5949011,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Terrace
 terracebay.civicweb.net,,ca:csd:3558054,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Terrace Bay
 tetoncounty.escribemeetings.com,,us:county:16081,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Teton County
