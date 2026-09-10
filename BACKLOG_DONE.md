@@ -106,6 +106,23 @@ Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (7 new pins:
 write-up with every row's evidence) and its `wo153_part*` dry-run/
 applied CSVs.
 
+## Three channels settled from their meeting captions, Yucaipa given a real council meeting [Done 2026-09-10]
+
+Ryan asked two things: find a real council meeting on Yucaipa's channel to replace the 48-second recap, and read the captions of the still-open YouTube videos for a street, county or state that says where they are.
+
+| Government | What the captions said | Result |
+|---|---|---|
+| Lawrence County (@lawrencecounty168) | Mercer County and Indiana County, both Pennsylvania neighbours; Rainer Road, Corey Road | Lawrence County, PA; page re-keyed |
+| Sheridan (@cityofsheridan1890) | Arapahoe County | Sheridan, CO; page re-keyed |
+| Northfield (@villageofnorthfield) | Cook County, Illinois, Willow Road | Northfield, IL; page re-keyed |
+| Yucaipa, CA | channel listing: "City Council Meeting - 8/25/2025 - City of Yucaipa", 6.4 hours | probed (flagged long, accepted), queued with a pin |
+
+Channel pins and per-video pins for all three (the pages stored no channel, so the per-video pin is what re-keys them). Three caption files fetched, one per video, no block signature seen.
+
+**Still open.** Harrison and Taylor County: the archived videos are unavailable on YouTube, so no captions to read; Taylor County's channel is official (Ryan) but its state is unknown. The two Vimeo pages stay.
+
+**Deploy status.** Pages re-keyed now; the queue line and pins reach production on the next deploy.
+
 ## Ryan's decisions on the held videos and undecided pages: 5 queued, 4 off-mission pages deleted, 14 pages re-keyed [Done 2026-09-10]
 
 Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
