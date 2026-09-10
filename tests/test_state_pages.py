@@ -33,6 +33,7 @@ def _payload(
     title: str = "State Page Test Meeting",
     date: str = "2026-03-03",
     segments=None,
+    gov_id=None,
 ) -> dict:
     return {
         "platform": platform,
@@ -40,6 +41,7 @@ def _payload(
         "external_id": external_id,
         "title": title,
         "date": date,
+        "gov_id": gov_id,
         "jurisdiction": jurisdiction,
         "video_url": "https://example.com/v.m3u8",
         "video_format": "m3u8",
@@ -750,3 +752,41 @@ async def test_crud_search_jurisdictions_same_city_name_different_states_stay_di
     links = {r["link"] for r in await crud.search_jurisdictions("Alexandria")}
     assert "/j/alexandria-va" in links
     assert "/j/alexandria-la" in links
+
+
+async def test_a_two_province_city_sits_on_both_province_pages_and_renders():
+    """Lloydminster is one city under one charter on both sides of the
+    Alberta/Saskatchewan border, displayed "Lloydminster, AB/SK" on
+    purpose (Ryan, 2026-09-10; registry row rtr:ca:ab-sk:lloydminster,
+    state "AB/SK"). Three things that broke before this: the meeting page
+    500'd (US_STATE_ABBR_TO_NAME["AB/SK"] -- live on 2026-09-10 the
+    moment the deploy carried the registry row), and the page appeared on
+    neither /state/alberta nor /state/saskatchewan because both the SQL
+    suffix match and the Python re-check wanted exactly one code."""
+    slug = await _seed(
+        "escribe:lloydminster-1",
+        jurisdiction="Lloydminster, AB/SK",
+        gov_id="rtr:ca:ab-sk:lloydminster",
+        title="Regular Council",
+    )
+    page = client.get(f"/m/{slug}")
+    assert page.status_code == 200
+    assert "Lloydminster, AB/SK (Canada)" in page.text
+    assert 'href="/state/alberta"' in page.text
+    for state in ("alberta", "saskatchewan"):
+        response = client.get(f"/state/{state}")
+        assert response.status_code == 200, state
+        assert f"/m/{slug}" in response.text, state
+        assert "Lloydminster, AB/SK" in response.text, state
+    index = await crud.get_state_coverage_index()
+    abbrs = (
+        {
+            row["abbr"]
+            for row in index
+            if "Lloydminster, AB/SK" in (row.get("jurisdictions") or [])
+        }
+        if index and isinstance(index[0], dict) and "jurisdictions" in index[0]
+        else None
+    )
+    if abbrs is not None:
+        assert {"AB", "SK"} <= abbrs
