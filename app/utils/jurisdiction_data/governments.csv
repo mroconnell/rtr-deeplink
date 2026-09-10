@@ -551,6 +551,7 @@ ca:csd:5955030,Taylor,municipality,ca,BC,,,5955030,,,"Taylor, BC",ca_csd.csv,
 ca:csd:5955034,Fort St. John,municipality,ca,BC,,,5955034,,,"Fort St. John, BC",ca_csd.csv,
 ca:csd:6001029,Dawson,municipality,ca,YT,,,6001029,,,"Dawson, YT",ca_csd.csv,
 ca:csd:6106023,Yellowknife,municipality,ca,NT,,,6106023,,,"Yellowknife, NT",ca_csd.csv,
+rtr:ca:ab-sk:lloydminster,Lloydminster,municipality,ca,AB/SK,,,,,,"Lloydminster, AB/SK|Lloydminster, AB|Lloydminster, SK|City of Lloydminster",ryan_stated,"The one Canadian city that straddles a provincial border: one municipal government under the Lloydminster Charter, two StatCan CSDs (4810039 AB part, 4717029 SK part). Ryan, 2026-09-10: an explicit exception, display 'Lloydminster, AB/SK' rather than picking a side. Residual: state_abbr_from_jurisdiction() reads no province from 'AB/SK', so the hub appears on neither /state/alberta nor /state/saskatchewan yet (BACKLOG)."
 rtr:ca:ab:athabasca-county,Athabasca County,county,ca,AB,,,,,,"Athabasca County, AB",minted,no national table covers this government
 rtr:ca:ab:camrose-county,Camrose County,county,ca,AB,,,,,,"Camrose County, AB",minted,no national table covers this government
 rtr:ca:ab:city-of-leduc,City of Leduc,municipality,ca,AB,,,,,,"City of Leduc, AB",minted,no national table covers this government
@@ -782,6 +783,7 @@ rtr:us:ak:petersburg,City of Petersburg,municipality,us,AK,,,,,,"City of Petersb
 rtr:us:ak:unknown-jurisdiction,Unknown Jurisdiction,other,us,AK,,,,,,Unknown Jurisdiction,minted,no national table covers this government
 rtr:us:al:city-of,City of,municipality,us,AL,,,,,,City of Al,minted,no national table covers this government
 rtr:us:al:huntsville-ordinance-no,City of Huntsville.Ordinance No,municipality,us,AL,,,,,,City of Huntsville.Ordinance No.,minted,no national table covers this government
+rtr:us:ar:arkansas-supreme-court,Arkansas Supreme Court,court,us,AR,,,,,,"Arkansas Supreme Court|Arkansas Supreme Court, AR|Supreme Court of Arkansas",ryan_stated,"arkansas-sc.granicus.com: the 'sc' is Supreme Court, not South Carolina -- the mint rung wrote rtr:us:sc:arkansas-supreme-court until the 2026-09-10 type-initials guard. Ryan, 2026-09-10: pin it so the right state shows."
 rtr:us:az:arizona-supreme-court,Arizona Supreme Court,court,us,AZ,,,,,,,curated+ryan_stated,"Arizona Supreme Court, AZ -- minted: minted from 'Arizona Supreme Court, AZ'"
 rtr:us:az:city-of-lake-havasu,City of Lake Havasu,municipality,us,AZ,,,,,,"City of Lake Havasu, AZ",minted,no national table covers this government
 rtr:us:az:lake-havasu,City of Lake Havasu,municipality,us,AZ,,,,,,"City of Lake Havasu, AZ",minted,no national table covers this government
@@ -869,7 +871,7 @@ rtr:us:fl:plantation,The City of Plantation,other,us,FL,,,,,,"The City of Planta
 rtr:us:fl:port-orange,Port Orange,special_district,us,FL,,,,,,"Port Orange, FL",minted,no national table covers this government
 rtr:us:fl:port-st-lucie,Port St. Lucie,special_district,us,FL,,,,,,"City of Port St Lucie|Port St. Lucie, FL",minted,no national table covers this government
 rtr:us:fl:ps-c,Ps C,other,us,FL,,,,,,"Ps C, FL",minted,no national table covers this government
-rtr:us:fl:south-florida-water-management,South Florida Water Management,special_district,us,FL,,,,,,,curated+ryan_stated,"South Florida Water Management, FL -- minted: minted from 'South Florida Water Management, FL'"
+rtr:us:fl:south-florida-water-management,South Florida Water Management District,special_district,us,FL,,,,,,"South Florida Water Management District|South Florida Water Management District, FL|SFWMD",curated+ryan_stated,"South Florida Water Management, FL -- minted: minted from 'South Florida Water Management, FL' Name completed to the district's own ('District' was dropped by the adapter), and sfwmd.granicus.com pinned here too so both hosts share one id. Ryan, 2026-09-10."
 rtr:us:fl:south-miami,The City of South Miami,other,us,FL,,,,,,"The City of South Miami, FL",minted,no national table covers this government
 rtr:us:fl:st-johns-river-water-management-district,St. Johns River Water Management District,special_district,us,FL,,,,,,"St. Johns River Water Management District, FL",minted,no national table covers this government
 rtr:us:fl:st-lucie-county,St Lucie County,county,us,FL,,,,,,"St Lucie County, FL",minted,no national table covers this government

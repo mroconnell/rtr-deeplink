@@ -1,5 +1,29 @@
 # Backlog — done
 
+## Pins for the type-initial hosts and Lloydminster — the right state shows on every page the 2026-09-10 dry run had flagged [Done 2026-09-10]
+
+Ryan: minted names being displayed is right, and the exceptions get
+fixed once with a pin. Five `authoritative` rows, one curated name, two
+minted rows, then `backfill_gov_id.py --hosts-file` for those hosts
+(9 rows changed, second dry run 0):
+
+- `arkansas-sc.granicus.com` -> `rtr:us:ar:arkansas-supreme-court` (new
+  minted row, type `court`, AR): "Arkansas Supreme Court, AR".
+- `oxnardsd.granicus.com` -> `us:sd:0629220`, with a curated
+  `gov_name` "Oxnard School District" (Census: Oxnard Elementary School
+  District; the district's own name everywhere, the Boise pattern).
+- `coloradoga.granicus.com` -> `us:state:08` (the General Assembly is a
+  body of the State of Colorado, D1).
+- `sfwmd.granicus.com` -> the id `sfwmd.iqm2.com` already carried,
+  `rtr:us:fl:south-florida-water-management`, whose name is completed to
+  "South Florida Water Management District" in the curated row.
+- `pub-lloydminster.escribemeetings.com` -> `rtr:ca:ab-sk:lloydminster`,
+  display "Lloydminster, AB/SK": one city under the Lloydminster
+  Charter on both sides of the provincial border (StatCan CSDs 4810039
+  and 4717029). Ryan's call, to be clear and fair to both sides rather
+  than pick one. Replaces an empty `known_domains` placeholder row.
+  Residual filed: the hub sits on neither province page yet.
+
 ## Full gov_id backfill after display-from-gov_id — 216 pages, two resolver bugs found and fixed first [Done 2026-09-10]
 
 Ryan deployed at #824 + #818/#822/#826 and asked for the full backfill

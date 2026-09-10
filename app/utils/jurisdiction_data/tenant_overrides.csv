@@ -48,6 +48,7 @@ antrimcounty.civicweb.net,,us:county:26009,fallback,wildcard_http_sweep_2,DNS re
 apps.tampagov.net,,us:place:1271000,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Tampa city
 ardsleyvillage.civicweb.net,,us:place:3602506,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Ardsley village
 argyle.escribemeetings.com,,ca:csd:4604057,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Argyle
+arkansas-sc.granicus.com,,rtr:us:ar:arkansas-supreme-court,authoritative,ryan_stated,"Arkansas Supreme Court -- the subdomain's 'sc' is the court, not South Carolina. Ryan, 2026-09-10."
 armstrong.civicweb.net,,ca:csd:3554036,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Armstrong
 arranelderslie.escribemeetings.com,,ca:csd:3541043,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Arran-Elderslie
 artesiaca.cablecast.tv,,us:place:0602896,fallback,auto_derived+visual_confirmed,"city seal reads 'City of Artesia, State of California, Incorporated 1959' (landing.png) [reports/jurisdiction_screens/artesiaca.cablecast.tv/landing.png reports/jurisdiction_screens/artesiaca.cablecast.tv/meeting.png] -> place 0602896 -> registry: us_places.csv Artesia city"
@@ -276,6 +277,7 @@ coe-pub.escribemeetings.com,,ca:cd:3537,fallback,visual_confirmed,"agenda masthe
 coldlake.escribemeetings.com,,ca:csd:4812002,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Cold Lake
 coldstream.civicweb.net,,ca:csd:5937010,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Coldstream
 collingwood.escribemeetings.com,,ca:csd:3543031,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Collingwood
+coloradoga.granicus.com,,us:state:08,authoritative,ryan_stated,"Colorado General Assembly, a body of the State of Colorado (D1) -- the subdomain's 'ga' is the assembly, not Georgia. Ryan, 2026-09-10."
 columbiail.gov,,us:place:1715833,fallback,hub_sweep_wo126,"coverage registry row us:place:1715833 (Columbia city, IL); hub https://columbiail.gov/AgendaCenter; meeting found via youtube at https://columbiail.gov/AgendaCenter"
 columbusin.granicus.com,,us:place:1814734,fallback,identity_join+landing_page,"Columbus (city), IN -- us_places.csv Columbus city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
 colwood.civicweb.net,,ca:csd:5917041,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Colwood
@@ -866,6 +868,7 @@ ottawa.escribemeetings.com,,ca:csd:3506008,fallback,wildcard_http_sweep_2,bare f
 outlook.civicweb.net,,ca:csd:4711027,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Outlook
 owensound.escribemeetings.com,,ca:csd:3542059,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Owen Sound
 oxfordcounty.escribemeetings.com,,us:county:23017,fallback,wildcard_http_sweep_2,bare form resolves -> registry: us_counties.csv Oxford County
+oxnardsd.granicus.com,,us:sd:0629220,authoritative,ryan_stated,"Oxnard School District (Census: Oxnard Elementary School District) -- the subdomain's 'sd' is the district, not South Dakota. Ryan, 2026-09-10."
 pacificacityca.primegov.com,,us:place:0654806,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_places.csv Pacifica city
 pacificmo.gov,,us:place:2955910,fallback,hub_sweep_wo126,"coverage registry row us:place:2955910 (Pacific city, MO); hub https://pacificmo.gov/AgendaCenter; meeting found via youtube at https://pacificmo.gov/AgendaCenter"
 painesvilleoh.new.swagit.com,,us:place:3959416,fallback,identity_join+landing_page,"Painesville (city), OH -- us_places.csv Painesville city [WO-125 identity join: jurisdiction_coverage.csv gives this gov_id for this host; confirmed 2026-09-09 against the host's landing page title / Swagit footer / archived meeting body]"
@@ -997,7 +1000,7 @@ pub-hpsb.escribemeetings.com,,rtr:ca:on:hamilton-police-services-board,authorita
 pub-langford.escribemeetings.com,,ca:csd:5917044,fallback,ryan_stated,"Langford, BC -- ca_csd.csv Langford"
 pub-langleycity.escribemeetings.com,,us:cousub:2005338600,fallback,jurisdiction_overrides, -> registry: us_cousubs.csv Langley township
 pub-lincoln.escribemeetings.com,,ca:csd:3526057,fallback,ryan_stated,"Lincoln, ON -- ca_csd.csv Lincoln"
-pub-lloydminster.escribemeetings.com,,,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unresolved: no state for 'Lloydminster, AB/SK'"
+pub-lloydminster.escribemeetings.com,,rtr:ca:ab-sk:lloydminster,authoritative,ryan_stated,"Lloydminster, the AB/SK border city -- an explicit exception so neither province is picked over the other; replaces an empty known_domains placeholder row. Ryan, 2026-09-10."
 pub-london.escribemeetings.com,,,fallback,jurisdiction_overrides, -> unresolved: no state for 'City of London'
 pub-london.escribemeetings.com,,ca:csd:3539036,fallback,ryan_stated,"London, ON -- ca_csd.csv London"
 pub-markham.escribemeetings.com,,ca:csd:3519036,authoritative,manual_override,"was wrongly filed as Markham, IL (tenant_hints.csv, same WO-118 bug) -> registry: ca_csd.csv Markham, ON. Backfilled 4 pages via POST /internal/jurisdiction/override, 2026-09-06."
@@ -1154,6 +1157,7 @@ sechelt.escribemeetings.com,,ca:csd:5929011,fallback,wildcard_http_sweep_2,bare 
 sedgewick.civicweb.net,,ca:csd:4807044,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Sedgewick
 selkirk.civicweb.net,,ca:csd:4613047,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Selkirk
 severn.civicweb.net,,ca:csd:3543015,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Severn
+sfwmd.granicus.com,,rtr:us:fl:south-florida-water-management,authoritative,ryan_stated,"South Florida Water Management District -- the subdomain's 'md' is the district, not Maryland; same id as sfwmd.iqm2.com's pin. Ryan, 2026-09-10."
 sfwmd.iqm2.com,,rtr:us:fl:south-florida-water-management,fallback,ryan_stated,"South Florida Water Management, FL -- minted: minted from 'South Florida Water Management, FL'"
 sgcityutah.gov,,us:place:4965330,fallback,ryan_stated,"St George, UT -- us:place:4965330 St. George city matched with spacing ignored"
 shastacounty.primegov.com,,us:county:06089,fallback,wildcard_http_sweep_2,DNS resolves -> registry: us_counties.csv Shasta County

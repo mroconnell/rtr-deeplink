@@ -123,9 +123,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Production actions only Ryan should take  (9)
-    [HUMAN] Lloydminster (the one city that straddles AB and SK) is…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
+  Production actions only Ryan should take  (8)
     [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
@@ -137,7 +136,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (103)
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -191,7 +190,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (102)
   Duration alone cannot separate a very short real meeting from an ad…
   Residual gaps from the 50-largest-cities audit `[NEEDS-AUDIT]`
   Granicus's GovAccess CMS product is undetected and blocked by…
-  Jurisdiction extraction & backfill  (21)
+  Jurisdiction extraction & backfill  (22)
+    `[NEEDS-AUDIT]` `[EASY]` Lloydminster's hub (`/j/lloydminster-ab-sk`,…
     `[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village…
     `[JUST-DO-IT]` `[EASY]` A literal HTML entity in a stored…
     `[JUST-DO-IT]` `[EASY]` Census LSAD "corporation" is neither stripped…
@@ -603,11 +603,6 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
-
-- **[HUMAN] Lloydminster (the one city that straddles AB and SK) is minted as `rtr:us:ab/sk:lloydminster-ab-sk` and now displays "Lloydminster, AB/SK, AB/SK".**
-  - **Issue**: the adapter's string is "Lloydminster, AB/SK" (eScribe, `pub-lloydminster.escribemeetings.com`); nothing in the ladder understands a two-province suffix, so the mint rung took "AB/SK" as a state and the display rule appended it again. Two pages. Left out of the 2026-09-10 full backfill on purpose (`--hosts-file` minus this host) so the doubled suffix never reached the site.
-  - **Next action**: decide the identity — city hall is on the Alberta side, so `ca:csd:4811068` (Lloydminster (Part), AB) as an `authoritative` pin for the host is the simplest; the SK half (`ca:csd:4717029`) is the same government. Then `backfill_gov_id.py --hosts pub-lloydminster.escribemeetings.com`.
-  - **History**: found by the first full backfill dry run after display-from-gov_id, 2026-09-10.
 
 - **[HUMAN] 18 hosts the coverage registry ties to the wrong government: 13 still want a pin to the *correct* one (22 pages), 2 have the right research id but a wrong page, 3 are undecidable.**
   - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type — 88 of 158 checkable pairs name a different government from the one the host serves. Most of those pages already carry the right id. These do not: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `fishkilltownny.iqm2.com` → `us:cousub:3602725978`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (all Town Boards, filed as villages); `townofchevychase.org` → `us:place:2416620` (Town, filed as Chevy Chase Village); `pub-cambridge` → `ca:csd:3530010`, `pub-clearview` → `ca:csd:3543005`, `pub-whiterockcity` → `ca:csd:5915007`, `pub-creston` → `ca:csd:5903004` (Canadian eScribe tenants filed under US namesakes); `watertown.civicweb.net` → `us:place:4669300` (portal footer ", SD 57201", filed as WI). Two where the *page* is wrong and the research right: `mcleancountyil.gov` (`us:county:17113`; page keyed to McLean village at tier `registry`, so only an `authoritative` pin fixes it — same shape as Juneau below) and `kankakeecountyil.gov` (`us:county:17091`; page minted `rtr:us:il:kankakee-city`). Three undecidable: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY), `cityofoakgrove.com` (claimed by both Oak Grove MO and Oak Grove Village MO), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
@@ -2426,6 +2421,11 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   `NEEDS-AUDIT` there, misfiled), compacted the same day; full
   fuzzy-match investigation in `BACKLOG_DONE.md`.
 ### Jurisdiction extraction & backfill
+
+- **`[NEEDS-AUDIT]` `[EASY]` Lloydminster's hub (`/j/lloydminster-ab-sk`, display "Lloydminster, AB/SK") appears on neither `/state/alberta` nor `/state/saskatchewan`.**
+  - **Issue**: the city is one government on both sides of the border and Ryan chose to display both provinces rather than pick one (`rtr:ca:ab-sk:lloydminster`, state `AB/SK`). `state_abbr_from_jurisdiction()` reads no province from "AB/SK", so the state pages' grouping and the "(Canada)" marker both miss it.
+  - **Next action**: let a two-code state contribute to both province pages (split on `/` where the state is read), and treat it as Canadian for the marker. Two pages today.
+  - **History**: pinned 2026-09-10 (`BACKLOG_DONE.md`, "Pins for the type-initial hosts and Lloydminster").
 
 - **`[JUST-DO-IT]` `[EASY]` "Charter Township of X" keys to the village or city of the same name: `_LEADING_TYPE_RE` knows "Township of" but not "Charter Township of".**
   - **Issue**: `resolve_government("Charter Township of Shelby, MI")` → `us:place:2672840` (Shelby *village*, Oceana County), while "Shelby Charter Township, MI" → `us:cousub:2609972820` correctly. `resolver.py`'s `_LEADING_TYPE_RE` lists `city|town|village|borough|township|…` without the `(?:charter\s+)?` prefix that `_TRAILING_TYPE_RE` and `_TRAILING_PAREN_TYPE_RE` already allow, so no township preference reaches the lookup and the place wins the tie. Michigan has ~130 charter townships and their IQM2/CivicClerk portals title themselves exactly this way.
