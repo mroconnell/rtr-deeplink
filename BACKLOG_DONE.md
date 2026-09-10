@@ -1091,6 +1091,122 @@ page identity join), queued after WO-152.
 **Deploy status.** The two pages are re-keyed in the database now. The
 pins reach new resolves only after the next deploy.
 
+## WO-149: access-ladder sweep of 1,424 US counties over 5,000 people with no page [Done 2026-09-10]
+
+**What this was.** Counties over 5,000 people are the biggest single
+gap on the coverage dashboard. WO-130 already tried these 1,424 with a
+plain, honest web request and could not find a meetings platform on any
+of them. This work order tried harder, one county at a time: a longer
+ladder of access methods, and checking the platform's own listing
+before giving up. The goal, same as always: one meeting with video per
+county. Only meetings with real video become pages.
+
+**What was tried, in order, for each county.** First, a known meetings
+page if the research file had one, falling back to the county's
+homepage. Then a plain, honest web request. If that was blocked, one
+retry with browser-like headers. If a page came back with no visible
+meeting link, one try with a real browser (headless). A Cloudflare
+"prove you are human" page always stopped the attempt — never bypassed.
+Once a meetings platform was found, its own listing was checked for the
+newest meeting with real video, not just the newest meeting.
+
+**Result.** All 1,424 counties were checked, once each.
+
+| Outcome | Count of 1,424 | Detail |
+|---|---|---|
+| Already had a page | 0 | None of the 1,424 turned out to be already covered. |
+| Ingested tier 1/2 (captions available, page live now) | 159 | A real meeting with captions the site can show directly. |
+| Video with no captions, queued (after probe) | 110 | A real video was found; it goes to the transcription queue. |
+| Rejected by probe | 12 | Checked the video before queuing it — 10 were dead links, 2 were shorter than a minute. |
+| No video found | 31 | A real, current meeting page exists, but it has no video. |
+| No meetings found | 4 | The platform was found, but it lists no meetings. |
+| No platform link found after the full ladder | 821 | The county's site was reached, but no meetings platform link was on it. |
+| Wrong domain mapping | 0 | No county's listed domain pointed at a different government. |
+| Off-mission | 101 | The video found was not a real meeting (see caption below). |
+| Unsupported platform (no adapter yet) | 2 | A real platform this site cannot read yet. |
+| Blocked at plain request | 5 | The site refused even a polite, honest request. |
+| Blocked at browser-style headers | 17 | Still refused after trying again with browser-like headers. |
+| Blocked at real-browser check | 10 | The site could not be reached at all, even with a real browser (a broken certificate, a dropped connection, a download prompt in the way — not a human-verification gate). |
+| Human-verification gate (Cloudflare, etc.) | 89 | Stopped immediately, per the rule — never bypassed. |
+| Dead | 57 | The site's address does not work at all, or times out. |
+| Error | 6 | A resolve step crashed instead of giving a clean answer (see caution). |
+| *Domain corrected* | *51* | *Not a separate outcome — 51 counties' listed domain no longer worked, and a live replacement was found and saved, on top of whatever outcome that county got above.* |
+
+**Which rung answered — for the 1,392 counties whose site could be
+read at all:**
+
+| Rung | Count of 1,424 |
+|---|---|
+| Plain, honest request | 1,004 |
+| Browser-style headers | 13 |
+| Real browser (headless) | 229 |
+| Human-verification gate | 89 |
+| Dead / unreachable | 57 |
+| Never got past the request stage (blocked) | 32 |
+
+**Governments with video found, in total: 269** — 159 with captions
+already live on the site, and 110 more with video queued for
+captioning.
+
+**Two real bugs were found and fixed while checking the first 30
+counties by hand, before the full run, per this work order's own
+instruction to pilot first.** (1) A crash on any county with no known
+web address at all — it now falls back to a national county-website
+directory instead of failing. (2) 93 of the 1,424 counties already had
+the exact video link on file, but the code was ignoring it and looking
+at the county's plain homepage instead — every one of those 93 was
+wrongly marked "no platform found" until this was fixed. Volusia
+County, FL is the case that caught it, and after the fix it correctly
+found and queued a real meeting.
+
+**Caution: 4 of the 159 "ingested" pages are very likely not real
+meetings, and should be deleted.** Checking every ingested page by hand
+(not just the first one) found a "Larry J. Dix Boardroom" video for
+Adams County, NE — a 59-second camera-name clip, not a meeting. The bug
+that let it through (a plain text match on the word "board" also
+matching "Boardroom") is fixed in this same change. Three more slipped
+through for a harder reason that is not yet fixed: their titles
+genuinely contain a real meeting word ("commissioner," "commission,"
+"committees") while being something else entirely — a 2017 civics
+explainer for Millard County, UT ("What Does a County Commissioner or
+Council Member Do?"), a Pennsylvania state agency's own officer-training
+video mistakenly attached to Perry County, PA, and a state-legislation
+explainer clip attached to Osage County, MO. All four are listed with
+their exact page addresses in
+`~/Documents/rtr-business/research/wo149_flagged_for_review.csv`, ready
+to delete. Filed as an open item in `BACKLOG.md` since the harder three
+need a real design decision, not a quick patch. A second, smaller
+caution: while writing the video to the transcription queue, the same
+video (Lake County, OH) was almost queued twice under two different-
+looking web addresses — caught by the site's own automatic checks
+before this went out, fixed by hand, and the general dedup gap is filed
+in `BACKLOG.md` too.
+
+**Two more real, confirmed gaps were found and filed in `BACKLOG.md`,
+not fixed here** — a Granicus resolve step crashes instead of giving a
+clean "blocked" answer on 3 of this run's counties (already a known,
+filed issue; this adds 3 more real examples), and a SuiteOne Media
+adapter crashes on a plain channel/home address instead of one that
+already points straight at a specific meeting (new, 3 counties).
+
+**Deploy status.** This is all `scripts/` and `app/utils/` data plus one
+shared script's logic — no resolver/Archive service code changed, so
+there is nothing new to deploy. The video pages already went live the
+moment each one was ingested through the normal `POST /internal/ingest`
+path; nothing here is waiting on a deploy.
+
+**Recommendation.** Ryan: review and delete the 4 flagged pages in
+`wo149_flagged_for_review.csv` (one click each via the existing
+delete-pages tool). The 110 queued videos will caption in over the
+coming days through the normal transcription queue, no action needed.
+
+- **History**: `docs/COVERAGE_HANDOVER.md`, `docs/BREADTH_SWEEP_BRIEF.md`,
+  `rtr-business/research/ENUMERATION_METHODS.md` §158/§183/§23. Built on
+  `scripts/wo134_confirmed_hits_ingest.py` (WO-134), `scripts/
+  wo130_county_ingest.py` (WO-130), `scripts/wo141_access_ladder_pilot.py`
+  (WO-141) and `scripts/probe_tier3_queue.py` (WO-144). Full per-county
+  report: `~/Documents/rtr-business/research/wo149_report.csv`.
+
 ## The county form of a consolidated city-county keys to the same government as the city [Done 2026-09-10]
 
 Closed the entry filed earlier the same day. `app/utils/jurisdiction_data/

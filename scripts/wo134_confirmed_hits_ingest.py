@@ -203,6 +203,13 @@ MEETING_ALLOWLIST = (
     "assembly",
     "selectboard",
     "select board",
+    # "Board of County Commissioners" abbreviation -- real, confirmed-live
+    # false negative caught in WO-149's own 30-row county pilot
+    # (2026-09-10): Tulsa County OK's own YouTube channel titles its real
+    # commission meetings "BOCC Livestream - December 1, 2025", which
+    # contains neither "board" nor "commission" as a substring and was
+    # rejected as off-mission before this was added.
+    "bocc",
 )
 PROMO_BLOCKLIST = (
     "promo",
@@ -237,18 +244,29 @@ PROMO_BLOCKLIST = (
 HOP2_FETCH_CAP = 4
 HIGH_RISK_TITLE_PLATFORMS = {"youtube", "vimeo"}
 
-# WO-147 hook (2026-09-10): when set, process_row() hands a tier-3
-# (video, no reachable captions) candidate to this callable instead of
-# appending it to TIER3_QUEUE_FILE and pinning it immediately. Ryan's
-# rule for WO-147's access-ladder sweep is "probe before queue" -- a
+# WO-147/WO-149 hook (2026-09-10, added independently by both same-day
+# sweeps for the identical reason): when set, process_row() hands a
+# tier-3 (video, no reachable captions) candidate to this callable
+# instead of appending it to TIER3_QUEUE_FILE and pinning it
+# immediately. Ryan's rule for both sweeps is "probe before queue" -- a
 # tier-3 candidate must be probed (duration/dead-link check) before it
-# earns a queue line or a tenant_overrides.csv pin, not at resolve time.
-# None (the default) preserves this module's original behavior exactly,
-# so wo134_confirmed_hits_ingest.py's own main()/WO-139 callers are
-# unaffected. Signature: handler(gov_id, unit_name, platform, final_seed,
-# hit_url, title, date, result) -> None. See scripts/
-# wo147_access_ladder_sweep.py for the real handler.
+# earns a queue line, not at resolve time. None (the default) preserves
+# this module's original behavior exactly, so wo134_confirmed_hits_
+# ingest.py's own main()/WO-139 callers are unaffected. Signature:
+# handler(gov_id, unit_name, platform, final_seed, hit_url, title, date,
+# result) -> None. See scripts/wo147_access_ladder_sweep.py and scripts/
+# wo149_county_ladder_sweep.py for the two real handlers.
 TIER3_HANDLER = None
+
+# WO-149 hook (2026-09-10): a caller can set this to a callable(result,
+# gov_id, unit_name, platform, final_seed) -> (ok: bool, note: str) to
+# force the exact registry jurisdiction string onto a resolved result
+# and reject a hit that plainly names a different government (see
+# process_row's call site) -- the county-sharing-a-name-with-an-
+# independent-city trap. None preserves the original apply_display_
+# jurisdiction-only behavior (fills a blank jurisdiction, never
+# overwrites or rejects).
+JURISDICTION_CHECK_HOOK = None
 
 
 @dataclass
@@ -256,7 +274,7 @@ class RowResult:
     gov_id: str
     unit_name: str
     platform: str
-    outcome: str  # ingested_tier1_2 | queued_tier3 | no_video_found | already_covered | skipped | error
+    outcome: str  # ingested_tier1_2 | queued_tier3 | queued_tier3_pending | no_video_found | already_covered | skipped | error
     reason: str
     seed_url: str = ""
     title: str = ""
@@ -413,11 +431,23 @@ async def youtube_oembed_title(
         return None
 
 
+def _contains_word(text: str, phrase: str) -> bool:
+    """Word-boundary match, not a bare substring test. Real, confirmed-
+    live false positive caught in WO-149's own county sweep (2026-09-10):
+    a plain `"board" in title` check passed "Larry J. Dix Boardroom" --
+    a YouTube channel's persistent room-name livestream title, not a
+    meeting -- straight through to a live 59-second Archive page. Every
+    other MEETING_ALLOWLIST/PROMO_BLOCKLIST entry is a real word or
+    phrase too, so this closes the same class of bug for all of them,
+    not just "board"."""
+    return re.search(r"\b" + re.escape(phrase) + r"\b", text) is not None
+
+
 def _looks_like_real_meeting(title: str, *, require_allowlist: bool = False) -> bool:
     t = (title or "").lower()
-    if any(b in t for b in PROMO_BLOCKLIST):
+    if any(_contains_word(t, b) for b in PROMO_BLOCKLIST):
         return False
-    if require_allowlist and not any(kw in t for kw in MEETING_ALLOWLIST):
+    if require_allowlist and not any(_contains_word(t, kw) for kw in MEETING_ALLOWLIST):
         return False
     return True
 
@@ -1277,6 +1307,27 @@ async def process_row(
         title = result.title or ""
         date = result.date or ""
 
+        # Optional override: a caller (e.g. scripts/wo149_county_ladder_
+        # sweep.py) can set this to a callable(result, gov_id, unit_name,
+        # platform, final_seed) -> (ok: bool, note: str) to FORCE the
+        # exact registry jurisdiction string on `result` (mutating it
+        # in place, wo130_county_ingest.py's pattern) and reject a hit
+        # whose adapter-guessed jurisdiction plainly names a different
+        # government (e.g. a county's domain pointed at a same-named
+        # independent city's tenant in another state -- the
+        # "wrong-domain-mapping" trap). ok=False skips this hit and
+        # tries the next one, same as any other RowSkip-shaped reason.
+        # None (the default) leaves this pipeline's original behavior
+        # (apply_display_jurisdiction below only fills a BLANK
+        # jurisdiction) unchanged.
+        if JURISDICTION_CHECK_HOOK is not None:
+            ok, hook_note = JURISDICTION_CHECK_HOOK(
+                result, gov_id, unit_name, platform, final_seed
+            )
+            if not ok:
+                last_reason = f"{platform}: {hook_note}"
+                continue
+
         if _has_video(result):
             _seen_keys.add(key)
             apply_display_jurisdiction(result, gov_id)
@@ -1314,11 +1365,24 @@ async def process_row(
                     page_url or "",
                 )
 
-            # video_url present, no segments -- tier 3. WO-147's sweep
-            # sets TIER3_HANDLER so this hands off to a pending-CSV sink
-            # (probed before it ever reaches the real queue/a pin) rather
-            # than queuing+pinning immediately -- see TIER3_HANDLER's own
-            # comment above.
+            # video_url present, no segments -- tier 3. Per
+            # docs/BREADTH_SWEEP_BRIEF.md's "probe before queue" rule
+            # (WO-144's probe helper), a caller that wants every tier-3
+            # candidate probed first (dead-link/too-short rejected)
+            # before it ever reaches the queue file can set TIER3_HANDLER
+            # to a callback instead of letting this function append
+            # directly -- WO-147 and WO-149 both do this so probing and
+            # a per-candidate pending ledger happen before the queue
+            # write and the tenant_overrides.csv pin, without
+            # duplicating this whole resolve/ingest pipeline. Note the
+            # pin is NOT written here for a tier-3 candidate (see
+            # maybe_write_tenant_override's call site above, now scoped
+            # to the tier-1/2 `if segments:` branch only) -- the pending
+            # sink stores what a pin WOULD be (a `pin_row` column) and
+            # the caller's own finish step applies it only for a
+            # candidate the probe actually accepts, so a dead/too-short
+            # video never earns a pin. Default (TIER3_HANDLER is None)
+            # preserves the original behavior below unchanged.
             if TIER3_HANDLER is not None:
                 TIER3_HANDLER(
                     gov_id=gov_id,
@@ -1335,25 +1399,30 @@ async def process_row(
                     unit_name,
                     platform,
                     "queued_tier3_pending",
-                    "real video, no transcript yet -- sent to the WO-147 tier-3 "
-                    "pending sink for probing, not queued directly",
+                    "real video, no transcript yet -- handed to TIER3_HANDLER for "
+                    "probing before it is queued",
                     final_seed,
                     title,
                     date,
                     "",
                 )
 
-            # queue it, don't ingest directly (per this project's own
-            # tier-3 pattern). Real, confirmed-live bug this session
-            # (WO-134, 2026-09-09): nationwide_2404_ingest.py's own
-            # tier-3 append had no existing-queue check at all, and
-            # neither did an earlier draft of this script -- repeated
-            # smoke-test runs during development each blindly appended
-            # the same real URLs, producing exact duplicate lines caught
-            # by tests/test_transcription_queue_files.py's
-            # test_no_duplicate_rows (fixed by a one-off dedupe of the
-            # file; this check is what prevents it recurring on any
-            # future run/resume).
+            # video_url present, no segments -- tier 3, queue it, don't
+            # ingest directly (per this project's own tier-3 pattern).
+            # Real, confirmed-live bug this session (WO-134, 2026-09-09):
+            # nationwide_2404_ingest.py's own tier-3 append had no
+            # existing-queue check at all, and neither did an earlier
+            # draft of this script -- repeated smoke-test runs during
+            # development each blindly appended the same real URLs,
+            # producing exact duplicate lines caught by tests/
+            # test_transcription_queue_files.py's test_no_duplicate_rows
+            # (fixed by a one-off dedupe of the file; this check is what
+            # prevents it recurring on any future run/resume). This is
+            # the direct/legacy path (TIER3_HANDLER is None), so the pin
+            # is written here immediately, same as a tier-1/2 ingest --
+            # only a HANDLER-intercepted candidate defers its pin to the
+            # caller's own finish step (see TIER3_HANDLER's comment
+            # above).
             maybe_write_tenant_override(
                 platform, result, final_seed, gov_id, unit_name, source_tag
             )
