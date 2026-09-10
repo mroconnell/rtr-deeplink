@@ -112,6 +112,68 @@ def _is_broken_s3_underscore_host(host: str) -> bool:
     return bool(match and "_" in match.group(1))
 
 
+# Every Granicus page's own `<meta name="description">` follows this exact
+# template regardless of tenant type -- confirmed live 2026-09-10 on 4
+# distinct real tenants: a water district ("Live and Recorded Public
+# meetings of February 2025 Governing Board Meeting for South Florida
+# Water Management District"), a transit authority ("...for Utah Transit
+# Authority (UTA)"), a council of governments ("...for Southern California
+# Association of Governments"), and an ordinary city ("...for Panama City
+# Beach"). This is the one reliable jurisdiction source for the special-
+# district/agency population that has no "City of X" phrasing anywhere on
+# the page and no Census-table subdomain match either (BACKLOG.md's
+# "sfwmd -> S Fw, MD" case) -- those pages correctly decline to guess today
+# and land as "Unknown Jurisdiction". `.+ for` is deliberately greedy so it
+# matches the LAST " for " in the string, not the first -- a meeting title
+# containing its own "for" ("Request for Proposals Committee Meeting")
+# must not truncate the match before the real organization name.
+_META_DESCRIPTION_ORG_RE = re.compile(
+    r"^Live and Recorded Public [Mm]eetings? of .+ for (.+)$"
+)
+
+
+def _extract_org_from_meta_description(soup: BeautifulSoup) -> Optional[str]:
+    """The organization name Granicus itself prints after "for" in the
+    page's own meta description, or None when the tag is missing or
+    doesn't match the known template (never guessed from a looser
+    pattern -- see `_META_DESCRIPTION_ORG_RE`'s own comment).
+
+    This is deliberately NOT run through the same validation gate
+    `extract_jurisdiction_chain()` applies to its own candidates -- a real
+    special district (water/utility/transit/regional authority) will
+    never validate against the national place/county tables (they aren't
+    in any lookup table, by design -- see `GOVERNMENT_IDENTITY_
+    ARCHITECTURE.md` decision D3), and discarding an unvalidatable
+    candidate here would just reproduce the current "Unknown Jurisdiction"
+    outcome this exists to fix. The caller passes this straight to
+    `finalize_jurisdiction()` like any other adapter-native candidate,
+    which already keeps an unvalidatable name unchanged at confidence
+    "unverified" rather than guessing or discarding it -- the same trust
+    level real school districts and MPOs already get.
+
+    Rejects a domain-shaped result (has a dot, no spaces) the same way
+    `_fetch_channel_info()`'s RSS-title tier already does -- confirmed
+    real and live on this exact template: lcd.granicus.com's own meta
+    description is "...for lcd.granicus.com", the identical misconfigured-
+    customer-echoes-their-own-hostname shape already documented on that
+    tenant's RSS `<title>` (see the comment above `channel_jurisdiction`'s
+    use in `resolve()`). A domain string is never a real jurisdiction.
+    """
+    tag = soup.find("meta", attrs={"name": "description"})
+    content = (tag.get("content") or "").strip() if tag else ""
+    if not content:
+        return None
+    match = _META_DESCRIPTION_ORG_RE.match(content)
+    if not match:
+        return None
+    org = match.group(1).strip()
+    if not org:
+        return None
+    if "." in org and " " not in org:
+        return None
+    return org
+
+
 def _s3_path_style(url: str) -> str:
     """Rewrites a virtual-hosted-style S3 URL to path-style, but only when
     the bucket name actually contains an underscore -- the one confirmed
@@ -351,6 +413,17 @@ class GranicusAssetFinder(AssetFinder):
             and domain_parts[0] not in ("www", "granicus")
         ):
             candidate = self._humanize_subdomain(domain_parts[0], url)
+            if candidate:
+                jurisdiction = candidate
+
+        # Last resort before giving up: Granicus's own meta description
+        # names the real organization even when neither the page's visible
+        # text nor its subdomain does -- the special-district/agency
+        # population `_humanize_subdomain()` correctly declines to guess
+        # for (an acronym subdomain never validates as a place). See
+        # `_extract_org_from_meta_description()`'s own docstring.
+        if not jurisdiction:
+            candidate = _extract_org_from_meta_description(soup)
             if candidate:
                 jurisdiction = candidate
 

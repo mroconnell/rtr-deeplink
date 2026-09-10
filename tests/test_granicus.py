@@ -143,6 +143,107 @@ async def test_resolve_declines_subdomain_humanization_for_unvalidated_acronym()
     assert result.jurisdiction == "Unknown Jurisdiction"
 
 
+async def test_resolve_extracts_org_name_from_meta_description_for_special_district():
+    # Real gap found 2026-09-10 answering Ryan's "why Unknown Jurisdiction"
+    # question: the newer Granicus player page has no jurisdiction text
+    # anywhere in its visible body -- confirmed live on the real
+    # sfwmd.granicus.com page this fixture's meta description is copied
+    # from verbatim. "sfwmd" itself correctly declines subdomain
+    # humanization (the sibling test above), so before this fix the page
+    # fell all the way through to "Unknown Jurisdiction" despite Granicus's
+    # own meta description already naming the real organization.
+    url = "https://sfwmd.granicus.com/player/clip/491"
+    html = (
+        "<html><head><title>February 2025 Governing Board Meeting</title>"
+        '<meta name="description" content="Live and Recorded Public '
+        "meetings of February 2025 Governing Board Meeting for South "
+        'Florida Water Management District"></head>'
+        "<body>1) Call to Order 2) Pledge of Allegiance</body></html>"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://sfwmd.granicus.com/videos/491/captions.vtt": FakeResponse(status=404),
+        "https://sfwmd.granicus.com/videos/491/player": FakeResponse(status=404),
+        "https://sfwmd.granicus.com/AgendaViewer.php?clip_id=491&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "South Florida Water Management District"
+
+
+async def test_resolve_rejects_domain_shaped_meta_description_org():
+    # Sibling case to test_resolve_rejects_a_domain_shaped_rss_channel_title
+    # below: the same misconfigured-customer-echoes-their-own-hostname
+    # shape, but in the meta description this time -- confirmed live on
+    # the real lcd.granicus.com page ("...for lcd.granicus.com" verbatim).
+    # A domain-shaped string must never be trusted as a real organization
+    # name, the same rule the RSS-title tier already applies.
+    url = "https://lcd.granicus.com/player/clip/106"
+    html = (
+        "<html><head><title>July 22-23, 2021 LCDC Meeting (Day 1)</title>"
+        '<meta name="description" content="Live and Recorded Public '
+        "meetings of July 22-23, 2021 LCDC Meeting (Day 1) for "
+        'lcd.granicus.com"></head>'
+        "<body>Meeting materials.</body></html>"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://lcd.granicus.com/videos/106/captions.vtt": FakeResponse(status=404),
+        "https://lcd.granicus.com/videos/106/player": FakeResponse(status=404),
+        "https://lcd.granicus.com/AgendaViewer.php?clip_id=106&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "Unknown Jurisdiction"
+
+
+async def test_resolve_prefers_rss_channel_title_over_meta_description():
+    # Priority check: when a view_id IS present and the RSS channel title
+    # resolves to a real jurisdiction, that higher-trust source must still
+    # win over the meta-description fallback below it, even though both
+    # would produce a candidate here.
+    url = "https://sandiego.granicus.com/player/clip/501?view_id=2"
+    html = (
+        "<html><head><title>Meeting</title>"
+        '<meta name="description" content="Live and Recorded Public '
+        'meetings of Meeting for Some Other Org Name"></head>'
+        "<body>No jurisdiction text here.</body></html>"
+    )
+    rss = (
+        "<rss><channel><title>City of San Diego: City Council Meetings "
+        "(Videos Feed)</title></channel></rss>"
+    )
+
+    routes = {
+        url: FakeResponse(status=200, text=html, url=url),
+        "https://sandiego.granicus.com/ViewPublisherRSS.php?view_id=2&mode=video": FakeResponse(
+            status=200, text=rss
+        ),
+        "https://sandiego.granicus.com/videos/501/captions.vtt": FakeResponse(
+            status=404
+        ),
+        "https://sandiego.granicus.com/videos/501/player": FakeResponse(status=404),
+        "https://sandiego.granicus.com/AgendaViewer.php?clip_id=501&embedded=1": FakeResponse(
+            status=404
+        ),
+    }
+
+    with mock_session(routes):
+        result = await GranicusAssetFinder().resolve(url)
+
+    assert result.jurisdiction == "City of San Diego, CA"
+
+
 async def test_resolve_flags_exactly_36000_cues_as_possibly_cut_off():
     # Granicus's own captions.vtt appears to hard-cap at exactly 36,000
     # cues on very long meetings, cutting off mid-sentence with no
