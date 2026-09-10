@@ -349,31 +349,100 @@ async def test_transcribe_meeting_retries_a_chunk_extraction_that_fails_once(
     assert engine.chunks_transcribed == 2
 
 
-async def test_transcribe_meeting_skips_a_youtube_delegated_resolve(local_media):
-    """Real, confirmed case (2026-08-23): ashlandcowi.portal.civicclerk.com
+class _YouTubeDelegated:
+    """Real, confirmed shape (2026-08-23): ashlandcowi.portal.civicclerk.com
     event 395 has a real Planning Committee meeting whose CivicClerk
     externalMediaUrl is a youtu.be short link, which civicclerk.py
     correctly delegates to YouTubeAssetFinder -- so the resolve comes back
     with video_format="youtube" and a real youtube.com/embed/ video_url,
-    not empty. Before this test's fix, that fell through straight to
+    not empty. Before WO-136, that fell through straight to
     probe_duration() and failed with the opaque "ffprobe couldn't read the
-    media" -- ffprobe genuinely cannot read a YouTube embed page -- instead
-    of the clear, already-existing "needs fetch_youtube_transcripts.py"
-    message process_one()'s own pre-filter gives for the same situation
-    when it has stale video_format to work from (which --url mode never
-    does, and which this exact page's fresh video_format didn't match
-    either -- CivicClerk pages don't start out YouTube-flagged)."""
+    media" -- ffprobe genuinely cannot read a YouTube embed page -- since
+    nothing in this script downloaded audio any other way at the time."""
 
-    class _YouTubeDelegated:
-        async def resolve(self, url):
-            return ResolvedMeeting(
-                platform="civicclerk",
-                source_url=url,
-                video_url="https://www.youtube.com/embed/xOL1UiwcMG8",
-                video_format="youtube",
-            )
+    async def resolve(self, url):
+        return ResolvedMeeting(
+            platform="civicclerk",
+            source_url=url,
+            video_url="https://www.youtube.com/embed/xOL1UiwcMG8",
+            video_format="youtube",
+        )
 
+
+async def test_transcribe_meeting_downloads_youtube_audio_via_yt_dlp(local_media):
+    """WO-136 (2026-09-09): a YouTube-delegated resolve now downloads audio
+    via yt-dlp instead of being skipped outright -- embedding restrictions
+    (or disabled captions) block playback/the caption endpoint, not an
+    audio download. Mirrors test_transcribe_meeting_caches_whole_audio_
+    once_for_champds's own mocking shape: _yt_dlp_download_best_audio()
+    stands in for the live yt-dlp call the same way a fake extract_full_
+    audio()/slice_cached_audio() stand in for real ffmpeg elsewhere in this
+    file, and extract_chunk_audio() must never be called (there's no
+    meaningful per-chunk seek against a video id)."""
     local_media.setattr(tbl, "get_finder", lambda platform: _YouTubeDelegated())
+
+    downloads = []
+    full_pulls = []
+    slices = []
+
+    def _fake_download(video_id, out_dir):
+        # Plain sync function, matching the real _yt_dlp_download_best_
+        # audio()'s own signature -- transcribe_meeting() runs it via
+        # asyncio.to_thread(), a real thread, so no event-loop patching
+        # is needed to exercise this correctly (unlike an async fake,
+        # which to_thread() would call but never await).
+        downloads.append(video_id)
+        raw = out_dir / "yt_audio.webm"
+        raw.write_bytes(b"\x00" * 10)
+        return raw, None
+
+    async def _fake_full(media_url, *, source_page_url, out_path):
+        full_pulls.append(media_url)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 5000)
+        return True, None
+
+    async def _fake_slice(cached_path, *, start, duration, out_path):
+        assert cached_path.exists()
+        slices.append(start)
+        out_path.write_bytes(b"\xff\xfb" + b"\x00" * 400)
+        return True, None
+
+    async def _fail_if_called(*a, **k):
+        raise AssertionError(
+            "per-chunk extraction must not run for a YouTube meeting -- there's "
+            "no meaningful seek against a video id"
+        )
+
+    local_media.setattr(tbl, "_yt_dlp_download_best_audio", _fake_download)
+    local_media.setattr(tbl, "extract_full_audio", _fake_full)
+    local_media.setattr(tbl, "slice_cached_audio", _fake_slice)
+    local_media.setattr(tbl, "extract_chunk_audio", _fail_if_called)
+
+    result = await tbl.transcribe_meeting(
+        _FakeEngine(),
+        "https://ashlandcowi.portal.civicclerk.com/event/395/media",
+        "civicclerk",
+        chunk_size_seconds=900,
+    )
+    assert result["ok"] is True
+    assert downloads == ["xOL1UiwcMG8"]  # the real video id from the embed URL
+    assert full_pulls  # the downloaded raw file was converted via extract_full_audio()
+    assert slices == [0.0, 900.0]  # both chunks sliced locally, same as ChampDS
+
+
+async def test_transcribe_meeting_reports_a_real_yt_dlp_download_failure(local_media):
+    """A private/removed/live-not-started video (real shapes seen in the
+    WO-136 candidate sweep, 2026-09-09) must fail this one meeting with a
+    clear reason, not raise or silently produce an empty transcript."""
+    local_media.setattr(tbl, "get_finder", lambda platform: _YouTubeDelegated())
+
+    def _fake_download(video_id, out_dir):
+        return (
+            None,
+            "DownloadError: ERROR: [youtube] xOL1UiwcMG8: This video is unavailable",
+        )
+
+    local_media.setattr(tbl, "_yt_dlp_download_best_audio", _fake_download)
 
     result = await tbl.transcribe_meeting(
         _FakeEngine(),
@@ -382,7 +451,8 @@ async def test_transcribe_meeting_skips_a_youtube_delegated_resolve(local_media)
         chunk_size_seconds=900,
     )
     assert result["ok"] is False
-    assert "YouTube-backed" in result["reason"]
+    assert "yt-dlp audio download failed" in result["reason"]
+    assert "This video is unavailable" in result["reason"]
 
 
 async def test_process_one_detects_platform_fresh_not_from_stale_page_field(

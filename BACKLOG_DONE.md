@@ -493,6 +493,136 @@ entirely. No process change proposed here beyond noting it; worth
 remembering next time a `BACKLOG.md` reorganization rides inside a PR
 that's *mostly* about something else.
 
+## WO-136: dead-embed page treatment (Watch on YouTube fallback, thin-page rule) and a real yt-dlp-audio path for local transcription [Done 2026-09-09]
+
+Two parts. **Part A (page treatment)** consumes the exact-string markers
+a parallel work order (WO-135, merged mid-session — see its own entry
+above) writes at resolve/precheck time —
+`archive/db/crud.py`'s `_YOUTUBE_EMBED_DISABLED_MARKER` in
+`video_warnings`, `_YOUTUBE_CAPTIONS_DISABLED_MARKER`/
+`_YOUTUBE_VIDEO_UNAVAILABLE_MARKER` in `transcript_warnings` (the same
+three strings independently re-declared in `app/platforms/youtube.py`
+and `app/db/outcomes.py`, WO-135's own "duplicate with a cross-reference
+comment" convention). This work started before WO-135 merged, drafted
+its own shared leaf module (`app/utils/video_warning_markers.py`) for
+the constants, and rebased onto WO-135's real, already-merged
+declarations once it landed mid-session — deleting that module and
+switching every reference to `crud._YOUTUBE_EMBED_DISABLED_MARKER`
+(archive/main.py already references other `crud._*` internals this same
+way, e.g. `_LOW_TRUST_REASONS`), since duplicating a constant a fourth
+time would have been worse than the three-way duplication WO-135 had
+just established as this repo's real convention. No real marker-carrying
+page existed in production at verification time either way (WO-135's
+detection only reaches a *future* resolve, not the 82 already-archived
+pages the "Ship next" entry above describes) — verified against a
+locally-seeded page instead (real video, real embed-disabled id,
+`XtXhnDamWnc`, live-checked against `redtaperecordings.com`'s own real
+Peachtree Corners GA page).
+
+`archive/templates/meeting_page.html` renders a "Watch on YouTube" link
+(`youtube.com/watch?v=…&t=NNs`, honoring the page's own `?t=` deep link
+via the new `youtube_watch_url()` helper in `archive/utils/
+video_thumbnail.py`) in place of the dead iframe whenever the marker is
+present, server-side — confirmed live in the browser: noindex meta tag
+present with no transcript, gone the instant a transcript is seeded,
+`data-embed-disabled` correctly gating `archive/static/meeting_page.js`
+away from ever creating a doomed `YT.Player`. `app/static/player.js`
+renders the identical markup both proactively (marker already in the
+resolve response) and reactively, from the YouTube IFrame Player's own
+`onError` — and a live browser check against a real embedding-disabled
+video caught two real bugs neither the code review nor the JSON response
+would have shown: (1) by the time `onError` fires, `YT.Player` has
+already replaced the target `<div>` with an `<iframe>` of the same id,
+so writing fallback content into it produces invisible "iframe not
+supported" fallback nodes while YouTube's own in-frame "Video
+unavailable... disabled by the video owner" placard keeps rendering on
+top — fixed by swapping the dead iframe out for a fresh `<div>` first;
+(2) the no-transcript block's live-playhead UI (`#noTranscriptLive`'s
+"0:00" ticker and "Copy link to this moment" button) is only ever wired
+from a real player adapter's `onReady`, which never happens for a dead
+embed — so it silently showed a frozen time and a dead button. Both
+fixed in `app/static/player.js` (`renderYouTubeEmbedFallback()`) and
+`archive/static/meeting_page.js`, with regression tests in the new
+`tests_js/player_youtube_embed_fallback.test.js` (8 tests, including one
+pinning each bug) — 64 JS tests pass total (`npm test`).
+
+The thin-page predicate (`crud._is_empty_page_condition()`, and its
+Python twin in `archive/main.py`'s `/m/{slug}` route) now also matches a
+dead embed with no transcript — independent of `agenda_items`, since an
+agenda doesn't redeem a broken deep-link promise — `OR`ed with the
+original no-video/no-agenda/no-transcript shape so either can trip it.
+`tests/test_thin_page_audit.py` gained three new shapes in the existing
+SQL-vs-Python lockstep test plus a dedicated correctness test
+(`test_embedding_disabled_page_is_thin_only_until_a_transcript_lands`)
+confirming the page returns to `/meetings`/the sitemap/the feed on its
+own — no un-hide step — the moment a transcript is pushed, exactly the
+behavior WO-136 needs from `scripts/transcribe_backlog_locally.py`'s new
+YouTube path below.
+
+**Part B (local transcription)**: `scripts/transcribe_backlog_locally.py`
+used to reject every YouTube-backed video outright ("needs
+`fetch_youtube_transcripts.py`'s caption-fetch path... not direct URL
+audio extraction") — real when written, but stale: an audio *download*
+isn't blocked by a channel disabling embedding or captions the way
+playback and the caption endpoint are. Added `_yt_dlp_download_best_audio()`
+(same `player_client` fallback order as `YouTubeAssetFinder`) plus a new
+`--urls-file` flag (one URL per line, same resume/checkpoint/thermal-
+pacing treatment as every other path through the script) and removed
+`process_one()`'s now-incorrect stale pre-filter. The downloaded raw
+audio is converted through the exact same `extract_full_audio()` step
+every other platform's whole-audio-cache path already uses — which
+surfaced a real, previously-unhit bug in `app/platforms/media_probe.py`:
+every ffmpeg/ffprobe call unconditionally passed `-headers`, and ffmpeg's
+local-file demuxer doesn't ignore an unrecognized option the way an HTTP
+client would, it hard-fails ("Option headers not found"). Fixed with a
+new `_ffmpeg_input_header_args()` helper that only emits `-headers` for
+a real http(s) URL, applied at all 6 call sites — `tests/
+test_media_probe.py` and friends (43 tests) still pass unchanged.
+`tests/test_transcribe_backlog_locally.py`'s
+`test_transcribe_meeting_skips_a_youtube_delegated_resolve` (pinning the
+now-removed rejection) was replaced with two tests against the real new
+behavior: a mocked full success (887-segment-shaped, ChampDS-pattern
+mocking) and a real-shaped yt-dlp failure (a private/removed video)
+still failing that one meeting cleanly.
+
+**Confirmed live, 2026-09-09, on this Mac, the same day a different
+queue's caption-fetch calls were hitting a real `IpBlocked` signature
+(see `docs/investigations/youtube_429_block.md` and the identity-checked-
+pages `[WAIT]` entry)**: a plain yt-dlp metadata call (no caption-content
+fetch) and a full audio download both worked cleanly — confirming the
+audio-download path is a genuinely different request shape from the
+blocked caption endpoint, not a re-run of the same block. End-to-end
+pipeline verified against a real 79-minute Snoqualmie WA meeting:
+downloaded, converted, chunked, transcribed (887 real segments, `tiny`
+model for the speed check) in ~2.5 minutes wall time.
+
+**The candidate funnel, from a fresh `export_meeting_inventory.py --source
+export` (6,568 total pages, 2026-09-09)**: 91 YouTube-platform pages with
+no transcript (close to, not identical to, an earlier same-day study's 82
+— a different, complementary population: that study's 82 already hold a
+transcript and only lack a *playable embed*, disjoint by definition from
+these 91 "no transcript at all"). One yt-dlp metadata call per candidate
+(captions-only check, no download) sorted them: **53 have real captions**
+(handed to the existing daily `fetch_youtube_transcripts.py` queue, not
+this WO's job), **15 are permanently dead** (7 removed/private, 4
+"this live event will begin..."/not-yet-started, 4 malformed/placeholder
+ids like `videoseries`/`live_stream` — a real, close-but-not-identical
+echo of the existing 13-dead-pages `[HUMAN]` entry, a different
+population so left uncorrected rather than merged), and **23 have
+neither** — this WO's real candidates. Of those 23, **6 turned out to
+hold a promotional/off-topic video instead of the actual meeting**
+("Welcome to Crowley County!", a domain-parking sales video, drone
+footage, etc. — all `best_effort` generic_fallback resolves off a
+homepage or an AgendaCenter root) — excluded from the run and filed as
+its own new Open-bugs entry rather than silently transcribing them.
+**17 real candidates** were queued via the new `--urls-file` against
+production (`small` model, `--cpu-threads 2 --chunk-cooldown-seconds 30`,
+`caffeinate -s` — a multi-hour run by design, per this script's own
+thermal-pacing convention); still in progress as this PR was opened —
+see the PR description for the live count of how many had finished by
+merge time, and `/tmp/wo136_transcribe_run.log` / a resumed
+`--urls-file` run for the rest.
+
 ## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
 
 Third backfill of the day (the two entries below carry the pattern and

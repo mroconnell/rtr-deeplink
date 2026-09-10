@@ -378,6 +378,14 @@
     <div id="videoColumn" class="video-column">
       {% if page.video_url %}
       <div id="videoSection" class="video-section">
+        {% if not video_embedding_disabled %}
+        {#- Hidden when the embed is dead (video_embedding_disabled):
+           wireSharedControls() -- the only thing that wires this
+           button's click handler and live-updates its label -- is only
+           called from a real player adapter's onReady, and no player is
+           ever created for this page (see data-embed-disabled below), so
+           an unwired "Share video at 0:00" would sit there looking
+           clickable and doing nothing. #}
         <div class="toolbar">
           <span class="copy-control">
             <span id="linkToCurrentToast" class="copy-toast" role="status" aria-live="polite"></span>
@@ -388,8 +396,27 @@
             </button>
           </span>
         </div>
-        <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}">
-          {% if page.video_format == "youtube" %}
+        {% endif %}
+        <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}" data-embed-disabled="{{ 'true' if video_embedding_disabled else 'false' }}">
+          {% if page.video_format == "youtube" and video_embedding_disabled %}
+          {#- WO-136: this channel disabled embedding outside YouTube
+             (WO-135's EMBEDDING_DISABLED_VIDEO_WARNING marker in
+             page.video_warnings) -- server-rendered here rather than
+             left to a client-side onError, since it's already known at
+             request time. meeting_page.js's DOMContentLoaded handler
+             checks data-embed-disabled above and never calls
+             initYouTubeVideo(), so this markup is never replaced by a
+             (doomed) iframe. app/static/player.js (the resolver's own
+             ephemeral page) renders the identical shape at runtime via
+             renderYouTubeEmbedFallback() -- see that function's own
+             comment for why both must match. #}
+          <div id="youtubePlayerContainer" class="youtube-player-container">
+            <p class="youtube-embed-disabled-note">This channel has disabled embedding outside YouTube, so playback only works on youtube.com.</p>
+            {% if watch_on_youtube_url %}
+            <a href="{{ watch_on_youtube_url }}" target="_blank" rel="noopener noreferrer" class="watch-on-youtube-link">Watch on YouTube &#8599;</a>
+            {% endif %}
+          </div>
+          {% elif page.video_format == "youtube" %}
           <div id="youtubePlayerContainer" class="youtube-player-container"></div>
           {% elif page.video_format == "vimeo" %}
           {#- Vimeo's iframe is created by meeting_page.js's
@@ -660,7 +687,7 @@
       {% if active_version and active_version.transcript_warnings %}
       <div class="warnings">{{ active_version.transcript_warnings|warnings_html }}</div>
       {% endif %}
-      {% if page.video_url %}
+      {% if page.video_url and not video_embedding_disabled %}
       <div class="no-transcript-timestamp">
         <p class="no-transcript-hint">No transcript to click through, but you can still link to any moment. We're tracking the playhead below &mdash; it updates as the video plays.</p>
         <div id="noTranscriptTime" class="no-transcript-time">0:00</div>
@@ -670,6 +697,14 @@
           <span class="cassette-reel"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="#fff" stroke="#bbb" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="#bbb"/></svg></span>
         </button>
       </div>
+      {% elif video_embedding_disabled %}
+      {#- WO-136: no live adapter exists for this page (see videoWrapper's
+         data-embed-disabled above) so there's no playhead to track or
+         report -- the live-tracking block above would render a
+         "Copy link to this moment" button with no click handler wired
+         (wireSharedControls(), the only thing that wires it, never runs
+         without a real player adapter). #}
+      <p class="subtitle">No transcript available for this meeting yet &mdash; watch it on YouTube in the meantime.</p>
       {% else %}
       <p class="subtitle">No transcript available for this meeting.</p>
       {% endif %}

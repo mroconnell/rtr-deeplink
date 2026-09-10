@@ -129,6 +129,28 @@ def realistic_headers(source_page_url: str) -> str:
     return f"User-Agent: {_DESKTOP_USER_AGENT}\r\nReferer: {origin}/\r\n"
 
 
+def _ffmpeg_input_header_args(source_page_url: str, media_url: str) -> list[str]:
+    """The `-headers ...` pair every ffmpeg/ffprobe call below passes
+    before `-i media_url` -- except when `media_url` is a local file path,
+    not a real network request, in which case that pair is not merely
+    unnecessary but a hard failure: ffmpeg's demuxer for a local file
+    doesn't recognize `-headers` as an option at all and exits with
+    "Option headers not found. Error opening input file", rather than
+    silently ignoring it as harmless the way an HTTP client library might.
+
+    Confirmed live 2026-09-09 (WO-136) the first time a caller
+    (scripts/transcribe_backlog_locally.py's YouTube-audio path, which
+    downloads via yt-dlp to a local file and then runs that file through
+    extract_full_audio() the same way every other platform's whole-audio-
+    cache path uses a remote URL) ever passed something other than an
+    http(s) URL here -- every existing caller only ever passed a real
+    URL, so this gap was invisible until then.
+    """
+    if media_url.startswith("http://") or media_url.startswith("https://"):
+        return ["-headers", realistic_headers(source_page_url)]
+    return []
+
+
 async def _run(*args: str, timeout: Optional[float] = None) -> tuple[int, bytes, bytes]:
     """`timeout` defaults to _SUBPROCESS_TIMEOUT_SECONDS (120s, sized for
     pulling a real multi-minute audio chunk off a slow government CDN).
@@ -191,8 +213,7 @@ async def probe_duration(media_url: str, *, source_page_url: str) -> Optional[fl
             "ffprobe",
             "-v",
             "error",
-            "-headers",
-            realistic_headers(source_page_url),
+            *_ffmpeg_input_header_args(source_page_url, media_url),
             "-show_entries",
             "format=duration",
             "-of",
@@ -252,8 +273,7 @@ async def probe_has_video_stream(
             "ffprobe",
             "-v",
             "error",
-            "-headers",
-            realistic_headers(source_page_url),
+            *_ffmpeg_input_header_args(source_page_url, media_url),
             "-select_streams",
             "v",
             "-show_entries",
@@ -570,8 +590,7 @@ async def _extract_chunk_once(
         returncode, _stdout, stderr = await _run(
             "ffmpeg",
             "-y",
-            "-headers",
-            realistic_headers(source_page_url),
+            *_ffmpeg_input_header_args(source_page_url, media_url),
             *seek_before,
             "-i",
             media_url,
@@ -901,8 +920,7 @@ async def extract_full_audio(
         returncode, _stdout, stderr = await _run(
             "ffmpeg",
             "-y",
-            "-headers",
-            realistic_headers(source_page_url),
+            *_ffmpeg_input_header_args(source_page_url, media_url),
             "-i",
             media_url,
             "-vn",
@@ -1140,8 +1158,7 @@ async def extract_chunk_audio(
             returncode2, _stdout2, stderr2 = await _run(
                 "ffmpeg",
                 "-y",
-                "-headers",
-                realistic_headers(source_page_url),
+                *_ffmpeg_input_header_args(source_page_url, media_url),
                 "-ss",
                 str(start),
                 "-i",
@@ -1242,8 +1259,7 @@ async def extract_frame(
         returncode, _stdout, stderr = await _run(
             "ffmpeg",
             "-y",
-            "-headers",
-            realistic_headers(source_page_url),
+            *_ffmpeg_input_header_args(source_page_url, media_url),
             "-ss",
             str(max(0, int(offset))),
             "-i",

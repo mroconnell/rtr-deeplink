@@ -66,7 +66,7 @@ from .utils.segment_time import format_segment_time
 from .utils.transcript_export import to_srt, to_txt
 from .utils import video_thumbnail
 from .utils.clips import clip_entries
-from .utils.video_thumbnail import youtube_thumbnail_url
+from .utils.video_thumbnail import youtube_thumbnail_url, youtube_watch_url
 
 logger = logging.getLogger("rtr_archive")
 
@@ -2432,20 +2432,35 @@ async def meeting_page(
     state_abbr = crud.effective_state_abbr(page.get("gov_id"), page["jurisdiction"])
 
     # Python twin of crud._is_empty_page_condition() (no video, no agenda
-    # items, no transcript version at all) -- the template noindexes such a
-    # page, matching its exclusion from /meetings, the sitemap and the
-    # feed. Kept in lockstep with the SQL predicate on purpose; a
-    # divergence would put a noindexed page back in the sitemap, the
-    # exact Search Console contradiction the 2026-08-17 fix removed.
-    # tests/test_thin_page_predicate.py asserts the two agree, since
-    # nothing else can catch them drifting apart.
+    # items, no transcript version at all -- OR a permanently dead embed
+    # with no transcript, WO-136) -- the template noindexes such a page,
+    # matching its exclusion from /meetings, the sitemap and the feed.
+    # Kept in lockstep with the SQL predicate on purpose; a divergence
+    # would put a noindexed page back in the sitemap, the exact Search
+    # Console contradiction the 2026-08-17 fix removed.
+    # tests/test_thin_page_audit.py's test_sql_predicate_and_python_twin_
+    # agree_on_every_shape() asserts the two agree, since nothing else
+    # can catch them drifting apart.
     #
     # agenda_link is NOT in this list (WO-62) -- it renders as one
     # sentence pointing off-site and holds no content of its own, which
     # made a page carrying only an agenda_link a real Google Soft 404
     # while still being indexed and sitemapped. See the SQL predicate's
     # docstring for the measurement.
-    page_is_empty = not (page["video_url"] or page["agenda_items"] or page["versions"])
+    has_transcript = bool(page["versions"])
+    video_embedding_disabled = crud._YOUTUBE_EMBED_DISABLED_MARKER in (
+        page["video_warnings"] or []
+    )
+    page_is_empty = (
+        not (page["video_url"] or page["agenda_items"] or has_transcript)
+    ) or (video_embedding_disabled and not has_transcript)
+    # "Watch on YouTube" link rendered by meeting_page.html in place of
+    # the dead iframe -- honors the same ?t= this page itself was loaded
+    # with, so a shared deep link still lands the reader at the right
+    # moment off-site (see youtube_watch_url()'s own docstring).
+    watch_on_youtube_url = (
+        youtube_watch_url(page["video_url"], t) if video_embedding_disabled else None
+    )
 
     # One cheap indexed existence check, no image bytes loaded (see
     # crud.has_thumbnail()). When nothing is stored yet and the page has a
@@ -2479,6 +2494,8 @@ async def meeting_page(
             "page": page,
             "active_version": active_version,
             "page_is_empty": page_is_empty,
+            "video_embedding_disabled": video_embedding_disabled,
+            "watch_on_youtube_url": watch_on_youtube_url,
             # "upcoming" / "recent" / None -- drives the notice under the
             # title explaining why a page may not have video/captions yet.
             "date_status": meeting_date_status(

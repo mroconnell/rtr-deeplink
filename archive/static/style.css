@@ -508,6 +508,41 @@ video { width: 100%; height: 100%; display: block; }
   height: 100% !important;
 }
 
+/* WO-136: server-rendered by meeting_page.html in place of the dead
+   iframe when the page's own video_warnings already carries WO-135's
+   embedding-disabled marker -- see app/static/style.css's matching rule
+   (the resolver's own player.js renders the identical markup at
+   runtime, both proactively and from the player's onError, so one page
+   reads the same as the other). .youtube-player-container above is
+   already the black, absolutely-positioned 16:9 box; this just centers
+   readable content inside it instead of leaving it for an iframe. */
+.youtube-embed-disabled-note {
+  color: #eee;
+  font-size: 0.95rem;
+  text-align: center;
+  max-width: 80%;
+  margin: 0 0 1rem;
+}
+.watch-on-youtube-link {
+  display: inline-block;
+  background: #fff;
+  color: #222;
+  border: 2px solid #222;
+  border-radius: 7px;
+  font-weight: bold;
+  padding: 0.6rem 1.3rem;
+  text-decoration: none;
+}
+.watch-on-youtube-link:hover, .watch-on-youtube-link:focus {
+  background: #f3f3f3;
+}
+.youtube-player-container:has(.youtube-embed-disabled-note) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Vimeo reuses .youtube-player-container's positioning/sizing (also a
    <div> holding an iframe -- see meeting_page.js's initVimeoVideo() for
    why that iframe is built in JS rather than server-rendered); this only

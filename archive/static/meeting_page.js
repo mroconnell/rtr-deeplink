@@ -105,6 +105,51 @@ function extractYouTubeVideoId(embedUrl) {
   return match ? match[1] : null;
 }
 
+// Runtime counterpart to meeting_page.html's server-rendered fallback
+// (WO-136): this page never attempts the iframe at all when
+// data-embed-disabled is already "true" (the marker was known at
+// request time), but a channel can disable embedding between one of
+// WO-135's periodic oEmbed checks and the next -- this covers that
+// window with the identical markup, mirroring
+// app/static/player.js's renderYouTubeEmbedFallback().
+function renderYouTubeEmbedFallback(embedUrl) {
+  let container = document.getElementById('youtubePlayerContainer');
+  if (!container) return;
+  if (container.tagName === 'IFRAME') {
+    // See app/static/player.js's matching comment (live-verified
+    // 2026-09-09, WO-136): by the time onError fires, YT.Player has
+    // already replaced the original <div id="youtubePlayerContainer">
+    // with an <iframe> of the same id, and writing into an <iframe>
+    // element only produces invisible fallback content -- swap it for a
+    // fresh element instead.
+    const replacement = document.createElement('div');
+    replacement.id = 'youtubePlayerContainer';
+    replacement.className = container.className;
+    container.replaceWith(replacement);
+    container = replacement;
+  }
+  container.innerHTML = '';
+
+  const note = document.createElement('p');
+  note.className = 'youtube-embed-disabled-note';
+  note.textContent = 'This channel has disabled embedding outside YouTube, so playback only works on youtube.com.';
+  container.appendChild(note);
+
+  const videoId = extractYouTubeVideoId(embedUrl);
+  if (videoId) {
+    const deepLinkTime = getDeepLinkTime();
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
+      + (deepLinkTime !== null ? `&t=${Math.max(0, Math.floor(deepLinkTime))}s` : '');
+    const link = document.createElement('a');
+    link.href = watchUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'watch-on-youtube-link';
+    link.textContent = 'Watch on YouTube ↗';
+    container.appendChild(link);
+  }
+}
+
 function createYouTubeAdapter(ytPlayer) {
   const listeners = { play: [], pause: [], timeupdate: [] };
   let pollHandle = null;
@@ -162,6 +207,12 @@ async function initYouTubeVideo(embedUrl) {
         activeVideoAdapter = adapter;
         wireSharedControls(adapter);
         applyDeepLink(adapter);
+      },
+      // A live YT.PlayerError -- most commonly the channel disabling
+      // embedding sometime after WO-135's own oEmbed check last ran and
+      // this page was rendered. See renderYouTubeEmbedFallback() above.
+      onError: () => {
+        renderYouTubeEmbedFallback(embedUrl);
       },
     },
   });
@@ -835,7 +886,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!wrapper) return;
   const videoUrl = wrapper.dataset.videoUrl;
   const videoFormat = wrapper.dataset.videoFormat;
-  if (videoFormat === 'youtube') {
+  // WO-136: meeting_page.html already server-rendered the "Watch on
+  // YouTube" fallback into #youtubePlayerContainer for this case (the
+  // marker was known at request time) -- never attempt the iframe on
+  // top of it.
+  if (wrapper.dataset.embedDisabled === 'true') {
+    // no-op
+  } else if (videoFormat === 'youtube') {
     initYouTubeVideo(videoUrl);
   } else if (videoFormat === 'vimeo') {
     initVimeoVideo(videoUrl);
