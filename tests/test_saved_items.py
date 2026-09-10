@@ -136,6 +136,13 @@ async def test_list_saved_items_returns_both_types_and_scoped_to_owner():
 
 
 async def test_list_saved_items_surfaces_a_split_meeting_body():
+    # Gov-id audit, 2026-09-10: the fixture used to be the Housing Authority
+    # of the County of Santa Clara, which decision D2 makes its OWN
+    # government (a special district), so the resolver's body for it is
+    # None on purpose and the display is the minted name. This test is
+    # about the body being SURFACED, not about identity, so it uses an
+    # entity prefix on a place government -- the split still applies and
+    # the resolver keeps it ("Board of Supervisors" of Santa Clara County).
     # Display-layer wiring (2026-08-15, JURISDICTION_METADATA_PLAN.md):
     # list_saved_items() used to only join MeetingPage.jurisdiction, so a
     # real entity-prefix split (see test_ingest_promotion.py's Housing
@@ -143,14 +150,14 @@ async def test_list_saved_items_surfaces_a_split_meeting_body():
     # items page even though get_page_by_slug() already carried it.
     user = "user_save_test_9"
     slug = await _make_page(
-        "save-item-9", jurisdiction="Housing Authority of the County of Santa Clara"
+        "save-item-9", jurisdiction="Board of Supervisors of the County of Santa Clara"
     )
     await crud.save_meeting(user, slug)
 
     items = await crud.list_saved_items(user)
     saved = next(m for m in items["meetings"] if m["slug"] == slug)
-    assert saved["jurisdiction"] == "County of Santa Clara, CA"
-    assert saved["meeting_body"] == "Housing Authority"
+    assert saved["jurisdiction"] == "Santa Clara County, CA"
+    assert saved["meeting_body"] == "Board of Supervisors"
 
 
 async def test_list_saved_items_is_newest_first():

@@ -50,6 +50,17 @@ class MeetingPage(Base):
     title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     jurisdiction: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    # The string the adapter actually extracted, before finalize_
+    # jurisdiction() repaired it and before the registry replaced it with
+    # a display name -- gov-id audit, 2026-09-10. `jurisdiction` above is
+    # generated from the registry row for every page with a real
+    # `gov_id` now, so this is where the evidence went: for an `inferred`
+    # row (id borrowed from the tenant's other pages) the raw text is
+    # what a reviewer needs to judge the borrow, and for a `pinned` row
+    # it is how a wrong pin is spotted. NULL on rows archived before the
+    # column existed -- never reconstructed. Text: the adapter's output
+    # is not bounded by anything this schema controls.
+    jurisdiction_raw: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Both added 2026-08-15 (JURISDICTION_METADATA_PLAN.md), populated by
     # app/utils/jurisdiction_enrich.py's finalize_jurisdiction() in
     # _find_or_create_page() -- never set directly from a raw adapter

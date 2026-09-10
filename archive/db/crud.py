@@ -30,8 +30,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from app.utils.gov_registry import (
-    TIER_PINNED,
-    TIER_REGISTRY,
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
     page_hints_for,
@@ -612,27 +610,50 @@ async def _tenant_dominant_gov_id(session, host: str) -> Optional[str]:
     return rows[0][0]
 
 
+def _display_from_registry(gov) -> bool:
+    """True when this page's display name and hub come from the registry
+    row rather than from the adapter's string -- every tier that keyed a
+    real government. `rtr:unknown:<host>` is a real, distinguishable id
+    (the page has an identity: "nothing was extracted on this host") but
+    not a government anyone can name, so it renders nothing rather than
+    a placeholder -- see `_hub_identity()`."""
+    return bool(
+        gov.gov_id and gov.gov_name and not gov.gov_id.startswith("rtr:unknown:")
+    )
+
+
+def _resolved_meeting_body(gov, jx_result) -> Optional[str]:
+    """The body to store alongside a display name: the resolver's own
+    split when the display came from the registry, else
+    `finalize_jurisdiction()`'s -- see the create path's comment."""
+    return gov.meeting_body if _display_from_registry(gov) else jx_result.meeting_body
+
+
 def _display_jurisdiction(gov, finalized: Optional[str]) -> Optional[str]:
     """What goes in `MeetingPage.jurisdiction` -- which is the DISPLAY
     NAME now that `gov_id` is the identity.
 
-    Rewritten to the registry's name only for the two tiers that
-    identified a real government: `pinned` (a human said so) and
-    `registry` (a national table said so). That is what makes "County of
-    Fresno, CA" and "Fresno County, CA" read as one government on one hub
-    instead of two.
+    The registry's name for every page that keyed a real government:
+    `pinned` and `registry` (a human or a national table said so), and
+    since the gov-id audit (2026-09-10) `unverified` and `inferred` too.
+    Before that only the first two were rewritten, on the argument that a
+    minted government's name IS the cleaned string and an inferred row's
+    raw text is the evidence a reviewer needs. Both were true and both
+    were the wrong fix: the Housing Authority of the County of Santa
+    Clara stored "County of Santa Clara, CA" with body "Housing
+    Authority" while its own hub read "Housing Authority of the County of
+    Santa Clara, CA" (BACKLOG's minted-display entry, 479 rows in that
+    shape), and the evidence argument is answered by `jurisdiction_raw`,
+    which keeps the adapter's string on every page now. One rule for
+    every keyed page is what lets a meeting page and its hub never
+    disagree.
 
-    Every other tier keeps the string the adapter and
-    `finalize_jurisdiction()` produced. Deliberately, and it is not
-    timidity: a minted government's name IS the cleaned string (there is
-    no better one to substitute), an `inferred` row's id came from its
-    neighbours rather than from its own name so its raw text is the
-    evidence a reviewer needs, and an `unresolved` row has no registry
-    row at all. Nothing is lost either way -- the hub renders from the
-    registry, so this column is the fallback and the audit trail, not the
-    thing a reader sees on a resolved page.
+    Every other tier -- `unresolved`, `blank` -- keeps the string the
+    adapter and `finalize_jurisdiction()` produced (empty for a blank
+    page, and the page then shows no government at all rather than an
+    "Unidentified government (host)" placeholder).
     """
-    if gov.tier in (TIER_PINNED, TIER_REGISTRY) and gov.gov_name:
+    if _display_from_registry(gov):
         return gov.gov_name
     return finalized
 
@@ -813,10 +834,18 @@ async def _find_or_create_page(
             title=payload.get("title"),
             date=payload.get("date"),
             jurisdiction=_display_jurisdiction(gov, jurisdiction),
+            jurisdiction_raw=payload.get("jurisdiction") or None,
             # An adapter that names the governing body itself (Granicus's
             # RSS channel title, 2026-08-23) beats the split-from-
             # jurisdiction fallback finalize_jurisdiction() produces.
-            meeting_body=payload.get("meeting_body") or jx_result.meeting_body,
+            # When the display name came from the registry, the body is
+            # the RESOLVER's split, not finalize_jurisdiction()'s: they
+            # agree everywhere except a non-place government, where the
+            # resolver's is None on purpose ("the entity IS the
+            # government") and the split would put "Housing Authority"
+            # beside "Housing Authority of the County of Santa Clara, CA".
+            meeting_body=payload.get("meeting_body")
+            or _resolved_meeting_body(gov, jx_result),
             # The RESOLUTION TIER now, not finalize_jurisdiction()'s
             # confidence -- see MeetingPage.jurisdiction_confidence's own
             # comment. Its "plain string, not an enum" decision is what
@@ -893,8 +922,16 @@ async def _find_or_create_page(
         # jurisdiction itself just above, so a later resolve with no
         # jurisdiction at all can't silently wipe a previously-split body.
         if jurisdiction and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE:
-            page.meeting_body = jx_result.meeting_body
+            page.meeting_body = payload.get("meeting_body") or _resolved_meeting_body(
+                gov, jx_result
+            )
             page.jurisdiction_confidence = gov.tier
+            # The raw string is evidence, not a decision, so it is kept
+            # even on a manual_override row -- but only when the payload
+            # actually carried one (a transcript-only push has nothing
+            # to record).
+        if payload.get("jurisdiction"):
+            page.jurisdiction_raw = payload["jurisdiction"]
         # The identity, on the same manual_override guard as the display
         # name above and for the same reason: POST
         # /internal/jurisdiction/override sets `gov_id` directly now, so a
@@ -1487,6 +1524,7 @@ _EXPORT_PAGE_COLUMNS = (
     MeetingPage.title,
     MeetingPage.date,
     MeetingPage.jurisdiction,
+    MeetingPage.jurisdiction_raw,
     MeetingPage.meeting_body,
     MeetingPage.jurisdiction_confidence,
     MeetingPage.gov_id,
@@ -1643,6 +1681,10 @@ async def list_pages_for_export(
             "title": row.title,
             "date": row.date,
             "jurisdiction": row.jurisdiction,
+            # The adapter's own string, kept since 2026-09-10 -- NULL on
+            # older rows. The inventory report and the pin worklist read
+            # this to judge a borrowed (`inferred`) or pinned identity.
+            "jurisdiction_raw": row.jurisdiction_raw,
             "meeting_body": row.meeting_body,
             "jurisdiction_confidence": row.jurisdiction_confidence,
             # WO-99. The export is how rtr-discovery's feed roster and
@@ -3983,6 +4025,7 @@ async def get_page_by_slug(slug: str) -> Optional[dict]:
             "title": page.title,
             "date": page.date,
             "jurisdiction": page.jurisdiction,
+            "jurisdiction_raw": page.jurisdiction_raw,
             # The gov_id-derived display text (see effective_jurisdiction())
             # -- what /m/{slug} actually shows, so a page's own jurisdiction
             # can't drift from the same government its /j/ hub already
@@ -7446,7 +7489,17 @@ def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
        missing during a partial backfill and an unresolvable page still
        has a hub to belong to.
     """
-    gov = registry_governments().get(gov_id) if gov_id else None
+    # `rtr:unknown:<host>` has a registry row (the scoring snapshot writes
+    # one per host it saw) whose display form is "Unidentified government
+    # (host)". Rendering that was the one placeholder a reader ever saw
+    # -- on 289 live pages by 2026-09-09 -- and it linked to a `/j/` hub
+    # that `_hub_base_conditions()` never builds (a blank page stores an
+    # empty `jurisdiction`), so the link 404'd. Two code paths disagreed
+    # about the same page; this is the one that gave way. A blank page
+    # now falls through to case 3: no government shown, no hub link,
+    # exactly like a page with no id at all.
+    known = bool(gov_id) and not gov_id.startswith("rtr:unknown:")
+    gov = registry_governments().get(gov_id) if known else None
     if gov:
         return gov.gov_id, gov_hub_slug(gov), gov_display_name(gov), gov.gov_type
     slug = jurisdiction_hub_slug(jurisdiction)

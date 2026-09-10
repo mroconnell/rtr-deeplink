@@ -126,6 +126,7 @@ async def main() -> None:
         resolve_government,
     )
     from archive.db.engine import async_session
+    from archive.db.crud import _display_from_registry, _display_jurisdiction
     from archive.db.models import MeetingPage
     from archive.utils.jurisdiction_format import (
         jurisdiction_hub_slug,
@@ -146,6 +147,7 @@ async def main() -> None:
             MeetingPage.slug,
             MeetingPage.jurisdiction,
             MeetingPage.jurisdiction_confidence,
+            MeetingPage.meeting_body,
             MeetingPage.gov_id,
             MeetingPage.gov_type,
             MeetingPage.source_url_normalized,
@@ -193,6 +195,7 @@ async def main() -> None:
             slug,
             jurisdiction,
             confidence,
+            current_meeting_body,
             current_gov_id,
             current_gov_type,
             source_url,
@@ -250,6 +253,7 @@ async def main() -> None:
             slug,
             jurisdiction,
             confidence,
+            current_meeting_body,
             current_gov_id,
             current_gov_type,
             _source_url,
@@ -278,21 +282,48 @@ async def main() -> None:
         # un-protect every hand-fixed page in the archive.
         overridden = confidence == _MANUAL_OVERRIDE_CONFIDENCE
         new_confidence = confidence if overridden else match.tier
+        # The same rule `_find_or_create_page()` applies at ingest -- one
+        # function, imported, so the backfill can never disagree with a
+        # fresh ingest about what a page is called (gov-id audit,
+        # 2026-09-10: every keyed tier takes the registry name now, not
+        # only pinned/registry).
         new_jurisdiction = (
-            match.gov_name
-            if (
-                not overridden
-                and match.tier in (TIER_PINNED, TIER_REGISTRY)
-                and match.gov_name
-            )
-            else jurisdiction
+            jurisdiction if overridden else _display_jurisdiction(match, jurisdiction)
         )
+        # When the display name comes from the registry for a non-place
+        # government, finalize_jurisdiction()'s split body duplicates the
+        # entity ("Housing Authority" beside "Housing Authority of the
+        # County of Santa Clara, CA"). Drop it only in that exact shape --
+        # the stored body is a prefix of the new display name -- so a
+        # body an adapter supplied on its own (Granicus's RSS title) is
+        # never touched.
+        new_meeting_body = current_meeting_body
+        if (
+            not overridden
+            and _display_from_registry(match)
+            and match.meeting_body is None
+            and current_meeting_body
+            and (new_jurisdiction or "")
+            .lower()
+            .startswith(current_meeting_body.lower())
+        ):
+            new_meeting_body = None
 
+        # "Already current" tolerates one specific tier flip: pass 1
+        # rewrites `jurisdiction` to the registry name, and on pass 2 that
+        # string keys straight to the national table (`registry`) where a
+        # fallback pin (`pinned`) had keyed the raw one -- same gov_id,
+        # same name, only the label moves. Measured 2026-09-09: 187 of a
+        # 315-row run re-proposed exactly this on a second dry run.
+        # Treating the pair as equivalent is what makes "dry run again ->
+        # expect 0" true after one apply.
+        tier_equivalent = {confidence, new_confidence} <= {TIER_PINNED, TIER_REGISTRY}
         if (
             new_gov_id == current_gov_id
             and new_gov_type == current_gov_type
             and new_jurisdiction == jurisdiction
-            and confidence == new_confidence
+            and new_meeting_body == current_meeting_body
+            and (confidence == new_confidence or tier_equivalent)
         ):
             unchanged += 1
             continue
@@ -340,7 +371,12 @@ async def main() -> None:
                 page.gov_type = new_gov_type
                 if not live_override:
                     page.jurisdiction = new_jurisdiction
-                    page.jurisdiction_confidence = match.tier
+                    page.meeting_body = new_meeting_body
+                    if not (
+                        {page.jurisdiction_confidence, match.tier}
+                        <= {TIER_PINNED, TIER_REGISTRY}
+                    ):
+                        page.jurisdiction_confidence = match.tier
                 await write_session.commit()
 
     _report(changes, tiers, hub_moves, unchanged, overrides, args)

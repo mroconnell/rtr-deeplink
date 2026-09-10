@@ -1057,12 +1057,48 @@ holds the resolution tier now (`pinned` / `registry` / `inferred` /
 `manual_override`), which its "plain string, not an enum" decision
 already anticipated.
 
-**`jurisdiction` is the display name** and is generated from the registry
-row for a `pinned` or `registry` page, so "County of Fresno, CA" and
-"Fresno County, CA" both read and group as `Fresno County, CA`. A page
-the resolver declines to key keeps the string it had and its `gov_id`
-stays NULL — a real, distinguishable state, and deliberately not a minted
-id, because an id nobody can look up is worse than an honest gap.
+**`jurisdiction` is the display name**, generated from the registry
+row for **every page that keyed a real government** — `pinned`,
+`registry`, `unverified` (a minted `rtr:` id) and `inferred` alike
+(gov-id audit, 2026-09-10; before that only the first two, which left a
+minted government's meeting page reading "County of Santa Clara, CA /
+Housing Authority" while its own hub read "Housing Authority of the
+County of Santa Clara, CA"). So "County of Fresno, CA" and "Fresno
+County, CA" both read and group as `Fresno County, CA`, and a page never
+disagrees with its hub. The string the adapter actually extracted is
+kept verbatim in **`jurisdiction_raw`** (nullable; NULL on pages archived
+before 2026-09-10) — the evidence a reviewer needs for a borrowed or
+pinned identity, now that the display no longer carries it. A page the
+resolver declines to key (`unresolved`) keeps the string it had and its
+`gov_id` stays NULL — a real, distinguishable state, and deliberately not
+a minted id, because an id nobody can look up is worse than an honest
+gap. A `blank` page (nothing extracted at all, `gov_id =
+rtr:unknown:<host>`) shows **no government and no hub link**, exactly
+like a page with no id: the "Unidentified government (host)" placeholder
+that used to render there linked to a hub the hub list never built.
+
+**How identity flows, in one paragraph.** Four words that used to be
+interchangeable are kept apart: a *place* is a geography with a national
+code (enrichment only); a *government* is the legal entity whose meeting
+this is (the identity — one per page); a *tenant* is the host where the
+recording lives (many-to-many with governments: a county's Granicus
+site hosts a city, one city has three hosts); a *meeting body* is the
+council or commission inside a government (its own column, never part
+of the identity). The resolver app never assigns an identity — its
+on-demand page shows the adapter's string. Identity enters exactly once,
+at Archive ingest in `_find_or_create_page()`, through the seven-rung
+ladder above, and everything a reader sees springs from the `gov_id`
+that produced: the display name, the `/j/` hub and its slug, the
+state-page heading, the breadcrumb. Shared hosts (YouTube, Vimeo,
+TelVue, ClerkBase, ChampDS, DestinyHosted, TownHall Streams) are told
+apart by a `match` discriminator on the override row — a channel, an org
+token, a customer id — and the page's own host always outranks the
+video's channel: a township that posts to a shared county channel is
+still the township's page. Enumeration runs the other way round: it
+starts from a known `gov_id` and goes looking for a website, so by the
+time a candidate reaches ingest the government was never in doubt —
+which is why ingest should accept the id directly rather than a name
+(filed, not yet built; see `BACKLOG.md`).
 
 **The word is "government"** in code and column names — `gov_id`,
 `gov_type` — because that is the Census of Governments' own term for
