@@ -1,7 +1,10 @@
 gov_id,gov_name,gov_type,country,state,place_geoid,county_fips,sgc_code,nces_lea_id,cog_id,aliases,source,evidence
-,Easton,other,us,,,,,,,"Ada County Highway District|Albuquerque Bernalillo County Water Utility Authority|Andover|Bay Area Headquarters Authority|Brighton|California State Personnel Board|Duncan Town|Easton|Ezt|Fairfax County, VA|Frederick|Greeley|Howard County|Kaua&apos;i County, HI|King County, NC|L. A. World Airports - Board of Airport Commissioners|La Usd|Leeds1000Islands|Lexington-Fayette Urban County Government|Lloydminster, AB/SK|Meeting Portal|Metrolink|Metropolitan Airports Commission (MAC)|Mn Senate|Mw Rd|Northern Rockies Regional Municipality|Ny State Assembly|Ps C, FL|Psr C 2|Ride Uta|Riverside|S Fw, MD|SLRD|Sd57|Sonoma County Library|Tampa D.|Town of Castle Rock|Town of Huntington|Town of Windsor|Tracy|Unknown Jurisdiction|qathet Regional District",unresolved,no state for 'Easton'
+,Easton,other,us,,,,,,,"Ada County Highway District|Albuquerque Bernalillo County Water Utility Authority|Andover|Bay Area Headquarters Authority|Brighton|California State Personnel Board|Duncan Town|Easton|Ezt|Frederick|Greeley|Howard County|Kaua&apos;i County, HI|King County, NC|L. A. World Airports - Board of Airport Commissioners|La Usd|Leeds1000Islands|Lexington-Fayette Urban County Government|Lloydminster, AB/SK|Meeting Portal|Metrolink|Metropolitan Airports Commission (MAC)|Mn Senate|Mw Rd|Northern Rockies Regional Municipality|Ny State Assembly|Ps C, FL|Psr C 2|Ride Uta|Riverside|S Fw, MD|SLRD|Sd57|Sonoma County Library|Tampa D.|Town of Castle Rock|Town of Huntington|Town of Windsor|Tracy|Unknown Jurisdiction|qathet Regional District",unresolved,no state for 'Easton'
 ca:cd:1201,Shelburne,county,ca,NS,,,1201,,,"Shelburne, NS",ca_cd.csv,
 ca:cd:1202,Yarmouth,county,ca,NS,,,1202,,,"Town of Yarmouth, NS|Yarmouth, NS",ca_cd.csv,
+ca:cd:1211,Cumberland,county,ca,NS,,,1211,,,"Cumberland, NS",ca_cd.csv,
+ca:cd:1216,Richmond,county,ca,NS,,,1216,,,"Richmond, NS",ca_cd.csv,
+ca:cd:1312,Victoria,county,ca,NB,,,1312,,,"Victoria, NB",ca_cd.csv,
 ca:cd:3511,Lennox and Addington,county,ca,ON,,,3511,,,"Lennox and Addington, ON",ca_cd.csv,
 ca:cd:3514,Northumberland,county,ca,ON,,,3514,,,"County of Northumberland|Northumberland, ON",ca:cd (derived from the national table),
 ca:cd:3518,Durham,county,ca,ON,,,3518,,,"Durham Region, ON|Durham, ON",ca_cd.csv,
@@ -13,6 +16,7 @@ ca:cd:3532,Oxford,county,ca,ON,,,3532,,,"Oxford County, ON|Oxford, ON",ca_cd.csv
 ca:cd:3534,Elgin,county,ca,ON,,,3534,,,"Elgin, ON",ca_cd.csv,
 ca:cd:3537,Essex,county,ca,ON,,,3537,,,"County of Essex|County of Essex, ON",ca_cd.csv,
 ca:cd:3539,Middlesex,county,ca,ON,,,3539,,,"County of Middlesex|Middlesex, ON",ca_cd.csv,
+ca:cd:3540,Huron,county,ca,ON,,,3540,,,"Huron, ON",ca_cd.csv,
 ca:cd:3541,Bruce,county,ca,ON,,,3541,,,"Bruce County|Bruce, ON",ca_cd.csv,
 ca:cd:3543,Simcoe,county,ca,ON,,,3543,,,"Simcoe, ON",ca_cd.csv,
 ca:cd:3544,Muskoka,county,ca,ON,,,3544,,,"Muskoka, ON",ca_cd.csv,
@@ -569,6 +573,7 @@ rtr:ca:bc:city-of-port-moody,City of Port Moody,special_district,ca,BC,,,,,,"Cit
 rtr:ca:bc:northcowichan,Northcowichan,other,ca,BC,,,,,,Northcowichan,minted,no national table covers this government
 rtr:ca:bc:port-coquitlam,Port Coquitlam,special_district,ca,BC,,,,,,"Port Coquitlam, BC",minted,no national table covers this government
 rtr:ca:bc:port-moody,Port Moody,special_district,ca,BC,,,,,,"City of Port Moody, BC|Port Moody, BC",minted,no national table covers this government
+rtr:ca:bc:qathet-regional-district,Qathet Regional District,county,ca,BC,,,,,,,curated+ryan_stated,"Qathet Regional District, BC -- minted: minted from 'Qathet Regional District, BC'"
 rtr:ca:bc:regional-district-of-central-okanagan,Regional District of Central Okanagan,special_district,ca,BC,,,,,,"Regional District of Central Okanagan, BC",minted,no national table covers this government
 rtr:ca:bc:west-kelowna-council-chambers,West Kelowna Council Chambers,other,ca,BC,,,,,,West Kelowna Council Chambers,minted,no national table covers this government
 rtr:ca:mb:south,South,other,ca,MB,,,,,,"South, MB",minted,no national table covers this government
@@ -777,11 +782,15 @@ rtr:us:ak:petersburg,City of Petersburg,municipality,us,AK,,,,,,"City of Petersb
 rtr:us:ak:unknown-jurisdiction,Unknown Jurisdiction,other,us,AK,,,,,,Unknown Jurisdiction,minted,no national table covers this government
 rtr:us:al:city-of,City of,municipality,us,AL,,,,,,City of Al,minted,no national table covers this government
 rtr:us:al:huntsville-ordinance-no,City of Huntsville.Ordinance No,municipality,us,AL,,,,,,City of Huntsville.Ordinance No.,minted,no national table covers this government
+rtr:us:az:arizona-supreme-court,Arizona Supreme Court,court,us,AZ,,,,,,,curated+ryan_stated,"Arizona Supreme Court, AZ -- minted: minted from 'Arizona Supreme Court, AZ'"
 rtr:us:az:city-of-lake-havasu,City of Lake Havasu,municipality,us,AZ,,,,,,"City of Lake Havasu, AZ",minted,no national table covers this government
 rtr:us:az:lake-havasu,City of Lake Havasu,municipality,us,AZ,,,,,,"City of Lake Havasu, AZ",minted,no national table covers this government
+rtr:us:ca:alameda-county-transit,Alameda County Transit,special_district,us,CA,,,,,,,curated+ryan_stated,"Alameda County Transit, CA -- minted: minted from 'Alameda County Transit, CA'"
 rtr:us:ca:auburn,The City of Auburn,other,us,CA,,,,,,"The City of Auburn, CA",minted,no national table covers this government
+rtr:us:ca:beach-cities-health-district,Beach Cities Health District,special_district,us,CA,,,,,,,curated+ryan_stated,"Beach Cities Health District, CA -- minted: minted from 'Beach Cities Health District, CA'"
 rtr:us:ca:california-state-personnel-board,California State Personnel Board,other,us,CA,,,,,,"California State Personnel Board|California State Personnel Board, CA",minted,no national table covers this government
 rtr:us:ca:carpinteria-valley-water-district,Carpinteria Valley Water District,special_district,us,CA,,,,,,"Carpinteria Valley Water District, CA",minted,no national table covers this government
+rtr:us:ca:central-valley-flood-protection-board,Central Valley Flood Protection Board,other,us,CA,,,,,,,curated+ryan_stated,"Central Valley Flood Protection Board, CA -- minted: minted from 'Central Valley Flood Protection Board, CA'"
 rtr:us:ca:cerritos-college,Cerritos College,school_district,us,CA,,,,,,"Cerritos College, CA",minted,no national table covers this government
 rtr:us:ca:chula-vista-public-comments,Chula Vista Public Comments,other,us,CA,,,,,,Chula Vista Public Comments,minted,no national table covers this government
 rtr:us:ca:city-and-county-of-san-francisco,City and County of San Francisco,county,us,CA,,,,,,"City and County of San Francisco, CA",minted,no national table covers this government
@@ -808,6 +817,7 @@ rtr:us:ca:los-angeles-department-of-water-and-power,Los Angeles Department of Wa
 rtr:us:ca:menifee-nbsp,City of Menifee&nbsp,municipality,us,CA,,,,,,"City of Menifee&nbsp, CA",minted,no national table covers this government
 rtr:us:ca:menlo-park-fire-protection-district,Menlo Park Fire Protection District,special_district,us,CA,,,,,,"Atherton, CA|City of Menlo Park, CA|Menlo Park Fire Protection District, CA|Menlo Park, CA|Town of Atherton, CA",minted,no national table covers this government
 rtr:us:ca:metropolitan-transportation-commission,Metropolitan Transportation Commission,special_district,us,CA,,,,,,"Bay Area Headquarters Authority|Metropolitan Transportation Commission, CA",minted,no national table covers this government
+rtr:us:ca:modesto-irrigation-district,Modesto Irrigation District,special_district,us,CA,,,,,,,curated+ryan_stated,"Modesto Irrigation District, CA -- minted: minted from 'Modesto Irrigation District, CA'"
 rtr:us:ca:mojave-water-agency,Mojave Water Agency,special_district,us,CA,,,,,,"Mojave Water Agency, CA",minted,no national table covers this government
 rtr:us:ca:palm-desert-city-negotiator,Palm Desert City Negotiator,other,us,CA,,,,,,Palm Desert City Negotiator,minted,no national table covers this government
 rtr:us:ca:paramount-retiree,City of Paramount Retiree,municipality,us,CA,,,,,,"City of Paramount Retiree, CA",minted,no national table covers this government
@@ -820,6 +830,7 @@ rtr:us:ca:sandag,Sandag,other,us,CA,,,,,,"Sandag, CA",minted,no national table c
 rtr:us:ca:santa-clara-valley-transportation-authority,Santa Clara Valley Transportation Authority,special_district,us,CA,,,,,,"Santa Clara Valley Transportation Authority, CA",minted,no national table covers this government
 rtr:us:ca:santa-paula,The City of Santa Paula,other,us,CA,,,,,,"The City of Santa Paula, CA",minted,no national table covers this government
 rtr:us:ca:sb,"City of Sb""",municipality,us,CA,,,,,,"City of Sb""",minted,no national table covers this government
+rtr:us:ca:sonoma-county-library,Sonoma County Library,special_district,us,CA,,,,,,,curated+ryan_stated,"Sonoma County Library, CA -- minted: minted from 'Sonoma County Library, CA'"
 rtr:us:ca:sonoma-marin-area-rail-transit-district,Sonoma Marin Area Rail Transit District,special_district,us,CA,,,,,,Sonoma Marin Area Rail Transit District,minted,no national table covers this government
 rtr:us:ca:southern-california-association-of-governments,Southern California Association of Governments,special_district,us,CA,,,,,,Southern California Association of Governments,minted,no national table covers this government
 rtr:us:ca:the-city-of-auburn,The City of Auburn,other,us,CA,,,,,,"The City of Auburn, CA",minted,no national table covers this government
@@ -837,6 +848,7 @@ rtr:us:co:castle-rock,The Town of Castle Rock,other,us,CO,,,,,,"The Town of Cast
 rtr:us:co:colorado,Colorado,other,us,CO,,,,,,"Colorado, CO|University of Colorado, CO",minted,no national table covers this government
 rtr:us:co:longmont-for-the-fiscal,City of Longmont For The Fiscal,municipality,us,CO,,,,,,City of Longmont For The Fiscal,minted,no national table covers this government
 rtr:us:co:pueblo-west,Pueblo West,other,us,CO,,,,,,"Pueblo West, CO",minted,no national table covers this government
+rtr:us:dc:dc-water-sewer-authority,DC Water & Sewer Authority,special_district,us,DC,,,,,,,curated+ryan_stated,"DC Water & Sewer Authority, DC -- minted: minted from 'DC Water & Sewer Authority, DC'"
 rtr:us:dc:washington,Washington,other,us,DC,,,,,,"Washington, DC",minted,no national table covers this government
 rtr:us:de:bethany-beach,The Town of Bethany Beach,other,us,DE,,,,,,"The Town of Bethany Beach, DE",minted,no national table covers this government
 rtr:us:de:rehoboth-beach,the City of Rehoboth Beach,other,us,DE,,,,,,the City of Rehoboth Beach,minted,no national table covers this government
@@ -844,6 +856,7 @@ rtr:us:de:the-town-of-bethany-beach,The Town of Bethany Beach,other,us,DE,,,,,,"
 rtr:us:fl:broward-metropolitan-planning-organization,Broward Metropolitan Planning Organization,special_district,us,FL,,,,,,"Broward Metropolitan Planning Organization, FL",minted,no national table covers this government
 rtr:us:fl:coral-gables,The City of Coral Gables,other,us,FL,,,,,,"The City of Coral Gables, FL",minted,no national table covers this government
 rtr:us:fl:deland,The City Of DeLand,other,us,FL,,,,,,The City Of DeLand,minted,no national table covers this government
+rtr:us:fl:florida-public-service-commission,Florida Public Service Commission,special_district,us,FL,,,,,,,curated+ryan_stated,"Florida Public Service Commission, FL -- minted: minted from 'Florida Public Service Commission, FL'"
 rtr:us:fl:haines-city-settlement,Haines City  Settlement,other,us,FL,,,,,,"Haines City  Settlement, FL",minted,no national table covers this government
 rtr:us:fl:islamorada,Islamorada,other,us,FL,,,,,,"Islamorada, FL",minted,no national table covers this government
 rtr:us:fl:madeira-beach-florida-meetings-hub,Madeira Beach Florida Meetings Hub,other,us,FL,,,,,,Madeira Beach Florida Meetings Hub,minted,no national table covers this government
@@ -856,6 +869,7 @@ rtr:us:fl:plantation,The City of Plantation,other,us,FL,,,,,,"The City of Planta
 rtr:us:fl:port-orange,Port Orange,special_district,us,FL,,,,,,"Port Orange, FL",minted,no national table covers this government
 rtr:us:fl:port-st-lucie,Port St. Lucie,special_district,us,FL,,,,,,"City of Port St Lucie|Port St. Lucie, FL",minted,no national table covers this government
 rtr:us:fl:ps-c,Ps C,other,us,FL,,,,,,"Ps C, FL",minted,no national table covers this government
+rtr:us:fl:south-florida-water-management,South Florida Water Management,special_district,us,FL,,,,,,,curated+ryan_stated,"South Florida Water Management, FL -- minted: minted from 'South Florida Water Management, FL'"
 rtr:us:fl:south-miami,The City of South Miami,other,us,FL,,,,,,"The City of South Miami, FL",minted,no national table covers this government
 rtr:us:fl:st-johns-river-water-management-district,St. Johns River Water Management District,special_district,us,FL,,,,,,"St. Johns River Water Management District, FL",minted,no national table covers this government
 rtr:us:fl:st-lucie-county,St Lucie County,county,us,FL,,,,,,"St Lucie County, FL",minted,no national table covers this government
@@ -865,12 +879,14 @@ rtr:us:ga:colorado,Colorado,other,us,GA,,,,,,Colorado,minted,no national table c
 rtr:us:ga:walton-county-meetings-portal,Walton County Meetings Portal,county,us,GA,,,,,,Walton County Meetings Portal,minted,no national table covers this government
 rtr:us:hi:honolulu,City of Honolulu,municipality,us,HI,,,,,,"City of Honolulu|City of Honolulu, HI",minted,no national table covers this government
 rtr:us:hi:kaua-apos-i-county,Kaua&apos;i County,county,us,HI,,,,,,"Kaua&apos;i County, HI",minted,no national table covers this government
+rtr:us:id:ada-county-highway-district,Ada County Highway District,special_district,us,ID,,,,,,,curated+ryan_stated,"Ada County Highway District, ID -- minted: minted from 'Ada County Highway District, ID'"
 rtr:us:il:addison-village,Addison (village),other,us,IL,,,,,,"Addison (village), IL",minted,no national table covers this government
 rtr:us:il:aurora-city,Aurora (city),other,us,IL,,,,,,"Aurora (city), IL",minted,no national table covers this government
 rtr:us:il:brookfield-village,Brookfield (village),other,us,IL,,,,,,"Brookfield (village), IL",minted,no national table covers this government
 rtr:us:il:carbondale-city,Carbondale (city),other,us,IL,,,,,,"Carbondale (city), IL",minted,no national table covers this government
 rtr:us:il:champaign-city,Champaign (city),other,us,IL,,,,,,"Champaign (city), IL",minted,no national table covers this government
 rtr:us:il:collinsville-city,Collinsville (city),other,us,IL,,,,,,"Collinsville (city), IL",minted,no national table covers this government
+rtr:us:il:cook-county-forest-preserve-district,Cook County Forest Preserve District,special_district,us,IL,,,,,,,curated+ryan_stated,"Cook County Forest Preserve District, IL -- minted: minted from 'Cook County Forest Preserve District, IL'"
 rtr:us:il:decatur-city,Decatur (city),other,us,IL,,,,,,"Decatur (city), IL",minted,no national table covers this government
 rtr:us:il:elgin-city,Elgin (city),other,us,IL,,,,,,"Elgin (city), IL",minted,no national table covers this government
 rtr:us:il:gales-burg,Gales Burg,other,us,IL,,,,,,Gales Burg,minted,no national table covers this government
@@ -883,6 +899,7 @@ rtr:us:il:naperville-city,Naperville (city),other,us,IL,,,,,,"Naperville (city),
 rtr:us:il:palatine-village,Palatine (village),other,us,IL,,,,,,"Palatine (village), IL",minted,no national table covers this government
 rtr:us:il:park-ridge-park-district,Park Ridge Park District,special_district,us,IL,,,,,,"Park Ridge Park District, IL",minted,no national table covers this government
 rtr:us:il:plainfield-village,Plainfield (village),other,us,IL,,,,,,"Plainfield (village), IL",minted,no national table covers this government
+rtr:us:il:regional-transportation-authority-chicago,Regional Transportation Authority (Chicago),special_district,us,IL,,,,,,,curated+ryan_stated,"Regional Transportation Authority (Chicago), IL -- minted: minted from 'Regional Transportation Authority (Chicago), IL'"
 rtr:us:il:riverside-village,Riverside (village),other,us,IL,,,,,,"Riverside (village), IL",minted,no national table covers this government
 rtr:us:il:rockford-city,Rockford (city),other,us,IL,,,,,,"Rockford (city), IL",minted,no national table covers this government
 rtr:us:il:woodstock-city,Woodstock (city),other,us,IL,,,,,,"Woodstock (city), IL",minted,no national table covers this government
@@ -967,6 +984,7 @@ rtr:us:nj:rockaway-borough,Rockaway (borough),other,us,NJ,,,,,,"Rockaway (boroug
 rtr:us:nm:albuquerque-bernalillo-county-water-utility-authority,Albuquerque Bernalillo County Water Utility Authority,special_district,us,NM,,,,,,"Albuquerque Bernalillo County Water Utility Authority|Albuquerque Bernalillo County Water Utility Authority, NM",minted,no national table covers this government
 rtr:us:nv:city-of-reno-logo,"City of Reno Logo""",municipality,us,NV,,,,,,"City of Reno Logo"", NV",minted,no national table covers this government
 rtr:us:nv:incline-village,Incline Village,municipality,us,NV,,,,,,"Incline Village, NV",minted,no national table covers this government
+rtr:us:nv:public-utilities-commission,Public Utilities Commission,special_district,us,NV,,,,,,,curated+ryan_stated,"Public Utilities Commission, NV -- minted: minted from 'Public Utilities Commission, NV'"
 rtr:us:nv:reno-logo,"City of Reno Logo""",municipality,us,NV,,,,,,"City of Reno Logo"", NV",minted,no national table covers this government
 rtr:us:ny:amherst-erie-county,"Town of Amherst, Erie County",county,us,NY,,,,,,"Town of Amherst, Erie County, NY",minted,no national table covers this government
 rtr:us:ny:amsterdam-city,Amsterdam (city),other,us,NY,,,,,,"Amsterdam (city), NY",minted,no national table covers this government
@@ -1014,6 +1032,7 @@ rtr:us:oh:twinsburg-city,Twinsburg (city),other,us,OH,,,,,,"Twinsburg (city), OH
 rtr:us:oh:unknown-jurisdiction,Unknown Jurisdiction,other,us,OH,,,,,,Unknown Jurisdiction,minted,no national table covers this government
 rtr:us:oh:worthington-city,Worthington (city),other,us,OH,,,,,,"Worthington (city), OH",minted,no national table covers this government
 rtr:us:or:gresham,The City of Gresham,other,us,OR,,,,,,"The City of Gresham, OR",minted,no national table covers this government
+rtr:us:or:oregon,Oregon,other,us,OR,,,,,,"Oregon, OR",minted,no national table covers this government
 rtr:us:or:unknown-jurisdiction,Unknown Jurisdiction,other,us,OR,,,,,,Unknown Jurisdiction,minted,no national table covers this government
 rtr:us:pa:cherry-township,Cherry Township,township,us,PA,,,,,,"Cherry Township, PA",minted,no national table covers this government
 rtr:us:pa:doylestown-township,Doylestown (township),township,us,PA,,,,,,"Doylestown (township), PA",minted,no national table covers this government
@@ -1032,6 +1051,7 @@ rtr:us:sd:nassau-county,Nassau County,county,us,SD,,,,,,Nassau County,minted,no 
 rtr:us:sd:oxnard-school-district,Oxnard School District,school_district,us,SD,,,,,,Oxnard School District,minted,no national table covers this government
 rtr:us:sd:vermillion-city,Vermillion (city),other,us,SD,,,,,,"Vermillion (city), SD",minted,no national table covers this government
 rtr:us:tn:collierville,The Town of Collierville,other,us,TN,,,,,,"The Town of Collierville, TN",minted,no national table covers this government
+rtr:us:tn:memphis-light-gas-water-division,"Memphis Light, Gas & Water Division",special_district,us,TN,,,,,,,curated+ryan_stated,"Memphis Light, Gas & Water Division, TN -- minted: minted from 'Memphis, TN'"
 rtr:us:tn:municode-portal,Municode Portal,other,us,TN,,,,,,Municode Portal,minted,no national table covers this government
 rtr:us:tn:nashville-davidson-county,Nashville-Davidson County,county,us,TN,,,,,,"Nashville|Nashville-Davidson County, TN",minted,no national table covers this government
 rtr:us:tn:nashville-davidson-metropolitan-government,Nashville-Davidson metropolitan government,special_district,us,TN,,,,,,"Nashville|Nashville-Davidson metropolitan government, TN",minted,no national table covers this government
@@ -1049,16 +1069,20 @@ rtr:us:tx:city-of-sunset-valley-travis-county,"City of Sunset Valley, Travis Cou
 rtr:us:tx:coppell-isd,Coppell ISD,school_district,us,TX,,,,,,"Coppell ISD, TX",minted,no national table covers this government
 rtr:us:tx:corpus-christi-isd,Corpus Christi ISD,school_district,us,TX,,,,,,"Corpus Christi ISD, TX",minted,no national table covers this government
 rtr:us:tx:crowley-isd,Crowley ISD,school_district,us,TX,,,,,,"Crowley ISD, TX",minted,no national table covers this government
+rtr:us:tx:dallas-area-rapid-transit-dart,Dallas Area Rapid Transit (DART),special_district,us,TX,,,,,,,curated+ryan_stated,"Dallas Area Rapid Transit (DART), TX -- minted: minted from 'Dallas, TX'"
+rtr:us:tx:dallas-county-community-college-district,Dallas County Community College District,school_district,us,TX,,,,,,,curated+ryan_stated,"Dallas County Community College District, TX -- minted: minted from 'Dallas County Community College District, TX'"
 rtr:us:tx:dallas-isd,Dallas ISD,school_district,us,TX,,,,,,"Dallas ISD, TX",minted,no national table covers this government
 rtr:us:tx:del-valle-isd,Del Valle ISD,school_district,us,TX,,,,,,"Del Valle ISD, TX",minted,no national table covers this government
 rtr:us:tx:dickinson-isd,Dickinson ISD,school_district,us,TX,,,,,,"Dickinson ISD, TX",minted,no national table covers this government
 rtr:us:tx:dripping-springs-isd,Dripping Springs ISD,school_district,us,TX,,,,,,"Dripping Springs ISD, TX",minted,no national table covers this government
 rtr:us:tx:eanes-isd,Eanes ISD,school_district,us,TX,,,,,,"Eanes ISD, TX",minted,no national table covers this government
+rtr:us:tx:edwards-aquifer-authority,Edwards Aquifer Authority,special_district,us,TX,,,,,,,curated+ryan_stated,"Edwards Aquifer Authority, TX -- minted: minted from 'Edwards Aquifer Authority, TX'"
 rtr:us:tx:fair-fire-department,Fair Fire Department,other,us,TX,,,,,,"Fair Fire Department, TX",minted,no national table covers this government
 rtr:us:tx:fort-bend-county-isd,Fort Bend County ISD,school_district,us,TX,,,,,,"Fort Bend County ISD, TX",minted,no national table covers this government
 rtr:us:tx:frisco-isd,Frisco ISD,school_district,us,TX,,,,,,"Frisco ISD, TX",minted,no national table covers this government
 rtr:us:tx:garland-isd,Garland ISD,school_district,us,TX,,,,,,"Garland ISD, TX",minted,no national table covers this government
 rtr:us:tx:grand-prairie-isd,Grand Prairie ISD,school_district,us,TX,,,,,,"Grand Prairie ISD, TX",minted,no national table covers this government
+rtr:us:tx:harris-health-system,Harris Health System,other,us,TX,,,,,,,curated+ryan_stated,"Harris Health System, TX -- minted: minted from 'Harris Health System, TX'"
 rtr:us:tx:hays-cisd,Hays CISD,school_district,us,TX,,,,,,"Hays CISD, TX",minted,no national table covers this government
 rtr:us:tx:hutto-isd,Hutto ISD,school_district,us,TX,,,,,,"Hutto ISD, TX",minted,no national table covers this government
 rtr:us:tx:irving-isd,Irving ISD,school_district,us,TX,,,,,,"Irving ISD, TX",minted,no national table covers this government
@@ -1676,6 +1700,7 @@ us:county:04013,Maricopa County,county,us,AZ,,04013,,,,"City of Maricopa|Maricop
 us:county:04017,Navajo County,county,us,AZ,,04017,,,,"Navajo County, AZ",us_counties.csv,
 us:county:04019,Pima County,county,us,AZ,,04019,,,,"Pima County, AZ",us_counties.csv,
 us:county:04021,Pinal County,county,us,AZ,,04021,,,,"Pinal County, AZ",us_counties.csv,
+us:county:05061,Howard County,county,us,AR,,05061,,,,"Howard County, AR",us_counties.csv,
 us:county:05063,Independence County,county,us,AR,,05063,,,,Independence,us_counties.csv,
 us:county:05093,Mississippi County,county,us,AR,,05093,,,,"Mississippi County, AR",us_counties.csv,
 us:county:05119,Pulaski County,county,us,AR,,05119,,,,"Pulaski County, AR",us_counties.csv,
@@ -1803,6 +1828,7 @@ us:county:13169,Jones County,county,us,GA,,13169,,,,"Jones County, GA",us_counti
 us:county:13171,Lamar County,county,us,GA,,13171,,,,"Lamar County, GA",us_counties.csv,
 us:county:13179,Liberty County,county,us,GA,,13179,,,,"Liberty County, GA",us_counties.csv,
 us:county:13187,Lumpkin County,county,us,GA,,13187,,,,"Lumpkin County, GA",us_counties.csv,
+us:county:13207,Monroe County,county,us,GA,,13207,,,,"Monroe County, GA",us_counties.csv,
 us:county:13219,Oconee County,county,us,GA,,13219,,,,"Oconee County, GA",us_counties.csv,
 us:county:13239,Quitman County,county,us,GA,,13239,,,,"Quitman County, GA",us_counties.csv,
 us:county:13241,Rabun County,county,us,GA,,13241,,,,"Rabun County, GA",us_counties.csv,
@@ -1932,6 +1958,7 @@ us:county:28089,Madison County,county,us,MS,,28089,,,,"Madison County, MS",us_co
 us:county:29059,Dallas County,county,us,MO,,29059,,,,"Dallas County, MO",us_counties.csv,
 us:county:29095,Jackson County,county,us,MO,,29095,,,,"Jackson County|Jackson County, MO",us_counties.csv,
 us:county:29099,Jefferson County,county,us,MO,,29099,,,,"Jefferson|Jefferson County, MO",us_counties.csv,
+us:county:29129,Mercer County,county,us,MO,,29129,,,,"Mercer County, MO",us_counties.csv,
 us:county:29149,Oregon County,county,us,MO,,29149,,,,Oregon,us_counties.csv,
 us:county:29195,Saline County,county,us,MO,,29195,,,,"Saline County, MO",us_counties.csv,
 us:county:30081,Ravalli County,county,us,MT,,30081,,,,"Ravalli County, MT",us_counties.csv,
@@ -2010,6 +2037,7 @@ us:county:37135,Orange County,county,us,NC,,37135,,,,"Orange County|Orange Count
 us:county:37141,Pender County,county,us,NC,,37141,,,,"Pender County, NC",us_counties.csv,
 us:county:37159,Rowan County,county,us,NC,,37159,,,,"Rowan County, NC",us_counties.csv,
 us:county:37161,Rutherford County,county,us,NC,,37161,,,,"Rutherford County|Rutherford County, NC",us_counties.csv,
+us:county:37167,Stanly County,county,us,NC,,37167,,,,"Stanly County, NC",us_counties.csv,
 us:county:37169,Stokes County,county,us,NC,,37169,,,,"Stokes County, NC",us_counties.csv,
 us:county:37175,Transylvania County,county,us,NC,,37175,,,,"Transylvania County, NC",us_counties.csv,
 us:county:37179,Union County,county,us,NC,,37179,,,,"Union County|Union County, NC",us_counties.csv,
@@ -2155,6 +2183,7 @@ us:county:51041,Chesterfield County,county,us,VA,,51041,,,,"Chesterfield|Chester
 us:county:51047,Culpeper County,county,us,VA,,51047,,,,"Culpeper County, VA",us_counties.csv,
 us:county:51053,Dinwiddie County,county,us,VA,,51053,,,,"Dinwiddie County, VA",us_counties.csv,
 us:county:51057,Essex County,county,us,VA,,51057,,,,"Essex County, VA",us_counties.csv,
+us:county:51059,Fairfax County,county,us,VA,,51059,,,,"Fairfax County, VA",us_counties.csv,
 us:county:51061,Fauquier County,county,us,VA,,51061,,,,"Fauquier County, VA",us_counties.csv,
 us:county:51069,Frederick County,county,us,VA,,51069,,,,"Frederick County, VA|Frederick, VA",us_counties.csv,
 us:county:51073,Gloucester County,county,us,VA,,51073,,,,"Gloucester County, VA|Gloucester, VA",us_counties.csv,
@@ -2208,6 +2237,7 @@ us:county:55127,Walworth County,county,us,WI,,55127,,,,"Walworth County|Walworth
 us:county:55133,Waukesha County,county,us,WI,,55133,,,,"City of Waukesha, WI",us_counties.csv,
 us:county:55139,Winnebago County,county,us,WI,,55139,,,,"Winnebago County, WI",us_counties.csv,
 us:county:56009,Converse County,county,us,WY,,56009,,,,City of Converse,us_counties.csv,
+us:county:56019,Johnson County,county,us,WY,,56019,,,,"Johnson County, WY",us_counties.csv,
 us:county:56021,Laramie County,county,us,WY,,56021,,,,"Laramie County, WY",us_counties.csv,
 us:county:56025,Natrona County,county,us,WY,,56025,,,,"Natrona County, WY",us_counties.csv,
 us:county:56037,Sweetwater County,county,us,WY,,56037,,,,"Sweetwater County, WY",us_counties.csv,

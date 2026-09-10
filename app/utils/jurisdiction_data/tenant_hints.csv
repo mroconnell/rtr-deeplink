@@ -797,7 +797,7 @@ lapalmaca.portal.civicclerk.com,CA,auto_derived,"state only, from rtr-discovery 
 laplata.primegov.com,CO,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 lapuente.granicus.com,CA,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 laquinta.cablecast.tv,CA,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'La Quinta, CA'"
-laramiecounty.granicus.com,WY,auto_derived,"state only, from rtr-discovery ledger.db tenants.jurisdiction_override 'Laramie County, WY'"
+laramiecounty.granicus.com,WY,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 laredotx.new.swagit.com,TX,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 lauderdalebytheseafl.portal.civicclerk.com,FL,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
 laurel-md.municodemeetings.com,MD,ledger_state_abbr,rtr-discovery ledger.db tenants.state_abbr
