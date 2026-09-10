@@ -277,6 +277,80 @@ three new pinning rules, and the Wistia adapter itself, still need a
 person to click deploy before they take effect (the adapter's own
 deploy was already outstanding from WO-161, see that entry).
 
+## WO-165: collapsed the research file's duplicate rows so each government has one row, without losing any host or URL [Done 2026-09-10]
+
+Ryan asked for `rtr-business/research/jurisdiction_coverage.csv` to be
+cleaned up. One government is supposed to be one row in that file. But
+1,567 governments had more than one row — 2,372 extra rows in total.
+Also in scope: 87 rows from an earlier pass (WO-132) that were flagged
+as "ambiguous" — the government's name matches two different real
+places, and nobody had checked which one was right.
+
+The work sorted every duplicate into one of three groups, then handled
+each group differently. Where every row for a government already
+agreed on its name and state, the rows were combined by machine — no
+guessing involved, just picking the best existing answer and folding
+the rest in. Where rows disagreed on the name, or where the 87
+ambiguous rows lived, each government's own website was checked live —
+one at a time, politely — to see what the page itself calls its own
+government. Only then was a row changed.
+
+**Result**
+
+| Group | Count of duplicate governments | Rows before | Rows after |
+|---|---|---|---|
+| Rows that already agreed (one clearly better, or plain duplicates) | 287 | 583 | 287 |
+| Rows that disagreed on details but not on the government | 1,103 | 2,992 | 1,103 |
+| Rows that disagreed on which government it even was | 177 | 364 | 257 (103 fully resolved; 74 still have more than one row) |
+
+For the 87 rows flagged ambiguous earlier: 49 were settled by reading
+the government's own website. 38 are still genuinely unclear and need
+a person to decide — see below.
+
+The file went from 33,827 rows to 31,539. 76 governments still have
+more than one row. Every one of those is a case where the website
+either couldn't be checked (site down, blocked) or gave an unclear
+answer — none were left duplicated by mistake. Those 76 cases, with
+both possible answers and what the website's title said, are listed in
+`rtr-business/research/wo165_for_ryan.csv` for you to decide.
+
+No domain or link was thrown away. When a government had two working
+websites, or two working links to its meetings, the file now keeps the
+main one in its usual column and the other one in a new column
+(`alternate_domains` or `alternate_urls`).
+
+**Caution.** This pass trusted each row's own website as already
+belonging to the right government — it did not re-check every single
+government's domain for being wrong in some other way. Along the way it
+found one row that WAS wrong in that other way: a "Chevy Chase Village"
+row was carrying a website that a past investigation had already traced
+to a *different*, real town also named Chevy Chase. That one row was
+pulled out and flagged rather than merged in, since folding it in would
+have made the mistake permanent. It's possible a few more rows like
+that exist elsewhere in the file; this pass did not go looking for them.
+
+Three real false answers were caught and blocked before they could be
+written to the file: a login page that had no information but sat on a
+web address someone else had already pointed at an unrelated
+organization; a small-town bank's website that happened to share a
+town's name; and a real bug in this repo's own address-matching code
+that mishandles Michigan's "Charter Township of X" wording — that bug
+was already known and filed (see "Charter Township of X" entry above),
+and this work hit it again independently.
+
+The two new columns are read by anyone who opens the CSV directly or
+loads it with Python's standard CSV reader — confirmed every script
+that reads this file already does that, so nothing else needs to
+change to see the new columns.
+
+**Recommendation.** Have someone review the 76 still-duplicated rows
+in `wo165_for_ryan.csv` when convenient — none are urgent, they're
+simply unclear. No other action needed.
+
+**Deploy status:** none. This changed only the research file in
+`rtr-business`, a separate repo with no deploy step — nothing here
+touches the live site.
+
 ## WO-148: headless pass on the 1,132 smaller governments WO-133 never reached [Done 2026-09-10]
 
 This tested 1,132 smaller US and Canadian governments (over 5,000
