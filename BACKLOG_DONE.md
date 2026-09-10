@@ -28,6 +28,34 @@ run 0. The same map makes rtr-business's `add_gov_id_to_coverage.py` key
 lets its duplicate rows collapse -- handed to the coverage-registry
 session.
 
+## `reports/gov_id_problem_cases.csv`: the hand-picked regression corpus behind the whole-archive backfill dry run [Done 2026-09-10]
+
+Ryan's idea after the audit: "a list of fewer than 6000 meetings ...
+likely problem cases, collisions, difficult situations, unique platform
+combinations." 80 archived pages, 16 categories, every row a page whose
+identity a human or a test verified during the 2026-09-09/10 work: the
+shared TelVue token (Half Moon Bay under Pacifica), Juneau AK keyed to
+Juneau WI, the WFWRD board under Wasatch County, State College as a
+school district, the type-initial subdomains (arkansas-sc, oxnardsd,
+coloradoga, sfwmd), Lloydminster's two provinces, 15 consolidated
+city-counties, the nine tenants that are not the government whose name
+they carry (LADWP, SANDAG, Menlo Fire, CVWD, TCCD, Horry schools, LA
+Metro, HPSB, TRCA) plus Cottage Grove / Dallas College / UATC-style
+shared hosts, the delegation shapes (PrimeGov->YouTube, ClerkBase, Utah
+PMN, CivicPlus own-domain), blank and unresolved samples, a manual
+override, a disambiguated display form, and two near-name controls
+(South San Francisco, West Baton Rouge Parish).
+
+`scripts/check_gov_id_problem_cases.py` compares the list with a fresh
+export and, given a `backfill_gov_id.py --report` file, with what the
+backfill WOULD write -- to be run before every `--apply`. A `status`
+column keeps it honest without making it noisy: `verified` rows fail the
+run on drift, `known_wrong` rows (the two generic-embed collisions, whose
+expected value is the host's own government) and `open` rows (honestly
+unkeyed, awaiting a pin) are reported but never fail it. First run: 78
+ok, 0 drift, 2 known-wrong still wrong, exit 0. Documented in README
+beside the backfill.
+
 ## Consolidated governments: every one the archive holds sits on one id; the bare names that minted now key; 11 hosts pinned; the subdomain reader's state must hold a government of that name [Done 2026-09-10]
 
 Ryan's two questions, answered with data rather than a name-only pass
