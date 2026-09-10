@@ -137,6 +137,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (109)
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
+  [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
   [NEEDS-AUDIT] A `tenant_overrides.csv` pin only affects future
@@ -270,7 +271,8 @@ Reliability, ops & cost  (13)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (15)
+Trust, safety & data quality  (16)
+  A bare YouTube channel-listing scan measurably ingests non-meeting…
   A live page is keyed to the wrong government entirely — Bamberg…
   `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed…
   Meeting body is blank on ~90% of archived pages `[NEEDS-AUDIT]`…
@@ -708,6 +710,47 @@ of human step they need.
   - **Next action**: app-level and dashboard-level investigation is now exhausted — stdout logs never carry the actual abort (confirmed again today, two separate pasted logs, both only show the post-restart boot sequence), and Render's Events tab carries no more specific exit reason than the generic "Exited with status 134." The only remaining avenue is Render's own infra-level crash diagnostics (kernel `dmesg`/OOM-killer output), which isn't self-serve from either the dashboard or this repo's own tooling — would need Render support directly if this is worth pursuing further. Alternatively, treat as accepted background noise if the outage rate stays low (3 confirmed real UptimeRobot outages against 25 alerts, most auto-recovering in minutes).
   - **New data points (2026-09-10, live dashboard walkthrough with Ryan)**: today's alert (instance `zdd2t`, exited 134 at 8:44 AM PDT / 15:44 UTC) is occurrence #25 (was 24 as of this morning's inbox-triage run). Two production logs pasted (2026-09-01 and 2026-09-10 mornings) both independently confirm the abort itself is never visible in application stdout — only the Chromium self-heal + restart sequence, same limitation as every prior data point. Considered and checked a new hypothesis this session — that `warm_up()` (`app/platforms/headless_browser.py`, called unconditionally at every startup per `app/main.py`'s lifespan) relaunching a full Chromium process on every restart could be tipping a memory-constrained instance over — but the graphs don't support it: post-restart memory/CPU spikes are real (visible in today's 4-hour graph) but "far from 100%," so this isn't the driver either.
   - **History**: `BACKLOG_DONE.md` ("Four Render-dashboard `[HUMAN]` items walked through live with Ryan," 2026-08-29 — the starter-vs-standard decision this recurrence already revisited, current plan is `standard`/2GB). First flagged by the inbox-triage Routine 2026-08-30; recurred and updated in the 2026-08-31, 2026-09-01, 2026-09-03, 2026-09-05, and 2026-09-10 (this entry) runs/sessions. Moved here from "Needs a human" 2026-09-10 — the human/dashboard step is done; what's left (if anything) is either Render-support escalation or accepting it as background noise, not a quick dashboard glance.
+- **[NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
+  domain (`"granicus.com" in netloc`, etc.) false-positives on the
+  vendor's own marketing/support pages when used to scan arbitrary page
+  links, not just to classify an already-known real meeting URL.**
+  - **Issue**: confirmed live in WO-147's 30-row pilot: Oceanside, CA's
+    page links to `https://www.granicus.com/` (a "Powered by Granicus"
+    footer badge) and New Haven, CT's links to
+    `support.granicus.com/s/article/...` (a Granicus help-center
+    article) — `detect_platform()` returns `"granicus"` for both, since
+    its rule is a bare netloc substring test with no tenant-subdomain or
+    marketing-subdomain check. `wo134_confirmed_hits_ingest.py`'s
+    `find_specific_platform_link()` calls `detect_platform()` the same
+    way and has the identical exposure; it just hadn't been hit before
+    because every prior sweep already knew its *target* platform ahead
+    of time (a marketing link only false-positives when scanning for
+    *any* platform, which no caller did before this WO's
+    `find_platform_link()` in `scripts/wo147_access_ladder_sweep.py`).
+  - **Impact**: a government whose page merely credits a vendor in a
+    footer/support link gets misclassified as a live tenant of that
+    vendor, wasting a resolve attempt and landing a wrong
+    `no-video-found`/`resolve-failed` outcome instead of the correct
+    `no-platform-link-found`. Not known to have caused a wrong *ingest*
+    yet (the resolve step still fails cleanly on a non-tenant URL), but
+    it corrupts the reject-reason signal a later sweep would read.
+  - **Next action**: give `detect_platform()` (or a thin wrapper used by
+    every *scanning* caller, as opposed to *classifying* an
+    already-known URL) the same guard `wo147_access_ladder_sweep.py`'s
+    `_is_vendor_marketing_apex()` now has — exclude a bare vendor apex
+    domain and its known marketing/support subdomains (`www`, `connect`,
+    `support`, `help`, `university`, `go`, `info`, `status`, `docs`,
+    `developer(s)`, `blog` — the same set `wo141_access_ladder_pilot.py`
+    already validated) before trusting a scanned link as a real tenant.
+  - **Constraint**: don't just harden `detect_platform()` itself without
+    checking every existing caller's expectations first — some may rely
+    on it recognizing a bare vendor URL on purpose (e.g. classifying an
+    already-known real Granicus stream URL that happens to be on the
+    apex domain, if one exists).
+  - **History**: found and worked around locally in
+    `scripts/wo147_access_ladder_sweep.py` (`_is_vendor_marketing_apex()`),
+    not yet applied to the shared `find_specific_platform_link()`/
+    `detect_platform()` path. See `BACKLOG_DONE.md`'s WO-147 entry.
 
 - **[NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   lifted from an institutional-type word ("School District" → SD,
@@ -3896,6 +3939,54 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### A bare YouTube channel-listing scan measurably ingests non-meeting videos — 3 of 8 real examples, all matching the title allowlist by accident `[NEEDS-AUDIT]`
+
+- **Issue**: `wo134_confirmed_hits_ingest.py`'s `resolve_youtube_channel()`
+  (used by every `nationwide_*`/`wo1*_confirmed_hits_ingest`-style sweep,
+  including WO-130/134/139 and this WO) lists a government's YouTube
+  channel's most recent uploads and keeps the first that passes
+  `_looks_like_real_meeting(..., require_allowlist=True)` — a single
+  substring match against `MEETING_ALLOWLIST` ("council", "board",
+  "commission", ...). WO-147's own 40-government pilot found 3 of 8
+  channel-sourced hits are not real meetings despite passing that check,
+  because a body name shows up in an unrelated video's own title too:
+  "HAIRitage 2026 CROWN Act Workshop: Advice from Our Commissioner
+  Board" (Union County, NJ), "Commissioners Tour Picatinny Arsenal's
+  Revolutionary Roots" (Morris County, NJ), "Council Participation
+  Instructions" (Fort Collins, CO). The other 5 pilot hits — a specific
+  already-linked video, a curated playlist, or a non-YouTube platform —
+  were all real meetings; a curated "Board Meetings" playlist is a much
+  stronger signal than a channel's raw upload list, which mixes
+  everything the government ever posts.
+- **Impact**: a wrong video can reach a live tier-1/2 page immediately
+  (this path has no probe/review gate at all, unlike tier 3) or sit in
+  the tier-3 queue as a real, current-looking but wrong "meeting" —
+  undermining the "we ingested a real government meeting" claim this
+  project makes across every WO write-up. Scope is unknown: this
+  resolution path has been in production since WO-130 (2026-09-09) with
+  no equivalent check, so already-ingested/queued pages may carry the
+  same defect; nobody has audited them for it.
+- **Next action**: before loosening/tightening `MEETING_ALLOWLIST`
+  itself (risking false negatives on real meetings titled unusually —
+  "LCBOC CM 8 25 26" in this same pilot has no allowlist word spelled
+  out and is real), gather more real examples of both classes, then
+  design a check specific to *channel-listing* resolution (which the
+  playlist/direct-link paths don't need, since they were 5/5 clean in
+  this sample) — e.g. requiring a date-shaped token in the title, or a
+  match against `PROMO_BLOCKLIST`-style negative signals for
+  tour/explainer/instructional content. WO-147's own driver
+  (`scripts/wo147_access_ladder_sweep.py`) adds a non-blocking
+  `channel_scan_caution()` note (`is_bare_youtube_channel_hit()`) to any
+  row that came from a bare channel/handle/vanity URL rather than a
+  specific video/playlist/non-YouTube platform — a mechanical proxy for
+  "needs a human title check," reusable by whoever builds the real fix.
+- **Constraint**: `MEETING_ALLOWLIST`/`PROMO_BLOCKLIST` are shared by
+  every existing sweep script — don't change either from an 8-example
+  pilot; the false-negative risk on real, unusually-titled meetings is
+  as real as the false-positive risk this entry documents.
+- **History**: found live during WO-147's required pilot hand-verification
+  step, 2026-09-10. See `BACKLOG_DONE.md`'s WO-147 entry.
 
 ### A live page is keyed to the wrong government entirely — Bamberg County, SC's YouTube livestream page displays as Nottoway County, VA `[NEEDS-AUDIT]`
 

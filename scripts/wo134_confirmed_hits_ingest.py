@@ -237,6 +237,19 @@ PROMO_BLOCKLIST = (
 HOP2_FETCH_CAP = 4
 HIGH_RISK_TITLE_PLATFORMS = {"youtube", "vimeo"}
 
+# WO-147 hook (2026-09-10): when set, process_row() hands a tier-3
+# (video, no reachable captions) candidate to this callable instead of
+# appending it to TIER3_QUEUE_FILE and pinning it immediately. Ryan's
+# rule for WO-147's access-ladder sweep is "probe before queue" -- a
+# tier-3 candidate must be probed (duration/dead-link check) before it
+# earns a queue line or a tenant_overrides.csv pin, not at resolve time.
+# None (the default) preserves this module's original behavior exactly,
+# so wo134_confirmed_hits_ingest.py's own main()/WO-139 callers are
+# unaffected. Signature: handler(gov_id, unit_name, platform, final_seed,
+# hit_url, title, date, result) -> None. See scripts/
+# wo147_access_ladder_sweep.py for the real handler.
+TIER3_HANDLER = None
+
 
 @dataclass
 class RowResult:
@@ -1267,11 +1280,11 @@ async def process_row(
         if _has_video(result):
             _seen_keys.add(key)
             apply_display_jurisdiction(result, gov_id)
-            maybe_write_tenant_override(
-                platform, result, final_seed, gov_id, unit_name, source_tag
-            )
 
             if segments:
+                maybe_write_tenant_override(
+                    platform, result, final_seed, gov_id, unit_name, source_tag
+                )
                 normalized = normalize_url(final_seed)
                 try:
                     response = await _ingest_with_retry(
@@ -1301,17 +1314,49 @@ async def process_row(
                     page_url or "",
                 )
 
-            # video_url present, no segments -- tier 3, queue it, don't
-            # ingest directly (per this project's own tier-3 pattern).
-            # Real, confirmed-live bug this session (WO-134, 2026-09-09):
-            # nationwide_2404_ingest.py's own tier-3 append had no
-            # existing-queue check at all, and neither did an earlier
-            # draft of this script -- repeated smoke-test runs during
-            # development each blindly appended the same real URLs,
-            # producing exact duplicate lines caught by tests/
-            # test_transcription_queue_files.py's test_no_duplicate_rows
-            # (fixed by a one-off dedupe of the file; this check is what
-            # prevents it recurring on any future run/resume).
+            # video_url present, no segments -- tier 3. WO-147's sweep
+            # sets TIER3_HANDLER so this hands off to a pending-CSV sink
+            # (probed before it ever reaches the real queue/a pin) rather
+            # than queuing+pinning immediately -- see TIER3_HANDLER's own
+            # comment above.
+            if TIER3_HANDLER is not None:
+                TIER3_HANDLER(
+                    gov_id=gov_id,
+                    unit_name=unit_name,
+                    platform=platform,
+                    final_seed=final_seed,
+                    hit_url=hit_url,
+                    title=title,
+                    date=date,
+                    result=result,
+                )
+                return RowResult(
+                    gov_id,
+                    unit_name,
+                    platform,
+                    "queued_tier3_pending",
+                    "real video, no transcript yet -- sent to the WO-147 tier-3 "
+                    "pending sink for probing, not queued directly",
+                    final_seed,
+                    title,
+                    date,
+                    "",
+                )
+
+            # queue it, don't ingest directly (per this project's own
+            # tier-3 pattern). Real, confirmed-live bug this session
+            # (WO-134, 2026-09-09): nationwide_2404_ingest.py's own
+            # tier-3 append had no existing-queue check at all, and
+            # neither did an earlier draft of this script -- repeated
+            # smoke-test runs during development each blindly appended
+            # the same real URLs, producing exact duplicate lines caught
+            # by tests/test_transcription_queue_files.py's
+            # test_no_duplicate_rows (fixed by a one-off dedupe of the
+            # file; this check is what prevents it recurring on any
+            # future run/resume).
+            maybe_write_tenant_override(
+                platform, result, final_seed, gov_id, unit_name, source_tag
+            )
             already_queued = final_seed in _existing_tier3_queue_urls()
             if not already_queued:
                 source_line = (
