@@ -135,7 +135,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (55)
   WO-34's roll-up calibration gap: a second, smaller defect shape sits…
   `transcribe_backlog_locally.py`'s asyncio/subprocess context hangs…
   Brookhaven NY's media host (`cpmedia.azureedge.net`) fails every…  (1)
@@ -170,7 +170,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (54)
     `[LATER]` ~25 smaller consolidated city-county governments still need
     `[LATER]` 5 small Southampton County, VA towns (Boykins, Branchville,
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
-  Adapter & platform gaps  (23)
+  Adapter & platform gaps  (24)
+    [JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path)…
     [JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
     [JUST-DO-IT] TelVue CDX enumeration solved and the full 313-token…
     [NEEDS-AUDIT] A shared regional TelVue org token spanning multiple
@@ -1394,6 +1395,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     yet).
 
 ### Adapter & platform gaps
+
+- **[JUST-DO-IT] A bare eScribe tenant root (no `Meeting.aspx` path) resolves "successfully" with zero content instead of finding a real meeting — confirmed on ~29 of 43 WO-128 candidates.**
+  - **Issue**: `escribe.py`'s `resolve()` fetches whatever URL it's given and never raises `CalendarPageError` for a listing/root page the way `civicplus.py`/`municode_meetings.py`/`vimeo.py` do, so `nationwide_*_ingest.py`'s `resolve_seed()` has no candidate list to pick from — it just returns an empty `ResolvedMeeting` (no agenda items, no video, no metadata), logged as `"resolved but no transcript/agenda/video"`. Real examples: `pub-southdundas.escribemeetings.com`, `pub-hawkesbury.escribemeetings.com`, `pub-smithsfalls.escribemeetings.com` (all real Ontario municipalities whose only known seed is the bare tenant host).
+  - **Impact**: any candidate list whose eScribe lead is a tenant host rather than a specific `Meeting.aspx?Id=...` URL — jurisdiction_coverage.csv's own `domain` column holds the bare tenant host for many Canadian eScribe governments — silently reads as "no content" instead of "never actually checked a real meeting."
+  - **Next action**: `scripts/adhoc_cdx_escribe_pipeline.py` already solved this for its own tenant-list input via `discover_candidate_ids()` (`POST {domain}/MeetingsCalendarView.aspx/GetCalendarMeetings`, most-recent-first, `HasVideo`-only). `scripts/wo128_known_platform_sweep.py` reuses that function directly for its own bare-tenant-root case (`_discover_escribe_meeting()`) — port the same pattern into `nationwide_2404_ingest.py`'s (or its next copy's) `locate_platform_url()`/`resolve_seed()`, the way `civicclerk_latest_event_url()` already handles the analogous bare-tenant-link case for CivicClerk.
+  - **Constraint**: `GetCalendarMeetings` is a real but undocumented tenant API — keep the same 120-day lookback and polite delay `adhoc_cdx_escribe_pipeline.py` already uses.
+  - **History**: found live 2026-09-09, WO-128 (known-platform sweep); worked around locally in `scripts/wo128_known_platform_sweep.py` rather than fixed at the shared-helper level, since `nationwide_2404_ingest.py` was mid-run against production the same day (same "don't change this mid-run" constraint as the agenda-only-ingest entry above).
 
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
   missing the real `/private/{id}` path variant — confirmed live with
