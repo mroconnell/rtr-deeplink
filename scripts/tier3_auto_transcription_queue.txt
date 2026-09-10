@@ -2217,3 +2217,9 @@ https://www.youtube.com/watch?v=jxOpy7Gp1Nc	https://www.youtube.com/@WallowaCoun
 https://www.youtube.com/watch?v=aCxx9A1fOzc
 https://minnesotapuc.granicus.com/MediaPlayer.php?clip_id=27
 https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1
+https://www.youtube.com/watch?v=jnHV1mqRQFc	https://www.cityofgraham.com/agendas-minutes/
+https://www.youtube.com/watch?v=TopVL6GwVZQ	https://www.beechgrove.com/watch-city-meetings
+https://brecksvilleoh.portal.civicclerk.com/event/1389/media	https://brecksville.oh.us
+https://spenceria.portal.civicclerk.com/event/65/media	https://spenceriowacity.com/departments/administration/meeting-agendas-minutes/
+https://pub-twpec.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=82262d5f-c7dc-4dc0-ad6a-aec952969cf9&lang=English	https://calendar.twpec.ca/meetings
+https://lmctvny.new.swagit.com/videos/169569	https://larchmontny.gov
