@@ -317,7 +317,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Parked deliberately — allowed back `[PARK]`  (3)
+Parked deliberately — allowed back `[PARK]`  (4)
+  Video-to-calendar join: match a government's video source to its own…
   Friday-night queue (2026-09-12): the token-heavy coverage passes…  (3)
     [IMPROVEMENT-ROUND] School-district / special-entity jurisdiction…
     [PARK] MPO / transit-authority / utility-district name table.
@@ -4814,6 +4815,25 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
 ## Parked deliberately — allowed back `[PARK]`
+
+### Video-to-calendar join: match a government's video source to its own calendar by body and date `[PARK]` `[BIG]`
+
+- **Issue:** Governments that publish meeting video on a channel, playlist
+  or video feed with no link from the meeting page are the largest reason
+  a government with video is still missing (17 of 30 "no video found"
+  CivicPlus sites in WO-137). Joining the video source to the site's own
+  calendar by body name and date recovers some of them.
+- **Impact:** Pilot WO-158: 2 real matches in 40 CivicPlus "no video found"
+  sites, about 5%, roughly 35 to 40 governments across that bucket; some
+  risk of off-mission video without the body-name check.
+- **Next action:** When picked up, read `docs/VIDEO_TO_CALENDAR_JOIN.md`
+  first; it holds the pilot, the safety rules, the failure shapes and
+  what running at scale needs.
+- **Constraint:** Shelved by Ryan 2026-09-10 for modest yield; allowed
+  back. Metadata-only video calls until a match is confirmed; ties
+  decline; the government's gov id is passed into ingest.
+- **History:** `ENUMERATION_METHODS.md` §193 (rtr-business); script and
+  result files `research/wo158_*`.
 
 ### Friday-night queue (2026-09-12): the token-heavy coverage passes `[PARK]`
 
