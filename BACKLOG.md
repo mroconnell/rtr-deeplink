@@ -123,11 +123,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (6)
     [JUST-DO-IT] `[EASY]` Port `wo130_county_ingest.py`'s YouTube…
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Production actions only Ryan should take  (9)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
+  Production actions only Ryan should take  (8)
     [HUMAN] 18 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
-    [HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] Click Validate Fix in Search Console for the reslug fix.
     [HUMAN] Two Archive fixes merged 2026-08-30 (WO-80's O(1) health…
@@ -611,12 +610,6 @@ of human step they need.
   - **Impact**: one page and its hub on the wrong government.
   - **Next action**: Ryan confirms, changes that row's gov_id to `us:county:34037`, and runs `backfill_gov_id.py --hosts www.sussex.nj.us`.
   - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09.
-
-- **[HUMAN] `juneauak.portal.civicclerk.com` holds two registry-tier pages filed as Juneau, WI; only an `authoritative` pin to the City and Borough of Juneau, AK (`us:place:0236400`) can fix them.**
-  - **Issue**: "Juneau, WI" is a real place, so the string keys to the wrong government at tier `registry` and a `fallback` pin never fires. `tests/test_gov_registry.py::test_tenant_consistency_will_not_cross_a_state_line` documents the truth, and the study's hostname-state guard rejected the automatic pin for exactly this reason.
-  - **Impact**: two live pages on the wrong state's hub; the same shape (name collision across a state line, hostname carrying the real state) is what `coloradoga.granicus.com` false-positived on, so check the pin by eye rather than automating it.
-  - **Next action**: Ryan confirms, then one `authoritative` row with source `ryan_stated`, followed by the `--hosts` backfill for that host.
-  - **History**: found 2026-09-09 while writing the 114 pins above.
 
 - **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids); 11 have no transcript.**
   - **Issue**: per-video oEmbed statuses in `reports/shared_host_lookups.csv` (blank channel) cross-checked against the export; the video ids are the 404/403/400 rows in the study's classifier.
