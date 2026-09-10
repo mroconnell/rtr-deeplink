@@ -107,6 +107,99 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-10
+
+196 candidate message IDs from `label:rtr-claude newer_than:30d` (155
+threads — the label's entire current content), 11 new after the ledger
+filter.
+
+**Out of scope / informational, no write-up**: 1 Search Console "Congrats
+on reaching 20 clicks in 28 days" — achievement notice, nothing to
+evaluate. 1 transcription worker daily report.
+
+**Duplicates, no new write-up**: Render `test-redtaperecordings` "Exited
+with status 3" (2026-09-10 05:39 UTC) — same already-confirmed-closed
+noise per `BACKLOG_DONE.md`'s 2026-08-30 entry. Render "[ACTION REQUIRED]
+Your free Render database has expired: rtr-deeplink-staging-db"
+(2026-09-09 23:22 UTC) — checked `render.yaml` (line 587-590): this is
+explicitly documented as expected, not a bug — "Deliberately does NOT
+declare rtr-deeplink-staging-db here -- it's free-tier and intentionally
+disposable (expires 9/9/2026)... A future reader: that's not an oversight
+to 'fix,' don't add it." The expiry date in that comment matches this
+alert exactly. 2 YouTube transcript-fetch `IpBlocked` failures
+(2026-09-09 16:08 UTC, 2026-09-10 03:38 UTC) — same already-tracked
+`[BLOCKED]` YouTube IP-block entry (`docs/investigations/
+youtube_429_block.md`); also worth noting WO-135 (PR #820, merged
+2026-09-10 05:02 UTC, commit `e77065c`) landed permanent-failure markers
+specifically to stop re-querying pages like these forever, so this
+category should shrink going forward.
+
+- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
+  status-134 crash-loop entry: **3 more Render "Exited with status 134"
+  alerts** (2026-09-09 13:26 UTC, 2026-09-09 19:22 UTC, 2026-09-10 09:47
+  UTC), bringing the running total to **24** since 2026-08-30 (was 21 as
+  of 2026-09-09). No new UptimeRobot outages with no matching Render
+  alert this run (the "no matching alert" count stays at 16) — worth
+  noting PR #795 (the `handle_head_requests` Content-Length fix flagged
+  as a possible explanation for that pattern in yesterday's entry) is on
+  `main` but per `CLAUDE.md`'s manual-deploy convention, not yet
+  confirmed deployed.
+  - **Impact**: unchanged from yesterday's entry — same production-
+    resolver-instability issue, same "needs Render's own crash logs"
+    constraint.
+
+- **Confirmed** — GitHub Actions "Test" workflow failed on `main`
+  (commit `e77065c`, run `34439475136`, 2026-09-10 05:02-05:04 UTC).
+  Pulled the real job log: `tests/test_backlog_toc.py::test_toc_is_current`
+  and `::test_check_mode_passes_on_the_real_file` both failed —
+  `BACKLOG.md`'s TOC was stale (a `[NEEDS-AUDIT]` count off by one, "95"
+  vs the real "96") because PR #820 (WO-135) edited `BACKLOG.md` without
+  rerunning `python3 scripts/build_backlog_toc.py`, exactly the mistake
+  this repo's own CLAUDE.md warns about. **Self-resolved**: the very next
+  push to `main` (`34439802191`, run #1718, 5 minutes later) already
+  passed, and `python3 scripts/build_backlog_toc.py --check BACKLOG.md`
+  against the current tree exits 0 today — no action needed.
+  - **Impact**: none remaining; ~5 minutes of red `main` with no
+    production effect (this test suite doesn't gate a deploy on its own).
+
+- **Confirmed, real regression in the canary's own denominator, but
+  investigated further and likely CI flakiness rather than a genuine
+  adapter break** — GitHub Actions "Adapter health canary" failed on
+  `main` (commit `f4ae2ee`, run `34388564131`, 2026-09-09 18:22-18:23
+  UTC): **32/35 platforms OK, 3 failures** (yesterday's run, same script,
+  same sample URLs, was 31/32 with only 1 failure). One failure is the
+  same already-open `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary
+  sample is a genuinely dead meeting" entry (`ClientResponseError: 410`,
+  unchanged). **Two are new since yesterday**: `seattle_channel`
+  (`TimeoutError` on `https://www.seattlechannel.org/videos?
+  videoid=x184865`) and `townhallstreams` (`resolve returned no real
+  content` on `https://townhallstreams.com/stream.php?location_id=94&
+  id=75799`). Checked both URLs directly with a plain `curl`: both
+  return HTTP 200, and the townhallstreams page still has real
+  `jwplayer`/`m3u8` video-config content in its HTML (33 `jwplayer`
+  references, 5 `m3u8`). `scripts/adapter_canary.py`'s own git history
+  shows no edit to either sample URL since before yesterday's run, so
+  this isn't a stale-sample problem like the Legistar case.
+  - **Unconfirmed**: since the underlying page content is present via a
+    plain HTTP fetch, the most likely explanation is CI-environment
+    flakiness in the canary's headless-browser step (the run log shows a
+    Playwright Chromium download happening fresh, and the same run also
+    hit an unrelated `RuntimeError: Event loop is closed` on subprocess
+    teardown — cleanup noise, not a cause, but consistent with some
+    resource contention that run) rather than a real `seattlechannel.py`/
+    `townhallstreams.py` regression — not independently confirmed via a
+    real headless-browser repro.
+  - **Impact**: low if this doesn't recur — two individual sample checks
+    in an already-known-flaky-looking run. Worth checking tomorrow's
+    canary run for whether these two clear on their own; if either fails
+    again with the same message, that would upgrade this from "likely
+    flake" to a real regression worth root-causing.
+
+Ledger: 196 message IDs reviewed and recorded this run (11 new, 185
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-09
 
 185 candidate message IDs from `label:rtr-claude newer_than:30d` (147
