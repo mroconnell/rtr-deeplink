@@ -5292,6 +5292,19 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # return path, so a real pushed row keeps its own "invintus" label,
     # same as vimeo/telvue above.
     "invintus": "Invintus",
+    # Wistia (amsva.wistia.com etc.) -- a general-purpose video host, WO-161,
+    # 2026-09-10. Confirmed live behind RegionalWebTV/Advanced Media
+    # Solutions of Virginia's shared account, serving at least four
+    # independent Virginia governments (Warrenton, Manassas,
+    # Fredericksburg, Stafford County) -- the same "one shared platform
+    # across many jurisdictions" shape as vimeo/invintus above, not a
+    # bespoke single-city scraper. wistia.py's resolve() sets
+    # `resolved.platform = self.platform_name` on every return path
+    # (direct media/channel URL or a delegating government page, which
+    # resets source_url back to the government's own page but keeps the
+    # "wistia" platform label), so a real pushed row keeps its own label,
+    # same as vimeo/telvue/invintus.
+    "wistia": "Wistia",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a

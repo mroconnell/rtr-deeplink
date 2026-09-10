@@ -221,6 +221,11 @@ CANARY_URLS: dict[str, list[str]] = {
     # video-only by design (see vimeo.py), so `has_real_content()` here is
     # satisfied by video + metadata, not segments.
     "vimeo": ["https://vimeo.com/1212025580"],
+    # Warrenton, VA Town Council's real 8/11/2026 evening session
+    # (RegionalWebTV/Advanced Media Solutions of Virginia's shared
+    # amsva.wistia.com account, WO-161) -- confirmed live: real video (a
+    # public MP4 asset) and a real, populated caption transcript.
+    "wistia": ["https://amsva.wistia.com/medias/i2vooa0pno"],
     "youtube": ["https://www.youtube.com/watch?v=uNDJRR3ywVo"],
 }
 

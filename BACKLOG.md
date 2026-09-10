@@ -139,7 +139,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (121)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (123)
   [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
@@ -225,7 +225,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (121)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (39)
+  Adapter & platform gaps  (41)
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
@@ -265,6 +265,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (121)
     [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
     [NEEDS-AUDIT] Guessing a fixed meetings-page path only works for…
     [EXAMPLE] Streamline Website Solutions has no confirmed real example…
+    [LATER] A bare pasted Wistia media URL (no channel context) can show…
+    [LATER] Village of Friendship Heights, MD publishes real meeting…
 
 Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
@@ -3839,6 +3841,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: per this repo's "test against a real, live URL first" rule, find a real Streamline-built government site (a targeted search for the vendor's own customer list, or a hit from a future sweep) before writing a detection rule.
   - **Constraint**: `[EXAMPLE]` — do not guess at a marker string without a confirmed live page.
   - **History**: `BACKLOG_DONE.md`, WO-154, 2026-09-10.
+
+- **[LATER] A bare pasted Wistia media URL (no channel context) can show a raw capture filename as its title instead of a real one.**
+  - **Issue**: Wistia's own per-media JSON `name` field is sometimes just the recording software's raw filename ("1 (50)", "2026-02-25 17-30-47", "capture - 28 April 2026 - 05-29-21 PM") rather than a human title — confirmed live on 3 of 4 RegionalWebTV governments checked for WO-161 (Stafford, Augusta, Manassas, Fredericksburg; only Warrenton's own media names were already clean). The channel JSON's own `episodeTitle` for the same media is consistently the real title, but that's only known when the resolve enters through the channel listing (or a caller, like WO-161's own ingest step, already has it) — a cold paste of a bare `{account}.wistia.com/medias/{id}` URL has no channel context at all.
+  - **Impact**: a user pasting a bare Wistia media link directly (rather than picking it from a `calendar_page` channel listing) can get an ugly, non-human title on their resulting page. Real but narrow: every meeting WO-161 itself ingested used the clean channel title via `resolve_media_id()`'s `title_hint` parameter, so this only affects a future cold paste.
+  - **Next action**: no fix attempted — would need either a reverse media-id-to-channel lookup (no such Wistia API endpoint found) or accepting the media JSON's own `name` as final. Revisit only if a real cold-pasted Wistia URL with a bad title actually surfaces.
+  - **Constraint**: `[LATER]` — no real example of user harm yet, just a confirmed data-quality gap in the source.
+  - **History**: `BACKLOG_DONE.md`, WO-161, 2026-09-10; see `wistia.py`'s `resolve_media_id()` docstring.
+
+- **[LATER] Village of Friendship Heights, MD publishes real meeting transcripts as plain Word documents, not through any video platform this app resolves.**
+  - **Issue**: checked live for WO-161 (one of the three previously-unchecked RegionalWebTV clients) — its RegionalWebTV page (`regionalwebtv.com/village-of-friendship-heights`) carries no Wistia embed of any kind (confirmed: no `<iframe>`, no `wistia` string anywhere in the rendered DOM), but does link real `.docx` transcript files directly (Wix-hosted `_files/ugd/...docx`) for real meetings through 7/13/2026 — a genuinely different, non-video source shape no adapter here handles.
+  - **Impact**: this one small Maryland village has real, current, human-readable meeting transcripts sitting unindexed — a real, if narrow, coverage gap distinct from the Wistia work this WO otherwise did.
+  - **Next action**: not investigated further (out of WO-161's Wistia-adapter scope) — a future session could check whether `.docx` extraction is worth a small, targeted adapter for this one government, or whether the same `_files/ugd/` pattern appears on any other RegionalWebTV client's page.
+  - **Constraint**: `[LATER]` — one confirmed government, not a platform pattern yet.
+  - **History**: `BACKLOG_DONE.md`, WO-161, 2026-09-10.
 
 ## Reliability, ops & cost
 

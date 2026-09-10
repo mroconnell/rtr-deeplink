@@ -361,6 +361,93 @@ paused until then anyway (see Caution).
   and every number's derivation:
   `rtr-business/research/wo171_methods_section.md`.
 
+## WO-161: Wistia adapter (video plus captions), built against RegionalWebTV's Virginia governments [Done 2026-09-10]
+
+Ryan approved building an adapter for Wistia, a video-hosting service.
+The reason: four Virginia governments share one Wistia account, run by
+a video vendor called RegionalWebTV (Advanced Media Solutions of
+Virginia). Wistia turned out to be a strong platform for this app.
+Unlike most video hosts this app already supports, Wistia hands over a
+real, timestamped transcript file for free, with no special tricks
+needed. It also hands over a real, playable video file directly,
+something even Vimeo (the closest comparison) does not do.
+
+**What was built.** A new adapter, `app/platforms/wistia.py`, handles
+three cases: a direct link to one Wistia video, a direct link to a
+whole Wistia channel (many meetings — the app now offers a pick list,
+the same way it already does for Vimeo), and a government's own web
+page that embeds a Wistia video or channel without a direct link. That
+third case needed extra work: RegionalWebTV's own government pages
+build themselves with website-building software (Wix) that only
+shows the video after a real web browser runs the page's code. A plain
+computer request never sees it. The fix reuses a browser-automation
+tool this app already had for a different platform (Vimeo's captions),
+pointed here at a new problem.
+
+**Caution: old links go dead, new ones don't.** Every video from 2019
+or 2021 linked from RegionalWebTV's own archive pages came back as
+"deleted" from Wistia's side. Every 2026 video checked worked fine. So
+this app's own code, and any future sweep of this vendor, should only
+target this year's meetings, not older ones.
+
+**The seven RegionalWebTV governments, checked today:**
+
+| Government | Current meeting found | Captions | Result |
+|---|---|---|---|
+| Warrenton (town), VA | Yes, 8/11/2026 evening session | Yes, real | Page live now |
+| Manassas (city), VA | Yes, 2/25/2026 council meeting | Yes, real | Page live now |
+| Fredericksburg (city), VA | Yes, 4/28/2026 worksession | Yes, real | Page live now |
+| Stafford County, VA | Yes, 1/6/2026 board meeting | Yes, real | Page live now |
+| Augusta County, VA | Yes, real channel found (not opened further) | Not checked | Not ingested — this government already has a working page with a real transcript, from a different video source (CivicClerk) |
+| Spotsylvania County, VA | No — its RegionalWebTV pages only show old (2016/2017) YouTube links, no current Wistia video | — | No current video found on this vendor |
+| Village of Friendship Heights, MD | No Wistia video found — its page instead links directly to real transcript documents (Word files), not a video | — | Not on Wistia; a real but separate finding, out of scope for this work order |
+
+Four new pages are live now, each with a real video and a real,
+timestamped transcript:
+
+- `/m/warrenton-va-2026-08-11-warrenton-town-council-evening-session-8-11-2026` (1,068 transcript lines)
+- `/m/manassas-va-2026-02-25-manassas-city-council-2-25-2026` (479 transcript lines)
+- `/m/fredericksburg-va-2026-04-28-fredericksburg-city-council-worksession-4-28-2026` (663 transcript lines)
+- `/m/stafford-county-va-2026-01-07-stafford-board-of-supervisors-1-6-2026` (1,177 transcript lines)
+
+Each was checked in a real browser: the video plays and the transcript
+shows real, correctly-timed text.
+
+**A second, smaller bug found and fixed along the way.** Stafford's own
+meeting titles write dates with dashes ("1-6-2026"), while every other
+government here uses slashes ("8/11/2026"). The adapter's date reader
+only understood slashes at first, which is why the Stafford page above
+first showed the wrong date (one day off) before the fix. Both formats
+are now understood.
+
+**Caution: one shared account, four (or more) governments.** Wistia's
+`amsva.wistia.com` account is not one government's account — it is
+RegionalWebTV's, and it serves at least four governments today, with
+two more (Augusta, Spotsylvania) also confirmed on the same account.
+So a computer can never guess which government a Wistia video belongs
+to just from the web address. Each of the four pages above needed its
+own specific rule added to this app's pinning file
+(`tenant_overrides.csv`), naming that exact video, not just the shared
+account.
+
+**Caution: rate limits.** This vendor was not seen blocking or slowing
+down requests during this work. But only a small number of requests
+were made (checking 7 government pages plus 4 real meetings), not a
+full sweep. A larger future sweep should still watch for this the
+first time it runs at scale.
+
+**Recommendation.** A separate research task (WO-172) is building a
+list of more governments that use Wistia, beyond RegionalWebTV's seven.
+That list is the natural next sweep once it's ready.
+
+**Deploy status.** The adapter code itself (in `app/`) is merged but
+not yet deployed — a person needs to click deploy before this app can
+read a freshly pasted Wistia web address from anyone else. The four
+pages listed above are already live right now, because they were
+pushed directly into the page database, which does not need a deploy.
+The four pinning rules will only take effect once the next deploy
+happens.
+
 ## WO-153: research-file bookkeeping pass — 449 wrongly-flagged rows fixed, 6 governments' pages re-keyed, 28 shared-host domains fixed, and the queued labels checked against the real queue [Done 2026-09-10]
 
 Ryan asked for a check on `jurisdiction_coverage.csv`: does "covered"

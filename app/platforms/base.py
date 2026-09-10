@@ -190,6 +190,15 @@ CORPORATE_HOSTS_BY_PLATFORM: dict[str, FrozenSet[str]] = {
     "telvue": frozenset({"telvue.com", "www.telvue.com"}),
     "viebit": frozenset({"viebit.com", "www.viebit.com"}),
     "suiteone": frozenset({"suiteonemedia.com", "www.suiteonemedia.com"}),
+    # Wistia's own marketing site -- confirmed live 2026-09-10 (WO-161) --
+    # is never a per-government tenant, same reasoning as every host
+    # above; a real government tenant always lives on a subdomain
+    # (`amsva.wistia.com`), never the bare/`www` host. Wistia's own
+    # infrastructure/API hosts (`fast.wistia.com`, `embed-ssl.wistia.com`,
+    # etc) are excluded separately, in wistia.py's own
+    # `is_wistia_account_host()`, since those are subdomains a bare-host
+    # set like this one can't distinguish from a real tenant subdomain.
+    "wistia": frozenset({"wistia.com", "www.wistia.com"}),
 }
 
 CIVICPLUS_CORPORATE_HOSTS = CORPORATE_HOSTS_BY_PLATFORM["civicplus"]
@@ -216,6 +225,7 @@ def detect_platform(url: str) -> str:
     from .proudcity import PROUDCITY_KNOWN_DOMAINS
     from .invintus import is_invintus_meeting_url
     from .az_legislature import is_az_legislature_video_url
+    from .wistia import parse_wistia_account_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -603,6 +613,19 @@ def detect_platform(url: str) -> str:
         # only an embedded Invintus clientID+eventID this module extracts
         # and hands to InvintusAssetFinder via resolve_via_platform().
         return "az_legislature"
+    if parse_wistia_account_url(url) is not None:
+        # Wistia -- confirmed live 2026-09-10 (WO-161) against RegionalWebTV/
+        # Advanced Media Solutions of Virginia's shared `amsva.wistia.com`
+        # account (Warrenton VA, Manassas VA, Fredericksburg VA, Stafford
+        # County VA). Deliberately NOT a bare "wistia.com in netloc" check,
+        # the same reasoning Vimeo's own scoping gives above: wistia.com is
+        # a general-purpose video host, so only a real `/medias/{id}` or
+        # `/channel/{id}` URL on a real per-account subdomain is claimed --
+        # see wistia.py's own module docstring for the full investigation
+        # and why a delegating government page (which carries none of
+        # these URL shapes itself) is handled inside the adapter's own
+        # resolve(), not detected here.
+        return "wistia"
     return "unknown"
 
 
