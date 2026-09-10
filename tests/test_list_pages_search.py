@@ -108,6 +108,13 @@ async def test_search_finds_keyword_in_demoted_non_default_version():
 
 
 async def test_list_pages_surfaces_a_split_meeting_body():
+    # Gov-id audit, 2026-09-10: the fixture used to be the Housing Authority
+    # of the County of Santa Clara, which decision D2 makes its OWN
+    # government (a special district), so the resolver's body for it is
+    # None on purpose and the display is the minted name. This test is
+    # about the body being SURFACED, not about identity, so it uses an
+    # entity prefix on a place government -- the split still applies and
+    # the resolver keeps it ("Board of Supervisors" of Santa Clara County).
     # Display-layer wiring (2026-08-15, JURISDICTION_METADATA_PLAN.md):
     # list_pages() -- the /meetings listing's own query -- didn't select
     # MeetingPage.meeting_body at all before this, so a real entity-prefix
@@ -120,16 +127,16 @@ async def test_list_pages_surfaces_a_split_meeting_body():
             "granicus:search-meeting-body",
             url,
             segments=[{"start": 0, "end": 1, "text": "quorum present"}],
-            jurisdiction="Housing Authority of the County of Santa Clara",
+            jurisdiction="Board of Supervisors of the County of Santa Clara",
         ),
         url,
     )
 
     result = await crud.list_pages(keyword="quorum", page_size=50)
     row = next(
-        p for p in result["pages"] if p["jurisdiction"] == "County of Santa Clara, CA"
+        p for p in result["pages"] if p["jurisdiction"] == "Santa Clara County, CA"
     )
-    assert row["meeting_body"] == "Housing Authority"
+    assert row["meeting_body"] == "Board of Supervisors"
 
 
 async def test_search_snippet_comes_from_the_current_default_version():

@@ -47,6 +47,56 @@ all clean (2,803 passed, 15 skipped). Confirmed zero *new*
 duplicate-catch-all rows introduced, by diffing against the pre-existing
 set on `origin/main`.
 
+## Display from `gov_id` on every keyed page, the raw adapter string kept beside it, the "Unidentified government" placeholder and its dead hub link retired, and the backfill made to converge in one pass [Done 2026-09-10]
+
+Gov-id audit follow-up (Ryan: "display from gov id for keyed pages
+would make sense", grouped with the two small fixes). Four things in
+one PR, all in `archive/db/crud.py` + one migration:
+
+- **`_display_jurisdiction()` returns the registry name for every page
+  with a real `gov_id`** -- `pinned`, `registry`, and now `unverified`
+  and `inferred` -- instead of only the first two. This closes the
+  minted-display entry (the Housing Authority of the County of Santa
+  Clara stored "County of Santa Clara, CA" + body "Housing Authority"
+  while its hub read "Housing Authority of the County of Santa Clara,
+  CA"; 479 minted rows, 83 special districts plus school districts able
+  to diverge that way). The body stored beside a registry display is the
+  *resolver's* split (`GovernmentMatch.meeting_body`, None for a
+  non-place government by design), not `finalize_jurisdiction()`'s, so
+  the entity name is not duplicated across two columns. The test that
+  pinned the old behaviour
+  (`test_ingest_resolution_splits_a_real_entity_prefix_end_to_end`) now
+  asserts the new one and says why.
+- **`meeting_pages.jurisdiction_raw`** (migration `b120d92c3f45`, Text,
+  nullable, no backfill): the adapter's own string, verbatim, written
+  at create and whenever a payload carries one -- the evidence an
+  `inferred` row's reviewer needs, which was the stated reason the
+  display used to keep it. Exported by `/internal/export/pages` and
+  `get_page_by_slug()`; NULL on older rows, honestly.
+- **`rtr:unknown:<host>` renders nothing.** `_hub_identity()` treats it
+  as "no id": the stored (empty) string is the display and there is no
+  hub slug, so the "More Unidentified government (vimeo.com) meetings"
+  link that 404'd on 289 live pages (2026-09-09 export) is gone with the
+  placeholder. `_hub_base_conditions()` is unchanged; the two code paths
+  now agree by the meeting page giving way, which is the side the
+  architecture doc §5 intended -- the placeholder hub was never a page
+  worth indexing. The inventory report keys its `unidentified` bucket
+  off the id prefix, not the text, so it is unaffected.
+- **`scripts/backfill_gov_id.py` converges in one pass.** It imports
+  `_display_jurisdiction()` rather than restating the rule, drops a
+  body that is a prefix of the new registry display (the duplication
+  case above, and only that case, so an adapter-supplied body is never
+  touched), and treats "same `gov_id`, same name, tier `pinned` <->
+  `registry`" as already current -- the 187-row second pass measured on
+  2026-09-09 was exactly that flip, caused by pass 1's rewritten name
+  keying straight to the national table on pass 2.
+
+Also in the PR: the minted `rtr:us:ut:wasatch-front-waste-recycling-
+district` row (Ryan, 2026-09-10 -- the WFWRD board pages sit under
+Wasatch County; the override waits for the deploy that carries the
+row), and a README rewrite of the display rule plus a one-paragraph
+"how identity flows" overview Ryan asked for at the start of the audit.
+
 ## WO-125: identity join from the coverage registry -- 55 pins, 76 pages re-keyed, 11 hub redirects, and a 56% error rate in the research file's gov_id-to-host pairs [Done 2026-09-09]
 
 Third backfill of the day (the two entries below carry the pattern and

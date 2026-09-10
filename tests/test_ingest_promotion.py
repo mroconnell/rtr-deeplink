@@ -517,15 +517,19 @@ async def test_ingest_resolution_splits_a_real_entity_prefix_end_to_end():
         "rtr:us:ca:housing-authority-of-the-county-of-santa-clara"
     )
     assert page["gov_type"] == "special_district"
-    # A minted row keeps the string finalize_jurisdiction() produced --
-    # only a `pinned` or `registry` tier substitutes a registry display
-    # name. Known cosmetic residual, logged in BACKLOG.md: the stored
-    # display here reads "County of Santa Clara, CA / Housing Authority"
-    # while the hub this page belongs to reads "Housing Authority of the
-    # County of Santa Clara, CA". The hub is the one a reader browses and
-    # it is right; the two agreeing is follow-up work, not a wrong hub.
-    assert page["jurisdiction"] == "County of Santa Clara, CA"
-    assert page["meeting_body"] == "Housing Authority"
+    # Gov-id audit, 2026-09-10: a minted row's display name comes from
+    # the registry too, so the page agrees with its own hub ("Housing
+    # Authority of the County of Santa Clara, CA" on both). Before this
+    # only `pinned`/`registry` were rewritten, and the page read "County
+    # of Santa Clara, CA / Housing Authority" -- BACKLOG's minted-display
+    # entry, 479 rows in that shape. The body is the RESOLVER's split,
+    # which is None for a non-place government by design ("the entity IS
+    # the government"), not finalize_jurisdiction()'s "Housing Authority"
+    # -- otherwise the entity name would appear twice on the page. The
+    # adapter's own string is kept verbatim in `jurisdiction_raw`.
+    assert page["jurisdiction"] == "Housing Authority of the County of Santa Clara, CA"
+    assert page["meeting_body"] is None
+    assert page["jurisdiction_raw"] == "Housing Authority of the County of Santa Clara"
     assert page["jurisdiction_confidence"] == "unverified"
 
 
@@ -681,3 +685,25 @@ async def test_ingest_resolution_page_hints_reach_a_match_discriminator_pin(
         (await crud.lookup_page_for_url(gr_url))["slug"]
     )
     assert gr_page["gov_id"] == village.gov_id
+
+
+async def test_ingest_keeps_the_adapters_raw_jurisdiction_string():
+    """Gov-id audit, 2026-09-10. `jurisdiction` is generated from the
+    registry for every keyed page now, so the string the adapter
+    extracted -- the only evidence a reviewer has for a pin or a borrowed
+    (`inferred`) identity -- is kept in `jurisdiction_raw`, verbatim, and
+    a later transcript-only push (no jurisdiction in the payload) leaves
+    it alone rather than blanking it."""
+    url = "https://fresno.granicus.com/player/clip/raw-kept"
+    external_id = "granicus:raw-kept"
+    await crud.ingest_resolution(
+        _payload(external_id, url, jurisdiction="County of Fresno, CA"), url
+    )
+    page = await crud.get_page_by_slug((await crud.lookup_page_for_url(url))["slug"])
+    assert page["jurisdiction"] == "Fresno County, CA"  # registry display form
+    assert page["jurisdiction_raw"] == "County of Fresno, CA"  # the adapter's own
+    # A push that carries no jurisdiction at all must not clear it.
+    payload = _payload(external_id, url, jurisdiction=None)
+    await crud.ingest_resolution(payload, url)
+    page = await crud.get_page_by_slug(page["slug"])
+    assert page["jurisdiction_raw"] == "County of Fresno, CA"

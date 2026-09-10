@@ -1125,6 +1125,7 @@ rtr:us:ut:mill-creek,Mill Creek,other,us,UT,,,,,,Mill Creek,minted,no national t
 rtr:us:ut:subtitles-county,Subtitles County,county,us,UT,,,,,,Subtitles County,minted,no national table covers this government
 rtr:us:ut:unknown-jurisdiction,Unknown Jurisdiction,other,us,UT,,,,,,Unknown Jurisdiction,minted,no national table covers this government
 rtr:us:ut:wasatch-front-regional-council,Wasatch Front Regional Council,special_district,us,UT,,,,,,"Wasatch Front Regional Council, UT",minted,no national table covers this government
+rtr:us:ut:wasatch-front-waste-recycling-district,Wasatch Front Waste & Recycling District,special_district,us,UT,,49035,,,,"Wasatch Front Waste & Recycling District, UT|WFWRD|Wasatch Front Waste and Recycling District",ryan_stated,"Special district in Salt Lake County, UT (own board of trustees, own budget -- decision D2), not Wasatch County: five youtu.be pages titled 'WFWRD Board of Trustees ...' (channel @WasatchFrontWaste, slugs wasatch-ut-2026-*) were keyed to us:county:49051 by the place ladder. Ryan, 2026-09-10: mint it."
 rtr:us:va:goochland-county-ps,Goochland County PS,county,us,VA,,,,,,"Goochland County PS, VA",minted,no national table covers this government
 rtr:us:va:harrisonburg,The City of Harrisonburg,other,us,VA,,,,,,"The City of Harrisonburg, VA",minted,no national table covers this government
 rtr:us:va:roanoke-county,Roanoke County,county,us,VA,,,,,,"Roanoke County, VA",minted,no national table covers this government
