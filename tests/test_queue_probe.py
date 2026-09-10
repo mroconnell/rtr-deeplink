@@ -427,9 +427,15 @@ async def test_probe_direct_file_accepts_real_shaped_head_plus_ffprobe(monkeypat
     assert result.probe_method == "head+ffprobe"
 
 
-async def test_probe_direct_file_head_404_is_reject_dead():
+async def test_probe_direct_file_head_and_ranged_get_both_404_is_reject_dead():
+    # HEAD fails, and the WO-166 ranged-GET fallback below fails too (a
+    # genuinely dead file, not the CivicPlus DocumentCenter shape the next
+    # test covers) -- still reject-dead.
     media_url = "https://example.portal.civicclerk.com/media/gone.mp4"
-    with _mock_head({media_url: FakeResponse(status=404)}):
+    with (
+        _mock_head({media_url: FakeResponse(status=404)}),
+        mock_session({media_url: FakeResponse(status=404)}),
+    ):
         result = await probe_queue_entry(
             "https://example.portal.civicclerk.com/event/2/media",
             video_url=media_url,
@@ -437,6 +443,116 @@ async def test_probe_direct_file_head_404_is_reject_dead():
         )
     assert result.verdict == "reject-dead"
     assert "404" in result.reason
+
+
+async def test_probe_direct_file_head_404_falls_back_to_ranged_get(monkeypatch):
+    # Real shape confirmed live 2026-09-10 (WO-166): a CivicPlus
+    # DocumentCenter link (e.g. Hudson, CO's own
+    # `/DocumentCenter/View/6698/PC-Recording-09092026`) answers a plain
+    # HEAD with a genuine 404 while the identical URL answers a GET (with
+    # or without a Range header -- this server ignores Range and always
+    # serves the whole response) with a real 200 and the real file's
+    # headers. `_probe_direct_file()` must fall back to a ranged GET
+    # rather than declaring the file dead on the HEAD 404 alone.
+    media_url = "https://hudsonco.gov/DocumentCenter/View/6698/PC-Recording-09092026"
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 1234.5
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with (
+        _mock_head({media_url: FakeResponse(status=404)}),
+        mock_session(
+            {
+                media_url: FakeResponse(
+                    status=200,
+                    headers={
+                        "Content-Length": "106103482",
+                        "Content-Disposition": "inline;filename=PC%20Recording.mp4",
+                    },
+                )
+            }
+        ),
+    ):
+        result = await probe_queue_entry(
+            "https://hudsonco.gov/DocumentCenter/View/6698/PC-Recording-09092026",
+            video_url=media_url,
+            platform="unknown",
+            video_format="mp4",
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "ranged-get+ffprobe"
+    assert result.size_bytes == 106103482
+    assert result.duration_seconds == 1234.5
+
+
+# --- WO-166 (2026-09-10): a direct file with no URL extension at all,
+# routed here via the resolved ResolvedMeeting's own `video_format`
+# (generic_fallback.py's `_classify_direct_media()` sets this from
+# Content-Type/Content-Disposition, since the real government URLs this
+# was built from -- e.g. Cheney, WA's own DocumentCenter link -- never
+# carry an extension in the URL itself). -----------------------------
+
+
+async def test_probe_queue_entry_dispatches_direct_file_via_video_format_no_url_extension(
+    monkeypatch,
+):
+    # Same shape as the real Cheney, WA URL this WO was built from --
+    # `video_url` here is deliberately extension-less.
+    media_url = "https://www.cityofcheney.org/DocumentCenter/View/4867/9-8-26-Recording"
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp4"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "unknown")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 2145.0
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "500000000"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 2145.0
+
+
+async def test_probe_queue_entry_dispatches_direct_file_for_bare_mp3_via_video_format(
+    monkeypatch,
+):
+    # An audio-only direct file (no URL extension either) -- still a real,
+    # queueable candidate; probed the same way as a video file.
+    media_url = "https://example-county.gov/DocumentCenter/View/900/Board-Meeting-Audio"
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp3"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "unknown")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 612.0
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "9000000"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 612.0
 
 
 # --- Resolve-first path (video_url not given) ---------------------------

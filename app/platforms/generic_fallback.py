@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from typing import List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -226,6 +226,95 @@ _EMPTY_SHELL_TEXT_MAX_CHARS = 500
 # ~6.2KB of real nav text, all of it chrome, none of it meeting content.
 _SHAREPOINT_MARKERS = ("_spPageContextInfo", "/_layouts/15")
 
+# --- Direct media detection (WO-166, 2026-09-10) ---------------------------
+#
+# A meeting URL sometimes points straight at the recording itself -- a Zoom
+# export (`GMT20260909-004934_Recording_1920x1080.mp4`), a bare `.mp3` --
+# rather than at a page that links to one. Before this, `_fetch_page()`
+# always tried to read the response as HTML text via `read_capped_text()`,
+# whose 10MB cap exists for an oversized *page*; a real multi-hundred-MB
+# recording just tripped that cap and came back as "couldn't even load the
+# page," recorded upstream (rtr-business's coverage triage) as
+# `unsupported-platform-no-adapter` -- a real, playable video misclassified
+# as unsupported. Found live against 7 confirmed governments (Cheney WA,
+# Burley ID, North Riverside IL, Spring Valley Village TX, Russell KS,
+# Hudson CO, Morrison CO -- see BACKLOG_DONE.md's WO-166 entry for the
+# per-government table). Every one of those 7 answers `Content-Type:
+# application/octet-stream`, with the real filename only inside
+# `Content-Disposition` (e.g. `inline;filename=GMT20260909-004934_
+# Recording_1920x1080.mp4`) -- a plain `video/*`/`audio/*` Content-Type is
+# also handled (confirmed separately on a real Craighead County, AR
+# recording, `Content-Type: video/mp4`) since a server that already labels
+# the response correctly shouldn't need the same filename dance the
+# octet-stream case does.
+#
+# Deliberately does NOT trust a URL's own extension on its own -- a page
+# whose URL happens to end in ".mp4" (redirect-tracking slugs, ad-hoc
+# naming) must still be parsed as a page. The URL's extension is only ever
+# used as a fallback signal on an ALREADY generic-binary/missing
+# Content-Type, matching this module's general "verify from real signal,
+# don't guess from URL shape" convention.
+_GENERIC_BINARY_CONTENT_TYPES = ("application/octet-stream", "")
+_DIRECT_MEDIA_EXTENSIONS = ("mp4", "m4v", "mov", "mp3", "wav", "m4a")
+_EXTENSION_FROM_CONTENT_TYPE = {
+    "video/mp4": "mp4",
+    "video/x-m4v": "m4v",
+    "video/quicktime": "mov",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/vnd.wave": "wav",
+}
+_CONTENT_DISPOSITION_FILENAME_RE = re.compile(
+    r"""filename\*?=(?:UTF-8'')?"?([^";\r\n]+)"?""", re.IGNORECASE
+)
+
+
+def _content_disposition_filename(content_disposition: Optional[str]) -> Optional[str]:
+    if not content_disposition:
+        return None
+    match = _CONTENT_DISPOSITION_FILENAME_RE.search(content_disposition)
+    if not match:
+        return None
+    return unquote(match.group(1).strip())
+
+
+def _extension_of(name_or_url: Optional[str]) -> Optional[str]:
+    if not name_or_url:
+        return None
+    path = urlparse(name_or_url).path if "://" in name_or_url else name_or_url
+    if "." not in path:
+        return None
+    ext = path.rsplit(".", 1)[-1].lower()
+    if not ext or len(ext) > 10 or not ext.isalnum():
+        return None
+    return ext
+
+
+def _classify_direct_media(
+    *, content_type: Optional[str], content_disposition: Optional[str], url: str
+) -> Optional[str]:
+    """Returns the real file extension (e.g. "mp4") when this response IS a
+    direct media file rather than a page to scrape for one -- see the
+    module comment above for the real WO-166 cases this was built from.
+    Returns None for anything else, including a page whose URL happens to
+    end in a media extension but whose Content-Type says otherwise."""
+    main_type = (content_type or "").split(";", 1)[0].strip().lower()
+    ext = _extension_of(_content_disposition_filename(content_disposition)) or (
+        _extension_of(url)
+    )
+
+    if main_type.startswith("video/"):
+        return ext or _EXTENSION_FROM_CONTENT_TYPE.get(main_type) or "mp4"
+    if main_type.startswith("audio/"):
+        return ext or _EXTENSION_FROM_CONTENT_TYPE.get(main_type) or "mp3"
+    if main_type in _GENERIC_BINARY_CONTENT_TYPES and ext in _DIRECT_MEDIA_EXTENSIONS:
+        return ext
+    return None
+
 
 def _headless_escalation_enabled() -> bool:
     # Read at call time, not import time, so the flag can be set/unset
@@ -371,7 +460,10 @@ class GenericFallbackAssetFinder(AssetFinder):
         }
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        html, escalated = await self._fetch_page(url)
+        html, escalated, direct_media = await self._fetch_page(url)
+        if direct_media is not None:
+            playable_url, extension = direct_media
+            return self._direct_media_result(url, playable_url, extension)
         if html is None:
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -550,9 +642,23 @@ class GenericFallbackAssetFinder(AssetFinder):
             return candidate, False
         return None, False
 
-    async def _fetch_page(self, url: str) -> Tuple[Optional[str], bool]:
-        """Fetch the page; returns `(html, escalated)`. `html is None`
-        means "couldn't load the page at all."
+    async def _fetch_page(
+        self, url: str
+    ) -> Tuple[Optional[str], bool, Optional[Tuple[str, str]]]:
+        """Fetch the page; returns `(html, escalated, direct_media)`.
+        `html is None` means "couldn't load the page at all" (unless
+        `direct_media` is set instead -- see below). `direct_media`, when
+        not None, is `(playable_url, extension)`: the response answered as
+        a direct video/audio file rather than a page (WO-166, 2026-09-10),
+        detected from `Content-Type`/`Content-Disposition` alone, BEFORE
+        `read_capped_text()` is ever called -- see the module-level
+        `_classify_direct_media()` comment for why. This is deliberately
+        the one real network request `resolve()` makes either way: aiohttp
+        doesn't transfer the response body until something actually reads
+        it, so checking headers first and skipping `read_capped_text()`
+        entirely for a media response costs nothing beyond the connection
+        itself -- never a second request, and never a full download of the
+        real file.
 
         Escalation triggers a+b (env-gated OFF by default -- see the
         module-level _HEADLESS_ESCALATION_ENV block): a block-family
@@ -565,6 +671,7 @@ class GenericFallbackAssetFinder(AssetFinder):
         """
         status: Optional[int] = None
         body: Optional[str] = None
+        direct_media: Optional[Tuple[str, str]] = None
         try:
             async with aiohttp.ClientSession(headers=self.headers) as session:
                 # guarded_get, not a bare session.get(allow_redirects=True)
@@ -579,11 +686,25 @@ class GenericFallbackAssetFinder(AssetFinder):
                     session, url, timeout=aiohttp.ClientTimeout(total=20)
                 ) as response:
                     status = response.status
-                    body = await read_capped_text(response)
+                    if status is not None and 200 <= status < 300:
+                        extension = _classify_direct_media(
+                            content_type=response.headers.get("Content-Type"),
+                            content_disposition=response.headers.get(
+                                "Content-Disposition"
+                            ),
+                            url=str(response.url) or url,
+                        )
+                        if extension is not None:
+                            direct_media = (str(response.url) or url, extension)
+                    if direct_media is None:
+                        body = await read_capped_text(response)
         except Exception:
             logger.warning(
                 "generic_fallback page fetch failed for %s", url, exc_info=True
             )
+
+        if direct_media is not None:
+            return None, False, direct_media
 
         blocked = status in _BLOCK_STATUSES or (
             status == 200
@@ -592,13 +713,38 @@ class GenericFallbackAssetFinder(AssetFinder):
             and any(marker in body.lower() for marker in _CHALLENGE_MARKERS)
         )
         if status is not None and 200 <= status < 300 and not blocked:
-            return body, False
+            return body, False, None
 
         if blocked and _headless_escalation_enabled():
             rendered = await self._try_browser_fetch(url)
             if rendered is not None:
-                return rendered, True
-        return None, False
+                return rendered, True, None
+        return None, False, None
+
+    def _direct_media_result(
+        self, source_url: str, video_url: str, extension: str
+    ) -> ResolvedMeeting:
+        """WO-166 (2026-09-10): the URL itself IS the recording -- a
+        Zoom-style `..._Recording_1920x1080.mp4`, a bare `.mp3`, etc -- not
+        a page to scrape. Same bare-file shape utah_pmn.py's own module
+        docstring established for a PMN notice's "Audio/Video Recording"
+        attachment (`video_url` set directly to the real file URL,
+        `video_format` to its extension, no segments): the on-demand
+        transcription pipeline is already format-agnostic (ffmpeg extracts
+        audio whether or not a video stream exists, and player.js's
+        initVideo() falls through to a plain native <video src=...> for
+        any format string it doesn't specially handle), so this needs no
+        new downstream work, just correct routing here instead of an
+        HTML-parse attempt that used to hit this module's own 10MB text
+        cap on a real multi-hundred-MB recording."""
+        return ResolvedMeeting(
+            platform=self.platform_name,
+            source_url=source_url,
+            video_url=video_url,
+            video_format=extension,
+            video_warnings=[_BEST_EFFORT_VIDEO_WARNING],
+            best_effort=True,
+        )
 
     @staticmethod
     async def _try_browser_fetch(url: str) -> Optional[str]:

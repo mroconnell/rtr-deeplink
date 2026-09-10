@@ -104,6 +104,106 @@ landed through a separate, isolated copy of the `rtr-business` repository
 rather than the shared one, since another session's own unfinished work
 was sitting in the shared copy's same file at the time — this way,
 neither session's work was disturbed.
+## WO-166: a direct video or audio file is routed to a video-only result, not parsed as a page [Done 2026-09-10]
+
+**The bug.** Some governments link straight to the recording itself —
+not to a page that shows a video, but to the video file. One real
+example: Cheney, WA's own agenda page links
+`cityofcheney.org/DocumentCenter/View/4867/9-8-26-Recording`. That
+address answers with the actual video file, a Zoom export named
+`GMT20260909-004934_Recording_1920x1080.mp4`.
+
+Our resolver tried to read every such address as if it were a web page.
+Reading a page has a 10 megabyte limit, because a real page is never
+that big. A video file is often hundreds of megabytes. So the read hit
+the limit, failed, and we recorded the government as "no adapter for
+this platform" — even though the video was real and would have played
+fine.
+
+**What we fixed.** Before reading a response as a page, we now check
+two things the server already tells us: the file type (`Content-Type`)
+and, when given, the real filename (`Content-Disposition`). If those
+say "this is a video or audio file," we skip the page-reading step
+entirely and hand back a playable video address directly. This costs
+no extra work — checking those two things happens before we read the
+body, using the same one request we were already making.
+
+A plain web page whose address happens to end in ".mp4" is not treated
+as a video. We only trust the server's own answer about what the file
+actually is, never a guess from the address alone.
+
+**Two more small bugs found while checking this against real
+governments.** First: our duration checker asks a server one quick
+question (a "HEAD" request) before deciding a file is real. Six of the
+seven governments below use the same website software (CivicPlus), and
+that software answers "file not found" to that quick question — even
+though the real file is there and plays fine for an ordinary request.
+We now ask the ordinary way if the quick way fails. Second: one script
+that already had the video address handed to it in advance never
+learned the file type from it, so it could still get the "no adapter"
+answer even after today's fix. We added a way to pass that information
+along; the one place that still needs to actually pass it is in a file
+another session was working on today, so we logged it as an open item
+instead of touching that file ourselves.
+
+**What we tested it against.** A coverage-review session found seven
+governments hitting this exact bug today. We ran all seven through the
+fixed code, read-only, nothing written to production.
+
+| Government | File type | Length | Result |
+|---|---|---|---|
+| Hudson town, CO | Video | 72 minutes | Queued |
+| Morrison town, CO | Video | 1 minute | Queued (see caution) |
+| Burley city, ID | Video | 72 minutes | Queued |
+| North Riverside village, IL | Video | 38 minutes | Queued |
+| Russell city, KS | Video | 97 minutes | Queued |
+| Spring Valley Village city, TX | Video | 59 minutes | Queued |
+| Cheney city, WA | Video | 139 minutes | Queued |
+
+All seven are real, playable video. All seven passed our length check
+(long enough to plausibly be a real meeting) and were added to the
+queue that feeds our transcription pipeline — one recording each, in
+`scripts/tier3_auto_transcription_queue.txt`. None needed a special
+pin, because none of the seven share a video host with any other
+government — each lives on its own city's website.
+
+**Caution.** Morrison, CO's file is only 1 minute long. That is long
+enough to pass our check, but it is a strange length for a whole
+council meeting. The web address itself is named "...Recording-1,"
+which suggests there might be a second part we haven't found. We
+looked for one nearby and didn't find it, but we didn't chase this
+further — worth a second look once it's transcribed. Separately: a
+Zoom-hosted video link found this way can expire over time, though the
+seven above are all copies saved on the government's own website, not
+links to Zoom directly, so that risk is lower here than it would be for
+a raw Zoom share.
+
+One related case we found but did not fix: Plainfield, IN links its
+recording through a Microsoft SharePoint video-sharing page. That is a
+different shape of problem — the address there is a web page, not the
+video file itself — and needs its own separate fix later. We recorded
+it as its own item rather than mixing it into this fix.
+
+**Tests.** New automated checks cover: two real governments (Cheney, WA
+and Burley, ID), using the actual file-type answers those two servers
+gave us; one made-up case with an audio-only file, built from the same
+answer shape a different real government gave us; one made-up case
+where the server correctly labels a video file that has no filename to
+go by; and one made-up case that guards against ever trusting the
+address alone — a real web page whose address ends in ".mp4" must still
+be read as a page. We also added tests for the "server says file not
+found on the quick check, but works with the ordinary check" bug.
+
+**Recommendation.** No action needed from Ryan. This is a code fix, not
+a production action.
+
+**Deploy status.** The code fix
+(`app/platforms/generic_fallback.py`, `app/platforms/queue_probe.py`)
+is on `main` once this PR merges, but not live until the resolver is
+next deployed — deploys are manual (see `CLAUDE.md`). The seven queued
+recordings and the coverage-tracking update are data changes, not code;
+they took effect immediately and don't need a deploy.
+
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
 **The problem.** One path already checked a video before making it a

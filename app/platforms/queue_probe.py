@@ -92,6 +92,16 @@ logger = logging.getLogger("rtr_deeplink.queue_probe")
 # here, not duplicated as a second literal, so the two stay in sync.
 _POLITE_UA = media_probe._DESKTOP_USER_AGENT
 
+# Direct-file extensions probed via `_probe_direct_file()` (one HEAD +
+# ffprobe) -- `.m4v`/`.mp3` added WO-166 (2026-09-10) alongside the
+# `video_format` fallback in `probe_queue_entry()` below: a real Zoom-style
+# recording or a bare `.mp3` is probed the exact same way as CivicClerk's
+# `.mp4`/`.mov`. `.mp3` is audio-only, still a real queueable tier-3
+# candidate -- the worker transcribes audio whether or not a video stream
+# exists, same reasoning utah_pmn.py's own module docstring gives for its
+# bare-file case.
+_DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3")
+
 # yt-dlp's android/ios/tv internal clients have historically not enforced
 # the "web" client's PO-token anti-bot check -- same order, same
 # reasoning, as app/platforms/youtube.py's own `_extract_info()`.
@@ -647,6 +657,24 @@ async def _probe_hls(
 # --- Direct file (CivicClerk mp4/mov) -----------------------------------
 
 
+def _size_from_headers(headers) -> Optional[int]:
+    """Prefers the real total size out of `Content-Range` (a 206 partial
+    response's own `Content-Length` is just the range's size, e.g. "2" for
+    a 1-byte range, not the file's real size) -- falls back to
+    `Content-Length` directly for a plain 200 (a HEAD response, or a GET
+    whose server ignored the Range header entirely and served the whole
+    file's real headers -- see `_probe_direct_file()`'s own docstring)."""
+    content_range = headers.get("Content-Range")
+    if content_range and "/" in content_range:
+        total = content_range.rsplit("/", 1)[-1].strip()
+        if total.isdigit():
+            return int(total)
+    content_length = headers.get("Content-Length")
+    if content_length and str(content_length).isdigit():
+        return int(content_length)
+    return None
+
+
 async def _probe_direct_file(
     url: str,
     platform: Optional[str],
@@ -654,6 +682,20 @@ async def _probe_direct_file(
     source_page_url: Optional[str],
     start: float,
 ) -> ProbeResult:
+    """One HEAD, falling back to one ranged GET (headers read only --
+    `.read()`/`.text()` never called, so no body bytes transfer even when
+    the fallback fires) when HEAD fails. Confirmed live 2026-09-10
+    (WO-166): a real CivicPlus DocumentCenter link (e.g. Hudson, CO's own
+    `/DocumentCenter/View/6698/PC-Recording-09092026`) answers a plain
+    HEAD with a genuine 404 (a real `text/html` ASP.NET error page,
+    confirmed via a direct `curl -I`) while the SAME URL answers a GET --
+    with or without a `Range` header, this server ignores Range entirely
+    and always serves the real file's full headers (`Content-Type:
+    application/octet-stream`, the real `Content-Length`, `Content-
+    Disposition`) with status 200, never 206. Without this fallback, 6 of
+    this WO's own 7 confirmed direct-media governments would misprobe as
+    `reject-dead` even though `resolve()` correctly found real, playable
+    video on every one of them."""
     method = "head+ffprobe"
     size_bytes = None
     date = None
@@ -663,25 +705,43 @@ async def _probe_direct_file(
             async with session.head(
                 video_url, allow_redirects=True, timeout=aiohttp.ClientTimeout(total=20)
             ) as response:
-                if response.status >= 400:
-                    return _dead(
-                        url,
-                        platform,
-                        method,
-                        start,
-                        f"HEAD on the media file returned HTTP {response.status}",
-                    )
-                content_length = response.headers.get("Content-Length")
-                if content_length and str(content_length).isdigit():
-                    size_bytes = int(content_length)
-                last_modified = response.headers.get("Last-Modified")
-                if last_modified:
-                    date = _date_from_http_date(last_modified)
+                status = response.status
+                response_headers = response.headers
+
+            if status >= 400:
+                method = "ranged-get+ffprobe"
+                async with session.get(
+                    video_url,
+                    allow_redirects=True,
+                    headers={"Range": "bytes=0-0"},
+                    timeout=aiohttp.ClientTimeout(total=20),
+                ) as response:
+                    status = response.status
+                    response_headers = response.headers
+
+            if status >= 400:
+                return _dead(
+                    url,
+                    platform,
+                    method,
+                    start,
+                    f"HEAD/ranged-GET on the media file returned HTTP {status}",
+                )
+            size_bytes = _size_from_headers(response_headers)
+            last_modified = response_headers.get("Last-Modified")
+            if last_modified:
+                date = _date_from_http_date(last_modified)
     except asyncio.TimeoutError:
-        return _dead(url, platform, method, start, "HEAD on the media file timed out")
+        return _dead(
+            url, platform, method, start, "HEAD/ranged-GET on the media file timed out"
+        )
     except aiohttp.ClientError as e:
         return _dead(
-            url, platform, method, start, f"HEAD on the media file failed: {e}"
+            url,
+            platform,
+            method,
+            start,
+            f"HEAD/ranged-GET on the media file failed: {e}",
         )
 
     duration = await media_probe.probe_duration(
@@ -708,9 +768,24 @@ async def probe_queue_entry(
     video_url: Optional[str] = None,
     source_page_url: Optional[str] = None,
     platform: Optional[str] = None,
+    video_format: Optional[str] = None,
 ) -> ProbeResult:
     """Learn `url`'s duration/date/size without downloading media, and
     return a verdict on whether it's worth queuing.
+
+    `video_format`, when a caller already has a resolved ResolvedMeeting
+    (and so also passes `video_url=` explicitly, skipping the resolve
+    step below), is the same WO-166 fallback signal the internal-resolve
+    path already fills in from `result.video_format` -- needed because a
+    direct-media URL (e.g. a CivicPlus DocumentCenter link whose real
+    filename only ever showed up in the response's Content-Disposition
+    header) commonly carries no extension in the URL itself. Without this,
+    a caller like `scripts/wo169_probe_rejected_rerun.py`'s
+    `_real_probe_hook()` -- which already has `result.video_url` and calls
+    this with it, skipping the internal resolve -- would never learn the
+    format and this WO's own real, confirmed cases would misprobe as
+    `reject-dead` ("no probe recipe for this media shape") even though
+    `resolve()` correctly found them.
 
     If `video_url` isn't given, resolves `url` through the real adapter
     first -- the same detect_platform()+get_finder()+finder.resolve()
@@ -727,6 +802,16 @@ async def probe_queue_entry(
     start = time.monotonic()
     resolved_platform = platform
     external_id = None
+    # A bare direct-media URL (WO-166, 2026-09-10) commonly carries no
+    # extension of its own at all -- e.g. a CivicPlus DocumentCenter link
+    # whose real filename only ever showed up in the response's
+    # Content-Disposition header, not the URL path (see generic_fallback.
+    # py's own `_classify_direct_media()` for where this is first
+    # detected). `video_format`, when the adapter set one, is the fallback
+    # signal the URL-suffix check below can't provide on its own -- a
+    # caller-supplied value (see this function's own docstring) always
+    # wins over the resolve step's, though in practice no caller passes
+    # both `video_url=` and `video_format=` together today.
 
     if video_url is None:
         try:
@@ -753,6 +838,7 @@ async def probe_queue_entry(
 
         video_url = result.video_url
         external_id = getattr(result, "external_id", None)
+        video_format = video_format or getattr(result, "video_format", None)
         if not source_page_url:
             source_page_url = getattr(result, "source_url", None) or url
         if not video_url:
@@ -781,7 +867,9 @@ async def probe_queue_entry(
         return await _probe_hls(
             url, resolved_platform, video_url, source_page_url, start
         )
-    if media_path.endswith((".mp4", ".mov")):
+    if media_path.endswith(_DIRECT_FILE_EXTENSIONS) or (
+        video_format and f".{video_format.lower()}" in _DIRECT_FILE_EXTENSIONS
+    ):
         return await _probe_direct_file(
             url, resolved_platform, video_url, source_page_url, start
         )
