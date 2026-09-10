@@ -1,4 +1,5 @@
-# CMS families field guide (WO-154, 2026-09-10)
+# CMS families field guide (WO-154, 2026-09-10; WordPress family and
+own-domain path pilot added by WO-176, 2026-09-10)
 
 Read this before touching `scripts/cms_fingerprint.py` or
 `app/utils/jurisdiction_data/cms_families.csv`. It explains what a
@@ -133,12 +134,53 @@ sample) found real video on ~77% of tenants, mostly YouTube or
 CivicClerk. A real, confirmed meetings-page path exists from that
 earlier work: `/city_hall/agendas___minutes` (Auburn, WA).
 
+**WO-176 (2026-09-10) tested that exact path live on the one other real
+CivicLive tenant on file, Lynn MA (`lynnma.gov`), and it 404'd.** Same
+lesson as Revize below: each CivicLive tenant appears to pick its own
+meetings-page path, not a shared one — Auburn's path does not
+generalise. Still only 2 real tenants total (1 confirmed, 1
+disconfirmed), and WO-176's own random 600-government pilot sample
+contained zero fresh CivicLive tenants at all (it's too rare a vendor
+to show up by chance in a general no-platform-link sample). Testing
+this family properly needs a targeted list of known CivicLive tenants,
+not another random sample.
+
 ### Town Web
 
 Recognise it from a `cdn.townweb.com` dns-prefetch link or a literal
 `<meta name="author" content="Town Web | ...">` tag. Only 2 confirmed
 training pages — too few to trust a meetings-page path pattern from,
 and both of the pages found were livestream pages, not agenda listings.
+WO-176 (2026-09-10) sampled 13 fresh Town Web tenants in its random
+600-government pilot and found 2 real listings via the *generic* path
+list (`/archive`, `/calendar` — not a Town Web-specific guess, since
+none is confirmed). Still too few (n=13) to trust as a real rate.
+
+### WordPress
+
+Added WO-176 (2026-09-10). Recognise it from `<meta name="generator"
+content="WordPress ...">`, a `/wp-content/` asset path, or a
+`/wp-json/` REST API reference. **By far the most common single family
+in WO-176's random 600-government sample: 175 of 600 (29%), ahead of
+CivicPlus (23) and Revize (32) combined.** Unlike CivicPlus, there is
+no one fixed meetings-page path — but **WordPress's own built-in search,
+`/?s=agenda`, works at real scale**: tried on the 137 WordPress sites
+whose full generic path/feed list (sitemap first, then `/calendar`,
+`/events`, `/minutes`, `/agendas`, `/archive`, `/feed/`, ...) had
+already come up empty, `/?s=agenda` alone found 35 more real listings —
+25.5% of those leftover sites, each one spot-checked against real
+WordPress post/category markup (e.g. a real `category-2027-board-of-
+supervisors-agenda` class on a real post), not just the search page
+echoing the word "agenda" back in its heading. Combined with the 38
+hits the generic list itself found on WordPress sites before reaching
+any WordPress-specific path, that's a **41.7% (73/175) total real-hit
+rate for WordPress** across both passes — the highest of any family
+this repo has measured a real rate for, CivicPlus included. Two other
+guesses, `/category/agendas` and `/category/meetings`, were tried on
+the same 137 leftover sites and found nothing — not confirmed, don't
+rely on them. ProudCity (below) is itself a WordPress build and keeps
+its own more specific family name/rule, checked first — this WordPress
+rule is the fallback for every OTHER WordPress-built government site.
 
 ### Streamline
 
@@ -172,3 +214,11 @@ full methods write-up: how the training set was assembled, the exact
 80/20 split numbers, the 300-government negative sample's family
 distribution, and the 30-government (actually 20 real, see that
 file — see the caution there) path-guessing test.
+
+`~/Documents/rtr-business/research/wo176_methods_section.md` has the
+own-domain path-and-feed pilot's write-up: the 600-government sample
+(WO-154's own 238 usable rows plus a fresh random 362, both drawn from
+the same no-platform-link pool), the generic sitemap-and-path/feed
+list tried on every site, the family-specific extra paths for
+ProudCity/WordPress/CivicLive/OpenCities, and the funnel from
+"recognised family" through to a real page live on the Archive today.

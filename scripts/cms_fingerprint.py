@@ -7,7 +7,9 @@ meeting/video platform link was visible, usually because the site's menu
 is drawn by JavaScript. Headless browsing finds those links but is slow.
 The cheaper route is to learn the **website CMS family** a government's
 site was built on (CivicPlus, Revize, OpenCities/Granicus GovAccess,
-ProudCity, CivicLive, Municode's meetings module, Town Web, ...) from
+ProudCity, CivicLive, Municode's meetings module, Town Web, WordPress
+(added WO-176, 2026-09-10 -- ProudCity is itself a WordPress build and
+keeps its own more specific rule/family name), ...) from
 pages where the family is already known, then, for each family, record
 where its meetings page usually lives so a plain client can go straight
 there instead of guessing.
@@ -285,6 +287,38 @@ def _rule_townweb(
     return None
 
 
+def _rule_wordpress(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # WordPress -- a general-purpose CMS, not a government-specific
+    # vendor, so this rule runs LAST of the WordPress-family checks
+    # (after ProudCity, which is itself a WordPress build with its own
+    # more specific signature and must be reported as "proudcity", not
+    # this generic fallback). Recognise it from `<meta name="generator"
+    # content="WordPress ...">`, a `/wp-content/` asset path, or a
+    # `/wp-json/` REST endpoint reference (also in the `Link:` response
+    # header on some tenants -- checked by the pilot script, not here,
+    # since this function only sees the HTML). Confirmed live 2026-09-10
+    # (WO-176's own 600-government pilot): 175 of 600 real
+    # no-platform-link governments fingerprinted as WordPress this way --
+    # by far the most common single family in that sample, ahead of
+    # CivicPlus (23) and Revize (32) combined. Its meetings page is not
+    # one fixed path (unlike CivicPlus's `/AgendaCenter`) -- see
+    # `cms_families.csv`'s own `meetings_page_path_patterns` for the
+    # measured path/feed hit rates that make `/?s=agenda` (WordPress's
+    # own built-in search) the one that actually works at scale.
+    generator = _meta_generator(html)
+    if "wordpress" in generator.lower():
+        return FingerprintResult(
+            "wordpress", "wordpress-generator-meta", f'generator="{generator}"', url
+        )
+    if "/wp-content/" in lower_html or "/wp-json/" in lower_html:
+        return FingerprintResult(
+            "wordpress", "wordpress-asset-path", "/wp-content/ or /wp-json/ path", url
+        )
+    return None
+
+
 def _rule_civicplus(
     html: str, lower_html: str, netloc: str, url: str
 ) -> Optional[FingerprintResult]:
@@ -343,6 +377,7 @@ RULES = [
     _rule_municode_web,
     _rule_townweb,
     _rule_civicplus,
+    _rule_wordpress,
 ]
 
 
