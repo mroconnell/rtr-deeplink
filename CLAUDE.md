@@ -38,6 +38,27 @@ tried-and-rejected list with measurements, a tuning table, and the
 future-work ranking for those two surfaces. This file covers conventions and context specific
 to working on this codebase; don't duplicate README content here.
 
+## Writing for Ryan
+
+Ryan reads reports to make decisions quickly. Every message, PR
+description, backlog entry and write-up follows this (asked 2026-09-09
+and again 2026-09-10 after a dense pilot report lost them):
+
+- Plain language. Short sentences, one clear subject and verb each.
+  Short paragraphs.
+- When something technical is unavoidable, explain it step by step, and
+  explain a term the first time it appears.
+- Order: what was tested or done and why; then the result; then any
+  caution; then the recommendation. Each in its own short paragraph.
+- Tables: one per question. Label columns with the same plain words used
+  in the sentence before the table ("Result", "Count of 29"). Reuse
+  language; do not invent a new phrasing per table. Say what a column
+  counts.
+- Numbers that change a decision go in a table or on their own line,
+  not inside prose.
+- Reports report; they never guess. A blank is a finding to count, not a
+  gap to fill from a heuristic.
+
 ## Why this exists
 
 Round 1 (`rtr-transcripts`, private repo at github.com/mroconnell/rtr-transcripts,
