@@ -72,6 +72,58 @@ Render dashboard login for either `type: web` service — same pattern as
 the existing `/admin/schema-info`/`/internal/schema-info` endpoints, for
 deploy state instead of schema state. Doesn't cover the two `type: worker`
 transcription services, which run no HTTP server at all (PR #850).
+## 39 pages on bare YouTube and Vimeo hosts keyed to their governments: 31 channel pins and 8 per-video pins, three off-mission pages deleted [Done 2026-09-10]
+
+Ryan's rule, stated today: nothing keys to a shared host (YouTube,
+Vimeo, Facebook, TelVue, Cablecast) without a channel, playlist or
+per-video match. 43 live pages sat on `rtr:unknown:www.youtube.com`,
+`rtr:unknown:youtu.be` or `rtr:unknown:vimeo.com`, and a further 22 on
+those hosts carried a name the resolver could not key.
+
+**What was done.** One oEmbed call per video (zero rate-limit cost)
+gave each video's channel. `scripts/build_pin_worklist.py` built the
+sheet; 31 rows whose channel is the government's own were named in
+plain English and applied with `scripts/apply_pin_worklist.py` (every
+name resolved to a national-table id on the first pass except two
+Census spellings, "Cañon City" and "Plymouth charter township"). Eight
+videos on shared community-media channels (Carroll County Community
+Media Center, CommunityMedia PA, OPEN STAGE MEDIA, Riverside TV,
+Downtown North Wilkesboro, City of Wheaton TV on Vimeo) got a per-video
+pin only; their channels carry other governments and stay unpinned.
+`backfill_gov_id.py --hosts www.youtube.com,youtu.be,youtube.com,vimeo.com,player.vimeo.com`
+dry run showed exactly 39 rows changing; applied; spot-checked live.
+
+| Result | Count |
+|---|---|
+| Channel pins written (government's own channel) | 31 |
+| Per-video pins written (shared community channel) | 8 |
+| Pages re-keyed from unknown or unresolved to a national id | 39 |
+| Off-mission pages deleted by Ryan's instruction (two After Effects tutorials, one trade-show video) | 3 |
+
+**Left for a human, listed so nothing is lost.** Channel names that do
+not say which government: `@cityofcolumbus` (Columbus City Council,
+probably OH), `@TownOfWestfield`, `@lawrencecounty168`,
+`@townharrison9486`, `@CountyofJackson` (a 2014 video),
+`@cityofsheridan1890`, `@villageofnorthfield`, `@misdirector5910`
+(Taylor County Board of County Commissioners), `@mattgubbels4693`
+(Shelby County Board of Supervisors, probably IA), a Vimeo
+"Commission Meeting 08/18/2026" by user Meredith Siems, and a Vimeo
+"DCRSD School Committee" (a regional school district, needs "ok mint").
+Four more look off-mission and are delete candidates: `@abdulelsayed`
+(a political interview), `@KSATnews` (a news clip about the Bexar
+County judge), `@hamdenactionnow` (an advocacy group), and
+`@greenwichcommunitytelevisi9441`. Four videos are private or removed
+(pages `meeting-...` for youtu.be `lvoesZ5DfgQ`, `olnrusm-Q3g`, one blank,
+and Vimeo `1219645927` New Hope Borough), which is the dead-video class
+already filed under Needs a human.
+
+**Caution.** The Census places table spells three names with a
+double-encoded ñ ("CaÃ±on City", "La CaÃ±ada Flintridge", "EspaÃ±ola")
+and the counties table has 17 more; the display name on those pages is
+wrong until the table is fixed. Filed in `BACKLOG.md`.
+
+**Deploy status.** The 39 pages are re-keyed in the database now. The
+pins reach new resolves only after the next deploy.
 
 ## Pins for two YouTube-hosted pages that were keyed to no government: Greenlee County, AZ and Fortuna, CA [Done 2026-09-10]
 

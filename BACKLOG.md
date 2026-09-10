@@ -104,7 +104,8 @@ verbatim prefix of a real line further down, so any entry opens with
 ```text
 
 Standing decisions — do NOT re-raise  (9)
-  Video-less meetings are not ingested by sweeps -- record "no video"…
+  Video-less meetings are not ingested by sweeps -- record "no video"…  (1)
+    [JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
@@ -324,6 +325,13 @@ Parked deliberately — allowed back `[PARK]`  (3)
 ## Standing decisions — do NOT re-raise
 
 ### Video-less meetings are not ingested by sweeps -- record "no video" instead `[STANDING]`
+
+- **[JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a double-encoded ñ, so the page display name reads "CaÃ±on City".**
+  - **Issue**: `app/utils/jurisdiction_data/us_places.csv` has 3 rows (`0811810` Cañon City CO, `0639003` La Cañada Flintridge CA, `3525170` Española NM) and `us_counties.csv` has 17 (`grep -c 'Ã'`) where UTF-8 was decoded as Latin-1 and re-encoded. Found 2026-09-10 pinning `@canoncitygov`: the pin resolved to the right id, and the backfill wrote "CaÃ±on City, CO" as the display name.
+  - **Impact**: wrong display name and hub slug on every page keyed to those 20 governments; a plain-English worklist name "Cañon City, CO" still resolves (the resolver folds accents), so identity is right and only the display is wrong.
+  - **Next action**: fix the 20 rows in place (decode once), re-run `backfill_gov_id.py` for their hosts, add a test that no national-table name contains "Ã".
+  - **Constraint**: regenerate from the Census source rather than hand-edit if the table is ever rebuilt; the generator is where the bug lives.
+  - **History**: found 2026-09-10 during the shared-host pin pass.
 
 - **Issue:** Ryan's rule, 2026-09-09, for every enumeration/ingest sweep:
   only meetings WITH video become Archive pages. Tier 1/2 (captions
