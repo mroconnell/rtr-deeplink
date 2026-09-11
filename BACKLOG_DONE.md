@@ -1,5 +1,126 @@
 # Backlog — done
 
+## WO-231: correct the 13 wrong fallback pins the post-deploy backfill applied, settle 9 ambiguous re-keys, alias the correct hub moves, and audit every per-video pin on a shared host [Done 2026-09-11]
+
+**What was done and why.** Ryan deployed all four services today. The
+conductor then ran the post-deploy `gov_id` backfill on the YouTube/
+Vimeo hosts: 54 pages changed, 36 hub moves. WO-221 had made a matched
+per-video pin win over the registry on a shared host — right for the
+case it fixed, but it also made every OLDER fallback pin authoritative
+for the first time, including wrong ones nine different earlier sweeps
+had written that the registry had quietly been out-voting until then. A
+hand read of each re-keyed video's own title and channel found 13 of the
+38 pinned re-keys were wrong (a town keyed to its village, a county to a
+township, Lennox SD to Chancellor SD); the conductor had already
+reverted those 13 pages live. This WO's job was to stop the wrong pins
+from firing again: correct or delete them in `tenant_overrides.csv`,
+settle 9 more ambiguous re-keys by reading each video, write hub-slug
+aliases only for the moves that stayed correct, and — since Ryan's rule
+is that the video's own identity is the source of truth for every pin,
+not just new ones — audit every per-video pin on a shared host the same
+way.
+
+**Result.**
+
+| Outcome | Count of 38 | What it means |
+|---|---|---|
+| Correct, no action | 16 | Already right before this WO started |
+| Wrong, corrected | 13 | Named individually below; page + pin both fixed |
+| Ambiguous, confirmed correct as backfilled | 7 | Yarmouth x2, Lunenburg x2, Brimfield, Caledonia, Holton/Ripley — see method below |
+| Ambiguous, corrected | 1 | Athens-Clarke County GA (consolidated government; canonical id per `consolidated_governments.csv`) |
+| Still open — a question for Ryan | 1 | Sussex, NJ (video says county; the live pin is Ryan's own `ryan_stated` override to the borough) |
+
+The 13 wrong pins, corrected in `app/utils/jurisdiction_data/
+tenant_overrides.csv` by their `match=` video id (each now carries an
+evidence note naming the sweep that wrote the wrong pin, so the pattern
+stays visible):
+
+| Page | Wrong pin said | Corrected to (video's own title/channel) |
+|---|---|---|
+| 4919 Albany NY | Albany County | City of Albany (`us:place:3601000`) |
+| 7193 Plattsburgh NY | Plattsburgh city | Town of Plattsburgh (`us:cousub:3601958585`) |
+| 7320 Goshen NY | Goshen village | Town of Goshen (`us:cousub:3607129553`) |
+| 7515 Babylon NY | Babylon village | Town of Babylon (`us:cousub:3610304000`) |
+| 7586 Horseheads NY | Horseheads village | Town of Horseheads (`us:cousub:3601535705`) |
+| 7621 Eaton County MI | Eaton Rapids township | Eaton County (`us:county:26045`) |
+| 7719 Chatham NJ | Chatham borough | Township of Chatham (`us:cousub:3402712130`) |
+| 7814 Oconee GA | Oconee city | Oconee County GA Government (`us:county:13219`) |
+| 8165 Clearcreek Township OH | Clear Creek twp, Fairfield County (a conflicting duplicate pin for the same video id) | Clearcreek Township, Warren County (`us:cousub:3904515686`) — the duplicate wrong row was deleted |
+| 8253 Woodbury NY | Woodbury town | Woodbury village (`us:place:3682750`) |
+| 8381 Hampden MA | Hampden County | Town of Hampden (`us:cousub:2501328075`) |
+| 8544 Pawling NY | Pawling village | Town of Pawling (`us:cousub:3602756825`) |
+| 8602 Lennox SD | Chancellor | City of Lennox (`us:place:4636380`) |
+
+Plus one more corrected while settling the ambiguous set: 7955
+Athens-Clarke County GA (post-backfill `us:county:13059` corrected to
+the canonical `us:place:1303440`, applied live via `POST /internal/
+jurisdiction/override`).
+
+**Method for the 9 ambiguous re-keys.** Sussex NJ's video ("Sussex
+County Special BCC Meeting", channel "County of Sussex") is plainly the
+county's, but the live pin is `ryan_stated` — an explicit human
+override, currently pointing at the borough. Per this WO's own rule,
+that disagreement was raised to Ryan as a question rather than silently
+overridden (see the report). Yarmouth NS and Lunenburg NS (2 pages each)
+are Town vs. Municipality of the District, same name; `ca_csd.csv`'s own
+`T`/`MD` type codes confirmed each page already sat on the right one.
+Brimfield Township's channel is silent on state, but its YouTube
+about-page description ("located in Portage County, in the heart of
+Northeast Ohio") confirmed Ohio. Caledonia MI and Holton/Ripley County IN
+both failed oEmbed; `yt-dlp`'s title/channel extraction (metadata only,
+no caption fetch) worked for both and confirmed the post-backfill
+government in each case.
+
+**Hub aliases.** Of the 36 hub-slug moves in the backfill, 14 belonged
+to a page that got corrected (the 13 above + Athens-Clarke) — no alias
+written for those, since their hub never actually moved once corrected.
+One more (`town-of-amherst-ma` → `amherst-town-ma`) already had an
+identical alias from the 2026-09-09 WO-125 identity-join backfill.
+`archive/data/hub_slug_aliases.csv` got 21 new rows for the rest, each
+confirmed live (`GET /j/<new_slug>` → 200) before writing.
+
+**The pin audit.** Every YouTube/Vimeo per-video pin in
+`tenant_overrides.csv` (2,282 rows) was checked against its own oEmbed
+title + channel — paced at 6 concurrent requests, no HTTP 429 seen
+across the whole run.
+
+| Verdict | Count of 2,282 | What it means |
+|---|---|---|
+| Consistent | 2,085 | Name token(s) found in title/channel, no conflicting type word |
+| Video gone | 100 | oEmbed returned no title/author |
+| Channel mismatch | 63 | Neither the title nor the channel mentions this government at all |
+| Type mismatch | 34 | Title/channel names a different government type for the same place-family name |
+
+The 97 suspect rows (channel-mismatch + type-mismatch) are not fixed
+here — out of scope for this WO, and the heuristic verdict has a known
+false-positive shape (a consolidated city-county's own name legitimately
+contains "city of", which the type-conflict check flags). See
+`research/wo231_pin_audit.csv` for every row and `BACKLOG.md`'s new
+entry for the follow-up.
+
+**Caution.** The resolver's own current rule — a matched per-video pin
+always wins over the registry, on any host, regardless of whether it
+agrees with the video — is what let all 13 wrong pins (and the 97
+audit suspects) survive undetected until a video happened to get
+re-keyed by a backfill. It will keep doing that until the precedence
+rule itself changes or the 97 suspects are hand-checked; see the new
+`BACKLOG.md` entry for the trade-off.
+
+**Recommendation.** Deploy the resolver and Archive services to pick up
+the 16 corrected/deleted `tenant_overrides.csv` pins and the 21 new hub
+aliases — until then, a fresh page from any of these 14 videos, or the
+transcription worker's next re-resolve of one, could still re-create the
+wrong keying in production. The 14 page-level reverts (13 + Athens-
+Clarke) are already live and need no deploy.
+
+Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (16 rows
+corrected/deleted), `archive/data/hub_slug_aliases.csv` (21 new rows),
+`rtr-business/research/wo231_report.csv` (all 38 re-keys),
+`rtr-business/research/wo231_pin_audit.csv` (all 2,282 per-video pins),
+`rtr-business/research/wo231_{rekey_review,backfill_apply,hub_moves}.csv`
+(the conductor's inputs, committed), `rtr-business/research/
+ENUMERATION_METHODS.md` §275, `docs/COVERAGE_HANDOVER.md` §3,
+`BACKLOG.md` (new follow-up entry).
 ## WO-232: audited why hubs and redirects keep needing fixes after pin work, and proposed a permanent model — read-only, no code changed [Done 2026-09-11]
 
 **What was done and why.** Ryan asked, plainly: we keep fixing hubs and

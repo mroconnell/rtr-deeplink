@@ -230,6 +230,16 @@ reasons. That is how every sweep below was scoped.
   already honored as `caller_gov_id` — pins still matter for the
   transcription worker's later re-resolve and for the drip, just not for
   this first write.
+- **A matched per-video pin on a shared host wins over the registry
+  unconditionally (WO-221), and that cuts both ways.** It fixed the case
+  it was built for, but it also made every OLDER fallback pin
+  authoritative for the first time — including wrong ones the registry
+  had quietly been out-voting until then. WO-231 (2026-09-11) found 13
+  of them the hard way, when the very next post-deploy backfill made
+  them fire: see its `BACKLOG_DONE.md` entry for the corrections and
+  `BACKLOG.md`'s live entry for the precedence trade-off this leaves
+  open (97 more pins flagged suspect by an oEmbed audit, not yet
+  hand-checked).
 
 ## 4. How coverage is grown: the sweep pattern
 
