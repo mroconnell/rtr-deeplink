@@ -3311,6 +3311,126 @@ tier3_auto_transcription_queue.txt` (no new lines this slice); `scripts/
 tier3_auto_transcription_queue_probe.csv` (1 new probe row, the Union
 City/Union Township video); `BACKLOG.md` (1 new `[JUST-DO-IT]` entry:
 the pin-restaging gap).
+### WO-174 continuation, final slice and close-out: rows 6,560-7,442, run stopped [Done 2026-09-11]
+
+This picks up exactly where the slice-2 entry above left off, and closes
+out the run. It covers report rows 6,560 through 7,442 (883
+governments) — the rest of the 1,000-4,999 population band. On the
+conductor's recommendation (slice 2 found 0 real videos in 2,542
+governments, and the population band left is smaller still), the run
+was stopped here rather than continued to the end of the 14,553-row
+candidate list.
+
+**Result, this slice's 883 governments:**
+
+| Outcome | Count of 883 |
+|---|---|
+| No AgendaCenter | 792 |
+| Website did not respond | 48 |
+| Blocked by a "prove you're human" page | 29 |
+| Already had a page | 10 |
+| Real meeting, no video | 3 |
+| No meeting at all found | 1 |
+
+0 of 883 governments (0%) had a real video. Only 4 of 883 (0.5%) even
+had a real CivicPlus AgendaCenter — and all 4 of those had a real
+meeting listed with no video attached. This is the smallest-town end of
+the candidate list, and it shows: CivicPlus's own AgendaCenter is
+rarer here than in any earlier slice, and where it does exist, this
+slice found no video behind it at all.
+
+**Cumulative, all 7,442 governments checked (all four passes):**
+
+| Outcome | Count of 7,442 |
+|---|---|
+| No AgendaCenter | 5,756 |
+| Website did not respond | 593 |
+| Already had a page | 454 |
+| Blocked by a "prove you're human" page | 433 |
+| Real meeting, no video | 104 |
+| No meeting at all found | 49 |
+| Captions available, page live now | 41 (2 found wrong and removed — 39 real) |
+| Video, no captions, queued | 5 |
+| Rejected by the video check | 4 |
+| Wrong government caught and skipped | 3 |
+
+**Yield trend, real video found per pass:**
+
+| Pass | Governments checked | Real video found | Percent |
+|---|---|---|---|
+| First pass | 1,449 | 33 | 2.3% |
+| Slice 1 | 2,568 | 12 | 0.5% |
+| Slice 2 | 2,542 | 1 (later found wrong, 0 real) | 0.04% |
+| Final slice | 883 | 0 | 0% |
+
+Each slice found fewer real videos than the one before it, in a
+population list sorted largest-government-first. That is the expected
+shape, not a surprise — CivicPlus's own AgendaCenter, and video behind
+it, both concentrate in bigger cities and counties. The remaining
+roughly 7,100 governments (14,553 candidates minus 7,442 checked) are
+the smallest population band left, where this trend says the yield
+would likely keep falling.
+
+**Hand-check: nothing to check.** This slice had zero `ingested_tier1_2`
+and zero `queued_tier3` rows — no video was found at all, so there was
+no video to check against its title and channel, and no pin was staged.
+
+**`jurisdiction_coverage.csv`: no write needed, verified rather than
+assumed.** The only 4 rows in this slice that could ever earn a coverage
+write are the 3 "real meeting, no video" rows plus the 1 "no meeting at
+all" row (the pipeline's own code only writes to `jurisdiction_
+coverage.csv` for those two outcomes — never for "no AgendaCenter,"
+"blocked," "website did not respond," or "already had a page"). Checked
+each of the 4 by hand against the live file:
+
+| Government | This slice's outcome | `jurisdiction_coverage.csv` already had |
+|---|---|---|
+| Stonington borough, CT | Real meeting, no video | `wrong-domain-mapping` (a different, more specific reject reason from an earlier hand-check — kept, not overwritten) |
+| Lake George village, NY | Real meeting, no video | `meeting-without-video`, `civicplus`, and the real AgendaCenter address — already an exact match |
+| Peabody city, KS | Real meeting, no video | `no-platform-link-found` from before this run — the pipeline's own write rule only fills a blank reject reason, so this stayed as-is; the real AgendaCenter address and `civicplus` were already recorded regardless |
+| Maysville town, NC | No meeting at all found | `no-platform-link-found` from before this run, same as Peabody — stayed as-is |
+
+All 4 already carried the pipeline's own live write — made while the
+process was still running, before it was stopped, and picked up into
+the shared research file by another session's own read-modify-write
+commit in the meantime (the file is shared across concurrent sessions
+per `ENUMERATION_METHODS.md` §158; a fresh re-read before any write
+carries along whatever another writer already saved). Confirmed with
+`git diff` against the current committed file: zero lines changed.
+Nothing was written by this slice because there was nothing left to
+write.
+
+**Deploy status.** Nothing from this slice needs a deploy: no new page,
+no new pin, no new queue line. The 39 real pages and 5 queued videos
+from the earlier passes are unchanged by this slice.
+
+**Decision: the run is stopped, not finished.** 7,442 of the original
+14,553 candidate governments (51%) have been checked. The remaining
+~7,100 are available to resume at any time — the script is fully
+resumable and skips every government already in `wo174_report.csv`. Ryan
+can decide whether the remaining, smaller-government slice is worth
+running given the falling yield trend above.
+
+**Resume instruction, unchanged from the original entry:** run
+`python scripts/wo174_pipeline.py` from the repo root, no arguments — it
+reads `wo174_report.csv`, skips every gov_id already done, and continues
+in population-descending order through the rest of the 14,553
+candidates. `BACKLOG.md`'s own resume entry is moved from `[JUST-DO-IT]`
+to `[LATER]` in this same change, reflecting that the yield trend no
+longer supports "just do it" as a default recommendation — see that
+entry for the updated reasoning.
+
+Files: `rtr-business/research/wo174_report.csv` (883 more rows,
+cumulative 7,442, resumable); `wo174_civicplus_hits.csv`, `wo174_
+discovery_seeds.csv` (append-only, no new rows this slice — this
+slice's only 4 real AgendaCenter hits all had already been recorded by
+the live pipeline in a prior slice's range); `wo174_pins_staged.csv`
+(unchanged); `jurisdiction_coverage.csv` (unchanged — verified above, not
+assumed); `app/utils/jurisdiction_data/tenant_overrides.csv` (unchanged);
+`scripts/tier3_auto_transcription_queue.txt` (unchanged); `BACKLOG.md`
+(the WO-174 resume entry moved from `[JUST-DO-IT]` to a new `## Dormant`
+`[LATER]` entry); `ENUMERATION_METHODS.md` (closing addendum, §259).
+
 
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
