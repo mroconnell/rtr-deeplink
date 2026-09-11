@@ -1,5 +1,67 @@
 # Backlog — done
 
+## WO-200: every subagent under one session shares the same scratchpad, so generic scratch filenames collide -- hook gives each agent a private directory [Done 2026-09-11]
+
+- **[Done 2026-09-11] [EASY] PR #909 briefly carried WO-175's description
+  because two parallel agents both wrote `pr_body.md` to one shared
+  scratchpad.**
+  - **What was tested and why**: during the 2026-09-10 coverage wave,
+    WO-179's agent wrote its PR body to `<scratchpad>/pr_body.md` and
+    ran `gh pr create --body-file` on it. Between the write and the
+    read, WO-175's agent wrote its own PR body to the same path. The PR
+    went up with the wrong text. It was caught by re-reading the PR via
+    `gh api` right after creation and fixed with `gh pr edit`. This
+    entry checked whether that sharing is real and general, not a
+    one-off.
+  - **Result**: it is real and general. The scratchpad path is
+    `/private/tmp/claude-501/<project>/<session id>/scratchpad`, keyed by
+    session id. A subagent started with the Agent tool runs under its
+    parent's session id. A probe subagent started from this session
+    reported the identical scratchpad path and the identical
+    `CLAUDE_CODE_SESSION_ID` as the parent; the only thing that marks it
+    as a child is `CLAUDE_CODE_CHILD_SESSION=1`, and no env var names the
+    agent. Counting distinct WO numbers in filenames per scratchpad on
+    this machine:
+
+    | Session | Distinct WOs in one scratchpad | Files | Bare `pr_body*`/`commit_msg*` files |
+    |---|---|---|---|
+    | 2026-09-10 coverage conductor | 32 | 337 | 15 |
+    | 2026-09-09 meeting-archive-report wave | 16 | 180 | 3 |
+    | rtr-business session, same days | 3 | 115 | 11 |
+
+    Some agents had already worked around it on their own (`wo163/`,
+    `wo154/`, `wo192/` subdirectories in the conductor's scratchpad),
+    which is why only one collision surfaced. The harness docs
+    (code.claude.com/docs/en/hooks) confirm a `SubagentStart` hook event
+    that receives `scratchpad_dir` and `agent_id` on stdin; they do not
+    say whether subagents get their own scratchpad (they don't, per the
+    probe) and `isolation: worktree` only isolates the git checkout, not
+    the scratchpad.
+  - **Fix**: `.claude/hooks/subagent-start.sh`, registered as a
+    `SubagentStart` hook in `.claude/settings.json`. It creates
+    `<scratchpad>/agents/<agent_id>/` and returns `additionalContext`
+    naming it as the agent's private scratch directory. It exits 0 and
+    does nothing on missing fields or bad JSON, so it can never stop an
+    agent from starting. Verified live: a subagent spawned after the
+    hook was registered quoted the private path back and wrote a file
+    there. Belt and braces in `CLAUDE.md`'s new bullet: name scratch
+    files by WO, and re-read a PR body after `gh pr create`.
+  - **Caution**: the hook only fires for subagents started from a
+    checkout that carries `.claude/settings.json` (any worktree of this
+    repo does). It is advisory context, not enforcement: an agent can
+    still write to the shared root. Sibling repos (`rtr-business`,
+    `rtr-discovery`) have no such hook; their conductor waves have the
+    same exposure and the same one-line fix.
+  - **Not a code bug**: nothing in `app/`, `archive/`, `worker/` or
+    `scripts/` changed. No deploy needed.
+  - **The WO number itself collided once**: this entry was first filed as
+    WO-195, taken as max+1 over merged files, commit titles and PR
+    titles while the coverage conductor was live. The conductor had
+    already handed WO-195 to another agent (PR #920, merged the same
+    morning) and gone on to WO-199. Renumbered to WO-200 and confirmed
+    with the conductor session. Same lesson as `CLAUDE.md`'s WO-number
+    bullet: under a wave, ask the conductor rather than derive.
+
 ## WO-188: recheck of the 15 LocalView channels YouTube's block stopped WO-175 from finishing [Done 2026-09-11]
 
 - **[Done 2026-09-11] [HUMAN] [EASY] 6 live Archive pages need deletion -- real videos, wrong government or not a real meeting, caught by WO-191's own oEmbed hand-check, dry-run call blocked by the auto-mode safety classifier.**
