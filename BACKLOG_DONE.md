@@ -1,5 +1,31 @@
 # Backlog — done
 
+## WO-212: the 103 long meetings WO-205 swapped out were back in the queue after two "union" rebases — dropped again, CI guard added, rebase rule amended [Done 2026-09-11]
+
+- **What happened:** WO-205's data merge (#939, `eacc8a0`) removed 106
+  long (>90 min) queue lines and parked them in
+  `scripts/tier3_long_meetings_deferred.txt`. Two later merges resolved
+  the queue-file conflict as the union of both sides and put them back:
+  the WO-184 continuation (`d655a85`) re-added 102, WO-191 slice 2
+  (`9bb73d1`) re-added 1. The 110 substitutes stayed too, so 103
+  governments had both meetings queued and the ~235 Whisper hours WO-205
+  saved were not saved. Found by the conductor's request for a line-level
+  reconciliation of the WO-205 counts (441 long lines, 279 tenants, both
+  tables sum). Same bug re-added the Oak Bluffs blank-match pin the same
+  night (#953; WO-210 adds the pin guard).
+- **Fix:** (1) the 103 lines dropped again — queue 2,923 → 2,820 lines,
+  every other line verbatim. (2) `tests/test_transcription_queue_files.py`
+  now fails when any tier-3 queue URL appears in the deferred file, and
+  checks the deferred file parses. (3) The rebase rule in
+  `docs/COVERAGE_HANDOVER.md` §5.6: on a rebase, a line deleted on `main`
+  stays deleted; union only what your own branch added; then subtract the
+  deferred file for the queue. Same wording applies to the pins file.
+- **Verification:** the new test fails on `main` before this PR (103 rows
+  listed) and passes after; full suite green.
+- **The other 3:** 106 − 103 = 3 deferred lines (Lake County IL, Pembroke
+  Park FL, Grand Forks ND) were never re-added — absent from every queue
+  commit since `eacc8a0`. Nothing to undo.
+
 ## `scripts/youtube_drip.py`: a tick that raises is now a five-minute pause, not an exit [Done 2026-09-11]
 
 - **What happened:** the drip on Ol McClaude's Mac ran ~4 hours unattended

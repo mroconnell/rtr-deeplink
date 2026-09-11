@@ -217,3 +217,45 @@ def test_civicclerk_rows_use_the_event_media_shape(queue_file: Path) -> None:
         if not re.fullmatch(r"/event/\d+/media", p.path):
             bad.append(f"{queue_file.name}:{i}: {url}")
     assert not bad, "CivicClerk rows not shaped /event/<id>/media:\n" + "\n".join(bad)
+
+
+# WO-205 parked 106 long (>90 min) meetings in this file after swapping each
+# for a shorter meeting of the same government. WO-212 (2026-09-11): two
+# later rebases resolved the queue file as "union of both sides" and put
+# 103 of them straight back, next to their substitutes. A line in the
+# deferred file is a deliberate deletion; this test makes a union that
+# resurrects one fail the build instead of doubling the Whisper hours.
+DEFERRED_FILE = REPO_ROOT / "scripts" / "tier3_long_meetings_deferred.txt"
+TIER3_QUEUE = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue.txt"
+
+
+def _deferred_urls() -> set[str]:
+    if not DEFERRED_FILE.exists():
+        return set()
+    return {
+        ln.split("\t", 1)[0].strip()
+        for ln in DEFERRED_FILE.read_text(encoding="utf-8").split("\n")
+        if ln.strip() and not ln.startswith("#")
+    }
+
+
+def test_deferred_file_is_well_formed() -> None:
+    urls = _deferred_urls()
+    assert urls, "deferred file is empty or missing"
+    bad = [u for u in urls if urlparse(u).scheme not in ("http", "https")]
+    assert not bad, "deferred rows that are not URLs:\n" + "\n".join(bad)
+
+
+def test_no_tier3_queue_row_is_a_deferred_long_meeting() -> None:
+    deferred = _deferred_urls()
+    bad = [
+        f"{TIER3_QUEUE.name}:{i}: {url}"
+        for i, url in _rows(TIER3_QUEUE)
+        if url in deferred
+    ]
+    assert not bad, (
+        "queue rows that WO-205 deliberately removed (see "
+        "scripts/tier3_long_meetings_deferred.txt) are back -- a rebase "
+        "took the union of both sides. Drop them again; on a rebase, a "
+        "line deleted on main stays deleted:\n" + "\n".join(bad)
+    )
