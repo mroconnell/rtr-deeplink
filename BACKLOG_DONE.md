@@ -298,8 +298,10 @@ The 8 wrong ones, named, with what the video actually was:
 
 All 8 were caught and fixed before or right after they could go live.
 Three had already become live pages (District of Columbia, Taylor
-County, Oak Grove Village) — those need a human to delete them (see
-Needs a human, below); the other 5 were still waiting in the queue and
+County, Oak Grove Village) — the conductor deleted all three through
+`POST /internal/admin/delete-pages` right after the PR merged (dry run
+read the titles first; a second dry run confirmed all three
+`not_found`); the other 5 were still waiting in the queue and
 were simply removed before they were ever queued or pinned.
 
 **Caution.** While finishing the tier-3 queue step, a real gap turned
@@ -318,9 +320,8 @@ real, reproducible adapter bug also turned up and is filed separately:
 a CivicPlus page (Walworth, WI) that can't be read because of a raw
 text-encoding error in the adapter, not a content problem.
 
-**Recommendation.** Delete the 3 wrong live pages named above (filed as
-a `[HUMAN]` entry — the sandbox here can preview the delete but not run
-it for real). Four real "owner body" leads — D.C. Public Schools, City
+**Recommendation.** The 3 wrong live pages named above are deleted
+(conductor, same day). Four real "owner body" leads — D.C. Public Schools, City
 of Taylor TX, City of Oak Grove MO, Town of Clinton NY — are recorded
 for a later mint pass if Ryan wants them as their own governments.
 
@@ -42414,3 +42415,12 @@ YouTube channel guess once both arrived as the same plain string.
 - **History**: WO-210 (`BACKLOG_DONE.md`) for the safeguard this
   restores compatibility with; `docs/COVERAGE_HANDOVER.md`'s identity
   section, §3, for the updated rung 1b description.
+
+**Follow-up, same day (outgoing conductor, ~12:05 PT).** The 3 live
+CivicPlus pages this entry found with a blank government (ids 6026
+Altamonte Springs FL, 6931 Crewe VA, 7077 Dudley-Charlton Regional
+School District MA) were re-keyed through `POST /internal/jurisdiction/
+override`, so the "3 real CivicPlus pages are live right now with a
+blank government identity" `[JUST-DO-IT]` entry in `BACKLOG.md` is
+closed; only the 49 at-risk pages remain there as a standing caution
+until WO-214 is deployed.
