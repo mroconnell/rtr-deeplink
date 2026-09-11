@@ -1,5 +1,51 @@
 # Backlog — done
 
+## WO-205 follow-up: the Utah PMN half of the long-meeting substitution — 125 more queue lines swapped, ~168 Whisper hours saved; the search now survives PMN's JSON outage [Done 2026-09-11]
+
+- **What was wrong:** WO-205's search recorded `none` for 131 Utah PMN
+  governments because `/pmn/searchresult.html` (the JSON endpoint the
+  pilot documented) served PMN's outage page all day. Two things hid it:
+  the outage page is titled "Techincal Difficulties" (sic) and the
+  script's check looked for "Technical", so the page parsed as an empty
+  listing and the sidecar said "0 notices for …" instead of "listing
+  failed". Ryan noticed the search worked in his browser; a look at his
+  Chrome session showed the page's own form POST to `/pmn/search.html`
+  returning real rows (server-rendered table `browseResults-table`, 25 a
+  page, `startingRow` pages, no captcha token in the form) while the JSON
+  endpoint was still down.
+- **Fix:** `scripts/pmn_utah_pilot.py` gains `fetch_form_csrf()` and
+  `fetch_search_form_page()` (the form POST), and `_parse_results_table()`
+  reads both table ids. `find_tier3_short_meeting_substitutes.py`'s
+  `pmn_entity_notices()` tries the JSON endpoint and, on the outage page
+  (now matched by `_PMN_OUTAGE_RE`, either spelling), switches that entity
+  to the form path for the rest of its pages. Tests: a real trimmed Provo
+  fixture (`tests/fixtures/pmn_search_form_results_provo.html`) for the
+  parser, and the outage spelling.
+- **Result of `search --platform utah_pmn --retry-none` + `apply --apply`:**
+
+  | Outcome for the 131 PMN governments | Count |
+  |---|---|
+  | Substitute inside 9–40 min | 57 |
+  | Substitute by fallback (shortest usable) | 68 |
+  | Nothing usable (0 notices with audio, or none shorter) | 6 |
+
+  125 queue lines swapped, ~168 Whisper hours saved; the 125 originals
+  appended to `scripts/tier3_long_meetings_deferred.txt` with jurisdiction,
+  length and title; gov_id filled on the 53 the registry's national
+  tables resolve (places, counties, school districts) and left blank on
+  the 72 state agencies, charter schools and special districts —
+  `resolve_government()` minted ids for those, several plainly wrong
+  (`rtr:ca:mb:…`, `rtr:us:ok:…` for Utah districts), so a fill script must
+  never write a minted id; minting stays an "ok mint" pin-worklist call. Probe sidecar
+  +563 rows (every candidate measured, so the WO-156 gate knows each
+  substitute).
+- **Together with WO-205's first pass:** 231 long lines swapped, ~403
+  Whisper hours saved at the same breadth.
+- **Still true:** PMN's JSON endpoint was still down at merge time; the
+  pilot's own `--search` mode still uses it and will need the same
+  fallback if it is run before PMN fixes the endpoint (not done here —
+  nothing was waiting on it).
+
 ## WO-215: fixed `scripts/backfill_gov_id.py` and the live re-ingest path so a `blank` answer on a shared host (YouTube, Vimeo, ...) can never downgrade an already-keyed page [Done 2026-09-11]
 
 **Why this ran.** The conductor found this the day after WO-210 shipped.

@@ -331,9 +331,68 @@ async def fetch_csrf(session: aiohttp.ClientSession) -> Tuple[str, str]:
     return token["content"], (header.get("content") if header else "X-CSRF-TOKEN")
 
 
-def _parse_results_table(html: str) -> List[Notice]:
+async def fetch_form_csrf(session: aiohttp.ClientSession) -> str:
+    """The hidden `_csrf` input of the search form -- the plain form POST
+    to /pmn/search.html wants this field, not the meta-tag header."""
+    async with session.get(
+        SEARCH_PAGE_URL, headers=UA_HEADERS, timeout=FETCH_TIMEOUT
+    ) as resp:
+        resp.raise_for_status()
+        html = await resp.text()
     soup = BeautifulSoup(html, "html.parser")
-    table = soup.find(id="searchResultsTable")
+    field = soup.find("input", attrs={"name": "_csrf"})
+    if not field or not field.get("value"):
+        raise RuntimeError("could not find the _csrf input on /pmn/search.html")
+    return field["value"]
+
+
+async def fetch_search_form_page(
+    session: aiohttp.ClientSession,
+    form_csrf: str,
+    entity_name: str,
+    start_date: str,
+    end_date: str,
+    starting_row: int,
+) -> List[Notice]:
+    """The search page's own form POST (what a browser sends), confirmed
+    live 2026-09-11: it kept answering with real rows all day while the
+    JSON endpoint /pmn/searchresult.html served "Techincal Difficulties".
+    Dates are ISO (`YYYY-MM-DD`, the form's `type="date"` inputs), 25
+    rows a page, `startingRow` pages exactly as the JSON endpoint does.
+    No captcha: reCAPTCHA is loaded on the page but the form carries no
+    token and the POST succeeds without one."""
+    fields = {
+        "_csrf": form_csrf,
+        "sortColumn": "",
+        "sortOrder": "",
+        "searchType": "entity",
+        "entityName": entity_name,
+        "publicBodyName": "",
+        "title": "",
+        "agenda": "",
+        "tags": "",
+        "startDate": start_date,
+        "endDate": end_date,
+        "deadlineDate": "",
+        "createdDate": "",
+        "startingRow": str(starting_row),
+    }
+    headers = {**UA_HEADERS, "referer": SEARCH_PAGE_URL}
+    async with session.post(
+        SEARCH_PAGE_URL, data=fields, headers=headers, timeout=FETCH_TIMEOUT
+    ) as resp:
+        resp.raise_for_status()
+        html = await resp.text()
+    return _parse_results_table(html)
+
+
+def _parse_results_table(html: str) -> List[Notice]:
+    """Rows from either results shape: the JSON endpoint's fragment
+    (`id="searchResultsTable"`) or the plain form POST's full page
+    (`id="browseResults-table"`, confirmed live 2026-09-11 while the JSON
+    endpoint was serving its outage page). Same five columns in both."""
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find(id="searchResultsTable") or soup.find(id="browseResults-table")
     if table is None:
         return []
     notices = []
