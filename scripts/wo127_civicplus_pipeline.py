@@ -585,7 +585,16 @@ async def process_candidate(session, finder, candidate, report):
         )
     elif tier == "tier1":
         try:
-            response = await ingest(session, result.model_dump(), normalized)
+            # WO-222: this candidate already knows its government -- send
+            # it in the payload so a page on a shared host (a bare
+            # YouTube link CivicPlus sometimes embeds directly) never
+            # depends on a tenant_overrides.csv pin reaching production
+            # first. See scripts/wo134_confirmed_hits_ingest.py's
+            # matching comment and docs/COVERAGE_HANDOVER.md §3.
+            payload = result.model_dump()
+            if gov_id:
+                payload["gov_id"] = gov_id
+            response = await ingest(session, payload, normalized)
             page_url = response.get("url") if response else None
             row_out.update(outcome="ingested", detail=page_url or "")
             print(f"[INGEST ] {gov_id} {unit_name}  {meeting_url}  {tier}  {page_url}")

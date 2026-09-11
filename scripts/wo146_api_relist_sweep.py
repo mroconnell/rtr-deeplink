@@ -886,6 +886,13 @@ async def process_government(
     if is_tier12:
         if not payload.get("jurisdiction") and gov and gov.gov_name and gov.state:
             payload["jurisdiction"] = f"{gov.gov_name}, {gov.state}"
+        # WO-222: this row already knows its government -- send it in the
+        # payload so a page on a shared host never depends on a
+        # tenant_overrides.csv pin reaching production first. See
+        # scripts/wo134_confirmed_hits_ingest.py's matching comment and
+        # docs/COVERAGE_HANDOVER.md §3.
+        if gov_id:
+            payload["gov_id"] = gov_id
         if resolved_platform in SHARED_HOST_PLATFORMS:
             result_ns = SimpleNamespace(
                 video_url=payload.get("video_url"),

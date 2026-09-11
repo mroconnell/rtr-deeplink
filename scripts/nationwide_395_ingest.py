@@ -827,9 +827,16 @@ async def process_row(session: aiohttp.ClientSession, row: dict) -> RowResult:
 
         if segments:
             normalized = normalize_url(final_seed)
-            response = await _ingest_with_retry(
-                session, result.model_dump(), normalized
-            )
+            # WO-222: this row already knows its government (gov_id is the
+            # first thing process_row() reads off it) -- send it in the
+            # payload so a shared-host page never depends on a
+            # tenant_overrides.csv pin reaching production first. See
+            # scripts/wo134_confirmed_hits_ingest.py's matching comment
+            # and docs/COVERAGE_HANDOVER.md §3.
+            payload = result.model_dump()
+            if gov_id:
+                payload["gov_id"] = gov_id
+            response = await _ingest_with_retry(session, payload, normalized)
             if response is None:
                 # Real gap found auditing this run 2026-09-07 (Destin, FL):
                 # the POST to our OWN Archive backend is a network call
@@ -882,7 +889,12 @@ async def process_row(session: aiohttp.ClientSession, row: dict) -> RowResult:
         # logged as its own bucket since the task's tier1/2/3 definition
         # doesn't name this case explicitly.
         normalized = normalize_url(final_seed)
-        response = await _ingest_with_retry(session, result.model_dump(), normalized)
+        # WO-222: same as the segments branch above -- send the row's
+        # known gov_id.
+        payload = result.model_dump()
+        if gov_id:
+            payload["gov_id"] = gov_id
+        response = await _ingest_with_retry(session, payload, normalized)
         if response is None:
             last_reason = f"{platform}: resolved real agenda content but POST to Archive failed twice, not ingested: {final_seed}"
             continue

@@ -1913,10 +1913,26 @@ async def process_row(
                     platform, result, final_seed, gov_id, unit_name, source_tag
                 )
                 normalized = normalize_url(final_seed)
+                # WO-222: this row already knows its government -- `gov_id`
+                # is the function's first argument -- so send it in the
+                # payload rather than relying on the tenant_overrides.csv
+                # pin `maybe_write_tenant_override()` just wrote landing in
+                # production before this page is created. Without this, a
+                # fresh YouTube/Vimeo page keys to `rtr:unknown:<host>`
+                # until the next Archive deploy runs the ingest and the
+                # pin both (see docs/COVERAGE_HANDOVER.md §3 and
+                # archive/db/crud.py's `_resolve_page_government()`,
+                # `caller_gov_id`). A blank/None gov_id (shouldn't happen
+                # here -- every row in this CSV has one) is omitted from
+                # the payload entirely rather than sent as "" -- omitting
+                # the key is what keeps this indistinguishable from every
+                # existing caller of /internal/ingest that doesn't know a
+                # gov_id, so the ladder runs exactly as it always has.
+                payload = result.model_dump()
+                if gov_id:
+                    payload["gov_id"] = gov_id
                 try:
-                    response = await _ingest_with_retry(
-                        session, result.model_dump(), normalized
-                    )
+                    response = await _ingest_with_retry(session, payload, normalized)
                 except Exception as e:
                     raise RowError(f"{platform}: ingest raised: {e}") from e
                 if response is None:
