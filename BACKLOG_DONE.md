@@ -2,6 +2,64 @@
 
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
+- **[Done 2026-09-10] Sechelt, BC and Blind River, ON pages: URL slug showed
+  the wrong city, even though the page's own government (`gov_id`) and
+  displayed name are already correct -- the fix is a by-hand reslug, not
+  a re-key.**
+  - **Issue**: WO-182 checked WO-178's audit lead (which assumed a
+    mis-keyed government, "like Chenango") against `GET /internal/
+    export/pages` and the live pages, and the premise didn't hold. Page
+    882 (`/m/prince-george-2026-03-18-elections-bylaw-amendment-regular-
+    council-meeting`) already has `gov_id=ca:csd:5929011` and
+    `jurisdiction="Sechelt, BC"` -- the live page's own `<title>` already
+    reads "Sechelt, BC". Page 653 (`/m/peterborough-2024-05-21-council-
+    meeting`) already has `gov_id=ca:csd:3557038` and
+    `jurisdiction="Blind River, ON"`, title already "Blind River, ON".
+    Both pages were last written 2026-09-03, the day `backfill_gov_id.py`
+    first ran corpus-wide and fixed jurisdiction/gov_id on thousands of
+    then-unkeyed pages -- but that script never rewrites a page's own
+    `slug` (confirmed by reading it), so each page's original
+    (2026-08-15/16) ingest-time slug guess is still frozen into its URL.
+    This is the same shape as the existing Albemarle County VA and St.
+    Louis Park entries in `archive/main.py`'s `_SLUG_REDIRECTS` comment:
+    real data, stale-looking permalink.
+    A `backfill_gov_id.py --hosts pub-sechelt.escribemeetings.com,pub-
+    blindriver.escribemeetings.com` dry run confirms this: 0 would
+    change, 6 already current (all pages on both hosts, not just these
+    two). Full writeup: `rtr-business/research/ENUMERATION_METHODS.md`
+    §233.
+  - **Impact**: two live pages show a stale, misleading city name in
+    their URL (though the page content itself is already correct) --
+    confusing for a reader who reads the URL, and for anything that
+    joins on slug rather than gov_id.
+  - **Next action**: `POST /internal/admin/reslug-page` with
+    `dry_run=false` for `peterborough-2024-05-21-council-meeting` (new
+    slug, previewed: `blind-river-on-2024-05-21-council-meeting`) and
+    for `prince-george-2026-03-18-elections-bylaw-amendment-regular-
+    council-meeting` (new slug, previewed:
+    `sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-
+    meeting`), then add both old->new mappings to `archive/main.py`'s
+    `_SLUG_REDIRECTS` in the same change and deploy.
+  - **Constraint**: WO-182's session and the conductor session both had
+    the apply call blocked by the runtime sandbox's auto-mode safety
+    classifier (a POST to a production write endpoint), even after
+    dry-run previews. The two `_SLUG_REDIRECTS` entries are already on
+    `main` (WO-182b), so once Ryan runs the two reslug calls and deploys,
+    the old URLs 301 to the new ones. Needs Ryan to run the two calls.
+  - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (original find,
+    premise not yet checked); WO-182, 2026-09-10 (root cause found and
+    corrected, fix dry-run-verified, apply blocked -- see
+    `rtr-business/research/ENUMERATION_METHODS.md` §233).
+
+  - **Close-out (WO-182b/c, 2026-09-10)**: Ryan ran the two
+    `reslug-page` calls from the Archive's Render shell (the sandbox
+    classifier blocked the write in two Claude sessions). Verified live:
+    `/m/blind-river-on-2024-05-21-council-meeting` and
+    `/m/sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-meeting`
+    both 200 with the correct city in the title; the two old slugs 404
+    until the `_SLUG_REDIRECTS` entries from PR #900 are deployed.
+
+
 Ryan's earlier client marked 1,814 small governments (under 5,000 people)
 as unreachable — 1,690 where the domain itself never resolved, 124 where
 the resolve step failed some other way. This was the cheapest possible
