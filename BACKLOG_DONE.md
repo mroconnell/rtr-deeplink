@@ -1,5 +1,36 @@
 # Backlog — done
 
+## `scripts/youtube_drip.py`: a tick that raises is now a five-minute pause, not an exit [Done 2026-09-11]
+
+- **What happened:** the drip on Ol McClaude's Mac ran ~4 hours unattended
+  on 2026-09-11 and then exited on an unhandled
+  `aiohttp.client_exceptions.ClientConnectorError` ("Cannot connect to host
+  rtr-deeplink-archive.onrender.com:443 ... Operation timed out"), raised by
+  the captions lane's `GET /internal/transcript-wanted` against this app's
+  own Archive. Not a YouTube block: the lanes already turn a block into a
+  returned sleep and the ladder (`BLOCK_SLEEPS_SECONDS`). The Archive was
+  reachable again seconds later. Ol McClaude restarted it by hand and filed
+  the gap (PR #945, entry "`youtube_drip.py`'s main loop has no top-level
+  retry around a tick").
+- **Fix:** `Drip.safe_tick()` wraps `tick()`; `run()`'s loop calls it. Any
+  exception is logged with its traceback and a running count
+  (`tick failed (N in a row)`), and the loop sleeps
+  `TRANSIENT_ERROR_SLEEP_SECONDS` (5 min, fixed — deliberately not the
+  YouTube ladder, per the entry's constraint) before the next tick. A
+  clean tick logs `tick recovered after N failure(s)` and resets the count.
+  `--once` passes `reraise=True` so a one-shot run still fails loudly.
+  `tick()` itself already saves state in a `finally`, so a failed tick
+  loses nothing.
+- **Verification:** `tests/test_youtube_drip.py` — two lanes raising then
+  succeeding yield 300 s, 300 s, then the idle sleep, with no block recorded;
+  `--once` re-raises. Full suite green.
+- **What Ol McClaude has to do:** nothing until its next daily `git pull`
+  (runbook rule 3). The running copy is the old code, so a second timeout
+  before that pull still ends the process; after the pull, Ctrl-C and
+  restart the drip once so the new loop is the one running.
+- **Runbook:** `docs/YOUTUBE_DRIP_RUNBOOK.md` now says a repeated
+  `tick failed` line for more than an hour is a "tell Ryan" signal.
+
 ## WO-205: tier-3 long-meeting substitution, round 2 — 106 queue lines swapped, ~235 Whisper hours saved at the same breadth [Done 2026-09-11]
 
 - **[Done 2026-09-11] [HUMAN] One live page needs deleting: Bristol borough, PA's own coverage row had Bristol TOWNSHIP's domain recorded as its own, so a sweep ingested the Township's meeting as if it were the Borough's (sandbox can't run the delete).**

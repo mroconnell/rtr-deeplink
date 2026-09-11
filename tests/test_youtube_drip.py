@@ -299,3 +299,44 @@ def test_fed_page_row_carries_title_and_meeting_flag():
         fed_at="t",
     )
     assert row["looks_like_meeting"] == "no" and row["needs_review"] == "yes"
+
+
+def test_safe_tick_turns_an_archive_timeout_into_a_pause(tmp_path, monkeypatch, caplog):
+    # Confirmed live 2026-09-11: a ClientConnectorError from the captions
+    # lane's Archive GET escaped asyncio.run() and ended the process.
+    drip = _drip(tmp_path, lanes=("captions",))
+    attempts = []
+
+    async def flaky(session):
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise ConnectionError(
+                "Cannot connect to host rtr-deeplink-archive.onrender.com:443"
+            )
+        return False, None
+
+    monkeypatch.setattr(drip, "lane_captions", flaky)
+    csv_path = tmp_path / "daily.csv"
+    with caplog.at_level("INFO", logger="youtube_drip"):
+        first = asyncio.run(drip.safe_tick(None, csv_path))
+        second = asyncio.run(drip.safe_tick(None, csv_path))
+        third = asyncio.run(drip.safe_tick(None, csv_path))
+    assert first == second == yd.TRANSIENT_ERROR_SLEEP_SECONDS
+    assert third == yd.IDLE_SLEEP_SECONDS  # the lane ran and found nothing
+    assert drip.consecutive_errors == 0
+    assert "tick failed (2 in a row)" in caplog.text
+    assert "tick recovered after 2 failure(s)" in caplog.text
+    # not the YouTube block ladder: no block recorded, nothing to wait out
+    assert drip.state.data["blocks_total"] == 0
+    assert drip.state.data["blocked_until"] == 0
+
+
+def test_safe_tick_reraises_for_a_one_shot_run(tmp_path, monkeypatch):
+    drip = _drip(tmp_path, lanes=("captions",))
+
+    async def boom(session):
+        raise ConnectionError("Operation timed out")
+
+    monkeypatch.setattr(drip, "lane_captions", boom)
+    with pytest.raises(ConnectionError):
+        asyncio.run(drip.safe_tick(None, tmp_path / "daily.csv", reraise=True))
