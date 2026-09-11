@@ -1667,7 +1667,7 @@ transcription workers are redeployed -- deploys are manual
 (`render.yaml`'s `autoDeploy: false`). The 138 pages already ingested via
 the live Archive API are already live on the site right now, independent
 of this PR merging, the same way WO-151's were.
-## WO-191: first-pass access-ladder sweep of never-tested governments -- priority bands (798 of 3,304) done, oEmbed check caught 8 real false positives before they went live [Done 2026-09-11, continuing]
+## WO-191: first-pass access-ladder sweep of never-tested governments -- all 3,304, oEmbed/hand-check caught 21 real false positives before or shortly after they went live [Done 2026-09-11]
 
 Ryan's goal, from `docs/BREADTH_SWEEP_BRIEF.md`: one meeting with video
 per government, breadth not depth. This work order's own slice: 3,304
@@ -1822,6 +1822,118 @@ Files: `scripts/wo191_build_candidates.py`,
 `research/wo191_tier3_finish_log.csv`, `research/wo191_jc_*.csv` (apply
 logs), `jurisdiction_coverage.csv` (798 rows plus the 2 hand-reverted
 corrections, `rtr-business`).
+
+### Slice 2 close-out: rows 799-3,304 applied, whole run finished [Done 2026-09-11]
+
+This is the finish pass for the ~2,506 rows the background sweep kept
+processing after its own agent exited and the first PR (798 rows) was
+already merged. WO-202 ran a separate, continuous hand-check of every
+new `ingested_tier1_2`/`queued_tier3_pending` row as the sweep produced
+it (see `ENUMERATION_METHODS.md` #256 and `research/wo202_report.csv`,
+105 rows) rather than waiting for one end-of-run audit. This pass:
+ran `wo191_finish_tier3.py` on the slice's 4 tier-3 candidates (probe
+before queue, per Ryan's rule); applied all 2,506 rows to
+`jurisdiction_coverage.csv` via `wo191_apply_to_jc.py`, excluding the 13
+gov_ids WO-202 had already hand-corrected directly (12 already matched
+the right final state; the 13th, Hanna AB, had a real replacement video
+ingested by WO-202 that was never reflected in the coverage row, fixed
+here); and picked up 3 lines (2 pins + 1 probe row) for that Hanna
+replacement that were sitting in WO-202's own unmerged worktree.
+
+**Result, of the 2,506 governments in this slice:**
+
+| Outcome | Count of 2,506 |
+|---|---|
+| No usable platform link found, after the full ladder | 1,819 |
+| Blocked (cloudflare/dns/timeout/plain-http) | 362 |
+| Off-mission (real video, not a real government meeting) | 150 |
+| Captions available, page live now | 89 |
+| Meeting without video | 42 |
+| Already had a page | 25 |
+| Video, no captions, really queued (probe accepted) | 3 |
+| Video, no captions, rejected by probe (no recipe for the media shape) | 1 |
+| A real error | 2 |
+| No meeting nor video | 1 |
+
+"Captions available, page live now" (89) and "really queued" (3) are
+the *corrected* counts, after removing WO-202's 13 hand-caught wrong
+rows from the raw 101 ingests / 4 queue finds (105 total checked, 92
+confirmed right + 1 real replacement = 93 correct; see next section).
+
+**WO-202's hand-check, folded in here (full detail: `ENUMERATION_METHODS.md`
+#256, `research/wo202_report.csv`):**
+
+| Verdict | Count of 105 | What happened |
+|---|---|---|
+| Right | 92 | left as-is |
+| Kind A (video belonged to a different real government) | 9 | 6 pages deleted; 3 needed no deletion (the pipeline's own content-based jurisdiction check had already matched the video into the *real* owning government's existing page, never creating a wrong one) |
+| Kind B (right channel, wrong video) | 4 | 3 pages deleted with no usable replacement on the channel; 1 (Hanna, AB) had a real 79.8-minute meeting elsewhere on the same channel, ingested as a replacement |
+
+Both this slice's Kind A/B rate (12.4%, 13 of 105) and the first slice's
+(10%, 8 of 80) come from the same failure shape: a wrong `domain` field
+in `jurisdiction_coverage.csv` pointing at a different real entity's
+site, which the ladder then faithfully followed to that entity's real
+YouTube channel. Domain corrected (or cleared to blank when no real
+site could be confirmed) for the wrong-domain cases in both slices.
+
+**Whole run, final (3,304 of 3,304, both slices, hand-check-corrected):**
+
+| Outcome | Count of 3,304 |
+|---|---|
+| No usable platform link found, after the full ladder | 2,340 |
+| Blocked (cloudflare/dns/timeout/plain-http) | 390 |
+| Off-mission (real video, not a real government meeting) | 210 |
+| Captions available, page live now | 155 |
+| Meeting without video | 77 |
+| Already had a page | 94 |
+| Video, no captions, really queued (probe accepted) | 8 |
+| Video, no captions, rejected by probe | 2 |
+| A real error | 6 |
+| No meeting nor video | 2 |
+
+Headless-render budget: 579 of the 600-render cap used across the whole
+run (569 of those renders actually answered the ladder at the
+`headless` rung; the rest hit a timeout/dead-page after rendering and
+still counted against the budget). Close to the cap -- a similarly
+large future sweep of this shape should raise it rather than assume
+600 is comfortable headroom.
+
+**Correction to this entry's own earlier draft**: this slice's own
+first pass over `origin/main`'s history assumed the first slice's 6
+wrong live pages were still open, based on a locally out-of-date
+`BACKLOG.md`/`BACKLOG_DONE.md` (this branch was 31 commits behind
+`origin/main` before the rebase below). They were not -- `origin/main`
+already carries the full close-out: WO-191 close-out (#917) deleted all
+6 and verified 404; WO-199 (#924) then re-keyed 3 of them to their real
+owning government (Lemont Township IL to the Cook County Assessor,
+Solebury Township PA to PennDOT, Middlebury VT to Addison Central
+USD -- plus found Middlebury's own real Selectboard video on the same
+channel) and found the other 2 Kind B channels (Lac la Biche County AB,
+Cambridge MN) had no real meeting content at all; WO-201 (#930) then
+minted PennDOT, the Upper Delaware Council, and the Southwestern
+Pennsylvania Commission as their own governments, closing the 2 that
+WO-199 had left pending a mint decision. Nothing from the first slice's
+delete-pages constraint is still open. No BACKLOG.md edit was needed
+here -- an earlier draft of this addendum added one against stale
+content and it was reverted before this PR opened.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+and `scripts/tier3_auto_transcription_queue.txt`/its probe sidecar are
+on `main` but **not live** until the resolver and both transcription
+workers are redeployed. The 89 tier-1/2 pages in this slice (plus
+Hanna's replacement) are already live now, independent of this PR
+merging, via the direct `POST /internal/ingest` call the sweep and
+WO-202 both used.
+
+Files (this slice, in addition to the first PR's): `research/
+wo191_report.csv` (now the full 3,304 rows), `jurisdiction_coverage.csv`
+(2,506 rows plus the 13 WO-202 reconciliations, `rtr-business`,
+commit `ad11e33`), `research/wo191_jc_*.csv` (apply logs, last-batch
+snapshot only -- the script overwrites rather than appends these),
+`research/wo191_discovery_seeds.csv`, `research/
+wo191_host_access_modes.csv`, `research/wo191_tier3_pending.csv` /
+`wo191_tier3_finish_log.csv`, `research/wo202_report.csv` (WO-202's own
+file, referenced not owned by this entry).
 
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
