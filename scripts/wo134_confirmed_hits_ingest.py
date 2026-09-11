@@ -1928,6 +1928,13 @@ async def process_row(
                 # the key is what keeps this indistinguishable from every
                 # existing caller of /internal/ingest that doesn't know a
                 # gov_id, so the ladder runs exactly as it always has.
+                #
+                # (WO-223, running concurrently, hit and independently
+                # fixed this exact gap the same evening -- confirmed live,
+                # 30+ shared-host pages landed `gov_id=rtr:unknown` before
+                # this landed. WO-222's version is kept here since it
+                # reached `main` first and already covers every sweep
+                # script that calls this shared helper, not just this one.)
                 payload = result.model_dump()
                 if gov_id:
                     payload["gov_id"] = gov_id

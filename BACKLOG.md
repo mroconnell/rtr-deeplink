@@ -161,7 +161,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (139)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (140)
+  [NEEDS-AUDIT] `wo191_access_ladder_sweep.py`'s…
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
   [NEEDS-AUDIT] A YouTube/Vimeo `channel=@handle` pin can never fix an…
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw…
@@ -1426,6 +1427,12 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `wo191_access_ladder_sweep.py`'s `tier3_pending_handler` write didn't persist during a real run, even though the run's own report recorded the tier-3 outcome correctly.**
+  - **Issue**: WO-223 (2026-09-11) ran `scripts/wo223_ladder_sweep.py` (a thin wrapper around `wo191_access_ladder_sweep.py`'s driver, same reuse pattern as WO-218's `wo218_ladder_sweep.py`) and got a real `outcome=queued_tier3_pending` row in its ladder report for Pike County, AL — which only happens after `TIER3_HANDLER` (`tier3_pending_handler`) runs successfully inside `wo134.process_row()`. But the sidecar file it's supposed to write (`wo223_tier3_pending.csv`) never appeared on disk. A direct manual call to the same function, in the same process, with the same monkeypatched path, wrote the file correctly on the first try.
+  - **Impact**: a real tier-3 find can silently lose its own pending-queue row while the ladder report still claims success, which would strand it forever (never probed, never queued) unless someone happens to notice the missing sidecar file, the way this WO did with only one candidate to check by hand.
+  - **Next action**: reproduce with a multi-candidate run that hits the tier-3 path more than once, and check whether it's an asyncio ordering/buffering interaction (the handler is a synchronous function called from inside an async row-processing loop) or something specific to how `wo223_ladder_sweep.py`'s own monkeypatching order interacts with `wo191`'s module-level `_tier3_pending_seen` cache. WO-223 worked around it by hand-reconstructing the one missing row from the ladder report's own already-recorded fields (not fabricated — byte-identical data) rather than losing the find.
+  - **Constraint**: don't assume this is specific to WO-223's own thin wrapper — WO-218's identical wrapper pattern was never checked for the same failure, since its own tier-3 candidates all went through the direct/legacy queue path, not `TIER3_HANDLER`.
+  - **History**: found live, `BACKLOG_DONE.md` WO-223, 2026-09-11.
 - **[NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh ladder run, to a same-named COUNTY — a likely name-collision bug in the registry lookup, not a real government change.**
   - **Issue**: WO-215's dry run of `scripts/backfill_gov_id.py` (restricted to `www.youtube.com,youtube.com,youtu.be`, 2026-09-11) found two `manual_override` pages whose fresh resolve landed on a county with the same name as the town: page 8226, "Ulster Town, NY" (`us:cousub:3611175935`, a real township id) resolved fresh to `us:county:36111` (Ulster **County**, NY — a different, larger government); page 8230, "Lincoln, ME" (`us:cousub:2301939475`) resolved fresh to `us:county:23015` (Lincoln **County**, ME). Both evidence strings read `us_counties.csv Ulster County` / `us_counties.csv Lincoln County` — the classifier looks like it is matching the town's own name against the *counties* table and winning, when the government at that host/page is the town, not the county.
   - **Impact**: none today — WO-215's fix protects every `manual_override` row's `gov_id` from this backfill unconditionally, so neither row is actually proposed as a change (would-change count went from 1,063 to 22, and these two are not among the 22). But the underlying resolver behavior (a town name apparently satisfying a county-table match) could misfire on a NON-override page with the same name collision and no human protecting it.

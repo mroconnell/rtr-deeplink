@@ -2497,3 +2497,4 @@ https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hoo
 https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1170	https://guadalupe.granicus.com/ViewPublisher.php?view_id=1
 https://www.youtube.com/watch?v=PqH6BABYbGg	https://www.youtube.com/user/CityofBrandonMB
 https://sccity.granicus.com/MediaPlayer.php?view_id=1&clip_id=257	https://sccity.granicus.com/account/forgotpassword
+https://youtu.be/tGIY22V-HNI?si=fc2-uWXm8KyUkDap
