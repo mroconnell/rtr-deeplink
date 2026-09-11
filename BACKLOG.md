@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (27)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (26)
   `youtube_drip.py`'s main loop has no top-level retry around a tick —…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
@@ -125,7 +125,6 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (27)
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
-  WO-174's CivicPlus probe only reached the first 1,449 of ~14,000…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
@@ -374,6 +373,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
+
+Dormant — needs a real example first `[LATER]`  (1)
+  WO-174's CivicPlus AgendaCenter guess has ~7,100 of 14,553…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -919,35 +921,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   actively (see this file's own multi-session notes) -- coordinate
   before a large restructure of `_process_gov()`'s lead loop.
 - **History:** `BACKLOG_DONE.md`'s WO-170 entry.
-
-### WO-174's CivicPlus probe only reached the first 1,449 of ~14,000 governments — continue the run `[JUST-DO-IT]`
-
-- **Issue:** WO-174 built and verified a script
-  (`scripts/wo174_pipeline.py`) that checks whether a government's
-  website runs CivicPlus's meeting-listing page and, if so, looks for a
-  real meeting with video. It only ran the first 1,449 governments (the
-  largest ones by population) before stopping on purpose to ship what it
-  found. About 12,500 governments in `rtr-business/research/
-  wo174_candidates.csv` are still unchecked, including the smaller towns
-  and townships where CivicPlus is known to be more common.
-- **Impact:** real, likely-larger yield left on the table — the checked
-  slice found CivicPlus on 6% of governments and real video on a third
-  of those; smaller municipalities/townships are expected to score
-  higher (WO-127's own finding).
-- **Next action:** run `python scripts/wo174_pipeline.py` again from the
-  repo root (no arguments) — it reads `wo174_report.csv`, skips every
-  gov_id already done, and continues in population-descending order.
-  Expect roughly a day of wall-clock time for the rest at this run's own
-  politeness pace (one government at a time, a pause between each).
-- **Constraint:** run it from a worktree with `DATABASE_URL` and
-  `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` set the way `wo174_pipeline.py`'s
-  own docstring describes (the shared `.env` cwd-walk gotcha, CLAUDE.md's
-  worktree bullet) — don't run it against a stale checkout, and don't run
-  it more than once at a time (it appends to the shared
-  `tier3_auto_transcription_queue.txt` and `tenant_overrides.csv` inside
-  the repo, and to `jurisdiction_coverage.csv` in `rtr-business`, which
-  is shared across sessions — see ENUMERATION_METHODS.md §158).
-- **History:** `BACKLOG_DONE.md`, WO-174, 2026-09-10.
 
 ### `hub_slug_aliases.csv` can only redirect an old slug to ONE new home, and `/j/cambridge` genuinely needs two `[JUST-DO-IT]`
 
@@ -6011,6 +5984,39 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `DAILY_REPORT_EMAIL_TO`'s prior `ryan@how-to-adu.com` default)
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
+## Dormant — needs a real example first `[LATER]`
+
+### WO-174's CivicPlus AgendaCenter guess has ~7,100 of 14,553 governments left, but yield fell to 0 -- resume only if worth it `[LATER]`
+
+- **Issue:** WO-174 checks whether a government's website runs
+  CivicPlus's meeting-listing page and, if so, looks for a real meeting
+  with video. Four passes covered 7,442 of 14,553 candidate governments
+  (the largest ones by population, in order) before the run was stopped
+  on purpose. The real-video yield fell every single pass: 2.3% -> 0.5%
+  -> 0.04% -> 0% (the last 883 governments, all under 5,000 population,
+  found zero real videos at all). This was `[JUST-DO-IT]` when the yield
+  was still 2.3%; it no longer is.
+- **Impact:** a real, but shrinking, amount of coverage left on the
+  table. The remaining ~7,100 governments are the smallest population
+  band in the list, exactly where the last two passes already found the
+  yield approaching zero.
+- **Next action:** run `python scripts/wo174_pipeline.py` again from the
+  repo root (no arguments) — it reads `wo174_report.csv`, skips every
+  gov_id already done, and continues in population-descending order —
+  only once there's a reason to think the remaining, smaller governments
+  are worth the wall-clock time (roughly a day at this run's politeness
+  pace) given the yield trend above. Not something to "just do."
+- **Constraint:** run it from a worktree with `DATABASE_URL` and
+  `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` set the way `wo174_pipeline.py`'s
+  own docstring describes (the shared `.env` cwd-walk gotcha, CLAUDE.md's
+  worktree bullet) — don't run it against a stale checkout, and don't run
+  it more than once at a time (it appends to the shared
+  `tier3_auto_transcription_queue.txt` and `tenant_overrides.csv` inside
+  the repo, and to `jurisdiction_coverage.csv` in `rtr-business`, which
+  is shared across sessions — see ENUMERATION_METHODS.md §158).
+- **History:** `BACKLOG_DONE.md`, WO-174 and its three continuation
+  slices, 2026-09-10/11.
+
 ## Parked deliberately — allowed back `[PARK]`
 
 ### Video-to-calendar join: match a government's video source to its own calendar by body and date `[PARK]` `[BIG]`
