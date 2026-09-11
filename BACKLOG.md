@@ -115,7 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (23)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
+  Two real domain leads found by WO-196, ready to act on but out of…
+  `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
   WO-184's own residual: the one-hop "different platform found" leads…
   4 pages from WO-188's YouTube recheck landed mis-keyed to…
@@ -141,9 +143,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (23)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
-  Production actions only Ryan should take  (7)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
+  Production actions only Ryan should take  (8)
     [HUMAN] Two real public bodies found by WO-199 have no `gov_id` in…
+    [HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -637,6 +640,60 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### Two real domain leads found by WO-196, ready to act on but out of that WO's own four-group scope `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** Investigating two WO-190 rejects (both wrongly mapped to
+  the wrong same-named government, see this WO's own `wrong-domain-
+  mapping` corrections in `jurisdiction_coverage.csv`) turned up real,
+  working domains for the CORRECT governments those tenants actually
+  belong to, neither yet recorded on that government's own row: (1)
+  `pub-whiterockcity.escribemeetings.com` is White Rock, British
+  Columbia's real eScribe tenant (`ca:csd:5915007`, currently
+  `reject_reason=no-video-found` from an earlier CivicPlus-only check) —
+  confirmed live: a real, current "Regular Council Meeting 04 August
+  2026" video exists there. (2) `walton.civicweb.net` is Walton County,
+  Florida's real CivicWeb tenant (`us:county:12131`, currently
+  `reject_reason=off-mission` from a YouTube-channel-only check) —
+  confirmed live via the page's own "Walton County" text.
+- **Impact:** two governments that currently read as no-video/off-mission
+  each have a real, untried platform lead sitting unused.
+- **Next action:** add each domain to the named row's own
+  `alternate_domains` (or resolve directly and, if it ingests clean,
+  `example_meeting_url`/`transcribed`) and run it through the normal
+  ladder.
+- **Constraint:** verify the resolved meeting is really that
+  government's own body/date before ingesting — same rule this WO's own
+  catches (Beltrami MN/Minnesota PUC-shaped) exist to enforce.
+- **History:** `BACKLOG_DONE.md`, WO-196, 2026-09-11.
+
+### `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own oEmbed API 404s for a real, playable video `[JUST-DO-IT]`
+
+- **Issue:** Beaufort County, NC's `vimeo.com/844049346` (WO-196,
+  2026-09-11) is a real county committee meeting ("Affordable Workforce
+  Housing Taskforce/Committee", confirmed via the plain page's own
+  `<title>`/`og:title`/`og:description`) that got rejected as
+  off-mission because `app/platforms/vimeo.py`'s `title = (oembed or
+  {}).get("title") or None` comes back `None` -- confirmed live: Vimeo's
+  real oEmbed endpoint (`vimeo.com/api/oembed.json?url=...`) 404s for
+  this specific video id even though the plain page (and the embed
+  player) both work fine. A blank title defeats
+  `_looks_like_real_meeting()`'s `require_allowlist` check for every
+  Vimeo candidate this happens to, the same way a missing title already
+  does for YouTube (which is why `youtube_oembed_title()` exists as a
+  fallback there).
+- **Impact:** at least one real government meeting stayed unindexed for
+  a title-fetch gap alone, not a real off-mission video. Likely affects
+  other Vimeo videos whose oEmbed also 404s.
+- **Next action:** when `_fetch_oembed()` returns `None`/no title, fall
+  back to fetching the plain page and reading its `<title>`/`og:title`
+  meta tag (a normal HTTP GET, no auth needed — confirmed live with a
+  plain `curl` and a real browser User-Agent).
+- **Constraint:** don't overwrite what the real adapter otherwise
+  produces — this is purely a title-check fallback, same scope as
+  `youtube_oembed_title()`'s own "not used to overwrite what actually
+  gets sent to /internal/ingest" rule.
+- **History:** `BACKLOG_DONE.md`, WO-196, 2026-09-11.
 
 ### `alternate_urls` entries are only ever used for their HOST, never tried directly as a candidate meeting URL `[JUST-DO-IT]`
 
@@ -1173,6 +1230,13 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`'s WO-199 entry, 2026-09-11;
     `rtr-business/research/wo199_report.csv`;
     `rtr-business/research/ENUMERATION_METHODS.md` section 247.
+
+- **[HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube channel-scan hit a 62% false-positive rate on its first pass (5 of 8 early "successes" wrong) before a channel-identity check was added; one page predates this WO entirely.**
+  - **Issue**: WO-196 re-opened WO-190's "off-mission" bucket (a real video, not a real meeting) by scanning each government's YouTube channel for a different, real meeting video. The first batch of "successes" trusted whatever channel had uploaded the ORIGINALLY-flagged bad video as if it were automatically the government's own -- exactly the assumption CLAUDE.md's coverage rules already warn against ("nothing matches to YouTube without a channel ... confirmed as the government's own"). Caught by this WO's own required hand-check of every candidate's title AND channel, same method WO-191/WO-199 already established: `suffolk-county-ma-2026-02-16-fifty-years-of-the-boston-landmarks-commission` (channel "City of Boston" -- a real, different government, `us:place:2507000`, already fully covered by its own real meeting, so nothing to re-key here), `ingham-county-mi-2024-08-07-how-does-the-board-of-canvassers-certification-work` (channel "Barb Byrum", the County Clerk's own personal/office channel, not the county's), `new-hempstead-ny-2026-09-09-board-in-brief-september-8-2026` (channel "Roanoke Valley Television - RVTV", a Virginia PEG station -- the real locality it covers wasn't identified), `granville-village-ny-2021-03-19-town-of-granville-ny-march-2021-board-meeting` (channel/title "Town of Granville, NY" -- a real, different NY government from the Village, no `gov_id` yet), `galva-city-il-2025-06-15-meeting-of-the-giants-tulsa-1967` (channel "American Giants" -- a wrestling/pop-history channel, not a government), `lexington-city-il-2022-06-19-demonic-possession-and-mental-illness` (channel "Garcia Wrestling"), `stonington-borough-ct-2026-09-08-board-of-finance-09-02-26` (channel/title "Town of Stonington, CT." -- a real, different CT government with its own elected Borough Warden making the Borough a separate entity, no `gov_id` yet for the Town). An 8th, unrelated to this WO's own run, was found in the same audit: `galva-city-il-2022-06-15-galva-il-international-fiberglass-viking` (a tourism video, from an earlier sweep).
+  - **Impact**: 8 live, indexable pages are wrong -- either a real government's real meeting keyed to the wrong government, or not a meeting at all.
+  - **Next action**: `POST /internal/admin/delete-pages` with all 8 slugs above, `dry_run=true` first. Two of the eight (Granville, Stonington) are Kind A per WO-199's own rule (`ENUMERATION_METHODS.md` section 247) -- a real different government's channel -- but neither "Town of Granville, NY" nor "Town of Stonington, CT" has a `gov_id` in `jurisdiction_coverage.csv` yet, so re-keying (rather than deleting) needs a minting decision first; delete for now either way. `jurisdiction_coverage.csv`'s own rows for the 7 governments this WO's report covers were already corrected (`reject_reason` set, `transcribed`/`shares_video` cleared) in the same commit as this WO's other findings -- only the live pages themselves are still up and wrong.
+  - **Constraint**: same as WO-191/WO-152's own precedent -- the dry-run call is expected to be blocked outright by the auto-mode safety classifier in an unattended session; this needs a human or a differently-permissioned session.
+  - **History**: `BACKLOG_DONE.md`, WO-196, 2026-09-11.
 
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
@@ -2733,25 +2797,46 @@ of human step they need.
   failure classifier would otherwise mark `YouTube: video is unavailable
   (removed or private)` — technically true in effect but wrong about why,
   so these 3 were deliberately excluded from that backfill rather than
-  mismarked.
-- **Impact**: 3 real pages whose actual video (or channel livestream) is
+  mismarked. A 4th, differently-sourced confirmed instance (WO-196,
+  2026-09-11): Paducah city, KY's CivicClerk page
+  (`paducahky.portal.civicclerk.com/event/264/media`) resolves the same
+  fake `videoseries` id — but the CivicClerk Events API's own
+  `externalMediaUrl` field for that exact event holds a real, different,
+  specific video (`https://youtu.be/W1Lyr_x5F60`, "Paducah City
+  Commission Meeting - September 8, 2026", 987 real caption segments
+  once resolved directly). So for at least this platform, the page
+  CivicClerkAssetFinder scrapes carries a generic "live now" embed
+  alongside the real archived link, and the real link is already sitting
+  in a field the adapter isn't reading — not a case needing a new
+  playlist/channel lookup like the other 3.
+- **Impact**: 4 real pages whose actual video (or channel livestream) is
   genuinely reachable never get a transcript, because nothing here can
   resolve a real single video from a live-stream/playlist embed shape.
-  Likely not limited to these 3 — any jurisdiction whose government
+  Likely not limited to these 4 — any jurisdiction whose government
   channel embeds `live_stream`/`videoseries` directly (rather than a
-  specific archived video) would hit the same bug.
+  specific archived video) would hit the same bug, and any CivicClerk
+  tenant whose event page embeds a generic livestream widget alongside
+  its real `externalMediaUrl` would hit Paducah's specific variant of it.
 - **Next action**: decide the right resolution for each shape —
   `embed/live_stream` needs the channel's *current* live video id (a
   different yt-dlp/API call than a fixed video id), `embed/videoseries`
   needs the playlist's most relevant real video, and `_VIDEO_ID_RE`
   should stop matching a truncated prefix of a longer non-id token in the
   first place (e.g. require a word boundary or exact-length match rather
-  than a bare `{11}` capture).
+  than a bare `{11}` capture). For CivicClerk specifically,
+  `CivicClerkAssetFinder.resolve()` (`app/platforms/civicclerk.py`)
+  should prefer the Events API's own `externalMediaUrl`/
+  `mediaSourcePathMp4`/`mediaStreamPath` fields (already read elsewhere —
+  see `scripts/find_tier3_short_meeting_substitutes.py`'s
+  `cc_media_path()`) over whatever it currently scrapes from the media
+  page's own HTML, which is what let Paducah's page-level `videoseries`
+  placeholder win over the API's real, specific video.
 - **Constraint**: don't guess which real video these should point to —
   verify against the real channel/playlist first, per CLAUDE.md's "test
   against a real, live URL first" rule.
 - **History**: found 2026-09-09 building WO-135's captions/embed/
-  video-unavailable markers (`BACKLOG_DONE.md`).
+  video-unavailable markers (`BACKLOG_DONE.md`); Paducah KY's
+  CivicClerk instance confirmed 2026-09-11 (WO-196, `BACKLOG_DONE.md`).
 
 ### 6 `best_effort` YouTube pages archived a promotional/off-topic video instead of the real meeting `[NEEDS-AUDIT]`
 

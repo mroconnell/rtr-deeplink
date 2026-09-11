@@ -179,6 +179,144 @@ one row per original government), `rtr-business/research/
 ENUMERATION_METHODS.md` section 247 (the reusable Kind A / Kind B
 rule). `app/utils/jurisdiction_data/tenant_overrides.csv` (3 wrong pins
 removed, 3 corrected, 4 added).
+## WO-196: working four of WO-190's leftover groups further -- 5 more real transcripts, 1 already-covered, and a 62% false-positive rate on the first channel-scan pass that a channel-identity check fixed [Done 2026-09-11]
+
+Ryan's ask: WO-190 (BACKLOG_DONE.md, above) resolved 668 never-tested
+research-file rows but left four buckets recorded as a plain "no." Work
+each further: off-mission (36 rows -- a real video, not a real meeting;
+find a real meeting video on the same domain/channel), blocked/real
+technical error (8 -- retry with other URL approaches), rejected by the
+tier-3 probe as too short/dead (2 -- take the next candidate video on
+the same channel/listing), and no-platform-link-found (118 -- one more
+hop on the domain/alternates/parent page, plus a feed/direct-media
+scan).
+
+**What was built.** `scripts/wo196_wo190_followups.py` -- like WO-190's
+own script, not a sixth ladder implementation: it imports
+`wo151_research_url_ladder_sweep`/`hub_sweep_wo126` and reuses
+`w151.process_candidate()` as the resolve+ingest engine for every
+candidate URL this script finds, so the title check, wrong-government
+checks, dedupe, probe-before-queue gate and real ingest/queue call are
+all the same, already-tested pipeline every other sweep in this repo
+uses. This script's own job is only to find each group's candidate
+URL(s): blocked rows get www/https variants, the domain,
+alternate_domains/urls, and (new) a CivicClerk tenant's own
+next-past-event listing plus the same event's own Events-API
+`externalMediaUrl` tried directly first; no-platform-link rows get the
+same alternates plus a real feed/direct-media scan
+(`<link rel=alternate type=rss>`, `RSSFeed.aspx?ModID=`,
+`.mp4/.m4a/.mp3`, `player.vimeo.com`/`youtube.com/embed`) the normal
+resolve crawl doesn't do; off-mission rows get a YouTube channel scan
+(`app/platforms/youtube_channel._list_channel()`).
+
+**Result, of 164 rows:**
+
+| Group | Count of 164 | Real find | Already covered | Still nothing |
+|---|---|---|---|---|
+| Off-mission | 36 | 4 | 0 | 32 |
+| Blocked/technical error | 8 | 1 | 1 | 6 |
+| Rejected by probe | 2 | 0 | 0 | 2 |
+| No platform link found | 118 | 0 | 0 | 118 (23 with a feed URL now on record) |
+
+**A real, serious methodology gap, caught by this WO's own required
+hand-check before it did more damage.** The off-mission group's first
+batch trusted whatever YouTube channel had uploaded the ORIGINALLY-
+flagged bad video as if it were automatically the government's own --
+exactly the assumption CLAUDE.md's coverage rules already name and warn
+against ("nothing matches to YouTube without a channel ... confirmed as
+the government's own"). Of the first 8 "successes," 5 were wrong on
+inspection (a 62% false-positive rate, far above WO-191's own 10%): a
+wrestling channel ("American Giants", "Garcia Wrestling"), a county
+clerk's personal channel ("Barb Byrum"), a real DIFFERENT government's
+channel ("City of Boston" for a Suffolk County MA row, already fully
+covered under its own real meeting so nothing to re-key), and an
+out-of-state PEG station ("Roanoke Valley Television - RVTV" for a New
+York village, real locality not identified). A 6th (Granville village,
+NY vs. a real "Town of Granville, NY" channel) and a 7th caught one
+batch later (Stonington borough, CT vs. a real "Town of Stonington,
+CT." channel -- the borough has its own elected Borough Warden, a real,
+separate government) are Kind A per WO-199's own rule
+(`ENUMERATION_METHODS.md` section 247) -- a real, different
+government's channel -- but neither Town of Granville nor Town of
+Stonington has a `gov_id` in `jurisdiction_coverage.csv` yet, so
+re-keying needs a minting decision, not something this WO did on its
+own. Fixed by adding two checks BEFORE any candidate reaches the
+resolve pipeline: the channel's own name must contain the government's
+significant name token(s), and a channel saying "Town of X"/"Township
+of X" for a government whose own row says "X village"/"X borough" (or
+the reverse) is rejected outright -- the second check exists
+specifically because the first alone still passes "Town of Granville"
+for "Granville village" (the place-name token matches; the government
+type doesn't). All 7 wrong pages, plus one pre-existing, unrelated wrong
+Galva page found in the same audit, are filed as a single `[HUMAN]`
+deletion entry in `BACKLOG.md`; `jurisdiction_coverage.csv`'s own rows
+for the 7 were corrected in this same PR (`reject_reason` set precisely
+-- `wrong-domain-mapping` for the 3 Kind-A cases, `off-mission` for the
+rest -- `transcribed`/`shares_video` cleared).
+
+**Two more real, hand-verified wrong-domain-mappings, unrelated to the
+channel-scan bug, found chasing the blocked and no-platform-link
+groups.** Walton village, NY's own `example_meeting_url` resolved to
+`walton.civicweb.net` -- confirmed live via the page's own text, this is
+Walton COUNTY, Florida's real CivicWeb tenant (`us:county:12131`, a
+real, separate row), not Walton village NY's. White Rock town, SD (pop.
+7)'s own `domain` was `pub-whiterockcity.escribemeetings.com` -- White
+Rock, British Columbia's real eScribe tenant (`ca:csd:5915007`),
+confirmed live with a real, current "Regular Council Meeting" video.
+Both corrected the same way as the channel-scan catches (wrong value
+moved to `alternate_domains`/`alternate_urls`, never blanked outright);
+both real tenants are filed as ready leads on their OWN government's row
+in `BACKLOG.md`'s "Ship next", acting on them being outside this WO's
+own four-group scope.
+
+**A real CivicClerk adapter gap, confirmed and worked around for one
+row.** Paducah city, KY's CivicClerk media page resolves a bare
+`youtube.com/embed/videoseries` placeholder (a 4th confirmed instance of
+the `_VIDEO_ID_RE` bug `BACKLOG.md` already tracks) -- but the CivicClerk
+Events API's own `externalMediaUrl` field for that exact event holds a
+real, different, specific video (`youtu.be/W1Lyr_x5F60`, 987 real
+caption segments once resolved directly, now live). Worked around in
+this script; `BACKLOG.md`'s existing entry updated with the concrete fix
+path for CivicClerk specifically.
+
+**A real Vimeo title-check gap, found and left unfixed (out of
+scope).** Beaufort County, NC's `vimeo.com/844049346` is a real
+committee meeting (confirmed via the plain page's own
+`<title>`/`og:title` -- "Affordable Workforce Housing
+Taskforce/Committee") that reads off-mission only because Vimeo's own
+oEmbed API 404s for this specific video, leaving
+`VimeoAssetFinder.resolve()`'s title blank. Filed to `BACKLOG.md` as a
+page-title fallback, the same shape `youtube_oembed_title()` already is
+for YouTube.
+
+**Caution.** The channel-scan false-positive rate above is the single
+most important number in this entry: a bare "the channel that uploaded
+X" assumption is not safe, full stop, and any future channel-scan work
+needs both a channel-identity check and a government-type (town/
+village/borough/township) check before trusting a match, not just a
+title check.
+
+**Recommendation.** Delete the 8 pages named in `BACKLOG.md`'s new
+`[HUMAN]` entry. The two ready domain leads (White Rock BC's eScribe
+tenant, Walton County FL's CivicWeb tenant) and the Vimeo title-fallback
+fix are cheap, concrete follow-ups also filed there.
+
+**Deploy status.** The 5 tier-1/2 pages ingested by this WO are already
+live now (a direct `POST /internal/ingest` call, not a deploy-gated code
+path -- independent of this PR merging). This PR itself (the script,
+`BACKLOG.md`/`BACKLOG_DONE.md` updates) needs no deploy on its own, but
+merging it does not make the 8 wrong pages disappear -- only the
+`[HUMAN]` delete-pages call does that.
+
+Files: `scripts/wo196_wo190_followups.py` (new, this repo);
+`scripts/tier3_auto_transcription_queue_probe.csv` (71 new probe rows,
+append-only); `BACKLOG.md` (one new `[HUMAN]` deletion entry, two new
+`[JUST-DO-IT]` leads, one existing `[NEEDS-AUDIT]` entry updated with a
+4th confirmed `videoseries` instance); `rtr-business/research/
+wo196_report.csv` (new, 164 rows), `research/wo196_apply_to_jc.py`
+(new, same lock/floor/atomic-write protocol as `wo190_apply_to_jc.py`),
+`research/jurisdiction_coverage.csv` (33 rows changed),
+`research/ENUMERATION_METHODS.md` section 248.
 
 ## WO-188: recheck of the 15 LocalView channels YouTube's block stopped WO-175 from finishing [Done 2026-09-11]
 
