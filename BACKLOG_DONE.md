@@ -1,5 +1,85 @@
 # Backlog — done
 
+## WO-232: audited why hubs and redirects keep needing fixes after pin work, and proposed a permanent model — read-only, no code changed [Done 2026-09-11]
+
+**What was done and why.** Ryan asked, plainly: we keep fixing hubs and
+redirects after pin work, the hubs were built before any of the
+government-id work, should we look at the whole design and fix it for
+good? This work order did the looking, not the fixing: a measured audit
+of today's hub code, plus a written proposal for a permanent design. No
+code changed. A fresh copy of every archived page (8,222 rows, pulled
+from the live site) was used to count real problems instead of guessing
+at them.
+
+**What was found.** A hub's web address (`/j/some-town-ca`) is not saved
+anywhere. It is worked out fresh, every single time someone visits it,
+from either (a) the government's official record, or (b) if there is no
+official record yet, whatever raw text happened to be on the page. That
+second path is the whole problem: anything that later gives a page an
+official record — a rename, a correction, a human fixing a wrong page,
+a bulk re-check — can change the web address out from under it, and nothing
+automatically keeps the old address working. A person has to notice and
+add a redirect by hand. That has already happened repeatedly (64 redirects
+added by hand in one afternoon alone, see the WO-209 entry below).
+
+| Result | Count of 8,222 pages | What it means |
+| --- | --- | --- |
+| Already has an official government record | 6,127 | Web address is stable today |
+| Has a government id, but no official record yet | 1,677 | Web address is temporary, built from raw text |
+| No government id at all | 198 | No stable web address possible yet |
+| Marked "unknown government" | 220 | Same as above, plus needs a person to identify it |
+| Redirects already on file for old addresses | 829 | 784 different governments have had at least one address change |
+| Redirects still needed today even though the government never moved | 5 | Two different real governments, or two records for the same one, sharing one address by coincidence |
+
+**Caution.** The 220 "unknown government" pages sit on 126 different
+hosting services. About a quarter of them are on YouTube, Vimeo, or
+similar shared services that host thousands of unrelated governments —
+those need a human to confirm the exact video before they can be keyed,
+by existing rule (WO-210). The rest — about three in four — are each on
+a hosting service used by only one government, which makes them a cheap,
+low-risk fix once someone works through the list.
+
+**Recommendation.** Give every government one permanent web address,
+decided once and never recalculated. A rename or a correction would then
+change the government's *name* but never its *address* — the address
+only changes if a person deliberately decides it should, the same rare
+event a redirect already handles today. This removes the everyday churn
+without touching anything a reader currently sees. Full reasoning,
+every number, and three follow-on options (the permanent-address change
+itself, a small rule change for which pages belong on a hub, and an
+internal-only list of the 220 unidentified pages so nobody has to export
+and search for them by hand again) are in
+`docs/investigations/hub_architecture_audit.md`.
+
+**The one decision needed.** Whether to commit to the permanent-address
+change. Once an address is frozen, fixing a naming mistake later always
+costs one redirect instead of being free — a fair trade for removing a
+problem that has come up repeatedly. See the `[HUMAN]` entry in
+`BACKLOG.md`, "Hub identity: freeze slugs to gov_id (decision)".
+
+**Deploy status.** Nothing to deploy. This work order only added a
+document and a `BACKLOG.md` entry — no code, no data, no pins.
+
+- **Issue**: hub web addresses are recalculated live from a government's
+  current record instead of being fixed once, so any identity fix
+  (rename, override, backfill, pin merge) can silently move a page's
+  address and nothing writes the redirect that keeps the old one working.
+- **Impact**: measured 829 existing redirects (784 governments), 5 hubs
+  today mixing two different identities on one address by coincidence, 47
+  pages on 4 real government hubs riding along by text coincidence with
+  an unrelated unidentified video, and 220 unidentified pages across 126
+  hosts with no single place to review them.
+- **Next action**: Ryan decides whether to commit to freezing hub
+  addresses to the government id (see the doc's options and the
+  `BACKLOG.md` `[HUMAN]` entry); once decided, it's a new, separate work
+  order to build.
+- **Constraint**: this was a read-only audit by design — no code, ingest,
+  or research-file change is part of this work order.
+- **History**: `docs/investigations/hub_architecture_audit.md`;
+  background in `STATE_HUB_PAGES.md` and `docs/COVERAGE_HANDOVER.md` §3;
+  the churn this responds to is documented in `BACKLOG_DONE.md`'s
+  WO-209/210/214/215/221 entries below.
+
 ## Recovered two BACKLOG_DONE entries a later merge silently dropped [Note 2026-09-11]
 
 Both entries below (Granicus meta-description extraction, double-encoded

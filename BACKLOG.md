@@ -147,7 +147,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (30)
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
     [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
   Production actions only Ryan should take  (10)
     [HUMAN] One YouTube video's own title disagrees with an existing…
     [HUMAN] 3 live/pending Archive pages need `POST…
@@ -159,8 +159,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
-  Decisions about already-live content  (1)
+  Decisions about already-live content  (2)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
+    [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (146)
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
@@ -1478,6 +1479,51 @@ of human step they need.
     candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
+- **[HUMAN] Hub identity: freeze slugs to gov_id (decision)**
+  - **Issue**: a `/j/{slug}` hub's slug is computed **live**, on every
+    request, from either the government registry (`hub_slug(gov)`, when
+    `gov_id` has a registry row) or the page's own raw jurisdiction text
+    (when it doesn't) — never stored, never frozen. So any operation that
+    changes what a `gov_id` resolves to (a rename, a Census correction, a
+    `POST /internal/jurisdiction/override`, a `backfill_gov_id.py --apply`
+    run, a curated-government mint getting scored) can move a page's URL,
+    and nothing writes the alias that keeps the old URL alive — that's a
+    manual, ad hoc step (`hub_slug_aliases.csv`), already skipped on
+    purpose 6 times in one afternoon (WO-209) for good reasons a human had
+    to work out case by case. Full measurement, code paths, and a worked
+    example set: `docs/investigations/hub_architecture_audit.md`.
+  - **Impact**: measured from a fresh 8,222-page export — 829 alias rows
+    exist today (784 distinct governments), 25 of them still have live
+    pages under BOTH the old and new slug at once. 5 hubs currently mix
+    2+ distinct real `gov_id`s on one slug (3 of them a minted `rtr:` id
+    colliding by coincidence with a national `us:`/`ca:` id for what looks
+    like the same real government). 4 hubs have an unrelated
+    `rtr:unknown:<host>` page riding along by raw-text coincidence (47
+    pages). None of this is visible until a reader hits a 404 or a human
+    runs an export and greps it, which is what every one of WO-209/210/
+    214/215/221 and this audit itself had to do by hand.
+  - **Next action**: the audit doc proposes minting one `hub_slug` per
+    `gov_id` (from exactly today's `hub_slug(gov)` output, so zero
+    reader-visible change on cutover), stored on the government registry
+    rather than recomputed from a page — plus a host-based (not text-
+    based) rule for letting an un-keyed page join an already-identified
+    government's hub (measured: 31 pages would gain a real hub under it,
+    with zero new ambiguity), and a token-gated internal per-host view of
+    the `rtr:unknown` bucket (220 pages, 126 hosts, 27% on a
+    `MULTI_GOV_HOSTS` host needing a per-video pin) to replace the
+    export-and-grep step. **Ryan's decision**: whether to commit to the
+    slug freeze — once frozen, a naming-convention "fix" always costs one
+    alias row instead of being free, a real permanent trade for a churn
+    source that mostly goes away. See the audit doc's §7 for the full
+    options table.
+  - **Constraint**: this is a design decision plus a migration, not a
+    same-session fix — no code was changed by the audit itself (WO-232
+    was read-only by design). Building it needs its own work order once
+    Ryan decides.
+  - **History**: `docs/investigations/hub_architecture_audit.md` (WO-232,
+    2026-09-11); background in `STATE_HUB_PAGES.md` and
+    `docs/COVERAGE_HANDOVER.md` §3; the churn this responds to is
+    documented across `BACKLOG_DONE.md`'s WO-209/210/214/215/221 entries.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
