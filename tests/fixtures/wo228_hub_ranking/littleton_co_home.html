@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js" lang="en-US">
+<!--<![endif]-->
+<head>
+	<!-- Published by OpenCities, 1.37.6.1 -->
+
+    
+        
+    
+    
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="theme-color" content="#FFFFFF"/>
+    <title>Home - Littleton CO</title>
+	<meta name="generator" content="OpenCities - https://granicus.com/product/opencities" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Using mobile-web-app-capable for now to enable full-screen experience on supported platforms -->
+    <!-- Note: This tag works mainly on Android Chrome. It does NOT enable full-screen mode on iOS Safari. -->
+    <!-- For iOS, the correct tag is: <meta name="apple-mobile-web-app-capable" content="yes"> -->
+    <!-- TODO: Monitor for updated meta tag standards from Apple or other browser vendors -->
+    <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="description" content="The official website for the City of Littleton, Colorado" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://www.littletonco.gov/Home" />
+    <meta property="og:title" content="City of Littleton, Colorado" />
+    <meta property="og:description" content="The official website for the City of Littleton, Colorado" />
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:title" content="City of Littleton, Colorado" />
+    <meta property="twitter:description" content="The official website for the City of Littleton, Colorado" />
+    <link rel="canonical" href="https://www.littletonco.gov/Home" />
+
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="/files/ocfavicon/Public/apple-touch-icon.png?V=637913649715377124">
+<link rel="icon" type="image/png" sizes="32x32" href="/files/ocfavicon/Public/favicon-32x32.png?V=637913649715377124">
+<link rel="icon" type="image/png" sizes="16x16" href="/files/ocfavicon/Public/favicon-16x16.png?V=637913649715377124">
+<link rel="manifest" href="/files/ocfavicon/Public/site.webmanifest?V=637913649715377124">
+<link rel="shortcut icon" href="/files/ocfavicon/Public/favicon.ico?V=637913649715377124">
+<meta name="msapplication-TileColor" content="#000000">
+<meta name="msapplication-config" content="/files/ocfavicon/Public/browserconfig.xml?V=637913649715377124">
+    <script>
+        (function () {
+            if (window.__UNLOAD_LAZY_PATCH__) return;
+            window.__UNLOAD_LAZY_PATCH__ = true;
+
+            var supportsPageHide = ("onpagehide" in window);
+            var mappedType = supportsPageHide ? "pagehide" : "beforeunload";
+            var nativeAdd = window.addEventListener;
+            var nativeRemove = window.removeEventListener;
+            var unloadMap = null;
+            var patched = false;
+
+            function ensurePatched() {
+                if (patched) return;
+                unloadMap = new WeakMap();
+
+                window.addEventListener = function (type, listener, options) {
+                    if (type === "unload") {
+                        var wrapped = function (evt) {
+                            if (supportsPageHide && evt.persisted) return;
+                            listener.call(this, evt);
+                        };
+                        unloadMap.set(listener, wrapped);
+                        return nativeAdd.call(this, mappedType, wrapped, options);
+                    }
+                    return nativeAdd.call(this, type, listener, options);
+                };
+
+                window.removeEventListener = function (type, listener, options) {
+                    if (type === "unload") {
+                        var wrapped = unloadMap.get(listener);
+                        if (wrapped) {
+                            nativeRemove.call(this, mappedType, wrapped, options);
+                            unloadMap.delete(listener);
+                        }
+                        return;
+                    }
+                    return nativeRemove.call(this, type, listener, options);
+                };
+
+                var orig = null;
+                Object.defineProperty(window, "onunload", {
+                    configurable: true, enumerable: true,
+                    get: function () { return orig; },
+                    set: function (h) {
+                        orig = h;
+                        if (typeof h === "function") window.addEventListener("unload", h);
+                    }
+                });
+                patched = true;
+            }
+
+            window.addEventListener = function (type, listener, options) {
+                if (type === "unload") {
+                    ensurePatched();
+                    return window.addEventListener(type, listener, options);
+                }
+                return nativeAdd.call(this, type, listener, options);
+            };
+
+            window.removeEventListener = function (type, listener, options) {
+                if (type === "unload" && !patched) {
+                    return;
+                }
+                return nativeRemove.call(this, type, listener, options);
+            };
+
+            function patchTelerik() {
+                ensurePatched();
+                var ns = window.RadAjaxNamespace;
+                if (!ns || !ns.EventManager || !ns.EventManager.Add || ns.EventManager.__UnloadPatched) return;
+                var origAdd = ns.EventManager.Add;
+                ns.EventManager.Add = function (el, evtName, handler, clientId) {
+                    if (el === window && evtName === "unload") {
+                        return window.addEventListener("unload", handler);
+                    }
+                    return origAdd.call(this, el, evtName, handler, clientId);
+                };
+                ns.EventManager.__UnloadPatched = true;
+            }
+
+            if (window.RadAjaxNamespace)
+                patchTelerik();
+            else (window.requestIdleCallback || function (cb)
+            {
+                setTimeout(cb, 120);
+            })(patchTelerik);
+        })();
+    </script>
+    <!-- Preconnecting to Google Fonts servers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Defer Roboto font loading to avoid render-blocking -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const robotoLink = document.createElement('link');
+            robotoLink.rel = 'stylesheet';
+            robotoLink.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap';
+            document.head.appendChild(robotoLink);
+        });
+    </script>
+
+    <style>
+        .gm-style, .gm-style * {
+            font-family: 'Roboto', system-ui, -apple-system, "Segoe UI", Arial, sans-serif !important;
+        }
+    </style>
+
+    <script>
+        document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, "js");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+        
+            <script type="text/javascript">
+                window.__oc_flags_ImprovedBreakpointEventHandling = true;
+            </script>
+            
+        
+    
+    
+    
+        <script type="text/javascript">
+            var __metaQueryBreakpoints = {
+                'sc-size-4': '(max-width: 480px)',
+                'sc-size-3': '(min-width: 480px) and (max-width: 768px)',
+                'sc-size-2': '(min-width: 768px) and (max-width: 992px)',
+                'sc-size-1': '(min-width: 992px)'
+            }
+
+            var __ocSizePoints = [
+                { min: 0, name: 'sc-size-4' },
+                { min: 480, name: 'sc-size-3' },
+                { min: 768, name: 'sc-size-2' },
+                { min: 992, name: 'sc-size-1' }
+            ];
+
+        </script>
+    
+
+    <!-- Framework Section -->
+    
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/jquery-3.7.1.min.js?seamlessts=639233006682621084" ><\/script>')</script>
+
+    <!--Google Maps API Loader – Improved Version to avoid Warning
+    This script loads the Google Maps JavaScript API using a dynamic and async method.
+    It replaces the old static <script> tag to avoid performance warnings from Google.
+
+    Dynamically creates the <script> tag with loading = async for better performance
+    Builds the API URL with required libraries(places, geometry, marker, geocoding)
+    Uses a Promise and callback(google.maps.__ib__) to confirm when the script is ready
+
+    It Avoids Google’s warning about direct script loading
+    Improves page load speed by loading the API asynchronously-->
+
+    
+        <script>
+            (function (root) {
+                root.OpenCities = root.OpenCities || {};
+                if (!root.OpenCities.GoogleMapsLoader) {
+                    root.OpenCities.GoogleMapsLoader = {
+                        _cbs: [],
+                        _ready: false,
+                        onReady: function (cb) {
+                            if (this._ready) { try { cb(); } catch (e) { console.error(e); } }
+                            else if (typeof cb === 'function') this._cbs.push(cb);
+                        },
+                        _fire: function () {
+                            if (this._ready) return;
+                            this._ready = true;
+                            var q = this._cbs.splice(0);
+                            for (var i = 0; i < q.length; i++) {
+                                try { q[i](); } catch (e) { console.error(e); }
+                            }
+                        }
+                    };
+                }
+            })(window);
+
+            (g => {
+                var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__",
+                    m = document, b = window;
+                b = b[c] || (b[c] = {});
+                var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams,
+                    u = () => h || (h = new Promise(async (resolve, reject) => {
+                        a = m.createElement("script");
+                        e.set("libraries", [...r] + "");
+                        for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]);
+                        e.set("callback", c + ".maps." + q);
+                        a.src = "https://maps." + c + "apis.com/maps/api/js?" + e.toString();
+                        a.loading = "async";
+                        a.async = true;
+                        a.defer = true;
+                        d[q] = resolve;
+                        a.onerror = () => reject(Error(p + " could not load."));
+                        a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+                        m.head.append(a);
+                    }));
+                if (d[l]) {
+                    console.warn(p + " only loads once. Ignoring duplicate load.");
+                } else {
+                    d[l] = (f, ...n) => (r.add(f), u().then(() => d[l](f, ...n)));
+                }
+            })({
+                key: "AIzaSyAsVQk1fI6o9ll_U47gz-2yIyIc50W5v3c",
+                v: "3.65"
+            });
+
+            (async () => {
+                try {
+                    if (!google?.maps?.importLibrary) return;
+
+                    if (!window.OpenCities.__mapsLibsPromise) {
+                        window.OpenCities.__mapsLibsPromise = Promise.all([
+                            google.maps.importLibrary('maps'),
+                            google.maps.importLibrary('places'),
+                            google.maps.importLibrary('geocoding'),
+                            google.maps.importLibrary('marker'),
+                            google.maps.importLibrary('geometry')
+                        ]);
+                    }
+                    await window.OpenCities.__mapsLibsPromise;
+
+                    if (window.OpenCities?.GoogleMapsLoader) {
+                        window.OpenCities.GoogleMapsLoader._fire();
+                    }
+                } catch (err) {
+                    console.error('Google Maps failed to initialise', err);
+                }
+            })();
+        </script>
+    
+    <script src="/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/modernizr.custom.710f3bf.js?seamlessts=639233006682621084" defer></script>
+    
+    <!--// End Framework Section -->
+    <!-- OpenCities Section -->
+    <script>
+        var OpenCities = OpenCities || {};
+        OpenCities.Paths = {
+            SiteTemplate: '/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/',
+            ThemePath: '/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/'
+        };
+    </script>
+    <script src='/ocapi/10b43ee4-b4bf-476c-b096-b12dd31034b9/en-US/websitesettings.js'></script>
+    <script src="/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/oc_head.js?applied=20260410031939"></script>
+    <!-- Script Combine. To enter debug mode for this browser session, enter OcScriptCombineDebug=true as a querystring -->
+<link href="/files/oc-templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/oc_grid.css~oc_style.css~oc_wizard_style.css~oc_main.css~oc_forms.css~oc_wizard.css~oc_wizard_menu.css~oc_main_s1.css~oc_wizard_s1.css~oc_wizard_menu_s1.css~oc_grid_s1.css~OcScriptCombine_Minify0?uniqueid=20260410031939" rel="stylesheet" type="text/css">
+    <!-- Script Combine. To enter debug mode for this browser session, enter OcScriptCombineDebug=true as a querystring -->
+<link href="/files/oc-templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/client_style.css~client.css~client_menu.css~client_s1.css~client_menu_s1.css~client_forms.css~OcScriptCombine_Minify0?uniqueid=20260410031939" rel="stylesheet" type="text/css">
+    <style type="text/css">.content-outer-container
+{
+    background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg?w=480');
+    background-color:#FFFFFF;
+}
+
+@media (min-width: 480px)
+{
+    .content-outer-container
+    {
+      background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg?w=768');
+    }
+}
+@media (min-width: 768px)
+{
+    .content-outer-container
+    {
+      background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg?w=992');
+    }
+}
+@media (min-width: 992px)
+{
+    .content-outer-container
+    {
+      background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg');
+    }
+}
+@media (min-width: 1280px)
+{
+    .content-outer-container
+    {
+      background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg');
+    }
+}
+@media (min-width: 1920px)
+{
+    .content-outer-container
+    {
+      background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg');
+    }
+}
+        </style><script>
+(function (BackgroundSettings, $, undefined) {
+    BackgroundSettings.initialise = function () {
+        this.Application = {"CSSSelector":".content-outer-container","EnableFade":false};
+    };
+} (OpenCities.BackgroundSettings = OpenCities.BackgroundSettings || {}, jQuery));
+OpenCities.BackgroundSettings.initialise();
+</script>
+    
+    <!-- Script Combine. To enter debug mode for this browser session, enter OcScriptCombineDebug=true as a querystring -->
+<link href="/files/oc-templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/oc_print.css~client_print.css~OcScriptCombine_Minify0?uniqueid=20260410031939" rel="stylesheet" type="text/css" media="print">
+    <!-- Script Combine. To enter debug mode for this browser session, enter OcScriptCombineDebug=true as a querystring -->
+<script src="/files/oc-templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/278/external_plugins.js~oc_form_helper.js~oc_main.js~plugins.js~oc_main_init.js~OcScriptCombine_Minify0?uniqueid=20260410031939" defer="true"></script>
+    <script type="text/javascript" src="//script.crazyegg.com/pages/scripts/0007/0744.js" async="async" ></script>
+<!-- Heatmapping Code-->
+<script async defer src="https://tools.luckyorange.com/core/lo.js?site-id=eb1e5a1c"></script>
+<!-- End Heatmapping code -->
+    
+
+                                <script>!function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="DYTCK-JM9C8-ED4EP-C3GGK-Z575H",function(){function e(){if(!r){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.appendChild(e),r=!0}}function t(e){r=!0;var n,t,a,i,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",i=(a.frameElement||a).style,i.width=0,i.height=0,i.border=0,i.display="none",o.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void 0;",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write("<bo"+"dy onload='document._boomrl();'>");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=14,window.BOOMR.url=n+"DYTCK-JM9C8-ED4EP-C3GGK-Z575H";var i=document.currentScript||document.getElementsByTagName("script")[0],o=i.parentNode,r=!1,d=document.createElement("link");if(d.relList&&"function"==typeof d.relList.supports&&d.relList.supports("preload")&&"as"in d)window.BOOMR.snippetMethod="p",d.href=window.BOOMR.url,d.rel="preload",d.as="script",d.addEventListener("load",e),d.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!r)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.appendChild(d);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="",a="eyaboaecqcadajqacqdduaaabnvkjcgl-f-592949cc7-clienttons-s.akamaihd.net",i="false"=="true"?2:1,o={"ak.v":"41","ak.cp":"1700625","ak.ai":parseInt("1075935",10),"ak.ol":"0","ak.cr":72,"ak.ipv":6,"ak.proto":"http/1.1","ak.rid":"569ecb1","ak.r":43973,"ak.a2":n,"ak.m":"dscb","ak.n":"essl","ak.cport":57872,"ak.gh":"23.216.148.150","ak.quicv":"","ak.tlsv":"tls1.3","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"bbr","ak.t":"1789167819","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==ue+zNYkfN/xVIqMW8Q/LlyTWwZ5s1BmTlgnfqoXHqLxJJTHFdqGKOr28RhzZfCzdf90FRa6vrfOdY85bkz9No/9Pgc9GQzZS5c+lhwgnPAW02oRzlx1MMTBowrp+NrQFBLtfJfwgytBJ1OGVmjbt+oyiDLOrhjlG2y3H7YGS1WnaN8WEyHKtGspEMH7S+PwVbhfyT9FekkZV3TGbWo1h3FUaBwH1kCupV8qSgRxhfuvke74zrg40+TIkd7PrbGtp4VMRvqbIRGmnaaasuGMSF+EbWFAR+s+vSlnmreZXC8aLro5qu2nHggXWnqPPG9QgsIimxjU5jXCKqUqcLg77FOHqGk1tdlSow74qiL3uG2cXgrBP2d/lVJETM+VyoUNu0WTtEJCL/yjr4R2RI2Q+RRD/p7dK9fihT735agr6Zh8=","ak.pv":"336","ak.dpoabenc":"","ak.tf":i};if(""!==t)o["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))o["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(o)},rv:function(){var e=["ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:o,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);</script></head>
+<body class="body layout-modern  site-search-always-visble  content-type-oc-profile content-template-oc-default group-template-oc-empty-with-default-header page-name-home page-sequence-1 page-depth-1 page-section-1 website-type-primary device-desktop " id="body-top">
+    <div id="skip-to-content-container">
+        <a href="#main-content" class="visuallyhidden focusable" id="skip-to-content-link">Skip to main content</a>
+    </div>
+    <script>
+        // OCNOW-11988 (Cursor): Proactively focus skip link when returning from browser chrome.
+        // Must run inline (not deferred oc_main.js) so focus is intercepted before NVDA speaks footer.
+        (function () {
+            var awaitingReentry = false;
+            var inertSupported = 'inert' in HTMLElement.prototype;
+
+            function isExplicitlyOutsideDocument(node) {
+                return node != null && !document.documentElement.contains(node);
+            }
+
+            function getSkipContainer() {
+                return document.getElementById('skip-to-content-container');
+            }
+
+            function getSkipLink() {
+                return document.getElementById('skip-to-content-link');
+            }
+
+            function applyGuard() {
+                awaitingReentry = true;
+                if (!inertSupported) {
+                    return;
+                }
+                var skipContainer = getSkipContainer();
+                var children = document.body.children;
+                for (var i = 0; i < children.length; i++) {
+                    if (children[i] !== skipContainer) {
+                        children[i].setAttribute('inert', '');
+                    }
+                }
+            }
+
+            function clearGuard() {
+                awaitingReentry = false;
+                if (!inertSupported) {
+                    return;
+                }
+                var children = document.body.children;
+                for (var i = 0; i < children.length; i++) {
+                    children[i].removeAttribute('inert');
+                }
+            }
+
+            function isSkipLinkElement(target) {
+                if (!target) {
+                    return false;
+                }
+                var skipContainer = getSkipContainer();
+                return target.id === 'skip-to-content-link' ||
+                    (skipContainer && skipContainer.contains(target));
+            }
+
+            function focusSkipLink() {
+                var skipLink = getSkipLink();
+                if (!skipLink) {
+                    return;
+                }
+                if (window.scrollY > 0) {
+                    window.scrollTo(0, 0);
+                }
+                skipLink.focus({ preventScroll: true });
+            }
+
+            function scheduleGuardIfDocumentLostFocus() {
+                window.setTimeout(function () {
+                    if (!document.hasFocus()) {
+                        applyGuard();
+                    }
+                }, 0);
+            }
+
+            document.addEventListener('focusout', function (e) {
+                if (isExplicitlyOutsideDocument(e.relatedTarget)) {
+                    applyGuard();
+                }
+            }, true);
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') {
+                    scheduleGuardIfDocumentLostFocus();
+                } else if (e.key === 'F6' || (e.key === 'l' && e.ctrlKey)) {
+                    scheduleGuardIfDocumentLostFocus();
+                }
+            }, true);
+
+            window.addEventListener('focus', function () {
+                if (!awaitingReentry) {
+                    return;
+                }
+                applyGuard();
+                focusSkipLink();
+            }, true);
+
+            document.addEventListener('focusin', function (e) {
+                var reentryFromChrome = awaitingReentry || isExplicitlyOutsideDocument(e.relatedTarget);
+                if (!reentryFromChrome) {
+                    return;
+                }
+                if (isSkipLinkElement(e.target)) {
+                    clearGuard();
+                    return;
+                }
+                applyGuard();
+                focusSkipLink();
+                clearGuard();
+            }, true);
+        })();
+    </script>
+    <form name="mainForm" method="post" action="/Home" id="mainForm">
+<input type="hidden" name="ctl04_seamless_script_manager_TSM" id="ctl04_seamless_script_manager_TSM" value="" />
+<input type="hidden" name="__SEAMLESSVIEWSTATE" id="__SEAMLESSVIEWSTATE" value="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" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="" />
+
+
+<script src="/Telerik.Web.UI.WebResource.axd?_TSM_HiddenField_=ctl04_seamless_script_manager_TSM&amp;compress=1&amp;_TSM_CombinedScripts_=%3b%3bSystem.Web.Extensions%2c+Version%3d4.0.0.0%2c+Culture%3dneutral%2c+PublicKeyToken%3d31bf3856ad364e35%3aen-GB%3add3ac3d5-1e29-4112-8fed-529caffa8f24%3aea597d4b%3bOpenCities.CustomControls%3aen-GB%3a8875e443-f2ef-457b-94fb-857d92f72782%3a8e1d32bf" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=Dgt4HF_ft_aJ1oNhpkWrMiNDmBLKt_DsvWnSAz2w6tEELqoI6U0la4w2SXOqY6aKSQopJdYQ7QqurDo6luOWtmOtc0ilepv84Pn5KcIhMMrgeTsEf5EuV8_Sa3cCDWfG--Hnf94oO4VdVbckSgJaVhayxbZ7XIfk_l5vwX8rf1j3PHHLVdsirYnSQi7H-FBaAoI8vrsBRaLWZaSMhQbjtYYKqDWglhIGGk6W571YqSk-uulGq2FPvDWIH4jcRJViiV9xArPU8giGtZPgZuzgazGDA9l8J7QQlNhfdKhxD-RT-xq7lTMNzZtN4P2818X2kcTOPsVXuC5sJXLwZ_95djU3-fBGudmoTPxL2612tOyiZZah_zDS4uE2zWSOvuEiX7jWqffsB-AvNOYbMeUCVMkDWwxm4SnM9P_FzJ7I9RNhaF2SxAANL2e2AV_KOoQt0" type="text/javascript"></script>
+    
+<script type="text/javascript">
+    try{
+        function SeamlessEndRequestHandler(sender, args) {
+            try {
+                var dataItems = args.get_dataItems();
+                if(dataItems.ctl04_seamless_script_manager)
+                    document.getElementById('__SEAMLESSVIEWSTATE').value = dataItems.ctl04_seamless_script_manager;
+            }
+            catch (e) { }
+        }
+
+        Sys.WebForms.PageRequestManager.getInstance().add_endRequest(SeamlessEndRequestHandler);
+    }
+    catch (e) { }
+</script>
+
+    <div class="unsupported-browser-warning js-element"></div>
+    
+    <div hidden>
+        <span id="new-window-0">opens in new tab or window </span>
+    </div>
+    <div class="overlay-container"></div>
+    
+    <div class="background-container">
+        <div class="page-container">
+            <!-- OC Layout Element GROUP TEMPLATE -->
+            <!--groupTemplateStart--><header>
+            <div class="print-header-outer-container print-element">
+<img src="/files/templates/00000000-0000-0000-0000-000000000000/47bf19d6-c3ee-4850-badb-5b0d84243d0a/v/277/print-header.png" alt="City of Littleton, Colorado - Logo" />
+</div>
+            <div class="toolbar-outer-container">
+  <div class="toolbar-inner-container clearfix">
+    <div class="toolbar-item toolbar-quicklinks toolbar-display-dropdown">
+	<button type="button" aria-controls="toolbar-quicklinks-drop-down" aria-expanded="false" class="toolbar-button toolbar-button-quicklinks js-element"><span>Quick Links</span><i aria-hidden="true"></i></button>	
+	<div id="toolbar-quicklinks-drop-down" class="toolbar-drop-down toolbar-quicklinks-drop-down clearfix">
+		<ul>
+		  <li><a href="https://www.littletonco.gov/Contact-the-City-of-Littleton" class="oc-icon-b oc-i--none link-type-internal"><span>Submit a Request</span></a></li><li><a href="https://www.littletonco.gov/I-Want-To/All-City-Services" class="oc-icon-b oc-i--none link-type-internal"><span>Services</span></a></li>
+		</ul>
+	</div>
+</div><div class="toolbar-item toolbar-language notranslate toolbar-display-dropdown"><div class="no-js-element">
+		  <ul>
+		    <li id="toolbar-language-option-en-us-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=en-US" class="lang-item lang-en-us" data-translate-to="en-us" lang="en-US">English<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-es-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=es" class="lang-item lang-es" data-translate-to="es" lang="es">Spanish<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-zh-cn-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=zh-CN" class="lang-item lang-zh-cn" data-translate-to="zh-cn" lang="zh-CN">Chinese (Simplified)<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-ko-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=ko" class="lang-item lang-ko" data-translate-to="ko" lang="ko">Korean<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-ru-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=ru" class="lang-item lang-ru" data-translate-to="ru" lang="ru">Russian<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-vi-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=vi" class="lang-item lang-vi" data-translate-to="vi" lang="vi">Vietnamese<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li id="toolbar-language-option-ar-noscript"><a href="https://www.littletonco.gov/Home?oc_lang=ar" class="lang-item lang-ar" data-translate-to="ar" lang="ar">Arabic<span class="visuallyhidden"> Select this as your preferred language</span></a></li>
+          </ul>
+		</div>
+	<button type="button" role="combobox" aria-controls="toolbar-language-drop-down" aria-expanded="false" aria-haspopup="listbox" aria-autocomplete="none" aria-labelledby="toolbar-language-label" class="toolbar-button toolbar-button-language js-element">  
+        <span class="toolbar-language-globe-icon" aria-hidden="true"></span>
+        <span id="toolbar-language-label" class="current-language">
+            Select a language to translate to
+		</span>
+		<i aria-hidden="true"></i>
+	</button>
+	<div id="toolbar-language-drop-down" role="listbox" aria-label="Available languages" class="toolbar-drop-down toolbar-language-drop-down js-element clearfix">
+		<ul role="group">
+		    <li role="presentation"><a id="toolbar-language-option-en-us" role="option" aria-selected="true" href="https://www.littletonco.gov/Home?oc_lang=en-US" class="lang-item lang-en-us" data-translate-to="en-us" lang="en-US">English<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-es" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=es" class="lang-item lang-es" data-translate-to="es" lang="es">Spanish<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-zh-cn" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=zh-CN" class="lang-item lang-zh-cn" data-translate-to="zh-cn" lang="zh-CN">Chinese (Simplified)<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-ko" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=ko" class="lang-item lang-ko" data-translate-to="ko" lang="ko">Korean<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-ru" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=ru" class="lang-item lang-ru" data-translate-to="ru" lang="ru">Russian<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-vi" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=vi" class="lang-item lang-vi" data-translate-to="vi" lang="vi">Vietnamese<span class="visuallyhidden"> Select this as your preferred language</span></a></li><li role="presentation"><a id="toolbar-language-option-ar" role="option" aria-selected="false" href="https://www.littletonco.gov/Home?oc_lang=ar" class="lang-item lang-ar" data-translate-to="ar" lang="ar">Arabic<span class="visuallyhidden"> Select this as your preferred language</span></a></li>
+        </ul>
+	</div></div>
+  </div>
+</div>
+            <div class="header-outer-container">
+    <div class="header-container header-layout-4  clearfix">
+			<div class="header-site-logo">
+				<a href="https://www.littletonco.gov/Home" lang="en-US" aria-label="City of Littleton, Colorado - Home - Logo">
+				</a>
+			</div>
+      
+		    <div class="mobile-search-btn js-element">
+		        <button><i aria-hidden="true"></i><span class="mobile-search-btn-text"><span class="visuallyhidden">Open </span>Search</span></button>
+		    </div>
+		    <div class="header-website-settings">
+                <button id="btn-mob-nav" type="button" aria-expanded="false" aria-controls="nav">
+                    <i aria-hidden="true"></i><span class="side-menu-btn-text">Menu</span>
+                </button>
+        	</div>
+          <div class="navigation-outer-container">
+	<div id="nav" role="navigation" class="navigation-container  navigation-container-option-8" data-menu-type="horizontal" aria-label="primary">
+        <div class="grid">
+            <div class="col-xs-12">              
+                <ul class="sf-menu mega-menu" id="sc-main-menu"><li class="nav-section-quarters-1   first-item nav-item-seq-1">
+<a href="https://www.littletonco.gov/Community" class="nav-level-1 nav-has-children"  target="">
+	<i class="item-icon" aria-hidden="true"></i><span class="item-text">Community</span>
+</a>
+<button aria-label="Expand" aria-controls="sc-menu-second-level-nav-item-seq-1" aria-haspopup="true" class="mobnav-subarrow" ><i aria-hidden="true"></i></button>
+<ul id="sc-menu-second-level-nav-item-seq-1" class="second-level-container ch-10">
+
+          
+            <li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources" class="nav-has-children"  target="">Resident Resources</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-1-nav-item-seq-1" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-1-nav-item-seq-1" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Community-Links"  target="">Community Links</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Demographics"  target="">Demographics</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Littleton-8-TV"  target="">Littleton 8 TV</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Homeowners-Associations"  target="">Homeowners Associations</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/New-to-Littleton"  target="">New to Littleton</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Resources-and-Assistance-for-Littleton-Residents"  target="">Resources and Assistance for Littleton Residents</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Resident-Resources/Littleton-Immigrant-Resources-Center"  target="_self">Littleton Immigrant Resources Center</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/City-Calendars" class="nav-has-children"  target="">City Calendars</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-1-nav-item-seq-2" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-1-nav-item-seq-2" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/City-Calendars/Tentative-Council-Meeting-Calendar"  target="">Tentative Council Meeting Calendar</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/City-Calendars/Mtgs-Events"  target="_self">City Events Calendar</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/City-Calendars/Upcoming-Mtgs-List"  target="_self">Upcoming Meetings List</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Cupola-Cam" class=""  target="">Cupola Cam</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Calendar-Photo-Contest" class=""  target="">Annual Calendar Photo Contest</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery" class="nav-has-children"  target="">Map Gallery</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-1-nav-item-seq-5" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-1-nav-item-seq-5" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Address-Wizard"  target="">Address Wizard</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Zoning-Portal-Map"  target="_blank">Zoning Portal Map</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Special-District-Look-Up-Map"  target="_blank">Special District Look Up Map</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Littleton-City-Limits-and-Places"  target="">Littleton City Limits and Places</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Capital-Projects-Dashboard"  target="_blank">Capital Projects Dashboard</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/City-of-Littleton-Neighborhoods"  target="_blank">City of Littleton Neighborhoods</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/GIS-Open-Data-Portal"  target="_blank">GIS Open Data Portal</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Map-Gallery/Parking-Permit-Look-Up-and-Map"  target="_self">Parking Permit Look Up and Map</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton" class="nav-has-children"  target="">Visit Littleton</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-1-nav-item-seq-6" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-1-nav-item-seq-6" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton/Visit-Littleton"  target="_blank">Visit Littleton — The Website</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton/Littleton-History"  target="_blank">Littleton History</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton/Parks-and-Trails"  target="">Parks and Trails</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton/Things-To-Do"  target="">Things To Do</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Visit-Littleton/Historic-Walking-Tour-Things-to-Do"  target="_blank">Historic Walking Tour</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Bemis-Public-Library" class=""  target="_blank">Bemis Public Library</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Littleton-Museum" class=""  target="_blank">Littleton Museum</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability" class="nav-has-children"  target="">Sustainability</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-1-nav-item-seq-9" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-1-nav-item-seq-9" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Residential-Programs"  target="">Residential Programs</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Green-Business"  target="_self">Green Business Program</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Learn-about-the-Environmental-Stewardship-Board"  target="">Environmental Stewardship Board (ESB)</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Greenhouse-Gas-Inventory"  target="">Greenhouse Gas Inventory</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Climate"  target="">Climate Risk and Vulnerability Assessment</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Community/Sustainability/Trash-and-Recycling-Services"  target="_self">Trash and Recycling Services</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Community/Geneva-Village" class=""  target="">Geneva Village</a></li></ul></li>
+          
+            <li class="nav-section-quarters-1   nav-item-seq-2">
+<a href="https://www.littletonco.gov/Government" class="nav-level-1 nav-has-children"  target="">Government</a>
+<button aria-label="Expand" aria-controls="sc-menu-second-level-nav-item-seq-2" aria-haspopup="true" class="mobnav-subarrow" ><i aria-hidden="true"></i></button>
+<ul id="sc-menu-second-level-nav-item-seq-2" class="second-level-container ch-15">
+
+          
+            <li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-Services" class="nav-has-children"  target="">City Services</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-1" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-1" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Services/Online-Payments"  target="">Online Payments</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Services/Other-Agency-Services"  target="">Other Agency Services</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Services/SeeClickFix-Littleton"  target="_blank">SeeClickFix and Contacting the City</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Services/Transportation"  target="">Transportation</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Services/Utilities"  target="">Utilities</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-Calendars" class=""  target="_self">City Calendars</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-News" class="nav-has-children"  target="">City News</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-3" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-3" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-News/Littleton-Report"  target="">Littleton Report</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-News/Littleton-Links-e-Newsletter"  target="">Littleton Links  e-Newsletter</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-News/Stay-Connected"  target="">Stay Connected</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Notices-Reports-Records" class="nav-has-children"  target="">Notices, Reports, Records</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-4" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-4" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Notices-Reports-Records/Legal-Notices"  target="">Legal Notices and Public Hearings</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Notices-Reports-Records/Financial-Reports"  target="_self">Financial Reports</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Notices-Reports-Records/Resident-and-Business-Surveys"  target="">Resident and Business Surveys</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership" class="nav-has-children"  target="">Littleton Leadership</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-5" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-5" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/City-Council-Members"  target="">City Council Members</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions"  target="">Boards and Commissions</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/City-Council-Meetings"  target="_self">City Council Meetings</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Upcoming-City-Meetings"  target="_self">Upcoming City Meetings</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Meeting-Videos-Agendas"  target="">Meeting Videos & Agendas</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/2027-Local-Partnership-Funding"  target="">2027 Local Partnership Funding</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Citizens-Guide-to-City-Council-Meetings"  target="">Citizens Guide to City Council Meetings</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Meeting-Procedures-and-Public-Participation"  target="">Meeting Procedures and Public Participation</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Tentative-Council-Meeting-Calendar"  target="_self">Tentative Council Meeting Calendar</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Council-Orientation"  target="">Council Orientation</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Annual-Reports"  target="">Annual Reports</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Departments" class=""  target="">Departments</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Elections" class=""  target="_self">Elections</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-Permits-and-Licenses" class=""  target="">City Permits and Licenses</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies" class="nav-has-children"  target="">City Policies</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-9" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-9" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/Open-Records-Request"  target="">Open Records Request</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/Media-Relations-Policy"  target="">Media Relations Policy</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/Social-Media-Policies"  target="">Social Media Policies</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/City-Logos-Logo-Use-Policy"  target="">City Logos & Logo Use Policy</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/Severe-Weather-Closure-Notification"  target="">Severe Weather Closure Notification</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/City-Policies/Digital-Accessibility-Statement"  target="">Digital Accessibility Statement</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Programs-and-Initiatives" class="nav-has-children"  target="">Programs and Initiatives</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-2-nav-item-seq-10" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-2-nav-item-seq-10" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Programs-and-Initiatives/Homelessness-Initiatives"  target="">Homelessness Initiatives</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Programs-and-Initiatives/Affordable-Housing-Down-Payment-Assistance-Program"  target="">Affordable Housing Down Payment Assistance Program</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Government/Programs-and-Initiatives/Resident-and-Business-Surveys"  target="_self">Resident and Business Surveys</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Charter-and-City-Code" class=""  target="_self">Charter and City Code</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Important-Phone-Numbers" class=""  target="">Important Phone Numbers</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Careers" class=""  target="_blank">Careers</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/Contact-the-City-of-Littleton" class=""  target="_self">Contact the City of Littleton</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Government/City-Organization" class=""  target="">City Organization Chart</a></li></ul></li>
+          
+            <li class="nav-section-quarters-2   nav-item-seq-3">
+<a href="https://www.littletonco.gov/Building-Development" class="nav-level-1 nav-has-children"  target="">Building & Development</a>
+<button aria-label="Expand" aria-controls="sc-menu-second-level-nav-item-seq-3" aria-haspopup="true" class="mobnav-subarrow" ><i aria-hidden="true"></i></button>
+<ul id="sc-menu-second-level-nav-item-seq-3" class="second-level-container ch-13">
+
+          
+            <li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Address-Wizard-Redirect" class=""  target="_self">Address Wizard</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Activity-List" class=""  target="">Development Activity List</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Map-Gallery-Redirect" class=""  target="_self">Map Gallery</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/eTRAKiT-Online-System" class="nav-has-children"  target="">eTRAKiT Online System</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-4" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-4" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/eTRAKiT-Online-System/eTRAKiT-FAQ"  target="">eTRAKiT FAQs</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/eTRAKiT-Online-System/eTRAKiT-Help-Guides"  target="">eTRAKiT Help Guides</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements" class="nav-has-children"  target="">Permits, Review Guides, and Requirements</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-5" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-5" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Building-Inspections"  target="">Building Inspections</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Building-Codes-Amendments-Division-Policies"  target="">Building Codes and Amendments</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Permit-Fee-Schedules"  target="">Permit Fee Schedules</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Fence-Requirements"  target="">Fence Requirements</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Right-of-Way-Grading-Floodplain-Access-Permits"  target="">Right of Way, Grading, Floodplain, Access Permits</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Permits-Review-Guides-and-Requirements/Arborist-Licenses_"  target="_self">Arborist Licenses</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Contractor-Licensing-Renewal-Process-Redirect-do-not-edit" class=""  target="_self">Contractor Licensing & Renewal Process</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Short-Term-Rental-STR-License" class=""  target="_self">Short-Term Rental (STR) License</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Code-Compliance" class="nav-has-children"  target="">Code Compliance</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-8" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-8" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Code-Compliance/SeeClickFix-Littleton-Redirect"  target="_self">SeeClickFix Littleton</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Land-Planning-Entitlement" class="nav-has-children"  target="">Land Planning & Entitlement</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-9" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-9" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Land-Planning-Entitlement/Plans-and-Regulations"  target="">Plans & Zoning Regulations</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Land-Planning-Entitlement/Legal-Notices-Public-Hearings"  target="">Public Hearing Preparation & Legal Notice</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Land-Planning-Entitlement/Development-Process-Applications"  target="">Development Process & Applications</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Land-Planning-Entitlement/Development-Application-Fees"  target="">Development Application Fees</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation" class="nav-has-children"  target="">Historic Preservation</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-10" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-10" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Littleton-Historic-Landmarks-and-Districts"  target="">Littleton Historic Landmarks and Districts</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Historic-Littleton-Buildings"  target="">Historic Littleton Buildings</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Historic-Resources"  target="">Historic Resources</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Historic-Walking-Tour"  target="_blank">Historic Walking Tour</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Downtown-Historic-District-Grant-Program"  target="">Downtown Historic District Grant Program</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Historic-Preservation/Littleton-Legacy-List"  target="">Littleton Legacy List</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Engineering" class="nav-has-children"  target="">Development Engineering</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-11" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-11" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Engineering/Development-Process-Applications"  target="_self">Development Process & Applications</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Engineering/Public-Works-Engineering"  target="_self">Public Works & Engineering</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Engineering/Right-of-Way-Grading-Floodplain-Access-Permits"  target="_self">Right of Way, Grading, Floodplain, Access Permits</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Development-Engineering/Demolition-Submittal-Requirements"  target="_self">Demolition Submittal Requirements</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Public-Works-Projects" class="nav-has-children"  target="_self">Public Works Projects</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-3-nav-item-seq-12" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-3-nav-item-seq-12" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Public-Works-Projects/Big-Things-Littleton"  target="_blank">Big Things Littleton</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Public-Works-Projects/Capital-Projects-Dashboard"  target="_blank">Capital Projects Dashboard</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Building-Development/Public-Works-Projects/Cone-Zone"  target="_self">Cone Zone</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Building-Development/Make-an-Appointment-with-Development-Review" class=""  target="">Make an Appointment with Development Review or Submit a Question</a></li></ul></li>
+          
+            <li class="nav-section-quarters-2   nav-item-seq-4">
+<a href="https://www.littletonco.gov/Business" class="nav-level-1 nav-has-children"  target="">Business</a>
+<button aria-label="Expand" aria-controls="sc-menu-second-level-nav-item-seq-4" aria-haspopup="true" class="mobnav-subarrow" ><i aria-hidden="true"></i></button>
+<ul id="sc-menu-second-level-nav-item-seq-4" class="second-level-container ch-8">
+
+          
+            <li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Business-License" class="nav-has-children"  target="">Business License</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-1" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-1" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-License/Liquor-Licenses"  target="">Liquor Licenses</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-License/Short-Term-Rental-STR-License"  target="">Short-Term Rental (STR) License</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-License/Business-and-Sales-Use-Tax-License"  target="_self">Business & Sales/Use Tax License</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Business-Services" class="nav-has-children"  target="">Business Services</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-2" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-2" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Services/Starting-Your-Business"  target="">Starting Your Business</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Services/Expanding-Your-Business"  target="">Expanding Your Business</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Services/Moving-Your-Business"  target="">Moving Your Business</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Incentives-Financing" class="nav-has-children"  target="">Incentives & Financing</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-3" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-3" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Incentives-Financing/Local-Grants-Incentives"  target="">Local Grants & Incentives</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Incentives-Financing/Finances-Funding"  target="">Finances & Funding</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Economic-Development" class="nav-has-children"  target="">Economic Development</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-4" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-4" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Economic-Development/Request-a-Meeting"  target="_blank">Request a Meeting</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Economic-Development/Business-and-Development-Newsletter"  target="">Business and Development Newsletter</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Economic-Development/Comprehensive-Economic-Development-Strategic-Plan"  target="_blank">Comprehensive Economic Development Strategic Plan</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Economic-Development/Reports"  target="">Reports</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Workforce-Development" class="nav-has-children"  target="">Workforce Development</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-5" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-5" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Workforce-Development/Workforce-Programs"  target="">Workforce Programs</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Choose-Littleton" class="nav-has-children"  target="">Choose Littleton</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-6" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-6" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Choose-Littleton/Strategic-Partners"  target="">Strategic Partners</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Choose-Littleton/Littleton-Advantage"  target="">Littleton Advantage</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Choose-Littleton/Testimonials"  target="">Testimonials</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Site-Selection" class="nav-has-children"  target="">Site Selection</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-7" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-7" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Site-Selection/Data-Demographics"  target="">Data & Demographics</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Site-Selection/Commercial-Real-Estate"  target="">Commercial Real Estate</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Site-Selection/Retail-Opportunities"  target="_blank">Retail Opportunities</a></li></ul></li><li class="second-level-item  "><a href="https://www.littletonco.gov/Business/Business-Programs" class="nav-has-children"  target="">Business Programs</a><button aria-label="Expand" aria-controls="sc-menu-third-level-nav-item-seq-4-nav-item-seq-8" class="mobnav-subarrow-child"><i aria-hidden="true"></i>
+              </button>
+<ul  id="sc-menu-third-level-nav-item-seq-4-nav-item-seq-8" class="third-level-container">
+          
+            <li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Programs/Downtown-Wayfinding-Program"  target="">Downtown Wayfinding Program</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Programs/Shop-Local-Rewards"  target="">Shop Local Rewards</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Programs/Cutting-Edge-Award"  target="">Cutting-Edge Award</a></li><li  class="third-level-item  "><a href="https://www.littletonco.gov/Business/Business-Programs/Green-Business-Program"  target="">Green Business Program</a></li></ul></li></ul></li>
+          
+            <li class="nav-section-quarters-3   nav-item-seq-5">
+<a href="https://www.littletonco.gov/I-Want-To" class="nav-level-1 nav-has-children"  target="">I Want To...</a>
+<button aria-label="Expand" aria-controls="sc-menu-second-level-nav-item-seq-5" aria-haspopup="true" class="mobnav-subarrow" ><i aria-hidden="true"></i></button>
+<ul id="sc-menu-second-level-nav-item-seq-5" class="second-level-container ch-11">
+
+          
+            <li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/All-City-Services" class=""  target="">View All City Services</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Apply" class=""  target="">Apply</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Contact" class=""  target="">Contact</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Dispose" class=""  target="">Dispose</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Learn" class=""  target="">Learn</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Locate" class=""  target="">Locate</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Reserve" class=""  target="">Reserve</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Ride" class=""  target="">Ride</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Watch" class=""  target="">View & Watch</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Volunteer" class=""  target="">Volunteer</a></li><li class="second-level-item  "><a href="https://www.littletonco.gov/I-Want-To/Work" class=""  target="_blank">Work</a></li></ul></li>
+          
+            </ul>
+            </div>
+        </div>
+    </div>
+</div>
+			
+			<div class="header-search-control-container" id="header-search">
+				<div class="search-inner-container">
+					<div class="sc-search-panel">
+	<label for="ctl08_txtSearch" id="ctl08_lblSearch" class="sc-search-label">Search</label><input name="ctl08$txtSearch" type="text" id="ctl08_txtSearch" class="sc-search-text" placeholder="What can we help you find?" /><input type="submit" name="ctl08$btnSearch" value="Search" id="ctl08_btnSearch" class="sc-search-button" />
+</div>
+					<div role="status" id="predictiveResults"></div>
+				</div>
+			</div>
+    </div>
+</div>
+
+            
+            </header>
+            <div class="content-outer-container">
+                <div id="main" role="main" class="main-outer-container no-background clearfix">
+                        <div class="content-main-container">
+                                                    
+                            <!-- OC Layout Element Conent Template -->
+                            <!--normalTemplateStart--><div class="visuallyhidden"><h1 class='oc-page-title '>Home</h1></div><div id="main-content"><section class="row-index-1"><div class="row-container full-width clearfix"><div class="row-content-container fixed-width clearfix">
+
+
+<div class="embed-featured-background" style="background-image:url('/files/sharedassets/public/v/1/logos-amp-icons/banner-images/done/bg-spring-clark-highline-view.jpg');"></div>
+
+
+
+
+
+
+</div></div></section><section class="row-index-2"><div class="row-container full-width clearfix"><div class="row-content-container fixed-width clearfix">
+<div class="do-it-online do-it-online-format-11 top-task-homepage top-task-homepage-format-11 clearfix" data-total-results="8"><div class="grid"><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Government/City-Services/Online-Payments" class="profile-list item-0" target="_self" >
+				<i class="item-icon payment" aria-hidden="true"></i>
+				<h2>Online Payments</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Community/City-Calendars" class="profile-list item-1" target="_self" >
+				<i class="item-icon calendar" aria-hidden="true"></i>
+				<h2>City Calendar</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Government/Littleton-Leadership/Meeting-Videos-Agendas" class="profile-list item-2" target="_self" >
+				<i class="item-icon people" aria-hidden="true"></i>
+				<h2>Meeting Videos and Agendas</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Building-Development/Development-Activity-List" class="profile-list item-3" target="_self" >
+				<i class="item-icon document" aria-hidden="true"></i>
+				<h2>Development Activity List</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Government/Departments/Public-Works-Engineering/Cone-Zone" class="profile-list item-4" target="_self" >
+				<i class="item-icon traffic-cone" aria-hidden="true"></i>
+				<h2>Cone Zone</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Government/Departments/Finance/Financial-Reports" class="profile-list item-5" target="_self" >
+				<i class="item-icon report" aria-hidden="true"></i>
+				<h2>Budgets and Financial Reports</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.letstalklittleton.org/" class="profile-list item-6" target="_blank" >
+				<i class="item-icon quote-marks" aria-hidden="true"></i>
+				<h2>Let's Talk Littleton</h2>
+			</a>
+		</div><div class="col-xs-12 col-m-6 col-lg-3">
+			<a href="https://www.littletonco.gov/Government/Departments/Finance/Senior-Refund" class="profile-list item-7" target="_self" >
+				<i class="item-icon envelope" aria-hidden="true"></i>
+				<h2>Senior Refunds</h2>
+			</a>
+		</div></div></div>
+
+
+            </div></div></section><section class="row-index-3"><div class="row-container full-width clearfix"><div class="row-content-container fixed-width clearfix"><div data-oc-tabs-name="tabs" class="tab-group profile-featured-links"><div id="tabs-body" class="tab-group-body"><div class="no-js-element clearfix tabs-header for-panel-1 tab-type-default tab-type-homepage-news-listing">
+    <h1 class="item-text" >News</h1>
+</div>
+<div id="panel-1" class="tabs-panel clearfix tab-type-default tab-type-homepage-news-listing">
+    <div class="wysiwyg-content body-content" ><p style="color: #ffffff; background-color: #d3b53b; width: 300px; padding: 12px; font-size: 18px; text-align: center; line-height: normal; border-radius: 12px;"><a href="https://www.littletonco.gov/Government/City-News/Stay-Connected" style="text-decoration: none"><span style="color: rgb(0, 0, 0);"><strong>Subscribe to City eNews&nbsp; &gt;</strong></span></a></p>
+<p>
+<div class="profile-listing-container profile-news-listing-container profile-news-listing-option-7 clearfix"><div class="profile-tabbed-listing profile-news-listing clearfix" data-total-results="192">
+<div class="grid">
+        
+
+<div class="col-xs-12 col-m-6 col-lg-8">
+	<a href="https://www.littletonco.gov/News-Articles/2026-News/Scheels-Expresses-Interest-in-a-Littleton-Location" title="Scheels Expresses Interest in a Littleton Location" class="profile-list item-0 homepage-show" >		
+		<picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/sheels-logo-margin.png?dimension=homepagelistingwide&w=760&h=350">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/sheels-logo-margin.png?dimension=homepagelistingwide&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/sheels-logo-margin.png?dimension=homepagelistingwide&w=480&h=316">
+  <img class="large-thumbnail-image wide-thumbnail-image" src="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/sheels-logo-margin.png?dimension=homepagelistingwide&w=760&h=350"  alt=""/>
+  </picture>
+      
+		<h2>Scheels Expresses Interest in a Littleton Location</h2>
+		<p class="published-on small-text">Published on September 10, 2026</p>
+		<p>Scheels, a major sporting goods retailer, has shown interest in building a destination store at the Mineral Place development in south Littleton, with a possible opening date of 2029.</p>
+	</a>
+</div>
+        <div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/News-Articles/2026-News/Calendar-Photo-Contest-Deadline-Approaching" title="Calendar Photo Contest Deadline Approaching" class="profile-list item-1 homepage-show" >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/2026-calendar-photo-contest.png?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/2026-calendar-photo-contest.png?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/2026-calendar-photo-contest.png?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/2026-calendar-photo-contest.png?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<h2>Calendar Photo Contest Deadline Approaching</h2>
+		<p class="published-on small-text">Published on September 04, 2026</p>
+		<p>Photographers are invited to submit up to five photos capturing local community events and Littleton's beautiful scenery to be considered in the annual Littleton Calendar. Deadline to enter is September 18.</p>
+	</a>
+</div><div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/News-Articles/2026-News/New-Vision-for-Belleview-Service-Center-Taking-Shape" title="New Vision for Belleview Service Center Taking Shape" class="profile-list item-2 homepage-show" >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/2/news-stories/2026/3-jul-sep/bldgmaint_001-cms.jpg?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/2/news-stories/2026/3-jul-sep/bldgmaint_001-cms.jpg?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/2/news-stories/2026/3-jul-sep/bldgmaint_001-cms.jpg?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/2/news-stories/2026/3-jul-sep/bldgmaint_001-cms.jpg?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<h2>New Vision for Belleview Service Center Taking Shape</h2>
+		<p class="published-on small-text">Published on September 03, 2026</p>
+		<p>City officials are making headway on plans for a modern facility to replace aging and inadequate buildings at the Belleview Service Center.</p>
+	</a>
+</div><div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/News-Articles/2026-News/City-Council-Advances-Speed-Limit-Ordinance" title="City Council Advances Speed Limit Ordinance" class="profile-list item-3 homepage-show" >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/25mph-sign-cms.jpg?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/25mph-sign-cms.jpg?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/25mph-sign-cms.jpg?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/25mph-sign-cms.jpg?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<h2>City Council Advances Speed Limit Ordinance</h2>
+		<p class="published-on small-text">Published on August 21, 2026</p>
+		<p>This ordinance would establish a maximum speed limit of 25 miles per hour within the Littleton city limits, unless otherwise posted</p>
+	</a>
+</div><div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/News-Articles/2026-News/Arts-and-Culture-are-Economic-Engines-Report-Finds" title="Arts and Culture are Economic Engines, Report Finds" class="profile-list item-4 homepage-show" >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/arts-culture-cms.jpg?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/arts-culture-cms.jpg?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/arts-culture-cms.jpg?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/1/news-stories/2026/3-jul-sep/arts-culture-cms.jpg?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<h2>Arts and Culture are Economic Engines, Report Finds</h2>
+		<p class="published-on small-text">Published on August 21, 2026</p>
+		<p>The arts and culture sector drives $48.2 million in annual output and supports 420 local jobs</p>
+	</a>
+</div>
+
+
+</div>
+</div>
+<a href="https://www.littletonco.gov/News-Articles" class="panel-button">View More News</a></div>
+        
+
+
+
+</p>
+
+</div>
+    
+    
+</div><div class="no-js-element clearfix tabs-header for-panel-2 tab-type-default tab-type-homepage-events-listing">
+    <h1 class="item-text" >Events</h1>
+</div>
+<div id="panel-2" class="tabs-panel clearfix tab-type-default tab-type-homepage-events-listing">
+    <div class="wysiwyg-content body-content" ><p>
+<div class="profile-listing-container profile-events-listing-container profile-events-listing-option-7 clearfix"><div class="profile-tabbed-listing profile-events-listing clearfix" data-total-results="3">
+<div class="grid">
+        
+        
+
+<div class="col-xs-12 col-m-6 col-lg-8">
+	<a href="https://www.littletonco.gov/Community/City-Calendars/Events/2026/Meet-Greet-Eat-events" title="Meet Greet & Eat Events" class="profile-list item-0 homepage-show  " >		
+		<picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/5/events/meet-greet-eat/mge-logo-cms-margin.png?dimension=homepagelistingwide&w=760&h=350">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/5/events/meet-greet-eat/mge-logo-cms-margin.png?dimension=homepagelistingwide&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/5/events/meet-greet-eat/mge-logo-cms-margin.png?dimension=homepagelistingwide&w=480&h=316">
+  <img class="large-thumbnail-image wide-thumbnail-image" src="/files/sharedassets/public/v/5/events/meet-greet-eat/mge-logo-cms-margin.png?dimension=homepagelistingwide&w=760&h=350"  alt=""/>
+  </picture>
+      
+		<span class="list-item-block-date" aria-hidden="true"><span class="part-date">16</span>
+<span class="part-month">Sep</span>
+<span class="part-year">2026</span></span>
+		<h2>Meet Greet & Eat Events</h2>
+		<p class="event-date small-text">September 16, 2026</p>
+		<p>Meet Greet & Eat events are a great opportunity to meet neighbors and greet city council and city staff</p>
+	</a>
+</div>
+        <div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/Community/City-Calendars/Events/2026/2026-Fall-Leaf-Collection-Event" title="2026 Fall Leaf Collection Event" class="profile-list item-1 homepage-show  " >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/littleton-government/images-ltn-gov/raking-leaves.jpeg?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/littleton-government/images-ltn-gov/raking-leaves.jpeg?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/littleton-government/images-ltn-gov/raking-leaves.jpeg?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/1/littleton-government/images-ltn-gov/raking-leaves.jpeg?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<span class="list-item-block-date" aria-hidden="true"><span class="part-date">26</span>
+<span class="part-month">Oct</span>
+<span class="part-year">2026</span></span>
+		<h2>2026 Fall Leaf Collection Event</h2>
+		<p class="event-date small-text">October 26, 2026</p>
+		<p>The cities of Littleton and Englewood are partnering in a collaborative effort to keep the communities clean and green from October 26 - November 10, 2026.</p>
+	</a>
+</div><div class="col-xs-12 col-m-6 col-lg-4">
+	<a href="https://www.littletonco.gov/Community/City-Calendars/Events/2026/Candlelight-Walk-2026" title="Candlelight Walk 2026" class="profile-list item-2 homepage-show  " >		
+		
+       <picture>
+  <source media="(min-width: 992px)" srcset="/files/sharedassets/public/v/1/events/candlelight-walk/screenshot-drone-show-with-logo.jpg?dimension=homepagelisting&w=380&h=250">
+  <source media="(min-width: 768px)" srcset="/files/sharedassets/public/v/1/events/candlelight-walk/screenshot-drone-show-with-logo.jpg?dimension=homepagelisting&w=496&h=328">
+  <source srcset="/files/sharedassets/public/v/1/events/candlelight-walk/screenshot-drone-show-with-logo.jpg?dimension=homepagelisting&w=480&h=316">
+  <img class="large-thumbnail-image" src="/files/sharedassets/public/v/1/events/candlelight-walk/screenshot-drone-show-with-logo.jpg?dimension=homepagelisting&w=496&h=328" alt=""/>
+  </picture>
+		<span class="list-item-block-date" aria-hidden="true"><span class="part-date">27</span>
+<span class="part-month">Nov</span>
+<span class="part-year">2026</span></span>
+		<h2>Candlelight Walk 2026</h2>
+		<p class="event-date small-text">November 27, 2026</p>
+		<p>Celebrate the magic of the holiday season at the annual Candlelight Walk and holiday parade in the heart of Downtown Littleton! Experience the charm of Main Street as it transforms into a winter wonderland with festive carolers, dancing Christmas trees, hot cider, and Santa’s jolly reindeer.</p>
+	</a>
+</div>
+
+
+</div>
+</div>
+<a href="https://www.littletonco.gov/Community/City-Calendars/Events" class="panel-button">View More Events</a></div>
+        
+        
+
+
+
+</p>
+
+</div>
+    
+    
+</div><div class="no-js-element clearfix tabs-header for-panel-3 tab-type-default tab-type-homepage-events-listing">
+    <h1 class="item-text" >Meetings</h1>
+</div>
+<div id="panel-3" class="tabs-panel clearfix tab-type-default tab-type-homepage-events-listing">
+    <div class="wysiwyg-content body-content" ><p>This schedule reflects the latest available information. Meetings are subject to change or cancellation.&nbsp;</p>
+<p>
+<div class="grid list-meetings-upcoming">
+
+<div class="col-xs-12 col-lg-8">
+<div class="listing-results">
+48 Result(s) Found
+</div>
+<div class="accordion-list-container ajax-accordion minutes-list-container left" data-search-keywords="">
+<div class="accordion-list-item-container">	
+	<article>	
+		<div class="accordion-item-header">
+			<a href="https://www.littletonco.gov/Government/Meetings/PC-Mtgs/2026/CANCL-PC-SS-09-14-26" class="accordion-trigger minutes-trigger ajax-trigger" data-cvid="3556033c-04d6-4eee-9f02-da3eb4f4fe54" data-accordion-all-device="true" data-open="false" data-accordion-body="#upcomingMinutesBody0" >
+				<h2 class="item-text"><span class="minutes-date">September 14, 2026</span> - Canceled - PC Study Session Meeting</h2>
+				<i></i>
+			</a>
+		</div>
+		<div id="upcomingMinutesBody0" class="accordion-item-body"></div>
+	</article>
+</div><div class="accordion-list-item-container">	
+	<article>	
+		<div class="accordion-item-header">
+			<a href="https://www.littletonco.gov/Government/Meetings/CC-Mtgs/2026/CC-Special-MeetingExecutive-Session-09-15-26" class="accordion-trigger minutes-trigger ajax-trigger" data-cvid="0f5b6565-d1ce-4263-b32b-9dd8da3e984b" data-accordion-all-device="true" data-open="false" data-accordion-body="#upcomingMinutesBody1" >
+				<h2 class="item-text"><span class="minutes-date">September 15, 2026</span> - CC Special Meeting/Executive Session</h2>
+				<i></i>
+			</a>
+		</div>
+		<div id="upcomingMinutesBody1" class="accordion-item-body"></div>
+	</article>
+</div><div class="accordion-list-item-container">	
+	<article>	
+		<div class="accordion-item-header">
+			<a href="https://www.littletonco.gov/Government/Meetings/CC-Mtgs/2026/CC-Reg-09-15-26" class="accordion-trigger minutes-trigger ajax-trigger" data-cvid="e1c09f64-c8c6-49ff-adff-07ff70129cd9" data-accordion-all-device="true" data-open="false" data-accordion-body="#upcomingMinutesBody2" >
+				<h2 class="item-text"><span class="minutes-date">September 15, 2026</span> - CC Regular Meeting</h2>
+				<i></i>
+			</a>
+		</div>
+		<div id="upcomingMinutesBody2" class="accordion-item-body"></div>
+	</article>
+</div><div class="accordion-list-item-container">	
+	<article>	
+		<div class="accordion-item-header">
+			<a href="https://www.littletonco.gov/Government/Meetings/BBoAppls-Mtgs/2026/AAC-09-16-26" class="accordion-trigger minutes-trigger ajax-trigger" data-cvid="7878a697-45f4-4758-a5cf-684a206bcfce" data-accordion-all-device="true" data-open="false" data-accordion-body="#upcomingMinutesBody3" >
+				<h2 class="item-text"><span class="minutes-date">September 16, 2026</span> - AAC Meeting</h2>
+				<i></i>
+			</a>
+		</div>
+		<div id="upcomingMinutesBody3" class="accordion-item-body"></div>
+	</article>
+</div><div class="accordion-list-item-container">	
+	<article>	
+		<div class="accordion-item-header">
+			<a href="https://www.littletonco.gov/Government/Meetings/HPB-Mtgs/2026/HPC-09-21-26" class="accordion-trigger minutes-trigger ajax-trigger" data-cvid="aa419658-e892-452c-9814-b71ca9f8e4e5" data-accordion-all-device="true" data-open="false" data-accordion-body="#upcomingMinutesBody4" >
+				<h2 class="item-text"><span class="minutes-date">September 21, 2026</span> - HPC Meeting</h2>
+				<i></i>
+			</a>
+		</div>
+		<div id="upcomingMinutesBody4" class="accordion-item-body"></div>
+	</article>
+</div>
+
+
+</div>
+
+</div>
+
+
+
+</p>
+<p><table width="100%" cellpadding="4" cellspacing="0" class="" style="width: 100%; background-color: #efefef;">
+<tbody>
+<tr>
+<td align="right" valign="top" class="" style="font-size: 12px; padding-top: 6px;"><strong>&nbsp;CC &ndash;</strong></td>
+<td valign="top" class="" style="text-align: left; vertical-align: top; font-size: 12px; padding-top: 6px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/City-Council-Members">City Council</a></td>
+<td align="right" valign="top" style="font-size: 12px; padding-top: 6px;"><strong>&nbsp;EC &ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px; padding-top: 6px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Election-Commission">Election Commission</a></td>
+<td align="right" valign="top" style="font-size: 12px; padding-top: 6px;"><strong>NGAB&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px; padding-top: 6px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Next-Generation-Advisory-Board">Next Generation Advisory Board</a></td>
+</tr>
+<tr>
+<td align="right" valign="top" style="font-size: 12px;"><strong>&nbsp;AAC &ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Appeals-Adjustment-Commission">Appeals &amp; Adjustment Commission</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>ESB &ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="mailto:">Environmental Stewardship Board</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>PC&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Planning-Commission">Planning Commission</a></td>
+</tr>
+<tr>
+<td align="right" valign="top" style="font-size: 12px;"><strong>&nbsp;ACB&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Arts-Culture-Board">Arts &amp; Culture Board</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>HPC&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Historical-Preservation-Commission">Historical Preservation Commission</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>SMHO &ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/South-Metro-Housing-Options-Board">South Metro Housing Options Board</a></td>
+</tr>
+<tr>
+<td align="right" valign="top" style="font-size: 12px;"><strong>&nbsp;CISTB&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Capital-Improvement-Sales-Tax-Board">Capital Improvement Sales Tax Board</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>LC&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Licensing-Commission">Licensing Commission</a></td>
+<td align="right" valign="top" style="font-size: 12px;"><strong>TMB&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Transportation-Mobility-Board">Transportation &amp; Mobility Board</a></td>
+</tr>
+<tr>
+<td align="right" valign="top" style="font-size: 12px; padding-bottom: 6px;"><strong>&nbsp;CRC&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Charter-Review-Committee">Charter Review Committee</a></td>
+<td align="right" valign="top" style="font-size: 12px; padding-bottom: 6px;"><strong>LDDA&nbsp;&ndash;</strong></td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px; padding-bottom: 6px;"><a href="https://www.littletonco.gov/Government/Littleton-Leadership/Boards-and-Commissions/Littleton-Downtown-Development-Authority">Littleton Downtown Development Authority</a></td>
+<td align="right" valign="top" style="font-size: 12px;">&nbsp;</td>
+<td valign="top" style="text-align: left; vertical-align: top; font-size: 12px;">&nbsp;</td>
+</tr>
+</tbody>
+</table>
+
+</p>
+<p><a href="https://www.littletonco.gov/Government/Meetings/Upcoming-Mtgs" class="styled-button-calltoaction">View all upcoming meetings</a></p>
+
+</div>
+    
+    
+</div></div></div></div></div></section><section class="row-index-4"><div class="row-container full-width clearfix"><div class="row-content-container fixed-width clearfix"><div class="row-container-title fixed-width" ><h1>What's around me</h1></div><script>OpenCities.Settings.AddressPickerVariables['oc-707a192e-ef6c-413a-935a-a371ac505bb5'] = {"PageUrl":"https://www.littletonco.gov/My-area","MapId":"5e136949-5574-4817-8625-d0531a14cc73","AddressSource":"CMS"}</script>
+<div class='address-picker-container option-1' data-object-id='oc-707a192e-ef6c-413a-935a-a371ac505bb5' role='search' aria-label='Search by address'>
+<h2 class='address-picker-title'>Find parks, city amenities, facilities, and more.</h2>
+<div class='address-picker-input-controls clearfix'> <div class='address-picker-location'><label class='address-picker-location-input-label visuallyhidden' for='input_6aec8dde-75cd-4e96-89f1-2faa54250344'>Enter your street address</label><input type='text' id='input_6aec8dde-75cd-4e96-89f1-2faa54250344' class='address-picker-location-input' placeholder='Enter an address'/><input type='button' class='address-picker-my-location' value='Use my location'/></div><input type='submit' class='address-picker-submit' value='Search' /></div>
+</div>
+</div></div></section></div><!--normalTemplateEnd-->
+                        </div>
+                        <div class="back-to-top-container text-center">
+                            <a href="#body-top" id="back-to-top"><i aria-hidden="true"></i><span class="js-visuallyhidden">Back to top</span></a>
+                        </div>
+                </div>
+            </div><!--groupTemplateEnd-->
+            <footer>
+                
+                    <div class="footer-outer-container footer-first-row">
+                        <div class="footer-container clearfix">
+                            <div class="grid grid-pad">
+                                <div class="col-xs-12 col-s-6 col-m-6 col-lg-3" >
+	
+			<h2 class="visuallyhidden">Site Footer</h2>
+			<h3 class="footer-title">Contact Us</h3>
+			
+	<p>City of Littleton<br />
+2255 W. Berry Avenue<br />
+Littleton, CO 80120<br />
+<a href="https://maps.google.com/maps?q=City%20of%20Littleton%20Colorado" target="_blank">View on Map</a><br />
+<br />
+<a href="tel:3037953700" style="font-size: 1em;">303-795-3700</a><br />
+<a href="https://www.littletonco.gov/Contact-the-City-of-Littleton">Visit the Contact Page</a></p>
+
+
+	
+	
+</div><div class="col-xs-12 col-s-6 col-m-6 col-lg-3" >
+	
+			<h2 class="visuallyhidden">Site Footer</h2>
+			<h3 class="footer-title">Visit Other Littleton Sites</h3>
+			
+	
+	<ul class="footer-links without-icons ">  <li>
+<a href="https://visitlittleton.org/" target="_blank"  >Visit Littleton</a>
+</li>
+          <li>
+<a href="https://www.library.littletonco.gov/Home" target="_blank"  >Bemis Public Library</a>
+</li>
+          <li>
+<a href="https://www.museum.littletonco.gov/Home" target="_blank"  >Littleton Museum</a>
+</li>
+          <li>
+<a href="https://www.police.littletonco.gov/Home" target="_blank"  >Littleton Police</a>
+</li>
+           </ul>
+	
+</div><div class="col-xs-12 col-s-6 col-m-6 col-lg-3" >
+	
+			<h2 class="visuallyhidden">Site Footer</h2>
+			<h3 class="footer-title">Share &amp; Connect</h3>
+			
+	
+	<ul class="footer-links with-icons social-media-links">  <li class="footer-link-facebook">
+	<a href="https://www.facebook.com/CityofLittleton" target="_self"  >
+<i aria-hidden="true"></i>Facebook
+</a>
+</li>
+          <li class="footer-link-instagram">
+	<a href="https://www.instagram.com/littletongov/" target="_blank"  >
+<i aria-hidden="true"></i>Instagram
+</a>
+</li>
+          <li class="footer-link-twitter">
+	<a href="https://twitter.com/CityofLittleton" target="_blank"  >
+<i aria-hidden="true"></i>Twitter
+</a>
+</li>
+          <li class="footer-link-youtube">
+	<a href="https://www.youtube.com/user/LittletonGov#g/u" target="_blank"  >
+<i aria-hidden="true"></i>YouTube
+</a>
+</li>
+          <li class="footer-link-rss">
+	<a href="/feed.rss?listID=e4e99956-d428-4220-8a44-85b7af617593" target="_self"  >
+<i aria-hidden="true"></i>RSS
+</a>
+</li>
+           </ul>
+	
+</div><div class="col-xs-12 col-s-6 col-m-6 col-lg-3" >
+	
+			<h2 class="visuallyhidden">Site Footer</h2>
+			<h3 class="footer-title">Hours of Operation</h3>
+			
+	<p>Mon-Fri: 8 a.m. to 5 p.m.</p>
+<hr />
+<ul>
+<li><strong><a href="https://careers.littletonco.gov/" target="_blank">Jobs</a></strong></li>
+<li><strong style="font-size: 1em;"><a href="https://www.littletonco.gov/Government/Departments/City-Clerk/Charter-and-City-Code">Charter and City Code</a></strong></li>
+<li><span style="font-size: 100%;"><strong><a href="https://www.littletonco.gov/Government/City-Policies/Digital-Accessibility-Statement">Digital Accessibility Statement</a></strong></span></li>
+</ul>
+
+
+	<ul class="footer-links with-icons ">   </ul>
+	
+</div>
+                            </div>
+                        </div>
+                    </div>
+                
+                <div class="footer-outer-container footer-second-row">
+                    <div class="footer-container clearfix">
+                        <div class="grid grid-pad footer-secondary-links">
+                            <div class="col-xs-12 col-m-7">
+                                
+                                    <div><a href="https://www.littletonco.gov/Government/City-Policies/Website-Policies-and-Statements" target="_self"  >Privacy Statement</a></div>
+                                
+                            </div>
+                            <div class="col-xs-12 col-m-5 powered-by">
+                                <div class="right">
+                                    &copy; 2026 City of Littleton, Colorado&nbsp;|&nbsp;<span class="powered-by">Powered by <a href="https://granicus.com/solution/govaccess/opencities/" target="_blank">Granicus</a></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="/files/oc-resources/b9015858-988c-48a4-9473-7c193df083e4/JsTextSnippets.js?ocsvclang=en-US" type="text/javascript"></script><script></script>
+    
+    <script>
+  customHtml = `<iframe title="Polimorphic Chat" aria-label="Polimorphic Chat" frameborder="0" id="chatFrame" src="https://app.polimorphic.com/react/organizations/littleton_co/chat" style="
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    z-index: 10000000;
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    height: 0;
+    width: 0;
+"></iframe>
+<div id="greetingText" style="color: #FFFFFF; position: fixed; bottom: 90px; right: 20px;; z-index: 10000000; border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 24px; visibility: visible; background: #2C4C5C; border: 2px solid #FFFFFF; padding: 10px; cursor: pointer;" onclick="this.style.visibility='hidden';document.getElementById('chatButton').click()">How can I help you today?</div>
+<button onclick="const frame = document.getElementById('chatFrame');
+const chatButton = document.getElementById('chatButton');
+const chatIcon = document.getElementById('chatIcon');
+const closeIcon = document.getElementById('closeIcon');
+const greetingText = document.getElementById('greetingText');
+if (chatButton.getAttribute('active') === 'false') {
+  chatButton.setAttribute('active', 'true');
+  frame.style.height = 'min(100vh - 160px, 800px)';
+  frame.style.width = 'min(100vw - 40px, 550px)';
+    frame.focus();
+  chatIcon.style.display = 'none';
+  closeIcon.style.display = 'block';
+  if (greetingText) {
+    greetingText.style.visibility = 'hidden';
+  }
+} else {
+  chatButton.setAttribute('active', 'false');
+  frame.style.height = '0';
+  frame.style.width = '0';
+  chatIcon.style.display = 'block';
+  closeIcon.style.display = 'none';
+}" id="chatButton" active="false" style="position: fixed; bottom: 20px; right: 20px;; z-index: 10000000; max-width: 56px; height: 56px; min-height: 56px; border-radius: 50%; color: #FFFFFF; background: #2C4C5C; border: 2px solid #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 12px; transition: transform 0.2s; transform: scale(1); width: 50px;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" aria-label="Toggle chat">
+    <svg id="chatIcon" style="width: 24px; height: 24px; fill: #FFFFFF;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2C6.477 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5L2 22l5-1.338C8.47 21.513 10.18 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.657 0-3.224-.393-4.615-1.088L4.5 19.5l.588-2.885C4.393 15.224 4 13.657 4 12c0-4.418 3.582-8 8-8s8 3.582 8 8-3.582 8-8 8z"></path>
+    </svg>
+    <svg id="closeIcon" style="width: 24px; height: 24px; fill: #FFFFFF; display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path>
+    </svg>
+</button>`
+function addToBody(htmlContent) {
+    const temp = document.createElement('div');
+    temp.innerHTML = htmlContent;
+    while (temp.firstChild) {
+        document.body.appendChild(temp.firstChild);
+    }
+}
+addToBody(customHtml);
+</script>
+
+<!-- GovDelivery Subscription Overlay -->
+<script src="https://content.govdelivery.com/overlay/js/17482.js"></script>
+<!-- End GovDelivery Overlay -->
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-20754110-3"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-TQYBNZ3BLL');
+gtag('config', 'UA-20754110-3');
+</script>
+    
+    
+
+<script type="text/javascript">
+//<![CDATA[
+window.__TsmHiddenField = $get('ctl04_seamless_script_manager_TSM');//]]>
+</script>
+</form>
+</body>
+</html>

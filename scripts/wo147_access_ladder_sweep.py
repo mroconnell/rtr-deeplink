@@ -34,6 +34,22 @@ Method, per docs/BREADTH_SWEEP_BRIEF.md and CLAUDE.md's "politely" rule:
    from wo134_confirmed_hits_ingest.py) already knows how to guess a
    CivicPlus AgendaCenter / Granicus ViewPublisher seed from a bare
    domain.
+   **The hop-link step is a ranked scorer, not a first-match loop
+   (WO-228, 2026-09-11).** `find_hop_links()` used to keep the first
+   MAX_HOP_LINKS links in document order matching any of
+   HOP1_HINT_WORDS -- "calendar" in a nav bar won the slot as often as
+   the real agenda/minutes/video link, and the coverage registry showed
+   358 governments with an events calendar recorded as their meeting hub
+   as a direct result. It now scores every candidate
+   (`_score_hop_candidate()`) from weights measured against two real
+   samples (90 real "no link found -> real hit" governments, 60 of the
+   358 calendar-shaped hubs -- see `research/wo228_report.csv` and
+   ENUMERATION_METHODS.md) and returns them best-first. Two more WO-228
+   helpers back it up: `looks_like_document_hub()` verifies a fetched
+   hop page actually shows document/platform evidence rather than
+   trusting the ranking alone, and `find_calendar_entry_links()` takes
+   one more hop into a calendar page's first two dated entries
+   (`?EID=123`-shaped) when the calendar page itself has none.
 3. **Resolve/ingest** -- every found (platform, url) pair is handed to
    wo134_confirmed_hits_ingest.py's own `process_row()` UNCHANGED (its
    locate_platform_url -> resolve_seed -> ingest/queue/pin pipeline is
@@ -415,22 +431,261 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
     return None
 
 
+# --- WO-228 (2026-09-11): scored, ranked replacement for the old
+# first-match find_hop_links() ---
+#
+# Root cause this replaces: the old loop kept the first MAX_HOP_LINKS
+# links in DOCUMENT ORDER whose text/href matched any of HOP1_HINT_WORDS
+# (unranked -- "calendar" scored the same as "agenda"). Measured from the
+# coverage registry, 358 governments with a hub URL and no Archive page
+# have a calendar/events/dashboard-shaped hub as a direct result -- see
+# `rtr-business/research/wo228_report.csv` and this WO's methods section
+# in ENUMERATION_METHODS.md for the study.
+#
+# The weights below come from two real samples, not a guessed list:
+# 90 governments where a real video/meeting hit followed a "no platform
+# link found" verdict (`wo228_positive_links.csv`, stratified across 13
+# platform families) and 60 of the 358 calendar-shaped hubs
+# (`wo228_negative_hubs.csv`). The clean split: an anchor reading both
+# "agenda" and "minutes" led to the real hub 14/14 times it was tested
+# and never to a wrong page; a bare "calendar"/"events" anchor (no other
+# qualifying word) led to a wrong page 14/14 times and never to a real
+# one. 62% (24/39) of the real hits were NOT the first HOP1-matching
+# link in document order on their page -- the old rule would have handed
+# the ladder something else first on a majority of real cases, not a
+# minority.
+_STRONG_VIDEO_PHRASES = (
+    "video archive",
+    "meeting video",
+    "meeting videos",
+    "watch the video",
+    "watch meeting",
+    "watch meetings",
+    "view our video",
+    "past meeting",
+    "past meetings",
+)
+_VIDEO_WORDS = ("video", "webcam", "stream", "watch")
+_BODY_WORDS = ("council", "commission", "committee", "board of", " board")
+# Same distinct-platform hosts detect_platform()/_is_vendor_marketing_apex
+# already know about -- a hop candidate whose OWN href resolves to one of
+# these (and isn't the bare vendor marketing apex) is effectively already
+# a find_platform_link() hit; ranking it first costs nothing and helps
+# when a platform-shaped anchor slips past that scan (e.g. an onclick/
+# iframe find_platform_link doesn't check, or a marketing-subdomain guard
+# false-negative). Kept as hint substrings, not exact hosts, since a
+# widget can embed the platform name in a same-domain asset path too
+# (WO-228's "platform-host-hint" basis, 14/14 real in the positive
+# sample).
+_PLATFORM_HREF_HINTS = tuple(_VENDOR_MARKETING_APEX) + (
+    "youtube.com",
+    "youtu.be",
+    "vimeo.com",
+)
+# Real routine-municipal words seen on the negative sample's own calendar
+# pages (48/60 mixed at least one of these in) -- an anchor carrying one
+# is a dead giveaway it's pointing at a general city-events calendar, not
+# a meeting hub.
+_ROUTINE_WORDS = (
+    "trash",
+    "recycling",
+    "garbage",
+    "holiday",
+    "closure",
+    "closed",
+    "festival",
+    "library",
+    "parade",
+    "farmers market",
+    "blood drive",
+    "egg hunt",
+    "fireworks",
+    "concert",
+    "food truck",
+    "yard waste",
+    "leaf collection",
+    "street sweeping",
+    "pool",
+    "summer camp",
+    "movie night",
+    "art show",
+    "5k",
+    "flu shot",
+    "vaccination",
+)
+# Real false positive caught building this WO's own fixtures (Atlantic
+# City NJ, 2026-09-11): an HTML5 `<video>` tag's fallback text ("Your
+# browser does not support the video tag.") is itself wrapped in an <a>
+# by that site's template, so its anchor TEXT contains the word "video"
+# and scored as a real video-phrase hint even though it names no actual
+# destination content -- confirmed live, ranked #1 over the page's real
+# "/Meetings" link before this guard.
+_BOILERPLATE_PHRASES = ("does not support the video tag",)
+
+
+def _score_hop_candidate(
+    text: str, href: str, full_url: str, base_netloc: str
+) -> Optional[int]:
+    """Returns None for a candidate that should never be offered at all
+    (a bare vendor-marketing apex, or boilerplate markup text that isn't
+    a real navigational label); otherwise a signed score, higher is
+    better. See this module's WO-228 comment block above for where each
+    weight comes from."""
+    netloc = urlparse(full_url).netloc.lower()
+    if _is_vendor_marketing_apex(netloc) and netloc != base_netloc:
+        return None
+
+    hay = f"{text} {href}".lower()
+    if any(p in hay for p in _BOILERPLATE_PHRASES):
+        return None
+    score = 0
+
+    if any(w in hay for w in _ROUTINE_WORDS):
+        score -= 8
+
+    if (
+        netloc
+        and netloc != base_netloc
+        and any(h in netloc for h in _PLATFORM_HREF_HINTS)
+    ):
+        score += 11
+    elif any(h in hay for h in _PLATFORM_HREF_HINTS):
+        score += 7
+
+    if "agenda" in hay and "minute" in hay:
+        score += 10
+    elif "agenda center" in hay:
+        score += 8
+    elif "agenda" in hay:
+        score += 4
+
+    if any(p in hay for p in _STRONG_VIDEO_PHRASES):
+        score += 9
+    elif any(w in hay for w in _VIDEO_WORDS):
+        score += 6
+
+    has_body_word = any(w in hay for w in _BODY_WORDS)
+    if has_body_word and "meeting" in hay:
+        score += 4
+    elif has_body_word:
+        score += 1
+
+    has_qualifier = (
+        score != 0
+        or "agenda" in hay
+        or "minute" in hay
+        or any(w in hay for w in _VIDEO_WORDS)
+        or has_body_word
+    )
+    if ("calendar" in hay or "event" in hay) and not has_qualifier:
+        score -= 6
+
+    return score
+
+
 def find_hop_links(html_text: str, final_url: str) -> List[str]:
+    """Gathers every anchor whose text/href matches HOP1_HINT_WORDS (same
+    candidate gate as before -- WO-228 changes the ORDER, not the set),
+    scores each with `_score_hop_candidate()`, and returns up to
+    MAX_HOP_LINKS URLs ranked best-first (a stable sort, so two candidates
+    with an equal score keep their original document order). Signature
+    and MAX_HOP_LINKS are unchanged so every importer keeps working."""
+    soup = _safe_soup(html_text)
+    if soup is None:
+        return []
+    base_netloc = urlparse(final_url).netloc.lower()
+    scored: List[Tuple[int, int, str]] = []  # (score, doc_order, url)
+    seen = set()
+    doc_order = 0
+    for a in soup.find_all("a", href=True):
+        text = (a.get_text() or "").strip()
+        href = a["href"]
+        hay = f"{text} {href}".lower()
+        if not any(w in hay for w in HOP1_HINT_WORDS):
+            continue
+        full = urljoin(final_url, href)
+        if full in seen or urlparse(full).scheme not in ("http", "https"):
+            continue
+        score = _score_hop_candidate(text, href, full, base_netloc)
+        if score is None:
+            continue
+        seen.add(full)
+        scored.append((score, doc_order, full))
+        doc_order += 1
+
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    return [url for _, _, url in scored[:MAX_HOP_LINKS]]
+
+
+# --- WO-228 rule 2: verify a fetched hop candidate actually looks like a
+# meeting/document hub before trusting it, rather than accepting whatever
+# find_hop_links ranked first on text alone. ---
+_DOCUMENT_HUB_HINTS = (
+    ".pdf",
+    "viewfile",
+    "documentcenter",
+    "agendacenter",
+)
+
+
+def looks_like_document_hub(html_text: str) -> bool:
+    """True when a fetched page shows real evidence of being a document/
+    meeting hub rather than a generic calendar shell: a document link
+    (.pdf, ViewFile, DocumentCenter, AgendaCenter), an `/event/<n>/`-style
+    single-entry permalink, or a known platform host anywhere on the
+    page. Used by the ladder only where the old code would have recorded
+    the current hop's URL as the hub without ever looking at its content."""
+    low = html_text.lower()
+    if any(h in low for h in _DOCUMENT_HUB_HINTS):
+        return True
+    if re.search(r"/event/\d+/", low):
+        return True
+    soup = _safe_soup(html_text)
+    if soup is None:
+        return False
+    for tag in soup.find_all(_TAGS):
+        href_or_src = (tag.get("href") or tag.get("src") or "").lower()
+        if not href_or_src:
+            continue
+        platform = detect_platform(urljoin("https://example.invalid/", href_or_src))
+        if platform and platform != "unknown":
+            return True
+    return False
+
+
+_CALENDAR_ENTRY_HREF_RE = re.compile(
+    r"(?:[?&](?:eid|eventid|id)=\d+)|/event/\d+/?|/events/\d+/?", re.I
+)
+
+
+def find_calendar_entry_links(
+    html_text: str, final_url: str, limit: int = 2
+) -> List[str]:
+    """WO-228 rule 3: when the old code would have stopped at a calendar
+    page, take one more hop into its first `limit` individual dated
+    entries (a `?EID=123`/`/event/123/`-shaped href, in document order --
+    calendar listings are date-ordered, so the first entries are also the
+    soonest/most recent) rather than accepting the calendar's own index
+    page as the hub. Real negative-sample finding this responds to: 23 of
+    60 calendar-shaped hubs already had a sibling agenda/minutes/video
+    link on the SAME page the old code never looked at (`sibling_link_*`
+    columns in wo228_negative_hubs.csv); a dated entry is the other real
+    path in when the calendar page itself carries no such sibling."""
     soup = _safe_soup(html_text)
     if soup is None:
         return []
     out: List[str] = []
     seen = set()
     for a in soup.find_all("a", href=True):
-        text = (a.get_text() or "").strip().lower()
         href = a["href"]
-        hay = f"{text} {href}".lower()
-        if any(w in hay for w in HOP1_HINT_WORDS):
-            full = urljoin(final_url, href)
-            if full not in seen and urlparse(full).scheme in ("http", "https"):
-                seen.add(full)
-                out.append(full)
-        if len(out) >= MAX_HOP_LINKS:
+        if not _CALENDAR_ENTRY_HREF_RE.search(href):
+            continue
+        full = urljoin(final_url, href)
+        if full in seen or urlparse(full).scheme not in ("http", "https"):
+            continue
+        seen.add(full)
+        out.append(full)
+        if len(out) >= limit:
             break
     return out
 
@@ -725,6 +980,54 @@ async def run_access_ladder(
                     hit[0],
                     hit[1],
                 )
+            # WO-228 rule 3: this hop landed on a page shaped like a
+            # calendar (its own URL says so) that carries no document/
+            # platform evidence (looks_like_document_hub) -- rather than
+            # accept the calendar's own index as the hub (the old
+            # behaviour: fall through and record "no platform link
+            # found"), take one more hop into its first two individual
+            # dated entries, since a calendar listing is date-ordered and
+            # a real meeting entry is exactly the shape a bare index page
+            # never shows. Real finding behind this: 23/60 of this WO's
+            # calendar-shaped hub sample already had a passed-over
+            # sibling link, and Fulton County GA's own calendar listed a
+            # dated entry titled "Commissioners Session Agenda
+            # 9-15-2026" one hop below the index.
+            if (
+                "calendar" in link.lower() or "event" in link.lower()
+            ) and not looks_like_document_hub(rh.html):
+                for entry_url in find_calendar_entry_links(rh.html, rh.final_url):
+                    await asyncio.sleep(HOST_DELAY_SECONDS)
+                    re_ = await fetch_one(session, entry_url, headers)
+                    if re_.html and is_challenge(re_.html):
+                        return LadderResult(
+                            "challenge",
+                            "challenge",
+                            home_url_used,
+                            re_.html,
+                            re_.final_url,
+                            re_.waf_family,
+                            "",
+                        )
+                    if re_.html:
+                        entry_hit = find_platform_link(re_.html, re_.final_url)
+                        if entry_hit:
+                            mode = (
+                                "browser-headers"
+                                if headers is BROWSER_HEADERS
+                                else "plain"
+                            )
+                            return LadderResult(
+                                mode,
+                                mode,
+                                home_url_used,
+                                re_.html,
+                                re_.final_url,
+                                re_.waf_family,
+                                "found via a calendar entry, not the calendar index",
+                                entry_hit[0],
+                                entry_hit[1],
+                            )
 
     if not hop_links:
         # a real page with no visible meeting-shaped link at all --

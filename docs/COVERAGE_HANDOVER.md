@@ -324,6 +324,31 @@ WO-181's own pilot ran the narrower `trigger="access"` retry against the
 the primary; see `BACKLOG_DONE.md` for the count this actually found.
 WO-184's wider run and its own counts are in `BACKLOG_DONE.md` too.
 
+**The hop-link step ranks candidates now, rather than taking the first
+document-order match (WO-228, 2026-09-11).** The old `find_hop_links()`
+kept the first `MAX_HOP_LINKS` links whose text/href matched any of
+twelve unranked words -- "calendar" in a nav bar won the slot as often
+as the real agenda/minutes/video link, and 362 governments with a hub
+URL and no Archive page ended up with an events calendar recorded as
+their meeting hub as a direct result. It now scores every candidate
+from weights measured against two real samples (90 governments where a
+real hit followed a "no platform link found" verdict, 60 of the 362
+calendar-shaped hubs): an "agenda"+"minutes" link led to the real hub
+14/14 times it was tested and never to a wrong page; a bare
+"calendar"/"events" link (no other qualifying word) led to a wrong page
+14/14 times and never to a real one; a routine-municipal word (trash,
+recycling, holiday, library, a 5K) showed up on 80% of the wrong-page
+sample. 62% of the real positive hits were not the first HOP1-matching
+link in document order -- the old rule handed the ladder something else
+first on a majority of real cases. `looks_like_document_hub()` verifies
+a fetched candidate before trusting it, and `find_calendar_entry_links()`
+takes one more hop into a calendar's first two dated entries when the
+calendar page itself shows no document evidence. Full study, both
+tables and the weight list: `rtr-business/research/ENUMERATION_
+METHODS.md` §270; code in `scripts/wo147_access_ladder_sweep.py`. The
+161-row re-run of already-recorded calendar-shaped hubs against the
+fixed ranker is a separate WO, not yet run.
+
 What the 2026-09-09 sweeps established about *where video is*:
 
 | Population | Finding | Implication |
