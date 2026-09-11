@@ -152,3 +152,59 @@ async def test_a_supplied_gov_id_fills_a_page_that_had_none():
     )
     page = await _page(url)
     assert page["gov_id"] == SIOUX_FALLS
+
+
+async def test_a_blank_multi_gov_answer_on_re_ingest_keeps_the_existing_gov_id():
+    """WO-215: rung 1b (WO-210, `MULTI_GOV_HOSTS`) answers `blank` --
+    gov_id `rtr:unknown:<host>` -- for EVERY re-ingest on a shared host
+    (YouTube here) that has no matching per-video/channel pin,
+    regardless of what identity the page already carries. That answer
+    means "no matching pin on THIS re-ingest," not "this page has no
+    government," so a page that keyed to a real government at a tier the
+    ladder could still produce before rung 1b existed (`registry` --
+    the shape a real production page was found in: Millbrae, CA,
+    `us:place:0647486`, `www.youtube.com`, by a 2026-09-11 dry run of
+    `scripts/backfill_gov_id.py`) must not be blanked by a routine later
+    re-ingest that supplies a jurisdiction string but no matching pin --
+    exactly what a caption-only re-push for this video would send.
+
+    A caller-supplied `gov_id` always lands on tier `pinned`, never
+    `registry`, so the tier is hand-set afterward to simulate the real
+    pre-WO-210 shape directly -- same pattern as
+    tests/test_jurisdiction_backfill_apply.py's `_seed_stale()`.
+    """
+    from sqlalchemy import select
+
+    from archive.db.engine import async_session
+    from archive.db.models import MeetingPage
+
+    url = "https://www.youtube.com/watch?v=govidtest06"
+    assert (
+        _ingest(
+            _payload(
+                source_url=url, external_id="youtube:govidtest06", gov_id=SIOUX_FALLS
+            )
+        ).status_code
+        == 200
+    )
+    slug = (await _page(url))["slug"]
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+        page.jurisdiction_confidence = "registry"
+        await session.commit()
+
+    assert (
+        _ingest(
+            _payload(
+                source_url=url,
+                external_id="youtube:govidtest06",
+                jurisdiction="Sioux Falls, SD",
+            )
+        ).status_code
+        == 200
+    )
+    page = await _page(url)
+    assert page["gov_id"] == SIOUX_FALLS  # not downgraded to rtr:unknown:*
+    assert page["jurisdiction_confidence"] == "registry"

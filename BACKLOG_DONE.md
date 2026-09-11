@@ -1,5 +1,100 @@
 # Backlog — done
 
+## WO-215: fixed `scripts/backfill_gov_id.py` and the live re-ingest path so a `blank` answer on a shared host (YouTube, Vimeo, ...) can never downgrade an already-keyed page [Done 2026-09-11]
+
+**Why this ran.** The conductor found this the day after WO-210 shipped.
+WO-210 added a rule: on a host many unrelated governments share (YouTube,
+Vimeo, ClerkHQ, ...), the resolver refuses to guess unless a specific
+video or channel has been pinned by a human. When it refuses, it now
+returns a real, explicit answer — "unknown" — instead of leaving the
+question open. The backfill script (the tool that re-checks every
+already-saved page against the current rules) treated that "unknown"
+answer as if it were new information worth writing down. It is not: it
+means "no matching pin was found," not "this page has no government." A
+DRY RUN (a report-only run that changes nothing) against the real,
+production data caught two ways this would have caused real damage.
+
+**What was tested.** A dry run of `scripts/backfill_gov_id.py` restricted
+to YouTube hosts (`www.youtube.com`, `youtube.com`, `youtu.be`) against
+the real production database.
+
+**Result.**
+
+| Kind of proposed change | Count before fix | Count after fix |
+| Downgrade a page with a real, already-correct government to "unknown" | 813 | 0 |
+| Overwrite a human-corrected page's government, even though the page's tier was left alone | 228 | 0 |
+| Give a page that never had a government one for the first time (no downgrade — genuinely new information) | 12 | 12 |
+| Upgrade a page from a placeholder or unresolved id to a real, pinned government | 10 | 10 |
+| **Total proposed changes** | **1,063** | **22** |
+
+("Downgrade a page..." combines the two tiers the report calls
+`registry`→`blank` (757) and `unverified`→`blank` (56); see the dry-run
+CSV for the split.)
+
+**What was fixed, in two places.**
+
+1. `scripts/backfill_gov_id.py` — a fresh "unknown" answer on a shared
+   host no longer overwrites a page's existing government, existing
+   type, existing confidence level, or existing display name, as long as
+   that page already had a real answer (not "unknown" itself). The row
+   is now reported as unchanged instead of as a proposed downgrade.
+2. `scripts/backfill_gov_id.py`, separately — a human-corrected
+   (`manual_override`) page's government and government-type are now
+   protected the same way its display name and confidence level already
+   were. Before this, only two of the four fields were protected, so an
+   override could still lose its government the moment the fresh answer
+   came back "unknown."
+3. `archive/db/crud.py`'s `_find_or_create_page()` — the same live path
+   every ordinary re-check (a caption run finishing, a routine
+   re-resolve) already goes through got the identical guard, so this
+   isn't only a one-time backfill fix. Without it, the very next routine
+   re-check of an affected page would have re-introduced the same
+   downgrade the backfill fix just avoided.
+
+**Caution.** Two things worth knowing, not blockers.
+
+- The 12 rows in the "first-time unknown" row above are correct and
+  expected — a page that never had a government answer before genuinely
+  gains the honest "unknown" answer for the first time. That is the
+  intended behavior of WO-210's rule, not a defect.
+- Two `manual_override` pages (Town of Ulster, NY, page 8226; Lincoln,
+  ME, page 8230) show a fresh resolve landing on a same-named COUNTY
+  instead of the town. Neither is at risk — both are protected
+  `manual_override` rows and this fix leaves them unchanged — but the
+  underlying name-matching behavior looks like a real bug that could
+  affect an unprotected page with the same name collision later. Filed
+  as its own entry in `BACKLOG.md`'s "Open bugs" section rather than
+  fixed here, since it is a different, unrelated root cause.
+- A dry run restricted to ordinary, single-government hosts (`napa.
+  granicus.com`, `milwaukee.granicus.com`, `boston.granicus.com`,
+  `cityoftacoma.granicus.com`, `jaxcityc.granicus.com`, `fresno.
+  granicus.com`, `lasummit.legistar.com` — 36 rows total) proposed zero
+  changes and produced zero `blank`-tier rows, confirming this downgrade
+  is specific to the shared-host rule (WO-210) and does not affect an
+  ordinary tenant.
+
+**Recommendation.** `archive/db/crud.py` is Archive service code — this
+change is on `main` but **not live** until the Archive is redeployed
+(deploys are manual, per `CLAUDE.md`). `scripts/backfill_gov_id.py`
+needs no deploy; it can be run from the Render shell (still as a dry run
+first) whenever Ryan wants the backlog of already-downgraded-looking
+pages re-checked, though since nothing was ever applied under the old
+buggy behavior, no page was actually harmed — this closes the risk
+before the next real backfill run, not after damage.
+
+**Tests.** Two new tests in `tests/test_backfill_gov_id.py` (one per
+defect, run against a real `MULTI_GOV_HOSTS` host, `boxcast.tv`, not used
+by any other test file) and one new test in `tests/test_ingest_gov_id.py`
+for the live re-ingest guard — all three confirmed to fail without the
+fix (reverted the fix locally, re-ran, watched them fail with the exact
+downgrade described above, then restored the fix). Sioux Falls / Rapid
+City, SD ids are the same real, registry-confirmed places
+`tests/test_ingest_gov_id.py` already used before this change.
+
+**History**: found by the conductor 2026-09-11, the day after WO-210
+(PR #962) shipped; full dry-run reports and this fix's before/after
+counts in the WO-215 PR.
+
 ## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
 
 **Why this ran.** Ryan, reviewing the night's hand-checks: "you're just

@@ -30,6 +30,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 
 from app.utils.gov_registry import (
+    TIER_BLANK,
     TIER_PINNED,
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
@@ -933,6 +934,10 @@ async def _find_or_create_page(
     platform = payload["platform"]
     external_id = payload.get("external_id")
     source_url_normalized = normalize_url(payload["source_url"])
+    # WO-215: the tenant host, for the blank_downgrade guard on the
+    # existing-page path below -- same derivation
+    # `_resolve_page_government()` uses on its own copy of this URL.
+    host = (urlparse(source_url_normalized).netloc or "").lower().split(":")[0]
     jurisdiction = normalize_state_suffix(payload.get("jurisdiction"))
     # finalize_jurisdiction() runs AFTER normalize_state_suffix() on
     # purpose -- it expects an already-2-letter state suffix (e.g. "City
@@ -1073,6 +1078,30 @@ async def _find_or_create_page(
         page.platform = payload.get("platform") or page.platform
         page.title = payload.get("title") or page.title
         page.date = payload.get("date") or page.date
+        # WO-215: rung 1b (WO-210, `MULTI_GOV_HOSTS`) answers `blank` --
+        # gov_id `rtr:unknown:<host>` -- for EVERY re-ingest on a shared
+        # host (YouTube, Vimeo, ClerkHQ, ...) that has no matching
+        # per-video/channel/external-id pin, regardless of what identity
+        # the page already carries. That answer means "no matching pin
+        # on THIS re-ingest," not "this page has no government" -- a
+        # page that already keyed to a real national or curated id (its
+        # CURRENT `gov_id` isn't itself `rtr:unknown:*`) must keep its
+        # whole identity (gov_id, gov_type, jurisdiction, tier) exactly
+        # as it was, the same way a `manual_override` row already does
+        # below. Without this, a routine re-ingest of an already-keyed,
+        # unpinned page -- a caption run, a re-resolve, anything that
+        # supplies a jurisdiction string -- would blank a correct id the
+        # moment rung 1b shipped. Confirmed live: a DRY RUN of
+        # `scripts/backfill_gov_id.py` against production proposed
+        # exactly this downgrade on 825 YouTube-host rows before that
+        # script got the matching guard (BACKLOG_DONE.md, WO-215).
+        blank_downgrade = (
+            gov.tier == TIER_BLANK
+            and host
+            and is_multi_gov_host(host)
+            and page.gov_id
+            and not page.gov_id.startswith("rtr:unknown:")
+        )
         # A manual override (POST /internal/jurisdiction/override) is
         # deliberately never overwritten by a passive re-ingest -- a
         # human already looked at this specific row, and an ordinary
@@ -1091,8 +1120,10 @@ async def _find_or_create_page(
         # test_a_transcript_only_push_cannot_wipe_a_gov_id --
         # `napa.granicus.com` is pinned to Napa COUNTY, so the City of
         # Napa's pages were renamed "Napa County, CA" by a caption run.
-        if identity_supplied and page.jurisdiction_confidence != (
-            _MANUAL_OVERRIDE_CONFIDENCE
+        if (
+            identity_supplied
+            and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE
+            and not blank_downgrade
         ):
             page.jurisdiction = (
                 _display_jurisdiction(gov, jurisdiction) or page.jurisdiction
@@ -1104,6 +1135,7 @@ async def _find_or_create_page(
         if (
             identity_supplied
             and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE
+            and not blank_downgrade
         ):
             page.meeting_body = payload.get("meeting_body") or _resolved_meeting_body(
                 gov, jx_result
@@ -1141,8 +1173,18 @@ async def _find_or_create_page(
         # carries a jurisdiction, i.e. a real re-resolve rather than a
         # partial push. That is the same contract the columns beside it
         # have always had.
-        if identity_supplied and page.jurisdiction_confidence != (
-            _MANUAL_OVERRIDE_CONFIDENCE
+        #
+        # EXCEPT `blank_downgrade` (WO-215, see above): on a
+        # `MULTI_GOV_HOSTS` host, tier `blank` means "no matching pin,"
+        # never "not resolved yet," so an id that was already keyed to a
+        # real government does NOT go back to NULL (or to
+        # `rtr:unknown:<host>`) on this path -- only an explicit
+        # override, or a resolve that lands on a different real tier,
+        # can move it.
+        if (
+            identity_supplied
+            and page.jurisdiction_confidence != _MANUAL_OVERRIDE_CONFIDENCE
+            and not blank_downgrade
         ):
             page.gov_id = gov.gov_id or None
             page.gov_type = gov.gov_type or None
