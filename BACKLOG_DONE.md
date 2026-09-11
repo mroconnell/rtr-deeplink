@@ -444,6 +444,16 @@ sweep.py`, `scripts/wo217_group2_sweep.py`, `scripts/wo217_handcheck.py`
 (this repo); `research/wo217_*` and `ENUMERATION_METHODS.md` §265
 (`rtr-business`).
 
+**Conductor follow-up (same day, WO-217b).** This PR's rebase resolved
+the probe sidecar (`scripts/tier3_auto_transcription_queue_probe.csv`)
+by keeping only its own side, which dropped all 113 rows WO-216 (#969)
+had appended — including the accept verdicts behind WO-216's 20 queue
+lines. The sidecar is append-only and is only read by the probe scripts
+as a cache (the worker never reads it), so nothing broke in production;
+the 113 rows were re-appended in a follow-up PR so the queue lines keep
+their "probe accepted" record. Rebase rule restated: the sidecar is a
+union of both sides, never one side.
+
 ## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
 
 **Why this ran.** Ryan, reviewing the night's hand-checks: "you're just
