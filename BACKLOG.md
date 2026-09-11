@@ -147,7 +147,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
@@ -171,7 +171,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
   [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
-  [EASY] Sechelt, BC and Blind River, ON pages: URL slug still shows
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
   [NEEDS-AUDIT] Same source URL, different query string, two
@@ -1704,55 +1703,6 @@ of human step they need.
     and village). In all three the tenant is the government's own domain
     and the page text names a real neighbouring government — the shape a
     ladder fix would have to recognise, if one is ever built.
-
-- **[EASY] Sechelt, BC and Blind River, ON pages: URL slug still shows
-  the wrong city, even though the page's own government (`gov_id`) and
-  displayed name are already correct -- the fix is a by-hand reslug, not
-  a re-key.**
-  - **Issue**: WO-182 checked WO-178's audit lead (which assumed a
-    mis-keyed government, "like Chenango") against `GET /internal/
-    export/pages` and the live pages, and the premise didn't hold. Page
-    882 (`/m/prince-george-2026-03-18-elections-bylaw-amendment-regular-
-    council-meeting`) already has `gov_id=ca:csd:5929011` and
-    `jurisdiction="Sechelt, BC"` -- the live page's own `<title>` already
-    reads "Sechelt, BC". Page 653 (`/m/peterborough-2024-05-21-council-
-    meeting`) already has `gov_id=ca:csd:3557038` and
-    `jurisdiction="Blind River, ON"`, title already "Blind River, ON".
-    Both pages were last written 2026-09-03, the day `backfill_gov_id.py`
-    first ran corpus-wide and fixed jurisdiction/gov_id on thousands of
-    then-unkeyed pages -- but that script never rewrites a page's own
-    `slug` (confirmed by reading it), so each page's original
-    (2026-08-15/16) ingest-time slug guess is still frozen into its URL.
-    This is the same shape as the existing Albemarle County VA and St.
-    Louis Park entries in `archive/main.py`'s `_SLUG_REDIRECTS` comment:
-    real data, stale-looking permalink.
-    A `backfill_gov_id.py --hosts pub-sechelt.escribemeetings.com,pub-
-    blindriver.escribemeetings.com` dry run confirms this: 0 would
-    change, 6 already current (all pages on both hosts, not just these
-    two). Full writeup: `rtr-business/research/ENUMERATION_METHODS.md`
-    §233.
-  - **Impact**: two live pages show a stale, misleading city name in
-    their URL (though the page content itself is already correct) --
-    confusing for a reader who reads the URL, and for anything that
-    joins on slug rather than gov_id.
-  - **Next action**: `POST /internal/admin/reslug-page` with
-    `dry_run=false` for `peterborough-2024-05-21-council-meeting` (new
-    slug, previewed: `blind-river-on-2024-05-21-council-meeting`) and
-    for `prince-george-2026-03-18-elections-bylaw-amendment-regular-
-    council-meeting` (new slug, previewed:
-    `sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-
-    meeting`), then add both old->new mappings to `archive/main.py`'s
-    `_SLUG_REDIRECTS` in the same change and deploy.
-  - **Constraint**: WO-182's session and the conductor session both had
-    the apply call blocked by the runtime sandbox's auto-mode safety
-    classifier (a POST to a production write endpoint), even after
-    dry-run previews. The two `_SLUG_REDIRECTS` entries are already on
-    `main` (WO-182b), so once Ryan runs the two reslug calls and deploys,
-    the old URLs 301 to the new ones. Needs Ryan to run the two calls.
-  - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (original find,
-    premise not yet checked); WO-182, 2026-09-10 (root cause found and
-    corrected, fix dry-run-verified, apply blocked -- see
-    `rtr-business/research/ENUMERATION_METHODS.md` §233).
 
 - **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   pages (not just the 1 Gloucester case above) -- a shared multi-
