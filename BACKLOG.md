@@ -1904,7 +1904,18 @@ of human step they need.
     fail — it succeeded at the wrong government. §4 predicted this
     exactly: "a plausible wrong extraction passes validation, so
     validation alone can never fix a confirmed-misleading host."
-  - **Impact**: **the one live instance is fixed** — page 4097 (the
+  - **Impact**: **it recurred on a fresh ingest, as predicted** — on
+    2026-09-11 `/j/gloucester-ma` was a live hub again, holding
+    `/m/gloucester-ma-2026-09-08-school-board-meeting` from
+    `pub-gloucesterva.escribemeetings.com` (found while checking hub
+    redirects, `BACKLOG_DONE.md` 2026-09-11). A live hub wins over the
+    alias row, so the hand-added redirect below is also inert while that
+    page sits there. Needs the same `POST /internal/jurisdiction/override`
+    to `us:sd:5101620` as page 4097, and it will keep happening on every
+    new Gloucester County, VA ingest until either Ryan authorizes an
+    `authoritative` pin for this host (the call he made for Chenango,
+    Kankakee County and McLean County) or the ladder is changed. The
+    first live instance was fixed — page 4097 (the
     `/j/gloucester-ma` page) was moved to `us:sd:5101620` via
     `POST /internal/jurisdiction/override` on 2026-09-03, confirmed live
     over `/internal/export/pages` (`gov_id: us:sd:5101620,

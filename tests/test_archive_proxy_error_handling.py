@@ -240,6 +240,40 @@ def test_bare_slug_disables_redirect_following_but_card_jpg_does_not(monkeypatch
     assert captured_allow_redirects["m/old-slug/transcript.txt"] is True
 
 
+def test_hub_slug_disables_redirect_following(monkeypatch):
+    """The /j/ half of the bug above (found 2026-09-11): Archive answers a
+    retired hub slug from archive/data/hub_slug_aliases.csv with a real
+    301, and the proxy was following it and serving the target hub as a
+    200 -- so none of the alias rows ever reached a reader or Googlebot
+    as a permanent redirect. Real case: /j/mclean-il -> /j/mclean-county-il
+    after the McLean County, IL authoritative pin."""
+    captured_allow_redirects = {}
+
+    async def _fake_proxy_get(
+        path, query_string, cookie_header=None, extra_headers=None, allow_redirects=True
+    ):
+        captured_allow_redirects[path] = allow_redirects
+
+        class _FakeResponse:
+            status = 301
+            headers = {"Location": "/j/mclean-county-il"}
+            content = _EmptyChunkIter()
+
+        class _FakeSession:
+            async def close(self):
+                pass
+
+        return _FakeSession(), _FakeResponse()
+
+    monkeypatch.setattr(app.main.archive_client, "proxy_get", _fake_proxy_get)
+
+    response = app_client.get("/j/mclean-il?topic=budget", follow_redirects=False)
+
+    assert captured_allow_redirects["j/mclean-il"] is False
+    assert response.status_code == 301
+    assert response.headers["location"] == "/j/mclean-county-il"
+
+
 async def test_proxy_get_forwards_allow_redirects_to_aiohttp(monkeypatch):
     monkeypatch.setenv("ARCHIVE_BASE_URL", "https://archive.example.test")
     captured = {}
