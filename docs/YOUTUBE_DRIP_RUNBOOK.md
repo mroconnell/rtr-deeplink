@@ -35,8 +35,13 @@ This is routine. Do nothing.
 3. **Pull `main` once a day** so the feed lane sees new queue lines, and
    run `advance` (below) so the queue file stays honest.
 4. **The audio lane shares the CPU** with any manual Whisper run on this
-   Mac. Start the drip with `--lanes captions,feed` during a big manual
-   run and add `audio` back after.
+   Mac (a tier-3 batch never touches YouTube, so that is the only
+   interaction). Start the drip with `--lanes captions,feed` during a big
+   manual run and add `audio` back after — Ctrl-C, restart with the
+   default lanes. `--seed-audio-from-site` is safe with a lane subset: it
+   only fills the audio queue in the state file for later. Running all
+   three lanes alongside a batch breaks nothing; both Whisper jobs just
+   run slower.
 
 ## Start it
 
