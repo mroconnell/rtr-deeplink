@@ -145,7 +145,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (127)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (128)
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
@@ -167,6 +167,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (127)
   [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
+  [NEEDS-AUDIT] Two more live pages show one government's real,
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
   [NEEDS-AUDIT] Same source URL, different query string, two
@@ -1668,6 +1669,45 @@ of human step they need.
     and village). In all three the tenant is the government's own domain
     and the page text names a real neighbouring government — the shape a
     ladder fix would have to recognise, if one is ever built.
+
+- **[NEEDS-AUDIT] Two more live pages show one government's real,
+  correctly-sourced meeting under a DIFFERENT government's name in the
+  URL slug -- found while settling `rtr-business/research/
+  jurisdiction_coverage.csv`'s held governments (WO-178), not yet
+  checked against this Archive's own admin tools.**
+  - **Issue**: `rtr-business/research/coverage_registry/
+    coverage_registry.csv`'s own `archive_url` field (read-only, not
+    modified by WO-178) shows a real, transcribed page slugged
+    `prince-george-2026-03-18-elections-bylaw-amendment-regular-council-
+    meeting` sitting under Sechelt, BC's `gov_id`
+    (`ca:csd:5929011`) -- not Prince George's own (`ca:csd:5953023`,
+    which already has its own correct, separately-platformed Swagit
+    page). Same shape a second time: a page slugged
+    `peterborough-2024-05-21-council-meeting` sits under Blind River,
+    ON's `gov_id` (`ca:csd:3557038`), not Peterborough's own
+    (`ca:csd:3515014`, which already has its own correct
+    `pub-peterborough.escribemeetings.com` pages). Both Sechelt's and
+    Blind River's own eScribe domains are the real, correct domains for
+    their OWN government -- this isn't a wrong-tenant mapping, it's the
+    page's own displayed jurisdiction name/slug that doesn't match the
+    domain that actually produced it.
+  - **Impact**: two real, live, transcribed pages on redtaperecordings.com
+    display a different city's name than the meeting they actually
+    contain -- a visible correctness bug for anyone who opens either URL,
+    not just a research-file bookkeeping mismatch (this research pass
+    only touched `jurisdiction_coverage.csv`, a tracking file with no
+    live readers).
+  - **Next action**: check `/internal/export/pages` (or the equivalent
+    admin lookup) for both source URLs to confirm which field is wrong --
+    the page's own stored jurisdiction/name, or the slug generator reading
+    a stale/wrong name -- then fix that page (and check for the same
+    shape on any other page from either of these two eScribe tenants).
+  - **Constraint**: this was found by cross-referencing a research CSV's
+    already-recorded `archive_url` field, not by opening either live page
+    directly -- confirm against the real page before changing anything.
+  - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (found in
+    `rtr-business`, a sibling repo, while settling WO-165's held
+    governments; out of that task's scope to fix).
 
 - **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   pages (not just the 1 Gloucester case above) -- a shared multi-
