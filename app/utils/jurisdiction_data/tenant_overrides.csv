@@ -4422,7 +4422,6 @@ www.youtube.com,ewmeXCEHRD4,us:county:20031,fallback,wo174_agendacenter_probe,"c
 www.youtube.com,xbr5XhABFew,us:place:4515295,fallback,wo174_agendacenter_probe,"coverage registry row us:place:4515295 (Clinton city, SC); hub https://cityofclintonsc.com/AgendaCenter; meeting found via youtube at https://www.youtube.com/watch?v=xbr5XhABFew"
 www.youtube.com,qVUva7BJl2A,us:place:4838548,fallback,wo174_agendacenter_probe,"coverage registry row us:place:4838548 (Keene city, TX); hub https://keenetx.com/AgendaCenter; meeting found via youtube at https://youtu.be/qVUva7BJl2A?feature=shared"
 www.youtube.com,qMvItA_QZss,us:place:1949215,fallback,wo174_agendacenter_probe,"coverage registry row us:place:1949215 (Maquoketa city, IA); hub https://maquoketaia.com/AgendaCenter; meeting found via youtube at https://www.youtube.com/watch?v=qMvItA_QZss"
-vimeo.com,,us:cousub:2500750390,fallback,wo145_api_first_sweep,"coverage registry row us:cousub:2500750390 (Oak Bluffs town, MA); hub ; meeting found via vimeo at https://vimeo.com/1199438213?share=copy&fl=sv&fe=ci"
 www.youtube.com,youtube:sWierc0tNEQ,us:county:13031,fallback,wo184_onehop_ingest,"Bulloch County -- WO-134 confirmed hit, gov_id=us:county:13031"
 www.youtube.com,youtube:z44_py4q2yQ,us:place:5337900,fallback,wo184_onehop_ingest,"Lake Stevens city -- WO-134 confirmed hit, gov_id=us:place:5337900"
 www.youtube.com,youtube:qh00RJ1mwIg,us:place:1359724,fallback,wo184_onehop_ingest,"Peachtree City city -- WO-134 confirmed hit, gov_id=us:place:1359724"
