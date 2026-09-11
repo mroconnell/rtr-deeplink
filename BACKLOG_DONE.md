@@ -101,6 +101,96 @@ drops the "ñ" rather than transliterating it. Not filed as its own
 entry (low impact, purely cosmetic, functions correctly) but worth
 knowing if seen again elsewhere.
 
+## WO-225: re-testing the 553 "no video found" rows that had recorded nothing at all -- 115 real pages, 5 queued, 2 wrong-government catches, and the old label was right on only 61 of 553 [Done 2026-09-11]
+
+**What was tested and why.** `no-video-found` is supposed to mean "a
+real meeting or agenda was found, and it has no video." Ryan checked
+`jurisdiction_coverage.csv` and found that isn't always true: of 1,708
+rows carrying this label, 553 had a blank meeting URL, a blank agenda
+URL, and no guessed platform in either provider column. Nothing was
+ever actually recorded on those 553 rows, so the label was a guess, not
+a finding. Ryan's instruction: re-test every one of the 553 and write
+back exactly what the test finds.
+
+**Method.** Re-derived the candidate list live against the research
+file (553 rows confirmed, matching Ryan's own count -- 421 US, 132
+Canada, 266 at population 5,000+). Ran the same access ladder and ingest
+pipeline earlier sweeps use, with one addition: when a government's hub
+page has a different address than its recorded domain, the hub address
+is tried first (a hub that answers is the better domain), then the
+recorded domain, then every other address on file. Every video found
+was checked automatically before it could become a page, then checked
+again by hand afterward.
+
+**Result, all 553:**
+
+| What the test found | Count of 553 | What it means |
+|---|---|---|
+| No meeting or video found | 314 | reached the government's site (or every address on file for it), nothing there at all |
+| Captions available, page live now | 115 | a real transcript, live today |
+| Meeting without video | 61 | a real meeting or agenda page, no video -- the only outcome where the old label's own claim was actually right |
+| Blocked | 50 | could not read the government's site at all, even after every fallback |
+| Rejected by the probe | 7 | a real video existed but failed the dead-link/duration check |
+| Video, no captions, queued | 5 | a real, playable video waiting for the cloud worker to transcribe it |
+| Already had a page | 1 | the row's own label was stale -- a real page already existed |
+
+**How right was the old label?** It claimed "a meeting or agenda was
+found, no video" for all 553 rows. That was true for only 61 of them
+(11%). The other 492 were something else entirely -- most had nothing
+findable at all (314), 115 got a real live page today, 50 were simply
+unreachable, and 12 more had a real video (7 rejected by the probe, 5
+queued).
+
+**Every video found was checked by hand, twice.** 120 real videos
+turned up (115 ingested, 5 queued). First, an automatic filter compared
+each video's title and channel against phrases like "school board" or
+"school committee" -- it caught 2 before they could ever be ingested:
+North Smithfield, RI (its own School Committee meeting, not the town
+government) and Dysart et al, Ontario (a school board election video).
+Both governments' own rows correctly show their real outcome instead.
+Second, every video that passed that filter was cross-checked against
+the Archive's own name-match field -- none showed a wrong government's
+name in its own title or channel. Two more wrong-government catches
+turned up a different way: Aurora city, MN and Dendron town, VA both
+had a candidate video that was already a real, live page correctly
+keyed to a *different* real neighboring government (Mountain Iron city,
+MN and Surry town, VA) -- the Archive's own safeguard against keying a
+video to the wrong government caught both and refused the ingest, so
+nothing wrong ever went live.
+
+| Hand-check result | Count of 122 checked |
+| Right (real meeting, right government) | 118 |
+| Wrong government entirely, caught before going live | 4 |
+
+**Caution.** One real, reproducible bug turned up: the eScribe adapter
+crashes on Ladysmith, BC's tenant with a text-encoding error (the exact
+same byte position and value as a known CivicPlus bug from an earlier
+sweep) -- filed in `BACKLOG.md`. Five of the 553 rows have no
+government id recorded at all (not caused by this sweep); the one that
+had a real video was recorded as blocked rather than ingested, since
+every ingest here carries the government's id and none exists yet for
+those five.
+
+**Recommendation.** Fix the eScribe encoding bug before the next
+eScribe-heavy sweep. The 2 school-board/committee owner-body leads are
+recorded in `wo225_owner_bodies.csv` for a later mint pass if Ryan wants
+them as their own governments. `docs/COVERAGE_HANDOVER.md`'s stale
+"789 governments" line is corrected in the same PR to point at the
+live count instead of a fixed number.
+
+**Deploy status.** The 115 live pages are live now -- ingest goes
+straight to production, no deploy needed. The 5 real queue lines and
+the tenant-override pins for the shared-host videos among them are on
+`main` but **not live** until the resolver and both transcription
+workers are redeployed.
+
+**History.** `rtr-business/research/wo225_candidates.csv` (553 rows),
+`wo225_report.csv` (all 553 rows), `wo225_apply_to_jc.py`,
+`wo225_owner_bodies.csv`, `wo225_hand_check_gate.csv`; `rtr-business/
+research/ENUMERATION_METHODS.md` §274 for the full method and every
+number above; `rtr-deeplink/scripts/wo225_build_candidates.py`,
+`wo225_access_ladder_sweep.py`.
+
 ## WO-228: hub links ranked and verified from real examples, replacing the first-match finder that recorded event calendars as meeting hubs [Done 2026-09-11]
 
 **What was done and why.** Ryan's 30-row spot-check found several
