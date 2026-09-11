@@ -151,7 +151,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
     [HUMAN] 13 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
-    [HUMAN] A "Spring Township, PA" page's video is actually the state…
+    [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
@@ -1256,12 +1256,41 @@ of human step they need.
   - **Next action**: product call — `noindex` them, or delete via the existing delete-pages endpoint; the 2 that do have a transcript can stay with the dead-player fix from Ship next.
   - **History**: gov-id enumeration audit, 2026-09-09.
 
-- **[HUMAN] A "Spring Township, PA" page's video is actually the state Public Utility Commission's own meeting, not a township meeting at all — needs a product call, not a pin.**
-  - **Issue**: WO-204 (fixing a hub-slug bug for 7 placeholder townships) checked the video behind `spring-township-pa-2026-09-10-pennsylvania-public-utility-commission-papuc-publi` before pinning it to any of the 5 real "Spring Township" governments in PA. yt-dlp shows the channel is "PennsylvaniaPUC" (@PennsylvaniaPUC), and its own description reads "Recording of the September 10, 2026 Public Meeting of the Pennsylvania Public Utility Commission held in the Commonwealth Keystone Building's Hearing Room 1 (Harrisburg, PA)." Nothing about the video names a township at all; the page only got labeled "Spring Township, PA" because of whatever earlier step assigned that jurisdiction, not because that's who posted or held the meeting. Per Ryan's rule (the source of the video is the truth), this is not left pinned to any Spring Township.
-  - **Impact**: one live page shows a real government meeting under the wrong government's name — a state agency's hearing, badged as a small PA township's. `rtr-business/research/jurisdiction_coverage.csv` had the same mistake baked into a Spring Township, Berks County row (its `example_meeting_url` pointed at this same PUC video) — that row is corrected in this PR (evidence cleared, `reject_reason=video-wrong-government`), but the live Archive page itself is untouched.
-  - **Next action**: Ryan decides what the page should say. Options: (a) leave it as an unverified "Spring Township, PA" placeholder (its `gov_id`/hub are least-wrong today, just under-labeled) and do nothing further; (b) mint a Pennsylvania Public Utility Commission government and re-key this one page to it (same "ok mint" pattern as WO-201's PennDOT/Upper Delaware Council/Southwestern PA Commission); (c) delete the page if a state-agency hearing doesn't belong in the archive's mission at all.
-  - **Constraint**: don't pin this to any of the 5 real Spring Townships (Berks/Centre/Snyder/Crawford/Perry Counties, PA) — none of them held or posted this meeting.
-  - **History**: `BACKLOG_DONE.md`, WO-204, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §251.
+- **[HUMAN] A Pennsylvania Public Utility Commission hearing was briefly live as "Spring Township, PA" — the page is now deleted; open question is only whether Ryan wants a PUC government minted for any future occurrence.**
+  - **Issue**: two concurrent sessions the same night (2026-09-11) independently found the same wrong page: WO-204 (fixing a hub-slug bug) checked
+    `spring-township-pa-2026-09-10-pennsylvania-public-utility-commission-papuc-publi`
+    before pinning it to any of the 5 real "Spring Township" governments
+    in PA and confirmed via yt-dlp that the channel is "PennsylvaniaPUC"
+    (@PennsylvaniaPUC), describing itself as "Recording of the September
+    10, 2026 Public Meeting of the Pennsylvania Public Utility
+    Commission held in the Commonwealth Keystone Building's Hearing Room
+    1 (Harrisburg, PA)" — nothing about the video names a township.
+    WO-183's own hand-check found the same page independently (its
+    Spring township, Berks County candidate was found via a bare-
+    channel scan of a link that government's own site made to PA PUC's
+    channel) and, per its hand-check protocol for a confirmed wrong
+    government, deleted the page via `POST /internal/admin/delete-pages`
+    before WO-204's own entry (asking Ryan to choose leave/mint/delete)
+    had merged. `rtr-business/research/jurisdiction_coverage.csv`'s
+    Spring Township, Berks County row is corrected (evidence cleared,
+    `reject_reason=off-mission`).
+  - **Impact**: no live page remains under the wrong name today — this
+    is no longer a public-facing trust problem. The only thing still
+    open is whether the Pennsylvania Public Utility Commission is worth
+    minting as its own government (same "ok mint" pattern as WO-201's
+    PennDOT/Upper Delaware Council/Southwestern PA Commission) so a
+    future PA PUC video anyone finds attributes correctly instead of
+    getting silently discarded as off-mission.
+  - **Next action**: Ryan decides whether the Pennsylvania Public
+    Utility Commission is in scope to mint as a government at all (it
+    is a state regulatory body, not a local government in the sense
+    this project otherwise tracks) before any future PA PUC find gets
+    anywhere past off-mission.
+  - **Constraint**: don't pin any future PA PUC find to any of the 5 real
+    Spring Townships (Berks/Centre/Snyder/Crawford/Perry Counties, PA) —
+    none of them held or posted this meeting.
+  - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
+    `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
 
 ### Decisions about already-live content
 
