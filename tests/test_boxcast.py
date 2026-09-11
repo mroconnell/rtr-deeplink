@@ -797,3 +797,266 @@ def test_boxcast_link_is_found_on_a_government_page(tmp_path):
     link, platform = result
     assert platform == "boxcast"
     assert f"boxcast.tv/view-embed/{AC_CHANNEL_ID}" in link
+
+
+# ---------------------------------------------------------------------------
+# WO-227b (2026-09-11): a shared regional media operator's BoxCast account,
+# NOT the government -- real data from Livermore Falls, ME, found through
+# the town's own WordPress site. Its channel (`LF_CHANNEL_ID`) carries only
+# Livermore Falls Select Board meetings, confirmed real; its ACCOUNT
+# (`irhhkp1kj2wjp6fa03qj`, "Mt. Blue Television - Farmington, ME") is a
+# regional community-TV operator whose own umbrella channel (confirmed live,
+# not re-exercised here) also carries Farmington's and Jay's own Select
+# Board meetings and an RSU 9 school-board meeting -- a real multi-
+# government host one layer inside a single BoxCast account. Real captions
+# confirmed live (module docstring's new section) -- the first case this
+# WO found beyond WO-227's original Atlantic City/St. Louis County pair.
+# ---------------------------------------------------------------------------
+
+LF_CHANNEL_ID = "vvohjjgvcdbmeatv03km"
+LF_ACCOUNT_ID = "irhhkp1kj2wjp6fa03qj"
+LF_BROADCAST_ID = "m6gexeisxxqbmj8e6gis"
+# The broadcast's own one-off pseudo-channel -- confirmed DIFFERENT from
+# LF_CHANNEL_ID above, which is what makes this a genuine "distinct
+# channel" case rather than the Wilmington/Hondo/Bartow shape.
+LF_BROADCAST_SLUG = (
+    "livermore-falls-select-board-meeting---september-1st-2026-n53uh3iocsj1rbpiogmm"
+)
+
+LF_CHANNEL_BROADCASTS = [
+    {
+        "id": LF_BROADCAST_ID,
+        "name": "Livermore Falls Select Board Meeting - September 1st, 2026",
+        "starts_at": "2026-09-01T21:58:00Z",
+        "stops_at": "2026-09-02T00:10:00Z",
+        "timeframe": "past",
+        "account_id": LF_ACCOUNT_ID,
+        "channel_id": LF_BROADCAST_SLUG,
+    },
+    {
+        "id": "qdzukxlyurm0mzgurstn",
+        "name": "Livermore Falls Select Board Meeting - August 18th, 2026",
+        "starts_at": "2026-08-18T21:58:00Z",
+        "stops_at": "2026-08-18T23:20:00Z",
+        "timeframe": "past",
+        "account_id": LF_ACCOUNT_ID,
+        "channel_id": "livermore-falls-select-board-meeting---august-18th-2026-iiy9drsr9yezrmoq4lfe",
+    },
+]
+
+LF_BROADCAST_FULL = {
+    "id": LF_BROADCAST_ID,
+    "name": "Livermore Falls Select Board Meeting - September 1st, 2026",
+    "starts_at": "2026-09-01T21:58:00Z",
+    "stops_at": "2026-09-02T00:10:00Z",
+    "timeframe": "past",
+    "time_zone_offset": -240,
+    "account_id": LF_ACCOUNT_ID,
+    "channel_id": LF_BROADCAST_SLUG,
+}
+
+LF_VIEW = {
+    "status": "recorded",
+    "playlist": "https://play.boxcast.com/p/yrsozutyozbeupbki5xg/v/all.m3u8"
+    "?Expires=1789257600&Signature=siglf&Key-Pair-Id=xyz",
+}
+
+# The SHARED operator's own account -- its `channel_id`
+# (`ckxiq1bpg9hm3tt3zvsb`, confirmed live to be a DIFFERENT real channel
+# carrying Farmington/Jay/RSU 9 content, not re-exercised here) must NOT
+# end up as this government's external_id or jurisdiction.
+LF_ACCOUNT = {
+    "id": LF_ACCOUNT_ID,
+    "name": "Mt. Blue Television - Farmington, ME",
+    "channel_id": "ckxiq1bpg9hm3tt3zvsb",
+}
+
+LF_MASTER_URL = LF_VIEW["playlist"]
+LF_SUBTITLE_URL = (
+    "https://play.boxcast.com/p/yrsozutyozbeupbki5xg/v/English.m3u8"
+    "?Expires=1789257600&Signature=siglfsub&Key-Pair-Id=xyz"
+)
+LF_MASTER_M3U8 = f"""#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-INDEPENDENT-SEGMENTS
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="sub1",NAME="English",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="{LF_SUBTITLE_URL}"
+#EXT-X-STREAM-INF:BANDWIDTH=1132473,CODECS="avc1.42001e,mp4a.40.2",RESOLUTION=426x240,SUBTITLES="sub1"
+https://play.boxcast.com/p/yrsozutyozbeupbki5xg/v/240p.m3u8?Expires=1789257600&Signature=siglf2&Key-Pair-Id=xyz
+"""
+
+LF_CAPTION_SEG_URL = (
+    "https://captions.boxcast.com/recordings/yrsozutyozbeupbki5xg/webvtt"
+    "?Signature=siglfseg&start_mpegts=4578&stop_mpegts=995568"
+)
+LF_SUBTITLE_MEDIA_M3U8 = f"""#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-TARGETDURATION:11
+#EXTINF:11.011,
+{LF_CAPTION_SEG_URL}
+"""
+# Real caption text confirmed live 2026-09-11, sampled from this exact
+# segment -- a real remark from a real Livermore Falls Select Board
+# meeting, not placeholder text.
+LF_CAPTION_SEG_TEXT = """WEBVTT
+X-TIMESTAMP-MAP=MPEGTS:4578,LOCAL:00:00:00.000
+
+1
+00:00:02.000 --> 00:00:09.240
+Ladies and gentlemen, thank you for coming. I am Dr. Bruce Perry. I will be your chair for the
+
+2
+00:00:09.240 --> 00:00:09.680
+evening.
+"""
+
+
+async def test_resolve_channel_link_for_livermore_falls_uses_distinct_channel_not_shared_account():
+    routes = {
+        _channel_broadcasts_url(LF_CHANNEL_ID): _json_response(LF_CHANNEL_BROADCASTS),
+        _broadcast_url(LF_BROADCAST_ID): _json_response(LF_BROADCAST_FULL),
+        _view_url(LF_BROADCAST_ID): _json_response(LF_VIEW),
+        _account_url(LF_ACCOUNT_ID): _json_response(LF_ACCOUNT),
+        LF_MASTER_URL: FakeResponse(status=200, text=LF_MASTER_M3U8),
+        LF_SUBTITLE_URL: FakeResponse(status=200, text=LF_SUBTITLE_MEDIA_M3U8),
+        LF_CAPTION_SEG_URL: FakeResponse(status=200, text=LF_CAPTION_SEG_TEXT),
+    }
+    with mock_session(routes):
+        finder = boxcast.BoxcastAssetFinder()
+        result = await finder.resolve(f"https://boxcast.tv/channel/{LF_CHANNEL_ID}")
+
+    assert result.title == "Livermore Falls Select Board Meeting - September 1st, 2026"
+    assert result.date == "2026-09-01"
+    # The distinct channel this scan actually reached, NOT the shared
+    # operator account's own channel (`ckxiq1bpg9hm3tt3zvsb`) -- this is
+    # the fix this WO made: before it, external_id would have been
+    # `boxcast:ckxiq1bpg9hm3tt3zvsb`, shared with every other government
+    # on the same Mt. Blue Television account.
+    assert result.external_id == f"boxcast:{LF_CHANNEL_ID}"
+    # The shared operator's own account name ("Mt. Blue Television -
+    # Farmington, ME") is never this government's jurisdiction -- left
+    # blank rather than guessed.
+    assert result.jurisdiction is None
+    assert result.video_url == LF_VIEW["playlist"]
+    assert result.video_format == "m3u8"
+    assert len(result.segments) >= 2
+    assert "Ladies and gentlemen" in result.segments[0].text
+    assert result.transcript_warnings == []
+
+
+async def test_resolve_channel_link_reuses_account_jurisdiction_when_it_matches_the_distinct_channel():
+    # Contrast case: when the distinct channel IS the account's own
+    # channel (Atlantic City's real shape -- see
+    # test_resolve_channel_link_picks_newest_meeting_like_broadcast_and_gets_real_captions
+    # above), the account name is correctly trusted. This test pins that
+    # behavior down explicitly against a second, simpler single-broadcast
+    # channel so a future change can't silently blank jurisdiction for
+    # the single-tenant case too.
+    single_tenant_channel_id = "single-tenant-channel-id"
+    broadcast_id = "singlebroadcastid"
+    account_id = "singletenantaccount"
+    broadcast_full = {
+        "id": broadcast_id,
+        "name": "Town Council Meeting 09/01/26",
+        "starts_at": "2026-09-01T23:00:00Z",
+        "stops_at": "2026-09-02T00:00:00Z",
+        "timeframe": "past",
+        "time_zone_offset": -240,
+        "account_id": account_id,
+        # Same id as the channel that was scanned -- a real
+        # single-broadcast government channel, not a shared operator.
+        "channel_id": single_tenant_channel_id,
+    }
+    account = {
+        "id": account_id,
+        "name": "Town of Example, ZZ",
+        "channel_id": single_tenant_channel_id,
+    }
+    view = {
+        "status": "recorded",
+        "playlist": "https://play.boxcast.com/p/example/v/all.m3u8"
+        "?Expires=1789257600&Signature=sigex&Key-Pair-Id=xyz",
+    }
+    master_m3u8 = (
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+        '#EXT-X-STREAM-INF:BANDWIDTH=900000,CODECS="avc1.42001e,mp4a.40.2",'
+        "RESOLUTION=426x240\n"
+        "https://play.boxcast.com/p/example/v/240p.m3u8"
+        "?Expires=1789257600&Signature=sigex2&Key-Pair-Id=xyz\n"
+    )
+    routes = {
+        _channel_broadcasts_url(single_tenant_channel_id): _json_response(
+            [broadcast_full]
+        ),
+        _broadcast_url(broadcast_id): _json_response(broadcast_full),
+        _view_url(broadcast_id): _json_response(view),
+        _account_url(account_id): _json_response(account),
+        view["playlist"]: FakeResponse(status=200, text=master_m3u8),
+    }
+    with mock_session(routes):
+        finder = boxcast.BoxcastAssetFinder()
+        result = await finder.resolve(
+            f"https://boxcast.tv/channel/{single_tenant_channel_id}"
+        )
+
+    assert result.external_id == f"boxcast:{single_tenant_channel_id}"
+    assert result.jurisdiction == "Town of Example, ZZ"
+
+
+async def test_resolve_bartow_via_per_meeting_pseudo_channel_uses_stable_account_channel():
+    # Bartow, FL's own real shape (WO-227b): a FRESH single-broadcast
+    # pseudo-channel per meeting (`city-commission-meeting---932026-...`),
+    # so a pin on that slug would never match next month's meeting --
+    # the account's own stable channel (`pzo8uo3hgxrf0pmwalhj`, confirmed
+    # live to list every real Bartow meeting, government-owned, not a
+    # shared operator) is the only usable stable id here, exactly the
+    # existing Wilmington/Hondo fallback path.
+    pseudo_channel = "city-commission-meeting---932026-qv27zpwm1ynvwei361kx"
+    broadcast_id = "nwgwwbnhjwp31rgxhwun"
+    account_id = "kpcnkyfgetmxappqpclx"
+    stable_channel_id = "pzo8uo3hgxrf0pmwalhj"
+    broadcast_full = {
+        "id": broadcast_id,
+        "name": "City Commission Meeting - 9/3/2026",
+        "starts_at": "2026-09-03T22:00:00Z",
+        "stops_at": "2026-09-03T23:18:00Z",
+        "timeframe": "past",
+        "time_zone_offset": -240,
+        "account_id": account_id,
+        # Same id as the pseudo-channel the URL itself named -- nothing
+        # distinct to prefer, so the account fallback is correct here.
+        "channel_id": pseudo_channel,
+    }
+    account = {
+        "id": account_id,
+        "name": "City of Bartow - Bartow, FL",
+        "channel_id": stable_channel_id,
+    }
+    view = {
+        "status": "recorded",
+        "playlist": "https://play.boxcast.com/p/bartow/v/all.m3u8"
+        "?Expires=1789257600&Signature=sigb&Key-Pair-Id=xyz",
+    }
+    master_m3u8 = (
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+        '#EXT-X-STREAM-INF:BANDWIDTH=900000,CODECS="avc1.42001e,mp4a.40.2",'
+        "RESOLUTION=426x240\n"
+        "https://play.boxcast.com/p/bartow/v/240p.m3u8"
+        "?Expires=1789257600&Signature=sigb2&Key-Pair-Id=xyz\n"
+    )
+    routes = {
+        _channel_broadcasts_url(pseudo_channel): _json_response([broadcast_full]),
+        _broadcast_url(broadcast_id): _json_response(broadcast_full),
+        _view_url(broadcast_id): _json_response(view),
+        _account_url(account_id): _json_response(account),
+        view["playlist"]: FakeResponse(status=200, text=master_m3u8),
+    }
+    with mock_session(routes):
+        finder = boxcast.BoxcastAssetFinder()
+        result = await finder.resolve(f"https://boxcast.tv/view/{pseudo_channel}")
+
+    assert result.external_id == f"boxcast:{stable_channel_id}"
+    assert result.jurisdiction == "City of Bartow - Bartow, FL"
+    # Stable per-broadcast URL, not the per-meeting pseudo-channel link
+    # that was pasted in.
+    assert result.source_url == f"https://boxcast.tv/view/{pseudo_channel}"

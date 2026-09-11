@@ -1,0 +1,17 @@
+{
+    "@odata.context": "https://inglesidetx.api.civicclerk.com/v1/$metadata#EventsMedia/$entity",
+    "id": 597,
+    "videoUrl": null,
+    "externalVideoUrl": "https://boxcast.tv/view/city-of-ingleside-regular-council-meeting-okftysv6biolmfmu9du3",
+    "isLiveStreaming": false,
+    "eventCCKey": null,
+    "streamingStatus": 0,
+    "pauseMessage": null,
+    "transcriptionUrl": null,
+    "closedCaptionUrl": null,
+    "defaultFileName": null,
+    "showTranscoding": false,
+    "audioDescriptionUrl": null,
+    "eventBookmarks": [],
+    "closedCaptionTracks": []
+}

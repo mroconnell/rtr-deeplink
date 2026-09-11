@@ -1,3 +1,5 @@
+import json
+
 import yt_dlp
 
 from app.platforms.civicclerk import CivicClerkAssetFinder, _reconstruct_cdn_stream_url
@@ -5,6 +7,24 @@ from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture, load_fixture_bytes
+
+
+def _boxcast_channel_broadcasts_url(channel_id):
+    return (
+        f"https://rest.boxcast.com/channels/{channel_id}/broadcasts?l=50&s=-starts_at"
+    )
+
+
+def _boxcast_broadcast_url(broadcast_id):
+    return f"https://rest.boxcast.com/broadcasts/{broadcast_id}"
+
+
+def _boxcast_view_url(broadcast_id):
+    return f"https://rest.boxcast.com/broadcasts/{broadcast_id}/view"
+
+
+def _boxcast_account_url(account_id):
+    return f"https://rest.boxcast.com/accounts/{account_id}"
 
 
 async def test_resolve_real_event_with_video_and_agenda_bookmarks():
@@ -165,6 +185,103 @@ async def test_resolve_surfaces_youtube_bot_block_video_warning(monkeypatch):
         "above."
     ]
     assert result.segments == []
+
+
+async def test_resolve_event_with_boxcast_external_media_url():
+    # Real inglesidetx.api.civicclerk.com event 597, fetched live
+    # 2026-09-11 (WO-227b) -- Ingleside, TX's own externalMediaUrl/
+    # externalVideoUrl is a `boxcast.tv/view/{...}` link, a single-
+    # broadcast pseudo-channel (module docstring of boxcast.py) whose one
+    # real broadcast is `wy23lw2mql7huswthwqq` ("City of Ingleside
+    # Regular Council Meeting", 2026-09-08, account `svrz7tfb78axctgkl2ql`
+    # -- confirmed live to have NO subtitle track, i.e. genuinely
+    # video-only). Same delegation shape as the YouTube case above:
+    # CivicClerk's own title/date/jurisdiction win, only video_url/
+    # video_format/warnings come from the delegated resolve.
+    url = "https://inglesidetx.portal.civicclerk.com/event/597/media"
+    event_json = load_fixture("civicclerk", "inglesidetx_event597.json")
+    media_json = load_fixture("civicclerk", "inglesidetx_media597.json")
+
+    boxcast_channel_id = (
+        "city-of-ingleside-regular-council-meeting-okftysv6biolmfmu9du3"
+    )
+    broadcast_id = "wy23lw2mql7huswthwqq"
+    account_id = "svrz7tfb78axctgkl2ql"
+    broadcast_full = {
+        "id": broadcast_id,
+        "name": "City of Ingleside Regular Council Meeting",
+        "starts_at": "2026-09-08T23:25:00Z",
+        "stops_at": "2026-09-09T02:17:00Z",
+        "timeframe": "past",
+        "time_zone_offset": -300,
+        "account_id": account_id,
+        "channel_id": boxcast_channel_id,
+    }
+    view = {
+        "status": "recorded",
+        "playlist": "https://play.boxcast.com/p/kp3dsayvaooacurabdbp/v/all.m3u8"
+        "?Expires=1789329408&Signature=sigi&Key-Pair-Id=xyz",
+    }
+    account = {
+        "id": account_id,
+        "name": "City of Ingleside, TX",
+        "channel_id": "l7unw3galf5is6bkahlt",
+    }
+    # Real master playlist for this broadcast confirmed live to carry NO
+    # subtitle track (unlike Atlantic City's/St. Louis County's/Livermore
+    # Falls'/Bartow's real BoxCast captions -- see boxcast.py's module
+    # docstring and tests/test_boxcast.py) -- genuinely video-only.
+    master_m3u8 = (
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-INDEPENDENT-SEGMENTS\n"
+        '#EXT-X-STREAM-INF:BANDWIDTH=1006635,CODECS="avc1.42001e,mp4a.40.2",'
+        "RESOLUTION=426x240\n"
+        "https://play.boxcast.com/p/kp3dsayvaooacurabdbp/v/240p.m3u8"
+        "?Expires=1789257600&Signature=sigi2&Key-Pair-Id=xyz\n"
+    )
+
+    routes = {
+        "https://inglesidetx.api.civicclerk.com/v1/Events/597": FakeResponse(
+            status=200, text=event_json
+        ),
+        "https://inglesidetx.api.civicclerk.com/v1/EventsMedia/597": FakeResponse(
+            status=200, text=media_json
+        ),
+        _boxcast_channel_broadcasts_url(boxcast_channel_id): FakeResponse(
+            status=200, text=json.dumps([broadcast_full])
+        ),
+        _boxcast_broadcast_url(broadcast_id): FakeResponse(
+            status=200, text=json.dumps(broadcast_full)
+        ),
+        _boxcast_view_url(broadcast_id): FakeResponse(
+            status=200, text=json.dumps(view)
+        ),
+        _boxcast_account_url(account_id): FakeResponse(
+            status=200, text=json.dumps(account)
+        ),
+        view["playlist"]: FakeResponse(status=200, text=master_m3u8),
+    }
+
+    with mock_session(routes):
+        result = await CivicClerkAssetFinder().resolve(url)
+
+    assert result.platform == "civicclerk"
+    # Same source_url-preserving choice as the YouTube delegation above --
+    # "View original source" keeps pointing at the CivicClerk event page,
+    # not the boxcast.tv URL discovered behind the scenes.
+    assert result.source_url == url
+    assert result.external_id == "civicclerk:inglesidetx.portal.civicclerk.com:597"
+    assert result.title == "City Council Meeting"
+    assert result.date == "2026-09-08"
+    assert result.video_url == view["playlist"]
+    assert result.video_format == "m3u8"
+    # No captions on either side (CivicClerk's own fields are empty for
+    # this event, and BoxCast's real master playlist for this broadcast
+    # has no subtitle track) -- honest video-only, not silently blank.
+    assert result.segments == []
+    assert any(
+        "no caption" in w.lower() or "no transcript" in w.lower()
+        for w in result.transcript_warnings
+    )
 
 
 async def test_resolve_real_event_with_populated_srt_captions():

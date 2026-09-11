@@ -1,5 +1,135 @@
 # Backlog — done
 
+## WO-227b: CivicClerk events now hand off a BoxCast video link to the BoxCast adapter, and five more BoxCast governments are pinned [Done 2026-09-11]
+
+**What was done and why.** WO-227 (just above) built a standalone
+BoxCast video adapter and found four real government customers. This
+follow-up closed two gaps found the same day: a fifth government
+(Ingleside, TX) publishes its meetings through a different system,
+CivicClerk, which links out to BoxCast for the actual video — and that
+hand-off didn't exist, so the video was invisible. Separately, four more
+governments already known to use BoxCast (Maywood IL, Livermore Falls
+ME, Bartow FL, Atlantic Beach SC) had no page and no pin yet.
+
+Building this found a real bug in WO-227's own code, not just a gap.
+BoxCast identifies a government by an account, and the adapter always
+used that account's own channel as the government's stable ID. That
+works when one account serves one government. Two of the five new
+governments here don't fit that: Livermore Falls, ME and Atlantic
+Beach, SC are both filmed by a shared, third-party video vendor whose
+one account covers several unrelated towns and a school board. Using
+the account's ID for those two would have quietly filed every one of
+those towns' meetings under the same ID — the same mistake this repo
+already fixed once at the website-domain level (WO-210, YouTube/Vimeo
+shared hosts), just one layer deeper, inside a single vendor account.
+The fix: when a government's own specific video channel can be found
+directly (not just its vendor's shared one), that channel — not the
+vendor account — is now what identifies it.
+
+**Result.**
+
+| Outcome | Count of 5 governments | What it means |
+|---|---|---|
+| Real captions found, page live now | 2 | Livermore Falls, ME and Bartow, FL — a real transcript exists and is on the site now |
+| Video found, no captions, queued for cloud transcription | 1 | Maywood, IL — a real 19-minute meeting, short enough to transcribe automatically |
+| Video found, no captions, meeting too long to queue | 1 | Ingleside, TX (the new CivicClerk hand-off) — a real 174-minute meeting; over the 90-minute cutoff, so it's set aside rather than queued |
+| Video found, but too old and the account is now shut off | 1 | Atlantic Beach, SC — newest recording is over a year old, and the video vendor now reports the account as inactive; identified for later, not put on the site |
+
+Bartow's real transcript was a genuine surprise — no one had confirmed
+BoxCast captions there before. That makes three of the nine BoxCast
+governments now known to have real, working transcripts (Atlantic City
+NJ and St. Louis County MO from WO-227, plus Livermore Falls and Bartow
+here — four, not three).
+
+**Caution.** Bartow's video is filmed under a fresh, one-off channel for
+every single meeting — there is no stable link to point a pin at
+directly. The fix described above (checking the vendor account) still
+handles this correctly for Bartow specifically, because Bartow's own
+account only ever contains Bartow's own meetings. A government that
+BOTH films under a fresh one-off channel every time AND shares its
+vendor account with other towns would not be caught by today's fix — no
+such case has been found yet, so nothing further was built; it's
+recorded in `BACKLOG.md` to build only once a real example turns up.
+
+**Recommendation.** Deploy. This is `app/` code (the CivicClerk hand-off
+and the account-vs-channel fix) plus one pins-file change — the two live
+pages are already up regardless of a deploy, but the queued Maywood
+meeting and the four new pins only take effect in production after the
+resolver, Archive, and both transcription workers are redeployed.
+
+**Detail.**
+
+- **CivicClerk → BoxCast hand-off** (`app/platforms/civicclerk.py`):
+  confirmed live on Ingleside, TX event 597
+  (`inglesidetx.api.civicclerk.com`) — its `externalMediaUrl` is
+  `https://boxcast.tv/view/city-of-ingleside-regular-council-meeting-okftysv6biolmfmu9du3`,
+  a real single-broadcast BoxCast link CivicClerk had no code path for
+  at all (it silently kept the extension-less BoxCast URL as
+  `video_url` with `video_format=None`, so nothing played). The fix
+  mirrors the existing YouTube hand-off already in this file: BoxCast
+  resolves the real signed video and any captions, while CivicClerk's
+  own event API still supplies the title, date, and page identity. Real
+  fixture from event 597 in `tests/fixtures/civicclerk/`. Confirmed:
+  this specific broadcast (172 real minutes) has no caption track —
+  genuinely video-only, not a fetch failure.
+- **The account-vs-channel bug** (`app/platforms/boxcast.py`): before
+  this fix, `external_id` always came from
+  `GET /accounts/{id}` → `channel_id`. Confirmed live: Livermore Falls,
+  ME's real BoxCast account (`irhhkp1kj2wjp6fa03qj`) is named "Mt. Blue
+  Television - Farmington, ME" and its own channel carries Farmington's
+  Select Board, Jay's Select Board, an RSU 9 school-board meeting, and
+  several high-school sports broadcasts — a real multi-government video
+  vendor, the same shape `docs/COVERAGE_HANDOVER.md` already documents
+  for shared website domains. The fix: when the scan reaches a real,
+  distinct channel of its own (different from the one-off channel a
+  single broadcast always gets), that channel is trusted over the
+  account. Verified this doesn't disturb any of WO-227's four original
+  governments — all four were re-run through the existing test suite
+  unchanged, plus new tests pin down both the fixed case (Livermore
+  Falls) and the unchanged case (Atlantic City, Bartow).
+- **The five governments, verified live 2026-09-11:**
+  - Ingleside, TX (`us:place:4836008`) — CivicClerk hand-off, 172-minute
+    meeting, no captions, deferred (not queued — over 90 minutes).
+  - Maywood, IL (`us:place:1747774`) — BoxCast channel
+    `abbqkhxhouhnw12zl7hj`, single-tenant government account, 19-minute
+    "Village Board Meeting" (2026-08-24), no captions, queued.
+  - Livermore Falls, ME (`us:cousub:2300140770`) — BoxCast channel
+    `vvohjjgvcdbmeatv03km` (found through the town's own WordPress
+    site), shared vendor account, 51-minute "Select Board Meeting"
+    (2026-09-01), real captions, ingested with `gov_id` — page live.
+  - Bartow, FL (`us:place:1203675`) — BoxCast account
+    `kpcnkyfgetmxappqpclx`, fresh one-off channel per meeting, 79-minute
+    "City Commission Meeting" (2026-09-03), real captions, ingested with
+    `gov_id` — page live.
+  - Atlantic Beach, SC (`us:place:4503205`) — BoxCast channel
+    `dtoujlfjxuu2lde6bvp8`, newest recording 2025-09-08, and the video
+    vendor's own API now answers "account is not active" for that
+    recording — pinned for identity only.
+- **Pages created:** `/m/livermore-falls-me-2026-09-01-livermore-falls-select-board-meeting-september-1st`,
+  `/m/bartow-fl-2026-09-03-city-commission-meeting-9-3-2026`. Both
+  confirmed live (200 OK) with the correct government name in the page
+  title, not `rtr:unknown`.
+- **Queue/deferred:** `scripts/tier3_auto_transcription_queue.txt`
+  gained one line (Maywood); `scripts/tier3_long_meetings_deferred.txt`
+  gained one line (Ingleside), both via the shared
+  `queue_probe.finish_candidate()` helper, not written by hand.
+- **Pins:** four new rows in
+  `app/utils/jurisdiction_data/tenant_overrides.csv` (Maywood,
+  Livermore Falls, Bartow, Atlantic Beach), same `boxcast.tv,
+  external_id=boxcast:<channel>` shape WO-227 used.
+- **Hand-check:** all 5 governments' chosen videos were read by hand
+  (title and channel/account against the governing body) before being
+  queued or ingested — 0 wrong. The Maywood scan's own newest broadcast
+  ("Village Of Maywood", no governing-body word in its title) was
+  correctly skipped by the existing Kind-B/keyword filter in favor of
+  the real "Village Board Meeting" further down the list — confirming
+  that filter's judgment on a real, live case, not just the fixtures it
+  shipped with.
+- **YouTube:** not touched this WO — no calls made, no block hit.
+- **Research file:** `~/Documents/rtr-business/research/wo227b_report.csv`
+  has one row per government; `ENUMERATION_METHODS.md` §269 has the
+  method note.
+
 ## WO-227: standalone BoxCast adapter — broadcast and channel links resolve on their own, and real captions turned up on two of four tenants [Done 2026-09-11]
 
 **What was done and why.** BoxCast was only ever reachable through one
