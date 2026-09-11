@@ -17,21 +17,28 @@ real meetings platform link turned up, resolved it through this repo's
 own adapters and kept only a real video. A meeting with no video is
 recorded, never made into a page (Ryan's standing rule). A likely video
 found via a bare YouTube channel scan (not a specific linked video) got
-its title checked by hand before being trusted — that check caught one
-real false positive, described below.
+its title checked by hand before being trusted — that check caught two
+real false positives: one before anything went live (described below),
+and one already-live page, found afterward by checking all 73 of this
+sweep's own channel-scan ingests one by one (title and channel name
+against YouTube's own oEmbed endpoint) rather than trusting the sample
+that already passed. East Greenville borough, PA's own "match" turned
+out to be a WordPress plugin tutorial video, unrelated to the borough —
+deleted the same session, see below. The other 72 all show a real,
+correct match.
 
 **Result.**
 
 | Outcome | Count of 1,814 | Detail |
 |---|---|---|
-| Captions available, page live now | 78 | real transcript, ingested |
+| Captions available, page live now | 77 | real transcript, ingested |
 | Video, no captions, queued (after probe) | 5 | tier-3, will be transcribed |
 | Rejected by probe | 0 | none of the 6 probed candidates were dead/short |
 | Video without meeting | 1 | see "false positive" below |
 | Meeting without video | 19 | real meeting found, no video — recorded, not built |
 | No meeting nor video | 2 | nothing found at either |
 | Wrong domain mapping | 2 | candidate belonged to a different government |
-| Off-mission | 57 | channel/page found had no real meeting content |
+| Off-mission | 58 | channel/page found had no real meeting content |
 | No platform link found | 340 | site answered, no meetings platform visible |
 | Blocked, plain request | 62 | site refused the plain request |
 | Blocked, browser-style request | 6 | still refused after the retry |
@@ -81,6 +88,21 @@ Parents Meeting 2026" — a parents' meeting for an Indonesian university
 Nortonville. This is exactly the failure mode WO-147 flagged (3 of 8
 channel-scan hits in that sweep were not real meetings despite passing
 the title gate) — caught here, not queued, no pin written.
+
+**The second false positive, caught by checking all 78 already-live
+channel-scan ingests, not just the sample that already passed.** Given
+the pattern above, every one of this sweep's 73 pages built from a bare
+channel/handle scan (not the 5 built from a specific linked video) got
+the same title check, by hand, after the fact. 72 checked out — a real
+government name/channel match. One did not: East Greenville borough,
+PA's page ("Importing Zoom Meetings to Your WordPress Website | Modern
+Events Calendar Zoom Integration Addon," channel `WebnusStudio`) is a
+WordPress-plugin how-to video, wholly unrelated to the borough — the
+"channel" the ladder found was a vanity/studio handle, not the
+government's own. Deleted the same session via `POST /internal/
+admin/delete-pages` (dry run confirmed the exact slug first, then
+applied). `jurisdiction_coverage.csv`'s row for it is corrected
+(`off-mission`) directly.
 
 **Caution.** This pass answers "is it really dead" for domains, not "is
 there a real meeting platform to find" — 340 governments answered but
@@ -136,7 +158,7 @@ work order's own file.
 
 **Recommendation.** Nothing here needs a deploy — this is research-file
 and backlog work only (`jurisdiction_coverage.csv`, pins, the tier-3
-queue, and code that only runs from scripts). The 78 newly-ingested pages
+queue, and code that only runs from scripts). The 77 newly-ingested pages
 and 5 newly-queued meetings are live now / once the next transcription
 run picks up the queue; no action needed from Ryan unless he wants the
 two filed `BACKLOG.md` bugs fixed sooner.
