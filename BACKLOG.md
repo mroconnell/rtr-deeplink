@@ -139,9 +139,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (21)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
-  Production actions only Ryan should take  (6)
-    [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (6)
+  Production actions only Ryan should take  (5)
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
     [HUMAN] 13 hosts the coverage registry ties to the wrong government:…
@@ -150,7 +149,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
@@ -243,7 +242,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (41)
+  Adapter & platform gaps  (40)
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
@@ -284,7 +283,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
     [NEEDS-AUDIT] Guessing a fixed meetings-page path only works for…
     [EXAMPLE] Streamline Website Solutions has no confirmed real example…
     [LATER] A bare pasted Wistia media URL (no channel context) can show…
-    [LATER] Village of Friendship Heights, MD publishes real meeting…
 
 Reliability, ops & cost  (14)
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
@@ -1116,33 +1114,6 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
-
-- **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
-  - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
-    `new_verdict == "same-name-same-state-ambiguous"`: `@CityofSantaClara`
-    (assigned to Santa Clarita city, CA -- its own title literally says
-    "City of Santa Clara", a real, different California city);
-    `@JeffCityCouncil` (Jeffersonville city, IN -- "Jeff" is a plausible
-    informal abbreviation, not confirmed); `@haltrammell` (Cleveland
-    County, NC -- a political-news channel covering "both Carolinas",
-    mentions county commissioner/board of education meetings but never
-    names Cleveland County specifically); `@AbingtonTownship` (assigned
-    to "North Abington township", PA -- the channel's own title is just
-    "Abington Township", no "North", and a real "Abington Township, PA"
-    exists in Montgomery County -- worth checking whether the dataset's
-    place name itself is right before treating the channel as wrong).
-  - **Impact**: 4 real governments with no video queued, sitting on a
-    channel that is very likely either a real match or a real,
-    different government -- not safe to decide by an automated name
-    match either way (this is exactly the collision class WO-175 found
-    and fixed automated false-positives on for other rows in the same
-    batch).
-  - **Next action**: Ryan (or a session with a live YouTube check)
-    looks at each channel directly and says own-channel / different-
-    government / not-government; if own-channel or shared, queue a
-    real meeting the same way WO-175 did for the other 55.
-  - **History**: `BACKLOG_DONE.md` WO-175, 2026-09-10;
-    `rtr-business/research/wo175_methods_section.md`.
 
 - **[HUMAN] One live page is keyed to the wrong government: a real Chenango TOWN, NY meeting displays as Chenango COUNTY, NY -- fixed for future ingests, needs a deploy + backfill for this one page.**
   - **Issue**: WO-145's breadth sweep ingested `townofchenango.civicweb.net`'s real Town Board meeting under `us:cousub:3600715110` (Chenango town, NY), but `key_check()` couldn't resolve that jurisdiction string to the intended id at registry/pinned confidence (Chenango County, NY is a real, different, larger New York county with the same base name) -- the page live-keyed to the county instead. A `strength=fallback` pin (`townofchenango.civicweb.net` -> `us:cousub:3600715110`) is now in `tenant_overrides.csv` (this PR), which fixes every future ingest/re-resolve of this tenant, but does nothing for the page that already exists.
@@ -4251,13 +4222,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: no fix attempted — would need either a reverse media-id-to-channel lookup (no such Wistia API endpoint found) or accepting the media JSON's own `name` as final. Revisit only if a real cold-pasted Wistia URL with a bad title actually surfaces.
   - **Constraint**: `[LATER]` — no real example of user harm yet, just a confirmed data-quality gap in the source.
   - **History**: `BACKLOG_DONE.md`, WO-161, 2026-09-10; see `wistia.py`'s `resolve_media_id()` docstring.
-
-- **[LATER] Village of Friendship Heights, MD publishes real meeting transcripts as plain Word documents, not through any video platform this app resolves.**
-  - **Issue**: checked live for WO-161 (one of the three previously-unchecked RegionalWebTV clients) — its RegionalWebTV page (`regionalwebtv.com/village-of-friendship-heights`) carries no Wistia embed of any kind (confirmed: no `<iframe>`, no `wistia` string anywhere in the rendered DOM), but does link real `.docx` transcript files directly (Wix-hosted `_files/ugd/...docx`) for real meetings through 7/13/2026 — a genuinely different, non-video source shape no adapter here handles.
-  - **Impact**: this one small Maryland village has real, current, human-readable meeting transcripts sitting unindexed — a real, if narrow, coverage gap distinct from the Wistia work this WO otherwise did.
-  - **Next action**: not investigated further (out of WO-161's Wistia-adapter scope) — a future session could check whether `.docx` extraction is worth a small, targeted adapter for this one government, or whether the same `_files/ugd/` pattern appears on any other RegionalWebTV client's page.
-  - **Constraint**: `[LATER]` — one confirmed government, not a platform pattern yet.
-  - **History**: `BACKLOG_DONE.md`, WO-161, 2026-09-10.
 
 ## Reliability, ops & cost
 

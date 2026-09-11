@@ -1545,7 +1545,6 @@ https://www.youtube.com/watch?v=IpJSU_3cF9g	https://itasca.com
 https://www.youtube.com/embed/AcNy0diJug4	https://townofmono.com/government/town-council
 https://youtu.be/GJfYao7CmKk	https://www.humboldtcounty.iowa.gov/offices/administrative/board_of_supervisors/agendas_minutes_videos.php
 https://www.youtube.com/watch?v=8qePLwulFwk	https://cityofoakgrove.com
-https://www.youtube.com/embed/-pNyufIO7xM?feature=oembed	https://www.cityofjennings.com/council-meetings/
 https://youtube.com/live/XpILexVHL5E	https://prattcounty.org
 https://www.youtube.com/watch?v=VHiiKGACBwM	https://sunset-hills.com
 https://youtu.be/Psn_AOc_Tj4	https://olivettemo.com
@@ -2752,3 +2751,7 @@ https://www.youtube.com/watch?v=x2rRqLhkQPU	https://www.waterfordct.gov/AgendaCe
 https://www.youtube.com/watch?v=xh4DlMrr5ME	https://rousespointny.gov/government_departments/administration_village_board/youtube_council_meetings.php
 https://youtu.be/e8Jr18zynxs
 https://vimeo.com/646562708
+https://www.youtube.com/watch?v=IPLLmvDDvjE	https://www.youtube.com/@rockspringswy
+https://www.youtube.com/watch?v=NF13srAY9i4	https://www.youtube.com/@JeffCityCouncil
+https://www.youtube.com/watch?v=zEUEhkWn1v8	https://www.youtube.com/@misdirector5910
+https://www.youtube.com/watch?v=qbQqZZgGRaE	https://www.youtube.com/@AbingtonTownship

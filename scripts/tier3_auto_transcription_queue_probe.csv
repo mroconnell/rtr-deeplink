@@ -3,7 +3,6 @@ https://www.youtube.com/watch?v=KF4N78Gz64g,youtube,yt-dlp-metadata,4163.00,2026
 https://www.youtube.com/watch?v=jX5Z82N_X3o,youtube,yt-dlp-metadata,587.00,2026-07-06,17905421,1,accept,,6.81,2026-09-10T14:34:30+00:00
 https://www.youtube.com/watch?v=3J2iFWUlD1w,youtube,yt-dlp-metadata,1749.00,2025-04-29,45131606,1,accept,,5.41,2026-09-10T14:34:30+00:00
 https://www.youtube.com/watch?v=8Fxfcd47cFA,youtube,yt-dlp-metadata,1446.00,2026-07-27,44381296,1,accept,,4.30,2026-09-10T14:34:30+00:00
-https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,3.91,2026-09-10T14:34:31+00:00
 https://ashland-va.granicus.com/MediaPlayer.php?view_id=1&clip_id=1790,granicus,hls-master+variant,2058.06,,,1,accept,,6.08,2026-09-10T14:34:37+00:00
 https://albanyca.granicus.com/MediaPlayer.php?view_id=2&clip_id=2731,granicus,hls-master+variant,3601.19,,,1,accept,,7.94,2026-09-10T14:34:37+00:00
 https://anaheim.granicus.com/MediaPlayer.php?view_id=2&clip_id=3665,granicus,hls-master+variant,30411.54,,,1,flag-long,"duration 8.45h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",9.88,2026-09-10T14:34:40+00:00
@@ -239,7 +238,6 @@ https://lmctvny.new.swagit.com/videos/169569,swagit,hls-master+variant,290.46,,,
 https://tonawandatownny.iqm2.com/Citizens/Detail_Meeting.aspx?ID=3023,iqm2,hls-master+variant,412.46,,,0,accept,,1.80,2026-09-10T22:14:19+00:00
 https://pleasantontx.iqm2.com/Citizens/Detail_Meeting.aspx?ID=1372,iqm2,hls-master+variant,13412.47,,,1,accept,,19.71,2026-09-10T22:14:38+00:00
 https://www.youtube.com/watch?v=ZdFPHNoK46o,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] ZdFPHNoK46o: This live event will begin in 11 days.,1.51,2026-09-10T22:14:40+00:00
-https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,1.57,2026-09-10T22:55:57+00:00,bulk_ingest
 https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,0.67,2026-09-10T22:56:00+00:00,bulk_ingest
 https://delnortecoca.portal.civicclerk.com/event/203/media,civicclerk,head+ffprobe,13070.92,2026-09-09,9895749037,1,accept,,3.55,2026-09-10T22:05:45+00:00,,0
 https://delnortecoca.portal.civicclerk.com/event/215/media,civicclerk,head+ffprobe,5346.20,2026-08-25,3791010824,1,accept,,2.42,2026-09-10T22:05:45+00:00,,0
@@ -350,7 +348,6 @@ https://www.youtube.com/watch?v=w3tLJZxT-8c,youtube,yt-dlp-metadata,,,,0,reject-
 https://www.youtube.com/watch?v=wgutXZzRE0E,youtube,yt-dlp-metadata,41.00,2018-11-22,3472593,0,reject-short,duration 41.0s is below the 60s meeting-plausibility floor,1.92,2026-09-10T21:29:29+00:00
 https://www.youtube.com/watch?v=x2rRqLhkQPU,youtube,yt-dlp-metadata,2528.00,2026-08-19,74450393,1,accept,,2.28,2026-09-11T01:10:48+00:00
 https://www.youtube.com/watch?v=xh4DlMrr5ME,youtube,yt-dlp-metadata,4153.00,2026-01-06,158371646,1,accept,,2.22,2026-09-10T21:33:04+00:00
-https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,1.57,2026-09-10T22:55:57+00:00,bulk_ingest
 https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,0.67,2026-09-10T22:56:00+00:00,bulk_ingest
 https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.14,2026-09-10T23:24:20+00:00,wo174
 https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.15,2026-09-10T23:30:32+00:00,wo174
@@ -457,7 +454,6 @@ https://www.youtube.com/watch?v=w3tLJZxT-8c,youtube,yt-dlp-metadata,,,,0,reject-
 https://www.youtube.com/watch?v=wgutXZzRE0E,youtube,yt-dlp-metadata,41.00,2018-11-22,3472593,0,reject-short,duration 41.0s is below the 60s meeting-plausibility floor,1.92,2026-09-10T21:29:29+00:00
 https://www.youtube.com/watch?v=x2rRqLhkQPU,youtube,yt-dlp-metadata,2528.00,2026-08-19,74450393,1,accept,,2.28,2026-09-11T01:10:48+00:00
 https://www.youtube.com/watch?v=xh4DlMrr5ME,youtube,yt-dlp-metadata,4153.00,2026-01-06,158371646,1,accept,,2.22,2026-09-10T21:33:04+00:00
-https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,1.57,2026-09-10T22:55:57+00:00,bulk_ingest
 https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,0.67,2026-09-10T22:56:00+00:00,bulk_ingest
 https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.14,2026-09-10T23:24:20+00:00,wo174
 https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.15,2026-09-10T23:30:32+00:00,wo174
@@ -509,3 +505,8 @@ https://www.youtube.com/watch?v=1-fJ-0X5eqI,youtube,yt-dlp-metadata,6764.00,2024
 https://www.youtube.com/watch?v=qm2F5k26T0k&t=18s,youtube,yt-dlp-metadata,933.00,2026-04-28,19700631,1,accept,,3.26,2026-09-11T02:10:30+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=6ckVEf9jcHg,youtube,yt-dlp-metadata,4912.00,2026-08-21,125516203,1,accept,,2.00,2026-09-11T02:10:39+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=bEk3_JtUl_8,youtube,yt-dlp-metadata,5074.00,2026-07-07,118889307,1,accept,,1.56,2026-09-11T02:10:47+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=IPLLmvDDvjE,youtube,yt-dlp-metadata,1970.00,2026-08-14,33219960,1,accept,,6.92,2026-09-11T02:04:07+00:00,,0
+https://www.youtube.com/watch?v=NF13srAY9i4,youtube,yt-dlp-metadata,2304.00,2019-11-05,62056353,1,accept,,5.84,2026-09-11T02:04:08+00:00,,0
+https://www.youtube.com/watch?v=zEUEhkWn1v8,youtube,yt-dlp-metadata,2948.00,2026-07-30,91485131,1,accept,,4.39,2026-09-11T02:04:08+00:00,,0
+https://www.youtube.com/watch?v=VhlRRqRhMvE,youtube,yt-dlp-metadata,4485.00,2026-09-02,132452191,1,accept,,7.03,2026-09-11T02:04:12+00:00,,0
+https://www.youtube.com/watch?v=qbQqZZgGRaE,youtube,yt-dlp-metadata,1549.00,2026-07-27,35138308,1,accept,,3.94,2026-09-11T02:08:56+00:00,,0

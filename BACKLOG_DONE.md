@@ -344,6 +344,83 @@ convenient — it is not urgent.
   ENUMERATION_METHODS.md §158). Per-row report:
   `~/Documents/rtr-business/research/wo193_report.csv`.
 
+## WO-189: Ryan's decisions on 11 open ambiguities -- each verified against a live source first; 2 came back "not applied" [Done 2026-09-11]
+
+The conductor assigned WO-189 to work through 11 specific open
+ambiguities Ryan had already made a call on (Cornelius NC, Rock Springs
+WY, four LocalView "needs a human" channels from WO-175, Taylor
+County's `@misdirector5910`, the Village of Friendship Heights MD, the
+WO-177 special-district side file, and two tier-3 queue lines). The
+brief was explicit: verify each decision against the live source before
+applying it, and report "not applied, because…" for any decision the
+evidence contradicts, rather than silently changing it. Full per-row
+detail is in `rtr-business/research/wo189_report.csv` and
+`rtr-business/research/ENUMERATION_METHODS.md` §238.
+
+| # | Government | Decision | Live evidence | Applied? | Result |
+|---|---|---|---|---|---|
+| 1 | Cornelius, NC (`uGjiNOTkOoM`) | Off-mission (a county meeting), pick a different town video | Already resolved: `BACKLOG_DONE.md`'s "Ryan's decisions on the held videos and undecided pages" (2026-09-10) already kept this video and pinned it to the town; the pin and tier-3 queue line already existed. | No | No change |
+| 2 | Rock Springs, WY (`zXY8UlA7kYI`) | Key to WY, off-mission explainer, pick a real council meeting | Channel About page: "City of Rock Springs Wyoming", site rswy.net; `us_places.csv` has no Rock Springs, IN at all | Yes | Queued after probe (accept, 32:50); not ingested |
+| 3 | `@CityofSantaClara` | Wrong government (Santa Clarita); key to Santa Clara, CA | About page + santaclaraca.gov match the existing Santa Clara pin; Santa Clara already has a page | Yes | Pin fixed; no new video needed |
+| 4 | `@JeffCityCouncil` | Evidence-first: Jefferson City MO if silent | Video titles: "Jeffersonville City Council Meeting" (not silent) | Yes, per evidence (Jeffersonville, IN) | Queued after probe (accept, 38:24); not ingested |
+| 5 | `@haltrammell` | Off-mission, private commentator | About page: "Politics and more ... both Carolinas" | Yes | Rejected, no page |
+| 6 | `@AbingtonTownship` | Key to Abington Twp, Montgomery Co PA | About page names "Abington Township"/"Montgomery County"; channel links abingtonpa.gov, matching the existing Montgomery County row | Yes | Queued after probe (accept, 25:49); not ingested |
+| 7 | Taylor County `@misdirector5910` | Confirm FL, re-check for live video | Video description: "Taylor County Administrative Complex ... Perry, FL. 32347" | Yes | Queued after probe (accept, 49:08); not ingested |
+| 8 | Village of Friendship Heights, MD | Mint curated gov, ingest via Wistia | Live Wistia channel API confirms `ygiu3hchat`, "Village of Friendship Heights Council", 36 episodes -- supersedes WO-161's 2026-09-10 "no Wistia video" finding | Yes | Curated gov + pin added; not ingested |
+| 9 | WO-177 side file | Park, not minted | Matches the repo's existing special-district policy | Yes | README note added; CSV untouched |
+| 10 | Jennings, LA queue line | Probe; remove if dead, replace if live | Already 2x reject-dead in the sidecar; live page still embeds the same video as a *future*-dated (10/13/2026) placeholder; web search found only an off-mission 3rd-party news clip | Yes (removal); no replacement found | Line + sidecar rows removed |
+| 11 | Morrison County, MN (`VhlRRqRhMvE`) | Remove as a 67-second clip, replace | Live metadata: 4485s (74:45), "Morrison County Board of Adjustment - September 1, 2026" -- a real meeting | No | Left in queue; newly probed (accept) |
+
+**Two decisions came back genuinely contradicted by live evidence.**
+Cornelius, NC had already been settled by a later, more authoritative
+session than the one the decision's premise was based on -- re-applying
+it would have undone Ryan's own subsequent call. Morrison County's video
+was described as 67 seconds; both the watch page's own metadata and a
+real `probe_tier3_queue.py` run put it at 74:45, a real Board of
+Adjustment meeting, not a throwaway clip.
+
+**One decision reversed a same-day finding, not a fabrication.** WO-161
+(2026-09-10) checked Friendship Heights and correctly found no Wistia
+video that day -- only Word-document transcripts. A live re-check on
+2026-09-11 found a real, populated Wistia channel (36 episodes). That
+finding was true when written; this one supersedes it. `BACKLOG.md`'s
+matching "publishes real meeting transcripts as plain Word documents"
+entry, which would otherwise still describe this as unbuilt, was closed
+in the same pass.
+
+**Nothing was ingested this session.** Every one of the 6 new tier-3
+candidates was found, live-verified, and probed for real
+(`scripts/probe_tier3_queue.py`, 5 new `accept` verdicts) -- pins, the
+curated government row, and the queue/sidecar rows are all real and on
+`main`. But this worktree has no `ARCHIVE_BASE_URL`/
+`ARCHIVE_INGEST_TOKEN` configured (no `.env` at all, consistent with
+CLAUDE.md's worktree-isolation caution), so `scripts/bulk_ingest.py`
+could not be run against the Archive. A future session with real
+credentials still needs to run it for these six governments (and the
+Friendship Heights Wistia media) before any of them becomes a live
+page.
+
+**Files.** rtr-deeplink: `app/utils/jurisdiction_data/
+tenant_overrides.csv` (11 new pin rows), `app/utils/jurisdiction_data/
+curated_governments.csv` (Village of Friendship Heights, MD),
+`scripts/tier3_auto_transcription_queue.txt` (4 lines added, 1 removed),
+`scripts/tier3_auto_transcription_queue_probe.csv` (5 rows added, 2
+stale Jennings rows removed), `BACKLOG.md` (closed the resolved
+"4 LocalView channels" and stale Friendship Heights entries).
+`rtr-business`: `research/jurisdiction_coverage.csv` (3 rows: Rock
+Springs WY, Jeffersonville IN, Taylor County FL -- old video URLs kept
+in `alternate_urls`, never deleted), `research/wo175_channel_recheck.csv`
+(4 rows given final verdicts), `research/wo177_civicdata_
+special_districts.README.txt` (new), `research/wo189_report.csv` (new,
+11-row per-decision report), `research/ENUMERATION_METHODS.md` §238.
+
+**Deploy status.** Nothing here is live. The pins, the curated
+government row, and the queue changes reach production only after the
+resolver and both transcription workers are redeployed (production is
+currently running everything merged up to this morning); the 6 queued
+videos also still need an actual `bulk_ingest.py` run with real Archive
+credentials before they become pages.
+
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
 - **[Done 2026-09-10] Sechelt, BC and Blind River, ON pages: URL slug showed
