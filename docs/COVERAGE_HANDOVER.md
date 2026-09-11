@@ -121,6 +121,15 @@ reasons. That is how every sweep below was scoped.
   transcription worker re-resolves a video when it transcribes it, so a
   shared-host pin must be deployed before the worker reaches that queue
   entry or the page loses its government.
+- **Ryan's rule for who owns a meeting (2026-09-11, WO-201):** the source
+  of the video is the truth, not our prior assumption about how
+  government is organized. The body that actually publishes a meeting
+  gets its own record, minted as a curated government
+  (`curated_governments.csv`) when the Census has no row for it — a
+  state agency (PennDOT), a river-corridor council, or a regional
+  planning commission is not folded into the city, township, or state it
+  happens to sit inside just because that's the government we already
+  had a row for.
 
 ## 4. How coverage is grown: the sweep pattern
 

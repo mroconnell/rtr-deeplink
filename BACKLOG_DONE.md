@@ -1,5 +1,79 @@
 # Backlog — done
 
+## WO-201: minted PennDOT, Upper Delaware Council and Southwestern PA Commission -- Ryan's decision, and the deploy-lag gate hit a third time [Done 2026-09-11]
+
+**Decision.** Ryan's rule: "Favor the source of the video as the real
+truth, beyond whatever preconception we have about government
+structures." And for the specific cases WO-199 left open: "key PennDOT
+to its own gov body, Penn Department of Transportation. Those mint
+decisions sound fine too." This closes BACKLOG.md's "Two real public
+bodies found by WO-199 have no `gov_id`" entry and the PennDOT veto
+question raised in WO-199's own writeup.
+
+**What was minted**, in `app/utils/jurisdiction_data/
+curated_governments.csv` (`curated+ryan_stated`):
+
+| Government | gov_id | Kind used | State (why) |
+|---|---|---|---|
+| Pennsylvania Department of Transportation (PennDOT) | `rtr:us:pa:pennsylvania-department-of-transportation` | `other` -- no "state agency" value in the Census of Governments vocabulary this repo follows | PA |
+| Upper Delaware Council | `rtr:us:ny:upper-delaware-council` | `special_district` -- closest existing value, same as other regional multi-government bodies already in the file | NY -- the Council's own office is in Narrowsburg, NY (confirmed live) even though it serves both NY and PA townships |
+| Southwestern Pennsylvania Commission | `rtr:us:pa:southwestern-pennsylvania-commission` | `special_district`, same reasoning | PA -- office in Pittsburgh, PA (confirmed live) |
+
+**Pins.** `tenant_overrides.csv` got a `fallback` `channel=@handle` pin
+for each new government (`@brrudolphpagov`, `@upperdelawarecouncil8106`,
+`@SPCRegion`) and a per-video pin for each of the three real meetings.
+The existing WO-199 pin for PennDOT's video was repointed from
+`us:state:42` to the new PennDOT id.
+
+**Ingest.** One meeting each for the two bodies with no page yet
+(PennDOT's meeting was already live from WO-199):
+
+| Government | Meeting | Minutes | Page |
+|---|---|---|---|
+| Upper Delaware Council | "Creating Healthy Allyships With Indigenous Peoples" | 36.9 | Live now (id 8501) |
+| Southwestern Pennsylvania Commission | "Commission Executive Committee and Corporation Board of Directors Meeting - August 24, 2026" | 37.5 | Live now (id 8502) |
+
+Both had real YouTube auto-captions and resolved via
+`scripts/bulk_ingest.py` with no tier-3 queueing needed. One caveat
+worth flagging: the Upper Delaware Council's channel posts individual
+presentations recorded at Council meetings, not one full meeting
+recording -- no video on the channel is literally titled "Council
+Meeting" as of 2026-09-11. The newest video was picked and hand-checked
+(title, channel, duration), not a video of the whole meeting.
+
+**Deploy lag, hit a third time.** Same shape as WO-199's own finding
+(BACKLOG_DONE.md section 247, `COVERAGE_HANDOVER.md` section 3), but
+worse for a brand-new id: `POST /internal/jurisdiction/override` reads
+the DEPLOYED registry, so a genuinely new `curated_governments.csv` row
+(not just a re-key between two already-existing ids, which is what
+WO-199's own re-keys were) cannot be applied until this PR deploys.
+Confirmed three times this session:
+
+1. Re-keying the PennDOT page (id 8434, from `us:state:42`) failed:
+   `400 unknown gov_id ... Add the row first, then override.`
+2. The new Upper Delaware Council page landed with
+   `gov_id=rtr:unknown:www.youtube.com` (no pin matched).
+3. The new Southwestern PA Commission page landed under
+   `us:cousub:4212966376` (Rostraver Township, PA) -- the OLD wrong pin
+   WO-199's report says it removed is still live on the deployed site.
+
+`scripts/wo201_override.py` (new, same shape as `wo199_override.py`)
+has all three corrections queued, ready to run once this PR deploys.
+
+**Not deployed.** The three curated rows and the pin changes are on
+`main` after this PR merges, but production keeps resolving these three
+pages under their OLD government until the Archive is redeployed. The
+pages themselves are already live -- ingest is a direct write, not part
+of a deploy.
+
+**Files.** `app/utils/jurisdiction_data/curated_governments.csv` (3 new
+rows), `app/utils/jurisdiction_data/tenant_overrides.csv` (3 channel
+pins, 2 new per-video pins, 1 repointed), `scripts/wo201_override.py`
+(new), `docs/COVERAGE_HANDOVER.md` (Ryan's rule added to section 3).
+`rtr-business`: `research/jurisdiction_coverage.csv` (3 rows added),
+`research/wo201_report.csv` (new), `research/ENUMERATION_METHODS.md`
+section 249.
+
 ## WO-203: `scripts/youtube_drip.py` — one paced, always-on YouTube process for the dedicated Mac [Done 2026-09-11]
 
 - **[Done 2026-09-11] [HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube channel-scan hit a 62% false-positive rate on its first pass (5 of 8 early "successes" wrong) before a channel-identity check was added; one page predates this WO entirely.**
