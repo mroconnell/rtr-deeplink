@@ -578,6 +578,34 @@ under everything else. This repo extracts and fixes just that part.
   branch just hasn't caught up to yet, not a real conflict; `git pull
   --rebase` handles the genuine case cleanly as long as your change and
   theirs touch different regions of the file.
+- **Every subagent spawned from one session shares that session's
+  scratchpad directory — a generic scratch filename is a collision
+  waiting to happen (WO-200, 2026-09-11).** The "Scratchpad directory"
+  the harness names in each agent's environment block is keyed by
+  *session id*, and a subagent launched with the Agent tool runs under
+  its parent's session id, so a conductor and every agent it spawns
+  (worktree-isolated or not) all get the *same* path. Confirmed live:
+  the 2026-09-10 coverage conductor's single scratchpad held files from
+  32 different WOs, and the earlier 2026-09-09 wave's held 16. Real
+  incident: WO-179's agent wrote `pr_body.md` there, WO-175's agent
+  overwrote it before `gh pr create --body-file` read it, and PR #909
+  went up with WO-175's description (caught by re-reading the PR via
+  `gh api`, fixed with `gh pr edit`). Three rules follow. (1) **A
+  `SubagentStart` hook (`.claude/hooks/subagent-start.sh`, registered
+  in `.claude/settings.json`) now creates
+  `<scratchpad>/agents/<agent_id>/` for each subagent and tells it to
+  use that** — if you're a subagent, use the private directory the hook
+  names, not the shared root. (2) **Belt and braces, since the hook is
+  advisory and only fires for agents started from a checkout that has
+  it**: name scratch files by WO (`wo195_pr_body.md`) or put them in a
+  per-WO subdirectory, never bare `pr_body.md`/`commit_msg.txt`; a
+  conductor's brief should say so explicitly. (3) **After
+  `gh pr create --body-file`, re-read the body** (`gh api
+  repos/{owner}/{repo}/pulls/<n> --jq .body | head`) and confirm it is
+  yours — that check is what caught #909. Same root cause as the WO
+  numbering and working-tree bullets above: concurrent agents can't
+  infer shared state from a snapshot, and here the harness's own
+  "session-specific" wording hides that the snapshot is shared.
 - **A `.claude/worktrees/<name>/` subdirectory silently inherits the
   shared checkout's `.env` if you run either service from inside it
   without setting `DATABASE_URL` explicitly.** Confirmed live 2026-08-17:
