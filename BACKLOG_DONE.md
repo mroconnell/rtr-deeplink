@@ -1,5 +1,56 @@
 # Backlog — done
 
+## WO-220: the 72 Utah PMN entities parked without a gov_id — 61 minted on Ryan's call, 8 keyed to existing ids, 3 left open; 138 per-notice pins [Done 2026-09-11]
+
+- **Why:** the WO-205 PMN pass parked 72 deferred lines whose publisher
+  no national table covers (state agencies, charter schools, special
+  districts, a few others), and `resolve_government()` minted wrong or
+  truncated ids for several. Worklist built as
+  `rtr-business/research/wo220_utah_pmn_mint_worklist.csv` (one row per
+  PMN entity: name as PMN prints it, the entity string, the meeting
+  lines, the ladder's minted id, a proposed `rtr:us:ut:<slug>`, a type
+  guess, a blank call column). Ryan's call, verbatim: "state agency
+  should be its own gov but display the state of Utah the same way that
+  CalHFA would be California. everything else makes sense to me."
+- **What was done** (`scripts/apply_pin_worklist.py --worklist … --apply`,
+  a sheet in its own format with both notices per entity — the parked
+  original and the queued WO-205 substitute — so either page gets keyed
+  when fed):
+
+  | Rows by kind | Entities | Pins |
+  |---|---|---|
+  | Minted, `rtr:us:ut:<slug>` (17 state agencies, 13 charter schools, 24 special districts, 7 other) | 61 | 122 |
+  | Keyed to an existing id, no mint (5 school districts → `us:sd:`, 3 metro townships → `us:place:`) | 8 | 16 |
+  | Left open (Lake Mountain, Timpanogos, Aspen Peaks school districts: post-2024 districts not in `us_school_districts.csv`) | 3 | 0 |
+
+  Every pin is `fallback`, `www.utah.gov` + the notice path as `match`
+  (per-notice on a shared host, WO-210). 61 `curated_governments.csv`
+  rows, `source=curated+ryan_stated`, state `UT`, evidence naming Ryan's
+  rule. Type mapping, since the vocabulary has no "state agency": state
+  agencies `other` (PennDOT / PA PUC / Texas Workforce Commission
+  precedent); charter schools `school_district` (each Utah charter is its
+  own LEA with its own board); special districts `special_district`;
+  interlocal bodies, associations of governments, the MPO, a foundation
+  and Spring Lake `other`.
+- **Two things the apply surfaced:** (1) "ok mint" in the name column is
+  read as "ok" = accept the proposed id, and a fresh `rtr:` id has no
+  registry row, so every mint would have failed `unknown_gov_id`; for
+  mints the name goes in `ryan_gov_name` and "ok mint" in `ryan_note`.
+  (2) The ladder's name repair truncated three names before minting —
+  "Department of Commerce" → `rtr:us:ut:commerce`, "Southwest Utah Public
+  Health Department" → `:southwest`, "Early Light Academy at Daybreak" →
+  `:early`; rewritten by hand to the worklist's slugs, pins updated.
+- **Display check (Ryan's "display as Utah"):** PennDOT, the live
+  precedent, renders as "Pennsylvania Department of Transportation, PA",
+  links to `/j/pennsylvania-department-of-transportation-pa` and to
+  `/state/pennsylvania` ("More Pennsylvania meetings"), and is listed on
+  that state hub. A curated `other` government with state `UT` therefore
+  reads as Utah already; no display change needed, no gap filed.
+- **Deploy:** the pins and curated rows are data files inside the image
+  — on `main` but not live until the next Archive deploy. No backfill is
+  needed: none of these entities has a live page yet; the pins key the
+  parked and queued notices when they are fed.
+
 ## WO-222: sweep ingest helpers now send the row's own gov_id, so a shared-host page never has to wait for a pin to deploy [Done 2026-09-11]
 
 **Why this ran.** Since WO-210 (2026-09-11, 11:40 PT), a page on a host
