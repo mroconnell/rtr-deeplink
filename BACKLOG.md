@@ -141,8 +141,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (23)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
-  Production actions only Ryan should take  (6)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
+  Production actions only Ryan should take  (7)
+    [HUMAN] Two real public bodies found by WO-199 have no `gov_id` in…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -1137,6 +1138,41 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
+
+- **[HUMAN] Two real public bodies found by WO-199 have no `gov_id` in our system -- mint them, or say no.**
+  - **Issue**: WO-199 (fixing WO-191's 8 hand-check rejects) confirmed
+    two YouTube channels belong to real, active public bodies with no
+    row in any of our national tables (`app/utils/jurisdiction_data/
+    *.csv`) and no existing `rtr:` minted id: the **Upper Delaware
+    Council** (channel UCSUPEIOP2oqoO7I_1AdJgXg, "a formal partnership
+    of local, state, and federal governments and agencies" managing the
+    Upper Delaware Scenic and Recreational River, spanning townships in
+    both NY and PA), and the **Southwestern Pennsylvania Commission**
+    (channel UCC8ONjuFksmnLyxhYOHCf7Q, a regional planning body helping
+    "counties, cities, municipalities and townships" across
+    southwestern Pennsylvania access transportation/economic-
+    development funding). Both are real, both post real meeting videos
+    (the Upper Delaware Council's "Creating an Upper Delaware Council
+    Development & Communications Plan", the Southwestern PA
+    Commission's "Commission Executive Committee and Corporation ..."),
+    and both were mistakenly keyed to a single member township
+    (Damascus Township, PA and Rostraver Township, PA respectively) by
+    an earlier sweep.
+  - **Impact**: two real meeting videos, on two real public bodies, are
+    not on the site at all -- left out on purpose rather than minted
+    without asking, since a multi-jurisdiction regional body is exactly
+    the kind of decision `curated_governments.csv` reserves for a human
+    ("ok mint" in a pin worklist).
+  - **Next action**: Ryan says mint or don't, for each. If mint: a
+    `rtr:us:<state>:<slug>` id in `app/utils/jurisdiction_data/
+    curated_governments.csv` for each, then ingest the two videos named
+    above and pin their channels.
+  - **Constraint**: neither body maps cleanly onto a single state (the
+    Upper Delaware Council spans NY and PA); the minted id's state field
+    would need a judgment call either way.
+  - **History**: `BACKLOG_DONE.md`'s WO-199 entry, 2026-09-11;
+    `rtr-business/research/wo199_report.csv`;
+    `rtr-business/research/ENUMERATION_METHODS.md` section 247.
 
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,

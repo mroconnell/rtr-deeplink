@@ -105,6 +105,81 @@ audio-lane block; report `daily_status.csv` counts weekly until the
   - **Constraint**: `fallback`-strength pins only apply when the resolver's own ladder declines first (rung 5, after rung 4) — Rockaway and Park Township both needed `authoritative` strength instead, because their STORED `jurisdiction` string had already committed to a confident (but wrong) answer, so a `fallback` pin is never reached at all. A future per-video pin for a page whose stored jurisdiction already resolves to something (rather than declining) needs the same check.
   - **History**: dry run at `/tmp/postdeploy2_dry.csv` (conductor-provided); real evidence gathered via yt-dlp (read-only, channel name/description) for all 7 wrong-government cases — see PR description for the per-page evidence table. Corpus scan and its 7 conductor-review leftovers, plus a separate `jurisdiction_enrich.py` state-extraction bug found along the way (Park Township's "Ottawa County Michigan" spelled-out state), are split out as their own open `BACKLOG.md` entries. `rtr-business/research/wo198_backfill_dry.csv`, `rtr-business/research/wo198_township_scan.csv`, `rtr-business/research/ENUMERATION_METHODS.md` (WO-198 section) have the full writeup.
 
+## WO-199: fixed WO-191's 8 hand-check rejects -- kept 3 real meetings under the right government, left 2 out (no gov_id yet), found Middlebury's own video, and caught a live deploy-lag bug while doing it [Done 2026-09-11]
+
+**Why this ran.** WO-191's own hand check rejected 8 videos it had
+first counted as real hits, because each one belonged to the wrong
+government. Ryan reviewed all 8 and gave two different rules, depending
+on why the video was wrong:
+
+- **Kind A -- the channel is a real public body, just the wrong one.**
+  Keep the meeting. Key it to the body that actually owns it. Put the
+  original government back to "no video." Give that government a fresh,
+  separate look for its own video.
+- **Kind B -- right government's channel, wrong video.** Look at the
+  channel's other recent videos and find the real one.
+
+**Result, one row per original government:**
+
+| Government | Kind | What the channel turned out to be | What happened |
+|---|---|---|---|
+| Lemont Township, IL | A | Cook County Assessor's Office | Kept, keyed to Cook County (`us:county:17031`), live now |
+| Middlebury town, VT | A | Addison Central Unified School District (one video only) | Kept, keyed to the school district (`us:sd:5000402`), live now |
+| Damascus Township, PA | A | Upper Delaware Council (a river-corridor partnership) | Left out -- this body has no id in our system yet |
+| Rostraver Township, PA | A | Southwestern Pennsylvania Commission (a regional planning body) | Left out -- this body has no id in our system yet |
+| Solebury Township, PA | A | PennDOT (Pennsylvania's state transportation agency) | Kept, keyed to the State of Pennsylvania (`us:state:42`) -- Ryan may veto this one, see Caution |
+| Lac la Biche County, AB | B | The county's own channel | No meeting video anywhere on it -- checked all 27 videos, 1 livestream, 5 playlists |
+| Parkland County, AB | B | The county's own channel | Found a real Council Meeting, live now |
+| Cambridge city, MN | B | The city's own channel | No meeting video anywhere on it -- checked all 27 videos; the city's own site blocked our check |
+
+**The township relook, same 5 governments Kind A applies to:**
+
+| Government | Own video found? |
+|---|---|
+| Lemont Township, IL | No -- real meeting agendas exist online back to 2018, no video |
+| Middlebury town, VT | Yes -- the Selectboard's own meeting, on the same channel that carried the wrong video; live now |
+| Damascus Township, PA | No -- real, current meeting agendas exist, no video |
+| Rostraver Township, PA | No -- real meeting agendas exist, no video |
+| Solebury Township, PA | No -- meetings happen live over Zoom with no recording kept anywhere we could find |
+
+**A real bug this session caught before it caused harm: a new pin does
+not take effect until the site is redeployed.** All 3 Kind A ingests
+(Lemont, Middlebury, Solebury) landed back under their OLD, wrong
+government the first time, because the correction to
+`tenant_overrides.csv` only reaches the site after the next deploy --
+the ingest itself still runs against whatever is live right now. This
+session checked each page right after ingesting it, caught the mistake,
+and fixed the 3 pages directly with a small, targeted correction (not a
+site-wide rewrite). This is not a new problem -- it is a known,
+documented shape (see `docs/COVERAGE_HANDOVER.md` section 3) -- but this
+is a fresh, concrete example of it happening in real time, worth keeping
+in mind for anyone re-keying a government and ingesting new content in
+the same sitting.
+
+**Caution.** The Solebury Township page is now keyed to "State of
+Pennsylvania," but the meeting itself is a PennDOT public meeting about
+a road project, not a meeting of the state legislature or governor's
+office. Ryan should look at this one and say if that keying is right,
+or if it should come down instead.
+
+**Recommendation.** Two real public bodies found in this batch -- the
+Upper Delaware Council and the Southwestern Pennsylvania Commission --
+have no id in our system yet. Both are real, active government
+partnerships, not made up. See the matching `BACKLOG.md` entry for what
+each one would need to be added. Separately, the new pins and the one
+new pair of governments will not show up correctly on any FUTURE videos
+from these channels until the site is redeployed; the meetings ingested
+today are already live regardless, since ingest is a direct write, not
+part of a deploy.
+
+**Files**: `rtr-business/research/jurisdiction_coverage.csv` (10 rows:
+8 corrected, 2 added -- Addison Central Unified School District VT,
+State of Pennsylvania), `rtr-business/research/wo199_report.csv` (new,
+one row per original government), `rtr-business/research/
+ENUMERATION_METHODS.md` section 247 (the reusable Kind A / Kind B
+rule). `app/utils/jurisdiction_data/tenant_overrides.csv` (3 wrong pins
+removed, 3 corrected, 4 added).
+
 ## WO-188: recheck of the 15 LocalView channels YouTube's block stopped WO-175 from finishing [Done 2026-09-11]
 
 - **[Done 2026-09-11] [HUMAN] [EASY] 6 live Archive pages need deletion -- real videos, wrong government or not a real meeting, caught by WO-191's own oEmbed hand-check, dry-run call blocked by the auto-mode safety classifier.**
