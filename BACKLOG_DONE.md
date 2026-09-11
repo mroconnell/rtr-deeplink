@@ -26,6 +26,90 @@
   Park FL, Grand Forks ND) were never re-added — absent from every queue
   commit since `eacc8a0`. Nothing to undo.
 
+## WO-209: verified all 73 bare-name backfill re-keys against the government's own recorded domain before writing any of them -- 0 wrong [Done 2026-09-11]
+
+The conductor's post-deploy dry run of `backfill_gov_id.py --hosts
+www.youtube.com,vimeo.com,player.vimeo.com,amsva.wistia.com`
+(`/tmp/postdeploy5_dry.csv`) proposed 87 page re-keys. 14 were the
+already-known-wrong Oak Bluffs, MA blank-match wildcard (`gov_id_after ==
+us:cousub:2500750390`, see WO-206 above; PR #953 removes the pin) --
+excluded, never applied. The other 73 key a blank/placeholder page to a
+real government by NAME alone (`geneva` -> Geneva city, OH; `lincoln` ->
+Lincoln town, ME; `town-of-somerville` -> Somerville, TN; ...), and every
+one of those 73 names turned out to exist in at least two other
+states/provinces (`Winfield` alone: 16). The conductor held all 73 for
+individual verification rather than trusting the resolver's
+single-candidate pick blind.
+
+**Method: the government's own recorded domain, not the video's own
+metadata.** A YouTube channel named "City of Bowling Green" or "Town of
+Woodstock" says nothing about which of 6 or 15 same-named governments it
+is -- checked via `yt-dlp`, most of the 73 channels/descriptions carry no
+state at all. The decisive evidence was already in
+`rtr-business/research/jurisdiction_coverage.csv`: every one of the 73
+pages had already been found by an earlier, independent sweep
+(WO-183/184/191) that started from a SPECIFIC KNOWN government (name +
+state fixed by the Census-derived universe) and its OWN official domain
+(`bgohio.gov`, `cityofmanvel.com`, `townofchapelhilltn.gov`, ...), and
+only THEN found this exact video linked from that domain. Cross-
+referencing each page's slug against `example_meeting_url="/m/<slug>"`
+recovered the originating government+domain for all 73 with zero misses,
+and every one agreed with the dry run's own `gov_id_after`.
+
+**Result: 73 of 73 confirmed, 0 wrong, 0 left ambiguous.** All 73
+applied live via `POST /internal/jurisdiction/override` (dry run, then
+`--apply`, `scripts/wo209_override.py`); 22 titles spot-verified directly
+afterward, including all 4 pages that had carried a previously-WRONG
+mint/pin (Fairfield/Hamilton township OH, Montgomery township PA, Irwin
+borough PA -- all now read correctly). Two videos (Spring Garden
+Township, PA; Ogden, IA) are no longer available on YouTube at all
+(`yt-dlp`/oEmbed both return "not available"/"Unauthorized") -- their
+identity is still confirmed via the same domain evidence, since it
+predates and doesn't depend on the video staying live.
+
+| Evidence type | Rows |
+|---|---|
+| Source host (government's own domain, via `jurisdiction_coverage.csv`) | 73 |
+| Channel name also agreed (no state, but consistent) | 71 |
+| Channel name/handle/description also gave an explicit state | 19 |
+| Video unavailable on YouTube -- domain evidence only | 2 |
+
+**Hub aliases: 64 of 70 hub-changing rows got one; 6 deliberately did
+not.** 3 of the 73 already carried their correct hub (no change). Of the
+remaining 70, 4 old hubs already belong to a DIFFERENT real, live
+government -- `lincoln` (Lincoln, ON), `plymouth` (Plymouth, MN),
+`town-of-chapel-hill` (Chapel Hill, NC), `town-of-woodstock` (Woodstock,
+NB) -- aliasing them would have hijacked that other government's hub.
+2 more collide with EACH OTHER within this same batch: pages 8077
+(Winfield town, IN) and 8554 (Winfield city, MO) both slugify their raw
+jurisdiction text down to the identical `hub_before="winfield"`; both
+pages' gov_id/title are correct and live, only the `/j/winfield` redirect
+is left unbuilt.
+
+**No `jurisdiction_coverage.csv` field backfill was needed** -- all 73
+governments' rows already had `example_meeting_url` and
+`suspected_video_provider` populated (unsurprising, since that's exactly
+the data used to verify them).
+
+**Bare-name resolver finding: 0/73 wrong (0%).** No `BACKLOG.md` entry
+filed for a wrong-rate -- the conductor's own instruction was to file one
+only if the rate is meaningful, and 0% isn't.
+
+- **Issue**: 73 pages had a blank/placeholder `gov_id`, name-ambiguous
+  across states, and needed real verification before a bulk backfill
+  wrote them.
+- **Impact**: all 73 resolved correctly; identity was never actually at
+  risk once cross-checked, but the resolver's own single-candidate ladder
+  gives no visibility into that without an independent source.
+- **Next action**: none -- all applied and verified live.
+- **Constraint**: `/j/winfield` and 4 other hub slugs are deliberately
+  NOT aliased (see above) -- don't add them later without re-checking
+  which government currently owns that hub.
+- **History**: `scripts/wo209_override.py`,
+  `archive/data/hub_slug_aliases.csv` (64 new rows),
+  `rtr-business/research/wo209_report.csv` (all 73 rows),
+  `rtr-business/research/ENUMERATION_METHODS.md` section 260.
+
 ## `scripts/youtube_drip.py`: a tick that raises is now a five-minute pause, not an exit [Done 2026-09-11]
 
 - **What happened:** the drip on Ol McClaude's Mac ran ~4 hours unattended
