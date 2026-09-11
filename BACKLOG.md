@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (27)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (28)
+  `wo191_access_ladder_sweep.py`'s headless budget is computed at…
   Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
@@ -653,6 +654,37 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+
+### `wo191_access_ladder_sweep.py`'s headless budget is computed at import time, so a reusing WO that overrides `HEADLESS_BUDGET_JSON` after import silently inherits WO-191's own stale cumulative count `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `_headless_used = _load_headless_used()` runs as a
+  module-level statement in `scripts/wo191_access_ladder_sweep.py`,
+  evaluated the instant the module is imported — reading WO-191's own
+  `wo191_headless_budget.json`. A later WO that imports this module and
+  monkeypatches `wo191.HEADLESS_BUDGET_JSON` to its own file (the
+  intended reuse pattern per that file's own docstring) does not
+  retroactively recompute `_headless_used`; it keeps whatever WO-191's
+  file held at import time.
+- **Impact:** WO-218 (2026-09-11) hit this directly: its pilot run
+  inherited WO-191's real count (579, already over any per-WO cap),
+  silently disabling the headless rung for the whole pilot batch — no
+  error, no warning, just every headless-eligible host falling through
+  to "no platform link found." Any future WO reusing this driver the
+  same way (WO-191's own docstring recommends exactly this pattern) will
+  hit the same silent budget contamination.
+- **Next action:** after any `HEADLESS_BUDGET_JSON` override, also
+  re-run `wo191._headless_used = wo191._load_headless_used()` (the fix
+  WO-218 applied in its own wrapper, `scripts/wo218_ladder_sweep.py`) —
+  or, better, move the wiring into a small `init_headless_budget(path,
+  total)` function in `wo191_access_ladder_sweep.py` itself that both
+  sets the path and recomputes `_headless_used`, so a reusing WO can't
+  forget the second step.
+- **Constraint:** a fix here should not touch WO-191's own default
+  behavior (calling `main()` directly, with no override) — the bug only
+  bites a reusing caller.
+- **History:** found and worked around in `rtr-deeplink` WO-218,
+  2026-09-11; see `~/Documents/rtr-business/research/
+  ENUMERATION_METHODS.md` §263.
 
 ### Queue probe has no recipe when CivicClerk delegates to SuiteOne Media — every Vineyard, UT line is "dead" to the ingest gate `[JUST-DO-IT]` `[EASY]`
 
