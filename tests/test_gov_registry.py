@@ -2529,3 +2529,158 @@ def test_minting_does_not_double_up_a_type_word_already_in_the_name():
     match = resolve("Zzyzxville Township, WY")
     assert match.gov_id == "rtr:us:wy:zzyzxville-township"
     assert match.gov_type == classify.TOWNSHIP
+
+
+# --- WO-204: a minted township's HUB slug must keep its qualifier too --
+#
+# WO-198's `_mint()` fix (above) folded `type_preference` back into the
+# SLUG and `gov_type` so re-resolving a disambiguated "Lancaster
+# (township), PA" string still minted `rtr:us:pa:lancaster-township`, not
+# a bare `rtr:us:pa:lancaster`. It did not fold the same word into
+# `gov_name` -- and `display_name()`/`GovernmentMatch.hub_slug` (what
+# `scripts/backfill_gov_id.py` actually reads for its "hub_after" column)
+# derive from `gov_name`, not from the id's own slug. So the `gov_id` was
+# right and the HUB was still wrong: a fresh dry run against
+# `www.youtube.com` (`/tmp/postdeploy3_dry.csv`, conductor-provided)
+# proposed moving these seven real, currently-placeholder-id'd pages from
+# their own `{name}-township-{st}` hub onto the bare `{name}-{st}` hub --
+# which in every one of these seven states is the SAME hub a real
+# same-named borough/city could later claim, recreating the exact
+# collision WO-198's id fix already closed off for the id itself.
+@pytest.mark.parametrize(
+    "raw,gov_id,hub_slug",
+    [
+        (
+            "Lancaster (township), PA",
+            "rtr:us:pa:lancaster-township",
+            "lancaster-township-pa",
+        ),
+        (
+            "Conewago (township), PA",
+            "rtr:us:pa:conewago-township",
+            "conewago-township-pa",
+        ),
+        (
+            "Shrewsbury (township), PA",
+            "rtr:us:pa:shrewsbury-township",
+            "shrewsbury-township-pa",
+        ),
+        (
+            "Deerfield (township), OH",
+            "rtr:us:oh:deerfield-township",
+            "deerfield-township-oh",
+        ),
+        ("Berlin (township), OH", "rtr:us:oh:berlin-township", "berlin-township-oh"),
+        ("Spring (township), PA", "rtr:us:pa:spring-township", "spring-township-pa"),
+        ("Summit (township), PA", "rtr:us:pa:summit-township", "summit-township-pa"),
+    ],
+)
+def test_a_minted_township_keeps_its_qualifier_in_the_hub_slug_too(
+    raw, gov_id, hub_slug
+):
+    match = resolve(raw, "www.youtube.com")
+    assert match.gov_id == gov_id
+    assert match.gov_type == classify.TOWNSHIP
+    assert match.tier == resolver.TIER_UNVERIFIED
+    assert match.hub_slug == hub_slug
+
+
+# --- WO-204: six of the seven pins confirmed for the real government ---
+#
+# Real yt-dlp channel/description evidence for each (see
+# `app/utils/jurisdiction_data/tenant_overrides.csv`'s `wo204` rows for
+# the full per-video reasoning): a video-level pin (the page's own
+# stored jurisdiction still round-trips through `_mint()` when nothing
+# pins it, so these confirm the PIN wins over the placeholder). The
+# seventh (Spring Township, PA) is deliberately NOT pinned here -- its
+# one video is the Pennsylvania Public Utility Commission's own meeting
+# (channel "PennsylvaniaPUC"), not a Spring Township meeting at all; see
+# `BACKLOG.md`.
+@pytest.mark.parametrize(
+    "video_id,gov_id",
+    [
+        ("PYhquSuyMnE", "us:cousub:4207141224"),  # Lancaster twp, Lancaster Co, PA
+        ("-mPEPo0pFMA", "us:cousub:4213315656"),  # Conewago twp, York Co, PA
+        ("PusqQnQGxIc", "us:cousub:4213370576"),  # Shrewsbury twp, York Co, PA
+        ("NPWUzSgT0x0", "us:cousub:3916521238"),  # Deerfield twp, Warren Co, OH
+        ("THZzByl2X7Q", "us:cousub:3904105788"),  # Berlin twp, Delaware Co, OH
+        ("mDPlwkC30dU", "us:cousub:4204975208"),  # Summit twp, Erie Co, PA
+    ],
+)
+def test_wo204_confirmed_township_pins_win_over_the_placeholder(video_id, gov_id):
+    match = resolve(
+        None,
+        "www.youtube.com",
+        page_hints={"external_id": f"youtube:{video_id}"},
+    )
+    assert match.gov_id == gov_id
+    assert match.tier == resolver.TIER_PINNED
+
+
+# --- WO-204: the WO-198 "7 need a look" leftovers, closed out ----------
+#
+# Five of the seven corpus-scan pages from WO-198's own follow-up
+# (`BACKLOG_DONE.md`, WO-198) get a tenant-HOST pin here (not per-video):
+# each host is a single-purpose subdomain/domain for one real government,
+# confirmed live (site title, board roster, or channel name -- see
+# `tenant_overrides.csv`'s `wo204` rows). Two (the Washington Township
+# ZBA duplicate pages) share one host/pin. `raw` is each page's own
+# STORED `jurisdiction`/`jurisdiction_raw` (blank for three of them --
+# the adapter never extracted a name at ingest -- and a wrong-but-
+# confident real government's name for the other two, Newtown/Mantua),
+# exactly what a real re-resolve of these pages feeds in.
+@pytest.mark.parametrize(
+    "raw,host,gov_id,tier",
+    [
+        (
+            None,
+            "northbrunswicktv.cablecast.tv",
+            "us:cousub:3402352560",
+            resolver.TIER_PINNED,
+        ),
+        (None, "wbrw.cablecast.tv", "us:cousub:2609984120", resolver.TIER_PINNED),
+        (None, "utclermont.gov", "us:cousub:3902578288", resolver.TIER_PINNED),
+        (
+            "Newtown (borough), PA",
+            "newtowntownship.civicweb.net",
+            "us:cousub:4204554224",
+            resolver.TIER_PINNED,
+        ),
+        (
+            "Mantua village, OH",
+            "mantuatownshipohio.gov",
+            "us:cousub:3913347194",
+            resolver.TIER_PINNED,
+        ),
+    ],
+)
+def test_wo204_tenant_host_pins_for_the_wo198_leftovers(raw, host, gov_id, tier):
+    match = resolve(raw, host)
+    assert match.gov_id == gov_id
+    assert match.tier == tier
+
+
+def test_wo204_newtown_and_mantua_pins_are_authoritative_not_fallback():
+    # Same constraint WO-198 hit for Rockaway/Park Township: a fallback
+    # pin never fires when the ladder already confidently (but wrongly)
+    # resolves the STORED jurisdiction string via rung 4 first. Both
+    # hosts here ALSO carry an older, wrong `ryan_stated` FALLBACK pin
+    # from the bulk pin-worklist apply (PR #733) -- a heuristic
+    # domain-to-place match that (like WO-198's own root cause) ignored
+    # the "township" in the subdomain/site and matched the wrong
+    # same-named place. `authoritative` strength is what lets this WO's
+    # pin win over that one (checked first, rung 1) rather than never
+    # being reached (a `fallback` pin here would tie with the old one and
+    # the loader's own tie-break would decide, not the ladder logic this
+    # is trying to test) -- see `tenant_overrides.csv`'s wo204 rows.
+    for host, gov_id in [
+        ("newtowntownship.civicweb.net", "us:cousub:4204554224"),
+        ("mantuatownshipohio.gov", "us:cousub:3913347194"),
+    ]:
+        matches = [
+            row
+            for row in resolver._override_rows_for_host(host)
+            if row.gov_id == gov_id
+        ]
+        assert len(matches) == 1, (host, matches)
+        assert matches[0].strength == "authoritative"

@@ -73,6 +73,126 @@ pins, 2 new per-video pins, 1 repointed), `scripts/wo201_override.py`
 `rtr-business`: `research/jurisdiction_coverage.csv` (3 rows added),
 `research/wo201_report.csv` (new), `research/ENUMERATION_METHODS.md`
 section 249.
+## WO-204: a placeholder township's hub slug kept losing "township" after WO-198's id fix; closed WO-198's own "7 need a look" leftovers [Done 2026-09-11]
+
+**The hub bug.** WO-198's `_mint()` fix folded a disambiguated round-trip
+name's type word ("township") back into the minted `Government`'s
+*slug* and `gov_type`, so re-resolving "Lancaster (township), PA" kept
+minting `rtr:us:pa:lancaster-township` rather than regressing to a bare
+`rtr:us:pa:lancaster`. It did not fold the same word into `gov_name` --
+and `display_name()`/`hub_slug()` (what `scripts/backfill_gov_id.py`
+reads for its "hub_after" column) read `gov_name`, not the id's own
+slug. So the id stayed right and the HUB quietly went back to wrong
+(`lancaster-pa`, colliding with the same-named place's own hub) --
+caught in a fresh post-deploy dry run that found the identical shape on
+seven PA/OH placeholder townships (Lancaster, Conewago, Shrewsbury,
+Spring, Summit Township PA; Deerfield, Berlin Township OH). Fixed in
+`app/utils/gov_registry/resolver.py`'s `_mint()`: a `display_base`
+variable gets the same fold-in as `slug_base`, and `gov_name=
+display_base`. Fixture-tested against all seven
+(`tests/test_gov_registry.py::
+test_a_minted_township_keeps_its_qualifier_in_the_hub_slug_too`).
+
+**Six of the seven resolved to their real government**, via yt-dlp
+channel/description evidence (read-only, no download) plus
+`us_cousubs.csv` FIPS cross-checks:
+
+| Page | Evidence | Pinned to |
+|---|---|---|
+| Lancaster Twp, PA | Channel "Lancaster Township - Lancaster County, PA" (@LancasterTownship1729) | `us:cousub:4207141224` |
+| Conewago Twp, PA | Channel "OFFICIAL Conewago Township, York County Page" | `us:cousub:4213315656` |
+| Shrewsbury Twp, PA | Video title + channel both name York County | `us:cousub:4213370576` |
+| Deerfield Twp, OH | Watch page's own metadata (video unplayable via yt-dlp) names channel "Deerfield Township, Ohio (Choose Deerfield)"; about page: "most populous jurisdiction in Warren County" | `us:cousub:3916521238` |
+| Berlin Twp, OH | Channel "Berlin Township, Delaware County, Ohio" | `us:cousub:3904105788` |
+| Summit Twp, PA | Channel "Summit Township, Erie County, PA" | `us:cousub:4204975208` |
+
+Each got a per-video `youtube:{id}` pin plus a matching `channel=@handle`
+pin (both fallback strength) in `tenant_overrides.csv` (source `wo204`).
+Re-running the dry backfill (`www.youtube.com` only) confirmed all six
+now resolve correctly with the SAME hub slug as before (no hub move,
+so no `hub_slug_aliases.csv` entry needed for these six), and the other
+29 rows in the conductor's original dry run are byte-for-byte unchanged.
+
+**The seventh, Spring Township PA, is NOT a township meeting at all.**
+Its channel is "PennsylvaniaPUC" (@PennsylvaniaPUC); the description
+reads "Recording of the September 10, 2026 Public Meeting of the
+Pennsylvania Public Utility Commission held in the Commonwealth Keystone
+Building's Hearing Room 1 (Harrisburg, PA)." Per Ryan's rule (the source
+of the video is the truth), this is not pinned to any of the 5 real
+Spring Townships in PA (Berks/Centre/Snyder/Crawford/Perry Counties) --
+left as the (now hub-fixed) placeholder and filed as a live
+`BACKLOG.md` `[HUMAN]` entry for Ryan to decide what the page should
+say. `rtr-business/research/jurisdiction_coverage.csv` had the identical
+mistake baked into a Spring Township, Berks County row (this same PUC
+video attached as "evidence" of the township's own coverage) -- cleared
+under the §158 write protocol, with a new `reject_reason` value,
+`video-wrong-government`, for exactly this shape (a real, single-purpose
+channel whose one video genuinely belongs to a different government).
+
+**Closed WO-198's own "7 need a look" `BACKLOG.md` entry** (13-page
+corpus scan, 6 already pinned/self-correcting there, 7 left):
+
+| Page(s) | Evidence | Pinned to |
+|---|---|---|
+| North Brunswick Twp, NJ (`northbrunswicktv.cablecast.tv`) | Host name is the township's own Cablecast channel | `us:cousub:3402352560` (tenant-host, fallback) |
+| Washington (charter) Twp, MI, x2 dup (`wbrw.cablecast.tv`) | WBRW TV is the township's own Community Media Center (confirmed via washingtontownship.org and WBRW's "RCS"/Romeo Community Schools description) | `us:cousub:2609984120` (tenant-host, fallback -- a CHARTER township, easy to miss on a bare "township" search) |
+| Union Twp, OH (`utclermont.gov`) | Site's own `<title>`: "Union Township Clermont County, OH \| Official Website" | `us:cousub:3902578288` (tenant-host, fallback) |
+| Newtown Twp, PA, x2 dup (`newtowntownship.civicweb.net`) | CivicWeb portal titled "Township of Newtown"; Board of Supervisors roster (Altieri/Russo/Chandless/Sanfrancesco) confirmed live as Newtown Township, DELAWARE County's real board (a 2nd, unrelated Newtown Township sits in Bucks County, `newtownpa.gov`) | `us:cousub:4204554224` (tenant-host, **authoritative** -- the stored "Newtown (borough), PA" already resolves confidently-but-wrongly via rung 4) |
+| Mantua Twp, OH (`mantuatownshipohio.gov`) | Site titled "The Official Mantua Township Website"; video's own channel "Mantua Township a Great Place to Live" matches the site's tagline | `us:cousub:3913347194` (tenant-host, **authoritative**, same reason -- the only Mantua township in Ohio) |
+
+Newtown and Mantua were genuine extraction bugs, not shared portals (the
+entry's open question) -- both tenants resolved confidently to the wrong
+same-named place via rung 4 every time, which is why those two needed
+`authoritative` strength (a `fallback` pin is never reached once rung 4
+already answered, same constraint WO-198 hit for Rockaway/Park
+Township). `archive/data/hub_slug_aliases.csv` gets one new row for this
+batch, `mantua-village-oh -> mantua-township-oh` (the village hub is
+left with zero other pages once this one page moves); Newtown does NOT
+get an alias -- `us:place:4254184` (Newtown borough) keeps one other
+real, unrelated page, so `/j/newtown-borough-pa` stays a legitimately
+live hub.
+
+**A stale premise caught along the way.** `newtowntownship.civicweb.net`
+already carried an older `tenant_overrides.csv` pin from the bulk
+pin-worklist apply (PR #733, source `ryan_stated`) pointing to the SAME
+wrong government (`us:place:4254184`, Newtown borough) the corpus scan
+flagged -- a shallow domain-name-to-place string match that ignored the
+literal word "township" in the subdomain, the same root-cause shape
+WO-198's resolver fix targeted generally. `ryan_stated` there means
+"part of a 112-pin bulk worklist Ryan approved as a batch," not
+"personally checked this exact host's live content." The authoritative
+pin added here wins over it (checked first, rung 1). Not re-auditing the
+other 363 `ryan_stated` rows in this pass; filed as its own `BACKLOG.md`
+`[NEEDS-AUDIT]` entry for a future targeted check of ones with a real
+township/village/borough qualifier sitting in the domain name.
+
+**`jurisdiction_coverage.csv` also got 4 stale rows corrected and 1 new
+row added**, beyond the Spring Township fix above: North Brunswick and
+Washington Township MI were both marked `no-meeting-nor-video` because
+whatever checked them looked at the main township site, not the
+cablecast channel where the real video lives; Newtown Township PA
+(already correctly keyed to Delaware County) was marked
+`meeting-without-video`; Mantua's existing row was literally keyed to
+the village (`us:place:3947180`) on the exact page this WO re-keys to
+the township -- the same bug baked into the research file itself, now
+corrected. One new row for Union Township, Clermont County, OH (no
+prior row existed). All under the §158 write protocol (flock, fresh
+re-read, 99% floor, temp file + `os.replace`).
+
+**Not a schema change** -- nothing in `app/db/`/`archive/db/` changed,
+no migration needed.
+
+- **Next action**: none -- conductor applies the actual backfill
+  (`scripts/backfill_gov_id.py --apply`) after this PR deploys, since
+  the pins and hub fix only reach the live resolver on the next
+  redeploy; the two open Spring Township follow-ups (the live page's own
+  reclassification, the `ryan_stated` batch audit) are filed as their
+  own live `BACKLOG.md` entries.
+- **History**: dry run at `/tmp/postdeploy3_dry.csv` (conductor-provided,
+  copied to `rtr-business/research/wo204_backfill_dry.csv` after the
+  fix); real evidence gathered via yt-dlp (read-only) and live browsing
+  for all 12 pages; `rtr-business/research/ENUMERATION_METHODS.md` §251
+  has the full writeup; `rtr-business/research/wo204_report.csv`.
 
 ## WO-203: `scripts/youtube_drip.py` — one paced, always-on YouTube process for the dedicated Mac [Done 2026-09-11]
 
