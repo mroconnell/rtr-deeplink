@@ -791,6 +791,105 @@ tier3_auto_transcription_queue_probe.csv` (55 new rows); `BACKLOG.md`
 (the old WO-174 resume entry removed, 4 new `[NEEDS-AUDIT]` entries
 added); `docs/COVERAGE_HANDOVER.md` (closing paragraph).
 
+## WO-226: Ryan's 30-row spot-check applied — research-file corrections under two approved guards, 16 pins, and the WO-149 tier-3 residual [Done 2026-09-11]
+
+**What was done and why.** Ryan hand-checked 32 governments against
+`jurisdiction_coverage.csv` and found real mistakes — some real videos
+had been missed, some domains pointed at the wrong government, some
+"no video" calls turned out right on a second look. The conductor
+verified every one of those 32 live and wrote down 121 exact field
+changes. This WO applied those changes to the research file, with two
+guard rules Ryan approved in code (never let a "we couldn't reach the
+site" reason overwrite a row that already has a real meeting/agenda URL;
+never let a result from testing an alternate domain replace a finding
+from testing the real one), wrote 15 host pins so those governments
+resolve correctly, and finished 10 leftover tier-3 candidates from an
+earlier work order (WO-149) that had never reached a final answer.
+
+**Result — the 32 spot-checked governments.**
+
+| Outcome | Count of 32 | What it means |
+|---|---|---|
+| Real video confirmed, page live now | 17 | A real meeting video existed; the conductor ingested it and the page is already live (includes both halves of Culpeper, VA — town and county — which share one video channel) |
+| Real video confirmed, a platform gap blocks the page | 3 | The video is real and found, but nothing can turn it into a page yet: Jefferson County, WA has no adapter for its video host, and Atlantic City, NJ and South Bay, FL are stuck behind a Boxcast signed-URL gap (see the new backlog entry) |
+| Re-tested, confirmed no video | 10 | A closer look confirmed there is really no meeting video to find |
+| Wrong domain corrected | 1 | Davison city, MI was recorded under its own township's domain by mistake; fixed to the city's real one |
+| Still unresolved | 1 | Farmington, MO — Ryan saw real agenda PDFs the crawl still can't reproduce; needs one URL from Ryan before this can move |
+
+**Three patterns showed up more than once, worth naming so a future
+sweep watches for them:**
+
+1. **An access reason silently overwrote a correct content reason, 3
+   times.** Carroll County NH, Tomah WI, and Jefferson County WA had all
+   already been correctly recorded as "no video here" by an earlier
+   session, then a later, unrelated pass tried a dead alternate domain,
+   got "couldn't reach it," and wrote that over the correct answer. This
+   is exactly the bug the second guard below exists to stop from
+   happening again.
+2. **A challenge-gated website still had open video, 3 times.** Santa
+   Cruz County AZ, Dallas OR, and Sweet Home OR all block a plain
+   fetch of their website with a Cloudflare check — but their real video
+   platform (a CivicClerk tenant, a YouTube channel) sits on a
+   completely open, separate host. The website being blocked said
+   nothing about whether the video was reachable.
+3. **The recorded hub page was one click short of the real one, 7
+   times.** Madison County TN, Hagerstown MD, Harvey IL, Greenwood
+   Village CO, Flagler Beach FL, Melrose MA, and Hoffman Estates IL all
+   had an empty or wrong hub page on file (a blank AgendaCenter, a
+   board-up-services page) while the real meetings hub — sometimes with
+   real video — was one link away.
+
+**The two approved guards, both in code and unit-tested**
+(`~/Documents/rtr-business/research/wo226_apply_to_jc.py`,
+`wo226_test_guards.py`): (1) a "couldn't reach the site" reason never
+overwrites a row that already has a real meeting or agenda URL; (2) an
+alternate domain's own access result never replaces what testing the
+real domain already found. Neither guard actually fired on this WO's own
+32 rows — this WO's data never triggers either one — but both are real,
+tested code now, not just a rule written down. A third safety net came
+out of the dry run itself: Atlantic City NJ's correction assumed no
+Boxcast adapter existed yet, but WO-227 shipped one in the meantime and
+a newer real meeting URL was already on the row — applying the stale
+correction would have un-resolved a government real work had since
+actually resolved, so that one field write was skipped and logged
+instead.
+
+**The 16 pins** (`app/utils/jurisdiction_data/tenant_overrides.csv`,
+`source=wo226`): 13 YouTube channel pins, 2 YouTube per-video pins for
+Culpeper town and Culpeper County, VA (both publish on the same shared
+`@CulpeperMedia` channel, so neither one can take a channel-wide pin),
+and 1 Boxcast pin for South Bay, FL. All 16 pass the loader's committed-
+file test and the WO-210 blank-match test.
+
+**The WO-149 residual** (`scripts/wo149_finish_tier3.py`, ported onto
+WO-224's shared `finish_candidate()` helper): of 123 tier-3 candidates
+from an earlier work order, 10 had never reached a final answer. 2 are
+now queued (Riley County KS, Kenosha County WI — both hand-checked by
+title and channel), 2 are deferred for being over 90 minutes (Lincoln
+County SD, Crook County OR), 4 were confirmed correctly rejected (too
+short, or the video is really gone), and 2 were already resolved a
+different way (no action needed). Two real bugs were caught and fixed
+while doing this: redirecting a probe to a candidate's real video URL
+was passing along the WRONG platform label, which sent 3 candidates to
+the wrong adapter (fixed by letting the platform be detected fresh
+whenever the URL is redirected); and an early version of that same
+redirect logic nearly queued one video a second time under a different
+URL spelling — caught before merge, the duplicate line removed, and a
+permanent guard added so a row already marked as a duplicate can never
+be re-probed.
+
+**Caution.** The correction file was still being written by the
+conductor while this WO ran — it grew twice during the work. Every
+number above is from the final, stable version (122 lines). Nothing here
+needed a live re-verification of the 32 governments themselves; that was
+already done before this WO started.
+
+**Recommendation.** Merge and deploy. The 16 pins need the resolver,
+Archive, and both transcription workers redeployed before they take
+effect on new ingests — the 17 already-live pages needed no deploy and
+are live now. The research-file changes and backlog/docs updates never
+needed a deploy and are already in effect.
+
 ## WO-227: standalone BoxCast adapter — broadcast and channel links resolve on their own, and real captions turned up on two of four tenants [Done 2026-09-11]
 
 **What was done and why.** BoxCast was only ever reachable through one

@@ -349,6 +349,18 @@ METHODS.md` §270; code in `scripts/wo147_access_ladder_sweep.py`. The
 161-row re-run of already-recorded calendar-shaped hubs against the
 fixed ranker is a separate WO, not yet run.
 
+**Two guards Ryan approved 2026-09-11 (WO-226), now in code and unit-
+tested in every apply script that writes `reject_reason`** (see
+`~/Documents/rtr-business/research/wo226_apply_to_jc.py`'s
+`apply_reject_reason()` for the reference implementation): an
+access-class reject reason (`blocked-*`, `cloudflare-challenge-blocked`,
+`dns-unresolvable`, `timeout`) must never overwrite a row that already
+carries a real meeting or agenda URL; and an alternate domain's own
+access-class result must never replace a content-class finding already
+on file for the primary domain — the exact WO-184/Tomah WI bug this same
+WO's spot-check found and fixed by hand three more times (Carroll County
+NH, Tomah WI, Jefferson County WA).
+
 What the 2026-09-09 sweeps established about *where video is*:
 
 | Population | Finding | Implication |
