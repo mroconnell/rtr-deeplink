@@ -1287,7 +1287,7 @@ stthomas.escribemeetings.com,,ca:csd:3534021,fallback,wildcard_http_sweep_2,bare
 sturgeoncounty.escribemeetings.com,,ca:csd:4811059,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca:csd:4811059 Sturgeon County matched with spacing ignored
 stwalburg.escribemeetings.com,,ca:csd:4717036,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv St. Walburg
 summerland.civicweb.net,,ca:csd:5907035,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Summerland
-summitcounty.granicus.com,,us:county:08117,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Summit County
+summitcounty.granicus.com,,us:county:49043,fallback,wo213_identity_check,"ViewPublisher.php title is Summit County UT - Granicus Content; clips name Park City and Eastern Summit County; the Colorado county is summitcountyco.granicus.com (next row); live pages 5287/5413 already keyed us:county:49043"
 summitcountyco.granicus.com,,us:county:08117,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: us_counties.csv Summit County
 sundancebeach.civicweb.net,,ca:csd:4811020,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Sundance Beach
 sunnyside.primegov.com,,ca:csd:1001277,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Sunnyside
