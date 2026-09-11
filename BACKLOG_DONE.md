@@ -235,6 +235,195 @@ resolver, Archive, and both transcription workers are redeployed.
   has one row per government; `ENUMERATION_METHODS.md` §269 has the
   method note.
 
+## WO-174 close-out: the CivicPlus AgendaCenter access-ladder sweep over the finite 14,553-government candidate list is complete [Done 2026-09-11]
+
+This closes out WO-174's pipeline (`scripts/wo174_pipeline.py`), restarted
+in an isolated worktree the morning of 2026-09-11 and run to completion
+that afternoon. Rows 1-7,443 of `wo174_report.csv` were already applied
+by the earlier `[Done 2026-09-11, partial]` slices (this file's own
+"WO-174" and "WO-174 continuation, slice 1/2/final" entries, PRs #905,
+#941, #947, #949, and the Bristol Borough close-out #942). This entry
+covers the rest: report rows 7,444 through 13,986 (6,543 governments)
+plus the run's own uncommitted side files, applied by a separate
+checker session (not the run itself).
+
+**Whole list, all 13,986 governments checked (every pass combined):**
+
+| Outcome | Count of 13,986 |
+| No AgendaCenter | 11,500 |
+| Website did not respond (dead) | 755 |
+| Already had a page | 722 |
+| Blocked by a "prove you're human" page | 720 |
+| Real meeting, no video | 152 |
+| No meeting at all found | 55 |
+| Captions available, page live now | 50 |
+| Video, no captions, queued | 12 |
+| Domain pointed at the wrong government | 11 |
+| Rejected by the video-duration/dead-link probe | 9 |
+
+**This close-out's own 6,543 governments (rows 7,444-13,986):**
+
+| Outcome | Count of 6,543 |
+| No AgendaCenter | 5,744 |
+| Blocked by a "prove you're human" page | 287 |
+| Already had a page | 268 |
+| Website did not respond (dead) | 162 |
+| Real meeting, no video | 47 |
+| Captions available, page live now | 9 |
+| Domain pointed at the wrong government | 8 |
+| Video, no captions, queued | 7 |
+| No meeting at all found | 6 |
+| Rejected by the video-duration/dead-link probe | 5 |
+
+**Hand-check.** All 9 "captions available" pages and all 7 queued videos
+(16 finds), plus the 12 pins staged from the run's uncommitted side
+files, were hand-checked against the video's own title and channel
+(`yt-dlp` for YouTube; a direct page fetch, or a headless browser, for
+CASTUS/cablecast pages) — same method as WO-191/WO-202/the earlier
+WO-174 slices. Every one was exactly what it claimed to be: no Kind A
+(channel belongs to another real public body) or Kind B (right channel,
+wrong video) catch this round. Three CASTUS-hosted finds (Andover,
+Littleton, Hampstead town, MA/NH) could not have their title
+independently confirmed — CASTUS Cloud's player is a client-side
+single-page app that 404s on a direct video-id URL and falls back to the
+channel's own default/most-recent video, in both a plain fetch and a
+headless browser; kept on discovery provenance alone (found via that
+government's own AgendaCenter, at a URL path already scoped to the
+town's own name) and flagged, not silently assumed — see the matching
+`BACKLOG.md` entry.
+
+**A genuine cross-state mismatch, caught before it became a page.**
+Wheatfield town, NY's own AgendaCenter (`wheatfield-ny.gov`, confirmed
+live to be the real New York town's own site) surfaced four meeting
+videos, all confirmed (title, channel "Town of Wheatfield") to actually
+be Wheatfield town, IN's (Newton County) own Town Board meetings — a
+real, different, already-registry-listed government (`us:place:1883528`).
+Unlike the Bristol Borough/Township and Union City/Union Township catches
+in the earlier slices (which had already become live pages by the time a
+hand-check found them), the pipeline's own content check caught this one
+before any page was created. No specific video URL survived (the
+pipeline logs only the rejected titles), so the real Indiana meeting is
+filed as a live `BACKLOG.md` lead rather than guessed at.
+
+**Eight `domain`-column corrections applied to `jurisdiction_coverage.csv`,
+all pre-existing data mistakes this run's own content check surfaced**
+(same failure shape as Bristol Borough/Union City — a normal-looking
+meeting title and a real, correctly-named channel give no signal on
+their own; the mismatch is only visible by knowing which real government
+a domain belongs to):
+
+| Government | Domain fixed to | Confirmed by |
+| Malcolm village, NE | malcolm.ne.gov | Own site content, live-fetched |
+| Hallam village, NE | villageofhallamnebraska.com | Search result, live-fetched (200) |
+| Panama village, NE | villageofpanama.net | Search result, live-fetched (200) |
+| Denton village, NE | villageofdenton.com | Search result, live-fetched (200) |
+| Sprague village, NE | spraguene.org | Search result (site content matches) |
+| Raymond village, NE | left as `lancaster.ne.gov` | No independent domain found; genuinely served only by the county's own site |
+| Davey village, NE | left as `lancaster.ne.gov` | Same as Raymond |
+| Wheatfield town, NY | unchanged (own real domain) | Only the video content was wrong (see above) |
+
+`lancaster.ne.gov`'s AgendaCenter had been recorded as these seven
+Nebraska villages' own `domain`, and it genuinely serves LANCASTER
+COUNTY (Board of Commissioners), a different, real government. Raymond
+and Davey villages (population 153 and 124) have no independently
+discoverable website at all; per this repo's own rule, `domain` is left
+as-is rather than blanked, with `reject_reason=wrong-domain-mapping`
+recording that the AgendaCenter content there is not theirs.
+
+**One stale reject_reason cleared.** Bourne town, MA
+(`us:cousub:2500107175`) already had a real page live (a prior write
+from this same run had set `transcribed=True`), but a pre-existing
+non-blank `reject_reason=no-meeting-nor-video` blocked the write-if-blank
+protocol from clearing it, and `suspected_video_provider` was mislabeled
+`cablecast` for what is actually a YouTube video. Both corrected by hand.
+
+**39 rows changed in `jurisdiction_coverage.csv` total**, applied with
+targeted, single-row edits keyed by each row's unique `gov_id`, rather
+than the pipeline's own scripted whole-file read-modify-write helper — a
+sandbox constraint on the checker session blocked running a bulk-rewrite
+script against this specific shared file. File line count confirmed
+unchanged (45,610 before and after) and `git diff --stat` confirmed
+exactly 39 lines changed, nothing else. 30 rows got a previously-blank/
+generic `reject_reason` filled in; 8 were the wrong-domain corrections
+above; 1 was Bourne's stale-reason clear. The other roughly 6,500 rows
+in this run's slice get no research-file write at all, matching the
+established rule from the earlier three WO-174 slices that only "real
+meeting, no video," "no meeting found," and (as of this run) "wrong
+domain"/"real success" outcomes ever touch this file. Nine further rows
+where this run's own outcome disagreed with an already-recorded,
+non-generic `reject_reason` were left untouched rather than overwritten
+— see the matching `BACKLOG.md` entry for the list and reasoning.
+
+**Run's uncommitted side files, collected from the isolated run
+worktree** (`.claude/worktrees/wo174-run`, diffed against its own actual
+base commit — `b88eee4`, WO-202 — rather than current `origin/main`,
+since 26 unrelated commits landed on `main` between the run's start and
+this close-out): 12 staged pins in `app/utils/jurisdiction_data/
+tenant_overrides.csv`, of which 10 were applied and 2 (East Amwell
+township NJ, Lenox township MI) were skipped as exact duplicates of pins
+WO-221 already added independently with the same `gov_id` (same
+hand-check method, same result). Three of the 10 applied pins are on
+`reflect-*.cablecast.tv` hosts; one of those three
+(`reflect-vsctv.cablecast.tv`) turned out, on inspection, to already
+carry a *different* pin for a *different* Connecticut town
+(`us:cousub:0913057320`, Old Saybrook, from WO-179) with a specific
+per-show `match` — proof this host is genuinely shared across towns, not
+single-tenant as its name suggests. All three cablecast pins were
+therefore applied with a specific per-show `match` (the show's own path
+segment), never a blank one, consistent with `MULTI_GOV_HOSTS`'s
+no-blank-match rule even though these particular hosts aren't in that
+frozen set. 7 lines appended to `scripts/tier3_auto_transcription_
+queue.txt` (checked against `tier3_long_meetings_deferred.txt` — no
+overlap) and 55 rows appended to `scripts/tier3_auto_transcription_
+queue_probe.csv` (all `reject-dead`, a defunct Viebit-hosted
+government's old links — the file's physical header row predates two
+columns, `caller`/`chosen`, that current code already appends; confirmed
+this is a known, accepted asymmetry per `app/platforms/queue_probe.py`'s
+own comment, not a new bug).
+
+**A systemic mislabeling noticed in passing, not fixed here.**
+`suspected_video_provider=civicplus` on several rows this run touched
+(Caledonia Township MI, Weston MA, Macomb Township MI, Pittsfield NH,
+East Amwell NJ) despite the real video being YouTube — filed in
+`BACKLOG.md` rather than fixed inline, since a blanket fix across the
+whole file is its own separate pass.
+
+**Decision: the finite candidate list this pipeline was built to sweep
+is now fully checked.** All 14,553 governments WO-127 never touched are
+done across four slices and this close-out. `docs/COVERAGE_HANDOVER.md`
+is updated with a short paragraph saying so.
+
+**Identity note.** WO-210 means every YouTube/Vimeo page this run
+ingested after roughly 11:40 PT on 2026-09-11 landed with
+`gov_id=rtr:unknown:<host>` (the pin only reaches new ingests after a
+resolver deploy). These pages are listed in the close-out PR description
+as "pages awaiting the post-deploy key pass," for the Platforms
+conductor's next post-deploy `backfill_gov_id.py --apply` run, not run
+here.
+
+Full sandbox-constraint note: this checker session runs isolated to its
+own git worktree and could not run `git` commands, or a Python script
+that rewrote a shared file in bulk, against `rtr-business` (a separate
+repo from `rtr-deeplink`) directly — it could still read that repo's
+files freely, and, after the harness granted explicit folder access,
+edit them with targeted single-row edits and commit with `git` normally.
+Worth knowing for any future checker role working across the two repos
+under the same kind of isolation.
+
+Files: `rtr-business/research/jurisdiction_coverage.csv` (39 rows),
+`rtr-business/research/wo174_report.csv` (6,543 more rows, now complete
+at 13,986), `rtr-business/research/wo174_civicplus_hits.csv`,
+`rtr-business/research/wo174_discovery_seeds.csv` (both append-only),
+`rtr-business/research/wo174_pins_staged.csv` (12 more staged),
+`rtr-business/research/wo174_hand_check_flags.csv` (committed to git for
+the first time — existed on disk since an earlier slice but had never
+been added), `rtr-business/research/ENUMERATION_METHODS.md` (§271);
+`app/utils/jurisdiction_data/tenant_overrides.csv` (10 new pins),
+`scripts/tier3_auto_transcription_queue.txt` (7 new lines), `scripts/
+tier3_auto_transcription_queue_probe.csv` (55 new rows); `BACKLOG.md`
+(the old WO-174 resume entry removed, 4 new `[NEEDS-AUDIT]` entries
+added); `docs/COVERAGE_HANDOVER.md` (closing paragraph).
+
 ## WO-227: standalone BoxCast adapter — broadcast and channel links resolve on their own, and real captions turned up on two of four tenants [Done 2026-09-11]
 
 **What was done and why.** BoxCast was only ever reachable through one

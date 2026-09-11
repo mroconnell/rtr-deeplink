@@ -434,6 +434,24 @@ What the 2026-09-09 sweeps established about *where video is*:
   entries in `BACKLOG.md`.
 - **The 789 governments over 5,000 rejected as "no video found"** stay
   where they are by Ryan's decision; a video-less host is a valid record.
+- **WO-174's CivicPlus AgendaCenter ladder sweep is finished (2026-09-11
+  close-out).** All 14,553 governments with a domain and no page that
+  WO-127 never touched have now been checked, across four earlier slices
+  plus this close-out. It found 50 real captioned pages and 12 more
+  queued for transcription — a small, shrinking yield (2.3% in the
+  first, biggest-government pass, down to 0% in the smallest band) that
+  says this particular finite list is exhausted, not that video coverage
+  broadly is. Two real, sizeable buckets remain from this same sweep,
+  and both are already on `docs/BREADTH_SWEEP_BRIEF.md`'s list rather
+  than needing a new plan: 720 governments blocked by a "prove you're
+  human" challenge page (candidates for a headless pass, never past an
+  actual human-verification gate — see this file's own breakthrough #1
+  and the standing rule in `CLAUDE.md`), and 152 "real meeting, no
+  video" governments (candidates for a media scan of their agenda
+  attachments, in case a meeting's video lives off-platform rather than
+  missing entirely). Neither is "just re-run this same script" — both
+  need the different method `docs/BREADTH_SWEEP_BRIEF.md` already
+  describes.
 
 ## 7. Where to look first next time
 

@@ -163,7 +163,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (140)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (144)
+  [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
+  [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
+  [NEEDS-AUDIT] `suspected_video_provider` is wrongly set to…
+  [NEEDS-AUDIT] CASTUS Cloud's video player is a client-side…
   [NEEDS-AUDIT] `wo191_access_ladder_sweep.py`'s…
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
   [NEEDS-AUDIT] A YouTube/Vimeo `channel=@handle` pin can never fix an…
@@ -384,8 +388,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Dormant — needs a real example first `[LATER]`  (2)
-  WO-174's CivicPlus AgendaCenter guess has ~7,100 of 14,553…
+Dormant — needs a real example first `[LATER]`  (1)
   A BoxCast government reached only via a fresh per-meeting…
 
 Parked deliberately — allowed back `[PARK]`  (4)
@@ -1484,6 +1487,28 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a different, real government's meeting videos — Wheatfield town, IN's (Newton County) Town Board — but the pipeline didn't keep the video URL, so the real find can't be keyed yet.**
+  - **Issue**: WO-174's close-out (2026-09-11, rows 7,444+) found `wheatfield-ny.gov/AgendaCenter` (confirmed live to be the real New York town's own site) links to at least four meeting videos, all titled "Town of Wheatfield, IN ... REGULAR TOWN BOARD MEETING" from the channel "Town of Wheatfield" — a real, different, already-registry-listed government (`us:place:1883528`, Wheatfield town, Newton County, IN). This is a cross-state Kind-A-shaped mismatch, not the usual same-name city/county collision. The pipeline's own content check correctly rejected the row (`jurisdiction_coverage.csv`'s `reject_reason=wrong-domain-mapping` for `us:cousub:3606381380`) before a page was ever created, but it only logs the rejected candidates' titles, not their URLs, so no video URL survived to act on.
+  - **Impact**: a real, findable meeting video for Wheatfield town, IN sits undiscovered — this repo has no page for it at all.
+  - **Next action**: re-walk `wheatfield-ny.gov`'s AgendaCenter by hand (or re-run a narrow one-government ladder pass against it) to recover one of the real Indiana video URLs, then resolve/ingest it keyed to `us:place:1883528` through the normal path.
+  - **Constraint**: don't touch `wheatfield-ny.gov`'s own coverage row again — it's already correctly marked `wrong-domain-mapping`, domain unchanged (it is genuinely the NY town's real site).
+  - **History**: `BACKLOG_DONE.md`, WO-174 close-out, 2026-09-11.
+- **[NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's close-out disagreed with an already-recorded reject_reason — left as-is, need a live re-check to say which is right.**
+  - **Issue**: WO-174's close-out (rows 7,444+) re-derived an outcome for these nine governments that conflicts with a non-generic value already on file, so neither was overwritten (only a blank/`no-platform-link-found` placeholder gets filled by this repo's own convention): Melbourne Village town, FL (`us:place:1244075`, on file as `off-mission`, though a live fetch this session found `melbournevillage.org` is genuinely the village's own working official site — this one looks like the earlier `off-mission` call was itself wrong, worth checking first); Gustavus city, AK (`us:place:0230940`); Canadian town, OK (`us:place:4011450`); Red Deer County, AB (`ca:csd:4808001`) — all three on file as `meeting-without-video`, this run said `no-meeting-nor-video`; Orleans town, MA (`us:cousub:2500151440`), Mattapoisett town, MA (`us:cousub:2502339450`), Uxbridge town, MA (`us:cousub:2502771620`), North Salem town, NY (`us:cousub:3611953517`), Shelburne town, VT (`us:cousub:5000764300`) — all five on file as `no-meeting-nor-video`, this run said `meeting-without-video`.
+  - **Impact**: none live-facing (all nine already show a reasonable outcome), but the file may be recording the wrong one of two similar-but-different "no video" reasons for eight of the nine, and possibly a wrong `off-mission` call for Melbourne Village.
+  - **Next action**: re-fetch each government's own AgendaCenter live and decide which reason is actually correct; update `jurisdiction_coverage.csv` by hand (single-row edit, not a bulk script) once decided.
+  - **Constraint**: don't overwrite any of the nine without a fresh live check — this entry exists specifically because guessing which side was right isn't safe.
+  - **History**: `BACKLOG_DONE.md`, WO-174 close-out, 2026-09-11.
+- **[NEEDS-AUDIT] `suspected_video_provider` is wrongly set to `civicplus` on several real, correctly-keyed `jurisdiction_coverage.csv` rows — CivicPlus is a calendar platform, never a video host.**
+  - **Issue**: Noticed in passing during WO-174's close-out on rows this run touched: Caledonia Township MI, Weston MA, Macomb Township MI, Pittsfield NH, East Amwell NJ all show `suspected_video_provider=civicplus` despite the real video being YouTube (confirmed by hand-check). Same point WO-174's Union City slice made about the same field. Likely present on many more rows across the file, not just these five — this was found by chance while checking WO-174's own outcomes, not a targeted search.
+  - **Impact**: cosmetic/reporting only — every affected row otherwise has the right `gov_id`, a real page, and a blank `reject_reason`. No functional consequence found.
+  - **Next action**: a small one-off script over `jurisdiction_coverage.csv`: wherever `suspected_video_provider=civicplus` and `example_meeting_url` matches a YouTube/Vimeo/other real video-host URL shape, correct the label. Low priority — do this only if someone is already in the file for another reason.
+  - **History**: `BACKLOG_DONE.md`, WO-174 close-out, 2026-09-11.
+- **[NEEDS-AUDIT] CASTUS Cloud's video player is a client-side single-page app that can't be deep-linked to a specific video for hand-checking — it 404s on a direct video-id URL (both a plain fetch and a headless browser) and falls back to the channel's own default/most-recent video.**
+  - **Issue**: WO-174's close-out tried to hand-check three CASTUS-hosted finds (Andover, Littleton, Hampstead town, MA/NH) against their video's own title. `cloud.castus.tv/vod/<channel>/video/<id>` 404s as a real server path; the real route is a hash fragment (`cloud.castus.tv/vod/#/<channel>/video/<id>`), and even navigating there directly (confirmed via both a plain fetch and this session's headless browser) the app ignored the id and rendered the channel's own default/most-recent video instead. No API endpoint that accepts the video id was found.
+  - **Impact**: any future CASTUS-hosted hand-check hits the same wall — these three governments' videos are currently accepted on discovery provenance alone (found via that government's own AgendaCenter, at a URL path already scoped to the town's own name), not an independently confirmed title/channel.
+  - **Next action**: find CASTUS's real client-side routing (inspect its bundled JS for the actual route/API shape) or accept that CASTUS finds can only ever be provenance-checked, not title-checked, and document that as a permanent, structural gap the way Vimeo's caption-fetch gap is already documented.
+  - **History**: `BACKLOG_DONE.md`, WO-174 close-out, 2026-09-11.
 - **[NEEDS-AUDIT] `wo191_access_ladder_sweep.py`'s `tier3_pending_handler` write didn't persist during a real run, even though the run's own report recorded the tier-3 outcome correctly.**
   - **Issue**: WO-223 (2026-09-11) ran `scripts/wo223_ladder_sweep.py` (a thin wrapper around `wo191_access_ladder_sweep.py`'s driver, same reuse pattern as WO-218's `wo218_ladder_sweep.py`) and got a real `outcome=queued_tier3_pending` row in its ladder report for Pike County, AL — which only happens after `TIER3_HANDLER` (`tier3_pending_handler`) runs successfully inside `wo134.process_row()`. But the sidecar file it's supposed to write (`wo223_tier3_pending.csv`) never appeared on disk. A direct manual call to the same function, in the same process, with the same monkeypatched path, wrote the file correctly on the first try.
   - **Impact**: a real tier-3 find can silently lose its own pending-queue row while the ladder report still claims success, which would strand it forever (never probed, never queued) unless someone happens to notice the missing sidecar file, the way this WO did with only one candidate to check by hand.
@@ -6125,37 +6150,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
 ## Dormant — needs a real example first `[LATER]`
-
-### WO-174's CivicPlus AgendaCenter guess has ~7,100 of 14,553 governments left, but yield fell to 0 -- resume only if worth it `[LATER]`
-
-- **Issue:** WO-174 checks whether a government's website runs
-  CivicPlus's meeting-listing page and, if so, looks for a real meeting
-  with video. Four passes covered 7,442 of 14,553 candidate governments
-  (the largest ones by population, in order) before the run was stopped
-  on purpose. The real-video yield fell every single pass: 2.3% -> 0.5%
-  -> 0.04% -> 0% (the last 883 governments, all under 5,000 population,
-  found zero real videos at all). This was `[JUST-DO-IT]` when the yield
-  was still 2.3%; it no longer is.
-- **Impact:** a real, but shrinking, amount of coverage left on the
-  table. The remaining ~7,100 governments are the smallest population
-  band in the list, exactly where the last two passes already found the
-  yield approaching zero.
-- **Next action:** run `python scripts/wo174_pipeline.py` again from the
-  repo root (no arguments) — it reads `wo174_report.csv`, skips every
-  gov_id already done, and continues in population-descending order —
-  only once there's a reason to think the remaining, smaller governments
-  are worth the wall-clock time (roughly a day at this run's politeness
-  pace) given the yield trend above. Not something to "just do."
-- **Constraint:** run it from a worktree with `DATABASE_URL` and
-  `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` set the way `wo174_pipeline.py`'s
-  own docstring describes (the shared `.env` cwd-walk gotcha, CLAUDE.md's
-  worktree bullet) — don't run it against a stale checkout, and don't run
-  it more than once at a time (it appends to the shared
-  `tier3_auto_transcription_queue.txt` and `tenant_overrides.csv` inside
-  the repo, and to `jurisdiction_coverage.csv` in `rtr-business`, which
-  is shared across sessions — see ENUMERATION_METHODS.md §158).
-- **History:** `BACKLOG_DONE.md`, WO-174 and its three continuation
-  slices, 2026-09-10/11.
 
 ### A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED (non-government) account would still get the wrong external_id `[LATER]`
 
