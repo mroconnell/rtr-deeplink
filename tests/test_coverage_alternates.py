@@ -29,12 +29,20 @@ from scripts.coverage_alternates import (
     ACCESS_REASONS,
     CONTENT_REASONS,
     FOUND,
+    MEETING_FOUND_NO_VIDEO_REASONS,
+    NEVER_RETRY_REASONS,
+    NO_MEETING_CONTENT_REASONS,
     AlternatesResult,
     LadderOutcome,
+    already_has_coverage,
+    apply_promotion,
     candidate_domains,
     classify_wo147_ladder_result,
+    decide_promotion,
+    is_retry_worthy,
     ladder_with_alternates,
     normalize_host,
+    one_hop_alternate,
 )
 
 
@@ -241,3 +249,513 @@ def test_classify_wo147_ladder_result_reached_no_link_is_content_class():
     outcome = classify_wo147_ladder_result(r)
     assert outcome.reason == "no-platform-link-found"
     assert outcome.reason in CONTENT_REASONS
+
+
+# --- WO-184 (2026-09-11): trigger policy, promotion, one_hop_alternate ---
+#
+# SYNTHETIC (no live HTTP in this file) -- rows below are hand-built, but
+# every name/domain/reject_reason/platform is a real row read from
+# `~/Documents/rtr-business/research/jurisdiction_coverage.csv` as of
+# 2026-09-10/11:
+#
+# - Albertville city, AL: `domain` cityofalbertvilleal.gov,
+#   `alternate_domains` cityofalbertville.com, `reject_reason`
+#   no-platform-link-found -- a CONTENT-class "found nothing at all"
+#   reject, retry-worthy under Ryan's `trigger="no-meeting"` rule but NOT
+#   under WO-181's original `trigger="access"`.
+# - Beverly Hills city, CA: `domain` beverlyhills.gov, `alternate_domains`
+#   beverlyhills.org, `reject_reason` meeting-without-video,
+#   `suspected_meeting_link_provider` granicus -- a real meeting WAS
+#   found (without video); never retry-worthy under either trigger, and
+#   the population `one_hop_alternate()` (not the main retry) exists for.
+# - Adamsville city, AL: `domain` cityofadamsville.gov, `alternate_domains`
+#   cityofadamsville.org, `reject_reason` blank (never tested) -- retry-
+#   worthy under `trigger="no-meeting"` only.
+
+
+def test_already_has_coverage_catches_blank_reason_real_success_row():
+    """Real, confirmed bug found running WO-184's own first live test
+    batch (2026-09-11): Cook County, IL's real row --
+    `domain=cook-county.granicus.com`, `transcribed=True`,
+    `shares_video=True`, `reject_reason` BLANK -- is indistinguishable
+    from a never-tested row by `reject_reason` alone. `is_retry_worthy`
+    would say a blank reason is retry-worthy under `trigger="no-meeting"`;
+    `already_has_coverage` is the separate, mandatory row-level guard
+    that stops it from being re-probed anyway."""
+    row = {
+        "city_name": "Cook County",
+        "state_or_province": "Illinois",
+        "domain": "cook-county.granicus.com",
+        "alternate_domains": "cookcountyil.gov",
+        "reject_reason": "",
+        "transcribed": "True",
+        "shares_video": "True",
+    }
+    assert is_retry_worthy(row["reject_reason"], trigger="no-meeting") is True
+    assert already_has_coverage(row) is True
+
+
+def test_already_has_coverage_false_for_a_genuinely_untested_row():
+    # Adamsville city, AL shape again -- never tested, no coverage yet.
+    row = {
+        "domain": "cityofadamsville.gov",
+        "reject_reason": "",
+        "transcribed": "",
+        "shares_video": "",
+    }
+    assert already_has_coverage(row) is False
+
+
+@pytest.mark.parametrize(
+    "transcribed,shares_video", [("True", ""), ("", "True"), ("True", "True")]
+)
+def test_already_has_coverage_true_variants(transcribed, shares_video):
+    row = {"transcribed": transcribed, "shares_video": shares_video}
+    assert already_has_coverage(row) is True
+
+
+def test_already_has_coverage_case_and_missing_column_tolerant():
+    assert already_has_coverage({"transcribed": "true"}) is True
+    assert (
+        already_has_coverage({"transcribed": "False", "shares_video": "False"}) is False
+    )
+    assert already_has_coverage({}) is False
+
+
+def test_reason_set_membership_is_disjoint_and_matches_ryans_rule():
+    # NEVER_RETRY_REASONS is a superset of MEETING_FOUND_NO_VIDEO_REASONS
+    # plus the off-mission/already-spoken-for reasons.
+    assert MEETING_FOUND_NO_VIDEO_REASONS <= NEVER_RETRY_REASONS
+    assert {
+        "off-mission",
+        "video-without-meeting",
+        "unsupported-platform-no-adapter",
+        "ingested",
+        "queued",
+        "already-covered",
+    } <= NEVER_RETRY_REASONS
+    # the "found nothing at all" set and the "never retry" set don't
+    # overlap -- a row can't be both.
+    assert NO_MEETING_CONTENT_REASONS & NEVER_RETRY_REASONS == set()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "no-platform-link-found",
+        "no-meeting-nor-video",
+        "no-meetings-found",
+        "no-platform-signature",
+    ],
+)
+def test_is_retry_worthy_no_meeting_trigger_retries_found_nothing_reasons(reason):
+    assert is_retry_worthy(reason, trigger="no-meeting") is True
+
+
+@pytest.mark.parametrize(
+    "reason", ["no-platform-link-found", "no-meeting-nor-video", "no-meetings-found"]
+)
+def test_is_retry_worthy_access_trigger_does_not_retry_known_content_reasons(reason):
+    # these three are genuine CONTENT_REASONS members (WO-181's original
+    # taxonomy) -- trigger="access" stops at the primary for them.
+    # "no-platform-signature" is WO-184-only and NOT in CONTENT_REASONS,
+    # so under trigger="access" it falls into the "unrecognized reason"
+    # case and IS retry-worthy there too -- tested separately below.
+    assert is_retry_worthy(reason, trigger="access") is False
+
+
+def test_is_retry_worthy_access_trigger_treats_wo184_only_reason_as_unrecognized():
+    assert is_retry_worthy("no-platform-signature", trigger="access") is True
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "meeting-without-video",
+        "no-video-found",
+        "off-mission",
+        "video-without-meeting",
+        "unsupported-platform-no-adapter",
+        "ingested",
+        "queued",
+        "already-covered",
+    ],
+)
+def test_is_retry_worthy_no_meeting_trigger_never_retries_these(reason):
+    assert is_retry_worthy(reason, trigger="no-meeting") is False
+
+
+def test_is_retry_worthy_blank_or_never_tested_reason():
+    # Adamsville city, AL shape: never tested at all.
+    assert is_retry_worthy("", trigger="no-meeting") is True
+    assert is_retry_worthy(None, trigger="no-meeting") is True
+    # WO-181's original trigger treats a blank/unrecognized reason as
+    # retry-worthy too (unknown is not a confirmed content dead-end).
+    assert is_retry_worthy("", trigger="access") is True
+
+
+@pytest.mark.parametrize("reason", list(ACCESS_REASONS))
+def test_is_retry_worthy_access_reasons_retry_under_both_triggers(reason):
+    assert is_retry_worthy(reason, trigger="access") is True
+    assert is_retry_worthy(reason, trigger="no-meeting") is True
+
+
+def test_is_retry_worthy_rejects_unknown_trigger():
+    with pytest.raises(ValueError):
+        is_retry_worthy("dns-unresolvable", trigger="bogus")
+
+
+@pytest.mark.asyncio
+async def test_no_meeting_trigger_retries_alternate_after_no_platform_link_found():
+    """Albertville city, AL shape: the primary genuinely found nothing.
+    Under trigger="no-meeting" the alternate IS tried (unlike the
+    trigger="access" default, which stops at the primary -- see
+    test_content_reject_on_primary_never_tries_alternate above)."""
+    row = {
+        "city_name": "Albertville city",
+        "state_or_province": "Alabama",
+        "domain": "cityofalbertvilleal.gov",
+        "alternate_domains": "cityofalbertville.com",
+        "alternate_urls": "",
+        "reject_reason": "no-platform-link-found",
+    }
+    ladder_fn = _scripted_ladder_fn(
+        {
+            "cityofalbertvilleal.gov": LadderOutcome(reason="no-platform-link-found"),
+            "cityofalbertville.com": LadderOutcome(
+                reason=FOUND,
+                platform="civicplus",
+                hit_url="https://cityofalbertville.com/AgendaCenter",
+            ),
+        }
+    )
+    result = await ladder_with_alternates(row, ladder_fn, trigger="no-meeting")
+    assert result.outcome.reason == FOUND
+    assert result.answered_domain == "cityofalbertville.com"
+    assert ladder_fn.calls == ["cityofalbertvilleal.gov", "cityofalbertville.com"]
+    assert decide_promotion(result) is True
+
+
+@pytest.mark.asyncio
+async def test_no_meeting_trigger_never_retries_meeting_without_video():
+    """Beverly Hills city, CA shape: a real meeting (via Granicus) was
+    already found on the primary, just without video. Ryan's rule is
+    explicit that this is "very high quality" on its own -- the main
+    retry never fires for it, under either trigger."""
+    row = {
+        "city_name": "Beverly Hills city",
+        "state_or_province": "California",
+        "domain": "beverlyhills.gov",
+        "alternate_domains": "beverlyhills.org",
+        "alternate_urls": "",
+        "reject_reason": "meeting-without-video",
+        "suspected_meeting_link_provider": "granicus",
+    }
+    ladder_fn = _scripted_ladder_fn(
+        {
+            "beverlyhills.gov": LadderOutcome(reason="meeting-without-video"),
+            "beverlyhills.org": LadderOutcome(
+                reason=FOUND, platform="youtube", hit_url="https://youtube.com/x"
+            ),
+        }
+    )
+    result = await ladder_with_alternates(row, ladder_fn, trigger="no-meeting")
+    assert result.answered_domain == "beverlyhills.gov"
+    assert ladder_fn.calls == ["beverlyhills.gov"]  # alternate never touched
+    assert decide_promotion(result) is False
+
+
+@pytest.mark.asyncio
+async def test_no_meeting_trigger_retries_a_never_tested_blank_reason():
+    """Adamsville city, AL shape: never tested at all (blank
+    reject_reason) -- still retry-worthy under trigger="no-meeting"."""
+    row = {
+        "city_name": "Adamsville city",
+        "state_or_province": "Alabama",
+        "domain": "cityofadamsville.gov",
+        "alternate_domains": "cityofadamsville.org",
+        "alternate_urls": "",
+        "reject_reason": "",
+    }
+    ladder_fn = _scripted_ladder_fn(
+        {
+            "cityofadamsville.gov": LadderOutcome(reason="no-platform-link-found"),
+            "cityofadamsville.org": LadderOutcome(
+                reason=FOUND,
+                platform="civicplus",
+                hit_url="https://cityofadamsville.org/AgendaCenter",
+            ),
+        }
+    )
+    result = await ladder_with_alternates(row, ladder_fn, trigger="no-meeting")
+    assert result.outcome.reason == FOUND
+    assert result.answered_domain == "cityofadamsville.org"
+
+
+@pytest.mark.asyncio
+async def test_when_primary_itself_found_nothing_is_promoted_and_vice_versa():
+    row = {
+        "domain": "cityofalbertvilleal.gov",
+        "alternate_domains": "cityofalbertville.com",
+    }
+    # primary answers FOUND -- keep the primary, no promotion.
+    ladder_fn_primary_found = _scripted_ladder_fn(
+        {
+            "cityofalbertvilleal.gov": LadderOutcome(
+                reason=FOUND, platform="civicplus", hit_url="x"
+            )
+        }
+    )
+    result = await ladder_with_alternates(
+        row, ladder_fn_primary_found, trigger="no-meeting"
+    )
+    assert result.answered_domain == "cityofalbertvilleal.gov"
+    assert decide_promotion(result) is False
+
+    # nothing at all answers FOUND -- no promotion either.
+    ladder_fn_nothing = _scripted_ladder_fn(
+        {
+            "cityofalbertvilleal.gov": LadderOutcome(reason="no-platform-link-found"),
+            "cityofalbertville.com": LadderOutcome(reason="dns-unresolvable"),
+        }
+    )
+    result2 = await ladder_with_alternates(row, ladder_fn_nothing, trigger="no-meeting")
+    assert decide_promotion(result2) is False
+
+
+@pytest.mark.asyncio
+async def test_apply_promotion_moves_old_primary_into_alternate_domains():
+    row = {
+        "city_name": "Albertville city",
+        "state_or_province": "Alabama",
+        "domain": "cityofalbertvilleal.gov",
+        "alternate_domains": "cityofalbertville.com;another-old-alt.example",
+        "alternate_urls": "",
+        "reject_reason": "no-platform-link-found",
+    }
+    ladder_fn = _scripted_ladder_fn(
+        {
+            "cityofalbertvilleal.gov": LadderOutcome(reason="no-platform-link-found"),
+            "cityofalbertville.com": LadderOutcome(
+                reason=FOUND, platform="civicplus", hit_url="x"
+            ),
+        }
+    )
+    result = await ladder_with_alternates(row, ladder_fn, trigger="no-meeting")
+    assert decide_promotion(result) is True
+    new_row = apply_promotion(row, result)
+    assert new_row["domain"] == "cityofalbertville.com"
+    # old primary is kept, never dropped; the other pre-existing
+    # alternate (never tried, since we stopped at the first FOUND) is
+    # kept too.
+    assert (
+        new_row["alternate_domains"]
+        == "another-old-alt.example;cityofalbertvilleal.gov"
+    )
+    # apply_promotion never mutates the row it was given.
+    assert row["domain"] == "cityofalbertvilleal.gov"
+
+
+@pytest.mark.asyncio
+async def test_apply_promotion_is_idempotent_when_promoted_domain_already_listed():
+    row = {
+        "domain": "cityofalbertvilleal.gov",
+        "alternate_domains": "cityofalbertville.com",
+    }
+    ladder_fn = _scripted_ladder_fn(
+        {
+            "cityofalbertvilleal.gov": LadderOutcome(reason="no-platform-link-found"),
+            "cityofalbertville.com": LadderOutcome(
+                reason=FOUND, platform="x", hit_url="x"
+            ),
+        }
+    )
+    result = await ladder_with_alternates(row, ladder_fn, trigger="no-meeting")
+    new_row = apply_promotion(row, result)
+    assert new_row["domain"] == "cityofalbertville.com"
+    assert new_row["alternate_domains"] == "cityofalbertvilleal.gov"
+
+
+def _scripted_fetch(pages):
+    """pages: {url: (html_or_None, final_url, error_kind)} -- returns an
+    async fetch_one_fn plus the call log, same shape as the real
+    fetch_one() FetchResult (duck-typed: .html/.final_url/.error_kind/
+    .error)."""
+
+    class _R:
+        def __init__(self, html, final_url, error_kind="", error=""):
+            self.html = html
+            self.final_url = final_url
+            self.error_kind = error_kind
+            self.error = error
+
+    calls = []
+
+    async def fetch_one_fn(url, headers):
+        calls.append(url)
+        html, final_url, error_kind = pages.get(url, (None, url, "connection"))
+        return _R(html, final_url, error_kind)
+
+    fetch_one_fn.calls = calls
+    return fetch_one_fn
+
+
+def _never_challenge(html):
+    return False
+
+
+@pytest.mark.asyncio
+async def test_one_hop_alternate_finds_platform_link_on_home_page():
+    row = {"suspected_meeting_link_provider": "granicus"}  # Beverly Hills CA shape
+    fetch = _scripted_fetch(
+        {
+            "https://beverlyhills.org": (
+                "<html>home</html>",
+                "https://beverlyhills.org",
+                "",
+            )
+        }
+    )
+
+    def find_platform_link_fn(html, final_url):
+        return ("youtube", "https://youtube.com/watch?v=x")
+
+    def find_hop_links_fn(html, final_url):
+        return []
+
+    result = await one_hop_alternate(
+        row,
+        "beverlyhills.org",
+        fetch,
+        {"User-Agent": "test"},
+        _never_challenge,
+        find_platform_link_fn,
+        find_hop_links_fn,
+    )
+    assert result.reason == FOUND
+    assert result.platform == "youtube"
+    # granicus (primary's known platform) != youtube -- a genuinely
+    # different platform, per Ryan's "may surface video" instruction.
+    assert result.differs_from_primary is True
+    assert result.hop_url is None
+
+
+@pytest.mark.asyncio
+async def test_one_hop_alternate_same_platform_as_primary_is_not_a_new_view():
+    row = {"suspected_meeting_link_provider": "granicus"}
+
+    def find_platform_link_fn(html, final_url):
+        return ("granicus", "https://granicus.example/x")
+
+    fetch = _scripted_fetch(
+        {
+            "https://beverlyhills.org": (
+                "<html>home</html>",
+                "https://beverlyhills.org",
+                "",
+            )
+        }
+    )
+    result = await one_hop_alternate(
+        row,
+        "beverlyhills.org",
+        fetch,
+        {"User-Agent": "test"},
+        _never_challenge,
+        find_platform_link_fn,
+        lambda html, url: [],
+    )
+    assert result.reason == FOUND
+    assert result.differs_from_primary is False
+
+
+@pytest.mark.asyncio
+async def test_one_hop_alternate_follows_one_hop_link_when_home_page_has_none():
+    row = {}
+    fetch = _scripted_fetch(
+        {
+            "https://cityofalbertville.com": (
+                "<html><a href='https://cityofalbertville.com/meetings'>Meetings</a></html>",
+                "https://cityofalbertville.com",
+                "",
+            ),
+            "https://cityofalbertville.com/meetings": (
+                "<html>meetings page</html>",
+                "https://cityofalbertville.com/meetings",
+                "",
+            ),
+        }
+    )
+    calls_to_find_platform = []
+
+    def find_platform_link_fn(html, final_url):
+        calls_to_find_platform.append(final_url)
+        if "meetings" in final_url:
+            return ("civicplus", "https://cityofalbertville.com/AgendaCenter")
+        return None
+
+    def find_hop_links_fn(html, final_url):
+        return ["https://cityofalbertville.com/meetings"]
+
+    result = await one_hop_alternate(
+        row,
+        "cityofalbertville.com",
+        fetch,
+        {"User-Agent": "test"},
+        _never_challenge,
+        find_platform_link_fn,
+        find_hop_links_fn,
+    )
+    assert result.reason == FOUND
+    assert result.hop_url == "https://cityofalbertville.com/meetings"
+    assert result.differs_from_primary is True  # no known platform at all yet
+
+
+@pytest.mark.asyncio
+async def test_one_hop_alternate_no_platform_link_anywhere():
+    row = {}
+    fetch = _scripted_fetch(
+        {
+            "https://cedarbluff-al.org": (
+                "<html>nothing here</html>",
+                "https://cedarbluff-al.org",
+                "",
+            )
+        }
+    )
+    result = await one_hop_alternate(
+        row,
+        "cedarbluff-al.org",
+        fetch,
+        {"User-Agent": "test"},
+        _never_challenge,
+        lambda html, url: None,
+        lambda html, url: [],
+    )
+    assert result.reason == "no-platform-link-found"
+    assert result.differs_from_primary is None
+
+
+@pytest.mark.asyncio
+async def test_one_hop_alternate_dns_unresolvable():
+    row = {}
+
+    async def fetch_one_fn(url, headers):
+        class _R:
+            html = None
+            final_url = url
+            error_kind = "dns"
+            error = "getaddrinfo failed"
+
+        return _R()
+
+    result = await one_hop_alternate(
+        row,
+        "cedarbluff-al.org",
+        fetch_one_fn,
+        {},
+        _never_challenge,
+        lambda h, u: None,
+        lambda h, u: [],
+    )
+    assert result.reason == "dns-unresolvable"

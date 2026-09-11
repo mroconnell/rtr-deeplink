@@ -74,11 +74,18 @@ For every government in the candidate list:
    Never after a 404. Remember the answer per host.
 
    **Before recording an access reject, try the government's alternate
-   domains** (WO-181): `scripts/coverage_alternates.py`'s
+   domains** (WO-181, widened by WO-184): `scripts/coverage_alternates.py`'s
    `ladder_with_alternates()` retries rungs 2/3 on each
-   `alternate_domains`/`alternate_urls` entry in turn, but only while the
-   answer stays ACCESS-class — a content-class answer (no platform link,
-   no video) stops there, on any domain.
+   `alternate_domains`/`alternate_urls` entry in turn. Under
+   `trigger="no-meeting"` (Ryan's rule: "found a meeting or agenda, or
+   not" is the line) it keeps trying while the primary and each alternate
+   keep finding nothing at all; it stops as soon as one finds a real
+   meeting or agenda, with or without video. `trigger="access"` keeps
+   WO-181's narrower original behavior (only an ACCESS-class reject
+   retries). Separately, `one_hop_alternate()` runs a single no-promotion
+   hop on the alternate for rows that already found a meeting but no
+   video, checking only for a *different* platform than the one already
+   known.
 4. **Headless browser**, only for hosts that answered 2 or 3 with a page
    that has no visible meeting link. One browser, one host at a time,
    real delay. This is where the JavaScript-drawn links are.

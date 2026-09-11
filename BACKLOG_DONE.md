@@ -88,6 +88,157 @@ scoped correction for the 4 mis-keyed pages named above.
   and every number's derivation; `rtr-business/research/wo188_report.csv`
   has one row per government checked.
 
+## WO-184: Ryan's "found a meeting or agenda, or not" alternate-domain rule -- 12 new transcripts, 37 domains promoted, first live batch [Done 2026-09-11]
+
+**Issue.** WO-181 only tried a government's alternate website when its
+main one could not be reached at all (blocked, timed out, dead). Ryan
+gave a wider rule (2026-09-10, quoted here verbatim, replacing WO-181's
+narrower one): "A domain keeps priority when it has produced a resolved
+meeting: with video is best, but a meeting or agenda without video is
+still very high quality. If a domain has produced no meeting at all, we
+may simply be looking at the wrong domain, and we lose nothing by
+trying another. Every government posts agendas at least, so the line
+is: found a meeting or agenda, or not." He also asked for one more
+check: even when a government's main website already found a meeting
+but no video, try the alternate once — a different platform there might
+carry video the first one didn't.
+
+**What was built.** `scripts/coverage_alternates.py` got a second mode
+(`trigger="no-meeting"`) alongside WO-181's original one
+(`trigger="access"`, kept unchanged for anything still using it): it now
+also retries an alternate address when the main one found nothing at
+all — not just when it could not be reached. A new rule decides when to
+switch a government's main address to the one that worked
+(`decide_promotion`/`apply_promotion`): only when the alternate found a
+real meeting or agenda and the main one did not. A separate, smaller
+check (`one_hop_alternate`) handles Ryan's second ask: for a government
+that already found a meeting but no video, check its alternate address
+once for a different platform.
+
+**A real bug was caught before any write happened.** The research file
+does not write "already has a page" as a reason — a government with a
+real, live page simply has a blank reason field, which looks exactly
+like "never checked." Cook County, IL (already has a real transcript)
+was about to be checked again for no reason. Fixed with a direct check
+of whether the government already has real coverage recorded, before
+anything else runs. Without this fix, 1,252 of the first list of 4,686
+candidates, and 163 of the first list of 704, would have been
+re-checked pointlessly.
+
+**Two lists to check, both counted fresh from the file, both smaller
+after the fix above:**
+
+| List | What it is | Count before the fix | Count of governments actually checked |
+|---|---|---|---|
+| Retry list | has another address on file, and its main address found no meeting at all | 4,686 | 3,434 |
+| One-hop list | has another address on file, and its main address found a meeting but no video | 704 | 541 |
+
+Neither list was fully checked in this session — both are large, and
+each check takes real time (politeness rules mean 2 seconds between
+requests). This is a first batch, kept resumable so a later session
+picks up where this one stopped instead of starting over.
+
+**Retry list — result of the first 140 checked (the counties, largest
+first):**
+
+| Result | Count of 140 |
+|---|---|
+| A real platform link was found (on the main address or an alternate) | 60 |
+| The alternate answered but had nothing meeting-shaped on it | 68 |
+| Every address, including alternates, still could not be reached | 12 |
+
+Of the 60 where a link was found, 37 were found on the ALTERNATE
+address, not the main one — for those, the alternate became the
+government's main address on file, and the old one was kept as a
+backup, never thrown away. The other 68 (alternate reachable, nothing
+found) did not get their address changed — Ryan's rule is "found a
+meeting or agenda," and a plain working website with nothing on it does
+not meet that bar.
+
+**What happened with the 60 that found a link** — each one went through
+the same check-and-add pipeline every sweep in this project uses:
+
+| Result | Count of 60 |
+|---|---|
+| A real meeting was found and a transcript is now live | 12 |
+| The government already had a page | 18 |
+| A link was found, but no usable video turned up | 28 |
+| Real video with no fetchable captions — queued for later | 0 |
+| Error (a broken link parse, one dead video) | 2 |
+
+12 real transcripts are now live: Monmouth County NJ, Clackamas County
+OR, Bibb County GA, Clarke County GA, Chautauqua County NY, Cole County
+MO, Hood County TX, Iron County UT, and 4 more counties whose state
+needed a direct ID lookup rather than guesswork from the name alone
+(see `wo184_apply_ingested.csv` for the exact list — several county
+names repeat across states, so the government ID is the source of
+truth, not the name). None needed the transcription queue — every real
+video found this batch already had captions available, mostly from
+YouTube. No sign of YouTube's caption block (the "prove you're not a
+robot" error) came up this batch.
+
+**One-hop list — result of the first 233 checked (a mix of
+municipalities and counties):**
+
+| Result | Count of 233 |
+|---|---|
+| The alternate showed a DIFFERENT platform than the one already known | 118 |
+| The alternate showed the SAME platform again | 32 |
+| The alternate had no meeting link either | 41 |
+| The alternate could not be reached, or there wasn't one | 42 |
+
+**Caution.** This check only confirms a different platform LINK exists —
+it does not check whether that link actually has video. A hand-check of
+a sample of the 118 found 34 where the "alternate" address turned out to
+just redirect back to the exact same website as the main one — not
+really a second, independent source, even though it counted as
+"different" because the government's own file had no platform recorded
+yet to compare against. All 118 are leads for someone to follow up and
+check for real, not confirmed new coverage yet.
+
+**The research file was updated for the retry list only** (the one-hop
+list's 233 rows are leads, not confirmed findings, and were not written
+to the file). 138 rows changed: 12 got a real transcript, 28 got a
+reason recorded, 12 kept their "still blocked" reason refreshed, 68 got
+their reason refreshed, 18 already had a page and were left alone
+(other than a possible address change), and 37 of those had their
+address updated. Applied through the same lock/re-read/backup steps
+every writer to this shared file uses.
+
+**Recommendation.** The 12 new transcripts are already live. Both
+checks pick up automatically where they left off — the next session
+should just run them again rather than starting over; municipalities
+are next in line for the retry list, since the counties are the first
+batch done. The 118 one-hop leads should go through a real check-and-add
+pass before they count as coverage. See `BACKLOG.md`'s matching entry
+for the exact next steps and a few reason labels found in the file that
+still need sorting into the right bucket.
+
+**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
+worker/ scripts/ tests/` clean. Full test suite: 3,125 tests passing (23
+new test functions added for this change, taking
+`tests/test_coverage_alternates.py` from 17 to 59 collected cases once
+parametrization is counted). No database model changed, so no
+migration check was needed. `scripts/coverage_alternates.py`,
+`scripts/wo184_pilot.py` (retry-list check),
+`scripts/wo184_onehop_pilot.py` (one-hop check), and
+`scripts/wo184_ingest_found.py` (the resolve/ingest step) are all in
+`rtr-deeplink/scripts/`. `~/Documents/rtr-business/research/
+wo184_apply_to_jc.py` wrote the research file. Full method and every
+number: `rtr-business/research/ENUMERATION_METHODS.md` §237.
+
+**Deploy status:** `docs/COVERAGE_HANDOVER.md` and
+`docs/BREADTH_SWEEP_BRIEF.md` changed (documentation only, no deploy
+needed). `app/utils/jurisdiction_data/tenant_overrides.csv` DID change
+(10 new YouTube video pins from this run's real ingests) — that is a
+real `app/` file, so it is on `main` after merge but not live until the
+next deploy. This is not urgent: the 12 pages already ingested this run
+are already live (ingest is a direct call to the production Archive,
+independent of a resolver deploy) — the pins only matter if the
+transcription worker ever re-resolves one of these same videos later.
+No file under `archive/`, `worker/`, or `render.yaml` changed. The
+research file itself lives in a separate repo with no deploy step.
+
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
 - **[Done 2026-09-10] Sechelt, BC and Blind River, ON pages: URL slug showed
