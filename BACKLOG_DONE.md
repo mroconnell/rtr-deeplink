@@ -3923,6 +3923,21 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 | Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
 
 **Deploy status.** Pages are re-keyed now. The pin and the alias reach production on the next deploy; until then the old county hub link may 404.
+## Retired `/j/` hub slugs now send a real 301 through the public domain, not a 200 copy of the target hub [Done 2026-09-11]
+
+**What was checked and why.** After the deploy that carried the Kankakee County / McLean County alias rows (entry below), Ryan asked to confirm the old hub slugs redirect. They did not, quite: the Archive service answered `/j/mclean-il`, `/j/kankakee-city-il` and `/j/kankakee-il` with a real 301 to the county hub, but the public site returned a 200 with the county hub's content and a canonical link.
+
+**Why.** The resolver proxies `/j/*` to the Archive through `_proxy_to_archive()` in `app/main.py`, which follows redirects by default. This is the same bug found on 2026-08-31 for reslugged meeting pages (see the `_SLUG_REDIRECTS` entry of that date), fixed then for the `/m/` route only. The `/j/` route never got the opt-out, so none of the 846 rows in `archive/data/hub_slug_aliases.csv` ever reached a reader or a search engine as a permanent redirect. Confirmed on an older alias too: `/j/chenango-county-ny` behaved the same way.
+
+| Step | Result |
+|---|---|
+| `/j/{path}` route passes `allow_redirects=False` (the `/m/` bare-slug pattern) | 1 call site |
+| New test: a 301 from the Archive for a hub slug reaches the client with its Location | `test_hub_slug_disables_redirect_following` |
+
+**Caution.** The `/j/` route has no sub-routes that need following (unlike `/m/{slug}/card.jpg`), so nothing else changes. Needs a deploy before the public site sends the 301; until then the 200-plus-canonical behaviour continues.
+
+**Also seen during the check.** `/j/gloucester-ma` is a live hub again, holding a "School Board Meeting" dated 2026-09-08 from `pub-gloucesterva.escribemeetings.com`. That is the Gloucester County, VA school board filed under Gloucester, MA a second time, on a fresh ingest, exactly as `BACKLOG.md`'s open "fallback pin cannot correct" entry predicted. Recorded there; not fixed here.
+
 ## Kankakee County, IL and McLean County, IL: two pins made authoritative, two pages re-keyed off the city and village, one YouTube channel pin corrected [Done 2026-09-10]
 
 **What was checked and why.** WO-153 left two Archive pages on the wrong government and could not fix them with a plain `fallback` pin. The 2018 "Ethics Commission Meeting" on `kankakeecountyil.gov` was keyed to Kankakee city, IL, and "County Board 8/13/26" on `mcleancountyil.gov` was keyed to McLean village, IL. Both source URLs are the county's own agendacenter, and both landing pages say "County" in the title. Before asking Ryan, this session re-ran `backfill_gov_id.py --hosts kankakeecountyil.gov,mcleancountyil.gov` (dry run) with the existing `fallback` pins in place. Both rows came back "already current" at the wrong id, tier `registry`, confirming the inert pin.

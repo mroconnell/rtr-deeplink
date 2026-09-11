@@ -1836,9 +1836,19 @@ async def archive_state_page(path: str, request: Request):
 @app.get("/j/{path:path}")
 async def archive_jurisdiction_page(path: str, request: Request):
     # Per-government hub pages (archive/main.py's /j/{hub_slug}) -- same
-    # proxy shape as /state/*.
+    # proxy shape as /state/*. allow_redirects=False for the same reason
+    # archive_meeting_page's bare-slug case passes it: Archive answers a
+    # retired hub slug (archive/data/hub_slug_aliases.csv) with a real
+    # 301, and following it here served the target hub as a 200 to the
+    # public/Googlebot -- every alias row ever shipped was affected
+    # (found 2026-09-11 checking the Kankakee/McLean county aliases; the
+    # /m/ half of the same bug was found 2026-08-31). /j/ has no
+    # sub-routes that need following.
     return await _proxy_to_archive(
-        f"j/{path}", str(request.query_params), request.headers.get("cookie")
+        f"j/{path}",
+        str(request.query_params),
+        request.headers.get("cookie"),
+        allow_redirects=False,
     )
 
 
