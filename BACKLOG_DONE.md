@@ -1,5 +1,48 @@
 # Backlog — done
 
+## WO-213: four governments our own bulk tools had queued in volume trimmed to one governing-body meeting each — 257 queue lines parked [Done 2026-09-11]
+
+- **Why:** the WO-212 reconciliation showed Los Altos Hills CA with 68
+  tier-3 queue lines, Walworth County WI 114, Summit County UT 50 and
+  Heber City UT 29. `git blame` on the queue file: every one came from a
+  bulk queue of our own — #443 (CivicPlus AgendaCenter scan, 2026-08-27:
+  LAH 67, Walworth 113) and #794 (Utah PMN pilot advance, 2026-09-09:
+  Summit 50, Heber 28) — plus one line each from WO-184. None from a
+  user: a queue line is a pre-ingest candidate, not a live page, so no
+  reader can have requested it (requests attach to live pages through
+  `transcription_jobs` and are processed by the worker regardless of
+  this file). Ryan's rule, 2026-09-11: a tool-queued government needs one
+  meeting in prod; a user-requested transcription is honored. Multi-tenant
+  hosts (Utah PMN 571 notices, Town Hall Streams 126 governments) are
+  many governments and stay whole.
+- **What was kept** (one line each, governing body, shortest available;
+  titles from the CivicClerk API / Granicus page):
+
+  | Government | Kept | Length |
+  |---|---|---|
+  | Los Altos Hills, CA | `event/4638` City Council Special Meeting, 2026-08-31 | 1:05:50 (only council meeting queued) |
+  | Summit County, UT | `clip/1286` County Council | 0:22:38 |
+  | Walworth County, WI | `event/2599` County Board of Supervisors, 2026-08-10 | 0:26:30 |
+  | Heber City, UT | `event/527` Special City Council Meeting, 2026-04-14 | 0:38:10 |
+
+  WO-205's picks for Walworth (Board of Adjustment) and Heber (Airport
+  Advisory Board) were on-mission but not the governing body; both are
+  now in the deferred file with the rest.
+- **What was parked:** 257 lines (LAH 67, Walworth 113, Summit 49, Heber
+  28) appended to `scripts/tier3_long_meetings_deferred.txt` under a
+  dated comment, jurisdiction and probed length filled in, so the WO-212
+  CI guard keeps them out of the queue through any rebase. Queue 2,820 →
+  2,563 lines.
+- **Also closed, a WO-205 gap:** 34 of the 111 WO-205 substitutes had no
+  row in the probe sidecar (the CivicClerk path verified durations
+  through the API but never wrote the sidecar), so the WO-156 ingest gate
+  would have refused them. Probed via `scripts/probe_tier3_queue.py
+  --urls-file`: 34/34 live (3 needed a re-probe after a transient
+  CivicClerk resolve error).
+- **Still open (Ryan's call):** the same two bulk PRs left Sanford NC 18,
+  Vineyard UT 16, Park City UT 14, Cosumnes CSD 13, Ivins UT 11 and
+  Kaysville UT 11 lines. Same trim applies if wanted.
+
 ## WO-212: the 103 long meetings WO-205 swapped out were back in the queue after two "union" rebases — dropped again, CI guard added, rebase rule amended [Done 2026-09-11]
 
 - **What happened:** WO-205's data merge (#939, `eacc8a0`) removed 106

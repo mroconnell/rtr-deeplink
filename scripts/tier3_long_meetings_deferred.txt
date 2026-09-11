@@ -106,3 +106,261 @@ https://lakecounty.granicus.com/player/clip/848?view_id=1&redirect=true		us:coun
 https://pembrokeparkfl.portal.civicclerk.com/event/2040/media		us:place:1255750	Pembroke Park, FL	1:46:05	Regular Commission Meeting
 https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=0a99c7a9-840b-4a61-832d-b6975a2855e5&Agenda=PostMinutes&lang=English		ca:csd:5905032	City of Grand Forks	2:40:59	Regular Meeting
 https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3676			Capital Regional District	2:48:38	Capital Regional District Board on 2026-09-09 12:10 PM COPY
+# WO-213 (2026-09-11, Ryan): the extra meetings of four governments our own bulk tools queued in volume (#443, #794), trimmed to one governing-body meeting each; any length. Re-queue for depth later.
+https://walworthcowi.portal.civicclerk.com/event/2446/media		us:county:55127	Walworth County, WI	0:46:30	
+https://walworthcowi.portal.civicclerk.com/event/2550/media		us:county:55127	Walworth County, WI	0:42:21	
+https://walworthcowi.portal.civicclerk.com/event/2498/media		us:county:55127	Walworth County, WI	0:42:35	
+https://walworthcowi.portal.civicclerk.com/event/2656/media		us:county:55127	Walworth County, WI	0:53:20	
+https://walworthcowi.portal.civicclerk.com/event/2115/media		us:county:55127	Walworth County, WI		
+https://walworthcowi.portal.civicclerk.com/event/2499/media		us:county:55127	Walworth County, WI	0:07:43	
+https://walworthcowi.portal.civicclerk.com/event/2447/media		us:county:55127	Walworth County, WI	1:31:43	
+https://losaltoshillsca.portal.civicclerk.com/event/4274/media		us:place:0643294	Los Altos Hills, CA	1:14:45	
+https://walworthcowi.portal.civicclerk.com/event/2657/media		us:county:55127	Walworth County, WI	1:16:05	
+https://walworthcowi.portal.civicclerk.com/event/2561/media		us:county:55127	Walworth County, WI	0:17:19	
+https://losaltoshillsca.portal.civicclerk.com/event/4273/media		us:place:0643294	Los Altos Hills, CA	1:40:50	
+https://walworthcowi.portal.civicclerk.com/event/2122/media		us:county:55127	Walworth County, WI	1:48:59	
+https://losaltoshillsca.portal.civicclerk.com/event/4519/media		us:place:0643294	Los Altos Hills, CA	1:56:00	
+https://walworthcowi.portal.civicclerk.com/event/2500/media		us:county:55127	Walworth County, WI	2:26:52	
+https://walworthcowi.portal.civicclerk.com/event/2460/media		us:county:55127	Walworth County, WI	0:20:30	
+https://losaltoshillsca.portal.civicclerk.com/event/4520/media		us:place:0643294	Los Altos Hills, CA	0:11:14	
+https://losaltoshillsca.portal.civicclerk.com/event/4275/media		us:place:0643294	Los Altos Hills, CA	0:41:33	
+https://walworthcowi.portal.civicclerk.com/event/2563/media		us:county:55127	Walworth County, WI	0:53:04	
+https://walworthcowi.portal.civicclerk.com/event/2658/media		us:county:55127	Walworth County, WI	1:03:08	
+https://losaltoshillsca.portal.civicclerk.com/event/4526/media		us:place:0643294	Los Altos Hills, CA	1:23:14	
+https://walworthcowi.portal.civicclerk.com/event/2127/media		us:county:55127	Walworth County, WI	1:46:44	
+https://walworthcowi.portal.civicclerk.com/event/2564/media		us:county:55127	Walworth County, WI	1:49:41	
+https://walworthcowi.portal.civicclerk.com/event/2659/media		us:county:55127	Walworth County, WI	1:30:42	
+https://losaltoshillsca.portal.civicclerk.com/event/4094/media		us:place:0643294	Los Altos Hills, CA		
+https://losaltoshillsca.portal.civicclerk.com/event/4315/media		us:place:0643294	Los Altos Hills, CA	1:35:15	
+https://walworthcowi.portal.civicclerk.com/event/2461/media		us:county:55127	Walworth County, WI	0:34:28	
+https://losaltoshillsca.portal.civicclerk.com/event/4529/media		us:place:0643294	Los Altos Hills, CA	3:28:37	
+https://walworthcowi.portal.civicclerk.com/event/2501/media		us:county:55127	Walworth County, WI	0:01:39	
+https://walworthcowi.portal.civicclerk.com/event/2145/media		us:county:55127	Walworth County, WI	1:47:34	
+https://walworthcowi.portal.civicclerk.com/event/2462/media		us:county:55127	Walworth County, WI	0:30:53	
+https://losaltoshillsca.portal.civicclerk.com/event/4314/media		us:place:0643294	Los Altos Hills, CA	1:36:01	
+https://walworthcowi.portal.civicclerk.com/event/2506/media		us:county:55127	Walworth County, WI	1:39:39	
+https://losaltoshillsca.portal.civicclerk.com/event/4316/media		us:place:0643294	Los Altos Hills, CA	2:18:19	
+https://losaltoshillsca.portal.civicclerk.com/event/4530/media		us:place:0643294	Los Altos Hills, CA	0:59:44	
+https://walworthcowi.portal.civicclerk.com/event/2463/media		us:county:55127	Walworth County, WI	0:34:40	
+https://walworthcowi.portal.civicclerk.com/event/2179/media		us:county:55127	Walworth County, WI	1:50:54	
+https://walworthcowi.portal.civicclerk.com/event/2507/media		us:county:55127	Walworth County, WI	0:38:47	
+https://walworthcowi.portal.civicclerk.com/event/2573/media		us:county:55127	Walworth County, WI	1:26:28	
+https://losaltoshillsca.portal.civicclerk.com/event/4318/media		us:place:0643294	Los Altos Hills, CA	2:09:59	
+https://losaltoshillsca.portal.civicclerk.com/event/4567/media		us:place:0643294	Los Altos Hills, CA	6:38:02	
+https://walworthcowi.portal.civicclerk.com/event/2279/media		us:county:55127	Walworth County, WI	1:27:12	
+https://walworthcowi.portal.civicclerk.com/event/2464/media		us:county:55127	Walworth County, WI	0:23:45	
+https://walworthcowi.portal.civicclerk.com/event/2575/media		us:county:55127	Walworth County, WI	1:07:34	
+https://losaltoshillsca.portal.civicclerk.com/event/4321/media		us:place:0643294	Los Altos Hills, CA	1:27:35	
+https://losaltoshillsca.portal.civicclerk.com/event/4568/media		us:place:0643294	Los Altos Hills, CA	1:18:23	
+https://walworthcowi.portal.civicclerk.com/event/2315/media		us:county:55127	Walworth County, WI	0:53:48	
+https://walworthcowi.portal.civicclerk.com/event/2465/media		us:county:55127	Walworth County, WI	1:12:47	
+https://walworthcowi.portal.civicclerk.com/event/2576/media		us:county:55127	Walworth County, WI	0:50:21	
+https://losaltoshillsca.portal.civicclerk.com/event/4570/media		us:place:0643294	Los Altos Hills, CA	2:16:05	
+https://walworthcowi.portal.civicclerk.com/event/2316/media		us:county:55127	Walworth County, WI	1:08:47	
+https://walworthcowi.portal.civicclerk.com/event/2466/media		us:county:55127	Walworth County, WI	0:45:46	
+https://walworthcowi.portal.civicclerk.com/event/2585/media		us:county:55127	Walworth County, WI	0:22:10	
+https://losaltoshillsca.portal.civicclerk.com/event/4203/media		us:place:0643294	Los Altos Hills, CA	2:10:03	
+https://losaltoshillsca.portal.civicclerk.com/event/4356/media		us:place:0643294	Los Altos Hills, CA		
+https://losaltoshillsca.portal.civicclerk.com/event/4571/media		us:place:0643294	Los Altos Hills, CA	2:09:53	
+https://walworthcowi.portal.civicclerk.com/event/2586/media		us:county:55127	Walworth County, WI	0:41:45	
+https://walworthcowi.portal.civicclerk.com/event/2467/media		us:county:55127	Walworth County, WI	0:49:12	
+https://walworthcowi.portal.civicclerk.com/event/2319/media		us:county:55127	Walworth County, WI	0:39:04	
+https://losaltoshillsca.portal.civicclerk.com/event/4574/media		us:place:0643294	Los Altos Hills, CA	2:22:14	
+https://walworthcowi.portal.civicclerk.com/event/2342/media		us:county:55127	Walworth County, WI	0:14:20	
+https://losaltoshillsca.portal.civicclerk.com/event/4358/media		us:place:0643294	Los Altos Hills, CA	0:17:42	
+https://walworthcowi.portal.civicclerk.com/event/2475/media		us:county:55127	Walworth County, WI	1:26:29	
+https://losaltoshillsca.portal.civicclerk.com/event/4206/media		us:place:0643294	Los Altos Hills, CA	3:34:27	
+https://losaltoshillsca.portal.civicclerk.com/event/4215/media		us:place:0643294	Los Altos Hills, CA	2:35:49	
+https://walworthcowi.portal.civicclerk.com/event/2343/media		us:county:55127	Walworth County, WI	0:27:32	
+https://walworthcowi.portal.civicclerk.com/event/2587/media		us:county:55127	Walworth County, WI	0:32:14	
+https://losaltoshillsca.portal.civicclerk.com/event/4359/media		us:place:0643294	Los Altos Hills, CA	2:57:37	
+https://losaltoshillsca.portal.civicclerk.com/event/4577/media		us:place:0643294	Los Altos Hills, CA	0:04:05	
+https://walworthcowi.portal.civicclerk.com/event/2476/media		us:county:55127	Walworth County, WI	0:25:24	
+https://losaltoshillsca.portal.civicclerk.com/event/4216/media		us:place:0643294	Los Altos Hills, CA	2:17:37	
+https://walworthcowi.portal.civicclerk.com/event/2596/media		us:county:55127	Walworth County, WI	2:09:55	
+https://losaltoshillsca.portal.civicclerk.com/event/4360/media		us:place:0643294	Los Altos Hills, CA	4:17:57	
+https://losaltoshillsca.portal.civicclerk.com/event/4578/media		us:place:0643294	Los Altos Hills, CA	2:05:15	
+https://walworthcowi.portal.civicclerk.com/event/2344/media		us:county:55127	Walworth County, WI	0:22:25	
+https://walworthcowi.portal.civicclerk.com/event/2597/media		us:county:55127	Walworth County, WI	1:23:14	
+https://walworthcowi.portal.civicclerk.com/event/2477/media		us:county:55127	Walworth County, WI	0:44:52	
+https://losaltoshillsca.portal.civicclerk.com/event/4217/media		us:place:0643294	Los Altos Hills, CA	2:00:04	
+https://losaltoshillsca.portal.civicclerk.com/event/4361/media		us:place:0643294	Los Altos Hills, CA	0:52:53	
+https://walworthcowi.portal.civicclerk.com/event/2345/media		us:county:55127	Walworth County, WI	0:21:55	
+https://losaltoshillsca.portal.civicclerk.com/event/4580/media		us:place:0643294	Los Altos Hills, CA	2:37:25	
+https://walworthcowi.portal.civicclerk.com/event/2478/media		us:county:55127	Walworth County, WI	0:13:37	
+https://walworthcowi.portal.civicclerk.com/event/2598/media		us:county:55127	Walworth County, WI	1:19:00	
+https://losaltoshillsca.portal.civicclerk.com/event/4243/media		us:place:0643294	Los Altos Hills, CA	2:00:04	
+https://losaltoshillsca.portal.civicclerk.com/event/4362/media		us:place:0643294	Los Altos Hills, CA	3:54:11	
+https://walworthcowi.portal.civicclerk.com/event/2346/media		us:county:55127	Walworth County, WI	0:32:00	
+https://walworthcowi.portal.civicclerk.com/event/2479/media		us:county:55127	Walworth County, WI	0:26:08	
+https://walworthcowi.portal.civicclerk.com/event/2517/media		us:county:55127	Walworth County, WI	0:23:08	
+https://losaltoshillsca.portal.civicclerk.com/event/4218/media		us:place:0643294	Los Altos Hills, CA	2:10:15	
+https://losaltoshillsca.portal.civicclerk.com/event/4368/media		us:place:0643294	Los Altos Hills, CA	1:55:11	
+https://walworthcowi.portal.civicclerk.com/event/2480/media		us:county:55127	Walworth County, WI	0:50:37	
+https://walworthcowi.portal.civicclerk.com/event/2518/media		us:county:55127	Walworth County, WI	1:02:59	
+https://walworthcowi.portal.civicclerk.com/event/2600/media		us:county:55127	Walworth County, WI	0:51:09	
+https://losaltoshillsca.portal.civicclerk.com/event/4221/media		us:place:0643294	Los Altos Hills, CA	2:22:01	
+https://walworthcowi.portal.civicclerk.com/event/2386/media		us:county:55127	Walworth County, WI	0:48:12	
+https://losaltoshillsca.portal.civicclerk.com/event/4369/media		us:place:0643294	Los Altos Hills, CA	2:09:28	
+https://walworthcowi.portal.civicclerk.com/event/2481/media		us:county:55127	Walworth County, WI	1:32:45	
+https://walworthcowi.portal.civicclerk.com/event/2601/media		us:county:55127	Walworth County, WI	0:57:02	
+https://losaltoshillsca.portal.civicclerk.com/event/4222/media		us:place:0643294	Los Altos Hills, CA	2:30:59	
+https://losaltoshillsca.portal.civicclerk.com/event/4382/media		us:place:0643294	Los Altos Hills, CA	1:02:36	
+https://walworthcowi.portal.civicclerk.com/event/2519/media		us:county:55127	Walworth County, WI	1:24:35	
+https://walworthcowi.portal.civicclerk.com/event/2482/media		us:county:55127	Walworth County, WI	1:30:55	
+https://walworthcowi.portal.civicclerk.com/event/2387/media		us:county:55127	Walworth County, WI	0:23:21	
+https://walworthcowi.portal.civicclerk.com/event/2602/media		us:county:55127	Walworth County, WI	1:00:09	
+https://losaltoshillsca.portal.civicclerk.com/event/4228/media		us:place:0643294	Los Altos Hills, CA	1:59:16	
+https://walworthcowi.portal.civicclerk.com/event/2520/media		us:county:55127	Walworth County, WI	1:23:15	
+https://losaltoshillsca.portal.civicclerk.com/event/4437/media		us:place:0643294	Los Altos Hills, CA	2:15:57	
+https://walworthcowi.portal.civicclerk.com/event/2388/media		us:county:55127	Walworth County, WI	1:53:34	
+https://walworthcowi.portal.civicclerk.com/event/2483/media		us:county:55127	Walworth County, WI	1:28:33	
+https://walworthcowi.portal.civicclerk.com/event/2521/media		us:county:55127	Walworth County, WI	1:12:48	
+https://walworthcowi.portal.civicclerk.com/event/2621/media		us:county:55127	Walworth County, WI	0:57:07	
+https://losaltoshillsca.portal.civicclerk.com/event/4229/media		us:place:0643294	Los Altos Hills, CA	2:23:09	
+https://losaltoshillsca.portal.civicclerk.com/event/4438/media		us:place:0643294	Los Altos Hills, CA	2:07:28	
+https://walworthcowi.portal.civicclerk.com/event/2522/media		us:county:55127	Walworth County, WI	1:30:14	
+https://walworthcowi.portal.civicclerk.com/event/2484/media		us:county:55127	Walworth County, WI	2:54:30	
+https://walworthcowi.portal.civicclerk.com/event/2391/media		us:county:55127	Walworth County, WI	1:14:36	
+https://walworthcowi.portal.civicclerk.com/event/2626/media		us:county:55127	Walworth County, WI	0:25:45	
+https://losaltoshillsca.portal.civicclerk.com/event/4231/media		us:place:0643294	Los Altos Hills, CA	2:02:28	
+https://losaltoshillsca.portal.civicclerk.com/event/4439/media		us:place:0643294	Los Altos Hills, CA	5:09:43	
+https://walworthcowi.portal.civicclerk.com/event/2392/media		us:county:55127	Walworth County, WI	0:33:32	
+https://walworthcowi.portal.civicclerk.com/event/2523/media		us:county:55127	Walworth County, WI	0:17:12	
+https://walworthcowi.portal.civicclerk.com/event/2485/media		us:county:55127	Walworth County, WI	1:16:03	
+https://walworthcowi.portal.civicclerk.com/event/2627/media		us:county:55127	Walworth County, WI	0:42:16	
+https://walworthcowi.portal.civicclerk.com/event/2394/media		us:county:55127	Walworth County, WI	0:27:49	
+https://losaltoshillsca.portal.civicclerk.com/event/4441/media		us:place:0643294	Los Altos Hills, CA	1:03:59	
+https://losaltoshillsca.portal.civicclerk.com/event/4232/media		us:place:0643294	Los Altos Hills, CA	2:22:14	
+https://walworthcowi.portal.civicclerk.com/event/2486/media		us:county:55127	Walworth County, WI	1:05:22	
+https://walworthcowi.portal.civicclerk.com/event/2524/media		us:county:55127	Walworth County, WI	1:21:23	
+https://losaltoshillsca.portal.civicclerk.com/event/4455/media		us:place:0643294	Los Altos Hills, CA	0:03:16	
+https://losaltoshillsca.portal.civicclerk.com/event/4242/media		us:place:0643294	Los Altos Hills, CA	1:49:30	
+https://walworthcowi.portal.civicclerk.com/event/2632/media		us:county:55127	Walworth County, WI	2:31:48	
+https://walworthcowi.portal.civicclerk.com/event/2487/media		us:county:55127	Walworth County, WI	1:03:47	
+https://walworthcowi.portal.civicclerk.com/event/2397/media		us:county:55127	Walworth County, WI	0:41:19	
+https://walworthcowi.portal.civicclerk.com/event/2525/media		us:county:55127	Walworth County, WI	0:49:47	
+https://walworthcowi.portal.civicclerk.com/event/2633/media		us:county:55127	Walworth County, WI	1:43:02	
+https://losaltoshillsca.portal.civicclerk.com/event/4257/media		us:place:0643294	Los Altos Hills, CA	1:49:22	
+https://losaltoshillsca.portal.civicclerk.com/event/4458/media		us:place:0643294	Los Altos Hills, CA	0:01:27	
+https://walworthcowi.portal.civicclerk.com/event/2398/media		us:county:55127	Walworth County, WI	0:37:05	
+https://walworthcowi.portal.civicclerk.com/event/2634/media		us:county:55127	Walworth County, WI	1:04:13	
+https://losaltoshillsca.portal.civicclerk.com/event/4461/media		us:place:0643294	Los Altos Hills, CA	1:11:58	
+https://walworthcowi.portal.civicclerk.com/event/2526/media		us:county:55127	Walworth County, WI	0:22:30	
+https://losaltoshillsca.portal.civicclerk.com/event/4259/media		us:place:0643294	Los Altos Hills, CA	1:31:35	
+https://walworthcowi.portal.civicclerk.com/event/2399/media		us:county:55127	Walworth County, WI	0:46:40	
+https://walworthcowi.portal.civicclerk.com/event/2527/media		us:county:55127	Walworth County, WI	1:03:50	
+https://walworthcowi.portal.civicclerk.com/event/2643/media		us:county:55127	Walworth County, WI	1:15:25	
+https://losaltoshillsca.portal.civicclerk.com/event/4463/media		us:place:0643294	Los Altos Hills, CA	1:13:07	
+https://walworthcowi.portal.civicclerk.com/event/2400/media		us:county:55127	Walworth County, WI	1:37:59	
+https://losaltoshillsca.portal.civicclerk.com/event/4260/media		us:place:0643294	Los Altos Hills, CA	1:24:42	
+https://walworthcowi.portal.civicclerk.com/event/2528/media		us:county:55127	Walworth County, WI	0:53:38	
+https://walworthcowi.portal.civicclerk.com/event/2644/media		us:county:55127	Walworth County, WI	1:11:23	
+https://walworthcowi.portal.civicclerk.com/event/2408/media		us:county:55127	Walworth County, WI	1:27:40	
+https://losaltoshillsca.portal.civicclerk.com/event/4485/media		us:place:0643294	Los Altos Hills, CA	5:56:19	
+https://losaltoshillsca.portal.civicclerk.com/event/4261/media		us:place:0643294	Los Altos Hills, CA	1:54:13	
+https://walworthcowi.portal.civicclerk.com/event/2529/media		us:county:55127	Walworth County, WI	1:57:26	
+https://walworthcowi.portal.civicclerk.com/event/2645/media		us:county:55127	Walworth County, WI	0:09:40	
+https://losaltoshillsca.portal.civicclerk.com/event/4262/media		us:place:0643294	Los Altos Hills, CA	1:45:26	
+https://losaltoshillsca.portal.civicclerk.com/event/4500/media		us:place:0643294	Los Altos Hills, CA	0:01:05	
+https://walworthcowi.portal.civicclerk.com/event/2537/media		us:county:55127	Walworth County, WI	0:53:56	
+https://walworthcowi.portal.civicclerk.com/event/2409/media		us:county:55127	Walworth County, WI	0:47:53	
+https://walworthcowi.portal.civicclerk.com/event/2494/media		us:county:55127	Walworth County, WI	1:28:11	
+https://walworthcowi.portal.civicclerk.com/event/2646/media		us:county:55127	Walworth County, WI	1:20:56	
+https://losaltoshillsca.portal.civicclerk.com/event/4263/media		us:place:0643294	Los Altos Hills, CA	1:34:46	
+https://losaltoshillsca.portal.civicclerk.com/event/4504/media		us:place:0643294	Los Altos Hills, CA	4:51:35	
+https://walworthcowi.portal.civicclerk.com/event/2414/media		us:county:55127	Walworth County, WI	1:45:18	
+https://walworthcowi.portal.civicclerk.com/event/2538/media		us:county:55127	Walworth County, WI	1:05:34	
+https://walworthcowi.portal.civicclerk.com/event/2647/media		us:county:55127	Walworth County, WI	0:07:54	
+https://losaltoshillsca.portal.civicclerk.com/event/4506/media		us:place:0643294	Los Altos Hills, CA	1:57:35	
+https://losaltoshillsca.portal.civicclerk.com/event/4271/media		us:place:0643294	Los Altos Hills, CA	0:57:21	
+https://walworthcowi.portal.civicclerk.com/event/2443/media		us:county:55127	Walworth County, WI	1:33:50	
+https://walworthcowi.portal.civicclerk.com/event/2539/media		us:county:55127	Walworth County, WI	0:59:08	
+https://walworthcowi.portal.civicclerk.com/event/2496/media		us:county:55127	Walworth County, WI	1:41:17	
+https://walworthcowi.portal.civicclerk.com/event/2648/media		us:county:55127	Walworth County, WI	0:58:45	
+https://losaltoshillsca.portal.civicclerk.com/event/4272/media		us:place:0643294	Los Altos Hills, CA	0:57:19	
+https://losaltoshillsca.portal.civicclerk.com/event/4507/media		us:place:0643294	Los Altos Hills, CA	1:58:24	
+https://walworthcowi.portal.civicclerk.com/event/2497/media		us:county:55127	Walworth County, WI	0:43:41	
+https://walworthcowi.portal.civicclerk.com/event/2444/media		us:county:55127	Walworth County, WI	1:00:39	
+https://walworthcowi.portal.civicclerk.com/event/2649/media		us:county:55127	Walworth County, WI	0:43:53	
+https://walworthcowi.portal.civicclerk.com/event/2548/media		us:county:55127	Walworth County, WI	0:24:37	
+https://losaltoshillsca.portal.civicclerk.com/event/4509/media		us:place:0643294	Los Altos Hills, CA	2:04:38	
+https://walworthcowi.portal.civicclerk.com/event/2549/media		us:county:55127	Walworth County, WI	1:11:01	
+https://summitcounty.granicus.com/player/clip/1441		us:county:49043	Summit County, UT	3:37:07	
+https://summitcounty.granicus.com/player/clip/1444		us:county:49043	Summit County, UT	8:04:25	
+https://summitcounty.granicus.com/player/clip/1451		us:county:49043	Summit County, UT	3:03:19	
+https://summitcounty.granicus.com/player/clip/1456		us:county:49043	Summit County, UT	9:33:53	
+https://summitcounty.granicus.com/player/clip/1448		us:county:49043	Summit County, UT	2:23:11	
+https://summitcounty.granicus.com/player/clip/1439		us:county:49043	Summit County, UT	0:56:31	
+https://summitcounty.granicus.com/player/clip/1450		us:county:49043	Summit County, UT	2:59:59	
+https://summitcounty.granicus.com/player/clip/1458		us:county:49043	Summit County, UT	1:45:10	
+https://hebercityut.portal.civicclerk.com/event/535/media		us:place:4934200	Heber City, UT	6:47:59	
+https://hebercityut.portal.civicclerk.com/event/491/media		us:place:4934200	Heber City, UT	1:56:27	
+https://hebercityut.portal.civicclerk.com/event/587/media		us:place:4934200	Heber City, UT	1:12:03	
+https://summitcounty.granicus.com/player/clip/1264		us:county:49043	Summit County, UT	5:03:32	
+https://summitcounty.granicus.com/player/clip/1269		us:county:49043	Summit County, UT	6:56:48	
+https://summitcounty.granicus.com/player/clip/1273		us:county:49043	Summit County, UT	3:35:53	
+https://summitcounty.granicus.com/player/clip/1274		us:county:49043	Summit County, UT	6:26:42	
+https://summitcounty.granicus.com/player/clip/1297		us:county:49043	Summit County, UT	5:34:38	
+https://summitcounty.granicus.com/player/clip/1329		us:county:49043	Summit County, UT	4:08:09	
+https://summitcounty.granicus.com/player/clip/1342		us:county:49043	Summit County, UT	4:25:29	
+https://summitcounty.granicus.com/player/clip/1347		us:county:49043	Summit County, UT	5:28:09	
+https://summitcounty.granicus.com/player/clip/1350		us:county:49043	Summit County, UT	3:20:04	
+https://summitcounty.granicus.com/player/clip/1351		us:county:49043	Summit County, UT	0:03:44	
+https://summitcounty.granicus.com/player/clip/1370		us:county:49043	Summit County, UT	2:40:35	
+https://summitcounty.granicus.com/player/clip/1376		us:county:49043	Summit County, UT	2:10:23	
+https://summitcounty.granicus.com/player/clip/1378		us:county:49043	Summit County, UT	3:53:38	
+https://summitcounty.granicus.com/player/clip/1391		us:county:49043	Summit County, UT	5:28:35	
+https://summitcounty.granicus.com/player/clip/1394		us:county:49043	Summit County, UT	0:32:19	
+https://summitcounty.granicus.com/player/clip/1396		us:county:49043	Summit County, UT	0:49:27	
+https://summitcounty.granicus.com/player/clip/1397		us:county:49043	Summit County, UT	3:09:45	
+https://summitcounty.granicus.com/player/clip/1401		us:county:49043	Summit County, UT	1:15:41	
+https://summitcounty.granicus.com/player/clip/1409		us:county:49043	Summit County, UT	4:00:37	
+https://summitcounty.granicus.com/player/clip/1434		us:county:49043	Summit County, UT	5:54:46	
+https://summitcounty.granicus.com/player/clip/1263		us:county:49043	Summit County, UT	2:33:18	
+https://summitcounty.granicus.com/player/clip/1270		us:county:49043	Summit County, UT	1:42:35	
+https://summitcounty.granicus.com/player/clip/1272		us:county:49043	Summit County, UT	2:03:51	
+https://summitcounty.granicus.com/player/clip/1276		us:county:49043	Summit County, UT	2:02:20	
+https://summitcounty.granicus.com/player/clip/1304		us:county:49043	Summit County, UT	1:39:31	
+https://summitcounty.granicus.com/player/clip/1287		us:county:49043	Summit County, UT	2:39:25	
+https://summitcounty.granicus.com/player/clip/1332		us:county:49043	Summit County, UT	1:29:06	
+https://summitcounty.granicus.com/player/clip/1344		us:county:49043	Summit County, UT	4:46:29	
+https://summitcounty.granicus.com/player/clip/1346		us:county:49043	Summit County, UT	2:29:24	
+https://summitcounty.granicus.com/player/clip/1355		us:county:49043	Summit County, UT	2:14:14	
+https://summitcounty.granicus.com/player/clip/1361		us:county:49043	Summit County, UT	0:54:12	
+https://summitcounty.granicus.com/player/clip/1399		us:county:49043	Summit County, UT	1:18:41	
+https://summitcounty.granicus.com/player/clip/1393		us:county:49043	Summit County, UT	2:11:34	
+https://summitcounty.granicus.com/player/clip/1398		us:county:49043	Summit County, UT	5:01:12	
+https://summitcounty.granicus.com/player/clip/1402		us:county:49043	Summit County, UT	1:30:47	
+https://summitcounty.granicus.com/player/clip/1438		us:county:49043	Summit County, UT	3:05:38	
+https://summitcounty.granicus.com/player/clip/1365		us:county:49043	Summit County, UT	1:54:23	
+https://summitcounty.granicus.com/player/clip/1293		us:county:49043	Summit County, UT	1:36:25	
+https://summitcounty.granicus.com/player/clip/1305		us:county:49043	Summit County, UT	1:13:39	
+https://summitcounty.granicus.com/player/clip/1348		us:county:49043	Summit County, UT	1:58:10	
+https://summitcounty.granicus.com/player/clip/1377		us:county:49043	Summit County, UT	2:00:56	
+https://hebercityut.portal.civicclerk.com/event/421/media		us:place:4934200	Heber City, UT	1:39:12	
+https://hebercityut.portal.civicclerk.com/event/434/media		us:place:4934200	Heber City, UT	4:45:16	
+https://hebercityut.portal.civicclerk.com/event/422/media		us:place:4934200	Heber City, UT	3:20:05	
+https://hebercityut.portal.civicclerk.com/event/529/media		us:place:4934200	Heber City, UT	3:56:46	
+https://hebercityut.portal.civicclerk.com/event/528/media		us:place:4934200	Heber City, UT	3:27:49	
+https://hebercityut.portal.civicclerk.com/event/423/media		us:place:4934200	Heber City, UT	6:32:03	
+https://hebercityut.portal.civicclerk.com/event/583/media		us:place:4934200	Heber City, UT	0:56:28	
+https://hebercityut.portal.civicclerk.com/event/436/media		us:place:4934200	Heber City, UT	4:11:25	
+https://hebercityut.portal.civicclerk.com/event/437/media		us:place:4934200	Heber City, UT	6:09:53	
+https://hebercityut.portal.civicclerk.com/event/534/media		us:place:4934200	Heber City, UT	4:01:49	
+https://hebercityut.portal.civicclerk.com/event/438/media		us:place:4934200	Heber City, UT	3:56:08	
+https://hebercityut.portal.civicclerk.com/event/584/media		us:place:4934200	Heber City, UT	2:35:11	
+https://hebercityut.portal.civicclerk.com/event/446/media		us:place:4934200	Heber City, UT	1:42:38	
+https://hebercityut.portal.civicclerk.com/event/486/media		us:place:4934200	Heber City, UT	1:45:08	
+https://hebercityut.portal.civicclerk.com/event/447/media		us:place:4934200	Heber City, UT	0:40:05	
+https://hebercityut.portal.civicclerk.com/event/448/media		us:place:4934200	Heber City, UT	2:44:58	
+https://hebercityut.portal.civicclerk.com/event/488/media		us:place:4934200	Heber City, UT	1:21:27	
+https://hebercityut.portal.civicclerk.com/event/449/media		us:place:4934200	Heber City, UT	0:18:43	
+https://hebercityut.portal.civicclerk.com/event/450/media		us:place:4934200	Heber City, UT	1:46:01	
+https://hebercityut.portal.civicclerk.com/event/490/media		us:place:4934200	Heber City, UT	2:00:02	
+https://hebercityut.portal.civicclerk.com/event/531/media		us:place:4934200	Heber City, UT	2:33:09	
+https://hebercityut.portal.civicclerk.com/event/523/media		us:place:4934200	Heber City, UT	0:57:13	
+https://hebercityut.portal.civicclerk.com/event/515/media		us:place:4934200	Heber City, UT	1:15:23	
+https://hebercityut.portal.civicclerk.com/event/514/media		us:place:4934200	Heber City, UT	1:15:09	
+https://walworthcowi.portal.civicclerk.com/event/2509/media		us:county:55127	Walworth County, WI	0:29:49	
+https://hebercityut.portal.civicclerk.com/event/586/media		us:place:4934200	Heber City, UT	0:39:04	
