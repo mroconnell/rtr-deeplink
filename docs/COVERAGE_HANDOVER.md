@@ -279,9 +279,14 @@ What the 2026-09-09 sweeps established about *where video is*:
    heuristic, and expect every agent to rebase through the others'
    merges; the generated `BACKLOG.md` table of contents, the tier-3 queue
    file, and the pins file conflict on nearly every merge and resolve
-   mechanically (regenerate the TOC; take the union of queue and pin
-   lines). Budget for the session limit: seven agents at once tripped it
-   once; resumable per-row reports meant nothing was lost.
+   mechanically (regenerate the TOC; for the queue and pin files, a line
+   deleted on `main` stays deleted, union only what your own branch
+   added, then subtract `scripts/tier3_long_meetings_deferred.txt` from
+   the queue — a plain union of both sides re-added 103 deliberately
+   removed long meetings and a removed pin on 2026-09-11, WO-212/WO-210,
+   and CI now fails on both). Budget for the session limit: seven agents
+   at once tripped it once; resumable per-row reports meant nothing was
+   lost.
 
 ## 6. What is honest but unfinished
 
