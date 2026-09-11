@@ -821,6 +821,7 @@ async def _resolve_page_government(
     video_channel=None,
     caller_gov_id=None,
     split_body=None,
+    origin_host=None,
 ):
     """`resolve_government()` for one page, with the one input it cannot
     see for itself.
@@ -877,6 +878,16 @@ async def _resolve_page_government(
     `state_suffix_from_text()` pulls it back out, validated the same way
     as the zip/postal signals above before `resolve_government()` will
     ever accept it.
+
+    `origin_host` (WO-214) -- `ResolvedMeeting.origin_host`, when the
+    payload carries one: the CivicPlus/Legistar tenant's own host, for a
+    page whose `source_url`/`platform` are a DELEGATED platform's own
+    (the "known quirk" CLAUDE.md's platform-wrapper bullet documents).
+    Threaded straight through to `resolve_government()`'s own
+    `origin_host` param, which only ever consults it as a fallback when
+    `host` (below) is a multi-government host with no matching pin -- see
+    that function's own docstring and rung 1b's comment for the full
+    reasoning. None for every other platform's payload.
     """
     parsed = urlparse(source_url_normalized)
     host = (parsed.netloc or "").lower().split(":")[0]
@@ -900,7 +911,12 @@ async def _resolve_page_government(
             "state_hints": [title_state] if title_state else [],
         }
     match = resolve_government(
-        raw_jurisdiction, tenant_host=host, path=path, page_hints=hints, signals=signals
+        raw_jurisdiction,
+        tenant_host=host,
+        path=path,
+        page_hints=hints,
+        origin_host=origin_host,
+        signals=signals,
     )
     if match.tier in (TIER_UNVERIFIED, TIER_UNRESOLVED):
         dominant = await _tenant_dominant_gov_id(session, host)
@@ -911,6 +927,7 @@ async def _resolve_page_government(
                 path=path,
                 page_hints=hints,
                 tenant_gov_id=dominant,
+                origin_host=origin_host,
                 signals=signals,
             )
     return match
@@ -974,6 +991,7 @@ async def _find_or_create_page(
         video_channel=payload.get("video_channel"),
         caller_gov_id=payload.get("gov_id"),
         split_body=jx_result.meeting_body,
+        origin_host=payload.get("origin_host"),
     )
     caller_gov_id = payload.get("gov_id") or None
     # A caller-supplied id counts as "identity supplied" for the update

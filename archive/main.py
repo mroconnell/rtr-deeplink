@@ -1713,6 +1713,18 @@ class IngestRequest(BaseModel):
     # page_hint so `match=channel=...` override rows can fire.
     video_channel: Optional[str] = None
     video_channel_id: Optional[str] = None
+    # Mirrors ResolvedMeeting.origin_host (app/platforms/models.py,
+    # WO-214) -- same silent-drop failure shape documented on every field
+    # above until it gets its own explicit field here: a CivicPlus/
+    # Legistar page whose `source_url`/`platform` are a DELEGATED
+    # platform's own (the "known quirk" CLAUDE.md's platform-wrapper
+    # bullet documents) carries the delegating tenant's own host
+    # separately, so `_resolve_page_government()` can resolve identity
+    # against it -- see that function's own docstring. Not persisted on
+    # `MeetingPage` (no column exists, same as `video_link` -- see that
+    # field's own comment on `ResolvedMeeting`): it is consumed once, at
+    # ingest time, by the government ladder, and never read back.
+    origin_host: Optional[str] = None
     # Archive-only -- not part of ResolvedMeeting (app/platforms/models.py),
     # so every normal resolver push/bulk_ingest.py/fetch_youtube_transcripts.py
     # call simply omits it and gets the "sourced" default crud.
@@ -1849,6 +1861,11 @@ class ResolvedMeetingIn(BaseModel):
     # ones with no vendor adapter behind them at all -- would be the ones
     # created unflagged.
     best_effort: bool = False
+    # Same mirror as IngestRequest.origin_host above (WO-214), for the
+    # same boundary-drop reason -- this payload also reaches
+    # crud._find_or_create_page() (via create_transcription_job()), which
+    # is the same government-identity resolution path either way.
+    origin_host: Optional[str] = None
 
 
 class ChunkPlanEntryIn(BaseModel):

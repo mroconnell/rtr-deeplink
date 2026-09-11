@@ -2885,3 +2885,93 @@ def test_multi_gov_host_never_resolves_from_a_name_guess_with_no_pin():
         "City of Boston, MA", tenant_host="boston.granicus.com"
     )
     assert control.tier == resolver.TIER_REGISTRY
+
+
+# --- WO-214, 2026-09-11: origin_host fallback for CivicPlus/Legistar
+# delegation ---------------------------------------------------------
+#
+# WO-210's own rung-1b comment named the one real exception it left
+# affected: `civicplus.py`/`legistar.py` delegate a linked video to
+# `resolve_via_platform()`, which returns the DELEGATED platform's result
+# as-is (`.source_url`/`.platform` end up as YouTube's/Vimeo's own, never
+# rewritten back -- CLAUDE.md's platform-wrapper "known quirk" bullet).
+# A CivicPlus/Legistar page that used to key off its own subdomain-
+# derived name landed on `TIER_BLANK` instead, same as an un-delegated
+# multi-gov-host page, because nothing distinguished a trustworthy
+# delegating-tenant name from an untrusted channel/title guess once both
+# reached rung 1b as a plain string. Fixed by carrying the delegating
+# tenant's own host separately as `origin_host` (see
+# `ResolvedMeeting.origin_host`'s own docstring, `app/platforms/
+# civicplus.py`/`legistar.py`), consulted here only as a fallback when
+# the delegated host has no matching pin.
+
+
+def test_delegated_multi_gov_host_falls_back_to_origin_host_when_no_pin():
+    """The core fix: a name that would resolve cleanly against the
+    delegating CivicPlus tenant's own host (nc-durham.civicplus.com, a
+    real tenant -- see tests/test_civicplus.py's Durham fixture tests)
+    still resolves when `tenant_host` is the delegated YouTube host and
+    no per-video/channel pin exists for it, as long as `origin_host` is
+    given. Real government id, not a mint: `us:place:3719000` is Durham,
+    NC's own committed governments.csv row."""
+    direct = resolver.resolve_government(
+        "City of Durham, NC", tenant_host="nc-durham.civicplus.com"
+    )
+    assert direct.gov_id == "us:place:3719000"
+    assert direct.tier == resolver.TIER_REGISTRY
+
+    delegated = resolver.resolve_government(
+        "City of Durham, NC",
+        tenant_host="www.youtube.com",
+        path="/watch?v=tz8M7oiZQzc",
+        origin_host="nc-durham.civicplus.com",
+    )
+    assert delegated.gov_id == direct.gov_id
+    assert delegated.tier == resolver.TIER_REGISTRY
+
+    # Control: without origin_host, the exact same page still blanks --
+    # confirming the fallback, not some unrelated change, is what fixed
+    # the case above (and that rung 1b itself is unchanged/unweakened).
+    without_origin = resolver.resolve_government(
+        "City of Durham, NC",
+        tenant_host="www.youtube.com",
+        path="/watch?v=tz8M7oiZQzc",
+    )
+    assert without_origin.tier == resolver.TIER_BLANK
+
+
+def test_origin_host_fallback_never_overrides_a_real_matching_pin():
+    """A per-video/channel pin on the DELEGATED host is real, human-
+    verified evidence -- it must keep winning outright, exactly as
+    before this fix, even when `origin_host` is also present and would
+    have resolved to a DIFFERENT government. Reuses the real, currently-
+    committed Severn Ontario channel pin from the test above."""
+    hints = resolver.page_hints_for("youtube", "youtube:abc", channel="@severnontario")
+    match = resolver.resolve_government(
+        None,
+        tenant_host="www.youtube.com",
+        path="/watch?v=abc",
+        page_hints=hints,
+        # A CivicPlus tenant that would resolve to a totally different,
+        # real government if the pin above did not win first.
+        origin_host="nc-durham.civicplus.com",
+    )
+    assert match.gov_id == "ca:csd:3543015"
+    assert match.tier == resolver.TIER_PINNED
+
+
+def test_origin_host_itself_a_multi_gov_host_is_not_trusted():
+    """Guard rail: `origin_host` is only trusted when it is NOT itself a
+    shared, multi-government host -- otherwise a chain of delegations
+    (however unlikely in practice today) could launder an untrusted name
+    straight past rung 1b a second time. A bare fallback to the ladder's
+    honest blank-government outcome is what this returns instead, same
+    as `test_bare_youtube_watch_url_with_no_pin_resolves_to_none` above."""
+    match = resolver.resolve_government(
+        "City of Boston, MA",
+        tenant_host="youtu.be",
+        path="/watch?v=zzzzzzzzzzz",
+        origin_host="vimeo.com",
+    )
+    assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
+    assert match.tier == resolver.TIER_BLANK
