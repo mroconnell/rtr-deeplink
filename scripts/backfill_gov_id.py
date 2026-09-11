@@ -31,9 +31,14 @@ Two properties make stopping it safe, and both are deliberate:
     restarting, and a run after a registry change re-does exactly the
     rows whose answer moved.
 
-A `manual_override` row is never touched: a human already said which
-government that page belongs to, and this sweep is precisely the
-recomputation that override exists to survive.
+A `manual_override` row keeps its string and its tier: a human already
+said which government that page belongs to, and this sweep is precisely
+the recomputation that override exists to survive. Its `gov_id` and
+`gov_type` ARE re-keyed, though -- confirmed live 2026-09-11, when the
+authoritative pin for pub-gloucesterva.escribemeetings.com moved page
+4097 (a manual override to the school district) to the county while its
+stored string stayed "Gloucester County Public Schools, VA". Its live
+title and hub come from the registry, so a reader sees the county.
 
 Usage (from the repo root, with DATABASE_URL set):
     python scripts/backfill_gov_id.py                  # dry run, full report
