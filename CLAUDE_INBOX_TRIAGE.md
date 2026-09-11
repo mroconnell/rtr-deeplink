@@ -107,6 +107,81 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-11
+
+211 candidate message IDs from `label:rtr-claude newer_than:30d` (166
+threads — the label's entire current content), 15 new after the ledger
+filter.
+
+**Out of scope / informational, no write-up**: 1 transcription worker
+daily report. 1 GitHub Actions "PR run failed: Test" for a non-`main`
+branch (`claude/lloydminster-province-pages`) — feature-branch CI has its
+own merge gate.
+
+**Duplicates, no new write-up** (verified against real code/logs, not
+just assumed): Render `test-redtaperecordings` "Exited with status 3"
+(1 alert, 2026-09-11 03:29 UTC) — same already-confirmed-closed noise per
+`BACKLOG_DONE.md`'s 2026-08-30 entry. Transcription job 2399 failed
+(Passaic County, NJ, Granicus `MediaPlayer.php` source, 2026-09-10 16:58-
+17:05 UTC) — `ffmpeg timed out after 120s (source likely slow or rate-
+limited)` on chunk 0; this exact message is the well-established Granicus
+slow/rate-limited-origin failure family (`BACKLOG.md:4509` and dozens of
+prior `BACKLOG_DONE.md` write-ups), not a new failure mode. 1 YouTube
+transcript-fetch `IpBlocked` failure (2026-09-10 16:05 UTC) — same
+already-tracked `docs/investigations/youtube_429_block.md` issue; the
+email's own text now cites that file directly.
+
+- **Confirmed, resolves an open question from 2026-09-09's entry** —
+  GitHub Actions "Adapter health canary" failed on `main` (commit
+  `7af341d`, run `34512832863`, 2026-09-10 18:11-18:12 UTC): **33/35
+  platforms OK, 2 failures**. One is the same already-open
+  `[NEEDS-AUDIT][EXAMPLE]` "Phoenix Legistar canary sample is a genuinely
+  dead meeting" entry (`ClientResponseError: 410`, unchanged). The other,
+  `townhallstreams` (`resolve returned no real content` on
+  `https://townhallstreams.com/stream.php?location_id=94&id=75799`), is
+  the **same URL and same message** flagged in 2026-09-09's entry as
+  "likely CI flakiness, worth checking whether it recurs" — it has now
+  recurred with an identical message two runs running, which that entry
+  said would "upgrade this from likely flake to a real regression worth
+  root-causing." It already has: `BACKLOG.md`'s "Adapter & platform gaps"
+  section carries a `[NEEDS-AUDIT][EXAMPLE]` entry filed the same day
+  (WO-205, 2026-09-11) that ran every Town Hall Streams queue line
+  through `townhallstreams.py`'s `resolve()` and found 116 of 125 return
+  no video — `location_id=94&id=75799` is named there explicitly as one
+  of the 116. So this isn't a flake and isn't a new finding either — it's
+  the canary catching a gap someone had already found and written up the
+  same day via a different route. No action needed here beyond noting the
+  loop is closed; `seattle_channel` (yesterday's other new failure) did
+  not recur, consistent with that one being the flake it looked like.
+  - **Impact**: none beyond what WO-205's entry already sizes (118 queued
+    Town Hall Streams meetings can't pass the ingest gate).
+
+- **Confirmed** — more data for the already-open `[HUMAN]` SIGABRT/
+  status-134 crash-loop entry: **2 more Render "Exited with status 134"
+  alerts** (2026-09-10 15:44 UTC, 2026-09-10 20:54 UTC), bringing the
+  running total to **26** since 2026-08-30 (was 24 as of 2026-09-10's
+  entry). **3 more UptimeRobot DOWN/UP outages with no matching Render
+  alert**: a dual-endpoint outage 2026-09-10 19:19:57-19:25:09 UTC
+  (`redtaperecordings.com` and `/api/health/resolve-check` both down
+  ~5-6 min, nearest Render alert 1.5h away at 20:54) and a single-endpoint
+  outage 2026-09-11 00:00:59-00:06:03 UTC (`/api/health/resolve-check`
+  only, ~5 min, nearest Render alert 3h away). Running "no matching
+  alert" count is now **19** (was 16 as of 2026-09-10).
+  - **Impact**: unchanged from prior entries — same production-resolver-
+    instability issue, same "needs Render's own crash logs" constraint.
+    Worth noting for whoever next reviews this: PR #795 (the
+    `handle_head_requests` Content-Length fix, flagged in 2026-09-09's
+    entry as a plausible partial explanation for the no-matching-alert
+    pattern) was still not confirmed deployed as of this run — per
+    `CLAUDE.md`'s manual-deploy convention, merging to `main` doesn't
+    ship it, and the mismatch pattern has kept growing (16→19) since that
+    PR merged, which is at least consistent with it still not being live.
+
+Ledger: 211 message IDs reviewed and recorded this run (15 new, 196
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-10
 
 196 candidate message IDs from `label:rtr-claude newer_than:30d` (155
