@@ -63,10 +63,11 @@ def test_relative_media_path_is_not_probeable():
 
 
 def test_short_window_bounds():
-    assert not f3s.in_short_window(599)
-    assert f3s.in_short_window(600)
-    assert f3s.in_short_window(3000)
-    assert not f3s.in_short_window(3001)
+    # 9-40 min since round 2 (2026-09-11), matching WO-170's pick rule
+    assert not f3s.in_short_window(539)
+    assert f3s.in_short_window(540)
+    assert f3s.in_short_window(2400)
+    assert not f3s.in_short_window(2401)
 
 
 def test_classify_duration():
@@ -146,3 +147,239 @@ def test_srt_tail_handles_missing_cues():
 def test_hms():
     assert f3s.hms(16821) == "4:40:21"
     assert f3s.hms(750.25) == "12:30"
+
+
+# --- round 2 (2026-09-11) --------------------------------------------------
+
+
+def test_pick_substitute_window_then_shortest_then_none():
+    cands = [("a", 100 * 60), ("b", 30 * 60), ("c", 12 * 60)]
+    assert f3s.pick_substitute(cands, 180 * 60) == (
+        "b",
+        "window",
+    )  # first in window, listing order
+    cands = [("a", 100 * 60), ("b", 60 * 60), ("c", 3 * 60)]
+    assert f3s.pick_substitute(cands, 180 * 60) == (
+        "b",
+        "shortest",
+    )  # 3 min is under the floor
+    assert f3s.pick_substitute([("a", 200 * 60)], 180 * 60) == (
+        None,
+        "none",
+    )  # not shorter
+    assert f3s.pick_substitute([], 180 * 60) == (None, "none")
+
+
+def test_looks_on_mission_rule():
+    assert f3s.looks_on_mission(
+        "Canal Days Media Launch", "granicus"
+    )  # meetings-only listing
+    assert f3s.looks_on_mission("Fiscal Court Meeting", "swagit")
+    assert not f3s.looks_on_mission("Canal Days Media Launch", "swagit")
+    assert not f3s.looks_on_mission(None, "cablecast")
+
+
+def test_duration_from_row_prefers_measured_then_size_proxy():
+    rate = {"civicclerk": 20.0}
+    assert f3s.duration_from_row(
+        {"duration_seconds": "1200", "size_bytes": "9", "probe_method": "ffprobe"},
+        "civicclerk",
+        rate,
+    ) == (1200.0, "ffprobe")
+    secs, src = f3s.duration_from_row(
+        {"duration_seconds": "", "size_bytes": str(400 * 1e6)}, "civicclerk", rate
+    )
+    assert src == "size_proxy" and abs(secs - 1200) < 1
+    assert f3s.duration_from_row(
+        {"duration_seconds": "", "size_bytes": "5000000"}, "unknownplat", rate
+    ) == (None, "")
+    assert f3s.duration_from_row(None, "civicclerk", rate) == (None, "")
+
+
+def test_calibrate_mb_per_min_needs_three_rows_else_default():
+    sidecar = {
+        f"u{i}": {
+            "platform": "swagit",
+            "size_bytes": str(600 * 1e6),
+            "duration_seconds": "3600",
+        }
+        for i in range(3)
+    }
+    sidecar["w"] = {
+        "platform": "wistia",
+        "size_bytes": str(600 * 1e6),
+        "duration_seconds": "3600",
+    }
+    out = f3s.calibrate_mb_per_min(sidecar)
+    assert abs(out["swagit"] - 10.0) < 0.01
+    assert out["wistia"] == f3s.MB_PER_MIN_DEFAULTS["wistia"]  # one row is not enough
+    assert out["civicclerk"] == f3s.MB_PER_MIN_DEFAULTS["civicclerk"]
+
+
+def test_queue_lines_parse_tab_source_field(tmp_path, monkeypatch):
+    q = tmp_path / "q.txt"
+    q.write_text(
+        "# c\nhttps://a.granicus.com/MediaPlayer.php?view_id=2&clip_id=9\thttps://gov.example/p\nhttps://b.swagit.com/videos/1\n"
+    )
+    monkeypatch.setattr(f3s, "QUEUE_FILE", q)
+    lines = f3s.queue_lines()
+    assert (
+        lines[0][1] == "https://a.granicus.com/MediaPlayer.php?view_id=2&clip_id=9"
+        and lines[0][2] == "https://gov.example/p"
+    )
+    assert lines[1][2] is None
+    assert f3s.queue_urls() == [lines[0][1], lines[1][1]]
+
+
+def test_cmd_apply_swaps_found_lines_and_defers_originals(
+    tmp_path, monkeypatch, capsys
+):
+    q = tmp_path / "queue.txt"
+    q.write_text(
+        "https://x.granicus.com/MediaPlayer.php?view_id=1&clip_id=5\thttps://x.gov/m\n"
+        "https://y.granicus.com/player/clip/7\n"
+        "https://www.youtube.com/watch?v=aaaaaaaaaaa\n"
+    )
+    sidecar = tmp_path / "probe.csv"
+    sidecar.write_text(
+        "url,platform,probe_method,duration_seconds,date,size_bytes,over_nine_minutes,verdict,reason,probe_seconds,probed_at\n"
+        "https://x.granicus.com/MediaPlayer.php?view_id=1&clip_id=5,granicus,hls,12000,2026-01-01,,1,flag-long,,1,t\n"
+        "https://y.granicus.com/player/clip/7,granicus,hls,9000,2026-01-01,,1,flag-long,,1,t\n"
+    )
+    search = tmp_path / "search.csv"
+    search.write_text(
+        ",".join(f3s.SEARCH_FIELDS)
+        + "\n"
+        + 'x.granicus.com,granicus,City Council 2026-01-05,"Xville, CA",us:place:0000001,found,https://x.granicus.com/player/clip/99,Council,2026-08-01,1500,0:25:00,hls,2,\n'
+        + "y.granicus.com,granicus,,,,none,,,,,,,3,nothing usable\n"
+    )
+    deferred = tmp_path / "deferred.txt"
+    monkeypatch.setattr(f3s, "QUEUE_FILE", q)
+    monkeypatch.setattr(f3s, "PROBE_SIDECAR", sidecar)
+    monkeypatch.setattr(f3s, "SEARCH_CSV", search)
+    monkeypatch.setattr(f3s, "DEFERRED_FILE", deferred)
+    monkeypatch.setattr(f3s, "DURATIONS_CSV", tmp_path / "missing.csv")
+    monkeypatch.setattr(
+        f3s,
+        "load_probe_sidecar",
+        lambda path=sidecar: (
+            f3s.load_probe_sidecar.__wrapped__(path)
+            if hasattr(f3s.load_probe_sidecar, "__wrapped__")
+            else _load(path)
+        ),
+    )
+
+    def _load(path):
+        import csv as _csv
+
+        with open(path, newline="") as f:
+            return {r["url"]: r for r in _csv.DictReader(f)}
+
+    monkeypatch.setattr(f3s, "load_probe_sidecar", lambda path=sidecar: _load(path))
+
+    class A:
+        apply = False
+
+    f3s.cmd_apply(A())
+    assert (
+        q.read_text()
+        .splitlines()[0]
+        .startswith("https://x.granicus.com/MediaPlayer.php")
+    )  # dry run: unchanged
+    A.apply = True
+    f3s.cmd_apply(A())
+    lines = q.read_text().splitlines()
+    assert (
+        lines[0] == "https://x.granicus.com/player/clip/99\thttps://x.gov/m"
+    )  # swapped, source kept
+    assert lines[1] == "https://y.granicus.com/player/clip/7"  # no substitute: kept
+    assert lines[2].startswith("https://www.youtube.com/")  # untouched
+    parked = deferred.read_text().splitlines()[-1].split("\t")
+    assert parked[0].endswith("clip_id=5") and parked[1] == "https://x.gov/m"
+    assert (
+        parked[2] == "us:place:0000001"
+        and parked[3] == "Xville, CA"
+        and parked[4] == "3:20:00"
+    )
+    assert "1 line(s) would be swapped" in capsys.readouterr().out
+
+
+def test_cc_fallback_picks_shortest_usable_past_event(monkeypatch):
+    import asyncio
+
+    events = [
+        {
+            "id": 1,
+            "isDeleted": False,
+            "hasMedia": True,
+            "durationMin": 200 * 60,
+            "startDateTime": "2026-08-01T18:00:00Z",
+            "eventName": "Council",
+        },
+        {
+            "id": 2,
+            "isDeleted": False,
+            "hasMedia": True,
+            "durationMin": 55 * 60,
+            "startDateTime": "2026-07-01T18:00:00Z",
+            "eventName": "Council",
+        },
+        {
+            "id": 3,
+            "isDeleted": False,
+            "hasMedia": True,
+            "durationMin": 4 * 60,
+            "startDateTime": "2026-06-01T18:00:00Z",
+            "eventName": "Stub",
+        },
+    ]
+
+    async def none_found(*a, **k):
+        return {"search_status": "none", "note": "no 9-40 min meeting"}
+
+    async def listing(session, base):
+        return events
+
+    async def media(session, base, event):
+        return None
+
+    monkeypatch.setattr(f3s, "_cc_find_substitute", none_found)
+    monkeypatch.setattr(f3s, "cc_list_past_events", listing)
+    monkeypatch.setattr(f3s, "cc_probeable_video_url", media)
+    result = asyncio.run(
+        f3s._cc_find_substitute_with_fallback(
+            None,
+            "x.portal.civicclerk.com",
+            set(),
+            180 * 60,
+            max_candidates=4,
+            window=(540.0, 2400.0),
+        )
+    )
+    assert result["search_status"] == "found_shortest"
+    assert (
+        result["substitute_url"].endswith("/event/2/media")
+        or "2" in result["substitute_url"]
+    )
+    assert result["substitute_duration_seconds"] == "3300.0"
+
+
+def test_body_phrase_and_same_body_preference():
+    assert (
+        f3s.body_phrase("Regular City Council Meeting - Aug 5, 2026") == "city council"
+    )
+    assert (
+        f3s.body_phrase("Board of Supervisors on 2026-08-19") == "board of supervisors"
+    )
+    assert f3s.body_phrase("Canal Days Recap") is None
+    listing = [
+        ("a", "Planning Commission 9/9/26"),
+        ("b", "City Council 8/25/26"),
+        ("c", "City Council 8/4/26"),
+    ]
+    assert [
+        u for u, _ in f3s.prefer_same_body(listing, "City Council Meeting 7/7/26")
+    ] == ["b", "c", "a"]
+    assert (
+        f3s.prefer_same_body(listing, None) == listing
+    )  # no original title: listing order kept
