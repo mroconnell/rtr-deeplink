@@ -372,6 +372,87 @@ async def test_probe_youtube_removed_video_is_reject_dead(monkeypatch):
     assert result.verdict == "reject-dead"
 
 
+async def test_probe_youtube_confirmed_gone_video_is_reject_dead(monkeypatch):
+    # WO-167, 2026-09-10. Pacific City, MO's real queued video
+    # (XeWevpU5Kpc) -- confirmed live 2026-09-10 (see tests/test_youtube.py
+    # for the same sample against resolve_video_id()). This is the probe
+    # side of the same real gap: this already worked (reject-dead) before
+    # WO-167, since the probe never relied on resolve_video_id()'s own
+    # classification -- pinned here as a regression test, and to confirm
+    # the new `reason` prefix (below) doesn't change the verdict.
+    def _fake_probe(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This video is unavailable"
+        )
+
+    monkeypatch.setattr(queue_probe, "_yt_dlp_probe", _fake_probe)
+
+    result = await probe_queue_entry(
+        "https://www.youtube.com/watch?v=XeWevpU5Kpc",
+        video_url="https://www.youtube.com/embed/XeWevpU5Kpc",
+        platform="youtube",
+    )
+    assert result.verdict == "reject-dead"
+    assert "gone: " in result.reason
+    assert "This video is unavailable" in result.reason
+
+
+async def test_probe_youtube_reason_prefix_distinguishes_not_yet_started_from_gone(
+    monkeypatch,
+):
+    # WO-167, 2026-09-10: the probe's verdict stays reject-dead either
+    # way (unchanged, deliberately -- see this module's own docstring),
+    # but the `reason` column now carries youtube.py's shared
+    # classify_unavailability() label so a human (or a later script)
+    # reading the tier-3 sidecar CSV can tell "will resolve once it airs"
+    # apart from "never will" without parsing free-text yt-dlp wording.
+    def _fake_probe_not_yet_started(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This live event will begin in 4 days."
+        )
+
+    monkeypatch.setattr(queue_probe, "_yt_dlp_probe", _fake_probe_not_yet_started)
+    not_yet_started = await probe_queue_entry(
+        "https://www.youtube.com/watch?v=ESfzST-yOSM",
+        video_url="https://www.youtube.com/embed/ESfzST-yOSM",
+        platform="youtube",
+    )
+    assert not_yet_started.verdict == "reject-dead"
+    assert not_yet_started.reason.startswith("yt-dlp: not_yet_started: ")
+
+    def _fake_probe_gone(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This video has been removed by the uploader"
+        )
+
+    monkeypatch.setattr(queue_probe, "_yt_dlp_probe", _fake_probe_gone)
+    gone = await probe_queue_entry(
+        "https://www.youtube.com/watch?v=_RZBcYEbQr4",
+        video_url="https://www.youtube.com/embed/_RZBcYEbQr4",
+        platform="youtube",
+    )
+    assert gone.verdict == "reject-dead"
+    assert gone.reason.startswith("yt-dlp: gone: ")
+
+
+async def test_probe_youtube_unrecognized_message_has_no_reason_prefix(monkeypatch):
+    # The generic-degrade safety valve carries through to the probe too:
+    # a phrasing classify_unavailability() doesn't recognise (e.g. the
+    # anti-bot block) gets no misleading label prepended.
+    def _fake_probe(video_id):
+        raise yt_dlp.utils.DownloadError("Sign in to confirm you're not a bot")
+
+    monkeypatch.setattr(queue_probe, "_yt_dlp_probe", _fake_probe)
+
+    result = await probe_queue_entry(
+        "https://www.youtube.com/watch?v=abcdefghijk",
+        video_url="https://www.youtube.com/embed/abcdefghijk",
+        platform="youtube",
+    )
+    assert result.verdict == "reject-dead"
+    assert result.reason == "yt-dlp: Sign in to confirm you're not a bot"
+
+
 # --- Direct file (CivicClerk mp4/mov): HEAD + ffprobe ----------------
 
 

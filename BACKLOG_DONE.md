@@ -195,6 +195,81 @@ tenant_overrides.csv` (4 pins added);
 `wo176_confirmed_hits_ingest_log.csv`, `wo176_apply_to_jc.py`,
 `jurisdiction_coverage.csv` (6 rows changed), `wo176_methods_section.md`
 (full write-up, pending promotion into `ENUMERATION_METHODS.md`).
+## WO-167: the YouTube adapter now says when a video is gone, private, or not yet started, instead of quietly returning nothing [Done 2026-09-10]
+
+**The bug.** A government's meeting video sometimes gets removed from
+YouTube, made private, or is a livestream that hasn't started yet. Before
+this fix, our code checked the video and found out which of these was
+true — but then threw that answer away. It handed back an empty result
+that looked exactly like "this video has no captions yet." Anything
+reading that result had no way to tell a truly dead video apart from a
+normal one still waiting on captions.
+
+This was found today in Pacific City, Missouri. Its queued meeting video
+(`youtube.com/watch?v=XeWevpU5Kpc`) is really gone — YouTube itself says
+"This video is unavailable." Our code knew that, but still handed back a
+blank success instead of an error. A separate, independent check (a
+different piece of code that only checks "is this video usable," used
+when building the queue of videos to transcribe) caught the same video
+as dead. Two pieces of code disagreeing about the same video is exactly
+the kind of gap that lets a broken page slip through.
+
+**What changed.** The YouTube video-checking code now recognizes four
+real situations and reports each one honestly, instead of pretending the
+video resolved normally.
+
+| YouTube's own message | What it means now | Permanent? |
+|---|---|---|
+| "This video is unavailable" / "Video unavailable" / "This video has been removed..." | Gone for good | Yes |
+| "Private video" / "This video is private" | Owner made it private | Yes |
+| "...account associated with this video has been terminated" | Channel/account terminated | Yes |
+| "This live event will begin in..." | Scheduled, hasn't aired yet | No — check again later |
+
+The first three are treated as permanent failures — the same "no
+transcript will ever come from this video" flag this app has used since
+WO-135. The fourth is new: before today, a not-yet-started livestream got
+the wrong message ("YouTube is blocking us"), which isn't true and could
+confuse someone reading it. It now gets its own honest message: not
+available *yet*, check back later. This app never marks that fourth case
+as permanent, so a real meeting that just hasn't gone live yet is never
+buried.
+
+**Caution.** Three government-specific pages (Salt Lake City, Minneapolis
+LIMS, and PrimeGov cities) build their own meeting title and date from
+the government's own page, then ask YouTube for the video on top of
+that. Before today, if that video turned out to be gone, they could still
+show the government's own title and date, just with no video. Now, since
+the video-checking code reports an error instead of a blank result, those
+three pages will fail completely in that same situation instead of
+showing a partial page. This has not happened to a real page yet — we
+only confirmed the direct-YouTube-link case (Pacific City) today. Whether
+failing completely is the right call, or whether those three should keep
+showing a partial page, is a real decision, not obviously one way or the
+other — logged as its own open item in `BACKLOG.md` rather than decided
+here.
+
+Also found, but not fixed here: two real videos (`my1pQX-Vhik`,
+`RzLW9WPBfAQ`) gave a fifth message, "This live event has ended.", which
+still falls through to the old generic message. Logged separately in
+`BACKLOG.md` — it needs a re-check after some time passes before we know
+whether that one is temporary or permanent.
+
+**Two real checks, both read-only, no changes made to any live page.**
+
+| Check | What we did | Result |
+|---|---|---|
+| Pacific City, MO's video | Asked the adapter to resolve `XeWevpU5Kpc` directly | It now raises an error: "YouTube video XeWevpU5Kpc is gone: ERROR: [youtube] XeWevpU5Kpc: This video is unavailable" |
+| A known-good video (Vigo County, IN Election Board, `HY4Sr4X7_9Y`) | Asked the adapter to resolve it directly | Still works: real title, real date (2026-05-15), 271 real caption lines |
+
+**Recommendation.** No action needed from Ryan on this PR by itself. The
+`BACKLOG.md` item about the three government-specific pages (Salt Lake
+City, LIMS, PrimeGov) is worth a look when convenient — it's a real
+design question, not an emergency.
+
+**Deploy status.** This is a code change in `app/`, on `main`, not yet
+live. It takes effect the next time the resolver service is deployed.
+The daily and sweep scripts that use this code will pick up the fix the
+next time they run after that deploy.
 
 ## WO-170: pick a 9-to-40-minute meeting when the first one fails, else the shortest; 44 governments wrongly marked "queued" run for real [Done 2026-09-10]
 
