@@ -114,9 +114,13 @@ for YouTube:
   handle comes from `fed_pages.csv`'s `video_channel` column (the Archive
   stores it on every page ingested since 2026-09-10). One confirmed
   channel pin keys the government's whole back catalogue and its future
-  meetings, so write this one unless the channel mixes governments (a
-  county cable channel that also posts a city's meetings) — then pin
-  per video.
+  meetings, so write this one **only when the channel's own name says
+  this government AND this government's type** — city vs county vs
+  township vs village. The 2026-09-11 backfill review found 13 pins
+  where the name matched and the type did not (a "Town of X" channel
+  pinned to X city). A community-TV, county or school channel that
+  carries a town's meetings gets per-video pins only, never a channel
+  pin (WO-237, the conductor's rule).
 
 The evidence line is one sentence a stranger can check: the government,
 the channel, and where the link between them was seen. Use a `source`
