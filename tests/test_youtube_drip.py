@@ -203,3 +203,97 @@ def test_lane_audio_respects_daily_cap(tmp_path):
 def test_parser_accepts_documented_commands(cmd):
     args = yd.build_parser().parse_args(cmd)
     assert args.command in ("run", "advance")
+
+
+def test_needs_identity_review_mirrors_evidence_tiers():
+    ok = {"gov_id": "us:place:0686440", "jurisdiction_confidence": "registry"}
+    assert not yd.needs_identity_review(ok)
+    assert not yd.needs_identity_review({**ok, "jurisdiction_confidence": "pinned"})
+    assert yd.needs_identity_review({**ok, "jurisdiction_confidence": "inferred"})
+    assert yd.needs_identity_review({**ok, "gov_id": "rtr:unknown"})
+    assert yd.needs_identity_review(
+        {"gov_id": "", "jurisdiction_confidence": "registry"}
+    )
+    assert yd.needs_identity_review({"slug": "only"})
+
+
+def test_fed_page_row_and_append(tmp_path):
+    row = yd.fed_page_row(
+        {
+            "slug": "s",
+            "gov_id": "rtr:abc",
+            "jurisdiction": "Somewhere",
+            "jurisdiction_confidence": "minted",
+            "video_channel": "@x",
+            "video_channel_id": "UC1",
+        },
+        queue_url="https://www.youtube.com/watch?v=aaaaaaaaaaa",
+        source_url=None,
+        fed_at="2026-09-11T02:00:00",
+    )
+    assert (
+        row["page_url"] == "/m/s"
+        and row["needs_review"] == "yes"
+        and row["source_url"] == ""
+    )
+    path = tmp_path / "fed_pages.csv"
+    yd.append_fed_page_row(path, row)
+    yd.append_fed_page_row(path, row)
+    lines = path.read_text().splitlines()
+    assert lines[0].split(",") == list(yd.FED_PAGES_COLUMNS)
+    assert len(lines) == 3
+
+
+def test_find_channel_on_page_and_meeting_words():
+    html = (
+        '<a href="https://www.youtube.com/channel/UCzhcoASavyb3nVr4jxzx8vA">YouTube</a>'
+    )
+    assert (
+        yd.find_channel_on_page(html)
+        == "https://www.youtube.com/channel/UCzhcoASavyb3nVr4jxzx8vA"
+    )
+    assert (
+        yd.find_channel_on_page('href="https://youtube.com/@CityofEnnisTexas"')
+        == "https://www.youtube.com/@CityofEnnisTexas"
+    )
+    assert yd.find_channel_on_page("<p>no links</p>") is None
+    assert yd.looks_like_meeting("Regular Council - 12 May 2026")
+    assert yd.looks_like_meeting("Fiscal Court Meeting")
+    assert not yd.looks_like_meeting("Welcome to Crowley County")
+    assert not yd.looks_like_meeting(None)
+
+
+def test_dead_video_rows_one_per_candidate_or_a_blank_row():
+    page = {
+        "slug": "s",
+        "source_url_normalized": "https://x.civicweb.net/p",
+        "video_url": "https://www.youtube.com/embed/aaaaaaaaaaa",
+    }
+    rows = yd.dead_video_rows(
+        page,
+        "YouTube: video is unavailable",
+        "https://www.youtube.com/channel/UC1",
+        [
+            ("bbbbbbbbbbb", "Council - 02 Sep 2026"),
+            ("ccccccccccc", "Council - 20 Aug 2026"),
+        ],
+        "t",
+    )
+    assert [r["candidate_video_id"] for r in rows] == ["bbbbbbbbbbb", "ccccccccccc"]
+    assert rows[0]["channel_url"].endswith("UC1") and rows[0]["slug"] == "s"
+    blank = yd.dead_video_rows(page, "reject-dead", None, [], "t")
+    assert (
+        len(blank) == 1
+        and blank[0]["candidate_video_id"] == ""
+        and blank[0]["channel_url"] == ""
+    )
+
+
+def test_fed_page_row_carries_title_and_meeting_flag():
+    row = yd.fed_page_row(
+        {"slug": "s", "title": "100th Anniversary of the Courthouse"},
+        queue_url="u",
+        source_url=None,
+        fed_at="t",
+    )
+    assert row["looks_like_meeting"] == "no" and row["needs_review"] == "yes"

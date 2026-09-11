@@ -192,6 +192,188 @@ def audio_page_from_export_row(row: dict) -> Optional[dict]:
     }
 
 
+# --- identity worklist (docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md) ---------------
+
+IDENTITY_EVIDENCE_TIERS = ("registry", "pinned", "manual_override")
+FED_PAGES_COLUMNS = (
+    "fed_at",
+    "slug",
+    "page_url",
+    "queue_url",
+    "source_url",
+    "gov_id",
+    "jurisdiction",
+    "jurisdiction_confidence",
+    "video_channel",
+    "video_channel_id",
+    "needs_review",
+    "title",
+    "looks_like_meeting",
+)
+
+
+def needs_identity_review(row: dict) -> bool:
+    """True unless the Archive keyed the page with real evidence. Mirrors
+    archive/db/crud._GOV_EVIDENCE_TIERS: anything else (unresolved, blank,
+    a minted `rtr:` id, an inferred tier) is a row for the pin worklist."""
+    gov_id = row.get("gov_id") or ""
+    if not gov_id or gov_id.startswith("rtr:"):
+        return True
+    return (row.get("jurisdiction_confidence") or "") not in IDENTITY_EVIDENCE_TIERS
+
+
+def fed_page_row(
+    export_row: dict, *, queue_url: str, source_url: Optional[str], fed_at: str
+) -> dict:
+    return {
+        "fed_at": fed_at,
+        "slug": export_row.get("slug") or "",
+        "page_url": f"/m/{export_row.get('slug')}" if export_row.get("slug") else "",
+        "queue_url": queue_url,
+        "source_url": source_url or "",
+        "gov_id": export_row.get("gov_id") or "",
+        "jurisdiction": export_row.get("jurisdiction") or "",
+        "jurisdiction_confidence": export_row.get("jurisdiction_confidence") or "",
+        "video_channel": export_row.get("video_channel") or "",
+        "video_channel_id": export_row.get("video_channel_id") or "",
+        "needs_review": "yes" if needs_identity_review(export_row) else "",
+        "title": export_row.get("title") or "",
+        "looks_like_meeting": "yes"
+        if looks_like_meeting(export_row.get("title"))
+        else "no",
+    }
+
+
+def append_fed_page_row(path: Path, row: dict) -> None:
+    new = not path.exists()
+    with path.open("a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=FED_PAGES_COLUMNS, lineterminator="\n")
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
+async def lookup_recent_page(
+    session: aiohttp.ClientSession, slug: str
+) -> Optional[dict]:
+    """The export row for a page ingested moments ago (metadata only, no
+    YouTube call). Returns None if the export does not list it yet."""
+    from datetime import datetime, timedelta, timezone
+
+    from scripts import fetch_youtube_transcripts as fetch
+
+    since = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    async with session.get(
+        f"{fetch._base_url()}/internal/export/pages",
+        headers=fetch._headers(),
+        params={"created_after": since, "limit": "200"},
+        timeout=aiohttp.ClientTimeout(total=120),
+    ) as r:
+        if r.status != 200:
+            return None
+        data = await r.json()
+    for row in data.get("pages", []):
+        if row.get("slug") == slug:
+            return row
+    return None
+
+
+# --- dead-video follow-up and off-mission flag ------------------------------
+
+_CHANNEL_LINK_RE = re.compile(
+    r"youtube\.com/(channel/UC[\w-]{22}|@[\w.-]+|c/[\w.-]+|user/[\w.-]+)"
+)
+_MEETING_WORDS_RE = re.compile(
+    r"council|commission|committee|board|trustees|supervisors|selectmen|aldermen|"
+    r"fiscal court|hearing|meeting|session|work ?session",
+    re.I,
+)
+DEAD_VIDEOS_COLUMNS = (
+    "recorded_at",
+    "slug",
+    "source_url",
+    "video_url",
+    "reason",
+    "channel_url",
+    "candidate_video_id",
+    "candidate_title",
+)
+_YOUTUBE_HOSTS = ("youtube.com", "youtu.be")
+
+
+def find_channel_on_page(html: str) -> Optional[str]:
+    """The first YouTube channel link on a government page (CivicWeb/eScribe
+    footers carry one), as a full URL, or None."""
+    m = _CHANNEL_LINK_RE.search(html or "")
+    return f"https://www.youtube.com/{m.group(1)}" if m else None
+
+
+def looks_like_meeting(title: Optional[str]) -> bool:
+    return bool(_MEETING_WORDS_RE.search(title or ""))
+
+
+def dead_video_rows(
+    page: dict,
+    reason: str,
+    channel_url: Optional[str],
+    candidates: List[Tuple[str, str]],
+    recorded_at: str,
+) -> List[dict]:
+    base = {
+        "recorded_at": recorded_at,
+        "slug": page.get("slug") or "",
+        "source_url": page.get("source_url_normalized") or "",
+        "video_url": page.get("video_url") or "",
+        "reason": reason[:160],
+        "channel_url": channel_url or "",
+    }
+    if not candidates:
+        return [{**base, "candidate_video_id": "", "candidate_title": ""}]
+    return [
+        {**base, "candidate_video_id": vid, "candidate_title": title}
+        for vid, title in candidates
+    ]
+
+
+def _list_channel_streams(channel_url: str, n: int = 3) -> List[Tuple[str, str]]:
+    """Newest streams on a channel via yt-dlp's flat listing -- ONE YouTube
+    request. Flat listings carry no dates (CLAUDE.md), so titles are what
+    a reviewer picks from."""
+    import subprocess
+
+    yt = Path(sys.executable).parent / "yt-dlp"
+    out = subprocess.run(
+        [
+            str(yt) if yt.exists() else "yt-dlp",
+            "--flat-playlist",
+            "--playlist-end",
+            str(n),
+            "--no-warnings",
+            "--print",
+            "%(id)s|%(title).90s",
+            channel_url.rstrip("/") + "/streams",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    rows = []
+    for line in out.stdout.splitlines():
+        if "|" in line:
+            vid, title = line.split("|", 1)
+            rows.append((vid.strip(), title.strip()))
+    return rows
+
+
+def append_rows(path: Path, columns: Tuple[str, ...], rows: List[dict]) -> None:
+    new = not path.exists()
+    with path.open("a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=columns, lineterminator="\n")
+        if new:
+            w.writeheader()
+        w.writerows(rows)
+
+
 # --- state ------------------------------------------------------------------
 
 
@@ -292,6 +474,8 @@ class Drip:
         self.spacing = spacing
         self.model_size = model_size
         self.cpu_threads = cpu_threads
+        self.fed_pages_csv: Optional[Path] = None
+        self.dead_videos_csv: Optional[Path] = None
         self._engine = None
 
     # -- block bookkeeping
@@ -338,6 +522,8 @@ class Drip:
             self.state.bump("captions_ingested")
         elif status == "skipped":
             self.state.bump("captions_marked")
+            if "video is unavailable" in detail:
+                await self._dead_video_followup(session, page, detail)
             if "captions are disabled" in detail and "audio" in self.lanes:
                 self.state.data["audio_queue"].append(
                     {
@@ -386,11 +572,80 @@ class Drip:
             slug = slug_from_page_url(result.split("->", 1)[-1].strip())
             if slug and slug not in self.state.data["prefer"]:
                 self.state.data["prefer"].append(slug)
+            if slug and self.fed_pages_csv is not None:
+                try:
+                    export_row = await lookup_recent_page(session, slug) or {
+                        "slug": slug
+                    }
+                except (
+                    Exception
+                ) as e:  # identity lookup is bookkeeping, never a reason to stop
+                    logger.warning("identity lookup failed for %s: %s", slug, e)
+                    export_row = {"slug": slug}
+                row = fed_page_row(
+                    export_row,
+                    queue_url=url,
+                    source_url=src,
+                    fed_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                )
+                append_fed_page_row(self.fed_pages_csv, row)
+                if row["needs_review"]:
+                    self.state.bump("fed_needs_review")
         else:
             self.state.bump("fed_skipped")
+            if "reject-dead" in result:
+                await self._dead_video_followup(
+                    session,
+                    {"slug": "", "source_url_normalized": src or url, "video_url": url},
+                    result,
+                )
         self.state.data["block_level"] = 0
         logger.info("feed     %s", result[:180])
         return True, None
+
+    async def _dead_video_followup(
+        self, session: aiohttp.ClientSession, page: dict, reason: str
+    ) -> bool:
+        """Record a dead video and, when the government's own page links a
+        YouTube channel, that channel's newest streams -- a worklist for a
+        human to pick a live meeting from (docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md).
+        Returns True when a YouTube request was made."""
+        if self.dead_videos_csv is None:
+            return False
+        source = page.get("source_url_normalized") or ""
+        channel_url, candidates, touched = None, [], False
+        if source and not any(h in source for h in _YOUTUBE_HOSTS):
+            try:
+                async with session.get(
+                    source,
+                    timeout=aiohttp.ClientTimeout(total=30),
+                    headers={"User-Agent": "Mozilla/5.0"},
+                ) as r:
+                    channel_url = find_channel_on_page(await r.text(errors="replace"))
+            except Exception as e:
+                logger.info("dead-video follow-up: could not read %s (%s)", source, e)
+        if channel_url and not self.dry_run:
+            touched = True
+            try:
+                candidates = await asyncio.to_thread(_list_channel_streams, channel_url)
+            except Exception as e:
+                logger.info(
+                    "dead-video follow-up: channel listing failed for %s (%s)",
+                    channel_url,
+                    e,
+                )
+        rows = dead_video_rows(
+            page, reason, channel_url, candidates, time.strftime("%Y-%m-%dT%H:%M:%S")
+        )
+        append_rows(self.dead_videos_csv, DEAD_VIDEOS_COLUMNS, rows)
+        self.state.bump("dead_videos")
+        logger.info(
+            "dead     %s -- channel %s, %d candidate(s) recorded",
+            page.get("slug") or page.get("video_url"),
+            channel_url or "not found",
+            len(candidates),
+        )
+        return touched
 
     def _get_engine(self):
         if self._engine is None:
@@ -571,6 +826,8 @@ async def run(args) -> None:
         model_size=args.model_size,
         cpu_threads=args.cpu_threads,
     )
+    drip.fed_pages_csv = state_dir / "fed_pages.csv"
+    drip.dead_videos_csv = state_dir / "dead_videos.csv"
     async with aiohttp.ClientSession() as session:
         if args.seed_audio_from_site:
             logger.info(
