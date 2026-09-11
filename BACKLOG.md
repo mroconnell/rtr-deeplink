@@ -119,7 +119,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
-  WO-184's own residual: the one-hop "different platform found" leads…
+  8 reject-reason spellings still aren't classified into the retry…
   4 pages from WO-188's YouTube recheck landed mis-keyed to…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
@@ -143,8 +143,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
-  Production actions only Ryan should take  (7)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+  Production actions only Ryan should take  (9)
+    [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -152,6 +153,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
+    [HUMAN] Cap-Acadie regional municipality, NB has no `gov_id` -- one…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
@@ -722,55 +724,35 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** `BACKLOG_DONE.md` WO-181 (2026-09-10), WO-184
   (2026-09-10/11).
 
-### WO-184's own residual: the one-hop "different platform found" leads are unresolved, the sweep didn't finish the full retry-set, and a few reject-reason spellings aren't classified into the retry taxonomy `[JUST-DO-IT]`
+### 8 reject-reason spellings still aren't classified into the retry taxonomy `[JUST-DO-IT]`
 
-- **Issue:** WO-184 (2026-09-10/11) built and ran the "no-meeting"
-  trigger retry-set sweep and the separate one-hop sweep for the
-  meeting-without-video population, but left three pieces of real,
-  identified work undone. (1) `scripts/wo184_onehop_pilot.py`'s
-  `different-platform-found` outcome is a LEAD only — it confirms a
-  different platform link exists, never that it carries video — and
-  nothing yet resolves/ingests those leads the way
-  `wo184_ingest_found.py` does for the main retry-set's `found` rows.
-  (2) The full retry-set (3,434 rows after excluding already-covered
-  rows — see below) and one-hop set (541 rows) were only partially swept
-  in this WO's own run; see `BACKLOG_DONE.md`'s WO-184 entry for exactly
-  how far it got. (3) A handful of `reject_reason` spellings found live
-  in the file — `video-no-captions-queued`, `duplicate-queued`,
-  `video-queued-pending-probe`, `resolve-failed`, `wrong-domain-mapping`,
+- **Issue:** WO-184's continuation (2026-09-11) finished the two pieces
+  of work this entry used to track -- the one-hop "different platform
+  found" leads are now resolved and applied (213 leads: 58 real
+  transcripts, 3 queued, 21 already covered, 17 same-site redirects
+  correctly dropped, the rest no video), and the retry-set sweep's full
+  821-row "found" population is now resolved and applied too (103 more
+  transcripts, 19 more queued). It also classified one of the nine
+  originally-flagged reason strings (`wrong-domain-mapping`) into
+  `coverage_alternates.NEVER_RETRY_REASONS`, since its own hand-check
+  produced 7 real rows carrying that tag. Eight remain unclassified:
+  `video-no-captions-queued`, `duplicate-queued`,
+  `video-queued-pending-probe`, `resolve-failed`,
   `broken-template-false-positive`, `rejected_by_probe`,
-  `signature-found-not-verified`, `no-active-meeting-content` — are not
-  in Ryan's explicit do-not-retry list and were excluded from WO-184's
-  own candidate selection by a stricter allow-list rather than being
-  formally classified into `coverage_alternates.NEVER_RETRY_REASONS` /
-  `NO_MEETING_CONTENT_REASONS` — some (the `*queued*`/`rejected_by_probe`
-  ones) plainly mean "already spoken for," others are ambiguous and
-  deserve a real look before either bucket claims them.
-- **Impact:** real coverage left on the table in all three — an unknown
-  number of the one-hop leads may carry real video; the unswept portion
-  of both populations is exactly this WO's own target population, just
-  not yet run; and the unclassified reason strings will keep getting
-  silently excluded by every future no-meeting-trigger sweep until
-  someone decides where they belong.
-- **Next action:** (1) build a `wo184_onehop_ingest.py` (or extend
-  `wo184_ingest_found.py`) that resolves each `different-platform-found`
-  lead and ingests it under the same tier-1/2/3 rule as everything else;
-  (2) resume `scripts/wo184_pilot.py`/`wo184_onehop_pilot.py` (both
-  resumable — a re-run skips gov_ids already in their report CSVs) until
-  each candidate list is exhausted, then run `wo184_apply_to_jc.py`
-  again; (3) for each of the nine reason strings above, check a real
-  sample of rows carrying it and decide NO_MEETING_CONTENT_REASONS vs.
-  NEVER_RETRY_REASONS vs. a new named bucket, then add it to
-  `coverage_alternates.py` with a real citation, not a guess.
-- **Constraint:** run the sweep continuations from the Render shell or a
-  low-traffic window if run against the shared research file at the same
-  time as other sessions (§158's protocol in
-  `rtr-business/research/ENUMERATION_METHODS.md`); a challenge-gated
-  alternate (recorded `access_mode=challenge`) should stay recorded, not
-  retried past — a future headless pass on those specific rows is a
-  separate, deliberately-out-of-scope idea (this WO's brief explicitly
-  excludes headless), not a silent addition to the existing rungs.
-- **History:** `BACKLOG_DONE.md` WO-184, 2026-09-10/11.
+  `signature-found-not-verified`, `no-active-meeting-content`.
+- **Impact:** narrow now (down from three open pieces to one) -- these
+  eight reason strings keep getting silently excluded from every
+  no-meeting-trigger sweep's candidate selection until someone decides
+  where they belong.
+- **Next action:** for each of the eight strings, check a real sample of
+  rows carrying it in `jurisdiction_coverage.csv` and decide
+  `NO_MEETING_CONTENT_REASONS` vs. `NEVER_RETRY_REASONS` vs. a new named
+  bucket, then add it to `coverage_alternates.py` with a real citation,
+  not a guess (the `*queued*`/`rejected_by_probe` ones plainly mean
+  "already spoken for"; the others are genuinely ambiguous).
+- **Constraint:** none known.
+- **History:** `BACKLOG_DONE.md` WO-184, 2026-09-10/11, and its
+  continuation, 2026-09-11.
 
 ### 4 pages from WO-188's YouTube recheck landed mis-keyed to `rtr:unknown:www.youtube.com` and need a targeted re-key `[JUST-DO-IT]` `[EASY]`
 
@@ -1199,6 +1181,36 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
+  - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
+    video its retry-set/one-hop pipelines produced and found the
+    real page for 3 of them still needs a database-level fix, not just
+    a `jurisdiction_coverage.csv` correction: page 7341 (slug
+    `leelanau-county-mi-2026-09-01-conflict-of-interest-and-complaint-
+    policy-committe`) is keyed to Cleveland Township, MI
+    (`us:cousub:2608916400`) but the meeting is really Leelanau County's
+    own (`us:county:26089`); page 8298 (`dublin-2026-09-05-city-council-
+    meeting-9-3-26`) and page 8590 (`delta-county-2026-09-01-delta-
+    county-board-of-commissioners-meeting-9-1-2026`) both landed with
+    `gov_id=None` when this WO tried to re-key them to their real
+    governments (Dublin city, GA -- `us:place:1324376`; Delta County, MI
+    -- `us:county:26041`). All three were dry-run verified (the API
+    call's own response showed the exact before/after diff) but the real
+    write was refused by the sandbox's own safety classifier, same shape
+    every prior hand-check WO (WO-152, WO-191, WO-196, WO-199) hit for a
+    mutating admin call.
+  - **Impact**: the three real, correct governments this WO's own hand-
+    check confirmed (Leelanau County, Dublin GA, Delta County) show as
+    covered in `jurisdiction_coverage.csv` (Leelanau already did before
+    this WO; Dublin GA and Delta County were deliberately left NOT
+    marked as covered there, ahead of the fix) but their live page
+    still shows the wrong or no government to a reader.
+  - **Next action**: `POST /internal/jurisdiction/override?ids=7341&gov_id=us:county:26089` (Leelanau County), `POST /internal/jurisdiction/override?ids=8298&gov_id=us:place:1324376` (Dublin, GA), `POST /internal/jurisdiction/override?ids=8590&gov_id=us:county:26041` (Delta County, MI) -- `dry_run=true` first to confirm, matches this WO's own dry-run output. After it runs, add `transcribed=True`/clear `reject_reason` for Dublin GA (`us:place:1324376`) and Delta County (`us:county:26041`) in `jurisdiction_coverage.csv` (Leelanau's row already reflects it).
+  - **Constraint**: same shape as WO-152/WO-191/WO-196/WO-199's own
+    identical asks -- needs a human or a differently-permissioned
+    session, not a retry from this one.
+  - **History**: `BACKLOG_DONE.md`, WO-184 continuation, 2026-09-11.
+
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
     `new_verdict == "same-name-same-state-ambiguous"`: `@CityofSantaClara`
@@ -1294,6 +1306,31 @@ of human step they need.
     none of them held or posted this meeting.
   - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
     `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
+
+- **[HUMAN] Cap-Acadie regional municipality, NB has no `gov_id` -- one real government's video was pulled from the tier-3 queue rather than mis-keyed to it.**
+  - **Issue**: WO-184's continuation (2026-09-11) hand-check caught
+    Campbellton, NB's alternate-domain retry landing on a real video that
+    is really Cap-Acadie's own regular council meeting (Campbellton's
+    domain `capacadie.ca` is Cap-Acadie's, a 2023 New Brunswick regional-
+    municipality amalgamation that Campbellton itself is now part of).
+    `jurisdiction_coverage.csv` already carries a "Cap-Acadie, New
+    Brunswick, Canada" row (matches `capacadie.ca`) but its `gov_id`
+    column is blank. Pulled the tier-3 queue line and pin rather than
+    key it to Campbellton (which the meeting genuinely isn't) or leave
+    it unresolved with no government at all.
+  - **Impact**: one real, confirmed video (`youtube.com/watch?v=6N4jEHd7zw8`,
+    a real "Cap-Acadie -- Réunion ordinaire / Regular Meeting") sits
+    unqueued until Cap-Acadie has an id.
+  - **Next action**: same "ok mint" pattern as WO-201's PennDOT/Upper
+    Delaware Council/Southwestern PA Commission -- Ryan decides whether
+    Cap-Acadie (and, by the same logic, any other 2020s Canadian
+    municipal-amalgamation regional bodies this project's registry
+    predates) is in scope to mint; if yes, re-queue the video above
+    under the new id.
+  - **Constraint**: don't key this video to Campbellton -- the meeting is
+    Cap-Acadie's, not the town's, even though Campbellton's own domain
+    answered.
+  - **History**: `BACKLOG_DONE.md`, WO-184 continuation, 2026-09-11.
 
 ### Decisions about already-live content
 
