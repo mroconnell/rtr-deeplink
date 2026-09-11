@@ -302,7 +302,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (136)
     [LATER] A bare pasted Wistia media URL (no channel context) can show…
     [NEEDS-AUDIT] A jurisdiction string naming its state as a full word…
 
-Reliability, ops & cost  (16)
+Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
@@ -311,8 +311,7 @@ Reliability, ops & cost  (16)
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
     `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
-  Transcription queue & workers  (8)
-    [WAIT] Utah PMN substitute search: ~130 long PMN queue lines still…
+  Transcription queue & workers  (7)
     [JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
@@ -4684,12 +4683,6 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   2026-08-31 run.
 
 ### Transcription queue & workers
-
-- **[WAIT] Utah PMN substitute search: ~130 long PMN queue lines still un-swapped because PMN's search endpoint was down during WO-205's run.**
-  - **Issue**: from ~04:00 MT 2026-09-11 every POST to `/pmn/searchresult.html` (the pilot's own unfiltered call included) returned PMN's "Technical Difficulties" page, so every PMN tenant in the substitute search recorded `none`.
-  - **Impact**: 43 of the 178 PMN lines recovered by the `.m4a` probe fix are over 90 minutes and still in the queue at full length; the 97 PMN lines whose "audio" field is a PDF/Word/zip/.wav are genuinely not media and stay rejected.
-  - **Next action**: once `python scripts/pmn_utah_pilot.py`'s search returns rows again, run `python scripts/find_tier3_short_meeting_substitutes.py search --platform utah_pmn --retry-none` then `apply --apply`, commit the queue/deferred files.
-  - **History**: `BACKLOG_DONE.md` WO-205 (2026-09-11).
 
 - **[JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
   string match, so two differently-formatted URLs for the SAME video can

@@ -395,3 +395,13 @@ def test_row_writer_refuses_a_stale_header(tmp_path):
     with _pytest.raises(RuntimeError, match="rebuild the sidecar"):
         f3s._RowWriter(path, ["a", "b", "c"])
     f3s._RowWriter(path, ["a", "b"]).close()  # same header: fine
+
+
+def test_pmn_outage_page_is_detected_under_its_real_spelling():
+    # PMN's outage page title is "Techincal Difficulties" (sic); the first
+    # check looked for "Technical" and let the page parse as 0 notices.
+    assert f3s._PMN_OUTAGE_RE.search(
+        "<title>Techincal Difficulties | Public Notice Website</title>"
+    )
+    assert f3s._PMN_OUTAGE_RE.search("<h1>Technical Difficulties</h1>")
+    assert not f3s._PMN_OUTAGE_RE.search("<td>Difficulties with the budget</td>")

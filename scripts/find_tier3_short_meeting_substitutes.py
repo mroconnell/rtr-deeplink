@@ -1459,6 +1459,9 @@ async def pmn_entity_of(session: aiohttp.ClientSession, notice_url: str) -> str 
     return (fields.get("Entity") or ("", None))[0] or None
 
 
+_PMN_OUTAGE_RE = re.compile(r"tech\w*\s+difficulties", re.I)
+
+
 async def pmn_entity_notices(
     session: aiohttp.ClientSession, entity: str, *, days: int = 548, max_pages: int = 4
 ) -> list:
@@ -1469,7 +1472,22 @@ async def pmn_entity_notices(
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
     out = []
+    form_csrf: str | None = None  # set once the JSON endpoint is found down
     for page in range(max_pages):
+        if form_csrf is not None:
+            notices = await pmn.fetch_search_form_page(
+                session,
+                form_csrf,
+                entity,
+                start.strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d"),
+                page * 25,
+            )
+            if not notices:
+                break
+            out.extend(notices)
+            await asyncio.sleep(REQUEST_DELAY_SECONDS)
+            continue
         payload = {
             "searchType": "entity",
             "entityName": entity,
@@ -1499,10 +1517,30 @@ async def pmn_entity_notices(
         ) as resp:
             resp.raise_for_status()
             html = await resp.text()
-        # PMN's own outage page (its real spelling), seen for every entity
-        # on 2026-09-11 ~04:00 MT -- a listing failure, not "no notices".
-        if "echnical Difficulties" in html:
-            raise RuntimeError("PMN search returned its Technical Difficulties page")
+        # PMN's own outage page, seen for every entity on 2026-09-11 ~04:00
+        # MT -- a listing failure, not "no notices". Its title is spelled
+        # "Techincal Difficulties" (sic, confirmed 2026-09-11 12:30 MT); the
+        # first version of this check looked for "Technical" and let the
+        # outage page parse as an empty listing.
+        if _PMN_OUTAGE_RE.search(html):
+            # The JSON endpoint is down; the search page's own form POST
+            # kept working through the same outage (2026-09-11). Switch
+            # this entity to it for the rest of its pages and retry the
+            # page that just failed.
+            form_csrf = await pmn.fetch_form_csrf(session)
+            notices = await pmn.fetch_search_form_page(
+                session,
+                form_csrf,
+                entity,
+                start.strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d"),
+                page * 25,
+            )
+            if not notices:
+                break
+            out.extend(notices)
+            await asyncio.sleep(REQUEST_DELAY_SECONDS)
+            continue
         notices = pmn._parse_results_table(html)
         if not notices:
             break
