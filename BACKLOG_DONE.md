@@ -1,5 +1,40 @@
 # Backlog — done
 
+## WO-203: `scripts/youtube_drip.py` — one paced, always-on YouTube process for the dedicated Mac [Done 2026-09-11]
+
+**What was done and why.** Ryan asked how to hand the YouTube work to Ol
+McClaude (the dedicated office MacBook that never closes). Every YouTube
+job has to run from a home/office address because YouTube blocks Render's
+servers, and the once-a-day launchd caption job was being blocked within
+9-38 pages every morning (13 ingested on its best day, 0 on most — see
+`~/Library/Logs/fetch-youtube-transcripts.log`). A scratchpad loop run
+this evening at one request every 3-4 minutes with a long escalating
+back-off did 47 pages in 5.5 awake hours with zero blocks (22 ingested,
+25 dead pages permanently retired). The drip is that loop, in-repo,
+with the feed and audio work folded in.
+
+**Result.** Three lanes, one YouTube request budget: captions
+(`fetch_youtube_transcripts.process_one`), feed of the tier-3 queue's
+1,264 YouTube lines (`feed_tier3_auto_transcription._push_if_has_video`,
+so the WO-144 probe and WO-156 gate are untouched; a fed page is
+caption-fetched next), and audio download + local Whisper for
+captions-disabled pages (`transcribe_backlog_locally.process_one`, capped
+at 3 downloads/day after the 2026-09-09 three-download block). Block
+ladder 15 min → 4 h, separate ladder for audio, lock file, resumable state
+in `~/.rtr/youtube_drip/`, one status line per day, `advance` subcommand
+for the daily queue-file PR. 14 tests; dry-run smoke against the live
+Archive for the captions and feed lanes. Runbook:
+`docs/YOUTUBE_DRIP_RUNBOOK.md`.
+
+**Caution.** One drip per internet connection — the two office Macs share
+one YouTube budget, so the launchd job on the other Mac must be unloaded
+when the drip starts, and the scratchpad loop stopped. The audio lane's
+daily cap is a measurement in progress, not a known-safe number.
+
+**Recommendation.** Raise `--audio-per-day` only after a week with no
+audio-lane block; report `daily_status.csv` counts weekly until the
+1,264-line YouTube backlog is fed.
+
 ## WO-200: every subagent under one session shares the same scratchpad, so generic scratch filenames collide -- hook gives each agent a private directory [Done 2026-09-11]
 
 - **[Done 2026-09-11] [EASY] PR #909 briefly carried WO-175's description
