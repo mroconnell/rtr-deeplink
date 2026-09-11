@@ -2233,7 +2233,7 @@ requires an exact character match -- so this fix alone does not make
 that specific example auto-resolve. Filed separately since it's a
 different, riskier fix (touches heavily-tuned validation code).
 
-## WO-151: access-ladder sweep of 1,026 governments from the research file's own meetings-page URLs, all populations -- 96 checked this session, 9 real videos found [Done 2026-09-10]
+## WO-151: access-ladder sweep of 1,026 governments from the research file's own meetings-page URLs, all populations -- all 1,026 now checked, 69 real videos found [Done 2026-09-10]
 
 Ryan's ask: for 1,026 governments with no page on the site (no population
 floor -- includes very small towns), try each one's own real meetings
@@ -2340,6 +2340,123 @@ and 3 real queue entries are already live on the site right now,
 independent of merging this pull request, because they went through
 `POST /internal/ingest` against production directly, the same way every
 sweep in this repo works.
+
+### Continuation: the remaining 930 governments [Done 2026-09-10]
+
+This session ran the rest of the list, per the Recommendation above.
+Before running, two fixes: `HEADLESS_BUDGET` raised from 150 to 1,000
+(the first session's own note said 150 would run out well before 930
+more governments; this run used 744, confirming it), and a new circuit
+breaker that stops making real YouTube caption-fetch calls for the rest
+of the run after the first sighting of YouTube's own block signature,
+per `docs/investigations/youtube_429_block.md`. Neither fix touched any
+shared file (`hub_sweep_wo126.py` included) -- both live only in this
+WO's own script.
+
+**Result.** All 930 remaining governments processed -- the full
+1,026-government list is now done, 0 left unchecked. 60 of 930 (6.5%)
+got a real video this session: 16 pages live now (all 16 spot-checked
+live via `curl`, 200 each), 44 queued for transcription. Combined with
+the first session's 9, the whole list found 69 real videos out of 1,026
+governments (6.7%): 22 pages live now, 47 queued.
+
+| Outcome | Count of 1,026 | Detail |
+|---|---|---|
+| Page live now (captions found) | 22 | |
+| Video with no captions, queued (after the check) | 47 | |
+| Rejected by the check before queuing | 12 | 7 too short, 5 a dead link |
+| A real meeting was found, but it has no video | 45 | |
+| No meeting was found at all | 23 | |
+| A real video exists with no meeting to attach it to | 0 | still not distinguished from the row above -- see Caution |
+| No usable link found, after trying every rung | 787 | |
+| The page turned out to be a different government entirely | 6 | all 6 found this session; the first session's 96 rows hit 0 |
+| Two governments share one name and could not be told apart | 0 | |
+| A stale link was fixed to a live one | 0 | the domain-retry logic never had a dead domain to fix this run |
+| The research URL was a dead link (404), no working fallback found | 3 | new this session, not seen in the first 96 |
+| Blocked by a plain request | 13 | |
+| Blocked by a browser-like request too | 0 | |
+| Blocked, even with a headless browser | 0 | still not separately tracked -- see Caution |
+| Blocked by a "prove you're human" page | 32 | |
+| The website did not exist (dead domain) | 0 | |
+| A real technical error, needs a retry | 1 | from the first session; 0 more this session |
+| The government's own video was off-topic (not a real meeting) | 26 | |
+| Already in the site's queue from an earlier sweep | 2 | both from the first session |
+| Already had a page (checked before trying anything) | 7 | |
+| Not checked yet | 0 | the full 1,026 is done |
+
+**Which rung answered, the whole 1,026:**
+
+| Which rung answered | Count of 1,026 |
+|---|---|
+| Plain request | 962 |
+| Browser-like headers | 11 |
+| Headless browser | 17 |
+| Stopped at a "prove you're human" page | 32 |
+| Website did not exist | 3 |
+| None (already had a page, checked first) | 1 |
+
+**Did the government's own known meetings-page link help, the whole
+1,026:**
+
+| Did the research URL help? | Count of 1,026 |
+|---|---|
+| Yes -- answered there | 841 |
+| No -- fell back to a different start URL | 182 |
+| The known link was stale (a 404), no working fallback found | 2 |
+| Not applicable (already had a page) | 1 |
+
+**Headless renders used this session: 744, out of the raised 1,000
+budget.** Of those 744 real renders, 14 (1.9%) recovered a usable
+platform link the plain and browser-header rungs had missed. That is a
+much bigger, more trustworthy sample than the first session's own
+25-attempt pilot (which found 0), and it points the same direction: on
+this candidate list -- small towns already rejected once as "no usable
+link found" -- headless recovers a link on roughly 1 in 50 tries, not
+the roughly 2-in-5 an earlier sweep (WO-133) found on larger
+governments. Most of these small towns' sites genuinely have no online
+meeting listing at all, which a real browser cannot find either.
+
+**YouTube block.** The block signature ("YouTube is currently blocking
+caption requests from our server") appeared once, around the 100th
+government checked. The new circuit breaker turned on correctly, but a
+side effect means its own count cannot be read back precisely: the
+existing tier-3 probe step always overwrites the same report field the
+breaker's own note would have used, so the exact number of skipped
+calls is not recorded. What is confirmed: no government after that
+point crashed or hit any further sign of blocking, and every YouTube
+video found after that point still queued normally.
+
+**Caution.** Two things carried over from the first session, still
+open: (1) the report still cannot tell "a real video with no meeting
+record" apart from "a real meeting with no video" (`hub_sweep_wo126.Result`
+only records that on success) -- still 0, still an honest gap, and this
+session did not touch that shared file, per its own instructions to
+touch only files it created. (2) A small, separate gap found this
+session: the report's own `rung_answered` column is left blank on 45
+rows where the government was blocked or hit a "prove you're human"
+page before any rung got recorded -- the `access_mode` column does
+carry this correctly for every row (checked directly against the first
+session's own reported numbers), so the tables above use `access_mode`,
+not `rung_answered`. Filed in `BACKLOG.md`.
+
+**Applied.** 42 pins staged this session (governments whose real video
+lives on a different host than their own domain, e.g. a YouTube or
+Cablecast video linked from the city's own site) were written to
+`app/utils/jurisdiction_data/tenant_overrides.csv` via the existing
+`write_pins()` helper -- all `strength=fallback`,
+`source=wo151_research_url_ladder_sweep`. `jurisdiction_coverage.csv`
+was updated for all 1,026 governments' outcomes, following the same
+locked, floor-checked, atomic-write protocol as the first session.
+
+**Recommendation.** Nothing left to run for this work order -- the full
+1,026-government list is done. The headless-budget and
+`hub_sweep_wo126.Result` gaps are filed in `BACKLOG.md` for whoever
+reuses this script's pattern next.
+
+**Deploy status.** The 16 new pages are live now, independent of
+deploying this PR (same direct-to-production ingest as the first
+session). The 44 new queue entries and the 42 new pins need the next
+resolver deploy to take effect, same as any other code/config change.
 
 ## YouTube Atom-feed polling as a re-check trigger -- superseded by the video-to-calendar join [Superseded 2026-09-10]
 
