@@ -1904,82 +1904,37 @@ of human step they need.
     fail — it succeeded at the wrong government. §4 predicted this
     exactly: "a plausible wrong extraction passes validation, so
     validation alone can never fix a confirmed-misleading host."
-  - **Impact**: **it recurred on a fresh ingest, as predicted** — on
-    2026-09-11 `/j/gloucester-ma` was a live hub again, holding
-    `/m/gloucester-ma-2026-09-08-school-board-meeting` from
-    `pub-gloucesterva.escribemeetings.com` (found while checking hub
-    redirects, `BACKLOG_DONE.md` 2026-09-11). A live hub wins over the
-    alias row, so the hand-added redirect below is also inert while that
-    page sits there. Needs the same `POST /internal/jurisdiction/override`
-    to `us:sd:5101620` as page 4097, and it will keep happening on every
-    new Gloucester County, VA ingest until either Ryan authorizes an
-    `authoritative` pin for this host (the call he made for Chenango,
-    Kankakee County and McLean County) or the ladder is changed. The
-    first live instance was fixed — page 4097 (the
-    `/j/gloucester-ma` page) was moved to `us:sd:5101620` via
-    `POST /internal/jurisdiction/override` on 2026-09-03, confirmed live
-    over `/internal/export/pages` (`gov_id: us:sd:5101620,
-    jurisdiction_confidence: manual_override`); the tenant pin's proposed
-    blank-`match`/`authoritative` rule was **not** copied into
-    `tenant_overrides.csv`, per the constraint below. The `/j/gloucester-
-    ma` → `/j/gloucester-county-public-schools-va` redirect needed a
-    second fix: `scripts/score_gov_registry.py` cannot regenerate that
-    row on its own (verified — it re-derives old/new from the same
-    stored `jurisdiction` string, so a single-page manual override is
-    invisible to it either before or after the override runs), so the
-    row was **hand-added** to `archive/data/hub_slug_aliases.csv`, marked
-    in its own `evidence` field as a deliberate exception. **This means a
-    future wholesale regen of that file will silently drop the row** —
-    whoever next runs `score_gov_registry.py` needs to re-add it (or fix
-    the tool to be `manual_override`-aware first). This entry tracks the
-    general failure mode, which stays open: any tenant whose URL shape
-    carries no discriminator (eScribe GUIDs are the known case) and whose
-    page text names a real place that collides with a different
-    government's name is exposed the same way, and a `strength=fallback`
-    pin gives no signal that it happened — the ladder reports `registry`
-    tier (confidently resolved), not `unresolved` or `blank`.
-  - **Next action**: **checked against Phase 2d's live run (WO-110,
-    2026-09-04) — the current signals mechanism does NOT recover this
-    case, and that's expected, not a gap in that pass.** Page 4097 is
-    `manual_override` tier today, so it isn't in 2d's live corpus (only
-    `unresolved`/`unverified` are); reconstructing its pre-override raw
-    string ("Gloucester, MA", the exact bled value this entry describes)
-    and running it through `extract_gov_signals()` +
-    `resolve_government(signals=...)` confirms why: the plain ladder
-    still lands `registry` tier on `us:place:2526150` (confidently, and
-    wrongly) with no `signals` at all, and `resolve_government()`'s own
-    hard constraint (`resolver.py`'s WO-105 comment block) skips the
-    signals-enhancement pass entirely whenever the plain ladder already
-    answered `registry`/`pinned` — by design, so it can't be the thing
-    that catches a *confidently wrong* national-table hit. This is
-    exactly the "validation alone can never fix a confirmed-misleading
-    host" problem this entry already names, now confirmed against the
-    real page rather than reasoned about in the abstract, and it's a
-    Step B question (does something get to run to challenge an
-    already-`registry` answer, and on what evidence) — not a Phase 2d
-    Step A defect. A secondary, minor finding from the same check:
-    `gov_signals.py`'s `_TYPE_WORDS` list has "Board of Education" but
-    not the bare "School Board" this page's own title/nav actually use —
-    moot for Step A either way (extracted `type_words` aren't consumed by
-    any resolution decision yet, per that module's own docstring), worth
-    fixing whenever Step B starts consuming them. The hand-added
-    hub-alias row is a real, separate tooling gap worth its own small fix
-    eventually (teach `score_gov_registry.py` to pass a `manual_override`
-    row's DB gov_id straight through as "new" instead of re-deriving it),
-    but not attempted here — out of scope for a two-page live fix.
-  - **Constraint**: do not touch the `gov-signals-r1` branch, promote the
-    existing tenant pin to `strength=authoritative`, or copy
-    `POST /internal/jurisdiction/override`'s proposed
-    `tenant_overrides.csv` rule (blank `match`, `strength=authoritative`,
-    `gov_id=us:sd:5101620`) into the committed registry when applying
-    WO-106's fix. Either one pins the whole tenant, including the Board
-    of Supervisors' own meetings on that host (2 pages archived today —
-    one county, one this wrongly-keyed one — plus every one this
-    Archive hasn't ingested yet), to whichever single government wins,
-    misfiling the other. The fallback pin is correctly doing its one job
-    (a sane default where `dominant_gov_id()` ties 1-1) and should stay
-    exactly as it is; the school-district fix belongs on the one
-    affected page only, via that same endpoint's per-page write.
+  - **Impact**: **no live page is wrong today, but every fix so far is a
+    pin, not a ladder change.** Four real cases have now hit this: this
+    host (page 4097, hand-fixed 2026-09-03; then page 7035 on a fresh
+    2026-09-08 ingest, which is the recurrence this entry predicted),
+    `townofchenango.civicweb.net`, `kankakeecountyil.gov` and
+    `mcleancountyil.gov`. Ryan settled all four with `authoritative`
+    pins (`BACKLOG_DONE.md` 2026-09-10 and 2026-09-11). The shape is the
+    same each time: the tenant is a government's own host, and the page
+    text names a real *neighbouring* government (a same-named city,
+    village, county or state). A `strength=fallback` pin gives no signal
+    it happened — the ladder reports `registry` tier, confidently.
+  - **Next action**: decide whether the ladder should ever let a
+    same-host pin challenge a `registry` answer. WO-110's Phase 2d
+    check (2026-09-04) confirmed the current signals pass cannot: it is
+    skipped by design whenever the plain ladder already answered
+    `registry`/`pinned`, so it can't catch a confidently wrong
+    national-table hit. Until then the working answer is the one used
+    four times: Ryan authorizes an `authoritative` pin per host. Two
+    small tooling gaps ride along: `scripts/score_gov_registry.py`
+    cannot regenerate a hand-added `hub_slug_aliases.csv` row (it
+    re-derives old/new from the stored string, so it never sees a
+    manual override — the Gloucester rows are marked as exceptions and a
+    wholesale regen will drop them), and `gov_signals.py`'s
+    `_TYPE_WORDS` lacks the bare "School Board" this host's pages use.
+  - **Constraint**: an `authoritative` pin is Ryan's call, never a
+    session's — it pins the whole host, and on a shared host (this one
+    carries the Board of Supervisors, Planning Commission and School
+    Board) it files every body under one government. Ryan accepted that
+    trade-off for this host on 2026-09-11; state it plainly before
+    asking for the next one. The 2026-09-03 constraint against promoting
+    this host's pin is superseded by that decision.
   - **History**: `~/Documents/rtr-business/research/
     STATE_gov_identity.md`'s "STILL OPEN: FINDING-11" section (Cowork
     review, 2026-09-03); `GOVERNMENT_IDENTITY_ARCHITECTURE.md` §4, §5.

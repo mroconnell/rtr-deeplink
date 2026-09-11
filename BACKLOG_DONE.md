@@ -3938,6 +3938,24 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 | Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
 
 **Deploy status.** Pages are re-keyed now. The pin and the alias reach production on the next deploy; until then the old county hub link may 404.
+## Gloucester County, VA: the eScribe host's pin made authoritative, both School Board pages re-keyed off Gloucester, MA, two hub aliases re-pointed [Done 2026-09-11]
+
+**What was done and why.** `pub-gloucesterva.escribemeetings.com` had filed a School Board meeting under Gloucester, MA twice: page 4097 (fixed by hand on 2026-09-03 with a per-page override) and page 7035, a fresh 2026-09-08 ingest found while checking hub redirects. The host's `fallback` pin to the county could not stop it, because "Gloucester" resolves by name to the Massachusetts city at `registry` tier, which outranks a `fallback` pin. Ryan's call: authoritative, as for Chenango, Kankakee County and McLean County.
+
+**The trade-off, stated before it was written.** This host is shared. Its live board list shows Board of Supervisors, Planning Commission and School Board meetings, and pins have no meeting-body discriminator (eScribe GUID paths give `match=` nothing to hold). So School Board pages now file under Gloucester County, VA rather than Gloucester County Public Schools (`us:sd:5101620`). Ryan accepted this the same way he accepted a town under its county. The open entry's earlier Constraint, written 2026-09-03 against exactly this pin, is superseded by that decision.
+
+| Step | Result |
+|---|---|
+| Pin strength `fallback` (visual_confirmed) → `authoritative` (ryan_stated) | 1 row |
+| `backfill_gov_id.py --hosts pub-gloucesterva.escribemeetings.com --apply` | 2 pages changed to `us:county:51073` (4097 and 7035); 1 Board of Supervisors page already current; second apply and third dry run zero |
+| `POST /internal/jurisdiction/override` for page 4097 (dry run) | refused as already overridden, so its stored string stays "Gloucester County Public Schools, VA"; its live title and hub come from the registry and read "Gloucester County, VA", so nothing visible is wrong |
+| Hub aliases | `gloucester-ma` re-pointed to `gloucester-county-va`; `gloucester-county-public-schools-va` → `gloucester-county-va` added; both hand-added, same regen caveat as before |
+| `tests/test_hub_aliases.py` | Gloucester test updated to the county target and extended to the second row |
+
+**Verified live.** Both `/m/` pages title "Gloucester County, VA" and link `/j/gloucester-county-va` (200). `/j/gloucester-ma` and `/j/gloucester-county-public-schools-va` return 404 until the alias rows deploy, then 301.
+
+**Deploy status.** Pages re-keyed now. The pin and the alias rows need a deploy; until then a fresh ingest from this host can still land on Gloucester, MA.
+
 ## Retired `/j/` hub slugs now send a real 301 through the public domain, not a 200 copy of the target hub [Done 2026-09-11]
 
 **What was checked and why.** After the deploy that carried the Kankakee County / McLean County alias rows (entry below), Ryan asked to confirm the old hub slugs redirect. They did not, quite: the Archive service answered `/j/mclean-il`, `/j/kankakee-city-il` and `/j/kankakee-il` with a real 301 to the county hub, but the public site returned a 200 with the county hub's content and a canonical link.

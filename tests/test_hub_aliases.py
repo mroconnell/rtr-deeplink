@@ -13,21 +13,24 @@ regression in the committed data.
 from archive.utils import hub_aliases
 
 
-def test_gloucester_ma_redirects_to_the_school_district_hub():
+def test_gloucester_ma_redirects_to_the_county_hub():
     """Real production case (2026-09-03): `/j/gloucester-ma` was a live
     hub whose one page was a Gloucester County, VA school-board meeting
-    mis-keyed to Gloucester, MA. Fixed per-page via
-    `POST /internal/jurisdiction/override` to `us:sd:5101620`, which
-    retired the `gloucester-ma` hub -- but `scripts/score_gov_registry.py`
-    cannot regenerate this specific redirect (verified: it re-derives
-    old/new from the same stored `jurisdiction` string, so it never sees
-    a single-page manual override), so this row was hand-added to
-    `hub_slug_aliases.csv` as a documented exception. This test is what
-    would catch that hand-added row being lost to a future wholesale
-    regen."""
+    mis-keyed to Gloucester, MA. First fixed per-page via
+    `POST /internal/jurisdiction/override` to `us:sd:5101620`; it
+    recurred on a fresh ingest (2026-09-08 School Board Meeting), so on
+    2026-09-11 Ryan made the host's pin authoritative to the county,
+    which is where every page on `pub-gloucesterva.escribemeetings.com`
+    now files. `scripts/score_gov_registry.py` cannot regenerate these
+    rows (verified: it re-derives old/new from the same stored
+    `jurisdiction` string, so it never sees a single-page manual
+    override), so both were hand-added to `hub_slug_aliases.csv` as a
+    documented exception. This test is what would catch them being lost
+    to a future wholesale regen."""
     hub_aliases.hub_slug_aliases.cache_clear()
-    assert hub_aliases.redirect_target("gloucester-ma") == (
-        "gloucester-county-public-schools-va"
+    assert hub_aliases.redirect_target("gloucester-ma") == "gloucester-county-va"
+    assert hub_aliases.redirect_target("gloucester-county-public-schools-va") == (
+        "gloucester-county-va"
     )
 
 
