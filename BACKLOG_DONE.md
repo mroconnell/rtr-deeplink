@@ -1,5 +1,85 @@
 # Backlog — done
 
+## WO-206: re-keyed the six pages the blank-match Vimeo pin mislabeled "Oak Bluffs, MA," and minted the Pennsylvania Public Utility Commission [Done 2026-09-11]
+
+Closed the "Oak Bluffs" `[NEEDS-AUDIT]` entry WO-183/WO-187 filed the
+same night. That entry's root cause (a `tenant_overrides.csv` row with
+a blank `match` field acting as a wildcard for the whole `vimeo.com`
+host) was already fixed on `main`; this WO audited and corrected the
+pages it had already mislabeled.
+
+**All 6 pages identified from real evidence and corrected live.**
+Pulled every page from `GET /internal/export/pages` (full corpus scan,
+7,915 pages), fetched each video's own Vimeo oEmbed
+(`author_name`/`author_url`), and matched against `tenant_overrides.csv`
+before assuming a new pin was needed:
+
+| Page | Video author (oEmbed) | Real government | Pin |
+|---|---|---|---|
+| Lancaster County, PA commissioner meeting | "LanCo Pennsylvania" | Lancaster County, PA (`us:county:42071`) | new |
+| oak-bluffs-ma...planning-board | "Town of Amherst" | Amherst town, NH (`us:cousub:3301101300`) | already pinned (WO-179) |
+| oak-bluffs-ma...board-of-supervisors | "Hanover Township" | Hanover township, PA (`us:cousub:4209532432`) | already pinned (WO-183) |
+| oak-bluffs-ma...florence-urban-renewal-agency | "City of Florence" (`vimeo.com/florenceoregon`) | Florence city, OR (`us:place:4126050`) | new |
+| oak-bluffs-ma...sc-board-meeting | "Steele County" | Steele County, MN (`us:county:27147`) | already pinned (WO-187) |
+| oak-bluffs-ma...council-meeting | "Middletown Township" (`vimeo.com/middletowndelco`) | Middletown township, PA (`us:cousub:4204549136`) | already pinned (WO-183) |
+
+Four of the six already had a correctly-scoped pin in
+`tenant_overrides.csv` from earlier the same night (WO-183/WO-187) or
+WO-179 -- the pages just hadn't caught up to it (pages resolve once at
+ingest, they don't auto-re-resolve when a pin changes later). Only two
+new pins were needed (Lancaster County, Florence). The Florence case
+applied Ryan's "source of the video is the truth" rule from a slightly
+different angle: an urban renewal agency is normally a city agency you
+key to the city if the city is in the universe, but here it wasn't even
+a separate-agency judgment call -- the video's own account IS the
+city's own channel. All six gov_ids are national/derivable ids already
+live in the deployed registry (not new curated rows), so no deploy was
+needed: dry-ran then applied `scripts/wo206_override.py` (same
+`POST /internal/jurisdiction/override` pattern as
+`wo199_override.py`/`wo201_override.py`), and verified all six live in
+a real browser afterward -- all six now show their correct government
+in the page title.
+
+**No real Oak Bluffs, MA page exists at all**, confirmed directly: none
+of the six pages' evidence names Oak Bluffs, and a full-corpus search
+for the original pinned video (`vimeo:1199438213`, the one WO-183
+scoped the blank row down to) found no page using it either.
+
+**Pennsylvania Public Utility Commission, minted per Ryan's decision.**
+Closed the open half of `BACKLOG.md`'s separate `[HUMAN]` entry (a PA
+PUC meeting had briefly created a "Spring Township, PA" page, id 8466,
+already deleted by a concurrent WO-183 hand-check before this WO
+started). Ryan: mint it. Minted
+`rtr:us:pa:pennsylvania-public-utility-commission` in
+`curated_governments.csv` (`gov_type=other`, same reasoning as WO-201's
+PennDOT row), found the real video
+(`youtube.com/watch?v=FiJNFpzKCZw`, channel PennsylvaniaPUC) via
+`rtr-business/research/wo183_report.csv` since neither BACKLOG file had
+recorded the video id itself, and added a per-video pin plus a
+`channel=@PennsylvaniaPUC` fallback pin. Since the page is already
+gone, there's nothing to re-key -- the pins exist so a future
+re-discovery of PA PUC content routes correctly the first time. The new
+curated row needs a deploy before it's live-resolvable (same
+deploy-lag shape WO-201 hit three times); `scripts/wo206_override.py`'s
+docstring documents this rather than queuing a correction with no page
+to target.
+
+**Research-file apply.** `rtr-business/research/wo206_apply_to_jc.py`
+(§158 write protocol). Of the six governments' `jurisdiction_coverage.csv`
+rows, four already read correctly; two (Lancaster County, Florence) had
+a stale `suspected_video_provider=civicplus` left from an earlier
+harvest, corrected to `vimeo`. Added one new row for the Pennsylvania
+Public Utility Commission (`transcribed` left blank -- a real video is
+confirmed, but no live page currently exists under this gov_id).
+
+Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (2 new Vimeo
+pins, 1 new YouTube video pin, 1 new YouTube channel pin);
+`app/utils/jurisdiction_data/curated_governments.csv` (1 new row,
+Pennsylvania Public Utility Commission); `scripts/wo206_override.py`
+(new); `rtr-business/research/wo206_apply_to_jc.py` (new),
+`wo206_report.csv` (new, 7 rows), `jurisdiction_coverage.csv` (2 field
+fixes, 1 new row), `ENUMERATION_METHODS.md` §253.
+
 ## WO-183: CivicMirror addendum #2 access-ladder sweep of 803 township rows -- 102 real transcripts, 5 queued, and a blank-match tenant pin traced to 4 mislabeled governments [Done 2026-09-11]
 
 Swept the 803 new township/`us:cousub` rows the CivicMirror addendum #2
