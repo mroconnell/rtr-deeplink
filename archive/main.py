@@ -2357,6 +2357,13 @@ def _pick_active_version(page: dict, version: Optional[int]) -> Optional[dict]:
 # than the meeting's own title, not a general redirect system). Add an
 # entry here in the same change that performs the real rename.
 _SLUG_REDIRECTS: dict[str, str] = {
+    # 2026-09-10 (WO-182): jurisdiction/gov_id were corrected by the
+    # 2026-09-03 backfill_gov_id.py run, but that script never rewrites a
+    # page's slug, so both URLs kept the wrong city from their ingest-time
+    # guess. Reslugged by hand via /internal/admin/reslug-page; see
+    # BACKLOG_DONE.md's WO-182 entry.
+    "peterborough-2024-05-21-council-meeting": "blind-river-on-2024-05-21-council-meeting",
+    "prince-george-2026-03-18-elections-bylaw-amendment-regular-council-meeting": "sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-meeting",
     # 2026-08-28: build_base_slug() froze the literal fallback "meeting"
     # (plus hex-suffixed collisions) from a first resolve that had no
     # jurisdiction/date/title yet -- all 4 have real metadata now (see
