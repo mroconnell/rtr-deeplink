@@ -374,6 +374,126 @@ convenient, someone should look at the 2 left in
 `rtr-business`, a separate repo with no deploy step — nothing here
 touches the live site.
 
+## WO-181: alternate domains are now tried before we give up on a government; 53 of 265 found a real platform, 15 got real captions [Done 2026-09-10]
+
+**Issue.** WO-165 gave every government in our research file a second
+column: `alternate_domains`. It holds every other real website address
+that government has ever used. Nothing read that column. If a
+government's main website was down or blocked, we recorded it as
+rejected and moved on, even when a second, working address for the same
+government was sitting right there in the file.
+
+**What was built.** A shared helper
+(`scripts/coverage_alternates.py`) that tries a government's alternate
+addresses, but only when the reason we gave up was that we could not
+reach the website at all — blocked, timed out, or the address did not
+resolve. If we DID reach the website and it genuinely had no meeting
+video, we do not try a different address for it. A different address
+does not change what a real page already showed us.
+
+**What was tested.** 265 real governments that had both an alternate
+address and one of those "could not reach it" reasons. Checked each one
+politely: one request at a time, 2 seconds apart, a real identifying
+name in every request, and no attempt to get past a "prove you're
+human" page.
+
+| Result | Count of 265 |
+|---|---|
+| An alternate address answered with a real meeting platform | 53 |
+| An alternate address worked, but had no meeting video on it | 173 |
+| Every address, including alternates, still could not be reached | 39 |
+
+**What happened with the 53 that found a platform.** Each one went
+through the same pipeline every other sweep in this project uses, to
+resolve a real meeting and, where there is real video, add it to the
+site.
+
+| Result | Count of 53 |
+|---|---|
+| A real meeting was found and now has captions live on the site | 15 |
+| The government already had a page under this exact ID | 4 |
+| A real meeting was found, but had video with no captions, and the one video we tried to queue for transcription turned out to be a dead link | 0 (1 tried, rejected) |
+| A platform was found, but no usable meeting video turned up on it | 33 |
+
+15 real transcripts are now live. One of those 15 turned out to be a
+page we already had, with a transcript already on it — we left that one
+alone rather than overwrite good data. So the research file itself shows
+14 governments newly marked as having a transcript. Named governments —
+Guadalupe city CA, Collbran town CO, North Aurora village IL, Farmland
+town IN, Franklin city IN, Remington town IN, Scottsburg city IN,
+Norwalk city IA, Garden City city KS, Warrenton city MO, Struthers city
+OH, El Campo city TX, Barry County MI, Ashby town MA, and Townsend town
+MA.
+
+**A wrong-government mix-up was caught and fixed the same day, before
+this was reported to Ryan.** One of those 15, keyed by this pilot to
+"Maple Grove township, MI," was checked directly against the live page
+rather than just trusted from this run's own report. The real content
+was Barry County, MI's — a real, different government. Barry County's
+own website has a page listing its townships, and that page's web
+address had been recorded as an "alternate domain" for Maple Grove
+township, which is why the pilot tried it at all. The live site was
+never wrong: the Archive page had already resolved itself correctly to
+Barry County, because a different, already-running session had pinned
+that exact video to Barry County first. Only the research file's
+bookkeeping was wrong, crediting the find to the wrong government's row.
+Fixed: Maple Grove township's row was put back the way it was (its real
+address restored, the transcript credit removed, `barrycounty.org` kept
+on file as a related address but not treated as its own); Barry
+County's row was marked as having a real transcript instead, since one
+genuinely exists for it now. A duplicate, incorrect rule this session
+had written pointing that video at Maple Grove township was removed too.
+Two more of the 15 (Franklin city IN, Remington town IN) have real,
+correctly-matching content live, but the page itself does not yet show
+which government it belongs to — a separate, already-known limit (a
+small town's single-video channel often can't be matched to a name on
+its own) that a already-planned follow-up step fixes later, not
+something wrong with this pilot's work.
+
+**The research file was updated.** For every one of the 262 governments
+this touched (3 already had a real transcript and were left alone), we
+recorded what we now know. Where a different address answered, that
+address is now the main one on file, and the old address is kept as an
+alternate — nothing is ever thrown away. This was done through the
+same locking/re-read/backup steps every writer to this file uses, so it
+was safe even with other sessions editing the same file at the same
+time (they were — this is a shared file several sessions write to daily).
+
+**Coverage registry.** The dashboard that shows every government's
+status (`coverage_registry.py`) now shows each government's alternate
+addresses as extra columns, for reference. They do not count toward any
+of the dashboard's percentages — they are shown, not scored. Rebuilt the
+whole dashboard once to prove it still works; the page came out at 5.6
+MB, well under the 16 MB limit for publishing it.
+
+**Caution.** This only tries an alternate address when the main one
+could not be reached at all. It does not yet try an alternate address
+when the main one WAS reachable but had no meeting video — that is a
+different, larger group (173 in this same test alone), and trying it
+needs its own careful test first, the same way this one got tested
+before being trusted. That is filed as its own open item.
+
+**Recommendation.** No action needed from Ryan. The 15 new transcripts
+are already live. The larger "try an alternate even when the main site
+loaded fine" idea is filed in `BACKLOG.md` for a future session to test
+properly before turning it on.
+
+**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
+worker/ scripts/ tests/` clean. Full test suite: 3,083 existing tests
+plus 17 new ones for this change, all passing. No database model
+changed, so no migration check was needed. `scripts/coverage_alternates.py`,
+`scripts/wo181_pilot.py` (the live test), and `scripts/wo181_ingest_found.py`
+(the resolve/ingest step) are all in `rtr-deeplink/scripts/`.
+`~/Documents/rtr-business/research/wo181_apply_to_jc.py` wrote the
+research file. Full method and every number:
+`rtr-business/research/ENUMERATION_METHODS.md` §232.
+
+**Deploy status:** `docs/COVERAGE_HANDOVER.md` and
+`docs/BREADTH_SWEEP_BRIEF.md` changed (documentation only, no deploy
+needed). No file under `app/`, `archive/`, `worker/`, or `render.yaml`
+changed, so this needs no production deploy either — it is a research-
+tooling and documentation change only.
+
 ## WO-175: hand-check of the 287 LocalView channels WO-171 rejected; an on-mission meeting queued where the channel is the government's [Done 2026-09-10]
 
 **What this checked, and why.** WO-171 matched 1,010 YouTube channels

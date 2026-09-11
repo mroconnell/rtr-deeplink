@@ -279,3 +279,19 @@ https://seadrifttx.portal.civicclerk.com/event/20/media,civicclerk,head+ffprobe,
 https://www.youtube.com/watch?v=sUDlC30xQGU,youtube,yt-dlp-metadata,6685.00,2026-08-22,188355205,1,accept,,2.38,2026-09-11T00:52:14+00:00
 https://www.youtube.com/watch?v=JNMcIYg0KYo,youtube,yt-dlp-metadata,4138.00,2026-09-10,146392785,1,accept,,3.05,2026-09-11T00:52:19+00:00
 https://www.youtube.com/watch?v=Pq0j1dJ9qxk,youtube,yt-dlp-metadata,17052.00,2023-02-10,469737160,1,accept,,1.68,2026-09-11T00:57:03+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=-bTMnu07w7U,youtube,yt-dlp-metadata,8320.00,2026-05-27,189356193,1,accept,,1.67,2026-09-11T00:48:58+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=M-42e4KrFRQ,youtube,yt-dlp-metadata,9384.00,2025-09-04,383362929,1,accept,,1.68,2026-09-11T00:49:05+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=taomJaAVZNc,youtube,yt-dlp-metadata,744.00,2026-08-18,19368312,1,accept,,1.94,2026-09-11T00:49:25+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=U0r04YSigGY,youtube,yt-dlp-metadata,2491.00,2026-07-08,23246035,1,accept,,1.71,2026-09-11T00:49:32+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=0msj4aPObT8,youtube,yt-dlp-metadata,717.00,2026-08-21,17363274,1,accept,,1.79,2026-09-11T00:49:38+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=CxahX-iGo5k,youtube,yt-dlp-metadata,1516.00,2026-08-31,49737823,1,accept,,1.80,2026-09-11T00:49:45+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=LX1TwaT40pc,youtube,yt-dlp-metadata,614.00,2026-08-06,17502325,1,accept,,1.76,2026-09-11T00:49:52+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=ZNzO8puru2Q,youtube,yt-dlp-metadata,6560.00,2025-02-24,191586257,1,accept,,1.89,2026-09-11T00:50:09+00:00,bulk_ingest,0
+https://www.youtube.com/embed/Z5D2m3GVAis?si=Vrx78okaxTsAjW6E&start=1,youtube,yt-dlp-metadata,6418.00,2026-06-17,151123821,1,accept,,3.15,2026-09-11T00:50:22+00:00,bulk_ingest,0
+https://www.youtube.com/embed/DULBRe_TKnI?feature=oembed,youtube,yt-dlp-metadata,1785.00,2026-09-02,25720145,1,accept,,3.02,2026-09-11T00:50:53+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=Fs0TxI4huXM,youtube,yt-dlp-metadata,2634.00,2025-10-02,141535945,1,accept,,1.96,2026-09-11T00:51:20+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=HZae-8D53WE,youtube,yt-dlp-metadata,1575.00,2026-09-09,38891601,1,accept,,1.92,2026-09-11T00:51:48+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=jOS1M_NYgJo,youtube,yt-dlp-metadata,6038.00,2026-09-09,203936262,1,accept,,2.39,2026-09-11T00:52:19+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=Azx6r_4NuU4,youtube,yt-dlp-metadata,2104.00,2026-03-19,76604268,1,accept,,1.90,2026-09-11T00:52:32+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=jFiqFzWKY1M,youtube,yt-dlp-metadata,7751.00,2026-09-10,188625496,1,accept,,1.89,2026-09-11T00:52:39+00:00,bulk_ingest,0
+https://bemidjimn.portal.civicclerk.com/event/1314/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://cityofbemidjigbajpb.my.webex.com/cityofbemidjigbajpb.my/j.php?MTID=mbfef65e9b7f1394284a93e76f6105235,0.00,2026-09-11T00:52:40+00:00,,0
