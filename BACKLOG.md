@@ -114,7 +114,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (30)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (31)
+  `app/platforms/openmedia.py` doesn't accept the…
+  A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
   `wo149_county_ladder_sweep.py` carries its own separate, unpatched…
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
@@ -147,8 +149,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (30)
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
     [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
-  Production actions only Ryan should take  (10)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (13)
+  Production actions only Ryan should take  (12)
+    [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
+    [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
     [HUMAN] One YouTube video's own title disagrees with an existing…
     [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
@@ -271,6 +275,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (148)
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
   Adapter & platform gaps  (45)
+    [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
+    [NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload…
     [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
@@ -360,7 +366,8 @@ Trust, safety & data quality  (19)
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
+  `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
   `[IMPROVEMENT-ROUND]` `[BIG]` Agenda text as a first-class,…
@@ -392,8 +399,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Dormant — needs a real example first `[LATER]`  (1)
+Dormant — needs a real example first `[LATER]`  (2)
   A BoxCast government reached only via a fresh per-meeting…
+  Laserfiche WebLink meeting folders can carry a real Zoom recording +…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -661,6 +669,46 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: Littleton, CO's own site links
+  `littleton.ompnetwork.org/embed/sessions/346131/...` -- that form
+  resolves empty today. The same session under the plain
+  `/sessions/{id}/...` path (no `/embed`) resolves correctly with 3,120
+  caption segments (confirmed live 2026-09-11, WO-226 spot-check).
+- **Impact**: any OMP Network tenant that links the `/embed/sessions/`
+  form (the one meant for iframe embedding, plausibly the more common
+  shape on a city's own meeting-video page) fails to resolve at all,
+  even though the exact same meeting resolves fine one path segment
+  later.
+- **Next action**: teach `openmedia.py`'s URL parser to strip a leading
+  `embed/` segment before matching `sessions/{id}`, then add a fixture
+  test for both forms.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+
+### A "website-blocked-platform-unchecked" flag would separate "we never even tried the platform" from every other access-class reject -- pending Ryan's pick of where the label lives `[JUST-DO-IT]`
+
+- **Issue**: 3,619 rows in `jurisdiction_coverage.csv` carry an
+  access-class `reject_reason` (649 of them at 5,000+ population) --
+  meaning the website itself was blocked, but the government's actual
+  meeting platform (CivicClerk, YouTube, etc.) was never independently
+  checked, since the sweep never got past the website. WO-226's own
+  spot-check found three real examples where video sat one link away on
+  an entirely open platform host despite the primary website being
+  challenge-gated (Santa Cruz County AZ, Dallas OR, Sweet Home OR).
+- **Impact**: a large, undifferentiated bucket of "couldn't look" rows
+  hides real, findable video behind a website block that a
+  platform-first check would route around.
+- **Next action**: add an explicit "website-blocked-platform-unchecked"
+  evidence-first step (probe known platform hosts directly before/
+  alongside the website ladder) once Ryan picks where the label should
+  live -- a new `reject_reason` value, or a separate `website_status`
+  value. Write the entry (and any code) so either choice is a one-line
+  change.
+- **Constraint**: don't build the step's storage shape before Ryan's
+  pick -- only the step itself is ready to write either way.
+- **History**: `docs/BREADTH_SWEEP_BRIEF.md`; `BACKLOG_DONE.md`'s WO-226
+  entry, 2026-09-11.
 
 ### Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still say `no-platform-link-found` even though a real BoxCast video has been confirmed on both since 2026-08-29 `[JUST-DO-IT]` `[EASY]`
 
@@ -1288,6 +1336,39 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min, probed clean) -- queue or not is Ryan's call.**
+  - **Issue**: WO-226's spot-check confirmed two CITISTAT broadcasts on
+    Atlantic City NJ's Boxcast channel (`lqsszohc5p0q4yemoddl`) probe
+    clean at roughly 22.5 and 30.9 minutes, alongside the real City
+    Council meetings already on file.
+  - **Impact**: CITISTAT is a performance-management briefing, not a
+    legislative meeting in the usual sense -- whether it belongs
+    on-mission is a product call, not an engineering one.
+  - **Next action**: Ryan decides whether CITISTAT broadcasts should be
+    queued alongside Atlantic City's council meetings once the
+    standalone Boxcast adapter's signed-URL gap (see "Ship next"/
+    "Adapter & platform gaps") is fixed and Boxcast ingest actually
+    ships.
+  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+- **[HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on `/city-council` that neither a plain fetch nor a real browser can reproduce.**
+  - **Issue**: Ryan reported 16 agenda PDFs (01-08-2026 through
+    09-10-2026) on Farmington, MO's `/city-council` page. WO-226's
+    conductor could not reproduce this in a plain fetch OR a real
+    headless browser -- www and non-www both return an identical
+    155,691-byte Duda page with no agenda text, no PDF links, and no
+    iframe. The only outbound channels found are
+    `facebook.com/CityofFarmington` (the city) and the county library's
+    YouTube channel -- no video source reachable either way.
+  - **Impact**: a real government with real agendas Ryan has seen
+    firsthand reads as `meeting-without-video` with no path to ingest,
+    and it's not clear whether the site changed, the PDFs live behind a
+    login/different URL, or something else is blocking both check
+    methods.
+  - **Next action**: ask Ryan for one real agenda PDF URL from what he
+    saw -- that single URL would show whether it's a different path (a
+    Duda-hosted `#!` fragment page, a document library subdomain the
+    crawl never found) or something session-gated.
+  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
 - **[HUMAN] One YouTube video's own title disagrees with an existing tenant_overrides.csv pin about which of two same-named governments it belongs to -- Clinton town, NY vs Clinton village, NY.**
   - **Issue**: WO-221 (2026-09-11) found video `lNJoncQNJbM` ("9/18/2025 ZBA Meeting, Town of Clinton, New York", channel "Town of Clinton, NY") tied to two candidate governments in `jurisdiction_coverage.csv` (Clinton town, `us:cousub:3602716408`, and Clinton village, `us:place:3616419`, both NY). The video's own title/channel say "Town of Clinton" -- but `tenant_overrides.csv` already has a row pinning this exact video (`www.youtube.com,youtube:lNJoncQNJbM`) to Clinton **village** (`us:place:3616419`, source `wo147_access_ladder_sweep`). WO-221 did not overwrite the existing pin -- it only appends, never replaces -- so the file still says village and nothing was changed.
   - **Impact**: one video, keyed either way once it's ingested/transcribed -- not yet a live page as of this WO. Whichever is right, the other is a real wrong-government risk if this video is ever used as evidence for its own government's identity elsewhere.
@@ -4050,6 +4131,45 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Adapter & platform gaps
 
+- **[JUST-DO-IT] Boxcast tier-1 pages need the signed playlist re-resolved at view time (or the broadcast id stored) -- until then no Boxcast page can be ingested.**
+  - **Issue**: a Boxcast-hosted meeting's stored `video_url` is a signed,
+    time-limited playlist URL, not a stable link -- confirmed captioned
+    Boxcast pages exist for South Bay FL, Atlantic City NJ and St. Louis
+    County MO (WO-226/WO-227), but the signed URL will expire after the
+    page is created, breaking playback for anyone who opens it later.
+  - **Impact**: every real, captioned Boxcast meeting found so far
+    (South Bay FL: 721 caption segments; Atlantic City NJ; St. Louis
+    County MO) stays un-ingested until this is fixed, even though the
+    adapter and the pins already exist (WO-227).
+  - **Next action**: either re-resolve the playlist URL at render/view
+    time or store the Boxcast broadcast id and resolve a fresh signed
+    URL from it on render. Until one of these ships, no Boxcast page
+    gets ingested (WO-227/WO-227b's own note).
+  - **Constraint**: don't ingest a Boxcast tier-1 page before this ships
+    -- the page would go dead the moment the signed URL expires.
+  - **History**: `BACKLOG_DONE.md`'s WO-227 and WO-226 entries, 2026-09-11.
+- **[NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload date, not the meeting date in its own title -- six real, confirmed cases.**
+  - **Issue**: WO-226's spot-check found six pages where the archived
+    slug's date is the YouTube upload date, not the meeting date the
+    video's own title states: Littleton CO (slug `2026-07-13` for a
+    title reading 07-09), Harvey IL (slug `8-25` for a title reading
+    8-24), Waldwick NJ (slug `07-18` for a title reading 07-14),
+    Richlands VA (slug `02-12` for "February 10"), Brookshire TX (slug
+    `09-04` for a title reading 09/03), Dallas OR (slug `08-18` for a
+    title reading 8/17).
+  - **Impact**: a reader comparing the URL's date to the meeting's own
+    stated date sees a mismatch on every one of these -- cosmetic, not a
+    wrong-meeting bug (the video and transcript are both still the
+    correct meeting), but a real, confusing inconsistency once several
+    examples exist across unrelated governments.
+  - **Next action**: find where the slug date is derived (the YouTube
+    adapter's own upload-date field vs. a title-date parse) and prefer a
+    date parsed from the title when one exists and looks like a real
+    date, falling back to upload date only when the title carries none.
+  - **Constraint**: don't regress a page whose title genuinely has no
+    parseable date -- upload date is still the only signal for those.
+  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+
 - **[NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue lines resolve to no video at all — the adapter finds nothing playable on real `stream.php?location_id=…&id=…` pages.**
   - **Issue**: WO-205's probe (2026-09-11) ran every Town Hall Streams line in the tier-3 queue through `townhallstreams.py`'s `resolve()`: 116 returned no `video_url`, 2 returned an HLS master that 404s, 7 resolved (e.g. `stream.php?location_id=94&id=75799`, `location_id=47&id=21880` are two of the 116).
   - **Impact**: 118 queued Town Hall Streams meetings can never pass the ingest gate; the platform's queue share is dead weight until the adapter learns whatever those pages now embed.
@@ -5666,6 +5786,28 @@ this resolver — see `BACKLOG_DONE.md` for the full reasoning. The
 resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 `app/db/crud.py` plus `archive_client.lookup()`/`.push()`.
 
+### `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125 tested-no-page rows carry a bare `/AgendaCenter` hub with real video one hop away (added 2026-09-11)
+
+- **Issue**: 1,125 rows tested and not in the Archive have a bare, empty
+  `/AgendaCenter` hub recorded as their example URL (607 of them at
+  5,000+ population), with reject reasons mostly `no-video-found`/
+  `meeting-without-video` assigned against that empty shell rather than
+  the government's real meetings hub. WO-226's spot-check hand-checked 6
+  such rows: all 6 were confirmed empty shells, and 4 of the 6 converted
+  to real ingested video once the real hub was found one hop away
+  (Hagerstown MD, Harvey IL, Flagler Beach FL, Greenwood Village CO);
+  the other 2 stayed correctly no-video after the same closer look
+  (Hoffman Estates IL, Melrose MA).
+- **Impact**: a meaningful share of an already-large population (1,125
+  rows; 358 total counting the related 161 calendar-hub rows) is likely
+  mis-recorded as video-less when the real hub is simply one link deeper
+  than the sweep that tested it looked.
+- **Next action**: sweep this population after WO-228's finder lands,
+  ahead of the 161 calendar-hub rows (a related but distinct shape).
+- **Constraint**: don't hand-check the full 1,125 without a finder --
+  this WO's 6-row sample is a strong signal, not full coverage.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+
 ### `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government page" confidence scorer (added 2026-09-02)
 
 - **Issue**: enumeration work keeps needing the same judgment call —
@@ -6251,6 +6393,35 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   first" rule applies here as much as to a new adapter.
 - **History:** `BACKLOG_DONE.md`'s WO-227b entry; `app/platforms/boxcast.py`'s
   "An account can be a shared regional media operator" docstring section.
+
+### Laserfiche WebLink meeting folders can carry a real Zoom recording + VTT captions -- Jefferson County, WA is the first confirmed case, no adapter exists yet `[LATER]` `[EXAMPLE]`
+
+- **Issue**: WO-226's spot-check (2026-09-11) found Jefferson County, WA
+  (`us:county:53031`)'s real BOCC meeting video sitting inside a
+  Laserfiche WebLink repo, not on any already-supported platform:
+  `test.co.jefferson.wa.us`'s WeblinkExternal browse tree
+  (`\Board of Commissioners\BOCC Agenda Packets\2026 Weekly Agenda
+  Items\08 August 2026\082426\Zoom files`) holds entry 10549043 (a Zoom
+  mp4, served only through `mediahandler.ashx` with a session token -- a
+  plain GET returns 302/500) alongside entry 10549042 (a VTT caption
+  file that downloads plainly via
+  `ElectronicFile.aspx?docid=10549042&dbid=0&repo=Jefferson`, 308 KB,
+  1,686 cues, the real 2026-08-24 BOCC regular meeting).
+- **Impact**: 205 rows in `jurisdiction_coverage.csv` link a WebLink
+  media folder from a CivicPlus AgendaCenter (per the earlier ladder
+  sweep's own note on this row) -- Jefferson County WA is the first one
+  actually confirmed to carry real meeting video, so the true population
+  that could benefit is unknown but plausibly nontrivial.
+- **Next action**: find 2-3 more real Laserfiche WebLink tenants with the
+  same folder shape (a dated meeting folder containing both a video
+  entry and a VTT entry) before building an adapter, per this repo's own
+  "test against a real URL first, several samples" rule -- one confirmed
+  tenant isn't enough. A sample VTT is in the conductor's own scratchpad
+  from this WO's verification if a starting fixture is needed.
+- **Constraint**: the video itself needs a session token via
+  `mediahandler.ashx` (not a plain URL) -- any adapter will need to
+  handle that handshake, not just the caption fetch.
+- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
 
 ## Parked deliberately — allowed back `[PARK]`
 

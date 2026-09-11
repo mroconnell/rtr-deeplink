@@ -4869,3 +4869,12 @@ https://www.youtube.com/watch?v=m7VJfLUU9JE,youtube,yt-dlp-metadata,56.00,2024-1
 https://www.youtube.com/watch?v=cA6VH2c0j4M,youtube,yt-dlp-metadata,5249.00,2026-09-10,174626294,1,accept,,3.05,2026-09-11T23:31:13+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=dLSzU0YP8Mk,youtube,yt-dlp-metadata,5642.00,2023-03-06,234984612,1,accept,,1.84,2026-09-11T23:31:52+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=m7VJfLUU9JE,youtube,yt-dlp-metadata,56.00,2024-11-08,2258440,0,reject-short,duration 56.0s is below the 60s meeting-plausibility floor,1.74,2026-09-11T23:31:56+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=AscWHEa0ay4,youtube,yt-dlp-metadata,1921.00,2026-08-28,49213684,1,accept,,3.73,2026-09-11T23:14:11+00:00,wo149_finish_tier3,0
+https://www.youtube.com/watch?v=WASs5KsmAGs,youtube,yt-dlp-metadata,4782.00,2026-09-11,211271671,1,accept,,4.75,2026-09-11T23:14:16+00:00,wo149_finish_tier3,0
+https://vimeo.com/1201789898?share=copy&fl=sv&fe=ci,civicclerk,resolve,,,,0,reject-dead,resolve raised: Could not find an event ID in URL path: /1201789898,0.00,2026-09-11T23:14:18+00:00,wo149_finish_tier3,0
+https://www.youtube.com/watch?v=RLhUOmshDCg,civicclerk,resolve,,,,0,reject-dead,resolve raised: Could not find an event ID in URL path: /watch,0.00,2026-09-11T23:14:18+00:00,wo149_finish_tier3,0
+https://www.youtube.com/watch?v=WzqIpTCYPOU,civicclerk,resolve,,,,0,reject-dead,resolve raised: Could not find an event ID in URL path: /watch,0.00,2026-09-11T23:14:18+00:00,wo149_finish_tier3,0
+https://www.youtube.com/watch?v=FHaiGhehAlE,youtube,yt-dlp-metadata,13733.00,2026-02-12,278108876,1,accept,,4.64,2026-09-11T23:14:25+00:00,wo149_finish_tier3,0
+https://vimeo.com/1201789898?share=copy&fl=sv&fe=ci,vimeo,resolve,,,,0,reject-dead,resolve returned no video_url,0.30,2026-09-11T23:17:17+00:00,wo149_finish_tier3_correction,0
+https://www.youtube.com/watch?v=RLhUOmshDCg,youtube,yt-dlp-metadata,6035.00,2026-08-11,164998610,1,accept,,6.13,2026-09-11T23:17:23+00:00,wo149_finish_tier3_correction,0
+https://www.youtube.com/watch?v=WzqIpTCYPOU,youtube,yt-dlp-metadata,4891.00,2026-08-18,121985183,1,accept,,7.39,2026-09-11T23:17:30+00:00,wo149_finish_tier3_correction,0
