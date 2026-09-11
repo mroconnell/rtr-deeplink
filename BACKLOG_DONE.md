@@ -239,6 +239,111 @@ transcription worker ever re-resolves one of these same videos later.
 No file under `archive/`, `worker/`, or `render.yaml` changed. The
 research file itself lives in a separate repo with no deploy step.
 
+## WO-193: made every `domain` value in the research file a plain web address, not a mix of plain addresses and full links [Done 2026-09-11]
+
+- **Issue**: WO-174 found that about a fifth of the `domain` column in
+  `jurisdiction_coverage.csv` held a full web link
+  (`https://www.fairfaxcounty.gov/`) instead of a plain address
+  (`www.fairfaxcounty.gov`). A tool that builds a new link by adding
+  `https://` in front of `domain` breaks on those rows — it ends up with
+  `https://https://www.fairfaxcounty.gov/`, which looks exactly like a
+  dead website, not a formatting problem. Ryan approved fixing the file
+  itself rather than asking every tool to work around it.
+- **What was done**: a shared function
+  (`canonicalize_domain()`/`classify_domain_shape()` in
+  `scripts/coverage_alternates.py`) turns any `domain` value into a
+  plain, lowercase address — no `https://`, no trailing slash, no port,
+  no trailing dot. A capital-letter address is lowercased. If the
+  original value pointed at a real page (not just the site's front
+  door), that full link is kept, not thrown away — it moves to
+  `alternate_urls`. The same fix runs on every entry in
+  `alternate_domains`, and after fixing them, duplicates are removed and
+  any alternate that now matches the main `domain` is dropped.
+  `example_meeting_url` and `example_agenda_or_calendar_url` were not
+  touched — those are supposed to be full links.
+
+**Result, `domain` column (31,474 rows total):**
+
+| Shape | Count before | Count after |
+|---|---|---|
+| Blank | 7,394 | 7,394 |
+| Plain address | 17,609 | 20,979 |
+| Plain address starting with www. | 335 | 3,100 |
+| Full link, no page (just the address) | 5,930 | 0 |
+| Full link with a real page | 152 | 0 |
+| Full link with a search/query part | 35 | 0 |
+| Other (odd formatting — see below) | 19 | 1 |
+
+**Result, `alternate_domains` entries (6,434 before, 6,281 after — the
+drop is duplicates and matches-the-main-address removed):**
+
+| Shape | Count before | Count after |
+|---|---|---|
+| Plain address | 6,098 | 6,025 |
+| Plain address starting with www. | 12 | 256 |
+| Full link, no page (just the address) | 285 | 0 |
+| Full link with a real page | 23 | 0 |
+| Full link with a search/query part | 3 | 0 |
+| Other (odd formatting) | 13 | 0 |
+
+"Other" before the fix meant: a port number attached (`example.com:80`,
+18 cases across both columns), capital letters in the address (5 cases),
+a trailing dot (2 cases), and one row where a comma sits where a dot
+should be (`www.msvalere.qc,ca` — a Quebec town's address, kept as one
+odd address rather than guessed at, since splitting it does not produce
+two real addresses). The one remaining "Other" row after the fix is that
+same comma typo, left alone on purpose.
+
+**Rows changed**: 6,533 of 31,474 (the main `domain` value, its
+alternates, or both). **Multi-valued cells** (two addresses jammed into
+one `domain` field, separated by a space or comma): none found — every
+row's `domain` held exactly one address, malformed or not. **Links
+preserved**: 217 full links, across 214 rows, moved into `alternate_urls`
+instead of being thrown away. No `domain` was ever left blank or
+emptied.
+
+**Verification**: after the fix, re-running the same shape count found
+zero rows left with a scheme, a path, a query, or a port in `domain` or
+`alternate_domains` (except the one intentionally-untouched typo). A
+column-by-column diff against the file's last committed version
+confirmed only `domain`, `alternate_domains`, and `alternate_urls`
+changed — same row count (31,474), same row order, same everything else.
+`rtr-business/research/coverage_registry.py` was run against the updated
+file into a scratch folder (not committed, not published): it only ever
+checks whether `domain` is non-blank or displays it as plain text, never
+builds a link from it, so it needed no code change — Fairfax County now
+shows as `www.fairfaxcounty.gov` instead of the full link, and no page
+anywhere shows a doubled `https://https://`.
+
+**Caution**: one row's data is corrupted in an unrelated way — its
+columns are shifted, and its `domain` reads the literal word `False`
+with no `gov_id`. That is not a domain-shape problem and was left alone;
+filed separately in `BACKLOG.md`. Several older one-off sweep scripts in
+`scripts/` (`wo145`, `wo146`, `wo147`, `wo148`, `wo149`, `wo151`,
+`wo152`, `hub_sweep_wo126`, `wo174_pipeline`) already assumed `domain`
+was a plain address and built links from it directly — they were not
+broken by this change, they were *already broken* by the mixed data
+those tools read, and will simply start working correctly against the
+now-clean file. `wo174_pipeline.py` keeps its own local
+`normalize_domain()` workaround in place; it is now redundant but
+harmless (normalizing an already-plain address twice does nothing).
+
+**Recommendation**: no code changes needed elsewhere. The one corrupted
+row (see `BACKLOG.md`) is worth a human's five minutes whenever
+convenient — it is not urgent.
+
+- **History**: `docs/COVERAGE_HANDOVER.md` and
+  `~/Documents/rtr-business/research/ENUMERATION_METHODS.md` (§158
+  addendum, plus a new numbered section) both carry the one-line rule:
+  `domain` is a bare host; web links live in `example_meeting_url`,
+  `example_agenda_or_calendar_url`, and `alternate_urls`. Tests:
+  `tests/test_coverage_alternates.py`. Scripts:
+  `scripts/wo193_measure_domain_shapes.py` (read-only count),
+  `scripts/wo193_apply_domain_normalise.py` (the fix, with the file
+  lock/re-read/refuse-if-truncated/atomic-write protocol from
+  ENUMERATION_METHODS.md §158). Per-row report:
+  `~/Documents/rtr-business/research/wo193_report.csv`.
+
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
 - **[Done 2026-09-10] Sechelt, BC and Blind River, ON pages: URL slug showed

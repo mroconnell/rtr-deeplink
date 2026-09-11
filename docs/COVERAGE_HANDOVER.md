@@ -25,7 +25,12 @@ dashboards included, joins these on `gov_id`. A trailing `website_status`
 column (added WO-186, 2026-09-10) carries `none-known-2022` on rows
 where UScityURL's 2022 dataset also found no website and ours is still
 blank -- a cheap way for a sweep to deprioritize a row with no lead,
-without touching `reject_reason`'s own taxonomy.
+without touching `reject_reason`'s own taxonomy. **`domain` is a bare
+host; URLs live in the URL columns** (`example_meeting_url`,
+`example_agenda_or_calendar_url`, `alternate_urls`) -- WO-193
+(2026-09-11) normalized every row to this rule after finding ~20% of
+`domain` values were full links; see `BACKLOG_DONE.md`'s WO-193 entry
+and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
 
 ## 2. The two dashboards
 

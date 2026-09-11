@@ -37,6 +37,8 @@ from scripts.coverage_alternates import (
     already_has_coverage,
     apply_promotion,
     candidate_domains,
+    canonicalize_domain,
+    classify_domain_shape,
     classify_wo147_ladder_result,
     decide_promotion,
     is_retry_worthy,
@@ -759,3 +761,133 @@ async def test_one_hop_alternate_dns_unresolvable():
         lambda h, u: [],
     )
     assert result.reason == "dns-unresolvable"
+
+
+# --- WO-193 (2026-09-11): classify_domain_shape / canonicalize_domain ---
+#
+# Every value below is a REAL `domain`/`alternate_domains` cell from
+# `~/Documents/rtr-business/research/jurisdiction_coverage.csv` as of
+# 2026-09-11, confirmed by directly reading the file while writing this
+# WO (not an invented example):
+#
+# - Fairfax County, VA (`us:county:51059`): `domain`
+#   `https://www.fairfaxcounty.gov/` -- the exact example BACKLOG.md's
+#   WO-174 entry named as a "full URL". Its trailing `/` is the site
+#   root, not a real page, so it classifies as `scheme_host` (no extra
+#   URL to preserve) rather than `scheme_host_path` -- a real path is
+#   something beyond that root, like Campbellton NB's (below).
+# - Campbellton, NB (`ca:csd:1314014`): `domain`
+#   `https://capacadie.ca/fr/` -- a real path beyond the root
+#   (`scheme_host_path`), preserved into `alternate_urls`.
+# - Seminole County, FL (`us:county:12117`): `domain`
+#   `www.seminolecountyfl.gov:443` -- an explicit port.
+# - Warren County, MS (`us:county:28149`): `domain` `www.Co.Warren.Ms.Us`
+#   -- uppercase.
+# - Magnolia boro, NJ (`us:place:3442630`): `domain` `magnolia-nj.org.`
+#   -- a trailing dot.
+# - a Quebec CSD (`ca:csd:2439135`): `domain`
+#   `http://www.msvalere.qc,ca` -- a comma where a dot belongs; NOT two
+#   hosts (splitting on the comma gives "www.msvalere.qc" and "ca", and
+#   "ca" alone is not a real second hostname), so this stays one odd
+#   host rather than being torn in two.
+# - a Quebec CSD (`ca:csd:3554029`, Casey): `domain` `http://Casey.ca` --
+#   scheme + uppercase host together.
+# - a NY special district (`us:sd:5103640`): `domain`
+#   `regionalwebtv.com/spotsysb` -- a real path with NO scheme, the
+#   file's only row shaped this way.
+# - a Facebook profile URL with an HTML-entity-encoded `&` in its query
+#   (`https://www.facebook.com/profile.php?id=61558365536288&amp;
+#   mibextid=LQQJ4d`) -- the comma this decodes to lives in the QUERY,
+#   not the host, so this is an ordinary `scheme_host_query` shape, not
+#   `other`; this is the case that makes classification look only at the
+#   parsed host component instead of the whole raw string.
+
+
+def test_classify_domain_shape_bare_host_and_www():
+    assert classify_domain_shape("cityofabbeville.org") == "bare_host"
+    assert classify_domain_shape("www.athensal.us") == "bare_host_www"
+    assert classify_domain_shape("") == "blank"
+    assert classify_domain_shape(None) == "blank"
+
+
+def test_classify_domain_shape_scheme_variants():
+    assert classify_domain_shape("https://choctawcountyal.org") == "scheme_host"
+    # a trailing "/" alone is the site root, not a real page.
+    assert classify_domain_shape("https://www.fairfaxcounty.gov/") == "scheme_host"
+    assert classify_domain_shape("https://capacadie.ca/fr/") == "scheme_host_path"
+    assert (
+        classify_domain_shape(
+            "https://www.facebook.com/profile.php?id=61558365536288&amp;mibextid=LQQJ4d"
+        )
+        == "scheme_host_query"
+    )
+
+
+def test_classify_domain_shape_other_for_port_case_dot_and_no_scheme_path():
+    assert classify_domain_shape("www.seminolecountyfl.gov:443") == "other"
+    assert classify_domain_shape("www.Co.Warren.Ms.Us") == "other"
+    assert classify_domain_shape("magnolia-nj.org.") == "other"
+    assert classify_domain_shape("http://Casey.ca") == "other"
+    assert classify_domain_shape("regionalwebtv.com/spotsysb") == "other"
+    assert classify_domain_shape("http://www.msvalere.qc,ca") == "other"
+
+
+def test_canonicalize_domain_bare_host_is_unchanged():
+    assert canonicalize_domain("cityofabbeville.org") == ("cityofabbeville.org", None)
+    # a leading www. is preserved exactly, never added or stripped.
+    assert canonicalize_domain("www.athensal.us") == ("www.athensal.us", None)
+
+
+def test_canonicalize_domain_strips_scheme_and_preserves_path_as_extra_url():
+    host, extra = canonicalize_domain("https://capacadie.ca/fr/")
+    assert host == "capacadie.ca"
+    assert extra == "https://capacadie.ca/fr/"
+
+
+def test_canonicalize_domain_scheme_host_only_has_no_extra_url():
+    host, extra = canonicalize_domain("https://choctawcountyal.org")
+    assert host == "choctawcountyal.org"
+    assert extra is None
+    # a bare trailing "/" is the site root, not a real page -- nothing
+    # to preserve, same as no path at all.
+    host, extra = canonicalize_domain("https://www.fairfaxcounty.gov/")
+    assert host == "www.fairfaxcounty.gov"
+    assert extra is None
+
+
+def test_canonicalize_domain_strips_port_case_and_trailing_dot():
+    assert canonicalize_domain("www.seminolecountyfl.gov:443") == (
+        "www.seminolecountyfl.gov",
+        None,
+    )
+    assert canonicalize_domain("www.Co.Warren.Ms.Us") == ("www.co.warren.ms.us", None)
+    assert canonicalize_domain("magnolia-nj.org.") == ("magnolia-nj.org", None)
+    assert canonicalize_domain("http://Casey.ca") == ("casey.ca", None)
+
+
+def test_canonicalize_domain_no_scheme_path_gets_a_scheme_for_the_extra_url():
+    host, extra = canonicalize_domain("regionalwebtv.com/spotsysb")
+    assert host == "regionalwebtv.com"
+    assert extra == "https://regionalwebtv.com/spotsysb"
+
+
+def test_canonicalize_domain_comma_typo_stays_one_host_not_split():
+    # "ca" alone is not a real second hostname -- this is one malformed
+    # host (a comma where a dot belongs), not two hosts to split apart.
+    host, extra = canonicalize_domain("http://www.msvalere.qc,ca")
+    assert host == "www.msvalere.qc,ca"
+    assert extra is None
+
+
+def test_canonicalize_domain_never_blanks_a_nonblank_value():
+    assert canonicalize_domain("")[0] == ""
+    assert canonicalize_domain(None)[0] == ""
+    for v in [
+        "cityofabbeville.org",
+        "https://www.fairfaxcounty.gov/",
+        "www.seminolecountyfl.gov:443",
+        "http://www.msvalere.qc,ca",
+        "False",
+    ]:
+        host, _ = canonicalize_domain(v)
+        assert host != ""
