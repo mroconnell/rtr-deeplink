@@ -335,10 +335,20 @@ def test_reason_set_membership_is_disjoint_and_matches_ryans_rule():
         "ingested",
         "queued",
         "already-covered",
+        "wrong-domain-mapping",
     } <= NEVER_RETRY_REASONS
     # the "found nothing at all" set and the "never retry" set don't
     # overlap -- a row can't be both.
     assert NO_MEETING_CONTENT_REASONS & NEVER_RETRY_REASONS == set()
+
+
+def test_wrong_domain_mapping_is_never_retried_under_no_meeting_trigger():
+    # WO-184 continuation (2026-09-11): a row already diagnosed as a bad
+    # alternate-domain pairing (Mandeville LA/St. Tammany Parish, Wright
+    # city MN/Wright County MN, ...) must not be retried -- the alternate
+    # IS the diagnosis, not an untested lead. Real, confirmed cases in
+    # jurisdiction_coverage.csv; see BACKLOG_DONE.md.
+    assert is_retry_worthy("wrong-domain-mapping", trigger="no-meeting") is False
 
 
 @pytest.mark.parametrize(
