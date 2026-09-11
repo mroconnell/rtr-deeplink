@@ -253,13 +253,25 @@ def test_accepting_a_proposal_pins_the_id_not_the_display_name():
 
 def test_every_proposal_is_a_national_id_and_the_governments_own_name():
     """The two gates `propose()` applies, checked against what actually
-    landed on the sheet rather than against the function."""
+    landed on the sheet rather than against the function.
+
+    `tenant_host` is withheld on a `MULTI_GOV_HOSTS` host, mirroring
+    `propose()`'s own WO-210 fix: `resolve_government()` now refuses to
+    resolve anything on `www.youtube.com`/`vimeo.com`/etc without an
+    already-committed per-video/channel pin, which is exactly what this
+    proposal is trying to CREATE -- the check here is "is this name the
+    government's own name", independent of that host-level gate."""
     for row in _worklist_rows():
         gov_id = row["proposed_gov_id"]
         if not gov_id:
             continue
         assert not gov_id.startswith("rtr:"), row["tenant_host"]
-        match = resolve_government(row["proposed_name"], tenant_host=row["tenant_host"])
+        host = (
+            None
+            if registry.is_multi_gov_host(row["tenant_host"])
+            else row["tenant_host"]
+        )
+        match = resolve_government(row["proposed_name"], tenant_host=host)
         assert is_own_name(row["proposed_name"], match), row["tenant_host"]
 
 

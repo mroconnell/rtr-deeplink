@@ -1893,6 +1893,70 @@ def _resolve_government_ladder(
             gov, evidence = pinned
             return _match(gov, TIER_PINNED, evidence, None)
 
+    # 1b. Multi-government host safeguard (WO-210). Ryan, verbatim:
+    #     "We absolutely cannot use pins for the multi-gov hosts like
+    #     vimeo, youtube, youtu.be, clerkshq, etc ... if youtu.be without
+    #     a channel match, pin to NULL." One of these hosts
+    #     (`registry.MULTI_GOV_HOSTS`) serves thousands of unrelated
+    #     governments, so absent a per-video, per-channel or
+    #     per-external-id pin that matches THIS page, nothing past this
+    #     point may run for it -- not the name repair below, not the
+    #     national table, not minting, not same-tenant consistency. Any
+    #     of those could turn an accidental title match (a video titled
+    #     "City of Boston" is not evidence the CHANNEL belongs to Boston)
+    #     into a confident wrong government, which is exactly the shape
+    #     of every incident this rung exists to close off (the Oak
+    #     Bluffs Vimeo wildcard, BACKLOG_DONE.md's WO-183/WO-206/WO-206b,
+    #     was the blank-*pin* version of the same risk).
+    #
+    #     `_match_override()` is the same per-video/channel matcher rung
+    #     1 above already uses -- both strengths, so an empty result here
+    #     really means no matching pin at all, not merely "no
+    #     authoritative one yet". The loader itself already refuses to
+    #     load a blank-match row on one of these hosts in the first place
+    #     (`registry.tenant_overrides()`), so this rung is what happens
+    #     when there was never a row to refuse.
+    #
+    #     A delegating platform that hands off to its OWN adapter chain
+    #     without ever leaving its own host (PrimeGov calling
+    #     `YouTubeAssetFinder.resolve_video_id()` directly and keeping the
+    #     original PrimeGov URL as `source_url`) is unaffected -- `host`
+    #     here is still the delegating platform's own tenant host, never
+    #     a multi-gov one, so this rung never even looks at it.
+    #
+    #     Legistar/CivicPlus's OWN delegation is the one real exception,
+    #     and it is affected: `resolve_via_platform()` there returns the
+    #     DELEGATED result as-is (`civicplus.py`/`legistar.py` overwrite
+    #     only `.jurisdiction`, from their own subdomain, never
+    #     `.source_url`) -- a documented, pre-existing "known quirk" (see
+    #     CLAUDE.md's platform-wrapper bullet) that leaves `source_url`,
+    #     and therefore `host` here, on the delegated platform. A page
+    #     like that landing on a multi-gov host with no per-video/channel
+    #     pin now resolves to no government too, same as an un-delegated
+    #     page would -- there is no signal inside this pure function that
+    #     tells a trustworthy subdomain-derived name apart from an
+    #     untrustworthy channel-derived one once both have reached this
+    #     point as a plain string. Fixing the quirk itself (keeping
+    #     `source_url` on the delegating host, the way PrimeGov already
+    #     does) would restore the old behaviour AND stay inside this
+    #     safeguard; see BACKLOG.md's WO-210 follow-up entry.
+    multi_gov_host = bool(host) and registry.is_multi_gov_host(host)
+    has_matching_pin = multi_gov_host and bool(_match_override(host, path, page_hints))
+    if multi_gov_host and not has_matching_pin:
+        finalized = finalize_jurisdiction(raw_name, netloc=host or None)
+        reason = (
+            f"{host} is a shared, multi-government host with no matching "
+            "per-video/channel/external-id pin"
+        )
+        gov = Government(
+            gov_id=f"rtr:unknown:{host}",
+            gov_name="",
+            gov_type=classify.OTHER,
+            source="blank",
+            evidence=reason,
+        )
+        return _match(gov, TIER_BLANK, reason, finalized.meeting_body)
+
     # 2. Repair the string. Called, not copied -- and the netloc goes with
     #    it so the subdomain cross-check runs exactly as it does at ingest.
     finalized = finalize_jurisdiction(raw_name, netloc=host or None)
