@@ -1727,11 +1727,12 @@ of human step they need.
     `sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-
     meeting`), then add both old->new mappings to `archive/main.py`'s
     `_SLUG_REDIRECTS` in the same change and deploy.
-  - **Constraint**: WO-182's session had both of these confirmed-safe
-    writes blocked by the runtime sandbox's own auto-mode safety
-    classifier (a POST to a production write endpoint), even after two
-    dry-run previews. Needs a session or user with write permission to
-    run the two calls above.
+  - **Constraint**: WO-182's session and the conductor session both had
+    the apply call blocked by the runtime sandbox's auto-mode safety
+    classifier (a POST to a production write endpoint), even after
+    dry-run previews. The two `_SLUG_REDIRECTS` entries are already on
+    `main` (WO-182b), so once Ryan runs the two reslug calls and deploys,
+    the old URLs 301 to the new ones. Needs Ryan to run the two calls.
   - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (original find,
     premise not yet checked); WO-182, 2026-09-10 (root cause found and
     corrected, fix dry-run-verified, apply blocked -- see
