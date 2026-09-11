@@ -194,21 +194,27 @@ now resolve correctly with the SAME hub slug as before (no hub move,
 so no `hub_slug_aliases.csv` entry needed for these six), and the other
 29 rows in the conductor's original dry run are byte-for-byte unchanged.
 
-**The seventh, Spring Township PA, is NOT a township meeting at all.**
-Its channel is "PennsylvaniaPUC" (@PennsylvaniaPUC); the description
-reads "Recording of the September 10, 2026 Public Meeting of the
+**The seventh, Spring Township PA, was NOT a township meeting at all.**
+Its channel was "PennsylvaniaPUC" (@PennsylvaniaPUC); the description
+read "Recording of the September 10, 2026 Public Meeting of the
 Pennsylvania Public Utility Commission held in the Commonwealth Keystone
 Building's Hearing Room 1 (Harrisburg, PA)." Per Ryan's rule (the source
-of the video is the truth), this is not pinned to any of the 5 real
-Spring Townships in PA (Berks/Centre/Snyder/Crawford/Perry Counties) --
-left as the (now hub-fixed) placeholder and filed as a live
-`BACKLOG.md` `[HUMAN]` entry for Ryan to decide what the page should
-say. `rtr-business/research/jurisdiction_coverage.csv` had the identical
-mistake baked into a Spring Township, Berks County row (this same PUC
-video attached as "evidence" of the township's own coverage) -- cleared
-under the §158 write protocol, with a new `reject_reason` value,
-`video-wrong-government`, for exactly this shape (a real, single-purpose
-channel whose one video genuinely belongs to a different government).
+of the video is the truth), this was never pinned to any of the 5 real
+Spring Townships in PA (Berks/Centre/Snyder/Crawford/Perry Counties).
+Originally filed as a live `BACKLOG.md` `[HUMAN]` entry for Ryan to
+decide what the page should say -- overtaken before this PR even
+merged: a concurrent session (WO-183's own hand-check the same evening,
+working from a completely different candidate list) independently
+caught the identical PAPUC/Spring-Township mismatch and deleted the
+live page (`ENUMERATION_METHODS.md` §252's "4 wrong finds" table), plus
+corrected `rtr-business/research/jurisdiction_coverage.csv`'s matching
+Spring Township, Berks County row (`reject_reason=off-mission`) -- an
+independent confirmation of this WO's own finding from a different
+angle. `BACKLOG.md`'s `[HUMAN]` entry now reads as one merged writeup
+covering both sessions' findings, with the one real open question
+left (whether the Pennsylvania Public Utility Commission is worth
+minting as its own government) -- not the page-reclassification ask
+this WO originally filed.
 
 **Closed WO-198's own "7 need a look" `BACKLOG.md` entry** (13-page
 corpus scan, 6 already pinned/self-correcting there, 7 left):
@@ -266,9 +272,9 @@ no migration needed.
 - **Next action**: none -- conductor applies the actual backfill
   (`scripts/backfill_gov_id.py --apply`) after this PR deploys, since
   the pins and hub fix only reach the live resolver on the next
-  redeploy; the two open Spring Township follow-ups (the live page's own
-  reclassification, the `ryan_stated` batch audit) are filed as their
-  own live `BACKLOG.md` entries.
+  redeploy; the `ryan_stated` batch audit is filed as its own live
+  `BACKLOG.md` entry (the Spring Township follow-up needed no entry --
+  resolved by deletion elsewhere before this PR merged, see above).
 - **History**: dry run at `/tmp/postdeploy3_dry.csv` (conductor-provided,
   copied to `rtr-business/research/wo204_backfill_dry.csv` after the
   fix); real evidence gathered via yt-dlp (read-only) and live browsing
