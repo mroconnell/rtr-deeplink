@@ -53,7 +53,7 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
   A blank is a finding to count, not a gap to paper over. If a field is
   mostly empty, file that in `BACKLOG.md` rather than inferring it.
 
-### Coverage registry (per government, all of North America)
+### Gov Coverage (the coverage registry: per government, all of North America)
 
 - Code: `rtr-business/research/coverage_registry.py`, run by
   `rtr-business/research/refresh_coverage_registry.sh` (which first runs
@@ -66,6 +66,14 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
   governments. Special districts are deliberately not a lookup table
   (decision D3 in `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md`);
   they are minted on request with "ok mint" in a pin worklist.
+- Two catch-all rows, "US other" and "Canada other" (added 2026-09-11),
+  hold every government the research file or the Archive knows that is
+  not in those seven tables: school districts, special districts,
+  courts, minted `rtr:` ids. `rtr:unknown:<host>` placeholders are not
+  governments and sit in no row.
+- The top table has a checkbox per row. The total row sums only the
+  checked rows and says how many. US rows start checked, Canada rows
+  start unchecked; "Include Canada" ticks the four Canada rows at once.
 - Per government it joins four sources and says which one each column
   came from: the research file (domain, platform, tested, hub URL),
   rtr-discovery's ledger (a known tenant, last walked), rtr-upcoming's
