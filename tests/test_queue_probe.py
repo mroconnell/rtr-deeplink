@@ -636,6 +636,34 @@ async def test_probe_queue_entry_dispatches_direct_file_for_bare_mp3_via_video_f
     assert result.duration_seconds == 612.0
 
 
+async def test_probe_queue_entry_dispatches_direct_file_for_utah_pmn_m4a(monkeypatch):
+    # WO-205: Utah PMN's uploaded recordings are bare .m4a files on
+    # utah.gov (real shape: https://www.utah.gov/pmn/files/1375421.m4a);
+    # 277 real queue lines were rejected "no probe recipe" before .m4a
+    # joined _DIRECT_FILE_EXTENSIONS.
+    media_url = "https://www.utah.gov/pmn/files/1375421.m4a"
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 1830.0
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "14000000"})}
+    ):
+        result = await probe_queue_entry(
+            "https://www.utah.gov/pmn/sitemap/notice/1050205.html",
+            video_url=media_url,
+            source_page_url="https://www.utah.gov/pmn/sitemap/notice/1050205.html",
+            platform="utah_pmn",
+        )
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 1830.0
+
+
 # --- Resolve-first path (video_url not given) ---------------------------
 
 
@@ -749,3 +777,29 @@ async def test_probe_queue_entry_live_five_real_urls_one_per_platform():
             f"{platform} ({url}): expected {expected_verdict}, got "
             f"{result.verdict} ({result.reason})"
         )
+
+
+async def test_probe_queue_entry_dispatches_youtube_for_a_civicweb_page(monkeypatch):
+    # WO-205: a CivicWeb page resolves to a YouTube embed; the probe used to
+    # fall through to "no probe recipe" because it dispatched on the page's
+    # platform only (41 real queue lines).
+    page = "https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=582"
+    embed = "https://www.youtube.com/embed/ax-OzF0VRk4"
+    fake_result = _FakeResolvedMeeting(video_url=embed, source_url=page)
+    fake_result.video_format = "youtube"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "civicweb")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+    seen = {}
+
+    async def _fake_youtube(url, video_url, start):
+        seen["video_url"] = video_url
+        return queue_probe._finish(
+            url, "civicweb", "yt-dlp-metadata", 1500.0, "2026-08-10", None, start
+        )
+
+    monkeypatch.setattr(queue_probe, "_probe_youtube", _fake_youtube)
+    result = await probe_queue_entry(page)
+    assert seen["video_url"] == embed
+    assert result.verdict == "accept" and result.duration_seconds == 1500.0

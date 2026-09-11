@@ -430,6 +430,17 @@ class _RowWriter:
     def __init__(self, path: Path, fields: list[str]):
         path.parent.mkdir(parents=True, exist_ok=True)
         write_header = not path.exists()
+        if not write_header:
+            # WO-205: appending rows under a header from an older field list
+            # silently misaligns every later row (real 2026-09-11 case, 275
+            # rows). Refuse, and say which file to rebuild.
+            with path.open(newline="") as existing:
+                header = next(csv.reader(existing), [])
+            if header and header != list(fields):
+                raise RuntimeError(
+                    f"{path} has header {header[:4]}... but this run writes {list(fields)[:4]}... "
+                    "-- rebuild the sidecar under the current field list before appending"
+                )
         self._f = path.open("a", newline="")
         self._writer = csv.DictWriter(self._f, fieldnames=fields)
         if write_header:
@@ -1487,7 +1498,12 @@ async def pmn_entity_notices(
             timeout=pmn.FETCH_TIMEOUT,
         ) as resp:
             resp.raise_for_status()
-            notices = pmn._parse_results_table(await resp.text())
+            html = await resp.text()
+        # PMN's own outage page (its real spelling), seen for every entity
+        # on 2026-09-11 ~04:00 MT -- a listing failure, not "no notices".
+        if "echnical Difficulties" in html:
+            raise RuntimeError("PMN search returned its Technical Difficulties page")
+        notices = pmn._parse_results_table(html)
         if not notices:
             break
         out.extend(notices)

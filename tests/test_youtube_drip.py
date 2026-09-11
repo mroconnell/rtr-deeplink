@@ -49,11 +49,13 @@ def test_youtube_queue_lines_keeps_only_youtube_videos():
         "https://cityoftacoma.granicus.com/player/clip/7460",
         "https://www.youtube.com/@CityofEnnisTexas/streams",
         "https://www.youtube.com/embed/livestreaming?rel=0",
+        "https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=582",
     ]
     out = yd.youtube_queue_lines(lines)
     assert [u for _, u, _ in out] == [
         "https://www.youtube.com/watch?v=ax-OzF0VRk4",
         "https://youtu.be/L3DcyYnvty0",
+        "https://desmoines.civicweb.net/Portal/MeetingInformation.aspx?Id=582",
     ]
     assert out[0][2] == "https://www.youtube.com/channel/UCx"
     assert out[1][2] is None

@@ -155,7 +155,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (132)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (133)
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
@@ -249,7 +249,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (132)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (42)
+  Adapter & platform gaps  (43)
+    [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
@@ -293,7 +294,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (132)
     [LATER] A bare pasted Wistia media URL (no channel context) can show…
     [NEEDS-AUDIT] A jurisdiction string naming its state as a full word…
 
-Reliability, ops & cost  (15)
+Reliability, ops & cost  (16)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
@@ -302,7 +303,8 @@ Reliability, ops & cost  (15)
     `[NEEDS-AUDIT]` A single job still makes N consecutive pulls to the…
     `[NEEDS-AUDIT]` The 120s ffmpeg timeout is a flat value that doesn't…
     `[NEEDS-AUDIT]` East Lansing MI (Granicus): a new, deterministic…
-  Transcription queue & workers  (7)
+  Transcription queue & workers  (8)
+    [WAIT] Utah PMN substitute search: ~130 long PMN queue lines still…
     [JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
     [NEEDS-AUDIT] `chunk_plan` stores JSON `null` rather than SQL NULL, so
     [NEEDS-AUDIT] An OOM-killed chunk is completely invisible — it
@@ -3758,6 +3760,13 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Adapter & platform gaps
 
+- **[NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue lines resolve to no video at all — the adapter finds nothing playable on real `stream.php?location_id=…&id=…` pages.**
+  - **Issue**: WO-205's probe (2026-09-11) ran every Town Hall Streams line in the tier-3 queue through `townhallstreams.py`'s `resolve()`: 116 returned no `video_url`, 2 returned an HLS master that 404s, 7 resolved (e.g. `stream.php?location_id=94&id=75799`, `location_id=47&id=21880` are two of the 116).
+  - **Impact**: 118 queued Town Hall Streams meetings can never pass the ingest gate; the platform's queue share is dead weight until the adapter learns whatever those pages now embed.
+  - **Next action**: open 3–4 of the 116 in a real browser and compare the working 7 — a changed player embed or a login/age gate is the likely shape; fix the adapter against real pages, then re-probe with `scripts/probe_tier3_queue.py --reprobe`.
+  - **Constraint**: don't drop the 116 lines from the queue — the probe sidecar already marks them, so the feed skips them at no cost.
+  - **History**: `BACKLOG_DONE.md` WO-205 (2026-09-11).
+
 - **[JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has no end boundary, so a longer path segment is silently truncated into a fake id — three real pages carry a false "video is unavailable" permanent marker because of it.**
   - **Issue**: `app/platforms/youtube.py:23` captures `([A-Za-z0-9_-]{11})` with nothing after it, so `youtube.com/embed/livestreaming` becomes id `livestreami` (`/m/mount-vernon-tx`), `youtube.com/embed/videoseries?list=…` (a playlist embed) becomes `videoseries` (`/m/daviess-county-ky-fiscal-court-meeting-video-daviess-county-kentucky`), and Severn ON's CivicWeb page produced a 20-character non-YouTube id `oggrif3io7ylxfmbxnlz` through a path still unidentified (`/m/severn-township-nd-2025-06-10-…`). Found 2026-09-11 (WO-195) when a paced caption-fetch loop marked all three permanently "unavailable" — the ids never existed.
   - **Impact**: a placeholder or playlist embed on a government page is archived as a real meeting video, then permanently written off; the real channel behind each of the three is live and posting 2026 meetings.
@@ -4553,6 +4562,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   2026-08-31 run.
 
 ### Transcription queue & workers
+
+- **[WAIT] Utah PMN substitute search: ~130 long PMN queue lines still un-swapped because PMN's search endpoint was down during WO-205's run.**
+  - **Issue**: from ~04:00 MT 2026-09-11 every POST to `/pmn/searchresult.html` (the pilot's own unfiltered call included) returned PMN's "Technical Difficulties" page, so every PMN tenant in the substitute search recorded `none`.
+  - **Impact**: 43 of the 178 PMN lines recovered by the `.m4a` probe fix are over 90 minutes and still in the queue at full length; the 97 PMN lines whose "audio" field is a PDF/Word/zip/.wav are genuinely not media and stay rejected.
+  - **Next action**: once `python scripts/pmn_utah_pilot.py`'s search returns rows again, run `python scripts/find_tier3_short_meeting_substitutes.py search --platform utah_pmn --retry-none` then `apply --apply`, commit the queue/deferred files.
+  - **History**: `BACKLOG_DONE.md` WO-205 (2026-09-11).
 
 - **[JUST-DO-IT] `_existing_tier3_queue_urls()`'s dedup key is an exact
   string match, so two differently-formatted URLs for the SAME video can

@@ -106,10 +106,20 @@ def next_block_sleep(level: int) -> int:
     return BLOCK_SLEEPS_SECONDS[min(level, len(BLOCK_SLEEPS_SECONDS) - 1)]
 
 
+# Platforms whose meeting pages embed a YouTube video (CivicWeb and
+# PrimeGov delegate to the YouTube adapter -- see each adapter's own
+# docstring). Their queue lines belong to this lane too: the resolve is a
+# YouTube metadata call from this machine's address, and the probe then
+# dispatches on the resolved video's host (WO-205), so a line whose video
+# turns out not to be YouTube still ingests normally.
+YOUTUBE_DELEGATING_PLATFORMS = ("civicweb", "primegov")
+
+
 def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]]:
     """(raw line, url, source_url_override) for every queue line whose URL
-    is a YouTube video. Uses the feed's own line parser so the tab field
-    means the same thing here as there."""
+    is a YouTube video, or a page on a platform that embeds one. Uses the
+    feed's own line parser so the tab field means the same thing here as
+    there."""
     from scripts.feed_tier3_auto_transcription import _parse_queue_line
 
     out = []
@@ -119,11 +129,13 @@ def youtube_queue_lines(lines: List[str]) -> List[Tuple[str, str, Optional[str]]
             continue
         url, src = _parse_queue_line(line)
         try:
-            if detect_platform(url) != "youtube":
-                continue
+            platform = detect_platform(url)
         except UnsupportedPlatformError:
             continue
-        if not _YT_ID_RE.search(url):
+        if platform in YOUTUBE_DELEGATING_PLATFORMS:
+            out.append((line, url, src))
+            continue
+        if platform != "youtube" or not _YT_ID_RE.search(url):
             continue
         out.append((line, url, src))
     return out
