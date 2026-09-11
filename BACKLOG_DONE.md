@@ -124,6 +124,167 @@ daily cap is a measurement in progress, not a known-safe number.
 audio-lane block; report `daily_status.csv` counts weekly until the
 1,264-line YouTube backlog is fed.
 
+## WO-187: headless pass on 107 governments where every domain had already failed -- 0 managed challenges cleared, 9 stayed interactive; 3 real transcripts, 1 wrong ingest caught and reversed [Done 2026-09-11]
+
+**What was tested and why.** WO-141 found headless answered 0 of the
+hardest firewalls and did worse than plain browser headers. Ryan asked
+for a direct measurement on the specific population where it would
+matter most: 107 governments where every domain on file (primary and
+alternates) had already ended in a challenge page or an access-class
+reject. The question: how many of these are a Cloudflare "managed
+challenge" (a JavaScript check, no puzzle) that a real, honest browser
+clears on its own, versus a genuine interactive human-verification gate
+where this project always stops?
+
+Method: one Playwright Chromium browser, one host at a time, 5 seconds
+between hosts, the browser's own real user agent (not the spoofed
+desktop-Chrome string `wo147_access_ladder_sweep.py` uses for the
+ordinary access ladder — this pilot needed an honest identity to
+measure what one actually gets, not a disguised one). Each host: load
+once, and if a challenge marker appears, wait up to 15 seconds total
+for it to clear on its own. Never solve, click, or wait past that.
+`coverage_alternates.candidate_domains()` supplied each government's
+domains in file order, up to 3 tried. New script:
+`scripts/wo187_headless_challenge_sweep.py`, reusing
+`wo147_access_ladder_sweep.py`'s `is_challenge()`/
+`waf_family_from_headers()`/`find_platform_link()`/`find_hop_links()`
+and `wo134_confirmed_hits_ingest.py`'s `process_row()` unchanged for
+the resolve/ingest step, same as every other sweep in this project.
+
+**Result — the pilot's central question, in one table:**
+
+| Result | Count of 123 host renders |
+|---|---|
+| Rendered, no challenge ever shown | 82 |
+| Dead (DNS/connect/timeout) | 29 |
+| Interactive gate, stopped after 15 seconds | 9 |
+| Blocked headless (real HTTP error or blank page) | 3 |
+| Cleared a managed challenge after it appeared | 0 |
+
+Zero managed challenges cleared. All 9 hosts that showed a challenge
+stayed a challenge for the full 15-second window. Every challenge
+marker seen was Cloudflare's (16 more Cloudflare hosts rendered with no
+challenge at all, and 1 Imperva/Incapsula host also rendered clean — no
+Akamai, AWS WAF, or Sucuri challenge came up this run).
+
+**Governments (107), full outcome:**
+
+| Outcome | Count of 107 |
+|---|---|
+| Meeting/agenda found, no video | 51 |
+| No platform link found | 22 |
+| Blocked (12 dns-unresolvable, 6 cloudflare-challenge-blocked) | 18 |
+| Already covered | 7 |
+| Off-mission (a real video that is not a meeting) | 5 |
+| Ingested tier 1/2 (real transcript, live now) | 3 |
+| Error (a known SuiteOne adapter gap, see below) | 1 |
+
+Budget was 300 renders; 123 were used. No tier-3 (video, no captions)
+candidate came up — every video found already had captions.
+
+**3 real transcripts, all still live**, hand-checked against their
+government's own name by fetching the live page directly: Douglas
+County, MN (YouTube, 687 segments), Steele County, MN (Vimeo, 627
+segments), Smithfield city, UT (YouTube, 1,218 segments).
+
+**1 wrong ingest was caught and reversed before this entry was
+written, not left for a human to find later.** Capitol Heights town,
+MD's own YouTube channel titled a real clip "Council Member Victor
+James Sr interview for N'style back to school block party" — a
+promotional interview, not a meeting. `MEETING_ALLOWLIST` passed it on
+the word "Council" alone, and nothing in `PROMO_BLOCKLIST` caught
+"interview" as a non-meeting signal — the same class of false positive
+as WO-149's "Larry J. Dix Boardroom" and Millard County's civics
+explainer, a real governing-body word inside a title that isn't a
+meeting at all. It ingested live (93 segments) before being caught by
+hand. Fixed in three places, same session: (1) deleted via
+`POST /internal/admin/delete-pages` — dry run first, confirmed the
+exact slug, then the real delete, then confirmed a live 404; (2)
+`jurisdiction_coverage.csv` re-tagged `off-mission`, not counted as
+coverage; (3) root cause fixed at the source — `"interview"` added to
+`wo134_confirmed_hits_ingest.PROMO_BLOCKLIST`, with a regression test
+(`tests/test_wo187_meeting_title_filter.py`) using the real title, and
+the now-stale per-video pin removed from `tenant_overrides.csv` before
+it was ever committed. Note: `scripts/adhoc_civicplus_pipeline.py` (and,
+per its own comment, `scripts/nationwide_2404_ingest.py`) carry their
+own separate, unshared copies of this same blocklist/allowlist logic —
+only the one copy this sweep actually used was fixed here; unifying the
+three is a separate, larger cleanup, filed nowhere yet since it wasn't
+this WO's job to scope it.
+
+**1 real, unrelated bug found and filed, not fixed here.** Steele
+County, MN's real Vimeo page (content genuinely Steele County's — a
+transcript segment literally says "Steele County promotes respect in
+both its work environment and boardroom," and `gov_id` is correctly
+`us:county:27147`) displays the WRONG government name: "SC Board
+Meeting 2026-09-08 — Oak Bluffs, MA." `apply_display_jurisdiction()`
+only fills a blank jurisdiction, so the Vimeo resolve path itself set a
+real but wrong value — almost certainly the Vimeo video's own
+uploader/account display name, unrelated to the actual meeting. Content
+and `gov_id` are right; only the displayed name is wrong, so the page
+was left live rather than deleted. Filed in `BACKLOG.md`'s "Open bugs"
+section for a future session to fix in `app/platforms/vimeo.py`'s
+jurisdiction derivation.
+
+**1 already-known bug recurred, not re-filed, just updated.** Lincoln
+County, NM hit the same SuiteOne bare-tenant-root crash already tracked
+in `BACKLOG.md`'s Open bugs section (`SuiteOneAssetFinder.resolve()`
+raises a raw `ValueError` given a tenant homepage instead of a specific
+event URL) — the 4th county confirmed with this exact shape. That
+entry's Impact field was updated in place rather than filing a
+duplicate.
+
+**Caution.** The candidate list (`wo187_candidates.csv`, written by
+WO-184's continuation) wasn't a clean 100% filter of "every domain
+already a challenge/access reject" — it also carried rows already
+re-classified `plain`/`dns-unresolvable` by an earlier pass. All 107
+were run anyway, per this WO's own instruction to process the file in
+file order; this doesn't change the challenge-clearing result (that's
+measured per host render, independent of how the candidate got onto
+the list), but it does mean the 107-government outcome table isn't a
+pure read of "the hardest-blocked governments" specifically.
+
+**Recommendation.** Do not widen the access ladder's rung 4 to managed
+challenges based on this data — zero of 9 real Cloudflare challenges
+cleared within 15 seconds. The premise behind this pilot (that an
+ordinary browser navigation clears a managed challenge) did not
+reproduce here. Worth one more, narrower check before concluding either
+way: a longer settle window (60 seconds) on a fresh sample of
+Cloudflare-fronted hosts that were NOT already pre-filtered as hard
+failures, to tell apart "this specific population is just hard" from
+"managed challenges don't clear for headless at all." `docs/
+BREADTH_SWEEP_BRIEF.md` updated with this finding and recommendation.
+
+**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
+worker/ scripts/ tests/` clean. Full test suite passing, including the
+2 new regression tests in `tests/test_wo187_meeting_title_filter.py`.
+No database model changed, so no migration check was needed. Every
+number in this entry is read directly from `wo187_report.csv`/
+`wo187_host_results.csv`, not estimated.
+
+- **History**: `docs/BREADTH_SWEEP_BRIEF.md`, `docs/COVERAGE_HANDOVER.md`,
+  `rtr-business/research/ENUMERATION_METHODS.md` §250. Built on
+  `scripts/wo147_access_ladder_sweep.py` (WO-147, access-ladder
+  primitives), `scripts/coverage_alternates.py` (WO-181/184, alternate
+  domains), `scripts/wo134_confirmed_hits_ingest.py` (resolve/ingest
+  pipeline). Full per-host and per-government report:
+  `~/Documents/rtr-business/research/wo187_host_results.csv` /
+  `wo187_report.csv`.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+(3 new pins) and `scripts/wo134_confirmed_hits_ingest.py`
+(`PROMO_BLOCKLIST` fix) are real `app/`/`scripts/` files — on `main`
+after merge but not live until the next deploy. This is not urgent: the
+3 real pages already ingested this run are already live (ingest is a
+direct call to the production Archive, independent of a resolver
+deploy) — the pins only matter if the transcription worker ever
+re-resolves one of these same videos later, and the `PROMO_BLOCKLIST`
+fix only prevents a *future* recurrence of the same false positive, not
+anything already live. `docs/BREADTH_SWEEP_BRIEF.md`/`BACKLOG.md`
+changed (documentation only, no deploy needed). No file under
+`archive/`, `worker/`, or `render.yaml` changed. The research file
+lives in a separate repo with no deploy step.
+
 ## WO-200: every subagent under one session shares the same scratchpad, so generic scratch filenames collide -- hook gives each agent a private directory [Done 2026-09-11]
 
 - **[Done 2026-09-11] [EASY] PR #909 briefly carried WO-175's description

@@ -241,6 +241,14 @@ PROMO_BLOCKLIST = (
     "year in review",
     "commercial break",
     "tour of",
+    # Real, confirmed-live false positive caught by WO-187 (2026-09-11):
+    # Capitol Heights, MD's YouTube channel titled a real clip "Council
+    # Member Victor James Sr interview for N'style back to school block
+    # party" -- "Council" alone satisfies MEETING_ALLOWLIST, and nothing
+    # here caught that the video is a promotional interview, not a
+    # meeting recording. Ingested live before being caught by hand;
+    # flagged for deletion (BACKLOG_DONE.md's WO-187 entry).
+    "interview",
 )
 
 HOP2_FETCH_CAP = 4
