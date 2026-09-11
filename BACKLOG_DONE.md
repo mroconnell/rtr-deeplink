@@ -420,6 +420,140 @@ resolver and both transcription workers are redeployed (production is
 currently running everything merged up to this morning); the 6 queued
 videos also still need an actual `bulk_ingest.py` run with real Archive
 credentials before they become pages.
+## WO-190: resolved 668 never-tested research-file URLs -- 138 new transcripts, 68 queued, one wrong-tenant catch reverted by hand [Done 2026-09-11]
+
+Ryan's ask: the research file (`rtr-business/research/jurisdiction_coverage.csv`)
+had never-tested rows -- both `transcribed` and `reject_reason` blank --
+that already carried a real `example_meeting_url` or
+`example_agenda_or_calendar_url` someone had found by hand. Resolving one
+of those is a single fetch, not a hunt: the cheaper cousin of WO-151's
+research-URL ladder sweep.
+
+**What was built.** `scripts/wo190_resolve_research_urls.py` -- a driver,
+not a fifth ladder implementation. It imports (never copies)
+`scripts/wo151_research_url_ladder_sweep.py`, reusing its monkeypatched
+`LadderFetcher` (plain HTTP, browser headers once after a 403/dropped
+connection, never after a 404, stops dead at a challenge),
+`act_on_resolved_wo151` (the wrong-government checks, probe-before-queue,
+Ryan's video-only ingest rule) and `resolve_lead_wo151` (the YouTube
+block circuit breaker) as-is. It turns off the headless rung entirely
+(`w151.HEADLESS_BUDGET = 0`, per this WO's own instructions), raises the
+politeness delay to 2 seconds, and builds its own candidate list and
+report schema. `scripts/wo190_resolve_research_urls.py --write-pins`
+applies staged pins the same way `hub_sweep_wo126.py`'s own
+`--write-pins` flag does.
+
+**Candidates.** Built at run time, not hard-coded: never-tested rows
+with a real `gov_id` and either URL, minus any `gov_id` already owned
+that night by WO-184/WO-189 (0 overlap found, checked before and after
+the run). The live count at build time was 668 -- up from the 551 named
+in this WO's own brief, because several other sessions were writing to
+`jurisdiction_coverage.csv` at the same time (expected, per
+`docs/COVERAGE_HANDOVER.md`'s multi-session note). 519 carried a
+specific meeting URL, 150 an agenda/calendar URL only (a fourth row's
+population changed the split slightly; see `research/wo190_candidates.csv`).
+4 rows (two state agencies, one township, one provincial legislature)
+had no `gov_id` and were excluded outright, matching the brief.
+
+| Result | Count of 668 |
+|---|---|
+| Already had a page (fresh export, or a consolidated county-form id) | 259 |
+| Captions available -- real page live now | 138 |
+| Video, no captions -- newly queued for cloud transcription | 18 |
+| Video, no captions -- already queued by an earlier sweep (confirmed, not new) | 50 |
+| Real video link, but the clip itself failed the tier-3 probe (too short/dead) | 2 |
+| No usable video or platform link, after the full ladder | 201 |
+
+The 201 "no result" rows break down as:
+
+| Reason | Count of 201 |
+|---|---|
+| No platform link found anywhere | 118 |
+| A real video exists, but it isn't a real meeting (title check) | 36 |
+| The research row's own URL leads to a different, real government | 28 |
+| A real meeting was found, but it has no video | 11 |
+| A real technical/adapter error | 4 |
+| Blocked by a plain request (no browser-header retry earned it) | 3 |
+| Blocked by a "prove you're human" page | 1 |
+
+Every one of the 206 real finds (138 + 18 + 50) answered on a plain,
+honest request -- none needed the browser-header retry, and headless was
+off for this WO. That is a direct result of the candidate pool: a human
+had already found and recorded a real, working URL for every row, so the
+access ladder rarely had to do more than fetch it.
+
+By population: over 100,000 (66 rows, 27 new finds), 25,000-99,999 (119
+rows, 38 new finds), 5,000-24,999 (144 rows, 37 new finds), 1,000-4,999
+(143 rows, 54 new finds), under 1,000 (196 rows, 50 new finds). Smaller
+governments found video at a noticeably higher rate than larger ones --
+consistent with WO-151/WO-181's own finding that a large government is
+more likely to already be covered, leaving less headroom.
+
+**A real wrong-tenant catch, found and reverted by hand.** A systematic
+post-hoc audit (comparing every "found" row's own resolved tenant
+subdomain against the government's name, for all 206) caught one genuine
+miss the automated wrong-government checks missed entirely: Beltrami
+city, MN's own `example_meeting_url` resolved cleanly to
+`minnesotapuc.granicus.com` -- a live fetch of the clip confirms it is a
+real 2013 Minnesota Public Utilities Commission hearing, not a Beltrami
+government meeting. Same state, no "county" keyword, no leading "Name,
+ST" in the title -- every existing check passed it. The queue line, its
+probe sidecar row, the staged pin, and the `jurisdiction_coverage.csv`
+row were all reverted by hand before this PR. Filed as a `BACKLOG.md`
+`[JUST-DO-IT]` entry (a host-name-vs-government-name check), with the
+important caution that Shorewood city, MN's own real, legitimate find --
+a shared regional media consortium tenant (`reflect-lmcc.cablecast.tv`)
+with zero name-token overlap -- must keep passing, so the fix has to be a
+manual-review flag, not an auto-reject.
+
+**A second real bug, caught by this WO's own CI gate run, not the
+sweep.** Two governments (Hollywood Park town, TX and Kinderhook
+village, NY) each already had their own real video queued by an earlier
+sweep under one URL form; this run's own candidate row for each pointed
+at the *identical* video via a `youtu.be` short link, and the dedupe
+check -- which runs before `act_on_resolved_wo151`'s own
+embed-to-`watch?v=` URL normalization -- missed it, appending a literal
+duplicate line. `tests/test_transcription_queue_files.py::test_no_
+duplicate_rows` caught it before merge; both duplicate lines (and their
+duplicate probe-sidecar rows) were removed by hand. Filed as a second
+`BACKLOG.md` `[JUST-DO-IT]` entry (move the normalization step before
+the dedupe check).
+
+**A real bug fixed before the first live run.** The candidate builder
+originally passed `jurisdiction_coverage.csv`'s `state_or_province`
+column straight through as `Cand151.state` -- but that column is full
+state names ("Missouri"), not the two-letter abbreviation
+`_state_or_kind_conflict()` (reused from `wo145_api_first_sweep.py`)
+expects. 4 of the first 20 candidates were misclassified
+`wrong-domain-mapping` as a direct result (a row's own state never
+matched itself). Fixed with a full-name -> abbreviation map built from
+`app/utils/jurisdiction_data/us_states.csv`/`ca_pr.csv`; the 3 affected
+rows were re-run under the fix (2 resolved correctly once the bug was
+gone; the third, Clay County MO -> a Claycomo town portal, was a
+genuine, different wrong-tenant mapping and correctly stayed rejected).
+
+**Files:** `scripts/wo190_resolve_research_urls.py` (new, this repo);
+`app/utils/jurisdiction_data/tenant_overrides.csv` (10 new fallback
+pins); `scripts/tier3_auto_transcription_queue.txt` (18 new lines, net,
+after the two reverted duplicates) and its probe sidecar;
+`rtr-business/research/jurisdiction_coverage.csv` (403 rows updated via
+`rtr-business/research/wo190_apply_to_jc.py` -- every one of the 407
+candidates whose outcome wasn't `already_covered`/`error` writes at
+least `reject_reason`, including the 201 that found nothing, so this
+count is larger than the 206 real finds above -- following
+`ENUMERATION_METHODS.md` §158's lock/re-read/floor/atomic-write
+protocol, batches of 100); `rtr-business/research/wo190_report.csv` (all
+668 rows, resumable); `rtr-business/research/wo190_discovery_seeds.csv`
+(seeds for rtr-discovery); `rtr-business/research/ENUMERATION_METHODS.md`
+§240.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`,
+`scripts/tier3_auto_transcription_queue.txt` and its probe sidecar are
+now on `main` but **not live** until the resolver and both
+transcription workers are redeployed -- deploys are manual
+(`render.yaml`'s `autoDeploy: false`). The 138 pages already ingested via
+the live Archive API are already live on the site right now, independent
+of this PR merging, the same way WO-151's were.
 
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
