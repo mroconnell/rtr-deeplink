@@ -1,5 +1,81 @@
 # Backlog — done
 
+## WO-223: search-engine pass on the 43 counties of 5,000+ WO-218 could not find a website for [Done 2026-09-11]
+
+**What was done and why.** WO-218 found websites for 34 of 134 counties
+missing one, and left 43 with no website found after its usual sources
+(NACo, Wikidata, a state directory, an automated guess). Ryan asked for a
+plain search-engine pass on those 43: for each county, search the web
+with two different phrasings, actually open and read every promising
+page, and only accept a website if it clearly belongs to that county (its
+name and state on the page, or a `.gov` address, or a real agenda/meeting
+page).
+
+**Result.**
+
+| Outcome | Count of 43 | What it means |
+|---|---|---|
+| Website found | 16 | A real, verified county website, confirmed by reading the page |
+| No website, but a Facebook page | 1 | Laurel County, KY — a real Fiscal Court Facebook page is the only official channel |
+| No website found | 26 | No official channel of any kind turned up |
+
+Of the 16 websites found, one (Pike County, AL) had a real video — a
+recording of a real Pike County Commission meeting, correctly titled and
+dated — hosted on a local cable channel's YouTube account rather than the
+county's own. It passed the video's own title/content check, was checked
+for length and quality (about 46 minutes, accepted), and is now queued
+for automatic transcription. No other website found a meeting with
+video, matching the general finding that most small counties with a
+website still don't link video anywhere on it.
+
+**Caution.** This WO independently hit and fixed the same bug WO-222
+fixed the same evening in the same shared file
+(`scripts/wo134_confirmed_hits_ingest.py`): the page it creates for a
+video meeting was not sending the government's id along with it, meaning
+a page on a shared host (like YouTube) could land unlinked to any
+government until its pin is separately deployed. WO-222's version landed
+on `main` first and covers more scripts than this WO's own fix touched,
+so this WO's rebase keeps WO-222's fix and drops the duplicate.
+
+A second, smaller bug was found and hand-fixed rather than left broken: one
+tier-3 candidate's queue-side pending record briefly failed to save during
+the live run even though the run's own report said it worked. Recovered by
+hand from the run's own recorded data (not guessed) and logged in
+`BACKLOG.md` for someone to properly fix later — a different mechanism
+than WO-224's own tier-3 fix below (that one is about the *finish/probe*
+step dropping a cached accept verdict; this one is about the *ladder
+sweep*'s pending-candidate write never reaching disk).
+
+A concurrent-editing collision was caught and corrected before it caused
+harm: another session's own unrelated, unfinished work in the shared
+research file was briefly swept into this WO's file save by mistake (a
+git command quirk — `git commit -- <pathspec>` re-reads the working tree
+rather than a previously staged snapshot — not a data problem). Caught
+immediately by checking the change afterward, and corrected with a
+follow-up save that put the other session's pending work back exactly as
+it was, untouched and still theirs to save when ready.
+
+**Recommendation.** 27 counties still have no confirmed government
+website. Most of them are small enough that they may simply not run one;
+this is recorded plainly rather than guessed at, with the exact searches
+tried noted so nobody repeats them. Pike County, AL's queued meeting will
+appear on the site automatically once transcribed; no action needed.
+
+**Deploy status.** The Pike County, AL page's queue line and the video
+pin are on `main` but need a deploy before they take effect (the cloud
+worker picks up the queue and the pin only after that). Nothing else
+from this WO needs a deploy — the research-file updates are data only.
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§267. Files: `rtr-business/research/wo223_find_domains.py` (the hand
+search pass, with evidence per county) -> `wo223_domains_resolved.csv`;
+`rtr-deeplink/scripts/wo223_ladder_sweep.py` (reused from
+`wo191_access_ladder_sweep.py`) -> `wo223_ladder_report.csv`,
+`wo223_finish_tier3.py` (reused from `wo191_finish_tier3.py`) ->
+`wo223_tier3_finish_log.csv`; `rtr-business/research/wo223_build_
+final_report.py` -> `wo223_report.csv` (43 rows); `wo223_apply_to_jc.py`
+and its per-outcome logs.
+
 ## WO-224: tier-3 finish step goes through one shared helper that honours a cached accept verdict instead of dropping it [Done 2026-09-11]
 
 **What was done and why.** Ryan asked for this fix before the next sweep
