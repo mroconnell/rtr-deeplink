@@ -1,5 +1,110 @@
 # Backlog — done
 
+## WO-228: hub links ranked and verified from real examples, replacing the first-match finder that recorded event calendars as meeting hubs [Done 2026-09-11]
+
+**What was done and why.** Ryan's 30-row spot-check found several
+governments whose recorded meeting hub was really an events calendar, or
+a page one hop short of the real agenda/video hub (Madison County TN,
+Littleton CO, Atlantic City NJ, McLeod County MN, Hagerstown MD, among
+others). The root cause, confirmed in code: `find_hop_links()` (the hop
+finder every sweep imports from `scripts/wo147_access_ladder_sweep.py`)
+took the first link in document order whose text matched any of twelve
+unranked words — "calendar" in a site's nav bar won the slot as often as
+the real agenda/minutes/video link. Re-measured from the coverage
+registry at run time: 362 governments with a hub URL and no Archive page
+have a calendar/events/dashboard-shaped hub (the brief's own figure was
+358; close enough to confirm the shape). Ryan asked for the fix to come
+from real examples, not a guessed word list — this WO built two real
+samples (90 governments where a real hit followed a "no platform link
+found" verdict, stratified across 13 platform families; 60 of the 362
+calendar-shaped hubs) and built the ranking from what they actually show,
+not a study of code alone.
+
+**Result — what led to the real hub vs. a wrong page (top phrases).**
+
+| Link-text phrase | Led to the real hub (count) | Led to a wrong page (count) |
+|---|---|---|
+| Agendas & minutes (both words) | 14 | 0 |
+| Calendar (word alone, no other qualifier) | 0 | 14 |
+| Bare platform name (YouTube/Vimeo link) | 10 | 0 |
+| Meeting video / watch video / video archive (phrase) | 5 | 0 |
+| Events calendar (both words) | 0 | 3 |
+| Events (word alone) | 0 | 3 |
+| Meeting (word alone) | 3 | 0 |
+| Council/commission meetings (phrase) | 0 | 2 |
+| Video (word alone) | 2 | 0 |
+| Agenda center | 1 | 0 |
+| Agenda (word alone) | 0 | 1 |
+| Webcam | 1 | 0 |
+| Stream/webcast | 1 | 0 |
+
+**Result — the 60 calendar-shaped hubs, by kind.**
+
+| Kind | Count of 60 | What it means |
+|---|---|---|
+| General events calendar | 48 | Real routine municipal items mixed in (library, 5K, holiday closure, recycling, trash) |
+| Thin or JS-rendered calendar shell | 6 | No routine words, no document links, no login markers — events load client-side |
+| Meetings calendar, no documents found | 4 | Meeting-body words present but no document link visible to a plain fetch |
+| Fetch failed (403) | 2 | Could not classify |
+
+23 of the 60 (38%) already had a sibling agenda/minutes/video link on the
+same page that the old finder passed over entirely.
+
+**Ryan's three hypotheses, tested.** (a) Video-archive/meeting-video
+phrases are strong positives — confirmed: all 19 video/platform-related
+matches in the positive sample led to the real hub, none led to a wrong
+page. (b) "Agendas & Minutes" marks a real meeting but often isn't the
+same page as the video — confirmed: of 30 `wo148_report.csv` rows with
+both a meeting URL and a video URL recorded, 14 (47%) land on a
+genuinely different host. (c) Routine municipal items mark the wrong
+calendar — confirmed: 80% of the calendar-shaped sample mixed in at
+least one (library, 5K, holiday, closed, recycling were the top five).
+
+**What was built.** `find_hop_links()` now scores every candidate
+instead of taking the first match, with weights from the table above
+(platform host +11, agenda+minutes +10, strong video phrase +9, agenda
+center +8, bare calendar/events with no other word −6, a routine word
+−8). Two new helpers back it up: `looks_like_document_hub(html)` checks
+a fetched candidate for real document/platform evidence before trusting
+it, and `find_calendar_entry_links(html, url, limit=2)` takes one more
+hop into a calendar's first two dated entries when the calendar itself
+shows none. The function signature and `MAX_HOP_LINKS` are unchanged, so
+every existing importer (`wo184_onehop_pilot.py`,
+`wo187_headless_challenge_sweep.py`, `wo217_group1_sweep.py`,
+`wo217_group2_sweep.py`, `coverage_alternates.py`) keeps working with no
+changes of its own. 27 new tests run against 19 real pages fetched live
+and saved as fixtures (`tests/fixtures/wo228_hub_ranking/`), including
+the four named spot-check governments — all four now rank their real
+hub above the old wrongly-recorded one. A live spot-check against
+Ryan's 21 flagged governments found the new ranking correct or stable on
+15, could not verify 5 live today (403s and reset connections, not
+ranking failures), and surfaced one new risk worth a human look:
+Farmington MO's homepage carries a direct YouTube link, but it belongs
+to the public library, not the city — the existing hand-check rule
+exists for exactly this, and nothing was keyed to it.
+
+**Caution.** This was a study-plus-code WO. No ingest happened, no page
+was created or deleted, and the 161 already-recorded calendar-shaped
+hubs were **not** re-run against the fixed ranker — that re-run is a
+separate WO, to run once Ryan has read this table. Eight of the 90
+positive-sample anchors matched a real `hit_url` from the upstream
+reports that turned out, on a fresh look at the live page, to be an
+unrelated department page rather than a meeting page — a data-quality
+note about those upstream reports, not about this WO's own matching.
+
+**Recommendation.** Read this table, then run the 161-row re-run as its
+own WO: re-fetch each government's homepage, run the new ranked
+`find_hop_links()`, and where it surfaces a real agenda/minutes/video
+hub, update `jurisdiction_coverage.csv`'s `example_agenda_or_calendar_url`
+through the usual §158 write protocol.
+
+**Deploy status.** Everything here is code in `rtr-deeplink` (no
+`app/`/`archive/`/`worker/` runtime paths touched) plus research files in
+`rtr-business`. Nothing here needs a Render deploy; the next sweep that
+imports the fixed `find_hop_links()` gets the new ranking automatically
+once merged. Full study, both tables, the weight list and the spot-check
+detail: `rtr-business/research/ENUMERATION_METHODS.md` §270.
+
 ## WO-227b: CivicClerk events now hand off a BoxCast video link to the BoxCast adapter, and five more BoxCast governments are pinned [Done 2026-09-11]
 
 **What was done and why.** WO-227 (just above) built a standalone

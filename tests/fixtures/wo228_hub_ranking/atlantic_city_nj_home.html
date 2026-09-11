@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html ng-app="alphaModule" lang="en">
+<head prefix="og: http://ogp.me/ns#">
+    <base href="/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta property="og:title" content="The Official Website of City of Atlantic City, NJ - Home" />
+    <meta property="og:description" content="The official website of City of Atlantic City, NJ. Find news and information about our government and learn more about our programs and services." />
+    <meta property="og:image" content="http://www.acnj.gov/_Assets/img/share-main-image.png" />
+
+
+    <title>The Official Website of City of Atlantic City, NJ - Home</title>
+
+    <!-- WEBSITE FAVICONS -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+<meta name="msapplication-TileColor" content="#00aba9">
+<meta name="theme-color" content="#ffffff">
+
+    <!-- Bootstrap CDN -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- GENERAL CSS -->
+    <link href="/_Assets/css/default.min.css" rel="stylesheet"/>
+<link href="/_Assets/css/libs/perfect-scrollbar/perfect-scrollbar.css" rel="stylesheet"/>
+
+    
+
+    <!-- Add to Calendar -->
+    <link href="https://addtocalendar.com/atc/1.5/atc-style-blue.css" rel="stylesheet" type="text/css">
+
+    <!--[if IE 9]>
+        <style>
+         aside ul {
+            filter:none;
+        }
+        </style>
+    <![endif]-->
+    <!--[if IE]>
+        <style>
+        a.quick-links-tab {
+            right: 15px;
+        }
+        </style>
+    <![endif]-->
+    <!--[if lt IE 9]>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/respond.js/1.4.2/respond.js"></script>
+    <![endif]-->
+    <!-- Tabulator CSS -->
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+    <style>
+        .dyn-page-content .wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .dyn-page-content .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 12px
+        }
+        .dyn-page-content .controls input, .dyn-page-content .controls select {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px
+        }
+        .dyn-page-content .export-bar {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap
+        }
+        .dyn-page-content .btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f8f8;
+            cursor: pointer
+        }
+        .dyn-page-content .btn:hover {
+            background: #f0f0f0
+        }
+        .dyn-page-content #table {
+            border: 1px solid #eee;
+            border-radius: 10px
+        }
+    </style>
+
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6DEXM16Y4W"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-6DEXM16Y4W');
+    </script>
+
+    <!-- CDN FILES -->
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600,700" rel="stylesheet">
+    <script src="https://use.fontawesome.com/f0b8f80fb4.js"></script>
+
+</head>
+<body id="site-body">
+
+    <!-- NO JS WARNING -->
+    <noscript>
+        <div class="row" style="background-color:red; text-align:center; color:white; font-size:24px">You don't have javascript enabled. Please enable it...</div>
+    </noscript>
+
+    <!-- OVERLAY MASK -->
+    <div id="overlay" onclick="hideAllOverlayItems();"></div>
+
+    
+    <a id="quicklinks-btn" class="quick-links-tab">&nbsp;</a>
+
+    <!-- SIDEBAR QUICK LINKS -->
+    <create-quicklinks-sidebar></create-quicklinks-sidebar>
+    <!-- END: SIDEBAR QUICK LINKS -->
+    
+
+    <div class="container-fluid site-container" id="Home">
+        <div class="row site-header-wrap">
+
+            <header class="site-header" role="banner">
+
+                
+
+                <!-- TICKER -->
+                <p class="ticker"></p>
+
+                <!-- LOGO -->
+                
+    <section class="container" style="position:relative;">
+
+        <!-- GOOGLE TRANSLATE BUTTON -->
+        <div id="translate-header-btn" class="pull-right">
+            <a href="javascript:;" data-toggle="modal" data-target="#popup-translate"><i class="fa fa-globe"></i> <span>Translate</span></a>
+        </div>
+
+        <!-- Logo -->
+        <div id="logo-container">
+            <a href="/">
+                <img src="/_Assets/img/logo/website-logo.png" class="img-responsive" alt="Website Logo" height="140" style="margin:0 auto;" />
+            </a>
+        </div>
+    </section>
+
+
+                <!-- MAIN MENU -->
+                <div id="main-menu-container">
+                    <create-menu-header title="Atlantic City, NJ"></create-menu-header>
+                </div>
+
+                <!-- SEARCH BAR DESKTOP -->
+                <div id="search-bar-container">
+                    <div class="container" style="padding-top: 15px;">
+                        <!-- Google Custom Search Engine -->
+                        <script async src="https://cse.google.com/cse.js?cx=b7b33db6e216dd8ae"></script>
+                        <div class="gcse-searchbox-only"></div>
+                    </div>
+                </div>
+
+            </header>
+
+            
+            
+
+    <!-- MAIN SLIDER HOME -->
+    <div class="placeholder-loading-slider">
+        <create-slider-header></create-slider-header>
+    </div>
+
+    <section class="feature-icons-section">
+        <div class="nav-arrows prev hidden"><i class="fa fa-angle-left"></i></div>
+        <div class="container">
+            <div id="features-icons-drag" class="outerWrapper">
+                <ul class="innerWrapper">
+                    <li class="icons first" style="position: relative; border: 1px solid #028096; background-color: #FFF; border-radius: 9px;">
+                        <a href="/pages/legal-ads" style="color: #028096 !important; text-align: center; display: block;">
+                            <i class="fa fa-newspaper-o" style="color: #028096 !important; padding-bottom: 2px !important;"></i>
+
+                            <span style="display: block; font-weight: bold;">
+                                Legal Ads
+                            </span>
+
+                            <span style="
+                                display: block;
+                                font-size: 12px;
+                                color: #666;
+                                margin-top: 2px;
+                                line-height: 1;
+                            ">
+                                &amp; Archive
+                            </span>
+                        </a>
+
+                        <span style="
+                            position: absolute;
+                            top: 0;
+                            right: 0;
+                            background: #e63946;
+                            color: #fff;
+                            font-size: 10px;
+                            padding: 2px 6px;
+                            border-radius: 0 8px 0 8px;
+                            font-weight: bold;
+                            line-height: 1;
+                            z-index: 1;
+                        ">
+                            New!
+                        </span>
+                    </li>
+                    <li class="icons">
+                        <a href="https://main.govpilot.com/web/public/a89a84ca-389_Report-a-Concern-atlanticcity?uid=6910&ust=NJ&pu=1&id=0" target="_blank">
+                            <i class="fa fa-warning"></i>
+                            <span>Report a Concern<br />CITISTAT</span>
+                        </a>
+                    </li>
+                    <li class="icons">
+                        <a href="/calendar">
+                            <i class="fa fa-calendar"></i>
+                            <span>Calendar</span>
+                        </a>
+                    </li>
+
+                    <li class="icons">
+                        <a href="/forms">
+                            <i class="fa fa-file"></i>
+                            <span>Online Forms / Payments</span>
+                        </a>
+                    </li>
+
+                    <li class="icons">
+                        <a href="/_Content/pdf/Your-Tax-Dollars-At-Work.pdf" target="_blank">
+                            <i class="fa fa-money"></i>
+                            <span>Your Tax Dollars At Work</span>
+                        </a>
+                    </li>
+
+                    <li class="icons last">
+                        <a href="https://www.greatdayatlanticcity.com/" target="_blank">
+                            <i class="fa fa-group"></i>
+                            <span>LIVE, WORK, INVEST</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="nav-arrows next hidden"><i class="fa fa-angle-right"></i></div>
+    </section>
+
+
+        </div>
+
+        <!--  -->
+        <main class="main-content" role="main">
+            <div class=" container ">
+                <!-- PAGE CONTENT -->
+                
+
+
+
+<!-- SPLASH POPUP -->
+
+
+
+
+<!-- NEWS WIDGET -->
+<section class="col-md-8 primary nav-id" id="primary" data-page="hm">
+    <section class="inner-section">
+        
+        <create-notices-widget />
+    </section>
+    <section class="inner-section">
+        
+        
+
+
+<nav class="section-tabs theme-default">
+    <ul class="nav nav-pills nav-justified">
+        <li id="tabNews" class="tab-1 active"><a href="#section-news" role="tab" data-toggle="tab">News &amp; Events</a></li>
+        <li id="tabNotices" class="tab-2"><a href="#section-notices" role="tab" data-toggle="tab">Official Notices</a></li>
+        <li id="tabArchives" class="tab-3"><a href="#section-archives" role="tab" data-toggle="tab">Archives</a></li>
+    </ul>
+</nav>
+
+
+
+<div class="tab-content">
+    <section class="tab-pane fade in active" id="section-news">
+        <create-news-article-widget type="news" tag="" take="5" />
+    </section>
+
+    <section class="tab-pane fade in" id="section-notices">
+        <create-news-article-widget type="notice" tag="" take="5" />
+    </section>
+
+    <section class="tab-pane fade in" id="section-archives">
+        <create-news-article-widget type="archive" tag="" take="5" />
+    </section>
+</div>
+    </section>
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                <!-- SIDEBARS -->
+                 <aside class='col-md-4 sidebar'> 
+                
+                
+    
+
+<section class="row sidebar-resources">
+    <div class="col-md-12">
+
+        <h3 class="title-sidebar">Resources</h3>
+
+        <div class="panel-group section-accordion" id="accordion">
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse1">
+                            Upcoming Meetings
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse1" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <create-meeting-widget take="8" tag="" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse2">
+                            Community Events
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse2" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <create-event-widget take="8" tag="" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse3">
+                            Financial Documents
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse3" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <create-budget-widget />
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse4">
+                            Elected Officials
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse4" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <create-elected-widget />
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        <a class="accordion-toggle" data-toggle="collapse" data-parent="#accordion" href="#collapse5">
+                            Departments
+                        </a>
+                    </h4>
+                </div>
+                <div id="collapse5" class="panel-collapse collapse">
+                    <div class="panel-body">
+                        <create-department-list-widget />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="text-center">
+
+    <!-- Elocal TV -->
+    
+
+    <!-- AC Alerts -->
+    <a href="https://www.acnj.gov/pages/acalerts"><img src="/_Assets/img/ACAlerts.png" alt="Receive ACAlerts - SignUp, Stay Informed" class="img-responsive" style="padding:20px;"></a>
+    <div style="background-color:#eee; border-radius:8px; padding:22px 10px;">
+        <img src="/_Assets/img/gov-alert-app.png" alt="Download the Gov Alert App" />
+        <a href="https://itunes.apple.com/us/app/govalert/id1181460828?mt=8" target="_blank">
+            <img src="/_Assets/img/iOS_Badge.png" style="margin:20px 0;" alt="Download on the App Store" />
+        </a>
+        <a href="https://play.google.com/store/apps/details?id=com.govpilot.govalert&hl=en" target="_blank">
+            <img src="/_Assets/img/google-play-badge.png" alt="Get it on Google Play" />
+        </a>
+    </div>
+
+    <div style="margin-top:30px;"></div>
+
+    
+
+    <a href="https://vt.fishbowlmedia.co/atlantic-city-black-cultural-heritage-tour/index.html" target="_blank" rel="noopener">
+        <video width="356" height="200" autoplay muted loop playsinline>
+            <source src="/_Content/video/ac-black-cultural-heritage-tour-thumbnail.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+        </video>
+    </a>
+ 
+
+    <div id="tourbookwrap" style="margin-top:30px;"></div>
+    <script async src="//www.elocallink.tv/mlink/mlink2/php/mlink2.php?id=w1y8A7w91"></script>
+</section>
+
+<section class="buttons-resources">
+    <create-quicklinks-widget tag="Home"></create-quicklinks-widget>
+</section>
+    <section class="row sb-section">
+    <div class="col-md-12 prk plk">
+
+        <h3 class="title-sidebar">Social Media</h3>
+
+        <div class="section-social">
+
+            <!-- Twitter Widget -->
+                <a class="twitter-timeline" data-lang="en" data-height="600" href="https://twitter.com/https://twitter.com/AtlanticCityGov">Tweets by https://twitter.com/AtlanticCityGov</a>
+                <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+            <!-- Divider -->
+            <div style="padding:20px 0;"></div>
+
+            <!-- Facebook Widget -->
+                <div class="fb-like-box" data-href="https://www.facebook.com/AtlanticCityGov" data-width="520px" data-height="600px" data-colorscheme="light" data-show-faces="true" data-footer="true" data-header="true" data-stream="true" data-show-border="false"></div>
+                <script>
+                    (function (d, s, id) {
+                        var js, fjs = d.getElementsByTagName(s)[0];
+                        if (d.getElementById(id)) return;
+                        js = d.createElement(s); js.id = id;
+                        js.src = "//connect.facebook.net/en_US/sdk.js#xfbml=1&version=v2.0";
+                        fjs.parentNode.insertBefore(js, fjs);
+                    }(document, 'script', 'facebook-jssdk'));</script>
+
+
+        </div>
+
+
+    </div>
+</section>
+
+    
+<section class="row sb-section">
+    <div class="col-md-12 prk plk">
+
+    </div>
+</section>
+
+
+                
+                 </aside> 
+            </div>
+        </main>
+
+        
+    <!-- 3 BUTTONS -->
+    <div class="featured-home-buttons container">
+        <div class="button-parent col-sm-4 text-center">
+            <div class="buttons-child button-01">
+                <a href="https://map.govpilot.com/map/NJ/atlanticcity" target="_blank">
+                    <div class="button-label">
+                        <span>GIS MAP</span><br />
+                        <img src="/_Assets/img/ico/fast-forward-button.png" alt="Gis Map Page Link" width="32" class="icon-arrow" style="margin-top:10px!important;" />
+                    </div>
+                </a>
+            </div>
+        </div>
+        <div class="button-parent col-sm-4 text-center">
+            <div class="buttons-child button-02">
+                <a href="/meetings">
+                    <div class="button-label">
+                        <span>City Council Meetings</span><br />
+                        <img src="/_Assets/img/ico/fast-forward-button.png" alt="City Council Meetings Page Link" width="32" class="icon-arrow" style="margin-top:10px!important;" />
+                    </div>
+                </a>
+            </div>
+        </div>
+        <div class="button-parent col-sm-4 text-center">
+            <div class="buttons-child button-03">
+                <a href="https://wipp.edmundsassoc.com/Wipp/?wippid=0102" target="_blank">
+                    <div class="button-label">
+                        <span>Pay Taxes</span><br />
+                        <img src="/_Assets/img/ico/fast-forward-button.png" alt="Pay Taxes Page Link" width="32" class="icon-arrow" style="margin-top:10px!important;" />
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEWSLETTER SECTION -->
+    <section class="container home-bottom-slider" style="margin-bottom:60px;">
+        <div id="carousel-example-generic" class="carousel slide lazy-load" data-ride="carousel">
+            <!-- Indicators -->
+            <ol class="carousel-indicators">
+                <li data-target="#carousel-example-generic" data-slide-to="0" class="active"></li>
+                <li data-target="#carousel-example-generic" data-slide-to="1"></li>
+                <li data-target="#carousel-example-generic" data-slide-to="2"></li>
+                <li data-target="#carousel-example-generic" data-slide-to="3"></li>
+                <li data-target="#carousel-example-generic" data-slide-to="4"></li>
+                
+            </ol>
+
+            <!-- Wrapper for slides -->
+            <div class="carousel-inner" role="listbox">
+                <div class="item active"><img src="/_Content/img/slider-footer/slider-footer01.jpg" alt="Atlantic City Boardwalk View" width="100%" /></div>
+                <div class="item"><img data-src="/_Content/img/slider-footer/slider-footer02.jpg" alt="Atlantic City Beach Aerial View" width="100%" /></div>
+                <div class="item"><img data-src="/_Content/img/slider-footer/slider-footer03.jpg" alt="Atlantic City Fireworks View" width="100%" /></div>
+                
+                <div class="item"><img data-src="/_Content/img/slider-footer/slider-footer05.jpg" alt="Atlantic City Seashore View" width="100%" /></div>
+                <div class="item"><img data-src="/_Content/img/slider-footer/slider-footer06.jpg" alt="Atlantic City Aerial View" width="100%" /></div>
+            </div>
+
+            <!-- Controls -->
+            <a class="left carousel-control" href="#carousel-example-generic" role="button" data-slide="prev">
+                <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+                <span class="sr-only">Previous</span>
+            </a>
+            <a class="right carousel-control" href="#carousel-example-generic" role="button" data-slide="next">
+                <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+                <span class="sr-only">Next</span>
+            </a>
+        </div>
+    </section>
+
+    
+
+
+
+        <!-- FOOTER -->
+        <footer class="row">
+            <div class="container">
+                <div class="row">
+                    <section class="col-md-4">
+                        <h3>Elected Officials</h3>
+                        <create-elected-widget></create-elected-widget>
+                    </section>
+
+                    <!-- FOOTER MENU -->
+                    <create-menu-footer title="Atlantic City, NJ"></create-menu-footer>
+
+                    <!-- MEETINGS & CONTACT US MENU -->
+                    <section class="col-md-4">
+                        <h3>Meetings</h3>
+                        <ul>
+                            <li><a href="/Calendar">Upcoming Meetings</a></li>
+                            <li><a href="/Meetings">Archived Meetings</a></li>
+                        </ul>
+
+                        <h3>Contact Us</h3>
+                        <b>City of Atlantic City, NJ</b><br />
+                        <a href="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3084.6821650404972!2d-74.43066098463973!3d39.36343362694349!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c0ee389a674cbf%3A0xef9a2892b32ac760!2s1301%20Bacharach%20Blvd%2C%20Atlantic%20City%2C%20NJ%2008401!5e0!3m2!1sen!2sus!4v1584629194567!5m2!1sen!2sus" target="_blank">
+                            1301 Bacharach Boulevard<br />
+                            Atlantic City,
+                            NJ,
+                            08401
+                        </a>
+                        <p>Tel: <a href="/Directory">View Directory</a></p>
+
+                        <div class="footer-social">
+                            <a href="https://www.twitter.com/AtlanticCityGov" target="_blank"><img src="/_Assets/img/twitter.svg" width="38" height="38" alt="Twitter Logo" /></a>
+                            <a href="https://nextdoor.com/city/feed/45431828/?i=dwjnldcbnhydlsxgcjcl" target="_blank"><img src="/_Assets/img/nextdoor.svg" width="38" height="38" alt="Next Door Logo" /></a>
+                            <a href="https://www.facebook.com/AtlanticCityGov" target="_blank"><img src="/_Assets/img/facebook.svg" width="38" height="38" alt="Facebook Logo" /></a>
+                            <a href="https://www.instagram.com/atlanticcitynjgov/" target="_blank"><img src="/_Assets/img/instagram.svg" width="38" height="38" alt="Instagram Logo" /></a>
+                            <a href="https://www.youtube.com/channel/UCqtwCD561R1E7uqgSyKytPw" target="_blank"><img src="/_Assets/img/yt.svg" width="38" height="38" alt="Youtube Logo" /></a>
+                        </div>
+                    </section>
+
+                </div>
+                <div class="row credits">
+                    <hr />
+                    <div class="col-sm-8">
+                        © City of Atlantic City, NJ. All Rights Reserved. Developed by <a href="http://alphadogsolutions.com" target="_blank">AlphaDog Solutions</a>.
+                        
+                    </div>
+                    <div id="translate-btn-footer" class="col-sm-4">
+                        <a href="javascript:;" data-toggle="modal" data-target="#popup-translate"><i class="fa fa-globe"></i> Translate Website</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Popup GOOGLE TRANSLATE  -->
+    <div class="modal fade" id="popup-translate" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h1 class="modal-title" id="myModalLabel">Translate Website</h1>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Google Translate Plugin -->
+                    <div id="google_translate_element"></div>
+                    <script type="text/javascript">
+                        function googleTranslateElementInit() {
+                            new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.FloatPosition.TOP_LEFT }, 'google_translate_element');
+                        }
+                    </script>
+                    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    
+    
+
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <!-- Bootstrap CDN -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="/_Assets/js/bootstrap/libs/carousel.js"></script>
+
+
+    <!-- JS Components & Angular -->
+    <script src="/_Assets/js/jquery/libs/smartmenus/jquery.smartmenus.js"></script>
+<script src="/_Assets/js/jquery/libs/moment/moment.min.js"></script>
+<script src="/_Assets/js/jquery/libs/printThis/printThis.js"></script>
+<script src="/_Assets/js/jquery/libs/dragend/dragend.js"></script>
+
+    <script src="/_Assets/js/angular/angular.min.js"></script>
+<script src="/_Assets/js/angular/angular-sanitize.js"></script>
+<script src="/_Assets/js/angular/libs/bootstrap/ui-bootstrap-tpls-2.5.0.min.js"></script>
+<script src="/_Assets/js/angular/libs/recaptcha/angular-recaptcha.js"></script>
+<script src="/_Assets/js/angular/libs/slugify/angular-slugify.js"></script>
+<script src="/_Assets/js/angular/libs/moment/angular-moment.js"></script>
+<script src="/_Assets/js/angular/libs/fullcalendar/ui-fullcalendar.js"></script>
+<script src="/_Assets/js/angular/libs/checklist/checklist-model.js"></script>
+<script src="/_Assets/js/angular/app/app.module.js"></script>
+<script src="/_Assets/js/angular/app/app.filters.js"></script>
+<script src="/_Assets/js/angular/app/app.component.js"></script>
+<script src="/_Assets/js/angular/app/app.routes.js"></script>
+<script src="/_Assets/js/angular/app/shared/sidebar.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/menu/menu.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/article/article.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/notice/notice.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/event/event.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/meeting/meeting.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/directory/directory.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/contact/contact.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/contact-form/contact.form.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/quicklinks/quicklinks.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/faq/faq.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/search/search.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/budget/budget.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/department/department.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/elected-officials/elected.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/slider/slider.controller.js"></script>
+<script src="/_Assets/js/angular/app/components/form/form.controller.js"></script>
+
+
+    <!-- JS Custom Files -->
+    <script src="/_Assets/js/jquery/libs/perfect-scrollbar/perfect-scrollbar.jquery.js"></script>
+<script src="/_Assets/js/default.js"></script>
+
+
+    
+
+    <!-- AddThis - Share feature - Go to www.addthis.com/dashboard to customize your tools -->
+    <script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5978ba62bfd8c8ec"></script>
+
+    <!-- Accessibility Widget -->
+    
+
+    <!-- Free Widget Userway -->
+    <script>
+        (function (d) {
+            var s = d.createElement("script");
+            s.setAttribute("data-position", 5);
+            s.setAttribute("data-account", "Kxvp0TdiLc");
+            s.setAttribute("src", "https://cdn.userway.org/widget.js");
+            (d.body || d.head).appendChild(s);
+        })(document)
+    </script>
+    <noscript>Please ensure Javascript is enabled for purposes of <a href="https://userway.org">website accessibility</a></noscript>
+
+</body>
+</html>

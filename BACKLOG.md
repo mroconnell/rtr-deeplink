@@ -115,8 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (30)
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
+  `wo149_county_ladder_sweep.py` carries its own separate, unpatched…
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
   Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
@@ -692,6 +693,28 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   write) — the file is a live, multi-session write target.
 - **History:** `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
   §268; `BACKLOG_DONE.md`'s WO-227 entry, 2026-09-11.
+
+### `wo149_county_ladder_sweep.py` carries its own separate, unpatched copy of `find_hop_links()` -- WO-228's ranking fix never reaches county sweeps that import from it `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** WO-228 (2026-09-11) replaced the old first-match
+  `find_hop_links()` in `scripts/wo147_access_ladder_sweep.py` with a
+  scored, ranked version (see `BACKLOG_DONE.md`'s WO-228 entry and
+  `rtr-business/research/ENUMERATION_METHODS.md` §270). `scripts/
+  wo149_county_ladder_sweep.py` defines its own separate `find_hop_links()`
+  (same name, own copy, not an import) at its own line ~406 — it still
+  has the old unranked, first-match behavior.
+- **Impact:** Any county sweep built on `wo149_county_ladder_sweep.py`
+  still records a calendar/events page as a hub the same way the fixed
+  code no longer does elsewhere.
+- **Next action:** Delete wo149's own copy and import `find_hop_links`/
+  `looks_like_document_hub`/`find_calendar_entry_links` from
+  `wo147_access_ladder_sweep.py` instead, the way `wo184_onehop_pilot.py`/
+  `wo187_headless_challenge_sweep.py`/`wo217_group1_sweep.py`/
+  `wo217_group2_sweep.py` already do.
+- **Constraint:** Check `wo149_county_ladder_sweep.py`'s own hop-loop
+  wiring first — it may call `find_hop_links` with slightly different
+  surrounding logic than wo147's ladder, not just a bare duplicate.
+- **History:** `BACKLOG_DONE.md`'s WO-228 entry.
 
 ### `wo191_access_ladder_sweep.py`'s headless budget is computed at import time, so a reusing WO that overrides `HEADLESS_BUDGET_JSON` after import silently inherits WO-191's own stale cumulative count `[JUST-DO-IT]` `[EASY]`
 
