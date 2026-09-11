@@ -1,5 +1,71 @@
 # Backlog — done
 
+## WO-178: settled the 111 governments WO-165 could not decide on its own; only 2 are left for a human [Done 2026-09-10]
+
+WO-165 cleaned up duplicate rows in `rtr-business/research/
+jurisdiction_coverage.csv`, a file that tracks one row per government.
+It could not decide 111 of them on its own and left them in a file
+called `wo165_for_ryan.csv`, for a person to check by hand. This work
+checked all 111 and settled all but 2.
+
+**Two kinds of problem, handled differently.** The first kind (74
+governments) was two rows for the same government that only disagreed
+on wording — "Enfield" and "Enfield town" are the same town in
+Connecticut. These were combined by machine. No web page was checked,
+because there was nothing to be unsure about. The second kind (37
+governments) was a real question: a government's name matched two
+different real places, and nobody had checked which one was right. For
+these, the government's own web page title, or (when the page gave no
+useful title) a real record already stored in this project's own
+coverage list, decided it.
+
+**Result**
+
+| Group | Governments | Settled how | Rows before | Rows after |
+|---|---|---|---|---|
+| A — same government, different wording | 74 | Combined by machine; no web page checked | 152 | 74 |
+| B — name matched two real places | 37 | Decided from the government's own page title, or (for 6 where the title gave nothing) from a real record already in this project's own coverage list | 40 | 35 |
+
+35 rows after, not 37, because 2 are still unclear (see below). Total:
+111 governments, 192 rows before this pass, 109 after.
+
+**Four governments' names were misleading in a way worth knowing about.**
+Iowa has both a "Rockwell" and a "Rockwell City" — two different real
+towns. Kansas has both a "Park" and a "Park City." Ohio has both a
+"Union" and a "Union City." Missouri has both a "Benton" and a "Benton
+City." Each of these was checked individually against this project's own
+list of every real government before being combined, so none of the 74
+"just wording" cases actually hid one of these look-alike pairs.
+
+**A bigger, separate finding, not part of this file's fix.** While
+checking two of the 37, this work found that two real, live pages on
+the public site show one government's name in the page's own web
+address while the meeting content actually comes from a *different*
+government's real system. Prince George, BC's page address reads
+"prince-george," but the meeting behind it is really Sechelt, BC's.
+Peterborough, ON's page address reads "peterborough," but the meeting
+behind it is really Blind River, ON's. Both Prince George and
+Peterborough already have their own separate, correct pages elsewhere on
+the site — so this isn't a case of a page going missing, it's a case of
+the wrong name showing on someone else's real page. That's a live-site
+bug, not a research-file bug, so it wasn't fixed here. It's written up
+as its own item in `BACKLOG.md` for someone to check.
+
+**Caution.** 2 governments are still genuinely unclear and are left for
+a person: Geneva, IL (its web page gave no usable information) and
+Lunenburg, NS (its web page loads by JavaScript, which this project's
+checking tool can't read, so no real answer came back). Both are listed
+in `rtr-business/research/wo178_residue_for_ryan.csv`, with the same
+5 columns as before.
+
+**Recommendation.** No action needed on the 109 settled rows. When
+convenient, someone should look at the 2 left in
+`wo178_residue_for_ryan.csv`, and check the live-page naming bug above.
+
+**Deploy status:** none. This changed only the research file in
+`rtr-business`, a separate repo with no deploy step — nothing here
+touches the live site.
+
 ## WO-175: hand-check of the 287 LocalView channels WO-171 rejected; an on-mission meeting queued where the channel is the government's [Done 2026-09-10]
 
 **What this checked, and why.** WO-171 matched 1,010 YouTube channels
