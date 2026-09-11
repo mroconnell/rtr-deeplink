@@ -161,9 +161,10 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (137)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (138)
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw…
+  [LATER] WO-217's guess-pattern domain search has 489 of 513 candidate…
   [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
@@ -1463,6 +1464,12 @@ of human step they need.
   - **Next action:** reproduce against Walworth's live AgendaCenter page, find which response `civicplus.py` decodes as strict UTF-8, and add the same encoding-fallback handling used elsewhere in that adapter (or a `try`/`except UnicodeDecodeError` that degrades to a skip, not a `RowError`).
   - **Constraint:** don't swallow the error silently — log it so a future sweep can tell "genuinely no content" apart from "this tenant's encoding broke the adapter."
   - **History:** found live, `BACKLOG_DONE.md` WO-216, 2026-09-11.
+- **[LATER] WO-217's guess-pattern domain search has 489 of 513 candidate municipalities left unattempted, and the 24 tried so far found nothing.**
+  - **Issue**: WO-217 (2026-09-11) checked all 601 municipalities of 5,000+ with no second domain on file against four listed sources (uscityurl, Wikidata, CivicMirror, hub host) — fully done. 513 found nothing there; guessing up to 8 web addresses per government (`cityofname.gov` and similar) is the last resort, and only 24 of those 513 were tried before the WO stopped on purpose (each guess is its own slow request — up to 8 per government when none hit).
+  - **Impact**: none yet found among the 24 tried, all among the largest remaining cities (Philadelphia, Tuscaloosa, Santa Fe, Lynn, Newton, Cranston, Westland...) — weak evidence the guess step is worth much for well-established cities, though smaller, less-documented towns further down the list (population-descending order) haven't been tried and may do better.
+  - **Next action**: `DATABASE_URL="sqlite+aiosqlite:////tmp/wo217_g2.db" python3 scripts/wo217_group2_sweep.py --inventory-csv /tmp/wo217_inv/meeting_inventory.csv --guess-only` (build a fresh inventory CSV first via `scripts/export_meeting_inventory.py --source export`). Resumes on its own via `rtr-business/research/wo217_guess_pass_done.txt`.
+  - **Constraint**: hand-check every video found the same way WO-217 did (`scripts/wo217_handcheck.py`'s hook is already wired in) — a guessed domain has no independent list backing it, so it carries the highest wrong-government risk of any source in this WO's chain (see the Freeport village NY / Freeport, Illinois catch, `BACKLOG_DONE.md`).
+  - **History**: `BACKLOG_DONE.md`, WO-217, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §265.
 
 - **[NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a WRONG per-video `tenant_overrides.csv` pin still live alongside or instead of the correct one.**
   - **Issue**: WO-211 (2026-09-11) collected every "wrong government" finding from WO-183/184/191/196/199/202/206 into `rtr-business/research/wo211_owner_channels.csv` and found that several of WO-184's continuation's own corrections (the video really belongs to St. Tammany Parish LA, Dublin GA, Allegan County MI, Delta County MI, Van Buren County MI, Deerfield MA, or Mountain Iron MN, not the small government the sweep originally found it under) never got their file-level pin cleaned up -- the live page is correct (either it already resolved right, or a human ran a targeted override), but `tenant_overrides.csv` still carries a row pointing the same video id at the ORIGINAL wrong government.

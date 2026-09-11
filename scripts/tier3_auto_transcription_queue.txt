@@ -2508,3 +2508,4 @@ https://www.youtube.com/watch?v=1s9vw8DXQzk	https://www.youtube.com/embed/1s9vw8
 https://hooksett.granicus.com/MediaPlayer.php?view_id=2&clip_id=2919	https://hooksett.granicus.com/ViewPublisher.php?view_id=2
 https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1170	https://guadalupe.granicus.com/ViewPublisher.php?view_id=1
 https://www.youtube.com/watch?v=PqH6BABYbGg	https://www.youtube.com/user/CityofBrandonMB
+https://sccity.granicus.com/MediaPlayer.php?view_id=1&clip_id=257	https://sccity.granicus.com/account/forgotpassword
