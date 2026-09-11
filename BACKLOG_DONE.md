@@ -1,5 +1,90 @@
 # Backlog — done
 
+## WO-188: recheck of the 15 LocalView channels YouTube's block stopped WO-175 from finishing [Done 2026-09-11]
+
+**Why this ran.** WO-175 hand-checked 287 YouTube channels and found 55
+real government channels, but YouTube's own block (a "429" / "confirm
+you're not a bot" response) stopped it before 15 of those could get an
+honest second look. Ryan said the block had cleared. This work re-checked
+those exact 15 channels, and separately added a missing pin for 4
+channels WO-175 had already found real meetings on but could not fully
+tie to their government yet.
+
+**Checked the block first, cheaply.** One small request to one channel
+(5 videos, not 30) came back clean — no block. All 14 further channel
+checks (one channel already had a page, see below) also came back clean.
+The block is gone as of this check.
+
+**A fresh check of the site avoided a duplicate.** Before picking any
+videos, this work pulled a fresh copy of every page already on the site.
+One of the 15 governments (Stokesdale, NC) already had a real page —
+made the same day, by separate work running at the same time. It was
+left alone.
+
+**Result, of the 15 channels:**
+
+| Result | Count of 15 |
+|---|---|
+| YouTube's block still there | 0 |
+| Channel confirmed as the government's own or a channel that carries its meetings | 15 |
+| A real meeting found and its transcript is on the site now | 12 |
+| No real meeting on the channel (only unrelated clips) | 2 |
+| Already had a page (from separate work) | 1 |
+
+**How the 12 were picked and checked.** For each channel, this work
+listed its 30 newest videos and picked the newest one whose title plainly
+says it is a public meeting (a board or council name plus a date, or the
+word "meeting"). Each pick was then run through the same real
+transcript-fetching step the website itself uses — not a guess about
+what it would do. All 12 came back with a real transcript on the first
+try except one (Fletcher, NC), whose newest video was an 11-second stub
+that could not be read at all; the next-newest video, a real 52-minute
+meeting, worked.
+
+**One already-recorded "no good video" was wrong.** Albany, OR's file
+already listed this exact video from an earlier check, marked as not a
+real meeting. That was wrong — the real check found a full, real
+transcript (1,117 lines). Corrected.
+
+**4 of the 12 landed under the wrong government.** Fletcher NC,
+Lincolnton NC, Grant County OK, and Washington County TN all show up on
+the site with no government attached, or the wrong one. Two of their
+video titles don't mention the place at all, so there was nothing for
+the site to match on; the other two do mention the place and still
+missed — worth a closer look later. A fix is on file (see below) so the
+next scheduled correction run will fix these 4 automatically. Not
+finished yet — that correction run has not happened.
+
+**The 4 channels named by WO-175 as still missing a pin — done.**
+WO-175 found real meetings on Dacono CO, Calhoun GA, Romulus MI, and
+Roseville MI's channels, but could not fully tie the *whole channel* to
+its government because their exact YouTube address was unknown when
+YouTube's block hit. This work looked each one up and added it. None of
+these 4 has a page live yet — their meetings are still waiting in line
+for transcription.
+
+**One of those 4 needs attention: a queued video disappeared.**
+Roseville MI's queued meeting is no longer on YouTube at all. It will
+fail when its turn comes up in line unless someone swaps it for the
+channel's next real meeting first. Filed as its own `BACKLOG.md` entry.
+
+**Caution.** Nothing here is live yet in the sense that matters for the
+site's public numbers: the fix for the 4 mis-keyed pages needs a
+scheduled correction run, not yet done, and the 4 channel pins take
+effect only after the site's two backend pieces (the resolver and the
+transcript workers) are next redeployed — the last deploy was earlier
+this morning, before this work started.
+
+**Recommendation.** Redeploy when convenient so the 4 new channel pins
+take effect for any future video on those channels. Separately, run the
+scoped correction for the 4 mis-keyed pages named above.
+
+- **History:** builds on WO-171 (the original channel list and check) and
+  WO-175 (the hand-check and the bug fix this recheck depended on);
+  `rtr-business/research/ENUMERATION_METHODS.md` §236 has the full method
+  and every number's derivation; `rtr-business/research/wo188_report.csv`
+  has one row per government checked.
+
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
 - **[Done 2026-09-10] Sechelt, BC and Blind River, ON pages: URL slug showed

@@ -117,7 +117,8 @@ Standing decisions — do NOT re-raise  (9)
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (20)
   `scripts/coverage_alternates.py` only retries an alternate domain on…
-  WO-175's LocalView channel recheck: 15 governments never got an…
+  4 pages from WO-188's YouTube recheck landed mis-keyed to…
+  Roseville MI's queued tier-3 video is gone from YouTube; the queue…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
@@ -609,41 +610,59 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   WO-181 already measured.
 - **History:** `BACKLOG_DONE.md` WO-181, 2026-09-10.
 
-### WO-175's LocalView channel recheck: 15 governments never got an honest second look, and 4 queued own-channel governments have no channel-level pin `[JUST-DO-IT]` `[WAIT]`
+### 4 pages from WO-188's YouTube recheck landed mis-keyed to `rtr:unknown:www.youtube.com` and need a targeted re-key `[JUST-DO-IT]` `[EASY]`
 
-- **Issue:** WO-175 (2026-09-10) hand-checked the 287 LocalView channels
-  WO-171 rejected. A bug (a blank `handle` field building a malformed
-  `/videos` URL, since fixed in `scripts/wo175_find_and_queue_video.py`
-  and `scripts/wo175_fetch_about_pages.py`) gave a false "no on-mission
-  video" result for 23 governments; re-running the fixed script recovered
-  5 real meetings before a YouTube block signature (429 / "confirm
-  you're not a bot") stopped every further YouTube call this session,
-  per CLAUDE.md's standing rule. 15 governments were never honestly
-  re-checked at all (see `rtr-business/research/wo175_queue_outcomes.csv`,
-  `outcome == "blocked_before_reverify"`). Separately, 4 of the governments
-  that DID queue a real video this session (Dacono city CO, Calhoun city
-  GA, Romulus city MI, Roseville city MI — all `own-channel` verdicts)
-  have no channel-level `tenant_overrides.csv` pin, only a per-video one,
-  because their real `@handle` is still unknown (WO-171 never resolved
-  one, and a channel-level pin only ever matches a resolved video's real
-  `@handle`, never a bare `UC...` channel_id — see `page_hints_for()` in
-  `app/utils/gov_registry/resolver.py`).
-- **Impact:** 15 real governments sit un-rechecked with a stale, known-
-  wrong "nothing found" result; 4 real government channels get only
-  one video pinned instead of the whole channel.
-- **Next action:** re-run `scripts/wo175_find_and_queue_video.py` (or a
-  small filtered re-run, same pattern as this session's own
-  `wo175_channel_recheck.csv`-filtered approach) for the 15
-  `blocked_before_reverify` gov_ids once YouTube's block has cleared;
-  separately, look up the real `@handle` for the 4 gov_ids above (a
-  single About-page fetch each) and add a `channel=@handle` pin for
-  each once found.
-- **Constraint:** one channel at a time, 2 seconds between YouTube
-  calls, stop again immediately on the same block signature — don't
-  assume the block has cleared just because some time has passed.
-- **History:** `BACKLOG_DONE.md` WO-175, 2026-09-10;
-  `rtr-business/research/wo175_methods_section.md` has the full method
-  and every number's derivation.
+- **Issue:** WO-188 (2026-09-11) re-checked the 15 LocalView channels
+  WO-175's YouTube block had stopped and ingested 12 real meetings. 4 of
+  those 12 landed keyed to `rtr:unknown:www.youtube.com` instead of their
+  real gov_id, confirmed against a fresh `/internal/export/pages` pull:
+  slugs `2026-08-10-regular-meeting-august-10-2026` (Fletcher town, NC —
+  `us:place:3723760`), `2025-02-12-2-06-25-city-council-withaudio`
+  (Lincolnton city, NC — `us:place:3738320`),
+  `2019-05-13-may-13-2019-grant-county-bocc-regular-meeting` (Grant
+  County, OK — `us:county:40053`), and
+  `2022-03-25-march-23-2022-washington-county-tn-commission-budget-hearings`
+  (Washington County, TN — `us:county:47179`). Fletcher's and
+  Lincolnton's video titles carry no place name at all, so the resolver's
+  title match had nothing to work with; Grant County's and Washington
+  County's titles *do* name the government but still missed — worth a
+  closer look, not chased down by WO-188.
+- **Impact:** 4 real, already-ingested meetings display under the wrong
+  (or no) government on the site until re-keyed.
+- **Next action:** a channel pin (`channel=@handle`) and a per-video pin
+  (the bare video id) for all 4 are already in
+  `app/utils/jurisdiction_data/tenant_overrides.csv` (WO-188). Per
+  CLAUDE.md's rule against running an unbounded `backfill_gov_id.py
+  --hosts www.youtube.com` sweep, don't do that — instead run it scoped
+  to just these 4 video ids/slugs, or wait for the next scoped
+  `www.youtube.com` backfill pass and confirm these 4 land correctly.
+- **Constraint:** the pins take effect only after the resolver is
+  redeployed; a backfill run before that deploy will re-key against the
+  old (pin-less) resolver logic and miss all 4 again.
+- **History:** `BACKLOG_DONE.md` WO-188, 2026-09-11;
+  `rtr-business/research/ENUMERATION_METHODS.md` §236;
+  `rtr-business/research/wo188_report.csv`.
+
+### Roseville MI's queued tier-3 video is gone from YouTube; the queue entry will fail silently `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** WO-175 (2026-09-10) queued Roseville city, MI's
+  `https://www.youtube.com/watch?v=T8IhUhljAlc` into
+  `scripts/tier3_auto_transcription_queue.txt`. WO-188 (2026-09-11),
+  looking up the channel's real `@handle` for a pin, found this video is
+  now gone ("This video is not available", confirmed live via `yt-dlp`)
+  — removed from YouTube sometime in the 24 hours between the two
+  sessions. The channel (`@CityofRosevilleMI`) has a newer real meeting,
+  `https://www.youtube.com/watch?v=e8Jr18zynxs` ("Roseville City Council
+  Meeting August 11, 2026"), not probed or queued by either session.
+- **Impact:** the cloud worker will eventually reach the dead queue line
+  and fail on it — a wasted attempt, not a wrong page, but worth fixing
+  before that happens.
+- **Next action:** probe `e8Jr18zynxs` with `scripts/probe_tier3_queue.py`
+  and, if it accepts, swap it in for the dead line in
+  `scripts/tier3_auto_transcription_queue.txt`.
+- **History:** `BACKLOG_DONE.md` WO-175, 2026-09-10 (original queue entry);
+  `BACKLOG_DONE.md` WO-188, 2026-09-11 (this finding).
+
 ### WordPress's own `/?s=agenda` search is a confirmed, cheap way to find a real meetings list at scale — run it beyond this pilot's 600 `[JUST-DO-IT]`
 
 - **Issue:** WO-176 (2026-09-10) measured `/?s=agenda` (WordPress's
