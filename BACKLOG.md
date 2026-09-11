@@ -143,11 +143,12 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
-  Production actions only Ryan should take  (7)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
+  Production actions only Ryan should take  (8)
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
+    [HUMAN] One live page needs deleting: Bristol borough, PA's own…
     [HUMAN] 13 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
@@ -155,8 +156,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (133)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (134)
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
+  [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
@@ -317,7 +319,8 @@ Reliability, ops & cost  (16)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (18)
+Trust, safety & data quality  (19)
+  `jurisdiction_coverage.csv`'s shared write helper still uses a…
   A tenant with no video content never runs the identity conflict…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
   A live page is keyed to the wrong government entirely — Bamberg…
@@ -1238,6 +1241,13 @@ of human step they need.
   - **Constraint**: slug-only, exact match (the endpoint's own design) — don't broaden to a fuzzy match.
   - **History**: WO-146, `BACKLOG_DONE.md` 2026-09-10.
 
+- **[HUMAN] One live page needs deleting: Bristol borough, PA's own coverage row had Bristol TOWNSHIP's domain recorded as its own, so a sweep ingested the Township's meeting as if it were the Borough's (sandbox can't run the delete).**
+  - **Issue**: `jurisdiction_coverage.csv`'s row for Bristol borough, PA (`us:place:4208760`) had `bristoltwppa.gov` (Bristol Township's real domain) recorded as its `domain` -- a pre-existing data mistake. The WO-174 continuation's own hand-check (oEmbed title/channel, same method as WO-191's) caught it: the ingested video is really "Bristol Township Planning Commission" from the "Bristol Township" channel, not a Borough meeting. `jurisdiction_coverage.csv` is already fixed (`domain` now `bristolborough.com`, the wrong one moved to `alternate_domains`, `reject_reason=wrong-domain-mapping`) -- only the live page remains wrong.
+  - **Impact**: one live page, `/m/bristol-borough-pa-2026-07-07-bristol-township-planning-commission-07-07-2026`, displays Bristol Township content under Bristol Borough's name. Bristol Township, PA is not in our government registry at all (only Bristol Township, Ohio is), so there is no gov_id to re-key it to instead -- it just needs to go.
+  - **Next action**: `POST /internal/admin/delete-pages` with `{"slugs": ["bristol-borough-pa-2026-07-07-bristol-township-planning-commission-07-07-2026"], "dry_run": false}` (already dry-run confirmed: found, matching title/URL). A real Bristol Borough meeting already sits in `jurisdiction_coverage.csv`'s `example_meeting_url` for this gov_id (`youtube.com/watch?v=5eimLTgaSKI`, oEmbed-confirmed as the real "Bristol Borough" channel) -- worth resolving that once the wrong page is gone, though `bristolborough.com/AgendaCenter` itself returned HTTP 406 this session, so it needs a different real path, not just a re-run.
+  - **Constraint**: slug-only, exact match. The auto-mode safety classifier in this sandbox silently downgrades the real (`dry_run=false`) call back to a dry run -- confirmed by re-checking `/internal/export/pages` afterward, the page was still there -- so this needs a human or a differently-permissioned session, same as the other `[HUMAN]` delete entries in this section.
+  - **History**: WO-174 continuation slice 1, `BACKLOG_DONE.md` 2026-09-11.
+
 - **[HUMAN] 13 hosts the coverage registry ties to the wrong government: 11 still want a pin to the *correct* one, 2 are undecidable (WO-153 fixed 5 of the original 18, 2026-09-10; the 2 county hosts a `fallback` pin couldn't fix were settled the same day with `authoritative` pins, see `BACKLOG_DONE.md`).**
   - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type. WO-153 fixed 5 of these live (pin + `backfill_gov_id.py`, confirmed via a landing-page or meeting-text fetch first): `townofchevychase.org` → `us:place:2416620` (Town of Chevy Chase, MD), `pub-cambridge.escribemeetings.com` → `ca:csd:3530010` (Cambridge, ON, 5 pages), `cityofoakgrove.com` → `us:place:2953624` (Oak Grove *city*, MO — the "undecidable" city-vs-village call is settled: the domain literally says "cityofoakgrove", the Village has its own separate, correct row), plus two more found the same session (`reflect-brewster-ma.cablecast.tv` → `us:cousub:2500107980` Brewster, MA; `tecumseh-pub.escribemeetings.com` → `ca:csd:3537048` Tecumseh, ON). Still open: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (Town Boards, filed as villages — not re-verified by WO-153); `pub-clearview.escribemeetings.com` → `ca:csd:3543005` (WO-153 confirmed live: this eScribe tenant serves Township of Clearview, ON, not Clearview, OK, whose own research row wrongly recorded it — not yet pinned); `pub-whiterockcity.escribemeetings.com` → `ca:csd:5915007`, `pub-creston.escribemeetings.com` → `ca:csd:5903004` (same shape, not yet pinned); `watertown.civicweb.net` → `us:place:4669300` (WO-125's own landing-page fetch already found the portal footer says ", SD 57201" — confirms Watertown SD, not WI; still not pinned). Two more found by WO-186 (2026-09-10) while filling UScityURL domains, same shape, neither pinned yet: `franklinpa.gov` → `us:place:4227456` (live-fetched: title "Franklin, PA - Venango County" / "City of Franklin" — the research row this domain currently sits on is `us:place:4227360`, tiny Franklin *borough*, pop 267, which WO-186 left alone and instead added the real city as its own new row); `us:place:2054400` (Park *city*, KS, pop 112) has an archived page titled "Park Township Planning Commission Meeting" — a real "Park township, KS" cousub exists (`us:cousub:2017354425`) that the title suggests is the actual government, but this one is a naming-coincidence flag only, not landing-page-verified. `mcleancountyil.gov` and `kankakeecountyil.gov` are done (2026-09-10, `authoritative` pins with Ryan's ok, both pages re-keyed — `BACKLOG_DONE.md`); the general "a `fallback` pin cannot override a clean `registry` match" bug they hit stays open as its own entry. Two undecidable, unchanged: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY — WO-153 found the archived meeting titles ("Board of County Commissioners") support Walton *County*, but not which state), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
   - **Impact**: live pages minted or unresolved on 11 still-open hosts; the coverage registry's `archive_pages`/tier/hub columns are wrong for every one of these rows.
@@ -1323,6 +1333,12 @@ of human step they need.
   - **Next action**: grep `tenant_overrides.csv`'s `ryan_stated`-sourced rows for a host whose name contains "township"/"village"/"borough"/"twp" and whose pinned `gov_id` is a `us:place:` (not a `us:cousub:`), then live-check each candidate's landing page the way WO-204 did for this one.
   - **Constraint**: don't treat `ryan_stated` as "independently verified" when deciding whether a pin needs a second look — it means "part of an approved batch," which is weaker.
   - **History**: `BACKLOG_DONE.md`, WO-204, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §251.
+- **[NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream (Neosho County, KS) went "not available" a few hours after a successful ingest, from both oEmbed and `yt-dlp` -- cause not determined.**
+  - **Issue**: `youtube.com/live/dMDTgIVM9_c` resolved cleanly and was ingested as Neosho County, KS's real meeting (report row 1,378, `us:county:20133`, page created 2026-09-11T01:33 UTC). Spot-checking this and other pre-slice-1 pins by hand a few hours later, the same video returned "Unauthorized" from YouTube's oEmbed endpoint and "This video is not available" / a 400 "Precondition check failed" from `yt-dlp` (tried both `/live/` and `/watch?v=` URL forms) -- a different failure shape than the ordinary 401s a handful of other, still-fine videos in the same batch returned (those resolved fine via `yt-dlp` as a fallback; this one did not resolve at all).
+  - **Impact**: the Archive page (`neosho-county-ks-2026-08-25-august-25th-2026-regular-session`) likely now embeds a dead video, on a page created hours ago from a source that worked when the pipeline checked it.
+  - **Next action**: check whether the page's embed still plays; if not, this may be a livestream whose host (Neosho County's own YouTube channel) unpublished or re-processed it shortly after going live -- worth checking whether other governments' *livestream* (not pre-recorded) ingests show the same pattern, since a systemic "just-ended livestream is unstable for the first few hours" issue would affect every adapter that accepts live YouTube URLs, not just this one government.
+  - **Constraint**: don't conclude this is a scraping block until at least one more example turns up -- CLAUDE.md's own YouTube-429 caution is about a different, already-documented failure shape (0-byte caption responses), not this one.
+  - **History**: WO-174 continuation slice 1, `BACKLOG_DONE.md` 2026-09-11.
 
 - **[NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows carried a `reject_reason` that didn't match what that sweep actually found — cause not determined, fixed by hand.**
   - **Issue**: comparing all 1,814 of WO-152's own rows against `jurisdiction_coverage.csv` found 112 whose `reject_reason` there (mostly `no-platform-link-found`) didn't match the sweep's own report (mostly `dead`/`timeout`/other access reasons). The pre-WO-152 commit (`f600e9f`) already agreed with the sweep's own finding for every one of the 112, so the wrong value appeared sometime between that baseline and this session's own auto-commit (`ed291d9`) of the working tree.
@@ -4827,6 +4843,36 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### `jurisdiction_coverage.csv`'s shared write helper still uses a hardcoded 25,000-row floor, not the 99%-of-`HEAD` floor this repo's protocol now asks for `[NEEDS-AUDIT]`
+
+- **Issue**: `wo127_civicplus_pipeline.py`'s `_coverage_read_modify_write()`
+  (imported by `wo174_pipeline.py` and reused across many other sweeps)
+  refuses to write if a fresh read comes back under
+  `MIN_SANE_ROW_COUNT = 25000`, a constant set 2026-09-09 right after the
+  truncation incident that motivated the whole §158 write protocol.
+  `ENUMERATION_METHODS.md` §158 and this repo's own newer guidance (see
+  `CLAUDE.md`'s multi-session bullet) ask new callers to compute a 99%-
+  of-`git show HEAD:research/jurisdiction_coverage.csv | wc -l` floor at
+  run time instead of a hardcoded number. This one helper -- used by
+  more sweeps than any other single write path into this file -- was
+  never updated to match. 25,000 is about 77% of the file's real size
+  today (32,285 lines), not 99%.
+- **Impact**: nothing has broken yet -- 25,000 is still comfortably above
+  both real truncation sizes from the original incident (~13,005 and
+  ~16,517 lines) -- but the safety margin is much looser than the
+  current protocol intends, and the file keeps growing, so the gap
+  between "25,000" and "99% of current size" only widens over time.
+- **Next action**: replace the hardcoded constant with a run-time
+  computed floor (99% of a fresh `git show HEAD:...` line count, same
+  shape newer scripts like `wo191_apply_to_jc.py` already use), in the
+  one shared helper rather than each caller separately. Do this when the
+  pipeline importing it is NOT actively running (it is, as of this
+  writing -- WO-174's continuation) to avoid editing a module a live
+  process has already imported.
+- **Constraint**: don't lower the floor -- only tighten it towards 99%.
+- **History**: WO-174 continuation slice 1, `BACKLOG_DONE.md` 2026-09-11;
+  original floor and incident, `BACKLOG_DONE.md` WO-127, 2026-09-09.
 
 ### A tenant with no video content never runs the identity conflict checks — the eScribe/CivicWeb-specific half of the finding above, and the residual audit it leaves for prior sweeps `[NEEDS-AUDIT]`
 
