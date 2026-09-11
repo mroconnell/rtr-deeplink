@@ -432,8 +432,17 @@ What the 2026-09-09 sweeps established about *where video is*:
 - **Dashboard filters** still lack "exclude a string" and "blank /
   non-blank", and the registry lacks a per-state view; both are Ship-next
   entries in `BACKLOG.md`.
-- **The 789 governments over 5,000 rejected as "no video found"** stay
-  where they are by Ryan's decision; a video-less host is a valid record.
+- **Governments rejected as "no video found" stay where they are by
+  Ryan's decision when the row actually recorded a real meeting or
+  agenda** -- a video-less host is a valid record (907 at population
+  5,000+ as of 2026-09-11; this number moves daily as concurrent sweeps
+  both add and clear rows, so treat it as a live count, not a fixed
+  figure -- re-derive from the file rather than citing a stale one).
+  **The subset that recorded nothing at all (a blank meeting URL, blank
+  agenda URL, and no guessed platform) is different** -- that's not a
+  valid "no video" record, it's an untested row wearing the label. WO-225
+  (2026-09-11) found and re-tested all 553 of those; see
+  `BACKLOG_DONE.md`'s WO-225 entry.
 - **WO-174's CivicPlus AgendaCenter ladder sweep is finished (2026-09-11
   close-out).** All 14,553 governments with a domain and no page that
   WO-127 never touched have now been checked, across four earlier slices
@@ -452,26 +461,3 @@ What the 2026-09-09 sweeps established about *where video is*:
   missing entirely). Neither is "just re-run this same script" — both
   need the different method `docs/BREADTH_SWEEP_BRIEF.md` already
   describes.
-
-## 7. Where to look first next time
-
-- YouTube pages fed by the always-on drip (`scripts/youtube_drip.py`)
-  arrive keyed only as well as the deployed pins allow; the review
-  procedure, the per-page file, and the video-vs-channel pin shapes are
-  in `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` (2026-09-11).
-- `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
-  government's video channel, playlist or feed to its own calendar by body
-  and date (pilot WO-158, about 5% yield). Read it before touching
-  channel enumeration.
-- `docs/BREADTH_SWEEP_BRIEF.md`: the brief for the next round of coverage
-  work, written 2026-09-10 from four read-only pilots. Platform API first,
-  then an honest plain client, browser headers on a 403, headless only for
-  JavaScript-drawn links, never past a challenge; a probe before queuing;
-  reject reasons split into access and content classes.
-- `BACKLOG.md`'s TOC, then the Standing decisions section.
-- `BACKLOG_DONE.md`'s 2026-09-09 and 2026-09-10 entries for every sweep's
-  funnel, and `rtr-business/research/ENUMERATION_METHODS.md` §155–§180
-  for the same from the research side.
-- The coverage registry summary,
-  `rtr-business/research/coverage_registry/COVERAGE_REGISTRY_SUMMARY.md`,
-  for today's numbers with their sources and input timestamps.
