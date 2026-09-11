@@ -1060,3 +1060,67 @@ async def test_resolve_bartow_via_per_meeting_pseudo_channel_uses_stable_account
     # Stable per-broadcast URL, not the per-meeting pseudo-channel link
     # that was pasted in.
     assert result.source_url == f"https://boxcast.tv/view/{pseudo_channel}"
+
+
+# --- refresh_playlist_url() (WO-229) -------------------------------------
+#
+# The signed playlist `resolve()` stores as video_url expires a couple of
+# days after ingest (module docstring's "signed and expiring" note, now
+# corrected). refresh_playlist_url() is what the Archive calls at page-view
+# time instead of trusting that stored URL forever -- see
+# archive/utils/video_refresh.py and tests/test_boxcast_video_refresh.py
+# for the Archive-side half of this. These tests cover the function
+# in isolation, reusing Wilmington's real fixtures above.
+
+
+async def test_refresh_playlist_url_returns_a_fresh_signed_playlist():
+    # source_url is always the per-broadcast pseudo-channel resolve()
+    # itself writes (module docstring) -- so the FIRST call _resolve_id()
+    # makes is the channel-broadcasts endpoint, exactly like the direct
+    # `/view` link test above, not the search/account/caption endpoints
+    # (none of which refresh_playlist_url() has any reason to call).
+    routes = {
+        _channel_broadcasts_url(WILM_BROADCAST_SLUG): _json_response(
+            [WILM_BROADCAST_FULL]
+        ),
+        _view_url(WILM_BROADCAST_ID): _json_response(WILM_VIEW),
+    }
+    with mock_session(routes):
+        fresh = await boxcast.refresh_playlist_url(
+            f"https://boxcast.tv/view/{WILM_BROADCAST_SLUG}"
+        )
+    assert fresh == WILM_VIEW["playlist"]
+
+
+async def test_refresh_playlist_url_none_for_a_non_boxcast_source_url():
+    fresh = await boxcast.refresh_playlist_url("https://example.com/not-boxcast")
+    assert fresh is None
+
+
+async def test_refresh_playlist_url_none_when_the_broadcast_is_unknown():
+    routes = {
+        _channel_broadcasts_url(WILM_BROADCAST_SLUG): FakeResponse(status=404),
+        _broadcast_url(WILM_BROADCAST_SLUG): FakeResponse(status=404),
+    }
+    with mock_session(routes):
+        fresh = await boxcast.refresh_playlist_url(
+            f"https://boxcast.tv/view/{WILM_BROADCAST_SLUG}"
+        )
+    assert fresh is None
+
+
+async def test_refresh_playlist_url_none_when_the_recording_is_gone():
+    # A real, if rare, honest failure: the broadcast still resolves but
+    # BoxCast no longer has a recording for it (e.g. the account got
+    # deactivated -- BACKLOG_DONE.md's Atlantic Beach case).
+    routes = {
+        _channel_broadcasts_url(WILM_BROADCAST_SLUG): _json_response(
+            [WILM_BROADCAST_FULL]
+        ),
+        _view_url(WILM_BROADCAST_ID): _json_response({"status": "unavailable"}),
+    }
+    with mock_session(routes):
+        fresh = await boxcast.refresh_playlist_url(
+            f"https://boxcast.tv/view/{WILM_BROADCAST_SLUG}"
+        )
+    assert fresh is None

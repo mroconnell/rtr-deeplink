@@ -10460,6 +10460,11 @@ async def get_page_card_target(slug: str) -> Optional[dict]:
                     MeetingPage.video_url,
                     MeetingPage.video_format,
                     MeetingPage.source_url_normalized,
+                    # WO-229: needed so this route's own _schedule_card_warm
+                    # calls can go through fresh_video_url() the same way
+                    # /m/{slug} does -- ffmpeg would otherwise be pointed
+                    # at a BoxCast page's expired stored video_url.
+                    MeetingPage.platform,
                 ).where(MeetingPage.slug == slug)
             )
         ).first()
@@ -10470,6 +10475,7 @@ async def get_page_card_target(slug: str) -> Optional[dict]:
             "video_url": row[1],
             "video_format": row[2],
             "source_url": row[3],
+            "platform": row[4],
         }
 
 

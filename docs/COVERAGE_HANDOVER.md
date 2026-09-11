@@ -461,3 +461,7 @@ What the 2026-09-09 sweeps established about *where video is*:
   missing entirely). Neither is "just re-run this same script" — both
   need the different method `docs/BREADTH_SWEEP_BRIEF.md` already
   describes.
+- **BoxCast pages now resolve a fresh signed playlist at view time**
+  instead of trusting the one stored at ingest (WO-229, 2026-09-11), but
+  whether BoxCast actually re-signs with a later expiry once the current
+  one passes is unconfirmed — see `BACKLOG.md`'s matching `[WAIT]` entry.

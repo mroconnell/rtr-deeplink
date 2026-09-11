@@ -80,6 +80,102 @@ document and a `BACKLOG.md` entry — no code, no data, no pins.
   the churn this responds to is documented in `BACKLOG_DONE.md`'s
   WO-209/210/214/215/221 entries below.
 
+## WO-229: BoxCast pages resolve a fresh playlist at view time so a page keeps playing after the signed URL expires [Done 2026-09-11]
+
+**What was done and why.** WO-227/WO-227b put two real BoxCast meetings
+live: Livermore Falls, ME and Bartow, FL. Both store a signed BoxCast
+video link that BoxCast itself sets to stop working on 2026-09-13, about
+two days after this was found. Once that time passes, the video player
+on both pages would go blank, even though the page and the transcript
+still work fine. This fixes that: instead of trusting the link stored
+when the page was made, the page now asks BoxCast for a working link
+every time someone opens it, and uses that instead.
+
+**How.** A page keeps the same permanent web address it always did
+(`boxcast.tv/view/...`), which does not expire. The player now points at
+a new page address, `/m/{page}/video`, instead of the video link
+directly. That new address asks BoxCast for the current working link and
+sends the visitor's browser straight there. A short, few-minutes memory
+avoids asking BoxCast twice for the same page in a row. If BoxCast can't
+be reached, the page falls back to the old stored link rather than
+showing nothing. This is the smaller of two ways to fix it — the other
+was resolving inside the main page itself — because one shared address
+also fixes any other video platform that expires the same way later,
+with no other page changes needed. Every other video platform (YouTube,
+Vimeo, Granicus, and the rest) is untouched; only BoxCast pages use the
+new address.
+
+**No page needed fixing by hand.** The plan was to update the two live
+pages so they remembered BoxCast's permanent id. Checking first (this
+repo's own rule: verify a plan against the real data before building)
+found they already had it — the permanent web address was stored
+correctly since the day they were made. Nothing needed to change on
+either page's own record.
+
+| Check | Result | What it means |
+|---|---|---|
+| Livermore Falls, ME already has the permanent BoxCast address stored | Yes | The fix works with no data change |
+| Bartow, FL already has the permanent BoxCast address stored | Yes | The fix works with no data change |
+
+**Caution — this is not fully proven yet.** Asking BoxCast for "the
+current working link" twice today, a few minutes apart, returned the
+exact same link both times, expiry date and all — not a new one. That is
+expected if BoxCast only hands out a new link once the old one has
+actually run out, but it means this fix cannot be proven to work until
+after the real expiry, 2026-09-13 at 19:56 UTC. One thing points the
+right way: two completely unrelated meetings, on two different BoxCast
+accounts, both happen to expire at that exact same moment — which looks
+like a shared BoxCast-wide schedule, not a one-time link frozen forever.
+But that is a strong hint, not proof. Filed in `BACKLOG.md` as a
+`[WAIT]` item: check both pages right after 2026-09-13 19:56 UTC and
+confirm the video still plays. If it does not, this needs a different
+fix, likely one only BoxCast's own support or dashboard can give.
+
+**Also fixed the same way:** the background task that grabs a still
+image for a page's preview card, and the moment-in-time trick Google's
+crawler is told to fetch (`contentUrl`), both used to point straight at
+the old stored link too. Both now go through the same fresh-link check
+first.
+
+**Recommendation.** Deploy this before 2026-09-13 19:56 UTC. The two
+live pages' videos will stop playing at that moment without it. This is
+Archive code only — the transcription side (`worker/`) already asks for
+a fresh link every time and needed no change, and was left untouched on
+purpose.
+
+**A related backlog entry from WO-226 (PR #984, merged) already existed
+for this exact gap** ("Boxcast tier-1 pages need the signed playlist
+re-resolved at view time...") but had already vanished from `BACKLOG.md`
+before this WO started — not because anyone closed it, the same silent
+merge-drop pattern this file's own 2026-09-11 recovery note already
+flags for two unrelated entries. Nothing was there left to close; this
+entry is the record now.
+
+**Detail.** `app/platforms/boxcast.py`'s `refresh_playlist_url()` is the
+one new function: given a page's stored permanent BoxCast address, it
+asks BoxCast which one specific recording that address names (the same
+lookup `resolve()` already does) and returns that recording's current
+playable link, or `None` on any failure. It is deliberately lighter than
+a full re-resolve — no re-checking which government owns the recording,
+no re-fetching captions, since neither ever changes for a page that
+already exists. `archive/utils/video_refresh.py` is the new, small
+dispatch layer: `NEEDS_REFRESH` names which platforms need this
+(`boxcast` today), a few-minutes cache keyed by page address, and one
+lazy import into the resolver's own BoxCast code (the Archive already
+imports resolver code the same lazy way elsewhere). `archive/main.py`
+gained one new route (`GET /m/{page}/video`, a redirect) and reuses the
+fresh-link check in the two existing places that already grab a still
+image in the background. `meeting_page.html`'s player and its
+`contentUrl` now point at the new address for a BoxCast page only —
+byte-for-byte unchanged for every other platform, confirmed by a
+negative-control test. Real, already-expired BoxCast link shapes and a
+real, unrelated real government (Wilmington, OH) back every test — nine
+new tests total (`tests/test_boxcast.py`,
+`tests/test_boxcast_video_refresh.py`), full suite green (3,297 passed),
+`ruff check`/`ruff format` clean. No database migration: the permanent
+BoxCast address was already a stored column (`source_url_normalized`),
+just not being read again after the page was made.
+
 ## Recovered two BACKLOG_DONE entries a later merge silently dropped [Note 2026-09-11]
 
 Both entries below (Granicus meta-description extraction, double-encoded

@@ -163,7 +163,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (12)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (147)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (148)
+  [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
   [NEEDS-AUDIT] `suspected_video_provider` is wrongly set to…
@@ -1528,6 +1529,12 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a broadcast's playlist with a LATER expiry once the current one passes is unconfirmed — WO-229's fix depends on it.**
+  - **Issue**: WO-229 (2026-09-11) fixed the two live BoxCast pages (Livermore Falls ME, Bartow FL) to ask BoxCast for a fresh signed playlist at view time instead of trusting the one stored at ingest, since that one's `Expires=1789329408` (2026-09-13 19:56 UTC) would otherwise go dark. But asking `GET /broadcasts/{id}/view` twice today, minutes apart, returned the byte-identical signed URL both times (same `Signature`, same `Expires`) — and BoxCast's OWN `boxcast.tv/view/{slug}` page, fetched fresh today, server-renders that exact same URL too. Two DIFFERENT broadcasts on two DIFFERENT, unrelated BoxCast accounts (Livermore Falls' shared "Mt. Blue Community TV" account and Bartow's own government account) both carry the identical `Expires=1789329408` — that shared value across unrelated broadcasts is the only real evidence this is a platform-wide signing-epoch rotation (which would rotate again after 2026-09-13, making WO-229's fix work) rather than a signature frozen forever per broadcast (which would make it a no-op).
+  - **Impact**: if BoxCast doesn't rotate, WO-229's fix doesn't help — these two pages, and Atlantic City NJ/South Bay FL once ingested, go permanently dark on schedule regardless of this WO, and no server-side trick can fix it; the actual next step would be BoxCast support/dashboard access about recording retention.
+  - **Next action**: after 2026-09-13 19:56 UTC, `curl -sI https://rtr-deeplink-archive.onrender.com/m/livermore-falls-me-2026-09-01-livermore-falls-select-board-meeting-september-1st/video` (and Bartow's own slug) and confirm the redirect's `Location` carries an `Expires=` LATER than 1789329408, then confirm that URL actually plays. If it's still the same expired URL, this becomes a `[HUMAN]` item (BoxCast dashboard/support).
+  - **Constraint**: can't be tested before the real expiry passes — don't reuse today's Expires value as a stand-in for "it works."
+  - **History**: `BACKLOG_DONE.md`'s WO-229 entry.
 - **[NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a different, real government's meeting videos — Wheatfield town, IN's (Newton County) Town Board — but the pipeline didn't keep the video URL, so the real find can't be keyed yet.**
   - **Issue**: WO-174's close-out (2026-09-11, rows 7,444+) found `wheatfield-ny.gov/AgendaCenter` (confirmed live to be the real New York town's own site) links to at least four meeting videos, all titled "Town of Wheatfield, IN ... REGULAR TOWN BOARD MEETING" from the channel "Town of Wheatfield" — a real, different, already-registry-listed government (`us:place:1883528`, Wheatfield town, Newton County, IN). This is a cross-state Kind-A-shaped mismatch, not the usual same-name city/county collision. The pipeline's own content check correctly rejected the row (`jurisdiction_coverage.csv`'s `reject_reason=wrong-domain-mapping` for `us:cousub:3606381380`) before a page was ever created, but it only logs the rejected candidates' titles, not their URLs, so no video URL survived to act on.
   - **Impact**: a real, findable meeting video for Wheatfield town, IN sits undiscovered — this repo has no page for it at all.
