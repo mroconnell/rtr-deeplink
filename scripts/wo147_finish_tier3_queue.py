@@ -10,9 +10,16 @@ Reuses, does not reimplement:
   append-only sidecar (`scripts/tier3_auto_transcription_queue_probe.csv`)
   -- the same sidecar `scripts/probe_tier3_queue.py` and
   `scripts/feed_tier3_auto_transcription.py` already write to.
-- `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`/
-  `_existing_override_keys()` for the duplicate checks against the real
-  queue file and `tenant_overrides.csv`.
+- `app.platforms.queue_probe.cached_verdict()` (WO-224): a candidate the
+  sidecar already has a verdict for is read back, not re-probed -- this
+  script used to re-probe every row on every re-run regardless.
+- `app.platforms.queue_probe.append_queue_line()`/`append_deferred_line()`/
+  `write_pin_row()`/`parse_pin_row()` (WO-224) for the actual queue/
+  deferred-file/pin writes and their duplicate checks, replacing this
+  script's own former `_apply_pin_row()`/`_existing_override_keys()`. A
+  winning candidate over 90 minutes now goes to
+  `tier3_long_meetings_deferred.txt` instead of the queue
+  (WO-205/WO-212's rule) -- this script never did that before.
 
 Rules (docs/BREADTH_SWEEP_BRIEF.md's "probe before queuing"):
   - Refuse a dead link (verdict `reject-dead`) or a clip under the
@@ -68,11 +75,17 @@ load_dotenv()
 from app.platforms import register_all_finders  # noqa: E402
 from app.platforms.queue_probe import (  # noqa: E402
     DEFAULT_SIDECAR_PATH,
+    DEFER_OVER_SECONDS,
+    TIER3_LONG_MEETINGS_DEFERRED_FILE,
+    append_deferred_line,
     append_probe_row,
+    append_queue_line,
+    cached_verdict,
+    is_deferred,
+    parse_pin_row,
     probe_queue_entry,
+    write_pin_row,
 )
-
-import scripts.wo134_confirmed_hits_ingest as wo134  # noqa: E402
 
 RESEARCH_DIR = Path("/Users/mroconnell/Documents/rtr-business/research")
 PENDING_CSV = RESEARCH_DIR / "wo147_tier3_pending.csv"
@@ -87,54 +100,7 @@ MAX_CONSECUTIVE_ACCESS_ERRORS = 6
 
 _ACCEPT_VERDICTS = {"accept", "flag-long"}
 
-
-def _existing_override_keys() -> set:
-    keys = set()
-    if TENANT_OVERRIDES_CSV.exists():
-        with TENANT_OVERRIDES_CSV.open(newline="", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                keys.add((r.get("tenant_host", ""), r.get("match", "")))
-    return keys
-
-
-def _apply_pin_row(pin_row: str, existing_keys: set) -> None:
-    if not pin_row:
-        return
-    parts = pin_row.split("|", 5)
-    if len(parts) != 6:
-        print(f"WARNING: malformed pin_row, skipping: {pin_row!r}", file=sys.stderr)
-        return
-    tenant_host, match, gov_id, strength, source, evidence = parts
-    key = (tenant_host, match)
-    if key in existing_keys:
-        return
-    is_new = not TENANT_OVERRIDES_CSV.exists()
-    with TENANT_OVERRIDES_CSV.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "tenant_host",
-                "match",
-                "gov_id",
-                "strength",
-                "source",
-                "evidence",
-            ],
-            lineterminator="\n",
-        )
-        if is_new:
-            writer.writeheader()
-        writer.writerow(
-            {
-                "tenant_host": tenant_host,
-                "match": match,
-                "gov_id": gov_id,
-                "strength": strength,
-                "source": source,
-                "evidence": evidence,
-            }
-        )
-    existing_keys.add(key)
+CALLER = "wo147_finish_tier3_queue"
 
 
 def _rank_key(row_and_result):
@@ -163,9 +129,6 @@ async def main() -> None:
     if args.limit:
         pending_rows = pending_rows[: args.limit]
     print(f"{len(pending_rows)} pending row(s) to probe.")
-
-    existing_queue_urls = wo134._existing_tier3_queue_urls()
-    existing_override_keys = _existing_override_keys()
 
     # A CAUTION-flagged row (channel_scan_caution() in
     # wo147_access_ladder_sweep.py -- this WO's own 40-government pilot
@@ -213,19 +176,51 @@ async def main() -> None:
         # row), so detect_platform() on it is the correct source of
         # truth -- not passed explicitly at all, letting
         # probe_queue_entry() derive it the same way.
-        result = await probe_queue_entry(
-            row["meeting_url"],
-            video_url=row.get("video_url") or None,
-            source_page_url=row.get("source_url") or None,
-        )
-        append_probe_row(DEFAULT_SIDECAR_PATH, result)
+        # WO-224: a URL the shared sidecar already has a verdict for is
+        # read back, not re-probed -- this script used to hit the network
+        # again on every re-run, no matter how many times a candidate had
+        # already been probed. cached_verdict() is also the fix for the
+        # sibling bug this WO closes elsewhere (wo150/183/191/216's own
+        # "already probed, skipping fetch" branch dropped a real accept
+        # silently) -- here there was no such branch to begin with, but
+        # reusing the one shared lookup keeps this script from drifting
+        # into that same shape later.
+        cached = cached_verdict(row["meeting_url"], sidecar_path=DEFAULT_SIDECAR_PATH)
+        used_cache = cached is not None
+        if used_cache:
+            result = cached
+        else:
+            # Real, confirmed-live bug caught in this script's own smoke
+            # test: the pending row's own `platform` column names
+            # whatever platform the ORIGINAL hit was (e.g. "civicplus"),
+            # not the actual video host after delegation (CLAUDE.md's
+            # documented "Legistar/CivicPlus's delegation ends up with
+            # the delegated platform's URL as source_url" quirk) --
+            # passing that stale label forced probe_queue_entry() to
+            # dispatch on the wrong platform (tried "civicplus" against a
+            # youtube.com video_url, landing on "no probe recipe for
+            # this media shape" for a perfectly probeable YouTube video).
+            # meeting_url is always the real, resolved video page (e.g. a
+            # youtube.com/watch URL even for a civicplus-hit row), so
+            # detect_platform() on it is the correct source of truth --
+            # not passed explicitly at all, letting probe_queue_entry()
+            # derive it the same way.
+            result = await probe_queue_entry(
+                row["meeting_url"],
+                video_url=row.get("video_url") or None,
+                source_page_url=row.get("source_url") or None,
+            )
+            append_probe_row(DEFAULT_SIDECAR_PATH, result, caller=CALLER)
+        cache_tag = " (cached)" if used_cache else ""
         print(
-            f"[{i + 1}/{len(pending_rows)}] [{result.verdict}] {row['gov_id']} "
+            f"[{i + 1}/{len(pending_rows)}] [{result.verdict}{cache_tag}] {row['gov_id']} "
             f"{row['meeting_url']} -- {result.reason or f'{result.duration_seconds:.1f}s'}"
         )
         by_gov[row["gov_id"]].append((row, result))
 
-        if result.verdict == "reject-dead" and (
+        if used_cache:
+            consecutive_access_errors = 0
+        elif result.verdict == "reject-dead" and (
             "timeout" in (result.reason or "").lower()
             or "http" in (result.reason or "").lower()
             or "fetch" in (result.reason or "").lower()
@@ -271,25 +266,47 @@ async def main() -> None:
                 f"{result.verdict}, {result.reason or f'{result.duration_seconds:.1f}s'}"
             )
 
+    # WO-224: a duration over 90 minutes goes straight to the deferred
+    # file instead of the queue (WO-205/WO-212's rule) -- no point
+    # queuing a long meeting today just to swap it out again later. A
+    # candidate whose URL is already a deliberate deferred-file removal
+    # never gets re-queued either, whatever verdict it carries now.
     queue_lines_added = 0
+    deferred_lines_added = 0
     for gov_id, (row, result) in accepted.items():
         meeting_url = row["meeting_url"]
         source_url = row["source_url"]
-        if meeting_url not in existing_queue_urls:
-            line = (
-                f"{meeting_url}\t{source_url}"
-                if source_url and source_url != meeting_url
-                else meeting_url
-            )
-            with TIER3_QUEUE_FILE.open("a", encoding="utf-8") as f:
-                f.write(line + "\n")
-            existing_queue_urls.add(meeting_url)
+        pin = parse_pin_row(row.get("pin_row", ""))
+        if is_deferred(meeting_url, deferred_path=TIER3_LONG_MEETINGS_DEFERRED_FILE):
+            continue
+        duration = result.duration_seconds or 0.0
+        if duration > DEFER_OVER_SECONDS:
+            if append_deferred_line(
+                meeting_url,
+                source_url=source_url or "",
+                gov_id=gov_id,
+                duration_seconds=result.duration_seconds,
+                deferred_path=TIER3_LONG_MEETINGS_DEFERRED_FILE,
+            ):
+                deferred_lines_added += 1
+            continue
+        if append_queue_line(meeting_url, source_url, queue_path=TIER3_QUEUE_FILE):
             queue_lines_added += 1
-        _apply_pin_row(row.get("pin_row", ""), existing_override_keys)
+        if pin:
+            write_pin_row(
+                host=pin["host"],
+                match=pin["match"],
+                gov_id=pin["gov_id"],
+                strength=pin["strength"],
+                source=pin["source"],
+                evidence=pin["evidence"],
+                pins_path=TENANT_OVERRIDES_CSV,
+            )
 
     print(
         f"\n{len(accepted)} government(s) accepted -> {queue_lines_added} new queue "
-        f"line(s), {len(rejected)} government(s) rejected (dead/short), "
+        f"line(s), {deferred_lines_added} deferred (over 90 min), "
+        f"{len(rejected)} government(s) rejected (dead/short), "
         f"{len(held_for_review)} held for manual title review."
     )
 

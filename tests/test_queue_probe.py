@@ -803,3 +803,315 @@ async def test_probe_queue_entry_dispatches_youtube_for_a_civicweb_page(monkeypa
     result = await probe_queue_entry(page)
     assert seen["video_url"] == embed
     assert result.verdict == "accept" and result.duration_seconds == 1500.0
+
+
+# --- WO-224: the shared finish step ----------------------------------------
+#
+# The bug: every wo1XX_finish_tier3*.py script's own "already probed,
+# skipping fetch" branch checked only that the sidecar had A row for a
+# URL, never what its verdict WAS -- so a real `accept` sitting there from
+# an earlier run got silently dropped, never queued, never pinned.
+# finish_candidate() is the fix: it reads the cached verdict via
+# cached_verdict() and always acts on it. Every test below uses tmp_path
+# files so nothing here ever touches the real queue/sidecar/pins/deferred
+# files.
+
+
+def _write_probe_row(sidecar_path, url, *, verdict, duration_seconds=None, reason=None):
+    """Writes one real sidecar row via append_probe_row() (not a hand-typed
+    CSV line) so these tests exercise the same read path a real probe run
+    would populate."""
+    result = queue_probe.ProbeResult(
+        url=url,
+        platform="youtube",
+        probe_method="yt-dlp-metadata",
+        duration_seconds=duration_seconds,
+        date="2026-09-01",
+        size_bytes=None,
+        verdict=verdict,
+        reason=reason,
+        probe_seconds=0.5,
+        over_nine_minutes=bool(duration_seconds and duration_seconds > 540),
+    )
+    queue_probe.append_probe_row(sidecar_path, result)
+    return result
+
+
+def _paths(tmp_path):
+    return {
+        "sidecar_path": tmp_path / "sidecar.csv",
+        "queue_path": tmp_path / "queue.txt",
+        "deferred_path": tmp_path / "deferred.txt",
+        "pins_path": tmp_path / "pins.csv",
+    }
+
+
+async def test_finish_candidate_cached_accept_queues_and_pins(tmp_path):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=abc123"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="accept", duration_seconds=1200.0
+    )
+
+    outcome = await queue_probe.finish_candidate(
+        url,
+        gov_id="us:place:0000001",
+        pin={
+            "host": "www.youtube.com",
+            "match": "youtube:abc123",
+            "gov_id": "us:place:0000001",
+        },
+        **paths,
+    )
+
+    assert outcome.used_cache is True
+    assert outcome.action == "queued"
+    assert outcome.queued is True
+    assert outcome.pinned is True
+    assert url in paths["queue_path"].read_text()
+    pins_text = paths["pins_path"].read_text()
+    assert "www.youtube.com" in pins_text and "youtube:abc123" in pins_text
+
+
+async def test_finish_candidate_cached_reject_dead_never_queues(tmp_path):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=deadvideo"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="reject-dead", reason="video removed"
+    )
+
+    outcome = await queue_probe.finish_candidate(url, **paths)
+
+    assert outcome.used_cache is True
+    assert outcome.action == "rejected"
+    assert outcome.queued is False
+    assert outcome.probe.reason == "video removed"
+    assert not paths["queue_path"].exists()
+
+
+async def test_finish_candidate_cached_accept_already_queued_is_a_noop(tmp_path):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=alreadyqueued"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="accept", duration_seconds=900.0
+    )
+    # Pre-seed the queue file AND the pin, as if an earlier run already
+    # finished this candidate.
+    paths["queue_path"].write_text(url + "\n")
+    paths["pins_path"].write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "www.youtube.com,youtube:alreadyqueued,us:place:0000002,fallback,test,pre-existing\n"
+    )
+
+    outcome = await queue_probe.finish_candidate(
+        url,
+        pin={
+            "host": "www.youtube.com",
+            "match": "youtube:alreadyqueued",
+            "gov_id": "us:place:0000002",
+        },
+        **paths,
+    )
+
+    assert outcome.action == "already-queued"
+    assert outcome.queued is False
+    assert outcome.pinned is False
+    # No duplicate line/row was appended.
+    assert paths["queue_path"].read_text().count(url) == 1
+    assert paths["pins_path"].read_text().count("www.youtube.com") == 1
+
+
+async def test_finish_candidate_cached_accept_url_in_deferred_file_is_skipped(tmp_path):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=deliberatelyremoved"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="accept", duration_seconds=600.0
+    )
+    # A deliberate WO-205-style removal: this URL was swapped out of the
+    # queue on purpose and parked here.
+    paths["deferred_path"].write_text(
+        f"{url}\t\tus:place:0000003\tSome City, ST\t10:00\t\n"
+    )
+
+    outcome = await queue_probe.finish_candidate(url, **paths)
+
+    assert outcome.action == "skipped-deferred"
+    assert outcome.queued is False
+    assert not paths["queue_path"].exists()
+
+
+async def test_finish_candidate_flag_long_goes_to_deferred_not_queue(tmp_path):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=verylongmeeting"
+    # Over the 6-hour flag-long threshold -- also over the 90-minute
+    # deferred threshold, so this must land in the deferred file, never
+    # the queue.
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="flag-long", duration_seconds=8.45 * 3600
+    )
+
+    outcome = await queue_probe.finish_candidate(
+        url, gov_id="us:place:0000004", jurisdiction="Anaheim, CA", **paths
+    )
+
+    assert outcome.action == "deferred"
+    assert outcome.deferred is True
+    assert outcome.queued is False
+    assert not paths["queue_path"].exists()
+    deferred_text = paths["deferred_path"].read_text()
+    assert url in deferred_text
+    assert "us:place:0000004" in deferred_text
+    assert "8:27:00" in deferred_text  # hms(8.45 * 3600)
+
+
+async def test_finish_candidate_accept_over_90_minutes_defers_even_without_flag_long(
+    tmp_path,
+):
+    """A plain `accept` verdict (under the 6h flag-long ceiling) whose
+    duration is still over the 90-minute deferred threshold must defer,
+    not queue -- the deferred-file rule is about duration, not verdict."""
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=onehundredminutes"
+    _write_probe_row(
+        paths["sidecar_path"], url, verdict="accept", duration_seconds=100 * 60
+    )
+
+    outcome = await queue_probe.finish_candidate(url, **paths)
+
+    assert outcome.action == "deferred"
+    assert outcome.queued is False
+    assert url in paths["deferred_path"].read_text()
+
+
+async def test_finish_candidate_no_cache_probes_fresh_and_appends_sidecar(
+    tmp_path, monkeypatch
+):
+    paths = _paths(tmp_path)
+    url = "https://www.youtube.com/watch?v=freshprobe"
+
+    async def _fake_probe(*args, **kwargs):
+        return queue_probe._finish(
+            url, "youtube", "yt-dlp-metadata", 700.0, "2026-09-11", None, 0.0
+        )
+
+    monkeypatch.setattr(queue_probe, "probe_queue_entry", _fake_probe)
+    outcome = await queue_probe.finish_candidate(url, caller="test", **paths)
+
+    assert outcome.used_cache is False
+    assert outcome.action == "queued"
+    assert paths["sidecar_path"].exists()
+    assert url in paths["sidecar_path"].read_text()
+
+
+def test_cached_verdict_returns_the_most_recently_written_row(tmp_path):
+    sidecar_path = tmp_path / "sidecar.csv"
+    url = "https://www.youtube.com/watch?v=reprobed"
+    _write_probe_row(sidecar_path, url, verdict="reject-dead", reason="first try")
+    _write_probe_row(sidecar_path, url, verdict="accept", duration_seconds=1000.0)
+
+    result = queue_probe.cached_verdict(url, sidecar_path=sidecar_path)
+
+    assert result.verdict == "accept"
+    assert result.duration_seconds == 1000.0
+
+
+def test_cached_verdict_none_when_url_never_probed(tmp_path):
+    sidecar_path = tmp_path / "sidecar.csv"
+    _write_probe_row(sidecar_path, "https://example.com/other", verdict="accept")
+    assert (
+        queue_probe.cached_verdict(
+            "https://example.com/never-probed", sidecar_path=sidecar_path
+        )
+        is None
+    )
+
+
+def test_append_queue_line_is_dedupe_checked(tmp_path):
+    queue_path = tmp_path / "queue.txt"
+    url = "https://example.com/m.mp4"
+    assert (
+        queue_probe.append_queue_line(
+            url, "https://example.com/page", queue_path=queue_path
+        )
+        is True
+    )
+    assert (
+        queue_probe.append_queue_line(
+            url, "https://example.com/page", queue_path=queue_path
+        )
+        is False
+    )
+    lines = [ln for ln in queue_path.read_text().splitlines() if ln.strip()]
+    assert lines == ["https://example.com/m.mp4\thttps://example.com/page"]
+
+
+def test_append_deferred_line_writes_the_real_column_shape(tmp_path):
+    deferred_path = tmp_path / "deferred.txt"
+    queue_probe.append_deferred_line(
+        "https://example.com/long.mp4",
+        source_url="https://example.com/page",
+        gov_id="us:place:0000005",
+        jurisdiction="Some City, ST",
+        duration_seconds=13001,  # 3:36:41
+        title="City Council Meeting",
+        deferred_path=deferred_path,
+    )
+    lines = [
+        ln for ln in deferred_path.read_text().splitlines() if not ln.startswith("#")
+    ]
+    assert lines == [
+        "https://example.com/long.mp4\thttps://example.com/page\tus:place:0000005"
+        "\tSome City, ST\t3:36:41\tCity Council Meeting"
+    ]
+
+
+def test_append_deferred_line_never_re_adds_a_url_already_present(tmp_path):
+    deferred_path = tmp_path / "deferred.txt"
+    url = "https://example.com/long.mp4"
+    assert (
+        queue_probe.append_deferred_line(
+            url, duration_seconds=6000, deferred_path=deferred_path
+        )
+        is True
+    )
+    assert (
+        queue_probe.append_deferred_line(
+            url, duration_seconds=6000, deferred_path=deferred_path
+        )
+        is False
+    )
+    match_count = sum(1 for ln in deferred_path.read_text().splitlines() if url in ln)
+    assert match_count == 1
+
+
+def test_parse_pin_row_pipe_shape():
+    parsed = queue_probe.parse_pin_row(
+        "www.youtube.com|youtube:abc123|us:place:0000001|fallback|wo216|evidence text"
+    )
+    assert parsed == {
+        "host": "www.youtube.com",
+        "match": "youtube:abc123",
+        "gov_id": "us:place:0000001",
+        "strength": "fallback",
+        "source": "wo216",
+        "evidence": "evidence text",
+    }
+
+
+def test_parse_pin_row_malformed_returns_none():
+    assert queue_probe.parse_pin_row("not|enough|fields") is None
+    assert queue_probe.parse_pin_row("") is None
+    assert queue_probe.parse_pin_row(None) is None
+
+
+def test_write_pin_row_dedupe_checked(tmp_path):
+    pins_path = tmp_path / "pins.csv"
+    kwargs = dict(
+        host="www.youtube.com",
+        match="youtube:xyz",
+        gov_id="us:place:0000006",
+        pins_path=pins_path,
+    )
+    assert queue_probe.write_pin_row(**kwargs) is True
+    assert queue_probe.write_pin_row(**kwargs) is False
+    assert pins_path.read_text().count("www.youtube.com") == 1

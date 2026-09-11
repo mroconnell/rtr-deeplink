@@ -1,5 +1,65 @@
 # Backlog — done
 
+## WO-224: tier-3 finish step goes through one shared helper that honours a cached accept verdict instead of dropping it [Done 2026-09-11]
+
+**What was done and why.** Ryan asked for this fix before the next sweep
+that queues tier-3 (video, no captions) meetings, since every sweep in a
+parallel wave hits it. The bug: seven `scripts/wo1XX_finish_tier3*.py`
+scripts each take a probed candidate and decide whether to queue and pin
+it. Four of them (`wo150`/`wo183`/`wo191`/`wo216`) skip a candidate
+whose URL is already in the shared probe sidecar without ever checking
+whether that cached answer was "yes, use this video" — so a real,
+usable video sat there and never became a queue line. WO-216 lost 4
+videos and 5 pins this way in one run. The fix: one shared helper in
+`app/platforms/queue_probe.py` that every finish script now calls
+instead of deciding on its own.
+
+`queue_probe.cached_verdict(url)` reads the sidecar's answer for a URL
+and logs why. `queue_probe.finish_candidate(url, ...)` is the one place
+that answer turns into a queue line, a pin, or nothing: accept/flag-long
+queues (unless already queued) and pins (unless already pinned);
+reject-dead/reject-short does nothing; and — new in this WO — a meeting
+over 90 minutes goes to `scripts/tier3_long_meetings_deferred.txt`
+instead of the queue (Ryan's existing rule for long meetings, applied
+earlier in the pipeline now instead of after the fact), and a URL
+already parked in that file is never re-added. This is code only: no
+sweep ran, nothing was queued or ingested.
+
+**Result.**
+
+| Script | Count of 7 | What it means |
+|---|---|---|
+| Had the bug, ported to the shared helper | 4 (`wo150`, `wo183`, `wo191`, `wo216`) | Used to silently drop a real cached accept. Now reads the cached verdict and acts on it. |
+| No bug, ported to the shared helper anyway | 3 (`wo147`, `wo149`, `wo152`) | Already re-probed or read the cache correctly, but duplicated the queue/pin-writing code and never deferred a long meeting. Now share the same code and gained the 90-minute deferred routing. |
+| Reference implementation | `wo216_finish_tier3.py` | Rewritten first, the other six ported to match. |
+
+Five new tests in `tests/test_queue_probe.py` cover the cases Ryan asked
+for: cached accept queues and pins; cached reject-dead queues nothing
+and keeps the reason; cached accept already in the queue is a no-op (no
+duplicate line or pin); cached accept whose URL is already in the
+deferred file is skipped; and a flag-long/over-90-minute verdict goes to
+the deferred file, not the queue. Two more cases were added while
+building it: a plain accept over 90 minutes also defers (the rule is
+about duration, not verdict), and a URL with no cached row still probes
+fresh and writes the sidecar, same as before.
+
+**Caution.** `probe_queue_entry()` itself (what counts as accept/reject)
+was not touched — only what happens after a verdict is known. The
+`app/platforms/queue_probe.py` module the worker's own runtime code
+imports from (`app/platforms/__init__.py`, `media_probe.py`, etc.) is
+unchanged in its probing logic; this PR only adds new functions to it.
+
+**Recommendation.** No deploy is needed. `worker/main.py` (the service
+that actually runs in production) does not import
+`app.platforms.queue_probe` at all — checked directly in its import
+list. This PR only changes scripts and adds functions to a module the
+running services don't load. The next sweep that runs a
+`wo1XX_finish_tier3*.py` script gets the fix automatically, with no
+production change required first.
+
+**Deploy status.** Nothing to deploy. This is a scripts/tests-only
+change; the resolver, Archive, and worker services are unaffected.
+
 ## WO-220: the 72 Utah PMN entities parked without a gov_id — 61 minted on Ryan's call, 8 keyed to existing ids, 3 left open; 138 per-notice pins [Done 2026-09-11]
 
 - **Why:** the WO-205 PMN pass parked 72 deferred lines whose publisher

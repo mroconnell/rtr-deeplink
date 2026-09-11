@@ -257,7 +257,12 @@ captions the local fetch can get) ingest with segments. Tier 3 (video, no
 reachable captions) goes to `scripts/tier3_auto_transcription_queue.txt`
 and the cloud worker drips it onto the site. Agenda-only is recorded as
 `no-video-found` and never ingested. A host with no video is a legitimate
-outcome to show on the dashboards, not a page.
+outcome to show on the dashboards, not a page. Every `wo1XX_finish_tier3*.py`
+script's own probe-verdict-to-queue-line decision goes through one shared
+place, `app/platforms/queue_probe.py`'s `finish_candidate()`
+(WO-224) — it is the only code that should turn a fresh or cached probe
+verdict into a queue line, a pin, or a deferred-file line, so a new
+finish script should call it rather than reimplementing the decision.
 
 **Alternate domains (WO-181, 2026-09-10; widened by WO-184,
 2026-09-10/11).** The research file carries two more columns,
