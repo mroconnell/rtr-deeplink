@@ -140,6 +140,94 @@ queue, and code that only runs from scripts). The 78 newly-ingested pages
 and 5 newly-queued meetings are live now / once the next transcription
 run picks up the queue; no action needed from Ryan unless he wants the
 two filed `BACKLOG.md` bugs fixed sooner.
+
+## WO-185: filled in the missing web address on 765 "meeting found, no video" rows in the research file [Done 2026-09-10]
+
+Ryan's rule: a government that has a real meeting or agenda page keeps
+its priority in our coverage list, even with no video. But that only
+works if the list actually points at the page. Many rows did not — an
+older sweep found the meeting but never wrote down its web address.
+
+**What was checked and why.** The research file
+(`rtr-business/research/jurisdiction_coverage.csv`) tags a row
+`no-video-found` or `meeting-without-video` when a sweep found a real
+meeting or agenda but no video. This work counted how many of those rows
+have a blank web address in both address columns, across the whole
+file, not just the smaller group Ryan had already flagged.
+
+**Result**
+
+| Group | Rows with reason "meeting found, no video" | Both web-address columns blank |
+|---|---|---|
+| CivicMirror-matched (Ryan's flagged count) | — | 236 |
+| Whole file | 2,228 | 1,399 |
+
+**How the missing addresses were found.** First, without visiting any
+website: this week's own sweep reports, a coverage-registry export, and
+a read-only copy of the discovery tool's own record book already had a
+real web address for some of these governments — it just never made it
+back into this file. That covered 266 rows. For the rest, this work
+visited each government's own home page once, politely (one plain,
+honest request, the same way a browser would introduce itself, then one
+click deeper if needed) and looked for a real meeting or agenda link.
+That covered another 494 rows.
+
+| Where the address came from | Rows filled |
+|---|---|
+| Already found by an earlier sweep this week | 166 |
+| Coverage-registry export | 101 |
+| Discovery tool's own record book | 1 |
+| A fresh, one-time visit to the government's own home page | 497 |
+| **Total filled** | **765** |
+
+**Four real videos turned up along the way, by accident.** While
+visiting home pages for an address, 18 of them showed a specific video
+link, not just a calendar page. Before trusting any of them, this work
+checked each video's real title and length — no downloading, just
+asking YouTube/Vimeo what the video actually is. 13 of the 18 turned out
+to be something else entirely — a welcome/tourism video, a property-tax
+explainer, a mayor's PSA — not a meeting. Those were left alone (still
+marked no video found), but now point at the real thing that actually is
+on the home page, instead of nothing.
+
+5 were real meetings. Of those, 3 governments (Apple Valley, South
+Weber, and Woodland Hills, all Utah) already have separate real coverage
+on the site that this file never learned about — a different, older
+bug, written up on its own in `BACKLOG.md` rather than fixed here. The
+other 2 were genuinely new:
+
+| Government | What happened | Result |
+|---|---|---|
+| Stokesdale, NC (town) | Real town-council meeting video found; it has real captions | Put on the site now, live |
+| Putney, VT (town) | Real selectboard meeting video found; no captions available yet | Sent to the slower, no-captions queue |
+
+**Caution.** 632 rows still have no web address, out of the file's
+current total. Most of those are real access problems (the government's
+site timed out, blocked the request, or sat behind a "prove you're
+human" wall) rather than "no meeting exists" — this work left their
+status alone rather than guessing. A handful loaded fine but had no
+meeting or agenda link anywhere on the home page or one click deeper. No
+row was ever marked "no meeting at all" unless a fresh visit genuinely
+found nothing.
+
+**Recommendation.** The 3 Utah governments with stale status are worth a
+dedicated pass — `BACKLOG.md` has the write-up and points at the same
+kind of check (research file vs. the site's own real page count) that
+already works elsewhere in this project. The remaining 632 blank rows
+are mostly blocked, not empty; a follow-up could try the next access
+method (browser-style headers, then a real browser) on the ones that
+timed out or were blocked outright.
+
+**Files changed.** `rtr-business/research/jurisdiction_coverage.csv` (765
+rows filled in), a new `rtr-business/research/wo185_report.csv` (one line
+per row, showing exactly where its address came from),
+`rtr-business/research/ENUMERATION_METHODS.md` (§234, full write-up), and
+`scripts/tier3_auto_transcription_queue.txt` (Putney's video added). All
+of these are research/data files — none of them need a deploy to take
+effect except the queue file, which the existing cloud transcription
+worker already picks up on its own schedule; no code in `app/`,
+`archive/`, or `worker/` changed.
+
 ## WO-178: settled the 111 governments WO-165 could not decide on its own; only 2 are left for a human [Done 2026-09-10]
 
 WO-165 cleaned up duplicate rows in `rtr-business/research/

@@ -147,8 +147,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
+  [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
@@ -1045,6 +1046,13 @@ of human step they need.
   - **Next action**: if the same shape (a small number of a sweep's own `jurisdiction_coverage.csv` rows drifting from that sweep's own report, with no candidate-list overlap to explain it) turns up in a future session's own audit, that's the pattern to chase — worth checking whether the working-tree auto-commit process itself, or some other automated writer, has its own path into this file.
   - **Constraint**: already fixed for this occurrence (`wo152_fix_reject_reason_mismatches.py`, `rtr-business/research/`) — this entry is for the unexplained mechanism, not unresolved data.
   - **History**: found and fixed 2026-09-10 building WO-152; see `BACKLOG_DONE.md`.
+
+- **[NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows still say `no-video-found` even though the Archive already has real, transcribed pages for them.**
+  - **Issue**: WO-185 (2026-09-10, meeting/agenda URL backfill) found a real government-meeting video on the homepages of Apple Valley UT (`us:place:4901905`), South Weber UT (`us:place:4971180`) and Woodland Hills UT (`us:place:4985050`) while filling blank URL cells for rows tagged `no-video-found`. `research/coverage_registry/coverage_registry.csv` shows all three already have real Archive coverage — 9, 15 and 21 pages respectively, tier 1 — that the research file never learned about, the same "identity join" gap `docs/COVERAGE_HANDOVER.md` §3 describes for other cases.
+  - **Impact**: at least these 3 governments read as uncovered on the coverage registry funnel and dashboard when they are not; likely more exist across the file (this WO only found these 3 as a side effect of a fresh homepage fetch on rows with no provenance URL — it didn't go looking for this pattern on purpose).
+  - **Next action**: run the identity-join check `docs/COVERAGE_HANDOVER.md` §3/§5.2 describes (research file says not-covered, Archive inventory says otherwise) across the whole `no-video-found`/`meeting-without-video` population, not just these 3, and reclassify every stale row's `reject_reason` (most likely to `already-covered`) in one pass under the §158 write protocol.
+  - **Constraint**: don't reclassify by hand one government at a time — this is exactly the kind of whole-file sweep the identity-join pattern already has a repeatable shape for; do it as one bulk apply so it doesn't quietly recreate the same drift the next time a batch of governments gets covered without a corresponding research-file update.
+  - **History**: `BACKLOG_DONE.md`, WO-185, 2026-09-10; `rtr-business/research/ENUMERATION_METHODS.md` §234.
 
 - **[NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()` raise for a confirmed-gone/private/terminated video instead of degrading — three delegating adapters (SLC, LIMS, PrimeGov) that used to still return their own page's title/date/agenda for that case now fail the whole resolve instead.**
   - **Issue**: `app/platforms/slc.py`, `lims.py`, and `primegov.py` all call `YouTubeAssetFinder.resolve_video_id()` and then overwrite its `title`/`date`/`jurisdiction` with their own page's real metadata — before WO-167 (2026-09-10), a permanently-gone video still returned a real (if content-less) `ResolvedMeeting`, so that override still worked. Since WO-167 changed `resolve_video_id()` to raise `YouTubeUnavailableError` for that same case (the intended, in-scope fix — see `BACKLOG_DONE.md`), these three adapters' own `resolve()` now raises too, propagating past their own metadata entirely.
