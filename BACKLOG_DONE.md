@@ -39,9 +39,32 @@
   would have refused them. Probed via `scripts/probe_tier3_queue.py
   --urls-file`: 34/34 live (3 needed a re-probe after a transient
   CivicClerk resolve error).
-- **Still open (Ryan's call):** the same two bulk PRs left Sanford NC 18,
-  Vineyard UT 16, Park City UT 14, Cosumnes CSD 13, Ivins UT 11 and
-  Kaysville UT 11 lines. Same trim applies if wanted.
+- **Part 2 (same day, Ryan: "yes, apply the trim to those too"):** the
+  six remaining volume-queued governments, all tool-sourced (#443, #794,
+  #798 "queue additions"; one WO-184 line each for Park City and Ivins).
+  77 more lines parked (Sanford 17, Park City 13, Cosumnes 12, Ivins 10,
+  Kaysville 10, Vineyard 15). Queue 2,563 → 2,486. Kept:
+
+  | Government | Kept | Length |
+  |---|---|---|
+  | Sanford, NC | `event/2049` City Council Meeting, 2026-02-17 | 0:33:36 |
+  | Park City, UT | `event/3931` City Council Meeting, 2026-06-25 | 1:11:36 (the 5-min special of 2026-07-16 skipped as under 9 min) |
+  | Cosumnes CSD, CA | `event/562` Regular Board Meeting, 2026-03-18 | 0:37:48 |
+  | Kaysville, UT | `event/1264` Special City Council Meeting, 2026-08-10 | 0:31:30 |
+  | Ivins, UT | `clip_id=2424` City Council and Planning Commission Joint Meeting | 0:35:00 |
+  | Vineyard, UT | `event/1453` City Council Meeting, 2026-08-25 | unknown — see below |
+
+  Vineyard's CivicClerk delegates to SuiteOne Media and the queue probe
+  has no recipe for it, so all 16 lines were `reject-dead` and the gate
+  refuses the kept one too; filed as a `[JUST-DO-IT]` entry in
+  `BACKLOG.md`. Two identity notes for the conductor: WO-205's search
+  rows had Summit County as `us:county:08117` (Colorado) and Cosumnes CSD
+  as Elk Grove `us:place:0622020`, both from a bare jurisdiction string;
+  the deferred lines here carry the registry's `us:county:49043` and
+  `rtr:us:ca:cosumnes-community-services-district`. The live pages for
+  those two tenants may be keyed the same wrong way.
+- **Left as is:** ~40 single-tenant hosts with 2–5 queue lines each
+  (about 100 lines); nobody has asked for those.
 
 ## WO-212: the 103 long meetings WO-205 swapped out were back in the queue after two "union" rebases — dropped again, CI guard added, rebase rule amended [Done 2026-09-11]
 

@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (26)
+  Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
@@ -649,6 +650,29 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+
+### Queue probe has no recipe when CivicClerk delegates to SuiteOne Media — every Vineyard, UT line is "dead" to the ingest gate `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/probe_tier3_queue.py` on Vineyard UT's 16 CivicClerk
+  lines (2026-09-11, WO-213): all 16 `reject-dead`, reason `no probe
+  recipe for this media shape: http://vineyardut.suiteonemedia.com/web/
+  Player.aspx?id=…`. CivicClerk resolves the event to a SuiteOne player
+  page; `app/platforms/suiteone.py` exists, but `queue_probe.py`'s
+  dispatch has no SuiteOne branch, so the video is real and the gate
+  refuses it.
+- **Impact:** every CivicClerk tenant that delegates to SuiteOne is
+  un-feedable (Vineyard is the one seen; WO-205's sidecar can be grepped
+  for `suiteonemedia.com` to find the rest).
+- **Next action:** add a SuiteOne branch to `queue_probe.py`'s dispatch
+  the way WO-205 added CivicWeb→YouTube (dispatch on the resolved video's
+  host): call `SuiteOneAssetFinder` for the media URL, then the direct-
+  file/ffprobe recipe. One live test against Vineyard `event/1453`.
+- **Constraint:** `suiteone.py`'s `resolve()` raises a raw `ValueError`
+  on some pages (separate `[NEEDS-AUDIT]` entry) — catch it as
+  `reject-dead` with the reason, don't let it abort the probe run.
+- **History:** found 2026-09-11 trimming Vineyard to one meeting (WO-213
+  part 2); the kept line `event/1453` stays refused until this lands.
 
 ### Two real domain leads found by WO-196, ready to act on but out of that WO's own four-group scope `[JUST-DO-IT]` `[EASY]`
 
