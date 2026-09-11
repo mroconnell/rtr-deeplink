@@ -147,6 +147,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (26)
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Production actions only Ryan should take  (9)
     [HUMAN] 3 live/pending Archive pages need `POST…
+    [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -154,12 +155,11 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
-    [HUMAN] Cap-Acadie regional municipality, NB has no `gov_id` -- one…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (135)
-  [NEEDS-AUDIT] Two `tenant_overrides.csv` pins for the same YouTube…
+  [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
@@ -1217,6 +1217,46 @@ of human step they need.
     session, not a retry from this one.
   - **History**: `BACKLOG_DONE.md`, WO-184 continuation, 2026-09-11.
 
+- **[HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but WO-211 ran in a sandbox with no `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` at all -- needs a session with real Archive access to run them.**
+  - **Issue**: WO-211 (2026-09-11) confirmed six real meetings by title/
+    channel that have no Archive page yet: Cap-Acadie regional
+    municipality, NB (`rtr:ca:nb:cap-acadie`, minted this WO,
+    `youtube.com/watch?v=6N4jEHd7zw8`, 2:15:29, audio-only); Municipality
+    of the County of Pictou, NS (`rtr:ca:ns:municipality-of-the-county-
+    of-pictou`, minted this WO, `youtube.com/watch?v=AumDIgXZnBc`);
+    Texas Workforce Commission (`rtr:us:tx:texas-workforce-commission`,
+    minted this WO, `youtube.com/watch?v=4O873q7Q-1U`); Millinocket, ME
+    school district (`us:sd:2308280`, `youtube.com/watch?v=s2TTtUcnzag`,
+    shared town channel); Town of Granville, NY (`us:cousub:3611530037`,
+    `youtube.com/watch?v=tmfvXiRUPfE`); Town of Stonington, CT
+    (`us:cousub:0918073770` -- a newer, shorter meeting than the one that
+    revealed the channel is now live: "Board of Selectmen - 09.09.26",
+    12.4 min, confirmed on the channel 2026-09-11). This session's own
+    git worktree had no `.env` and this project's own rules forbid
+    grepping/printing a secret's value to find one another way, so no
+    `GET /internal/export/pages` check or `POST /internal/ingest` call
+    could be made at all -- a harder block than the usual "dry run
+    blocked by the classifier" shape most `[HUMAN]` entries in this
+    section hit.
+  - **Impact**: six real governments (three newly minted) have zero
+    Archive coverage even though a real, hand-checked meeting is sitting
+    ready for each one, with channel and per-video pins already in
+    `tenant_overrides.csv`.
+  - **Next action**: from a session/shell with real `ARCHIVE_BASE_URL`/
+    `ARCHIVE_INGEST_TOKEN`, run `scripts/bulk_ingest.py` for the six
+    videos above (tier 1/2 if captions are available; Stonington's
+    French-free English audio and Cap-Acadie's French audio should both
+    have YouTube auto-captions to check first; if not, `scripts/
+    probe_tier3_queue.py` before queuing, per Ryan's ingest rule).
+    Re-check Stonington's channel for an even newer meeting before
+    ingesting -- it posts several times a week.
+  - **Constraint**: hand-check title and channel before ingesting, same
+    as every other WO this session references -- especially Millinocket
+    (shared town/school channel) and Stonington (very active channel,
+    the newest video may have changed again by the time this runs).
+  - **History**: `BACKLOG_DONE.md`, WO-211, 2026-09-11; `research/
+    wo211_owner_channels.csv`, `research/wo211_report.csv`.
+
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
     `new_verdict == "same-name-same-state-ambiguous"`: `@CityofSantaClara`
@@ -1313,31 +1353,6 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
     `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
 
-- **[HUMAN] Cap-Acadie regional municipality, NB has no `gov_id` -- one real government's video was pulled from the tier-3 queue rather than mis-keyed to it.**
-  - **Issue**: WO-184's continuation (2026-09-11) hand-check caught
-    Campbellton, NB's alternate-domain retry landing on a real video that
-    is really Cap-Acadie's own regular council meeting (Campbellton's
-    domain `capacadie.ca` is Cap-Acadie's, a 2023 New Brunswick regional-
-    municipality amalgamation that Campbellton itself is now part of).
-    `jurisdiction_coverage.csv` already carries a "Cap-Acadie, New
-    Brunswick, Canada" row (matches `capacadie.ca`) but its `gov_id`
-    column is blank. Pulled the tier-3 queue line and pin rather than
-    key it to Campbellton (which the meeting genuinely isn't) or leave
-    it unresolved with no government at all.
-  - **Impact**: one real, confirmed video (`youtube.com/watch?v=6N4jEHd7zw8`,
-    a real "Cap-Acadie -- Réunion ordinaire / Regular Meeting") sits
-    unqueued until Cap-Acadie has an id.
-  - **Next action**: same "ok mint" pattern as WO-201's PennDOT/Upper
-    Delaware Council/Southwestern PA Commission -- Ryan decides whether
-    Cap-Acadie (and, by the same logic, any other 2020s Canadian
-    municipal-amalgamation regional bodies this project's registry
-    predates) is in scope to mint; if yes, re-queue the video above
-    under the new id.
-  - **Constraint**: don't key this video to Campbellton -- the meeting is
-    Cap-Acadie's, not the town's, even though Campbellton's own domain
-    answered.
-  - **History**: `BACKLOG_DONE.md`, WO-184 continuation, 2026-09-11.
-
 ### Decisions about already-live content
 
 - **[NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population — residual work after the 2026-08-31 repair run.**
@@ -1362,12 +1377,12 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] Two `tenant_overrides.csv` pins for the same YouTube video point at two different gov_ids -- "Newfane town" (`us:cousub:5002548400`) and "Newfane village" (`us:place:5048325`), both Vermont.**
-  - **Issue**: found rebasing WO-191 slice 2 onto `origin/main` (2026-09-11) -- `www.youtube.com,youtube:tKQSGf0eR_w` has two rows, one from `wo183_access_ladder_sweep` (`us:cousub:5002548400`, "Newfane town") already on `main`, one from `wo191_access_ladder_sweep` (`us:place:5048325`, "Newfane village") added this session. WO-202's hand-check already confirmed the WO-191 row's own government as right by title/channel (Brattleboro Community TV, "2026 Newfane Town Meeting") -- but never checked whether the older `wo183` pin to a *different* gov_id has its own real evidence, or whether "Newfane town" and "Newfane village" are the same real place double-listed under two gov_ids in the national table (a Vermont incorporated village sitting inside a same-named town is a real, if uncommon, shape -- not necessarily a duplicate).
-  - **Impact**: two governments' worth of coverage tracking depend on which pin the resolver's own lookup order picks, arbitrarily, for this one video -- and if the two gov_ids are actually the same real municipality, both coverage rows are silently tracking one place as if it were two.
-  - **Next action**: check whether `us:cousub:5002548400` and `us:place:5048325` are the same real Vermont municipality (population, county, incorporation status) or two genuinely distinct governments; if duplicate, resolve to one gov_id and redirect/remove the other's coverage row; if distinct, confirm which one the video actually belongs to and remove the wrong pin.
-  - **Constraint**: don't remove either pin without checking by hand first -- WO-202's "right" verdict only covers the WO-191 row's own claim, not a comparison against the older `wo183` pin.
-  - **History**: found during WO-191 slice 2's rebase, 2026-09-11 -- the `wo183` pin was already on `main` before this session; not introduced by it.
+- **[NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a WRONG per-video `tenant_overrides.csv` pin still live alongside or instead of the correct one.**
+  - **Issue**: WO-211 (2026-09-11) collected every "wrong government" finding from WO-183/184/191/196/199/202/206 into `rtr-business/research/wo211_owner_channels.csv` and found that several of WO-184's continuation's own corrections (the video really belongs to St. Tammany Parish LA, Dublin GA, Allegan County MI, Delta County MI, Van Buren County MI, Deerfield MA, or Mountain Iron MN, not the small government the sweep originally found it under) never got their file-level pin cleaned up -- the live page is correct (either it already resolved right, or a human ran a targeted override), but `tenant_overrides.csv` still carries a row pointing the same video id at the ORIGINAL wrong government.
+  - **Impact**: if any of these videos is ever re-resolved (the transcription worker re-resolving on a later transcribe, a future sweep touching the same tenant), it may re-create the wrong attribution, since the wrong pin is still live in the file.
+  - **Next action**: for each flagged row in `wo211_owner_channels.csv`, verify `app/utils/gov_registry/resolver.py`'s `_match_override()` real precedence between a bare video-id match string and a `youtube:`-prefixed one (both forms exist in the file for different rows; WO-211 did not confirm which one a live lookup actually uses) before removing or repointing anything, then remove the wrong row and add/confirm the correct one.
+  - **Constraint**: don't blind-repoint without checking the match-key precedence first -- trading a possibly-already-inert wrong row for a newly-live wrong one would be worse than leaving it alone.
+  - **History**: `BACKLOG_DONE.md`, WO-211, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` section 261.
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
   - **Issue**: WO-204 found `newtowntownship.civicweb.net`'s existing `ryan_stated` pin (from the 112-pin bulk worklist apply, PR #733) pointed to `us:place:4254184` (Newtown *borough*) even though the subdomain itself spells out "township" and the live portal is Newtown *Township*'s own (Board of Supervisors, Delaware County — confirmed live). The pin's own evidence line, "Newtown, PA -- us_places.csv Newtown borough," is a bare name-to-place match that ignored the word "township" sitting right in the hostname — the same root-cause shape WO-198's resolver fix targeted generally, just baked into a `ryan_stated` pin instead of the ladder. `ryan_stated` here records that Ryan approved a *batch* of 112 pins at once, not that each of the 112 was individually re-verified against its live site.
