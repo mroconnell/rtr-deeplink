@@ -102,8 +102,11 @@ _POLITE_UA = media_probe._DESKTOP_USER_AGENT
 # `.mp4`/`.mov`. `.mp3` is audio-only, still a real queueable tier-3
 # candidate -- the worker transcribes audio whether or not a video stream
 # exists, same reasoning utah_pmn.py's own module docstring gives for its
-# bare-file case.
-_DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3")
+# bare-file case. `.m4a` added WO-205 (2026-09-11): Utah PMN's own
+# uploaded recordings are `https://www.utah.gov/pmn/files/<id>.m4a`, and
+# 277 real queue lines were being rejected "no probe recipe" for that
+# extension alone.
+_DIRECT_FILE_EXTENSIONS = (".mp4", ".mov", ".m4v", ".mp3", ".m4a")
 
 # yt-dlp's android/ios/tv internal clients have historically not enforced
 # the "web" client's PO-token anti-bot check -- same order, same
@@ -870,9 +873,17 @@ async def probe_queue_entry(
     resolved_platform = resolved_platform or detect_platform(url)
     source_page_url = source_page_url or url
 
-    if resolved_platform == "youtube":
+    # WO-205 (2026-09-11): dispatch on what the video IS, not only on the
+    # page's platform -- a CivicWeb or PrimeGov page resolves to a YouTube
+    # embed, and 41 real CivicWeb queue lines were rejected "no probe
+    # recipe" for exactly that shape.
+    if (
+        resolved_platform == "youtube"
+        or video_format == "youtube"
+        or YouTubeAssetFinder.extract_video_id(video_url or "")
+    ):
         return await _probe_youtube(url, video_url, start)
-    if resolved_platform == "vimeo":
+    if resolved_platform == "vimeo" or video_format == "vimeo":
         return await _probe_vimeo(url, video_url, start)
     if resolved_platform == "telvue":
         return await _probe_telvue(url, video_url, source_page_url, start)

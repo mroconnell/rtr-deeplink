@@ -1,5 +1,69 @@
 # Backlog — done
 
+## WO-205: tier-3 long-meeting substitution, round 2 — 106 queue lines swapped, ~235 Whisper hours saved at the same breadth [Done 2026-09-11]
+
+**What was done and why.** Ryan asked whether the August "swap the
+longest queue meetings for a short one from the same government" pass
+could be repeated with the WO-144 probe and the new tenant listings.
+Measured first on the 900 queue entries the probe had already timed: a
+third are over 90 minutes (mean 144), so swapping each for a 25-minute
+meeting cuts Whisper time about 52% for the same number of governments.
+Step 1 probed every unprobed non-YouTube queue line (1,435, all
+completed, 931 with a duration). Step 2 extended
+`scripts/find_tier3_short_meeting_substitutes.py` (PR #932): durations
+from the probe sidecar with a per-platform size proxy, tenant listings
+through rtr-discovery's enumerators plus a Utah PMN per-entity search,
+the 9–40 min window, Ryan's fallback (shortest usable, else keep the
+long one), the conductor's same-governing-body preference, and an
+`apply` step. Step 3 (this entry) ran it and swapped the lines.
+
+**Result.**
+
+| Measure | Count |
+|---|---|
+| Long (>90 min) queue lines found | 441 across 238 tenants |
+| Tenants searched | 238 |
+| Substitute in the 9–40 min window | 44 tenants |
+| Substitute by fallback (shortest usable) | 67 tenants |
+| Nothing usable, long line kept | 163 tenants (about 130 of them Utah PMN, see caution) |
+| No listing method | 5 tenants |
+| **Queue lines swapped** | **106** |
+| **Whisper hours saved** | **~235** (of ~1,143 in the long lines) |
+
+Swapped originals are parked in `scripts/tier3_long_meetings_deferred.txt`
+(url, source, gov_id, jurisdiction, duration, title; 155 of 280 searched
+tenants resolved to a gov_id, the rest blank on purpose). Probe rows for
+every candidate and original stay in the probe sidecar, so the WO-156
+ingest gate already knows each substitute.
+
+**Three ingest-gate fixes found by the probe and shipped here.**
+(1) Utah PMN's own recordings are `https://www.utah.gov/pmn/files/<id>.m4a`
+and `.m4a` had no probe recipe: 277 real lines were rejected "dead";
+adding the extension recovered 178 (43 long, 69 already 9–40 min). The
+other 97 point at a PDF/Word/zip/.wav in the "audio" field and stay
+rejected. (2) A CivicWeb/PrimeGov page resolves to a YouTube embed, and
+the probe dispatched on the page's platform only: 41 CivicWeb lines
+rejected "no probe recipe"; the probe now dispatches on the resolved
+video's host. (3) The YouTube drip's feed lane now takes CivicWeb and
+PrimeGov queue lines, since their videos are YouTube and belong on that
+budget (never re-probed from the office Mac).
+
+**Caution.** Utah PMN's search endpoint returned its "Technical
+Difficulties" page for every query from ~04:00 MT on 2026-09-11 — the
+pilot's own unfiltered call too — so all ~130 PMN tenants recorded
+`none`; the script now records that page as a listing error. Town Hall
+Streams: 116 of 125 queue lines resolve to no video at all (adapter gap,
+filed). The search sidecar was written under a stale header once and
+rebuilt; `_RowWriter` now refuses a header mismatch. The first search pass
+at 6 candidates per tenant was too slow on Granicus (cold-CDN probe
+timeouts); 3 per tenant found nearly everything the first two did.
+
+**Recommendation.** When PMN's search is back, run
+`search --platform utah_pmn --retry-none` then `apply --apply` — 43 of
+the recovered PMN lines are long. Re-queue the deferred file for depth
+once the breadth pass is through the queue.
+>>>>>>> 297b879 (WO-205: 106 long tier-3 meetings swapped for shorter same-government meetings (~235 Whisper hours saved); .m4a and YouTube-embed probe recipes)
+
 ## WO-206: re-keyed the six pages the blank-match Vimeo pin mislabeled "Oak Bluffs, MA," and minted the Pennsylvania Public Utility Commission [Done 2026-09-11]
 
 Closed the "Oak Bluffs" `[NEEDS-AUDIT]` entry WO-183/WO-187 filed the

@@ -383,3 +383,15 @@ def test_body_phrase_and_same_body_preference():
     assert (
         f3s.prefer_same_body(listing, None) == listing
     )  # no original title: listing order kept
+
+
+def test_row_writer_refuses_a_stale_header(tmp_path):
+    import pytest as _pytest
+
+    path = tmp_path / "s.csv"
+    w = f3s._RowWriter(path, ["a", "b"])
+    w.write({"a": 1, "b": 2})
+    w.close()
+    with _pytest.raises(RuntimeError, match="rebuild the sidecar"):
+        f3s._RowWriter(path, ["a", "b", "c"])
+    f3s._RowWriter(path, ["a", "b"]).close()  # same header: fine
