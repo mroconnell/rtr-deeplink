@@ -39584,3 +39584,60 @@ if a slug like this ever becomes reader-visible somewhere.
   CivicPlus's own dedicated pipeline doesn't) and
   `rtr-business/research/wo128_backfill_into_jc.py` (new, the
   `jurisdiction_coverage.csv` merge).
+
+## [Done 2026-09-10] WO-186: UScityURL leftovers -- 52 never-joined governments, a looser re-check of ~440 near-miss websites, 3,500 alternate domains, and a website_status deprioritization flag
+
+- **Issue**: WO-174's UScityURL application (documented only in
+  `rtr-business/research/ENUMERATION_METHODS.md` §220 -- no
+  `BACKLOG_DONE.md` entry exists for it) left four kinds of leftovers
+  behind: 52 GEOIDs that never joined
+  `jurisdiction_coverage.csv` at all, ~440 candidate domains it found
+  live but rejected on a too-strict name-in-title test, 3,500 UScityURL
+  domains that differ from the file's own primary domain and were never
+  added as alternates, and 4,406 rows where both UScityURL and the file
+  agree there is no known website.
+- **Impact**: recomputed all four buckets fresh against the current file
+  rather than trusting the conductor's overnight snapshot (all four
+  matched within a few percent). Part A: 20 new rows, 20 correct
+  blank-gov_id fills (21 attempted -- Greeley County, KS was nearly given
+  a second, duplicate gov_id before `consolidated_governments.csv` showed
+  it already had a canonical one; reverted the same session), 2
+  corrections (Benton City MO, Superior WI, both live-verified), 1
+  alternate domain -- plus a genuine gap fixed in
+  `consolidated_governments.csv` (Hartsville/Trousdale County, TN was
+  missing its county->place mapping; adding it the wrong direction first
+  broke `test_consolidated_governments_key_to_one_id_from_every_name_form`,
+  caught by the full local test run before it shipped). Part B: 421
+  domains filled (18 previously marked dead and now live), 15 still
+  genuinely blocked, 262 confirmed still dead, 32 looked-at-and-rejected;
+  a follow-up platform scan of the 420 newly-live domains found 125 real
+  platform/agenda-page signals, written to
+  `wo186_discovery_seeds.csv` for the access-ladder sweeps. Part C: 1,895
+  alternate domains added, 478 skipped as redirects-to-primary, 318
+  skipped as blocked-not-confirmed (real, well-known cities like
+  `lacity.org`/`chicago.gov` a plain client can't read), 803 dead, 6
+  parked. Part D: 4,422 rows tagged `website_status=none-known-2022`.
+- **Next action**: none for this WO; the Franklin PA and Park
+  city/township KS wrong-government findings from Part A are folded into
+  `BACKLOG.md`'s existing "[HUMAN] hosts the coverage registry ties to
+  the wrong government" entry rather than fixed here (same shape as the
+  Superior WI item already tracked there).
+- **Constraint**: two of this WO's own background fetch scripts hit real
+  process-management issues worth remembering -- a `nohup ... & disown`
+  launch inside a backgrounded Bash call does not reliably survive in
+  this sandboxed tool environment (the tool reported "exited with code 0"
+  almost immediately while the process kept running orphaned in the
+  background); relaunching directly via the tool's own background
+  execution left the orphan alive too, and both processes wrote to the
+  same resumable output file concurrently for a while (118 duplicate
+  rows, harmless since the apply step dedupes by gov_id, but wasted
+  ~120 redundant fetches against real government hosts before the
+  orphan was found via `ps aux` and killed). A future background-fetch
+  script here should check for an already-running instance of itself
+  before writing to a shared resumable CSV.
+- **History**: `rtr-business/research/ENUMERATION_METHODS.md` §235 for
+  the full four-part method and the reusable looser name-test rule;
+  `rtr-business/research/wo186_report.csv` for the per-row evidence
+  (gov_id, part, candidate, evidence, access_mode, outcome);
+  `rtr-business/research/wo186_discovery_seeds.csv` for platform links
+  Part B found, for the access-ladder sweeps.
