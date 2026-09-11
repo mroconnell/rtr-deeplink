@@ -26,3 +26,16 @@ function, not a stub.
 See `scripts/cms_fingerprint.py`'s own rule-level comments for the fuller
 evidence trail (how many real governments confirm each marker, and
 where the full list lives).
+
+## WO-179 additions (2026-09-10)
+
+Same convention (raw fetch, honest headers, script/style/comment blocks
+stripped, trimmed to a ~20-30KB window around the real marker) applied
+to four new families learned from `wo174_candidates.csv`'s population.
+
+| File | Real government | Real URL | Family | What it tests |
+| --- | --- | --- | --- | --- |
+| `govoffice_evansdale_ia_home.html` | Evansdale, IA | `https://evansdale.govoffice.com/` | govoffice | The domain itself is the vendor's shared `govoffice.com` host. |
+| `municipalimpact_delhi_la_home.html` | Delhi, LA (Town of Delhi) | `https://townofdelhi.municipalimpact.com/` | municipalimpact | The domain itself is the vendor's shared `municipalimpact.com` host; also carries the real `/agendas` and `/minutes` nav links this family's meetings-page rule relies on. |
+| `in_gov_towns_portal_georgetown_in_meetings.html` | Georgetown, IN (a town with no domain of its own) | `https://www.in.gov/towns/georgetown/meetings` | in_gov_towns_portal | Indiana's own shared `www.in.gov/towns/{slug}/` portal; this exact page is a real, populated agenda-PDF listing. |
+| `wv_local_gov_williamstown_home.html` | Williamstown, WV | `https://local.wv.gov/williamstown/` | wv_local_gov | West Virginia's own shared SharePoint portal (`local.wv.gov/{slug}/`), recognised by host. |

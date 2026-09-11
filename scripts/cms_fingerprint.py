@@ -157,9 +157,29 @@ def _rule_civiclive(
         return FingerprintResult(
             "civiclive", "civiclive-host-suffix", f"host={netloc}", url
         )
-    m = re.search(r"[a-z0-9.-]*hosted2?\.civiclive\.com[^\s\"'<>]*", html, re.I)
-    if m:
-        return FingerprintResult("civiclive", "civiclive-asset-host", m.group(0), url)
+    # WO-179 (2026-09-10): this regex used to open with an UNBOUNDED
+    # `[a-z0-9.-]*` immediately before a literal that often fails to
+    # match ("hosted2?\.civiclive\.com") -- classic catastrophic-
+    # backtracking shape. Confirmed live: a real 10MB government
+    # homepage (Sherman, IL, shermanil.org, 2026-09-10) hung this rule
+    # for minutes -- long runs of dot/dash/alnum characters (an inlined
+    # base64 asset, a minified-JS hash) give `re.search` many candidate
+    # start positions inside the same run, each one backtracking through
+    # the whole run trying the literal, which is quadratic in the length
+    # of that run. Fixed two ways: (1) a plain substring pre-check, so
+    # the regex only ever runs on a page that actually contains the
+    # literal at least once, and (2) bounding BOTH quantifiers (a real
+    # DNS label is under 63 chars; the trailing asset-path tail is capped
+    # generously at 200) so even a pathological page can't make either
+    # side unbounded.
+    if "hosted.civiclive.com" in lower_html or "hosted2.civiclive.com" in lower_html:
+        m = re.search(
+            r"[a-z0-9.-]{0,63}hosted2?\.civiclive\.com[^\s\"'<>]{0,200}", html, re.I
+        )
+        if m:
+            return FingerprintResult(
+                "civiclive", "civiclive-asset-host", m.group(0), url
+            )
     if "powered by civiclive" in lower_html:
         return FingerprintResult(
             "civiclive", "civiclive-footer-credit", "footer: Powered by Civiclive", url
@@ -219,6 +239,117 @@ def _rule_opencities(
     if "opencities" in generator.lower():
         return FingerprintResult(
             "opencities", "opencities-generator-meta", f'generator="{generator}"', url
+        )
+    return None
+
+
+def _rule_govoffice(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # GovOffice -- the government's own domain IS the vendor's own shared
+    # domain (govoffice.com / govoffice2.com / govoffice3.com), per
+    # WO-179 (2026-09-10), so this is a plain, 100%-reliable netloc
+    # suffix check -- no content signature needed, unlike every other
+    # rule in this file. About 220 governments in the UScityURL address
+    # list name one of these three hosts directly (research/
+    # uscityurl_raw.csv). Confirmed live on 10 real tenants while
+    # building this rule (evansdale.govoffice.com IA, goodview.govoffice.
+    # com MN, ball.govoffice2.com LA, vintontx.govoffice2.com TX,
+    # hallowell.govoffice.com ME, pottsboro.govoffice2.com TX,
+    # panhandletx.govoffice2.com TX, blountstownfl.govoffice3.com FL,
+    # slayton.govoffice.com MN, custer.govoffice.com SD). No single
+    # meetings-page path recurs across tenants -- see cms_families.csv
+    # for what was tried instead (nav-link scan, sitemap).
+    if netloc.endswith(".govoffice.com") or netloc.endswith(
+        (".govoffice2.com", ".govoffice3.com")
+    ):
+        return FingerprintResult(
+            "govoffice", "govoffice-domain-suffix", f"host={netloc}", url
+        )
+    return None
+
+
+def _rule_municipalimpact(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # Municipal Impact -- same shape as GovOffice above: the government's
+    # own domain is the vendor's shared `municipalimpact.com` domain, a
+    # plain netloc suffix check. Confirmed live 2026-09-10 on 9 of 10
+    # real tenants sampled (townofdelhi LA, townofdoublesprings AL,
+    # townofelton LA, cityofcoalhillar AR, cityofamericus KS,
+    # fountaincity IN, villageofparks LA, cityoffrost TX, cityofcollins
+    # IA -- villageofkirkwood IL returned "site_not_found", not yet
+    # provisioned). Unlike GovOffice, this vendor DOES have a reliably
+    # recurring meetings path: 8 of those 9 real tenants serve both
+    # `/agendas` and `/minutes` as real, directly guessable pages (the
+    # 9th, townofdoublesprings, has neither built yet -- a real content
+    # gap, not a path miss). See cms_families.csv.
+    if netloc.endswith(".municipalimpact.com"):
+        return FingerprintResult(
+            "municipalimpact", "municipalimpact-domain-suffix", f"host={netloc}", url
+        )
+    return None
+
+
+def _rule_in_gov_towns_portal(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # Indiana's own shared "in.gov/towns/{slug}/" portal -- one of
+    # WO-179's three "state-hosted template" families (2026-09-10).
+    # Distinct from a town having its own `{name}.in.gov` domain (those
+    # turned out, when fetched, to already be recognised WordPress or
+    # CivicPlus tenants in this WO's own 9-government sample -- see
+    # cms_families.csv's "state-hosted" row for the full breakdown) --
+    # this rule only fires for towns with NO domain of their own, hosted
+    # directly under the state's own `www.in.gov` apex. Confirmed live
+    # on Georgetown, IN (`www.in.gov/towns/georgetown/`, redirected there
+    # from `georgetown.in.gov`): `/towns/georgetown/meetings` is a real,
+    # populated agenda-PDF listing page -- the exact same path shape
+    # (`/towns/{slug}/meetings`) is expected to generalise to every other
+    # town on this same portal, though only this one tenant has been
+    # confirmed so far.
+    if netloc in ("www.in.gov", "in.gov") and re.match(
+        r"^/towns/[a-z0-9-]+/?", urlparse(url).path, re.I
+    ):
+        return FingerprintResult(
+            "in_gov_towns_portal",
+            "in-gov-towns-path",
+            f"path={urlparse(url).path}",
+            url,
+        )
+    return None
+
+
+def _rule_wv_local_gov(
+    html: str, lower_html: str, netloc: str, url: str
+) -> Optional[FingerprintResult]:
+    # West Virginia's own shared SharePoint portal
+    # (`local.wv.gov/{slug}/`) -- WO-179's second confirmed state-hosted
+    # sub-family (2026-09-10). Confirmed live on 3 real towns (all
+    # redirect their own `{name}.wv.gov`-style row in the population to
+    # this shared host): Williamstown, Madison, Fayetteville. Recognised
+    # from the host itself, or from the `Microsoft SharePoint` generator
+    # meta tag plus a `cdn.wvegov.com` asset reference (belt-and-braces,
+    # in case a future tenant is reached by a different alias domain).
+    # **No meetings-page path is confirmed** -- the homepage's nav is
+    # SharePoint script-rendered and a plain-HTTP fetch found zero
+    # meeting-word links on any of the 3 tenants checked; treat this
+    # family the same honest way as CivicLive/Town Web above (recognised,
+    # but route through the generic path/sitemap list rather than a
+    # guessed vendor path).
+    if netloc == "local.wv.gov":
+        return FingerprintResult(
+            "wv_local_gov", "wv-local-gov-host", f"host={netloc}", url
+        )
+    if (
+        "microsoft sharepoint" in _meta_generator(html).lower()
+        and "cdn.wvegov.com" in lower_html
+    ):
+        return FingerprintResult(
+            "wv_local_gov",
+            "wv-local-gov-sharepoint-signature",
+            "generator=Microsoft SharePoint + cdn.wvegov.com",
+            url,
         )
     return None
 
@@ -370,6 +501,15 @@ def _rule_civicplus(
 # elsewhere (any site can menu-link the word "agenda"), so every
 # stronger, narrower vendor signal gets first look.
 RULES = [
+    # Domain-suffix / host+path rules first -- these are deterministic
+    # (the government's own domain literally IS the vendor's or state's
+    # shared domain), zero false-positive risk, so ordering them ahead
+    # of the content-sniffed rules below costs nothing and can't shadow
+    # a real content signal for a different family.
+    _rule_govoffice,
+    _rule_municipalimpact,
+    _rule_in_gov_towns_portal,
+    _rule_wv_local_gov,
     _rule_civiclive,
     _rule_proudcity,
     _rule_opencities,

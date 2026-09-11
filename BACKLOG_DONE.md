@@ -728,6 +728,93 @@ of these are research/data files — none of them need a deploy to take
 effect except the queue file, which the existing cloud transcription
 worker already picks up on its own schedule; no code in `app/`,
 `archive/`, or `worker/` changed.
+## WO-179: WordPress agenda search run at scale, and three new website-hosting families learned and applied — 207 pages live now, 13 more videos queued [Done 2026-09-10]
+
+**What was tested and why.** WO-176 tried a small sample of 600
+governments and found that WordPress websites have a built-in search
+box, and that searching it for the word "agenda" finds a real meetings
+page 41.7% of the time — the best result of any method tried so far.
+Ryan asked to run that same search on every government left in the
+pool: 13,622 governments whose website could not be matched to a known
+video platform. At the same time, this work learned three more kinds of
+website by looking at 10 real examples of each: GovOffice and Municipal
+Impact (two companies that build small-town websites, named directly in
+a public list of city websites), and two states' own websites for towns
+too small to have a site of their own (Indiana's `in.gov/towns/` pages
+and West Virginia's `local.wv.gov` pages).
+
+**The result, by kind of website.**
+
+| Kind of website | Sites | A real meetings page found | Page live now | Video queued | Meeting found, no video | Nothing found |
+|---|---|---|---|---|---|---|
+| WordPress | 4,024 | 1,843 (46%) | 84 | 4 | 1,749 | 2,181 |
+| Municipal Impact | 24 | 8 (33%) | 0 | 0 | 8 | 16 |
+| GovOffice | 81 | 12 (15%) | 0 | 0 | 12 | 69 |
+| Indiana's own town pages | 20 | 2 (10%) | 1 | 1 | 0 | 18 |
+| West Virginia's own town pages | 10 | 1 (10%) | 0 | 0 | 1 | 9 |
+| Every other kind (CivicPlus, Revize, Town Web, and 3 more, all sitemap-only checks) | 9,463 | 1,050 (11%) | 122 | 8 | 910 | 8,413 |
+| **Total** | **13,622** | **2,916 (21%)** | **207** | **13** | **2,680** | **10,706** |
+
+("Meeting found, no video" counts a real meetings page where no usable
+video link could be found, at any depth. 16 rows are not in this table:
+10 where a real video was found but a duration/quality check said it
+probably wasn't the right meeting, and 6 real errors.)
+
+**Result.** 207 governments now have a real page today, no further
+action needed. 13 more have a real video queued; it will publish
+automatically over the next few days once transcribed. That is 220
+governments out of 13,622 (about 1 in 62) — the hardest, lowest-yield
+slice of governments this project has swept, since every easier one was
+already found by earlier work.
+
+**Caution.** Most of what this found is agenda pages with no video, not
+new videos — of the 2,916 real meetings pages found, only 403 (14%) led
+to an actual, specific video link; the rest were real pages with no
+video on them at all. That is the expected, honest shape for the
+smallest towns left in this pool, not a sign the method failed.
+GovOffice and West Virginia's pages in particular have no single
+website address pattern that works every time — each one had to be
+checked by reading its own menu or sitemap, which is less reliable than
+a fixed address like CivicPlus's `/AgendaCenter`.
+
+**Two real bugs were found and fixed while this ran, neither of which
+lost any data** (every result is saved to a file before either bug
+could strike): (1) One website's page was so large (10 megabytes) that
+a piece of code meant to identify its software (checking for the words
+"civiclive.com") got stuck re-reading it for several minutes, because
+of how that check was written — a known kind of programming mistake
+called "catastrophic backtracking." Found by testing the exact page by
+hand, fixed by rewriting the check to give up sooner, and a test was
+added so this specific mistake cannot come back unnoticed. (2) When
+something went wrong with the network many times in a row, the code
+meant to stop the run cleanly used the wrong kind of stop signal, so
+instead of stopping cleanly it crashed loudly. Neither bug lost data —
+work already saved stayed saved — but both meant the run had to restart
+itself 4 times before finishing (done automatically, no data lost).
+
+**Deploy status.** The 207 pages are live now — creating a page this way
+never needs a deploy. The 13 queued videos will publish on their own.
+The code in this PR (four new detection rules, the two bug fixes) is
+merged but not live in the resolver service yet — it doesn't need to be
+for today's results, since none of this WO's own code runs as part of a
+live user request; it only matters for the next time someone runs this
+kind of sweep.
+
+**Files:** `scripts/wo179_family_scale.py` (new), `scripts/
+wo179_ingest_hits.py` (new), `scripts/cms_fingerprint.py` (four new
+rules, one bug fix), `app/utils/jurisdiction_data/cms_families.csv`
+(four new rows), `docs/CMS_FAMILIES.md`, `tests/test_cms_fingerprint.py`
+(9 new tests, including a fixture-free test that proves the
+catastrophic-backtracking bug cannot come back), `tests/fixtures/
+cms_fingerprint/` (4 new real saved pages), `rtr-business/research/
+wo179_report.csv` (13,622 rows), `wo179_family_stats.csv`,
+`wo179_discovery_seeds.csv`, `wo179_methods_section.md`,
+`wo179_apply_to_jc.py`, `jurisdiction_coverage.csv` (13,582 rows
+touched, 6,724 actually changed — the rest already carried the same
+value). `BACKLOG.md` has a new entry on the residual reliability gap
+(a wall-clock safety net cannot truly stop a different, undiscovered
+version of bug #1 above; only a stronger fix — running each check in
+its own separate process — fully would).
 
 ## WO-178: settled the 111 governments WO-165 could not decide on its own; only 2 are left for a human [Done 2026-09-10]
 

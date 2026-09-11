@@ -284,7 +284,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
     [EXAMPLE] Streamline Website Solutions has no confirmed real example…
     [LATER] A bare pasted Wistia media URL (no channel context) can show…
 
-Reliability, ops & cost  (14)
+Reliability, ops & cost  (15)
+  `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
   `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice,…  (1)
     [LATER] Tighten the two transcription workers to their real import
   Media-source reliability  (4)
@@ -4224,6 +4225,39 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md`, WO-161, 2026-09-10; see `wistia.py`'s `resolve_media_id()` docstring.
 
 ## Reliability, ops & cost
+
+### `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't truly preempt a synchronous hang — a subprocess-isolated fix is the real one
+
+- **Issue**: WO-179's own live run (2026-09-10) hung for minutes on a
+  real 10MB government homepage (Sherman, IL, `shermanil.org`) because
+  `scripts/cms_fingerprint.py`'s `_rule_civiclive` had a catastrophic-
+  backtracking regex (fixed in this WO — bounded quantifiers plus a
+  substring pre-check, see that file and its new synthetic regression
+  test in `tests/test_cms_fingerprint.py`). The `asyncio.wait_for(...,
+  timeout=120)` safety net added alongside it in
+  `scripts/wo179_family_scale.py` cannot actually preempt a *different*,
+  still-undiscovered synchronous CPU-bound hang the same way: Python's
+  asyncio timeouts only fire at points where the event loop regains
+  control, and a tight, non-yielding regex/parse loop inside one
+  coroutine blocks that same loop from ever checking the timer.
+- **Impact**: any future government whose page trips a similarly
+  expensive (but not exponential-enough to notice in code review) regex
+  or parse routine can still stall an entire sweep run indefinitely,
+  with no automatic recovery — exactly what happened here before the
+  specific regex was found and fixed by hand.
+- **Next action**: for any future large-population sweep script in this
+  family (`scripts/wo1*_*.py`), consider running each government's own
+  fingerprint/classify step in a short-lived subprocess (or a
+  `concurrent.futures.ProcessPoolExecutor` worker) with a hard OS-level
+  timeout, so a hang can actually be killed rather than merely detected
+  after the fact. Not built here — out of scope once the one real
+  regex bug was found and fixed, and no second instance has been seen.
+- **Constraint**: don't assume a wall-clock `asyncio.wait_for()` wrapper
+  is a real safety net against this class of bug — it only helps for a
+  slow-but-cooperative (i.e., still awaiting) coroutine, not a truly
+  synchronous hang.
+- **History**: `BACKLOG_DONE.md`'s WO-179 entry has the full incident
+  (root-cause isolation via `signal.alarm`, the exact regex, the fix).
 
 ### `[JUST-DO-IT]` Render *pipeline minutes* — build volume cut twice, still at the allowance
 
