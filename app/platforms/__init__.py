@@ -45,6 +45,7 @@ def register_all_finders() -> None:
     from .viebit import ViebitAssetFinder
     from .vimeo import VimeoAssetFinder
     from .wistia import WistiaAssetFinder
+    from .boxcast import BoxcastAssetFinder
     from .youtube import YouTubeAssetFinder
 
     register(GranicusAssetFinder())
@@ -83,6 +84,7 @@ def register_all_finders() -> None:
     register(InvintusAssetFinder())
     register(ArizonaLegislatureAssetFinder())
     register(WistiaAssetFinder())
+    register(BoxcastAssetFinder())
     # Registered under "unknown" -- the exact string detect_platform()
     # already returns for anything unmatched -- so get_finder("unknown")
     # finds this instead of raising UnsupportedPlatformError. Keep this
