@@ -30,6 +30,87 @@
   restart the drip once so the new loop is the one running.
 - **Runbook:** `docs/YOUTUBE_DRIP_RUNBOOK.md` now says a repeated
   `tick failed` line for more than an hour is a "tell Ryan" signal.
+## WO-202: rolling hand-check of WO-191's background sweep while it kept running — 105 pages checked live, 13 wrong, 10 deleted, 1 replaced [Done 2026-09-11]
+
+**What was tested and why.** WO-191's own sweep script kept running in
+the background after its agent exited, publishing real Archive pages
+the whole time with nobody checking them. Ryan asked for a checker on
+it now, not one big check at the end. This work order re-read
+`research/wo191_report.csv` on a loop until the sweep itself exited,
+and hand-checked every new page as it landed — the same way WO-191's
+own agent checked its first 798 governments: fetch the video's real
+title and channel (YouTube's oEmbed endpoint, falling back to a page
+scrape or yt-dlp where needed), then decide by hand whether it is a
+real meeting of the right government's council or a board/committee of
+it.
+
+**Result.** 105 governments were checked (rows 799 through 3,304, the
+rest of WO-191's list — the sweep finished mid-session). 92 were right.
+13 were wrong — a higher rate than WO-191's first-slice 8 of 80 (10%),
+likely because this later slice is mostly smaller, less-checked towns.
+
+| Verdict | Count of 105 |
+|---|---|
+| Right (real meeting, right government) | 92 |
+| Wrong government (video belonged to someone else) | 9 |
+| Wrong video (right government, wrong content) | 4 |
+
+Of the 9 wrong-government cases, 5 traced back to a wrong `domain`
+value already sitting in `jurisdiction_coverage.csv` — a small town's
+row pointed at a state government portal, a county's site, a
+homeowners-association's site, or a neighboring county's alternate
+domain instead of its own. In 2 of those 5 cases (and one more with a
+correct domain), the resolve pipeline's own separate jurisdiction check
+caught the mistake on its own and filed the video under the real
+owning government's existing page — so no page ever needed deleting.
+The other 6 wrong-government pages, plus all 4 wrong-video pages, were
+deleted by hand (`POST /internal/admin/delete-pages`, dry run then
+real, each one re-checked afterward to confirm it now returns 404 — 10
+pages total). One of the 4 wrong-video governments, Hanna, Alberta, had
+a real usable meeting recording elsewhere on the same channel (its
+other video was an AI-generated recap, not a real recording) — that
+real meeting is now ingested and live in its place.
+
+A light spot-check of 20 "no video found" rows (not the main task, just
+a sanity check) turned up one real miss: Port Aransas, TX has a working
+government YouTube channel linked right from the page the sweep
+visited, but the sweep's CivicWeb check doesn't follow an incidental
+link like that one out to the channel. No action taken — flagging it
+here for whoever tunes that rung next.
+
+**Caution.** The first version of the rolling check re-read the report
+every minute and reported on every single new row, most of which needed
+no action — a lot of noise for very little signal. Switched partway
+through to checking every 5 minutes and only reporting rows that
+actually needed a hand-check, which cut the noise by about 10x with no
+rows missed (checked at the end: every one of the 105 candidate rows
+has a matching entry in this session's own report file). Whoever builds
+the next rolling checker should start with the 5-minute, filtered
+version.
+
+**Recommendation.** 4 of the wrong-government cases point to a real
+body that isn't in our records yet and has no easy home: the
+Municipality of the County of Pictou, NS; the Texas Workforce
+Commission; the Indiana Governor's office; and the Montgomery Village
+Foundation, MD (a homeowners' association, not a government at all).
+The other 5 point to governments already tracked (City of Winnipeg, MB;
+Mount Vernon city, IA; Ripley County, IN; Lennox city, SD; Queen Anne's
+County, MD) and need no new record, just awareness that their own
+video showed up under a neighboring small town's name. Same shape as
+WO-199/WO-201's earlier close-out of WO-191's first 8 — a follow-up
+session in that mold could pick these up.
+
+**Deploy status.** The 2 new `tenant_overrides.csv` pins (Hanna, AB's
+replacement video) are on `main` but not live until the resolver
+redeploys — deploys are manual. The Hanna page itself is already live
+now (ingest is a direct call to the production Archive, independent of
+a resolver deploy), and the 10 page deletions are already live too
+(same direct-call path).
+
+**History.** `research/wo202_report.csv` (all 105 rows, full detail);
+`research/ENUMERATION_METHODS.md` §256; `research/jurisdiction_coverage.csv`
+(13 rows corrected). Did not touch WO-191's own report file, candidate
+list, or finish scripts — those remain a separate session's job.
 
 ## WO-205: tier-3 long-meeting substitution, round 2 — 106 queue lines swapped, ~235 Whisper hours saved at the same breadth [Done 2026-09-11]
 
@@ -64,7 +145,6 @@ long one), the conductor's same-governing-body preference, and an
 **Result.**
 
 | Measure | Count |
-|---|---|
 | Long (>90 min) queue lines found | 441 across 238 tenants |
 | Tenants searched | 238 |
 | Substitute in the 9–40 min window | 44 tenants |
@@ -282,7 +362,6 @@ question raised in WO-199's own writeup.
 curated_governments.csv` (`curated+ryan_stated`):
 
 | Government | gov_id | Kind used | State (why) |
-|---|---|---|---|
 | Pennsylvania Department of Transportation (PennDOT) | `rtr:us:pa:pennsylvania-department-of-transportation` | `other` -- no "state agency" value in the Census of Governments vocabulary this repo follows | PA |
 | Upper Delaware Council | `rtr:us:ny:upper-delaware-council` | `special_district` -- closest existing value, same as other regional multi-government bodies already in the file | NY -- the Council's own office is in Narrowsburg, NY (confirmed live) even though it serves both NY and PA townships |
 | Southwestern Pennsylvania Commission | `rtr:us:pa:southwestern-pennsylvania-commission` | `special_district`, same reasoning | PA -- office in Pittsburgh, PA (confirmed live) |
@@ -297,7 +376,6 @@ The existing WO-199 pin for PennDOT's video was repointed from
 (PennDOT's meeting was already live from WO-199):
 
 | Government | Meeting | Minutes | Page |
-|---|---|---|---|
 | Upper Delaware Council | "Creating Healthy Allyships With Indigenous Peoples" | 36.9 | Live now (id 8501) |
 | Southwestern Pennsylvania Commission | "Commission Executive Committee and Corporation Board of Directors Meeting - August 24, 2026" | 37.5 | Live now (id 8502) |
 
@@ -366,7 +444,6 @@ channel/description evidence (read-only, no download) plus
 `us_cousubs.csv` FIPS cross-checks:
 
 | Page | Evidence | Pinned to |
-|---|---|---|
 | Lancaster Twp, PA | Channel "Lancaster Township - Lancaster County, PA" (@LancasterTownship1729) | `us:cousub:4207141224` |
 | Conewago Twp, PA | Channel "OFFICIAL Conewago Township, York County Page" | `us:cousub:4213315656` |
 | Shrewsbury Twp, PA | Video title + channel both name York County | `us:cousub:4213370576` |
@@ -407,7 +484,6 @@ this WO originally filed.
 corpus scan, 6 already pinned/self-correcting there, 7 left):
 
 | Page(s) | Evidence | Pinned to |
-|---|---|---|
 | North Brunswick Twp, NJ (`northbrunswicktv.cablecast.tv`) | Host name is the township's own Cablecast channel | `us:cousub:3402352560` (tenant-host, fallback) |
 | Washington (charter) Twp, MI, x2 dup (`wbrw.cablecast.tv`) | WBRW TV is the township's own Community Media Center (confirmed via washingtontownship.org and WBRW's "RCS"/Romeo Community Schools description) | `us:cousub:2609984120` (tenant-host, fallback -- a CHARTER township, easy to miss on a bare "township" search) |
 | Union Twp, OH (`utclermont.gov`) | Site's own `<title>`: "Union Township Clermont County, OH \| Official Website" | `us:cousub:3902578288` (tenant-host, fallback) |
@@ -548,7 +624,6 @@ the resolve/ingest step, same as every other sweep in this project.
 **Result — the pilot's central question, in one table:**
 
 | Result | Count of 123 host renders |
-|---|---|
 | Rendered, no challenge ever shown | 82 |
 | Dead (DNS/connect/timeout) | 29 |
 | Interactive gate, stopped after 15 seconds | 9 |
@@ -564,7 +639,6 @@ Akamai, AWS WAF, or Sucuri challenge came up this run).
 **Governments (107), full outcome:**
 
 | Outcome | Count of 107 |
-|---|---|
 | Meeting/agenda found, no video | 51 |
 | No platform link found | 22 |
 | Blocked (12 dns-unresolvable, 6 cloudflare-challenge-blocked) | 18 |
@@ -766,7 +840,6 @@ on why the video was wrong:
 **Result, one row per original government:**
 
 | Government | Kind | What the channel turned out to be | What happened |
-|---|---|---|---|
 | Lemont Township, IL | A | Cook County Assessor's Office | Kept, keyed to Cook County (`us:county:17031`), live now |
 | Middlebury town, VT | A | Addison Central Unified School District (one video only) | Kept, keyed to the school district (`us:sd:5000402`), live now |
 | Damascus Township, PA | A | Upper Delaware Council (a river-corridor partnership) | Left out -- this body has no id in our system yet |
@@ -779,7 +852,6 @@ on why the video was wrong:
 **The township relook, same 5 governments Kind A applies to:**
 
 | Government | Own video found? |
-|---|---|
 | Lemont Township, IL | No -- real meeting agendas exist online back to 2018, no video |
 | Middlebury town, VT | Yes -- the Selectboard's own meeting, on the same channel that carried the wrong video; live now |
 | Damascus Township, PA | No -- real, current meeting agendas exist, no video |
@@ -1023,7 +1095,6 @@ left alone.
 **Result, of the 15 channels:**
 
 | Result | Count of 15 |
-|---|---|
 | YouTube's block still there | 0 |
 | Channel confirmed as the government's own or a channel that carries its meetings | 15 |
 | A real meeting found and its transcript is on the site now | 12 |
@@ -1128,7 +1199,6 @@ re-checked pointlessly.
 after the fix above:**
 
 | List | What it is | Count before the fix | Count of governments actually checked |
-|---|---|---|---|
 | Retry list | has another address on file, and its main address found no meeting at all | 4,686 | 3,434 |
 | One-hop list | has another address on file, and its main address found a meeting but no video | 704 | 541 |
 
@@ -1141,7 +1211,6 @@ picks up where this one stopped instead of starting over.
 first):**
 
 | Result | Count of 140 |
-|---|---|
 | A real platform link was found (on the main address or an alternate) | 60 |
 | The alternate answered but had nothing meeting-shaped on it | 68 |
 | Every address, including alternates, still could not be reached | 12 |
@@ -1158,7 +1227,6 @@ not meet that bar.
 the same check-and-add pipeline every sweep in this project uses:
 
 | Result | Count of 60 |
-|---|---|
 | A real meeting was found and a transcript is now live | 12 |
 | The government already had a page | 18 |
 | A link was found, but no usable video turned up | 28 |
@@ -1180,7 +1248,6 @@ robot" error) came up this batch.
 municipalities and counties):**
 
 | Result | Count of 233 |
-|---|---|
 | The alternate showed a DIFFERENT platform than the one already known | 118 |
 | The alternate showed the SAME platform again | 32 |
 | The alternate had no meeting link either | 41 |
@@ -1213,7 +1280,6 @@ pass before they count as coverage. See `BACKLOG.md`'s matching entry
 for the exact next steps and a few reason labels found in the file that
 still need sorting into the right bucket.
 
-**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
 worker/ scripts/ tests/` clean. Full test suite: 3,125 tests passing (23
 new test functions added for this change, taking
 `tests/test_coverage_alternates.py` from 17 to 59 collected cases once
@@ -1266,7 +1332,6 @@ had not.
 **Retry-set result, of the 821 "found" governments:**
 
 | Result | Count of 821 |
-|---|---|
 | Already had a page | 194 |
 | Captions available, page live now | 103 |
 | Video, no captions, queued | 19 |
@@ -1281,7 +1346,6 @@ away).
 before this session, confirmed here):**
 
 | Result | Count of 213 |
-|---|---|
 | Captions available, page live now | 58 |
 | Video, no captions, queued | 3 |
 | Government already had a page | 21 |
@@ -1295,7 +1359,6 @@ government's own meetings, and the retry logic had no way to tell them
 apart from a bare channel/tenant match:
 
 | Government (wrong) | Real owner of the video | Government's page was |
-|---|---|---|
 | Mandeville city, LA | St. Tammany Parish, LA | Live -- page's own gov_id was already correct, only the research file's bookkeeping was wrong |
 | Lyndon city, KY | Dublin city, GA | Live -- page needs a human's `POST /internal/jurisdiction/override` (gov_id came back blank) |
 | Trowbridge Township, MI | Allegan County, MI | Live -- page's own gov_id was already correct |
@@ -1359,14 +1422,12 @@ Acadie is in scope to mint. Everything else in this WO is finished --
 no further sweep continuation is needed for the retry-set or one-hop
 populations.
 
-**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
 worker/ scripts/ tests/` clean. Full test suite: 3,214 tests passing (1
 new test added, `test_wrong_domain_mapping_is_never_retried_under_no_
 meeting_trigger`). `alembic check` clean for both `app/` and `archive/`
 (no model changed). `python3 scripts/build_backlog_toc.py` re-run after
 the `BACKLOG.md` edits.
 
-**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
 and `scripts/tier3_auto_transcription_queue.txt` changed (real `app/`
 and `scripts/` files) -- on `main` after merge but **not live until the
 resolver and both transcription workers are redeployed**. The 103 (retry)
@@ -1409,7 +1470,6 @@ hand-check itself), `research/wo184f_handcheck_ingest_report.csv`,
 **Result, `domain` column (31,474 rows total):**
 
 | Shape | Count before | Count after |
-|---|---|---|
 | Blank | 7,394 | 7,394 |
 | Plain address | 17,609 | 20,979 |
 | Plain address starting with www. | 335 | 3,100 |
@@ -1421,8 +1481,6 @@ hand-check itself), `research/wo184f_handcheck_ingest_report.csv`,
 **Result, `alternate_domains` entries (6,434 before, 6,281 after — the
 drop is duplicates and matches-the-main-address removed):**
 
-| Shape | Count before | Count after |
-|---|---|---|
 | Plain address | 6,098 | 6,025 |
 | Plain address starting with www. | 12 | 256 |
 | Full link, no page (just the address) | 285 | 0 |
@@ -1600,7 +1658,6 @@ population changed the split slightly; see `research/wo190_candidates.csv`).
 had no `gov_id` and were excluded outright, matching the brief.
 
 | Result | Count of 668 |
-|---|---|
 | Already had a page (fresh export, or a consolidated county-form id) | 259 |
 | Captions available -- real page live now | 138 |
 | Video, no captions -- newly queued for cloud transcription | 18 |
@@ -1611,7 +1668,6 @@ had no `gov_id` and were excluded outright, matching the brief.
 The 201 "no result" rows break down as:
 
 | Reason | Count of 201 |
-|---|---|
 | No platform link found anywhere | 118 |
 | A real video exists, but it isn't a real meeting (title check) | 36 |
 | The research row's own URL leads to a different, real government | 28 |
@@ -1744,7 +1800,6 @@ exactly where that stands.
 **Result, of the 798 governments in this PR's scope:**
 
 | Outcome | Count of 798 |
-|---|---|
 | Already had a page | 69 |
 | Captions available, page live now | 66 |
 | Video, no captions, really queued (probe accepted) | 5 |
@@ -1768,11 +1823,9 @@ pass (next section) -- their raw pipeline outcome had been
 to run (69 already covered):**
 
 | Rung | Count |
-|---|---|
 | Plain, honest request | 668 |
 | Headless (page loaded, no visible meeting link) | 31 |
 | Browser headers (after a 403/dropped connection) | 2 |
-| Stopped by a human-verification wall | 19 |
 | Timed out | 8 |
 | Blocked outright by a plain request | 1 |
 
@@ -1792,7 +1845,6 @@ scan` flag; the other 27 came from a specific linked video already
 confirmed real. 8 real problems surfaced, all from the flagged bucket:
 
 | Government | Video was actually | Real gov it belongs to (if any) |
-|---|---|---|
 | Lac la Biche County, AB | A news clip about an award win, not a meeting | -- (off-mission) |
 | Solebury Township, PA | A PennDOT roundabout-project public meeting | -- (off-mission) |
 | Middlebury town, VT | A school board meeting | Addison Central School District |
@@ -1874,7 +1926,6 @@ replacement that were sitting in WO-202's own unmerged worktree.
 **Result, of the 2,506 governments in this slice:**
 
 | Outcome | Count of 2,506 |
-|---|---|
 | No usable platform link found, after the full ladder | 1,819 |
 | Blocked (cloudflare/dns/timeout/plain-http) | 362 |
 | Off-mission (real video, not a real government meeting) | 150 |
@@ -1884,7 +1935,6 @@ replacement that were sitting in WO-202's own unmerged worktree.
 | Video, no captions, really queued (probe accepted) | 3 |
 | Video, no captions, rejected by probe (no recipe for the media shape) | 1 |
 | A real error | 2 |
-| No meeting nor video | 1 |
 
 "Captions available, page live now" (89) and "really queued" (3) are
 the *corrected* counts, after removing WO-202's 13 hand-caught wrong
@@ -1895,7 +1945,6 @@ confirmed right + 1 real replacement = 93 correct; see next section).
 #256, `research/wo202_report.csv`):**
 
 | Verdict | Count of 105 | What happened |
-|---|---|---|
 | Right | 92 | left as-is |
 | Kind A (video belonged to a different real government) | 9 | 6 pages deleted; 3 needed no deletion (the pipeline's own content-based jurisdiction check had already matched the video into the *real* owning government's existing page, never creating a wrong one) |
 | Kind B (right channel, wrong video) | 4 | 3 pages deleted with no usable replacement on the channel; 1 (Hanna, AB) had a real 79.8-minute meeting elsewhere on the same channel, ingested as a replacement |
@@ -1910,7 +1959,6 @@ site could be confirmed) for the wrong-domain cases in both slices.
 **Whole run, final (3,304 of 3,304, both slices, hand-check-corrected):**
 
 | Outcome | Count of 3,304 |
-|---|---|
 | No usable platform link found, after the full ladder | 2,340 |
 | Blocked (cloudflare/dns/timeout/plain-http) | 390 |
 | Off-mission (real video, not a real government meeting) | 210 |
@@ -1948,7 +1996,6 @@ delete-pages constraint is still open. No BACKLOG.md edit was needed
 here -- an earlier draft of this addendum added one against stale
 content and it was reverted before this PR opened.
 
-**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
 and `scripts/tier3_auto_transcription_queue.txt`/its probe sidecar are
 on `main` but **not live** until the resolver and both transcription
 workers are redeployed. The 89 tier-1/2 pages in this slice (plus
@@ -1965,6 +2012,14 @@ snapshot only -- the script overwrites rather than appends these),
 wo191_host_access_modes.csv`, `research/wo191_tier3_pending.csv` /
 `wo191_tier3_finish_log.csv`, `research/wo202_report.csv` (WO-202's own
 file, referenced not owned by this entry).
+**Update (WO-202, 2026-09-11):** the background sweep mentioned above
+kept running after this entry was written and finished the remaining
+2,506 governments with nobody checking them live. WO-202 hand-checked
+all 105 of those that came back as a real find (rows 799-3,304) while
+the sweep ran, catching 13 more wrong ones (9 wrong government, 4 wrong
+video) the same way this entry caught its first 8 — see WO-202's own
+entry above for the full breakdown, and `research/wo202_report.csv` for
+every row.
 
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
@@ -2051,10 +2106,8 @@ out to be a WordPress plugin tutorial video, unrelated to the borough —
 deleted the same session, see below. The other 72 all show a real,
 correct match.
 
-**Result.**
 
 | Outcome | Count of 1,814 | Detail |
-|---|---|---|
 | Captions available, page live now | 77 | real transcript, ingested |
 | Video, no captions, queued (after probe) | 5 | tier-3, will be transcribed |
 | Rejected by probe | 0 | none of the 6 probed candidates were dead/short |
@@ -2090,7 +2143,6 @@ a small one-off script against the pre-WO-152 commit.)
 **Which rung actually answered, by why it looked dead first:**
 
 | Prior reason | Answered plain | Answered browser-style | Challenge gate | Still dead | Blocked outright |
-|---|---|---|---|---|---|
 | Domain never resolved (1,690) | 381 | 5 | 31 | 1,205 | 68 |
 | Resolve failed some other way (124) | 116 | 3 | 1 | 3 | 1 |
 
@@ -2204,7 +2256,6 @@ file, not just the smaller group Ryan had already flagged.
 **Result**
 
 | Group | Rows with reason "meeting found, no video" | Both web-address columns blank |
-|---|---|---|
 | CivicMirror-matched (Ryan's flagged count) | — | 236 |
 | Whole file | 2,228 | 1,399 |
 
@@ -2219,7 +2270,6 @@ click deeper if needed) and looked for a real meeting or agenda link.
 That covered another 494 rows.
 
 | Where the address came from | Rows filled |
-|---|---|
 | Already found by an earlier sweep this week | 166 |
 | Coverage-registry export | 101 |
 | Discovery tool's own record book | 1 |
@@ -2243,7 +2293,6 @@ bug, written up on its own in `BACKLOG.md` rather than fixed here. The
 other 2 were genuinely new:
 
 | Government | What happened | Result |
-|---|---|---|
 | Stokesdale, NC (town) | Real town-council meeting video found; it has real captions | Put on the site now, live |
 | Putney, VT (town) | Real selectboard meeting video found; no captions available yet | Sent to the slower, no-captions queue |
 
@@ -2380,10 +2429,8 @@ these, the government's own web page title, or (when the page gave no
 useful title) a real record already stored in this project's own
 coverage list, decided it.
 
-**Result**
 
 | Group | Governments | Settled how | Rows before | Rows after |
-|---|---|---|---|---|
 | A — same government, different wording | 74 | Combined by machine; no web page checked | 152 | 74 |
 | B — name matched two real places | 37 | Decided from the government's own page title, or (for 6 where the title gave nothing) from a real record already in this project's own coverage list | 40 | 35 |
 
@@ -2451,7 +2498,6 @@ name in every request, and no attempt to get past a "prove you're
 human" page.
 
 | Result | Count of 265 |
-|---|---|
 | An alternate address answered with a real meeting platform | 53 |
 | An alternate address worked, but had no meeting video on it | 173 |
 | Every address, including alternates, still could not be reached | 39 |
@@ -2462,7 +2508,6 @@ resolve a real meeting and, where there is real video, add it to the
 site.
 
 | Result | Count of 53 |
-|---|---|
 | A real meeting was found and now has captions live on the site | 15 |
 | The government already had a page under this exact ID | 4 |
 | A real meeting was found, but had video with no captions, and the one video we tried to queue for transcription turned out to be a dead link | 0 (1 tried, rejected) |
@@ -2531,7 +2576,6 @@ are already live. The larger "try an alternate even when the main site
 loaded fine" idea is filed in `BACKLOG.md` for a future session to test
 properly before turning it on.
 
-**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
 worker/ scripts/ tests/` clean. Full test suite: 3,083 existing tests
 plus 17 new ones for this change, all passing. No database model
 changed, so no migration check was needed. `scripts/coverage_alternates.py`,
@@ -2541,8 +2585,6 @@ changed, so no migration check was needed. `scripts/coverage_alternates.py`,
 research file. Full method and every number:
 `rtr-business/research/ENUMERATION_METHODS.md` §232.
 
-**Deploy status:** `docs/COVERAGE_HANDOVER.md` and
-`docs/BREADTH_SWEEP_BRIEF.md` changed (documentation only, no deploy
 needed). No file under `app/`, `archive/`, `worker/`, or `render.yaml`
 changed, so this needs no production deploy either — it is a research-
 tooling and documentation change only.
@@ -2564,7 +2606,6 @@ stronger signal than the single field WO-171 used, because a channel's
 title is what it calls itself.
 
 | Verdict | Count of 287 | What it means |
-|---|---|---|
 | Not government | 154 | a person, business, campaign, or unrelated channel with no tie to this government |
 | No government assigned | 67 | this place named more than one government at once in the original dataset, so there is nothing to check the channel against |
 | Shared | 36 | the government's name shows up in the channel's own description or topic words, alongside real meeting language, but not in its title (a community-media channel, or a citizen who posts a government's meetings) |
@@ -2580,7 +2621,6 @@ was checked to make sure it actually plays and is long enough to be a
 real meeting, the same check WO-144 built.
 
 | Outcome | Count of 55 | Detail |
-|---|---|---|
 | Queued after check | 23 | a real, watchable meeting found and added to the queue |
 | Already has a page | 16 | this government's site already has a real page |
 | Blocked before a second try | 15 | a bug (below) meant the first try gave a false "nothing found"; YouTube's own block signal stopped the retry before these could be checked honestly |
@@ -2669,7 +2709,6 @@ WordPress-specific guess.
 **Result: what happened to all 600, start to finish.**
 
 | Stage | Count of 600 |
-|---|---|
 | Builder recognised | 244 |
 | Real meetings list or video link found | 119 |
 | A specific meeting/video link could be identified from that page | 14 |
@@ -2766,7 +2805,6 @@ real situations and reports each one honestly, instead of pretending the
 video resolved normally.
 
 | YouTube's own message | What it means now | Permanent? |
-|---|---|---|
 | "This video is unavailable" / "Video unavailable" / "This video has been removed..." | Gone for good | Yes |
 | "Private video" / "This video is private" | Owner made it private | Yes |
 | "...account associated with this video has been terminated" | Channel/account terminated | Yes |
@@ -2804,7 +2842,6 @@ whether that one is temporary or permanent.
 **Two real checks, both read-only, no changes made to any live page.**
 
 | Check | What we did | Result |
-|---|---|---|
 | Pacific City, MO's video | Asked the adapter to resolve `XeWevpU5Kpc` directly | It now raises an error: "YouTube video XeWevpU5Kpc is gone: ERROR: [youtube] XeWevpU5Kpc: This video is unavailable" |
 | A known-good video (Vigo County, IN Election Board, `HY4Sr4X7_9Y`) | Asked the adapter to resolve it directly | Still works: real title, real date (2026-05-15), 271 real caption lines |
 
@@ -2840,7 +2877,6 @@ under 60 seconds is never picked, no matter what.
 This actually happened, for real, while running Part 2 below.
 
 | Government | What happened |
-|---|---|
 | Spring Valley Village, Texas | Checked all 6 of its most recent meetings. Every single one ran over 40 minutes (43 to 86 minutes). Picked the shortest, 43 minutes. |
 | Del Norte County, California | The two newest meetings were too long (33 minutes over the limit, then over an hour). The third one, 33 minutes, was in range and got picked. |
 | Lebanon, Missouri | The two newest meetings were too long. The next one was only 8.7 minutes — just under the 9-minute preference, so still passed over. The one after that, 34 minutes, was picked. |
@@ -2858,7 +2894,6 @@ whoever wrote "45," but 44 is the correct number and what was actually
 run.
 
 | Result | Count of 44 | What this means |
-|---|---|---|
 | Captions found, page live now | 30 | The video turned out to have a real transcript after all. Includes Torrington, Wyoming — the one case that started this whole check. |
 | Queued for transcription | 10 | Real video, no transcript available yet. Now correctly in the to-do line. |
 | Already had a page | 3 | Someone else's work already covered these since the notes were written. Left alone. |
@@ -2969,7 +3004,6 @@ governments hitting this exact bug today. We ran all seven through the
 fixed code, read-only, nothing written to production.
 
 | Government | File type | Length | Result |
-|---|---|---|---|
 | Hudson town, CO | Video | 72 minutes | Queued |
 | Morrison town, CO | Video | 1 minute | Queued (see caution) |
 | Burley city, ID | Video | 72 minutes | Queued |
@@ -3051,7 +3085,6 @@ lost.
 **Result, first 1,449 governments checked:**
 
 | Outcome | Count of 1,449 attempted | Detail |
-|---|---|---|
 | No AgendaCenter | 948 | this government's website does not run CivicPlus's listing page |
 | Already had a page | 149 | found some other way before this check ran |
 | Website did not respond | 200 | timed out, DNS failure, or similar |
@@ -3074,7 +3107,6 @@ here it is closer to two-thirds agenda-only, one-third real video.
 **Result by size and type of government, same 1,449 rows:**
 
 | Population | Count checked | CivicPlus found | Real video found |
-|---|---|---|---|
 | 5,000 and up | 1,449 | 92 | 33 |
 | 1,000 to 4,999 | 0 | — | — |
 | Under 1,000 | 0 | — | — |
@@ -3086,7 +3118,6 @@ CivicPlus is known to be more common (WO-127's own finding). Expect the
 hit rate to climb once the run reaches those.
 
 | Kind of government | Count checked | CivicPlus found | Real video found |
-|---|---|---|---|
 | County | 1,205 | 62 | 20 |
 | Municipality (city/town) | 244 | 30 | 13 |
 | Township | 0 | — | — |
@@ -3168,7 +3199,6 @@ of the 5,000-24,999 population band and the top part of the
 **Result, this slice's 2,568 governments:**
 
 | Outcome | Count of 2,568 |
-|---|---|
 | No AgendaCenter | 1,851 |
 | Already had a page | 222 |
 | Website did not respond | 215 |
@@ -3187,14 +3217,12 @@ had none at all — nothing to check for video).
 **By population band, this slice:**
 
 | Population | Count checked | Real video found |
-|---|---|---|
 | 5,000-24,999 | 951 | 12 |
 | 1,000-4,999 | 1,580 (partial) | 0 |
 
 **Cumulative, all 4,017 governments checked so far (both passes):**
 
 | Outcome | Count of 4,017 |
-|---|---|
 | No AgendaCenter | 2,799 |
 | Website did not respond | 415 |
 | Already had a page | 371 |
@@ -3215,7 +3243,6 @@ returned "Unauthorized" for) — same method as WO-191's own audit. 11 of
 12 were exactly what they claimed to be. One was not:
 
 | Government | Domain used | Video was actually |
-|---|---|---|
 | Bristol borough, PA | bristoltwppa.gov | Bristol Township's own Planning Commission meeting |
 
 Bristol Borough and Bristol Township are two separate, real
@@ -3312,7 +3339,6 @@ corrected for real, others updated live by the pipeline as it ran),
 `wo174_discovery_seeds.csv`, `wo174_pins_staged.csv` (all append-only);
 `app/utils/jurisdiction_data/tenant_overrides.csv` (15 new pins),
 `scripts/tier3_auto_transcription_queue.txt` (2 new lines), `scripts/
-tier3_auto_transcription_queue_probe.csv` (append-only probe log);
 `BACKLOG.md` (2 new entries: the Neosho County dead-video finding, and
 the stale coverage-write floor).
 
@@ -3328,7 +3354,6 @@ written up; that later work is a later slice's to cover.
 **Result, this slice's 2,542 governments:**
 
 | Outcome | Count of 2,542 |
-|---|---|
 | No AgendaCenter | 2,165 |
 | Blocked by a "prove you're human" page | 146 |
 | Website did not respond | 130 |
@@ -3349,7 +3374,6 @@ governments checked (85%) do not run CivicPlus's AgendaCenter at all.
 **Cumulative, all 6,559 governments checked so far (three passes):**
 
 | Outcome | Count of 6,559 |
-|---|---|
 | No AgendaCenter | 4,964 |
 | Website did not respond | 545 |
 | Already had a page | 444 |
@@ -3357,7 +3381,6 @@ governments checked (85%) do not run CivicPlus's AgendaCenter at all.
 | Real meeting, no video | 101 |
 | No meeting at all found | 48 |
 | Captions available, page live now | 41 (2 found wrong and removed, see below and slice 1 — 39 real) |
-| Video, no captions, queued | 5 |
 | Rejected by the video check | 4 |
 | Wrong government caught at the candidate stage | 3 |
 
@@ -3368,8 +3391,6 @@ returned "Unauthorized" for it, same fallback WO-191 and slice 1 both
 used) — same method as before, applied to every ingested/queued row in
 the slice (1 row: nothing was queued to tier 3 this slice):
 
-| Government | Domain used | Video was actually |
-|---|---|---|
 | Union City village, OH | utclermont.gov | Union Township, Clermont County, Ohio's own Board of Trustees meeting |
 
 `utclermont.gov` ("UT" = Union Township) is genuinely Union Township,
@@ -3441,7 +3462,6 @@ the `wo174_pipeline.py`-adjacent `BACKLOG.md` entry are on `main` but
 need no deploy either — pin/queue files only take effect on the next
 resolver deploy, and this slice added no new real ones.
 
-Files: `rtr-business/research/jurisdiction_coverage.csv` (1 row
 corrected for real — Union City village, OH — plus governments the
 still-running pipeline itself updated live through row ~7,193 as this
 write-up was being finished; only rows through 6,559 are this slice's
@@ -3467,7 +3487,6 @@ candidate list.
 **Result, this slice's 883 governments:**
 
 | Outcome | Count of 883 |
-|---|---|
 | No AgendaCenter | 792 |
 | Website did not respond | 48 |
 | Blocked by a "prove you're human" page | 29 |
@@ -3485,7 +3504,6 @@ slice found no video behind it at all.
 **Cumulative, all 7,442 governments checked (all four passes):**
 
 | Outcome | Count of 7,442 |
-|---|---|
 | No AgendaCenter | 5,756 |
 | Website did not respond | 593 |
 | Already had a page | 454 |
@@ -3493,14 +3511,10 @@ slice found no video behind it at all.
 | Real meeting, no video | 104 |
 | No meeting at all found | 49 |
 | Captions available, page live now | 41 (2 found wrong and removed — 39 real) |
-| Video, no captions, queued | 5 |
-| Rejected by the video check | 4 |
-| Wrong government caught and skipped | 3 |
 
 **Yield trend, real video found per pass:**
 
 | Pass | Governments checked | Real video found | Percent |
-|---|---|---|---|
 | First pass | 1,449 | 33 | 2.3% |
 | Slice 1 | 2,568 | 12 | 0.5% |
 | Slice 2 | 2,542 | 1 (later found wrong, 0 real) | 0.04% |
@@ -3527,7 +3541,6 @@ coverage.csv` for those two outcomes — never for "no AgendaCenter,"
 each of the 4 by hand against the live file:
 
 | Government | This slice's outcome | `jurisdiction_coverage.csv` already had |
-|---|---|---|
 | Stonington borough, CT | Real meeting, no video | `wrong-domain-mapping` (a different, more specific reject reason from an earlier hand-check — kept, not overwritten) |
 | Lake George village, NY | Real meeting, no video | `meeting-without-video`, `civicplus`, and the real AgendaCenter address — already an exact match |
 | Peabody city, KS | Real meeting, no video | `no-platform-link-found` from before this run — the pipeline's own write rule only fills a blank reject reason, so this stayed as-is; the real AgendaCenter address and `civicplus` were already recorded regardless |
@@ -3591,7 +3604,6 @@ checked a video's length or whether the link even worked, before today
 and after this change.
 
 | Path | Gate before | Gate after |
-|---|---|---|
 | Tier-3 queue feed (`feed_tier3_auto_transcription.py`) | Yes (WO-144) | Yes (unchanged) |
 | Granicus queue feed (`feed_granicus_auto_transcription.py`) | No | Yes — it runs `bulk_ingest.py`, so it inherits the fix below automatically |
 | The shared ingest helper (`scripts/bulk_ingest.py`'s `_ingest()`) | No | Yes — new gate, on by default |
@@ -3627,7 +3639,6 @@ check.
 production).**
 
 | URL | What it is | Result |
-|---|---|---|
 | A YouTube video already known to be a scheduled livestream that never started | Confirmed dead in WO-143's own testing | Refused: "This live event will begin in a few moments" |
 | A real Swagit clip from Aledo ISD, TX | Confirmed real but only 35.7 seconds long in WO-143's own testing | Refused: "duration 35.7s is below the 60s meeting-plausibility floor" |
 
@@ -3679,7 +3690,6 @@ District, turned out to already have a page from a different video
 source, so we left it alone.
 
 | Government | Registry id | Meeting chosen | Length | Captions | Result |
-|---|---|---|---|---|---|
 | Manassas City Public Schools, VA | us:sd:5102360 | School Board, 6/23/2026 | 28 min | Yes, real | Page live now |
 | Fredericksburg City Public Schools, VA | us:sd:5101510 | Special School Board meeting, 8/3/2026 | 39 min | Yes, real | Page live now |
 | Stafford County Public Schools, VA | us:sd:5103660 | School Board, 2/26/2026 | 38 min | Yes, real | Page live now |
@@ -3766,10 +3776,8 @@ ambiguous rows lived, each government's own website was checked live —
 one at a time, politely — to see what the page itself calls its own
 government. Only then was a row changed.
 
-**Result**
 
 | Group | Count of duplicate governments | Rows before | Rows after |
-|---|---|---|---|
 | Rows that already agreed (one clearly better, or plain duplicates) | 287 | 583 | 287 |
 | Rows that disagreed on details but not on the government | 1,103 | 2,992 | 1,103 |
 | Rows that disagreed on which government it even was | 177 | 364 | 257 (103 fully resolved; 74 still have more than one row) |
@@ -3818,9 +3826,6 @@ change to see the new columns.
 in `wo165_for_ryan.csv` when convenient — none are urgent, they're
 simply unclear. No other action needed.
 
-**Deploy status:** none. This changed only the research file in
-`rtr-business`, a separate repo with no deploy step — nothing here
-touches the live site.
 
 ## WO-148: headless pass on the 1,132 smaller governments WO-133 never reached [Done 2026-09-10]
 
@@ -3845,10 +3850,8 @@ platform's own meeting listing (through a shared tool this project
 already has) rather than guessing a single URL, and take the newest
 meeting with real video.
 
-**Result.**
 
 | Outcome | Count of 1,132 | Detail |
-|---|---|---|
 | Already covered | 1 | Already had a page before this run started |
 | Ingested tier 1/2 (captions available, page live now) | 19 | Real transcript, live now; 2 of these carry a separate identity bug, filed below |
 | Video with no captions queued (after probe) | 6 | Real video confirmed playable; added to the real transcription queue |
@@ -3871,7 +3874,6 @@ government (see caution below) and are not counted as either of those.
 or the real browser step):**
 
 | Platform | Plain | Browser headers | Real browser |
-|---|---|---|---|
 | YouTube | 39 | 4 | 40 |
 | Granicus | 24 | 14 | 6 |
 | CivicPlus | 21 | 0 | 4 |
@@ -4025,7 +4027,6 @@ the meeting page?** We tried, on those same 20 governments, using each
 company's usual page address.
 
 | Company | Governments tried | Found a real meeting page |
-| --- | --- | --- |
 | CivicPlus | 2 | 1 of 2 |
 | Revize | 17 | 0 of 17 |
 | Town Web | 1 | 0 of 1 |
@@ -4113,7 +4114,6 @@ all 1,010 channels (one lightweight public lookup per channel, 2 seconds
 apart, zero blocks from YouTube the whole time).
 
 | Verdict | Count of 989 places | What it means |
-|---|---|---|
 | Own channel | 666 | the channel's own name plainly says which government it is |
 | Per-video only | 45 | a shared channel (community media, public access, news, or one serving several governments) — only specific videos should count, not the whole channel |
 | Rejected | 278 | names a different government, a private person, or could not be checked at all |
@@ -4129,7 +4129,6 @@ time.
 it.**
 
 | Outcome | Count of 584 | Detail |
-|---|---|---|
 | Queued after probe | 439 | a real, checked, watchable meeting picked and queued |
 | Channel failed verification | 144 | every channel for this government came back rejected above |
 | No plausible meeting in the dataset | 1 | nothing in its channel looked like a real meeting by title |
@@ -4215,7 +4214,6 @@ target this year's meetings, not older ones.
 **The seven RegionalWebTV governments, checked today:**
 
 | Government | Current meeting found | Captions | Result |
-|---|---|---|---|
 | Warrenton (town), VA | Yes, 8/11/2026 evening session | Yes, real | Page live now |
 | Manassas (city), VA | Yes, 2/25/2026 council meeting | Yes, real | Page live now |
 | Fredericksburg (city), VA | Yes, 4/28/2026 worksession | Yes, real | Page live now |
@@ -4283,7 +4281,6 @@ fixed. A few had a real page — it just belonged to a different, similar-
 sounding government, and that government's page has now been corrected.
 
 | Result | Count of 459 | What happened |
-|---|---|---|
 | Wrong — no page exists anywhere | 449 | The "we have a transcript" flag was removed. These governments go back into the pool for a future sweep to try again. |
 | Right government, wrong government's page | 6 | Fixed live today. See table below. |
 | Right government, page still wrong | 2 | A known software bug stops the fix from taking effect. Needs a person to fix it. |
@@ -4292,7 +4289,6 @@ sounding government, and that government's page has now been corrected.
 The 6 fixed governments:
 
 | Government | What was wrong | Result |
-|---|---|---|
 | Oak Grove, Missouri (the city) | Its one video was filed under "unknown government" | Now correctly shows as Oak Grove, MO |
 | Chevy Chase, Maryland (the town) | Its video was filed under a neighboring town of almost the same name | Now correctly shows as Chevy Chase, MD |
 | Cambridge, Ontario (Canada) | 5 of its videos were filed under "unknown," because a small Iowa town of the same name had (wrongly) claimed the same web address | Now correctly shows as Cambridge, ON |
@@ -4317,7 +4313,6 @@ as proof of which government it is, unless it's a specific channel or a
 specific video. 148 rows had this problem.
 
 | Result | Count of 148 |
-|---|---|
 | Fixed — the government's real website was found and recorded | 28 |
 | Already fixed by someone else's work today, found and left alone rather than overwritten | 9 |
 | Still needs research | 111 |
@@ -4331,7 +4326,6 @@ transcribed," checked against the real to-do list** the transcription
 system actually uses.
 
 | Result | Count of 142 |
-|---|---|
 | Confirmed — really is on the to-do list | 69 |
 | Not on the list, but a duplicate row for the same government is confirmed | 2 |
 | Not on the list, and a real video is on file — looks like it should be added | 45 governments |
@@ -4382,7 +4376,6 @@ WO-149's hand audit flagged four ingested county pages as not meetings. Ryan ask
 **What was found.** All four flagged videos sat on state-level channels, not the county's (Nebraska Association of Counties, Utah Association of Counties, PA Fish and Boat Commission, Missouri Ethics Commission). A YouTube search per county found the county's own channel for three of them; Adams County, NE has none (only candidate forums on a public-access station).
 
 | County | Replacement | Length | Result |
-|---|---|---|---|
 | Osage County, MO | Commission Meeting Dec 31 (2020), own channel | 17 min | captions, page live; backfilled to `us:county:29151` |
 | Perry County, PA | Perry Commissioners Mtg. 3-30-2020, own channel | 22 min | captions, page live |
 | Millard County, UT | Commission Meeting Live Stream 11-18-2025, own channel (live-stream tab) | 18 min | captions, page live |
@@ -4399,7 +4392,6 @@ Picks followed Ryan's rule of the day: prefer a complete meeting between 9 and 4
 Ryan asked two things: find a real council meeting on Yucaipa's channel to replace the 48-second recap, and read the captions of the still-open YouTube videos for a street, county or state that says where they are.
 
 | Government | What the captions said | Result |
-|---|---|---|
 | Lawrence County (@lawrencecounty168) | Mercer County and Indiana County, both Pennsylvania neighbours; Rainer Road, Corey Road | Lawrence County, PA; page re-keyed |
 | Sheridan (@cityofsheridan1890) | Arapahoe County | Sheridan, CO; page re-keyed |
 | Northfield (@villageofnorthfield) | Cook County, Illinois, Willow Road | Northfield, IL; page re-keyed |
@@ -4455,7 +4447,6 @@ the cheap one has nothing.
 ran them again with all three fixes in place.
 
 | Result | Count of 16 |
-|---|---|
 | Real meeting added to the site | 1 |
 | Sent to cloud transcription | 2 |
 | Still rejected, but for a real reason | 12 |
@@ -4496,7 +4487,6 @@ are already live in the database (the ingest script talks to production
 directly). `jurisdiction_coverage.csv` and the research files are
 updated in the separate `rtr-business` repo, committed there.
 
-### What was actually built
 
 `scripts/wo134_confirmed_hits_ingest.py`:
 - `PROBE_HOOK` (new, default `None` — every existing caller keeps its
@@ -4579,7 +4569,6 @@ first.
 **Result.** Out of 321 governments, we found 2 real videos.
 
 | Outcome | Count of 321 | What it means |
-|---|---|---|
 | No video system found after guessing | 289 | Every guess failed to answer, or answered with nothing real |
 | Guessed system belongs to a different government | 24 | The address we guessed is real, but it is not this government's — see caution below |
 | Already had a video on the site by the time we checked | 5 | Another team's work reached these first |
@@ -4593,7 +4582,6 @@ and whether the guess actually belonged to the government we were
 checking.
 
 | We guessed for | System we found | Was it the right government? |
-|---|---|---|
 | West Point, NE | CivicPlus (their own website) | Yes |
 | Livingston County, MI | eScribe | Yes |
 | Fremont, OH | PrimeGov | Yes (but its one video was too short) |
@@ -4630,7 +4618,6 @@ another. Both were removed the same day. A vendor's own footer badge
 ("Government Websites by CivicPlus") is a hint about who built the
 government's *website*. It is not proof about who runs their video
 system — that turned out to need its own separate confirmation every
-time.
 
 **What we built to catch this**, so it does not need a human reading
 every page by hand next time:
@@ -4688,7 +4675,6 @@ wo168_candidates.csv` (321 rows), `wo168_report.csv`,
 Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
 
 | Decision | Result |
-|---|---|
 | Keep all seven held videos | 5 probed and queued with per-video pins (Federal Way WA 6.3h flagged long but accepted, Caldwell ID, Minnetonka MN, Wenatchee WA, Cottonwood Heights UT); Cornelius NC was already queued by WO-150 and now carries a per-video pin to the town; Yucaipa CA's "A Minute Moore" is a 48-second recap, under the 60-second floor (a standing decision), so it stays out |
 | Not government channels: delete | 4 pages deleted through the admin endpoint (KSAT news clip, Hamden Action Now, Abdul El-Sayed interview, Shelby County video posted by a private account) |
 | Settle the state from the channel | Columbus OH (channel About page), Westfield NJ (channel About page), Jackson County MI (video description names co.jackson.mi.us): channel pins plus per-video pins, because those pages stored no channel |
@@ -4732,7 +4718,6 @@ a different, older reason from an earlier sweep and were correctly left
 alone by WO-145's own apply script). Of those 629, 365 changed:
 
 | Old outcome and reason | New tag | Count of 629 |
-|---|---|---|
 | `no-video-found`, real meeting found (`meeting_url` set or a candidate was tried) | `meeting-without-video` | 299 |
 | `no-meetings-found` | `no-meeting-nor-video` | 66 |
 | `no-video-found`, no meeting evidence either way | unchanged (`no-video-found`) | 1 |
@@ -4859,7 +4844,6 @@ each government's own real calendar page and ran the fixed scan on it,
 read-only — no data was saved or changed.
 
 | Government | Scan result before the fix | Scan result after the fix |
-| --- | --- | --- |
 | Mesa, AZ | Wrongly picked Granicus's own product page | Correctly finds nothing — this page's real video system isn't one we recognize yet, which is an honest result, not a bug |
 | Fort Collins, CO | Wrongly picked Granicus's own product page | Correctly finds nothing, same reason as Mesa |
 | Palo Alto, CA | Correctly found a real PrimeGov page | Still correctly finds the same real PrimeGov page — no regression |
@@ -4991,7 +4975,6 @@ every government, so a later run can pick up exactly where this one
 left off -- see Recommendation.
 
 | Outcome | Count of 96 checked | Detail |
-|---|---|---|
 | Page live now (captions found) | 6 | a real transcript is on the site today |
 | Video with no captions, queued (after the check) | 3 | real video, checked and confirmed playable first |
 | Rejected by the check before queuing | 1 | a real video link, but the clip itself was 2.9 seconds -- not a real meeting |
@@ -5019,7 +5002,6 @@ for one. That rate matches earlier sweeps the same day (WO-145 found
 fewer governments, not from this method working less well.
 
 | Which rung answered | Count of 96 |
-|---|---|
 | Plain request | 86 |
 | Browser-like headers | 2 |
 | Headless browser | 3 |
@@ -5028,7 +5010,6 @@ fewer governments, not from this method working less well.
 | None (already had a page, checked first) | 1 |
 
 | Did the government's own known meetings-page link help? | Count of 96 |
-|---|---|
 | Yes -- answered there | 82 |
 | No -- had to fall back to a plain homepage or a different known link | 13 |
 | The known link was stale (a 404) | 0 |
@@ -5089,7 +5070,6 @@ the first session's 9, the whole list found 69 real videos out of 1,026
 governments (6.7%): 22 pages live now, 47 queued.
 
 | Outcome | Count of 1,026 | Detail |
-|---|---|---|
 | Page live now (captions found) | 22 | |
 | Video with no captions, queued (after the check) | 47 | |
 | Rejected by the check before queuing | 12 | 7 too short, 5 a dead link |
@@ -5102,7 +5082,6 @@ governments (6.7%): 22 pages live now, 47 queued.
 | A stale link was fixed to a live one | 0 | the domain-retry logic never had a dead domain to fix this run |
 | The research URL was a dead link (404), no working fallback found | 3 | new this session, not seen in the first 96 |
 | Blocked by a plain request | 13 | |
-| Blocked by a browser-like request too | 0 | |
 | Blocked, even with a headless browser | 0 | still not separately tracked -- see Caution |
 | Blocked by a "prove you're human" page | 32 | |
 | The website did not exist (dead domain) | 0 | |
@@ -5115,23 +5094,19 @@ governments (6.7%): 22 pages live now, 47 queued.
 **Which rung answered, the whole 1,026:**
 
 | Which rung answered | Count of 1,026 |
-|---|---|
 | Plain request | 962 |
 | Browser-like headers | 11 |
 | Headless browser | 17 |
 | Stopped at a "prove you're human" page | 32 |
 | Website did not exist | 3 |
-| None (already had a page, checked first) | 1 |
 
 **Did the government's own known meetings-page link help, the whole
 1,026:**
 
 | Did the research URL help? | Count of 1,026 |
-|---|---|
 | Yes -- answered there | 841 |
 | No -- fell back to a different start URL | 182 |
 | The known link was stale (a 404), no working fallback found | 2 |
-| Not applicable (already had a page) | 1 |
 
 **Headless renders used this session: 744, out of the raised 1,000
 budget.** Of those 744 real renders, 14 (1.9%) recovered a usable
@@ -5237,7 +5212,6 @@ a video onto the page. Original text:
 WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pages are the Town Board of the town of Chenango. Its fallback pin could not override the resolver's own county match (the open "fallback pin cannot correct" bug), so Ryan made the call: authoritative.
 
 | Step | Result |
-|---|---|
 | Pin strength changed to authoritative (source `ryan_stated`) | 1 row |
 | `backfill_gov_id.py --hosts townofchenango.civicweb.net --apply` | 3 pages moved to `us:cousub:3600715110` |
 | Hub `/j/chenango-county-ny` retired, `/j/chenango-town-ny` receives the pages | alias added; the stale reverse alias (town to county, from the earlier mis-keying) removed |
@@ -5249,8 +5223,6 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 
 **The trade-off, stated before it was written.** This host is shared. Its live board list shows Board of Supervisors, Planning Commission and School Board meetings, and pins have no meeting-body discriminator (eScribe GUID paths give `match=` nothing to hold). So School Board pages now file under Gloucester County, VA rather than Gloucester County Public Schools (`us:sd:5101620`). Ryan accepted this the same way he accepted a town under its county. The open entry's earlier Constraint, written 2026-09-03 against exactly this pin, is superseded by that decision.
 
-| Step | Result |
-|---|---|
 | Pin strength `fallback` (visual_confirmed) → `authoritative` (ryan_stated) | 1 row |
 | `backfill_gov_id.py --hosts pub-gloucesterva.escribemeetings.com --apply` | 2 pages changed to `us:county:51073` (4097 and 7035); 1 Board of Supervisors page already current; second apply and third dry run zero |
 | `POST /internal/jurisdiction/override` for page 4097 (dry run) | refused as already overridden, so its stored string stays "Gloucester County Public Schools, VA"; its live title and hub come from the registry and read "Gloucester County, VA", so nothing visible is wrong |
@@ -5267,8 +5239,6 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 
 **Why.** The resolver proxies `/j/*` to the Archive through `_proxy_to_archive()` in `app/main.py`, which follows redirects by default. This is the same bug found on 2026-08-31 for reslugged meeting pages (see the `_SLUG_REDIRECTS` entry of that date), fixed then for the `/m/` route only. The `/j/` route never got the opt-out, so none of the 846 rows in `archive/data/hub_slug_aliases.csv` ever reached a reader or a search engine as a permanent redirect. Confirmed on an older alias too: `/j/chenango-county-ny` behaved the same way.
 
-| Step | Result |
-|---|---|
 | `/j/{path}` route passes `allow_redirects=False` (the `/m/` bare-slug pattern) | 1 call site |
 | New test: a 301 from the Archive for a hub slug reaches the client with its Location | `test_hub_slug_disables_redirect_following` |
 
@@ -5284,8 +5254,6 @@ WO-145 found `townofchenango.civicweb.net` keyed to Chenango County while its pa
 
 **Decision.** Ryan authorized `authoritative` strength for both hosts (source `ryan_stated`), the same call as `townofchenango.civicweb.net`. He also noted a small town wrongly pointing at its county would not be the end of the world, meaning the downside of an authoritative pin (any future page on the county's own host is filed under the county even if its text names the city) is acceptable. The `/j/` route lets a live hub win over an alias, so a real Kankakee city page on a different host would still get its own hub.
 
-| Step | Result |
-|---|---|
 | `kankakeecountyil.gov` pin: `fallback` (wo153_identity_join) → `authoritative` (ryan_stated) | 1 row |
 | `mcleancountyil.gov` pin: `fallback` (hub_sweep_wo126) → `authoritative` (ryan_stated) | 1 row |
 | YouTube channel `@mcleancoil` pin (owner title "McLean County Illinois", live-checked) gov_id `us:place:1745811` → `us:county:17113`, stays `fallback` | 1 row, Ryan's ok; it had inherited the page's then-wrong key from the 2026-09-09 archive study |
@@ -5328,7 +5296,6 @@ on their own to work around the same bug.
 **Live verification.**
 
 | Check | Result |
-| --- | --- |
 | Temple City's real meeting page, before the fix | Confirmed the bug: the scan picked CivicPlus's own marketing link and got a real 403 error trying to use it. |
 | Temple City's real meeting page, after the fix | The 403 error is gone — the scan correctly skips CivicPlus's marketing link. |
 | A real, working CivicPlus government page (Durham, NC), after the fix | Still works exactly as before — no regression. |
@@ -5347,7 +5314,6 @@ are currently running searches across many governments at once. We
 checked their result files for any row that hit this exact bug.
 
 | Sweep | Rows affected by this bug |
-| --- | --- |
 | wo145 | 0 |
 | wo146 | 0 |
 | wo147 | 0 |
@@ -5381,7 +5347,6 @@ cases cover each CivicPlus company page (now correctly unrecognized)
 and each real government page shape (still correctly recognized). All
 four CI gates pass: `ruff check`, `ruff format --check`, `pytest` (2,934
 passed, 16 skipped) — no Alembic check needed, no database tables were
-touched.
 
 **Where else this rule was duplicated, now pointing at one shared
 definition** (`CIVICPLUS_CORPORATE_HOSTS` in `app/platforms/base.py`):
@@ -5395,7 +5360,6 @@ same three-host set.
 live in production until the next resolver deploy — deploys are manual
 in this repo. The running coverage sweeps use this worktree's own
 checked-out code directly, so they pick up the fix on their next run
-without waiting for a deploy.
 ## WO-147: access-ladder sweep of 850 governments we could not even reach before -- 30 pages live now, 33 more videos queued, and a real gap found in how we check a video is a real meeting [Done 2026-09-10]
 
 **What we did and why.** 850 governments (569 cities/towns, 279
@@ -5411,7 +5375,6 @@ Only meetings with video became pages, per Ryan's rule.
 **What we found.**
 
 | Outcome | Count of 849 | Detail |
-|---|---|---|
 | Already on the site | 2 | |
 | Captions available, page live now | 30 | 27 on YouTube, 3 on other platforms |
 | Video, no captions, checked and queued | 33 | checked for a dead link and a too-short clip first (see Caution) |
@@ -5431,7 +5394,6 @@ governments we actually reached, blocked, or found nothing on — this
 excludes the 2 already on the site):
 
 | Which try got us in | Cities/towns | Counties |
-|---|---|---|
 | Plain request | 275 | 148 |
 | Browser-like headers | 22 | 2 |
 | A real browser (Playwright) | 40 | 18 |
@@ -5540,12 +5502,10 @@ Legistar-tracked meeting. Full method and per-tenant results:
 `rtr-business/research/ENUMERATION_METHODS.md`, 2026-09-10 section.
 
 | Result | Count of 29 |
-|---|---|
 | Same-named Granicus tenant found, with real recent video | 25 |
 | No same-named Granicus tenant found (empty or dead-end) | 4 |
 
 | Result (of the 25 tenants found) | Count |
-|---|---|
 | Newest video's body and date matched a real Legistar meeting | 16 |
 | Legistar's own API rejected the tenant's client name (can't verify — 2 of 3 already had an independently-confirmed real Granicus URL on file) | 3 |
 | Body and date did not match any Legistar-tracked meeting | 5 |
@@ -5581,7 +5541,6 @@ governments as possible. Each one has a known meeting platform but has
 never been listed through that platform's own API. Breadth mattered
 more than depth — one meeting per government was enough.
 
-**What was built.** A new script,
 `scripts/wo145_api_first_sweep.py`, tries the platform's own API first
 (rtr-discovery's listing tools) for every platform except CivicPlus.
 CivicPlus (577 of the 772 governments) reused an existing script instead,
@@ -5594,7 +5553,6 @@ request that looks more like an ordinary browser, before giving up.
 **The result.**
 
 | Outcome | Count of 772 | Detail |
-|---|---|---|
 | Page live now (captions found) | 74 | a real transcript is on the site today |
 | Queued, video only (transcript to follow) | 22 | real video, no captions yet; goes out automatically over the next few days |
 | Wrong government caught and skipped | 48 | see below — this is the big finding |
@@ -5696,7 +5654,6 @@ above, doesn't contain the actual reslugged pages), directly `curl`'d
 every known old slug from both reslug batches:
 
 | old slug | result |
-|---|---|
 | `/m/meeting` | `301` → `tucson-az-2026-08-05-regular-meeting` |
 | `/m/meeting-1e9bac` | `301` → `maricopa-county-az-2026-07-15-formal` |
 | `/m/meeting-38ca49` | `301` → `sacramento-county-ca-2026-08-11-board-of-supervisors-meeting` |
@@ -5762,7 +5719,6 @@ pin only; their channels carry other governments and stay unpinned.
 dry run showed exactly 39 rows changing; applied; spot-checked live.
 
 | Result | Count |
-|---|---|
 | Channel pins written (government's own channel) | 31 |
 | Per-video pins written (shared community channel) | 8 |
 | Pages re-keyed from unknown or unresolved to a national id | 39 |
@@ -5821,7 +5777,6 @@ captions goes into a holding file and is checked one more time — a
 probe that reads the video's real length and size without downloading it
 — before it is added to the transcription queue. Ryan's rule held
 throughout: no meeting without video ever became a page or a queue
-entry.
 
 **Two real bugs found and fixed while running it.** First: 95 of the
 371 governments that already had a suspected platform from an earlier
@@ -5853,7 +5808,6 @@ row count.
 never reached and remain exactly as they were):**
 
 | Outcome | Count of 436 worked | Detail |
-|---|---|---|
 | Real video found, page live now (captions available) | 20 | includes 15 recovered specifically by the youtube fix above |
 | Real video found, no captions, queued for transcription (after probe) | 5 | |
 | Rejected by probe (looked like a real video, wasn't) | 1 | a dead link the probe caught before it reached the queue — Great Falls, MT |
@@ -5874,7 +5828,6 @@ total; 139 of those already had a known platform from an earlier sweep
 and skipped the ladder entirely — shown as its own row):**
 
 | Rung that answered | Count, US | Count, Canada |
-|---|---|---|
 | Already had a known platform (ladder skipped) | 133 | 6 |
 | A headless browser, after the plain request came back empty | 180 | 57 |
 | A plain, honest request alone | 17 | 0 |
@@ -5929,7 +5882,6 @@ own "stop after 6 errors in a row" safety switch. No sign of the YouTube
 block described in `docs/investigations/youtube_429_block.md`.
 
 | Outcome | Count of 1,155 | Detail |
-|---|---|---|
 | Already covered | 12 | already had a real page, found a different way |
 | Captions available, page live now | 69 | a real transcript, ready to read |
 | Video, no captions, queued for transcription | 9 | checked first so a dead link doesn't get queued (see Caution) |
@@ -5964,7 +5916,6 @@ and skipped straight to it; 12 already had a page and needed no check at
 all):
 
 | Check that found the way in | Count, US | Count, Canada |
-|---|---|---|
 | Already knew the video system | 336 | 25 |
 | A real browser, after a plain request came back with nothing | 394 | 114 |
 | A plain, honest request alone | 51 | 8 |
@@ -6037,7 +5988,6 @@ Fortuna video is on Access Humboldt's shared community channel, so only
 the video is pinned, never that channel.
 
 | Page | Before | After |
-|---|---|---|
 | Regular Board Meeting August 25th 2026 (`UjFUgyTYZd4`) | Unidentified government | Greenlee County, AZ (`us:county:04011`) |
 | City of Fortuna Live Stream: Special Fortuna City Council Meeting (`khQRJOdWjTM`) | Unidentified government | Fortuna, CA (`us:place:0625296`) |
 
@@ -6055,7 +6005,6 @@ or playlist match. Those are folded into WO-153 (the transcribed-but-no-
 page identity join), queued after WO-152.
 
 **Deploy status.** The two pages are re-keyed in the database now. The
-pins reach new resolves only after the next deploy.
 
 ## WO-149: access-ladder sweep of 1,424 US counties over 5,000 people with no page [Done 2026-09-10]
 
@@ -6079,7 +6028,6 @@ newest meeting with real video, not just the newest meeting.
 **Result.** All 1,424 counties were checked, once each.
 
 | Outcome | Count of 1,424 | Detail |
-|---|---|---|
 | Already had a page | 0 | None of the 1,424 turned out to be already covered. |
 | Ingested tier 1/2 (captions available, page live now) | 159 | A real meeting with captions the site can show directly. |
 | Video with no captions, queued (after probe) | 110 | A real video was found; it goes to the transcription queue. |
@@ -6102,7 +6050,6 @@ newest meeting with real video, not just the newest meeting.
 read at all:**
 
 | Rung | Count of 1,424 |
-|---|---|
 | Plain, honest request | 1,004 |
 | Browser-style headers | 13 |
 | Real browser (headless) | 229 |
@@ -6229,7 +6176,6 @@ real page on the site.
 URLs, same tool, run again today.
 
 | Result | Count of 25 |
-|---|---|
 | Accept (real, usable meeting) | 18 |
 | Accept, but flagged as long (Anaheim's real 8.45-hour meeting) | 1 |
 | Reject — too short (35.7 seconds, below the 60-second floor) | 1 |
@@ -6321,10 +6267,8 @@ video.** No video, no page — the meeting is just recorded as "no video
 found." That rule caught two of this run's own mistakes before they
 reached you (see Caution below).
 
-**Result.**
 
 | Outcome | Count of 144 | Detail |
-|---|---|---|
 | Ingested tier 1/2 (captions available, page live now) | 1 | Loudoun County, VA — 76 real transcript lines |
 | Video with no captions, queued for transcription | 8 | checked for a real, watchable video first (WO-144's probe), then added to the live queue |
 | No video found | 19 | 17 real current meetings with no video, plus 2 more where the "video" the probe checked turned out to be a dead link (a PDF mislabeled as video, one link format the probe can't check yet) |
@@ -6352,7 +6296,6 @@ above) still need that same fix.
 **Verdict against last night's sweep, by platform:**
 
 | Platform | Same result | Found real video | Wrong label, now corrected |
-|---|---|---|---|
 | Granicus | 35 | 3 | — |
 | CivicClerk | 33 | 7 | 5 |
 | CivicWeb | 26 | 1 | — |
@@ -6579,8 +6522,6 @@ guessed. "Rules kept" is `A` = duration > 9 min, `B` = 9 min-6 h
 
 **Older entries (5):**
 
-| Platform | Probe method | Duration | Date | Size | Probe time | Probe bytes | Dead/alive | Rules kept |
-|---|---|---|---|---|---|---|---|---|
 | YouTube (`hhU7j0za5So`) | yt-dlp metadata | 97.2 min (1.62h) | 2026-08-29 | — | 1.69s | 0 | alive | A, B |
 | YouTube (`ESfzST-yOSM`, middletown.delaware.gov) | yt-dlp metadata | — | — | — | 1.85s | 0 | **dead** — future live event (begins in 4 days) | none |
 | Granicus (agourahills) | HLS master+variant GET | 86.9 min (1.45h) | 2025-06-25 | — | 3.4s | 74.5 KB | alive | A, B |
@@ -6739,7 +6680,6 @@ either.
 **Funnel (158 candidates):**
 
 | Outcome | Count | Detail |
-|---|---|---|
 | Ingested tier 1/2 | 14 | all YouTube (local caption fetch succeeded) |
 | Queued tier 3 | 15 | YouTube 9, CivicClerk 5, Granicus 1 |
 | No video found | 2 | real, current meeting, genuinely no video |
@@ -6839,7 +6779,6 @@ unsupported video platforms.
 ### Table 1 — how the dashboard's 10 example successes actually got their video
 
 | Government | Dashboard tier/video host | Real `source_url` in Archive | Path |
-|---|---|---|---|
 | Yamhill County, OR | tier 1, YouTube | `yamhillcounty.gov/AgendaCenter` | AgendaCenter `td.media` delegation |
 | Brookings County, SD | tier 1, YouTube | `brookingscountysd.gov/AgendaCenter` (x2 pages) | AgendaCenter `td.media` delegation |
 | Denton County, TX | tier 1, YouTube | 1 page via `dentoncounty.gov/agendacenter`; 1 page via `dentoncounty.granicus.com/player/clip/1955` | mixed — 1 delegation, 1 direct Granicus (not via AgendaCenter) |
@@ -6868,7 +6807,6 @@ North Miami FL, populations 211k-62k). Checked live: the bare
 actually click.
 
 | Outcome bucket | Count | Governments | Verdict on the original sweep |
-|---|---|---|---|
 | Genuinely no video anywhere reachable | 8 | Pasadena TX, Westminster CO, Waukegan IL, Westland MI, Parma OH, Apex NC, Rogers AR, East Orange NJ | **Sweep correct** (3 of these have a long-abandoned/stale AgendaCenter module — Waukegan's newest row is dated 2017 — but the *government*, not just the page, genuinely has no video anywhere else either) |
 | Government has an active video channel, but no link ties any specific meeting to a specific video (AgendaCenter row or homepage) | 17 | Yonkers NY, Eugene OR, Charleston SC, Savannah GA, Billings MT, Lowell MA, San Angelo TX, Roanoke VA, Mount Pleasant SC, Deerfield Beach FL, Homestead FL, Ankeny IA, St. Cloud FL, Shawnee KS, Kenner LA, Lynwood CA, North Miami FL | **Sweep correct for this page/meeting** — a real, already-tracked gap (`BACKLOG.md`'s "City-YouTube-channel fallback" entries), not new |
 | CivicClerk portal linked from the homepage, but its own public Events API shows zero real media on the last 15 events | 2 | Arvada CO, Westfield IN | **Sweep correct** — verified against the real tenant API, not assumed |
@@ -7118,7 +7056,6 @@ cited hours earlier — continuous ingestion). A read-only yt-dlp metadata
 check (`_wo135_probe.py`, not checked in) against all 96 real videos:
 
 | Outcome | Count |
-|---|---|
 | `captions_disabled` (zero subtitles + zero automatic_captions) | 26 |
 | `video_unavailable`, genuinely removed/private | 9 |
 | `video_unavailable`-shaped but actually a different bug (see `BACKLOG.md`'s new "Open bugs" entry — `embed/live_stream`/`embed/videoseries`/a truncated-id match, not a real removed video) — deliberately excluded from marking | 3 |
@@ -7328,8 +7265,6 @@ only WO-129's 156 were processed.
 
 **Funnel (156 candidates):**
 
-| Outcome | Count | Detail |
-|---|---|---|
 | Already covered | 1 | Bellingham, WA (`us:place:5305280`) already had an archived page |
 | Ingested tier 1/2 | 1 | Whitewater, WI -- `municode_meetings`, 1,469 real transcript segments |
 | Queued tier 3 | 81 | real video, no reachable captions yet -- drips onto the site via the cloud auto-transcription worker |
@@ -7773,7 +7708,6 @@ no-transcript. Excluded per Ryan's stated criteria (no gov_id, `rtr:`
 minted/unknown ids, `names_match=no`) — 7 total:
 
 | Reason | Count |
-|---|---|
 | No `gov_id` at all | 5 |
 | `rtr:unknown:*` id | 2 |
 | Non-national-table `gov_id` prefix | 0 |
@@ -8014,7 +7948,6 @@ line was removed, keeping the original.
 **Funnel**:
 
 | Bucket | Count |
-|---|---|
 | Total target counties | 2,363 |
 | No domain at all | 165 |
 | Known platform, no adapter | 10 |
@@ -8478,7 +8411,6 @@ structural change than the two entries below.
     window) exactly as wrong and exactly as invisible.
   - **History**: found 2026-09-04 answering a user question about
     `/m/abbotsford-2025-06-24-council-meeting` showing no state; not yet
-    in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A bare unqualified name that exists in BOTH the
   `us_places` and `us_cousubs` tables in the same state always resolves
@@ -8565,7 +8497,6 @@ structural change than the two entries below.
     "The"-prefixed place name must not get mangled.
   - **History**: found 2026-09-09 while running `scripts/
     score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
-    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] 16 real municipalities nationwide have a compound
   Census LSAD ("X Town city") that the resolver's type-word stripper
@@ -8598,9 +8529,6 @@ structural change than the two entries below.
     `lsad`/`funcstat` build script (`scripts/build_gov_registry_data.py`)
     for whether the LSAD code itself (not just the rendered name) is
     available to key off instead of pattern-matching the name string.
-  - **History**: found 2026-09-09 while running `scripts/
-    score_gov_registry.py` for the WO-121 `hub_slug_aliases.csv` regen;
-    not yet in `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] eScribe serves the same meeting under multiple
   `Agenda=` query-string values, and each one archives as a separate
@@ -9167,7 +9095,6 @@ structural change than the two entries below.
     a human viewer to click on the frontend. There is no code path that
     automatically picks a candidate for an unattended batch/ingestion
     script. Confirmed live 2026-09-01 across two full sweeps
-    (`~/Documents/rtr-business/research/coverage_gap_2026-09-01/
     track_a_tier12_ingest_RESULTS.csv` and
     `track_a_964_resolve_known_url_RESULTS.csv`) and one enumeration
     session's full read of all 7 `CalendarPageError`-using platform
@@ -9294,7 +9221,6 @@ structural change than the two entries below.
     or similar could plausibly also live on Drive.
   - **History**: found 2026-09-08 running the Utah PMN pilot; the
     same-domain-file half of this entry shipped 2026-09-09, see
-    `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] A bare YouTube channel/live URL raises a raw
   `ValueError` instead of a clean "not a specific video" message.**
@@ -9320,9 +9246,6 @@ structural change than the two entries below.
     distinct, friendlier `error` code — same shape as `CalendarPageError`
     already gets — versus leaving it as-is since the generic
     `resolve_failed` path already prevents a hard crash either way.
-  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
-    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
-    record of it).
 
 - **[NEEDS-AUDIT] SLC's `_nearest_topic_text()` silently drops one real
   item per page.**
@@ -9467,8 +9390,6 @@ structural change than the two entries below.
   - **Next action**: wire chip ranking to `top_search_keywords()` once the
     table has real volume — there is no data yet, the table just started
     filling.
-  - **History**: deliberately left open by the 2026-08-23 state/hub
-    rebuild; see `STATE_HUB_PAGES.md`.
 
 - **[NEEDS-AUDIT] [BLOCKED] Whether a sustained YouTube IP block ever clears, and whether pacing avoids it, is unresolved.**
   - **Issue**: YouTube caption fetching sometimes returns `HTTP 429` even
@@ -9721,7 +9642,6 @@ twice more against a moving `origin/main` tip mid-session (two other
 PRs landed while this was in flight -- re-ran from scratch against each
 new tip rather than hand-resolving a diff between two runs of a script
 whose output is fully derived). Full suite green, 2,773 passed, 15
-skipped.
 
 ## Broader tenant_hints.csv collision sweep found no new bugs; cleaned up the 8 confirmed-wrong rows [Done 2026-09-09]
 
@@ -10328,7 +10248,6 @@ wrongly) on `us:place:2526150` with no signals at all, and
 signals-enhancement pass whenever the plain ladder already answered
 `registry`/`pinned`. See `BACKLOG.md`'s Gloucester entry (updated in this
 same pass) for the full reasoning — it stays open, now as a Step B
-question.
 
 Full report: `JURISDICTION_METADATA_PLAN.md`'s Phase 2d section (real
 numbers, replacing the WO-105 placeholder); raw sheets in
@@ -10445,7 +10364,6 @@ Both failing queries select `gov_id` — `get_page_by_slug()` and
 `_hub_groups()`, the two hottest read paths in the Archive.
 
 Found by the inbox-triage Routine (#701), not by anyone watching the
-deploy.
 
 **Why it happened.** SQLAlchemy's asyncpg dialect calls
 `connection.prepare()` for every statement and caches the results per
@@ -10522,7 +10440,6 @@ PrimeGov archive from "no video found" to a real tier-1 transcript.
 > | ...with a NATIONAL id | 0 | **4,140 (81.9%)** |
 > | distinct governments | — | **2,265** |
 > | pages with no join key | 5,053 | **471** |
->
 > **The 13 California counties.** `/state/california` now lists 47
 > distinct county-level CA governments and **not one of them appears on
 > more than one hub** — the pairs the architecture doc opened with
@@ -10533,22 +10450,18 @@ PrimeGov archive from "no video found" to a real tier-1 transcript.
 > `/j/fresno-county-ca` and `/j/king-county` → `/j/king-county-wa`,
 > both checked live — and none of them is in `sitemap.xml` any more,
 > while their replacements are.
->
 > **Santa Clara, the entry that re-fragmented within two days of a hand
 > fix.** Four governments now, each keyed and each on its own hub, with
 > the 10 overridden pages keeping the exact string a human chose:
->
 >     10  us:county:06085                                       'Santa Clara County, CA'
 >      1  us:place:0669084                                      'City of Santa Clara, CA'
 >      1  us:place:0669084                                      'Santa Clara, CA'
 >      1  rtr:us:ca:santa-clara-valley-transportation-authority  'Santa Clara Valley...'
->
 > Both spellings of the city resolve to `us:place:0669084` and share one
 > hub, which is what the entry asked for — and it holds now without an
 > override, because the identity is a key rather than a string. The
 > override endpoint additionally emits a `tenant_overrides.csv` rule, so
 > the next re-ingest of a page nobody has archived yet inherits it.
->
 > **The §1.3 mislabels, on the live site.** LADWP is 4 pages on
 > `/j/los-angeles-department-of-water-and-power-ca`, separate from the
 > City of Los Angeles's 11 on `/j/los-angeles-ca`. Honolulu is one
@@ -10557,7 +10470,6 @@ PrimeGov archive from "no video found" to a real tier-1 transcript.
 > `dcccd.new.swagit.com`'s bleed page is `unresolved` and sits on its own
 > `/j/dallas` rather than being merged into the City of Dallas's
 > `/j/dallas-tx` (11 pages).
->
 > Two premises in the brief did not survive checking, and are corrected
 > rather than acted on: `victoria.civicweb.net` is **Victoria,
 > Minnesota** — its portal reads "City of Victoria / City of lakes and
@@ -11137,7 +11049,6 @@ link three lines down, so part of any split favoring it is just Fitts's
 law, not necessarily intent — and the home/state page featured cards
 deliberately did **not** get the same reversal (a browsing reader has
 stated no intent), so they were never a valid control group for this
-question.
 
 ## Santa Clara's 6 jurisdiction-string variants converged, live in production [Done 2026-08-31]
 
@@ -11332,7 +11243,6 @@ payload first, then run for real, per explicit go-ahead):
 python scripts/repoint_page.py \
   "https://egenda.scgov.net/OnBaseAgendaOnline/Meetings/ViewMeeting?doctype=1&id=1968" \
   "https://sarasotacounty.granicus.com/player/clip/6960?view_id=52"
-```
 Result: `status: repointed`, `created: False` (updated the existing page
 in place, same slug, no duplicate). Verified live afterward: `https://
 redtaperecordings.com/m/sarasota-county-fl-2026-08-25-bcc-regular` now
@@ -12186,7 +12096,6 @@ history, the GovAccess fuzzy-match investigation) or an external doc
 
 Full numbers from the original 2026-08-15 sweep, moved out of the live
 `BACKLOG.md` entry to keep it scannable — the live entry now just points
-here.
 
 **Baseline counts (649 archived jurisdictions)**: 510 valid as-is, 73
 reachable by longest-valid-prefix trim, 44 not in the Census/StatsCan
@@ -12224,7 +12133,6 @@ jurisdiction-side examples originally cited (Sarasota/Hollywood/Hampton)
 are moot per the correction above, so no jurisdiction-side example
 currently motivates building it.
 
----
 
 ## 2026-08-30 production write: 98 jurisdiction corrections applied directly to published pages [Done 2026-08-30]
 
@@ -12351,7 +12259,6 @@ that touch one service's tree, so it decays as PRs get broader. The
 1,001/1,000 figure confirmed 2026-08-29 came in ahead of (i.e. worse
 than) the ~1,145 month-end projection the entry used to carry.
 
----
 
 ## Granicus `chunklist.m3u8` timeout -- detail moved out [Investigated 2026-08-31]
 
@@ -12379,7 +12286,6 @@ the same symptoms and starts re-litigating root cause):**
 don't assume an immediate retry fixes it — cold-storage cases may need
 hours, dead assets may never succeed.
 
----
 
 ## Same-host pulls / flat timeout split -- measurement detail moved out [Investigated 2026-08-31]
 
@@ -12402,7 +12308,6 @@ jobs in two days — ~3.5 hours of retry (106 × 120s) against ~96
 worker-hours available over the same window, about **4%**. Timeouts are
 not what caps real output at ~35 jobs/day.
 
----
 
 ## Search Console "Reasons preventing indexing" -- detail moved out [Investigated 2026-08-31]
 
@@ -12428,7 +12333,6 @@ reslugged old URL was never sending a real 301 either — it was serving
 200 with a different canonical the whole time. That was fixed
 2026-08-31 (see `BACKLOG_DONE.md`).
 
----
 
 ## `/coverage` QA surface -- detail moved out [Investigated 2026-08-31]
 
@@ -12515,7 +12419,6 @@ unverified live, only checked from this session's sandbox, worth a real
 browser check. Real text-extraction for a searchable preview (needing
 `pypdf`/`pdfplumber`, neither in `requirements.txt`, plus a new storage
 column) remains a separate, bigger, unbuilt ask — see the live
-`BACKLOG.md` entry.
 
 ## Transcript version picker analytics shipped [Done 2026-08-31]
 
@@ -12550,7 +12453,6 @@ two static `mailto:` Contact links and the `ryan@how-to-adu.com` address
 on `about.html` were both repointed. Remaining config values
 (`RESEND_REPLY_TO_ADDRESS`, `DAILY_REPORT_EMAIL_TO`,
 `YOUTUBE_FETCH_REPORT_EMAIL`) are tracked as still-open in the live
-`BACKLOG.md` entry.
 
 ## "Which Ryan address" resolved: `ally@redtaperecordings.com` for all operator/ops reporting [Done 2026-08-22]
 
@@ -12579,572 +12481,88 @@ them up would silently break either delivery or reporting. Confirm
 `ally@redtaperecordings.com` receives mail before switching anything
 over.
 
-## BACKLOG.md retrofitted to the 5-field entry template (full-file dry run, applied for real) [Done 2026-08-31]
-
-Full-file pass applying the entry-format convention adopted earlier the
-same day (see this file's "Phase 4" entries below for that adoption and
-the two demo entries) to every remaining section of `BACKLOG.md`. Run
-first as an actual dry run in an isolated worktree
-(`/home/user/rtr-deeplink-backlog-dryrun`, never pushed) via 10 parallel
-agents, one per section, each rewriting its section's entries into
-Issue/Impact/Next-action/Constraint/History and moving finished
-investigation detail here. The first pass came back nearly flat
-(2,414 → 2,397 lines, −0.7%) despite real per-chunk compaction, because
-several sections applied "split when bundled" too liberally — splitting
-single-topic entries into 2-3 siblings whenever a sub-fact had a
-slightly different next action, which cancelled out the sections that
-compacted well. Worst offender: Trust (132 → 167 lines, 7 → 11 entries)
-from splitting `best_effort`'s three known gaps into three headings, two
-of which had no real next action at all.
-
-**Fixed by tightening the convention itself** (see `BACKLOG.md`'s own
-header) rather than hand-patching the output: (1) no field is required —
-omit one rather than filling it with "none"/"n/a," which removes the
-pressure to give a fact its own heading just so it has somewhere to put
-an empty Next action; (2) split only on a genuinely different fix, tested
-as "would fixing one half leave the other half's Next action unchanged?"
-— not on a different facet of the same feature. Re-verified every
-flagged split against this test rather than reverting blindly: the
-`best_effort` trio collapsed from 3 headings to 2 (the third,
-`jurisdiction_confidence IS NULL`'s exclusion, had no next action at all
-and moved to Standing Decisions, where it actually belongs per this
-file's own routing rule — not because it needed compacting, but because
-it was mis-sectioned); the low-trust-queue split held (two real,
-independent fixes); Open Bugs' Search Console and "two residual gaps"
-splits held (each half has a different, or a genuinely absent, next
-action); Roadmap 2's growth turned out not to be over-splitting at all —
-entry count barely moved (18 → 17) — just real per-entry template
-overhead on already-distinct proposals, left as-is.
-
-**Result**: 2,414 → ~2,396 lines net at the top level (still close to
-flat — the entry count still grew from ~92 to ~103, and TOC size tracks
-entry count directly), but real qualitative change underneath: every
-entry now follows one scannable shape, 517 lines of real investigation
-detail moved out to this file (added below, by section), and a second
-`docs/investigations/` file (`agenda_text_versioned_asset.md`) was
-spun out for the big Roadmap agenda-text proposal's trap list, matching
-the YouTube 429 entry's pattern. The honest lesson, now written into the
-convention itself: this format's win is signal-to-noise per entry, not
-whole-file line count — a real reduction needs the split rule actively
-enforced, not just adopted.
-
-No new material needed archiving here.
-
-Every fact trimmed out of this chunk's entries during retrofitting was
-either kept in the compacted entry itself (numbers, dates, WO/PR
-references, file paths) or already had an explicit "full detail in
-`BACKLOG_DONE.md`" pointer in the source text before this pass (the
-partial-transcript-backfill numbers, and the repetition-loop repair's
-WO-84/WO-87 bug history). Nothing here was dropped without a home.
-## IQM2 (9.5%) and the /j//state/ hub-page fix (6.5%) deployed for the Search Console watch-page gap [Done 2026-08-30]
-
-Built, tested, and deployed the evening of 2026-08-30 as part of the
-Search Console "video isn't on a watch page" investigation (see this
-file's `[Investigated 2026-08-30]` entry for the same underlying
-investigation and its GSC export numbers); confirmed live 2026-08-31.
-Together these two categories account for 16% of the real failing
-population identified in a 1,000-row GSC export (real total 1,764 rows,
-flat since 2026-08-24) — IQM2 alone is 9.5%, the `/j/`/`/state/` hub-page
-fix another 6.5%. The only remaining step is non-code: clicking Validate
-Fix in Search Console, tracked in `BACKLOG.md`'s "Needs a human" section
-(now actionable, not deploy-pending).
-
-## eScribe/isilive Search Console gap traced to a display artifact, not a real bug [Investigated 2026-08-30]
-
-10.1% of the failing population in the same GSC export. A scary-looking
-newline in Google's raw export data was traced back to a display artifact
-in how Search Console renders the export, not an actual malformed URL —
-today's live URL is correctly encoded and fully reachable. No code fix
-needed; resolving this is waiting on Google's next recrawl of these
-pages, not on any change in this repo.
-## 28 IQM2 retired-tenant queue rows: repeat probe agrees with original finding [Investigated 2026-08-31]
-
-Split out of the tier-3 queue repair (2026-08-22, #308) — distinct from the
-52 *truncated* rows that PR fixed: these URLs are structurally correct and
-the tenant is simply gone (the Accela/IQM2 sunset). Deliberately left in
-place at the time — a single probe cannot distinguish a retired tenant from
-a transient outage, and 16% of the IQM2 block was too much to drop on one
-measurement. This population is exactly what wildcard DNS makes hard to
-judge: a dead IQM2 tenant still answers, with the generic 4,562-byte
-"Accela Meeting Portal" body.
-
-**Repeat probe done, 2026-08-31 (a different day, as asked for): 27 of 28
-confirmed identically dead.** All 27 return the exact same 4,498-byte
-generic "Accela Meeting Portal" error page as the original probe
-(`woodbuffalocn` needed a longer timeout to get past a slow TLS handshake,
-then matched too) — real, if not conclusive, evidence toward "genuinely
-retired" over "transient outage." One tenant, `pec`, shows a **different**
-failure signature: a connection-level timeout (no TLS handshake even
-started within 8s), not a resolving-but-generic-error response — worth
-treating separately from the other 27, since that's consistent with an
-infrastructure problem rather than a retired tenant serving IQM2's own
-fallback page.
-
-Still not acted on (no rows dropped) — this is stronger evidence, not a
-decision to remove; that's Ryan's call to make now that two probes on
-different days agree (see live `BACKLOG.md` entry for the still-open
-decision).
-
-**The tenants**: 26 confirmed both times — `losangelescountyca`,
-`santaclaracountyca`, `northbrookil`, `mchenrycountyil`,
-`sheboygancountywi`, `renocitynv`, `slcgov`, `portagecountyoh`, `gilroyca`,
-`hanfordca`, `pekinil`, `psrcwa`, `tehamacountyca`, `vilascountywi`,
-`adelantoca`, `brentwoodca`, `carolinabeachtownnc`, `ccgov`, `countygov`,
-`currituckcountync`, `doverny`, `farmingtoncitymi`, `hilliardoh`,
-`hyattsvillecitymd`, `ledyardct`, `shawneecityks`; `woodbuffalocn`
-confirmed on the slower retry; `pec` is the one distinct case.
-
-## Swagit multi-clip meetings: cloud worker fix (WO-79) [Done 2026-08-30]
-
-Real, confirmed shape found across 3 tenants — Yolo County CA, White
-Plains NY, Apple Valley MN — none of which has a single combined
-recording at the source; Swagit's own template has no full-agenda video.
-Per Ryan's explicit direction (never split a meeting across N separate
-transcript pages), `swagit.py` now surfaces every real clip as
-`ResolvedMeeting.video_segments`, a new `probe_multi_clip_chunk_plan()`
-builds a cumulative-offset chunk plan across them, and the cloud worker
-transcribes each clip individually and stitches the results into one
-meeting-relative transcript using the existing `shift_segments()`
-shift-and-merge approach.
-
-**Still open** (see live `BACKLOG.md` entry): the local script
-(`scripts/transcribe_backlog_locally.py`) doesn't consume
-`video_segments`/`chunk_plan` yet; chunk-plan jobs skip the live
-per-chunk re-resolve the ordinary path uses to guard against stale URLs
-(real but unobserved risk in every confirmed sample so far); no
-sub-chunking of an individual very-long clip (no confirmed real case
-needs it yet); re-running the fixed resolver against the original
-43-URL 2026-08-18 sweep to size how many are genuinely multi-segment,
-and a broader live Swagit audit, are both still open too.
-
-## High Plains Water District audit: same-symptom URLs since resolved or not applicable [Investigated 2026-08-27]
-
-Found during the same 2026-08-27 audit of local-Whisper run logs that
-surfaced the High Plains Water District zero-segment case (see live
-`BACKLOG.md` entry — `high-plains-underground-water-conservation-district-no-1-2022-11-08-board-of-dir`,
-`https://hpwd.granicus.com/player/clip/44?view_id=1`).
-
-The identical "transcription produced no usable segments" symptom hit two
-other real URLs in that same audit, both since self-resolved (now show
-real segment counts on a live check), so they're not carried forward as
-open: `branchburg-2025-carols-by-candlelight` (Granicus) and eScribe's
-`pub-scrd.escribemeetings.com` `2025-10-23-committee-of-the-whole`.
-
-A fourth, `st-2025-12-16-st-louis-park-high-school-wind-ensemble-concert-dec-11-2025`
-(Cablecast), is a school concert broadcast, not a government meeting —
-zero segments is arguably the correct outcome there, not a bug.
-No content was moved out of this chunk.
-
-Every real fact in the original 10 entries (specific numbers, dates,
-hostnames/URLs, tenant and jurisdiction names, IP addresses, measured
-counts and percentages) was preserved inline in the retrofitted 5-field
-entries in `D-OpenBugs-3.md`, using the format's own allowance for a
-field to wrap to a second (or third) line when it genuinely needs to.
-None of the entries in this chunk were finished/closed work — all ten
-are still-open items (`[NEEDS-AUDIT]`/`[WAIT]`/`[LATER]`) — so there was
-no completed-investigation narrative to relocate into a
-`BACKLOG_DONE.md`-style section. Where an entry already pointed at
-existing `BACKLOG_DONE.md` history (the OnBase/Hyland entry's "Four
-archived pages..." entry, the 50-largest-cities audit's per-tenant
-history, the GovAccess fuzzy-match investigation) or an external doc
-(`ENUMERATION_METHODS.md` §35), that pointer was kept as the entry's
-**History** field rather than duplicated here.
-## Census-table baseline validation of all 649 archived jurisdictions (2026-08-15, re-checked 2026-08-30) [Investigated 2026-08-30]
-
-Full numbers from the original 2026-08-15 sweep, moved out of the live
-`BACKLOG.md` entry to keep it scannable — the live entry now just points
-here.
-
-**Baseline counts (649 archived jurisdictions)**: 510 valid as-is, 73
-reachable by longest-valid-prefix trim, 44 not in the Census/StatsCan
-table, 22 blank.
-
-The trim bucket (73 rows) splits cleanly on a tail-sanity check: 16 true
-bleed cases (every one a correct repair) vs. 57 legitimate long entities
-where trimming would *destroy* a correct name — so trim must always be
-gated on bleed signals, never applied bare.
-
-**Correction, 2026-08-30**: an earlier version of this entry named
-Sarasota/Hollywood/Hampton as three bleed cases the current signals miss,
-with only Sarasota marked closed — that framing was already stale when
-written. `BACKLOG_DONE.md`'s 2026-08-17 "Jurisdiction-bleed, confirmed
-cross-platform" entry shows all three were in fact repaired together via
-the existing `_MIN_BLEED_WORD_RUN=4` signal, no truncation detector
-needed. Reproduced live 2026-08-30:
-
-- `finalize_jurisdiction('Hampton Zoning Ordinance Regarding Standa')` →
-  `Hampton` (repaired).
-- `finalize_jurisdiction('Sarasota Legacy Business PLEDGE OF')` →
-  `Sarasota, FL` (repaired).
-
-Every other finding from this audit is closed (full history was already
-in `BACKLOG_DONE.md` prior to this compaction). Regenerate
-`baseline_validation.csv` via the script logged in
-`JURISDICTION_METADATA_PLAN.md`'s workstream 1 before re-running any of
-this — it no longer exists in any scratchpad.
-
-**What's still genuinely open** (kept as a live `BACKLOG.md` entry, not
-here): a mid-word-truncation signal (tails ending "the Tex", "servic",
-"Standa" — the regex's own 40-char cap cutting words in half) — motivated
-by one real title-side instance ("...Exhibit 1 was adde"), but the three
-jurisdiction-side examples originally cited (Sarasota/Hollywood/Hampton)
-are moot per the correction above, so no jurisdiction-side example
-currently motivates building it.
-
----
-
-## 2026-08-30 production write: 98 jurisdiction corrections applied directly to published pages [Done 2026-08-30]
-
-Context note moved here from the live `BACKLOG.md` "Jurisdiction
-extraction & backfill" section — applies broadly across that section's
-entries, not to any one of them specifically.
-
-98 real jurisdiction corrections were applied directly to already-published
-pages in one session, across 6 rounds:
-
-1. 40 confirmed via a text/confidence-tier heuristic.
-2. 5 more on review.
-3. 20 more via real visual verification against the source page's own
-   letterhead/seal/agenda content.
-4. 5 more in a follow-up pass on rows an earlier batch had accidentally
-   skipped.
-5. 6 more re-verified correct after the 2026-08-30 deploy landed
-   WO-68/WO-76's fixes.
-6. 18 more from a fresh batch of candidates that only became correct — or
-   only appeared at all — once WO-69's eScribe fixes deployed.
-
-Plus 4 more (Oxford County ON, Breckenridge TX, Eustis FL, Hendersonville
-NC) once WO-77/WO-78's fixes deployed.
-## City-YouTube-channel fallback: canary coverage, date corroboration, bot-block warning pass-through [Done 2026-08-29]
-
-Closed as part of WO-30's city-YouTube-channel fallback follow-up work
-(PR #496/#510): adapter-canary coverage for the fallback path, YouTube
-date corroboration, and bot-block warning pass-through were all shipped
-2026-08-29. Moved out of the open "Residual gaps left behind by WO-30"
-BACKLOG.md entry 2026-08-31 — it was fully done, not a residual, and had
-been sitting alongside two genuinely still-open items (the ~400-entry
-channel-listing cap, and the duplicate-posted-meeting decline case) under
-one heading.
-
-## Four-platform no-jurisdiction population: number history through 2026-08-30 [Investigated 2026-08-30]
-
-Tracks the full sequence of measurements behind the live "Cablecast,
-TelVue, Swagit, and YouTube still account for most no-jurisdiction pages"
-BACKLOG.md entry, kept here since the live entry only needs the current
-number.
-
-**2026-08-21 (original, WO-38)**: `/internal/low-trust-pages` against
-production found 474 total no-jurisdiction pages. Per-platform breakdown:
-eScribe 117, Cablecast 104, YouTube 78, Swagit 72 (371 of 474 on just
-these four), versus Granicus 34, IQM2 33, CivicClerk 24, unknown 7,
-ChampDS 4, TelVue 1.
-
-**2026-08-29, commit `731da71`** ("Cablecast: fall back to validated
-subdomain for jurisdiction #536"), landed *after* an earlier note in this
-entry had already claimed "real per-platform scoping done 2026-08-29" —
-that earlier note was itself superseded by this same commit. Its own
-fresh audit found the qualifying population had already shrunk to 269
-pages (a ~43% drop from 474), with Cablecast alone at 101 of those 269.
-The commit then recovered 23 of Cablecast's 101 via a subdomain-
-validation fallback (`cablecast.py:589-602`, confirmed live in code
-2026-08-30) — directly contradicting an earlier framing of the Cablecast
-gap as "blocked on a real multi-word-city customer turning up, don't
-widen speculatively."
-
-**2026-08-30, re-derived via `GET /internal/low-trust-pages`**: 631 total
-low-trust pages, 236 with no jurisdiction at all (this reflected
-pre-2026-08-30-fixes state, since none of that night's merged WOs were
-deployed yet). Breakdown: Cablecast 101 (unchanged — still needing the
-same per-row audit `731da71` did for the 23 it already recovered), TelVue
-50 (up from 46, expected — active ingestion), Swagit 32, YouTube 18,
-eScribe 12, Vimeo 10, CivicClerk 7, unknown 4, Castus 1, TownHallStreams
-1.
-
-**2026-08-31, `GET /internal/jurisdiction/missing` built and run for the
-first time**: 245 total (down from 269) — Cablecast 101 (unchanged),
-TelVue 50, Swagit 42, YouTube 17, eScribe 12, Vimeo 10, CivicClerk 7,
-unknown 4, TownHallStreams 1, Castus 1. This new endpoint is the
-recommended tool for current numbers going forward, in place of
-re-deriving them from `/internal/low-trust-pages`.
-
-**Standing conclusions carried into the live entry**: eScribe and Swagit
-both turned out narrower in scope than their original 2026-08-21 framing
-(see their own corrected entries elsewhere in "Platform & jurisdiction
-coverage"). YouTube is still structurally not fixable in the general case
-(`uploader` is a channel name, not a government field). Cablecast's
-101-page per-row audit is the one concrete follow-up left.
-## Pipeline minutes -- detail moved out of the retrofitted BACKLOG.md entry [Investigated 2026-08-31]
-
-(For the "`[JUST-DO-IT]` Render *pipeline minutes*" entry — this is the
-measurement detail that no longer fits the 5-field template but is real
-and worth keeping.)
-
-**Two rounds of `buildFilter` cuts, measured:**
-- Round 1 (queue-file fix): -31% build volume.
-- Round 2 (2026-08-22, allow-lists instead of deny-lists of docs in all
-  four `render.yaml` `buildFilter` blocks): **1,211 → 926 builds per
-  fortnight (-24%)**, on top of round 1.
-
-**Why it ran out again anyway, 2026-08-25 — two reasons neither round of
-filtering could have caught:**
-
-1. **The arithmetic only ever counted four services. There were six.**
-   Every measurement in the pipeline-minutes entry and its
-   `BACKLOG_DONE.md` twin said "four services" — but
-   `rtr-deeplink-staging` and `rtr-deeplink-archive-staging` existed too,
-   created in the Render dashboard and therefore **not in `render.yaml`
-   at all**, meaning they had **no `buildFilter`** and rebuilt on *every*
-   push. Measured over the 24 hours to 2026-08-25: **21 commits to
-   `main`, 13 of which built nothing but staging** — docs, backlog files,
-   and the queue-advance workflows' own auto-merged PRs, all correctly
-   skipped by the four production allow-lists and all fully paid for
-   twice by staging. Rough tally: ~42 staging builds against ≤32
-   production ones. The two services quietly undid a large share of both
-   filtering rounds for weeks. **Ryan disabled their auto-deploy on
-   2026-08-25.** Durable lesson: a service outside the blueprint has no
-   build filter, and nothing in this repo will ever tell you it exists.
-
-2. **Build volume scales with merge count, and nothing capped that.**
-   Filtering reduces builds *per merge*; it does nothing about merging
-   seven times in one evening (which happened 2026-08-25). Addressed by
-   `autoDeploy: false` on all four services plus a CLAUDE.md convention on
-   batching merges and asking for deploys — WO-59, `BACKLOG_DONE.md`.
-
-**Confirmed-usage caveats worth keeping:** the earlier 812/1,000 figure
-was a build *count*, not build *minutes* — Render bills minutes, and
-nobody has read per-service durations off the dashboard yet (this is now
-the entry's own "Next action"). A filtering saving only lands on pushes
-that touch one service's tree, so it decays as PRs get broader. The
-1,001/1,000 figure confirmed 2026-08-29 came in ahead of (i.e. worse
-than) the ~1,145 month-end projection the entry used to carry.
-
----
-
-## Granicus `chunklist.m3u8` timeout -- detail moved out [Investigated 2026-08-31]
-
-**Two earlier theories, now understood (kept for anyone who rediscovers
-the same symptoms and starts re-litigating root cause):**
-- An earlier theory of a CloudFront IP block was a self-inflicted missing
-  `Referer` header in ad hoc testing — not a real block.
-- An earlier "generic source flakiness" theory was correct that the
-  failure isn't IP-specific, but didn't identify the actual mechanism
-  (the real 504 after a multi-minute hang, only visible past our own
-  120s timeout).
-
-**Evidence the failure sometimes clears on its own vs. sometimes doesn't
-(real, if partial, good news):**
-- King County clip 11547 failed identically on two earlier attempts over
-  about a day, then resolved cleanly on a later retest with a real
-  duration — consistent with an on-demand rehydration/cold-storage delay
-  on Granicus's own archival backend.
-- Fountain Valley CA clip 607, by contrast, failed the same way on
-  *every* attempt across at least 4 tries over an hour — consistent with
-  that specific asset being genuinely broken/gone at the source (matching
-  its already-known history as a real edge case, per CLAUDE.md).
-
-**Implication for anyone hitting a fresh "ffmpeg timed out" on Granicus**:
-don't assume an immediate retry fixes it — cold-storage cases may need
-hours, dead assets may never succeed.
-
----
-
-## Same-host pulls / flat timeout split -- measurement detail moved out [Investigated 2026-08-31]
-
-WO-40 (2026-08-21) tested "workers hammer one host across consecutive
-jobs, so round-robin the queue by host" against **all 514 production
-jobs** and falsified it:
-- `same_host_different_job` failure pairs within 10 minutes: **0**.
-- Chunk 0 is 3-4x more failure-prone per attempt than any later chunk —
-  the opposite of what an accumulating-rate-limit theory predicts.
-
-No queue reprioritization was built as a result. Full numbers live behind
-the `GET /internal/transcription-failure-analysis` endpoint and in
-`BACKLOG_DONE.md`.
-
-Sizing measurement for the flat-timeout entry: **2 of 218** terminal job
-failures are timeouts (129 are "No usable audio or video source was
-found" — that's where the volume actually is). A second, throughput-
-focused measurement on 2026-08-22 found 106 timeout failures across 18
-jobs in two days — ~3.5 hours of retry (106 × 120s) against ~96
-worker-hours available over the same window, about **4%**. Timeouts are
-not what caps real output at ~35 jobs/day.
-
----
-
-## Search Console "Reasons preventing indexing" -- detail moved out [Investigated 2026-08-31]
-
-Ryan supplied three real Soft 404 URLs on 2026-08-25, which resolved that
-category.
-
-**Soft 404 root cause (WO-62):** `/m/fairview-tn-2025-10-02-regular-
-meeting` held only an `agenda_link`, which `_is_empty_page_condition()`
-counted as content — so a page whose whole body was two apologies and one
-outbound link was indexed and sitemapped. `agenda_link` no longer counts
-as content for that check. The other two Soft-404 URLs are covered by the
-Granicus `[NEEDS-AUDIT]` entry (they were unrelated to this template bug).
-
-**"Not found (404)" category correction (as of the 2026-08-29 re-check):**
-this entry used to claim `_SLUG_REDIRECTS` was empty and that the
-`welcome-to-clerkbase` reslug had never been run — both were wrong by
-2026-08-29. `_SLUG_REDIRECTS` (`archive/main.py`) now holds several real
-mappings (see `BACKLOG_DONE.md`'s "Five frozen-slug pages reslugged"
-entry, 2026-08-28, `welcome-to-clerkbase` included), so a frozen-slug
-rename leaving a dangling permalink is no longer a live candidate for a
-real 404 in this category. The residual bug this surfaced instead: a
-reslugged old URL was never sending a real 301 either — it was serving
-200 with a different canonical the whole time. That was fixed
-2026-08-31 (see `BACKLOG_DONE.md`).
-
----
-
-## `/coverage` QA surface -- detail moved out [Investigated 2026-08-31]
-
-The two literal-date-as-jurisdiction rows this entry originally flagged
-as still-live are gone as of a 2026-08-21 re-scan — most likely
-incidentally closed by WO-14's bleed fix, never independently
-root-caused since the original URLs were never recorded.
-No content needed to be moved out of this chunk.
-
-Every real fact in the original "Trust, safety & data quality" section
-(numbers, dates, file:line/endpoint references, named entities) fit inside
-the compacted 5-field entries in `H-Trust.md`, and every entry's History
-field already points at existing `BACKLOG_DONE.md` build writeups (WO-21,
-WO-38, Bluesky auto-posting, the Chula Vista garbled-marker fix) or
-`TRUST_THREAT_MODEL.md` rather than needing a new `BACKLOG_DONE.md`
-section of its own.
-### YouTube Atom-feed polling — design reasoning preserved from Roadmap compaction (2026-08-31)
-
-Not itself a "done" item — this is supporting design reasoning moved out
-of the live `BACKLOG.md` "YouTube Atom-feed polling" Roadmap entry during
-the 2026-08-31 5-field retrofit, so it isn't lost. Paste under this
-entry's own history section (or a real `docs/investigations/` file) once
-the feature is actually built or investigated further.
-
-**Why route the re-resolve through the existing page's own URL instead of
-writing the Atom match's data directly onto it**: doing it this way means
-the Atom feed is only ever a *scheduling* input — "check this page again
-now" — and every actual claim about which video belongs to which meeting
-still goes through the same adapter logic this app already trusts, with
-all its existing confirmation/decline behavior intact. Writing the Atom
-entry's title/date/video-id straight onto the page would instead be a
-second, independent matching path with its own confidence question —
-exactly the risk `FEED_CITIES.md` already flags as unresolved for its
-bigger version of this idea (synthesizing a page from two separate feeds
-with no existing page to anchor to). This version sidesteps that risk
-entirely by only ever re-triggering resolution on a page that already
-exists, so it's a real, much narrower subset of that open question — worth
-building on its own without waiting for `FEED_CITIES.md` to be decided.
-
-**On "switching" a meeting from Upcoming to Past — turns out there's no
-switch to build.** `meeting_date_status()` (`archive/utils/date_status.py`)
-already derives the "Upcoming"/"Recent" pill purely by comparing the
-stored meeting date against today at render time — there's no stored
-status field to flip, so a meeting already reads as no-longer-upcoming the
-instant its date passes, transcript or not (`UPCOMING` requires
-`meeting_date > today`, full stop). What a proactive re-resolve actually
-needs to change is narrower than "switch the state": just get
-`video_url`/the transcript attached before the *next* visitor happens to
-trigger the existing passive re-check
-(`ARCHIVE_RECHECK_AFTER_NO_TRANSCRIPT`, currently 1 hour — `app/main.py`).
-So the real win isn't a new state machine, it's making an existing
-transcript-less page's *next* re-check happen on a schedule tied to "the
-city just posted something," instead of waiting on both the passive hourly
-cadence and a human visit lining up.
-
-**What this doesn't fix**: the caption fetch itself still goes through
-yt-dlp at resolve time, which is the exact path hitting the real,
-currently-unresolved Render IP block (see the "bulk re-resolve gets this
-IP blocked by YouTube" entry under **Reliability, ops & cost**, now
-updated with real scale: 184 real jurisdictions' captions ride through
-that same call). Polling the Atom feed changes *when* a re-resolve is
-triggered, not what happens once it runs — a blocked IP still fails the
-actual attach. Also scoped narrowly on purpose: only four cities have a
-curated channel id today; broadening this beyond the existing last-resort
-fallback list is a separate, real cost (see the curated map's own
-docstring for why it's a hand-verified map, not a search).
-## Archive-side data-quality tool for poorly-ingested URLs/tenants — done, no public page needed [Done 2026-08-31]
-
-Split out of a "public data-quality page" ask, 2026-08-31: Ryan's call was
-that what's actually wanted is an internal tool for cleaning up
-poorly-ingested URLs/tenants, and it's fine for that to live outside the
-public site. `GET /internal/jurisdiction/missing` (built 2026-08-31) plus
-the existing `GET /internal/low-trust-pages` already cover this — both
-admin-token-gated, both already return real per-page reasons (no
-jurisdiction, `best_effort`, unverified confidence). No new code needed.
-
-## PDF agenda inline viewer shipped [Done 2026-08-31]
-
-The cheap half of "PDF agenda text-extraction for a searchable preview":
-a plain `<iframe>` next to `agenda_link` now renders inline, zero backend
-change. The fallback link was kept alongside it since some government
-hosts may refuse framing — that framing-refusal risk itself is
-unverified live, only checked from this session's sandbox, worth a real
-browser check. Real text-extraction for a searchable preview (needing
-`pypdf`/`pdfplumber`, neither in `requirements.txt`, plus a new storage
-column) remains a separate, bigger, unbuilt ask — see the live
-`BACKLOG.md` entry.
-
-## Transcript version picker analytics shipped [Done 2026-08-31]
-
-Split out of the `source="deduped"` work. All three events shipped
-exactly as scoped: `transcript_version_change` fires inline in the
-template's `onchange` (submit stays inline too, so navigation never
-depends on an external file loading); `transcript_version_available`
-(now carrying the `label_ambiguous` param, computed client-side) and
-`transcript_version_viewed` fire on load from `meeting_page.js`. Read the
-numbers with a caveat: a low `transcript_version_change` rate could mean
-readers can't tell two identically-rendering options apart, not that
-they don't want alternates — `label_ambiguous` is exactly the segmenting
-signal for that. (The option-label improvement itself — adding a date to
-each label — is still open, see the live `BACKLOG.md` entry.)
-
-## Transcription rate limit no longer applies to signed-in users [Done 2026-08-31]
-
-Both `@limiter.limit("5/hour")` decorators (`app/main.py`'s
-`transcription_check_feasibility`/`transcription_submit`) now carry
-`exempt_when=lambda request: bool(get_clerk_user_id(request))` —
-confirmed live that slowapi 0.1.10 genuinely supports this kwarg,
-settling a previously-open "not confirmed which slowapi actually
-supports" question. The rate-limit copy rewrite was already fixed
-2026-08-16 (separately from this change). Still open: the 429 UI path
-for signed-out visitors — see the live `BACKLOG.md` entry.
-
-## Two static Contact `mailto:` links and `about.html`'s address fixed to `ally@redtaperecordings.com` [Done 2026-08-16]
-
-Part of the user-facing email-address consolidation requested 2026-08-12
-(after `ally@`/`ryan@redtaperecordings.com` forwarding was set up). The
-two static `mailto:` Contact links and the `ryan@how-to-adu.com` address
-on `about.html` were both repointed. Remaining config values
-(`RESEND_REPLY_TO_ADDRESS`, `DAILY_REPORT_EMAIL_TO`,
-`YOUTUBE_FETCH_REPORT_EMAIL`) are tracked as still-open in the live
-`BACKLOG.md` entry.
-
-## "Which Ryan address" resolved: `ally@redtaperecordings.com` for all operator/ops reporting [Done 2026-08-22]
-
-Requested-report work (a 6-hourly operator email report to
-`ryan@redtaperecordings.com`, requested 2026-08-16) was partially
-superseded 2026-08-21 by a shipped daily worker report (`GET
-/internal/send-worker-daily-report`) whose recipient was whatever
-`AUTO_TRANSCRIPTION_REQUESTER_EMAIL` was set to — not yet a resolved
-answer to "which Ryan address." Three addresses were in play
-(`AUTO_TRANSCRIPTION_REQUESTER_EMAIL`, `DAILY_REPORT_EMAIL_TO`'s
-`ryan@how-to-adu.com` default, and the requested
-`ryan@redtaperecordings.com`); resolved 2026-08-22:
-`ally@redtaperecordings.com` is the answer for all of them, and all
-operator/ops reporting consolidates there.
-
-Two things to get right when applying it, still relevant to any future
-change touching these addresses: (1) `AUTO_TRANSCRIPTION_REQUESTER_EMAIL`
-is set per-service in the Render dashboard, so changing it means touching
-it on **both** `rtr-transcription-worker` and `rtr-transcription-worker-2`
-— those two services differ in *exactly* that variable by design (see
-`render.yaml`'s comment on the second block), so any change must not
-collapse the distinction they exist to maintain. (2)
-`ryan@ally.redtaperecordings.com` is the Resend *sending* subdomain, not
-this recipient — they look nearly identical in a config diff, and mixing
-them up would silently break either delivery or reporting. Confirm
-`ally@redtaperecordings.com` receives mail before switching anything
-over.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Phase 4: caught UnicodeError alongside gaierror in check_destination() (PR #642) [Done 2026-08-31]
 
@@ -13830,18 +13248,15 @@ for the bare-slug case. Regression tests in
 `tests/test_archive_proxy_error_handling.py`.
 
 **Verified live 2026-08-31, post-deploy**:
-```
 curl -D- https://redtaperecordings.com/m/meeting
 HTTP/2 301
 location: /m/tucson-az-2026-08-05-regular-meeting
 
 curl -D- https://redtaperecordings.com/m/2026-08-11-council-meeting
-HTTP/2 301
 location: /m/modesto-ca-2026-08-11-council-meeting
 
 curl https://redtaperecordings.com/m/meeting/card.jpg
 200, image/jpeg -- card.jpg's auto-follow behavior confirmed unaffected.
-```
 
 Worth asking Google to re-crawl a couple of the affected old permalinks
 now that they send a real 301, though that's optional follow-through,
@@ -14095,7 +13510,6 @@ confirms a `limit=2` call only returns 2, paginating the rest via
 green. Merged to `main` but **not yet deployed** — the repetition-loop
 repair run itself is still blocked until tonight's deploy ships this fix;
 see the live "Decisions about already-live content" entry in
-`BACKLOG.md`.
 
 ## Seam-duplication repair run for real: 111 of 118 candidate pages rewritten [Done 2026-08-30]
 
@@ -14465,11 +13879,9 @@ pages never attempted before (the Archive went 973 → 1,090 cards).
 
 Final failure profile, 184 stuck:
 
-```
 109  wrote no frame (107 of them Cablecast)   22  HTTP 404
  21  timed out                                19  audio-only source
  10  HTTP 403                                  3  other
-```
 
 By host: `mediahttp.iqm2.com` 28, `play.champds.com` 17,
 `archive-stream.granicus.com` 6, `cpmedia.azureedge.net` 6, then a long
@@ -14688,7 +14100,6 @@ Archive's Render shell:
 SELECT count(*) FROM meeting_pages p
 WHERE EXISTS (SELECT 1 FROM meeting_page_thumbnails t WHERE t.meeting_page_id = p.id AND t.is_default = false)
   AND NOT EXISTS (SELECT 1 FROM meeting_page_thumbnails t WHERE t.meeting_page_id = p.id AND t.is_default = true);
-```
 Returned `0`. Confirms every page's ingest/render path really does
 always queue a timestamp-less default warm before any `?t=`-triggered
 one can exist, so `pages_with_thumbnails()`'s "any row" check never
@@ -15035,7 +14446,6 @@ allowlist (`_NO_PREFIX_SUBDOMAINS`) rather than making the `pub-` prefix
 generally optional, since other real no-prefix eScribe tenants already
 exist in the codebase and a blind regex widen risked a real regression.
 `pub-lloydminster` deliberately left open — see `BACKLOG.md`'s residual
-entry.
 
 **WO-70 — explicit-claimed-state jurisdiction gap.** A name already
 shaped "X, State" with an explicit spelled-out state (Vimeo account
@@ -16870,7 +16280,6 @@ of 2026-08-29: **Pipeline Minutes 1,001 / 1,000 (already over)** and
 and higher than what this file's own "Render pipeline minutes" and
 "billed twice" entries had on record (812/1,000 projected, 14.54GB
 bandwidth) — updated in place in `BACKLOG.md` rather than duplicated
-here.
 
 ## Vimeo jurisdiction gap closed for 11 of 22 real batch pages; root-caused a shared subdivision-table gap [Done 2026-08-29]
 
@@ -17259,7 +16668,6 @@ here. Run tonight by Ryan from the Archive service's Render shell.
 **Real measured result** (not the runbook's original 300-500MB guess):
 
 | | Before | After | Reclaimed |
-|---|---|---|---|
 | Total DB size | 1142 MB | 1005 MB | **137 MB** |
 | `meeting_page_thumbnails` | 501 MB | 382 MB | 119 MB |
 | Thumbnail rows | 7,595 | 5,702 | 1,893 |
@@ -17318,7 +16726,6 @@ comment above `_ORG_LOGO_LEADING_ENTITY_RE`. The full real sample set,
 each independently curl'd with the adapter's own User-Agent:
 
 | Org token (city) | Real alt text | Parses to |
-|---|---|---|
 | Fitchburg, MA | "Fitchburg Access TV - Fitchburg MA VOD Player" | **Fitchburg, MA** |
 | Orleans, MA | "Town of Orleans MA - Town of Orleans Video on Demand" | **Orleans, MA** |
 | Stoneham, MA (known) | "Stoneham, MA - Stoneham, MA VOD Player" | Stoneham, MA (unchanged) |
@@ -17565,7 +16972,6 @@ it: `HTTPError` is a different yt_dlp exception class, raised by
 the caption track file — a network call the extractor makes *after*
 `extract_info()` itself already succeeded, not part of extraction, so
 `extract_info()`'s own `ignoreerrors: False` handling never sees it
-either.
 
 **Fix**: widened the except clause from `yt_dlp.utils.DownloadError` to
 its common base `yt_dlp.utils.YoutubeDLError` (confirmed both share this
@@ -17758,10 +17164,8 @@ rendered with no embedded state (confirmed by reading the raw HTML), but
 a plain, open, unauthenticated JSON API sits underneath it and is what
 the app itself calls client-side:
 
-```
 GET {netloc}/cablecastapi/v1/shows/{id}  -> title, eventDate, vods[]
 GET {netloc}/cablecastapi/v1/vods/{id}   -> direct .../vod.mp4 url
-```
 
 Confirmed this same API also answers identically on Charlotte, an
 existing Remix-template tenant — it's a universal Cablecast backend API,
@@ -17852,7 +17256,6 @@ answers something actionable rather than re-confirming the same shape.
 
 ## Granicus GovAccess: WAF confirmed genuinely hard, fuzzy-match fixed and re-run — 7 new ingests, 2 live production bugs fixed [Done 2026-08-29]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §42. Closes the Akamai WAF question honestly: a real headless Chromium
 browser (`app/platforms/headless_browser.py`) from a genuine residential
 IP still gets a domain-wide 403 on the GovAccess CNAME domains — not a
@@ -18103,7 +17506,6 @@ gap without a fresh, current report.
 
 ## CivicWeb + PrimeGov dorking: 6 real ingests, and confirmation both platforms are already well-covered [Done 2026-08-29]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §41. Closes BACKLOG.md's own "dork CivicWeb, PrimeGov, and Cablecast"
 note (Cablecast was closed separately via DNS sweep instead, a better
 fit for a wildcard-free platform — see this file's matching entry).
@@ -18130,7 +17532,6 @@ same occasionally-rate-limited endpoint `CLAUDE.md` already documents)
 — left for a plain retry once the window clears, not a code issue.
 Palo Alto's candidate skipped as expected, a clean confirmation of the
 already-documented Midpen Media Center video gap rather than a new
-failure.
 
 ## CI guard for the worker's real import graph, defense-in-depth on the 2026-08-24 markupsafe outage fix [Done 2026-08-29]
 
@@ -18247,7 +17648,6 @@ real HTTP failure. All four CI gates clean.
 
 ## Cablecast wildcard-free DNS sweep: 45 new hosts, 3 real ingests, 2 new unsupported portal templates found and logged [Done 2026-08-29]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §40. Closes the "Six meeting/CMS platforms don't wildcard their DNS"
 lead for `cablecast.tv` specifically (BACKLOG.md's Platform &
 jurisdiction coverage section) — PrimeGov/CivicWeb/eScribe already had
@@ -18435,7 +17835,6 @@ Updated 3 existing tests whose exact-dict assertions on
 key; added one new end-to-end test confirming a real delegated resolve
 (Legistar → Granicus) surfaces `result.meeting_body == "City Council"`.
 Full CI green (ruff check, ruff format, 1928 pytest passing, both
-alembic checks).
 
 ## 22 platform adapters now log exception/HTTP-failure fetches that used to be silent [Done 2026-08-28]
 
@@ -18515,7 +17914,6 @@ registry's own name exactly — guarded so it can never override a
 *different* real city's guess under the same org token (a real risk:
 one TelVue org token can plausibly serve multiple municipalities). 3 new
 tests, including one that a mismatched name (`"Medford"`) is correctly
-left alone.
 
 **Milton (eScribe, `pub-milton.escribemeetings.com`)**: the real agenda
 page gives "150 Mary Street, Milton, ON L9T 6Z5" and "The Corporation of
@@ -18572,7 +17970,6 @@ even though this specific fixture no longer exercises it.
 
 New direct test: `test_sentence_case_does_not_capitalize_after_a_bare_line_wrap`.
 Full CI green (ruff check, ruff format, 1912 pytest passing, both
-alembic checks).
 
 ## `_looks_like_bleed()` widened to catch a short tail that only ENDS in a junk word [Done 2026-08-28]
 
@@ -18619,7 +18016,6 @@ Authorizing" (a single-word tail deliberately NOT on the stoplist) still
 pass unchanged. One new test added:
 `test_finalize_jurisdiction_known_junk_tail_words_repair_a_multi_word_tail_too`.
 Full CI green (ruff check, ruff format, 1911 pytest passing, both
-alembic checks).
 
 **Two rows this fixes retroactively once backfilled** (not done here —
 needs the admin-token-gated `POST /internal/jurisdiction/backfill-
@@ -18682,7 +18078,6 @@ with no video) is split out as its own live `BACKLOG.md` entry.
 was a correct answer about the URL we held, not a bug:
 
 | archived page | video actually lives at | outcome |
-|---|---|---|
 | SB Regular 2026-08-11 (`docs…id=1184`) | OMP session 346145 | **repointed** — 5,361 cues live |
 | SB Special 2026-08-11 (`docs…id=1202`) | OMP session 346146 | **repointed** — 132 cues live |
 | Pittsburg CA 2025-04-07 (`onbaseweb…id=1253`) | CivicClerk `pittsburgca` event 1199 | **repointed** — 8,706 cues live |
@@ -18730,11 +18125,9 @@ all (`egenda.scgov.net`, `agenda.modestogov.com`, `dms.missionviejo.gov`,
 Matching on the `OnBaseAgendaOnline`/`agendaonline` **path** instead
 gives the real population:
 
-```
 31 pages across 25 tenants (of 2,482 archived pages)
 17 of the 31 resolve with NO video
  1 of the 31 has real captions (meetings.muni.org, 2,261 segments)
-```
 
 **What survives from the original read:** it genuinely is *per-tenant*,
 not a platform property — 14 of 31 resolve real video fine (Compton,
@@ -18904,7 +18297,6 @@ shape from the incident (4028 chunks, both snapshots equal, 10 active
 jobs), does not fire when chunks are moving, and does not fire when the
 queue is simply idle (0 active jobs) — the pool isn't "stalled," it has
 nothing to do. Full CI green (ruff check, ruff format, pytest, both
-alembic checks).
 
 ## rtr-upcoming's roster.csv cross-checked: 14 new Bay Area jurisdictions, a real CivicClerk discovery API found, and a real Midpen Media Center lead [Done 2026-08-28]
 
@@ -19043,7 +18435,6 @@ preview looked right (real jurisdiction/date/title-derived slugs, not
 more boilerplate), then executed for real:
 
 | old slug | new slug |
-|---|---|
 | `meeting` | `tucson-az-2026-08-05-regular-meeting` |
 | `meeting-1e9bac` | `maricopa-county-az-2026-07-15-formal` |
 | `meeting-38ca49` | `sacramento-county-ca-2026-08-11-board-of-supervisors-meeting` |
@@ -19192,7 +18583,6 @@ sequence never creates the stale-slug page in the first place, unlike
 
 ## Wildcard-free DNS sweep: 547 hostnames found, PrimeGov + CivicWeb resolved (68 new), eScribe deferred [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §33. Follow-through on the "six wildcard-free vendors" lead logged in
 the entry below — scoped to the 3 of 6 with real adapters in this
 project (PrimeGov, eScribe, CivicWeb; BoardDocs has no adapter,
@@ -19306,7 +18696,6 @@ information, but hit a separate, real complication (below) before it
 could return anything.
 
 **Killing the heavy job did not restore CDX access — `web.archive.org`
-itself went into a real connection-level cooldown that outlasted the
 kill.** Confirmed by testing a trivial, unrelated query
 (`url=example.com&limit=5`), which failed the same way as the Legistar
 follow-up query; further confirmed as `web.archive.org`-specific, not a
@@ -19322,7 +18711,6 @@ fabricating one from memory.
 
 ## DNS/CNAME fingerprinting toolkit from a parallel session: 16 new jurisdictions, plus a real WAF gap logged [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §32. A parallel Cowork session independently attacked discovery via DNS
 CNAME fingerprinting against 12,761 CISA `.gov` domains — delivered as
 `rtr-discovery-toolkit.zip`, reviewed (all 3 scripts clean, data spot-
@@ -19368,7 +18756,6 @@ signatures the parallel session found by clustering real CNAME targets.
 
 ## CDX applied to Swagit/CivicClerk/Granicus: 217 new jurisdictions, one real bug caught before shipping [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §31. Scaled §29's Cablecast CDX method to the other three named
 platforms. Complete tenant counts: Swagit 516, CivicClerk 261, Granicus
 687 — all bigger than Cablecast's 138. Yield: Swagit 44 new jurisdictions,
@@ -19402,7 +18789,6 @@ now carry a reason, continuing §28's fix for the reconstruction problem
 
 ## CDX/Wayback beats dorking by ~10x: 138 real Cablecast tenants, 20 new jurisdictions [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §29. Direct answer to a user question about whether to dork deeper,
 switch search engines, or go back to CDX/Wayback. Tested CDX live
 (`curl web.archive.org/cdx/search/cdx`, no auth needed) rather than
@@ -19442,7 +18828,6 @@ that memory reconstruction genuinely couldn't reach.
 
 ## Cablecast dorking: 6 new jurisdictions, reject_reason written live for the first time [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §28. The scoped-down version of "run the massive enumeration job":
 Cablecast had never been gap-list-swept or dorked this week, so it's
 genuine virgin territory (same shape as §16's TelVue pass). 5 search
@@ -19474,7 +18859,6 @@ population is the real open item if this gets picked up again.
 
 ## `reject_reason` backfilled from the earlier Cablecast/Legistar/TelVue enumeration session — 9 rows, 2 new taxonomy values [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §24. Same ask as the entry below, applied to a *different, earlier*
 enumeration session (2026-08-16/17's PrimeGov/CivicWeb/eScribe/IQM2/
 ClerkBase/ChampDS/Legistar/TelVue/Granicus/Cablecast/Swagit/CivicClerk
@@ -19501,7 +18885,6 @@ in this CSV's population at all.
 
 ## `jurisdiction_coverage.csv` reject_reason backfill from this repo's own 2026-08-21 adapter-build session — 7 rows [Done 2026-08-21]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §25. A second, same-day backfill alongside §24's — that one reconstructed
 a 12-day-old rtr-deeplink session from transcript memory alone; this one
 comes from a same-day session that built three new platform adapters
@@ -19530,7 +18913,6 @@ as a dead end. See §25 for the full reasoning and this repo's own
 
 ## `jurisdiction_coverage.csv` gets a `reject_reason` column, populated for 3,344 rows [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §23. Direct response to a user request: every rejection from today's
 enumeration work (§13-22) only ever existed in ephemeral scratchpad JSON
 files or as prose in these write-ups — no durable, queryable record of
@@ -19567,7 +18949,6 @@ split). Any future rejection should write this column directly, not
 rely on a reconstruction pass — and any future reconstruction pass
 should diff candidate-list counts against resolved counts *before*
 declaring itself complete, the check that was skipped here the first
-time.
 
 **Real gap this closes for the still-open multi-meeting-check finding**
 (`BACKLOG.md`'s matching `[NEEDS-AUDIT]` entry): that entry can now say
@@ -19576,7 +18957,6 @@ time.
 
 ## Dorking eScribe/IQM2/Swagit the same day as their gap-list sweep: a clean 0-new result [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §22. §17 flagged that TelVue/Granicus-style phrase-dorking hadn't yet
 been tried against eScribe/IQM2/Swagit/CivicClerk, only the known-gap-
 list method (§18). Ran it against the first three: ~11 search queries,
@@ -19607,7 +18987,6 @@ forward.
 
 ## The no-video-signal tier: 54 more new jurisdictions, two real bugs caught by verification [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §21. Worked the 25,226 `jurisdiction_coverage.csv` rows left over after
 §16-20 — no `suspected_video_provider`, no `shares_video`, not yet
 marked `transcribed`. Split into three buckets by shape:
@@ -19660,7 +19039,6 @@ URL-shape scanning.
 
 ## Agenda-only rows: outbound-link scan at scale, 96 more new jurisdictions [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §20. Short version: 1,211 `jurisdiction_coverage.csv` rows had
 `shares_video=True` but only an agenda/calendar URL, no direct meeting
 URL. Fetched all 1,211 pages, regex-scanned for known-platform outbound
@@ -19694,7 +19072,6 @@ their own. Of 11 video-only candidates, only 4 (Granicus) were queued;
 
 ## Blank-`suspected_video_provider` rows with `shares_video=True`: 52 more new jurisdictions [Done 2026-08-28]
 
-Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §19. Short version: the ~26,500 rows in `jurisdiction_coverage.csv` with
 no platform ever classified looked like a hard, discovery-first problem
 (correctly, in general) — but 61 of them already had `shares_video=True`
@@ -19913,7 +19290,6 @@ real customer page checked, immune to the whole class of bug this fix
 addresses. Not wired into the adapter; see `BACKLOG.md`'s matching entry.
 ## Inbox-triage promotion pass: eight closed-out dated sections deleted, one new finding promoted [Done 2026-08-28]
 
-Periodic promotion-review pass over `CLAUDE_INBOX_TRIAGE.md`'s dated
 sections from 2026-08-19 through 2026-08-26 (the file's own body order —
 2026-08-26 appears before 2026-08-25). Unlike the 2026-08-25 pass
 (WO-61, above), every individual finding in these eight sections already
@@ -20317,7 +19693,6 @@ segments found now / video found, no segments yet / video-shaped but
 empty, per this file's own established tier convention):
 
 | City | Result |
-|---|---|
 | Fairfax, Belvedere, San Rafael, Somerville, Delaware County IN, Montclair CA, Ela Township IL, Westhampton Beach NY | tier 1 — real transcript, pushed |
 | Miamisburg, Colma, Johnson City TX, Wilmington OH, Hellam Township PA, McKenzie County ND, Alvord TX, Cherry Township PA, Franklin Township NJ | agenda-only — real, pushed, no video on the meeting checked |
 | Carnation WA, Indian Hill OH, Munford TN, Princeton MA, Mount Pocono PA, Wendell MA | no real content on the meeting checked |
@@ -20452,12 +19827,10 @@ and proposed fetching a real tenant page to find out. That was a
 reasonable read of the code and it was wrong. The regexes are fine. Two
 checks against fixtures already in this repo settled it in a minute:
 
-```
 tucson_view_meeting_agenda.html        A=27 items   B=27 items
 anchorage_view_agenda_document.html    A=0          B=34 items
 santabarbara_view_agenda_document.html A=0          B=18 items
 concord_view_agenda_document.html      A=0          B=23 items
-```
 
 Every one of those agendas parses. The items were being discarded
 **before the regex ever ran**.
@@ -20467,7 +19840,6 @@ Every one of those agendas parses. The items were being discarded
 ```python
 if not agenda_html or not event_points:
     return []
-```
 
 `event_points` comes from `var itemEventPoints = {...}`, which is the
 **video seek map**. A meeting with no video has no seek map, so
@@ -20515,11 +19887,9 @@ alembic checks clean. No schema change.
 resolver's Render shell. Result, straight from
 `GET /internal/thin-page-audit`:
 
-```
 before:  agenda_link_only 16   (hyland 14, champds 1, unknown 1)
 after:   agenda_link_only  2   (champds 1, unknown 1)
 has_content 2618 -> 2632       (+14, exactly the recovered pages)
-```
 
 `hyland` is gone from the breakdown entirely.
 
@@ -20538,9 +19908,7 @@ round was wasted on it.
 **The check that settles it in one second**, worth running before any
 sweep whose whole point is that a fix has landed:
 
-```
 grep -c "<a string unique to the fix>" app/platforms/<adapter>.py
-```
 
 from the service's own shell. It reads the actually-deployed file, so
 unlike a dashboard glance or "I think I deployed it" it cannot be fooled
@@ -20557,7 +19925,6 @@ mechanism and would have been applied to all three pages, when it explains
 exactly one.
 
 | Page | What it renders | Verdict |
-|---|---|---|
 | `fairview-tn-2025-10-02-regular-meeting` | two apologies + one agenda link | **Thin — confirmed** |
 | `beaufort-board-of-education-academics-committee` | video **and** a long transcript | **Refuted** |
 | `city-of-carrollton-2022-10-25-city-council-on-2022-10-25-5-45-pm` | video **and** a long transcript | **Refuted** |
@@ -20588,20 +19955,16 @@ Ryan's framing settled how to think about it: **the minimum characters on a
 real agenda should exceed the maximum characters of apology text.** Measured
 from the templates themselves:
 
-```
  42  "No video link found on this Legistar page."   (the real video_warnings line)
  41  "No transcript available for this meeting."
  34  "We think we found an agenda here: "
----
  83  apology floor
-```
 
 An `agenda_link` contributes **zero** characters of content — it is a URL
 rendered as a pointer off-site — so such a page can never clear 83. Real
 `agenda_items` clear it easily. The fix is therefore a one-term removal, not
 a new threshold: `agenda_link` stops counting as content.
 
-### What shipped
 
 **1. `agenda_link` dropped from the content test, in both copies.** The rule
 is written twice — SQL (`crud._is_empty_page_condition()`, behind
@@ -20664,10 +20027,8 @@ schema change, so no migration. TOC regenerated and idempotent.
 
 ### The measured result (run in production 2026-08-25, same day)
 
-```
 total_pages 2629 | empty 0 | agenda_link_only 16 | has_content 2613
 agenda_link_only_by_platform: hyland 14, champds 1, unknown 1
-```
 
 **16 pages, 0.6% of the archive** — small enough that no narrowing by
 platform was needed, which is exactly what shipping the audit alongside
@@ -20703,7 +20064,6 @@ diffs.
 ### What each finding turned out to be
 
 | Finding | What was checked | Verdict |
-|---|---|---|
 | 2026-08-23 #1 Cablecast HLS chunk 1 | The entry's own text | Already fixed as WO-45 |
 | 2026-08-23 #2 Schemeless `ARCHIVE_BASE_URL` | `app/archive_client.py` | **Real, untracked** — fixed here |
 | 2026-08-23 #3 `destinyhosted` canary failure | Live GitHub Actions run history | **Refuted** — transient |
@@ -20794,7 +20154,6 @@ failed (...), retry passed`) rather than being silently absorbed, so a
 site that is *becoming* flaky stays distinguishable from one that is
 stable.
 
-### Verification
 
 All four CI gates in CI's own order: `ruff check` clean, `ruff format
 --check` clean (one file reformatted — `archive/main.py`, and only the
@@ -20829,11 +20188,9 @@ Every earlier Granicus number in this session was wrong, and all in the
 same way. Same asset, same offsets, second run immediately after the
 first:
 
-```
                     1st run (cold)   2nd run (warm)
 cityoftacoma @900        237s             31s
 cityoftacoma @2700       180s             33s
-```
 
 **6–7× from nothing but prior access.** The "erratic host — 295s vs 30s"
 reading earlier the same day was an artifact of probing: 295s was Napa's
@@ -20849,12 +20206,10 @@ future measurement of this host needs **one fresh asset per data point**.
 
 ### Cold cost, one asset per row (900s chunk, input-side seek, ffmpeg 7.1.5)
 
-```
 jaxcityc          @900/1800/2700/3600    261s 226s 219s 212s   all OVER 120s
 cityofmillvalley  @900/2700/4500/6300    164s 193s 182s 195s   all OVER 120s
 cityoftacoma 7460 @900/2700              237s 180s             OVER 120s
 cityoftacoma 7450-7453 (fresh, later)    108s                  fits
-```
 
 `cityofmillvalley` is worth noting: job 909 **completed** on that asset
 hours earlier, and it still measured 164–195s — so the CDN fill expires
@@ -20865,12 +20220,10 @@ well inside a day. A tenant that succeeded once gets no lasting credit.
 Four *different* fresh assets, one per row, so nothing warms anything
 else — the design the earlier ladder lacked:
 
-```
 900s chunk (asset 7a8fade1)   108s   3600512B
 450s chunk (asset 314ba772)    61s   1799360B
 300s chunk (asset d5b9632e)    49s   1174544B
 150s chunk (asset 8d2d1783)    31s    600560B
-```
 
 Roughly 0.12 s per second of audio here. The worst cold rate measured
 anywhere was `jaxcityc` at 261s/900s = **0.29 s/s**. At that worst rate a
@@ -20882,9 +20235,7 @@ costs ~130s and does not.
 A single sequential pass over a fresh asset (`-f segment`, all chunks at
 once — the WO-54 shape) on `cityoftacoma` clip/7455, 3600s, 4 chunks:
 
-```
 total 461s, rc=0, all four chunks decodable
-```
 
 461s for 3600s of audio is **0.128 s/s** — indistinguishable from a good
 cold per-chunk rate (0.12 s/s) and only ~2.3× better than the worst.
@@ -20938,12 +20289,10 @@ ones the four production allow-lists correctly skip.
 
 Measured over the 24 hours to 2026-08-25:
 
-```
 21 commits to main
 13 of them built ONLY staging  (docs, backlog, auto-merged queue PRs)
  8 built production services
 ~42 staging builds vs <=32 production builds
-```
 
 Both staging services were failing to deploy at the time, so every one of
 those minutes bought nothing. Ryan disabled their auto-deploy the same
@@ -20989,11 +20338,9 @@ progressive source**, and not all of them have that pathology.
 **IQM2 does not.** Measured 2026-08-25 on
 `MediaHTTP.IQM2.com/JohnsonCountyIA/3003_480.mp4` (450 MB):
 
-```
 offset       0 MB :  TTFB 0.049s
 offset      50 MB :  TTFB 2.839s
 offset     150 MB :  TTFB 1.365s   <- lower than at 50 MB
-```
 
 Non-monotonic, so that is ordinary network variance, not a linear scan.
 Seeks are effectively free there and per-chunk extraction works fine.
@@ -21043,7 +20390,6 @@ an ordinary account tier, in production:
 p.getPlaybackRate()      -> 2      (already set by our own adapter)
 p.setPlaybackRate(1.5)
 p.getPlaybackRate()      -> 1.5
-```
 
 Two things fall out of that first line, and it is the more useful of the
 two readings. The player was **already at 2x before the test touched
@@ -21086,12 +20432,10 @@ menus). So the control is an overlay chip drawn in the top-right of
 Measured live 2026-08-24 before any code was written (the numbers that
 made this entry buildable rather than guesswork):
 
-```text
 native <video> (mp4, m3u8+hls.js)  1.5-16x accepted, preservesPitch:true
 youtube (IFrame API)               HARD CAP 2x
 vimeo (Player SDK)                 documented 0.5-2x  [confirmed live 08-25]
 viebit (NYC Council)               impossible - no cross-frame API
-```
 
 So the offered rates come from the adapter (`speedRates`), not from one
 fixed list. YouTube's are *asked for* at runtime via
@@ -21170,12 +20514,10 @@ working", so it rested on an assumption nothing enforced — its own
 comment said 5 minutes is "comfortably longer than a single chunk should
 ever legitimately take". A slow source breaks that quietly:
 
-```
 worker A is still transcribing chunk 3
 worker B sees a stale claim and takes the job
 B derives chunk_index from chunks_completed — also 3
 both report success, and report_chunk_result() APPENDS
-```
 
 The transcript carries that window twice and the job skips a real chunk.
 **Silent** — no error, no failed job, just a subtly wrong transcript.
@@ -21238,13 +20580,11 @@ A ranged GET against a ChampDS file costs almost nothing to *transfer*
 and almost everything to *start*. Time-to-first-byte grows linearly with
 the offset, measured on **two independent customers**:
 
-```
 offset        TTFB oakhilltn/50    TTFB largofl/240
      0 MB          0.248s               0.196s
     50 MB          9.819s              10.140s
    250 MB         50.150s              49.768s
    450 MB         89.426s              89.473s
-```
 
 **~0.199 s/MB on both**, with transfer of the 256 KB payload itself
 constant at ~0.17s. The server scans the file internally at ~5 MB/s
@@ -21261,17 +20601,14 @@ Compounding it: the **`moov` atom is at the tail** (first 64 bytes are
 workers' own base image on oakhilltn/50 (502 MB, 6733s, 8 chunks), using
 the output-side path WO-53 had *just* added:
 
-```
 chunk @900s : 138s      chunk @4500s: 184s
 chunk @2700s: 162s      chunk @6300s: 200s
-```
 
 Every one over the 120s budget, growing linearly — roughly 1,330s of work
 across the job, all of it failing. **WO-53 did not rescue ChampDS**, which
 I had expected it might: it avoids the server-side scan by reading from
 byte 0, but it still has to pull and demux everything before the target.
 
-### The fix
 
 Ryan's framing, and it is simpler than the shared-storage design this was
 heading toward: grab it as one file, chunk it, transcribe the chunks.
@@ -21308,10 +20645,8 @@ of 32 kbps mono mp3. The objection does not apply.
 
 One sequential pass on oakhilltn/50, in the workers' own base image:
 
-```
 single sequential pass:  199s total for all 8 chunks, 26 MB on disk
 per-chunk (output-side): ~1,330s, and every chunk over budget
-```
 
 **6.7x faster, and it is the difference between the job completing and
 the job being impossible.**
@@ -21343,12 +20678,10 @@ does, and the gap was costing whole jobs.
 Ryan from a failure email. Measured inside the workers' own base image
 (`python:3.12-slim-trixie`, ffmpeg 7.1.5), chunk 1 at offset 900s:
 
-```
 master playlist, input-side  -ss   1084s  ->    224 B   undecodable
 master playlist, output-side -ss     13s  ->  3.6 MB    mean_volume -25.5 dB
 audio rendition, input-side  -ss     73s  ->    224 B   undecodable
 audio rendition, output-side -ss     11s  ->  3.6 MB    mean_volume -25.5 dB
-```
 
 Input-side seeking on this packaging degenerates into pulling the entire
 1080p stream and discarding it with `-vn` — ~560 MB over the wire to
@@ -21531,7 +20864,6 @@ only then was the `sebastopol` row's expectation updated, to the
 now-correctly-observed `video_format == "vimeo"` delegation the original
 entry described.
 
-**Verification**: `ruff check`, `ruff format --check`, `python -m
 pytest` (1,745 passed, 15 skipped), both `alembic check`s (archive +
 app, no drift — no schema touched), `npm test` (41 passed), and
 `python -m scripts.backtest_fallback` (17 PASS / 0 FAIL, full
@@ -21628,7 +20960,6 @@ shell settled it, and the second one corrected the first.
 non-empty `partial_segments`, grouped by `chunks_completed/total_chunks`:
 **48 jobs, ~9,960 segments**, and the distribution was the finding:
 
-```
 1/2   7 jobs      1/9   2      2/4   1      3/8   1
 1/3   1           1/13  1      2/16  1      4/8   1
 1/4   4           1/14  2      3/4   1      7/13  1
@@ -21636,7 +20967,6 @@ non-empty `partial_segments`, grouped by `chunks_completed/total_chunks`:
 1/6   4           1/22  2
 1/7   2           1/26  1
 1/8   3           1/27  1      1/41  1
-```
 
 **42 of 48 died at exactly chunk 1, across fifteen different
 `total_chunks` values.** That is the WO-45 ffmpeg HLS-seek signature
@@ -21654,12 +20984,10 @@ said nothing about the pages' current state. Joining to `MeetingPage`
 and the default `TranscriptVersion`, and classifying with the real gate
 (`_has_real_warning_free_transcript()`):
 
-```
 48 failed job(s) -> 44 distinct page(s)
     33  HAS a good transcript now
      8  no transcript at all
      3  flagged (garbled/truncated)
-```
 
 **Three quarters had already recovered.** The remaining 11, best-first:
 75% `wilkes-county-nc-2021-11-02`, 54% `city-of-napa-2026-06-30`, 50%
@@ -21693,10 +21021,8 @@ read-only first — segment counts computed in SQL (`json_array_length`),
 so no `segments` blob crosses the network and the whole-archive scan is
 one cheap query. Run on the `rtr-deeplink-archive` Render shell:
 
-```
 30,000+ segments:  1 page  — 36000, already marked
 20,000+ segments:  2 pages — 36000 (marked), 22490
-```
 
 **Zero unmarked pages at the cap**, so `--apply` was never run and had
 nothing to do. The 22,490 is a singleton, which is what a genuinely long
@@ -21726,13 +21052,11 @@ Everything else looked healthy.
 **The crash**, identical on both workers, every ~5 minutes since
 03:04:26 UTC (the deploy that carried WO-50):
 
-```
 File "/srv/archive/db/crud.py", line 30, in <module>
   from ..utils.date_status import (
 File "/srv/archive/utils/date_status.py", line 25, in <module>
   from markupsafe import Markup, escape
 ModuleNotFoundError: No module named 'markupsafe'
-```
 
 **Cause.** WO-50 (`8597cf9`, #363) added a direct `markupsafe` import to
 `archive/utils/date_status.py` for the date pills. `archive/db/crud.py`
@@ -22168,12 +21492,10 @@ above.
 entry: jobs 646 / 648 / 650, all `ffmpeg timed out after 120s`. Resolved
 each live and probed it:
 
-```
                                     resolve   ffprobe   duration
 play.champds.com/oakhilltn/event/50    0.3s    100.8s     6733s
 play.champds.com/wilkesconc/event/41   0.2s      0.8s     2841s
 play.champds.com/surfsidefl/event/423  0.3s     86.6s     7141s
-```
 
 Two ffprobes near 100s against a 120s budget was the first real signal —
 and the media URL was the second.
@@ -22195,10 +21517,8 @@ the requested bytes. Seeking works; volume is the cost.
 **Ruled out: throttling — which is where the previous conclusion needs
 correcting.** Two back-to-back 20MB range reads on the same file:
 
-```
 attempt 1:  20,000,000 bytes  23.87s  =  838 KB/s
 attempt 2:  20,000,000 bytes  23.80s  =  840 KB/s
-```
 
 Identical, and every response carried `X-CDS-Cache-Status: MISS`, so
 nothing was being served warm. A steady, repeatable pipe is not what a
@@ -22206,12 +21526,10 @@ per-IP limit looks like.
 
 **The arithmetic, from real `Content-Length`s:**
 
-```
                         file    duration   bitrate   900s chunk   @840KB/s
 wilkesconc/41  (job 648) 672MB    2,841s   237KB/s      213MB        254s
 oakhilltn/50   (job 650) 502MB    6,733s    75KB/s       67MB         80s
 surfsidefl/423 (job 646) 427MB    7,141s    60KB/s       54MB         64s
-```
 
 Budget: 120s. **Wilkes County cannot be fetched in time at 900s per
 chunk** — 2.1× over, no retry policy fixes it. The other two fit on
@@ -22252,7 +21570,6 @@ looked like one event because the queue orders candidates roughly
 alphabetically by host and walked a block of each in turn:
 
 | Cluster | Error | Scale |
-|---|---|---|
 | Cablecast | `ffmpeg reported success but the output file isn't decodable` | 33+ jobs, 99 failures / 2 days |
 | IQM2 | `No usable audio or video source was found.` | 20+ jobs |
 | ChampDS | `ffmpeg timed out after 120s` | 5 jobs, 18 failures |
@@ -22288,12 +21605,10 @@ and the job never survived to reach chunk 2.
 media of a real failing job (692, `portagemi.cablecast.tv/…/show/304`),
 in three real images:
 
-```
 ffmpeg              -ss 0            -ss 900          -ss 1800
 5.1.9  (bookworm)   225B  bad        225B  bad        --
 7.1.5  (trixie)     3,597,632B ok    224B  bad        224B  bad
 8.1.2  (sid)        3,600,513B ok    3,600,513B ok    --
-```
 
 7.1.5 matches production exactly. Which is itself the second finding:
 **`worker/Dockerfile` said `FROM python:3.12-slim`, unpinned**, and that
@@ -22333,12 +21648,10 @@ that filename, which is specific to how Cablecast packages VOD.
 **End-to-end verification** — the patched function, against job 692's
 real media, inside the pinned base image:
 
-```
 ffmpeg version 7.1.5-0+deb13u1
 chunk 0 (-ss 0):    ok=True  size=3597632  reason=None
 chunk 1 (-ss 900):  ok=True  size=3600512  reason=None
 chunk 2 (-ss 1800): ok=True  size=3600512  reason=None
-```
 
 with the fallback logging itself on chunks 1 and 2. Before the patch,
 chunk 1 is where every one of those 33 jobs died.
@@ -22609,7 +21922,6 @@ Ryan asked whether pipeline minutes are mostly consumed by rebuilding and
 deploying, and whether marking more files as non-triggering would save
 any. Yes to the first; the second turned out to be the *smaller* of two
 levers, and checking it surfaced an error in this file's predecessor
-entry.
 
 **Correction first.** The earlier entry claimed the 2026-08-22 queue-file
 fix removed "**~146 of ~172 builds per fortnight (~85%)**". That figure
@@ -22618,7 +21930,6 @@ Re-measured against `origin/main` (441 first-parent pushes in the 14 days
 to 2026-08-22, four services):
 
 | | builds / 14 days |
-|---|---|
 | no filters at all | 1,768 |
 | after the queue-file fix (the "85%" state) | 1,211 |
 
@@ -22643,7 +21954,6 @@ named simply doesn't build that service, so future docs and test trees
 cost nothing with no list to maintain.
 
 | service | before | after | saved |
-|---|---|---|---|
 | rtr-deeplink | 295 | 165 | 130 |
 | rtr-deeplink-archive | 326 | 275 | 51 |
 | rtr-transcription-worker | 295 | 243 | 52 |
@@ -22713,7 +22023,6 @@ something bigger than the rate.
 `bulk-queue-transcription-backlog.yml`):
 
 | | |
-|---|---|
 | Archived meetings | 2,403 |
 | Jurisdictions listed on `/coverage` | 1,577 |
 | …with a transcript | 1,099 |
@@ -22827,7 +22136,6 @@ become 2.7M (83.6% duplication): 12 granicus, 10 youtube, 2 civicclerk,
 859,278 chars → 1,168 / 100,246 (0.117 retained), matching WO-34's own
 measurement to the segment:
 
-```
 BEFORE                                    AFTER
 JUST A SECOND.                            JUST A SECOND.
 >>                                        >> Councilmember Hines: WE WILL GET
@@ -22836,7 +22144,6 @@ JUST A SECOND.                            JUST A SECOND.
 >> Councilmember Hines: WE               >> HELLO EVERYONE.
 >> Councilmember Hines: WE WILL          THANK YOU FOR JOINING US THIS EVENING.
 >> Councilmember Hines: WE WILL GET      HOW ABOUT NOW?
-```
 
 A **read-only rehearsal of the `--apply` gate** was run on Tacoma (real
 re-resolve, no push): 1,168 segments / 100,246 chars, `fresh still
@@ -22910,7 +22217,6 @@ the individual items:
    structural bug** — a half-fix that looked stale (#309) and a
    1,403-line data-corruption class from one confirmed line (#308).
 
----
 
 ### 1. `transcribe_backlog_locally.py` gave up after one transient failure — retry, partial-progress checkpoint, and the `ibavformat` mystery solved (#306)
 
@@ -22974,7 +22280,6 @@ appeared to fail 29 tests, which was leftover SQLite state from reusing
 the same `DATABASE_URL` file across runs, not the change. Fresh DB file
 → green. Worth knowing before trusting a second consecutive run.
 
-**The entry as it stood:**
 
 ### `[JUST-DO-IT]` `[EASY]` `transcribe_backlog_locally.py` gives up on a live meeting after one transient failure
 
@@ -23036,7 +22341,6 @@ Worth a fresh look (and worth checking whether it's this specific media
 file or `cpmedia.azureedge.net` generally) before assuming it's simply
 "still transient, just unlucky twice."
 
----
 
 ### 2. Meeting-card backfill can now say *why* a page failed (WO-42, #305)
 
@@ -23089,7 +22393,6 @@ No schema change, no migration. **No production sweep was run.** Tests
 1432 → 1457. `README.md` corrected — it said the per-page reason "is in
 the Archive's own logs".
 
-**The entry as it stood:**
 
 - **[JUST-DO-IT] `[EASY]` Meeting-card backfill can only say a page
   failed, never why — confirmed live 2026-08-21 by the first production
@@ -23106,7 +22409,6 @@ the Archive's own logs".
   per-result response. Worth doing before the 179 are retried, so that
   run is diagnosable.
 
----
 
 ### 3. `/coverage`'s 4-column table stopped forcing horizontal scroll — and the previous fix turned out to be half a fix (#309)
 
@@ -23154,7 +22456,6 @@ Click-to-sort re-confirmed working.
 column classes, so it never had this bug — and is not covered by this
 fix either. It was not exercised in the browser.
 
-**The entry as it stood:**
 
 - **[JUST-DO-IT] `[EASY]` `/coverage`'s "Every place we've covered"
   table is too narrow — the Transcript column gets cut off, forcing
@@ -23162,7 +22463,6 @@ fix either. It was not exercised in the browser.
   columns in `archive/templates/coverage.html`'s `.coverage-table`
   styling, shrink the `#` column.
 
----
 
 ### 4. The best-effort "we think the video is here" line is dropped when a real video plays (WO-43, #307)
 
@@ -23209,7 +22509,6 @@ docstring both claimed the line renders unconditionally; both corrected.
 `base.py:285` and `vimeo.py:13` describe the *tier-5 pointer*, which
 still exists, and are correctly unchanged. `npm test` 34 → 41.
 
-**The entry as it stood:**
 
 - **[JUST-DO-IT] `[EASY]` `generic_fallback.py`'s "we think the video is
   here" line shows the raw embed URL, which is sometimes ugly
@@ -23220,7 +22519,6 @@ still exists, and are correctly unchanged. `npm test` 34 → 41.
   adapter's own human-facing URL, or drop the pointer line when a real
   playable `video_url` was found.
 
----
 
 ### 5. The tier-3 queue held 52 damaged URLs, not one — and the entry's own attribution was wrong (#308)
 
@@ -23274,7 +22572,6 @@ underneath. The Granicus queue file passes unmodified.
 URL form (`/videos/05192021-1054/59/`, 3 rows) that resolves fine — a
 naive "numeric id only" rule would have deleted real meetings.
 
-**The entry as it stood:**
 
 ### `tier3_auto_transcription_queue.txt` holds at least one genuinely truncated URL `[NEEDS-AUDIT]`
 
@@ -23332,10 +22629,8 @@ sitemap or feed involvement.
 `DATABASE_URL` set explicitly on the command line (never prod): five
 seeded rows, one per format. The Viebit page's only change —
 
-```
 -  "contentUrl": "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
 +  "embedUrl":   "https://councilnyc.viebit.com/embed/vod?v=hFWIQkuFLuWGb0mw",
-```
 
 — with `name`, `description`, `url`, `uploadDate`, `inLanguage`,
 `duration`, `hasPart` (2 Clips) and `publisher` all identical, both
@@ -23346,7 +22641,6 @@ After the change: viebit/youtube/vimeo emit `embedUrl` and no
 Tests 1432 → 1435 passed, 15 skipped. `ruff check` / `ruff format
 --check` clean. PR #303.
 
-**The entry as it stood:**
 
 - **[JUST-DO-IT] Viebit has the same two structural mislabels Vimeo just
   got fixed for — half fixed 2026-08-21 (WO-35), the `/coverage`
@@ -23436,7 +22730,6 @@ one.**
 **The numbers, read off Workspace → Billing → Monthly Included Usage:**
 
 | Metric | Value |
-| --- | --- |
 | Included bandwidth | **25 GB** (not 5 GB) |
 | Used this month | **14.54 GB** (~58%) |
 | — HTTP Responses | 12.46 GB |
@@ -23573,7 +22866,6 @@ plain text — the post still lands, it just becomes useless.
    ```
    curl "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed\
    ?actor=did:plc:tb2cmjmhtllk6ljxa65oyd7f&limit=100"
-   ```
 
    **21 of 21 posts carry a `app.bsky.richtext.facet#link` feature**, and
    for every one the text slice named by the facet's
@@ -23614,7 +22906,6 @@ jurisdiction and date, and a quoted transcript snippet. Eight
 consecutive days verified:
 
 | Date (UTC) | Subject |
-| --- | --- |
 | 08-21 23:50 | `Somebody said ""Neighborhood character" or "Character of the neighborhood"" (+12 more)` |
 | 08-20 23:51 | `Somebody said ""affordable housing"" (+13 more)` |
 | 08-19 23:48 | `Somebody said ""affordable housing"" (+38 more)` |
@@ -23786,10 +23077,8 @@ every later read of the registry in the same pytest process.
 running the two files in the other order
 (`pytest tests/test_base.py tests/test_adapter_canary.py`) fails with
 
-```
 AssertionError: Platform(s) ['fake_test_platform'] are registered in
 register_all_finders() but have no adapter-canary decision.
-```
 
 Adding a test file, renaming one, or installing `pytest-randomly` would
 have turned an accident of alphabetical collection order into a real CI
@@ -23872,7 +23161,6 @@ Fountain Valley clip 607 audio, `"tiny"` model, one duration per
 process:
 
 | duration | peak RSS |
-|---|---|
 | 0s (imports only, no model) | ~67MB |
 | ~9s (synthetic) | ~382MB |
 | 60s | ~454MB |
@@ -24592,12 +23880,10 @@ all, so their transcripts were near-unreadable and every deep link landed
 on a fragment. Real production output, `/m/city-of-tacoma-wa-2026-01-06-
 city-council-on-2026-01-06-5-00-pm/transcript.txt`:
 
-```
 [0:06] >> Councilmember Hines: WE WILL
 [0:07] >> Councilmember Hines: WE WILL GET
 [0:07] >> Councilmember Hines: WE WILL GET EVERYONE
 [0:08] GET EVERYONE SWORN IN SO WE CAN BEGIN OUR COUNCIL MEETING
-```
 
 **This was not a wire-through.** The existing implementation was wrong in
 four separate ways for these sources, each found by fetching the real
@@ -24610,11 +23896,9 @@ mid-run.* Granicus's real shape (Tacoma WA clip 7460,
 1.5MB) is a single fixed-width ~63-character ticker line that grows
 word-by-word and then drops words off the **front** to make room:
 
-```
 >> Councilmember Hines: WE WILL GET EVERYONE SWORN IN SO WE CAN
 GET EVERYONE SWORN IN SO WE CAN
 GET EVERYONE SWORN IN SO WE CAN BEGIN
-```
 
 `line.startswith(prev_line)` handles the growth and then fails at every
 cue after the front-drop. Replaced with a **word-level overlap** against a
@@ -24660,12 +23944,10 @@ meeting `BACKLOG.md` named (Essex County ON 2025-12-03,
 shape that previews only the *next* line's first word, often as a
 standalone stub cue:
 
-```
 I WOULD LIKE TO CALL THE   DECEMBER
 DECEMBER THIRD 2025 ESSEX COUNTY
    COUNCIL
 COUNCIL MEETING TO ORDER.
-```
 
 The overlap is a single word. A "two shared words" detection rule scores
 this track 0.155 — under the gate. Dropping the floor entirely and
@@ -24691,7 +23973,6 @@ has real margin on both sides — same shape of calibration as
 **Measured effect on real files** (cue text → reconstructed transcript):
 
 | source | cues | segments | chars |
-| --- | --- | --- | --- |
 | Tacoma WA (Granicus) | 21,240 | 1,168 | 859K → 100K |
 | Essex County ON (eScribe) | 11,627 | 5,175 | 298K → 231K |
 | Antioch CA (CivicClerk) | 5,481 | 5,482 | 275K → 135K |
@@ -24806,7 +24087,6 @@ promotes). Those were fixed. Then it happened *again*, to four more,
 within two days:
 
 | Platform | PR | `platform_name` | Real shape |
-|---|---|---|---|
 | `destinyhosted` | #244 | `"destinyhosted"` | Agenda CMS; delegates to `GenericFallbackAssetFinder`, keeps its own label only when the delegate returned `"unknown"` |
 | `suiteone` | #263 | `"suiteone"` | Direct, unauthenticated S3 mp4 |
 | `castus` | #264 | `"castus"` | Direct CloudFront HLS |
@@ -24942,7 +24222,6 @@ passes today because `test_adapter_canary.py` sorts before
 but it's a real trap for the next person who adds a third registry-based
 guard.
 
-### Verification
 
 Live production page read in a real browser before the fix (the counts
 and the Viebit ✓ above). After: the Archive run locally against a
@@ -24988,7 +24267,6 @@ endpoint.** It shipped and was merged without a single live invocation,
 so before building a workflow on top of it the first thing this work
 order did was call it. Result:
 
-```
 total: 474            best_effort_column_available: true
 reasons:   470  unverified_jurisdiction
              7  unknown_platform     (3 of them overlapping)
@@ -24997,7 +24275,6 @@ platforms: escribe 117, cablecast 104, youtube 78, swagit 72, granicus 34,
            iqm2 33, civicclerk 24, unknown 7, champds 4, telvue 1
 confidence: unverified 307, blank 163, NULL 4
 has_video: 472 of 474      created_at span: 2026-08-13 → 2026-08-21
-```
 
 Two things that changes:
 
@@ -25018,7 +24295,6 @@ Two things that changes:
    are live, publicly-indexed pages with real video (472 of 474), not
    junk — nothing here should ever be read as "hide or delete them".
 
-**What was built.**
 
 - `meeting_pages.reviewed_at` (`archive/db/models.py`) plus migration
   `f6a7b8c9d0e1`, branched off the real then-current head `e5f6a7b8c9d0`
@@ -25107,7 +24383,6 @@ mathematically uncatchable. All six live cases confirmed against real
 `GET /m/<slug>/transcript.srt` exports pulled 2026-08-21:
 
 | meeting | run | of total cues | old ratio |
-| --- | --- | --- | --- |
 | Hermosa Beach, CA (`hermosa-beach-ca-2026-02-03-city-council`) | 176 x `"Music"` | 3764 | 0.047 |
 | Moraine City, OH (`meeting-d09fc0`, version 1175) | 93 x `"Y Llywodraeth Cymru."` | 241 | 0.386 |
 | North Kingstown, RI (`meeting-89d6b1`) | 80 x `"Test, test."` | 210 | 0.381 |
@@ -25219,8 +24494,6 @@ has recorded a real per-attempt `{chunk_index, error, at}` since
 
 ### The real numbers (all 514 production jobs, 2026-08-21)
 
-| | |
-|---|---|
 | jobs total | 514 (295 completed, 218 failed, 1 in progress) |
 | jobs with ≥1 recorded chunk failure | **19** |
 | recorded chunk failures | 113, **100% `ffmpeg timed out after 120s`** |
@@ -25232,7 +24505,6 @@ are almost entirely not timeouts at all.** Only 2 of them have any
 `failure_history`. Their real terminal causes:
 
 | count | `error_message` |
-|---|---|
 | 129 | No usable audio or video source was found. |
 | 19 | Media duration doesn't look like a full meeting recording. |
 | 17 | ffmpeg extraction failed |
@@ -25280,7 +24552,6 @@ The theory predicts failures piling up across *different jobs* on the
 minutes of each other, classified:
 
 | relationship | pairs |
-|---|---|
 | same job | **111** |
 | **same host, different job** | **0** |
 | same domain (e.g. two Granicus tenants), different host | 17 |
@@ -25326,7 +24597,6 @@ schema change, and if a future measurement ever shows a non-zero
 `same_host_different_job` bucket, the endpoint that would show it is now
 deployed.
 
-### What shipped
 
 - `GET /internal/transcription-failure-analysis?days=N` — groups failures
   by media host, page host, platform and position-within-job; reports
@@ -25386,7 +24656,6 @@ land, which is itself confirmation the WO-28 path is live. By pacing lane
 (the second run):
 
 | Pages | Lane | Real hosts |
-| --- | --- | --- |
 | 996 | `granicus.com` | `archive-stream`, `archive-video` |
 | 181 | `isilive.ca` | eScribe |
 | 155 | `iqm2.com` | |
@@ -25572,7 +24841,6 @@ message. Confirmed from the dashboard 2026-08-22 (4 events, last seen
 01:34 UTC) against `git log`:
 
 | UTC (2026-08-22) | Event |
-| --- | --- |
 | 01:22:19 | `981555f` (WO-37) deploys — introduces the endpoint |
 | 01:26:17 | First `PYTHON-FASTAPI-X` occurrence, release `981555fa` |
 | 01:27:51 | `0e5da5f` (WO-34) committed |
@@ -25616,12 +24884,10 @@ one-time manual `alembic stamp` on the Render shell was the gate. WO-24
 (PR #269) built `GET /admin/schema-info` specifically to check that claim
 before anyone acted on it. Its first real call against production:
 
-```
 alembic_version:                  a9207c0eb761   # already at head
 schema_matches_models:            true
 mismatched_tables:                []
 jurisdiction_confidence present:  true
-```
 
 Already stamped, at head, with the real column present. Someone had
 stamped it and never recorded it. `/admin/stats` returning 200
@@ -25717,7 +24983,6 @@ lands in `(t, t + 20]`, i.e. never *before* the moment that was shared.
 **All three tiers verified against real video**, not asserted:
 
 | Tier | Offset | Result |
-| --- | --- | --- |
 | `?t=982` (real consent-calendar timestamp) | 1000s | Frame whose on-screen overlay reads **"7. CONSENT CALENDAR"** — the exact item that timestamp points at |
 | default, San Carlos IQM2 mp4 (`ffprobe`: 15681.87s) | 15381s | Frame reading **"9. PUBLIC HEARING"**, a councilmember mid-sentence |
 | default, Alameda County Granicus **HLS** (18839s) | 18539s | 1280x720, 54KB, real dais shot |
@@ -25892,7 +25157,6 @@ during playback). That's a real live position, unlike the Viebit
 adapter's "last thing we told it to do" — which is exactly why this one
 is safe to wire with tracking on.
 
-### What shipped
 
 - **`app/platforms/vimeo.py`** — parses all six real URL shapes
   (`/{id}`, `/{id}/{hash}`, `/channels/{c}/{id}`,
@@ -26040,7 +25304,6 @@ the guess this repo doesn't make.
 (the real `LegistarAssetFinder().resolve()`, not a replay):
 
 | City | Real meeting | Result |
-| --- | --- | --- |
 | Phoenix | `phoenix.legistar.com` LEGID=2651, City Council Formal Meeting, 2026-07-01 | `srjuXI5vGuw`, **4,916** caption segments -- the exact pairing BACKLOG.md recorded as the motivating example |
 | Philadelphia | `phila.legistar.com` ID=1309240, Committee on Finance, 2025-06-04 | `AMC6xiiJazk`, **5,877** segments |
 | Baltimore | `baltimore.legistar.com` LEGID=5267, Board of Estimates, 2026-08-05 | `q3s3PKW7NYc`, **3,603** segments |
@@ -26051,7 +25314,6 @@ carries a `video_warning` naming the channel and the matched video title,
 since the meeting page never linked it.
 
 **Two real corrections to the original survey entries, both found by
-checking rather than assuming:**
 
 1. **Albuquerque is only *partly* video-less.** `cabq.legistar.com`'s full
    City Council meetings really do carry a
@@ -26194,7 +25456,6 @@ leaves the pre-existing message byte-identical. No new registered
 platform, so `scripts/adapter_canary.py` needs no change -- see
 `BACKLOG.md` for the per-tenant canary gap that leaves.
 
----
 
 **Original `BACKLOG.md` entry, kept verbatim:**
 
@@ -27606,10 +26867,8 @@ jurisdiction's base name (after stripping any existing state suffix)
 matches the place/county table AT ALL, even only ambiguously across many
 states, it returned the raw string completely unchanged:
 
-```python
 if _table_lookup(base):
     return JurisdictionResult(raw_jurisdiction, None, "validated")
-```
 
 Unlike the `_trim_repair()`/`_split_entity_prefix()` branches right below
 it, this path never called `_fill_missing_state()` -- so a bare name that
@@ -27889,7 +27148,6 @@ a stray body-prose `"X City Council"` mention is discarded unless X is
 itself a real, known place — confirmed via a direct regression test using
 a made-up name.
 
-**Verification**: real, fixture-backed regression tests added in
 `tests/test_primegov.py` — a real, trimmed fixture built from the actual
 live Bedford letterhead HTML (`BEDFORD_HEADER_HTML`), both a unit test on
 the fixture and an end-to-end `resolve()` test; explicit regression
@@ -28146,7 +27404,6 @@ and adds one new one:
   real meeting" method exists anywhere in this repo for either (confirmed
   via research, not assumed) -- logged as `no_method_available` with the
   specific reason, not silently skipped. Real follow-on work, not done
-  here.
 - **Municode Meetings** (2 tenants, Sheboygan County WI + Walton County
   GA): confirmed **no adapter is registered at all** in `app/platforms/`
   (no file, no `__init__.py`/`base.py` reference), correcting an earlier
@@ -28198,7 +27455,6 @@ value). Turning each of those 97 into a fully resolvable individual
 meeting URL (most `agenda_url`s are a landing page, not the specific
 video URL itself -- only 5/97 detect as an immediately-resolvable known
 platform via `detect_platform()`) is real follow-on work, not done this
-session.
 
 **`destinyhosted.com` (Destiny AgendaQuick) resolved -- not a new
 platform to build, an aggregator that links to already-supported ones.**
@@ -28293,7 +27549,6 @@ example for BACKLOG.md's existing "Castus has zero support anywhere"
 anywhere in this repo at all, first sighted here**: `open.media`
 (Goodyear, AZ) and SuiteOne Media (2 hits: Lorain OH, Pacific Grove CA) —
 logged as new `[LATER]` entries in `BACKLOG.md` rather than investigated
-further this session.
 
 **A thin `destinyhosted.py` *was* added, though — not to parse anything,
 but to register `destinyhosted.com` as its own platform identity**, once
@@ -28620,12 +27875,9 @@ against) and one synthetic "video config not found" case. Added a
 parametrize list. Full suite (1068 passed, 15 skipped) verified green
 before merging.
 
-**Docs updated in the same PR** (per `CLAUDE.md`'s "a PR that ships a
-feature must update every doc that named it as unbuilt" rule): added a
 "Town Hall Streams" row to README.md's "Supported platforms" table; moved
 this entry itself from `BACKLOG.md` to here, splitting the still-open
 transcript-format and enumeration-scaling gaps back out as their own live
-`BACKLOG.md` entry.
 
 ## eScribe: second real iSiLIVE page shape (`data-file_name`, ISIStandAlonePlayer.aspx) now recognized; confirmed it does NOT explain any of the 154 "genuine negative" Meeting.aspx URLs [Done 2026-08-19]
 
@@ -29582,9 +28834,7 @@ verify end-to-end, per this task's own verification requirement — and
 it still failed, at a new point**: the resolve/ingest step again
 succeeded for real (12 more real URLs), but the new "Advance queue via
 PR" step died on `gh pr create` itself:
-```
 pull request create failed: GraphQL: GitHub Actions is not permitted to create or approve pull requests (createPullRequest)
-```
 This is a separate repo setting (Settings → Actions → General →
 Workflow permissions → "Allow GitHub Actions to create and approve pull
 requests"), distinct from the job's own `permissions:` block —
@@ -30956,7 +30206,6 @@ within the 60s detect window, no restart. **Final production numbers,
 clean sequential, via the public domain**, against this morning's:
 
 | query | this morning | after #143 (RAM) alone | after #145 (FTS) |
-|---|---|---|---|
 | `budget` (~890 matches, "Page 1 of 45") | 26–35s / 502 | 1.47s | **0.39s** |
 | `"public comment"` | 503 | — | **0.39s** |
 | `flock` | 23–34s | — | **0.49s** |
@@ -31374,7 +30623,6 @@ lowercase docs (444MB, real-word vocab, "budget" in 75%) + the pg_trgm
 GIN index:**
 
 | query | time |
-|---|---|
 | as deployed by #129: `ILIKE` page + separate `ILIKE` COUNT | 7.7s + 7.7s |
 | (a) `LIKE` page / COUNT | 1.75s / 1.76s |
 | (a)+(b) `LIKE` + `count(*) OVER ()` in one query | **1.76s total (8.8×)** |
@@ -31488,7 +30736,6 @@ own live `BACKLOG.md` entry rather than assuming it's covered here.
   predating this backlog entry) — Save is disabled the moment the search
   box/filters diverge from what's actually applied. The remaining piece,
   the Save/Unsave toggle + visual cue, built 2026-08-13 — full detail in
-  `BACKLOG_DONE.md`.**
 
 - **Meeting title/jurisdiction display: casing still inconsistent row to
   row — the state-abbreviation and truncation parts of this gap shipped
@@ -31623,7 +30870,6 @@ own live `BACKLOG.md` entry rather than assuming it's covered here.
 
 ## [Done — moved from BACKLOG.md 2026-08-17] Deep links
 
-Moved wholesale during the 2026-08-17 backlog triage pass: Ryan's own
 triage table marked this section `done?` (both real gaps found auditing
 the deep-link scheme were fixed the same day they were found).
 
@@ -32056,7 +31302,6 @@ loose end here.
 resolve succeeded, whether anyone played the video, and any way to
 attribute a visit to an outreach recipient.
 
-**Fixed.**
 - `resolve_result` fires at all four `/api/resolve` response branches
   with `{status, platform}` — status values always one of a small fixed
   set, never free text.
@@ -32422,7 +31667,6 @@ new finding — none of these rows already carried the hallucination
 warning marker):
 
 | slug | version_id | produced_by | job_id | language | segments |
-|---|---|---|---|---|---|
 | revised-long-beach-ca-2026-08-04-aug-04-2026-city-council-special-meeting | 176 | cloud_worker | 74 | en | 1239 |
 | san-diego-county-ca-2026-06-24-board-of-supervisors | 240 | cloud_worker | 103 | en | 4662 |
 | meeting-38ca49 | 246 | cloud_worker | 111 | en | 5052 |
@@ -33187,7 +32431,6 @@ in this file), `discover.pbc.gov` (SharePoint, no adapter, expected),
 this section's own PR #70, on a domain `iqm2.py` clearly does have an
 adapter for. That one looks like a real, fresh gap rather than an
 expected "no adapter" case and is logged as its own open item in
-`BACKLOG.md`.
 
 ## Hyland "OnBase Agenda Online" — expanded from 3 to 23 real customer domains, second UI version + YouTube delegation added (2026-08-16)
 
@@ -34905,7 +34148,6 @@ audit, extraction tournament, and design rationale this work grew out of.
   **Investigation first, before building anything**: the two
   `/meetings` Save-button bugs the user asked about turned out to already
   be resolved. (1) Live-checked as a genuinely signed-out visitor on both
-  `/meetings` and a real `/m/*` page — neither Save button renders at
   all; `git log -S "if active_account"` confirmed the `{% if
   active_account %}` gating on both templates has been in place since the
   very first accounts-phase commits, not added later, so the original
@@ -36313,7 +35555,6 @@ audit, extraction tournament, and design rationale this work grew out of.
   anything else in the codebase started depending on it — confirmed via
   a real grep (zero occurrences of `agenda_warnings` anywhere in the
   current code) before building anything, not assumed from the stale
-  note.
 
   Two new nullable columns on `MeetingPage`
   (`archive/db/models.py`): `video_warnings` (JSON list) and
@@ -38202,7 +37443,6 @@ audit, extraction tournament, and design rationale this work grew out of.
   readable with only minor rough patches (a few garbled words
   mid-Boston); Alexandria VA remains the one clear outlier at genuinely
   unreadable quality — now caught by the caption quality-detection item
-  above.
 
 ## UX polish (from live review, 2026-08-06)
 
@@ -40351,7 +39591,6 @@ audit, extraction tournament, and design rationale this work grew out of.
     default `'center'` — those are cases where firmly centering the
     target is exactly what was asked for, so only the passive
     follow-along behavior needed softening, not `highlightSegment()`
-    itself.
   - **Sticky video on desktop**: a genuine two-column CSS Grid layout,
     not just a `position: sticky` bolted onto the existing single-column
     page — a full-width sticky video would have been impractically tall
@@ -41687,7 +40926,6 @@ against Search Console's full 291-row export, not a sample.
 `/state/` — all 59 pages fetched, meeting counts compared:
 
 | | n | min | median | max |
-| --- | --- | --- | --- | --- |
 | Flagged | 17 | 1 | **13** | 35 |
 | Not flagged | 42 | 1 | **8** | 425 |
 
@@ -41711,7 +40949,6 @@ runs the *wrong* way (flagged pages are slightly larger). Modelled
 thresholds make the cost brutal:
 
 | threshold | flagged caught | currently-fine pages suppressed |
-| --- | --- | --- |
 | ≥3 | 63% | **88%** |
 | ≥4 | 83% | **96%** |
 | ≥5 | 89% | **99%** |
@@ -41846,7 +41083,6 @@ letting crawlers pull both full-transcript formats for every meeting.
 
 ## Stray Archive-shaped tables in `rtr_deeplink_db` — root cause found [Investigated 2026-08-22]
 
-See `BACKLOG.md`'s matching entry under **Needs a human** for the
 cleanup action this produced.
 
 **What put them there — a local Archive run pointed at the resolver's
