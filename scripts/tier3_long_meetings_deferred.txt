@@ -572,3 +572,4 @@ https://www.utah.gov/pmn/sitemap/notice/1064549.html			Beaver County School Dist
 https://www.utah.gov/pmn/sitemap/notice/1066677.html			Dairy Commission, Utah	1:45:11	Joint Meeting Notice Regular Meeting of the Idaho Dairy Products Commission, Oregon Dairy Products Commission, Utah Dairy Commission, Washington Dairy Products Commission, and the Dairy West Board of Directors
 https://hugomn.granicus.com/MediaPlayer.php?view_id=1&clip_id=861		us:place:2730392	Hugo city, MN	02:06:52	WO-217 found-alternate lead, over 90 min
 https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy	https://www.acnj.gov/pages/meeting-recordings	us:place:3402080	City of Atlantic City, NJ	1:46:41	City Council Meeting 08/19/26
+https://inglesidetx.portal.civicclerk.com/event/597/media		us:place:4836008	Ingleside, TX	2:53:37	City Council Meeting

@@ -383,8 +383,9 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Dormant — needs a real example first `[LATER]`  (1)
+Dormant — needs a real example first `[LATER]`  (2)
   WO-174's CivicPlus AgendaCenter guess has ~7,100 of 14,553…
+  A BoxCast government reached only via a fresh per-meeting…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -6132,6 +6133,39 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   is shared across sessions — see ENUMERATION_METHODS.md §158).
 - **History:** `BACKLOG_DONE.md`, WO-174 and its three continuation
   slices, 2026-09-10/11.
+
+### A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED (non-government) account would still get the wrong external_id `[LATER]`
+
+- **Issue:** WO-227b (2026-09-11) fixed `boxcast.py`'s `external_id`
+  computation for a government whose real, distinct, multi-broadcast
+  channel is reachable directly (Livermore Falls ME, Atlantic Beach SC —
+  both on a shared regional media operator's account, not the
+  government's own). The fix trusts that distinct channel over the
+  account. But Bartow FL's real shape — a FRESH single-broadcast
+  pseudo-channel per meeting, no distinct channel to prefer at all —
+  still falls back to `account.channel_id`, which is only correct
+  because Bartow's account happens to be single-tenant (confirmed live:
+  its channel lists only Bartow's own meetings). No real government has
+  been found yet whose account is BOTH a shared multi-tenant operator
+  AND only ever reachable via a fresh per-meeting pseudo-channel (never
+  a stable per-government channel link) — if one exists, this code would
+  silently compute the SAME external_id as every other government
+  sharing that account, the exact hazard this WO fixed for the
+  distinct-channel case.
+- **Impact:** none today (no known live case) — a bare BoxCast-video
+  page misattributed to another government sharing the same production
+  vendor's account, if it ever happens.
+- **Next action:** nothing to build without a real example. If one turns
+  up (a sweep finds two governments sharing a BoxCast account with
+  neither having a stable per-government channel URL anywhere), the fix
+  is a second signal beyond `account.channel_id` — e.g. cross-checking
+  the account's own broadcast history for other governments' names the
+  way this WO did by hand for Mt. Blue Television/Media Mike.
+- **Constraint:** don't build a speculative fix without a real account
+  to verify it against — CLAUDE.md's "test against a real, live URL
+  first" rule applies here as much as to a new adapter.
+- **History:** `BACKLOG_DONE.md`'s WO-227b entry; `app/platforms/boxcast.py`'s
+  "An account can be a shared regional media operator" docstring section.
 
 ## Parked deliberately — allowed back `[PARK]`
 

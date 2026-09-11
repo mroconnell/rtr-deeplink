@@ -83,15 +83,47 @@ on `acnj.gov/pages/meeting-recordings`; Wilmington: account
 `gutfku8y1lmddbijjyam` -> `channel_id "x1jps4n28nlgtaozsv5y"`, matching
 `proudcity.py`'s own known Wilmington channel). This is what `resolve()`
 uses for `external_id` (`boxcast:{account.channel_id}`) and `jurisdiction`
-(`account.name`) -- the SAME two values regardless of whether the
-original URL was a `/channel/`, `/view/` or `/view-embed/` link, since
-every broadcast (however reached) carries its own real `account_id`.
-`GET /channels/{channel_id}` alone (a plain channel object, no
-`account_id`) is NOT used for jurisdiction: its own `name` field reads
-`"All broadcasts for {name}"`, a description, not the clean name --
-confirmed on all four tenants, including one genuinely messy one
-(Hondo's real channel name is `"All broadcasts for City of Hondo - ,"`,
-missing its state -- the `/accounts/{id}` route sidesteps this entirely).
+(`account.name`) when the account is single-tenant -- the SAME two
+values regardless of whether the original URL was a `/channel/`,
+`/view/` or `/view-embed/` link, since every broadcast (however reached)
+carries its own real `account_id`. `GET /channels/{channel_id}` alone (a
+plain channel object, no `account_id`) is NOT used for jurisdiction: its
+own `name` field reads `"All broadcasts for {name}"`, a description, not
+the clean name -- confirmed on all four tenants, including one genuinely
+messy one (Hondo's real channel name is `"All broadcasts for City of
+Hondo - ,"`, missing its state -- the `/accounts/{id}` route sidesteps
+this entirely).
+
+## An account can be a shared regional media operator, not the government (WO-227b)
+
+The account-is-the-government assumption above holds for all four of
+WO-227's original tenants and three of the five WO-227b added (Ingleside
+TX, Maywood IL, Bartow FL), but broke on the other two: Livermore Falls,
+ME's real channel (`vvohjjgvcdbmeatv03km`, found on the town's own
+WordPress site) and Atlantic Beach, SC's (`dtoujlfjxuu2lde6bvp8`, found
+the same way) both sit on a BoxCast account that is NOT the government --
+`GET /accounts/{account_id}` for Livermore Falls' channel returns
+`"Mt. Blue Television - Farmington, ME"`, a regional community-TV
+operator whose own umbrella channel (confirmed live) carries Farmington's
+own Select Board, Jay's Select Board, an RSU 9 school-board meeting, and
+several high-school sports broadcasts -- a real multi-government host,
+the same hazard `docs/COVERAGE_HANDOVER.md` section 3 documents for
+youtube.com/vimeo.com, one layer deeper (inside a single BoxCast
+account rather than a whole domain). Atlantic Beach's account
+("Media Mike") reads the same way structurally, though no second real
+government has been confirmed on it yet. Using `account.channel_id`
+unconditionally here (as the module did before this WO) would silently
+compute the SAME `external_id` for every government sharing that
+account -- exactly the collision WO-210 fixed at the domain level, just
+unreachable by that fix since BoxCast accounts aren't in
+`MULTI_GOV_HOSTS`. `_resolve_broadcast()`'s `channel_hint` parameter is
+the fix: when the scan reached a real, DISTINCT channel (different from
+the picked broadcast's own one-off per-broadcast pseudo-channel), that
+channel -- not the account -- is trusted for `external_id`, and the
+account's `name` is trusted for `jurisdiction` only when it agrees with
+that same distinct channel (i.e. the account looks single-tenant for
+this specific channel). See `tests/test_boxcast.py`'s Livermore Falls
+and Atlantic Beach cases.
 
 ## A channel URL auto-picks its newest meeting-like PAST broadcast
 
@@ -680,10 +712,24 @@ class BoxcastAssetFinder(AssetFinder):
                 full = await _fetch_broadcast(session, target.get("id") or "")
                 target = full or target
 
-            return await self._resolve_broadcast(session, target, url)
+            # `raw_id` is only a candidate for a real, distinct,
+            # per-government channel when the scan reached it AS a
+            # channel at all (module docstring: a `/view`|`/view-embed`
+            # single-broadcast pseudo-channel also answers the channel
+            # endpoint, so `shape == "channel"` alone doesn't mean
+            # `raw_id` is the stable government channel -- `_resolve_broadcast()`
+            # below tells the two apart itself by comparing `raw_id`
+            # against the picked broadcast's own `channel_id`).
+            channel_hint = raw_id if shape == "channel" else None
+
+            return await self._resolve_broadcast(session, target, url, channel_hint)
 
     async def _resolve_broadcast(
-        self, session: aiohttp.ClientSession, broadcast: dict, original_url: str
+        self,
+        session: aiohttp.ClientSession,
+        broadcast: dict,
+        original_url: str,
+        channel_hint: Optional[str] = None,
     ) -> ResolvedMeeting:
         broadcast_id = broadcast.get("id")
         title = broadcast.get("name") or None
@@ -697,18 +743,65 @@ class BoxcastAssetFinder(AssetFinder):
         own_slug = broadcast.get("channel_id") or broadcast_id
         source_url = f"https://boxcast.tv/view/{own_slug}" if own_slug else original_url
 
+        # A real, DISTINCT channel the scan actually reached (`channel_hint`)
+        # is a MORE reliable stable id than the broadcast's own account --
+        # confirmed live 2026-09-11 (WO-227b) on two of the five new
+        # tenants this WO was built for: Livermore Falls, ME's and
+        # Atlantic Beach, SC's own real, dedicated, multi-broadcast
+        # channels (`vvohjjgvcdbmeatv03km`, `dtoujlfjxuu2lde6bvp8`) sit on
+        # a SHARED regional media operator's BoxCast account -- Mt. Blue
+        # Television (Farmington, ME; real channel also carries Farmington
+        # Select Board, Jay Select Board, RSU 9 school board and high-school
+        # sports broadcasts) and "Media Mike" respectively, not a
+        # government-owned account. Blindly trusting `account.channel_id`
+        # (the ONLY id the module used before this WO) would silently
+        # collapse every government on that shared account onto ONE
+        # external_id -- the exact multi-gov-host hazard
+        # `docs/COVERAGE_HANDOVER.md` section 3 already documents for
+        # youtube.com/vimeo.com, just one layer deeper (a shared account
+        # inside a single-tenant-looking host). `channel_hint` is only
+        # trusted when it's genuinely a DIFFERENT id than the picked
+        # broadcast's own one-off pseudo-channel (`own_slug` above) --
+        # equal to it (Wilmington OH/Hondo TX/Bartow FL/Ingleside TX, all
+        # reached via a `/view`|`/view-embed` link whose id IS that
+        # one-off slug) means there was nothing distinct to prefer, and
+        # the account fallback below is exactly right (each of those
+        # four is a genuine single-tenant government account, confirmed
+        # live). See `tests/test_boxcast.py`'s Livermore Falls/Atlantic
+        # Beach cases for the full before/after.
+        distinct_channel = (
+            channel_hint if channel_hint and channel_hint != own_slug else None
+        )
+
         external_id: Optional[str] = None
         jurisdiction: Optional[str] = None
         account_id = broadcast.get("account_id")
         if account_id:
             account = await _fetch_account(session, account_id)
             if account:
-                channel_id = account.get("channel_id")
+                account_channel_id = account.get("channel_id")
+                channel_id = distinct_channel or account_channel_id
                 if channel_id:
                     external_id = f"boxcast:{channel_id}"
-                name = account.get("name")
-                if name and isinstance(name, str):
-                    jurisdiction = name
+                # The account's own `name` is only trustworthy as THIS
+                # meeting's jurisdiction when the account is (as far as
+                # this resolve can tell) single-tenant -- i.e. its own
+                # channel_id agrees with the distinct channel we already
+                # trust, or there was no distinct channel to compare
+                # against at all. A shared media operator's account name
+                # ("Mt. Blue Television - Farmington, ME", "Media Mike")
+                # is never the right jurisdiction for ANY one government
+                # on it -- left blank here rather than guessed, same
+                # "never claim what isn't confirmed" posture as the
+                # caption-path discipline elsewhere in this module.
+                if distinct_channel and distinct_channel != account_channel_id:
+                    jurisdiction = None
+                else:
+                    name = account.get("name")
+                    if name and isinstance(name, str):
+                        jurisdiction = name
+        elif distinct_channel:
+            external_id = f"boxcast:{distinct_channel}"
 
         if not broadcast_id:
             return ResolvedMeeting(

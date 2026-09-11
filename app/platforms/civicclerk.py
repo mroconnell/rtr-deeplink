@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import aiohttp
 
 from .base import AssetFinder
+from .boxcast import BoxcastAssetFinder, parse_boxcast_id
 from .models import AlternateTranscript, ResolvedMeeting, TranscriptSegment
 from .youtube import YouTubeAssetFinder
 from ..utils import jurisdiction_enrich
@@ -233,7 +234,26 @@ class CivicClerkAssetFinder(AssetFinder):
             # own captions (fetched below) are still preferred when present,
             # since those are usually curated per-meeting rather than
             # auto-generated.
+            # WO-227b (2026-09-11): some customers' externalVideoUrl/
+            # externalMediaUrl is a BoxCast view/channel link rather than
+            # YouTube -- confirmed live on Ingleside, TX (event 597,
+            # `https://boxcast.tv/view/city-of-ingleside-regular-council-
+            # meeting-okftysv6biolmfmu9du3`), which without this the
+            # extension-based video_format check above always left
+            # format=None for (no file extension in a boxcast.tv URL,
+            # same shape of gap the YouTube case above was fixed for
+            # 2026-08-16) and never resolved the real signed .m3u8 at
+            # all. Same source_url-preserving delegation pattern as the
+            # YouTube case (and PrimeGov's own Swagit/Granicus
+            # delegation, primegov.py) -- keeps the CivicClerk event URL
+            # as source_url/external_id, since agenda items and the
+            # meeting date already come from CivicClerk's own Events API,
+            # a better source than a BoxCast broadcast's own name/date
+            # for this purpose. CivicClerk's own caption fields (fetched
+            # below) are still preferred when present, the same fallback
+            # order as the YouTube case.
             youtube_delegated = None
+            boxcast_delegated = None
             if video_url:
                 yt_video_id = YouTubeAssetFinder.extract_video_id(video_url)
                 if yt_video_id:
@@ -249,6 +269,11 @@ class CivicClerkAssetFinder(AssetFinder):
                     # a bot-blocked page looked identical to a fully
                     # successful delegation.
                     video_warnings.extend(youtube_delegated.video_warnings)
+                elif parse_boxcast_id(video_url):
+                    boxcast_delegated = await BoxcastAssetFinder().resolve(video_url)
+                    video_url = boxcast_delegated.video_url
+                    video_format = boxcast_delegated.video_format
+                    video_warnings.extend(boxcast_delegated.video_warnings)
 
             # Real order confirmed live (Emporia, KS, event 585):
             # closedCaptionUrl and closedCaptionTracks[0].file point at the
@@ -357,6 +382,10 @@ class CivicClerkAssetFinder(AssetFinder):
                 segments = youtube_delegated.segments
                 transcript_language = youtube_delegated.transcript_language
                 transcript_warnings = list(youtube_delegated.transcript_warnings)
+            elif not segments and boxcast_delegated and boxcast_delegated.segments:
+                segments = boxcast_delegated.segments
+                transcript_language = boxcast_delegated.transcript_language
+                transcript_warnings = list(boxcast_delegated.transcript_warnings)
 
         # Real gap found 2026-08-31: this adapter already fetches `event`
         # (which carries publishedFiles) but never set agenda_link at
