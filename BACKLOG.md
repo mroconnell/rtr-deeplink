@@ -147,8 +147,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
     [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Production actions only Ryan should take  (9)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
+  Production actions only Ryan should take  (10)
+    [HUMAN] One YouTube video's own title disagrees with an existing…
     [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
@@ -161,8 +162,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (138)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (139)
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
+  [NEEDS-AUDIT] A YouTube/Vimeo `channel=@handle` pin can never fix an…
   [NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw…
   [LATER] WO-217's guess-pattern domain search has 489 of 513 candidate…
   [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
@@ -1262,6 +1264,12 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] One YouTube video's own title disagrees with an existing tenant_overrides.csv pin about which of two same-named governments it belongs to -- Clinton town, NY vs Clinton village, NY.**
+  - **Issue**: WO-221 (2026-09-11) found video `lNJoncQNJbM` ("9/18/2025 ZBA Meeting, Town of Clinton, New York", channel "Town of Clinton, NY") tied to two candidate governments in `jurisdiction_coverage.csv` (Clinton town, `us:cousub:3602716408`, and Clinton village, `us:place:3616419`, both NY). The video's own title/channel say "Town of Clinton" -- but `tenant_overrides.csv` already has a row pinning this exact video (`www.youtube.com,youtube:lNJoncQNJbM`) to Clinton **village** (`us:place:3616419`, source `wo147_access_ladder_sweep`). WO-221 did not overwrite the existing pin -- it only appends, never replaces -- so the file still says village and nothing was changed.
+  - **Impact**: one video, keyed either way once it's ingested/transcribed -- not yet a live page as of this WO. Whichever is right, the other is a real wrong-government risk if this video is ever used as evidence for its own government's identity elsewhere.
+  - **Next action**: check which government's own site/channel actually published this video (WO-147's original access-ladder sweep presumably visited one of the two governments directly, which is stronger evidence than a title read alone) before trusting either. If the village pin is wrong, delete/replace that one `tenant_overrides.csv` row (`us:place:3616419` -> `us:cousub:3602716408`) by hand.
+  - **Constraint**: don't guess from the title alone -- a New York "town" often colloquially includes a "village" within it, and casual speech/title text sometimes says "town" when it means the general place, not the formal government type.
+  - **History**: found by WO-221, 2026-09-11 -- see `BACKLOG_DONE.md`'s WO-221 entry.
 - **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
   - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
     video its retry-set/one-hop pipelines produced and found the
@@ -1458,6 +1466,12 @@ of human step they need.
   - **Next action**: trace `app/utils/gov_registry/resolver.py`'s national-table rung for a raw name like "Ulster Town, NY" or "Lincoln, ME" and confirm whether it's genuinely falling through to a county match (and why a town-type name string reaches the county table at all), or whether this is an artifact specific to these two page's stored `jurisdiction` strings. Check for other town/county name pairs with the same shape before deciding this is systemic.
   - **Constraint**: don't touch either page — both are correctly protected `manual_override` rows and need no fix themselves; this is about the ladder's own county-matching behavior for a future unprotected page with the same name collision.
   - **History**: found by WO-215's dry run, 2026-09-11; see `BACKLOG_DONE.md`'s WO-215 entry.
+- **[NEEDS-AUDIT] A YouTube/Vimeo `channel=@handle` pin can never fix an already-existing Archive page, only a brand-new one — `MeetingPage.video_channel` is never populated after the page is first created.**
+  - **Issue**: found by WO-221 (2026-09-11) checking why an existing `www.youtube.com,channel=@jacksoncountynorthcarolina7897,us:county:37099,...` pin (`tenant_overrides.csv`, `archive_study_2026-09-09`) didn't fix page 8663 (`H2CzbGvQ_l4`, Jackson County NC) even after `scripts/backfill_gov_id.py`'s dry run. A direct DB check showed `video_channel` is `NULL` on that page (and on 8661/8662/8664/8670, the other real `rtr:unknown` pages from the same incident). `page_hints_for(platform, external_id, channel=video_channel)` never gets a `channel` key when the stored column is `NULL`, so the channel pin's `channel=@handle` discriminator has nothing to match against, no matter how the resolve is re-run. Confirmed by reading both call sites: `scripts/backfill_gov_id.py` builds `page_hints` from the STORED column only (never re-fetches from YouTube -- that's deliberate, see its own docstring on cost), and `archive/db/crud.py`'s `_find_or_create_page()` existing-page branch (~line 1096) refreshes `platform`/`title`/`date` but never `video_channel` -- so even the worker's own re-resolve at transcription time can't backfill it onto a page that already exists.
+  - **Impact**: a channel-level pin only ever helps a page that has NOT been created yet (the `page is None` branch sets `video_channel` from the fresh payload at creation time, so a channel pin correctly resolves it then). Every already-archived page with a `NULL video_channel` and no per-video pin of its own is permanently unfixable by a channel pin alone, including via repeated backfill runs -- only a per-video (`youtube:<id>`/`vimeo:<id>`) pin can ever re-key it. This is why WO-221 wrote per-video pins rather than relying on the 118 videos whose channel already had a pin (see its `BACKLOG_DONE.md` entry) -- those channel pins are real and correct, just structurally unable to repair a page that predates them.
+  - **Next action**: either (a) have `_find_or_create_page()`'s existing-page branch also refresh `video_channel` from a truthy payload value (cheap, no network call, same pattern as the WO-215 fix for `platform`), which would let a *future* re-ingest/re-resolve of an existing page pick up a channel pin it currently can't; or (b) give `scripts/backfill_gov_id.py` an opt-in "live channel lookup" pass (oEmbed, no download) for rows whose only candidate pin is channel-level and whose stored `video_channel` is `NULL`. (a) is cheaper and fixes the root cause; (b) is a narrower patch for the already-archived backlog. Check how many currently-archived pages have `video_channel IS NULL` and a `gov_id` starting `rtr:unknown:` on a `MULTI_GOV_HOSTS` host before picking a size for either fix.
+  - **Constraint**: don't retroactively backfill `video_channel` by guessing from the stored `jurisdiction`/title text -- it has to come from a real platform lookup (oEmbed/yt-dlp) or a fresh resolve, per this repo's "don't claim a data path works without a positive example" rule.
+  - **History**: found by WO-221's Part C dry run, 2026-09-11 -- see `BACKLOG_DONE.md`'s WO-221 entry.
 - **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` on at least one real tenant, aborting the whole candidate instead of skipping it.**
   - **Issue:** WO-216 (2026-09-11) hit `RowError: civicplus: resolve raised: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte` resolving Walworth town, WI's CivicPlus AgendaCenter page. The byte sequence (`0xe2` needing a continuation) suggests a mis-decoded smart quote or em-dash in page content the adapter reads as UTF-8 without a fallback.
   - **Impact:** the whole candidate fails as a hard error rather than being skipped/retried on the next hit, the same shape `civicplus.py`'s other known encoding gap (see the adjacent `[NEEDS-AUDIT]` entry on its docstring's fallback claim) already flags — Walworth's own government was never resolved this run.

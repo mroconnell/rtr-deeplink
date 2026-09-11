@@ -2887,6 +2887,118 @@ def test_multi_gov_host_never_resolves_from_a_name_guess_with_no_pin():
     assert control.tier == resolver.TIER_REGISTRY
 
 
+# --- WO-221, 2026-09-11: a matched pin wins on a shared host, before
+# rungs 2-4 run --------------------------------------------------------
+#
+# Real incident found by the outgoing WO-210 conductor's 12:50 PT
+# backfill: page 8632 "Bronx, NY" resolved to New York city
+# (`us:place:3651000`) even though WO-216's pin says `us:county:36005`.
+# The cause: a `fallback`-strength pin on a `MULTI_GOV_HOSTS` host was
+# only consulted by rung 5, AFTER rung 4's national table already
+# matched the video's own jurisdiction string ("Bronx" is a borough of
+# New York City in the place table, so "Bronx, NY" resolves
+# nationally to `us:place:3651000` -- confirmed live, see the control
+# assertion below). Rung 1b's OWN "no match -> no government" rule is
+# untouched by this fix; these tests only add the "match found -> use it
+# immediately" half.
+
+
+def test_bronx_ny_resolves_nationally_to_new_york_city_control():
+    """Control for the test below, kept as its own test (no `DATA_DIR`
+    monkeypatch in scope at all) so it is unambiguous what rung 4 alone
+    produces: the jurisdiction string real page 8632 carried, on a host
+    with no pin, resolves through the national table to New York city --
+    "Bronx" is a borough of New York City in the place table. This is
+    the wrong answer rung 4 used to produce for a pinned video before
+    this fix, and it is what the resolver already did for real page 8632
+    before WO-221."""
+    control = resolver.resolve_government(
+        "Bronx, NY", tenant_host="boston.granicus.com"
+    )
+    assert control.gov_id == "us:place:3651000"
+    assert control.tier == resolver.TIER_REGISTRY
+
+
+def test_matched_pin_wins_over_national_table_bronx_county_case(monkeypatch, tmp_path):
+    """Reproduces the Bronx County case: a `fallback` pin to
+    `us:county:36005` on a matched YouTube video must win over rung 4's
+    national-table match on the jurisdiction string, which (see the
+    control test above) would otherwise land on New York city."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "www.youtube.com,zzz1111111,us:county:36005,fallback,wo221,"
+        '"Bronx County, NY -- WO-221 regression test for the real 8632 '
+        'incident"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        match = resolver.resolve_government(
+            "Bronx, NY",
+            tenant_host="www.youtube.com",
+            path="/watch?v=zzz1111111",
+        )
+        assert match.gov_id == "us:county:36005"
+        assert match.tier == resolver.TIER_PINNED
+    finally:
+        registry.clear_caches()
+
+
+def test_matched_pin_wins_even_when_a_different_video_on_the_host_would_blank(
+    monkeypatch, tmp_path
+):
+    """Same host, a different (unpinned) video: rung 1b's no-match rule
+    still fires exactly as before -- WO-221 only changes what happens
+    when a pin DOES match, never widens what counts as a match."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "www.youtube.com,zzz1111111,us:county:36005,fallback,wo221,"
+        '"Bronx County, NY -- WO-221 regression test"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        other = resolver.resolve_government(
+            "Bronx, NY",
+            tenant_host="www.youtube.com",
+            path="/watch?v=someothervideoid",
+        )
+        assert other.gov_id != "us:county:36005"
+        assert other.tier == resolver.TIER_BLANK
+    finally:
+        registry.clear_caches()
+
+
+def test_matched_authoritative_pin_on_shared_host_still_wins_as_before(
+    monkeypatch, tmp_path
+):
+    """An `authoritative`-strength matched pin (rung 1, unchanged) still
+    resolves correctly -- WO-221 only had to add the `fallback` case."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "www.youtube.com,zzz3333333,us:county:36005,authoritative,wo221,"
+        '"Bronx County, NY -- authoritative control"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        match = resolver.resolve_government(
+            "Bronx, NY",
+            tenant_host="www.youtube.com",
+            path="/watch?v=zzz3333333",
+        )
+        assert match.gov_id == "us:county:36005"
+        assert match.tier == resolver.TIER_PINNED
+    finally:
+        registry.clear_caches()
+
+
 # --- WO-214, 2026-09-11: origin_host fallback for CivicPlus/Legistar
 # delegation ---------------------------------------------------------
 #

@@ -309,6 +309,37 @@ def _pinned(
     return None
 
 
+def _matched_multi_gov_pin(
+    host: str, path: Optional[str], page_hints: Optional[Dict[str, str]]
+) -> Optional[Tuple[Government, str]]:
+    """Same matcher as `_pinned()`, with the `strength` filter dropped.
+
+    WO-221: on a `MULTI_GOV_HOSTS` host, a per-video/channel/external-id
+    pin that matches THIS page is real, specific evidence for it --
+    stronger than a national-table match on a bare channel/video title --
+    regardless of whether the row is `authoritative` or `fallback`
+    strength. Rung 1 above already tries `authoritative` alone and
+    returns on a hit; this is what rung 1b calls so a `fallback` row (the
+    strength every WO-221 pin uses) is not left to wait for rung 5, by
+    which point rungs 2-4's classify/table/registry lookups may already
+    have matched the wrong government from the video's own title (the
+    Bronx County -> New York city case: a `fallback` pin to
+    `us:county:36005` lost to rung 4's national-table match on the
+    video's title before it was ever consulted).
+    """
+    for row in _match_override(host, path, page_hints):
+        gov = registry.government_for_id(row.gov_id)
+        if gov:
+            evidence = f"tenant_overrides.csv {host}"
+            if row.match:
+                evidence += f" match={row.match}"
+            if row.source:
+                evidence += f" source={row.source}"
+            return gov, evidence
+        # Same broken-registry fall-through as `_pinned()`.
+    return None
+
+
 def _tenant_host(tenant_host: Optional[str]) -> str:
     if not tenant_host:
         return ""
@@ -1952,6 +1983,20 @@ def _resolve_government_ladder(
     #     the delegated host) and every un-delegated multi-gov-host page
     #     untouched.
     multi_gov_host = bool(host) and registry.is_multi_gov_host(host)
+    matched_pin = (
+        _matched_multi_gov_pin(host, path, page_hints) if multi_gov_host else None
+    )
+    if multi_gov_host and matched_pin:
+        # WO-221: a matched pin wins here, before rung 2's name repair and
+        # rungs 3/4's classify/national-table lookups run -- see
+        # `_matched_multi_gov_pin()`'s own docstring for why. This does
+        # not touch the "no match -> no government" rule just below: it
+        # only fires when a pin actually matched, and a matched row whose
+        # gov_id has no `governments.csv` entry still falls through
+        # exactly as before (broken-registry case, same as `_pinned()`).
+        gov, evidence = matched_pin
+        finalized = finalize_jurisdiction(raw_name, netloc=host or None)
+        return _match(gov, TIER_PINNED, evidence, finalized.meeting_body)
     has_matching_pin = multi_gov_host and bool(_match_override(host, path, page_hints))
     if multi_gov_host and not has_matching_pin:
         origin = _tenant_host(origin_host)
