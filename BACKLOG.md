@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (26)
+  `youtube_drip.py`'s main loop has no top-level retry around a tick —…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
@@ -645,6 +646,45 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### `youtube_drip.py`'s main loop has no top-level retry around a tick — one ordinary network timeout kills the whole always-on process `[JUST-DO-IT]`
+
+- **Issue:** confirmed live, 2026-09-11: the drip (started per
+  `docs/YOUTUBE_DRIP_RUNBOOK.md`) crashed after ~4 hours with an
+  unhandled `aiohttp.client_exceptions.ClientConnectorError: Cannot
+  connect to host rtr-deeplink-archive.onrender.com:443 ssl:default
+  [Operation timed out]`, raised from `lane_captions()`'s call into
+  `fetch_youtube_transcripts._get_wanted()` (a plain GET against this
+  app's own Archive, not a YouTube call, and not the documented
+  YouTube-block signal `_looks_like_block()` catches). The exception
+  propagated all the way to `asyncio.run(run(...))` at module level and
+  exited the process. The script's own block-handling ladder
+  (`BLOCK_SLEEPS_SECONDS`, `_block()`) already exists for the *YouTube*
+  side of this — this gap is that the *Archive* side of every tick has
+  no equivalent try/except at all, so a single transient connection
+  blip (not even a real outage — the Archive was reachable again
+  seconds later) takes down a process explicitly designed to run
+  unattended for days.
+- **Impact:** real — the whole point of `youtube_drip.py` is running
+  unattended ("keeps its memory... survives restarts," per the
+  runbook); as written it silently stops making progress on any
+  ordinary network hiccup until a human (or Claude session) happens to
+  notice the log went quiet, `pgrep -f youtube_drip` shows nothing, and
+  manually clears `~/.rtr/youtube_drip/lock` and restarts it.
+- **Next action:** wrap the body of `run()`'s per-tick loop (around the
+  `await drip.tick(session, status_csv)` call, `youtube_drip.py` line
+  ~846) in a try/except catching at least `aiohttp.ClientError` and
+  `asyncio.TimeoutError`, logging it the same way a lane failure logs
+  today and sleeping a short fixed interval (a few minutes, not the
+  YouTube block ladder — this isn't a YouTube signal) before retrying,
+  rather than letting it escape to `asyncio.run`.
+- **Constraint:** none known — this is a straightforward resilience
+  fix, no design tradeoff. Keep it distinct from the existing YouTube
+  block-detection path (`_looks_like_block()`/`_block()`) rather than
+  routing Archive-connectivity failures through the same ladder, since
+  they're different failure modes with different correct backoffs.
+- **History:** none yet — first time hit; `docs/YOUTUBE_DRIP_RUNBOOK.md`
+  added 2026-09-10/11.
 
 ### Two real domain leads found by WO-196, ready to act on but out of that WO's own four-group scope `[JUST-DO-IT]` `[EASY]`
 
