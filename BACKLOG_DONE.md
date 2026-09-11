@@ -1,5 +1,127 @@
 # Backlog — done
 
+## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
+
+**Why this ran.** Ryan, reviewing the night's hand-checks: "you're just
+finding another new gov if we don't have that one yet," and a small
+government's alternate domain leading to a shared county/regional
+channel that carries a bigger neighbour's meetings "is a new way to
+discover channels/hosts -- are we saving those channels?" This WO
+collected every Kind A ("the video belongs to a different real body")
+finding from WO-183/184/191/196/199/202/206 into one list, checked
+whether each owner body already has a page, minted the real ones that
+had no `gov_id`, and pinned every confirmed channel.
+
+**Result, of 37 owner bodies collected** (`rtr-business/research/
+wo211_owner_channels.csv`, `wo211_report.csv`):
+
+| Result | Count of 37 |
+| Already had a correct page | 16 |
+| Already resolved earlier the same night (Oak Bluffs blank-match bug, WO-206) | 6 |
+| Page exists but needs a human's jurisdiction override (tracked already, see `BACKLOG.md`) | 3 |
+| A live per-video pin in `tenant_overrides.csv` still points at the wrong government (flagged, not fixed this pass) | 6 |
+| Listed, not minted (not a real government) | 3 |
+| Minted this WO | 3 |
+| Queued for a future ingest pass (no page yet) | 5 |
+| No action -- weak source (a former official's personal channel) | 1 |
+| No action needed -- queue line already correct | 2 |
+
+**Minted** (`app/utils/jurisdiction_data/curated_governments.csv`,
+`curated+ryan_stated`): Cap-Acadie regional municipality, NB
+(`rtr:ca:nb:cap-acadie`, gov_type=`county`, the real 2023 NB
+amalgamation Campbellton is now part of -- closes the `[HUMAN]` entry
+from WO-184's continuation); Municipality of the County of Pictou, NS
+(`rtr:ca:ns:municipality-of-the-county-of-pictou`, gov_type=`county`,
+governs the rural county, distinct from the Town of Pictou); Texas
+Workforce Commission (`rtr:us:tx:texas-workforce-commission`,
+gov_type=`other`, a real 3-member commission with recurring public
+meetings, same shape as PennDOT). All three follow the existing Qathet
+Regional District, BC / PennDOT precedent for gov_type. Channel and
+per-video pins added to `tenant_overrides.csv` for each (fallback
+strength).
+
+**Listed, not minted**: Morgan Township Historical Society, OH (a local
+heritage group sharing the Township's own YouTube channel, not a
+governing body); Montgomery Village Foundation, MD (a homeowners'-
+association-style community foundation, not a government); Indiana
+Governor's Office (a judgment call -- already covered by `us:state:18`,
+and the specific video was a press conference, not a deliberative
+meeting; Ryan can override).
+
+**Two research-file rows added for governments that already have a real
+national `gov_id` but no research-file row**: Town of Granville, NY
+(`us:cousub:3611530037`) and Town of Stonington, CT
+(`us:cousub:0918073770`) -- both real, separate governments from the
+Village/Borough that originally absorbed their videos, confirmed via a
+live channel check (Granville: 1 subscriber, 2 videos; Stonington: 332
+subscribers, 497 videos, both single-purpose town channels). Channel
+and per-video pins added for both.
+
+**A real, live bug found, not fixed this pass.** At least 6 of the
+"already had a correct page" rows (St. Tammany Parish LA, Dublin GA,
+Allegan County MI, Delta County MI, Van Buren County MI, Deerfield MA,
+Mountain Iron MN) still carry a wrong per-video pin in
+`tenant_overrides.csv` left over from before WO-184's continuation
+corrected the pages themselves. Not fixed here -- repointing without
+first confirming `_match_override()`'s real precedence between a bare
+video-id row and a `youtube:`-prefixed one risks trading a possibly-
+inert wrong row for a newly-live wrong one. Filed as its own
+`[NEEDS-AUDIT]` entry in `BACKLOG.md`.
+
+**Two decisions Ryan asked about, closed:**
+
+1. **Newfane, VT.** "Newfane town" (`us:cousub:5002548400`) and
+   "Newfane village" (`us:place:5048325`) are two real, distinct
+   Vermont governments (a village inside a same-named town, the same
+   shape as WO-204's Newtown Township/Borough precedent), not a
+   duplicate. The video (`youtube.com/watch?v=tKQSGf0eR_w`, "2026
+   Newfane Town Meeting 3/3/26", Brattleboro Community TV) is the
+   TOWN's own Town Meeting -- confirmed via oEmbed and the town's own
+   site (`newfane.org` redirects to `newfanevt.com`, which publishes its
+   own "Newfane Selectboard meeting" pages and a "Town Meeting" page; no
+   separate village government or domain found). Kept the page under
+   the town's existing pin; removed the wrong village pin
+   (`us:place:5048325`) from `tenant_overrides.csv`; set the village's
+   own research-file row to `meeting-without-video`. Closes the
+   `[NEEDS-AUDIT]` entry from WO-191 slice 2's rebase.
+2. **Upper Delaware Council.** Checked the Council's own site
+   (`upperdelawarecouncil.org/meetings/meeting-minutes/`) for a
+   Swagit-style page stitching a whole meeting together from its
+   presentation clips, per Ryan's ask. None exists -- each presentation
+   is linked as its own standalone "VIDEO:" link next to that meeting's
+   minutes, one clip per link. Left the existing single-presentation-
+   clip page as is, per Ryan's own fallback instruction.
+
+**What's blocked, and why.** This session's git worktree had no `.env`
+and no `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` available by any means
+this repo's rules allow (never grep/print a secret's value). No
+`GET /internal/export/pages` check and no `POST /internal/ingest` call
+could be made. Everything achievable without Archive access was done
+(minting, pins, research-file rows, the two decisions above); the six
+queued real meetings (Cap-Acadie, Municipality of the County of Pictou,
+Texas Workforce Commission, Millinocket school district, Town of
+Granville NY, Town of Stonington CT) are left as an explicit `[HUMAN]`
+`BACKLOG.md` entry rather than guessed at or fabricated as ingested.
+
+**Not deployed.** The 3 new curated rows and all pin changes are on
+`main` after this PR merges, but production keeps resolving under the
+OLD attribution until the resolver is redeployed (same deploy-lag shape
+as WO-201/206). No page was created or changed by this WO (ingest was
+blocked), so there is no "already live" exception this time -- nothing
+from this WO reaches a reader until both the redeploy and a future
+ingest pass happen.
+
+**Files**: `rtr-deeplink/app/utils/jurisdiction_data/
+curated_governments.csv` (3 new rows), `rtr-deeplink/app/utils/
+jurisdiction_data/tenant_overrides.csv` (10 new pins, 1 wrong pin
+removed), `rtr-deeplink/BACKLOG.md` (Cap-Acadie and Newfane
+`[NEEDS-AUDIT]`/`[HUMAN]` entries closed; 2 new entries: the stale-pin
+audit and the blocked-ingest list). `rtr-business`:
+`research/wo211_owner_channels.csv` (new, 37 rows), `research/
+wo211_report.csv` (new), `research/wo211_discovery_seeds.csv` (new, for
+rtr-discovery), `research/wo211_apply_to_jc.py` (new, 158-protocol
+apply script), `research/jurisdiction_coverage.csv` (6 rows: 5 new, 1
+field fix), `research/ENUMERATION_METHODS.md` section 261.
 ## WO-213: four governments our own bulk tools had queued in volume trimmed to one governing-body meeting each — 257 queue lines parked [Done 2026-09-11]
 
 - **Why:** the WO-212 reconciliation showed Los Altos Hills CA with 68
