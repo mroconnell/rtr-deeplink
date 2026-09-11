@@ -1087,6 +1087,16 @@ async def main():
                             payload_for_ingest = dict(payload)
                             payload_for_ingest.pop("_seed_url", None)
                             payload_for_ingest.pop("_high_risk_title", None)
+                            # WO-222: this row already knows its government
+                            # -- send it in the payload so a page on a
+                            # shared host never depends on a
+                            # tenant_overrides.csv pin reaching production
+                            # first. See
+                            # scripts/wo134_confirmed_hits_ingest.py's
+                            # matching comment and
+                            # docs/COVERAGE_HANDOVER.md §3.
+                            if gov_id:
+                                payload_for_ingest["gov_id"] = gov_id
                             if winning_platform in wo134.SHARED_HOST_PLATFORMS:
                                 payload_for_ingest["jurisdiction"] = jurisdiction
                                 wo134.maybe_write_tenant_override(

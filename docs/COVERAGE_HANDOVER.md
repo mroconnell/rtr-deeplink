@@ -221,6 +221,15 @@ reasons. That is how every sweep below was scoped.
   these hosts is unaffected — it still resolves to `rtr:unknown:<host>`
   exactly as rung 1b intends. See `BACKLOG_DONE.md`'s WO-215 entry for the
   before/after counts.
+- **A sweep that already knows a government's id sends it in the ingest
+  payload, so a new page never depends on a pin reaching production
+  first (WO-222, 2026-09-11).** `scripts/wo134_confirmed_hits_ingest.py`
+  and `scripts/bulk_ingest.py` (and every other sweep script that knows
+  its row's `gov_id` at the ingest call site) now put it straight into
+  the `POST /internal/ingest` payload, which `_resolve_page_government()`
+  already honored as `caller_gov_id` — pins still matter for the
+  transcription worker's later re-resolve and for the drip, just not for
+  this first write.
 
 ## 4. How coverage is grown: the sweep pattern
 

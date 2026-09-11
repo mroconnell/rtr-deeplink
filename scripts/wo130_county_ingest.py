@@ -23,14 +23,22 @@ changes specific to Ryan's WO-130 instructions:
    city suffix) right before dedup/ingest -- rather than trusting
    whatever jurisdiction guess the adapter itself made (a subdomain
    split, a CalendarPageError hint, or nothing). This is what "pass
-   gov_id and display name through" means concretely here: there is no
-   client-settable gov_id field on POST /internal/ingest (gov_id is
-   resolved server-side from the jurisdiction string via
-   NameStateTable.lookup_typed(), the PR #807 fix this work order exists
-   to unblock) -- but a jurisdiction string that already carries the
-   correct trailing type word ("County") is exactly what lets that
-   lookup disambiguate a county from a same-named independent city
-   instead of leaving the page as `rtr:unknown` or mis-keyed.
+   gov_id and display name through" means concretely here: at the time
+   this was written there was no client-settable gov_id field on POST
+   /internal/ingest (gov_id was resolved server-side from the
+   jurisdiction string via NameStateTable.lookup_typed(), the PR #807
+   fix this work order existed to unblock), so a jurisdiction string
+   that already carried the correct trailing type word ("County") was
+   what let that lookup disambiguate a county from a same-named
+   independent city instead of leaving the page as `rtr:unknown` or
+   mis-keyed. **As of WO-222 (2026-09-11) that field exists**
+   (archive/main.py's `IngestRequest.gov_id`) and `process_row()` below
+   now sends this row's own `gov_id` in the payload directly, so a
+   shared-host (YouTube/Vimeo) page no longer depends on either the
+   jurisdiction-string trick above or a tenant_overrides.csv pin
+   reaching production first -- see docs/COVERAGE_HANDOVER.md §3. The
+   jurisdiction-forcing behavior itself is unchanged and still matters
+   for the display name and for non-shared hosts.
 
 Writes a per-row CSV log to rtr-business/research/wo130_county_ingest_log.csv
 (resumable the same way, keyed on gov_id) and a final tally, same shape
@@ -1089,9 +1097,18 @@ async def process_row(session: aiohttp.ClientSession, row: dict) -> RowResult:
 
         if segments:
             normalized = normalize_url(final_seed)
-            response = await _ingest_with_retry(
-                session, result.model_dump(), normalized
-            )
+            # WO-222: this row already knows its government (gov_id is the
+            # first thing process_row() reads off it) -- send it in the
+            # payload so a shared-host page never depends on a
+            # tenant_overrides.csv pin reaching production first. See
+            # scripts/wo134_confirmed_hits_ingest.py's matching comment
+            # and docs/COVERAGE_HANDOVER.md §3. This is exactly the
+            # client-settable gov_id field this file's own module
+            # docstring (point 2, above) said didn't exist yet.
+            payload = result.model_dump()
+            if gov_id:
+                payload["gov_id"] = gov_id
+            response = await _ingest_with_retry(session, payload, normalized)
             if response is None:
                 # Real gap found on a prior round (Destin, FL): the POST
                 # to our OWN Archive backend is a network call like any

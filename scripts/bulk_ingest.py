@@ -18,6 +18,7 @@ Usage (from the repo root, with the venv active):
     python scripts/bulk_ingest.py urls.txt
     python scripts/bulk_ingest.py urls.txt --dry-run
     python scripts/bulk_ingest.py --playlist "https://www.youtube.com/playlist?list=..."
+    python scripts/bulk_ingest.py urls.txt --gov-id us:place:0627000
 
 urls.txt: one URL per line; blank lines and lines starting with # are
 ignored. A line that's itself a YouTube playlist/watch?list= URL is
@@ -25,6 +26,22 @@ expanded to its member video URLs at run time (via yt-dlp's flat
 extraction -- confirmed live 2026-08-11 against a real 66-video "Town
 Council Meetings" playlist), so a playlist URL can also just be dropped
 into the file directly instead of using --playlist.
+
+gov_id (WO-222): when the caller already knows which government a URL
+belongs to -- the common case, every enumeration method in
+rtr-business starts from a known gov_id (docs/COVERAGE_HANDOVER.md §3)
+-- pass it and the ingested page is keyed to it immediately, rather than
+depending on a tenant_overrides.csv pin reaching production before the
+page is created (a YouTube/Vimeo/other shared-host page otherwise lands
+`rtr:unknown:<host>` until that pin deploys). Two ways to supply one,
+usable together: (1) a second, tab-separated field on a urls.txt line
+(`https://youtu.be/abc123<TAB>us:place:0627000`) -- a playlist line's
+gov_id, if any, applies to every video it expands to; (2) `--gov-id`,
+applied to every URL in this run (file lines and --playlist URLs alike)
+that doesn't already carry its own per-line gov_id. A URL with neither
+is ingested exactly as before -- the ladder in
+app/utils/gov_registry/resolver.py decides its government, same as
+every other existing caller of this script.
 
 Requires ARCHIVE_BASE_URL and ARCHIVE_INGEST_TOKEN in the repo's local
 .env (or already exported in the environment) -- the real Render values
@@ -36,7 +53,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 import certifi
@@ -88,12 +105,19 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {token}"} if token else {}
 
 
-def _read_urls(path: str) -> List[str]:
+def _read_urls(path: str) -> List[Tuple[str, Optional[str]]]:
+    """Returns (url, gov_id) pairs. gov_id is None unless the line carries
+    an optional second, tab-separated field -- see this module's own
+    docstring (WO-222) for the format and why."""
     urls = []
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()
-        if line and not line.startswith("#"):
-            urls.append(line)
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        url = parts[0].strip()
+        gov_id = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
+        urls.append((url, gov_id))
     return urls
 
 
@@ -130,18 +154,23 @@ def _expand_playlist(playlist_id: str) -> List[str]:
     return [e["url"] for e in entries if e.get("url")]
 
 
-def _expand_urls(urls: List[str]) -> List[str]:
+def _expand_urls(
+    urls: List[Tuple[str, Optional[str]]],
+) -> List[Tuple[str, Optional[str]]]:
     """Replaces any playlist/in-playlist URL in the list with its member
-    video URLs, preserving order and leaving every other URL untouched."""
-    expanded: List[str] = []
-    for url in urls:
+    video URLs, preserving order and leaving every other URL untouched. A
+    playlist line's own gov_id (if any) is carried onto every video it
+    expands to -- one playlist is one government's own channel in every
+    real case this script has been used against."""
+    expanded: List[Tuple[str, Optional[str]]] = []
+    for url, gov_id in urls:
         playlist_id = _playlist_id(url)
         if not playlist_id:
-            expanded.append(url)
+            expanded.append((url, gov_id))
             continue
         video_urls = _expand_playlist(playlist_id)
         print(f"[PLAYLIST] {url}\n           expanded to {len(video_urls)} video(s)")
-        expanded.extend(video_urls)
+        expanded.extend((video_url, gov_id) for video_url in video_urls)
     return expanded
 
 
@@ -229,9 +258,16 @@ async def _ingest(
 
 
 async def process_one(
-    session: aiohttp.ClientSession, url: str, *, dry_run: bool
+    session: aiohttp.ClientSession,
+    url: str,
+    *,
+    dry_run: bool,
+    gov_id: Optional[str] = None,
 ) -> dict:
-    """Returns a result dict: {"url", "status": "ingested"|"skipped"|"failed", "detail"}."""
+    """Returns a result dict: {"url", "status": "ingested"|"skipped"|"failed", "detail"}.
+
+    `gov_id` (WO-222), when given, rides into the ingest payload so the
+    page keys to it immediately -- see this module's docstring."""
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
@@ -277,11 +313,21 @@ async def process_one(
             "detail": (
                 f"[dry-run] would ingest: platform={result.platform}, title={result.title!r}, "
                 f"segments={len(result.segments)}, agenda_items={len(result.agenda_items)}"
+                + (f", gov_id={gov_id!r}" if gov_id else "")
             ),
         }
 
+    # WO-222: send the caller's gov_id, when it has one, so the page keys
+    # to it immediately rather than depending on a tenant_overrides.csv
+    # pin reaching production first (see this module's docstring). Omitted
+    # entirely rather than sent as "" when blank/None, so this is
+    # indistinguishable from every prior call to _ingest() that never knew
+    # a gov_id.
+    payload = result.model_dump()
+    if gov_id:
+        payload["gov_id"] = gov_id
     try:
-        response = await _ingest(session, result.model_dump(), normalized)
+        response = await _ingest(session, payload, normalized)
     except Exception as e:
         return {"url": url, "status": "failed", "detail": f"ingest failed: {e}"}
 
@@ -314,6 +360,19 @@ async def main() -> None:
         action="store_true",
         help="Resolve and report, but don't actually ingest",
     )
+    parser.add_argument(
+        "--gov-id",
+        default=None,
+        metavar="GOV_ID",
+        help=(
+            "WO-222: applied to every URL in this run (urls_file lines and "
+            "--playlist URLs alike) that doesn't already carry its own "
+            "per-line gov_id (a tab-separated second field in urls_file) -- "
+            "so the page(s) key to this government immediately instead of "
+            "depending on a tenant_overrides.csv pin. Use for a single-"
+            "government run, e.g. one YouTube channel/playlist."
+        ),
+    )
     args = parser.parse_args()
 
     if not _base_url():
@@ -333,12 +392,17 @@ async def main() -> None:
         print("ERROR: pass a urls_file, --playlist, or both.", file=sys.stderr)
         sys.exit(1)
 
-    raw_urls = (_read_urls(args.urls_file) if args.urls_file else []) + list(
-        args.playlist
-    )
+    raw_urls: List[Tuple[str, Optional[str]]] = (
+        _read_urls(args.urls_file) if args.urls_file else []
+    ) + [(u, None) for u in args.playlist]
     if not raw_urls:
         print(f"No URLs found in {args.urls_file}.", file=sys.stderr)
         sys.exit(1)
+
+    if args.gov_id:
+        # --gov-id is a fallback: a URL's own per-line gov_id (urls_file's
+        # optional tab-separated field) always wins over it.
+        raw_urls = [(u, gid or args.gov_id) for u, gid in raw_urls]
 
     urls = _expand_urls(raw_urls)
     if not urls:
@@ -353,8 +417,10 @@ async def main() -> None:
 
     results = []
     async with aiohttp.ClientSession() as session:
-        for i, url in enumerate(urls):
-            result = await process_one(session, url, dry_run=args.dry_run)
+        for i, (url, gov_id) in enumerate(urls):
+            result = await process_one(
+                session, url, dry_run=args.dry_run, gov_id=gov_id
+            )
             results.append(result)
             print(
                 f"[{result['status'].upper():8}] {url}\n           {result['detail']}"

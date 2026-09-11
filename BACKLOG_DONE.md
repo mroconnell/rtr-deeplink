@@ -1,5 +1,82 @@
 # Backlog — done
 
+## WO-222: sweep ingest helpers now send the row's own gov_id, so a shared-host page never has to wait for a pin to deploy [Done 2026-09-11]
+
+**Why this ran.** Since WO-210 (2026-09-11, 11:40 PT), a page on a host
+many governments share — YouTube, Vimeo — only gets a government if a
+human has already written a pin for that exact video or channel. If no
+pin exists yet, the page lands as "unknown" until a pin is written,
+reviewed, merged, and deployed. But the Archive already had a second,
+faster way to answer that question: a caller can send the government's
+id directly in the same request that creates the page. The two scripts
+every sweep reuses to create pages — `wo134_confirmed_hits_ingest.py`
+and `bulk_ingest.py` — already know the row's government id at that
+exact moment. They just weren't sending it.
+
+**What was built.** Both scripts now add `gov_id` to the page-creation
+request whenever the row has one, and leave it out entirely when it
+doesn't (never send a blank one). `bulk_ingest.py` also gained a way for
+a caller to say a URL's government by hand: an optional second column in
+its input file, or a `--gov-id` flag for a run that's all one
+government. Every other script under `scripts/` that creates pages the
+same way was checked by hand.
+
+| What happened to each script | Count of 35 | What it means |
+|---|---|---|
+| Fixed directly | 13 | Now sends the row's gov_id the same way |
+| Already fixed, by calling one of the 13 | 4 | No change needed — they reuse `wo134`'s own page-creation step |
+| Left alone — doesn't know a government id at that point | 17 | Mostly one-off school-district and CDX pipelines that only ever had a name and a state, not an id |
+| Left alone on purpose | 1 | `hub_sweep_wo126.py` already solves this a different way (see caution) |
+
+The 13 fixed directly: `wo134_confirmed_hits_ingest.py`, `bulk_ingest.py`,
+`nationwide_2404_ingest.py`, `nationwide_1911_ingest.py`,
+`nationwide_431_ingest.py`, `nationwide_395_ingest.py`,
+`wo130_county_ingest.py`, `pmn_utah_pilot.py`,
+`wo127_civicplus_pipeline.py`, `adhoc_civicplus_pipeline.py`,
+`wo150_muni_ladder_sweep.py`, `wo146_api_relist_sweep.py`,
+`wo148_headless_sweep.py`. The 4 already covered:
+`wo183_access_ladder_sweep.py`, `wo184_ingest_found.py`,
+`wo181_ingest_found.py`, `wo191_access_ladder_sweep.py` — all four call
+`wo134_confirmed_hits_ingest.py`'s own page-creation function directly,
+so fixing it once covered them too. `wo130_county_ingest.py`'s own
+comment also said, from before this WO, that no such field existed on
+the ingest request at all — that comment was corrected in place; it was
+true when written, not any more.
+
+**Caution.** `hub_sweep_wo126.py` also knows the government id at its
+page-creation step, but it was left alone on purpose. That script's own
+job is to check whether a page resolves to the right government WITHOUT
+being told the answer, and write a pin when it doesn't — sending the
+answer directly would quietly turn off the check it exists to run. Its
+existing pin-writing behavior is a different, already-working fix for
+the same underlying problem.
+
+**Proof this actually keys a page.** New crud-level test (real SQLite,
+no fixtures): a fresh YouTube page with no pin, given a government id in
+the request, comes back keyed to that government immediately — not
+"unknown." Two more tests prove a July 2026 guard (WO-215) still holds
+now that callers can supply this id more often: re-sending a page's own
+already-correct, human-set government id never downgrades it, and
+sending a DIFFERENT government id for a page a human already set is
+refused (not silently overwritten). Two more tests cover each of the two
+main scripts' request-building step directly (with and without a known
+government id). Nine new tests total, `tests/
+test_wo222_gov_id_ingest_payload.py`. Full suite (3,250 tests) and both
+`ruff` gates pass.
+
+**Recommendation.** No further code needed here — WO-221 (pinning the
+queue side, run separately) and this WO now cover both the queued and
+the direct-ingest paths. Worth a quick look next time someone is in
+`hub_sweep_wo126.py`'s area: it's the one remaining page-creation path
+that still depends on a pin reaching production, by design, and that's
+worth restating in that file's own docstring if it isn't already clear
+enough there.
+
+**Deploy status.** This is a `scripts/` and `docs/` change only — no
+`app/`, `archive/`, or `worker/` file was touched, so nothing here needs
+a deploy. The next time any of the 17 fixed scripts runs, its ingests
+already carry the government id.
+
 ## WO-205 follow-up: the Utah PMN half of the long-meeting substitution — 125 more queue lines swapped, ~168 Whisper hours saved; the search now survives PMN's JSON outage [Done 2026-09-11]
 
 - **What was wrong:** WO-205's search recorded `none` for 131 Utah PMN

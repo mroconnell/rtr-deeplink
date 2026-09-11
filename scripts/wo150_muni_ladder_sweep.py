@@ -792,6 +792,13 @@ async def process_via_seed_resolve(
 
     apply_display_jurisdiction(result, gov_id)
     payload = result.model_dump()
+    # WO-222: this row already knows its government -- send it in the
+    # payload so a page on a shared host never depends on a
+    # tenant_overrides.csv pin reaching production first. See
+    # scripts/wo134_confirmed_hits_ingest.py's matching comment and
+    # docs/COVERAGE_HANDOVER.md §3.
+    if gov_id:
+        payload["gov_id"] = gov_id
     base["meeting_url"] = final_seed
     base["video_url"] = payload.get("video_url") or ""
 

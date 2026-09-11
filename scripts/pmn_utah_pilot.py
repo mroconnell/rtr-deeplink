@@ -827,10 +827,19 @@ async def process_notice(
 
     if segments:
         normalized = normalize_url(final_seed)
+        # WO-222: gov_id is blank unless this entity matched Utah's
+        # Census gov_id map above (279/285 -- see module docstring); send
+        # it when we have it, so a shared-host page never depends on a
+        # tenant_overrides.csv pin reaching production first. See
+        # scripts/wo134_confirmed_hits_ingest.py's matching comment and
+        # docs/COVERAGE_HANDOVER.md §3.
+        payload = result.model_dump()
+        if gov_id:
+            payload["gov_id"] = gov_id
         response = None
         for attempt in (1, 2):
             try:
-                response = await _ingest(session, result.model_dump(), normalized)
+                response = await _ingest(session, payload, normalized)
                 break
             except Exception:
                 if attempt == 2:
@@ -881,10 +890,14 @@ async def process_notice(
         )
 
     normalized = normalize_url(final_seed)
+    # WO-222: same as the segments branch above -- send gov_id when known.
+    payload = result.model_dump()
+    if gov_id:
+        payload["gov_id"] = gov_id
     response = None
     for attempt in (1, 2):
         try:
-            response = await _ingest(session, result.model_dump(), normalized)
+            response = await _ingest(session, payload, normalized)
             break
         except Exception:
             if attempt == 2:
