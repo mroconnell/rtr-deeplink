@@ -995,3 +995,431 @@ def select_best_probe_result(
         if IN_WINDOW_MIN_SECONDS <= r.duration_seconds <= IN_WINDOW_MAX_SECONDS:
             return r
     return min(plausible, key=lambda r: r.duration_seconds)
+
+
+# --- WO-224 shared finish step ---------------------------------------------
+#
+# Every wo1XX_finish_tier3*.py script (WO-147, WO-149, WO-150, WO-152,
+# WO-183, WO-191, WO-216) takes an already-probed-or-probeable tier-3
+# candidate and decides: queue it, pin it, defer it, or drop it. Four of
+# those seven (WO-150/183/191/216) share one real bug (WO-216's own
+# BACKLOG.md entry, "Ship next", moved to BACKLOG_DONE.md by WO-224): when
+# a candidate's URL was already sitting in the shared probe sidecar
+# (DEFAULT_SIDECAR_PATH), the per-script "already probed, skipping fetch"
+# branch skipped the row entirely -- it never looked at what the cached
+# verdict actually WAS, so a real accept sitting in the sidecar from an
+# earlier/parallel run was silently dropped: never queued, never pinned.
+# Confirmed live on WO-216's own run: 38 of 63 candidates hit this branch,
+# 4 real accept-verdict videos and 5 pins were lost and had to be added by
+# hand afterward.
+#
+# The fix is this module, not seven per-script patches: cached_verdict()
+# reads what the sidecar already knows (and logs it, so a caller can see
+# WHY a candidate skipped the network), and finish_candidate() is the one
+# place a probe verdict (fresh or cached) turns into a queue line, a pin,
+# or a deferred-file line. Every finish script should route its per-row
+# decision through this, not reimplement it -- see docs/COVERAGE_HANDOVER.
+# md §4's sweep-pattern paragraph.
+
+TIER3_QUEUE_FILE = (
+    Path(__file__).resolve().parent.parent.parent
+    / "scripts"
+    / "tier3_auto_transcription_queue.txt"
+)
+TENANT_OVERRIDES_CSV = (
+    Path(__file__).resolve().parent.parent.parent
+    / "app"
+    / "utils"
+    / "jurisdiction_data"
+    / "tenant_overrides.csv"
+)
+TIER3_LONG_MEETINGS_DEFERRED_FILE = (
+    Path(__file__).resolve().parent.parent.parent
+    / "scripts"
+    / "tier3_long_meetings_deferred.txt"
+)
+DEFERRED_FILE_HEADER = (
+    "# Long tier-3 meetings (>90 min) swapped out of the queue for a "
+    "shorter meeting from the same government; re-queue later for depth.\n"
+    "# url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>title "
+    "-- gov_id blank when the identity ladder declined; probe rows stay in "
+    "tier3_auto_transcription_queue_probe.csv.\n"
+)
+
+# WO-205/WO-212's rule: a tier-3 candidate whose duration is over 90
+# minutes never earns a queue line at all -- it goes straight to the
+# deferred file instead of being queued and swapped out again later (the
+# original WO-205 pass had to do exactly that swap-back-out after the
+# fact; this constant lets a finish step skip the round trip). Distinct
+# from `_FLAG_LONG_SECONDS` (6 hours) above, which is `probe_queue_entry`'s
+# own "still accept, but flag it" ceiling -- a `flag-long` verdict is
+# always also over this lower, 90-minute threshold, so it always lands in
+# the deferred file, never the queue.
+DEFER_OVER_SECONDS = 90 * 60
+
+_ACCEPT_VERDICTS = ("accept", "flag-long")
+
+PIN_CSV_FIELDS = ["tenant_host", "match", "gov_id", "strength", "source", "evidence"]
+
+
+def _format_hms(seconds: float) -> str:
+    """`3:36:14` / `9:07` -- the exact shape
+    `tier3_long_meetings_deferred.txt` already carries (confirmed against
+    the real file's own rows), reusing
+    `find_tier3_short_meeting_substitutes.py`'s own `hms()` logic rather
+    than a second implementation that could drift from it."""
+    total = int(round(seconds))
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def _first_field_urls(path: Path) -> set[str]:
+    """The set of URLs already present as the first TAB-field of every
+    non-blank, non-comment line in a plain queue/deferred text file --
+    the same key `tests/test_transcription_queue_files.py`'s own `_rows()`
+    and `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`
+    read."""
+    urls: set[str] = set()
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                urls.add(line.split("\t", 1)[0])
+    return urls
+
+
+def is_queued(meeting_url: str, *, queue_path: Path = TIER3_QUEUE_FILE) -> bool:
+    return meeting_url in _first_field_urls(queue_path)
+
+
+def is_deferred(
+    meeting_url: str, *, deferred_path: Path = TIER3_LONG_MEETINGS_DEFERRED_FILE
+) -> bool:
+    return meeting_url in _first_field_urls(deferred_path)
+
+
+def append_queue_line(
+    meeting_url: str,
+    source_url: Optional[str] = None,
+    *,
+    queue_path: Path = TIER3_QUEUE_FILE,
+) -> bool:
+    """Appends `meeting_url[\\tsource_url]` to the tier-3 queue file --
+    the exact line shape every wo1XX_finish_tier3*.py script already
+    writes (`url<TAB>source_url` when the source page differs from the
+    video URL itself, a bare `url` otherwise). Dedupe-checked against the
+    file's current contents first (same rule
+    `wo134_confirmed_hits_ingest.py`'s `_existing_tier3_queue_urls()`
+    enforces). Returns True only when a new line was actually written --
+    never rewrites or reorders an existing line, append-only throughout."""
+    if meeting_url in _first_field_urls(queue_path):
+        return False
+    line = (
+        f"{meeting_url}\t{source_url}"
+        if source_url and source_url != meeting_url
+        else meeting_url
+    )
+    queue_path.parent.mkdir(parents=True, exist_ok=True)
+    with queue_path.open("a", encoding="utf-8") as f:
+        f.write(line + "\n")
+    return True
+
+
+def append_deferred_line(
+    meeting_url: str,
+    *,
+    source_url: str = "",
+    gov_id: str = "",
+    jurisdiction: str = "",
+    duration_seconds: Optional[float] = None,
+    title: str = "",
+    deferred_path: Path = TIER3_LONG_MEETINGS_DEFERRED_FILE,
+) -> bool:
+    """Parks a long (over DEFER_OVER_SECONDS) tier-3 candidate in
+    `tier3_long_meetings_deferred.txt` instead of the real queue, in the
+    file's own real column order (confirmed against its current rows):
+    `url\\tsource_url\\tgov_id\\tjurisdiction\\tduration\\ttitle`, blanks
+    allowed for any column but the url and duration. Dedupe-checked
+    against the file's current URLs, append-only, writes the file's own
+    header comment only when the file doesn't exist yet. Returns True
+    only when a new line was actually written."""
+    if meeting_url in _first_field_urls(deferred_path):
+        return False
+    duration = _format_hms(duration_seconds) if duration_seconds is not None else ""
+    line = "\t".join(
+        [
+            meeting_url,
+            source_url or "",
+            gov_id or "",
+            jurisdiction or "",
+            duration,
+            (title or "").replace("\t", " "),
+        ]
+    )
+    is_new = not deferred_path.exists()
+    deferred_path.parent.mkdir(parents=True, exist_ok=True)
+    with deferred_path.open("a", encoding="utf-8") as f:
+        if is_new:
+            f.write(DEFERRED_FILE_HEADER)
+        f.write(line + "\n")
+    return True
+
+
+def _read_pin_keys(pins_path: Path) -> set[tuple[str, str]]:
+    keys: set[tuple[str, str]] = set()
+    if pins_path.exists():
+        with pins_path.open(newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                keys.add((r.get("tenant_host", ""), r.get("match", "")))
+    return keys
+
+
+def write_pin_row(
+    *,
+    host: str,
+    match: str,
+    gov_id: str,
+    strength: str = "fallback",
+    source: str = "",
+    evidence: str = "",
+    pins_path: Path = TENANT_OVERRIDES_CSV,
+) -> bool:
+    """Appends one `tenant_overrides.csv` pin, deduped against the file's
+    current (tenant_host, match) pairs -- the same key every existing
+    finish script's own `_apply_pin_row()`/`_write_pin()` already checks.
+    Returns True only when a new row was actually written. A blank
+    `host`/`match`/`gov_id` is refused outright, same as the loader that
+    reads this file back rejects a blank match on a shared host."""
+    if not host or not match or not gov_id:
+        return False
+    existing = _read_pin_keys(pins_path)
+    if (host, match) in existing:
+        return False
+    is_new = not pins_path.exists()
+    pins_path.parent.mkdir(parents=True, exist_ok=True)
+    with pins_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=PIN_CSV_FIELDS, lineterminator="\n")
+        if is_new:
+            writer.writeheader()
+        writer.writerow(
+            {
+                "tenant_host": host,
+                "match": match,
+                "gov_id": gov_id,
+                "strength": strength or "fallback",
+                "source": source or "",
+                "evidence": evidence or f"tier-3 probe accept, gov_id={gov_id}",
+            }
+        )
+    return True
+
+
+def parse_pin_row(pin_row: Optional[str]) -> Optional[dict]:
+    """Parses the pipe-delimited `host|match|gov_id|strength|source|
+    evidence` shape the newer access-ladder sweeps write (WO-183/WO-191/
+    WO-216's own `pin_row` CSV column) into the field names
+    `write_pin_row()` takes. Returns None for a blank/malformed row (fewer
+    than 6 fields, or a blank host/match/gov_id) rather than raising --
+    same tolerance every existing `_apply_pin_row()`/`_write_pin()` copy
+    already has for a malformed row.
+
+    WO-150's own pending rows use a different, older
+    `key=value;key=value` shape -- not handled here; a caller still
+    producing that shape parses it itself and calls `write_pin_row()`
+    directly with the parsed fields (see `wo150_finish_tier3.py`)."""
+    if not pin_row:
+        return None
+    parts = pin_row.split("|", 5)
+    if len(parts) < 6:
+        return None
+    host, match, gov_id, strength, source, evidence = parts
+    if not host or not match or not gov_id:
+        return None
+    return {
+        "host": host,
+        "match": match,
+        "gov_id": gov_id,
+        "strength": strength,
+        "source": source,
+        "evidence": evidence,
+    }
+
+
+def cached_verdict(
+    meeting_url: str, *, sidecar_path: Path = DEFAULT_SIDECAR_PATH
+) -> Optional[ProbeResult]:
+    """The most recently-written sidecar row for `meeting_url`, as a
+    `ProbeResult`, or None if this URL has never been probed.
+
+    "Most recent" matters because a URL can legitimately appear more than
+    once in the append-only sidecar (a re-probe after a platform fix --
+    WO-166/WO-205's own extension additions are two real examples) -- the
+    last row written is the current understanding, the same way a human
+    skimming the CSV from the bottom would read it.
+
+    This is the fix for the bug WO-224 exists to close: every
+    `wo1XX_finish_tier3*.py` copy's own "already probed, skipping fetch"
+    branch checked only THAT a row existed for this URL, never what its
+    verdict WAS -- so a real `accept` sitting in the sidecar from an
+    earlier run got treated exactly like a `reject-dead`, silently. Logs
+    the cached verdict/reason/duration/probed_at at INFO so a caller (or
+    a human reading its output) can see why a candidate skipped the
+    network, instead of a bare "skipping fetch"."""
+    if not sidecar_path.exists():
+        return None
+    match = None
+    with sidecar_path.open(newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row.get("url") == meeting_url:
+                match = row
+    if match is None:
+        return None
+
+    duration_raw = match.get("duration_seconds")
+    size_raw = match.get("size_bytes")
+    result = ProbeResult(
+        url=match["url"],
+        platform=match.get("platform") or None,
+        probe_method=match.get("probe_method") or None,
+        duration_seconds=float(duration_raw)
+        if duration_raw not in (None, "")
+        else None,
+        date=match.get("date") or None,
+        size_bytes=int(size_raw) if size_raw not in (None, "") else None,
+        verdict=match.get("verdict", ""),
+        reason=match.get("reason") or None,
+        probe_seconds=float(match.get("probe_seconds") or 0.0),
+        over_nine_minutes=match.get("over_nine_minutes") == "1",
+        chosen=match.get("chosen") == "1",
+    )
+    logger.info(
+        "cached_verdict: %s -- verdict=%s reason=%r duration=%ss probed_at=%s (sidecar=%s)",
+        meeting_url,
+        result.verdict,
+        result.reason,
+        result.duration_seconds,
+        match.get("probed_at", ""),
+        sidecar_path.name,
+    )
+    return result
+
+
+@dataclass
+class FinishOutcome:
+    """What `finish_candidate()` actually did with one tier-3 candidate."""
+
+    probe: ProbeResult
+    used_cache: bool
+    # "queued" | "already-queued" | "deferred" | "already-deferred" |
+    # "skipped-deferred" (an accept verdict, but the URL is a deliberate
+    # deferred-file removal -- never re-added) | "rejected"
+    action: str
+    queued: bool = False
+    deferred: bool = False
+    pinned: bool = False
+
+
+async def finish_candidate(
+    meeting_url: str,
+    *,
+    video_url: Optional[str] = None,
+    source_url: Optional[str] = None,
+    platform: Optional[str] = None,
+    video_format: Optional[str] = None,
+    gov_id: str = "",
+    jurisdiction: str = "",
+    title: str = "",
+    pin: Optional[dict] = None,
+    sidecar_path: Path = DEFAULT_SIDECAR_PATH,
+    queue_path: Path = TIER3_QUEUE_FILE,
+    deferred_path: Path = TIER3_LONG_MEETINGS_DEFERRED_FILE,
+    pins_path: Path = TENANT_OVERRIDES_CSV,
+    caller: str = "",
+) -> FinishOutcome:
+    """The one place a tier-3 finish step should turn a probe verdict --
+    fresh or cached -- into a queue line, a deferred-file line, or
+    nothing. See this module's "WO-224 shared finish step" section
+    docstring above for the bug this replaces.
+
+    1. Uses `cached_verdict()` when the sidecar already has a row for
+       `meeting_url`, instead of re-probing (and re-spending a real
+       network request against a host we've already learned the answer
+       for -- the same "politely" reasoning CLAUDE.md gives for host
+       delays). Otherwise probes fresh via `probe_queue_entry()` and
+       appends the result to the sidecar, exactly like every existing
+       finish script already does on a cache miss.
+    2. `reject-dead`/`reject-short`: nothing queued, pinned, or deferred.
+       `probe.reason` already carries why.
+    3. `accept`/`flag-long`:
+       - `meeting_url` already sits in the deferred file -> stays out of
+         the queue entirely (`action="skipped-deferred"`) -- a line
+         removed there on purpose stays removed (WO-212's rule), even if
+         a fresh/cached verdict would otherwise queue it.
+       - `probe.duration_seconds` is over `DEFER_OVER_SECONDS` (90
+         minutes) -> parked in the deferred file instead of the queue
+         (WO-205/WO-212's rule) rather than queued now and swapped out
+         later.
+       - otherwise -> queued (`append_queue_line()`, no-op if already
+         queued) and, if `pin` was given, pinned (`write_pin_row()`,
+         no-op if that (host, match) is already pinned).
+    """
+    cached = cached_verdict(meeting_url, sidecar_path=sidecar_path)
+    used_cache = cached is not None
+    if cached is not None:
+        result = cached
+    else:
+        result = await probe_queue_entry(
+            meeting_url,
+            video_url=video_url,
+            source_page_url=source_url,
+            platform=platform,
+            video_format=video_format,
+        )
+        append_probe_row(sidecar_path, result, caller=caller)
+
+    if result.verdict not in _ACCEPT_VERDICTS:
+        return FinishOutcome(probe=result, used_cache=used_cache, action="rejected")
+
+    if is_deferred(meeting_url, deferred_path=deferred_path):
+        return FinishOutcome(
+            probe=result, used_cache=used_cache, action="skipped-deferred"
+        )
+
+    duration = result.duration_seconds or 0.0
+    if duration > DEFER_OVER_SECONDS:
+        deferred = append_deferred_line(
+            meeting_url,
+            source_url=source_url or "",
+            gov_id=gov_id,
+            jurisdiction=jurisdiction,
+            duration_seconds=result.duration_seconds,
+            title=title,
+            deferred_path=deferred_path,
+        )
+        return FinishOutcome(
+            probe=result,
+            used_cache=used_cache,
+            action="deferred" if deferred else "already-deferred",
+            deferred=deferred,
+        )
+
+    queued = append_queue_line(meeting_url, source_url, queue_path=queue_path)
+    pinned = False
+    if pin:
+        pinned = write_pin_row(
+            host=pin.get("host", ""),
+            match=pin.get("match", ""),
+            gov_id=pin.get("gov_id") or gov_id,
+            strength=pin.get("strength") or "fallback",
+            source=pin.get("source") or caller,
+            evidence=pin.get("evidence") or "",
+            pins_path=pins_path,
+        )
+    return FinishOutcome(
+        probe=result,
+        used_cache=used_cache,
+        action="queued" if queued else "already-queued",
+        queued=queued,
+        pinned=pinned,
+    )

@@ -15,16 +15,22 @@ already go through), then does two things that script doesn't:
    URL) so the WO-149 funnel report can show "rejected by probe" as its
    own row, per this WO's brief.
 2. Appends every "accept"/"flag-long" verdict to the real
-   `scripts/tier3_auto_transcription_queue.txt`, through the SAME
-   duplicate-checked writer `wo134_confirmed_hits_ingest.py`'s own
-   process_row() uses (`wo134._existing_tier3_queue_urls()`) -- never a
+   `scripts/tier3_auto_transcription_queue.txt`, through
+   `app.platforms.queue_probe.append_queue_line()` (WO-224) -- the same
+   dedupe-checked writer every other finish script now uses, never a
    second, separately-written append path that could race it.
 3. Applies the row's precomputed `pin_row` (written by wo149_county_
    ladder_sweep.py's own `tier3_pending_handler()`, same `host|match|
    gov_id|strength|source|evidence` convention as WO-147's sibling
-   handler) to `app/utils/jurisdiction_data/tenant_overrides.csv`, but
-   ONLY for an accepted candidate -- a shared-host pin for a video the
-   probe rejects as dead/too-short is never written.
+   handler) via `app.platforms.queue_probe.write_pin_row()`/
+   `parse_pin_row()` (WO-224) to `app/utils/jurisdiction_data/
+   tenant_overrides.csv`, but ONLY for an accepted candidate -- a
+   shared-host pin for a video the probe rejects as dead/too-short is
+   never written.
+4. A winning candidate whose duration is over 90 minutes goes to
+   `scripts/tier3_long_meetings_deferred.txt` instead of the queue
+   (WO-205/WO-212's rule, via `append_deferred_line()`) -- this script
+   never did that before WO-224.
 
 wo134_confirmed_hits_ingest.py's own `maybe_write_tenant_override()` no
 longer fires for a TIER3_HANDLER-intercepted candidate (see that
@@ -56,79 +62,24 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
-import scripts.wo134_confirmed_hits_ingest as wo134  # noqa: E402
-from scripts.probe_tier3_queue import DEFAULT_SIDECAR  # noqa: E402
+from app.platforms.queue_probe import (  # noqa: E402
+    DEFAULT_SIDECAR_PATH,
+    DEFER_OVER_SECONDS,
+    TENANT_OVERRIDES_CSV,
+    TIER3_LONG_MEETINGS_DEFERRED_FILE,
+    TIER3_QUEUE_FILE,
+    append_deferred_line,
+    append_queue_line,
+    cached_verdict,
+    is_deferred,
+    parse_pin_row,
+    write_pin_row,
+)
 
 RESEARCH_DIR = Path("/Users/mroconnell/Documents/rtr-business/research")
 TIER3_PENDING_CSV = RESEARCH_DIR / "wo149_tier3_pending.csv"
 
-_ACCEPT_VERDICTS = {"accept", "flag-long"}
-
-
-def _existing_override_keys() -> set:
-    keys = set()
-    if wo134.TENANT_OVERRIDES_CSV.exists():
-        with wo134.TENANT_OVERRIDES_CSV.open(newline="", encoding="utf-8") as f:
-            for r in csv.DictReader(f):
-                keys.add((r.get("tenant_host", ""), r.get("match", "")))
-    return keys
-
-
-def _apply_pin_row(pin_row: str, existing_keys: set) -> None:
-    """Same shape as WO-147's own `_apply_pin_row()` in scripts/
-    wo147_finish_tier3_queue.py -- kept as a small local copy rather
-    than importing that script, since it isn't built as an importable
-    module."""
-    if not pin_row:
-        return
-    parts = pin_row.split("|", 5)
-    if len(parts) != 6:
-        print(f"WARNING: malformed pin_row, skipping: {pin_row!r}", file=sys.stderr)
-        return
-    tenant_host, match, gov_id, strength, source, evidence = parts
-    key = (tenant_host, match)
-    if key in existing_keys:
-        return
-    is_new = not wo134.TENANT_OVERRIDES_CSV.exists()
-    with wo134.TENANT_OVERRIDES_CSV.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "tenant_host",
-                "match",
-                "gov_id",
-                "strength",
-                "source",
-                "evidence",
-            ],
-            lineterminator="\n",
-        )
-        if is_new:
-            writer.writeheader()
-        writer.writerow(
-            {
-                "tenant_host": tenant_host,
-                "match": match,
-                "gov_id": gov_id,
-                "strength": strength,
-                "source": source,
-                "evidence": evidence,
-            }
-        )
-    existing_keys.add(key)
-
-
-def load_sidecar_verdicts() -> dict:
-    verdicts = {}
-    if not DEFAULT_SIDECAR.exists():
-        return verdicts
-    with DEFAULT_SIDECAR.open(newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            # A URL can appear more than once (a --reprobe re-run) --
-            # keep the newest (last) verdict, same as the sidecar's own
-            # append-only, newest-wins convention.
-            verdicts[row["url"]] = (row.get("verdict", ""), row.get("reason", ""))
-    return verdicts
+CALLER = "wo149_finish_tier3"
 
 
 def main() -> None:
@@ -143,45 +94,67 @@ def main() -> None:
     if "probe_verdict" not in fieldnames:
         fieldnames = fieldnames + ["probe_verdict", "probe_reason"]
 
-    verdicts = load_sidecar_verdicts()
-    missing = [r["meeting_url"] for r in rows if r["meeting_url"] not in verdicts]
-    if missing:
-        print(
-            f"{len(missing)} of {len(rows)} candidate(s) have no sidecar verdict yet "
-            f"-- run scripts/probe_tier3_queue.py against them first "
-            f"(e.g. write their URLs to a file and pass --urls-file)."
-        )
-
-    existing_override_keys = _existing_override_keys()
     accepted = 0
     already_queued = 0
+    deferred = 0
     rejected = 0
     no_verdict = 0
     for row in rows:
-        v = verdicts.get(row["meeting_url"])
-        if v is None:
+        # WO-224: this script never probes itself -- it always reads
+        # whatever `scripts/probe_tier3_queue.py` already wrote to the
+        # shared sidecar (cached_verdict() is the one place that read
+        # happens now, same as every other finish script). A candidate
+        # with no sidecar row at all still needs `probe_tier3_queue.py`
+        # run against it first.
+        result = cached_verdict(row["meeting_url"], sidecar_path=DEFAULT_SIDECAR_PATH)
+        if result is None:
             row["probe_verdict"] = ""
             row["probe_reason"] = ""
             no_verdict += 1
             continue
-        verdict, reason = v
-        row["probe_verdict"] = verdict
-        row["probe_reason"] = reason
-        if verdict not in _ACCEPT_VERDICTS:
+        row["probe_verdict"] = result.verdict
+        row["probe_reason"] = result.reason or ""
+        if result.verdict not in ("accept", "flag-long"):
             rejected += 1
             continue
-        final_seed = row["meeting_url"]
-        if final_seed in wo134._existing_tier3_queue_urls():
+
+        meeting_url = row["meeting_url"]
+        source_url = row.get("source_url") or ""
+        pin = parse_pin_row(row.get("pin_row", ""))
+
+        # A duration over 90 minutes goes straight to the deferred file
+        # instead of the queue (WO-205/WO-212's rule), and a candidate
+        # already sitting there (a deliberate removal) never gets
+        # re-queued, whatever verdict it carries now -- this script had
+        # neither check before WO-224.
+        if is_deferred(meeting_url, deferred_path=TIER3_LONG_MEETINGS_DEFERRED_FILE):
+            continue
+        duration = result.duration_seconds or 0.0
+        if duration > DEFER_OVER_SECONDS:
+            if append_deferred_line(
+                meeting_url,
+                source_url=source_url,
+                gov_id=row.get("gov_id", ""),
+                duration_seconds=result.duration_seconds,
+                deferred_path=TIER3_LONG_MEETINGS_DEFERRED_FILE,
+            ):
+                deferred += 1
+            continue
+
+        queued = append_queue_line(meeting_url, source_url, queue_path=TIER3_QUEUE_FILE)
+        if not queued:
             already_queued += 1
             continue
-        hit_url = row.get("source_url") or final_seed
-        source_line = (
-            f"{final_seed}\t{hit_url}" if hit_url != final_seed else final_seed
-        )
-        with wo134.TIER3_QUEUE_FILE.open("a", encoding="utf-8") as qf:
-            qf.write(source_line + "\n")
-        wo134._existing_tier3_queue_urls().add(final_seed)
-        _apply_pin_row(row.get("pin_row", ""), existing_override_keys)
+        if pin:
+            write_pin_row(
+                host=pin["host"],
+                match=pin["match"],
+                gov_id=pin["gov_id"],
+                strength=pin["strength"],
+                source=pin["source"],
+                evidence=pin["evidence"],
+                pins_path=TENANT_OVERRIDES_CSV,
+            )
         accepted += 1
 
     with TIER3_PENDING_CSV.open("w", newline="", encoding="utf-8") as f:
@@ -191,8 +164,8 @@ def main() -> None:
 
     print(
         f"{len(rows)} pending candidate(s): {accepted} appended to the real queue, "
-        f"{already_queued} already queued, {rejected} rejected by probe, "
-        f"{no_verdict} still have no probe verdict."
+        f"{already_queued} already queued, {deferred} deferred (over 90 min), "
+        f"{rejected} rejected by probe, {no_verdict} still have no probe verdict."
     )
 
 

@@ -115,9 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (28)
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
-  The shared tier-3 finish-script template silently drops an…
   Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
@@ -687,39 +686,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** found and worked around in `rtr-deeplink` WO-218,
   2026-09-11; see `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §263.
-### The shared tier-3 finish-script template silently drops an accept-verdict candidate when its URL is already in the probe sidecar — never queues or pins it `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `scripts/wo147_finish_tier3.py`/`wo150_finish_tier3.py`/
-  `wo191_finish_tier3.py`/`wo216_finish_tier3.py` (all copies of the
-  same shape) load `scripts/tier3_auto_transcription_queue_probe.csv`
-  once at start, and for any pending candidate whose `meeting_url` is
-  already in that set, log `already-probed` and `continue` — without
-  ever checking whether the CACHED verdict was `accept` and without
-  ever queuing/pinning it. Under a parallel wave this triggers
-  constantly: several sweeps converge on the same government's newest
-  video independently, so by the time one script's finish step runs,
-  another's has often already probed (but not necessarily queued) the
-  same URL.
-- **Impact:** confirmed live, WO-216 (2026-09-11): 38 of 63 tier-3
-  candidates hit this branch on the first run. Cross-checking the real
-  queue file directly found most had in fact been queued by a sibling
-  WO's own finish step, but 4 genuinely hadn't (`Guadalupe County TX`,
-  `Pembroke Park FL`, `Brandon MB`, `Capital Regional District BC`) and
-  5 pins were missing — a real, silent, accept-verdict candidate that
-  would otherwise never reach the queue.
-- **Next action:** in the shared shape, replace the bare `continue` in
-  the `already_probed` branch with a check against the CACHED verdict:
-  if `accept`/`flag-long` and the URL isn't already in
-  `TIER3_QUEUE_FILE`, queue and pin it exactly like the fresh-probe
-  branch does. Fix once in whichever finish script is touched next,
-  then port to the others per CLAUDE.md's own worker-script-parity rule.
-- **Constraint:** don't just widen the `already_probed` set check —
-  the cached reason/duration must still be logged so a caller doesn't
-  have to guess why a "skip" happened.
-- **History:** found and worked around by hand, `BACKLOG_DONE.md`
-  WO-216, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md`
-  §264.
-
 ### Queue probe has no recipe when CivicClerk delegates to SuiteOne Media — every Vineyard, UT line is "dead" to the ingest gate `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** `scripts/probe_tier3_queue.py` on Vineyard UT's 16 CivicClerk
