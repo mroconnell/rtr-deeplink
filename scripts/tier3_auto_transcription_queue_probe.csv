@@ -1116,7 +1116,6 @@ https://www.youtube.com/watch?v=4pdLtlcWSf0,youtube,yt-dlp-metadata,2743.00,2026
 https://www.youtube.com/watch?v=RSTzxmIsAtM,youtube,yt-dlp-metadata,3958.00,2026-08-21,81047461,1,accept,,6.93,2026-09-11T08:16:18+00:00,,0
 https://www.youtube.com/watch?v=IkbRAZPN910,youtube,yt-dlp-metadata,6448.00,2026-08-06,112455502,1,accept,,7.44,2026-09-11T08:16:20+00:00,,0
 https://www.youtube.com/watch?v=S6VjNNyVj6E,youtube,yt-dlp-metadata,9151.00,2026-08-12,231522183,1,accept,,14.26,2026-09-11T08:16:21+00:00,,0
-<<<<<<< HEAD
 https://www.youtube.com/watch?v=twaih9z6wUg,youtube,yt-dlp-metadata,4528.00,2026-03-26,77708500,1,accept,,2.75,2026-09-11T08:58:55+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=LBURRfhC7e4,youtube,yt-dlp-metadata,3217.00,2026-07-21,113902054,1,accept,,1.84,2026-09-11T08:59:01+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=ofzbtBmWJYM,youtube,yt-dlp-metadata,2329.00,2026-06-10,34724133,1,accept,,1.95,2026-09-11T08:59:07+00:00,bulk_ingest,0
@@ -1199,12 +1198,6 @@ https://www.youtube.com/watch?v=RvHwS-yK-0w,youtube,yt-dlp-metadata,3057.00,2026
 https://vimeo.com/1225126409/7e66dd7217,vimeo,vimeo-oembed,2602.00,2026-09-08,,1,accept,,0.20,2026-09-11T09:35:46+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=hS9SZK27cFs,youtube,yt-dlp-metadata,6115.00,2026-09-10,98046496,1,accept,,2.47,2026-09-11T09:47:48+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=LHgPkUN-zFA,youtube,yt-dlp-metadata,466.00,2023-08-31,35504898,0,accept,,1.70,2026-09-11T09:51:48+00:00,bulk_ingest,0
-=======
-https://www.youtube.com/watch?v=twaih9z6wUg,youtube,yt-dlp-metadata,4528.00,2026-03-26,77708500,1,accept,,2.75,2026-09-11T08:58:55+00:00,bulk_ingest,0
-https://www.youtube.com/watch?v=LBURRfhC7e4,youtube,yt-dlp-metadata,3217.00,2026-07-21,113902054,1,accept,,1.84,2026-09-11T08:59:01+00:00,bulk_ingest,0
-https://www.youtube.com/watch?v=ofzbtBmWJYM,youtube,yt-dlp-metadata,2329.00,2026-06-10,34724133,1,accept,,1.95,2026-09-11T08:59:07+00:00,bulk_ingest,0
-https://www.youtube.com/watch?v=A5izoFeG74E,youtube,yt-dlp-metadata,4021.00,2025-09-10,185620740,1,accept,,2.06,2026-09-11T08:59:13+00:00,bulk_ingest,0
-https://www.youtube.com/watch?v=ZAJZ9oRvMg0,youtube,yt-dlp-metadata,1710.00,2026-02-03,35747089,1,accept,,1.91,2026-09-11T08:59:19+00:00,bulk_ingest,0
 https://kissimmeefl.portal.civicclerk.com/event/2213/media,civicclerk,head+ffprobe,2304.74,2025-04-02,974351585,1,accept,,3.85,2026-09-11T09:55:23+00:00,,0
 https://blainemn.portal.civicclerk.com/event/1323/media,civicclerk,head+ffprobe,4600.03,2026-08-19,1619868568,1,accept,,5.27,2026-09-11T09:55:24+00:00,,0
 https://bluffdaleut.portal.civicclerk.com/event/431/media,civicclerk,head+ffprobe,7836.77,2026-07-23,6863215087,1,accept,,4.36,2026-09-11T09:55:27+00:00,,0
@@ -3204,4 +3197,3 @@ https://lakecounty.granicus.com/MediaPlayer.php?view_id=1&clip_id=853,granicus,h
 https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=93708097-20f9-4e71-8dcd-221550f099f5&Agenda=Agenda&lang=English,escribe,hls-master+variant,2069.01,,,1,accept,,1.96,2026-09-11T11:18:17+00:00,,0
 https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3675,granicus,hls-master+variant,3509.90,,,1,accept,,3.72,2026-09-11T11:18:28+00:00,,0
 https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3674,granicus,hls-master+variant,1287.98,,,1,accept,,3.33,2026-09-11T11:18:33+00:00,,0
->>>>>>> 297b879 (WO-205: 106 long tier-3 meetings swapped for shorter same-government meetings (~235 Whisper hours saved); .m4a and YouTube-embed probe recipes)

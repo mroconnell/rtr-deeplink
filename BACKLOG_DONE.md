@@ -62,7 +62,6 @@ timeouts); 3 per tenant found nearly everything the first two did.
 `search --platform utah_pmn --retry-none` then `apply --apply` — 43 of
 the recovered PMN lines are long. Re-queue the deferred file for depth
 once the breadth pass is through the queue.
->>>>>>> 297b879 (WO-205: 106 long tier-3 meetings swapped for shorter same-government meetings (~235 Whisper hours saved); .m4a and YouTube-embed probe recipes)
 
 ## WO-206: re-keyed the six pages the blank-match Vimeo pin mislabeled "Oak Bluffs, MA," and minted the Pennsylvania Public Utility Commission [Done 2026-09-11]
 
