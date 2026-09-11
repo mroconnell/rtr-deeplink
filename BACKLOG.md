@@ -115,8 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (28)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
+  The shared tier-3 finish-script template silently drops an…
   Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
@@ -146,8 +147,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (28)
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
     [JUST-DO-IT] 3 real CivicPlus pages are live right now with a blank…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
-  Production actions only Ryan should take  (9)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
+  Production actions only Ryan should take  (10)
+    [HUMAN] 3 live Archive pages from WO-216's sweep are keyed to the…
     [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
@@ -160,8 +162,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (136)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (137)
   [NEEDS-AUDIT] Two manual_override town pages resolve, via a fresh…
+  [NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw…
   [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
@@ -684,6 +687,38 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** found and worked around in `rtr-deeplink` WO-218,
   2026-09-11; see `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §263.
+### The shared tier-3 finish-script template silently drops an accept-verdict candidate when its URL is already in the probe sidecar — never queues or pins it `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/wo147_finish_tier3.py`/`wo150_finish_tier3.py`/
+  `wo191_finish_tier3.py`/`wo216_finish_tier3.py` (all copies of the
+  same shape) load `scripts/tier3_auto_transcription_queue_probe.csv`
+  once at start, and for any pending candidate whose `meeting_url` is
+  already in that set, log `already-probed` and `continue` — without
+  ever checking whether the CACHED verdict was `accept` and without
+  ever queuing/pinning it. Under a parallel wave this triggers
+  constantly: several sweeps converge on the same government's newest
+  video independently, so by the time one script's finish step runs,
+  another's has often already probed (but not necessarily queued) the
+  same URL.
+- **Impact:** confirmed live, WO-216 (2026-09-11): 38 of 63 tier-3
+  candidates hit this branch on the first run. Cross-checking the real
+  queue file directly found most had in fact been queued by a sibling
+  WO's own finish step, but 4 genuinely hadn't (`Guadalupe County TX`,
+  `Pembroke Park FL`, `Brandon MB`, `Capital Regional District BC`) and
+  5 pins were missing — a real, silent, accept-verdict candidate that
+  would otherwise never reach the queue.
+- **Next action:** in the shared shape, replace the bare `continue` in
+  the `already_probed` branch with a check against the CACHED verdict:
+  if `accept`/`flag-long` and the URL isn't already in
+  `TIER3_QUEUE_FILE`, queue and pin it exactly like the fresh-probe
+  branch does. Fix once in whichever finish script is touched next,
+  then port to the others per CLAUDE.md's own worker-script-parity rule.
+- **Constraint:** don't just widen the `already_probed` set check —
+  the cached reason/duration must still be logged so a caller doesn't
+  have to guess why a "skip" happened.
+- **History:** found and worked around by hand, `BACKLOG_DONE.md`
+  WO-216, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md`
+  §264.
 
 ### Queue probe has no recipe when CivicClerk delegates to SuiteOne Media — every Vineyard, UT line is "dead" to the ingest gate `[JUST-DO-IT]` `[EASY]`
 
@@ -1227,6 +1262,13 @@ of human step they need.
 
 ### Production actions only Ryan should take
 
+- **[HUMAN] 3 live Archive pages from WO-216's sweep are keyed to the wrong government's video and need `POST /internal/admin/delete-pages` -- dry-run only, the real call blocked by the auto-mode classifier.**
+  - **Issue**: WO-216's own hand-check (oEmbed/yt-dlp title + channel, every real find) caught 3 already-live tier-1/2 pages where a bare-YouTube-channel-scan or same-named-domain hit resolved a different real body's content, not this government's own: `district-of-columbia-dc-2026-08-20-2026-dcps-back-to-school-information-session` (really D.C. Public Schools, not DC's general government), `city-of-taylor-tx-2026-08-31-taylor-council-connection-august-27-2026-meeting-re` (really the City of Taylor, TX -- `taylortx.gov` was wrongly recorded as Taylor County, TX's own domain; Taylor County's real site is `www.taylorcounty.texas.gov`, confirmed live), `oak-grove-village-village-mo-2026-08-18-planning-zoning-8-18-2026` (really the City of Oak Grove, MO -- `cityofoakgrove.com` was wrongly recorded as Oak Grove Village, MO's own domain, pop 405 vs. a much larger same-named city).
+  - **Impact**: three live pages show the wrong government's real content under another government's name/URL.
+  - **Next action**: `POST /internal/admin/delete-pages` with `dry_run=false` for the 3 slugs above (each already dry-run confirmed: found, title matches). `jurisdiction_coverage.csv` is already corrected for all 3 (`reject_reason=wrong-domain-mapping`, Taylor County's domain promoted to the real one; the other two kept their existing domain per CLAUDE.md's never-blank-a-domain rule, no confirmed replacement found this pass). Owner bodies logged to `rtr-business/research/wo216_owner_bodies.csv` for a later mint pass (D.C. Public Schools, City of Taylor TX, City of Oak Grove MO, plus a 4th non-live one, Town of Clinton NY -- Dutchess County).
+  - **Constraint**: slug-only, exact match, same shape as every other `[HUMAN]` delete entry in this section.
+  - **History**: `BACKLOG_DONE.md` WO-216, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §264.
+
 - **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
   - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
     video its retry-set/one-hop pipelines produced and found the
@@ -1423,6 +1465,12 @@ of human step they need.
   - **Next action**: trace `app/utils/gov_registry/resolver.py`'s national-table rung for a raw name like "Ulster Town, NY" or "Lincoln, ME" and confirm whether it's genuinely falling through to a county match (and why a town-type name string reaches the county table at all), or whether this is an artifact specific to these two page's stored `jurisdiction` strings. Check for other town/county name pairs with the same shape before deciding this is systemic.
   - **Constraint**: don't touch either page — both are correctly protected `manual_override` rows and need no fix themselves; this is about the ladder's own county-matching behavior for a future unprotected page with the same name collision.
   - **History**: found by WO-215's dry run, 2026-09-11; see `BACKLOG_DONE.md`'s WO-215 entry.
+- **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` raises a raw `UnicodeDecodeError` on at least one real tenant, aborting the whole candidate instead of skipping it.**
+  - **Issue:** WO-216 (2026-09-11) hit `RowError: civicplus: resolve raised: 'utf-8' codec can't decode byte 0xe2 in position 10: invalid continuation byte` resolving Walworth town, WI's CivicPlus AgendaCenter page. The byte sequence (`0xe2` needing a continuation) suggests a mis-decoded smart quote or em-dash in page content the adapter reads as UTF-8 without a fallback.
+  - **Impact:** the whole candidate fails as a hard error rather than being skipped/retried on the next hit, the same shape `civicplus.py`'s other known encoding gap (see the adjacent `[NEEDS-AUDIT]` entry on its docstring's fallback claim) already flags — Walworth's own government was never resolved this run.
+  - **Next action:** reproduce against Walworth's live AgendaCenter page, find which response `civicplus.py` decodes as strict UTF-8, and add the same encoding-fallback handling used elsewhere in that adapter (or a `try`/`except UnicodeDecodeError` that degrades to a skip, not a `RowError`).
+  - **Constraint:** don't swallow the error silently — log it so a future sweep can tell "genuinely no content" apart from "this tenant's encoding broke the adapter."
+  - **History:** found live, `BACKLOG_DONE.md` WO-216, 2026-09-11.
 
 - **[NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a WRONG per-video `tenant_overrides.csv` pin still live alongside or instead of the correct one.**
   - **Issue**: WO-211 (2026-09-11) collected every "wrong government" finding from WO-183/184/191/196/199/202/206 into `rtr-business/research/wo211_owner_channels.csv` and found that several of WO-184's continuation's own corrections (the video really belongs to St. Tammany Parish LA, Dublin GA, Allegan County MI, Delta County MI, Van Buren County MI, Deerfield MA, or Mountain Iron MN, not the small government the sweep originally found it under) never got their file-level pin cleaned up -- the live page is correct (either it already resolved right, or a human ran a targeted override), but `tenant_overrides.csv` still carries a row pointing the same video id at the ORIGINAL wrong government.

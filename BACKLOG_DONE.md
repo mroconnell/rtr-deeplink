@@ -235,6 +235,106 @@ that needs a deploy.
 Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
 §263. Files: `research/wo218_report.csv` (134 rows), `research/
 wo218_apply_to_jc.py`, `scripts/wo218_ladder_sweep.py`.
+## WO-216: ladder sweep of the 417 US (+34 Canadian) governments with a domain never tested -- most already had a page, 74 real finds hand-checked, 8 caught wrong [Done 2026-09-11]
+
+**What was tested and why.** The Gov Coverage dashboard showed 417 US
+governments (297 cities/towns, 53 townships, 67 counties) plus 34
+Canadian ones with a domain on file but `test_status=untested`. Ryan's
+standing rule: chase every straggler, since the list is finite and even
+"no video" is a useful, recorded answer. This work order built the
+candidate list straight from the coverage registry (re-derived and
+confirmed live: 417 + 34, matching the brief exactly), then ran the
+same access ladder and ingest pipeline earlier sweeps (WO-147, WO-134,
+WO-191) already use, adding two things on top: an alternate-domain retry
+(try a government's other known domain when the primary finds nothing
+at all) and an automatic pre-ingest check that screens out a video
+belonging to the wrong real body before it can ever become a page.
+
+**Result, all 451 governments:**
+
+| Result | Count of 451 | What it means |
+| Already had a page | 321 | the government's own record was never marked tested, but a real page already existed |
+| No usable link found | 26 | reached the site fine, no meeting or video anywhere |
+| Video, no captions, queued | 58 | a real video, confirmed playable, waiting for the cloud worker to transcribe it |
+| Meeting without video | 10 | a real meeting or agenda page, no video |
+| Captions available, page live now | 11 | a real transcript, live today |
+| Blocked | 5 | could not read the government's site at all |
+| Video found but rejected | 5 | a video existed but wasn't in a shape we can verify (a Google Drive link, a bare share URL, a dead link) |
+| Wrong government, caught by hand-check | 4 | the video really belonged to a different, same-named government |
+| A real error | 4 | a removed video, a dead link, one adapter bug (below) |
+| Off-mission, caught by hand-check | 2 | a real video existed, but it wasn't a real government meeting |
+
+Most governments in this list (321 of 451) already had a page. That is
+the same "identity join" gap `docs/COVERAGE_HANDOVER.md` describes —
+real coverage the research file never learned about — not new work.
+Of the rest, 11 governments got a real, live page today with a full
+transcript, and 58 more have a real video now waiting in the
+transcription queue.
+
+**Every real find was checked by hand, twice.** First, an automatic
+filter (comparing the video's title and channel against phrases like
+"school board," "chamber of commerce," or a state DOT office) blocked
+an obvious wrong match before it could ever be ingested. Second, every
+video that passed that filter was still read by hand — its real title
+and channel, fetched directly, not assumed.
+
+| Hand-check result | Count of 82 |
+| Right (real meeting, right government) | 74 |
+| Wrong government entirely | 5 |
+| Right channel, wrong video | 2 |
+| Off-mission junk on a shared media account | 1 |
+
+The 8 wrong ones, named, with what the video actually was:
+
+| Government | What the video really was |
+| District of Columbia | A D.C. Public Schools "Back to School" info session, not DC's own government |
+| Taylor County, TX | A City of Taylor council meeting — the county's recorded domain was really the city's site |
+| Oak Grove Village, MO (pop 405) | A City of Oak Grove meeting — a larger, different Missouri city of a similar name |
+| Clinton village, NY (pop 1,599) | A Town of Clinton meeting (Dutchess County) — a different government of a similar name |
+| Warren County, GA | A Chamber of Commerce event video, not a government meeting at all |
+| Union County, NJ | A community workshop, not a Board of Commissioners meeting |
+| Montgomery County, NC | A "this stream has moved" placeholder, not a real recording |
+| Lake Santeetlah, NC (pop 41) | An unrelated video (a nuclear-waste-facility release announcement) sitting on a shared vendor media account |
+
+All 8 were caught and fixed before or right after they could go live.
+Three had already become live pages (District of Columbia, Taylor
+County, Oak Grove Village) — those need a human to delete them (see
+Needs a human, below); the other 5 were still waiting in the queue and
+were simply removed before they were ever queued or pinned.
+
+**Caution.** While finishing the tier-3 queue step, a real gap turned
+up in the shared probing script every sweep since WO-147 has copied: if
+a video was already checked earlier that same evening by a different,
+parallel work order, this script skipped it entirely instead of still
+adding it to the real queue. Checked by hand: of 63 candidates, 4 real
+ones and 5 pins had been silently dropped this way. All 4 added to the
+queue and all 5 pins written by hand this session; the script itself
+still needs the fix (filed in `BACKLOG.md`, "Ship next"). Separately, 2
+of the videos found (Pembroke Park, FL and a British Columbia regional
+district) turned out to already be on a list of meetings a past session
+deliberately left out of the queue for being too long — left out again,
+per the standing "a line removed on purpose stays removed" rule. One
+real, reproducible adapter bug also turned up and is filed separately:
+a CivicPlus page (Walworth, WI) that can't be read because of a raw
+text-encoding error in the adapter, not a content problem.
+
+**Recommendation.** Delete the 3 wrong live pages named above (filed as
+a `[HUMAN]` entry — the sandbox here can preview the delete but not run
+it for real). Four real "owner body" leads — D.C. Public Schools, City
+of Taylor TX, City of Oak Grove MO, Town of Clinton NY — are recorded
+for a later mint pass if Ryan wants them as their own governments.
+
+**Deploy status.** The 11 live pages are live now — ingest goes straight
+to production, no deploy needed. The 58 real queue lines and the shared-
+host pins are on `main` but **not live** until the resolver and both
+transcription workers are redeployed.
+
+**History.** `rtr-business/research/wo216_report.csv` (all 451 rows),
+`wo216_candidates.csv`, `wo216_apply_to_jc.py`, `wo216_owner_bodies.csv`,
+`wo216_tier3_pending.csv` / `wo216_tier3_finish_log.csv`; `rtr-business/
+research/ENUMERATION_METHODS.md` §264 for the full method and every
+number above; `rtr-deeplink/scripts/wo216_build_candidates.py`,
+`wo216_access_ladder_sweep.py`, `wo216_finish_tier3.py`.
 
 ## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
 
