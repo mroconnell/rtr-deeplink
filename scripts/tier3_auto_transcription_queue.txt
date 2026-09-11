@@ -2785,3 +2785,8 @@ https://glendale.granicus.com/MediaPlayer.php?clip_id=8524&view_id=2
 https://www.youtube.com/watch?v=sWUkyx7R7XA	https://youtube.com/live/sWUkyx7R7XA?feature=share
 https://www.youtube.com/watch?v=I0PSbsgUEMg	https://youtu.be/I0PSbsgUEMg?list=PL1FNTHBBwsYsZDEGIw0wQo2wEYCgu_qG5
 https://www.youtube.com/watch?v=RQ3pxTLZdZo	https://youtu.be/RQ3pxTLZdZo?si=F5vj7kM9cOrddCZ1
+https://pewaukeewi.portal.civicclerk.com/event/1245/media	https://pewaukeewi.portal.civicclerk.com/
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238	https://yazoo.granicus.com/ViewPublisher.php?view_id=1
+https://www.utah.gov/pmn/sitemap/notice/1051133.html	https://magna.utah.gov/AgendaCenter
+https://cloud.castus.tv/vod/weston/video/6a9884618f04390002ee839d?page=HOME	https://westonma.gov/agendacenter
+https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3676

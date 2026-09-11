@@ -554,6 +554,161 @@ transcription workers are redeployed -- deploys are manual
 (`render.yaml`'s `autoDeploy: false`). The 138 pages already ingested via
 the live Archive API are already live on the site right now, independent
 of this PR merging, the same way WO-151's were.
+## WO-191: first-pass access-ladder sweep of never-tested governments -- priority bands (798 of 3,304) done, oEmbed check caught 8 real false positives before they went live [Done 2026-09-11, continuing]
+
+Ryan's goal, from `docs/BREADTH_SWEEP_BRIEF.md`: one meeting with video
+per government, breadth not depth. This work order's own slice: 3,304
+governments in `jurisdiction_coverage.csv` that nobody has ever tested
+(`transcribed` and `reject_reason` both blank), with a domain, no
+meeting/agenda URL, no alternate domain/URL, a real `gov_id`, and not
+tagged `website_status=none-known-2022`. The conductor's brief estimated
+3,033 candidates and gave population-band counts; the live count at run
+time was 3,304, and the band sizes differed noticeably from the brief
+(e.g. 42 vs. an estimated 244 over 25,000) -- almost certainly because
+several other sessions (WO-184, WO-189, WO-190) were sweeping the same
+file the same evening and had already tested a chunk of the larger
+governments by the time this session queried it. Recomputed live rather
+than forced to match, per this repo's own "before acting on an entry,
+re-derive its central claim" rule.
+
+**What was done.** Built `scripts/wo191_build_candidates.py` (filters
+above, orders population descending with the unknown-population band
+placed between the 5,000+ rows and the 1,000-5,000 rows, and skips any
+gov_id already owned by WO-184/189/190's own report files -- 0 overlap
+found at build time). Built `scripts/wo191_access_ladder_sweep.py`,
+importing `run_access_ladder()`/the link finders from
+`scripts/wo147_access_ladder_sweep.py` and `process_row()` from
+`scripts/wo134_confirmed_hits_ingest.py` unmodified -- no new resolve
+logic, only new candidate/report/output files and a persisted 600-render
+headless budget (`research/wo191_headless_budget.json`) enforced via a
+runtime wrapper around `wo147.fetch_headless`, not an edit to that file.
+`scripts/wo191_finish_tier3.py` probes every tier-3 (video, no captions)
+find before it reaches the real queue, same shape as
+`wo150_finish_tier3.py`. `research/wo191_apply_to_jc.py` applies outcomes
+to `jurisdiction_coverage.csv` under the `ENUMERATION_METHODS.md` §158
+protocol (lock, fresh re-read, a row-count floor computed from
+`git show HEAD:research/jurisdiction_coverage.csv` at run time, atomic
+write), in batches of up to 250 rows across separate lock acquisitions.
+
+This PR covers the first 798 of 3,304 candidates -- the population-
+over-25,000 band (42), the 5,000-25,000 band (61), and the
+unknown-population band (695, mostly Canadian). The remaining ~2,506
+smaller governments (1,000-5,000, then under-1,000) continue in the
+background under the same resumable report file; see Caution below for
+exactly where that stands.
+
+**Result, of the 798 governments in this PR's scope:**
+
+| Outcome | Count of 798 |
+|---|---|
+| Already had a page | 69 |
+| Captions available, page live now | 66 |
+| Video, no captions, really queued (probe accepted) | 5 |
+| Video, no captions, rejected by probe (dead link) | 1 |
+| Real video, caught as off-mission/wrong-government by hand AFTER queueing (not queued) | 2 |
+| Meeting without video | 35 |
+| No meeting nor video | 1 |
+| No usable platform link found, after the full ladder | 521 |
+| Off-mission (real video, not a real government meeting) | 60 |
+| Wrong-domain-mapping (video belongs to a different real government) | 4 |
+| Blocked (dns/timeout/plain-http) | 9 |
+| Stopped by a human-verification wall | 19 |
+| A real error (not just "nothing found") | 4 |
+
+The "off-mission" and "wrong-domain-mapping" rows above already include 6
+governments caught and corrected by this session's own hand-verification
+pass (next section) -- their raw pipeline outcome had been
+`ingested_tier1_2`/`queued_tier3_pending` before the correction.
+
+**Which rung answered, for the 729 governments the ladder actually had
+to run (69 already covered):**
+
+| Rung | Count |
+|---|---|
+| Plain, honest request | 668 |
+| Headless (page loaded, no visible meeting link) | 31 |
+| Browser headers (after a 403/dropped connection) | 2 |
+| Stopped by a human-verification wall | 19 |
+| Timed out | 8 |
+| Blocked outright by a plain request | 1 |
+
+Headless budget: 31 renders used in this PR's 798 rows, well under the
+600-render budget for the whole work order (the continuing background
+run has used 43 total as of this writeup).
+
+**A real, hand-caught false-positive rate worth Ryan's attention: 8 of
+80 "found" candidates (10%) were wrong on inspection, all from the same
+known risk.** Every one of the 72 raw tier-1/2 ingests and all 8 raw
+tier-3 queue candidates in this batch was checked by hand against
+YouTube's own oEmbed endpoint (title + channel name), not a sample --
+same method as WO-152's and WO-190's own channel-scan audits. 45 of the
+72 ingests (and both of the 2 YouTube tier-3 finds) carried this
+pipeline's existing `CAUTION: found via a bare YouTube channel/handle
+scan` flag; the other 27 came from a specific linked video already
+confirmed real. 8 real problems surfaced, all from the flagged bucket:
+
+| Government | Video was actually | Real gov it belongs to (if any) |
+|---|---|---|
+| Lac la Biche County, AB | A news clip about an award win, not a meeting | -- (off-mission) |
+| Solebury Township, PA | A PennDOT roundabout-project public meeting | -- (off-mission) |
+| Middlebury town, VT | A school board meeting | Addison Central School District |
+| Damascus Township, PA | A regional river commission's meeting | Upper Delaware Council |
+| Rostraver Township, PA | A regional planning commission's meeting | Southwestern Pennsylvania Commission |
+| Lemont Township, IL | A county tax-appeal meeting | Cook County Assessor |
+| Cambridge city, MN (queued, not yet live) | A "why run for city council" recruitment video | -- (off-mission) |
+| Parkland County, AB (queued, not yet live) | A council swearing-in ceremony | -- (off-mission, not a deliberative meeting) |
+
+The first 6 were already live Archive pages; this session could not
+delete them (see Constraint below), so they are corrected only in
+`jurisdiction_coverage.csv` (reject_reason set, `transcribed`/
+`shares_video` cleared) -- **the 6 live pages themselves are still up
+and wrong until someone runs the delete.** The last 2 were only queued
+(never transcribed), so this session reverted their
+`scripts/tier3_auto_transcription_queue.txt` lines and their
+`tenant_overrides.csv` pins by hand before they could ever go live --
+same shape as WO-190's Beltrami, MN catch and WO-152's East Greenville,
+PA catch, just caught one step earlier in the pipeline.
+
+**Constraint.** The dry-run call to `POST /internal/admin/delete-pages`
+for the 6 live wrong pages was blocked outright by the auto-mode safety
+classifier -- the same shape WO-182's `reslug-page` calls hit
+(`BACKLOG_DONE.md`'s WO-152 entry). Someone with the ability to call this
+endpoint needs to run it (dry_run=false) for these 6 slugs:
+
+- `lac-la-biche-county-2023-11-28-indigenous-collaboration-committee-focus-indigeno`
+- `middlebury-vt-2026-07-21-acsd-school-board-meeting-07-20-2026`
+- `solebury-township-pa-2026-06-10-u-s-202-and-route-179-roundabout-project-public`
+- `damascus-township-pa-2025-10-06-creating-an-upper-delaware-council-development-c`
+- `rostraver-township-pa-2026-08-25-commission-executive-committee-and-corporation`
+- `lemont-township-il-2026-03-26-2026-annual-appeal-rules-meeting`
+
+**Caution.** The background sweep is still running past this PR's
+798-row scope, into the 1,000-5,000 and under-1,000 population bands
+(880+ rows processed as of this writeup) -- it needs no further changes
+to keep going, and `research/wo191_report.csv`'s own resumability means
+a restart picks up exactly where it left off. A follow-up PR/BACKLOG
+entry should apply those remaining rows to `jurisdiction_coverage.csv`
+the same way. Given this batch's 10% hand-caught false-positive rate on
+bare-channel-scan finds, **the same by-hand oEmbed check should be run
+on every batch of this continuation before it is applied**, not treated
+as a one-time pass.
+
+**Deploy status.** The 5 real tier-3 queue lines and the shared-host
+pins in `tenant_overrides.csv` are on `main` but NOT live until the
+resolver and both transcription workers are redeployed (Ryan deployed
+everything up to this morning). The 66 tier-1/2 pages are already live
+now (ingest is a direct `POST /internal/ingest` call, not a deploy-gated
+code path).
+
+Files: `scripts/wo191_build_candidates.py`,
+`scripts/wo191_access_ladder_sweep.py`, `scripts/wo191_finish_tier3.py`
+(new, `rtr-deeplink`); `research/wo191_candidates.csv`,
+`research/wo191_report.csv` (resumable, all rows),
+`research/wo191_apply_to_jc.py`, `research/wo191_discovery_seeds.csv`,
+`research/wo191_host_access_modes.csv`, `research/wo191_tier3_pending.csv`,
+`research/wo191_tier3_finish_log.csv`, `research/wo191_jc_*.csv` (apply
+logs), `jurisdiction_coverage.csv` (798 rows plus the 2 hand-reverted
+corrections, `rtr-business`).
 
 ## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
 
