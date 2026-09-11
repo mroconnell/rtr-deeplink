@@ -104,8 +104,7 @@ verbatim prefix of a real line further down, so any entry opens with
 ```text
 
 Standing decisions — do NOT re-raise  (9)
-  Guessing a bare tenant name for a small government is unsafe unless…  (1)
-    [JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a…
+  Guessing a bare tenant name for a small government is unsafe unless…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
   Never run an unbounded scan or bulk workload against the production…
@@ -163,7 +162,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (144)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (146)
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
   [NEEDS-AUDIT] `suspected_video_provider` is wrongly set to…
@@ -268,7 +267,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (144)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (43)
+  Adapter & platform gaps  (45)
     [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
@@ -312,6 +311,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (144)
     [EXAMPLE] Streamline Website Solutions has no confirmed real example…
     [LATER] A bare pasted Wistia media URL (no channel context) can show…
     [NEEDS-AUDIT] A jurisdiction string naming its state as a full word…
+    [NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket…
+    [NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't…
 
 Reliability, ops & cost  (15)
   `[NEEDS-AUDIT]` A sweep script's per-government wall-clock cap can't…
@@ -459,13 +460,6 @@ Parked deliberately — allowed back `[PARK]`  (4)
   cohort of small/obscure governments; don't expect a materially
   different rate without a stronger signal than bare-name guessing.
 - **History**: `BACKLOG_DONE.md`'s WO-168 entry, 2026-09-10.
-
-- **[JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a double-encoded ñ, so the page display name reads "CaÃ±on City".**
-  - **Issue**: `app/utils/jurisdiction_data/us_places.csv` has 3 rows (`0811810` Cañon City CO, `0639003` La Cañada Flintridge CA, `3525170` Española NM) and `us_counties.csv` has 17 (`grep -c 'Ã'`) where UTF-8 was decoded as Latin-1 and re-encoded. Found 2026-09-10 pinning `@canoncitygov`: the pin resolved to the right id, and the backfill wrote "CaÃ±on City, CO" as the display name.
-  - **Impact**: wrong display name and hub slug on every page keyed to those 20 governments; a plain-English worklist name "Cañon City, CO" still resolves (the resolver folds accents), so identity is right and only the display is wrong.
-  - **Next action**: fix the 20 rows in place (decode once), re-run `backfill_gov_id.py` for their hosts, add a test that no national-table name contains "Ã".
-  - **Constraint**: regenerate from the Census source rather than hand-edit if the table is ever rebuilt; the generator is where the bug lives.
-  - **History**: found 2026-09-10 during the shared-host pin pass.
 
 - **Issue:** Ryan's rule, 2026-09-09, for every enumeration/ingest sweep:
   only meetings WITH video become Archive pages. Tier 1/2 (captions
@@ -4621,6 +4615,20 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Next action**: grep the Archive export's `jurisdiction_raw` column for `County [A-Z][a-z]+$` (a spelled-out state word immediately after "County", no trailing 2-letter code) to size the population before deciding whether to widen `_split_state()`/`_strip_county_qualifier()` or handle it as a narrower one-off. This specific page already has a `tenant_overrides.csv` authoritative pin (`us:cousub:2613962460`, source `wo198`) so it isn't currently wrong in production once that pin's PR deploys — this entry is about the underlying extraction gap, not this one page.
   - **Constraint**: don't widen `_split_state()`'s state-word matching without checking it against `us_states.csv`'s full name list first — a bare word match risks eating a real word that happens to also be a US state name (e.g. a government literally named "Georgia" something).
   - **History**: `BACKLOG_DONE.md`, WO-198, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` (WO-198 section).
+
+- **[NEEDS-AUDIT] `scripts/build_jurisdiction_data.py`'s blanket `.decode("latin-1")` on raw Census source files double-corrupts the handful of rows whose real source bytes are UTF-8 — confirmed live, 23 real government names affected, root cause traced but not fixed at the generator.**
+  - **Issue**: found 2026-09-10 investigating why `lacanadaflintridge-ca.granicus.com` never resolves a gov_id — `us_places.csv` stored the government's real name as `La CaÃ±ada Flintridge city` instead of `La Cañada Flintridge city`. That's classic double-encoding: the real source bytes for this row are UTF-8 (0xC3 0xB1 for "ñ"), but `build_jurisdiction_data.py` (line ~92/94) blanket-decodes every raw Census source file as `latin-1`, so those two UTF-8 bytes get read as two separate Latin-1 characters and re-encoded wrong. Same corruption hit 22 more rows across `us_places.csv`, `us_counties.csv` (mostly Puerto Rico municipios — Bayamón, Mayagüez, Añasco, etc. — plus Doña Ana County, NM), and `us_school_districts.csv`. Re-confirmed 2026-09-11: the generator script is unchanged, still has this bug.
+  - **Impact**: a corrupted name can never validate against real page text or a subdomain hint, so every one of these 23 governments was permanently unmatchable by name regardless of URL-parsing quality — not a rare edge case, since Puerto Rico's entire county-equivalent table (78 municipios) is disproportionately exposed (17 of 78 already confirmed corrupted).
+  - **Next action**: the 23 already-corrupted rows were fixed directly in the checked-in CSVs (PR #855, 2026-09-10, `BACKLOG_DONE.md`) — this entry is about the generator itself, which will re-corrupt the same rows (and any other UTF-8-sourced row not yet noticed) on the next regeneration. Needs a per-row encoding detection (try UTF-8 first, fall back to `latin-1`, or an explicit list of known-UTF-8 source rows) rather than the current blanket decode — the fix must not touch the thousands of rows that genuinely are Latin-1 and decode correctly today.
+  - **Constraint**: don't blanket-switch the decode to `utf-8` either — that would break whichever rows are genuinely Latin-1 (the Census source files predate consistent UTF-8 encoding, hence the original choice). Needs verification against real source bytes, not a guess.
+  - **History**: gov-id enumeration audit, 2026-09-10; `BACKLOG_DONE.md`'s "Fixed double-encoded diacritics" entry. This entry itself was silently dropped from `BACKLOG.md` by a later merge and restored 2026-09-11 from git history — see `BACKLOG_DONE.md`'s recovery note.
+
+- **[NEEDS-AUDIT] `finalize_jurisdiction()`'s table validation doesn't fold diacritics, so a real government's own page text (almost always spelled without the accent) can't match its own correctly-accented Census table entry.**
+  - **Issue**: confirmed live 2026-09-10 on La Cañada Flintridge, CA — even after fixing the table's own encoding corruption (see the sibling entry above), the government's real Granicus page spells its name "La Canada Flintridge" (no tilde, confirmed via the page's own meta description). `finalize_jurisdiction("City of La Canada Flintridge", ...)` returns `confidence="unverified"`, while the identical string WITH the accent returns `confidence="validated"` — a byte-for-byte match is required, so the overwhelmingly common real-world spelling never validates against the table's official one. (Separately, `_table_lookup()`'s own subdomain-tier matching for `validated_subdomain_extract()` appears to fold accents already — `canoncityco` → `Canon City` succeeded post-fix without the accent — so the inconsistency is specifically in `finalize_jurisdiction()`'s own validation path, not universal across this file.) Re-confirmed 2026-09-11: `finalize_jurisdiction()` is unchanged, still returns `unverified` for the accent-free spelling.
+  - **Impact**: every government with a diacritic in its official Census name (not just the 23 rows the sibling entry fixed — this is the more general, ongoing gap) will keep failing to auto-resolve from real page text, landing as "Unknown Jurisdiction" or requiring a manual pin, purely because real-world text drops accents and the validator doesn't account for that.
+  - **Next action**: add accent-folding (e.g. NFKD-normalize and strip combining marks) to whichever comparison `finalize_jurisdiction()`'s table-validation step uses, so an accent-free candidate can still validate against an accented table row — mirroring whatever `_table_lookup()` already does for the subdomain tier. Needs care: `finalize_jurisdiction()` is heavily tuned (see this file's own tournament-testing comments), so verify against the existing test suite and the tournament data before changing it, not just the one confirmed case.
+  - **Constraint**: don't fold accents in a way that creates a new collision (two distinctly-named real governments that only differ by a diacritic) — check for that before shipping.
+  - **History**: gov-id enumeration audit, 2026-09-10. This entry itself was silently dropped from `BACKLOG.md` by a later merge and restored 2026-09-11 from git history — see `BACKLOG_DONE.md`'s recovery note.
 
 ## Reliability, ops & cost
 

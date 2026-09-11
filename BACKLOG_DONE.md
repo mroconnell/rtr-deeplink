@@ -1,5 +1,106 @@
 # Backlog — done
 
+## Recovered two BACKLOG_DONE entries a later merge silently dropped [Note 2026-09-11]
+
+Both entries below (Granicus meta-description extraction, double-encoded
+diacritics) were originally written 2026-09-10 in the same PRs that
+shipped the fixes, and were confirmed present on `main` at that time.
+By 2026-09-11 both had vanished from `BACKLOG.md` *and* `BACKLOG_DONE.md`
+-- one of the many BACKLOG-touching merges in between (dozens of
+concurrent sessions, mostly WO-numbered sweeps) must have resolved a
+conflict by picking the wrong side wholesale rather than unioning the
+content. The underlying code/data fixes themselves were never affected
+-- both re-verified live on `redtaperecordings.com` on 2026-09-11 --
+this was a documentation loss only. Re-added here from this session's
+own git history rather than guessed. Worth flagging to whoever reviews
+BACKLOG merge conflicts: a stale re-opened entry (see the "20 rows...
+still needs fixing" entry this session had to remove a second time) is
+the visible symptom, but the loss can go either direction silently.
+
+## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
+
+Ryan asked why a batch of ~40 Granicus pages (all the newer
+`/player/clip/{id}` URL format, no `view_id`) archived as "Unknown
+Jurisdiction." Confirmed live: that page format has no jurisdiction
+text anywhere in its visible body, and the existing RSS-channel-title
+lookup can't fire without a `view_id`. But every Granicus page's own
+`<meta name="description">` follows the same template regardless of
+tenant type -- "Live and Recorded Public meetings of {meeting title}
+for {ORGANIZATION NAME}" -- confirmed live on 4 distinct real tenants:
+a water district (`sfwmd` → "South Florida Water Management
+District"), a transit authority (`rideuta` → "Utah Transit Authority
+(UTA)"), a council of governments (`scag` → "Southern California
+Association of Governments"), and an ordinary city (`pcbgov` →
+"Panama City Beach").
+
+**What was done.** Added a new fallback tier to `granicus.py`, tried
+only after page-text extraction and subdomain humanization both
+decline (never overriding the higher-trust RSS channel title when a
+`view_id` is present). Rejects a domain-shaped result the same way the
+RSS-title tier already does -- confirmed live that `lcd.granicus.com`'s
+own meta description echoes its own hostname ("...for
+lcd.granicus.com"), the identical misconfigured-customer shape already
+guarded against on that tenant's RSS title. Special districts still get
+no auto-assigned `gov_id` (by design -- no national table covers them),
+but now get their real name instead of a bare placeholder, which feeds
+the mint/pin worklist with something a human can act on. Fixture-backed
+regression tests added (extraction, domain-shaped rejection, priority
+vs. the RSS channel title); full suite (2920) and `ruff` clean. PR:
+"Granicus: extract organization name from meta description" (#857).
+
+**Confirmed live in production 2026-09-11**: re-resolving
+`sfwmd.granicus.com/player/clip/491` produces "South Florida Water
+Management District, FL" with a working `/j/` hub link -- the fix is
+deployed and actively firing on real traffic, not just tested locally.
+
+## Fixed double-encoded diacritics in 5 gov-registry data files: 23 real government names [Done 2026-09-10]
+
+Found chasing Ryan's "why is `lacanadaflintridge-ca.granicus.com`
+Unknown Jurisdiction" question. `us_places.csv` stored the government's
+real name as "La CaÃ±ada Flintridge city" instead of "La Cañada
+Flintridge city" -- UTF-8 bytes for "ñ" decoded as Latin-1 and
+re-encoded. A separate same-day session (the shared-host pin pass, see
+"39 pages on bare YouTube and Vimeo hosts" below) independently found
+the same corruption and filed it in `BACKLOG.md` without fixing it;
+this session found 3 more affected rows they hadn't checked
+(`us_school_districts.csv`) and the same corruption duplicated in the
+older `counties.csv`/`places.csv` tables, for 23 unique names / 43
+total row fixes across 5 files (mostly Puerto Rico municipios --
+Bayamón, Mayagüez, Añasco, etc. -- plus Doña Ana County NM, Cañon City
+CO, Española NM, La Cañada Flintridge CA).
+
+**What was done.** A surgical byte-level repair (`line.encode("latin-1").
+decode("utf-8")` applied only to the corrupted characters, never
+rewriting the file's own CRLF line endings the way a naive line-by-line
+rewrite first did) -- row/line counts unchanged in every file, verified
+reversible and correct on every affected row. `pytest tests/
+test_gov_registry.py` (275) and the full suite (2917) both pass, `ruff`
+clean. PR: "Fix double-encoded diacritics in 5 gov-registry data files"
+(#855).
+
+**What's still open, filed in `BACKLOG.md`'s Open bugs.** The generator
+(`scripts/build_jurisdiction_data.py`)'s own blanket `.decode("latin-1")`
+on raw Census source files is the actual root cause and will re-corrupt
+the same rows (or any other UTF-8-sourced row not yet noticed) on a
+future regeneration -- not fixed here, needs per-row encoding detection.
+Separately: even with the table now correctly accented, a real
+government's own page text almost always spells its name WITHOUT the
+accent (confirmed on La Cañada Flintridge's own Granicus page: "La
+Canada Flintridge"), and `finalize_jurisdiction()`'s table validation
+requires an exact character match -- so this fix alone does not make
+that specific example auto-resolve. Filed separately since it's a
+different, riskier fix (touches heavily-tuned validation code).
+
+**Confirmed live in production 2026-09-11**: both `/state/colorado` and
+the individual archived page show "Cañon City, CO" correctly (display
+name is computed live from the registry, not a stored column, so no
+backfill was needed for already-archived pages). One cosmetic,
+pre-existing gap this exposed for the first time: the hub slug for this
+government is `ca-on-city-co`, not `canon-city-co` -- the slugifier
+drops the "ñ" rather than transliterating it. Not filed as its own
+entry (low impact, purely cosmetic, functions correctly) but worth
+knowing if seen again elsewhere.
+
 ## WO-228: hub links ranked and verified from real examples, replacing the first-match finder that recorded event calendars as meeting hubs [Done 2026-09-11]
 
 **What was done and why.** Ryan's 30-row spot-check found several
