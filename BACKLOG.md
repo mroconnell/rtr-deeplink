@@ -169,7 +169,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (128)
   [NEEDS-AUDIT] 16 real municipalities nationwide have a compound
   [NEEDS-AUDIT] eScribe serves the same meeting under multiple
   [NEEDS-AUDIT] A `strength=fallback` tenant pin cannot correct a
-  [NEEDS-AUDIT] Two more live pages show one government's real,
+  [EASY] Sechelt, BC and Blind River, ON pages: URL slug still shows
   [NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   [NEEDS-AUDIT] Full-corpus screen (5,857 pages) found the same
   [NEEDS-AUDIT] Same source URL, different query string, two
@@ -1689,44 +1689,53 @@ of human step they need.
     and the page text names a real neighbouring government — the shape a
     ladder fix would have to recognise, if one is ever built.
 
-- **[NEEDS-AUDIT] Two more live pages show one government's real,
-  correctly-sourced meeting under a DIFFERENT government's name in the
-  URL slug -- found while settling `rtr-business/research/
-  jurisdiction_coverage.csv`'s held governments (WO-178), not yet
-  checked against this Archive's own admin tools.**
-  - **Issue**: `rtr-business/research/coverage_registry/
-    coverage_registry.csv`'s own `archive_url` field (read-only, not
-    modified by WO-178) shows a real, transcribed page slugged
-    `prince-george-2026-03-18-elections-bylaw-amendment-regular-council-
-    meeting` sitting under Sechelt, BC's `gov_id`
-    (`ca:csd:5929011`) -- not Prince George's own (`ca:csd:5953023`,
-    which already has its own correct, separately-platformed Swagit
-    page). Same shape a second time: a page slugged
-    `peterborough-2024-05-21-council-meeting` sits under Blind River,
-    ON's `gov_id` (`ca:csd:3557038`), not Peterborough's own
-    (`ca:csd:3515014`, which already has its own correct
-    `pub-peterborough.escribemeetings.com` pages). Both Sechelt's and
-    Blind River's own eScribe domains are the real, correct domains for
-    their OWN government -- this isn't a wrong-tenant mapping, it's the
-    page's own displayed jurisdiction name/slug that doesn't match the
-    domain that actually produced it.
-  - **Impact**: two real, live, transcribed pages on redtaperecordings.com
-    display a different city's name than the meeting they actually
-    contain -- a visible correctness bug for anyone who opens either URL,
-    not just a research-file bookkeeping mismatch (this research pass
-    only touched `jurisdiction_coverage.csv`, a tracking file with no
-    live readers).
-  - **Next action**: check `/internal/export/pages` (or the equivalent
-    admin lookup) for both source URLs to confirm which field is wrong --
-    the page's own stored jurisdiction/name, or the slug generator reading
-    a stale/wrong name -- then fix that page (and check for the same
-    shape on any other page from either of these two eScribe tenants).
-  - **Constraint**: this was found by cross-referencing a research CSV's
-    already-recorded `archive_url` field, not by opening either live page
-    directly -- confirm against the real page before changing anything.
-  - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (found in
-    `rtr-business`, a sibling repo, while settling WO-165's held
-    governments; out of that task's scope to fix).
+- **[EASY] Sechelt, BC and Blind River, ON pages: URL slug still shows
+  the wrong city, even though the page's own government (`gov_id`) and
+  displayed name are already correct -- the fix is a by-hand reslug, not
+  a re-key.**
+  - **Issue**: WO-182 checked WO-178's audit lead (which assumed a
+    mis-keyed government, "like Chenango") against `GET /internal/
+    export/pages` and the live pages, and the premise didn't hold. Page
+    882 (`/m/prince-george-2026-03-18-elections-bylaw-amendment-regular-
+    council-meeting`) already has `gov_id=ca:csd:5929011` and
+    `jurisdiction="Sechelt, BC"` -- the live page's own `<title>` already
+    reads "Sechelt, BC". Page 653 (`/m/peterborough-2024-05-21-council-
+    meeting`) already has `gov_id=ca:csd:3557038` and
+    `jurisdiction="Blind River, ON"`, title already "Blind River, ON".
+    Both pages were last written 2026-09-03, the day `backfill_gov_id.py`
+    first ran corpus-wide and fixed jurisdiction/gov_id on thousands of
+    then-unkeyed pages -- but that script never rewrites a page's own
+    `slug` (confirmed by reading it), so each page's original
+    (2026-08-15/16) ingest-time slug guess is still frozen into its URL.
+    This is the same shape as the existing Albemarle County VA and St.
+    Louis Park entries in `archive/main.py`'s `_SLUG_REDIRECTS` comment:
+    real data, stale-looking permalink.
+    A `backfill_gov_id.py --hosts pub-sechelt.escribemeetings.com,pub-
+    blindriver.escribemeetings.com` dry run confirms this: 0 would
+    change, 6 already current (all pages on both hosts, not just these
+    two). Full writeup: `rtr-business/research/ENUMERATION_METHODS.md`
+    §233.
+  - **Impact**: two live pages show a stale, misleading city name in
+    their URL (though the page content itself is already correct) --
+    confusing for a reader who reads the URL, and for anything that
+    joins on slug rather than gov_id.
+  - **Next action**: `POST /internal/admin/reslug-page` with
+    `dry_run=false` for `peterborough-2024-05-21-council-meeting` (new
+    slug, previewed: `blind-river-on-2024-05-21-council-meeting`) and
+    for `prince-george-2026-03-18-elections-bylaw-amendment-regular-
+    council-meeting` (new slug, previewed:
+    `sechelt-bc-2026-03-18-elections-bylaw-amendment-regular-council-
+    meeting`), then add both old->new mappings to `archive/main.py`'s
+    `_SLUG_REDIRECTS` in the same change and deploy.
+  - **Constraint**: WO-182's session had both of these confirmed-safe
+    writes blocked by the runtime sandbox's own auto-mode safety
+    classifier (a POST to a production write endpoint), even after two
+    dry-run previews. Needs a session or user with write permission to
+    run the two calls above.
+  - **History**: `BACKLOG_DONE.md`, WO-178, 2026-09-10 (original find,
+    premise not yet checked); WO-182, 2026-09-10 (root cause found and
+    corrected, fix dry-run-verified, apply blocked -- see
+    `rtr-business/research/ENUMERATION_METHODS.md` §233).
 
 - **[NEEDS-AUDIT] Wrong-government-content pattern confirmed on 6 live
   pages (not just the 1 Gloucester case above) -- a shared multi-
