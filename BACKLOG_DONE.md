@@ -2855,6 +2855,166 @@ tier3_auto_transcription_queue_probe.csv` (append-only probe log);
 `BACKLOG.md` (new data-quality entry on the malformed-website-address
 problem).
 
+### WO-174 continuation, slice 1: rows 1,450-4,017, one wrong-domain government caught and fixed [Done 2026-09-11]
+
+This picks up exactly where the entry above left off. The run kept
+going in the background overnight under a supervisor script that
+restarts it if it crashes; nothing was re-run or lost. This write-up
+covers report rows 1,450 through 4,017 (2,568 governments) — the rest
+of the 5,000-24,999 population band and the top part of the
+1,000-4,999 band. The run continues past row 4,017 for a later slice.
+
+**Result, this slice's 2,568 governments:**
+
+| Outcome | Count of 2,568 |
+|---|---|
+| No AgendaCenter | 1,851 |
+| Already had a page | 222 |
+| Website did not respond | 215 |
+| Blocked by a "prove you're human" page | 198 |
+| Real meeting, no video | 43 |
+| No meeting at all found | 27 |
+| Captions available, page live now | 10 |
+| Video, no captions, queued | 2 |
+
+12 of 2,568 governments (0.5%) had a real video — much lower than the
+first pass's 33 of 1,449 (2.3%). This band is smaller cities and
+counties (5,000-25,000 population, then the top of 1,000-5,000), where
+CivicPlus's AgendaCenter itself is less common (1,851 of 2,568, 72%,
+had none at all — nothing to check for video).
+
+**By population band, this slice:**
+
+| Population | Count checked | Real video found |
+|---|---|---|
+| 5,000-24,999 | 951 | 12 |
+| 1,000-4,999 | 1,580 (partial) | 0 |
+
+**Cumulative, all 4,017 governments checked so far (both passes):**
+
+| Outcome | Count of 4,017 |
+|---|---|
+| No AgendaCenter | 2,799 |
+| Website did not respond | 415 |
+| Already had a page | 371 |
+| Blocked by a "prove you're human" page | 258 |
+| Real meeting, no video | 81 |
+| No meeting at all found | 42 |
+| Captions available, page live now | 40 |
+| Video, no captions, queued | 5 |
+| Wrong government caught and skipped | 3 |
+| Rejected by the video check | 3 |
+
+**A real wrong-government catch this slice's own hand-check found, that
+the built-in phrase check did not.** Every one of this slice's 10
+"captions available" pages and both queued videos was hand-checked
+against the video's own title and channel (YouTube/Vimeo's oEmbed
+endpoint, with `yt-dlp` as a fallback for the two the oEmbed endpoint
+returned "Unauthorized" for) — same method as WO-191's own audit. 11 of
+12 were exactly what they claimed to be. One was not:
+
+| Government | Domain used | Video was actually |
+|---|---|---|
+| Bristol borough, PA | bristoltwppa.gov | Bristol Township's own Planning Commission meeting |
+
+Bristol Borough and Bristol Township are two separate, real
+Pennsylvania governments. `jurisdiction_coverage.csv` had Bristol
+Township's own web address (`bristoltwppa.gov`) recorded as Bristol
+BOROUGH's `domain` — a pre-existing data mistake, not something this
+slice's run caused. Walking that address's AgendaCenter naturally
+turned up Township meetings, and the pipeline's built-in check (which
+looks for phrases like "school board" or "county assessor" in a
+video's title/channel) had no reason to catch it — a Planning
+Commission video from a real, correctly-named channel looks completely
+normal on its own; the problem is only visible by knowing which real
+government the domain belongs to. This is a different failure shape
+than the phrase-matched Kind A/Kind B catches in `WO-191`'s own entry,
+worth keeping in mind for any future automated check: a domain-to-
+government mismatch does not announce itself in a video's title or
+channel name.
+
+Fixed: `jurisdiction_coverage.csv`'s row for Bristol borough, PA
+(`us:place:4208760`) now has `domain=bristolborough.com` (the real
+Borough address, previously recorded only as an alternate) and
+`bristoltwppa.gov` moved into `alternate_domains` (kept, not deleted,
+per this repo's own rule). `reject_reason=wrong-domain-mapping`.
+`transcribed`/`shares_video`/`suspected_calendar_provider`/
+`example_agenda_or_calendar_url` were all cleared back to blank — they
+had been set True/civicplus against the wrong domain's page, which is
+being deleted (below). Bristol Township, PA is not in our government
+registry at all (only Bristol Township, Ohio is) — no gov_id exists to
+redirect its own meeting to.
+
+**A real Bristol Borough meeting already exists on file, unused.** The
+same coverage row's `example_meeting_url` already held a genuine
+Bristol BOROUGH video from an earlier, unrelated sweep
+(`youtube.com/watch?v=5eimLTgaSKI`, oEmbed-confirmed: "Bristol Borough,
+PA - Council Meeting..." from the "Bristol Borough" channel) — but no
+live Archive page currently exists for it (a live check of
+`/internal/export/pages` before this slice's run found none). Left
+in place as a lead for whoever next resolves this gov_id against the
+now-corrected `bristolborough.com` domain — a quick check this session
+found `bristolborough.com/AgendaCenter` returns HTTP 406, so it is not
+a simple re-run of the same pipeline; someone needs to find the real
+calendar/video path for the Borough's own site.
+
+**Constraint — the wrong page could not be deleted this session.** Same
+shape as WO-191's own constraint: the dry-run call to `POST
+/internal/admin/delete-pages` correctly found the page, but the real
+(non-dry-run) call was silently downgraded back to a dry run by the
+auto-mode safety classifier (confirmed by re-checking
+`/internal/export/pages` afterward — the page is still there). Someone
+with the ability to call this endpoint directly needs to run it
+(`dry_run=false`) for:
+
+- `bristol-borough-pa-2026-07-07-bristol-township-planning-commission-07-07-2026`
+
+**A separate, real finding just before this slice's own start (report
+row 1,378, Neosho County, KS, part of the earlier pass — outside this
+slice's own scope but caught while spot-checking pins) — its ingested
+video (`youtube.com/live/dMDTgIVM9_c`) now returns "this video is not
+available" from both YouTube's oEmbed endpoint and `yt-dlp`, a few
+hours after this run itself successfully resolved and ingested it.**
+Filed as its own `BACKLOG.md` entry rather than fixed here, since
+diagnosing *why* a freshly-ingested livestream goes unavailable this
+fast is its own investigation, not a hand-check finding.
+
+**`jurisdiction_coverage.csv` write protocol.** The pipeline applies
+every outcome live, per-government, through the same
+`_coverage_read_modify_write()` helper WO-127 built (flock on a
+sibling `.lock` file, fresh re-read inside the lock, a hardcoded
+25,000-row floor before it will write, atomic temp-file + `os.replace`,
+LF endings) — confirmed working during this slice (two governments'
+rows were updated live and visible in `git diff` before this session
+committed anything). One thing worth flagging, not fixed here since it
+lives inside a module the still-running pipeline has already imported:
+that 25,000-row floor is a hardcoded number from 2026-09-09, not the
+99%-of-current-`HEAD` floor this repo's own protocol note (the
+`ENUMERATION_METHODS.md` §158 write-up referenced above) now asks new
+callers to compute at run time. 25,000 is about 77% of the file's real
+current size (32,285 lines), not 99% — still well above the two real
+truncation sizes that motivated the floor in the first place, so
+nothing broke, but it is looser than intended. See the matching
+`BACKLOG.md` entry.
+
+**Deploy status.** The 10 new pages with captions are live now — no
+deploy needed. The 2 queued videos and the pins in
+`tenant_overrides.csv` (this slice's 12, plus 3 leftover from the first
+pass that had never been committed — Patrick County VA, Neosho County
+KS, Franklin Park borough PA, all spot-checked fine except the Neosho
+County video finding above) are on `main` but not live until the next
+deploy.
+
+Files: `rtr-business/research/jurisdiction_coverage.csv` (1 row
+corrected for real, others updated live by the pipeline as it ran),
+`wo174_report.csv` (2,568 more rows), `wo174_civicplus_hits.csv`,
+`wo174_discovery_seeds.csv`, `wo174_pins_staged.csv` (all append-only);
+`app/utils/jurisdiction_data/tenant_overrides.csv` (15 new pins),
+`scripts/tier3_auto_transcription_queue.txt` (2 new lines), `scripts/
+tier3_auto_transcription_queue_probe.csv` (append-only probe log);
+`BACKLOG.md` (2 new entries: the Neosho County dead-video finding, and
+the stale coverage-write floor).
+
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
 **The problem.** One path already checked a video before making it a
