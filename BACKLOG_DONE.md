@@ -2,6 +2,21 @@
 
 ## WO-203: `scripts/youtube_drip.py` — one paced, always-on YouTube process for the dedicated Mac [Done 2026-09-11]
 
+- **[Done 2026-09-11] [HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube channel-scan hit a 62% false-positive rate on its first pass (5 of 8 early "successes" wrong) before a channel-identity check was added; one page predates this WO entirely.**
+  - **Issue**: WO-196 re-opened WO-190's "off-mission" bucket (a real video, not a real meeting) by scanning each government's YouTube channel for a different, real meeting video. The first batch of "successes" trusted whatever channel had uploaded the ORIGINALLY-flagged bad video as if it were automatically the government's own -- exactly the assumption CLAUDE.md's coverage rules already warn against ("nothing matches to YouTube without a channel ... confirmed as the government's own"). Caught by this WO's own required hand-check of every candidate's title AND channel, same method WO-191/WO-199 already established: `suffolk-county-ma-2026-02-16-fifty-years-of-the-boston-landmarks-commission` (channel "City of Boston" -- a real, different government, `us:place:2507000`, already fully covered by its own real meeting, so nothing to re-key here), `ingham-county-mi-2024-08-07-how-does-the-board-of-canvassers-certification-work` (channel "Barb Byrum", the County Clerk's own personal/office channel, not the county's), `new-hempstead-ny-2026-09-09-board-in-brief-september-8-2026` (channel "Roanoke Valley Television - RVTV", a Virginia PEG station -- the real locality it covers wasn't identified), `granville-village-ny-2021-03-19-town-of-granville-ny-march-2021-board-meeting` (channel/title "Town of Granville, NY" -- a real, different NY government from the Village, no `gov_id` yet), `galva-city-il-2025-06-15-meeting-of-the-giants-tulsa-1967` (channel "American Giants" -- a wrestling/pop-history channel, not a government), `lexington-city-il-2022-06-19-demonic-possession-and-mental-illness` (channel "Garcia Wrestling"), `stonington-borough-ct-2026-09-08-board-of-finance-09-02-26` (channel/title "Town of Stonington, CT." -- a real, different CT government with its own elected Borough Warden making the Borough a separate entity, no `gov_id` yet for the Town). An 8th, unrelated to this WO's own run, was found in the same audit: `galva-city-il-2022-06-15-galva-il-international-fiberglass-viking` (a tourism video, from an earlier sweep).
+  - **Impact**: 8 live, indexable pages are wrong -- either a real government's real meeting keyed to the wrong government, or not a meeting at all.
+  - **Next action**: `POST /internal/admin/delete-pages` with all 8 slugs above, `dry_run=true` first. Two of the eight (Granville, Stonington) are Kind A per WO-199's own rule (`ENUMERATION_METHODS.md` section 247) -- a real different government's channel -- but neither "Town of Granville, NY" nor "Town of Stonington, CT" has a `gov_id` in `jurisdiction_coverage.csv` yet, so re-keying (rather than deleting) needs a minting decision first; delete for now either way. `jurisdiction_coverage.csv`'s own rows for the 7 governments this WO's report covers were already corrected (`reject_reason` set, `transcribed`/`shares_video` cleared) in the same commit as this WO's other findings -- only the live pages themselves are still up and wrong.
+  - **Constraint**: same as WO-191/WO-152's own precedent -- the dry-run call is expected to be blocked outright by the auto-mode safety classifier in an unattended session; this needs a human or a differently-permissioned session.
+  - **History**: `BACKLOG_DONE.md`, WO-196, 2026-09-11.
+
+  - **Close-out (conductor, 2026-09-11)**: all eight pages deleted via
+    `POST /internal/admin/delete-pages` (dry run listed all eight with
+    their titles, then apply); live checks return 404. Lesson kept from
+    WO-196: a channel found through a wrong video is not evidence the
+    channel is the government's; confirm the channel's identity before
+    taking anything else from it.
+
+
 **What was done and why.** Ryan asked how to hand the YouTube work to Ol
 McClaude (the dedicated office MacBook that never closes). Every YouTube
 job has to run from a home/office address because YouTube blocks Render's

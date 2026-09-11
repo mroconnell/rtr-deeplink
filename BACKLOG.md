@@ -143,10 +143,9 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (25)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (9)
-  Production actions only Ryan should take  (8)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
+  Production actions only Ryan should take  (7)
     [HUMAN] Two real public bodies found by WO-199 have no `gov_id` in…
-    [HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -1230,13 +1229,6 @@ of human step they need.
   - **History**: `BACKLOG_DONE.md`'s WO-199 entry, 2026-09-11;
     `rtr-business/research/wo199_report.csv`;
     `rtr-business/research/ENUMERATION_METHODS.md` section 247.
-
-- **[HUMAN] 8 live pages need deleting: WO-196's own off-mission YouTube channel-scan hit a 62% false-positive rate on its first pass (5 of 8 early "successes" wrong) before a channel-identity check was added; one page predates this WO entirely.**
-  - **Issue**: WO-196 re-opened WO-190's "off-mission" bucket (a real video, not a real meeting) by scanning each government's YouTube channel for a different, real meeting video. The first batch of "successes" trusted whatever channel had uploaded the ORIGINALLY-flagged bad video as if it were automatically the government's own -- exactly the assumption CLAUDE.md's coverage rules already warn against ("nothing matches to YouTube without a channel ... confirmed as the government's own"). Caught by this WO's own required hand-check of every candidate's title AND channel, same method WO-191/WO-199 already established: `suffolk-county-ma-2026-02-16-fifty-years-of-the-boston-landmarks-commission` (channel "City of Boston" -- a real, different government, `us:place:2507000`, already fully covered by its own real meeting, so nothing to re-key here), `ingham-county-mi-2024-08-07-how-does-the-board-of-canvassers-certification-work` (channel "Barb Byrum", the County Clerk's own personal/office channel, not the county's), `new-hempstead-ny-2026-09-09-board-in-brief-september-8-2026` (channel "Roanoke Valley Television - RVTV", a Virginia PEG station -- the real locality it covers wasn't identified), `granville-village-ny-2021-03-19-town-of-granville-ny-march-2021-board-meeting` (channel/title "Town of Granville, NY" -- a real, different NY government from the Village, no `gov_id` yet), `galva-city-il-2025-06-15-meeting-of-the-giants-tulsa-1967` (channel "American Giants" -- a wrestling/pop-history channel, not a government), `lexington-city-il-2022-06-19-demonic-possession-and-mental-illness` (channel "Garcia Wrestling"), `stonington-borough-ct-2026-09-08-board-of-finance-09-02-26` (channel/title "Town of Stonington, CT." -- a real, different CT government with its own elected Borough Warden making the Borough a separate entity, no `gov_id` yet for the Town). An 8th, unrelated to this WO's own run, was found in the same audit: `galva-city-il-2022-06-15-galva-il-international-fiberglass-viking` (a tourism video, from an earlier sweep).
-  - **Impact**: 8 live, indexable pages are wrong -- either a real government's real meeting keyed to the wrong government, or not a meeting at all.
-  - **Next action**: `POST /internal/admin/delete-pages` with all 8 slugs above, `dry_run=true` first. Two of the eight (Granville, Stonington) are Kind A per WO-199's own rule (`ENUMERATION_METHODS.md` section 247) -- a real different government's channel -- but neither "Town of Granville, NY" nor "Town of Stonington, CT" has a `gov_id` in `jurisdiction_coverage.csv` yet, so re-keying (rather than deleting) needs a minting decision first; delete for now either way. `jurisdiction_coverage.csv`'s own rows for the 7 governments this WO's report covers were already corrected (`reject_reason` set, `transcribed`/`shares_video` cleared) in the same commit as this WO's other findings -- only the live pages themselves are still up and wrong.
-  - **Constraint**: same as WO-191/WO-152's own precedent -- the dry-run call is expected to be blocked outright by the auto-mode safety classifier in an unattended session; this needs a human or a differently-permissioned session.
-  - **History**: `BACKLOG_DONE.md`, WO-196, 2026-09-11.
 
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
