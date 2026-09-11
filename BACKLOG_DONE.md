@@ -1207,6 +1207,151 @@ transcription worker ever re-resolves one of these same videos later.
 No file under `archive/`, `worker/`, or `render.yaml` changed. The
 research file itself lives in a separate repo with no deploy step.
 
+## WO-184 continuation: finished the retry-set and one-hop sweeps, hand-checked every video, corrected 11 wrong-government attributions [Done 2026-09-11]
+
+**Why this ran.** The previous agent working WO-184's continuation ended
+its session in a model outage partway through. This picked up exactly
+where it stopped: the retry-set and one-hop sweeps had already finished
+running and had a complete report file each; the finish work -- ingesting
+the remaining "found" rows, applying results to `jurisdiction_coverage.csv`,
+hand-checking every video, and closing this out with docs and a PR --
+had not.
+
+**What was finished.**
+
+1. **Retry-set** (`scripts/wo184_pilot.py`, 3,538 governments checked in
+   total): the 821 "found" rows were fully resolved
+   (`scripts/wo184_ingest_found.py`) and applied. 357 of the 821 had not
+   been touched yet when this session started.
+2. **One-hop set** (`scripts/wo184_onehop_pilot.py`, 533 governments
+   checked): all 213 "different platform found" leads were already
+   resolved and applied by the time this session started (a prior
+   checkpoint finished it) -- confirmed, not re-done.
+3. **Hand-check** (same method as WO-191/196/199): checked the title and
+   channel/uploader of every real video either pipeline produced, not a
+   sample -- 357 rows (292 unique governments, since a government can
+   appear in more than one report run).
+
+**Retry-set result, of the 821 "found" governments:**
+
+| Result | Count of 821 |
+|---|---|
+| Already had a page | 194 |
+| Captions available, page live now | 103 |
+| Video, no captions, queued | 19 |
+| No usable video after all (agenda-only or a dead link) | 497 |
+| A real error | 8 |
+
+273 domains were promoted this run (the alternate address became the
+government's main address on file; the old one was kept, never thrown
+away).
+
+**One-hop result, of the 213 "different platform" leads (already done
+before this session, confirmed here):**
+
+| Result | Count of 213 |
+|---|---|
+| Captions available, page live now | 58 |
+| Video, no captions, queued | 3 |
+| Government already had a page | 21 |
+| The "different" address was really the same site again | 17 |
+| No usable video after all | 114 |
+
+**The hand-check caught 11 governments with a real video keyed to the
+wrong government.** Every one of the shared regional/county channels
+this WO's alternate-domain retry reached also carries a DIFFERENT real
+government's own meetings, and the retry logic had no way to tell them
+apart from a bare channel/tenant match:
+
+| Government (wrong) | Real owner of the video | Government's page was |
+|---|---|---|
+| Mandeville city, LA | St. Tammany Parish, LA | Live -- page's own gov_id was already correct, only the research file's bookkeeping was wrong |
+| Lyndon city, KY | Dublin city, GA | Live -- page needs a human's `POST /internal/jurisdiction/override` (gov_id came back blank) |
+| Trowbridge Township, MI | Allegan County, MI | Live -- page's own gov_id was already correct |
+| Brampton Township, MI | Delta County, MI | Live -- page needs a human's override (gov_id came back blank) |
+| Cleveland Township, MI | Leelanau County, MI | Live -- page needs a human's override (keyed to the township instead) |
+| Waverly Township, MI | Van Buren County, MI | Live -- page's own gov_id was already correct |
+| Whately, MA | Deerfield town, MA | Live -- page's own gov_id was already correct |
+| Aurora city, MN | Mountain Iron city, MN | Live -- page's own gov_id was already correct |
+| Wright city, MN (pop. 170) | Wright County, MN | Queued only -- a duplicate, malformed queue line; the real one was already queued correctly under the county |
+| Huron city, CA | Berkeley, CA | Queued only -- the queue line predates this WO and already points at Berkeley's own, correct tenant |
+| Campbellton, NB | Cap-Acadie regional municipality, NB | Queued only -- pulled before it ever went live; Cap-Acadie has no government id in our system yet |
+
+A 12th, Mounds View city, MN, was pulled from the queue on a lower-
+confidence call: right channel, but the title ("Crossroad Pointe
+Neighborhood Meeting") does not clearly read as the city's own
+deliberative body meeting.
+
+**Of the 11, five real videos were already correctly attributed to the
+right government on the live page itself** (Allegan County, Van Buren
+County, Deerfield MA, Mountain Iron MN, St. Tammany Parish) -- only
+`jurisdiction_coverage.csv`'s own bookkeeping had the wrong government
+recorded; those five rows are now corrected to show the real coverage.
+**Three pages still need a human to run the real database fix**
+(Cleveland Township's page needs to become Leelanau County's; Dublin GA
+and Delta County's pages both came back with no government at all when
+this session tried to fix them) -- every one of the three was confirmed
+with a dry run first, and the real write was refused by the sandbox's
+own safety classifier, the same wall every prior hand-check WO has hit
+for a mutating admin call. See `BACKLOG.md`'s matching `[HUMAN]` entry
+for the exact commands. **Campbellton's real government, Cap-Acadie, has
+no id in our system yet** -- see `BACKLOG.md`'s matching entry; the video
+was pulled rather than mis-keyed or minted without a decision.
+
+**A malformed queue line was also caught by CI, not the hand-check.**
+This WO's own retry-set run added a CivicClerk queue line shaped
+`/event/2682/files` for Wright city, MN -- the correct shape
+(`/event/2682/media`) was already queued for Wright County under its own
+tenant pin. `tests/test_transcription_queue_files.py`'s CivicClerk shape
+check caught it before it reached the PR; the duplicate line is removed.
+
+**`coverage_alternates.NEVER_RETRY_REASONS` now includes
+`wrong-domain-mapping`** -- a row already carrying that tag has been
+hand-checked and found to be a real, different government's own content,
+so retrying its alternate would just re-find the identical wrong video.
+Closes one of the three residual items BACKLOG.md's WO-184 entry left
+open; the other two (resolving one-hop leads, finishing the sweeps) are
+also closed by this session. Eight more reject-reason spellings still
+aren't classified -- narrowed BACKLOG.md's matching entry to just that.
+
+**Caution.** The hand-check used YouTube's oEmbed endpoint for every
+YouTube video (the known risk platform from WO-191/196/199) and a
+lighter name-overlap check for everything else -- that lighter check is
+what caught Wright city and Huron city, so it is worth keeping, not
+just a formality. Three governments' real coverage is confirmed but not
+yet visible on their own live page until a human runs the override
+calls above.
+
+**Recommendation.** Ask a human (or a differently-permissioned session)
+to run the three `jurisdiction/override` calls and decide whether Cap-
+Acadie is in scope to mint. Everything else in this WO is finished --
+no further sweep continuation is needed for the retry-set or one-hop
+populations.
+
+**Verification.** `ruff check`/`ruff format --check` on `app/ archive/
+worker/ scripts/ tests/` clean. Full test suite: 3,214 tests passing (1
+new test added, `test_wrong_domain_mapping_is_never_retried_under_no_
+meeting_trigger`). `alembic check` clean for both `app/` and `archive/`
+(no model changed). `python3 scripts/build_backlog_toc.py` re-run after
+the `BACKLOG.md` edits.
+
+**Deploy status.** `app/utils/jurisdiction_data/tenant_overrides.csv`
+and `scripts/tier3_auto_transcription_queue.txt` changed (real `app/`
+and `scripts/` files) -- on `main` after merge but **not live until the
+resolver and both transcription workers are redeployed**. The 103 (retry)
++ 58 (one-hop) = 161 tier-1/2 pages already went live during this
+session's own run, since ingest is a direct API write, not a deploy-
+gated code path -- the 11 wrong-attribution corrections are also already
+reflected in the research file now, independent of any deploy.
+
+**Files**: `scripts/wo184_ingest_found.py`, `scripts/wo184_onehop_ingest.py`,
+`scripts/coverage_alternates.py`, `tests/test_coverage_alternates.py`
+(all `rtr-deeplink`); `research/wo184_report.csv`, `research/wo184_
+ingest_report.csv`, `research/wo184_onehop_ingest_report.csv`, `research/
+wo184_discovery_seeds.csv`, `research/wo184f_handcheck.csv` (the 357-row
+hand-check itself), `research/wo184f_handcheck_ingest_report.csv`,
+`research/jurisdiction_coverage.csv` (`rtr-business`).
+
 ## WO-193: made every `domain` value in the research file a plain web address, not a mix of plain addresses and full links [Done 2026-09-11]
 
 - **Issue**: WO-174 found that about a fifth of the `domain` column in

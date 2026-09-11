@@ -129,6 +129,14 @@ MEETING_FOUND_NO_VIDEO_REASONS = frozenset({"meeting-without-video", "no-video-f
 # queued/covered). Listed explicitly, not derived, because "already
 # covered" isn't a CONTENT/ACCESS reason at all -- it's a row that has
 # moved past needing a reject reason.
+# `wrong-domain-mapping` added by the WO-184 continuation (2026-09-11):
+# a row already carrying this reason has an alternate that has been
+# hand-checked and found to be a REAL government's own content, just the
+# wrong one for this row -- Mandeville LA/St. Tammany Parish, Lyndon KY/
+# Dublin GA, Wright city MN/Wright County MN, Huron city CA/Berkeley CA
+# (see BACKLOG_DONE.md). Retrying it would just re-find the identical
+# wrong video again; the alternate itself is the diagnosis, not an
+# untested lead.
 NEVER_RETRY_REASONS = MEETING_FOUND_NO_VIDEO_REASONS | frozenset(
     {
         "off-mission",
@@ -137,6 +145,7 @@ NEVER_RETRY_REASONS = MEETING_FOUND_NO_VIDEO_REASONS | frozenset(
         "ingested",
         "queued",
         "already-covered",
+        "wrong-domain-mapping",
     }
 )
 
