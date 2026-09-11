@@ -180,13 +180,26 @@ reasons. That is how every sweep below was scoped.
   real place. `POST /internal/jurisdiction/override` follows the same
   rule: a batch touching one of these hosts gets one rule per real
   per-video match found in the batch, never a blank one, with any page it
-  couldn't derive one for reported under `tenant_override_notes`. One
-  known, accepted gap: `civicplus.py`/`legistar.py`'s delegation to a
-  multi-gov host keeps the pre-existing "known quirk" (source_url lands on
-  the delegated host, not the original one — see CLAUDE.md's platform-
-  wrapper bullet), so a delegated page on one of these hosts now also
-  needs a pin, same as an un-delegated one would; see BACKLOG.md's WO-210
-  follow-up entry.
+  couldn't derive one for reported under `tenant_override_notes`. **A
+  delegated CivicPlus/Legistar page keeps its own identity without a pin
+  (2026-09-11, WO-214).** `civicplus.py`/`legistar.py`'s delegation to a
+  multi-gov host still keeps the pre-existing "known quirk" (source_url
+  and platform land on the delegated host, not the original one — see
+  CLAUDE.md's platform-wrapper bullet) — that was never touched, since
+  Archive pages are deduplicated by `source_url_normalized` and changing
+  it retroactively risked a duplicate page on re-ingest. Instead
+  `ResolvedMeeting.origin_host` carries the delegating tenant's own host
+  separately, and rung 1b falls back to it (re-running the ladder against
+  `origin_host` instead of blanking) only when the delegated host has no
+  matching pin and `origin_host` is itself not a multi-gov host — a real
+  per-video/channel pin on the delegated host still wins outright, and a
+  bare paste with no pin and no `origin_host` still blanks exactly as
+  before. This only fixes a FRESH resolve: `origin_host` is not persisted
+  on `MeetingPage`, so `scripts/backfill_gov_id.py` still cannot recover
+  it for an already-archived page (confirmed by a live dry run matching
+  zero rows against 3 real affected tenant hosts) — see `BACKLOG.md`'s
+  live entry for the 3 pages that need a manual re-push, and
+  `BACKLOG_DONE.md`'s WO-214 entry for the full sizing and fix detail.
 - **A blank answer on a shared host never downgrades a keyed page
   (2026-09-11, WO-215).** Rung 1b above answers tier `blank` (gov_id
   `rtr:unknown:<host>`) for EVERY page on a `MULTI_GOV_HOSTS` host with no

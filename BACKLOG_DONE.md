@@ -42055,3 +42055,121 @@ if a slug like this ever becomes reader-visible somewhere.
   (gov_id, part, candidate, evidence, access_mode, outcome);
   `rtr-business/research/wo186_discovery_seeds.csv` for platform links
   Part B found, for the access-ladder sweeps.
+
+## [Done 2026-09-11] WO-214: CivicPlus/Legistar delegation to an unpinned YouTube/Vimeo video now keeps its own government identity
+
+Fixed the side effect WO-210 flagged in its own follow-up entry: a
+CivicPlus/Legistar page that links out to a YouTube/Vimeo video (no
+per-video pin) used to get its government from the page's own subdomain;
+after WO-210's multi-government-host safeguard shipped, it got no
+government at all, because `resolve_via_platform()` returns the
+delegated result as-is (`civicplus.py`/`legistar.py` overwrite only
+`.jurisdiction`, never `.source_url` or `.platform` -- CLAUDE.md's
+platform-wrapper "known quirk" bullet). The safeguard could not tell a
+trustworthy CivicPlus/Legistar subdomain name apart from an untrusted
+YouTube channel guess once both arrived as the same plain string.
+
+- **Sizing first, before touching code (re-derived, not assumed).** The
+  work order's own proposed filter -- "pages whose `platform` is
+  `legistar`/`civicplus`" -- was checked directly against the live
+  Archive export (`GET /internal/export/pages`, 8,025 pages) and found
+  to be **structurally impossible**: zero archived pages carry
+  `platform` as `legistar`/`civicplus` at all, ever, because both are
+  pure delegator platforms (they never host video themselves) and
+  `resolve_via_platform()` hands back the delegated platform's `.platform`
+  field too, not just `.source_url` -- confirmed by a direct platform
+  count (`youtube: 3211, granicus: 2028, ...`, no `legistar`/`civicplus`
+  row at all). Real sizing instead used `agenda_link` as the fingerprint
+  (both adapters thread their own page's agenda link through even on the
+  delegated-video path; a CivicPlus link always contains
+  `/AgendaCenter/`, a Legistar link is on a `legistar.com`-shaped host),
+  restricted to pages whose `source_url` host is in `MULTI_GOV_HOSTS`.
+
+  | Result | Count |
+  |---|---|
+  | Pages on a MULTI_GOV_HOSTS host (any origin) | 2,400 |
+  | ...with a CivicPlus-origin agenda_link fingerprint | 105 |
+  | ...with a Legistar-origin agenda_link fingerprint | 0 |
+  | Of the 105: already has a matching tenant_overrides.csv pin | 53 |
+  | Of the 105: no matching pin (the at-risk set) | 52 |
+
+  Legistar's real-world count is 0 not because the code path is safe --
+  it has the identical quirk -- but because every real archived Legistar
+  page that reaches a `legistar.com`-hosted `agenda_link` already took
+  one of the OTHER delegation paths (`_try_fallback_video_link()`,
+  `_try_known_channel_video()`, `_try_granicus_view_publisher_video()`),
+  every one of which already resets `source_url` back to the Legistar
+  page directly. Only the single primary `a.videolink` path was ever
+  affected, and no archived page happened to take it to a multi-gov host.
+  **3 of the 52 at-risk CivicPlus pages were already live-broken at the
+  time of this sizing** (`gov_id` stored as `rtr:unknown:vimeo.com` /
+  `rtr:unknown:www.youtube.com`, real slugs `2026-08-18-commission-
+  meeting-08-18-2026` (altamonte.org), `2026-08-03-august-3-2026-town-
+  council-meeting` (townofcrewe.com), `2026-01-14-dcrsd-school-
+  committee-pdf` (dudleyma.gov)) -- these were re-pushed after WO-210
+  shipped and hit the safeguard for real, not just a theoretical risk.
+  The other 49 still carry their original, correct pre-WO-210
+  `registry`/`pinned` gov_id and are only at risk on a future re-resolve
+  or backfill.
+
+- **Fix: carry the delegating tenant's own host separately, never touch
+  `source_url`.** `ResolvedMeeting.origin_host` (new field,
+  `app/platforms/models.py`) is set by `civicplus.py`/`legistar.py` at
+  every `resolve_via_platform()` call site to the delegating page's own
+  netloc. `IngestRequest`/`ResolvedMeetingIn` (`archive/main.py`) mirror
+  it so it survives the HTTP boundary (Pydantic silently drops an
+  undeclared field, the same failure shape `video_warnings`/
+  `agenda_link`/`best_effort` each hit before their own field existed).
+  `_resolve_page_government()`/`resolve_government()`/
+  `_resolve_government_ladder()` (`archive/db/crud.py`,
+  `app/utils/gov_registry/resolver.py`) thread it through to rung 1b:
+  when the delegated host is a `MULTI_GOV_HOSTS` host with no matching
+  pin, and `origin_host` is present and is NOT itself a multi-gov host,
+  the ladder re-runs against `origin_host` instead of returning blank --
+  restoring the pre-WO-210 behaviour exactly for the pages that used to
+  key off the delegating tenant's own trustworthy subdomain. A real
+  per-video/channel pin on the delegated host still wins outright and is
+  never bypassed (`test_origin_host_fallback_never_overrides_a_real_
+  matching_pin`); `origin_host` itself being a multi-gov host is also
+  refused, closing a theoretical delegation-chain loophole
+  (`test_origin_host_itself_a_multi_gov_host_is_not_trusted`). `rung 1b`
+  itself is unweakened -- a bare YouTube/Vimeo paste with no pin and no
+  `origin_host` still blanks exactly as WO-210 requires.
+  `source_url`/`platform` are untouched on every path, so Archive page
+  identity/dedupe (`source_url_normalized`) carries zero risk from this
+  change.
+
+- **Verified against real fixtures.** `tests/test_civicplus.py`'s new
+  test reuses the exact real row (video id `tz8M7oiZQzc`, real date,
+  real title) from the raw-saved `nc-durham.civicplus.com` fixture this
+  file already has, trimmed to one row so `resolve()` delegates directly
+  instead of raising `CalendarPageError`. `tests/test_legistar.py`'s new
+  test uses the same real `maricopa.legistar.com` shape the file's
+  existing Granicus-delegation test already does, redirecting to YouTube
+  instead. `tests/test_gov_registry.py` adds 3 resolver-level tests
+  (fallback fires, a real pin still wins, a multi-gov `origin_host` is
+  refused) against Durham NC's real, committed `us:place:3719000`
+  government row. `tests/test_ingest_gov_id.py` adds one full HTTP
+  round-trip test through `POST /internal/ingest`. Full suite (3,234
+  tests), `ruff check`, `ruff format --check`, and `alembic check` (both
+  services, fresh migration-built SQLite) all pass; no `MeetingPage`
+  schema change, so no migration needed.
+
+- **Residual gap, left for a human decision, not silently assumed
+  fixed**: this only fixes FUTURE resolves (a fresh push/re-ingest of
+  the same URL). `origin_host` is not persisted on `MeetingPage` (no
+  column exists, same non-persistence as `video_link`), so
+  `scripts/backfill_gov_id.py` -- which recomputes purely from stored
+  `source_url`/`jurisdiction` -- has no way to reach these pages at all.
+  Confirmed live: a dry run restricted to 3 real affected CivicPlus
+  tenant hosts (`nm-angelfire.civicplus.com`, `ca-inglewood.civicplus.com`,
+  `oh-commercialpoint.civicplus.com`) matched **zero rows**, because no
+  archived page's stored `source_url` is ever the tenant's own host --
+  it's always the delegated video's. The 3 already-broken pages named
+  above need an actual re-push (re-resolving their original CivicPlus
+  URL through the fixed adapter) to recover, not a backfill run; the 49
+  at-risk-but-currently-fine pages are the same. Filed as a live
+  `BACKLOG.md` entry rather than left implicit.
+- **History**: WO-210 (`BACKLOG_DONE.md`) for the safeguard this
+  restores compatibility with; `docs/COVERAGE_HANDOVER.md`'s identity
+  section, §3, for the updated rung 1b description.

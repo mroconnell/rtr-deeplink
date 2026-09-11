@@ -332,8 +332,18 @@ under everything else. This repo extracts and fixes just that part.
   `base.py`, though PrimeGov calls `YouTubeAssetFinder.resolve_video_id()`
   directly instead so it can pass the *original* PrimeGov URL through as
   `source_url` (Legistar/CivicPlus's delegation ends up with the
-  delegated platform's URL as `source_url`, a known quirk — see
-  BACKLOG.md).
+  delegated platform's URL as `source_url` **and `platform`** — a known
+  quirk left alone on purpose: Archive pages are deduplicated by
+  `source_url_normalized`, so rewriting it retroactively risks a
+  duplicate page on re-ingest. WO-214 (2026-09-11) worked around the one
+  real consequence this had — the multi-government-host safeguard
+  (`resolver.py` rung 1b, see `docs/COVERAGE_HANDOVER.md`'s identity
+  section) couldn't tell a delegated CivicPlus/Legistar page's own
+  trustworthy subdomain apart from an untrusted channel guess — by
+  carrying the delegating tenant's own host separately as
+  `ResolvedMeeting.origin_host`, consulted only as a fallback for
+  identity; `source_url`/`platform` themselves are untouched. See
+  `BACKLOG_DONE.md`'s WO-214 entry).
 - **yt-dlp is a different kind of dependency than everything else here**
   — every other adapter reads a stable public API or a page structure
   that isn't actively trying to block scraping; YouTube caption fetching

@@ -1860,6 +1860,7 @@ def _resolve_government_ladder(
     path: Optional[str] = None,
     page_hints: Optional[Dict[str, str]] = None,
     tenant_gov_id: Optional[str] = None,
+    origin_host: Optional[str] = None,
 ) -> GovernmentMatch:
     """The seven-rung ladder itself, unchanged by WO-105 -- see
     `resolve_government()` below (the public entry point) for the
@@ -1883,6 +1884,12 @@ def _resolve_government_ladder(
     the tables already gave, and is adopted only when the two names
     agree -- see `_tenant_consistency()`, which is the guard the Phase 1b
     pre-pass lacked.
+
+    `origin_host` (WO-214) is `ResolvedMeeting.origin_host` -- the
+    delegating CivicPlus/Legistar tenant's own host, when `tenant_host`
+    is a DELEGATED platform's host rather than the page's own. Consulted
+    ONLY by rung 1b below, and only as a fallback when `tenant_host` has
+    no matching pin; see that rung's own comment.
     """
     host = _tenant_host(tenant_host)
 
@@ -1924,25 +1931,44 @@ def _resolve_government_ladder(
     #     here is still the delegating platform's own tenant host, never
     #     a multi-gov one, so this rung never even looks at it.
     #
-    #     Legistar/CivicPlus's OWN delegation is the one real exception,
-    #     and it is affected: `resolve_via_platform()` there returns the
+    #     Legistar/CivicPlus's OWN delegation was the one real exception
+    #     (fixed WO-214): `resolve_via_platform()` there returns the
     #     DELEGATED result as-is (`civicplus.py`/`legistar.py` overwrite
     #     only `.jurisdiction`, from their own subdomain, never
-    #     `.source_url`) -- a documented, pre-existing "known quirk" (see
-    #     CLAUDE.md's platform-wrapper bullet) that leaves `source_url`,
-    #     and therefore `host` here, on the delegated platform. A page
-    #     like that landing on a multi-gov host with no per-video/channel
-    #     pin now resolves to no government too, same as an un-delegated
-    #     page would -- there is no signal inside this pure function that
-    #     tells a trustworthy subdomain-derived name apart from an
-    #     untrustworthy channel-derived one once both have reached this
-    #     point as a plain string. Fixing the quirk itself (keeping
-    #     `source_url` on the delegating host, the way PrimeGov already
-    #     does) would restore the old behaviour AND stay inside this
-    #     safeguard; see BACKLOG.md's WO-210 follow-up entry.
+    #     `.source_url` or `.platform`) -- a documented, pre-existing
+    #     "known quirk" (see CLAUDE.md's platform-wrapper bullet) that
+    #     leaves `source_url`, and therefore `host` here, on the
+    #     delegated platform. Changing `source_url` itself was ruled out
+    #     (Archive pages are deduplicated by it -- see
+    #     `ResolvedMeeting.origin_host`'s own docstring for why that's
+    #     unsafe here specifically, unlike PrimeGov's page-embeds-video
+    #     shape). Instead the two adapters now carry the delegating
+    #     tenant's own host separately as `origin_host`, and the fallback
+    #     immediately below re-runs this same ladder against THAT host
+    #     when the delegated host has no matching pin -- restoring the
+    #     pre-WO-210 behaviour for exactly the pages that used to key off
+    #     the delegating tenant's own trustworthy subdomain, while
+    #     leaving every pinned page (a real per-video/channel match on
+    #     the delegated host) and every un-delegated multi-gov-host page
+    #     untouched.
     multi_gov_host = bool(host) and registry.is_multi_gov_host(host)
     has_matching_pin = multi_gov_host and bool(_match_override(host, path, page_hints))
     if multi_gov_host and not has_matching_pin:
+        origin = _tenant_host(origin_host)
+        if origin and not registry.is_multi_gov_host(origin):
+            # Fresh path/page_hints: those describe the DELEGATED URL
+            # (a video id, a `view_id=` query param), not the delegating
+            # tenant's own page, so they have nothing to match against
+            # `origin`'s own tenant_overrides.csv rows -- which, for a
+            # CivicPlus/Legistar tenant, are ordinary whole-host pins
+            # with no `match` discriminator to begin with.
+            return _resolve_government_ladder(
+                raw_name,
+                tenant_host=origin,
+                path=None,
+                page_hints=None,
+                tenant_gov_id=tenant_gov_id,
+            )
         finalized = finalize_jurisdiction(raw_name, netloc=host or None)
         reason = (
             f"{host} is a shared, multi-government host with no matching "
@@ -2469,6 +2495,7 @@ def resolve_government(
     path: Optional[str] = None,
     page_hints: Optional[Dict[str, str]] = None,
     tenant_gov_id: Optional[str] = None,
+    origin_host: Optional[str] = None,
     signals: Optional[Dict[str, Any]] = None,
 ) -> GovernmentMatch:
     """`_resolve_government_ladder()`, plus an optional enhancement pass
@@ -2481,6 +2508,9 @@ def resolve_government(
     `unresolved`/`unverified`/`blank` corpus it was built to measure.
     Passing `signals={}` behaves identically to passing None (nothing to
     consume).
+
+    `origin_host` (WO-214) -- see `_resolve_government_ladder()`'s own
+    docstring and rung 1b's comment.
     """
     match = _resolve_government_ladder(
         raw_name,
@@ -2488,6 +2518,7 @@ def resolve_government(
         path=path,
         page_hints=page_hints,
         tenant_gov_id=tenant_gov_id,
+        origin_host=origin_host,
     )
     if not signals or match.tier not in (
         TIER_UNVERIFIED,

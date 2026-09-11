@@ -167,6 +167,14 @@ class CivicPlusAssetFinder(AssetFinder):
             result = await resolve_via_platform(final_url)
             if subdomain_jurisdiction:
                 result.jurisdiction = subdomain_jurisdiction
+            # WO-214: `result.source_url`/`.platform` are the DELEGATED
+            # platform's own (resolve_via_platform() returns that result
+            # as-is) -- see ResolvedMeeting.origin_host's own docstring.
+            # This tenant's own host is real, trustworthy evidence for
+            # identity even when it isn't for the video/caption content
+            # underneath, so it rides along separately rather than
+            # overwriting source_url.
+            result.origin_host = urlparse(url).netloc.lower()
             return result
 
         soup = BeautifulSoup(html, "html.parser")
@@ -225,6 +233,9 @@ class CivicPlusAssetFinder(AssetFinder):
         result = await resolve_via_platform(video_candidates[0]["url"])
         if subdomain_jurisdiction:
             result.jurisdiction = subdomain_jurisdiction
+        # WO-214: same origin_host carry-through as the final_platform
+        # branch above -- see ResolvedMeeting.origin_host's own docstring.
+        result.origin_host = urlparse(url).netloc.lower()
         # agenda_link/packet_link come from this row's OWN td.downloads,
         # not from whatever resolve_via_platform() found on the delegated
         # video platform's page -- Granicus/YouTube know nothing about

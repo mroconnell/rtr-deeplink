@@ -16,9 +16,14 @@ from conftest import load_fixture
 def _register_granicus():
     # resolve_via_platform() looks up the registered finder by platform
     # name -- register the real GranicusAssetFinder/ViebitAssetFinder so
-    # delegation exercises real parsing, not a stub.
+    # delegation exercises real parsing, not a stub. YouTubeAssetFinder
+    # too (WO-214): the PRIMARY a.videolink delegation path goes through
+    # this same registry lookup (unlike _try_fallback_video_link()'s
+    # direct YouTubeAssetFinder.resolve_video_id() call, which needs no
+    # registration at all).
     register(GranicusAssetFinder())
     register(ViebitAssetFinder())
+    register(YouTubeAssetFinder())
 
 
 async def test_calendar_page_raises_pick_list_from_real_maricopa_calendar():
@@ -78,6 +83,60 @@ async def test_single_meeting_delegates_to_granicus():
 
     assert result.platform == "granicus"
     assert result.external_id == "granicus:cityofmaricopa.granicus.com:1504"
+
+
+async def test_single_meeting_delegating_to_youtube_carries_origin_host(monkeypatch):
+    # WO-214: the primary a.videolink delegation path -- the one real
+    # Legistar shape affected by the pre-existing "known quirk" (CLAUDE.md
+    # platform-wrapper bullet): `resolve_via_platform()` here returns the
+    # DELEGATED platform's result as-is, so `result.source_url`/`.platform`
+    # end up as YouTube's own, not Legistar's. WO-210's multi-government-
+    # host safeguard (`app/utils/gov_registry/resolver.py` rung 1b) then
+    # can't tell this apart from an untrusted bare YouTube paste, and
+    # blanks the government unless a per-video pin exists.
+    #
+    # Same real maricopa.legistar.com tenant/shape as
+    # test_single_meeting_delegates_to_granicus above, just redirecting to
+    # a real-shaped YouTube URL instead of Granicus -- confirms
+    # `origin_host` (the fix) carries the delegating tenant's own host
+    # through even though `source_url`/`platform` stay on YouTube exactly
+    # as before.
+    meeting_url = "https://maricopa.legistar.com/MeetingDetail.aspx?ID=1"
+    video_aspx = (
+        "https://maricopa.legistar.com/Video.aspx?Mode=Granicus&ID1=1504&Mode2=Video"
+    )
+    youtube_url = "https://youtu.be/dQw4w9WgXcQ"
+
+    meeting_html = (
+        "<html><body><table><tr><td>City Council Meeting</td>"
+        "<td>4/8/2026</td></tr></table>"
+        f"<a class=\"videolink\" onclick=\"window.open('{video_aspx}','video');"
+        'return false;">Video</a></body></html>'
+    )
+
+    routes = {
+        meeting_url: FakeResponse(status=200, text=meeting_html, url=meeting_url),
+        video_aspx: FakeResponse(status=200, text="", url=youtube_url),
+    }
+
+    def _fake_extract_info(video_id):
+        return {
+            "title": "City Council Meeting",
+            "uploader": "City of Maricopa Government Channel",
+            "upload_date": "20260408",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+    with mock_session(routes):
+        result = await LegistarAssetFinder().resolve(meeting_url)
+
+    assert result.platform == "youtube"
+    # The known quirk, unchanged by this fix -- source_url/platform stay
+    # on the delegated YouTube result, never rewritten back to Legistar's.
+    assert result.source_url == youtube_url
+    # The fix: the delegating tenant's own host rides along separately.
+    assert result.origin_host == "maricopa.legistar.com"
 
 
 async def test_single_meeting_delegation_populates_meeting_body():

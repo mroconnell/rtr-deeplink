@@ -3,6 +3,7 @@ import pytest
 from app.platforms.base import CalendarPageError, NoVideoCandidateFound, register
 from app.platforms.civicplus import CivicPlusAssetFinder
 from app.platforms.granicus import GranicusAssetFinder
+from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
 from conftest import load_fixture
@@ -10,7 +11,11 @@ from conftest import load_fixture
 
 @pytest.fixture(autouse=True)
 def _register_granicus():
+    # YouTubeAssetFinder too (WO-214): resolve_via_platform() looks up
+    # the registered finder by platform name for the primary
+    # single-video delegation path.
     register(GranicusAssetFinder())
+    register(YouTubeAssetFinder())
 
 
 async def test_listing_with_multiple_videos_raises_pick_list():
@@ -217,6 +222,68 @@ async def test_listing_with_single_video_delegates_to_granicus():
         "https://example.civicplus.com/AgendaCenter/ViewFile/Agenda/"
         "_04082026-1001?packet=true"
     )
+
+
+async def test_listing_with_single_video_delegating_to_youtube_carries_origin_host(
+    monkeypatch,
+):
+    # WO-214: `resolve_via_platform()` here returns the DELEGATED
+    # platform's own result as-is, so `result.source_url`/`.platform`
+    # end up as YouTube's own, not CivicPlus's -- the pre-existing "known
+    # quirk" (CLAUDE.md's platform-wrapper bullet). WO-210's multi-
+    # government-host safeguard then can't tell this apart from an
+    # untrusted bare YouTube paste, and blanks the government unless a
+    # per-video pin exists.
+    #
+    # This row's markup is trimmed straight from the real, raw-saved
+    # nc-durham.civicplus.com fixture (durham_agendacenter_citycouncil.html)
+    # -- real video id (tz8M7oiZQzc), real date, real title, real
+    # tenant host -- kept to a single row here so resolve() delegates
+    # directly instead of raising CalendarPageError (that fixture's own
+    # test above confirms it's one of the file's 22 real candidates).
+    url = "https://nc-durham.civicplus.com/AgendaCenter/City-Council-4"
+    html = """
+    <table>
+      <tr class="catAgendaRow">
+        <td>
+          <h3><strong aria-label="Agenda for August 11, 2026">Aug 11, 2026</strong></h3>
+          <p><a href="/AgendaCenter/ViewFile/Agenda/_08112026-3549">
+            August 11, 2026 Joint City County - DPS Meeting
+          </a></p>
+        </td>
+        <td class="media">
+          <span id="media" class="videos">
+            <a href="https://www.youtube.com/watch?v=tz8M7oiZQzc">Media</a>
+          </span>
+        </td>
+      </tr>
+    </table>
+    """
+
+    routes = {url: FakeResponse(status=200, text=html, url=url)}
+
+    def _fake_extract_info(video_id):
+        return {
+            "title": "August 11, 2026 Joint City County - DPS Meeting",
+            "uploader": "City of Durham NC Government",
+            "upload_date": "20260811",
+        }
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _fake_extract_info)
+
+    with mock_session(routes):
+        result = await CivicPlusAssetFinder().resolve(url)
+
+    assert result.platform == "youtube"
+    # The known quirk, unchanged by this fix -- source_url/platform stay
+    # on the delegated YouTube result, never rewritten back to CivicPlus's.
+    assert result.source_url == "https://www.youtube.com/watch?v=tz8M7oiZQzc"
+    # The fix: the delegating tenant's own host rides along separately.
+    assert result.origin_host == "nc-durham.civicplus.com"
+    # subdomain_jurisdiction still wins over YouTube's own uploader guess,
+    # unaffected by this fix -- "nc-durham" is a real Census-validated
+    # CivicPlus tenant subdomain.
+    assert result.jurisdiction == "Durham, NC"
 
 
 async def test_self_hosted_domain_parses_own_agendacenter_html():

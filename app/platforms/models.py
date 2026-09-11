@@ -43,6 +43,34 @@ class AlternateTranscript(BaseModel):
 class ResolvedMeeting(BaseModel):
     platform: str
     source_url: str
+    # WO-214: the delegating tenant's own host (a CivicPlus/Legistar
+    # subdomain, e.g. "nc-durham.civicplus.com" or "cabq.legistar.com"),
+    # set ONLY when this result came back from `resolve_via_platform()`
+    # returning the DELEGATED platform's own result as-is -- the "known
+    # quirk" CLAUDE.md's platform-wrapper bullet already documents:
+    # `civicplus.py`/`legistar.py` overwrite `.jurisdiction` from their
+    # own subdomain/agenda text but never `.source_url` or `.platform`,
+    # both of which end up as the delegated platform's (confirmed live,
+    # WO-214 sizing sweep: zero archived pages have platform stored as
+    # "legistar"/"civicplus" at all -- every one carries the delegated
+    # platform's name). `source_url` deliberately stays exactly as today
+    # -- Archive pages are deduplicated by it (`source_url_normalized`),
+    # so changing it retroactively risks a duplicate page on re-ingest --
+    # this field exists purely so `_resolve_page_government()`
+    # (archive/db/crud.py) can resolve the government's IDENTITY as if
+    # source_url HAD stayed on the delegating tenant's own host, the way
+    # `PrimeGovAssetFinder` already achieves natively by calling
+    # `YouTubeAssetFinder.resolve_video_id()` directly rather than
+    # `resolve_via_platform()`. Consumed only by
+    # `app/utils/gov_registry/resolver.py`'s rung 1b (WO-210's
+    # multi-government-host safeguard) as a fallback when the DELEGATED
+    # host has no matching per-video/channel pin -- it never changes
+    # what rung 1b does when a real pin exists. None on every other
+    # platform, and on any CivicPlus/Legistar path that already resets
+    # `source_url`/uses `resolve_video_id(source_url=...)` directly (the
+    # fallback-link, known-channel and Granicus-ViewPublisher paths all
+    # already do this, so they were never affected by the quirk).
+    origin_host: Optional[str] = None
     external_id: Optional[str] = (
         None  # namespaced by host, e.g. "granicus:napacity.granicus.com:52945" --
         # must include the host for any multi-tenant platform (a bare

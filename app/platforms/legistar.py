@@ -134,7 +134,13 @@ class LegistarAssetFinder(AssetFinder):
             final_url, html = await self._fetch(session, url)
 
             if not self._is_legistar_domain(final_url):
-                return await resolve_via_platform(final_url)
+                result = await resolve_via_platform(final_url)
+                # WO-214: see ResolvedMeeting.origin_host's own docstring
+                # -- `result.source_url`/`.platform` are the delegated
+                # platform's own, since the given URL redirected off
+                # legistar.com before this class ever parsed a page.
+                result.origin_host = urlparse(url).netloc.lower()
+                return result
 
             soup = BeautifulSoup(html, "html.parser")
             video_links = self._find_video_links(soup, final_url)
@@ -173,6 +179,12 @@ class LegistarAssetFinder(AssetFinder):
             target_final_url, _ = await self._fetch(session, video_links[0]["url"])
             if not self._is_legistar_domain(target_final_url):
                 resolved = await resolve_via_platform(target_final_url)
+                # WO-214: see ResolvedMeeting.origin_host's own docstring
+                # -- `resolved.source_url`/`.platform` are the delegated
+                # platform's own (resolve_via_platform() returns that
+                # result as-is), so this tenant's own host rides along
+                # separately for government-identity purposes.
+                resolved.origin_host = urlparse(final_url).netloc.lower()
                 if page_info and self._looks_like_raw_filename(resolved.title):
                     resolved.title = page_info["title"]
                     resolved.jurisdiction = (

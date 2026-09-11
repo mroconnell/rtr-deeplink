@@ -208,3 +208,51 @@ async def test_a_blank_multi_gov_answer_on_re_ingest_keeps_the_existing_gov_id()
     page = await _page(url)
     assert page["gov_id"] == SIOUX_FALLS  # not downgraded to rtr:unknown:*
     assert page["jurisdiction_confidence"] == "registry"
+
+
+async def test_origin_host_recovers_identity_for_a_civicplus_delegated_youtube_push():
+    """WO-214, end to end over the real HTTP ingest surface. A CivicPlus
+    page delegated to an unpinned YouTube video -- `platform`/`source_url`
+    are YouTube's own (the pre-existing "known quirk", CLAUDE.md's
+    platform-wrapper bullet), `jurisdiction` is the subdomain-derived name
+    `civicplus.py` sets (`nc-durham.civicplus.com` -> "City of Durham,
+    NC", a real Census-validated tenant, see tests/test_civicplus.py).
+    Before this fix, WO-210's multi-government-host safeguard blanked
+    this page's government outright, since `www.youtube.com` has no pin
+    for this video. `origin_host` carries the delegating tenant's own
+    host through so this resolves to Durham's real, registry government
+    (`us:place:3719000`) instead."""
+    url = "https://www.youtube.com/watch?v=govidtest05"
+    r = _ingest(
+        _payload(
+            source_url=url,
+            external_id="youtube:govidtest05",
+            jurisdiction="City of Durham, NC",
+            origin_host="nc-durham.civicplus.com",
+        )
+    )
+    assert r.status_code == 200, r.text
+    page = await _page(url)
+    assert page["gov_id"] == "us:place:3719000"
+    assert page["jurisdiction"] == "Durham, NC"
+    assert page["jurisdiction_confidence"] == "registry"
+
+    # Control: the identical push with no origin_host still blanks --
+    # confirming the fallback, not some unrelated change, is what fixed
+    # the case above, and that rung 1b itself is unweakened. govidtest07,
+    # not govidtest06 -- that id is a different, unrelated fixture used
+    # by test_a_blank_multi_gov_answer_on_re_ingest_keeps_the_existing_
+    # gov_id above (WO-215).
+    control_url = "https://www.youtube.com/watch?v=govidtest07"
+    r = _ingest(
+        _payload(
+            source_url=control_url,
+            external_id="youtube:govidtest07",
+            jurisdiction="City of Durham, NC",
+        )
+    )
+    assert r.status_code == 200, r.text
+    control_page = await _page(control_url)
+    assert not control_page["gov_id"] or control_page["gov_id"].startswith(
+        "rtr:unknown:"
+    )
