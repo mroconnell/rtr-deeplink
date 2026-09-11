@@ -3173,6 +3173,145 @@ tier3_auto_transcription_queue_probe.csv` (append-only probe log);
 `BACKLOG.md` (2 new entries: the Neosho County dead-video finding, and
 the stale coverage-write floor).
 
+### WO-174 continuation, slice 2: rows 4,018-6,559, one more wrong-domain government caught and fixed, plus a pin-restaging bug found in the run itself [Done 2026-09-11]
+
+This picks up exactly where the slice-1 entry above left off. The run
+kept going in the background the whole time (same supervisor script,
+nothing re-run or lost). This write-up covers report rows 4,018 through
+6,559 (2,542 governments) — the rest of the 1,000-4,999 population band.
+The run continued past row 6,559 while this slice was being checked and
+written up; that later work is a later slice's to cover.
+
+**Result, this slice's 2,542 governments:**
+
+| Outcome | Count of 2,542 |
+|---|---|
+| No AgendaCenter | 2,165 |
+| Blocked by a "prove you're human" page | 146 |
+| Website did not respond | 130 |
+| Already had a page | 73 |
+| Real meeting, no video | 20 |
+| No meeting at all found | 6 |
+| Captions available, page live now | 1 (found wrong, see below — 0 real) |
+| Rejected by the video check | 1 |
+
+Only 1 of 2,542 governments (0.04%) turned up a real video candidate,
+and hand-checking that one found it belonged to a different government
+(below) — so this slice's real yield is 0. That is down again from
+slice 1's 12 of 2,568 (0.5%), which was itself down from the first
+pass's 33 of 1,449 (2.3%). This band (population roughly 1,000-5,000)
+is the smallest-town end of CivicPlus's own footprint: 2,165 of 2,542
+governments checked (85%) do not run CivicPlus's AgendaCenter at all.
+
+**Cumulative, all 6,559 governments checked so far (three passes):**
+
+| Outcome | Count of 6,559 |
+|---|---|
+| No AgendaCenter | 4,964 |
+| Website did not respond | 545 |
+| Already had a page | 444 |
+| Blocked by a "prove you're human" page | 404 |
+| Real meeting, no video | 101 |
+| No meeting at all found | 48 |
+| Captions available, page live now | 41 (2 found wrong and removed, see below and slice 1 — 39 real) |
+| Video, no captions, queued | 5 |
+| Rejected by the video check | 4 |
+| Wrong government caught at the candidate stage | 3 |
+
+**One real wrong-government catch this slice's own hand-check found.**
+This slice's only "captions available" row was hand-checked against the
+video's own title and channel (`yt-dlp`; YouTube's oEmbed endpoint
+returned "Unauthorized" for it, same fallback WO-191 and slice 1 both
+used) — same method as before, applied to every ingested/queued row in
+the slice (1 row: nothing was queued to tier 3 this slice):
+
+| Government | Domain used | Video was actually |
+|---|---|---|
+| Union City village, OH | utclermont.gov | Union Township, Clermont County, Ohio's own Board of Trustees meeting |
+
+`utclermont.gov` ("UT" = Union Township) is genuinely Union Township,
+Clermont County, Ohio's own domain — already correctly recorded under
+its own separate government (a real, different Ohio government with its
+own existing page from an earlier meeting) before this slice ever ran.
+It had been mis-recorded as Union City village's domain, a pre-existing
+data mistake this slice's run inherited and then acted on: it read that
+domain's AgendaCenter, found a real September 8 Union Township meeting,
+and made it into a page credited to Union City village. Same failure
+shape as slice 1's Bristol Borough/Township mix-up — a normal-looking
+"Trustees Meeting" title from a real, correctly-named channel gives the
+built-in phrase check (which looks for terms like "school board" or
+"county assessor") nothing to catch, since the problem is only visible
+by knowing which real government a domain belongs to.
+
+**Fixed, both the data and the live page (this time, without the
+sandbox constraint slice 1 hit).** `jurisdiction_coverage.csv`'s row for
+Union City village, OH (`us:place:3978624`) now has
+`domain=unioncityvillage.homestead.com` (its own real, previously-known
+address, moved up from `alternate_domains`), `utclermont.gov` moved into
+`alternate_domains` (kept, not deleted), and `reject_reason=wrong-
+domain-mapping`. The fields that had been filled in against the wrong
+domain (`example_agenda_or_calendar_url`, `example_meeting_url`,
+`shares_video`, `transcribed`, `suspected_calendar_provider`, and a
+stray `suspected_video_provider=civicplus` — CivicPlus is a calendar
+platform, never a video host, so that value was already wrong on its own
+terms) were all cleared back to blank. The wrongly-attributed live page
+(`/m/union-city-village-oh-2026-09-08-union-township-board-of-trustees-
+meeting-septem`) was deleted for real (`dry_run=false`) and confirmed
+404 in the same session — no `[HUMAN]` entry needed this time, the
+sandbox let the real delete call through. Union Township itself needs no
+new page or follow-up: it already has its own, separately-correct
+coverage from an earlier meeting.
+
+**A second, real finding: the run's own pin-staging logic can silently
+resurrect a pin already found wrong and deliberately left out of a
+merged PR.** While reconciling this worktree's `tenant_overrides.csv`
+against `origin/main` before this slice's own commit, a stray pin
+appeared for Bristol borough, PA (`5pn76A2QHSU` → `us:place:4208760`,
+sourced `wo174_agendacenter_probe`, hub `bristoltwppa.gov`) — the exact
+wrong pin slice 1 correctly left out of its own PR after catching the
+Bristol Borough/Township mix-up. `wo174_pins_staged.csv` is append-only
+and was never pruned when slice 1's hand-check found that pin wrong, so
+this run's periodic pin-flush (`merge_pins_into_tenant_overrides()`,
+confirmed via the run's own log line "12 pin(s) appended... 42 staged")
+silently re-added it to this worktree's `tenant_overrides.csv` on
+restart, since that exact line happened not to be present in this
+worktree's copy yet. Caught and removed from both files (the staged
+source and this worktree's `tenant_overrides.csv`) before commit — see
+the new `BACKLOG.md` `[JUST-DO-IT]` entry for the general fix (skip a
+staged pin whose gov_id carries a reject reason in
+`jurisdiction_coverage.csv`, or delete a staged row once hand-checked
+wrong).
+
+**`wo174_hand_check_flags.csv` (the pipeline's own built-in Kind A/B
+phrase check) recorded nothing this slice** — expected, not a gap: a
+plain "Board Of Trustees Meeting" title from a real "Union Township
+Trustees" channel matches none of the built-in phrases (they catch
+things like "school board" or "regional planning commission"), which is
+exactly the failure shape the independent hand-check exists to cover
+(same as Bristol Borough in slice 1).
+
+**Deploy status.** The corrected Union City village data is live in
+`jurisdiction_coverage.csv` now (research file, not a deploy target).
+The wrong page is deleted and confirmed gone; no real page from this
+slice needs deploying. The pin fix (removing the stray Bristol pin) and
+the `wo174_pipeline.py`-adjacent `BACKLOG.md` entry are on `main` but
+need no deploy either — pin/queue files only take effect on the next
+resolver deploy, and this slice added no new real ones.
+
+Files: `rtr-business/research/jurisdiction_coverage.csv` (1 row
+corrected for real — Union City village, OH — plus governments the
+still-running pipeline itself updated live through row ~7,193 as this
+write-up was being finished; only rows through 6,559 are this slice's
+own analysis), `wo174_report.csv` (append-only, resumable), `wo174_
+civicplus_hits.csv`, `wo174_discovery_seeds.csv` (both append-only);
+`wo174_pins_staged.csv` (1 stray wrong pin removed); `app/utils/
+jurisdiction_data/tenant_overrides.csv` (net unchanged this slice — the
+one stray pin the run re-added was removed before commit); `scripts/
+tier3_auto_transcription_queue.txt` (no new lines this slice); `scripts/
+tier3_auto_transcription_queue_probe.csv` (1 new probe row, the Union
+City/Union Township video); `BACKLOG.md` (1 new `[JUST-DO-IT]` entry:
+the pin-restaging gap).
+
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
 **The problem.** One path already checked a video before making it a
