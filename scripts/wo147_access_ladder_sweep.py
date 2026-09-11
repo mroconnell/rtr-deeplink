@@ -342,6 +342,25 @@ def waf_family_from_headers(headers: dict) -> str:
     return "none"
 
 
+def _safe_soup(html_text: str) -> Optional[BeautifulSoup]:
+    """BeautifulSoup's own `html.parser` backend can raise
+    `ParserRejectedMarkup` (an `AssertionError` inside the stdlib parser,
+    wrapped) on a response that LOOKS like text (decoded via
+    `resp.text(errors="replace")` in fetch_one(), so it's always a `str`,
+    never bytes) but is actually binary/garbled -- confirmed live running
+    this WO's own 1,814-government sweep: a host returned exactly this
+    shape and the original, unguarded `BeautifulSoup(html_text, ...)`
+    call crashed the whole run with an unhandled exception, killing 900+
+    rows of real, already-collected progress along with it. Every caller
+    below already treats "nothing found" as a normal, valid outcome for
+    an ordinary page with no link -- a page BeautifulSoup can't parse at
+    all is the same outcome, not a fatal error."""
+    try:
+        return BeautifulSoup(html_text, "html.parser")
+    except Exception:  # noqa: BLE001 -- any parser failure, never fatal here
+        return None
+
+
 def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, str]]:
     """Scans real anchors/iframes/video tags (same tag set as wo134's own
     find_specific_platform_link()) for a URL detect_platform() recognizes
@@ -351,14 +370,17 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
     subdomain needed) since that's the single most common self-hosted
     case in this candidate population (wo126_hub's 306 rows)."""
     if "agendacenter" in html_text.lower():
-        soup = BeautifulSoup(html_text, "html.parser")
-        for a in soup.find_all("a", href=True):
-            if "agendacenter" in a["href"].lower():
-                return "civicplus", urljoin(final_url, a["href"])
+        soup = _safe_soup(html_text)
+        if soup is not None:
+            for a in soup.find_all("a", href=True):
+                if "agendacenter" in a["href"].lower():
+                    return "civicplus", urljoin(final_url, a["href"])
         origin = urlparse(final_url)
         return "civicplus", f"{origin.scheme}://{origin.netloc}/AgendaCenter"
 
-    soup = BeautifulSoup(html_text, "html.parser")
+    soup = _safe_soup(html_text)
+    if soup is None:
+        return None
     page_no_frag = urlparse(final_url)._replace(fragment="").geturl()
     for tag in soup.find_all(_TAGS):
         values = []
@@ -394,7 +416,9 @@ def find_platform_link(html_text: str, final_url: str) -> Optional[Tuple[str, st
 
 
 def find_hop_links(html_text: str, final_url: str) -> List[str]:
-    soup = BeautifulSoup(html_text, "html.parser")
+    soup = _safe_soup(html_text)
+    if soup is None:
+        return []
     out: List[str] = []
     seen = set()
     for a in soup.find_all("a", href=True):

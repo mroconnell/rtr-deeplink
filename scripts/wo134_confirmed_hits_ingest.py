@@ -386,6 +386,22 @@ def _finish_probe_selection(probed: List["queue_probe.ProbeResult"]):
     return choice
 
 
+# WO-152 hook (2026-09-10): when set, process_row() calls this right after
+# a hit resolves real video content (segments/agenda/video_url present) and
+# BEFORE that content is ingested or queued -- the one point in this
+# pipeline where a wrong-government mismatch (WO-145's four confirmed
+# collision shapes: state/province mismatch, county-vs-municipality
+# keyword, an institution-phrase title naming a different place, a
+# same-name Canadian municipality with no state/province code to rule it
+# out) can still be caught before anything goes live. Returning a non-empty
+# string treats this hit as skipped (the loop below tries the row's next
+# hit, same as any other continue); None means no mismatch found. Default
+# None preserves this module's original behavior exactly. Signature:
+# hook(row, platform, result, final_seed, effective_title) -> Optional[str].
+# See scripts/wo152_dead_domain_recheck.py for the real hook.
+IDENTITY_CHECK_HOOK = None
+
+
 @dataclass
 class RowResult:
     gov_id: str
@@ -1874,6 +1890,13 @@ async def process_row(
                 continue
 
         if _has_video(result):
+            if IDENTITY_CHECK_HOOK is not None:
+                mismatch = IDENTITY_CHECK_HOOK(
+                    row, platform, result, final_seed, effective_title
+                )
+                if mismatch:
+                    last_reason = f"{platform}: wrong-domain-mapping: {mismatch}"
+                    continue
             _seen_keys.add(key)
             apply_display_jurisdiction(result, gov_id)
 

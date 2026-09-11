@@ -1,5 +1,101 @@
 # Backlog — done
 
+## WO-152: recheck of 1,814 governments whose domain looked dead [Done 2026-09-10]
+
+Ryan's earlier client marked 1,814 small governments (under 5,000 people)
+as unreachable — 1,690 where the domain itself never resolved, 124 where
+the resolve step failed some other way. This was the cheapest possible
+retest: one or two plain web requests per government, using a normal
+browser-like request, no heavy tooling. The question was simple: is the
+site really dead, or did the first check just get refused?
+
+**What was done.** For each government, tried the www/non-www and
+http/https variants of its domain, then a plain request with honest
+headers, then — only after a block — one retry with ordinary browser
+headers. Never went past a Cloudflare "prove you're human" gate. Where a
+real meetings platform link turned up, resolved it through this repo's
+own adapters and kept only a real video. A meeting with no video is
+recorded, never made into a page (Ryan's standing rule). A likely video
+found via a bare YouTube channel scan (not a specific linked video) got
+its title checked by hand before being trusted — that check caught one
+real false positive, described below.
+
+**Result.**
+
+| Outcome | Count of 1,814 | Detail |
+|---|---|---|
+| Captions available, page live now | 78 | real transcript, ingested |
+| Video, no captions, queued (after probe) | 5 | tier-3, will be transcribed |
+| Rejected by probe | 0 | none of the 6 probed candidates were dead/short |
+| Video without meeting | 1 | see "false positive" below |
+| Meeting without video | 19 | real meeting found, no video — recorded, not built |
+| No meeting nor video | 2 | nothing found at either |
+| Wrong domain mapping | 2 | candidate belonged to a different government |
+| Off-mission | 57 | channel/page found had no real meeting content |
+| No platform link found | 340 | site answered, no meetings platform visible |
+| Blocked, plain request | 62 | site refused the plain request |
+| Blocked, browser-style request | 6 | still refused after the retry |
+| Challenge gate (Cloudflare) | 32 | stopped, never retried past it |
+| Dead at every rung | 1,208 | 896 DNS never resolved, 312 timed out |
+| Already covered | 1 | page already existed |
+| Error | 1 | needs a retry, not a real answer |
+| **Total** | **1,814** | |
+
+Domain corrected (a www/https variant answered where the plain domain
+didn't) touched **1,258** rows — that's not its own outcome, it overlaps
+every row above; it's recorded in `jurisdiction_coverage.csv`'s `domain`
+column so future checks start from a working address.
+
+**Which rung actually answered, by why it looked dead first:**
+
+| Prior reason | Answered plain | Answered browser-style | Challenge gate | Still dead | Blocked outright |
+|---|---|---|---|---|---|
+| Domain never resolved (1,690) | 381 | 5 | 31 | 1,205 | 68 |
+| Resolve failed some other way (124) | 116 | 3 | 1 | 3 | 1 |
+
+So of the 1,814, **505 governments actually answered** once retried
+politely (497 at the plain request, 8 more only after the browser-style
+retry) — the other 1,309 really were unreachable at every rung, mostly
+DNS never resolving at all (896).
+
+**The false positive, caught by the manual title check.** Six real
+tier-3 video candidates were found and each passed WO-144's probe
+(duration/date/size check). Five were real government meetings, verified
+by reading the actual video title: Saint-Damien QC's council meeting,
+Clinton village NY's Zoning Board of Appeals, Nederland CO's Downtown
+Development Authority, Guilford CT's Board of Education, and Seadrift
+TX's CivicClerk meeting. The sixth, matched to Nortonville city, KY via
+a bare YouTube channel scan, turned out to be "Silahturahmi Online
+Parents Meeting 2026" — a parents' meeting for an Indonesian university
+(Universitas Muhammadiyah Palembang), completely unrelated to
+Nortonville. This is exactly the failure mode WO-147 flagged (3 of 8
+channel-scan hits in that sweep were not real meetings despite passing
+the title gate) — caught here, not queued, no pin written.
+
+**Caution.** This pass answers "is it really dead" for domains, not "is
+there a real meeting platform to find" — 340 governments answered but
+showed no visible meetings link at all, and 57 more had a channel or page
+with no real meeting content. Both groups are real candidates for a
+deeper method (a JS-rendered page scan, or a name/CMS-signature search)
+later, not evidence the government has no online meetings.
+
+**Two small bugs found and filed in `BACKLOG.md`** (both `[JUST-DO-IT]
+[EASY]`, not fixed here to keep this change scoped): (1)
+`tenant_overrides.csv`'s `evidence` text hardcodes "WO-134" (and, in a
+second function, "WO-147") regardless of which sweep actually wrote the
+pin — cosmetic, the `gov_id`/`source` columns are still correct. (2)
+`wo145_api_first_sweep.py`'s wrong-government title check false-positives
+on any government whose name is literally a US state name plus "City"
+(Iowa City IA, Kansas City MO/KS, Oklahoma City OK...) — caught live on
+Swisher city, IA and fixed in this WO's own ported copy of the check, but
+the original function still has the bug.
+
+**Recommendation.** Nothing here needs a deploy — this is research-file
+and backlog work only (`jurisdiction_coverage.csv`, pins, the tier-3
+queue, and code that only runs from scripts). The 78 newly-ingested pages
+and 5 newly-queued meetings are live once the next transcription run
+picks up the queue; no action needed from Ryan unless he wants the two
+small bugs above fixed sooner.
 ## WO-178: settled the 111 governments WO-165 could not decide on its own; only 2 are left for a human [Done 2026-09-10]
 
 WO-165 cleaned up duplicate rows in `rtr-business/research/
