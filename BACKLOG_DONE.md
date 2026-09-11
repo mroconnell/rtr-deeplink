@@ -336,6 +336,113 @@ transcription workers are redeployed.
 research/ENUMERATION_METHODS.md` §264 for the full method and every
 number above; `rtr-deeplink/scripts/wo216_build_candidates.py`,
 `wo216_access_ladder_sweep.py`, `wo216_finish_tier3.py`.
+## WO-217: one-hop alternate-domain pass on the 5,000+ municipalities that found a meeting but no video -- 6 real videos, 87 new alternate domains, 1 wrong-government catch fixed live [Done 2026-09-11]
+
+**Why this ran.** Ryan's rule: a domain keeps its place once it has
+found a real meeting or agenda — that's already "very high quality." But
+if that domain never found *video*, a second, different domain might.
+This WO ran that check on every municipality of 5,000 people or more
+that has no page yet and whose only reason is "found a meeting, no
+video."
+
+**How big the list was.** Re-counted fresh from today's coverage
+registry, not taken from an old number: **867** municipalities (766
+tagged "no video found," 101 tagged "meeting without video" — two
+spellings of the same thing). 266 of them already had a second domain on
+file; 601 did not.
+
+**What was done, in two groups.**
+
+*Group 1 — already had a second domain.* 119 of the 266 had never been
+checked this way before (the other 147 were checked already, by an
+earlier pass). All 119 were checked.
+
+| Result | Count of 119 | What it means |
+|---|---|---|
+| Different platform found, real video | 4 | A real transcript is now live |
+| Different platform found, no usable video | 19 | Checked, nothing there |
+| Same platform again | 23 | Not a new source |
+| Same website under another address | 3 | Not really a second domain |
+| Reachable, no platform link | 21 | Checked, nothing there |
+| Couldn't reach it | 41 | Blocked, DNS failure, or similar |
+| No second domain left to try | 8 | The data changed since the list was built |
+
+*Group 2 — had no second domain on file.* For these 601, the work was
+to find a second domain first, then run the same check. Domains were
+found by checking, in order: a 2022 Census-linked city-website list, a
+Wikidata bridge, a CivicMirror list, the government's own "hub" page,
+and — only if none of those had anything — up to eight guessed web
+addresses (like `cityofname.gov`).
+
+The four listed sources (no guessing) were checked for all 601: 88 found
+a real, different second domain; 513 found nothing.
+
+Guessing web addresses is the slow part — each guess is its own request,
+and most don't pan out. 24 of the 513 were guessed before this run
+stopped; none of those 24 found anything. The other 489 are untried.
+**This was a deliberate stopping point, not a crash or a timeout** — see
+"What's left" below for the exact command to pick it back up.
+
+**Real videos found, both groups together, every one hand-checked**
+(title and channel read against the government's name, not just
+matched):
+
+| Government | Result |
+|---|---|
+| Patterson city, CA | Live now — 520 caption lines |
+| Knightdale town, NC | Live now — 598 caption lines |
+| Harrisburg town, NC | Live now — 2,392 caption lines |
+| Newcastle city, WA | Live now — 682 caption lines |
+| Santa Clara city, UT | Queued for transcription |
+| Hugo city, MN | Found, but over 90 minutes long — parked, not queued |
+
+**One wrong-government mistake, caught and fixed the same session.** A
+guessed web address for Freeport village, NY (`cityoffreeport.org`)
+matched on the word "Freeport" alone and pulled in a real YouTube video
+— but that video belonged to a *different, real* Freeport: Freeport,
+Illinois. The video's own title didn't name a place, so the automatic
+checks didn't catch it. It was caught by hand, reading the page each
+match came from. The wrong page was deleted, the wrong pin removed, and
+the underlying check was fixed so it now also verifies the *state*, not
+just the name, before accepting a match. Freeport, Illinois's channel is
+logged for a future pass. This is worth restating plainly: **the check
+this used already existed in this repo** (`find_gov_domains.py`,
+fixed for the same problem on 2026-09-09) — this WO wrote a new check
+instead of reusing the old one, and the same mistake came back. A future
+domain-guessing script should reuse that existing check.
+
+**Recommendation.** The four listed domain sources are now fully
+checked for every one of the 601 — that's the reliable, fast part done.
+Guessing web addresses found nothing in a 24-row sample of the largest
+remaining cities, which is weak evidence it isn't worth much more time
+there; if it's worth finishing, the exact command is below. The four
+real transcripts are already live on the site.
+
+**What's left — exact resume command.** 489 of the 513 "nothing found
+locally" rows have not been guessed yet:
+
+```
+DATABASE_URL="sqlite+aiosqlite:////tmp/wo217_g2.db" \
+  python3 scripts/wo217_group2_sweep.py \
+  --inventory-csv /tmp/wo217_inv/meeting_inventory.csv --guess-only
+```
+
+This resumes on its own — `research/wo217_guess_pass_done.txt` tracks
+which governments have already been guess-checked, so re-running is
+safe. Group 1's residual 8 "no domain left to try" rows are a data-
+staleness artifact (the domain changed between building the candidate
+list and running the check), not a bug — a fresh candidate build would
+pick them back up.
+
+**Deploy status.** The 4 live transcripts are already on the site (a
+direct API call to Archive, not a deploy). The tier-3 queue line, the
+90-minute-deferred entry, and the pin file changes need the next manual
+deploy before they take effect in production.
+
+Files: `scripts/wo217_build_candidates.py`, `scripts/wo217_group1_
+sweep.py`, `scripts/wo217_group2_sweep.py`, `scripts/wo217_handcheck.py`
+(this repo); `research/wo217_*` and `ENUMERATION_METHODS.md` §265
+(`rtr-business`).
 
 ## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
 
