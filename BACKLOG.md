@@ -145,11 +145,10 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
     [JUST-DO-IT] `[EASY]` `wo174_pipeline.py`'s…
-    [JUST-DO-IT] 3 real CivicPlus pages are live right now with a blank…
+    [JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (11)
-  Production actions only Ryan should take  (10)
-    [HUMAN] 3 live Archive pages from WO-216's sweep are keyed to the…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
+  Production actions only Ryan should take  (9)
     [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
@@ -1247,12 +1246,12 @@ so that work reads together.
   - **Constraint**: don't wholesale-rewrite `wo174_pins_staged.csv`'s row order for this — same reasoning `merge_pins_into_tenant_overrides()`'s own docstring already gives against re-sorting `tenant_overrides.csv` (a real one-line diff turning into a multi-thousand-line one).
   - **History**: `BACKLOG_DONE.md`, WO-174 continuation slice 2, 2026-09-11.
 
-- **[JUST-DO-IT] 3 real CivicPlus pages are live right now with a blank government identity, and `scripts/backfill_gov_id.py` cannot reach them (or the other 49 at-risk ones) to fix it — they need an actual re-push.**
-  - **Issue**: WO-214 fixed the underlying bug (a CivicPlus/Legistar page delegated to an unpinned YouTube/Vimeo video now keeps its government identity — see `BACKLOG_DONE.md`), but that fix only takes effect on a FRESH resolve. `origin_host` (the new field the fix relies on) is not persisted on `MeetingPage`, so a bulk recompute from stored data alone — `scripts/backfill_gov_id.py`, which reads only `source_url`/`jurisdiction` — has no way to recover it. Confirmed live: a dry run restricted to 3 real affected CivicPlus tenant hosts (`nm-angelfire.civicplus.com`, `ca-inglewood.civicplus.com`, `oh-commercialpoint.civicplus.com`) matched zero rows, because no archived page's stored `source_url` is ever the CivicPlus tenant's own host — it's always the delegated video's.
-  - **Impact**: page ids 6026 (`2026-08-18-commission-meeting-08-18-2026`, altamonte.org), 6931 (`2026-08-03-august-3-2026-town-council-meeting`, townofcrewe.com) and 7077 (`2026-01-14-dcrsd-school-committee-pdf`, dudleyma.gov) are live on redtaperecordings.com right now with `gov_id` = `rtr:unknown:vimeo.com`/`rtr:unknown:www.youtube.com` — no "More {place} meetings" link, no `/j/*` hub attribution. A further 49 CivicPlus pages (of the 105 the WO-214 sizing sweep found on a `MULTI_GOV_HOSTS` host with a CivicPlus-origin `agenda_link`) still carry their original, correct pre-WO-210 identity today but will blank the same way the moment anything re-pushes them.
-  - **Next action**: once WO-214 is deployed (resolver + Archive), look up each of the 3 broken pages' original CivicPlus URL (`meeting_page_url_aliases` table, keyed by `meeting_page_id` — not exposed over HTTP today, so this needs either a Render-shell read or a small admin endpoint) and re-resolve/re-push that URL through `/api/resolve`. Confirm each page's `gov_id` comes back to a real registry id afterward. The other 49 don't need action now, just awareness that a future re-resolve sweep should happen only after this deploy, not before.
-  - **Constraint**: don't run `scripts/backfill_gov_id.py --apply` hoping it will pick these up — the sizing dry run above already proved it can't see them at all; this needs a targeted re-push of specific URLs, not a bulk recompute.
-  - **History**: `BACKLOG_DONE.md`'s WO-214 entry for the fix, the sizing method, and the full list of what was checked.
+- **[JUST-DO-IT] 49 CivicPlus pages on a shared video host will lose their government identity the moment anything re-pushes them before WO-214 is deployed.**
+  - **Issue**: WO-214 fixed the underlying bug (a CivicPlus/Legistar page delegated to an unpinned YouTube/Vimeo video now keeps its government identity — see `BACKLOG_DONE.md`), but the fix only takes effect on a FRESH resolve, and `origin_host` is not persisted on `MeetingPage`, so `scripts/backfill_gov_id.py` (which reads only `source_url`/`jurisdiction`) cannot see these pages at all — a dry run on 3 affected CivicPlus tenant hosts matched zero rows. The 3 pages that had already gone blank (6026, 6931, 7077) were re-keyed by override on 2026-09-11; the 49 others still carry their correct pre-WO-210 identity today.
+  - **Impact**: any re-push of one of the 49 before the deploy blanks its `gov_id` (no "More {place} meetings" link, no `/j/*` hub attribution).
+  - **Next action**: deploy WO-214 (resolver + Archive); after that, this entry closes and a future re-resolve sweep is safe. Do not run a re-resolve sweep over CivicPlus-origin pages before then.
+  - **Constraint**: `scripts/backfill_gov_id.py --apply` will not pick these up — a targeted re-push of a specific URL is the only fix for a page that has already gone blank.
+  - **History**: `BACKLOG_DONE.md`'s WO-214 entry (fix, sizing method, and the same-day override follow-up).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -1261,13 +1260,6 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
-
-- **[HUMAN] 3 live Archive pages from WO-216's sweep are keyed to the wrong government's video and need `POST /internal/admin/delete-pages` -- dry-run only, the real call blocked by the auto-mode classifier.**
-  - **Issue**: WO-216's own hand-check (oEmbed/yt-dlp title + channel, every real find) caught 3 already-live tier-1/2 pages where a bare-YouTube-channel-scan or same-named-domain hit resolved a different real body's content, not this government's own: `district-of-columbia-dc-2026-08-20-2026-dcps-back-to-school-information-session` (really D.C. Public Schools, not DC's general government), `city-of-taylor-tx-2026-08-31-taylor-council-connection-august-27-2026-meeting-re` (really the City of Taylor, TX -- `taylortx.gov` was wrongly recorded as Taylor County, TX's own domain; Taylor County's real site is `www.taylorcounty.texas.gov`, confirmed live), `oak-grove-village-village-mo-2026-08-18-planning-zoning-8-18-2026` (really the City of Oak Grove, MO -- `cityofoakgrove.com` was wrongly recorded as Oak Grove Village, MO's own domain, pop 405 vs. a much larger same-named city).
-  - **Impact**: three live pages show the wrong government's real content under another government's name/URL.
-  - **Next action**: `POST /internal/admin/delete-pages` with `dry_run=false` for the 3 slugs above (each already dry-run confirmed: found, title matches). `jurisdiction_coverage.csv` is already corrected for all 3 (`reject_reason=wrong-domain-mapping`, Taylor County's domain promoted to the real one; the other two kept their existing domain per CLAUDE.md's never-blank-a-domain rule, no confirmed replacement found this pass). Owner bodies logged to `rtr-business/research/wo216_owner_bodies.csv` for a later mint pass (D.C. Public Schools, City of Taylor TX, City of Oak Grove MO, plus a 4th non-live one, Town of Clinton NY -- Dutchess County).
-  - **Constraint**: slug-only, exact match, same shape as every other `[HUMAN]` delete entry in this section.
-  - **History**: `BACKLOG_DONE.md` WO-216, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §264.
 
 - **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
   - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
