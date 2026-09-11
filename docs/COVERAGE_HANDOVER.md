@@ -21,7 +21,11 @@ government by `gov_id`, with the adapter's raw jurisdiction string kept in
 ~34k rows) records what we know about every government we have ever
 looked at: domain, suspected platform, an example calendar URL, and an
 honest test outcome (`reject_reason`). Everything downstream, the
-dashboards included, joins these on `gov_id`.
+dashboards included, joins these on `gov_id`. A trailing `website_status`
+column (added WO-186, 2026-09-10) carries `none-known-2022` on rows
+where UScityURL's 2022 dataset also found no website and ours is still
+blank -- a cheap way for a sweep to deprioritize a row with no lead,
+without touching `reject_reason`'s own taxonomy.
 
 ## 2. The two dashboards
 
@@ -121,7 +125,17 @@ confirm "not in Archive" against a **fresh** export, resolve through the
 real adapters, dedupe by source URL, flush a report CSV per row so a
 re-run resumes, stop after a run of consecutive errors, and write every
 outcome back to the research file with a reject reason from
-`ENUMERATION_METHODS.md` §23's taxonomy.
+`ENUMERATION_METHODS.md` §23's taxonomy. When verifying a low-confidence
+domain candidate (a third-party directory, an old crawl), a strict
+name-in-title check misses real sites (JS-rendered pages with no static
+title, or a title that's just a tagline) -- accept instead when the name
+(allowing a "City/Town/Village/Borough of" prefix, a state abbreviation,
+or punctuation stripped) appears in the title, `<h1>`, `og:site_name`,
+the footer, or the domain string itself, OR the page carries an
+independent government signal (a `.gov` host, or a link to an
+agenda/minutes/council/board page or a known meeting platform); reject a
+parked-domain page, a "coming soon" placeholder, or a page that plainly
+names a different government (WO-186, 2026-09-10).
 
 **Ryan's ingest rule, verbatim in spirit:** only meetings with video
 become pages. Tier 1 (captions the server can fetch) and tier 2 (YouTube
