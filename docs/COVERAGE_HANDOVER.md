@@ -293,6 +293,10 @@ What the 2026-09-09 sweeps established about *where video is*:
 
 ## 7. Where to look first next time
 
+- YouTube pages fed by the always-on drip (`scripts/youtube_drip.py`)
+  arrive keyed only as well as the deployed pins allow; the review
+  procedure, the per-page file, and the video-vs-channel pin shapes are
+  in `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` (2026-09-11).
 - `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
   government's video channel, playlist or feed to its own calendar by body
   and date (pilot WO-158, about 5% yield). Read it before touching

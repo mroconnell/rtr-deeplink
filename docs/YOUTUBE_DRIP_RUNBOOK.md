@@ -57,7 +57,9 @@ It keeps its memory in `~/.rtr/youtube_drip/`:
 |---|---|
 | `drip.log` | every page, every block, timestamped |
 | `state.json` | what is done, what is queued, current block; survives restarts |
-| `daily_status.csv` | one line per day: captions ingested / marked / failed, fed ok / skipped, audio done / failed, blocks |
+| `daily_status.csv` | one line per day: captions ingested / marked / failed, fed ok / skipped / needing identity review, dead videos, audio done / failed, blocks |
+| `fed_pages.csv` | one row per page the feed lane created, with the government the Archive keyed it to and whether a human should check it |
+| `dead_videos.csv` | one row per removed video with the channel's newest streams, for a human to pick a replacement meeting from |
 | `lock` | stops a second copy starting on this Mac |
 
 Stop it with Ctrl-C; start it again the same way. It resumes.
@@ -74,6 +76,16 @@ tells the Archive the new remaining count. Commit the queue file on a
 branch and open a PR titled "Advance tier 3 auto-transcription queue
 (YouTube drip)" — the same thing the GitHub feed does for the other
 platforms. If the PR conflicts, take the union of both sides' lines.
+
+## Identity: what the drip does not do
+
+The drip never decides which government a video belongs to, never
+writes a pin, never judges whether a video is a real meeting, and never
+picks a replacement for a dead one. The Archive keys each fed page with whatever pins are
+deployed; pages it could not key with evidence are listed with
+`needs_review=yes` in `~/.rtr/youtube_drip/fed_pages.csv`. Someone
+reviews that file and writes pins — how, in
+`docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md`.
 
 ## What healthy looks like
 
