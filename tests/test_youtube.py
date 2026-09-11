@@ -6,6 +6,8 @@ from app.platforms.youtube import (
     YOUTUBE_EMBED_DISABLED_MARKER,
     YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
     YouTubeAssetFinder,
+    YouTubeUnavailableError,
+    classify_unavailability,
 )
 
 # No fixture-based tests existed for this adapter before this file (see
@@ -225,11 +227,19 @@ async def test_resolve_video_id_flags_embed_disabled(monkeypatch):
     assert result.segments
 
 
-async def test_resolve_video_id_marks_removed_video_unavailable(monkeypatch):
-    # WO-135, 2026-09-09. Real, confirmed-live yt-dlp error message
-    # (2026-09-09) for one of the 96 real no-transcript YouTube pages:
-    # video id `_RZBcYEbQr4` (an Archive page under
-    # /m/2026-05-19-agenda-center) raised exactly this DownloadError.
+async def test_resolve_video_id_raises_for_removed_video(monkeypatch):
+    # WO-135, 2026-09-09. Real, confirmed-live yt-dlp error message for
+    # one of the 96 real no-transcript YouTube pages: video id
+    # `_RZBcYEbQr4` (an Archive page under /m/2026-05-19-agenda-center)
+    # raised exactly this DownloadError.
+    #
+    # WO-167, 2026-09-10: this used to assert a "successful" empty
+    # ResolvedMeeting carrying YOUTUBE_VIDEO_UNAVAILABLE_MARKER in
+    # transcript_warnings -- the real gap this work order closed. A real
+    # caller (scripts/wo134_confirmed_hits_ingest.py's process_row(),
+    # among others) only checks whether resolve() raised, so that marker
+    # was silently invisible to it; Pacific City, MO's queued video
+    # (XeWevpU5Kpc, also "This video is unavailable") hit exactly this.
     def _raise(video_id):
         raise yt_dlp.utils.DownloadError(
             "ERROR: [youtube] _RZBcYEbQr4: This video has been removed by the uploader"
@@ -237,16 +247,47 @@ async def test_resolve_video_id_marks_removed_video_unavailable(monkeypatch):
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
 
-    result = await YouTubeAssetFinder.resolve_video_id(
-        "_RZBcYEbQr4", source_url="https://example.com"
-    )
+    with pytest.raises(YouTubeUnavailableError) as exc_info:
+        await YouTubeAssetFinder.resolve_video_id(
+            "_RZBcYEbQr4", source_url="https://example.com"
+        )
 
-    assert result.segments == []
-    assert result.transcript_warnings == [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
-    assert result.video_url == "https://www.youtube.com/embed/_RZBcYEbQr4"
+    err = exc_info.value
+    assert err.reason == "gone"
+    assert err.is_permanent
+    assert err.video_id == "_RZBcYEbQr4"
+    assert "This video has been removed by the uploader" in err.yt_dlp_message
 
 
-async def test_resolve_video_id_marks_private_video_unavailable(monkeypatch):
+async def test_resolve_video_id_raises_for_a_confirmed_gone_video(monkeypatch):
+    # WO-167, 2026-09-10. Pacific City, MO's real queued video
+    # (XeWevpU5Kpc) -- the exact video that surfaced this gap (see
+    # BACKLOG_DONE.md's WO-170 entry: "The video's title came back blank,
+    # and a separate check said the video itself is gone"). Confirmed
+    # live 2026-09-10 via a real yt-dlp metadata-only extract against this
+    # id: `ERROR: [youtube] XeWevpU5Kpc: This video is unavailable`.
+    # `MW7uV8fohm0` (from the tier-3 queue probe sidecar,
+    # scripts/tier3_auto_transcription_queue_probe.csv) is a second real
+    # id confirmed with the identical message shape.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This video is unavailable"
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    with pytest.raises(YouTubeUnavailableError) as exc_info:
+        await YouTubeAssetFinder.resolve_video_id(
+            "XeWevpU5Kpc", source_url="https://example.com"
+        )
+
+    err = exc_info.value
+    assert err.reason == "gone"
+    assert err.is_permanent
+    assert err.video_id == "XeWevpU5Kpc"
+
+
+async def test_resolve_video_id_raises_for_private_video(monkeypatch):
     # Real, confirmed-live yt-dlp error message (2026-09-09) for two
     # separate real Archive pages (video ids VGCR9XxsIVw and
     # Eh1JO9zT_u0) -- both raised this identical DownloadError shape.
@@ -258,22 +299,60 @@ async def test_resolve_video_id_marks_private_video_unavailable(monkeypatch):
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
 
-    result = await YouTubeAssetFinder.resolve_video_id(
-        "VGCR9XxsIVw", source_url="https://example.com"
-    )
+    with pytest.raises(YouTubeUnavailableError) as exc_info:
+        await YouTubeAssetFinder.resolve_video_id(
+            "VGCR9XxsIVw", source_url="https://example.com"
+        )
 
-    assert result.transcript_warnings == [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
+    err = exc_info.value
+    assert err.reason == "private"
+    assert err.is_permanent
 
 
-async def test_resolve_video_id_does_not_mark_scheduled_live_event_as_unavailable(
+async def test_resolve_video_id_raises_for_terminated_account(monkeypatch):
+    # WO-167, 2026-09-10: real, widely-observed YouTube wording (read
+    # verbatim from YouTube's own player API response, not yt-dlp's own
+    # text) -- NOT yet confirmed against a real video in this repo (no
+    # such id turned up in the tier-3 sidecar or BACKLOG.md's dead-video
+    # entries this round). Synthetic message text, flagged as such; the
+    # video id is a placeholder, not a real one -- see classify_
+    # unavailability()'s own _TERMINATED_SIGNATURES comment.
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This video is no longer available "
+            "because the YouTube account associated with this video has been "
+            "terminated."
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+
+    with pytest.raises(YouTubeUnavailableError) as exc_info:
+        await YouTubeAssetFinder.resolve_video_id(
+            "aaaaaaaaaaa", source_url="https://example.com"
+        )
+
+    err = exc_info.value
+    assert err.reason == "terminated"
+    assert err.is_permanent
+
+
+async def test_resolve_video_id_raises_not_permanent_for_scheduled_live_event(
     monkeypatch,
 ):
     # Real, confirmed-live yt-dlp error message (2026-09-09) for a real
     # Archive page (bossier-city-la-...-jul-07-2026, video id
     # 6I6Mk2SlgaI) whose meeting is simply scheduled but hasn't started
-    # streaming yet -- NOT a permanent failure (the exact same video will
-    # resolve fine once it goes live), so this must degrade to the
-    # existing generic "blocked" message, never the permanent marker.
+    # streaming yet. WO-143/WO-167 also confirmed this same shape live
+    # against real ids `-pNyufIO7xM` ("...will begin in a few moments.")
+    # and `ESfzST-yOSM` ("...will begin in 4 days.").
+    #
+    # WO-167, 2026-09-10: this used to degrade to the generic "YouTube is
+    # blocking automated caption requests" message, which was actively
+    # misleading -- nothing is blocking anything here, the video simply
+    # hasn't aired yet. It now raises too, but with its own distinct,
+    # accurate "not yet available" reason, and -- critically -- NOT
+    # marked permanent, so a caller (or check_permanent_failure() below)
+    # never buries a meeting that will genuinely resolve once it airs.
     def _raise(video_id):
         raise yt_dlp.utils.DownloadError(
             "ERROR: [youtube] 6I6Mk2SlgaI: This live event will begin in a few moments."
@@ -281,14 +360,24 @@ async def test_resolve_video_id_does_not_mark_scheduled_live_event_as_unavailabl
 
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
 
-    result = await YouTubeAssetFinder.resolve_video_id(
-        "6I6Mk2SlgaI", source_url="https://example.com"
-    )
+    with pytest.raises(YouTubeUnavailableError) as exc_info:
+        await YouTubeAssetFinder.resolve_video_id(
+            "6I6Mk2SlgaI", source_url="https://example.com"
+        )
 
-    assert result.transcript_warnings != [YOUTUBE_VIDEO_UNAVAILABLE_MARKER]
-    assert any(
-        "blocking automated caption requests" in w for w in result.video_warnings
-    )
+    err = exc_info.value
+    assert err.reason == "not_yet_started"
+    assert not err.is_permanent
+    assert "will begin in a few moments" in err.yt_dlp_message
+
+
+def test_classify_unavailability_returns_none_for_an_unrecognized_message():
+    # The generic-degrade safety valve: a phrasing none of the known
+    # signatures match must fall through to the existing "YouTube is
+    # blocking us" behavior rather than being misclassified either way.
+    # Real, confirmed-live sample (2026-08-09): the anti-bot check.
+    assert classify_unavailability("Sign in to confirm you're not a bot") is None
+    assert classify_unavailability("HTTP Error 429: Too Many Requests") is None
 
 
 async def test_resolve_video_id_missing_upload_date_leaves_date_none(monkeypatch):
@@ -430,7 +519,7 @@ def test_check_permanent_failure_flags_captions_disabled(monkeypatch):
 
 def test_check_permanent_failure_flags_video_gone(monkeypatch):
     # Real, confirmed-live yt-dlp error -- same _RZBcYEbQr4 sample as
-    # test_resolve_video_id_marks_removed_video_unavailable above.
+    # test_resolve_video_id_raises_for_removed_video above.
     def _raise(video_id):
         raise yt_dlp.utils.DownloadError(
             "ERROR: [youtube] _RZBcYEbQr4: This video has been removed by the uploader"
@@ -444,9 +533,29 @@ def test_check_permanent_failure_flags_video_gone(monkeypatch):
     assert video_marker is None
 
 
+def test_check_permanent_failure_flags_terminated_account(monkeypatch):
+    # WO-167, 2026-09-10 -- same synthetic-but-real-wording sample as
+    # test_resolve_video_id_raises_for_terminated_account above. A
+    # terminated-account video is just as permanently gone as a removed
+    # or private one, so it shares the same marker text (no new bucket).
+    def _raise(video_id):
+        raise yt_dlp.utils.DownloadError(
+            f"ERROR: [youtube] {video_id}: This video is no longer available "
+            "because the YouTube account associated with this video has been "
+            "terminated."
+        )
+
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", _raise)
+    transcript_marker, video_marker = YouTubeAssetFinder.check_permanent_failure(
+        "aaaaaaaaaaa"
+    )
+    assert transcript_marker == YOUTUBE_VIDEO_UNAVAILABLE_MARKER
+    assert video_marker is None
+
+
 def test_check_permanent_failure_does_not_flag_scheduled_live_event(monkeypatch):
     # Real, confirmed-live yt-dlp error -- same 6I6Mk2SlgaI sample as
-    # test_resolve_video_id_does_not_mark_scheduled_live_event_as_unavailable
+    # test_resolve_video_id_raises_not_permanent_for_scheduled_live_event
     # above: a transient, not-yet-started scheduled stream must never be
     # recorded as a permanent failure.
     def _raise(video_id):

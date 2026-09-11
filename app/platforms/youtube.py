@@ -43,32 +43,133 @@ YOUTUBE_EMBED_DISABLED_MARKER = (
 )
 YOUTUBE_VIDEO_UNAVAILABLE_MARKER = "YouTube: video is unavailable (removed or private)"
 
-# Real yt-dlp error-message signatures, confirmed live 2026-09-09 (WO-135)
-# by running a metadata-only extract against all 96 real YouTube-backed
-# Archive pages that had no transcript at the time. `_extract_info()`
-# raises the identical `DownloadError` for a genuinely-gone video
-# ("Private video. If the owner...", "This video has been removed by the
-# uploader", "This video is unavailable") as for a scheduled livestream
-# that simply hasn't started yet ("This live event will begin in a few
-# moments." / "...in 11 days.") -- the second case is NOT a permanent
-# failure (the same video will resolve fine once it starts) and must
-# never be marked as unavailable. `_TRANSIENT` is checked first and wins
-# on overlap, so a phrasing this hasn't seen yet degrades to the existing
-# generic "blocked" message (safe: costs one more retry) rather than
-# risking a real, still-pending meeting being marked permanently gone.
-_YOUTUBE_PERMANENTLY_GONE_SIGNATURES = (
-    "private video",
+# Real yt-dlp error-message signatures. The original three (WO-135,
+# 2026-09-09) came from running a metadata-only extract against all 96
+# real YouTube-backed Archive pages that had no transcript at the time.
+# WO-167 (2026-09-10) widened this after finding the real gap those three
+# didn't close: Pacific City, MO's queued video (`XeWevpU5Kpc`) raises
+# "This video is unavailable" -- a message the original signatures DID
+# already match -- but `resolve_video_id()` used to just fold every
+# permanently-gone case into a quiet, marker-carrying "success" (no
+# title, no date, 0 segments) instead of raising. A caller that doesn't
+# specifically inspect `transcript_warnings` for that marker (most
+# don't -- they just check whether `resolve()` raised) saw an ordinary-
+# looking empty resolve, indistinguishable from "no captions yet". See
+# `YouTubeUnavailableError` below for the fix.
+#
+# Checked in this order -- "not yet started" first, since a scheduled
+# livestream's own message ("This live event will begin in a few
+# moments." / "...in 11 days.", confirmed live against real ids
+# `-pNyufIO7xM`/`ESfzST-yOSM`, WO-143/WO-167) is NOT a permanent failure
+# (the same video resolves fine once it airs) and must never be folded
+# into "gone" -- checking it first keeps that guarantee explicit even if
+# a future message shape happened to overlap both lists. A phrasing none
+# of these match falls through to the existing generic "YouTube is
+# blocking us" degrade (safe: costs one more retry) rather than guessing.
+_NOT_YET_STARTED_SIGNATURES = ("will begin in",)
+
+# Real, confirmed-live samples: `_RZBcYEbQr4` -> "This video has been
+# removed by the uploader" (WO-135); `XeWevpU5Kpc` (Pacific City, MO) and
+# `MW7uV8fohm0` -> "This video is unavailable" (WO-167, both from the
+# tier-3 queue probe sidecar). "video unavailable" (no leading "this") is
+# yt-dlp's own shorter synonym for the same outcome -- real, from its own
+# extractor test fixtures (`extractor/youtube/_video.py`), not invented.
+# The two HTTP-status shapes are yt-dlp/urllib's standard wording for a
+# watch page that 404s/410s outright (an ancient deleted video/channel,
+# never reaching the ordinary playability-status path above) -- not yet
+# observed live against a real id in this repo, flagged here rather than
+# silently assumed confirmed (see CLAUDE.md's "don't claim a data path
+# works without a positive example").
+_GONE_SIGNATURES = (
     "this video has been removed",
     "this video is unavailable",
+    "video unavailable",
+    "http error 404",
+    "http error 410",
 )
-_YOUTUBE_TRANSIENT_SIGNATURES = ("will begin in",)
+
+# Real, confirmed-live samples: `VGCR9XxsIVw`/`Eh1JO9zT_u0` -> "Private
+# video. If the owner of this video has granted you access..." (WO-135).
+_PRIVATE_SIGNATURES = ("private video", "this video is private")
+
+# Real YouTube wording (widely observed, not yt-dlp's own text -- it's
+# read verbatim from YouTube's own API response, the same
+# `playabilityStatus.errorScreen` mechanism the other messages above come
+# from) -- WO-167, 2026-09-10. Not yet confirmed against a real video in
+# this repo (no terminated-account id found in the tier-3 sidecar or
+# BACKLOG.md's dead-video entries this round); flagged here per the same
+# "don't claim a path works without a positive example" rule as the
+# 404/410 shapes above, so a real one is recognised correctly the first
+# time it's hit rather than falling through to the generic degrade.
+_TERMINATED_SIGNATURES = ("account associated with this video has been terminated",)
 
 
-def _is_permanently_gone(exc: BaseException) -> bool:
-    message = str(exc).lower()
-    if any(sig in message for sig in _YOUTUBE_TRANSIENT_SIGNATURES):
-        return False
-    return any(sig in message for sig in _YOUTUBE_PERMANENTLY_GONE_SIGNATURES)
+def classify_unavailability(message: str) -> Optional[str]:
+    """Returns "not_yet_started" | "gone" | "private" | "terminated" for a
+    real yt-dlp failure message (any case), or `None` if it doesn't match
+    a known shape -- meaning the caller should treat it as the existing
+    generic "YouTube is blocking us" degrade rather than guessing.
+
+    One shared classifier, not three: `resolve_video_id()` (raises
+    `YouTubeUnavailableError`), `check_permanent_failure()` (returns a
+    marker tuple, never raises), and `app/platforms/queue_probe.py`'s
+    `_probe_youtube()` (annotates its own `reason` field) all call this,
+    so a newly-confirmed message shape is one change instead of three
+    independent copies silently drifting apart.
+    """
+    lowered = message.lower()
+    if any(sig in lowered for sig in _NOT_YET_STARTED_SIGNATURES):
+        return "not_yet_started"
+    if any(sig in lowered for sig in _TERMINATED_SIGNATURES):
+        return "terminated"
+    if any(sig in lowered for sig in _PRIVATE_SIGNATURES):
+        return "private"
+    if any(sig in lowered for sig in _GONE_SIGNATURES):
+        return "gone"
+    return None
+
+
+class YouTubeUnavailableError(ValueError):
+    """Raised by `resolve_video_id()` -- the adapter's normal "not found"
+    error (this file already raises a plain `ValueError` for "no video id
+    in this URL" and "yt-dlp returned no info" above/below; this is that
+    same family, just carrying yt-dlp's own message and a classified
+    `reason`) -- when a metadata-only yt-dlp check confirms THIS SPECIFIC
+    video can't be resolved right now, for one of the reasons
+    `classify_unavailability()` recognizes.
+
+    `reason` is one of "gone", "private", "terminated" (all PERMANENT --
+    see `PERMANENT_REASONS`) or "not_yet_started" (the one TEMPORARY
+    case: a scheduled livestream that hasn't aired yet -- the same video
+    resolves fine once it goes live, so this must never be recorded as a
+    permanent failure). `check_permanent_failure()` and
+    `archive/db/crud.py`'s marker logic key off `is_permanent`, not just
+    "did this raise".
+
+    WO-167, 2026-09-10: replaces the previous behavior (WO-135) of
+    quietly degrading a permanently-gone video to a "successful" empty
+    `ResolvedMeeting` carrying only a `transcript_warnings` marker -- see
+    `_GONE_SIGNATURES`'s own comment above for the real gap that caused.
+    Raising means every existing `except Exception`/broad-catch call site
+    across this app (`main.py`'s `/api/resolve`, the tier-3 ingest
+    scripts' `process_row()`) already treats this the same way it treats
+    every other "can't resolve this URL" failure, with no new code
+    needed at any of them.
+    """
+
+    PERMANENT_REASONS = ("gone", "private", "terminated")
+
+    def __init__(self, video_id: str, yt_dlp_message: str, reason: str):
+        self.video_id = video_id
+        self.yt_dlp_message = yt_dlp_message
+        self.reason = reason
+        super().__init__(
+            f"YouTube video {video_id} is {reason.replace('_', ' ')}: {yt_dlp_message}"
+        )
+
+    @property
+    def is_permanent(self) -> bool:
+        return self.reason in self.PERMANENT_REASONS
 
 
 class YouTubeAssetFinder(AssetFinder):
@@ -134,36 +235,28 @@ class YouTubeAssetFinder(AssetFinder):
         try:
             info = await asyncio.to_thread(cls._extract_info, video_id)
         except yt_dlp.utils.YoutubeDLError as e:
-            if _is_permanently_gone(e):
-                # WO-135, 2026-09-09: a real, confirmed-gone video (removed
-                # by the uploader, or private) is a different, permanent
-                # answer from "YouTube is blocking us right now" below --
-                # see _is_permanently_gone()'s own docstring for the real
-                # yt-dlp message shapes this was verified against. Getting
-                # this right matters specifically because
-                # scripts/fetch_youtube_transcripts.py and
-                # archive/db/crud.py key on the exact
-                # YOUTUBE_VIDEO_UNAVAILABLE_MARKER text to stop re-queuing
-                # this page forever -- misclassifying a transient failure
-                # (a scheduled-but-not-yet-live stream) as this would
-                # wrongly bury a meeting that will genuinely resolve later.
+            reason = classify_unavailability(str(e))
+            if reason:
+                # WO-167, 2026-09-10: a real, confirmed-classified failure
+                # (gone/private/terminated -- permanent; not_yet_started --
+                # temporary) is a different, specific answer from "YouTube
+                # is blocking us right now" below -- see
+                # classify_unavailability()'s own docstring for the real
+                # yt-dlp message shapes this was verified against. Raising
+                # here (rather than WO-135's original "degrade to a
+                # quiet, marker-carrying empty success") means a caller
+                # that only checks "did resolve() raise" -- which is most
+                # of them -- can no longer mistake a genuinely-gone video
+                # for "no captions yet". Callers that specifically need
+                # the permanent-vs-temporary marker distinction
+                # (scripts/fetch_youtube_transcripts.py, archive/db/
+                # crud.py) use check_permanent_failure() instead, which
+                # never raises and still returns the exact
+                # YOUTUBE_VIDEO_UNAVAILABLE_MARKER text unchanged.
                 logger.info(
-                    "YouTube video %s is permanently unavailable: %s",
-                    video_id,
-                    str(e)[:200],
+                    "YouTube video %s is %s: %s", video_id, reason, str(e)[:200]
                 )
-                return ResolvedMeeting(
-                    platform=cls.platform_name,
-                    source_url=source_url,
-                    external_id=f"youtube:{video_id}",
-                    video_url=video_url,
-                    video_format="youtube",
-                    video_warnings=[
-                        "This video is no longer available on YouTube "
-                        "(removed or private)."
-                    ],
-                    transcript_warnings=[YOUTUBE_VIDEO_UNAVAILABLE_MARKER],
-                )
+                raise YouTubeUnavailableError(video_id, str(e), reason) from e
             # Real production incident, 2026-08-09: YouTube's anti-bot
             # check ("Sign in to confirm you're not a bot") blocks
             # Render's server IP outright, regardless of which internal
@@ -324,11 +417,17 @@ class YouTubeAssetFinder(AssetFinder):
         (scripts/fetch_youtube_transcripts.py) whether a video is a known
         permanent failure, reusing the exact same metadata-only yt-dlp
         extraction (`_extract_info()`, `skip_download=True`) and
-        classification (`_is_permanently_gone()`) resolve_video_id()
+        classification (`classify_unavailability()`) resolve_video_id()
         itself uses above -- one source of truth for what counts as
         "permanent", and zero extra request/rate-limit cost beyond the
         single metadata call already needed either way (no captions are
         actually downloaded here).
+
+        Unlike resolve_video_id(), this never raises `YouTubeUnavailableError`
+        -- it keeps its original (marker_or_None, marker_or_None) contract
+        so its one caller (fetch_youtube_transcripts.py) doesn't need a
+        try/except added for a check that's explicitly meant to run
+        before any real fetch is attempted.
 
         Synchronous, like `_extract_info()` -- callers already running
         inside an event loop should wrap this in `asyncio.to_thread()`
@@ -339,11 +438,13 @@ class YouTubeAssetFinder(AssetFinder):
         try:
             info = cls._extract_info(video_id)
         except yt_dlp.utils.YoutubeDLError as e:
-            if _is_permanently_gone(e):
+            reason = classify_unavailability(str(e))
+            if reason in YouTubeUnavailableError.PERMANENT_REASONS:
                 return YOUTUBE_VIDEO_UNAVAILABLE_MARKER, None
-            # Ambiguous or a server-IP block signal -- let the real fetch
-            # attempt (or the resolver's own resolve()) make the call
-            # rather than guessing here.
+            # Not-yet-started (temporary, never a permanent marker),
+            # ambiguous, or a server-IP block signal -- let the real
+            # fetch attempt (or the resolver's own resolve()) make the
+            # call rather than guessing here.
             return None, None
         if not info:
             return None, None

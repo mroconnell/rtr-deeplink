@@ -145,7 +145,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (125)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (127)
+  [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
+  [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
   [NEEDS-AUDIT]…
   [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
@@ -1016,6 +1018,20 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()` raise for a confirmed-gone/private/terminated video instead of degrading — three delegating adapters (SLC, LIMS, PrimeGov) that used to still return their own page's title/date/agenda for that case now fail the whole resolve instead.**
+  - **Issue**: `app/platforms/slc.py`, `lims.py`, and `primegov.py` all call `YouTubeAssetFinder.resolve_video_id()` and then overwrite its `title`/`date`/`jurisdiction` with their own page's real metadata — before WO-167 (2026-09-10), a permanently-gone video still returned a real (if content-less) `ResolvedMeeting`, so that override still worked. Since WO-167 changed `resolve_video_id()` to raise `YouTubeUnavailableError` for that same case (the intended, in-scope fix — see `BACKLOG_DONE.md`), these three adapters' own `resolve()` now raises too, propagating past their own metadata entirely.
+  - **Impact**: not yet measured — no real government hit this exact path this round (only a standalone YouTube URL, Pacific City MO, was confirmed live). If a LIMS/SLC/PrimeGov-delegated meeting's video is ever confirmed gone, the page now fails outright instead of showing a title/date with a dead-video message, which is arguably *more* correct (no page gets created pointing at nothing playable) but is an untested, unreviewed behavior change either way.
+  - **Next action**: decide whether these three adapters should catch `YouTubeUnavailableError` and still return their own degraded `ResolvedMeeting` (same pattern `resolve_video_id()` itself used before WO-167), or whether failing outright is the right call now that a dead-embed page is something this repo is actively trying to stop creating (see the "13 archived YouTube pages point at a video that is gone" entry above). Whichever way, add a real fixture-backed test for it — none of the three adapters' test suites exercise this path today.
+  - **Constraint**: don't change `resolve_video_id()`'s own raising behavior to work around this — that's the fix WO-167 shipped on purpose; any change belongs in the three delegating adapters.
+  - **History**: `BACKLOG_DONE.md`, WO-167, 2026-09-10.
+
+- **[NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message isn't classified by `classify_unavailability()` — falls through to the generic "YouTube is blocking us" degrade, which is wrong.**
+  - **Issue**: found live 2026-09-10 (WO-167) in `scripts/tier3_auto_transcription_queue_probe.csv` — two real ids (`my1pQX-Vhik`, `RzLW9WPBfAQ`) raised exactly `This live event has ended.` from yt-dlp's metadata-only extract. `app/platforms/youtube.py`'s `classify_unavailability()` only recognizes "will begin in" (not yet started), "removed"/"unavailable"/HTTP 404-410 (gone), "private", and "terminated" — this message matches none of them, so `resolve_video_id()` currently reports it as "YouTube is currently blocking automated caption requests from our server," which is inaccurate (nothing is blocked; the stream simply ended and yt-dlp hasn't/can't surface a VOD for it yet, or the VOD is delayed).
+  - **Impact**: a meeting in this state gets a misleading video/transcript warning; unclear from this round's data whether the underlying video ever becomes resolvable again (i.e. whether this is temporary like "not yet started" or permanent like "gone") — needs a re-check against one of the two real ids above after some time has passed before deciding which bucket it belongs in.
+  - **Next action**: re-probe `my1pQX-Vhik`/`RzLW9WPBfAQ` after a delay to see whether the message changes (VOD becomes available) or persists (effectively gone); then add a `_ENDED_SIGNATURES` bucket to `classify_unavailability()` with the correct temporary/permanent classification, following WO-167's pattern in `app/platforms/youtube.py`.
+  - **Constraint**: don't guess the classification without the re-check above — CLAUDE.md's "don't claim a data path works without a positive example" applies directly here.
+  - **History**: `BACKLOG_DONE.md`, WO-167, 2026-09-10 (found while sourcing real message-shape samples for that work order; not in its scope to fix).
 
 - **[NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share embedded on a government's own agenda page — a real, confirmed gap, distinct from the direct-media-file shape WO-166 fixed.**
   - **Issue**: Plainfield town, IN's own AgendaCenter page links a real meeting recording as a SharePoint "stream" share (`plainfieldtown.sharepoint.com/sites/MeetingMinutes/_layouts/15/stream.aspx?id=...&ga=1`), confirmed live by the jx coverage triage session (2026-09-10, `rtr-business/research/ENUMERATION_METHODS.md` §186). This is NOT the shape WO-166 fixed: a WO-166 URL answers with the raw media file itself (a real `video/*`/`audio/*` or generic-binary-with-a-media-filename response); a SharePoint `stream.aspx` URL answers with an ordinary HTML page whose real video is injected client-side (the same "client-rendered shell" problem this repo's headless-escalation path already exists for elsewhere — Minneapolis LIMS, Salt Lake City's meeting-recap pages — not a bare file this WO's `_classify_direct_media()` can or should claim).

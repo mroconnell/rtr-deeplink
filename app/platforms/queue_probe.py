@@ -18,11 +18,14 @@ Five real recipes, one per platform shape (WO-143's own measurements):
   reusing youtube.py's own android/ios/tv/web `player_client` fallback
   order. Metadata only -- this never calls `_pick_caption_track()`, so no
   caption track is ever fetched here. A "live event will begin" error and
-  a removed/private video both come back as the same yt-dlp exception and
-  both count as `reject-dead` here -- unlike youtube.py's own
-  resolve_video_id(), which must tell them apart to decide whether to
-  degrade gracefully, a queue probe just needs to know "not usable right
-  now" either way.
+  a removed/private/terminated video both come back as the same yt-dlp
+  exception and both still count as `reject-dead` here -- a queue probe
+  just needs to know "not usable right now" either way, unlike
+  youtube.py's own resolve_video_id(), which must raise a different,
+  classified error to decide whether a caller should ever retry. WO-167
+  (2026-09-10) does tag the `reason` column with that same classification
+  (`youtube.py`'s `classify_unavailability()`) so a human reading the
+  sidecar CSV can still tell them apart without changing the verdict.
 * **HLS** (`.m3u8` -- Granicus, Swagit, Cablecast) -- one GET on the
   master playlist, one GET on the variant it names, `#EXTINF` summed.
   Confirmed live (WO-143): the master alone always reports zero segments.
@@ -82,7 +85,7 @@ from .wistia import (
     _date_from_unix as _wistia_date_from_unix,
     parse_wistia_account_url,
 )
-from .youtube import YouTubeAssetFinder
+from .youtube import YouTubeAssetFinder, classify_unavailability
 
 logger = logging.getLogger("rtr_deeplink.queue_probe")
 
@@ -347,12 +350,26 @@ async def _probe_youtube(
         info = await asyncio.to_thread(_yt_dlp_probe, video_id)
     except yt_dlp.utils.YoutubeDLError as e:
         # A scheduled-but-not-yet-live event ("This live event will begin
-        # in...") and a genuinely removed/private video raise the same
-        # exception family here -- both are "not usable right now" for a
-        # queue probe, so both become reject-dead with the real yt-dlp
-        # message as the reason. See this module's own docstring.
+        # in...") and a genuinely removed/private/terminated video raise
+        # the same exception family here -- both are "not usable right
+        # now" for a queue probe, so both still become reject-dead. WO-167
+        # (2026-09-10) added the classified-reason prefix below (reusing
+        # youtube.py's own classify_unavailability(), the same one
+        # resolve_video_id()/check_permanent_failure() use, so this can
+        # never drift into a second, silently-different signature list)
+        # purely so a human or script reading this sidecar CSV's `reason`
+        # column can tell "not yet started" apart from "gone" at a glance,
+        # without parsing yt-dlp's own free-text message -- the verdict
+        # itself is unchanged, still reject-dead either way. See this
+        # module's own docstring.
+        reason_kind = classify_unavailability(str(e))
+        prefix = f"{reason_kind}: " if reason_kind else ""
         return _dead(
-            url, "youtube", "yt-dlp-metadata", start, f"yt-dlp: {str(e)[:200]}"
+            url,
+            "youtube",
+            "yt-dlp-metadata",
+            start,
+            f"yt-dlp: {prefix}{str(e)[:200]}",
         )
 
     if not info or info.get("duration") is None:
