@@ -159,7 +159,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (10)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (134)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (135)
+  [NEEDS-AUDIT] Two `tenant_overrides.csv` pins for the same YouTube…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
@@ -1403,6 +1404,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] Two `tenant_overrides.csv` pins for the same YouTube video point at two different gov_ids -- "Newfane town" (`us:cousub:5002548400`) and "Newfane village" (`us:place:5048325`), both Vermont.**
+  - **Issue**: found rebasing WO-191 slice 2 onto `origin/main` (2026-09-11) -- `www.youtube.com,youtube:tKQSGf0eR_w` has two rows, one from `wo183_access_ladder_sweep` (`us:cousub:5002548400`, "Newfane town") already on `main`, one from `wo191_access_ladder_sweep` (`us:place:5048325`, "Newfane village") added this session. WO-202's hand-check already confirmed the WO-191 row's own government as right by title/channel (Brattleboro Community TV, "2026 Newfane Town Meeting") -- but never checked whether the older `wo183` pin to a *different* gov_id has its own real evidence, or whether "Newfane town" and "Newfane village" are the same real place double-listed under two gov_ids in the national table (a Vermont incorporated village sitting inside a same-named town is a real, if uncommon, shape -- not necessarily a duplicate).
+  - **Impact**: two governments' worth of coverage tracking depend on which pin the resolver's own lookup order picks, arbitrarily, for this one video -- and if the two gov_ids are actually the same real municipality, both coverage rows are silently tracking one place as if it were two.
+  - **Next action**: check whether `us:cousub:5002548400` and `us:place:5048325` are the same real Vermont municipality (population, county, incorporation status) or two genuinely distinct governments; if duplicate, resolve to one gov_id and redirect/remove the other's coverage row; if distinct, confirm which one the video actually belongs to and remove the wrong pin.
+  - **Constraint**: don't remove either pin without checking by hand first -- WO-202's "right" verdict only covers the WO-191 row's own claim, not a comparison against the older `wo183` pin.
+  - **History**: found during WO-191 slice 2's rebase, 2026-09-11 -- the `wo183` pin was already on `main` before this session; not introduced by it.
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
   - **Issue**: WO-204 found `newtowntownship.civicweb.net`'s existing `ryan_stated` pin (from the 112-pin bulk worklist apply, PR #733) pointed to `us:place:4254184` (Newtown *borough*) even though the subdomain itself spells out "township" and the live portal is Newtown *Township*'s own (Board of Supervisors, Delaware County — confirmed live). The pin's own evidence line, "Newtown, PA -- us_places.csv Newtown borough," is a bare name-to-place match that ignored the word "township" sitting right in the hostname — the same root-cause shape WO-198's resolver fix targeted generally, just baked into a `ryan_stated` pin instead of the ladder. `ryan_stated` here records that Ryan approved a *batch* of 112 pins at once, not that each of the 112 was individually re-verified against its live site.
