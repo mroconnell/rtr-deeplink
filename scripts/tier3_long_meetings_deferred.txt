@@ -442,3 +442,6 @@ https://vineyardut.portal.civicclerk.com/event/1657/media		us:place:4980420	Vine
 https://ivins.granicus.com/MediaPlayer.php?view_id=2&clip_id=2433		us:place:4938710	Ivins, UT	1:34:02	
 https://sanfordnc.portal.civicclerk.com/event/2015/media		us:place:3759280	Sanford, NC	0:57:16	
 https://parkcityut.portal.civicclerk.com/event/3936/media		us:place:4958070	Park City, UT	0:45:38	
+# 2026-09-11 WO-211b: owner-body videos over 90 min, parked until a shorter meeting from the same channel is found
+https://www.youtube.com/watch?v=6N4jEHd7zw8		rtr:ca:nb:cap-acadie	Cap-Acadie, NB	2:15:29	Reunion ordinaire 2026-08-11
+https://www.youtube.com/watch?v=AumDIgXZnBc		rtr:ca:ns:municipality-of-the-county-of-pictou	Municipality of the County of Pictou, NS	1:48:25	Council meeting 2025-11-18
