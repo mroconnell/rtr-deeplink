@@ -154,7 +154,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (132)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (133)
+  [NEEDS-AUDIT] A Vimeo-delegated Archive page shows the wrong…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
@@ -1277,6 +1278,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] A Vimeo-delegated Archive page shows the wrong government's name in its title even though its `gov_id` and its transcript content are both correct — Steele County, MN's real board meeting displays as "Oak Bluffs, MA."**
+  - **Issue**: WO-187's headless-challenge sweep ingested `vimeo.com/1225126409/7e66dd7217` for Steele County, MN (`us:county:27147`, real domain `steelecountymn.gov`) with 627 real transcript segments — the transcript itself is genuinely Steele County's ("Steele County promotes respect in both its work environment and boardroom," confirmed by fetching the live page). But the page's title and displayed jurisdiction read "SC Board Meeting 2026-09-08 — Oak Bluffs, MA" — a real, different Massachusetts town. `apply_display_jurisdiction()` (`scripts/wo134_confirmed_hits_ingest.py`) only fills `result.jurisdiction` when the adapter left it blank, so this means the Vimeo resolve path itself set a non-blank, wrong jurisdiction string — almost certainly read from the Vimeo video's own uploader/account display name rather than anything about the actual meeting, since the real content is unrelated to Oak Bluffs.
+  - **Impact**: one confirmed page (`/m/oak-bluffs-ma-2026-09-08-sc-board-meeting-2026-09-08`) shows a false government name to every visitor, and (since `gov_id` is correct) sorts correctly into Steele County's coverage internally while displaying wrong externally — a public-facing trust problem distinct from a wrong-`gov_id` bug. Unknown how many other Vimeo-delegated pages share this (not swept for more instances this session; `app/platforms/vimeo.py` is the adapter to check first).
+  - **Next action**: read `app/platforms/vimeo.py`'s jurisdiction-derivation code, confirm it is trusting the Vimeo uploader/account name rather than the meeting page it was found on, and either stop setting `result.jurisdiction` from that source at all (let `apply_display_jurisdiction()`'s gov_id-derived fallback fill it, since that is already correct here) or validate it against the passed-in `gov_id` before accepting it as an override. Then hand-fix this one page's title/jurisdiction and sweep other Vimeo-delegated pages for the same shape.
+  - **Constraint**: do not delete this page — the content is real and correctly attributed by `gov_id`; only the displayed name is wrong. Any fix should re-derive the display fields, not the underlying resolve.
+  - **History**: found live 2026-09-11 building WO-187 (`BACKLOG_DONE.md`); confirmed by fetching the live page directly, not guessed.
 
 - **[NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows carried a `reject_reason` that didn't match what that sweep actually found — cause not determined, fixed by hand.**
   - **Issue**: comparing all 1,814 of WO-152's own rows against `jurisdiction_coverage.csv` found 112 whose `reject_reason` there (mostly `no-platform-link-found`) didn't match the sweep's own report (mostly `dead`/`timeout`/other access reasons). The pre-WO-152 commit (`f600e9f`) already agreed with the sweep's own finding for every one of the 112, so the wrong value appeared sometime between that baseline and this session's own auto-commit (`ed291d9`) of the working tree.
@@ -3775,7 +3783,9 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
     County IN, Luna County NM, Rush County IN all counted as `error`
     (not `skipped`) purely because their only known SuiteOne lead was
     the tenant's homepage/live-stream URL, not a specific
-    `/event/?id=...` link.
+    `/event/?id=...` link. Recurred again 2026-09-11 building WO-187
+    (Lincoln County, NM: `https://lincolnconm.suiteonemedia.com/`) — 4
+    counties confirmed now, same bare-tenant-root shape each time.
   - **Next action**: give `SuiteOneAssetFinder` (or its caller) a real
     event-listing lookup for a bare tenant root, the way
     `civicclerk_latest_event_url()`/`_discover_escribe_meeting()` already

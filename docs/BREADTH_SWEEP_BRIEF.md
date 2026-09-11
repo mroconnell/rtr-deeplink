@@ -30,6 +30,19 @@ recorded as `no-video-found` and never ingested.
 | WO-157 | Does Granicus's RSS feed have a video mode? | Yes. Any mode value but "agendas" returns the video feed, about 100 KB against up to 8 MB for the archive table. Newest clip matched the table on 11 of 12 tenants; one lagged 12 days. "(No Video)" titles are closed-session placeholders. rtr-discovery's enumerator now reads it first in fast mode (WO-160). |
 | WO-159 | Does a Legistar city's video live on a same-named Granicus tenant even when the Legistar page shows none? | Yes for 25 of 29. 16 of those 25 matched a real calendar meeting by body and date; 5 had video for a different body or government; 1 was empty. Same-name is a strong lead, never a proof. |
 | WO-158 | Can a government's YouTube channel be joined to its own calendar by body and date? | 12 of 40 "no video found" CivicPlus sites link a channel; 2 of 40 produced a real match. About 5%. Shelved for now as a future project; see the YouTube section. |
+| WO-187 | Of hosts every rung already rejected, how many are a Cloudflare "managed challenge" (clears on its own for an honest browser) versus a real interactive gate? | Zero of 9. Every Cloudflare challenge seen (123 host renders, 107 governments) stayed interactive for the full 15-second wait; none cleared on its own. |
+
+A third thing WO-187 (2026-09-11) measured directly, not corrected: the
+working idea that a Cloudflare "managed challenge" (a JavaScript check,
+no puzzle) might clear on its own for an honest browser, distinct from
+an interactive human-verification gate, did not hold up on the hardest
+population -- governments where every domain on file had already
+failed. Zero of 9 real challenges cleared inside a 15-second wait.
+**Rung 4 stays headless-only, not widened to managed challenges, on
+this evidence.** It remains open whether a longer wait or a less
+pre-filtered population would answer differently -- see
+`BACKLOG_DONE.md`'s WO-187 entry for the full numbers and the narrower
+follow-up check it recommends.
 
 Two things the pilots corrected:
 
