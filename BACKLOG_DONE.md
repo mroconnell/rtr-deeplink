@@ -42,9 +42,19 @@ real false positive, described below.
 | **Total** | **1,814** | |
 
 Domain corrected (a www/https variant answered where the plain domain
-didn't) touched **1,258** rows — that's not its own outcome, it overlaps
+didn't) touched **278** rows — that's not its own outcome, it overlaps
 every row above; it's recorded in `jurisdiction_coverage.csv`'s `domain`
-column so future checks start from a working address.
+column so future checks start from a working address. (A first pass of
+this script recorded 1,258 -- a real bug, caught auditing the write: for
+a fully dead host, the last URL variant *tried* got recorded as the one
+that *answered*, since the last-tried URL's scheme differed from the
+recorded domain even though nothing ever connected. Fixed by only
+recording a correction when the ladder actually got a real page back
+(`plain`/`browser-headers` access modes); the report and
+`jurisdiction_coverage.csv` were both corrected afterward. Of the 981
+rows this affected, 783 happened to write the same bare hostname back
+regardless -- no real change -- and 198 needed a genuine revert, done via
+a small one-off script against the pre-WO-152 commit.)
 
 **Which rung actually answered, by why it looked dead first:**
 
@@ -79,23 +89,57 @@ with no real meeting content. Both groups are real candidates for a
 deeper method (a JS-rendered page scan, or a name/CMS-signature search)
 later, not evidence the government has no online meetings.
 
-**Two small bugs found and filed in `BACKLOG.md`** (both `[JUST-DO-IT]
-[EASY]`, not fixed here to keep this change scoped): (1)
-`tenant_overrides.csv`'s `evidence` text hardcodes "WO-134" (and, in a
-second function, "WO-147") regardless of which sweep actually wrote the
-pin — cosmetic, the `gov_id`/`source` columns are still correct. (2)
-`wo145_api_first_sweep.py`'s wrong-government title check false-positives
-on any government whose name is literally a US state name plus "City"
-(Iowa City IA, Kansas City MO/KS, Oklahoma City OK...) — caught live on
-Swisher city, IA and fixed in this WO's own ported copy of the check, but
-the original function still has the bug.
+**Three real bugs found and fixed in this WO's own code, live, mid-run**
+(all in `scripts/wo152_dead_domain_recheck.py`, its ported wrong-
+government check): (1) a real, correctly-matched Swisher city, IA video
+("Swisher, Iowa City Council...") was wrongly rejected because the check
+mistook the state name "Iowa" for a different place, once "Iowa City"
+(a real, different Iowa city) plus the next word failed to read as a
+literal "city council" — any government whose name is a US state name
+plus "City" (Iowa City itself, Kansas City, Oklahoma City, Jersey City,
+Carson City) can hit the identical shape. (2) The same check also
+mistook the word "Regular" for a place name on Highland town, NY's real
+"Regular Town Board Meeting" video — any meeting-type qualifier word
+("Special," "Annual," "Emergency"...) could do the same. Both governments
+were re-processed after the fix and are now correctly live. (3) The
+shared ladder code (`wo147_access_ladder_sweep.py`, reused unchanged)
+crashed the whole run partway through on a genuinely malformed response
+that its HTML parser could not read at all — fixed by treating an
+unparseable page as "nothing found" instead of a fatal error, the same
+outcome an ordinary empty page already gets; the run was resumed from
+where it stopped, no rows lost.
+
+**A second, separate data-integrity check, done because the domain-
+correction bug above raised the question "what else might be wrong":**
+comparing every one of this WO's 1,814 rows against what actually landed
+in `jurisdiction_coverage.csv` found **112 rows** whose `reject_reason`
+there did not match what this sweep actually found (mostly showing
+`no-platform-link-found` for a government this sweep recorded as
+`dead`/`timeout`/etc.). The pre-WO-152 commit already agreed with this
+sweep's own finding for every one of them, and none of the 112 gov_ids
+appear in any of the four other work orders running in parallel this
+session — so the mismatch is not an explained cross-session collision,
+and its exact cause was not determined. Fixed directly (`reject_reason`
+only, matched to this sweep's own report, nothing else on those rows
+touched) rather than left wrong; flagged here in case the same pattern
+turns up in another session's own audit.
+
+**Two more small bugs found and filed in `BACKLOG.md`** (both
+`[JUST-DO-IT]` `[EASY]`, not fixed in the shared file to keep this
+change's own footprint small): (1) `tenant_overrides.csv`'s `evidence`
+text hardcodes "WO-134" (and, in a second function, "WO-147") regardless
+of which sweep actually wrote the pin — cosmetic, the `gov_id`/`source`
+columns are still correct. (2) `wo145_api_first_sweep.py` itself (the
+original, not this WO's ported copy) still has bug (1) above from the
+list of three fixed bugs — not fixed there since it is a different
+work order's own file.
 
 **Recommendation.** Nothing here needs a deploy — this is research-file
 and backlog work only (`jurisdiction_coverage.csv`, pins, the tier-3
 queue, and code that only runs from scripts). The 78 newly-ingested pages
-and 5 newly-queued meetings are live once the next transcription run
-picks up the queue; no action needed from Ryan unless he wants the two
-small bugs above fixed sooner.
+and 5 newly-queued meetings are live now / once the next transcription
+run picks up the queue; no action needed from Ryan unless he wants the
+two filed `BACKLOG.md` bugs fixed sooner.
 ## WO-178: settled the 111 governments WO-165 could not decide on its own; only 2 are left for a human [Done 2026-09-10]
 
 WO-165 cleaned up duplicate rows in `rtr-business/research/

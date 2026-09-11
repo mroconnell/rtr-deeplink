@@ -147,7 +147,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (128)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
+  [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
   [NEEDS-AUDIT] `[EASY]` yt-dlp's "This live event has ended." message…
   [NEEDS-AUDIT] `[BIG]` No adapter for a SharePoint video share…
@@ -881,7 +882,7 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 - **Issue:** `_TITLE_PLACE_RE`'s greedy match, when a video title reads "Swisher, Iowa City Council and Parks and Rec Joint Meeting", backtracks to capture just `place="Iowa"` once "Iowa City" + the next word fails to immediately continue into a literal "city council" -- the same shape any "&lt;StateName&gt; City"-named place creates (Iowa City, Kansas City, Oklahoma City, Jersey City, Carson City...). A bare state full name is not evidence of a different place; it is exactly what a correct "&lt;City&gt;, &lt;State&gt; City Council" title contains.
 - **Impact:** confirmed live building WO-152 (`scripts/wo152_dead_domain_recheck.py`, which ports this check): Swisher city, IA's own real, correctly-matched `@SwisherCommunications` YouTube video was wrongly rejected `wrong-domain-mapping` before the fix was caught and applied to WO-152's own ported copy. `wo145_api_first_sweep.py` itself still carries the original, unfixed version -- any future run of it (or anything else that reuses `_title_place_conflict`) can hit the identical false positive on any government whose name happens to be a state name plus "City" (Iowa City IA itself, Kansas City MO/KS, Oklahoma City OK, Jersey City NJ, Carson City NV -- all real municipalities in this project's own tables).
-- **Next action:** in `wo145_api_first_sweep.py`'s `_title_place_conflict()`, skip a regex match whose captured `place` (stripped, lowercased) equals a full US state or Canadian province name (`STATE_NAMES.values()`) -- treat it as inconclusive, not a conflict. `wo152_dead_domain_recheck.py`'s own ported copy already has this guard (`_STATE_FULLNAMES_LOWER`); port the same fix back.
+- **Next action:** in `wo145_api_first_sweep.py`'s `_title_place_conflict()`, skip a regex match whose captured `place` (stripped, lowercased) equals a full US state or Canadian province name (`STATE_NAMES.values()`) -- treat it as inconclusive, not a conflict. `wo152_dead_domain_recheck.py`'s own ported copy already has this guard (`_STATE_FULLNAMES_LOWER`); port the same fix back. A second, related false positive found in the same function the same session: Highland town, NY's real "Regular Town Board Meeting" video matched `place="Regular"` -- a meeting-type qualifier word, not a place. `wo152_dead_domain_recheck.py`'s ported copy also guards this (`_MEETING_QUALIFIER_WORDS`); port both fixes together.
 - **Constraint:** don't touch anything else in the function -- the two other confirmed-live catches this session (Bellville city TX -> Austin County, Kiawah Island town SC -> Charleston County) are both caught by the separate `_state_or_kind_conflict()` county-keyword rule, not this one, and are unaffected by this fix.
 - **History:** found and fixed in WO-152's own ported copy, 2026-09-10; see `BACKLOG_DONE.md`.
 
@@ -1037,6 +1038,13 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
+
+- **[NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows carried a `reject_reason` that didn't match what that sweep actually found — cause not determined, fixed by hand.**
+  - **Issue**: comparing all 1,814 of WO-152's own rows against `jurisdiction_coverage.csv` found 112 whose `reject_reason` there (mostly `no-platform-link-found`) didn't match the sweep's own report (mostly `dead`/`timeout`/other access reasons). The pre-WO-152 commit (`f600e9f`) already agreed with the sweep's own finding for every one of the 112, so the wrong value appeared sometime between that baseline and this session's own auto-commit (`ed291d9`) of the working tree.
+  - **Impact**: none of the 112 gov_ids appear in `wo148_candidates.csv`/`wo149_candidates.csv`/`wo150_candidates.csv`/`wo151_candidates.csv` (the four other work orders running the same session) — checked directly, zero overlap — so this isn't an explained cross-session candidate-list collision. `wo152_apply_to_jc.py`'s own write logic was checked line-by-line and writes the report's `reject_reason` verbatim; a direct debug run of that exact code against the same input reproduced the CORRECT split, not the wrong one. The actual mechanism remains unexplained.
+  - **Next action**: if the same shape (a small number of a sweep's own `jurisdiction_coverage.csv` rows drifting from that sweep's own report, with no candidate-list overlap to explain it) turns up in a future session's own audit, that's the pattern to chase — worth checking whether the working-tree auto-commit process itself, or some other automated writer, has its own path into this file.
+  - **Constraint**: already fixed for this occurrence (`wo152_fix_reject_reason_mismatches.py`, `rtr-business/research/`) — this entry is for the unexplained mechanism, not unresolved data.
+  - **History**: found and fixed 2026-09-10 building WO-152; see `BACKLOG_DONE.md`.
 
 - **[NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()` raise for a confirmed-gone/private/terminated video instead of degrading — three delegating adapters (SLC, LIMS, PrimeGov) that used to still return their own page's title/date/agenda for that case now fail the whole resolve instead.**
   - **Issue**: `app/platforms/slc.py`, `lims.py`, and `primegov.py` all call `YouTubeAssetFinder.resolve_video_id()` and then overwrite its `title`/`date`/`jurisdiction` with their own page's real metadata — before WO-167 (2026-09-10), a permanently-gone video still returned a real (if content-less) `ResolvedMeeting`, so that override still worked. Since WO-167 changed `resolve_video_id()` to raise `YouTubeUnavailableError` for that same case (the intended, in-scope fix — see `BACKLOG_DONE.md`), these three adapters' own `resolve()` now raises too, propagating past their own metadata entirely.
