@@ -2398,3 +2398,134 @@ def test_every_consolidated_display_name_re_resolves_to_itself():
         shown = display_name(government_for_id(canonical))
         match = resolve(shown, None)
         assert match.gov_id == canonical, (shown, match.gov_id, match.tier)
+
+
+# --- WO-198: a township must not lose to a same-named borough/village --
+#
+# `scripts/backfill_gov_id.py`'s dry run against `www.youtube.com`
+# proposed re-keying five real township/village pages onto the wrong
+# same-named government (a borough, a village, or a bare id with the
+# qualifier dropped). All five raw strings below are the pages' own
+# stored `jurisdiction` -- `display_name()`'s `"{base} ({word}), {state}"`
+# disambiguated form -- exactly as `backfill_gov_id.py` feeds it back
+# into the resolver (see `/tmp/postdeploy2_dry.csv`, copied into
+# `research/wo198_backfill_dry.csv` in rtr-business).
+#
+# Root cause was two rungs, both missing the same check: a single
+# candidate in the PLACE table was never checked against the name's own
+# type word, only checked when the place table already had more than one
+# row (`_general_purpose_lookup()`'s `places` filter), and the
+# spacing-insensitive rung 5b (`_squashed_national_hit()`) ran its own
+# separate, completely unfiltered place lookup and reached the same wrong
+# answer even after rung 4 correctly declined. Both are fixed the same
+# way: filter a place candidate by `type_preference` unconditionally,
+# exactly as cousubs already are.
+#
+# Every case here has a REAL same-named place government that made the
+# bug possible (confirmed against `us_places.csv`/`us_cousubs.csv`):
+# Northampton borough (`us:place:4254696`) beside two real Northampton
+# townships (Bucks and Somerset counties, both `us_cousubs.csv`); Perry
+# village (`us:place:3961882`) beside 28 real Perry townships across 28
+# Ohio counties; Oakwood village/city (three real Ohio places sharing the
+# base name "Oakwood"); Buckingham township and White River township
+# (each real in two-plus PA/IN counties, with no PA/IN place of that name
+# at all). The fix cannot pick which of several real same-typed
+# townships is meant -- that needs a per-video pin, filed with WO-198 --
+# but it must never again hand the page to a DIFFERENT kind of
+# government just because that one happened to be the only place row.
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "Northampton (township), PA",
+        "Perry (township), OH",
+        "Buckingham (township), PA",
+        "White River (township), IN",
+        "Oakwood (village), OH",
+    ],
+)
+def test_a_township_or_village_never_loses_to_a_same_named_place_of_a_different_type(
+    raw,
+):
+    match = resolve(raw, "www.youtube.com")
+    # Never the borough/village/city rtr:'s wrong-but-confident registry
+    # hit from before this fix -- either a correctly declined mint (no
+    # real single candidate to pick) or, if a future data change makes
+    # exactly one real candidate of the RIGHT type exist, a cousub id.
+    # Never a `us:place:` id, which is what every one of these wrongly
+    # became.
+    assert not (match.gov_id or "").startswith("us:place:"), (raw, match.gov_id)
+    if match.gov_id and match.gov_id.startswith("rtr:"):
+        assert match.tier == resolver.TIER_UNVERIFIED
+
+
+def test_northampton_borough_still_resolves_to_the_borough():
+    # The negative control matching the bug table above: a page that
+    # really IS the borough (no "township"/paren qualifier at all) must
+    # keep working exactly as before this fix.
+    match = resolve("Northampton (borough), PA", "www.youtube.com")
+    assert match.gov_id == "us:place:4254696"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_perry_village_still_resolves_to_the_village():
+    match = resolve("Perry (village), OH", "www.youtube.com")
+    assert match.gov_id == "us:place:3961882"
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_squashed_lookup_also_respects_a_township_type_word():
+    # Direct unit coverage for rung 5b (`_squashed_national_hit()`): the
+    # general-purpose ladder (rung 4) already declines "Northampton
+    # (township), PA" via `_general_purpose_lookup()`'s place filter, but
+    # rung 5b ran its OWN separate, unfiltered `lookup_squashed()` call
+    # and reached Northampton borough anyway -- the actual shape of the
+    # bug measured against the real dry-run report before this fix.
+    hit = resolver._squashed_national_hit("Northampton", "PA", None, "us", "township")
+    assert hit is None
+    # Unfiltered (no type word) still finds the borough -- confirms the
+    # fix is the type check, not a broken lookup.
+    hit = resolver._squashed_national_hit("Northampton", "PA", None, "us", "")
+    assert hit is not None
+    assert hit[0].gov_id == "us:place:4254696"
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        ("Lancaster (township), PA", "rtr:us:pa:lancaster-township"),
+        ("Conewago (township), PA", "rtr:us:pa:conewago-township"),
+        ("Shrewsbury (township), PA", "rtr:us:pa:shrewsbury-township"),
+    ],
+)
+def test_minting_a_disambiguated_township_keeps_its_qualifier(raw, gov_id):
+    """Round-trip idempotence for `_mint()` (WO-198): a first-ever resolve
+    of "Lancaster Township, PA" carries "township" IN the raw name, so it
+    always minted `rtr:us:pa:lancaster-township` -- but the STORED
+    `jurisdiction` for an unverified/minted government is still written
+    through `display_name()`'s ambiguous-name disambiguator (the same
+    "{base} ({word}), {state}" round-trip form
+    `_strip_trailing_paren_type()` exists for), and re-resolving THAT
+    string strips "township" into `type_preference` before `name` ever
+    reaches `_mint()`. Before this fix that produced a bare
+    `rtr:us:pa:lancaster`, silently dropping the one thing that kept it
+    from colliding with a same-named place, and downgraded `gov_type` to
+    `other`. These three are real, currently-unpinned pages
+    (`scripts/backfill_gov_id.py --hosts www.youtube.com`'s dry run,
+    WO-198) that would have regressed from a working qualified id to a
+    bare one on the very backfill run meant to fix a different bug."""
+    match = resolve(raw, "www.youtube.com")
+    assert match.gov_id == gov_id
+    assert match.gov_type == classify.TOWNSHIP
+    assert match.tier == resolver.TIER_UNVERIFIED
+
+
+def test_minting_does_not_double_up_a_type_word_already_in_the_name():
+    # A name with no paren form (so `type_preference` comes from
+    # `_leading_type_word()`/`_strip_trailing_paren_type()` finding
+    # nothing) already carries "township" IN `name` when it matches no
+    # table -- the guard that skips re-appending must not turn this into
+    # "zzyzxville-township-township". "Zzyzxville" is invented on purpose
+    # (guaranteed to match no real table row); the state (WY) is real.
+    match = resolve("Zzyzxville Township, WY")
+    assert match.gov_id == "rtr:us:wy:zzyzxville-township"
+    assert match.gov_type == classify.TOWNSHIP

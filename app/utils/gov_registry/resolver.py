@@ -513,6 +513,27 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     With two candidates and NO type word to choose by, this returns
     nothing. Declining is the whole posture of the ladder: minting an
     honest `rtr:` id beats picking the more populous Waukesha.
+
+    **A lone place candidate is not exempt from the type word either
+    (WO-198).** The filter below used to run only when the place table
+    already had more than one row -- so a name with a type word that
+    named a DIFFERENT real government than the place table's single
+    match still returned that place, unfiltered. Real and wrong:
+    "Northampton (township), PA" has exactly one place row (Northampton
+    BOROUGH) and exactly one same-named cousub name shared by two real
+    townships in different counties (Bucks and Somerset); the borough
+    won by default because it was the only place candidate, not because
+    it was the right kind of government. "Perry (township), OH" is the
+    same shape against Perry VILLAGE, with 28 same-named townships
+    across 28 counties on the cousub side. Filtering places by the type
+    word unconditionally -- exactly how cousubs are already filtered
+    just below -- makes both cases decline (correctly: the real
+    township still can't be picked without knowing the county) instead
+    of confidently answering the wrong government. See
+    `tests/test_gov_registry.py`'s WO-198 cases, and the two Cottage
+    Grove tests above this function's own real base case, for why a
+    single real candidate that fails the type check must still be
+    discarded rather than trusted.
     """
     # "City and County of San Francisco" -> "San Francisco". The phrase
     # is not one `_normalize_candidates()` strips (its own leading-type
@@ -521,9 +542,10 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     name = classify.CONSOLIDATED_RE.sub("", name).strip() or name
 
     places = tables.us_places().lookup_all(name, state)
-    if len(places) > 1:
-        matching = [p for p in places if _census_type_word(p.name) == type_preference]
-        places = matching if len(matching) == 1 else []
+    if type_preference:
+        places = [p for p in places if _census_type_word(p.name) == type_preference]
+    elif len(places) > 1:
+        places = []
     place = places[0] if len(places) == 1 else None
 
     cousubs = tables.us_cousubs().lookup_all(name, state)
@@ -1600,6 +1622,17 @@ def _squashed_national_hit(
     A squashed match is a weaker signal than a real one, so it runs after
     every ordinary lookup has already declined and only with a state in
     hand -- see `tables.NameStateTable.lookup_squashed()`.
+
+    **The place table is tried unconditionally here even when the name
+    has a type word (WO-198).** `_general_purpose_lookup()` above already
+    declines a place whose census type word disagrees with
+    `type_preference`, but this rung does its own separate, unfiltered
+    place lookup and was reached anyway once that decline happened --
+    "Northampton (township), PA" and "Perry (township), OH" both still
+    matched this rung's `us_places.lookup_squashed()` (the borough/
+    village, exact-spelling match, so "spacing ignored" was really "type
+    word ignored") even after rung 4 correctly declined them. The type
+    filter below closes the same gap here.
     """
     if not state:
         return None
@@ -1626,6 +1659,16 @@ def _squashed_national_hit(
     for table, namespace, resolved_type in table_choices:
         hit = table.lookup_squashed(name, state)
         if not hit:
+            continue
+        if (
+            namespace == "us:place"
+            and type_preference
+            and _census_type_word(hit.name) != type_preference
+        ):
+            # A name that says "township"/"village"/etc. may not be
+            # satisfied by a same-named place of a DIFFERENT type just
+            # because spacing made it the only candidate -- see this
+            # function's own WO-198 note above.
             continue
         return (
             _as_government(
@@ -1674,7 +1717,33 @@ def _is_impossible_county(name: str, state: str, country: str) -> bool:
     return tables.us_counties().lookup_typed(name, state) is None
 
 
-def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
+# The real, general-purpose type words `_mint()` will fold into a minted
+# slug/gov_type when they are all that is left of the name's own type
+# signal (WO-198) -- deliberately the same closed vocabulary
+# `_general_purpose_lookup()`/`_ca_csd_disambiguate()` already trust as
+# real Census/StatCan type words, not the wider `_LEADING_TYPE_RE`/
+# `_TRAILING_PAREN_TYPE_RE` vocabulary those two also accept ("district"/
+# "regional municipality" stay excluded -- see classify.py's own note
+# that they match no real LSAD/CSD_TYPE_WORDS value, so folding one into
+# a slug/gov_type here would be inventing signal rather than recovering
+# it).
+_MINT_TYPE_PREFERENCE_GOV_TYPE = {
+    "township": classify.TOWNSHIP,
+    "city": classify.MUNICIPALITY,
+    "town": classify.MUNICIPALITY,
+    "village": classify.MUNICIPALITY,
+    "borough": classify.MUNICIPALITY,
+    "municipality": classify.MUNICIPALITY,
+}
+
+
+def _mint(
+    name: str,
+    state: str,
+    country: str,
+    gov_type: Optional[str],
+    type_preference: str = "",
+) -> Government:
     """`rtr:<country>:<st>:<slug>` -- tier `unverified`, display = the
     cleaned name.
 
@@ -1693,8 +1762,36 @@ def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Gover
     table at all, so there is no evidence anywhere that a "City of X" and
     an "X" here are two different governments -- and the raw string is
     kept as an alias either way.
+
+    **`type_preference` is folded back into the slug and `gov_type`
+    (WO-198), because minting is not idempotent on its own display
+    output without it.** A first-ever resolve of "Buckingham Township,
+    PA" carries the word "township" IN `name` already, so the slug was
+    always `buckingham-township` -- but `display_name()` writes that
+    government's STORED `jurisdiction` back as the disambiguated
+    "Buckingham (township), PA" (the same round-trip shape
+    `_strip_trailing_paren_type()`'s own docstring names for a
+    place/cousub HIT), and re-resolving THAT string strips "township"
+    into `type_preference` before `name` ever reaches this function --
+    so a backfill re-run minted the bare `rtr:us:pa:buckingham`,
+    silently dropping the one thing that made the id unique from a
+    same-named place, and merged the `gov_type` to `other`. Confirmed
+    real: `northampton-township-pa`/`buckingham-township-pa`/
+    `white-river-township-in`/`oakwood-village-oh`'s pages all keyed
+    this way before this fix. Folding it back in makes minting
+    idempotent on its own output again -- a name that already contains
+    the type word is untouched (`in slug_base.lower()` guards against
+    "Buckingham Township" doubling to "buckingham-township-township").
     """
-    slug = slugify(_LEADING_ENTITY_PREFIX_RE.sub("", name).strip() or name) or "unnamed"
+    slug_base = _LEADING_ENTITY_PREFIX_RE.sub("", name).strip() or name
+    preference = (type_preference or "").strip().lower()
+    if (
+        preference in _MINT_TYPE_PREFERENCE_GOV_TYPE
+        and preference not in slug_base.lower()
+    ):
+        slug_base = f"{slug_base} {preference}"
+        gov_type = gov_type or _MINT_TYPE_PREFERENCE_GOV_TYPE[preference]
+    slug = slugify(slug_base) or "unnamed"
     scope = (state or "xx").lower()
     return Government(
         gov_id=f"rtr:{country}:{scope}:{slug}",
@@ -2104,7 +2201,7 @@ def _resolve_government_ladder(
             evidence=reason,
         )
         return _match(gov, TIER_UNRESOLVED, reason, meeting_body)
-    gov = _mint(name, state, country, gov_type)
+    gov = _mint(name, state, country, gov_type, type_preference)
     return _match(gov, TIER_UNVERIFIED, f"minted from {cleaned!r}", meeting_body)
 
 
