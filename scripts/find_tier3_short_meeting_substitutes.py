@@ -74,8 +74,9 @@ import asyncio
 import csv
 import os
 import re
+import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -91,7 +92,11 @@ from dotenv import load_dotenv  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.platforms import register_all_finders  # noqa: E402
-from app.platforms.base import detect_platform, get_finder  # noqa: E402
+from app.platforms.base import (  # noqa: E402
+    UnsupportedPlatformError,
+    detect_platform,
+    get_finder,
+)
 from app.platforms.media_probe import binary_versions, probe_duration  # noqa: E402
 
 load_dotenv()
@@ -104,8 +109,8 @@ SEARCH_CSV = SIDECAR_DIR / "tier3_substitute_search.csv"
 REPORT_CSV = REPO_ROOT / "scripts" / "tier3_short_meeting_substitutes.csv"
 
 LONG_SECONDS = 90 * 60
-SHORT_MIN_SECONDS = 10 * 60
-SHORT_MAX_SECONDS = 50 * 60
+SHORT_MIN_SECONDS = 9 * 60
+SHORT_MAX_SECONDS = 40 * 60
 
 # The only queue platforms with a known tenant-enumeration method (see
 # module docstring). Everything else is reported, not probed.
@@ -135,6 +140,9 @@ DURATION_FIELDS = [
 SEARCH_FIELDS = [
     "tenant",
     "platform",
+    "original_title",
+    "original_jurisdiction",
+    "original_gov_id",
     "search_status",
     "substitute_url",
     "substitute_title",
@@ -171,12 +179,22 @@ def hms(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
+def queue_lines() -> list[tuple[str, str, str | None]]:
+    """(raw line, url, source_url_override) -- the feed's own line parse,
+    since queue lines have carried an optional TAB source field since the
+    2026-09 sweeps (see feed_tier3_auto_transcription._parse_queue_line)."""
+    out = []
+    for raw in QUEUE_FILE.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        url, _, src = line.partition("\t")
+        out.append((line, url.strip(), src.strip() or None))
+    return out
+
+
 def queue_urls() -> list[str]:
-    # Same parse feed_tier3_auto_transcription.py uses: whole stripped
-    # line is the URL.
-    return [
-        line.strip() for line in QUEUE_FILE.read_text().splitlines() if line.strip()
-    ]
+    return [url for _, url, _ in queue_lines()]
 
 
 def tenant_of(url: str) -> str:
@@ -797,17 +815,46 @@ def cmd_report(args) -> None:
     searches = _load_rows(SEARCH_CSV, "tenant")
     urls = queue_urls()
     counts: dict[str, int] = {}
+    # Round 2: the WO-144 probe sidecar is the primary duration source and
+    # rtr-discovery's enumerators widen the listable platforms.
+    mb_per_min = calibrate_mb_per_min(load_probe_sidecar())
+    sidecar = load_probe_sidecar()
+    try:
+        listable = set(_discovery_modules()[0]) | ENUMERABLE_PLATFORMS | {"utah_pmn"}
+    except RuntimeError:
+        listable = ENUMERABLE_PLATFORMS | {"utah_pmn"}
+    for url in urls:
+        try:
+            platform = detect_platform(url)
+        except UnsupportedPlatformError:
+            continue
+        if url in durations or platform in ("youtube", "vimeo"):
+            continue
+        secs, source = duration_from_row(sidecar.get(url), platform, mb_per_min)
+        if secs is not None:
+            durations[url] = {
+                "queue_url": url,
+                "duration_seconds": f"{secs:.1f}",
+                "duration_hms": hms(secs),
+                "duration_source": source,
+                "note": "",
+            }
 
     with REPORT_CSV.open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=REPORT_FIELDS)
         writer.writeheader()
         for url in urls:
-            platform = detect_platform(url)
-            tenant = tenant_of(url)
+            try:
+                platform = detect_platform(url)
+            except UnsupportedPlatformError:
+                continue
+            if platform in ("youtube", "vimeo"):
+                continue
+            tenant = tenant_key(url, platform)
             row = {field: "" for field in REPORT_FIELDS}
             row.update({"queue_url": url, "tenant": tenant, "platform": platform})
             probed = durations.get(url)
-            if platform not in ENUMERABLE_PLATFORMS and not probed:
+            if platform not in listable and not probed:
                 row["status"] = "platform_not_enumerable"
                 row["notes"] = "no tenant meeting-enumeration method for this platform"
             elif not probed or not probed["duration_seconds"]:
@@ -822,8 +869,15 @@ def cmd_report(args) -> None:
                     row["status"] = "not_long"
                 else:
                     search = searches.get(tenant)
-                    if search and search["search_status"] == "found":
-                        row["status"] = "substitute_found"
+                    if search and search["search_status"] in (
+                        "found",
+                        "found_shortest",
+                    ):
+                        row["status"] = (
+                            "substitute_found"
+                            if search["search_status"] == "found"
+                            else "substitute_shortest"
+                        )
                         for field in (
                             "substitute_url",
                             "substitute_title",
@@ -943,6 +997,777 @@ async def cmd_smoke(args) -> None:
     print("\nSmoke checks passed.")
 
 
+# ---------------------------------------------------------------------------
+# Round 2 (2026-09-11): durations from the WO-144 probe sidecar, a
+# per-platform file-size proxy, tenant listings through rtr-discovery's
+# enumerators, a Utah PMN per-entity listing, the 9-40 min window with a
+# "shortest usable" fallback, and an `apply` step that swaps queue lines.
+# ---------------------------------------------------------------------------
+
+PROBE_SIDECAR = REPO_ROOT / "scripts" / "tier3_auto_transcription_queue_probe.csv"
+DEFERRED_FILE = REPO_ROOT / "scripts" / "tier3_long_meetings_deferred.txt"
+FALLBACK_MIN_SECONDS = 9 * 60  # the probe gate's own floor for a queued meeting
+MAX_LISTING_ITEMS = 40  # newest N listings per tenant before giving up
+# Platforms whose tenant listing is meetings-only, so a title needs no
+# off-mission word check (a Granicus view or CivicClerk events list is
+# the government's own meeting archive).
+MEETINGS_ONLY_PLATFORMS = {
+    "granicus",
+    "civicclerk",
+    "legistar",
+    "iqm2",
+    "escribe",
+    "civicweb",
+    "primegov",
+    "municode_meetings",
+}
+_MEETING_WORDS_RE = re.compile(
+    r"council|commission|committee|board|trustees|supervisors|selectmen|aldermen|"
+    r"fiscal court|hearing|meeting|session|work ?session",
+    re.I,
+)
+# MB of media per minute, used only when a probe returns a size but no
+# duration. Seeded from the sidecar's own rows that carry both (median,
+# 2026-09-11: CivicClerk 21.6, Wistia 8.3); calibrate_mb_per_min()
+# recomputes from whatever the sidecar holds at run time and falls back
+# to these. A platform with neither is skipped, never guessed.
+MB_PER_MIN_DEFAULTS = {"civicclerk": 21.6, "wistia": 8.3}
+
+
+def looks_on_mission(title: str | None, platform: str) -> bool:
+    """Ryan's rule (2026-09-11): no judgment beyond 'not completely
+    off-mission'. A meetings-only platform passes; anything else needs a
+    meeting word in its title."""
+    if platform in MEETINGS_ONLY_PLATFORMS:
+        return True
+    return bool(_MEETING_WORDS_RE.search(title or ""))
+
+
+def load_probe_sidecar(path: Path = PROBE_SIDECAR) -> dict[str, dict]:
+    """url -> the latest sidecar row (the file is append-only; a re-probe
+    appends a newer row, so last one wins)."""
+    if not path.exists():
+        return {}
+    rows: dict[str, dict] = {}
+    with path.open(newline="") as f:
+        for row in csv.DictReader(f):
+            rows[row["url"]] = row
+    return rows
+
+
+def calibrate_mb_per_min(sidecar: dict[str, dict]) -> dict[str, float]:
+    """Median MB/min per platform over sidecar rows that carry both a size
+    and a duration (>= 3 rows), over the defaults."""
+    by: dict[str, list[float]] = {}
+    for row in sidecar.values():
+        try:
+            size = float(row.get("size_bytes") or 0)
+            dur = float(row.get("duration_seconds") or 0)
+        except ValueError:
+            continue
+        if size > 0 and dur > 0 and row.get("platform"):
+            by.setdefault(row["platform"], []).append(size / 1e6 / (dur / 60))
+    out = dict(MB_PER_MIN_DEFAULTS)
+    for platform, vals in by.items():
+        if len(vals) >= 3:
+            vals.sort()
+            out[platform] = vals[len(vals) // 2]
+    return out
+
+
+def duration_from_row(
+    row: dict | None, platform: str, mb_per_min: dict[str, float]
+) -> tuple[float | None, str]:
+    """(seconds, source) for a sidecar row: the measured duration, else a
+    size-proxy estimate when the platform's MB/min is known, else None."""
+    if not row:
+        return None, ""
+    try:
+        dur = float(row.get("duration_seconds") or 0)
+    except ValueError:
+        dur = 0.0
+    if dur > 0:
+        return dur, row.get("probe_method") or "probe"
+    try:
+        size = float(row.get("size_bytes") or 0)
+    except ValueError:
+        size = 0.0
+    rate = mb_per_min.get(platform)
+    if size > 0 and rate:
+        return size / 1e6 / rate * 60, "size_proxy"
+    return None, ""
+
+
+def pick_substitute(
+    candidates: list[tuple[str, float]],
+    existing_seconds: float,
+    *,
+    lo: float = SHORT_MIN_SECONDS,
+    hi: float = SHORT_MAX_SECONDS,
+    floor: float = FALLBACK_MIN_SECONDS,
+) -> tuple[str | None, str]:
+    """`candidates` are (url, seconds) in listing order (newest first).
+    Returns (url, how): the first one inside the window ("window"), else
+    the shortest one that is at least `floor` and shorter than the current
+    meeting ("shortest"), else (None, "none") -- Ryan's fallback rule."""
+    for url, secs in candidates:
+        if lo <= secs <= hi:
+            return url, "window"
+    usable = [
+        (secs, url)
+        for url, secs in candidates
+        if secs >= floor and secs < existing_seconds
+    ]
+    if usable:
+        usable.sort()
+        return usable[0][1], "shortest"
+    return None, "none"
+
+
+def _discovery_root() -> Path:
+    env = os.environ.get("RTR_DISCOVERY_PATH")
+    for cand in ([Path(env)] if env else []) + [
+        Path.home() / "Documents" / "rtr-discovery",
+        REPO_ROOT.parent / "rtr-discovery",
+    ]:
+        if (cand / "discovery" / "enumerators").is_dir():
+            return cand
+    raise RuntimeError(
+        "rtr-discovery checkout not found -- set RTR_DISCOVERY_PATH "
+        "(github.com/mroconnell/rtr-discovery, a sibling checkout)"
+    )
+
+
+def _discovery_modules():
+    root = _discovery_root()
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from discovery.enumerators import ENUMERATORS  # noqa: E402
+    from discovery.models import TenantRecord  # noqa: E402
+    from discovery.polite import PoliteClient  # noqa: E402
+
+    return ENUMERATORS, TenantRecord, PoliteClient
+
+
+_VIEW_ID_RE = re.compile(r"[?&]view_id=(\d+)")
+
+
+async def discovery_candidates(
+    session: aiohttp.ClientSession,
+    platform: str,
+    tenant: str,
+    queue_urls_for_tenant: list[str],
+    *,
+    max_items: int = MAX_LISTING_ITEMS,
+) -> list[tuple[str, str]]:
+    """(url, title) for the tenant's newest listings via rtr-discovery's
+    enumerator for `platform`. Granicus view ids already present in the
+    tenant's queue URLs are handed over so no view-id probing runs."""
+    enumerators, TenantRecord, PoliteClient = _discovery_modules()
+    enumerator = enumerators.get(platform)
+    if enumerator is None:
+        raise RuntimeError(f"no rtr-discovery enumerator for {platform}")
+    record = TenantRecord(netloc=tenant, platform=platform)
+    client = PoliteClient(session)
+    view_ids = sorted(
+        {
+            m.group(1)
+            for u in queue_urls_for_tenant
+            for m in [_VIEW_ID_RE.search(u)]
+            if m
+        }
+    )
+    if platform == "granicus" and view_ids:
+        record.params = {"view_ids": [int(v) for v in view_ids]}
+    elif enumerator.needs_params:
+        params = await enumerator.discover_params(client, record)
+        if not params:
+            return []
+        record.params = params
+    # No date floor: an older short meeting is still real coverage, and
+    # the listing is newest-first so recent ones are tried first anyway.
+    out: list[tuple[str, str]] = []
+    async for cand in enumerator.enumerate_tenant(
+        client,
+        record,
+        date_from=None,
+        date_to=None,
+        mode="fast",
+        should_stop=lambda: len(out) >= max_items,
+    ):
+        if cand.has_video_hint is False:
+            continue
+        out.append((cand.url, cand.title or ""))
+        if len(out) >= max_items:
+            break
+    return out
+
+
+async def probe_candidate(
+    url: str, platform: str, mb_per_min: dict[str, float]
+) -> tuple[float | None, str, object]:
+    """Duration for a listing candidate through the WO-144 probe (resolve +
+    probe), recorded to the shared sidecar so the ingest gate already knows
+    it if it gets queued. Returns (seconds, source, ProbeResult)."""
+    from app.platforms.queue_probe import (
+        DEFAULT_SIDECAR_PATH,
+        append_probe_row,
+        probe_queue_entry,
+    )
+
+    result = await probe_queue_entry(url, platform=platform)
+    append_probe_row(DEFAULT_SIDECAR_PATH, result)
+    row = {
+        "duration_seconds": result.duration_seconds or "",
+        "size_bytes": result.size_bytes or "",
+        "probe_method": result.probe_method or "probe",
+        "platform": platform,
+    }
+    secs, source = duration_from_row(row, platform, mb_per_min)
+    if result.verdict == "reject-dead":
+        return None, source, result
+    return secs, source, result
+
+
+_BODY_PHRASE_RE = re.compile(
+    r"(city council|town council|county council|village board|board of (?:supervisors|"
+    r"commissioners|trustees|aldermen|selectmen|education|directors)|"
+    r"(?:planning|zoning|park|utility|library|police|fire|historic)\w* (?:commission|board)|"
+    r"fiscal court|commission|council|committee of the whole|board)",
+    re.I,
+)
+
+
+def body_phrase(title: str | None) -> str | None:
+    """The governing-body phrase in a meeting title ("City Council",
+    "Board of Supervisors"), lower-cased, or None. Used to prefer a
+    substitute from the SAME body as the original (the conductor's
+    WO-205 condition), not to reject the others -- Ryan's rule is that
+    anything on-mission is acceptable."""
+    m = _BODY_PHRASE_RE.search(title or "")
+    return m.group(1).lower() if m else None
+
+
+def prefer_same_body(
+    listing: list[tuple[str, str]], original_title: str | None
+) -> list[tuple[str, str]]:
+    """Stable re-order: candidates whose title names the original's
+    governing body first, everything else after, listing order kept."""
+    want = body_phrase(original_title)
+    if not want:
+        return listing
+    same = [c for c in listing if body_phrase(c[1]) == want]
+    rest = [c for c in listing if body_phrase(c[1]) != want]
+    return same + rest
+
+
+async def resolve_original(url: str, platform: str) -> dict:
+    """title / jurisdiction / gov_id for a queued meeting, from one adapter
+    resolve plus the identity ladder -- recorded in the search row so the
+    deferred file can carry the government (conductor's WO-205 condition)
+    without a second resolve at apply time. Blank when the ladder declines."""
+    out = {"original_title": "", "original_jurisdiction": "", "original_gov_id": ""}
+    try:
+        result = await get_finder(platform).resolve(url)
+    except Exception:  # noqa: BLE001 -- identity is bookkeeping here
+        return out
+    out["original_title"] = result.title or ""
+    out["original_jurisdiction"] = result.jurisdiction or ""
+    try:
+        from app.utils.gov_registry import resolve_government
+
+        match = resolve_government(result.jurisdiction, tenant_host=tenant_of(url))
+        if match and match.gov_id:
+            out["original_gov_id"] = match.gov_id
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def _found_row(
+    pick: str,
+    how: str,
+    secs: float,
+    title: str,
+    source: str,
+    checked: int,
+    window: tuple[float, float],
+) -> dict:
+    lo, hi = window
+    return {
+        "search_status": "found" if how == "window" else "found_shortest",
+        "substitute_url": pick,
+        "substitute_title": title,
+        "substitute_date": "",
+        "substitute_duration_seconds": f"{secs:.1f}",
+        "substitute_duration_hms": hms(secs),
+        "substitute_duration_source": source,
+        "candidates_checked": str(checked),
+        "note": _window_note(lo, hi)
+        if how == "window"
+        else "fallback: shortest usable candidate, none in window",
+    }
+
+
+async def _generic_find_substitute(
+    session: aiohttp.ClientSession,
+    platform: str,
+    tenant: str,
+    queue_urls_for_tenant: list[str],
+    existing_seconds: float,
+    *,
+    max_candidates: int,
+    window: tuple[float, float],
+    mb_per_min: dict[str, float],
+    original_title: str | None = None,
+) -> dict:
+    lo, hi = window
+    try:
+        listing = await discovery_candidates(
+            session, platform, tenant, queue_urls_for_tenant
+        )
+    except Exception as exc:  # noqa: BLE001 -- a listing failure is a data point
+        return {
+            "search_status": "error",
+            "note": f"listing failed: {type(exc).__name__}: {exc}"[:300],
+        }
+    exclude = set(queue_urls_for_tenant)
+    listing = [
+        (u, t) for u, t in listing if u not in exclude and looks_on_mission(t, platform)
+    ]
+    listing = prefer_same_body(listing, original_title)
+    if not listing:
+        return {
+            "search_status": "none",
+            "note": "listing returned no other on-mission meetings",
+        }
+    measured: list[tuple[str, float]] = []
+    titles: dict[str, tuple[str, str]] = {}
+    checked = 0
+    for url, title in listing[:max_candidates]:
+        checked += 1
+        secs, source, _ = await probe_candidate(url, platform, mb_per_min)
+        await asyncio.sleep(REQUEST_DELAY_SECONDS)
+        if secs is None:
+            continue
+        titles[url] = (title, source)
+        measured.append((url, secs))
+        if lo <= secs <= hi:
+            break  # newest in-window meeting wins; stop spending probes
+    pick, how = pick_substitute(measured, existing_seconds, lo=lo, hi=hi)
+    if not pick:
+        return {
+            "search_status": "none",
+            "candidates_checked": str(checked),
+            "note": f"{len(measured)} measured, none in {_window_label(lo, hi)} or shorter than the queued meeting",
+        }
+    title, source = titles[pick]
+    return _found_row(pick, how, dict(measured)[pick], title, source, checked, window)
+
+
+async def _cc_find_substitute_with_fallback(
+    session: aiohttp.ClientSession,
+    tenant: str,
+    exclude_ids: set[str],
+    existing_seconds: float,
+    *,
+    max_candidates: int,
+    window: tuple[float, float],
+) -> dict:
+    """The CivicClerk finder plus Ryan's fallback: when nothing sits in the
+    window, take the shortest past event whose API duration is at least
+    the floor and shorter than the queued meeting, verified by probe."""
+    result = await _cc_find_substitute(
+        session,
+        tenant,
+        exclude_ids,
+        max_candidates=max_candidates,
+        use_api_durations=True,
+        window=window,
+    )
+    if result.get("search_status") == "found":
+        return result
+    try:
+        events = await cc_list_past_events(session, cc_api_base(tenant))
+    except Exception as exc:  # noqa: BLE001
+        if result.get("search_status"):
+            return result
+        return {"search_status": "error", "note": f"Events listing failed: {exc}"[:300]}
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    measured = []
+    for event in cc_past_candidates(events, exclude_ids=exclude_ids, now_iso=now_iso):
+        secs = cc_duration_seconds(event)
+        if secs is not None:
+            measured.append((str(event["id"]), secs))
+    pick, how = pick_substitute(measured, existing_seconds, lo=window[0], hi=window[1])
+    if not pick or how != "shortest":
+        result["note"] = (
+            (result.get("note") or "") + "; no shorter past event with an API duration"
+        ).strip("; ")
+        return result
+    secs = dict(measured)[pick]
+    event = next(e for e in events if str(e.get("id")) == pick)
+    substitute_url = cc_portal_url(tenant, pick)
+    media_url = await cc_probeable_video_url(session, cc_api_base(tenant), event)
+    verified = (
+        await probe_duration(media_url, source_page_url=substitute_url)
+        if media_url
+        else None
+    )
+    if verified is not None:
+        secs = verified
+    row = _found_row(
+        substitute_url,
+        "shortest",
+        secs,
+        event.get("eventName") or "",
+        "ffprobe" if verified is not None else "civicclerk_api_unverified",
+        len(measured),
+        window,
+    )
+    row["substitute_date"] = (event.get("startDateTime") or "")[:10]
+    return row
+
+
+# --- Utah PMN: one entity's notices via the pilot's own search plumbing ---
+
+_pmn = None
+
+
+def _pmn_module():
+    global _pmn
+    if _pmn is None:
+        import importlib
+
+        _pmn = importlib.import_module("pmn_utah_pilot")
+    return _pmn
+
+
+async def pmn_entity_of(session: aiohttp.ClientSession, notice_url: str) -> str | None:
+    fields = await _pmn_module().fetch_notice_detail(session, notice_url)
+    return (fields.get("Entity") or ("", None))[0] or None
+
+
+async def pmn_entity_notices(
+    session: aiohttp.ClientSession, entity: str, *, days: int = 548, max_pages: int = 4
+) -> list:
+    """Notices for one entity, newest first, through the same JSON POST the
+    pilot documented (CSRF + application/JSON + XMLHttpRequest)."""
+    pmn = _pmn_module()
+    csrf_token, csrf_header = await pmn.fetch_csrf(session)
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    out = []
+    for page in range(max_pages):
+        payload = {
+            "searchType": "entity",
+            "entityName": entity,
+            "publicBodyName": "",
+            "title": "",
+            "agenda": "",
+            "tags": "",
+            "startDate": start.strftime("%m/%d/%Y"),
+            "endDate": end.strftime("%m/%d/%Y"),
+            "deadlineDate": "",
+            "createdDate": "",
+            "sortColumn": "",
+            "sortOrder": "",
+            "startingRow": str(page * 25),
+        }
+        headers = {
+            **pmn.UA_HEADERS,
+            "content-type": "application/JSON",
+            "x-requested-with": "XMLHttpRequest",
+            csrf_header: csrf_token,
+        }
+        async with session.post(
+            pmn.SEARCH_RESULT_URL,
+            data=json.dumps(payload),
+            headers=headers,
+            timeout=pmn.FETCH_TIMEOUT,
+        ) as resp:
+            resp.raise_for_status()
+            notices = pmn._parse_results_table(await resp.text())
+        if not notices:
+            break
+        out.extend(notices)
+        await asyncio.sleep(REQUEST_DELAY_SECONDS)
+    return out
+
+
+async def _pmn_find_substitute(
+    session: aiohttp.ClientSession,
+    queue_url: str,
+    existing_seconds: float,
+    *,
+    max_candidates: int,
+    window: tuple[float, float],
+    mb_per_min: dict[str, float],
+    original_title: str | None = None,
+) -> dict:
+    lo, hi = window
+    try:
+        entity = await pmn_entity_of(session, queue_url)
+        if not entity:
+            return {
+                "search_status": "error",
+                "note": "notice detail carries no Entity field",
+            }
+        notices = await pmn_entity_notices(session, entity)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "search_status": "error",
+            "note": f"PMN listing failed: {type(exc).__name__}: {exc}"[:300],
+        }
+    pmn = _pmn_module()
+    cands = [
+        n
+        for n in notices
+        if n.notice_url != queue_url
+        and pmn.looks_like_meeting_title(n.title)
+        and any(cat.lower().startswith("audio") for _, _, cat in n.attachments)
+    ]
+    if not cands:
+        return {
+            "search_status": "none",
+            "note": f"{len(notices)} notices for {entity!r}, none with an audio attachment",
+        }
+    ordered = prefer_same_body([(n.notice_url, n.title) for n in cands], original_title)
+    by_url = {n.notice_url: n for n in cands}
+    cands = [by_url[u] for u, _ in ordered]
+    measured: list[tuple[str, float]] = []
+    titles: dict[str, tuple[str, str]] = {}
+    checked = 0
+    for n in cands[:max_candidates]:
+        checked += 1
+        secs, source, _ = await probe_candidate(n.notice_url, "utah_pmn", mb_per_min)
+        await asyncio.sleep(REQUEST_DELAY_SECONDS)
+        if secs is None:
+            continue
+        titles[n.notice_url] = (n.title, source)
+        measured.append((n.notice_url, secs))
+        if lo <= secs <= hi:
+            break
+    pick, how = pick_substitute(measured, existing_seconds, lo=lo, hi=hi)
+    if not pick:
+        return {
+            "search_status": "none",
+            "candidates_checked": str(checked),
+            "note": f"{len(measured)} measured for {entity!r}, none usable",
+        }
+    title, source = titles[pick]
+    return _found_row(pick, how, dict(measured)[pick], title, source, checked, window)
+
+
+# --- round-2 subcommands ---------------------------------------------------
+
+
+def long_queue_rows(
+    mb_per_min: dict[str, float],
+) -> list[tuple[str, str, str | None, float, str]]:
+    """(url, platform, source_override, seconds, duration_source) for every
+    queue line the probe sidecar (or the old durations sidecar) shows
+    longer than LONG_SECONDS. YouTube lines are never considered."""
+    sidecar = load_probe_sidecar()
+    old = _load_rows(DURATIONS_CSV, "queue_url")
+    out = []
+    for _, url, src in queue_lines():
+        try:
+            platform = detect_platform(url)
+        except UnsupportedPlatformError:
+            continue
+        if platform in ("youtube", "vimeo"):
+            continue
+        secs, source = duration_from_row(sidecar.get(url), platform, mb_per_min)
+        if secs is None and old.get(url, {}).get("duration_seconds"):
+            secs, source = (
+                float(old[url]["duration_seconds"]),
+                old[url].get("duration_source", ""),
+            )
+        if secs is not None and secs > LONG_SECONDS:
+            out.append((url, platform, src, secs, source))
+    return out
+
+
+def tenant_key(url: str, platform: str) -> str:
+    return url if platform == "utah_pmn" else tenant_of(url)
+
+
+async def cmd_search(args) -> None:
+    """Round-2 replacement for `substitute`: every platform with a listing
+    method (CivicClerk and Legistar through this script's own code, Utah
+    PMN through the pilot's search, everything else through rtr-discovery),
+    durations from the probe sidecar, 9-40 min window, shortest-usable
+    fallback. Resumable through SEARCH_CSV."""
+    register_all_finders()
+    mb_per_min = calibrate_mb_per_min(load_probe_sidecar())
+    longs = long_queue_rows(mb_per_min)
+    by_tenant: dict[str, list] = {}
+    for row in longs:
+        by_tenant.setdefault(tenant_key(row[0], row[1]), []).append(row)
+    done = _load_rows(SEARCH_CSV, "tenant")
+    todo = [
+        (k, rows)
+        for k, rows in by_tenant.items()
+        if k not in done
+        or (args.retry_none and done[k].get("search_status") in ("none", "error"))
+    ]
+    if args.platform:
+        todo = [(k, rows) for k, rows in todo if rows[0][1] == args.platform]
+    if args.limit is not None:
+        todo = todo[: args.limit]
+    window = (args.min_minutes * 60.0, args.max_minutes * 60.0)
+    print(
+        f"{len(longs)} long queue rows across {len(by_tenant)} tenants; {len(done)} searched; "
+        f"{len(todo)} to search now (window {_window_label(*window)})."
+    )
+    if not todo:
+        return
+    try:
+        enumerators, _, _ = _discovery_modules()
+        enumerable = set(enumerators)
+    except RuntimeError as exc:
+        print(f"[WARN] {exc} -- only CivicClerk/Legistar/Utah PMN will be searched")
+        enumerable = set()
+    writer = _RowWriter(SEARCH_CSV, SEARCH_FIELDS)
+    try:
+        async with aiohttp.ClientSession() as session:
+            for i, (key, rows) in enumerate(todo, start=1):
+                # the shortest long one sets the bar a fallback must beat
+                url, platform, _, secs, _ = min(rows, key=lambda r: r[3])
+                tenant = tenant_of(url)
+                tenant_urls = [r[0] for r in rows]
+                identity = await resolve_original(url, platform)
+                original_title = identity["original_title"] or None
+                if platform == "civicclerk":
+                    result = await _cc_find_substitute_with_fallback(
+                        session,
+                        tenant,
+                        {cc_event_id(u) for u in tenant_urls if cc_event_id(u)},
+                        secs,
+                        max_candidates=args.max_candidates,
+                        window=window,
+                    )
+                elif platform == "legistar":
+                    result = await _legistar_find_substitute(
+                        session,
+                        tenant,
+                        {legistar_url_id(u) for u in tenant_urls if legistar_url_id(u)},
+                        max_candidates=args.max_candidates,
+                        window=window,
+                    )
+                elif platform == "utah_pmn":
+                    result = await _pmn_find_substitute(
+                        session,
+                        url,
+                        secs,
+                        max_candidates=args.max_candidates,
+                        window=window,
+                        mb_per_min=mb_per_min,
+                        original_title=original_title,
+                    )
+                elif platform in enumerable:
+                    result = await _generic_find_substitute(
+                        session,
+                        platform,
+                        tenant,
+                        tenant_urls,
+                        secs,
+                        max_candidates=args.max_candidates,
+                        window=window,
+                        mb_per_min=mb_per_min,
+                        original_title=original_title,
+                    )
+                else:
+                    result = {
+                        "search_status": "not_enumerable",
+                        "note": f"no listing method for {platform}",
+                    }
+                row = {field: "" for field in SEARCH_FIELDS}
+                row.update({"tenant": key, "platform": platform, **identity, **result})
+                writer.write(row)
+                print(
+                    f"[{i}/{len(todo)}] {platform} {key[:60]} -> "
+                    f"{row['substitute_url'] or row['search_status']}: {row['note'][:80]}"
+                )
+    finally:
+        writer.close()
+
+
+def cmd_apply(args) -> None:
+    """Swap each found substitute into the queue file (keeping the line's
+    TAB source field) and park the long original in DEFERRED_FILE. Dry run
+    unless --apply. Never touches YouTube lines."""
+    mb_per_min = calibrate_mb_per_min(load_probe_sidecar())
+    searches = _load_rows(SEARCH_CSV, "tenant")
+    longs = {
+        url: (platform, src, secs)
+        for url, platform, src, secs, _ in long_queue_rows(mb_per_min)
+    }
+    queued = set(queue_urls())
+    raw = QUEUE_FILE.read_text().splitlines()
+    swapped, deferred, used = [], [], set()
+    out_lines = []
+    for line in raw:
+        stripped = line.strip()
+        url = (
+            stripped.partition("\t")[0].strip()
+            if stripped and not stripped.startswith("#")
+            else None
+        )
+        if url in longs:
+            platform, src, secs = longs[url]
+            search = searches.get(tenant_key(url, platform))
+            sub = (search or {}).get("substitute_url")
+            if (
+                search
+                and search.get("search_status") in ("found", "found_shortest")
+                and sub
+                and sub not in queued
+                and sub not in used
+            ):
+                used.add(sub)
+                out_lines.append(f"{sub}\t{src}" if src else sub)
+                swapped.append(
+                    (url, sub, secs, float(search["substitute_duration_seconds"]))
+                )
+                deferred.append(
+                    "\t".join(
+                        [
+                            url,
+                            src or "",
+                            search.get("original_gov_id") or "",
+                            search.get("original_jurisdiction") or "",
+                            hms(secs),
+                            (search.get("original_title") or "").replace("\t", " "),
+                        ]
+                    )
+                )
+                continue
+        out_lines.append(line)
+    saved = sum(a - b for _, _, a, b in swapped) / 3600
+    print(
+        f"{len(swapped)} line(s) would be swapped; ~{saved:.0f} Whisper hours saved; "
+        f"{len(longs) - len(swapped)} long line(s) kept."
+    )
+    for url, sub, a, b in swapped[:20]:
+        print(f"  {hms(a)} -> {hms(b)}  {url[:70]}")
+    if not args.apply:
+        print("Dry run -- pass --apply to write the queue file and the deferred file.")
+        return
+    QUEUE_FILE.write_text("\n".join(out_lines) + ("\n" if out_lines else ""))
+    header = (
+        ""
+        if DEFERRED_FILE.exists()
+        else "# Long tier-3 meetings (>90 min) swapped out of the queue for a shorter meeting from the same government; re-queue later for depth.\n# url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>title -- gov_id blank when the identity ladder declined; probe rows stay in tier3_auto_transcription_queue_probe.csv.\n"
+    )
+    with DEFERRED_FILE.open("a") as f:
+        f.write(header + "".join(line + "\n" for line in deferred))
+    print(
+        f"Wrote {QUEUE_FILE.name} and appended {len(deferred)} line(s) to {DEFERRED_FILE.name}."
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -992,6 +1817,25 @@ def main() -> None:
 
     sub.add_parser("report", help="write the committed report CSV")
 
+    p_search = sub.add_parser(
+        "search",
+        help="round 2: find a 9-40 min substitute per long tenant (all listable platforms)",
+    )
+    p_search.add_argument("--limit", type=int, default=None)
+    p_search.add_argument(
+        "--platform", default=None, help="only tenants on this platform"
+    )
+    p_search.add_argument("--max-candidates", type=int, default=6)
+    p_search.add_argument("--min-minutes", type=float, default=SHORT_MIN_SECONDS / 60)
+    p_search.add_argument("--max-minutes", type=float, default=SHORT_MAX_SECONDS / 60)
+    p_search.add_argument("--retry-none", action="store_true")
+
+    p_apply = sub.add_parser(
+        "apply",
+        help="swap found substitutes into the queue file (dry run unless --apply)",
+    )
+    p_apply.add_argument("--apply", action="store_true")
+
     args = parser.parse_args()
     _patch_proxy_env()
 
@@ -1003,6 +1847,10 @@ def main() -> None:
         asyncio.run(cmd_substitute(args))
     elif args.command == "report":
         cmd_report(args)
+    elif args.command == "search":
+        asyncio.run(cmd_search(args))
+    elif args.command == "apply":
+        cmd_apply(args)
 
 
 if __name__ == "__main__":
