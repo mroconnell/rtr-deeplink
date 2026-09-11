@@ -63,10 +63,13 @@ YouTube's block hit. This work looked each one up and added it. None of
 these 4 has a page live yet — their meetings are still waiting in line
 for transcription.
 
-**One of those 4 needs attention: a queued video disappeared.**
-Roseville MI's queued meeting is no longer on YouTube at all. It will
-fail when its turn comes up in line unless someone swaps it for the
-channel's next real meeting first. Filed as its own `BACKLOG.md` entry.
+**One of those 4 needed attention: a queued video had disappeared —
+already fixed while merging.** Roseville MI's queued meeting was no
+longer on YouTube at all by the time this check ran. Separate,
+concurrent work (WO-174) had already found and queued a different, real
+meeting from the same channel with its own pin, so the dead line was
+simply deleted from `scripts/tier3_auto_transcription_queue.txt` rather
+than filed as a backlog item — nothing was actually at risk.
 
 **Caution.** Nothing here is live yet in the sense that matters for the
 site's public numbers: the fix for the 4 mis-keyed pages needs a

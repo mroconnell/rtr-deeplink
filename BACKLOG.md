@@ -118,7 +118,6 @@ Standing decisions — do NOT re-raise  (9)
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (20)
   `scripts/coverage_alternates.py` only retries an alternate domain on…
   4 pages from WO-188's YouTube recheck landed mis-keyed to…
-  Roseville MI's queued tier-3 video is gone from YouTube; the queue…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
@@ -642,26 +641,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** `BACKLOG_DONE.md` WO-188, 2026-09-11;
   `rtr-business/research/ENUMERATION_METHODS.md` §236;
   `rtr-business/research/wo188_report.csv`.
-
-### Roseville MI's queued tier-3 video is gone from YouTube; the queue entry will fail silently `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** WO-175 (2026-09-10) queued Roseville city, MI's
-  `https://www.youtube.com/watch?v=T8IhUhljAlc` into
-  `scripts/tier3_auto_transcription_queue.txt`. WO-188 (2026-09-11),
-  looking up the channel's real `@handle` for a pin, found this video is
-  now gone ("This video is not available", confirmed live via `yt-dlp`)
-  — removed from YouTube sometime in the 24 hours between the two
-  sessions. The channel (`@CityofRosevilleMI`) has a newer real meeting,
-  `https://www.youtube.com/watch?v=e8Jr18zynxs` ("Roseville City Council
-  Meeting August 11, 2026"), not probed or queued by either session.
-- **Impact:** the cloud worker will eventually reach the dead queue line
-  and fail on it — a wasted attempt, not a wrong page, but worth fixing
-  before that happens.
-- **Next action:** probe `e8Jr18zynxs` with `scripts/probe_tier3_queue.py`
-  and, if it accepts, swap it in for the dead line in
-  `scripts/tier3_auto_transcription_queue.txt`.
-- **History:** `BACKLOG_DONE.md` WO-175, 2026-09-10 (original queue entry);
-  `BACKLOG_DONE.md` WO-188, 2026-09-11 (this finding).
 
 ### WordPress's own `/?s=agenda` search is a confirmed, cheap way to find a real meetings list at scale — run it beyond this pilot's 600 `[JUST-DO-IT]`
 
