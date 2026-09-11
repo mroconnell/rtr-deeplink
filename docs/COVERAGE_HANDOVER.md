@@ -66,14 +66,28 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
   governments. Special districts are deliberately not a lookup table
   (decision D3 in `rtr-business/research/GOVERNMENT_IDENTITY_ARCHITECTURE.md`);
   they are minted on request with "ok mint" in a pin worklist.
+- "US school districts" is its own row (WO-214, 2026-09-11): the
+  Gazetteer table `us_school_districts.csv`, 13,326 districts keyed
+  `us:sd:<geoid>`. The research file has a row per district, seeded
+  from the NCES website list and the 2026-09-05 platform scan
+  (`rtr-business/research/ENUMERATION_METHODS.md` §262). Ryan's call:
+  no Census of Governments rows on the dashboard.
 - Two catch-all rows, "US other" and "Canada other" (added 2026-09-11),
   hold every government the research file or the Archive knows that is
-  not in those seven tables: school districts, special districts,
-  courts, minted `rtr:` ids. `rtr:unknown:<host>` placeholders are not
-  governments and sit in no row.
+  not in those tables: special districts, courts, untyped minted `rtr:`
+  ids. A minted id typed municipality, county, township, state or
+  school district sits in that tier's row instead. Registry-file
+  entries with no Archive page and no research row are left out and
+  listed in `coverage_registry/minted_orphans.csv` for a periodic
+  audit (817 on 2026-09-11, mostly the first scoring run's page-title
+  junk). `rtr:unknown:<host>` placeholders are not governments and sit
+  in no row.
 - The top table has a checkbox per row. The total row sums only the
   checked rows and says how many. US rows start checked, Canada rows
   start unchecked; "Include Canada" ticks the four Canada rows at once.
+  Columns run in funnel order (Domain, Tested, Platform known, Hub URL,
+  In Archive, Has transcript, Discovery tenant); under each count is
+  its share of the universe and its share of the column to its left.
 - Per government it joins four sources and says which one each column
   came from: the research file (domain, platform, tested, hub URL),
   rtr-discovery's ledger (a known tenant, last walked), rtr-upcoming's
