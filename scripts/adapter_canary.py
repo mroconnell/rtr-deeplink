@@ -226,6 +226,14 @@ CANARY_URLS: dict[str, list[str]] = {
     # amsva.wistia.com account, WO-161) -- confirmed live: real video (a
     # public MP4 asset) and a real, populated caption transcript.
     "wistia": ["https://amsva.wistia.com/medias/i2vooa0pno"],
+    # Atlantic City, NJ's real 8/19/26 City Council meeting (WO-227,
+    # 2026-09-11) -- confirmed live to have both a working signed HLS
+    # video AND a real, populated English caption track (BoxCast is
+    # video-only on most tenants, but not this one -- see boxcast.py's
+    # own module docstring), so this canary exercises both paths.
+    "boxcast": [
+        "https://boxcast.tv/view/city-council-meeting-081926-kdhkjrwnostnrznx7yxy"
+    ],
     "youtube": ["https://www.youtube.com/watch?v=uNDJRR3ywVo"],
 }
 

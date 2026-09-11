@@ -5480,6 +5480,16 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # "wistia" platform label), so a real pushed row keeps its own label,
     # same as vimeo/telvue/invintus.
     "wistia": "Wistia",
+    # BoxCast (boxcast.tv) -- a general-purpose government video vendor,
+    # WO-227, 2026-09-11. Confirmed live across four independent
+    # governments (Wilmington OH, St. Louis County - Clayton MO, Hondo
+    # TX, Atlantic City NJ), the same "one shared platform across many
+    # jurisdictions" shape as vimeo/wistia/invintus above, not a bespoke
+    # single-city scraper. boxcast.py's `BoxcastAssetFinder.resolve()`
+    # sets `resolved.platform = self.platform_name` on every return path
+    # (a broadcast, view-embed, or channel URL alike), so a real pushed
+    # row keeps its own "boxcast" label, same as vimeo/wistia/invintus.
+    "boxcast": "BoxCast",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a

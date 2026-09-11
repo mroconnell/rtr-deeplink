@@ -1,5 +1,79 @@
 # Backlog — done
 
+## WO-227: standalone BoxCast adapter — broadcast and channel links resolve on their own, and real captions turned up on two of four tenants [Done 2026-09-11]
+
+**What was done and why.** BoxCast was only ever reachable through one
+narrow path: a ProudCity government page linking a whole video channel.
+A bare BoxCast link — `boxcast.tv/view/...`, `boxcast.tv/view-embed/...`,
+or `boxcast.tv/channel/...` — resolved as an unknown platform, even
+though BoxCast is a real video vendor used directly by governments like
+Atlantic City, NJ (38,787 people), whose own recordings page embeds one.
+`app/platforms/boxcast.py` is now a real, standalone adapter, built and
+tested against four real BoxCast governments, per this repo's own rule
+of testing against live URLs before writing any code.
+
+**Result.**
+
+| Outcome | Count of 4 real governments | What it means |
+|---|---|---|
+| Resolved with real captions | 2 | Atlantic City NJ and St. Louis County (Clayton, MO) — a real caption track exists and was fetched successfully |
+| Resolved, video only | 2 | Wilmington OH and Hondo TX — a real video, no caption track on that government's account |
+
+The video always resolves; captions depend on whether that government's
+BoxCast account has paid for live captioning, a fact this adapter checks
+fresh on every resolve rather than assuming either way. That split isn't
+guessed — a real newspaper article about St. Louis County independently
+confirms it pays a separate yearly fee for closed-captioning, which lines
+up exactly with which two of the four accounts carry a caption track and
+which two don't.
+
+Two bugs were found and fixed before this shipped, both caught by
+checking the *result* against known-good facts, not by reasoning about
+the code alone:
+
+- A first version of the caption-stitching math produced a transcript
+  whose last real line landed at minute 199 of a 107-minute meeting —
+  almost double the real length. The cause: BoxCast's own signed caption
+  segment URLs carry a `start_mpegts` clock value that looks exactly like
+  the "shift this segment onto a shared timeline" signal several other
+  platforms in this repo really do need, but isn't one here — each
+  segment's own captions already carry the correct position in the
+  recording. Confirmed by sampling 20 segments spread across a real
+  107-minute meeting: segment position times 12 seconds matched the real
+  caption content every time, with no shift needed at all.
+  `app/platforms/boxcast.py`'s own module docstring has the full
+  investigation.
+- The list endpoint used to scan a government's whole channel for its
+  newest real meeting turned out to leave out the meeting's own time
+  zone, which would have silently misdated any meeting starting late
+  enough in the evening to cross into the next UTC day. Fixed by
+  re-fetching that one broadcast's full details (which does carry the
+  time zone) before computing its date.
+
+**Caution.** A government's channel often mixes real meetings with
+ceremonies, ribbon-cuttings, and press conferences — Atlantic City's own
+channel had a "Great Day Cafe Grand Opening" and a groundbreaking event
+sitting more recently than its real City Council meeting. Picking "the
+newest video" alone would have picked the wrong one; this adapter only
+auto-picks a broadcast whose own title looks like a real meeting.
+
+**Recommendation.** Deploy. This is `app/` code plus four pins
+(`tenant_overrides.csv`) — none of it reaches production until the
+resolver, Archive, and both transcription workers are next deployed.
+
+**Data tail.** Atlantic City's real "City Council Meeting 08/19/26"
+broadcast was probed and accepted (real, playable, 106 minutes 41
+seconds) but is over the 90-minute limit, so it went to the deferred file
+(`scripts/tier3_long_meetings_deferred.txt`), not the queue — no page was
+created, since a video-only BoxCast meeting needs real captions or
+transcription to become one. Two shorter, real Atlantic City "CITISTAT"
+broadcasts (a real city performance-review meeting) were also probed and
+both play cleanly — 09/02/26 at 22.5 minutes and 08/05/26 (titled
+"CITISTAT Meeting") at 30.9 minutes, both inside the usual 9–40 minute
+queue window — left for a human call on whether a CITISTAT session
+counts as the kind of meeting this project queues, rather than queued
+automatically.
+
 ## WO-223: search-engine pass on the 43 counties of 5,000+ WO-218 could not find a website for [Done 2026-09-11]
 
 **What was done and why.** WO-218 found websites for 34 of 134 counties

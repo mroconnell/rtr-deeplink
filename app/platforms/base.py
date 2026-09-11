@@ -251,6 +251,7 @@ def detect_platform(url: str) -> str:
     from .invintus import is_invintus_meeting_url
     from .az_legislature import is_az_legislature_video_url
     from .wistia import parse_wistia_account_url
+    from .boxcast import parse_boxcast_id
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -651,6 +652,17 @@ def detect_platform(url: str) -> str:
         # these URL shapes itself) is handled inside the adapter's own
         # resolve(), not detected here.
         return "wistia"
+    if parse_boxcast_id(url) is not None:
+        # BoxCast -- registered as a real, standalone platform 2026-09-11
+        # (WO-227), confirmed live across four independent government
+        # tenants (Wilmington OH, St. Louis County - Clayton MO, Hondo TX,
+        # Atlantic City NJ). Scoped to the three confirmed real URL shapes
+        # `boxcast.tv/view/{id}`, `boxcast.tv/view-embed/{id}` and
+        # `boxcast.tv/channel/{id}` -- see boxcast.py's own module
+        # docstring for the full investigation, including why the id
+        # itself is never trusted to say whether it's a broadcast or a
+        # channel (the real API is asked instead).
+        return "boxcast"
     return "unknown"
 
 

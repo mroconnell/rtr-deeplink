@@ -115,7 +115,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (28)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (29)
+  Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
   Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
@@ -658,6 +659,38 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
+
+### Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still say `no-platform-link-found` even though a real BoxCast video has been confirmed on both since 2026-08-29 `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** Both rows (`us:place:3985792` Wilmington city, OH;
+  `us:place:4834676` Hondo city, TX) carry `reject_reason=
+  no-platform-link-found`. Wilmington's real BoxCast channel
+  (`x1jps4n28nlgtaozsv5y`, via its ProudCity page) was confirmed live
+  2026-08-29 (`BACKLOG_DONE.md`'s ProudCity/BoxCast entry); Hondo's own
+  BoxCast channel (`ffa3guzpvskttftiveop`) was confirmed live 2026-09-11
+  (WO-227). Neither row was ever corrected — both predate or fall
+  outside the WO that found them.
+- **Impact:** Two real governments with confirmed real video read as "no
+  platform found at all" on the coverage registry and in any sweep that
+  reads `reject_reason` before retrying a row — cosmetic today (both
+  already resolve correctly through the app itself, and both now have a
+  `tenant_overrides.csv` pin from WO-227), but a future sweep could waste
+  a real access-ladder attempt re-discovering what's already known.
+- **Next action:** same correction WO-227 already made for Atlantic City
+  (`research/wo227_apply_to_jc.py` is a direct template): clear
+  `reject_reason`, set `suspected_video_provider=boxcast`, and set
+  `example_meeting_url` to each government's real broadcast URL
+  (Wilmington: `https://boxcast.tv/view/
+  wilmington-city-council-meeting-932026-kfqggledgvyp3dpduiwt`; Hondo:
+  `https://boxcast.tv/view/
+  regular-city-council-meeting---82426-c79nxf7c0jusetnphnzb` — both real,
+  live-confirmed 2026-09-11, but re-verify before applying since a
+  channel's newest broadcast changes over time).
+- **Constraint:** follow ENUMERATION_METHODS.md §158's write protocol
+  (lock, re-read immediately before writing, 99% row-count floor, atomic
+  write) — the file is a live, multi-session write target.
+- **History:** `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+  §268; `BACKLOG_DONE.md`'s WO-227 entry, 2026-09-11.
 
 ### `wo191_access_ladder_sweep.py`'s headless budget is computed at import time, so a reusing WO that overrides `HEADLESS_BUDGET_JSON` after import silently inherits WO-191's own stale cumulative count `[JUST-DO-IT]` `[EASY]`
 
