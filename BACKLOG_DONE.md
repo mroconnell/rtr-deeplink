@@ -39424,6 +39424,53 @@ new information (e.g. confirming the real quota window/reset via
 https://ai.dev/rate-limit, or a cost re-ask once real per-meeting
 economics matter more).
 
+**Addendum, WO-192 (2026-09-10) — Ryan revisited this, real run confirms
+the quota wall hasn't cleared.** Ryan asked for a local run "until we run
+out of free credits with Google or hit a limit" — new information was
+the point, not a re-litigation of the 2026-08-26 call. Two steps, same
+key, same script:
+
+1. **Preflight** (`--dry-run --limit 1 --engine gemini --newest-first`)
+   resumed the 2026-08-26 Painesville OH checkpoint
+   (`partial_9d03ab02df0b6093.json`, on-disk at 1/17 chunks). Learned
+   live: `--dry-run` still runs the *entire* transcription, it only
+   skips the final push — worth knowing before using it as a cheap
+   check. It re-transcribed chunks 2-16 clean (15 chunks, ~45 real
+   minutes of audio, real Gemini calls, real quota spent), then hit
+   sustained 429s on chunk 17. Piping through `tail -60` hid all output
+   until the process exited, so after ~20 minutes blind I killed it to
+   see the log — losing that 45 minutes of already-done work, since
+   SIGTERM skips the script's own checkpoint-save code and the on-disk
+   checkpoint is unchanged at 1/17. Lesson for next time: redirect
+   straight to a file and `tail -f` it, never pipe a long-running run
+   through a plain `tail -N`.
+2. **Real run** (`--engine gemini --newest-first --limit 40`, started
+   19:27:10): meeting 1/40 (Princeton, KY, CivicWeb) got its media
+   downloaded fine, then hit a 429 on the *very first* Gemini call (44s
+   into the run) and every retry after. It exhausted the engine's own
+   6-attempt retry budget (~4.7 minutes of upload/retry/backoff) and
+   the final error was explicit: *"You exceeded your current quota,
+   please check your plan and billing details... Quota exceeded"* — a
+   billing-required error, not just a per-minute throttle. That fired
+   this run's stop condition immediately, so the run was stopped before
+   meeting 2 (Sierra Madre, CA) ever reached Gemini. Zero meetings
+   pushed to production tonight.
+
+**What this adds to the 2026-08-26 finding**: the quota wall is not a
+one-day fluke and does not reset on a short (daily-since-last-test)
+cycle — hit again, immediately, weeks later, on a key that had done
+nothing else with Gemini in between. The 429s during the preflight's
+chunks 9-16 (intermittent, chunks still completing) and the real run's
+uninterrupted string of 429s from its very first call, taken together,
+show usage swinging from "mostly working" to "hard quota error" within
+about 10 minutes of real elapsed time on a single free-tier key — the
+same longer-window-quota shape 2026-08-26 already suspected, now with a
+verbatim billing-required error text to match against if it recurs.
+Full per-meeting numbers: `~/Documents/rtr-business/research/wo192_report.csv`.
+Ryan's original call stands: not worth paying for the paid tier at
+today's volume. Don't re-propose a free-tier retry without a real change
+(a different time of day, a multi-day gap, or a paid-tier cost re-ask).
+
 ## [Done 2026-08-23] State & jurisdiction hub pages rebuilt around real transcript snippets (WO-46)
 
 - **[JUST-DO-IT] Google declines to index the *hub* pages, not the
