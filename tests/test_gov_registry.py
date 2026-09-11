@@ -2487,3 +2487,45 @@ def test_squashed_lookup_also_respects_a_township_type_word():
     hit = resolver._squashed_national_hit("Northampton", "PA", None, "us", "")
     assert hit is not None
     assert hit[0].gov_id == "us:place:4254696"
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        ("Lancaster (township), PA", "rtr:us:pa:lancaster-township"),
+        ("Conewago (township), PA", "rtr:us:pa:conewago-township"),
+        ("Shrewsbury (township), PA", "rtr:us:pa:shrewsbury-township"),
+    ],
+)
+def test_minting_a_disambiguated_township_keeps_its_qualifier(raw, gov_id):
+    """Round-trip idempotence for `_mint()` (WO-198): a first-ever resolve
+    of "Lancaster Township, PA" carries "township" IN the raw name, so it
+    always minted `rtr:us:pa:lancaster-township` -- but the STORED
+    `jurisdiction` for an unverified/minted government is still written
+    through `display_name()`'s ambiguous-name disambiguator (the same
+    "{base} ({word}), {state}" round-trip form
+    `_strip_trailing_paren_type()` exists for), and re-resolving THAT
+    string strips "township" into `type_preference` before `name` ever
+    reaches `_mint()`. Before this fix that produced a bare
+    `rtr:us:pa:lancaster`, silently dropping the one thing that kept it
+    from colliding with a same-named place, and downgraded `gov_type` to
+    `other`. These three are real, currently-unpinned pages
+    (`scripts/backfill_gov_id.py --hosts www.youtube.com`'s dry run,
+    WO-198) that would have regressed from a working qualified id to a
+    bare one on the very backfill run meant to fix a different bug."""
+    match = resolve(raw, "www.youtube.com")
+    assert match.gov_id == gov_id
+    assert match.gov_type == classify.TOWNSHIP
+    assert match.tier == resolver.TIER_UNVERIFIED
+
+
+def test_minting_does_not_double_up_a_type_word_already_in_the_name():
+    # A name with no paren form (so `type_preference` comes from
+    # `_leading_type_word()`/`_strip_trailing_paren_type()` finding
+    # nothing) already carries "township" IN `name` when it matches no
+    # table -- the guard that skips re-appending must not turn this into
+    # "zzyzxville-township-township". "Zzyzxville" is invented on purpose
+    # (guaranteed to match no real table row); the state (WY) is real.
+    match = resolve("Zzyzxville Township, WY")
+    assert match.gov_id == "rtr:us:wy:zzyzxville-township"
+    assert match.gov_type == classify.TOWNSHIP

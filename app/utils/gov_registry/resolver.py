@@ -1717,7 +1717,33 @@ def _is_impossible_county(name: str, state: str, country: str) -> bool:
     return tables.us_counties().lookup_typed(name, state) is None
 
 
-def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Government:
+# The real, general-purpose type words `_mint()` will fold into a minted
+# slug/gov_type when they are all that is left of the name's own type
+# signal (WO-198) -- deliberately the same closed vocabulary
+# `_general_purpose_lookup()`/`_ca_csd_disambiguate()` already trust as
+# real Census/StatCan type words, not the wider `_LEADING_TYPE_RE`/
+# `_TRAILING_PAREN_TYPE_RE` vocabulary those two also accept ("district"/
+# "regional municipality" stay excluded -- see classify.py's own note
+# that they match no real LSAD/CSD_TYPE_WORDS value, so folding one into
+# a slug/gov_type here would be inventing signal rather than recovering
+# it).
+_MINT_TYPE_PREFERENCE_GOV_TYPE = {
+    "township": classify.TOWNSHIP,
+    "city": classify.MUNICIPALITY,
+    "town": classify.MUNICIPALITY,
+    "village": classify.MUNICIPALITY,
+    "borough": classify.MUNICIPALITY,
+    "municipality": classify.MUNICIPALITY,
+}
+
+
+def _mint(
+    name: str,
+    state: str,
+    country: str,
+    gov_type: Optional[str],
+    type_preference: str = "",
+) -> Government:
     """`rtr:<country>:<st>:<slug>` -- tier `unverified`, display = the
     cleaned name.
 
@@ -1736,8 +1762,36 @@ def _mint(name: str, state: str, country: str, gov_type: Optional[str]) -> Gover
     table at all, so there is no evidence anywhere that a "City of X" and
     an "X" here are two different governments -- and the raw string is
     kept as an alias either way.
+
+    **`type_preference` is folded back into the slug and `gov_type`
+    (WO-198), because minting is not idempotent on its own display
+    output without it.** A first-ever resolve of "Buckingham Township,
+    PA" carries the word "township" IN `name` already, so the slug was
+    always `buckingham-township` -- but `display_name()` writes that
+    government's STORED `jurisdiction` back as the disambiguated
+    "Buckingham (township), PA" (the same round-trip shape
+    `_strip_trailing_paren_type()`'s own docstring names for a
+    place/cousub HIT), and re-resolving THAT string strips "township"
+    into `type_preference` before `name` ever reaches this function --
+    so a backfill re-run minted the bare `rtr:us:pa:buckingham`,
+    silently dropping the one thing that made the id unique from a
+    same-named place, and merged the `gov_type` to `other`. Confirmed
+    real: `northampton-township-pa`/`buckingham-township-pa`/
+    `white-river-township-in`/`oakwood-village-oh`'s pages all keyed
+    this way before this fix. Folding it back in makes minting
+    idempotent on its own output again -- a name that already contains
+    the type word is untouched (`in slug_base.lower()` guards against
+    "Buckingham Township" doubling to "buckingham-township-township").
     """
-    slug = slugify(_LEADING_ENTITY_PREFIX_RE.sub("", name).strip() or name) or "unnamed"
+    slug_base = _LEADING_ENTITY_PREFIX_RE.sub("", name).strip() or name
+    preference = (type_preference or "").strip().lower()
+    if (
+        preference in _MINT_TYPE_PREFERENCE_GOV_TYPE
+        and preference not in slug_base.lower()
+    ):
+        slug_base = f"{slug_base} {preference}"
+        gov_type = gov_type or _MINT_TYPE_PREFERENCE_GOV_TYPE[preference]
+    slug = slugify(slug_base) or "unnamed"
     scope = (state or "xx").lower()
     return Government(
         gov_id=f"rtr:{country}:{scope}:{slug}",
@@ -2147,7 +2201,7 @@ def _resolve_government_ladder(
             evidence=reason,
         )
         return _match(gov, TIER_UNRESOLVED, reason, meeting_body)
-    gov = _mint(name, state, country, gov_type)
+    gov = _mint(name, state, country, gov_type, type_preference)
     return _match(gov, TIER_UNVERIFIED, f"minted from {cleaned!r}", meeting_body)
 
 
