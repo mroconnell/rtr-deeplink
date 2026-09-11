@@ -155,8 +155,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (133)
-  [NEEDS-AUDIT] A shared-host `tenant_overrides.csv` pin with a blank…
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (132)
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
@@ -1315,67 +1314,6 @@ of human step they need.
     there, WO-84 and WO-87.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
-
-- **[NEEDS-AUDIT] A shared-host `tenant_overrides.csv` pin with a blank `match` field is a full-host wildcard, not a scoped fallback — confirmed root cause of at least 4 governments' real Vimeo pages showing "Oak Bluffs, MA" instead of their own name.**
-  - **Issue**: `app/utils/gov_registry/resolver.py`'s `_match_override()`
-    treats a `tenant_overrides.csv` row with no `match` value as always
-    applying to its whole host. One row, added by WO-145
-    (`vimeo.com,,us:cousub:2500750390,fallback,...`), was meant to pin
-    one specific Oak Bluffs, MA meeting but left `match` blank — so it
-    silently caught every OTHER government's Vimeo video that had no
-    more specific pin of its own. WO-187 found this independently the
-    same night (Steele County, MN: `vimeo.com/1225126409/7e66dd7217`,
-    `us:county:27147`, 627 real transcript segments confirmed genuinely
-    Steele County's, but titled "SC Board Meeting 2026-09-08 — Oak
-    Bluffs, MA") and guessed the Vimeo adapter itself was trusting the
-    uploader's account name — reasonable from one data point, but
-    WO-183's hand-check (same night) found two more instances (Hanover
-    township PA, Middletown township PA — both real meetings confirmed
-    via Vimeo's own oEmbed `author_name`, both displaying as "Oak
-    Bluffs, MA") plus a fourth, already-live page
-    (`/m/lancaster-county-pa-2026-09-02-2026-09-09-commissioner-meeting`,
-    a real Lancaster County, PA commissioner meeting per its own Vimeo
-    author field, same mislabel; its slug still says Lancaster County
-    because slugs don't change on re-resolution, only the displayed
-    jurisdiction does) and traced all of them to this one blank-match
-    row rather than anything Vimeo-adapter-specific.
-  - **Impact**: any Vimeo-hosted page without its own specific pin was
-    exposed to this — at least 4 confirmed, likely more across the
-    corpus. The blank row itself is now fixed (WO-183 added
-    `match=vimeo:1199438213`, its own original video), so it can't catch
-    anyone else's video going forward, but the pages already mislabeled
-    while it was blank (Steele County MN, Hanover Twp PA, Middletown
-    Twp PA, the Lancaster County PA page) are not yet corrected, and no
-    sweep has checked the rest of the corpus for other pages this same
-    row mislabeled before today.
-  - **Next action**: audit every live page whose jurisdiction currently
-    reads "Oak Bluffs, MA" against Vimeo's own oEmbed `author_name` for
-    its video, and re-resolve or reslug the ones that don't match
-    (`reslug-page`/similar admin action — a previous session found this
-    class of call blocked by the auto-mode safety classifier, so it may
-    need Ryan or an unblocked session). Separately, add a cheap check
-    (in `scripts/build_backlog_toc.py`-style CI, or a one-off audit
-    script) that flags any `tenant_overrides.csv` row on a known shared
-    host (`youtube.com`, `www.youtube.com`, `vimeo.com`,
-    `player.vimeo.com`, `cablecast.tv`, ...) with a blank `match` field,
-    since that shape is very likely always a bug on those hosts. No
-    change needed in `app/platforms/vimeo.py` itself — the adapter
-    isn't reading anything from Vimeo's uploader name; the wrong
-    jurisdiction was coming from the tenant pin the whole time.
-  - **Constraint**: do not delete any of the 4 known pages — every one
-    has real, correctly-`gov_id`'d content; only the displayed
-    name/slug is wrong. Any fix should re-derive the display fields,
-    not the underlying resolve. `jurisdiction_coverage.csv` for Hanover
-    Twp PA and Middletown Twp PA already correctly shows
-    `transcribed=True`/`shares_video=True` against their own `gov_id`;
-    that part doesn't need touching.
-  - **History**: Steele County MN instance found live 2026-09-11
-    building WO-187 (`BACKLOG_DONE.md`); the other 3 plus the confirmed
-    root cause and the one-row fix found the same night by WO-183's
-    hand-check, not yet in `BACKLOG_DONE.md`. Related but distinct from
-    the `tenant_overrides.csv` retroactive-resync entry above (that one
-    is about a *correct* pin not reaching already-archived pages; this
-    one is about a *malformed* pin reaching pages it never should have).
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
   - **Issue**: WO-204 found `newtowntownship.civicweb.net`'s existing `ryan_stated` pin (from the 112-pin bulk worklist apply, PR #733) pointed to `us:place:4254184` (Newtown *borough*) even though the subdomain itself spells out "township" and the live portal is Newtown *Township*'s own (Board of Supervisors, Delaware County — confirmed live). The pin's own evidence line, "Newtown, PA -- us_places.csv Newtown borough," is a bare name-to-place match that ignored the word "township" sitting right in the hostname — the same root-cause shape WO-198's resolver fix targeted generally, just baked into a `ryan_stated` pin instead of the ladder. `ryan_stated` here records that Ryan approved a *batch* of 112 pins at once, not that each of the 112 was individually re-verified against its live site.
