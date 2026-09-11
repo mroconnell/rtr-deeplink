@@ -141,9 +141,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (23)
     [JUST-DO-IT] `[EASY]` `find_specific_platform_link()`'s…
     [JUST-DO-IT] `[EASY]` `wo169_probe_rejected_rerun.py`'s…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
-  Production actions only Ryan should take  (7)
-    [HUMAN] [EASY] 6 live Archive pages need deletion -- real videos,…
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
+  Production actions only Ryan should take  (6)
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] Two live pages need deleting: real video, zero transcript…
@@ -1135,36 +1134,6 @@ one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
 ### Production actions only Ryan should take
-
-- **[HUMAN] [EASY] 6 live Archive pages need deletion -- real videos, wrong government or not a real meeting, caught by WO-191's own oEmbed hand-check, dry-run call blocked by the auto-mode safety classifier.**
-  - **Issue**: `BACKLOG_DONE.md`'s WO-191 entry found these by checking
-    every one of a batch's YouTube ingests against the video's own
-    oEmbed title/channel, the same way WO-152/WO-190 did. All 6 are real,
-    live Archive pages that are either off-mission (not a real
-    government meeting) or belong to a different real government:
-    `lac-la-biche-county-2023-11-28-indigenous-collaboration-committee-focus-indigeno`
-    (an award-announcement clip, not a meeting), `solebury-township-pa-2026-06-10-u-s-202-and-route-179-roundabout-project-public`
-    (a PennDOT public meeting, not a township board meeting),
-    `middlebury-vt-2026-07-21-acsd-school-board-meeting-07-20-2026`
-    (Addison Central School District's meeting, not Middlebury town's),
-    `damascus-township-pa-2025-10-06-creating-an-upper-delaware-council-development-c`
-    (the Upper Delaware Council's, a separate multi-township body),
-    `rostraver-township-pa-2026-08-25-commission-executive-committee-and-corporation`
-    (the Southwestern Pennsylvania Commission's, a separate regional
-    body), `lemont-township-il-2026-03-26-2026-annual-appeal-rules-meeting`
-    (the Cook County Assessor's, not Lemont Township's).
-    `jurisdiction_coverage.csv` is already corrected for all 6 gov_ids
-    (reject_reason set, transcribed/shares_video cleared) -- only the
-    live Archive pages themselves still need to go.
-  - **Impact**: 6 real, public-facing pages show the wrong government's
-    (or no government's) meeting.
-  - **Next action**: `POST /internal/admin/delete-pages` with
-    `dry_run=false` and the 6 slugs above, from a Render shell or any
-    session the classifier doesn't block.
-  - **Constraint**: this session's own dry-run call was blocked outright
-    by the auto-mode safety classifier (a POST to a production write
-    endpoint), same shape as WO-182's blocked `reslug-page` calls.
-  - **History**: `BACKLOG_DONE.md`, WO-191, 2026-09-11.
 
 - **[HUMAN] 4 LocalView channels from WO-175's recheck read as an official government channel in the right state, but the name is not an exact match -- needs a person to say yes or no.**
   - **Issue**: `rtr-business/research/wo175_channel_recheck.csv`,
