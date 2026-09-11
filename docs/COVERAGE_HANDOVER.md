@@ -131,6 +131,27 @@ and the cloud worker drips it onto the site. Agenda-only is recorded as
 `no-video-found` and never ingested. A host with no video is a legitimate
 outcome to show on the dashboards, not a page.
 
+**Alternate domains (WO-181, 2026-09-10).** The research file carries two
+more columns, `alternate_domains` and `alternate_urls` (added in WO-165's
+duplicate-row cleanup): every other real domain or meeting URL a
+government was ever recorded under, kept rather than thrown away when
+WO-165 folded its duplicate rows into one. The row that survived kept
+whichever domain/URL was already sitting in the row WO-165 chose as the
+keeper for that government (see `BACKLOG_DONE.md`'s WO-165 entry); the
+other real one moved sideways into these columns instead of being
+deleted. `scripts/coverage_alternates.py` is the one place that reads
+them: `candidate_domains()` returns the primary domain followed by every
+alternate, and `ladder_with_alternates()` retries the next candidate only
+when the primary's `reject_reason` is an ACCESS-class one (blocked,
+timed out, DNS-dead, a challenge page) — the host answered, not the
+government. A CONTENT-class reject (a real page with genuinely no
+platform link, no video, etc.) is never retried against an alternate,
+because a different hostname for the same government's website doesn't
+change what a real page already told us. WO-181's own pilot ran this
+against the 265 rows that had both an alternate domain and an
+access-class reject on the primary; see `BACKLOG_DONE.md` for the count
+this actually found.
+
 What the 2026-09-09 sweeps established about *where video is*:
 
 | Population | Finding | Implication |
