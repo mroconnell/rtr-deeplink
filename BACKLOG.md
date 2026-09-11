@@ -115,12 +115,13 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (19)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (20)
   `scripts/coverage_alternates.py` only retries an alternate domain on…
   WO-175's LocalView channel recheck: 15 governments never got an…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
   `hub_sweep_wo126.py` only ever tries ONE candidate per platform, so…
+  WO-174's CivicPlus probe only reached the first 1,449 of ~14,000…
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
@@ -305,7 +306,7 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (16)
+Trust, safety & data quality  (17)
   A bare YouTube channel-listing scan measurably ingests non-meeting…
   A live page is keyed to the wrong government entirely — Bamberg…
   `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed…
@@ -322,6 +323,7 @@ Trust, safety & data quality  (16)
   `[LATER]` Prompt injection isn't a live product risk today, but the…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
+  `[NEEDS-AUDIT]` `[EASY]` `jurisdiction_coverage.csv`'s own `domain`…
 
 Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
@@ -733,6 +735,35 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   actively (see this file's own multi-session notes) -- coordinate
   before a large restructure of `_process_gov()`'s lead loop.
 - **History:** `BACKLOG_DONE.md`'s WO-170 entry.
+
+### WO-174's CivicPlus probe only reached the first 1,449 of ~14,000 governments — continue the run `[JUST-DO-IT]`
+
+- **Issue:** WO-174 built and verified a script
+  (`scripts/wo174_pipeline.py`) that checks whether a government's
+  website runs CivicPlus's meeting-listing page and, if so, looks for a
+  real meeting with video. It only ran the first 1,449 governments (the
+  largest ones by population) before stopping on purpose to ship what it
+  found. About 12,500 governments in `rtr-business/research/
+  wo174_candidates.csv` are still unchecked, including the smaller towns
+  and townships where CivicPlus is known to be more common.
+- **Impact:** real, likely-larger yield left on the table — the checked
+  slice found CivicPlus on 6% of governments and real video on a third
+  of those; smaller municipalities/townships are expected to score
+  higher (WO-127's own finding).
+- **Next action:** run `python scripts/wo174_pipeline.py` again from the
+  repo root (no arguments) — it reads `wo174_report.csv`, skips every
+  gov_id already done, and continues in population-descending order.
+  Expect roughly a day of wall-clock time for the rest at this run's own
+  politeness pace (one government at a time, a pause between each).
+- **Constraint:** run it from a worktree with `DATABASE_URL` and
+  `ARCHIVE_BASE_URL`/`ARCHIVE_INGEST_TOKEN` set the way `wo174_pipeline.py`'s
+  own docstring describes (the shared `.env` cwd-walk gotcha, CLAUDE.md's
+  worktree bullet) — don't run it against a stale checkout, and don't run
+  it more than once at a time (it appends to the shared
+  `tier3_auto_transcription_queue.txt` and `tenant_overrides.csv` inside
+  the repo, and to `jurisdiction_coverage.csv` in `rtr-business`, which
+  is shared across sessions — see ENUMERATION_METHODS.md §158).
+- **History:** `BACKLOG_DONE.md`, WO-174, 2026-09-10.
 
 ### `hub_slug_aliases.csv` can only redirect an old slug to ONE new home, and `/j/cambridge` genuinely needs two `[JUST-DO-IT]`
 
@@ -4961,6 +4992,43 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   heuristic re-runs and clears the stale marker.
 - **History**: fix detail and live verification against the real Chula
   Vista transcript in `BACKLOG_DONE.md`.
+
+### `[NEEDS-AUDIT]` `[EASY]` `jurisdiction_coverage.csv`'s own `domain` column is a bare host on most rows but a full URL (scheme + path) on about a fifth of them
+
+- **Issue**: confirmed live 2026-09-10 (WO-174): 6,185 of 31,539 rows in
+  `jurisdiction_coverage.csv` carry a value like
+  `https://www.fairfaxcounty.gov/` in `domain` instead of a bare host
+  (`www.fairfaxcounty.gov`). Any script that concatenates
+  `f"https://{domain}/..."` without normalizing first builds a nonsense
+  URL (`https://https://www.fairfaxcounty.gov//AgendaCenter`), which
+  fails at the DNS/connection stage and reads exactly like a dead
+  domain, not a formatting bug — WO-174's own probe hit this on Fairfax
+  County, VA before a fix was added locally in
+  `scripts/wo174_pipeline.py`'s `normalize_domain()`.
+- **Impact**: every sweep script that reads `domain` straight from this
+  file (or from a candidates export derived from it, e.g.
+  `wo174_candidates.csv`) and builds a URL from it the same way
+  under-counts real, reachable governments as `dead`/`dns-unresolvable`
+  — silently, since the symptom looks identical to a genuinely broken
+  domain. Scope unknown: no audit has checked how many prior sweeps'
+  `dead`/`dns-unresolvable` verdicts are actually this bug.
+- **Next action**: add one shared `normalize_domain()` helper (strip a
+  leading `scheme://`, then everything from the first `/` or `?`
+  onward — `scripts/wo174_pipeline.py` has a working implementation,
+  copy its logic) to whichever shared module already sits upstream of
+  every domain-consuming sweep (`app/utils/jurisdiction_enrich.py` is
+  the likely home), and audit prior sweeps' `dead`/`dns-unresolvable`
+  rows for governments whose `domain` carried a scheme, to see how many
+  were actually reachable.
+- **Constraint**: don't "fix" `jurisdiction_coverage.csv` itself by
+  rewriting `domain` in place across 6,185 rows in one pass — normalize
+  at read time in the shared helper instead; a bulk rewrite of that file
+  is exactly the kind of large mechanical edit ENUMERATION_METHODS.md
+  §158's write protocol exists to make safe, but it's also needless
+  churn when every consumer can just normalize on the way in.
+- **History**: found and worked around locally in `BACKLOG_DONE.md`'s
+  WO-174 entry; not otherwise investigated.
+
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
 
 **Architectural context:** anything about content/audience rather than

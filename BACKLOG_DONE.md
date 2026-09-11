@@ -969,6 +969,140 @@ next deployed — deploys are manual (see `CLAUDE.md`). The seven queued
 recordings and the coverage-tracking update are data changes, not code;
 they took effect immediately and don't need a deploy.
 
+## WO-174: guessing CivicPlus's meeting-page address on the 14,000 governments WO-127 never tried — 30 real meetings live now, 3 more on the way, first 1,449 governments done, run resumable for the rest [Done 2026-09-10, partial]
+
+Ryan asked for this after seeing WO-154's finding: one company,
+CivicPlus, always puts a government's meeting listing at the same web
+address — `/AgendaCenter`. WO-127 already tried that address on 1,946
+larger cities and towns and found 348 real hits. Nobody had tried it on
+the other roughly 14,000 governments in our list. Ryan: "Do you want to
+try guessing civicplus paths on any rows in jx coverage? Spin up an
+agent."
+
+**What was tested.** For each government with a website and no page yet,
+we checked whether `https://{their website}/AgendaCenter` is a real
+CivicPlus meeting listing. If it was, we read that listing (and, when
+needed, older years of it) looking for a meeting with a real video link,
+the same way WO-127 did. Only a meeting with video becomes a real page.
+A meeting with no video is recorded and skipped, never published.
+
+This is a large job — about 14,000 governments, checked one at a time
+with a pause between each so we do not hit any one website too hard. A
+full run takes roughly a day. This session ran the first 1,449
+governments (the largest ones by population) and stopped there on
+purpose, so the work already done could ship and be checked before the
+rest runs. The next session (or the conductor) can start it again and it
+will pick up exactly where this one left off — nothing is repeated or
+lost.
+
+**Result, first 1,449 governments checked:**
+
+| Outcome | Count of 1,449 attempted | Detail |
+|---|---|---|
+| No AgendaCenter | 948 | this government's website does not run CivicPlus's listing page |
+| Already had a page | 149 | found some other way before this check ran |
+| Website did not respond | 200 | timed out, DNS failure, or similar |
+| Blocked by a "prove you're human" page | 60 | never attempted to get past one |
+| Real meeting, no video | 38 | a real, current meeting, just no video posted |
+| Captions available, page live now | 30 | a real transcript is on the site today |
+| No meeting at all found | 15 | the listing page exists but had nothing real on it |
+| Video with no captions, sent to cloud transcription | 3 | real video, no transcript yet; goes out automatically |
+| Rejected by the video check | 3 | matched a video, but it failed a follow-up check (too short, page gone, or a duplicate of an already-queued video) |
+| Wrong government caught and skipped | 3 | the video belonged to a different, same-named government (see caution) |
+| False positive (looked like CivicPlus, wasn't) | 0 | none found in this batch |
+| Something went wrong on our end | 0 | none |
+
+92 of 1,449 governments (6%) really do run CivicPlus's listing page.
+33 of those 92 (36%) had a real video: 30 have a real page on the site
+right now; 3 are on their way once cloud transcription finishes. That
+matches the ~80% "agenda only, no video" pattern found before (WO-137);
+here it is closer to two-thirds agenda-only, one-third real video.
+
+**Result by size and type of government, same 1,449 rows:**
+
+| Population | Count checked | CivicPlus found | Real video found |
+|---|---|---|---|
+| 5,000 and up | 1,449 | 92 | 33 |
+| 1,000 to 4,999 | 0 | — | — |
+| Under 1,000 | 0 | — | — |
+
+The file is sorted largest-population-first on purpose (Ryan's own
+instruction), so this session only reached the largest governments —
+counties and cities, not yet the smaller towns and townships where
+CivicPlus is known to be more common (WO-127's own finding). Expect the
+hit rate to climb once the run reaches those.
+
+| Kind of government | Count checked | CivicPlus found | Real video found |
+|---|---|---|---|
+| County | 1,205 | 62 | 20 |
+| Municipality (city/town) | 244 | 30 | 13 |
+| Township | 0 | — | — |
+
+**Caution.** Three real meetings were caught and skipped because the
+video actually belonged to a different government with the same or a
+similar name — a town, not the county of the same name, in every case
+this batch found (e.g. Hampden County, MA's own CivicPlus page
+delegated to a video that was really the Town of Hampden's Conservation
+Commission, not the county). This is the exact risk CLAUDE.md's
+"wrong-government" note (WO-145/146) warns about; the check caught all
+three before anything was published — verified by hand, not just by the
+count. WO-133's earlier false-positive shape (a Facebook page that
+happened to contain the word "agendacenter") did not reappear in this
+batch, but the stricter check that catches it stayed on for every row,
+not just as a one-time fix.
+
+**A real, separate data problem found and worked around.** About a
+fifth of all governments in our master list (6,185 of 31,539) have their
+website address stored with `https://` and a trailing slash already
+attached, instead of just the bare address. A prior sweep had already
+tried Fairfax County, VA's real, working website and recorded it as
+"unreachable" — it was never actually unreachable, the stored address
+was just malformed in a way that broke the network request before it
+even left. This session fixed it locally for its own use and filed it
+as its own `BACKLOG.md` item, since any other script reading that same
+address column has the identical risk.
+
+**Also worth noting: YouTube captions worked every time this session,
+with no exceptions.** CLAUDE.md warns that YouTube caption downloads
+from this Mac have been blocked before (a "429 Too Many Requests"
+error). This run resolved 32 real YouTube-hosted meetings and got real
+captions for every one — no block was seen. Whatever caused the earlier
+block is not happening right now, at least from this network.
+
+**Recommendation.** Continue the run from where it stopped
+(`python scripts/wo174_pipeline.py`, no arguments needed — it skips
+every government already in `wo174_report.csv` automatically) to reach
+the remaining roughly 12,500 governments, including the smaller towns
+and townships where the real yield is expected to be higher. Deploy
+this PR first so the queued videos and new pins take effect.
+
+**Deploy status.** The 30 pages with captions are live now — no deploy
+needed for those (ingest went straight to production over HTTP). The 3
+queued videos, the 28 new video-address pins, and the pipeline script
+itself are on `main` after this merges but need a deploy before the
+queue drains and the pins take effect.
+
+Files: `rtr-deeplink/scripts/wo174_pipeline.py` (new — the combined
+detect-and-resolve driver, reusing WO-127's own detection rule, WO-133's
+stricter re-check, `hub_sweep_wo126.py`'s deeper page-reading walk,
+WO-145/146's wrong-government check, and WO-169's "try the next video"
+rule); `rtr-business/research/wo174_candidates.csv` (the 14,553-row
+input list), `wo174_report.csv` (one row per government, resumable,
+1,449 rows so far), `wo174_civicplus_hits.csv` (93 confirmed CivicPlus
+tenants), `wo174_discovery_seeds.csv`, `wo174_pins_staged.csv`,
+`wo174_methods_section.md` (write-up for `ENUMERATION_METHODS.md`,
+section number to be assigned when merged); `jurisdiction_coverage.csv`
+(2 rows changed for real — most of the 93 confirmed tenants already had
+their CivicPlus status recorded by an earlier, different check, so there
+was nothing new to write for them); `app/utils/jurisdiction_data/
+tenant_overrides.csv` (28 new pins), `scripts/
+tier3_auto_transcription_queue.txt` (2 new lines — a third real find,
+Pierce County, WA, matched a video an earlier, unrelated sweep had
+already queued, so no duplicate line was added), `scripts/
+tier3_auto_transcription_queue_probe.csv` (append-only probe log);
+`BACKLOG.md` (new data-quality entry on the malformed-website-address
+problem).
+
 ## WO-156: a duration and dead-link gate in the shared ingest helper, so every page-creating path checks a video before it becomes a page [Done 2026-09-10]
 
 **The problem.** One path already checked a video before making it a
