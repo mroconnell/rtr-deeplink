@@ -550,6 +550,19 @@ def _state_or_kind_conflict(cand: Cand, text: str, source: str) -> Optional[str]
     if cand.gov_kind == "municipality" and "county" not in cand.name.lower():
         if re.search(r"\bcounty\b", text_lower):
             return f"{source} {text!r} mentions 'County', row is a municipality ({cand.name})"
+    # Real, confirmed-live bug (WO-168, 2026-09-10): a "sanjuan.granicus.com"
+    # guessed tenant for San Juan city, TX resolved a real, current meeting
+    # titled "Board of Education Regular Meeting" -- which is San Juan
+    # UNIFIED SCHOOL DISTRICT (Sacramento County, CA: "CSEA... San Juan
+    # Chapter", "Gateway International School Charter Renewal"), not the
+    # Texas city at all. The name-collision is between a general-purpose
+    # government (city/county/township -- the only kinds this candidate
+    # universe ever carries) and a school district, which the county-
+    # keyword check above doesn't cover -- a school board is never one of
+    # those three kinds, so this fires unconditionally on gov_kind, unlike
+    # the county check's own municipality-only scope.
+    if re.search(r"\bboard of education\b|\bschool district\b", text_lower):
+        return f"{source} {text!r} mentions a school district/Board of Education, row is a {cand.gov_kind} ({cand.name})"
     return None
 
 

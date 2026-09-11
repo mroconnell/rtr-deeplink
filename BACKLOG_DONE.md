@@ -2328,6 +2328,128 @@ updater, following that file's own write-safety rules), and
 `wo169_methods_section.md` (the methods write-up, section number to be
 assigned when merged into `ENUMERATION_METHODS.md`).
 
+## WO-168: guessed the video platform for 321 governments whose own website is gated — found 2 real videos, and found that 8 of the first 14 "hits" were actually a different, bigger government with the same name [Done 2026-09-10]
+
+**What we tried and why.** Some government websites block automated
+visits with a "prove you're human" test. We never try to get past that
+test — it's the website's own rule. But the test is only on the
+website. The video system behind it (Granicus, Legistar, and similar
+platforms) is a separate computer that usually has no such test. So for
+321 governments stuck behind this test, we skipped their website
+entirely. Instead we guessed the web address of their video system from
+the government's own name, and asked that system directly for a real
+meeting with video. A few governments' own websites carry a small badge
+at the bottom saying who built the site ("Government Websites by
+CivicPlus"). We used that badge as a hint for which video system to try
+first.
+
+**Result.** Out of 321 governments, we found 2 real videos.
+
+| Outcome | Count of 321 | What it means |
+|---|---|---|
+| No video system found after guessing | 289 | Every guess failed to answer, or answered with nothing real |
+| Guessed system belongs to a different government | 24 | The address we guessed is real, but it is not this government's — see caution below |
+| Already had a video on the site by the time we checked | 5 | Another team's work reached these first |
+| Real meeting found, no video (confirmed) | 1 | Livingston County, MI — the video system is real and correctly identified, it simply has no video for this meeting |
+| Real video found and added to the site | 1 | West Point, NE |
+| Real video system found, but its one video was too short to use | 1 | Fremont, OH — 45 seconds, below our 60-second floor for a real meeting |
+
+**A second table, because it explains the caution below.** These are
+the guesses that answered at all, sorted by which platform we guessed
+and whether the guess actually belonged to the government we were
+checking.
+
+| We guessed for | System we found | Was it the right government? |
+|---|---|---|
+| West Point, NE | CivicPlus (their own website) | Yes |
+| Livingston County, MI | eScribe | Yes |
+| Fremont, OH | PrimeGov | Yes (but its one video was too short) |
+| San Juan, TX | Granicus | No — a school district in California |
+| Salem, IL | Legistar | No — Salem, Oregon (the state capital) |
+| Fremont, OH (a second guess, Granicus) | Granicus | No — Fremont, California |
+| Lake County, MI | Granicus | No — Lake County, California |
+| Wilmington, MA | Granicus | No — Wilmington, North Carolina |
+| Fulton County, KY | Granicus | No — Fulton County, Georgia (Atlanta) |
+| Clark County, KS | Granicus | No — Clark County, Nevada (Las Vegas) |
+| York County, SC | Granicus | No — York County, Virginia |
+| Woodstock, CT | eScribe | No — Woodstock, Ontario, Canada |
+| Lakewood, CO | eScribe | No — Lakewood Township, New Jersey |
+
+**Caution.** A guessed web address answering is not proof it belongs to
+the government we asked about. Many small towns and counties share an
+exact name with a much bigger, more famous place — Fulton County,
+Kentucky and Fulton County, Georgia (Atlanta); Clark County, Kansas and
+Clark County, Nevada (Las Vegas). When we guess the plain, obvious web
+address, it almost always belongs to whichever government is bigger and
+got there first, not the small one we are actually checking. We caught
+this by reading every single page by hand — not a sample, every one —
+and found 8 of our first 14 "hits" were wrong this way. Two more were
+wrong for a different reason: the government was real, but its video
+system does not always store text that our checks could read, so a
+mismatch slipped past unnoticed the first time.
+
+One of our wrong guesses (a video for a school board in California) was
+briefly live on the site under the wrong small town's name before we
+caught and removed it. A second guess (York County, Virginia's meeting)
+was mistakenly published twice — the second time during our own testing,
+after we had fixed the mistake for one kind of video but not yet for
+another. Both were removed the same day. A vendor's own footer badge
+("Government Websites by CivicPlus") is a hint about who built the
+government's *website*. It is not proof about who runs their video
+system — that turned out to need its own separate confirmation every
+time.
+
+**What we built to catch this**, so it does not need a human reading
+every page by hand next time:
+
+1. Before checking anything else, look up whether the guessed address
+   is already known and correctly assigned to some other government.
+   If so, stop immediately — someone already found the true owner, and
+   it is not the one we are checking. This one check is free (no
+   internet request needed) and caught two of the eight wrong guesses
+   by itself.
+2. Require the government's own state to appear somewhere in the real
+   page or the real transcript, not just the government's name. A page
+   naming "Clark County" is not proof of Clark County, Kansas — Clark
+   County, Nevada's own real estate notices say "Clark County" too.
+   Only a name *and* the matching state together count as proof.
+3. When a real transcript exists, read all of it, not just the
+   beginning. In one case the only sentence that gave away the true
+   location ("the state of Oregon") appeared partway through an
+   hour-long meeting, not at the start.
+
+**Recommendation.** Use this same two-part check (look up the known
+owner first; require the state to match, not just the name) in any
+future work that guesses a video system's web address from a
+government's name alone. Treat a short or thin transcript as weak
+evidence, not proof — several of our wrong guesses had very little real
+text to check in the first place. See `BACKLOG.md`'s new standing
+decision for the full write-up other sessions should read before trying
+this method again.
+
+**Deploy status.** The one real page (West Point, NE) is live now — no
+deploy needed, since it was added straight through the resolver's
+existing "add a meeting" address. The code changes in
+`scripts/wo168_gated_tenant_guess.py` (new) and
+`scripts/wo145_api_first_sweep.py` (a shared safety check, now used by
+every future sweep built the same way) are merged but not live until
+the next deploy of the resolver service. No queue lines and no new pins
+remain from this work — every one we found was later shown to be wrong
+and removed.
+
+**Files**: `rtr-deeplink/scripts/wo168_gated_tenant_guess.py` (new),
+`rtr-deeplink/scripts/wo145_api_first_sweep.py` (school-district/Board-
+of-Education check added), `~/Documents/rtr-business/research/
+wo168_candidates.csv` (321 rows), `wo168_report.csv`,
+`wo168_discovery_seeds.csv`, `wo168_confirmed_tenants.csv`,
+`wo168_apply_to_jc.py`, `wo168_methods_section.md`,
+`jurisdiction_coverage.csv` (285 rows updated).
+
+- **History**: full incident-by-incident writeup and the reasoning
+  behind each fix: `~/Documents/rtr-business/research/
+  wo168_methods_section.md`, and this repo's `BACKLOG.md` new standing
+  decision.
+
 ## Ryan's decisions on the held videos and undecided pages: 5 queued, 4 off-mission pages deleted, 14 pages re-keyed [Done 2026-09-10]
 
 Ryan reviewed the two decision tables (videos held for a title judgment; live pages whose government was undecided) and ruled.
