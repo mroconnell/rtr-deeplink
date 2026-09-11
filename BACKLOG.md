@@ -104,7 +104,7 @@ verbatim prefix of a real line further down, so any entry opens with
 ```text
 
 Standing decisions — do NOT re-raise  (9)
-  Video-less meetings are not ingested by sweeps -- record "no video"…  (1)
+  Guessing a bare tenant name for a small government is unsafe unless…  (1)
     [JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a…
   `jurisdiction_confidence IS NULL` is deliberately excluded from…
   Don't reach for a bigger Render plan before measuring what the peak…
@@ -306,7 +306,8 @@ Reliability, ops & cost  (14)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (17)
+Trust, safety & data quality  (18)
+  A tenant with no video content never runs the identity conflict…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
   A live page is keyed to the wrong government entirely — Bamberg…
   `[EASY]` YouTube video-ID regex accepts a generic "live stream" embed…
@@ -369,7 +370,62 @@ Parked deliberately — allowed back `[PARK]`  (4)
 
 ## Standing decisions — do NOT re-raise
 
-### Video-less meetings are not ingested by sweeps -- record "no video" instead `[STANDING]`
+### Guessing a bare tenant name for a small government is unsafe unless it beats an existing-pin check and an own-state match — 8 of the first 14 "confirmed" WO-168 tenants were a different, larger, same-named government `[STANDING]`
+
+- **Issue**: WO-168 (2026-09-10, `BACKLOG_DONE.md`) guessed platform
+  tenant hosts (`{slug}.granicus.com`, `{slug}.legistar.com`, ...) by
+  bare government name for 321 governments whose website is gated. Hand-
+  verifying every "confirmed" tenant — not just the pilot's 30, the full
+  run too — found the dominant failure mode: a small, obscure
+  government's bare name collides with a much larger, more famous
+  government of the exact same name, and the big government is who
+  actually holds the obvious subdomain. Confirmed wrong, one at a time,
+  by reading the real page: San Juan city TX → San Juan Unified School
+  District, Sacramento County CA; Salem city IL → Salem, OREGON (state
+  capital); Fremont city OH → Fremont, CALIFORNIA; Lake County MI → Lake
+  County, CALIFORNIA; Wilmington town MA → Wilmington, NORTH CAROLINA;
+  Fulton County KY → Fulton County, GEORGIA (Atlanta); Clark County KS →
+  Clark County, NEVADA (Las Vegas); York County SC → York County,
+  VIRGINIA ("Board of Supervisors" is Virginia's term; SC counties use
+  "County Council"). Two more (Woodstock town CT → Woodstock, ONTARIO;
+  Lakewood city CO → Lakewood Township, NEW JERSEY) were a related but
+  distinct gap: the identity checks never ran at all, because they only
+  fire on a candidate that resolves with real content, and a real
+  meeting with no *embeddable* video (legitimate, common) never does.
+- **What this means for any future sweep that guesses a tenant host
+  rather than reading it off a real page**: a bare name-token match on a
+  raw page proves nothing — the identically-named larger government's
+  real content of course also contains its own name (Clark County, NV's
+  zoning notices say "Clark County" throughout; that is not evidence for
+  Clark County, KS). Two checks made this method safe enough to ship at
+  all, and both belong in any future sweep of this shape:
+  1. **Check `tenant_overrides.csv` for the guessed host FIRST, before
+     any network call.** If a real pin already exists for that exact
+     host naming a *different* government, stop — someone already
+     identified this tenant, and it isn't the one being guessed for.
+     This is free (no network) and was the single highest-value check
+     found (`existing_pin_conflict()`,
+     `scripts/wo168_gated_tenant_guess.py`).
+  2. **A raw-page identity match requires the row's own state
+     (abbreviation or full name) to also appear in the text, not just
+     the row's own name.** A name match with no state confirmation is
+     inconclusive, not confirmed (`raw_candidate_identity_check()`,
+     same file). Apply this to EVERY path that can result in an ingest
+     or a queue/pin, including tier-1/2 — WO-168's own York County VA
+     mistake happened twice specifically because the first fix only
+     covered tier-3, and a short real transcript (4 segments) never
+     mentioned either state by name.
+  3. A full-transcript scan for state-name conflicts (not a short
+     sample) is worth doing too, but is not sufficient on its own — the
+     disambiguating word can land anywhere across an hour, or never
+     appear at all in a short/thin transcript. Treat a thin transcript
+     as weaker evidence, not a clean pass.
+- **Net result once fixed**: WO-168's real, hand-verified yield was 2 of
+  321 governments (0.6%), not the 14 of 321 (4.4%) it looked like before
+  verification. That is the honest number for this method against a
+  cohort of small/obscure governments; don't expect a materially
+  different rate without a stronger signal than bare-name guessing.
+- **History**: `BACKLOG_DONE.md`'s WO-168 entry, 2026-09-10.
 
 - **[JUST-DO-IT] `[EASY]` 20 rows in the national tables carry a double-encoded ñ, so the page display name reads "CaÃ±on City".**
   - **Issue**: `app/utils/jurisdiction_data/us_places.csv` has 3 rows (`0811810` Cañon City CO, `0639003` La Cañada Flintridge CA, `3525170` Española NM) and `us_counties.csv` has 17 (`grep -c 'Ã'`) where UTF-8 was decoded as Latin-1 and re-encoded. Found 2026-09-10 pinning `@canoncitygov`: the pin resolved to the right id, and the backfill wrote "CaÃ±on City, CO" as the display name.
@@ -4565,6 +4621,56 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### A tenant with no video content never runs the identity conflict checks — the eScribe/CivicWeb-specific half of the finding above, and the residual audit it leaves for prior sweeps `[NEEDS-AUDIT]`
+
+- **Issue**: `wo145_api_first_sweep.py`'s (and every script built on the
+  same shape's) post-resolve identity checks only run against a
+  candidate that reaches ledger status `resolved_ok`, which requires
+  segments/agenda_items/agenda_link/video_url. A real government with a
+  real meeting listing but no *embeddable* video is common and legitimate
+  (this repo's own "a video-less host is a valid record" rule) — but for
+  eScribe specifically, `agenda_items` means "has a real video timestamp
+  bookmark" (`escribe.py`'s `_extract_agenda_items` docstring), so a real
+  no-video eScribe meeting never reaches `resolved_ok` and the identity
+  checks never see its text at all. WO-168's 30-government pilot
+  (2026-09-10) hit this twice: `pub-woodstock.escribemeetings.com`
+  guessed for Woodstock town, CT resolved real content for Woodstock,
+  ONTARIO; `pub-lakewood.escribemeetings.com` guessed for Lakewood city,
+  CO resolved real content for Lakewood Township, NEW JERSEY. Neither was
+  caught by the automated pipeline — both were found only by a human
+  reading the real page by hand during pilot verification.
+- **Impact**: any known-platform sweep built on this shape
+  (`wo145_api_first_sweep.py` itself and its WO-146/147/148/149/150/152
+  descendants) can write a wrong tenant→gov_id attribution into
+  `jurisdiction_coverage.csv`/a discovery seed/`reject_reason` for a
+  government whose real tenant has no video — never a live wrong PAGE
+  (Ryan's ingest rule already prevents that; no video means nothing gets
+  ingested), but a wrong attribution that a later sweep or pin worklist
+  could build on in good faith.
+- **Next action**: WO-168 (`scripts/wo168_gated_tenant_guess.py`, this
+  PR) built and shipped the fix for its own driver —
+  `raw_candidate_identity_check()`: when no candidate ever reaches
+  `resolved_ok`, fetch one real candidate URL directly (bypassing the
+  adapter) and run the same conflict checks against its raw text before
+  claiming the tenant for this government. Port the same fallback into
+  `wo145_api_first_sweep.py`'s `process_enumerator_platform()` (the
+  shared function every sibling script reuses), then re-check the
+  already-written `no-video-found`/`no-meeting-nor-video`/
+  `meeting-without-video` rows from WO-145/146/147/148/149/150/152 whose
+  platform is eScribe or CivicWeb (the two platforms with the same
+  "content" ≠ "resolved_ok" gap) for a similar mismatch.
+- **Constraint**: the raw fetch's own conflict check needs the state-
+  abbreviation fix WO-168 also added — `_state_or_kind_conflict`'s
+  leading `"Name, ST"` pattern and `_cross_border_collision`'s "has an
+  explicit state code" check both only match at the very start of the
+  string, which a real full-page dump usually doesn't satisfy even when
+  the state appears elsewhere (a real false positive this pilot also hit:
+  Livingston County, MI's own raw page — "Howell MI 48843" — was
+  initially flagged as a false conflict against a real Alberta rural
+  municipality, "Livingston No. 331," until a plain state-abbreviation-
+  anywhere-in-text check was added ahead of the cross-border check).
+- **History**: `BACKLOG_DONE.md`'s WO-168 entry, 2026-09-10.
 
 ### A bare YouTube channel-listing scan measurably ingests non-meeting videos — 7 of 16 real examples across two independent sessions, all matching the title allowlist by accident `[NEEDS-AUDIT]`
 
