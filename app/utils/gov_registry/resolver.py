@@ -1782,20 +1782,39 @@ def _mint(
     idempotent on its own output again -- a name that already contains
     the type word is untouched (`in slug_base.lower()` guards against
     "Buckingham Township" doubling to "buckingham-township-township").
+
+    **`gov_name` gets the same fold-in as the slug (WO-204).** The
+    WO-198 fix above only widened `slug_base`, so `gov_name` (what
+    `display_name()`/`hub_slug()` actually read) stayed the bare
+    "Lancaster" -- correct `gov_id` (`...lancaster-township`), wrong hub
+    (`lancaster-pa`, colliding with the same-named borough/city's own
+    hub). Confirmed live 2026-09-11 on all seven PA/OH placeholder
+    townships that round-trip through this branch (Lancaster/Conewago/
+    Shrewsbury/Spring/Summit Township, PA; Deerfield/Berlin Township,
+    OH).
     """
     slug_base = _LEADING_ENTITY_PREFIX_RE.sub("", name).strip() or name
+    display_base = name
     preference = (type_preference or "").strip().lower()
     if (
         preference in _MINT_TYPE_PREFERENCE_GOV_TYPE
         and preference not in slug_base.lower()
     ):
         slug_base = f"{slug_base} {preference}"
+        if preference not in display_base.lower():
+            # WO-204: fold the same qualifier into `gov_name`, not just
+            # the slug -- `display_name()`/`hub_slug()` read `gov_name`,
+            # so leaving it bare here (as before this fix) produced a
+            # hub slug ("lancaster-pa") that silently dropped "township"
+            # again, even though `gov_id` correctly kept it. See this
+            # function's docstring for the full history.
+            display_base = f"{display_base} {preference}"
         gov_type = gov_type or _MINT_TYPE_PREFERENCE_GOV_TYPE[preference]
     slug = slugify(slug_base) or "unnamed"
     scope = (state or "xx").lower()
     return Government(
         gov_id=f"rtr:{country}:{scope}:{slug}",
-        gov_name=name,
+        gov_name=display_base,
         gov_type=gov_type or classify.OTHER,
         country=country,
         state=state,
