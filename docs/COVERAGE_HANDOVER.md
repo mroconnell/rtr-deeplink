@@ -138,6 +138,41 @@ reasons. That is how every sweep below was scoped.
   planning commission is not folded into the city, township, or state it
   happens to sit inside just because that's the government we already
   had a row for.
+- **Multi-government hosts can never be pinned by host alone (2026-09-11,
+  WO-210).** Ryan, verbatim: "We absolutely cannot use pins for the
+  multi-gov hosts like vimeo, youtube, youtu.be, clerkshq, etc. because
+  they're so prevalent and we KNOW they need a match... if youtu.be
+  without a channel match, pin to NULL." A host like `youtube.com` or
+  `vimeo.com` serves thousands of unrelated governments, so a blank-match
+  row on one of them is not a normal per-tenant pin — it silently keys
+  EVERY unidentified video on the whole host to one government. That is
+  exactly what happened once: `vimeo.com,,<gov_id>` mis-attributed at
+  least three other governments' real videos to Oak Bluffs, MA
+  (`BACKLOG_DONE.md`'s WO-183/WO-206/WO-206b), and it came back once
+  already through a rebase after being deleted. Three layers now enforce
+  the rule: (1) a shared list, `app/utils/gov_registry/registry.py`'s
+  `MULTI_GOV_HOSTS` (re-exported next to `CORPORATE_HOSTS_BY_PLATFORM` in
+  `app/platforms/base.py` for discoverability, kept plain-stdlib in
+  `registry.py` itself so `archive/db/crud.py` can use it without pulling
+  `bs4` across the app/archive service boundary), with `is_multi_gov_host()`;
+  (2) the `tenant_overrides.csv` loader refuses to load a blank-match row
+  on one of these hosts at all — never applied, logged once, and counted
+  via `registry.rejected_multi_gov_overrides()`, with a committed-file
+  test that fails CI the moment one is added again; (3) the resolver
+  itself (`resolver._resolve_government_ladder()`'s rung 1b) returns no
+  government for one of these hosts absent a matching per-video, per-
+  channel or per-external-id pin — never a national-table guess from a
+  channel/video name alone, even one that would otherwise validate as a
+  real place. `POST /internal/jurisdiction/override` follows the same
+  rule: a batch touching one of these hosts gets one rule per real
+  per-video match found in the batch, never a blank one, with any page it
+  couldn't derive one for reported under `tenant_override_notes`. One
+  known, accepted gap: `civicplus.py`/`legistar.py`'s delegation to a
+  multi-gov host keeps the pre-existing "known quirk" (source_url lands on
+  the delegated host, not the original one — see CLAUDE.md's platform-
+  wrapper bullet), so a delegated page on one of these hosts now also
+  needs a pin, same as an un-delegated one would; see BACKLOG.md's WO-210
+  follow-up entry.
 
 ## 4. How coverage is grown: the sweep pattern
 

@@ -50,10 +50,14 @@ from .classify import GOVERNMENT_TYPES, classify_government_type
 from .display import display_name, hub_slug, slugify
 from .tables import state_gov_id
 from .registry import (
+    MULTI_GOV_HOSTS,
     Government,
+    RejectedOverride,
     TenantOverride,
     government_for_id,
     governments,
+    is_multi_gov_host,
+    rejected_multi_gov_overrides,
     tenant_overrides,
 )
 from .resolver import (
@@ -74,6 +78,8 @@ __all__ = [
     "GOVERNMENT_TYPES",
     "Government",
     "GovernmentMatch",
+    "MULTI_GOV_HOSTS",
+    "RejectedOverride",
     "TIER_BLANK",
     "TIER_INFERRED",
     "TIER_PINNED",
@@ -84,10 +90,12 @@ __all__ = [
     "classify_government_type",
     "display_name",
     "government_for_id",
+    "is_multi_gov_host",
     "is_own_name",
     "governments",
     "hub_slug",
     "page_hints_for",
+    "rejected_multi_gov_overrides",
     "resolve_government",
     "slugify",
     "state_gov_id",

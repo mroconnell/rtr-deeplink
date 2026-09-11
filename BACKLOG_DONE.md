@@ -298,6 +298,117 @@ only if the rate is meaningful, and 0% isn't.
   `rtr-business/research/wo209_report.csv` (all 73 rows),
   `rtr-business/research/ENUMERATION_METHODS.md` section 260.
 
+## WO-210: a multi-government host (YouTube, Vimeo, ClerkHQ, ...) can never be pinned by host alone — "pin to NULL" instead, in three layers [Done 2026-09-11]
+
+**What was asked.** Ryan, verbatim: "We absolutely cannot use pins for
+the multi-gov hosts like vimeo, youtube, youtu.be, clerkshq, etc.
+because they're so prevalent and we KNOW they need a match. Can we
+create a pin that sort of does the opposite of tying a domain to a gov?
+Like 'if youtu.be without a channel match, pin to NULL.'" The concrete
+incident this guards against: a blank-`match` `vimeo.com,,<gov_id>` row
+mis-attributed at least three other governments' real Vimeo videos to
+Oak Bluffs, MA (WO-183/WO-206), and the row came back once already
+through a rebase and had to be removed again (WO-206b).
+
+**What was built, three layers, each with fixture-backed tests.**
+
+1. **A shared list.** `app/utils/gov_registry/registry.py`'s
+   `MULTI_GOV_HOSTS` (`youtube.com`/`www.youtube.com`/`youtu.be`/
+   `m.youtube.com`, `vimeo.com`/`player.vimeo.com`/`www.vimeo.com`,
+   `amsva.wistia.com` — the one confirmed-shared Wistia account,
+   `clerkshq.com`, `facebook.com`, `fb.watch`, `boxcast.tv`,
+   `livestream.com`, `soundcloud.com`, `drive.google.com`, `dropbox.com`,
+   `sharepoint.com`) plus `is_multi_gov_host()`. Kept plain-stdlib on
+   purpose, re-exported from `app/platforms/base.py` next to
+   `CORPORATE_HOSTS_BY_PLATFORM` for discoverability: `archive/db/crud.py`
+   already imports `app.utils.gov_registry` at module scope, and that
+   module's own `__init__.py` docstring makes "stdlib + `jurisdiction_
+   enrich` only" a deliberate import constraint — importing `app.platforms
+   .base` there would pull `bs4` across the app/archive service boundary,
+   and `archive/requirements.txt` has no `beautifulsoup4` (confirmed by
+   reading it) — a module-level import failure there would crash the
+   whole Archive service, not just one endpoint, the exact hazard
+   `archive/utils/video_thumbnail.py`'s own header comment already
+   documents for the same reason.
+2. **Loader safeguard.** `registry._load_tenant_overrides()` refuses a
+   row whose host is a `MULTI_GOV_HOSTS` host and whose `match` is
+   blank: never applied, logged once at WARNING with the row, and counted
+   via the new `registry.rejected_multi_gov_overrides()`. A blank-match
+   row on a real single-tenant host (`pub-sechelt.escribemeetings.com`)
+   is untouched — this is a host-specific safeguard, not a general
+   change to blank matches. `tests/test_gov_registry.py`'s
+   `test_no_blank_match_row_on_a_multi_gov_host` fails CI the moment such
+   a row is committed again (the exact rebase-brings-it-back shape
+   WO-206b hit).
+3. **Resolver rule.** `resolver._resolve_government_ladder()`'s new rung
+   1b: for a `MULTI_GOV_HOSTS` host with no per-video/channel/
+   external-id pin actually matching THIS page (checked via the same
+   `_match_override()` rung 1 already uses), return no government at all
+   — before name repair, before the national table, before minting,
+   before same-tenant consistency. Never a bare-name guess from a
+   channel/video's own metadata, even one that would otherwise validate
+   as a real, unambiguous place. Tested against three real, currently-
+   committed rows: the Oak Bluffs `vimeo:1199438213` per-video pin (fires
+   for its own video, not a different one on the same host), the Severn
+   ON `channel=@severnontario` pin (fires only for that channel), and a
+   bare YouTube watch URL with no pin at all (`TIER_BLANK`).
+4. **Endpoint fix.** `POST /internal/jurisdiction/override`
+   (`archive/db/crud.py`'s `override_jurisdiction()`) never drafts a
+   blank-match rule for a `MULTI_GOV_HOSTS` host in a batch: it derives a
+   per-video match from each page's own `video_url` (bare video id for
+   YouTube, `vimeo:<id>` for Vimeo, `external_id=wistia:<id>` for
+   Wistia — regexes deliberately duplicated rather than imported from
+   `app/platforms/youtube.py`/`vimeo.py`/`wistia.py`, same service-
+   boundary reasoning as layer 1) and drafts one rule per distinct match
+   found; a page with no derivable match gets no rule at all, reported
+   under a new `tenant_override_notes` response field instead of being
+   silently dropped.
+
+**Audit of the committed file.** Ran the (now-fixed) loader over
+`app/utils/jurisdiction_data/tenant_overrides.csv` as committed:
+
+| Check | Count |
+|---|---|
+| Blank-match rows on a multi-gov host | 0 |
+| `authoritative` rows on a multi-gov host with no per-video/channel match | 0 |
+
+Both zero — WO-206b's fix held, and nothing else needed correcting.
+
+**A real, deliberate trade-off, not a bug.** `civicplus.py`/`legistar.py`
+delegate a linked YouTube video to `resolve_via_platform()`, which
+returns the delegated result AS-IS (only `.jurisdiction` is overwritten,
+never `.source_url` — CLAUDE.md's own documented "known quirk"). So a
+delegated page's `tenant_host` for identity purposes is the delegated
+host (`youtube.com`), not the originating CivicPlus/Legistar page's own
+host, and the resolver has no signal distinguishing a trustworthy
+subdomain-derived name from an untrustworthy channel-derived one once
+both have reached it as a plain string. This means a delegated,
+currently-unpinned page on a multi-gov host now also needs a real pin —
+filed as its own open `BACKLOG.md` entry (routed to `## Open bugs`,
+2026-09-11) rather than silently accepted, along with the pre-existing
+20-test/1-test fallout this surfaced in `tests/test_gov_registry.py` and
+`tests/test_pin_worklist.py` (real, currently-unpinned `www.youtube.com`/
+`clerkshq.com` pages used as an incidental "some unpinned host"
+placeholder in tests that were actually about qualifier/type-word/
+minting logic or worklist name validation — moved to a neutral
+`example-unpinned.granicus.com` placeholder, or (one case,
+`scripts/build_pin_worklist.py`'s `propose()`) taught to skip the
+host-derived context specifically on a multi-gov host, since that
+function's whole job is proposing the FIRST pin for one and can't do
+that if `resolve_government()` refuses to validate a candidate name
+without an already-existing pin).
+
+**Verification.** `pytest` (`DATABASE_URL=sqlite+aiosqlite:///...`):
+3,226 passed, 16 skipped, full suite, including 7 new resolver tests
+(`tests/test_gov_registry.py`), 4 new endpoint tests
+(`tests/test_jurisdiction_override.py`), and the updated pin-worklist
+test. `ruff check`/`ruff format --check` clean. No schema change, no
+Alembic migration needed.
+
+**Not yet deployed.** This is `app/` and `archive/` code — on `main`,
+not live in production until the resolver, Archive and worker services
+are next redeployed (`render.yaml`'s `autoDeploy: false`).
+
 ## `scripts/youtube_drip.py`: a tick that raises is now a five-minute pause, not an exit [Done 2026-09-11]
 
 - **What happened:** the drip on Ol McClaude's Mac ran ~4 hours unattended

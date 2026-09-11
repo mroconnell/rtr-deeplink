@@ -410,6 +410,88 @@ async def test_override_survives_a_later_re_ingest():
         assert page.gov_id == _GOV_ID
 
 
+# --- WO-210: never a blank-match rule on a multi-government host --------
+
+
+async def test_multi_gov_host_batch_drafts_per_video_matches_not_a_blank_rule():
+    """The endpoint-side half of Ryan's safeguard: a batch that includes a
+    `MULTI_GOV_HOSTS` host must never draft that host's usual blank-match
+    rule (the Oak Bluffs shape) -- it drafts one rule per distinct
+    per-video match the batch's own `video_url`s actually support."""
+    first = _ingest(
+        _payload(
+            source_url="https://www.youtube.com/watch?v=aaaaaaaaaaa",
+            video_url="https://www.youtube.com/embed/aaaaaaaaaaa",
+        )
+    )
+    second = _ingest(
+        _payload(
+            source_url="https://www.youtube.com/watch?v=bbbbbbbbbbb",
+            video_url="https://www.youtube.com/embed/bbbbbbbbbbb",
+        )
+    )
+    first_id = await _page_id_for(first["slug"])
+    second_id = await _page_id_for(second["slug"])
+
+    overridden = _override(f"{first_id},{second_id}")
+    assert overridden["_status"] == 200
+    rules = overridden["tenant_override_rules"]
+    assert len(rules) == 2
+    for rule in rules:
+        assert rule["tenant_host"] == "www.youtube.com"
+        assert rule["match"] != ""
+        assert rule["strength"] == "authoritative"
+    assert {rule["match"] for rule in rules} == {"aaaaaaaaaaa", "bbbbbbbbbbb"}
+    assert overridden["tenant_override_notes"] == []
+
+
+async def test_multi_gov_host_page_with_no_derivable_match_gets_a_note_not_a_rule():
+    """A `MULTI_GOV_HOSTS` page whose `video_url` doesn't match any of the
+    three known per-video shapes gets NO rule at all -- never a blank
+    one -- and is reported under `tenant_override_notes` instead, so a
+    human knows to draft one by hand rather than the page silently
+    getting no rule and no explanation."""
+    result = _ingest(
+        _payload(
+            source_url="https://facebook.com/watch/?v=1234567890",
+            video_url="https://facebook.com/watch/?v=1234567890",
+        )
+    )
+    page_id = await _page_id_for(result["slug"])
+
+    overridden = _override(page_id)
+    assert overridden["_status"] == 200
+    assert overridden["tenant_override_rules"] == []
+    assert len(overridden["tenant_override_notes"]) == 1
+    assert "facebook.com" in overridden["tenant_override_notes"][0]
+    assert "1 page(s)" in overridden["tenant_override_notes"][0]
+
+
+async def test_single_tenant_host_in_the_same_batch_still_gets_a_blank_match_rule():
+    """Control: a normal, non-multi-gov host in the SAME batch as a
+    multi-gov one keeps its existing blank-match behaviour (WO-99) --
+    this is a host-specific safeguard, not a change to the endpoint's
+    default shape."""
+    single = _ingest(
+        _payload(source_url="https://example.granicus.com/player/clip/jx-wo210-mixed")
+    )
+    shared = _ingest(
+        _payload(
+            source_url="https://www.youtube.com/watch?v=ccccccccccc",
+            video_url="https://www.youtube.com/embed/ccccccccccc",
+        )
+    )
+    single_id = await _page_id_for(single["slug"])
+    shared_id = await _page_id_for(shared["slug"])
+
+    overridden = _override(f"{single_id},{shared_id}")
+    rules_by_host = {
+        rule["tenant_host"]: rule for rule in overridden["tenant_override_rules"]
+    }
+    assert rules_by_host["example.granicus.com"]["match"] == ""
+    assert rules_by_host["www.youtube.com"]["match"] == "ccccccccccc"
+
+
 async def test_ordinary_re_ingest_still_updates_jurisdiction_without_an_override():
     """Control for the test above: the manual_override guard must be
     scoped to pages that actually went through this endpoint, not a

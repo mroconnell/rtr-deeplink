@@ -1023,8 +1023,15 @@ def test_tenant_consistency_does_nothing_when_the_names_disagree(
     raw, host, tenant_gov_id
 ):
     match = resolve(raw, host, tenant_gov_id=tenant_gov_id)
-    assert match.tier == resolver.TIER_UNRESOLVED
-    assert match.gov_id == ""
+    # WO-210: `clerkshq.com` is itself a `MULTI_GOV_HOSTS` host (real
+    # tenants live on it, keyed by path segment), and this call passes no
+    # `path` at all -- so the safeguard now declines even earlier than
+    # the tenant-consistency rung this test was originally about, and
+    # more strongly: `TIER_BLANK`/`rtr:unknown:...` rather than
+    # `TIER_UNRESOLVED`/`""`. Same real-world outcome the comment above
+    # already wanted ("nothing may claim it"), just via an earlier rung.
+    assert match.tier == resolver.TIER_BLANK
+    assert match.gov_id == "rtr:unknown:clerkshq.com"
 
 
 def test_dcccd_bleed_page_now_lands_on_the_pinned_college_district():
@@ -1370,13 +1377,23 @@ def test_a_tenant_hint_ranks_below_a_subdomain_or_known_domain(monkeypatch):
 
 
 def test_a_stateless_name_ambiguous_between_tables_is_unresolved():
-    """ "Town of Hillsborough" on `youtu.be` -- a shared host with no
-    tenant state -- became Hillsborough town, NEW HAMPSHIRE. Two
-    Hillsborough places (CA, NC), two county subdivisions (NH, NJ) and
-    two counties (FL, NH); the place table declined because it saw two,
-    the cousub table answered because "Town of" narrowed its two to one,
-    and nothing compared the six."""
-    assert resolve("Town of Hillsborough", "youtu.be").tier == resolver.TIER_UNRESOLVED
+    """ "Town of Hillsborough" on a shared host with no tenant state
+    became Hillsborough town, NEW HAMPSHIRE. Two Hillsborough places (CA,
+    NC), two county subdivisions (NH, NJ) and two counties (FL, NH); the
+    place table declined because it saw two, the cousub table answered
+    because "Town of" narrowed its two to one, and nothing compared the
+    six.
+
+    Host is `example-unpinned.granicus.com`, not the original `youtu.be`
+    this case was found on -- WO-210 made `youtu.be` itself return no
+    government at all (`TIER_BLANK`) before this rung's own ambiguity
+    check ever runs, which is a different, correct outcome this test
+    isn't about; the ambiguity logic itself still needs covering on an
+    ordinary unpinned host."""
+    assert (
+        resolve("Town of Hillsborough", "example-unpinned.granicus.com").tier
+        == resolver.TIER_UNRESOLVED
+    )
     assert resolve("Oregon", "oregon.granicus.com").tier == resolver.TIER_UNRESOLVED
 
 
@@ -1414,8 +1431,14 @@ def test_a_curated_alias_counts_as_a_competing_stateless_candidate():
     """Census names the California city "San Buenaventura (Ventura)
     city", so the place table keys no "Ventura" in CA at all and a
     stateless "City of Ventura" reached Ventura city, IOWA. One table hit
-    plus one curated assertion is two candidates."""
-    assert resolve("City of Ventura", "www.youtube.com").tier == (
+    plus one curated assertion is two candidates.
+
+    Host is `example-unpinned.granicus.com`, not the original
+    `www.youtube.com` -- see the comment on
+    `test_a_stateless_name_ambiguous_between_tables_is_unresolved` above
+    (WO-210 gives `www.youtube.com` a different, earlier outcome this
+    test isn't about)."""
+    assert resolve("City of Ventura", "example-unpinned.granicus.com").tier == (
         resolver.TIER_UNRESOLVED
     )
 
@@ -2433,6 +2456,16 @@ def test_every_consolidated_display_name_re_resolves_to_itself():
 # townships is meant -- that needs a per-video pin, filed with WO-198 --
 # but it must never again hand the page to a DIFFERENT kind of
 # government just because that one happened to be the only place row.
+#
+# Host below is `example-unpinned.granicus.com`, not the real
+# `www.youtube.com` these pages were actually found on: WO-210 (2026-09-
+# 11) made an unpinned `www.youtube.com` resolve return no government at
+# all before this rung's own qualifier/type-word logic ever runs, which
+# is a different, correct outcome these tests aren't about -- the raw
+# strings are still the real, currently-unpinned stored values from the
+# dry run cited above; only the host changed. See BACKLOG.md's WO-210
+# follow-up entry: these real pages now need an actual per-video pin to
+# resolve at all going forward.
 @pytest.mark.parametrize(
     "raw",
     [
@@ -2446,7 +2479,7 @@ def test_every_consolidated_display_name_re_resolves_to_itself():
 def test_a_township_or_village_never_loses_to_a_same_named_place_of_a_different_type(
     raw,
 ):
-    match = resolve(raw, "www.youtube.com")
+    match = resolve(raw, "example-unpinned.granicus.com")
     # Never the borough/village/city rtr:'s wrong-but-confident registry
     # hit from before this fix -- either a correctly declined mint (no
     # real single candidate to pick) or, if a future data change makes
@@ -2461,14 +2494,15 @@ def test_a_township_or_village_never_loses_to_a_same_named_place_of_a_different_
 def test_northampton_borough_still_resolves_to_the_borough():
     # The negative control matching the bug table above: a page that
     # really IS the borough (no "township"/paren qualifier at all) must
-    # keep working exactly as before this fix.
-    match = resolve("Northampton (borough), PA", "www.youtube.com")
+    # keep working exactly as before this fix. Host per the WO-210 note
+    # above this section.
+    match = resolve("Northampton (borough), PA", "example-unpinned.granicus.com")
     assert match.gov_id == "us:place:4254696"
     assert match.tier == resolver.TIER_REGISTRY
 
 
 def test_perry_village_still_resolves_to_the_village():
-    match = resolve("Perry (village), OH", "www.youtube.com")
+    match = resolve("Perry (village), OH", "example-unpinned.granicus.com")
     assert match.gov_id == "us:place:3961882"
     assert match.tier == resolver.TIER_REGISTRY
 
@@ -2512,8 +2546,14 @@ def test_minting_a_disambiguated_township_keeps_its_qualifier(raw, gov_id):
     `other`. These three are real, currently-unpinned pages
     (`scripts/backfill_gov_id.py --hosts www.youtube.com`'s dry run,
     WO-198) that would have regressed from a working qualified id to a
-    bare one on the very backfill run meant to fix a different bug."""
-    match = resolve(raw, "www.youtube.com")
+    bare one on the very backfill run meant to fix a different bug.
+
+    Host below is `example-unpinned.granicus.com`, not the real
+    `www.youtube.com` -- see the WO-210 note on
+    `test_a_township_or_village_never_loses_to_a_same_named_place_of_a_different_type`
+    above; these three real pages now need an actual per-video pin to
+    resolve on `www.youtube.com` itself."""
+    match = resolve(raw, "example-unpinned.granicus.com")
     assert match.gov_id == gov_id
     assert match.gov_type == classify.TOWNSHIP
     assert match.tier == resolver.TIER_UNVERIFIED
@@ -2578,7 +2618,10 @@ def test_minting_does_not_double_up_a_type_word_already_in_the_name():
 def test_a_minted_township_keeps_its_qualifier_in_the_hub_slug_too(
     raw, gov_id, hub_slug
 ):
-    match = resolve(raw, "www.youtube.com")
+    # Host is `example-unpinned.granicus.com`, not the real
+    # `www.youtube.com` these pages were found on -- see the WO-210 note
+    # above `test_a_township_or_village_never_loses_to_a_same_named_place_of_a_different_type`.
+    match = resolve(raw, "example-unpinned.granicus.com")
     assert match.gov_id == gov_id
     assert match.gov_type == classify.TOWNSHIP
     assert match.tier == resolver.TIER_UNVERIFIED
@@ -2684,3 +2727,161 @@ def test_wo204_newtown_and_mantua_pins_are_authoritative_not_fallback():
         ]
         assert len(matches) == 1, (host, matches)
         assert matches[0].strength == "authoritative"
+
+
+# --- WO-210, 2026-09-11: multi-government host safeguard ---------------
+#
+# Ryan, verbatim: "We absolutely cannot use pins for the multi-gov hosts
+# like vimeo, youtube, youtu.be, clerkshq, etc. because they're so
+# prevalent and we KNOW they need a match. Can we create a pin that sort
+# of does the opposite of tying a domain to a gov? Like 'if youtu.be
+# without a channel match, pin to NULL.'" Three layers: the loader
+# refuses a blank-match row on a `MULTI_GOV_HOSTS` host
+# (`registry._load_tenant_overrides()`), the ladder itself refuses to
+# resolve one of those hosts from anything but a matching pin
+# (`resolver._resolve_government_ladder()`'s rung 1b), and the override
+# endpoint never drafts a blank-match rule for one (`archive/db/crud.py`,
+# tested separately in `tests/test_jurisdiction_override.py`).
+
+
+def test_no_blank_match_row_on_a_multi_gov_host():
+    """Committed-file invariant: `tenant_overrides.csv` must never carry
+    a blank-`match` row on a `MULTI_GOV_HOSTS` host. The loader already
+    refuses to apply one (see the synthetic tests below), but this is
+    what fails CI the moment one is committed anyway -- the exact
+    regression `BACKLOG_DONE.md`'s WO-183/WO-206/WO-206b describes: the
+    Oak Bluffs `vimeo.com,,<gov_id>` wildcard was deleted once, came back
+    through a rebase, and had to be deleted again."""
+    assert registry.rejected_multi_gov_overrides() == ()
+
+
+def test_loader_rejects_blank_match_row_on_a_multi_gov_host(monkeypatch, tmp_path):
+    """The loader-level half of the safeguard: a blank-match row on
+    `vimeo.com` (the real Oak Bluffs shape before WO-183's fix) never
+    loads, is counted, and resolving that host with no other pin lands on
+    `TIER_BLANK` -- an unknown government, never the row's `gov_id`."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "vimeo.com,,us:cousub:2500750390,fallback,ryan_stated,"
+        '"Oak Bluffs, MA -- blank match, must never load"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        assert registry.tenant_overrides().get("vimeo.com", []) == []
+        rejected = registry.rejected_multi_gov_overrides()
+        assert len(rejected) == 1
+        assert rejected[0].tenant_host == "vimeo.com"
+        assert rejected[0].gov_id == "us:cousub:2500750390"
+
+        # End to end (WO-210's second required test): with the bad row
+        # refused at load time, a Vimeo page with no OTHER pin resolves
+        # to no government at all, not to Oak Bluffs.
+        match = resolver.resolve_government(None, tenant_host="vimeo.com", path="/999")
+        assert match.gov_id != "us:cousub:2500750390"
+        assert match.tier == resolver.TIER_BLANK
+    finally:
+        registry.clear_caches()
+
+
+def test_loader_still_accepts_blank_match_row_on_a_single_tenant_host(
+    monkeypatch, tmp_path
+):
+    """The safeguard is specific to `MULTI_GOV_HOSTS` -- an ordinary
+    single-tenant host's blank-match row (the everyday, correct shape:
+    the whole host really is one government) is untouched."""
+    overrides = tmp_path / "tenant_overrides.csv"
+    overrides.write_text(
+        "tenant_host,match,gov_id,strength,source,evidence\n"
+        "pub-sechelt.escribemeetings.com,,ca:csd:5933042,authoritative,"
+        'known_domains,"Sechelt, BC"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(registry, "DATA_DIR", tmp_path)
+    registry.clear_caches()
+    try:
+        rows = registry.tenant_overrides()["pub-sechelt.escribemeetings.com"]
+        assert len(rows) == 1
+        assert rows[0].match is None
+        assert registry.rejected_multi_gov_overrides() == ()
+    finally:
+        registry.clear_caches()
+
+
+def test_oak_bluffs_vimeo_pin_is_per_video_not_a_host_wildcard():
+    """The real, currently-committed fix for the incident itself
+    (`tenant_overrides.csv`'s `vimeo.com,vimeo:1199438213,
+    us:cousub:2500750390,...` row, WO-183): it must fire for its OWN
+    video and must NOT fire for a different video on the same host --
+    the exact failure mode that mis-attributed Hanover township PA,
+    Middletown township PA and a Lancaster County PA page to Oak Bluffs,
+    MA."""
+    hints = resolver.page_hints_for("vimeo", "vimeo:1199438213")
+    match = resolver.resolve_government(
+        None, tenant_host="vimeo.com", path="/1199438213", page_hints=hints
+    )
+    assert match.gov_id == "us:cousub:2500750390"
+    assert match.tier == resolver.TIER_PINNED
+
+    other_hints = resolver.page_hints_for("vimeo", "vimeo:9999999999")
+    other = resolver.resolve_government(
+        None, tenant_host="vimeo.com", path="/9999999999", page_hints=other_hints
+    )
+    assert other.gov_id != "us:cousub:2500750390"
+    assert other.tier == resolver.TIER_BLANK
+
+
+def test_severn_on_channel_pin_matches_only_that_channel():
+    """The real, currently-committed `www.youtube.com,
+    channel=@severnontario,ca:csd:3543015,...` row: it must fire only for
+    a video whose channel hint is `@severnontario`, never for a different
+    channel's video on the same `www.youtube.com` host."""
+    hints = resolver.page_hints_for("youtube", "youtube:abc", channel="@severnontario")
+    match = resolver.resolve_government(
+        None, tenant_host="www.youtube.com", path="/watch?v=abc", page_hints=hints
+    )
+    assert match.gov_id == "ca:csd:3543015"
+    assert match.tier == resolver.TIER_PINNED
+
+    other_hints = resolver.page_hints_for(
+        "youtube", "youtube:xyz", channel="@SomeoneElse"
+    )
+    other = resolver.resolve_government(
+        None, tenant_host="www.youtube.com", path="/watch?v=xyz", page_hints=other_hints
+    )
+    assert other.gov_id != "ca:csd:3543015"
+
+
+def test_bare_youtube_watch_url_with_no_pin_resolves_to_none():
+    """Ryan's rule, verbatim: 'if youtu.be without a channel match, pin
+    to NULL.' A bare YouTube watch URL, no pin, no page_hints -- must
+    return no government at all, never a national-table guess from
+    whatever the video's title or channel says."""
+    match = resolver.resolve_government(
+        None, tenant_host="youtu.be", path="/watch?v=zzzzzzzzzzz"
+    )
+    assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
+    assert match.tier == resolver.TIER_BLANK
+
+
+def test_multi_gov_host_never_resolves_from_a_name_guess_with_no_pin():
+    """The stronger form of the same rule: even a raw name that WOULD
+    validate against a real, unambiguous place (the shape
+    `app/platforms/youtube.py`'s `_jurisdiction()` produces from a real
+    channel name, per its own docstring's "Roosevelt City" example) must
+    not resolve on a `MULTI_GOV_HOSTS` host absent a matching pin --
+    nothing about an untrusted host's own metadata is identity."""
+    match = resolver.resolve_government(
+        "City of Boston, MA", tenant_host="youtu.be", path="/watch?v=aaaaaaaaaaa"
+    )
+    assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
+    assert match.tier == resolver.TIER_BLANK
+    # Control: the identical raw name on an ordinary (non-multi-gov) host
+    # still resolves normally -- this is a host-specific safeguard, not a
+    # change to name resolution in general.
+    control = resolver.resolve_government(
+        "City of Boston, MA", tenant_host="boston.granicus.com"
+    )
+    assert control.tier == resolver.TIER_REGISTRY

@@ -692,9 +692,22 @@ def propose(candidates: List[Tuple[str, str]], host: str):
     And a candidate that resolved but is not the government's own name is
     `is_own_name()`'s job: "Howard County Public School System" really does
     reach `us:county:24027`, and it is not that county.
+
+    `tenant_host` is withheld on a `MULTI_GOV_HOSTS` host (WO-210,
+    2026-09-11) -- `www.youtube.com`/`vimeo.com`/etc never carry a real
+    per-tenant state hint anyway (`_state_from_tenant()` has nothing to
+    find on them), and passing one now makes `resolve_government()`
+    refuse to resolve ANYTHING on such a host absent an already-committed
+    per-video/channel pin (Ryan's rule: no pin, no government) -- which
+    would make this function unable to ever propose the FIRST pin for
+    one, the exact thing it exists to do. The candidate NAME is still
+    validated fully on its own merits (a real, unambiguous national-table
+    hit that is plainly its own name); only the host-derived context is
+    skipped, and only for these hosts.
     """
+    host_for_lookup = None if registry.is_multi_gov_host(host) else host
     for candidate, evidence in candidates:
-        match = resolve_government(candidate, tenant_host=host)
+        match = resolve_government(candidate, tenant_host=host_for_lookup)
         if not match.gov_id or match.gov_id.startswith("rtr:"):
             continue
         if not is_own_name(candidate, match):

@@ -13,10 +13,13 @@ the identity, never inside it (D2).
 """
 
 import csv
+import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
+
+logger = logging.getLogger("rtr_deeplink.gov_registry")
 
 DATA_DIR = Path(__file__).parent.parent / "jurisdiction_data"
 
@@ -121,6 +124,111 @@ class TenantOverride:
     evidence: str = ""
 
 
+@dataclass(frozen=True)
+class RejectedOverride:
+    """One `tenant_overrides.csv` row the loader refused to apply, and
+    why (WO-210).
+
+    Today the only reason is a blank `match` on a `MULTI_GOV_HOSTS` host
+    -- see that constant's own comment. Kept as a real, typed record
+    (not just a log line) so both `test_gov_registry.py`'s committed-file
+    invariant and a human audit can read `rejected_multi_gov_overrides()`
+    without re-parsing the CSV or scraping logs.
+    """
+
+    tenant_host: str
+    gov_id: str
+    reason: str
+    raw_row: Dict[str, str]
+
+
+# Hosts that serve many DIFFERENT, unrelated governments -- pinning one of
+# these by host alone is never safe. Ryan, verbatim, 2026-09-11 (WO-210):
+#
+#   "We absolutely cannot use pins for the multi-gov hosts like vimeo,
+#   youtube, youtu.be, clerkshq, etc. because they're so prevalent and we
+#   KNOW they need a match. Can we create a pin that sort of does the
+#   opposite of tying a domain to a gov? Like 'if youtu.be without a
+#   channel match, pin to NULL.'"
+#
+# A blank `match` on a normal single-tenant host
+# (`pub-sechelt.escribemeetings.com`) is the everyday, correct shape --
+# the whole host really is one government. A blank `match` here is a
+# different claim entirely: it silently keys EVERY unidentified video
+# ever archived on the ENTIRE host to one government. That is exactly
+# what happened: `vimeo.com,,<gov_id>` mis-attributed at least three other
+# governments' real videos to Oak Bluffs, MA (BACKLOG_DONE.md's WO-183/
+# WO-206/WO-206b) -- and after being deleted once, it came back through a
+# rebase and had to be deleted again. This constant plus
+# `is_multi_gov_host()` are what let the loader refuse such a row outright
+# (see `tenant_overrides()` below) instead of relying on every future
+# editor to remember the rule by hand.
+#
+# Literal hostnames only, matched exactly -- no wildcard/suffix matching
+# -- the same "confirmed, not guessed" discipline
+# `CORPORATE_HOSTS_BY_PLATFORM` (`app/platforms/base.py`) already follows
+# for the same shape of problem. A platform's own corporate/marketing
+# host (`www.clerkshq.com`, `wistia.com`/`www.wistia.com`) is deliberately
+# NOT listed here: those hosts are never classified as a tenant at all
+# (see `CORPORATE_HOSTS_BY_PLATFORM`'s own comment), so they can't receive
+# a tenant pin in the first place.
+MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
+    {
+        # YouTube -- every alias a real archived page has been keyed
+        # under (see `resolver._SHARED_HOST_FAMILIES`'s own comment: a
+        # 2026-09-09 export held pages under all three of the first
+        # group, plus the mobile host).
+        "www.youtube.com",
+        "youtube.com",
+        "youtu.be",
+        "m.youtube.com",
+        # Vimeo.
+        "vimeo.com",
+        "player.vimeo.com",
+        "www.vimeo.com",
+        # Wistia's only CONFIRMED shared account so far -- `wistia.py`'s
+        # own docstring: at least four Virginia governments publish on
+        # this one `{account}.wistia.com` subdomain. A newly-confirmed
+        # shared account belongs here by name; a dedicated, genuinely
+        # single-government account does not, and gains nothing from
+        # being listed (it would only forbid a whole-host pin nobody
+        # would ever write against a real single-tenant host anyway).
+        "amsva.wistia.com",
+        # ClerkBase/ClerkHQ tenants live on the bare domain, keyed by a
+        # path segment (`clerkshq.com/YellowSprings-OH`), never a
+        # subdomain -- see `CORPORATE_HOSTS_BY_PLATFORM`'s own comment.
+        "clerkshq.com",
+        # No adapter in `app/platforms/` resolves these yet (see
+        # `utah_pmn.py`'s own docstring for two of them, and BACKLOG.md),
+        # but a `tenant_overrides.csv` row could still name one today,
+        # and the same safeguard applies the moment it does.
+        "facebook.com",
+        "fb.watch",
+        "boxcast.tv",
+        "livestream.com",
+        "soundcloud.com",
+        "drive.google.com",
+        "dropbox.com",
+        "sharepoint.com",
+    }
+)
+
+
+def is_multi_gov_host(host: Optional[str]) -> bool:
+    """True when `host` is a hosting platform shared by many unrelated
+    governments (WO-210) -- youtube.com, vimeo.com, clerkshq.com, etc.
+
+    See `MULTI_GOV_HOSTS`'s own comment for what turning on this
+    safeguard changes: such a host may only ever be pinned per-video,
+    per-channel or per-external-id, never as a whole-host catch-all --
+    enforced at load time by `tenant_overrides()` below and again at
+    resolve time by `resolver._resolve_government_ladder()`.
+    """
+    if not host:
+        return False
+    return host.strip().lower().split(":")[0] in MULTI_GOV_HOSTS
+
+
 def _read(filename: str) -> List[dict]:
     path = DATA_DIR / filename
     if not path.exists():
@@ -186,15 +294,21 @@ def _has_human_source(source: str) -> bool:
 
 
 @lru_cache(maxsize=1)
-def tenant_overrides() -> Dict[str, List[TenantOverride]]:
-    """host -> its override rows, most specific first.
+def _load_tenant_overrides() -> Tuple[
+    Dict[str, List[TenantOverride]], Tuple[RejectedOverride, ...]
+]:
+    """The real loader behind `tenant_overrides()` and
+    `rejected_multi_gov_overrides()` below -- one pass over the CSV,
+    split into what loaded and what the WO-210 safeguard refused.
 
-    A host can carry several rows: one per `match` discriminator plus at
-    most one catch-all. Sorted so a `match` row is always considered
-    before the catch-all, which is what lets `wi-cottagegrove.civicplus.com`
-    serve both the Town and the Village of Cottage Grove.
+    host -> its override rows, most specific first. A host can carry
+    several rows: one per `match` discriminator plus at most one
+    catch-all. Sorted so a `match` row is always considered before the
+    catch-all, which is what lets `wi-cottagegrove.civicplus.com` serve
+    both the Town and the Village of Cottage Grove.
     """
     out: Dict[str, List[TenantOverride]] = {}
+    rejected: List[RejectedOverride] = []
     for r in _read(TENANT_OVERRIDES_FILE):
         host = (r.get("tenant_host") or "").strip().lower()
         gov_id = (r.get("gov_id") or "").strip()
@@ -215,11 +329,28 @@ def tenant_overrides() -> Dict[str, List[TenantOverride]]:
             # does not make one human one, which is why this tests every
             # token rather than the string as a whole.
             continue
+        match = (r.get("match") or "").strip() or None
+        if match is None and is_multi_gov_host(host):
+            # WO-210, Ryan's rule: "if youtu.be without a channel match,
+            # pin to NULL" -- this is that NULL. A blank match here would
+            # key every unidentified video on the whole host to one
+            # government (the Oak Bluffs incident, `MULTI_GOV_HOSTS`'s
+            # own comment). Never applied; logged once so a bad row shows
+            # up in the deploy logs, not just a future audit; counted so
+            # `test_no_blank_match_row_on_a_multi_gov_host` and a human
+            # audit can both point at it.
+            reason = (
+                f"blank match on multi-government host {host!r} -- "
+                "rejected rather than applied (WO-210)"
+            )
+            logger.warning("tenant_overrides.csv: rejecting row -- %s: %s", reason, r)
+            rejected.append(RejectedOverride(host, gov_id, reason, dict(r)))
+            continue
         out.setdefault(host, []).append(
             TenantOverride(
                 tenant_host=host,
                 gov_id=gov_id,
-                match=(r.get("match") or "").strip() or None,
+                match=match,
                 strength=(r.get("strength") or "fallback").strip(),
                 source=(r.get("source") or "").strip(),
                 evidence=(r.get("evidence") or "").strip(),
@@ -227,7 +358,24 @@ def tenant_overrides() -> Dict[str, List[TenantOverride]]:
         )
     for rows in out.values():
         rows.sort(key=lambda o: (o.match is None, o.match or ""))
-    return out
+    return out, tuple(rejected)
+
+
+def tenant_overrides() -> Dict[str, List[TenantOverride]]:
+    """host -> its override rows, most specific first. See
+    `_load_tenant_overrides()` for the real loader and
+    `rejected_multi_gov_overrides()` for the rows it refused."""
+    return _load_tenant_overrides()[0]
+
+
+def rejected_multi_gov_overrides() -> Tuple[RejectedOverride, ...]:
+    """Every `tenant_overrides.csv` row `_load_tenant_overrides()`
+    refused under the WO-210 safeguard -- empty in the committed file (a
+    test enforces this: `test_no_blank_match_row_on_a_multi_gov_host` in
+    `tests/test_gov_registry.py`), non-empty only if such a row is added
+    again by mistake, the way the Oak Bluffs wildcard came back once
+    already through a rebase (BACKLOG_DONE.md's WO-206b)."""
+    return _load_tenant_overrides()[1]
 
 
 @lru_cache(maxsize=1)
@@ -398,7 +546,7 @@ def clear_caches() -> None:
     """Drop the memoized files -- for a seed script that writes them and
     then wants to resolve against what it just wrote, and for tests."""
     governments.cache_clear()
-    tenant_overrides.cache_clear()
+    _load_tenant_overrides.cache_clear()
     relations.cache_clear()
     curated_aliases.cache_clear()
     tenant_hints.cache_clear()

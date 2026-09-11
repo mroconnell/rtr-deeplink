@@ -34,6 +34,7 @@ from app.utils.gov_registry import (
     TIER_UNRESOLVED,
     TIER_UNVERIFIED,
     GovernmentMatch,
+    is_multi_gov_host,
     page_hints_for,
     resolve_government,
     state_suffix_from_text,
@@ -3508,7 +3509,60 @@ _TENANT_OVERRIDE_RULES_HEADER = [
 ]
 
 
-def _tenant_override_rule(host: str, gov_id: str, example_slug: str) -> dict:
+# Regex-based per-video match derivation for the WO-210 endpoint fix
+# below -- deliberately duplicated from, not imported from,
+# `app/platforms/youtube.py`/`vimeo.py`/`wistia.py`'s own (more complete)
+# parsers, per this repo's existing app/archive service-boundary
+# convention (see `archive/utils/video_thumbnail.py`'s own header note,
+# and `app/platforms/base.py`'s `MULTI_GOV_HOSTS` comment for why: those
+# modules pull in `yt-dlp`/`bs4`, neither of which is in
+# `archive/requirements.txt`, and a module-level import failure there
+# would crash the whole Archive service, not just this one endpoint). A
+# narrower regex than the real adapters' is fine here -- a miss just
+# means no rule is drafted for that page (see the `notes` fallback in
+# `override_jurisdiction()` below) rather than a wrong one.
+_YOUTUBE_VIDEO_ID_RE = re.compile(
+    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11})"
+)
+_VIMEO_VIDEO_ID_RE = re.compile(r"vimeo\.com/(?:video/)?(\d+)")
+_WISTIA_MEDIA_ID_RE = re.compile(r"\.wistia\.com/medias/([A-Za-z0-9]+)")
+
+
+def _multi_gov_match_for_video_url(
+    host: str, video_url: Optional[str]
+) -> Optional[str]:
+    """The per-video/channel `tenant_overrides.csv` `match` value this
+    page's own `video_url` supports, or None when none of the three
+    known shapes apply.
+
+    WO-210: a `MULTI_GOV_HOSTS` host (`youtube.com`, `vimeo.com`,
+    `amsva.wistia.com`, ...) may never get a blank-match rule -- see
+    `app/utils/gov_registry/registry.py`'s own comment for why (the Oak
+    Bluffs incident). `match` shapes mirror the real committed rows:
+    a bare YouTube video id, `vimeo:<id>`, `external_id=wistia:<id>`.
+    """
+    if not video_url or not host:
+        return None
+    if host in ("www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"):
+        match = _YOUTUBE_VIDEO_ID_RE.search(video_url)
+        return match.group(1) if match else None
+    if host in ("vimeo.com", "player.vimeo.com", "www.vimeo.com"):
+        match = _VIMEO_VIDEO_ID_RE.search(video_url)
+        return f"vimeo:{match.group(1)}" if match else None
+    if host == "amsva.wistia.com":
+        match = _WISTIA_MEDIA_ID_RE.search(video_url)
+        return f"external_id=wistia:{match.group(1)}" if match else None
+    # Every other MULTI_GOV_HOSTS entry (clerkshq.com, facebook.com,
+    # boxcast.tv, ...) has no adapter this repo resolves yet (see
+    # `MULTI_GOV_HOSTS`'s own comment) and no known video_url shape to
+    # parse -- falls through to None, i.e. "no rule, note it" below.
+    return None
+
+
+def _tenant_override_rule(
+    host: str, gov_id: str, example_slug: str, *, match: str = ""
+) -> dict:
     """One `tenant_overrides.csv` row, in that file's exact column shape.
 
     `strength` is `authoritative`: a human looked at specific pages and
@@ -3517,10 +3571,17 @@ def _tenant_override_rule(host: str, gov_id: str, example_slug: str) -> dict:
     working-looking extraction (the SLC lesson: a plausible wrong
     extraction passes validation, so validation alone can never fix a
     confirmed-misleading host).
+
+    `match` is blank for a normal single-tenant host (unchanged, WO-99)
+    and a real per-video/channel/external-id value for a
+    `MULTI_GOV_HOSTS` host (WO-210) -- see
+    `_multi_gov_match_for_video_url()` above and
+    `override_jurisdiction()`'s own docstring for why a blank one is
+    never drafted for those hosts.
     """
     return {
         "tenant_host": host,
-        "match": "",
+        "match": match,
         "gov_id": gov_id,
         "strength": "authoritative",
         "source": "manual_override",
@@ -3593,6 +3654,14 @@ async def override_jurisdiction(
        `JURISDICTION_OVERRIDE_RULES_FILE`, one per distinct tenant host in
        the batch, ready for a human to copy into the committed registry.
        That is what makes the fix apply to pages nobody has archived yet.
+       **Except on a `MULTI_GOV_HOSTS` host** (`youtube.com`, `vimeo.com`,
+       ...) -- WO-210: a blank-match rule there would key every
+       unidentified video on the whole host to this one gov_id (the Oak
+       Bluffs incident), so this drafts one rule per distinct per-video/
+       channel/external-id match the batch's own `video_url`s support
+       instead, and reports any page it couldn't derive one for under
+       `tenant_override_notes` rather than silently dropping it -- see
+       `_multi_gov_match_for_video_url()`.
 
     The rules file is deliberately a *separate, reviewable* file rather
     than a direct write into `app/utils/jurisdiction_data/tenant_overrides.csv`:
@@ -3652,6 +3721,7 @@ async def override_jurisdiction(
                     MeetingPage.gov_id,
                     MeetingPage.meeting_kind,
                     MeetingPage.source_url_normalized,
+                    MeetingPage.video_url,
                 ).where(MeetingPage.id.in_(ids))
             )
         ).all()
@@ -3659,7 +3729,19 @@ async def override_jurisdiction(
         found = {row[0] for row in rows}
         changed = []
         already = []
-        hosts: dict[str, str] = {}
+        # A normal single-tenant host -- host -> one example slug, same
+        # as before WO-210.
+        single_tenant_hosts: dict[str, str] = {}
+        # A `MULTI_GOV_HOSTS` host (WO-210) -- host -> {match value ->
+        # example slug}, one rule per DISTINCT per-video/channel/
+        # external-id match actually found in this batch, never a
+        # whole-host blank-match rule.
+        multi_gov_matches: dict[str, dict[str, str]] = {}
+        # A `MULTI_GOV_HOSTS` host page whose video_url didn't match any
+        # of the three known shapes -- counted so the response can say a
+        # human still needs to draft a rule for it by hand, rather than
+        # silently dropping it.
+        multi_gov_unmatched: dict[str, int] = {}
         for (
             page_id,
             slug,
@@ -3668,10 +3750,17 @@ async def override_jurisdiction(
             current_gov_id,
             current_kind,
             source_url,
+            video_url,
         ) in rows:
             host = (urlparse(source_url or "").netloc or "").lower().split(":")[0]
-            if host:
-                hosts.setdefault(host, slug)
+            if host and is_multi_gov_host(host):
+                match_value = _multi_gov_match_for_video_url(host, video_url)
+                if match_value:
+                    multi_gov_matches.setdefault(host, {}).setdefault(match_value, slug)
+                else:
+                    multi_gov_unmatched[host] = multi_gov_unmatched.get(host, 0) + 1
+            elif host:
+                single_tenant_hosts.setdefault(host, slug)
             entry = {
                 "meeting_page_id": page_id,
                 "slug": slug,
@@ -3697,14 +3786,36 @@ async def override_jurisdiction(
 
         # One rule per distinct tenant host in the batch -- that is the
         # key `tenant_overrides.csv` uses, and the level at which the fix
-        # survives re-ingest. `match` is left blank: a host serving more
-        # than one government needs a discriminator a human has to choose
-        # (a path prefix, `view_id=5`, a channel id), and guessing one
-        # from a batch of page ids would produce a rule that quietly
-        # over-applies.
+        # survives re-ingest. `match` is left blank for a normal
+        # single-tenant host: a host serving more than one government
+        # needs a discriminator a human has to choose (a path prefix,
+        # `view_id=5`, a channel id), and guessing one from a batch of
+        # page ids would produce a rule that quietly over-applies.
+        #
+        # A `MULTI_GOV_HOSTS` host (`youtube.com`, `vimeo.com`, ...) is
+        # different in kind, not just degree (WO-210): NEVER a blank
+        # match, full stop -- see `app/utils/gov_registry/registry.py`'s
+        # own comment for why (the Oak Bluffs incident: a blank-match
+        # `vimeo.com` rule mis-attributed at least three OTHER
+        # governments' real videos to one town). So this drafts one rule
+        # per DISTINCT per-video/channel/external-id match this batch's
+        # own `video_url`s actually support, never a whole-host
+        # catch-all -- and a page whose `video_url` didn't match any of
+        # the three known shapes gets no rule at all, reported instead
+        # under `tenant_override_notes` for a human to draft by hand.
         rules = [
             _tenant_override_rule(host, gov_id, example_slug)
-            for host, example_slug in sorted(hosts.items())
+            for host, example_slug in sorted(single_tenant_hosts.items())
+        ] + [
+            _tenant_override_rule(host, gov_id, example_slug, match=match_value)
+            for host, matches in sorted(multi_gov_matches.items())
+            for match_value, example_slug in sorted(matches.items())
+        ]
+        notes = [
+            f"{host}: {count} page(s) have no per-video/channel/external-id "
+            "match derivable from video_url -- a multi-government host "
+            "(WO-210), so no rule was drafted for them; add one by hand"
+            for host, count in sorted(multi_gov_unmatched.items())
         ]
 
         if changed and not dry_run:
@@ -3746,6 +3857,10 @@ async def override_jurisdiction(
         "tenant_override_rules": rules,
         "tenant_override_rules_file": str(JURISDICTION_OVERRIDE_RULES_FILE),
         "tenant_override_rules_written": rules_written,
+        # WO-210: a multi-government host page with no derivable
+        # per-video match -- never silently dropped, always shown here so
+        # a human knows to draft its rule by hand.
+        "tenant_override_notes": notes,
     }
 
 

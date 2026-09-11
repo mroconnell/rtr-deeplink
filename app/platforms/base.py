@@ -207,6 +207,31 @@ _ALL_CORPORATE_HOSTS: FrozenSet[str] = frozenset().union(
     *CORPORATE_HOSTS_BY_PLATFORM.values()
 )
 
+# A DIFFERENT list from the one above, for a different problem (WO-210).
+# `CORPORATE_HOSTS_BY_PLATFORM` is a vendor's own marketing/login host,
+# which is never a real government tenant at all. `MULTI_GOV_HOSTS` is
+# the opposite shape: a host that IS a real tenant host, just one shared
+# by many unrelated governments at once -- youtube.com, vimeo.com,
+# clerkshq.com -- so it may only be pinned per-video/per-channel, never
+# as a whole-host catch-all (Ryan's rule: "if youtu.be without a channel
+# match, pin to NULL").
+#
+# The canonical definition lives in `app/utils/gov_registry/registry.py`
+# instead of here, on purpose: that module is plain-stdlib (its own
+# `__init__.py` docstring makes this an explicit, deliberate import
+# constraint), which is what lets `archive/db/crud.py` import it without
+# pulling this file's `bs4` dependency across the app/archive service
+# boundary -- `archive/requirements.txt` has no `beautifulsoup4`, and a
+# module-level import failure there would crash the whole service, not
+# just one endpoint (the same reasoning `archive/utils/video_thumbnail.py`
+# gives for duplicating a YouTube id regex rather than importing this
+# module). Re-exported here purely so a reader of this file's own host
+# lists finds it next to `CORPORATE_HOSTS_BY_PLATFORM`.
+from ..utils.gov_registry.registry import (  # noqa: E402, F401
+    MULTI_GOV_HOSTS,
+    is_multi_gov_host,
+)
+
 
 def detect_platform(url: str) -> str:
     """Classify a meeting URL by hosting platform, based on domain/path shape.

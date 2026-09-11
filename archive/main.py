@@ -1386,7 +1386,13 @@ async def internal_jurisdiction_override(
     for a human to copy into the committed registry. `match` is left
     blank -- a host serving more than one government needs a
     discriminator a person has to choose, and inferring one from a batch
-    of page ids would produce a rule that quietly over-applies.
+    of page ids would produce a rule that quietly over-applies. **Except
+    on a multi-government host** (`youtube.com`, `vimeo.com`, ... -- see
+    `app/utils/gov_registry/registry.py`'s `MULTI_GOV_HOSTS`), where a
+    blank match is never drafted at all (WO-210): the response carries one
+    rule per real per-video/channel/external-id match found instead, plus
+    a `tenant_override_notes` list for any page it couldn't derive one
+    for.
 
     `ids` is REQUIRED, comma-separated `meeting_page_id`s, same parse as
     /internal/low-trust-pages/mark-reviewed's `ids`. `gov_id` is REQUIRED
