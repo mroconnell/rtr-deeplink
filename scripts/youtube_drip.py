@@ -22,6 +22,8 @@ A block signal (429, IpBlocked, "Sign in to confirm you're not a bot")
 pauses every lane and sleeps 15 min, then 30, 1 h, 2 h, 4 h (cap); a
 success resets the ladder. The audio lane has its own ladder because its
 block is a different mechanism. Nothing here retries through a block.
+Any other error in a tick (an Archive timeout, say) is logged and the
+tick retried five minutes later; the process never exits on one.
 
 State lives outside the repo (--state-dir, default ~/.rtr/youtube_drip),
 so a restart resumes. A lock file stops a second instance on the same
@@ -76,6 +78,11 @@ SPACING_JITTER_SECONDS = 60.0
 BLOCK_SLEEPS_SECONDS = (900, 1800, 3600, 7200, 14400)
 IDLE_SLEEP_SECONDS = 900.0
 AUDIO_DOWNLOADS_PER_DAY = 3
+# A tick that raises (an Archive connection timeout, a DNS blip -- anything
+# that is not a YouTube block, which the lanes return rather than raise) is
+# logged and retried after this fixed pause. Not the block ladder: a flaky
+# Archive is a different failure from a YouTube block and gets no escalation.
+TRANSIENT_ERROR_SLEEP_SECONDS = 300.0
 
 _BLOCK_PATTERNS = (
     "ipblocked",
@@ -488,6 +495,7 @@ class Drip:
         self.cpu_threads = cpu_threads
         self.fed_pages_csv: Optional[Path] = None
         self.dead_videos_csv: Optional[Path] = None
+        self.consecutive_errors = 0
         self._engine = None
 
     # -- block bookkeeping
@@ -738,6 +746,38 @@ class Drip:
             self.state.save()
         return IDLE_SLEEP_SECONDS
 
+    async def safe_tick(
+        self, session: aiohttp.ClientSession, status_csv: Path, reraise: bool = False
+    ) -> float:
+        """tick(), but an exception is a pause, not an exit.
+
+        Confirmed live 2026-09-11: a ClientConnectorError from the captions
+        lane's GET against the Archive (a timeout, cleared seconds later)
+        escaped to asyncio.run() and ended a process built to run for days.
+        Every lane already turns a YouTube block into a returned sleep; this
+        catches whatever else a tick raises, logs the traceback and the run
+        of consecutive failures, and returns TRANSIENT_ERROR_SLEEP_SECONDS.
+        `reraise` (used by --once) lets a one-shot run fail loudly instead.
+        """
+        try:
+            sleep_for = await self.tick(session, status_csv)
+        except Exception as e:
+            if reraise:
+                raise
+            self.consecutive_errors += 1
+            logger.exception(
+                "tick failed (%d in a row): %s: %s -- retrying in %d min",
+                self.consecutive_errors,
+                type(e).__name__,
+                str(e)[:200],
+                int(TRANSIENT_ERROR_SLEEP_SECONDS // 60),
+            )
+            return TRANSIENT_ERROR_SLEEP_SECONDS
+        if self.consecutive_errors:
+            logger.info("tick recovered after %d failure(s)", self.consecutive_errors)
+            self.consecutive_errors = 0
+        return sleep_for
+
 
 # --- entry points -----------------------------------------------------------
 
@@ -855,7 +895,7 @@ async def run(args) -> None:
             state_dir,
         )
         while True:
-            sleep_for = await drip.tick(session, status_csv)
+            sleep_for = await drip.safe_tick(session, status_csv, reraise=args.once)
             if args.once:
                 return
             await asyncio.sleep(sleep_for)

@@ -25,6 +25,10 @@ not a bot"), the process pauses everything for 15 minutes, then 30, 1
 hour, 2 hours, 4 hours, and tries again. A success resets that ladder.
 This is routine. Do nothing.
 
+Any other error (the Archive not answering for a moment, say) is logged
+as `tick failed (N in a row)` and the process tries again five minutes
+later. It does not exit. This is also routine.
+
 ## Rules
 
 1. **One drip per internet connection.** Two Macs on the same office
@@ -103,6 +107,8 @@ blocks or none, and no day with zero actions while there was work.
   `BLOCK ... sleeping 240 min` with nothing between).
 - The audio lane blocked twice in one week — YouTube's tolerance for
   downloads is still being measured, and that number is the measurement.
+- `tick failed (12 in a row)` or higher — an hour of the same error is
+  no longer a blip. The log line above it names the error.
 - `another youtube_drip is already running` when you know it isn't:
   delete `~/.rtr/youtube_drip/lock` only after `pgrep -f youtube_drip`
   shows nothing.
