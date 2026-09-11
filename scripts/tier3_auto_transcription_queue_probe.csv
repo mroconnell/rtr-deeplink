@@ -402,3 +402,110 @@ https://www.youtube.com/watch?v=QAdjDJoif1s,youtube,yt-dlp-metadata,1364.00,2024
 https://www.youtube.com/watch?v=-LL6Y77OQ6c,youtube,yt-dlp-metadata,9827.00,2019-05-13,496056779,1,accept,,1.97,2026-09-11T01:58:58+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=0xRPRA4MI-0,youtube,yt-dlp-metadata,5524.00,2026-07-29,114262959,1,accept,,2.94,2026-09-11T01:59:06+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=9kBeL--URO4,youtube,yt-dlp-metadata,7175.00,2022-03-25,317271057,1,accept,,1.64,2026-09-11T01:59:11+00:00,bulk_ingest,0
+https://columbiacowa.portal.civicclerk.com/event/669/media,civicclerk,head+ffprobe,3444.57,2026-09-08,1942009500,1,accept,,2.91,2026-09-10T20:14:43+00:00
+https://reflect-two-harbors.cablecast.tv/CablecastPublicSite/show/10633?site=1,cablecast,head+ffprobe,2326.06,2026-08-25,1307657077,1,accept,,2.29,2026-09-10T20:37:02+00:00
+https://rockawaybeachor.portal.civicclerk.com/event/61/media,civicclerk,head+ffprobe,8177.61,2026-09-10,1023453473,1,accept,,3.05,2026-09-10T22:35:53+00:00
+https://www.utah.gov/pmn/sitemap/notice/1050205.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1375421.m4a,0.00,2026-09-10T23:15:00+00:00
+https://www.utah.gov/pmn/sitemap/notice/1052739.html,utah_pmn,,,,,0,reject-dead,no probe recipe for this media shape: https://www.utah.gov/pmn/files/1378233.m4a,0.00,2026-09-10T22:44:52+00:00
+https://www.youtube.com/watch?v=-YVuGYC3JL8,youtube,yt-dlp-metadata,12241.00,2026-08-28,85137313,1,accept,,1.66,2026-09-10T22:17:30+00:00
+https://www.youtube.com/watch?v=0zVwyjeXPJQ,youtube,yt-dlp-metadata,1070.00,2024-01-04,22476606,1,accept,,2.67,2026-09-10T23:22:00+00:00
+https://www.youtube.com/watch?v=5ZgnQdjResc,youtube,yt-dlp-metadata,5647.00,2025-02-25,258045283,1,accept,,1.90,2026-09-11T01:11:41+00:00
+https://www.youtube.com/watch?v=7u90sjTNDy4,youtube,yt-dlp-metadata,2609.00,2021-02-19,112974738,1,accept,,1.89,2026-09-10T21:20:53+00:00
+https://www.youtube.com/watch?v=8JbllUU4Ajg,youtube,yt-dlp-metadata,5613.00,2026-04-08,219748899,1,accept,,3.60,2026-09-10T22:55:02+00:00
+https://www.youtube.com/watch?v=8NvsBdaeP8A,youtube,yt-dlp-metadata,7398.00,2024-08-21,214659269,1,accept,,2.10,2026-09-11T00:11:57+00:00
+https://www.youtube.com/watch?v=8z_sNsUrWWY,youtube,yt-dlp-metadata,210.00,2021-03-14,17950166,0,accept,,3.02,2026-09-10T21:44:45+00:00
+https://www.youtube.com/watch?v=A0UxAk0XNgQ,youtube,yt-dlp-metadata,994.00,2025-01-31,39280852,1,accept,,1.82,2026-09-10T22:03:24+00:00
+https://www.youtube.com/watch?v=C1E0MQ3rvvY,youtube,yt-dlp-metadata,5706.00,2026-09-09,183923947,1,accept,,3.07,2026-09-10T21:54:35+00:00
+https://www.youtube.com/watch?v=CMJxuqmf7gw,youtube,yt-dlp-metadata,217.00,2018-08-15,11861105,0,accept,,1.59,2026-09-11T00:51:50+00:00
+https://www.youtube.com/watch?v=EKHuKHk3-ro,youtube,yt-dlp-metadata,136.00,2024-09-04,9018442,0,accept,,1.93,2026-09-10T22:55:55+00:00
+https://www.youtube.com/watch?v=EUQWQavrsIU,youtube,yt-dlp-metadata,1084.00,2026-07-28,39710145,1,accept,,1.78,2026-09-10T21:43:32+00:00
+https://www.youtube.com/watch?v=FzVh16sVlHE,youtube,yt-dlp-metadata,155.00,2014-09-10,8457406,0,accept,,2.45,2026-09-11T00:21:03+00:00
+https://www.youtube.com/watch?v=JmHom72ZWjs,youtube,yt-dlp-metadata,20.00,2026-06-24,1521523,0,reject-short,duration 20.0s is below the 60s meeting-plausibility floor,1.97,2026-09-10T23:19:16+00:00
+https://www.youtube.com/watch?v=Jq_wljOepIM,youtube,yt-dlp-metadata,440.00,2022-07-15,28604649,0,accept,,1.96,2026-09-11T00:38:35+00:00
+https://www.youtube.com/watch?v=K2UsRB0z214,youtube,yt-dlp-metadata,2143.00,2021-02-15,117798112,1,accept,,1.87,2026-09-10T23:53:22+00:00
+https://www.youtube.com/watch?v=M5cya3bOefw,youtube,yt-dlp-metadata,15.00,2024-05-25,869824,0,reject-short,duration 15.0s is below the 60s meeting-plausibility floor,1.80,2026-09-10T21:47:11+00:00
+https://www.youtube.com/watch?v=NS4xH5B2xIo,youtube,yt-dlp-metadata,1754.00,2026-08-12,22156362,1,accept,,1.95,2026-09-10T22:23:53+00:00
+https://www.youtube.com/watch?v=OCHAsm-JIi4,youtube,yt-dlp-metadata,1166.00,2026-01-13,38610074,1,accept,,2.02,2026-09-11T00:04:52+00:00
+https://www.youtube.com/watch?v=Qvru1EkXBws,youtube,yt-dlp-metadata,567.00,2022-10-24,39410238,1,accept,,2.45,2026-09-10T21:38:57+00:00
+https://www.youtube.com/watch?v=SCmeUYps_PY,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] SCmeUYps_PY: This live event will begin in 109 days.,1.77,2026-09-10T22:42:01+00:00
+https://www.youtube.com/watch?v=Smg87KgqGoA,youtube,yt-dlp-metadata,7365.00,2017-09-28,264744693,1,accept,,1.87,2026-09-10T23:38:10+00:00
+https://www.youtube.com/watch?v=TGscABmCPy8,youtube,yt-dlp-metadata,3265.00,2026-04-27,30671215,1,accept,,1.98,2026-09-10T21:23:41+00:00
+https://www.youtube.com/watch?v=TVhW97WOXyg,youtube,yt-dlp-metadata,37.00,2023-11-08,2256707,0,reject-short,duration 37.0s is below the 60s meeting-plausibility floor,1.75,2026-09-10T22:04:47+00:00
+https://www.youtube.com/watch?v=TosFbITlv4Y,youtube,yt-dlp-metadata,13949.00,2026-01-29,450184249,1,accept,,1.96,2026-09-10T20:49:28+00:00
+https://www.youtube.com/watch?v=W-mR6IUW3o0,youtube,yt-dlp-metadata,312.00,2023-08-21,15121009,0,accept,,2.10,2026-09-10T23:17:50+00:00
+https://www.youtube.com/watch?v=Xl1SctaMya4,youtube,yt-dlp-metadata,2217.00,2026-07-03,52680855,1,accept,,1.67,2026-09-10T23:49:25+00:00
+https://www.youtube.com/watch?v=aKiW2lTKIxc,youtube,yt-dlp-metadata,356.00,2025-08-02,8045322,0,accept,,1.79,2026-09-11T00:24:31+00:00
+https://www.youtube.com/watch?v=as_1xCC0T60,youtube,yt-dlp-metadata,9125.00,2023-05-09,364855948,1,accept,,2.03,2026-09-11T00:04:11+00:00
+https://www.youtube.com/watch?v=bimqmorwx5w,youtube,yt-dlp-metadata,306.00,2026-08-04,5881856,0,accept,,1.79,2026-09-10T23:00:02+00:00
+https://www.youtube.com/watch?v=fqQ_hmgJtw4,youtube,yt-dlp-metadata,190.00,2024-07-01,13521726,0,accept,,1.95,2026-09-10T23:15:53+00:00
+https://www.youtube.com/watch?v=fzWU823Zf8U,youtube,yt-dlp-metadata,84.00,2026-05-06,3411321,0,accept,,1.88,2026-09-10T21:33:33+00:00
+https://www.youtube.com/watch?v=h_tYdVC7EGk,youtube,yt-dlp-metadata,4478.00,2026-09-10,121461772,1,accept,,1.76,2026-09-10T22:43:26+00:00
+https://www.youtube.com/watch?v=hlnswdOdSdM,youtube,yt-dlp-metadata,57.00,2021-09-12,5070395,0,reject-short,duration 57.0s is below the 60s meeting-plausibility floor,1.87,2026-09-10T22:18:33+00:00
+https://www.youtube.com/watch?v=iGQMjRs0jQc,youtube,yt-dlp-metadata,384.00,2025-08-06,26232425,0,accept,,1.99,2026-09-10T23:55:02+00:00
+https://www.youtube.com/watch?v=jjc3KW1qIYU,youtube,yt-dlp-metadata,307.00,2026-05-30,17523160,0,accept,,1.88,2026-09-10T23:11:12+00:00
+https://www.youtube.com/watch?v=k_wf7OfLOVc,youtube,yt-dlp-metadata,209.00,2025-11-25,5050730,0,accept,,2.53,2026-09-10T23:06:22+00:00
+https://www.youtube.com/watch?v=lfNPN_FIA6g,youtube,yt-dlp-metadata,83.00,2019-12-16,7196804,0,accept,,2.15,2026-09-10T22:45:53+00:00
+https://www.youtube.com/watch?v=m7CPofOhjG4,youtube,yt-dlp-metadata,199.00,2026-05-07,13265605,0,accept,,1.92,2026-09-10T23:56:07+00:00
+https://www.youtube.com/watch?v=mFFW66EIvNM,youtube,yt-dlp-metadata,87.00,2025-11-26,5060734,0,accept,,1.97,2026-09-10T23:21:44+00:00
+https://www.youtube.com/watch?v=nkYLHT9DZxs,youtube,yt-dlp-metadata,287.00,2022-06-15,17947894,0,accept,,1.75,2026-09-10T21:21:26+00:00
+https://www.youtube.com/watch?v=o8bkqiPJ8Y4,youtube,yt-dlp-metadata,981.00,2025-08-05,30825590,1,accept,,1.95,2026-09-10T21:58:49+00:00
+https://www.youtube.com/watch?v=oEojbgsH_jo,youtube,yt-dlp-metadata,54.00,2026-04-13,4096581,0,reject-short,duration 54.0s is below the 60s meeting-plausibility floor,2.17,2026-09-10T22:51:46+00:00
+https://www.youtube.com/watch?v=oQ3YVXM2rzE,youtube,yt-dlp-metadata,6327.00,2026-09-02,147508467,1,accept,,3.10,2026-09-10T22:36:51+00:00
+https://www.youtube.com/watch?v=reuuCPE3lZw,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] reuuCPE3lZw: This live event will begin in a few moments.,1.61,2026-09-11T00:08:46+00:00
+https://www.youtube.com/watch?v=rjTMIuXnzNI,youtube,yt-dlp-metadata,4910.00,2022-08-02,120687016,1,accept,,1.93,2026-09-10T23:04:59+00:00
+https://www.youtube.com/watch?v=w3tLJZxT-8c,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] w3tLJZxT-8c: This live stream recording is not available.,1.55,2026-09-11T00:52:01+00:00
+https://www.youtube.com/watch?v=wgutXZzRE0E,youtube,yt-dlp-metadata,41.00,2018-11-22,3472593,0,reject-short,duration 41.0s is below the 60s meeting-plausibility floor,1.92,2026-09-10T21:29:29+00:00
+https://www.youtube.com/watch?v=x2rRqLhkQPU,youtube,yt-dlp-metadata,2528.00,2026-08-19,74450393,1,accept,,2.28,2026-09-11T01:10:48+00:00
+https://www.youtube.com/watch?v=xh4DlMrr5ME,youtube,yt-dlp-metadata,4153.00,2026-01-06,158371646,1,accept,,2.22,2026-09-10T21:33:04+00:00
+https://www.youtube.com/watch?v=-pNyufIO7xM,youtube,yt-dlp-metadata,,,,0,reject-dead,yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments.,1.57,2026-09-10T22:55:57+00:00,bulk_ingest
+https://aledoisdtx.swagit.com/play/08082019-1085,swagit,hls-master+variant,35.69,,,0,reject-short,duration 35.7s is below the 60s meeting-plausibility floor,0.67,2026-09-10T22:56:00+00:00,bulk_ingest
+https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.14,2026-09-10T23:24:20+00:00,wo174
+https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.15,2026-09-10T23:30:32+00:00,wo174
+https://vimeo.com/707985726,vimeo,vimeo-oembed,4888.00,2022-05-09,,1,accept,,0.14,2026-09-10T23:37:25+00:00,wo174
+https://www.youtube.com/watch?v=hGkHytoAVlE,youtube,yt-dlp-metadata,2978.00,2026-09-09,88405511,1,accept,,2.60,2026-09-10T23:43:59+00:00,wo174
+https://www.youtube.com/watch?v=L0Pa2H_7EhU&source_ve_path=OTY3MTQ&embeds_referring_euri=https%3A%2F%2Fwww.williamsoncounty-tn.gov%2F,youtube,yt-dlp-metadata,7165.00,2026-09-10,287493196,1,accept,,2.26,2026-09-10T23:46:01+00:00,wo174
+https://www.youtube.com/watch?v=lKH5HrGfbss&t=275s,youtube,yt-dlp-metadata,4270.00,2025-10-02,132521225,1,accept,,2.77,2026-09-10T23:48:57+00:00,wo174
+https://youtu.be/O1KI2JkVzCo,youtube,yt-dlp-metadata,2243.00,2026-06-11,17026286,1,accept,,2.16,2026-09-10T23:49:28+00:00,wo174
+https://youtu.be/FPJrOtRzDNA?si=_iB_ZMyNrDbADUnG,youtube,yt-dlp-metadata,3490.00,2025-03-18,159608180,1,accept,,1.64,2026-09-10T23:51:02+00:00,wo174
+https://www.youtube.com/live/4mBhr7KUsf8?si=eKt0icYwaVEHJaM0,youtube,yt-dlp-metadata,1932.00,2026-09-02,72352538,1,accept,,3.19,2026-09-10T23:51:14+00:00,wo174
+https://www.youtube.com/live/IEZoIxA87S8,youtube,yt-dlp-metadata,8618.00,2026-07-30,307069904,1,accept,,2.28,2026-09-10T23:54:12+00:00,wo174
+https://youtu.be/LBHd4IE_M1k,youtube,yt-dlp-metadata,9819.00,2026-09-08,284960498,1,accept,,2.03,2026-09-10T23:56:23+00:00,wo174
+https://youtu.be/a9Hvm9l_-Xk?si=87I36qwnus7tTl6-,youtube,yt-dlp-metadata,8979.00,2026-08-27,291381014,1,accept,,2.15,2026-09-10T23:57:02+00:00,wo174
+https://www.youtube.com/live/IflUy7x1yLE?si=M6ru9ZXWOPnYZTEA,youtube,yt-dlp-metadata,1075.00,2026-03-13,36008080,1,accept,,2.64,2026-09-10T23:57:38+00:00,wo174
+https://youtu.be/Rp7tUN-qGLs,youtube,yt-dlp-metadata,281.00,2026-09-09,3449472,0,accept,,1.85,2026-09-10T23:59:49+00:00,wo174
+https://www.youtube.com/live/xsFR4ADdnk0?si=WeZ4RgzXNI044Mxz,youtube,yt-dlp-metadata,5842.00,2026-08-18,174359370,1,accept,,1.71,2026-09-11T00:00:08+00:00,wo174
+https://www.youtube.com/watch?v=g52-hn8P_4g,youtube,yt-dlp-metadata,2754.00,2026-05-04,62572500,1,accept,,2.19,2026-09-11T00:05:03+00:00,wo174
+https://www.youtube.com/live/uQDK9TIvft0?si=DbJ9-vU6nsf_zKk6,youtube,yt-dlp-metadata,4733.00,2026-08-28,155121976,1,accept,,3.06,2026-09-11T00:05:19+00:00,wo174
+https://www.youtube.com/watch?v=NZkc21WlY4c&t=128s,youtube,yt-dlp-metadata,206.00,2024-05-23,13310188,0,accept,,1.77,2026-09-11T00:06:29+00:00,wo174
+https://rileycoks.portal.civicclerk.com/event/727/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/etRgyPGOHIU,0.00,2026-09-11T00:10:24+00:00,wo174
+https://www.youtube.com/watch?v=6xBTQYtTi4c,youtube,yt-dlp-metadata,1082.00,2024-07-15,48132371,1,accept,,1.96,2026-09-11T00:15:35+00:00,wo174
+https://www.youtube.com/watch?v=J4T__zUH7m4,youtube,yt-dlp-metadata,1466.00,2026-08-19,42574080,1,accept,,3.12,2026-09-11T00:22:58+00:00,wo174
+https://youtu.be/ROc7ughPEjg,youtube,yt-dlp-metadata,2581.00,2026-08-25,67041070,1,accept,,1.90,2026-09-11T00:23:19+00:00,wo174
+https://youtu.be/e8Jr18zynxs,youtube,yt-dlp-metadata,3427.00,2026-08-18,108481273,1,accept,,2.10,2026-09-11T00:26:27+00:00,wo174
+https://vimeo.com/646562708,vimeo,vimeo-oembed,3337.00,2021-11-16,,1,accept,,0.19,2026-09-11T00:29:17+00:00,wo174
+https://www.youtube.com/watch?v=P__cgiafWKg,youtube,yt-dlp-metadata,12543.00,2026-08-11,305867044,1,accept,,2.40,2026-09-11T00:40:44+00:00,wo174
+https://www.youtube.com/watch?v=1JI5iqR5iFg,youtube,yt-dlp-metadata,3083.00,2026-07-16,40091250,1,accept,,1.72,2026-09-11T00:41:16+00:00,wo174
+https://www.youtube.com/live/mZbOpsi6yms?si=9coy7BzoX9GA_6k0,youtube,yt-dlp-metadata,245.00,2026-09-01,8450033,0,accept,,1.63,2026-09-11T00:43:41+00:00,wo174
+https://youtube.com/live/Dp5zkf8BL_A?feature=share,youtube,yt-dlp-metadata,4295.00,2026-09-09,147834567,1,accept,,1.58,2026-09-11T00:45:02+00:00,wo174
+https://www.youtube.com/watch?v=KM3eJ4HYaLM,youtube,yt-dlp-metadata,6320.00,2024-12-10,199223870,1,accept,,1.88,2026-09-11T00:50:37+00:00,wo174
+https://youtu.be/_45tCCLqZhc?si=Al8M3UAPygfnQSTm,youtube,yt-dlp-metadata,3826.00,2026-08-26,120520834,1,accept,,2.09,2026-09-11T00:51:10+00:00,wo174
+https://crookcoor.portal.civicclerk.com/event/1138/files/agenda/1764,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/FHaiGhehAlE,0.00,2026-09-11T00:52:28+00:00,wo174
+https://crookcoor.portal.civicclerk.com/event/1130/files/agenda/1784,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.youtube.com/embed/4fbdnHM8e9A,0.00,2026-09-11T00:52:33+00:00,wo174
+https://youtu.be/aWHUqtUgTWM,youtube,yt-dlp-metadata,9734.00,2026-09-10,300685111,1,accept,,2.05,2026-09-11T00:59:18+00:00,wo174
+https://www.youtube.com/live/QNdD3Vctqiw?si=QeED_QvMzoupg6F4,youtube,yt-dlp-metadata,5023.00,2026-08-24,232440610,1,accept,,2.25,2026-09-11T01:12:12+00:00,wo174
+https://www.youtube.com/watch?v=WqeSyLlu8UM,youtube,yt-dlp-metadata,1849.00,2026-08-25,52109602,1,accept,,3.14,2026-09-11T01:17:48+00:00,wo174
+https://www.youtube.com/live/7G_qeoETRe8?si=6BWKwHILOfLs-UFd,youtube,yt-dlp-metadata,6636.00,2026-07-14,230372618,1,accept,,2.07,2026-09-11T01:25:18+00:00,wo174
+https://youtube.com/live/dMDTgIVM9_c?feature=share,youtube,yt-dlp-metadata,12469.00,2026-08-25,381221956,1,accept,,1.96,2026-09-11T01:33:13+00:00,wo174
+https://youtu.be/5IoXmnqr72Y,youtube,yt-dlp-metadata,6964.00,2026-09-03,220455800,1,accept,,1.67,2026-09-11T01:35:39+00:00,wo174
+https://www.youtube.com/watch?v=86iOAWNZRzY,youtube,yt-dlp-metadata,1680.00,2026-03-24,57921061,1,accept,,2.02,2026-09-11T02:07:50+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=jus309yshnc,youtube,yt-dlp-metadata,5861.00,2026-09-10,176095629,1,accept,,2.05,2026-09-11T02:08:09+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=-AnHmoaZJ3E,youtube,yt-dlp-metadata,126.00,2026-09-03,4393033,0,accept,,2.91,2026-09-11T02:08:34+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=KvRgt1zFKc0,youtube,yt-dlp-metadata,7969.00,2026-09-01,156008580,1,accept,,1.84,2026-09-11T02:08:50+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=XrF0q02fKrg,youtube,yt-dlp-metadata,9680.00,2025-11-05,410454654,1,accept,,2.04,2026-09-11T02:08:59+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=_UKK4xvUaYk,youtube,yt-dlp-metadata,1531.00,2026-08-18,48966724,1,accept,,2.80,2026-09-11T02:09:14+00:00,bulk_ingest,0
+https://www.youtube.com/live/AxSp3DXcE2o?si=XYBkZXae_P-6rGBs,youtube,yt-dlp-metadata,1405.00,2026-09-09,44959019,1,accept,,2.80,2026-09-11T02:09:45+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=OnBID1C3538,youtube,yt-dlp-metadata,14520.00,2026-03-10,324964852,1,accept,,1.77,2026-09-11T02:09:57+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=1-fJ-0X5eqI,youtube,yt-dlp-metadata,6764.00,2024-11-09,299742104,1,accept,,1.76,2026-09-11T02:10:08+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=qm2F5k26T0k&t=18s,youtube,yt-dlp-metadata,933.00,2026-04-28,19700631,1,accept,,3.26,2026-09-11T02:10:30+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=6ckVEf9jcHg,youtube,yt-dlp-metadata,4912.00,2026-08-21,125516203,1,accept,,2.00,2026-09-11T02:10:39+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=bEk3_JtUl_8,youtube,yt-dlp-metadata,5074.00,2026-07-07,118889307,1,accept,,1.56,2026-09-11T02:10:47+00:00,bulk_ingest,0

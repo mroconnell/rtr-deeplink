@@ -145,26 +145,65 @@ and the cloud worker drips it onto the site. Agenda-only is recorded as
 `no-video-found` and never ingested. A host with no video is a legitimate
 outcome to show on the dashboards, not a page.
 
-**Alternate domains (WO-181, 2026-09-10).** The research file carries two
-more columns, `alternate_domains` and `alternate_urls` (added in WO-165's
-duplicate-row cleanup): every other real domain or meeting URL a
-government was ever recorded under, kept rather than thrown away when
-WO-165 folded its duplicate rows into one. The row that survived kept
-whichever domain/URL was already sitting in the row WO-165 chose as the
-keeper for that government (see `BACKLOG_DONE.md`'s WO-165 entry); the
-other real one moved sideways into these columns instead of being
-deleted. `scripts/coverage_alternates.py` is the one place that reads
-them: `candidate_domains()` returns the primary domain followed by every
-alternate, and `ladder_with_alternates()` retries the next candidate only
-when the primary's `reject_reason` is an ACCESS-class one (blocked,
-timed out, DNS-dead, a challenge page) — the host answered, not the
-government. A CONTENT-class reject (a real page with genuinely no
-platform link, no video, etc.) is never retried against an alternate,
-because a different hostname for the same government's website doesn't
-change what a real page already told us. WO-181's own pilot ran this
-against the 265 rows that had both an alternate domain and an
-access-class reject on the primary; see `BACKLOG_DONE.md` for the count
-this actually found.
+**Alternate domains (WO-181, 2026-09-10; widened by WO-184,
+2026-09-10/11).** The research file carries two more columns,
+`alternate_domains` and `alternate_urls` (added in WO-165's duplicate-row
+cleanup): every other real domain or meeting URL a government was ever
+recorded under, kept rather than thrown away when WO-165 folded its
+duplicate rows into one. The row that survived kept whichever domain/URL
+was already sitting in the row WO-165 chose as the keeper for that
+government (see `BACKLOG_DONE.md`'s WO-165 entry); the other real one
+moved sideways into these columns instead of being deleted.
+`scripts/coverage_alternates.py` is the one place that reads them:
+`candidate_domains()` returns the primary domain followed by every
+alternate, and `ladder_with_alternates()` retries the next candidate
+according to a `trigger` policy.
+
+Ryan's rule (2026-09-10, quoted verbatim — this is now the standing
+policy, and it supersedes WO-181's original narrower framing wherever
+the two disagree):
+
+> "A domain keeps priority when it has produced a resolved meeting: with
+> video is best, but a meeting or agenda without video is still very
+> high quality. If a domain has produced no meeting at all, we may
+> simply be looking at the wrong domain, and we lose nothing by trying
+> another. Every government posts agendas at least, so the line is:
+> found a meeting or agenda, or not."
+
+Concretely, that's `trigger="no-meeting"`: retry an alternate whenever
+the primary produced nothing at all — an ACCESS-class reject (blocked,
+timed out, DNS-dead, a challenge page), a CONTENT-class reject that
+means "no platform link/meeting/video was found at all"
+(`no-platform-link-found`, `no-meeting-nor-video`, `no-meetings-found`,
+`no-platform-signature`), or a blank/never-tested reason. It is never
+worth retrying once a real meeting or agenda was already found on the
+primary, whether it had video or not, or once the row is off-mission or
+already spoken for (`meeting-without-video`, `no-video-found`,
+`off-mission`, `video-without-meeting`, `unsupported-platform-no-adapter`,
+`ingested`, `queued`, `already-covered`). `trigger="access"` keeps
+WO-181's original, narrower behavior (only an ACCESS-class reject
+retries) for any caller that still wants it.
+
+**Promotion.** When an alternate answers with a platform link and the
+primary didn't, `decide_promotion()`/`apply_promotion()` make that
+alternate the new `domain`, moving the old primary into
+`alternate_domains` — nothing is ever lost. When the primary itself
+answers, or nothing does, nothing is promoted.
+
+**One more hop for "found a meeting, no video" (WO-184).** Even when a
+government's primary domain already found a meeting or agenda but no
+video, WO-184 still runs a single, no-promotion hop on the alternate
+domain (`one_hop_alternate()`): one plain HTTP fetch of the alternate's
+home page, plus up to a few of its own meeting/agenda links, checking
+whether a DIFFERENT platform than the one already known turns up. A
+Granicus/YouTube/CivicClerk/etc. link the primary didn't have is a new
+view of the same meetings and may carry video the primary's view didn't.
+Finding the same platform again isn't useful and changes nothing.
+
+WO-181's own pilot ran the narrower `trigger="access"` retry against the
+265 rows that had both an alternate domain and an access-class reject on
+the primary; see `BACKLOG_DONE.md` for the count this actually found.
+WO-184's wider run and its own counts are in `BACKLOG_DONE.md` too.
 
 What the 2026-09-09 sweeps established about *where video is*:
 

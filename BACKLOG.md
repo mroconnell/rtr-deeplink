@@ -115,8 +115,9 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (20)
-  `scripts/coverage_alternates.py` only retries an alternate domain on…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (21)
+  `alternate_urls` entries are only ever used for their HOST, never…
+  WO-184's own residual: the one-hop "different platform found" leads…
   4 pages from WO-188's YouTube recheck landed mis-keyed to…
   WordPress's own `/?s=agenda` search is a confirmed, cheap way to find…
   A generic "scan the listing page for any platform link" step can pick…
@@ -575,39 +576,79 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### `scripts/coverage_alternates.py` only retries an alternate domain on an ACCESS-class reject; a CONTENT-class reject and `alternate_urls` as direct meeting-URL candidates are both still unused `[JUST-DO-IT]`
+### `alternate_urls` entries are only ever used for their HOST, never tried directly as a candidate meeting URL `[JUST-DO-IT]`
 
-- **Issue:** WO-181 (2026-09-10) built `ladder_with_alternates()` to try
-  a government's `alternate_domains` when its primary domain's
-  `reject_reason` is ACCESS-class (blocked, timed out, DNS-dead, a
-  challenge page). Two related, deliberately out-of-scope cases were
-  left alone: (1) a CONTENT-class reject (`no-platform-link-found`,
-  `meeting-without-video`, etc.) never retries an alternate domain, even
-  though a genuinely different website for the same government could,
-  in principle, carry a different platform link than the one already
-  checked; (2) `alternate_urls` entries are only ever used for the HOST
-  they carry (via `candidate_domains()`) — a row whose `alternate_urls`
-  is already a real, specific meeting/video URL (the Calera city, AL
-  CivicClerk case in that module's own tests) never gets that URL tried
+- **Issue:** WO-184 (2026-09-10/11) widened `ladder_with_alternates()`
+  with a `trigger="no-meeting"` policy (Ryan's rule: retry an alternate
+  whenever the primary produced no meeting/agenda at all, not only on an
+  ACCESS-class reject) — closing the CONTENT-class half of this entry's
+  original scope. One piece is still genuinely open: `alternate_urls`
+  entries are only ever used for the HOST they carry (via
+  `candidate_domains()`) — a row whose `alternate_urls` is already a
+  real, specific meeting/video URL (the Calera city, AL CivicClerk case
+  in `coverage_alternates`'s own tests) never gets that URL tried
   directly as a candidate meeting URL, only re-derived from its host.
-- **Impact:** both are real, narrow coverage left on the table — some
-  unknown number of the ~490 rows with an alternate domain and a
-  CONTENT-class reject, and any row whose `alternate_urls` is itself a
-  meeting URL rather than just a homepage.
-- **Next action:** (1) add an opt-in `retry_content_class=True` path to
-  `ladder_with_alternates()` (or a second function) that also tries the
-  next candidate on a CONTENT-class answer, gated behind its own pilot
-  the same shape as WO-181's — a fresh sample, read-mostly report,
-  before it's trusted as a default; (2) teach `candidate_domains()` (or
-  a sibling function) to yield full `alternate_urls` entries as direct
-  URL candidates a caller can try with `resolve()`/`process_row()`
-  directly, not just their host.
-- **Constraint:** don't fold either into `ladder_with_alternates()`'s
-  default behavior without its own pilot first — CONTENT-class rejects
-  are the majority of rejected rows with an alternate, so a wrong
-  assumption here costs much more sweep time than the ACCESS-class case
-  WO-181 already measured.
-- **History:** `BACKLOG_DONE.md` WO-181, 2026-09-10.
+- **Impact:** narrow — any row whose `alternate_urls` is itself a
+  meeting URL rather than just a homepage skips a cheaper, more direct
+  path to the same content.
+- **Next action:** teach `candidate_domains()` (or a sibling function) to
+  also yield full `alternate_urls` entries as direct URL candidates a
+  caller can try with `resolve()`/`process_row()` directly, not just
+  their host.
+- **Constraint:** none known yet — this is smaller in scope than the
+  CONTENT-class retry WO-184 already shipped and measured.
+- **History:** `BACKLOG_DONE.md` WO-181 (2026-09-10), WO-184
+  (2026-09-10/11).
+
+### WO-184's own residual: the one-hop "different platform found" leads are unresolved, the sweep didn't finish the full retry-set, and a few reject-reason spellings aren't classified into the retry taxonomy `[JUST-DO-IT]`
+
+- **Issue:** WO-184 (2026-09-10/11) built and ran the "no-meeting"
+  trigger retry-set sweep and the separate one-hop sweep for the
+  meeting-without-video population, but left three pieces of real,
+  identified work undone. (1) `scripts/wo184_onehop_pilot.py`'s
+  `different-platform-found` outcome is a LEAD only — it confirms a
+  different platform link exists, never that it carries video — and
+  nothing yet resolves/ingests those leads the way
+  `wo184_ingest_found.py` does for the main retry-set's `found` rows.
+  (2) The full retry-set (3,434 rows after excluding already-covered
+  rows — see below) and one-hop set (541 rows) were only partially swept
+  in this WO's own run; see `BACKLOG_DONE.md`'s WO-184 entry for exactly
+  how far it got. (3) A handful of `reject_reason` spellings found live
+  in the file — `video-no-captions-queued`, `duplicate-queued`,
+  `video-queued-pending-probe`, `resolve-failed`, `wrong-domain-mapping`,
+  `broken-template-false-positive`, `rejected_by_probe`,
+  `signature-found-not-verified`, `no-active-meeting-content` — are not
+  in Ryan's explicit do-not-retry list and were excluded from WO-184's
+  own candidate selection by a stricter allow-list rather than being
+  formally classified into `coverage_alternates.NEVER_RETRY_REASONS` /
+  `NO_MEETING_CONTENT_REASONS` — some (the `*queued*`/`rejected_by_probe`
+  ones) plainly mean "already spoken for," others are ambiguous and
+  deserve a real look before either bucket claims them.
+- **Impact:** real coverage left on the table in all three — an unknown
+  number of the one-hop leads may carry real video; the unswept portion
+  of both populations is exactly this WO's own target population, just
+  not yet run; and the unclassified reason strings will keep getting
+  silently excluded by every future no-meeting-trigger sweep until
+  someone decides where they belong.
+- **Next action:** (1) build a `wo184_onehop_ingest.py` (or extend
+  `wo184_ingest_found.py`) that resolves each `different-platform-found`
+  lead and ingests it under the same tier-1/2/3 rule as everything else;
+  (2) resume `scripts/wo184_pilot.py`/`wo184_onehop_pilot.py` (both
+  resumable — a re-run skips gov_ids already in their report CSVs) until
+  each candidate list is exhausted, then run `wo184_apply_to_jc.py`
+  again; (3) for each of the nine reason strings above, check a real
+  sample of rows carrying it and decide NO_MEETING_CONTENT_REASONS vs.
+  NEVER_RETRY_REASONS vs. a new named bucket, then add it to
+  `coverage_alternates.py` with a real citation, not a guess.
+- **Constraint:** run the sweep continuations from the Render shell or a
+  low-traffic window if run against the shared research file at the same
+  time as other sessions (§158's protocol in
+  `rtr-business/research/ENUMERATION_METHODS.md`); a challenge-gated
+  alternate (recorded `access_mode=challenge`) should stay recorded, not
+  retried past — a future headless pass on those specific rows is a
+  separate, deliberately-out-of-scope idea (this WO's brief explicitly
+  excludes headless), not a silent addition to the existing rungs.
+- **History:** `BACKLOG_DONE.md` WO-184, 2026-09-10/11.
 
 ### 4 pages from WO-188's YouTube recheck landed mis-keyed to `rtr:unknown:www.youtube.com` and need a targeted re-key `[JUST-DO-IT]` `[EASY]`
 
