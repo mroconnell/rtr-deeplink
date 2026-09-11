@@ -151,12 +151,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (8)
     [HUMAN] 13 hosts the coverage registry ties to the wrong government:…
     [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
-    [HUMAN] A "Spring Township, PA" page's video is actually the state…
+    [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (133)
-  [NEEDS-AUDIT] A Vimeo-delegated Archive page shows the wrong…
+  [NEEDS-AUDIT] A shared-host `tenant_overrides.csv` pin with a blank…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
@@ -1256,12 +1256,41 @@ of human step they need.
   - **Next action**: product call — `noindex` them, or delete via the existing delete-pages endpoint; the 2 that do have a transcript can stay with the dead-player fix from Ship next.
   - **History**: gov-id enumeration audit, 2026-09-09.
 
-- **[HUMAN] A "Spring Township, PA" page's video is actually the state Public Utility Commission's own meeting, not a township meeting at all — needs a product call, not a pin.**
-  - **Issue**: WO-204 (fixing a hub-slug bug for 7 placeholder townships) checked the video behind `spring-township-pa-2026-09-10-pennsylvania-public-utility-commission-papuc-publi` before pinning it to any of the 5 real "Spring Township" governments in PA. yt-dlp shows the channel is "PennsylvaniaPUC" (@PennsylvaniaPUC), and its own description reads "Recording of the September 10, 2026 Public Meeting of the Pennsylvania Public Utility Commission held in the Commonwealth Keystone Building's Hearing Room 1 (Harrisburg, PA)." Nothing about the video names a township at all; the page only got labeled "Spring Township, PA" because of whatever earlier step assigned that jurisdiction, not because that's who posted or held the meeting. Per Ryan's rule (the source of the video is the truth), this is not left pinned to any Spring Township.
-  - **Impact**: one live page shows a real government meeting under the wrong government's name — a state agency's hearing, badged as a small PA township's. `rtr-business/research/jurisdiction_coverage.csv` had the same mistake baked into a Spring Township, Berks County row (its `example_meeting_url` pointed at this same PUC video) — that row is corrected in this PR (evidence cleared, `reject_reason=video-wrong-government`), but the live Archive page itself is untouched.
-  - **Next action**: Ryan decides what the page should say. Options: (a) leave it as an unverified "Spring Township, PA" placeholder (its `gov_id`/hub are least-wrong today, just under-labeled) and do nothing further; (b) mint a Pennsylvania Public Utility Commission government and re-key this one page to it (same "ok mint" pattern as WO-201's PennDOT/Upper Delaware Council/Southwestern PA Commission); (c) delete the page if a state-agency hearing doesn't belong in the archive's mission at all.
-  - **Constraint**: don't pin this to any of the 5 real Spring Townships (Berks/Centre/Snyder/Crawford/Perry Counties, PA) — none of them held or posted this meeting.
-  - **History**: `BACKLOG_DONE.md`, WO-204, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` §251.
+- **[HUMAN] A Pennsylvania Public Utility Commission hearing was briefly live as "Spring Township, PA" — the page is now deleted; open question is only whether Ryan wants a PUC government minted for any future occurrence.**
+  - **Issue**: two concurrent sessions the same night (2026-09-11) independently found the same wrong page: WO-204 (fixing a hub-slug bug) checked
+    `spring-township-pa-2026-09-10-pennsylvania-public-utility-commission-papuc-publi`
+    before pinning it to any of the 5 real "Spring Township" governments
+    in PA and confirmed via yt-dlp that the channel is "PennsylvaniaPUC"
+    (@PennsylvaniaPUC), describing itself as "Recording of the September
+    10, 2026 Public Meeting of the Pennsylvania Public Utility
+    Commission held in the Commonwealth Keystone Building's Hearing Room
+    1 (Harrisburg, PA)" — nothing about the video names a township.
+    WO-183's own hand-check found the same page independently (its
+    Spring township, Berks County candidate was found via a bare-
+    channel scan of a link that government's own site made to PA PUC's
+    channel) and, per its hand-check protocol for a confirmed wrong
+    government, deleted the page via `POST /internal/admin/delete-pages`
+    before WO-204's own entry (asking Ryan to choose leave/mint/delete)
+    had merged. `rtr-business/research/jurisdiction_coverage.csv`'s
+    Spring Township, Berks County row is corrected (evidence cleared,
+    `reject_reason=off-mission`).
+  - **Impact**: no live page remains under the wrong name today — this
+    is no longer a public-facing trust problem. The only thing still
+    open is whether the Pennsylvania Public Utility Commission is worth
+    minting as its own government (same "ok mint" pattern as WO-201's
+    PennDOT/Upper Delaware Council/Southwestern PA Commission) so a
+    future PA PUC video anyone finds attributes correctly instead of
+    getting silently discarded as off-mission.
+  - **Next action**: Ryan decides whether the Pennsylvania Public
+    Utility Commission is in scope to mint as a government at all (it
+    is a state regulatory body, not a local government in the sense
+    this project otherwise tracks) before any future PA PUC find gets
+    anywhere past off-mission.
+  - **Constraint**: don't pin any future PA PUC find to any of the 5 real
+    Spring Townships (Berks/Centre/Snyder/Crawford/Perry Counties, PA) —
+    none of them held or posted this meeting.
+  - **History**: `BACKLOG_DONE.md`, WO-204 and WO-183, 2026-09-11;
+    `rtr-business/research/ENUMERATION_METHODS.md` sections 251 and 252.
 
 ### Decisions about already-live content
 
@@ -1287,12 +1316,66 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] A Vimeo-delegated Archive page shows the wrong government's name in its title even though its `gov_id` and its transcript content are both correct — Steele County, MN's real board meeting displays as "Oak Bluffs, MA."**
-  - **Issue**: WO-187's headless-challenge sweep ingested `vimeo.com/1225126409/7e66dd7217` for Steele County, MN (`us:county:27147`, real domain `steelecountymn.gov`) with 627 real transcript segments — the transcript itself is genuinely Steele County's ("Steele County promotes respect in both its work environment and boardroom," confirmed by fetching the live page). But the page's title and displayed jurisdiction read "SC Board Meeting 2026-09-08 — Oak Bluffs, MA" — a real, different Massachusetts town. `apply_display_jurisdiction()` (`scripts/wo134_confirmed_hits_ingest.py`) only fills `result.jurisdiction` when the adapter left it blank, so this means the Vimeo resolve path itself set a non-blank, wrong jurisdiction string — almost certainly read from the Vimeo video's own uploader/account display name rather than anything about the actual meeting, since the real content is unrelated to Oak Bluffs.
-  - **Impact**: one confirmed page (`/m/oak-bluffs-ma-2026-09-08-sc-board-meeting-2026-09-08`) shows a false government name to every visitor, and (since `gov_id` is correct) sorts correctly into Steele County's coverage internally while displaying wrong externally — a public-facing trust problem distinct from a wrong-`gov_id` bug. Unknown how many other Vimeo-delegated pages share this (not swept for more instances this session; `app/platforms/vimeo.py` is the adapter to check first).
-  - **Next action**: read `app/platforms/vimeo.py`'s jurisdiction-derivation code, confirm it is trusting the Vimeo uploader/account name rather than the meeting page it was found on, and either stop setting `result.jurisdiction` from that source at all (let `apply_display_jurisdiction()`'s gov_id-derived fallback fill it, since that is already correct here) or validate it against the passed-in `gov_id` before accepting it as an override. Then hand-fix this one page's title/jurisdiction and sweep other Vimeo-delegated pages for the same shape.
-  - **Constraint**: do not delete this page — the content is real and correctly attributed by `gov_id`; only the displayed name is wrong. Any fix should re-derive the display fields, not the underlying resolve.
-  - **History**: found live 2026-09-11 building WO-187 (`BACKLOG_DONE.md`); confirmed by fetching the live page directly, not guessed.
+- **[NEEDS-AUDIT] A shared-host `tenant_overrides.csv` pin with a blank `match` field is a full-host wildcard, not a scoped fallback — confirmed root cause of at least 4 governments' real Vimeo pages showing "Oak Bluffs, MA" instead of their own name.**
+  - **Issue**: `app/utils/gov_registry/resolver.py`'s `_match_override()`
+    treats a `tenant_overrides.csv` row with no `match` value as always
+    applying to its whole host. One row, added by WO-145
+    (`vimeo.com,,us:cousub:2500750390,fallback,...`), was meant to pin
+    one specific Oak Bluffs, MA meeting but left `match` blank — so it
+    silently caught every OTHER government's Vimeo video that had no
+    more specific pin of its own. WO-187 found this independently the
+    same night (Steele County, MN: `vimeo.com/1225126409/7e66dd7217`,
+    `us:county:27147`, 627 real transcript segments confirmed genuinely
+    Steele County's, but titled "SC Board Meeting 2026-09-08 — Oak
+    Bluffs, MA") and guessed the Vimeo adapter itself was trusting the
+    uploader's account name — reasonable from one data point, but
+    WO-183's hand-check (same night) found two more instances (Hanover
+    township PA, Middletown township PA — both real meetings confirmed
+    via Vimeo's own oEmbed `author_name`, both displaying as "Oak
+    Bluffs, MA") plus a fourth, already-live page
+    (`/m/lancaster-county-pa-2026-09-02-2026-09-09-commissioner-meeting`,
+    a real Lancaster County, PA commissioner meeting per its own Vimeo
+    author field, same mislabel; its slug still says Lancaster County
+    because slugs don't change on re-resolution, only the displayed
+    jurisdiction does) and traced all of them to this one blank-match
+    row rather than anything Vimeo-adapter-specific.
+  - **Impact**: any Vimeo-hosted page without its own specific pin was
+    exposed to this — at least 4 confirmed, likely more across the
+    corpus. The blank row itself is now fixed (WO-183 added
+    `match=vimeo:1199438213`, its own original video), so it can't catch
+    anyone else's video going forward, but the pages already mislabeled
+    while it was blank (Steele County MN, Hanover Twp PA, Middletown
+    Twp PA, the Lancaster County PA page) are not yet corrected, and no
+    sweep has checked the rest of the corpus for other pages this same
+    row mislabeled before today.
+  - **Next action**: audit every live page whose jurisdiction currently
+    reads "Oak Bluffs, MA" against Vimeo's own oEmbed `author_name` for
+    its video, and re-resolve or reslug the ones that don't match
+    (`reslug-page`/similar admin action — a previous session found this
+    class of call blocked by the auto-mode safety classifier, so it may
+    need Ryan or an unblocked session). Separately, add a cheap check
+    (in `scripts/build_backlog_toc.py`-style CI, or a one-off audit
+    script) that flags any `tenant_overrides.csv` row on a known shared
+    host (`youtube.com`, `www.youtube.com`, `vimeo.com`,
+    `player.vimeo.com`, `cablecast.tv`, ...) with a blank `match` field,
+    since that shape is very likely always a bug on those hosts. No
+    change needed in `app/platforms/vimeo.py` itself — the adapter
+    isn't reading anything from Vimeo's uploader name; the wrong
+    jurisdiction was coming from the tenant pin the whole time.
+  - **Constraint**: do not delete any of the 4 known pages — every one
+    has real, correctly-`gov_id`'d content; only the displayed
+    name/slug is wrong. Any fix should re-derive the display fields,
+    not the underlying resolve. `jurisdiction_coverage.csv` for Hanover
+    Twp PA and Middletown Twp PA already correctly shows
+    `transcribed=True`/`shares_video=True` against their own `gov_id`;
+    that part doesn't need touching.
+  - **History**: Steele County MN instance found live 2026-09-11
+    building WO-187 (`BACKLOG_DONE.md`); the other 3 plus the confirmed
+    root cause and the one-row fix found the same night by WO-183's
+    hand-check, not yet in `BACKLOG_DONE.md`. Related but distinct from
+    the `tenant_overrides.csv` retroactive-resync entry above (that one
+    is about a *correct* pin not reaching already-archived pages; this
+    one is about a *malformed* pin reaching pages it never should have).
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
   - **Issue**: WO-204 found `newtowntownship.civicweb.net`'s existing `ryan_stated` pin (from the 112-pin bulk worklist apply, PR #733) pointed to `us:place:4254184` (Newtown *borough*) even though the subdomain itself spells out "township" and the live portal is Newtown *Township*'s own (Board of Supervisors, Delaware County — confirmed live). The pin's own evidence line, "Newtown, PA -- us_places.csv Newtown borough," is a bare name-to-place match that ignored the word "township" sitting right in the hostname — the same root-cause shape WO-198's resolver fix targeted generally, just baked into a `ryan_stated` pin instead of the ladder. `ryan_stated` here records that Ryan approved a *batch* of 112 pins at once, not that each of the 112 was individually re-verified against its live site.

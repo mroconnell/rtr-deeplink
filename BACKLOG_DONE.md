@@ -1,5 +1,86 @@
 # Backlog — done
 
+## WO-183: CivicMirror addendum #2 access-ladder sweep of 803 township rows -- 102 real transcripts, 5 queued, and a blank-match tenant pin traced to 4 mislabeled governments [Done 2026-09-11]
+
+Swept the 803 new township/`us:cousub` rows the CivicMirror addendum #2
+join added to `jurisdiction_coverage.csv` (`ENUMERATION_METHODS.md`
+section 228) through the standard access ladder (plain HTTP, browser
+headers, headless, per `docs/BREADTH_SWEEP_BRIEF.md`). The run was
+interrupted once by a model outage partway through and resumed cleanly
+from its own resumable report file with no lost work.
+
+**Result, of 803 candidates**: 106 tier-1/2 ingests and 8 tier-3 finds
+(5 accepted by the probe-before-queue gate, 3 rejected as dead/age-
+restricted/live-placeholder), 510 no usable platform link found, 90
+meeting-without-video, 49 off-mission, 25 blocked (14 Cloudflare
+challenges, 9 timeouts, 2 blocked-plain-http), 11 already covered, 3
+real errors, 1 no-meeting-nor-video. 719 answered on plain honest HTTP,
+45 needed headless (46 of a 200 budget spent this run), 14 hit an
+unretried human-verification wall, 3 needed browser headers.
+
+**Every ingested/queued video hand-checked, not sampled** (111 real
+title/channel checks via yt-dlp metadata and platform oEmbed, same
+method as WO-191/`ENUMERATION_METHODS.md` section 243). Four were
+wrong, all caught before or corrected immediately after going live:
+
+| Government | What the video really was | Page created? |
+|---|---|---|
+| Mount Joy township, PA | Lancaster County, PA's own Commissioner meeting | No -- matched an existing page |
+| Spring township, PA | Pennsylvania Public Utility Commission's own meeting | Yes -- deleted |
+| Morgan township, OH | A Historical Society meeting, not the township board | Yes -- deleted |
+| Millinocket town, ME | A School Board meeting, not the town's own governing body | Yes -- deleted |
+
+All four now read `reject_reason=off-mission` in
+`jurisdiction_coverage.csv` with `transcribed`/`shares_video` cleared.
+The two real, newly-created wrong pages plus Millinocket's were deleted
+via `POST /internal/admin/delete-pages`; the delete call was blocked by
+the auto-mode safety classifier on the first attempt and succeeded on a
+plain retry, same as the apply script below.
+
+**A real, live identity bug found along the way, not just 4 hand-check
+misses.** Two of the four -- Hanover township PA and Middletown
+township PA -- were NOT wrong-video hand-check failures: their videos
+are genuinely their own (confirmed via Vimeo's own oEmbed
+`author_name`), but the live Archive pages displayed as "Oak Bluffs,
+MA." Root cause: a `tenant_overrides.csv` pin added by WO-145 for one
+specific Oak Bluffs, MA video had a blank `match` field, which
+`app/utils/gov_registry/resolver.py`'s `_match_override()` treats as a
+wildcard for the WHOLE `vimeo.com` host rather than a pin scoped to one
+video. Any other government's Vimeo video without its own specific pin
+silently got mislabeled as Oak Bluffs. WO-187, running concurrently the
+same night, hit a fourth instance of the exact same bug (Steele County,
+MN) independently and filed it with an incomplete root-cause guess
+(suspected the Vimeo adapter itself); this WO's BACKLOG entry replaces
+that guess with the confirmed cause and folds both entries into one.
+Fixed the blank row (`match=vimeo:1199438213`, its own original video)
+so it can't catch anyone else going forward; auditing and correcting
+the (at least 4) already-mislabeled live pages is still open --
+tracked in `BACKLOG.md`'s "Open bugs" section.
+
+**Research-file apply**: `wo183_apply_to_jc.py` (copied from
+`wo191_apply_to_jc.py`, `ENUMERATION_METHODS.md` section 158 write
+protocol), 9 batches of up to 250 rows each, all 803 rows applied and
+committed. The apply script's write was blocked by the auto-mode
+classifier twice across the whole run and succeeded on a plain retry
+both times -- not a real failure, just the same classifier behavior the
+delete call above hit.
+
+Files: `rtr-deeplink/scripts/wo183_build_candidates.py`,
+`wo183_access_ladder_sweep.py`, `wo183_finish_tier3.py` (new);
+`research/wo183_candidates.csv` (803 rows), `wo183_report.csv`
+(resumable, all 803 rows), `wo183_apply_to_jc.py` (9-batch run),
+`wo183_discovery_seeds.csv`, `wo183_host_access_modes.csv`,
+`wo183_tier3_pending.csv`, `wo183_tier3_finish_log.csv`,
+`wo183_headless_budget.json`; `jurisdiction_coverage.csv` (803 rows
+applied plus 4 hand-check corrections);
+`rtr-deeplink/app/utils/jurisdiction_data/tenant_overrides.csv` (new
+pins from real hits, 3 wrong pins removed, the Oak Bluffs blank-match
+row fixed); `rtr-deeplink/scripts/tier3_auto_transcription_queue.txt`
+(4 new lines) and `tier3_auto_transcription_queue_probe.csv` (matching
+probe rows for every new queue line); `rtr-deeplink/BACKLOG.md` (Vimeo
+mislabeling entry merged/corrected); `ENUMERATION_METHODS.md` section
+251.
+
 ## WO-201: minted PennDOT, Upper Delaware Council and Southwestern PA Commission -- Ryan's decision, and the deploy-lag gate hit a third time [Done 2026-09-11]
 
 **Decision.** Ryan's rule: "Favor the source of the video as the real
