@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (21)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (23)
   `alternate_urls` entries are only ever used for their HOST, never…
   WO-184's own residual: the one-hop "different platform found" leads…
   4 pages from WO-188's YouTube recheck landed mis-keyed to…
@@ -131,6 +131,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (21)
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   `tenant_overrides.csv`'s `evidence` text always says "WO-134…
   `wo145_api_first_sweep.py`'s `_title_place_conflict()`…
+  The wrong-government checks never look at the resolved video's own…
+  A YouTube short-link (`youtu.be/...`) dedup check runs before the…
   Coverage registry: per-state view and other dashboard additions…  (6)
     [JUST-DO-IT] `slice_cached_audio()` skips the corrupt-chunk…
     [JUST-DO-IT] 82 archived YouTube meetings have embedding switched off…
@@ -1046,6 +1048,22 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Next action:** in `wo145_api_first_sweep.py`'s `_title_place_conflict()`, skip a regex match whose captured `place` (stripped, lowercased) equals a full US state or Canadian province name (`STATE_NAMES.values()`) -- treat it as inconclusive, not a conflict. `wo152_dead_domain_recheck.py`'s own ported copy already has this guard (`_STATE_FULLNAMES_LOWER`); port the same fix back. A second, related false positive found in the same function the same session: Highland town, NY's real "Regular Town Board Meeting" video matched `place="Regular"` -- a meeting-type qualifier word, not a place. `wo152_dead_domain_recheck.py`'s ported copy also guards this (`_MEETING_QUALIFIER_WORDS`); port both fixes together.
 - **Constraint:** don't touch anything else in the function -- the two other confirmed-live catches this session (Bellville city TX -> Austin County, Kiawah Island town SC -> Charleston County) are both caught by the separate `_state_or_kind_conflict()` county-keyword rule, not this one, and are unaffected by this fix.
 - **History:** found and fixed in WO-152's own ported copy, 2026-09-10; see `BACKLOG_DONE.md`.
+
+### The wrong-government checks never look at the resolved video's own host name against the government's name `[JUST-DO-IT]`
+
+- **Issue:** `wo145_api_first_sweep.py`'s `_state_or_kind_conflict()`/`_title_place_conflict()` (reused by `act_on_resolved_wo151`, and so by every sweep built on `hub_sweep_wo126.py`) only ever check the resolved page's *title*/*jurisdiction*/*meeting_body* text against the row's own name and state. Nothing checks the *host* a bare-video-host lead was actually found on. A tenant whose subdomain names a real, different, same-state entity -- a state agency, not a city -- slips through untouched whenever the video's own title happens not to name a place at all.
+- **Impact:** confirmed live in WO-190 (2026-09-11): Beltrami city, MN's (`us:place:2705014`) own `example_meeting_url` resolved cleanly to `minnesotapuc.granicus.com/player/clip/27` -- a real, playable 5.8-hour video that a live fetch of the same clip's `MediaPlayer.php` page confirms is titled "PUC Agenda Meeting on 2013-06-06 9:30 AM": a 2013 Minnesota Public Utilities Commission hearing, not a Beltrami government meeting. Same state (MN), no "county" keyword, and a title with no leading "Name, ST" to check at all -- every existing rule passed it. Caught only by a manual post-hoc audit (comparing the resolved tenant subdomain's own name tokens against the government's name tokens for every "found" row this run), not by the automated checks. Reverted by hand (queue line, probe sidecar row, staged pin, and the `jurisdiction_coverage.csv` row all undone) before this WO's PR; see `BACKLOG_DONE.md`.
+- **Next action:** add a `_host_name_conflict()`-shaped check next to `_state_or_kind_conflict()`: for a `granicus`/`civicclerk`/`escribe`/etc. tenant subdomain (strip the platform's own suffix the way `hub_sweep_wo126.py`'s pin-evidence code already does), require at least one real name-token overlap with the government's own name, same tolerance `_state_or_kind_conflict()` already uses for abbreviated tenants (e.g. `hcnv` for Humboldt County NV passed a manual re-check this same session and must keep passing -- don't require a literal substring match). Skip the check entirely for a shared regional media consortium tenant (Shorewood city MN's real `reflect-lmcc.cablecast.tv` clip, verified live this same session, has zero name-token overlap and is completely legitimate) -- there is no cheap way to tell a regional consortium from a wrong-government host by name alone, so this check should flag for manual review rather than auto-reject when the platform is a bare cablecast/castus host.
+- **Constraint:** a false positive here silently drops a real, legitimate multi-city media consortium's meetings (Shorewood/LMCC is a confirmed-real example) -- ship this as a warning/manual-review flag first, not an auto-`wrong-domain-mapping` skip, until a few consortium tenants are allow-listed.
+- **History:** found and worked around by hand in WO-190, 2026-09-11; see `BACKLOG_DONE.md`.
+
+### A YouTube short-link (`youtu.be/...`) dedup check runs before the embed/watch-URL normalization step, so a duplicate under a different URL form isn't caught `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `act_on_resolved_wo151`'s tier-3 branch checks `index.in_queue(meeting_url) or index.in_queue(result.video_url)` for an already-queued duplicate *before* its own `if "youtube.com/embed/" in queue_url: ... queue_url = f"https://www.youtube.com/watch?v={vid}"` normalization runs. A `youtu.be/<id>` or `.../embed/<id>` research URL is checked against the dedupe index in its original, un-normalized form, while every previously-queued YouTube line in `scripts/tier3_auto_transcription_queue.txt` is stored in the normalized `watch?v=` form -- so the two never compare equal even when they are the exact same video.
+- **Impact:** confirmed live in WO-190 (2026-09-11): Hollywood Park town, TX (`us:place:4834628`) and Kinderhook village, NY (`us:place:3639562`) each already had their own real video queued (added by an earlier sweep, source URL on the government's own site) before this run started. This run's own candidate row for each government carried a `youtu.be` link to the *identical* video, and the dedupe check missed it, appending a second, literal-duplicate line -- caught only by `tests/test_transcription_queue_files.py::test_no_duplicate_rows` failing in this WO's own CI gate run, not by the sweep itself. Both duplicate lines (and their duplicate probe-sidecar rows) removed by hand before this WO's PR.
+- **Next action:** move the `youtube.com/embed/` (and add a `youtu.be/`) normalization step in `act_on_resolved_wo151` to *before* the `index.in_queue(...)` check, not after, so the dedupe check always compares the same canonical form the queue file itself stores.
+- **Constraint:** `act_on_resolved_wo151` lives in `scripts/wo151_research_url_ladder_sweep.py`, imported (not copied) by at least this WO's own script -- fix it once there rather than patching around it in every importer.
+- **History:** found in WO-190, 2026-09-11; see `BACKLOG_DONE.md`.
 
 ### Coverage registry: per-state view and other dashboard additions `[JUST-DO-IT]`
 
