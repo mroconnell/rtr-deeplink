@@ -624,6 +624,15 @@ whether this app can still generate one from the audio track — only the
 cloud worker is excluded, since it runs from a server IP YouTube blocks
 and could never fetch that audio anyway.
 
+**Superseded on the dedicated Mac by `scripts/youtube_drip.py` (2026-09-11)** —
+one always-on process that fetches captions for waiting pages, feeds the
+YouTube lines of the tier-3 queue, and downloads audio for captions-disabled
+pages for local Whisper, all under one paced YouTube request budget with a
+long escalating back-off on a block. The launchd job below stays as the
+fallback for a Mac where the drip is not running; never run both on the
+same internet connection. Plain-language operating instructions:
+`docs/YOUTUBE_DRIP_RUNBOOK.md`.
+
 Runs automatically once a day via `launchd` on the user's own Mac (must
 be that machine specifically — the residential IP is the whole point).
 `scripts/com.redtaperecordings.fetch-youtube-transcripts.plist` has the
