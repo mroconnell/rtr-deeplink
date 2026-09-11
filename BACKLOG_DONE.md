@@ -187,6 +187,112 @@ enough there.
 `app/`, `archive/`, or `worker/` file was touched, so nothing here needs
 a deploy. The next time any of the 17 fixed scripts runs, its ingests
 already carry the government id.
+## WO-221: pin the 413 unpinned shared-host tier-3 queue lines to their governments; a matched pin wins on a multi-government host [Done 2026-09-11]
+
+**Why.** Since WO-210 went live (2026-09-11, 11:40 PT), a YouTube/
+youtu.be/Vimeo page only gets a government when a per-video or per-
+channel pin matches it. The cloud worker re-resolves a video when it
+transcribes it, so a shared-host tier-3 queue line with no pin lands as
+`rtr:unknown` -- no hub link, no id -- the moment the worker reaches it.
+Confirmed live on pages 8661/8662/8664/8670 (Eaton County MI, Roscommon
+County MI, Lancaster County NE, Lenox township MI): all four are old
+queue lines the worker transcribed on 2026-09-11 with no pin on `main`.
+
+**Part A -- re-derived the count first.** The brief's own estimate (413)
+was a lead, not a fact (`CLAUDE.md`'s own rule). Re-derived against
+`main` at `2445edb`: `scripts/tier3_auto_transcription_queue.txt` has
+1,300 YouTube/youtu.be/Vimeo lines; **499**, not 413, had no per-video
+pin -- the brief's own join script undercounted because it didn't
+recognize the newer `youtube:<id>` pin-prefix convention (`app/platforms/
+youtube.py`'s/`vimeo.py`'s own `external_id=f"youtube:{id}"`/
+`f"vimeo:{id}"`) as "already pinned." Joined all 499 against
+`jurisdiction_coverage.csv`'s URL columns and the nationwide ingest logs,
+then verified every join against the video's own title/channel (oEmbed,
+no download) before writing anything -- `classify_video_hand_check()`
+from `scripts/wo174_pipeline.py` plus a name/state-in-title check built
+for this WO. Conservative by design: a "neutral" join (real URL-level
+join, but the title/channel carries no independent confirming signal --
+common for a bare "City Council Meeting" title) was left unpinned rather
+than guessed.
+
+| Outcome for the 499 unpinned lines | Count of 499 | What it means |
+|---|---|---|
+| Pinned | 176 | Verified by name/state match in the video's own title or channel; a real, new `tenant_overrides.csv` row |
+| Already covered by an existing pin | 155 | 118 by an existing `channel=@handle` pin, 37 by an existing per-video pin (one of the 37 disagreed with WO-221's own derived candidate -- left as-is, flagged for a human, see `BACKLOG.md`) |
+| No government found | 135 | 82 no candidate at all; 53 the video itself is dead (404/401/400) |
+| Ambiguous, left for a human | 25 | A real join existed but nothing in the video's own title/channel confirmed or ruled it out |
+| Owner body (Kind A) | 8 | The channel belongs to a different real public body (school committee, planning commission, a state parks/government-relations office) -- logged to `research/wo221_owner_bodies.csv`, never pinned to the queue's government |
+
+Two of the 25 ambiguous rows (Armada Township MI, Clinton NY) resolved
+automatically once the type word ("Township" vs "village", "Town of"
+vs "village") was checked against each candidate's own registry name --
+same pattern as CLAUDE.md's "counties that share a name with an
+independent city" breakthrough. One of those two (Clinton) disagreed
+with an existing pin once cross-checked -- see the new `BACKLOG.md`
+`[HUMAN]` entry.
+
+**Part B -- a matched pin now wins before the classify/table/registry
+rungs run.** `app/utils/gov_registry/resolver.py`'s rung 1b (WO-210) only
+ever consulted a `fallback`-strength pin (what every WO-221/most real
+pins use) at rung 5, after rungs 2-4 had already tried a national-table
+match on the video's own (untrusted) title. Real bug this caused: page
+8632 "Bronx, NY" resolved to New York city (`us:place:3651000`, "Bronx"
+is a borough of NYC in the place table) even though a real pin said
+`us:county:36005`. New `_matched_multi_gov_pin()` (any-strength version
+of `_pinned()`) is called at rung 1b itself: when a per-video/channel/
+external-id pin matches on a `MULTI_GOV_HOSTS` host, its government
+returns immediately, before rung 2's name repair ever runs. Rung 1b's own
+"no match -> no government" rule is untouched -- only fires on an actual
+match. Reproduced the Bronx case directly in
+`tests/test_gov_registry.py` (`test_matched_pin_wins_over_national_table_
+bronx_county_case`, with a `test_bronx_ny_resolves_nationally_to_new_
+york_city_control` control proving what rung 4 alone would have done) plus
+two more regression tests (a different, unpinned video on the same host
+still blanks; an `authoritative`-strength pin still works as before). All
+320 `test_gov_registry.py` tests pass, full suite 3,245 passed/16 skipped.
+`archive/db/crud.py`'s `_resolve_page_government()` calls the SAME public
+`resolve_government()` entry point (confirmed by reading the call chain,
+not assumed), so the fix reaches both the initial tier-3 ingest
+(`scripts/feed_tier3_auto_transcription.py`) and the worker's own
+idle-time re-resolve (`worker/main.py`'s `maybe_generate_auto_job()` ->
+`archive/db/crud.py`'s `create_transcription_job()` ->
+`_find_or_create_page()`) without any change to either of those files.
+
+**Part C -- dry run only, never `--apply`.** Ran
+`scripts/backfill_gov_id.py` as a dry run (`ARCHIVE_DATABASE_URL` mapped
+into `DATABASE_URL` in-process, never printed), restricted to the 7
+shared-host names. Of 8,065 pages considered, 53 would change; **6** of
+those are pinned specifically by this WO's new rows, **4** of which are
+real already-unkeyed pages from the reported incident (8661, 8662, 8664,
+8670 -- `rtr:unknown:*` -> a real `gov_id`); the other 2 (8381, 8619)
+already had *some* identity and get corrected by Part B's ordering fix.
+The much larger 1,032-page "blank tier" total on these hosts is the
+FULL corpus, not this WO's own batch -- most of those videos are outside
+the 499 lines this WO looked at.
+
+**A real, separate finding along the way, not fixed here:** a
+`channel=@handle` pin can never repair an *already-existing* Archive
+page -- `MeetingPage.video_channel` is `NULL` on all 5 of the real
+incident pages (confirmed by direct DB read), `scripts/backfill_gov_id.py`
+builds its match hints from the STORED column only (never re-fetches),
+and `archive/db/crud.py`'s existing-page refresh path never touches
+`video_channel` either. Only a per-video pin can ever fix a page that
+already exists. Filed as its own `[NEEDS-AUDIT]` entry in `BACKLOG.md`
+rather than fixed here (out of this WO's scope -- Part B's brief was the
+resolver ordering, not the ingest write path).
+
+**Caution.** The Clinton NY conflict above (a real disagreement between
+this WO's own title-based join and an existing pin) needs a human look
+before either is trusted further. The 135 no-government and 25 ambiguous
+rows are real, honest gaps, not failures -- see
+`research/wo221_no_join.csv` and the ambiguous rows in
+`research/wo221_report.csv`.
+
+**Recommendation.** Deploy. The 176 new pins and the resolver ordering
+fix are both on `main` but not live -- every shared-host tier-3 queue
+line the worker reaches before the next deploy still lands unkeyed. After
+deploy, the conductor can re-run Part C's dry run (now against the
+deployed pins) and, once Ryan says go, `--apply` it.
 
 ## WO-205 follow-up: the Utah PMN half of the long-meeting substitution — 125 more queue lines swapped, ~168 Whisper hours saved; the search now survives PMN's JSON outage [Done 2026-09-11]
 
