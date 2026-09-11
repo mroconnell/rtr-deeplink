@@ -325,7 +325,7 @@ Trust, safety & data quality  (18)
   `[LATER]` Prompt injection isn't a live product risk today, but the…
   `[HUMAN]` `[BIG]` Nothing verifies a submitted URL is a genuine…
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
-  `[NEEDS-AUDIT]` `[EASY]` `jurisdiction_coverage.csv`'s own `domain`…
+  `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
 
 Roadmap & strategy `[IMPROVEMENT-ROUND]`  (25)
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
@@ -5138,41 +5138,30 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 - **History**: fix detail and live verification against the real Chula
   Vista transcript in `BACKLOG_DONE.md`.
 
-### `[NEEDS-AUDIT]` `[EASY]` `jurisdiction_coverage.csv`'s own `domain` column is a bare host on most rows but a full URL (scheme + path) on about a fifth of them
+### `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has shifted/corrupted columns (`domain` reads `'False'`, blank `gov_id`)
 
-- **Issue**: confirmed live 2026-09-10 (WO-174): 6,185 of 31,539 rows in
-  `jurisdiction_coverage.csv` carry a value like
-  `https://www.fairfaxcounty.gov/` in `domain` instead of a bare host
-  (`www.fairfaxcounty.gov`). Any script that concatenates
-  `f"https://{domain}/..."` without normalizing first builds a nonsense
-  URL (`https://https://www.fairfaxcounty.gov//AgendaCenter`), which
-  fails at the DNS/connection stage and reads exactly like a dead
-  domain, not a formatting bug — WO-174's own probe hit this on Fairfax
-  County, VA before a fix was added locally in
-  `scripts/wo174_pipeline.py`'s `normalize_domain()`.
-- **Impact**: every sweep script that reads `domain` straight from this
-  file (or from a candidates export derived from it, e.g.
-  `wo174_candidates.csv`) and builds a URL from it the same way
-  under-counts real, reachable governments as `dead`/`dns-unresolvable`
-  — silently, since the symptom looks identical to a genuinely broken
-  domain. Scope unknown: no audit has checked how many prior sweeps'
-  `dead`/`dns-unresolvable` verdicts are actually this bug.
-- **Next action**: add one shared `normalize_domain()` helper (strip a
-  leading `scheme://`, then everything from the first `/` or `?`
-  onward — `scripts/wo174_pipeline.py` has a working implementation,
-  copy its logic) to whichever shared module already sits upstream of
-  every domain-consuming sweep (`app/utils/jurisdiction_enrich.py` is
-  the likely home), and audit prior sweeps' `dead`/`dns-unresolvable`
-  rows for governments whose `domain` carried a scheme, to see how many
-  were actually reachable.
-- **Constraint**: don't "fix" `jurisdiction_coverage.csv` itself by
-  rewriting `domain` in place across 6,185 rows in one pass — normalize
-  at read time in the shared helper instead; a bulk rewrite of that file
-  is exactly the kind of large mechanical edit ENUMERATION_METHODS.md
-  §158's write protocol exists to make safe, but it's also needless
-  churn when every consumer can just normalize on the way in.
-- **History**: found and worked around locally in `BACKLOG_DONE.md`'s
-  WO-174 entry; not otherwise investigated.
+- **Issue**: found while auditing `domain` shapes for WO-193
+  (2026-09-11): one row's fields are shifted left by several columns —
+  `city_name` is `9`, `state_or_province` is `carrollcountyil.gov`,
+  `country` is `http://www.blackhawkhills.com/`, `domain` is the literal
+  string `False`, `suspected_meeting_link_provider` holds
+  `no-platform-link-found`, and `gov_id` is blank. This looks like a
+  real government (Carroll County, IL area) whose row got mis-shifted
+  by an earlier script, not a domain-shape problem.
+- **Impact**: small (one row) but this government is currently
+  unidentifiable by `gov_id` and would sort oddly in any tool that reads
+  `domain` expecting a real host.
+- **Next action**: find this row (grep `carrollcountyil.gov` in
+  `jurisdiction_coverage.csv`) and manually re-derive its correct column
+  values, or delete and re-add it cleanly, once someone can confirm
+  what its real fields should be.
+- **Constraint**: don't guess the shift amount from this one row alone —
+  confirm against a live source (the county's actual site/domain)
+  before rewriting it.
+- **History**: WO-193 (`BACKLOG_DONE.md`) left this row's other columns
+  untouched on purpose — normalizing `domain` on a already-corrupted row
+  doesn't fix the corruption, and guessing the intended shift wasn't in
+  scope for a domain-shape pass.
 
 ## Roadmap & strategy `[IMPROVEMENT-ROUND]`
 

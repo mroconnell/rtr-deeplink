@@ -63,6 +63,7 @@ of what else that script does at import time.
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -212,7 +213,126 @@ def normalize_host(value: Optional[str]) -> str:
         host = host.rsplit("@", 1)[-1]
     if ":" in host:
         host = host.split(":", 1)[0]
-    return host.strip().strip("/").lower()
+    return host.strip().strip("/").lower().rstrip(".")
+
+
+# --- WO-193 (2026-09-11): domain-shape classification and canonicalisation ---
+#
+# `normalize_host()` above is the READ-time helper (used by every sweep to
+# try a candidate) -- it always returns a usable host string and never
+# tells the caller what the *input* shape was. The functions below exist
+# for the one-time bulk normalisation of jurisdiction_coverage.csv's
+# `domain`/`alternate_domains` columns (WO-174 found ~20% of `domain`
+# values are full URLs, not bare hosts -- see BACKLOG_DONE.md's WO-193
+# entry for the measured counts). They share `normalize_host`'s core
+# host-extraction logic but additionally report *what shape the input
+# was* and *what to preserve*, which the read-time helper doesn't need.
+#
+# A key design choice: the anomaly checks below (space/comma/semicolon,
+# uppercase, trailing dot, a port) look ONLY at the parsed HOST
+# component, never the whole raw string. A real, confirmed row in the
+# file is a Facebook profile URL with a comma inside its query string
+# (`...id=61558365536288&amp;mibextid=LQQJ4d`, the `&amp;` is an
+# HTML-entity-encoded `&`, which decodes to a literal `;` in some feeds)
+# -- that comma lives in the query, not the hostname, so the row is a
+# perfectly ordinary `scheme_host_query` shape, not `other`. Checking the
+# whole string would have misclassified it.
+
+_HOST_ANOMALY_RE = re.compile(r"[,\s;]")
+
+
+def _split_domain_value(value: str) -> Tuple[bool, str, str, str]:
+    """(has_scheme, host_with_possible_port, path, query) for a single
+    `domain`/`alternate_domains` cell value. Assumes `https://` when no
+    scheme is present, purely to get `urlparse` to split host from path
+    correctly -- the assumed scheme is never reported back to the
+    caller."""
+    v = (value or "").strip()
+    has_scheme = "://" in v
+    work = v if has_scheme else "https://" + v
+    parsed = urlparse(work)
+    host = parsed.netloc or parsed.path
+    if "@" in host:
+        host = host.rsplit("@", 1)[-1]
+    return has_scheme, host, parsed.path, parsed.query
+
+
+def classify_domain_shape(value: Optional[str]) -> str:
+    """Classify one `domain`/`alternate_domains` cell's shape. One of:
+    'blank', 'bare_host', 'bare_host_www', 'scheme_host',
+    'scheme_host_path', 'scheme_host_query', 'other'.
+
+    'other' covers a malformed or unexpected host: a space/comma/
+    semicolon inside the hostname itself (not the path or query --
+    see the module note above), an uppercase letter in the host, a
+    trailing dot, an explicit port, or a no-scheme value that still
+    carries a path/query (a bare host can't have a path without a
+    scheme to separate the two unambiguously, so this file's one such
+    row -- `regionalwebtv.com/spotsysb` -- is treated as an edge case,
+    not a clean bare host)."""
+    v = (value or "").strip()
+    if not v:
+        return "blank"
+    has_scheme, host_raw, path, query = _split_domain_value(v)
+    hostonly = host_raw
+    port = None
+    if ":" in hostonly:
+        hostpart, _, portpart = hostonly.rpartition(":")
+        if portpart.isdigit():
+            hostonly, port = hostpart, portpart
+    if not hostonly:
+        return "other"
+    if _HOST_ANOMALY_RE.search(hostonly):
+        return "other"
+    if hostonly != hostonly.lower():
+        return "other"
+    if hostonly.endswith("."):
+        return "other"
+    if port is not None:
+        return "other"
+    if has_scheme:
+        if query:
+            return "scheme_host_query"
+        if path not in ("", "/"):
+            return "scheme_host_path"
+        return "scheme_host"
+    if "/" in v or "?" in v:
+        return "other"
+    return "bare_host_www" if hostonly.startswith("www.") else "bare_host"
+
+
+def canonicalize_domain(value: Optional[str]) -> Tuple[str, Optional[str]]:
+    """Canonical (host, extra_url) for one `domain`/`alternate_domains`
+    cell. `host` is the bare, lowercase host -- no scheme, no path, no
+    query, no port, no trailing dot. A leading `www.` is preserved
+    exactly as recorded (never added or stripped -- some rows record the
+    working variant on purpose). `extra_url` is the original value,
+    whitespace-trimmed, when it carried a real path or query beyond the
+    host (a real page, not just a scheme) -- callers append this to
+    `alternate_urls` so nothing is lost; `None` when the value was
+    already just a host (with or without a scheme/port/trailing dot to
+    strip). Never returns a blank host for a non-blank input -- an
+    'other'-shaped value still gets whatever host `urlparse` can find,
+    so a row is never silently dropped."""
+    v = (value or "").strip()
+    if not v:
+        return "", None
+    shape = classify_domain_shape(v)
+    has_scheme, host_raw, path, query = _split_domain_value(v)
+    hostonly = host_raw
+    if ":" in hostonly:
+        hostpart, _, portpart = hostonly.rpartition(":")
+        if portpart.isdigit():
+            hostonly = hostpart
+    host = hostonly.strip().strip("/").lower().rstrip(".")
+    extra_url = None
+    if shape in ("scheme_host_path", "scheme_host_query"):
+        extra_url = v
+    elif shape == "other" and not has_scheme and ("/" in v or "?" in v):
+        # No-scheme value with a path (e.g. "regionalwebtv.com/spotsysb")
+        # -- preserve it as a real URL by supplying the scheme it lacked.
+        extra_url = "https://" + v
+    return host, extra_url
 
 
 def candidate_domains(row: Dict[str, Any]) -> List[str]:
