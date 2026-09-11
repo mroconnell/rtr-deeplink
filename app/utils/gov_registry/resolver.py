@@ -513,6 +513,27 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     With two candidates and NO type word to choose by, this returns
     nothing. Declining is the whole posture of the ladder: minting an
     honest `rtr:` id beats picking the more populous Waukesha.
+
+    **A lone place candidate is not exempt from the type word either
+    (WO-198).** The filter below used to run only when the place table
+    already had more than one row -- so a name with a type word that
+    named a DIFFERENT real government than the place table's single
+    match still returned that place, unfiltered. Real and wrong:
+    "Northampton (township), PA" has exactly one place row (Northampton
+    BOROUGH) and exactly one same-named cousub name shared by two real
+    townships in different counties (Bucks and Somerset); the borough
+    won by default because it was the only place candidate, not because
+    it was the right kind of government. "Perry (township), OH" is the
+    same shape against Perry VILLAGE, with 28 same-named townships
+    across 28 counties on the cousub side. Filtering places by the type
+    word unconditionally -- exactly how cousubs are already filtered
+    just below -- makes both cases decline (correctly: the real
+    township still can't be picked without knowing the county) instead
+    of confidently answering the wrong government. See
+    `tests/test_gov_registry.py`'s WO-198 cases, and the two Cottage
+    Grove tests above this function's own real base case, for why a
+    single real candidate that fails the type check must still be
+    discarded rather than trusted.
     """
     # "City and County of San Francisco" -> "San Francisco". The phrase
     # is not one `_normalize_candidates()` strips (its own leading-type
@@ -521,9 +542,10 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
     name = classify.CONSOLIDATED_RE.sub("", name).strip() or name
 
     places = tables.us_places().lookup_all(name, state)
-    if len(places) > 1:
-        matching = [p for p in places if _census_type_word(p.name) == type_preference]
-        places = matching if len(matching) == 1 else []
+    if type_preference:
+        places = [p for p in places if _census_type_word(p.name) == type_preference]
+    elif len(places) > 1:
+        places = []
     place = places[0] if len(places) == 1 else None
 
     cousubs = tables.us_cousubs().lookup_all(name, state)
@@ -1600,6 +1622,17 @@ def _squashed_national_hit(
     A squashed match is a weaker signal than a real one, so it runs after
     every ordinary lookup has already declined and only with a state in
     hand -- see `tables.NameStateTable.lookup_squashed()`.
+
+    **The place table is tried unconditionally here even when the name
+    has a type word (WO-198).** `_general_purpose_lookup()` above already
+    declines a place whose census type word disagrees with
+    `type_preference`, but this rung does its own separate, unfiltered
+    place lookup and was reached anyway once that decline happened --
+    "Northampton (township), PA" and "Perry (township), OH" both still
+    matched this rung's `us_places.lookup_squashed()` (the borough/
+    village, exact-spelling match, so "spacing ignored" was really "type
+    word ignored") even after rung 4 correctly declined them. The type
+    filter below closes the same gap here.
     """
     if not state:
         return None
@@ -1626,6 +1659,16 @@ def _squashed_national_hit(
     for table, namespace, resolved_type in table_choices:
         hit = table.lookup_squashed(name, state)
         if not hit:
+            continue
+        if (
+            namespace == "us:place"
+            and type_preference
+            and _census_type_word(hit.name) != type_preference
+        ):
+            # A name that says "township"/"village"/etc. may not be
+            # satisfied by a same-named place of a DIFFERENT type just
+            # because spacing made it the only candidate -- see this
+            # function's own WO-198 note above.
             continue
         return (
             _as_government(
