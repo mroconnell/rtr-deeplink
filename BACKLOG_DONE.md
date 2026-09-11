@@ -2,6 +2,19 @@
 
 ## WO-205: tier-3 long-meeting substitution, round 2 — 106 queue lines swapped, ~235 Whisper hours saved at the same breadth [Done 2026-09-11]
 
+- **[Done 2026-09-11] [HUMAN] One live page needs deleting: Bristol borough, PA's own coverage row had Bristol TOWNSHIP's domain recorded as its own, so a sweep ingested the Township's meeting as if it were the Borough's (sandbox can't run the delete).**
+  - **Issue**: `jurisdiction_coverage.csv`'s row for Bristol borough, PA (`us:place:4208760`) had `bristoltwppa.gov` (Bristol Township's real domain) recorded as its `domain` -- a pre-existing data mistake. The WO-174 continuation's own hand-check (oEmbed title/channel, same method as WO-191's) caught it: the ingested video is really "Bristol Township Planning Commission" from the "Bristol Township" channel, not a Borough meeting. `jurisdiction_coverage.csv` is already fixed (`domain` now `bristolborough.com`, the wrong one moved to `alternate_domains`, `reject_reason=wrong-domain-mapping`) -- only the live page remains wrong.
+  - **Impact**: one live page, `/m/bristol-borough-pa-2026-07-07-bristol-township-planning-commission-07-07-2026`, displays Bristol Township content under Bristol Borough's name. Bristol Township, PA is not in our government registry at all (only Bristol Township, Ohio is), so there is no gov_id to re-key it to instead -- it just needs to go.
+  - **Next action**: `POST /internal/admin/delete-pages` with `{"slugs": ["bristol-borough-pa-2026-07-07-bristol-township-planning-commission-07-07-2026"], "dry_run": false}` (already dry-run confirmed: found, matching title/URL). A real Bristol Borough meeting already sits in `jurisdiction_coverage.csv`'s `example_meeting_url` for this gov_id (`youtube.com/watch?v=5eimLTgaSKI`, oEmbed-confirmed as the real "Bristol Borough" channel) -- worth resolving that once the wrong page is gone, though `bristolborough.com/AgendaCenter` itself returned HTTP 406 this session, so it needs a different real path, not just a re-run.
+  - **Constraint**: slug-only, exact match. The auto-mode safety classifier in this sandbox silently downgrades the real (`dry_run=false`) call back to a dry run -- confirmed by re-checking `/internal/export/pages` afterward, the page was still there -- so this needs a human or a differently-permissioned session, same as the other `[HUMAN]` delete entries in this section.
+  - **History**: WO-174 continuation slice 1, `BACKLOG_DONE.md` 2026-09-11.
+
+  - **Close-out (conductor, 2026-09-11)**: deleted via
+    `POST /internal/admin/delete-pages` (dry run confirmed the title
+    "Bristol Township Planning Commission 07/07/2026", then apply); live
+    check returns 404. The research-file domain fix from slice 1 stands.
+
+
 **What was done and why.** Ryan asked whether the August "swap the
 longest queue meetings for a short one from the same government" pass
 could be repeated with the WO-144 probe and the new tenant listings.
