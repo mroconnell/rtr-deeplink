@@ -160,7 +160,27 @@ services:
     # `alembic current` must print `a9207c0eb761 (head)` before this
     # line is allowed to reach main.
     preDeployCommand: cd app && alembic upgrade head
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    # --loop asyncio added 2026-09-10, temporarily, as a bounded experiment
+    # for the SIGABRT/SIGSEGV crash-loop (BACKLOG.md, "rtr-deeplink's
+    # SIGABRT crash-loop"). Real evidence from two PYTHONFAULTHANDLER
+    # dumps that morning (see that entry): both crashes printed "Unexpected
+    # error 9 on netlink descriptor" immediately before "Fatal Python
+    # error: Aborted"/"Segmentation fault" -- that message comes from
+    # libuv, the C library uvloop (uvicorn's default event loop when
+    # installed, silently, via `--loop auto`) is built on, and neither
+    # dump marked any thread "Current thread" the way a normal
+    # Python-level fault does, consistent with the abort happening inside
+    # native code that had released the GIL rather than in this app's own
+    # code. uvloop isn't a deliberate, documented dependency here the way
+    # Playwright is -- nothing in this repo ever chose it on purpose, it's
+    # just uvicorn's silent default -- which makes it a cheap thing to
+    # rule out. `--loop asyncio` swaps in Python's plain built-in event
+    # loop (slower, but not enough to notice) so a follow-up occurrence of
+    # this crash-loop tells us whether uvloop was the cause: if it recurs
+    # unchanged, uvloop is ruled out and this flag should come back out;
+    # if it stops, that's a real (not certain, but real) signal. Revert by
+    # deleting this flag once one of those two things is confirmed.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*' --loop asyncio
     healthCheckPath: /api/health
     # ffprobe availability confirmed live 2026-08-08: a real POST to
     # /api/transcription/check-feasibility (app/main.py, shells out to
