@@ -153,7 +153,16 @@ hs.PIN_SOURCE = "wo151_research_url_ladder_sweep"
 hs.PINS_CSV = RESEARCH_DIR / "wo151_pins.csv"
 
 MAX_CONSECUTIVE_ERRORS = 6
-HEADLESS_BUDGET = 150  # whole-run cap; see module docstring point 3
+# Whole-run cap; see module docstring point 3. The first 96-row session
+# (PR #871) used 150 as a safety default and only spent 3 renders (3% of
+# the 96 rows). This continuation covers the remaining 930 rows -- raised
+# to 1,000 (comfortably above the worst case of one headless render per
+# remaining candidate, since headless only fires for a loaded page with
+# no visible link -- it can never exceed the row count) so a real,
+# higher-than-expected headless rate on this batch doesn't silently cut
+# the run short partway through. The actual count used is reported at
+# the end of the run and in this WO's close-out.
+HEADLESS_BUDGET = 1000
 
 # --- wo141_access_ladder_pilot.py, imported via sys.path (lives outside
 # this repo, in rtr-business/research) -----------------------------------
@@ -646,6 +655,84 @@ async def act_on_resolved_wo151(
 
 
 hs.act_on_resolved = act_on_resolved_wo151
+
+
+# --------------------------------------------------------------------------
+# YouTube block circuit breaker (this WO's own addition -- per
+# docs/investigations/youtube_429_block.md: on the first block signature,
+# stop every further YouTube call for the run). `YouTubeAssetFinder.
+# resolve_video_id()` already degrades a blocked yt-dlp call gracefully
+# (a real, playable ResolvedMeeting with no captions -- see
+# app/platforms/youtube.py) rather than raising, and that degraded result
+# already flows into act_on_resolved_wo151's video-only branch, i.e. it
+# is ALREADY treated as a tier-3 candidate with no code change needed.
+# What this adds on top: once the block's own warning text is seen once,
+# skip the actual yt-dlp network call entirely for every later `platform
+# == "youtube"` lead this run -- there is no reason to keep hitting an
+# endpoint already confirmed blocked, and each further attempt is one
+# more request against whatever earned the block in the first place.
+# Monkeypatched over hs.resolve_lead, same pattern as hs.Fetcher/
+# hs.act_on_resolved above, so hs._process_gov (reused, not reimplemented)
+# picks it up automatically.
+# --------------------------------------------------------------------------
+
+from app.platforms.models import ResolvedMeeting  # noqa: E402
+from app.platforms.youtube import YouTubeAssetFinder  # noqa: E402
+
+YOUTUBE_BLOCK_MARKER = "YouTube is currently blocking caption requests from our server"
+
+_youtube_block_detected = False
+_youtube_block_signature = ""
+_youtube_calls_skipped_after_block = 0
+
+_original_resolve_lead = hs.resolve_lead
+
+
+async def resolve_lead_wo151(session: aiohttp.ClientSession, lead):
+    global _youtube_block_detected, _youtube_block_signature
+    global _youtube_calls_skipped_after_block
+
+    if _youtube_block_detected and lead.platform == "youtube":
+        url = lead.url.strip()
+        video_id = YouTubeAssetFinder.extract_video_id(url)
+        if video_id:
+            _youtube_calls_skipped_after_block += 1
+            result = ResolvedMeeting(
+                platform="youtube",
+                source_url=url,
+                external_id=f"youtube:{video_id}",
+                video_url=f"https://www.youtube.com/embed/{video_id}",
+                video_format="youtube",
+                video_warnings=[
+                    "YouTube is currently blocking automated caption requests "
+                    "from our server, so no transcript is available for this "
+                    "video — but it should still play fine above."
+                ],
+                transcript_warnings=[
+                    f"{YOUTUBE_BLOCK_MARKER} (this run's remaining YouTube "
+                    "calls were skipped after the first block signature, "
+                    "per docs/investigations/youtube_429_block.md -- "
+                    "treated as a tier-3 candidate without a wasted call)"
+                ],
+            )
+            return result, url, False
+
+    result, url, high_risk = await _original_resolve_lead(session, lead)
+    if not _youtube_block_detected:
+        warnings = " ".join(result.transcript_warnings or [])
+        if YOUTUBE_BLOCK_MARKER in warnings:
+            _youtube_block_detected = True
+            _youtube_block_signature = warnings
+            print(
+                f"\nYOUTUBE BLOCK DETECTED -- stopping further YouTube caption "
+                f"calls this run, per docs/investigations/youtube_429_block.md. "
+                f"Signature: {warnings[:300]!r}\n",
+                file=sys.stderr,
+            )
+    return result, url, high_risk
+
+
+hs.resolve_lead = resolve_lead_wo151
 
 
 # --------------------------------------------------------------------------

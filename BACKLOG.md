@@ -148,7 +148,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (7)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (130)
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] Three governments' `jurisdiction_coverage.csv` rows…
   [NEEDS-AUDIT] WO-167 made `YouTubeAssetFinder.resolve_video_id()`…
@@ -158,7 +158,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (129)
   [NEEDS-AUDIT] A real US government's YouTube video got minted with a…
   [NEEDS-AUDIT] `rtr-deeplink`'s SIGABRT crash-loop (status 134) is…
   [NEEDS-AUDIT] `hub_sweep_wo126.Result` only fills…
-  [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless…
+  [NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own…
+  [NEEDS-AUDIT] A tier-3 probe's own report `note` always overwrites an…
   [NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
   [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
@@ -1135,14 +1136,21 @@ of human step they need.
   - **Impact**: WO-164's three sharper content reject reasons (`meeting-without-video`/`no-meeting-nor-video`/`video-without-meeting`, `wo164_retag_rules.md`) can't be assigned precisely by anything built on `hub_sweep_wo126`'s reused `Result`/`act_on_resolved` — WO-151's own sweep (`scripts/wo151_research_url_ladder_sweep.py`) worked around this with a coarser reason-string-only mapping and reports 0 `video-without-meeting` rows as an honest gap, not a real absence.
   - **Next action**: have `act_on_resolved()` (and its WO-151 override) record `meeting_url`/`video_url`/a candidates-tried count on `res` before raising `Skip`, not only on success, so a future sweep reusing this module can apply WO-164's exact field-based mapping instead of a reason-string approximation.
   - **Constraint**: touch the shared `hub_sweep_wo126.py` copy, not just WO-151's patched override, so every future sweep that reuses it benefits.
-  - **History**: found 2026-09-10 building WO-151 (`docs/BREADTH_SWEEP_BRIEF.md`'s access-ladder sweep); see `BACKLOG_DONE.md`'s WO-151 entry.
+  - **History**: found 2026-09-10 building WO-151 (`docs/BREADTH_SWEEP_BRIEF.md`'s access-ladder sweep); see `BACKLOG_DONE.md`'s WO-151 entry. Confirmed still present 2026-09-10 running WO-151's own continuation (the remaining 930 governments): `video-without-meeting` is still 0 across the full 1,026-government run, for the identical reason — the continuation deliberately did not touch `hub_sweep_wo126.py`, per its own instructions to touch only files it created.
 
-- **[NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s headless rung is capped at 150 renders for the whole run — most of the 1,026-government candidate list will exhaust that budget before it's reached.**
-  - **Issue**: `HEADLESS_BUDGET = 150` is a whole-run cap, and the pilot showed ~80% of "no-platform-link-found" candidates trigger a headless attempt (25 of 30). At that rate the budget runs out well before the full candidate list is processed.
-  - **Impact**: governments processed after the cap is hit get no headless second opinion — `docs/COVERAGE_HANDOVER.md`'s breakthrough #1 found headless recovers a real platform link on ~41% of "no platform" verdicts for JS-rendered navigation, so some real coverage is left on the table for the tail of any run past 150 no-platform-link-found candidates.
-  - **Next action**: either raise the budget for a dedicated follow-up pass restricted to `no-platform-link-found` rows from this WO's own report, or measure headless's actual yield on a larger sample before spending more wall-clock time on it (this WO's own 30-row pilot found 0/25 headless renders recovered a link — a small, possibly unrepresentative sample; the larger governments this coverage-registry note was based on may behave differently than the small towns this candidate list skews toward).
-  - **Constraint**: one headless browser at a time, real delay — don't parallelize past a single browser without re-checking whether that changes a host's own rate-limiting behavior.
-  - **History**: `BACKLOG_DONE.md`'s WO-151 entry has the pilot's exact headless numbers.
+- **[NEEDS-AUDIT] `scripts/wo151_research_url_ladder_sweep.py`'s own `rung_answered` report column is left blank whenever a government was blocked or hit a "prove you're human" page — `access_mode` carries the same signal correctly for every row instead.**
+  - **Issue**: `process_candidate()` only sets `row["rung_answered"]` on the try block's success path and on a `Skip` exception; the `cloudflare`, `blocked` (403/network), and `dns`-without-a-working-variant branches of the `FetchError` handling never set it, so it stays at its default `""`.
+  - **Impact**: a report reader who filters or sums `rung_answered` directly undercounts — 45 of the WO-151 continuation's 930 rows (25 challenge, 12 blocked-plain-http, 2 stale-url-404-with-fallback-elsewhere in the underlying data churn between reads) show a blank instead of a real value. `access_mode` (set via a `{kind: ...}.get(kind, "dead")` map covering every branch) does not have this gap and was used for both this WO's "which rung answered" tables instead — confirmed to reproduce the pilot's own already-reported numbers exactly before being trusted for the continuation's combined table.
+  - **Next action**: set `row["rung_answered"] = fetcher.last_rung` (or `"challenge"`/`"dead"` as appropriate) in the `cloudflare`/`blocked`/`dns` branches too, matching what `access_mode`'s mapping already does — or, simpler, drop the separate `rung_answered` column and report from `access_mode` alone, since nothing observed this session needed the distinction between them.
+  - **Constraint**: touching this changes a column in an already-large, already-committed report file (`wo151_report.csv`) — a fix should apply going forward, not attempt to backfill 1,026 already-written rows.
+  - **History**: found 2026-09-10 running WO-151's continuation (the remaining 930 governments).
+
+- **[NEEDS-AUDIT] A tier-3 probe's own report `note` always overwrites an earlier warning note on the same row, so a YouTube-block circuit breaker's own marker text never survives into a queued row's report line.**
+  - **Issue**: `wo151_research_url_ladder_sweep.py`'s continuation added a circuit breaker that skips the real yt-dlp network call after the first YouTube caption-block signature and returns a `ResolvedMeeting` whose `transcript_warnings` names the skip. But `act_on_resolved_wo151`'s tier-3 branch unconditionally sets `res.detail = f"probe: verdict={probe.verdict} ..."` right after, which becomes the report's `note` column — overwriting the skip marker with no trace.
+  - **Impact**: cosmetic/reporting only, not functional — every YouTube lead after the block still resolved to a clean video-only result and queued normally (confirmed: 0 crashes, 0 further-blocking signs). But the exact count of calls the breaker actually skipped can't be read back from `wo151_report.csv`, which the continuation's own `BACKLOG_DONE.md` entry reports as an honest gap rather than a guessed number.
+  - **Next action**: if a future sweep needs this count, append rather than overwrite `res.detail` (e.g. `res.detail = f"{res.detail}; {probe_summary}"` when `res.detail` is already set), or add a dedicated `breaker_skipped` column.
+  - **Constraint**: low priority — no known consumer needs this count today.
+  - **History**: found 2026-09-10 running WO-151's continuation.
 
 - **[NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live `tier3_auto_transcription_queue.txt`, added by an unidentified source before WO-150's continuation ever touched it.**
   - **Issue**: `https://www.youtube.com/embed/-pNyufIO7xM?feature=oembed` (Jennings city, LA) is already in `scripts/tier3_auto_transcription_queue.txt`. WO-150's continuation sweep (2026-09-10) independently found the same government's meeting and, per its own tier-3 gate, tried to probe it before queuing — but `scripts/wo150_finish_tier3.py` found the normalized `watch?v=` form already probed (by some other process, the same day) with a `reject-dead` verdict: `yt-dlp: ERROR: [youtube] -pNyufIO7xM: This live event will begin in a few moments` — a livestream placeholder, not a real recording. Neither WO-150 script wrote this queue line; its origin is unknown.
