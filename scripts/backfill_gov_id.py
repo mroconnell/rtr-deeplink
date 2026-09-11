@@ -118,11 +118,13 @@ async def main() -> None:
     from sqlalchemy import select
 
     from app.utils.gov_registry import (
+        TIER_BLANK,
         TIER_INFERRED,
         TIER_PINNED,
         TIER_REGISTRY,
         TIER_UNRESOLVED,
         TIER_UNVERIFIED,
+        is_multi_gov_host,
         page_hints_for,
         resolve_government,
     )
@@ -277,22 +279,58 @@ async def main() -> None:
                 )
 
         tiers[match.tier] += 1
-        new_gov_id = match.gov_id or None
-        new_gov_type = match.gov_type or None
-        # An overridden row keeps BOTH its string and its tier: the
-        # string because a human chose it, the tier because
-        # `_find_or_create_page()`'s guard recognises pages by exactly
-        # that value, and turning it into a resolution tier would quietly
-        # un-protect every hand-fixed page in the archive.
         overridden = confidence == _MANUAL_OVERRIDE_CONFIDENCE
-        new_confidence = confidence if overridden else match.tier
+        # WO-215, defect 1: rung 1b (WO-210) answers `blank` -- gov_id
+        # `rtr:unknown:<host>` -- for EVERY row on a MULTI_GOV_HOSTS host
+        # (YouTube, Vimeo, ClerkHQ, ...) that has no matching per-video/
+        # channel/external-id pin, regardless of what identity the row
+        # already carries. That answer means "no matching pin was found,"
+        # not "this page has no government," so a row that already keyed
+        # to a real national or curated id (its CURRENT gov_id isn't
+        # itself rtr:unknown:*) must keep it. Confirmed live: an
+        # unguarded dry run against production proposed exactly this
+        # downgrade on 825 YouTube-host rows (757 registry, 56
+        # unverified, 12 unresolved). `_find_or_create_page()` carries
+        # the identical guard now (WO-215) for live re-ingest.
+        blank_downgrade = (
+            not overridden
+            and match.tier == TIER_BLANK
+            and host
+            and is_multi_gov_host(host)
+            and current_gov_id
+            and not current_gov_id.startswith("rtr:unknown:")
+        )
+        # WO-215, defect 2: a manual_override row's gov_id/gov_type is a
+        # human's decision and must never be recomputed by this sweep --
+        # previously only the jurisdiction string and the tier were
+        # protected here, so an overridden row's gov_id was silently
+        # rewritten the moment rung 1b answered `blank` for its host
+        # (228 rows, confirmed live against production). A
+        # blank_downgrade row (defect 1, above) gets the identical
+        # treatment: keep the id, the type, the tier and the display name
+        # exactly as they are, so the row is reported as already current
+        # rather than a proposed change.
+        protect_identity = overridden or blank_downgrade
+        new_gov_id = current_gov_id if protect_identity else (match.gov_id or None)
+        new_gov_type = (
+            current_gov_type if protect_identity else (match.gov_type or None)
+        )
+        # A protected row keeps BOTH its string and its tier: the string
+        # because a human chose it (or because nothing new was actually
+        # learned), the tier because `_find_or_create_page()`'s guard
+        # recognises pages by exactly that value, and turning it into a
+        # resolution tier would quietly un-protect every hand-fixed page
+        # in the archive.
+        new_confidence = confidence if protect_identity else match.tier
         # The same rule `_find_or_create_page()` applies at ingest -- one
         # function, imported, so the backfill can never disagree with a
         # fresh ingest about what a page is called (gov-id audit,
         # 2026-09-10: every keyed tier takes the registry name now, not
         # only pinned/registry).
         new_jurisdiction = (
-            jurisdiction if overridden else _display_jurisdiction(match, jurisdiction)
+            jurisdiction
+            if protect_identity
+            else _display_jurisdiction(match, jurisdiction)
         )
         # When the display name comes from the registry for a non-place
         # government, finalize_jurisdiction()'s split body duplicates the
@@ -303,7 +341,7 @@ async def main() -> None:
         # never touched.
         new_meeting_body = current_meeting_body
         if (
-            not overridden
+            not protect_identity
             and _display_from_registry(match)
             and match.meeting_body is None
             and current_meeting_body
@@ -375,13 +413,17 @@ async def main() -> None:
                 # Re-read inside the write session: a human may have
                 # overridden this row since the read above, and an
                 # override that landed in between must still keep its
-                # string and its tier.
+                # id, its type, its string and its tier -- WO-215:
+                # gov_id/gov_type used to be written unconditionally
+                # here, so an override landing in that gap could still
+                # be overwritten by the very sweep the override exists
+                # to survive.
                 live_override = (
                     page.jurisdiction_confidence == _MANUAL_OVERRIDE_CONFIDENCE
                 )
-                page.gov_id = new_gov_id
-                page.gov_type = new_gov_type
                 if not live_override:
+                    page.gov_id = new_gov_id
+                    page.gov_type = new_gov_type
                     page.jurisdiction = new_jurisdiction
                     page.meeting_body = new_meeting_body
                     if not (

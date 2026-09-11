@@ -187,6 +187,27 @@ reasons. That is how every sweep below was scoped.
   wrapper bullet), so a delegated page on one of these hosts now also
   needs a pin, same as an un-delegated one would; see BACKLOG.md's WO-210
   follow-up entry.
+- **A blank answer on a shared host never downgrades a keyed page
+  (2026-09-11, WO-215).** Rung 1b above answers tier `blank` (gov_id
+  `rtr:unknown:<host>`) for EVERY page on a `MULTI_GOV_HOSTS` host with no
+  matching per-video/channel/external-id pin — including a page that
+  already carries a real, earned identity from before rung 1b existed.
+  That answer means "no matching pin was found," not "this page has no
+  government," so it must never overwrite a page's existing national or
+  curated id (`us:*`, `ca:*`, `rtr:<country>:*` — anything that isn't
+  itself `rtr:unknown:*`). Found the day after WO-210 shipped: a DRY RUN
+  of `scripts/backfill_gov_id.py` against production proposed exactly
+  this downgrade on 825 already-keyed rows and, separately, overwrote the
+  `gov_id` on 228 `manual_override` rows (only the jurisdiction string and
+  the tier were protected there before, not the identity itself). Both
+  `scripts/backfill_gov_id.py` and `archive/db/crud.py`'s
+  `_find_or_create_page()` (the live re-ingest path — a caption run, a
+  re-resolve) now carry the same guard: a `blank`-tier answer on a
+  `MULTI_GOV_HOSTS` host is a no-op against an already-keyed row's
+  gov_id/gov_type/tier/display name, not a write. A NEW page on one of
+  these hosts is unaffected — it still resolves to `rtr:unknown:<host>`
+  exactly as rung 1b intends. See `BACKLOG_DONE.md`'s WO-215 entry for the
+  before/after counts.
 
 ## 4. How coverage is grown: the sweep pattern
 
