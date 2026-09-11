@@ -1,5 +1,7 @@
 # CMS families field guide (WO-154, 2026-09-10; WordPress family and
-own-domain path pilot added by WO-176, 2026-09-10)
+own-domain path pilot added by WO-176, 2026-09-10; GovOffice, Municipal
+Impact and two state-hosted portal families added by WO-179,
+2026-09-10)
 
 Read this before touching `scripts/cms_fingerprint.py` or
 `app/utils/jurisdiction_data/cms_families.csv`. It explains what a
@@ -182,6 +184,75 @@ rely on them. ProudCity (below) is itself a WordPress build and keeps
 its own more specific family name/rule, checked first — this WordPress
 rule is the fallback for every OTHER WordPress-built government site.
 
+### GovOffice
+
+Added WO-179 (2026-09-10). Unlike every family above, the government's
+own domain here IS the vendor's own shared domain
+(`govoffice.com`/`govoffice2.com`/`govoffice3.com`) — recognised with
+100% certainty from the domain alone, no content marker needed. About
+220 governments in the UScityURL address list name one of these hosts
+directly. **No single meetings-page path recurs across tenants** — 10
+real tenants sampled live (Evansdale IA, Goodview MN, Ball LA, Vinton
+TX, Hallowell ME, Pottsboro TX, Panhandle TX, Blountstown FL, Slayton
+MN, Custer SD): only 2 of 10 carried an obvious meeting-word nav link on
+the homepage (Evansdale: `/Boards-Commissions`; Vinton and Pottsboro:
+individual meeting detail pages linked straight from the homepage news
+feed, at a per-event URL shaped `index.asp?SEC=...&DE=...`, not a fixed
+path). Same lesson as Revize: read the homepage nav and sitemap per
+tenant rather than guessing a shared path. No video platform confirmed
+on any of the 10 — every one sampled was agenda-only.
+
+### Municipal Impact
+
+Added WO-179 (2026-09-10). Same domain-is-the-vendor shape as GovOffice,
+on `municipalimpact.com`. **This one DOES have a reliably recurring
+meetings path** — `/agendas` and `/minutes` both confirmed live on 8 of
+9 real tenants sampled (Town of Delhi LA, Town of Double Springs AL
+[neither page built yet — a real content gap, not a path miss], Town of
+Elton LA, Coal Hill AR, Americus KS, Fountain City IN, Village of Parks
+LA, Frost TX, Collins IA — Village of Kirkwood IL returned
+`site_not_found`, not yet provisioned). The strongest recurring-path hit
+rate found for any family since CivicPlus's `/AgendaCenter`. No video
+platform confirmed on any tenant sampled — these are the smallest towns
+in the population, agenda-only every time.
+
+### State-hosted templates
+
+Added WO-179 (2026-09-10). Ryan's idea going in: several states host
+small towns' websites directly (Colorado, West Virginia, Delaware,
+Kentucky, Indiana, Utah, Minnesota's `.mn.us` municipal domains — about
+400 governments combined per the UScityURL address list). **What a real
+9-government sample across these states actually showed: "state-hosted"
+is not one company.** Once fetched, most of these domains turn out to
+already be a *known* family — `warsaw.in.gov` and `ci.mora.mn.us`
+fingerprint as CivicPlus; `mtsterling.ky.gov`, `cityofaustin.in.gov`,
+`camden.delaware.gov` and `bicknell.in.gov` fingerprint as WordPress.
+Those get that family's own path rule (CivicPlus's `/AgendaCenter`,
+WordPress's `/?s=agenda`) — no new rule needed. Only two genuinely new,
+distinct portal templates turned up:
+
+- **`in_gov_towns_portal`** — a town with *no domain of its own* is
+  hosted directly at `www.in.gov/towns/{slug}/`, Indiana's own shared
+  portal. Confirmed on Georgetown, IN: `/towns/{slug}/meetings` is a
+  real, populated listing of agenda PDFs. Only 1 tenant confirmed so
+  far; expected to generalise (the URL shape is the state's own
+  routing, not a per-tenant guess) but not yet proven on a second one.
+- **`wv_local_gov`** — West Virginia's own shared SharePoint portal,
+  `local.wv.gov/{slug}/`. Confirmed real for 3 towns (Williamstown,
+  Madison, Fayetteville), recognised by host (or by the `Microsoft
+  SharePoint` generator tag plus a `cdn.wvegov.com` asset reference for
+  a differently-aliased tenant). **No meetings-page path confirmed** —
+  the nav is SharePoint script-rendered, and a plain fetch found zero
+  meeting-word links on any of the 3 homepages tried. Route through the
+  generic path/sitemap list, same honest treatment as CivicLive/Town
+  Web above.
+
+Neither Colorado's, Delaware's, Kentucky's, nor Utah's remaining
+non-WordPress/non-CivicPlus governments produced enough of a distinct
+pattern in this sample to name a third portal family — they fall back
+to fingerprint-first-then-generic-list, same as any other unrecognised
+site.
+
 ### Streamline
 
 **Not built.** About 240 real government pages were checked for
@@ -222,3 +293,9 @@ the same no-platform-link pool), the generic sitemap-and-path/feed
 list tried on every site, the family-specific extra paths for
 ProudCity/WordPress/CivicLive/OpenCities, and the funnel from
 "recognised family" through to a real page live on the Archive today.
+
+`~/Documents/rtr-business/research/wo179_methods_section.md` has the
+family-scale sweep's write-up: WordPress's `/?s=agenda` method run at
+scale over the full `wo174_candidates.csv` population, and how the
+GovOffice/Municipal Impact/state-hosted families above were learned
+(10 real tenants each) and then applied to the rest of that population.

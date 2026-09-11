@@ -87,6 +87,49 @@ def test_proudcity_known_domain_and_content_marker_agree():
     assert content_only.family == "proudcity"
 
 
+def test_govoffice_domain_suffix():
+    """Evansdale, IA -- fetched live 2026-09-10 while building WO-179's
+    family-scale sweep. GovOffice's own domain IS the government's
+    domain (govoffice.com/govoffice2.com/govoffice3.com), so this is a
+    pure netloc check -- no content signature needed."""
+    html = _fixture("govoffice_evansdale_ia_home.html")
+    result = classify(html, url="https://evansdale.govoffice.com/")
+    assert result.family == "govoffice"
+    assert result.rule_id == "govoffice-domain-suffix"
+
+
+def test_municipalimpact_domain_suffix():
+    """Delhi, LA -- fetched live 2026-09-10. Same domain-is-the-vendor
+    shape as GovOffice, on municipalimpact.com."""
+    html = _fixture("municipalimpact_delhi_la_home.html")
+    result = classify(html, url="https://townofdelhi.municipalimpact.com/")
+    assert result.family == "municipalimpact"
+    assert result.rule_id == "municipalimpact-domain-suffix"
+
+
+def test_in_gov_towns_portal():
+    """Georgetown, IN -- fetched live 2026-09-10. This town has no domain
+    of its own; it's hosted directly at www.in.gov/towns/georgetown/,
+    the state's own shared portal for small Indiana towns. The
+    /towns/{slug}/meetings path on this real tenant is a populated
+    agenda-PDF listing."""
+    html = _fixture("in_gov_towns_portal_georgetown_in_meetings.html")
+    result = classify(html, url="https://www.in.gov/towns/georgetown/meetings")
+    assert result.family == "in_gov_towns_portal"
+    assert "towns/georgetown" in result.evidence
+
+
+def test_wv_local_gov_sharepoint_portal():
+    """Williamstown, WV -- fetched live 2026-09-10. West Virginia's own
+    shared SharePoint portal, local.wv.gov/{slug}/ -- confirmed real for
+    3 towns during WO-179 (Williamstown, Madison, Fayetteville), all
+    reached via this one shared host."""
+    html = _fixture("wv_local_gov_williamstown_home.html")
+    result = classify(html, url="https://local.wv.gov/williamstown/")
+    assert result.family == "wv_local_gov"
+    assert result.rule_id == "wv-local-gov-host"
+
+
 def test_unknown_when_no_rule_matches():
     result = classify(
         "<html><body>Just a plain page with nothing special.</body></html>"
@@ -118,3 +161,41 @@ def test_wo163_vendor_badge_is_a_cms_hint_never_a_platform_tenant():
     # *names*) is not a real per-government tenant -- exactly the WO-163
     # guarantee this fixture is borrowed to also exercise here.
     assert base.detect_platform("https://granicus.com/product/opencities") == "unknown"
+
+
+def test_civiclive_asset_host_regex_does_not_catastrophically_backtrack():
+    """Synthetic (hand-built), not a real fixture -- exercises a specific
+    performance bug, not a new detection case; the civiclive-asset-host
+    rule's own detection accuracy is already fixture-confirmed above and
+    in `test_civiclive_asset_host_without_civiclive_domain`. Real
+    incident, WO-179 (2026-09-10): `_rule_civiclive`'s original regex
+    opened with an UNBOUNDED `[a-z0-9.-]*` immediately before a literal
+    that usually fails to match -- classic catastrophic-backtracking
+    shape. It hung for minutes on a REAL 10MB government homepage
+    (Sherman, IL, `shermanil.org`, confirmed live 2026-09-10 during
+    WO-179's own family-scale sweep) that had no civiclive signature at
+    all but did have long runs of dot/dash/alphanumeric characters
+    (inlined assets, hashes) for the old regex to backtrack across. This
+    test reconstructs that same *shape* synthetically (a large block of
+    exactly the adversarial character class, no real page content, since
+    checking in a 10MB real fixture would be impractical) and asserts it
+    resolves near-instantly -- proof the bounded-quantifier fix holds,
+    without needing the actual 10MB page on file.
+    """
+    import time
+
+    # 200KB of exactly the characters the vulnerable class matched, with
+    # no "civiclive" substring anywhere -- big enough that the OLD regex
+    # would have taken very much longer than 2 seconds (confirmed by hand
+    # against the pre-fix pattern; the real 10MB page took minutes).
+    adversarial_run = "a1.-" * 50_000
+    html = f"<html><body>{adversarial_run}</body></html>"
+
+    start = time.monotonic()
+    result = classify(html, url="https://example-city.gov/")
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 2.0, (
+        f"classify() took {elapsed:.2f}s -- regression of the ReDoS fix"
+    )
+    assert result.family == "unknown"
