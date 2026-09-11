@@ -70,7 +70,7 @@ resolver, Archive, and both transcription workers are redeployed.
   resolves the real signed video and any captions, while CivicClerk's
   own event API still supplies the title, date, and page identity. Real
   fixture from event 597 in `tests/fixtures/civicclerk/`. Confirmed:
-  this specific broadcast (172 real minutes) has no caption track —
+  this specific broadcast (174 real minutes) has no caption track —
   genuinely video-only, not a fetch failure.
 - **The account-vs-channel bug** (`app/platforms/boxcast.py`): before
   this fix, `external_id` always came from
@@ -88,7 +88,7 @@ resolver, Archive, and both transcription workers are redeployed.
   unchanged, plus new tests pin down both the fixed case (Livermore
   Falls) and the unchanged case (Atlantic City, Bartow).
 - **The five governments, verified live 2026-09-11:**
-  - Ingleside, TX (`us:place:4836008`) — CivicClerk hand-off, 172-minute
+  - Ingleside, TX (`us:place:4836008`) — CivicClerk hand-off, 174-minute
     meeting, no captions, deferred (not queued — over 90 minutes).
   - Maywood, IL (`us:place:1747774`) — BoxCast channel
     `abbqkhxhouhnw12zl7hj`, single-tenant government account, 19-minute
