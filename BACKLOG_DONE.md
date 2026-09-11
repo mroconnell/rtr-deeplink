@@ -94,6 +94,101 @@ City, SD ids are the same real, registry-confirmed places
 **History**: found by the conductor 2026-09-11, the day after WO-210
 (PR #962) shipped; full dry-run reports and this fix's before/after
 counts in the WO-215 PR.
+## WO-218: find and test the websites of the 134 counties of 5,000+ with no domain recorded [Done 2026-09-11]
+
+**Why this ran.** A county almost always has a website. So a county
+with 5,000 or more people and no `domain` on file is probably a lookup
+miss, not a county with no site. Counties are large governments, and
+they trail cities on the coverage dashboard at the same population
+level. This was the biggest remaining gap of its kind: 134 counties
+(133 US, plus Hamilton, Ontario, which sits in the county table).
+
+**First finding: 57 of the 134 needed no website search at all.**
+Before doing any searching, the list itself turned out to hold three
+groups that are not real gaps:
+
+| Group | Count of 134 | Why |
+| Virginia independent cities | 37 | These sit in the county table, but Virginia's independent cities are governed on their own. Each one already has its own website, already on file, under its own city record. |
+| Alaska Census Areas | 8 | These are statistics areas, not governments. There is no government to find a website for. |
+| New England counties with no county government | 11 | Massachusetts abolished county government for 3 of these counties in the 1990s. Rhode Island has never had county government at all. Vermont's counties have no elected board that meets in public — two judges hold the county's budget role. Checked each one against a live source before deciding this, not assumed. |
+| Hamilton, Ontario (duplicate row) | 1 | Hamilton is a single city with no separate upper government. This "county" row is a duplicate of Hamilton's own city record. |
+
+Connecticut's 9 "Planning Regions" look similar to the New England group
+above but are not the same kind of gap — each one is a real, working
+regional council with its own website and its own board meetings, so
+those went through the normal search.
+
+**Second finding: of the 77 real counties left, 34 got a real,
+verified website.** Search order: a national county directory (NACo),
+Wikidata's own "official website" field, a state or regional directory,
+then a web search read by hand, then a small number of guesses. Every
+website found was opened and checked — the name had to match, and the
+state had to match, before it counted.
+
+| Result | Count of 77 | Detail |
+| Website found and verified | 34 | 9 from the national directory, 33 from Wikidata (5 of those later dropped, see caution), 9 Connecticut regional councils, 2 from search or a guess |
+| No website found | 43 | Every source tried is written down, so the next pass does not repeat them |
+
+**Caution.** 5 of the Wikidata hits pointed at a shared directory used
+by many counties at once (a genealogy site, a state association's own
+directory) rather than the county's own site — the same risk as pinning
+a video host that many governments share. Those 5 were dropped, not
+saved as the county's website. Two more leads were checked by hand and
+turned out wrong: one pointed at the county seat's city government
+instead of the county, and one domain had been resold and now shows an
+unrelated ad page. Neither was saved.
+
+**Third finding: running the found websites through the resolver.**
+All 34 verified websites were run through the same step-by-step check
+used elsewhere (plain request, then browser-style headers if blocked,
+then a real browser only if the page loads with no visible meeting
+link, stopping at any "prove you're human" page).
+
+| Result | Count of 34 |
+| Captions available, page live now | 5 |
+| No meetings platform found on the site | 15 |
+| Blocked (mostly a "prove you're human" page) | 5 |
+| Video found, but it was not a real meeting | 7 |
+| Already had a page under a different route | 2 |
+
+**Hand-check.** Every one of the 5 real videos was checked by hand
+against its title and its channel, not just by the automatic filter.
+All 5 were correct — the right government, a real meeting.
+
+| Government | What was checked | Result |
+| Western Connecticut Planning Region, CT | "ADA Presentation - WestCOG March 2025 Meeting", channel West COG | Correct |
+| Naugatuck Valley Planning Region, CT | "NRG Steering Committee - August 2026", channel Naugatuck Valley Council of Governments | Correct |
+| Greater Bridgeport Planning Region, CT | "MetroCOG Board Meeting" | Correct |
+| Lower Connecticut River Valley Planning Region, CT | "Regional Housing Committee Meeting 2026-08-25", channel Lower CT River Valley Council of Governments | Correct |
+| Grand Forks County, ND | "7/29/25 Grand Forks County Board of Commissioners Special Meeting", channel Grand Forks County | Correct |
+
+No wrong government and no wrong video this run.
+
+**A tool bug found and fixed.** The reused sweep script tracks how many
+times it has used a real browser, so it doesn't use too many. That
+count is read from a file the moment the script starts — before this
+WO's own code could point it at its own file. The first test run
+silently inherited a different work order's old count, which was
+already over the limit, so the real-browser step was skipped for that
+whole run without any warning. Fixed by re-reading the count right
+after pointing the script at the correct file. Filed in `BACKLOG.md` so
+the next work order that reuses this script does not repeat it.
+
+**Recommendation.** The 5 real meetings are already live on the site.
+The 34 verified websites, and the reasons recorded for the other 43,
+are saved to the shared research file so nobody re-does this search.
+No further action needed from Ryan on this batch; a future pass could
+try the 43 "no website found" counties again with a fresh search, since
+sources like Wikidata add new entries over time.
+
+**Deploy status.** All changes here are research-file and backlog
+writes plus 5 already-live Archive pages — nothing in this PR touches
+`app/`, `archive/`, `worker/`, or `render.yaml`, so there is nothing
+that needs a deploy.
+
+Full writeup: `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+§263. Files: `research/wo218_report.csv` (134 rows), `research/
+wo218_apply_to_jc.py`, `scripts/wo218_ladder_sweep.py`.
 
 ## WO-211: collected every "wrong government" find from the night's hand-checks into one owner-channel discovery list -- 37 owner bodies, 3 minted, Newfane and Upper Delaware Council closed [Done 2026-09-11]
 
