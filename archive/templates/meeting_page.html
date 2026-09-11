@@ -141,7 +141,12 @@
     {% if page.video_format in ("youtube", "vimeo", "viebit") -%}
     "embedUrl": {{ page.video_url|tojson }},
     {% else -%}
-    "contentUrl": {{ page.video_url|tojson }},
+    {#- player_video_url, not page.video_url: for a NEEDS_REFRESH
+       platform (BoxCast, WO-229) the stored video_url is a signed URL
+       that can expire before a crawler ever fetches it -- see
+       archive/main.py's /m/{slug} route. Identical to page.video_url
+       for every other platform. #}
+    "contentUrl": {{ player_video_url|tojson }},
     {% endif -%}
     {% if thumbnail_url -%}
     "thumbnailUrl": {{ thumbnail_url|tojson }},
@@ -397,7 +402,7 @@
           </span>
         </div>
         {% endif %}
-        <div id="videoWrapper" class="video-wrapper" data-video-url="{{ page.video_url }}" data-video-format="{{ page.video_format }}" data-embed-disabled="{{ 'true' if video_embedding_disabled else 'false' }}">
+        <div id="videoWrapper" class="video-wrapper" data-video-url="{{ player_video_url }}" data-video-format="{{ page.video_format }}" data-embed-disabled="{{ 'true' if video_embedding_disabled else 'false' }}">
           {% if page.video_format == "youtube" and video_embedding_disabled %}
           {#- WO-136: this channel disabled embedding outside YouTube
              (WO-135's EMBEDDING_DISABLED_VIDEO_WARNING marker in
@@ -439,10 +444,10 @@
              HLS support uses this directly) -- it just gives crawlers a
              real, matching URL to find without needing JS to run first. #}
           <video id="meetingVideo" controls playsinline preload="auto">
-            <source src="{{ page.video_url }}" type="application/vnd.apple.mpegurl">
+            <source src="{{ player_video_url }}" type="application/vnd.apple.mpegurl">
           </video>
           {% else %}
-          <video id="meetingVideo" controls playsinline preload="auto" src="{{ page.video_url }}"></video>
+          <video id="meetingVideo" controls playsinline preload="auto" src="{{ player_video_url }}"></video>
           {% endif %}
         </div>
         {% if page.agenda_items or (active_version and active_version.segments) %}

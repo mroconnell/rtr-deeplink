@@ -39,8 +39,14 @@ master playlist (confirmed live, 200, real multi-bitrate `#EXT-X-
 STREAM-INF` variants across all four tenants). Signed and expiring --
 `worker/main.py` already re-resolves every queue URL fresh before
 transcribing (confirmed by reading its own resolve-then-probe call), so
-this is the same posture every other signed-URL platform here already
-has, not a new risk.
+that path was never a new risk. **A page's own stored `video_url` was**
+(WO-229, 2026-09-11): the Archive renders whatever playlist URL ingest
+happened to store, with no re-resolve of its own, so the first two real
+BoxCast pages (Livermore Falls ME, Bartow FL) would have gone dark
+~48 hours after ingest when their signed `Expires=` passed. Fixed by
+`refresh_playlist_url()` below plus `archive/utils/video_refresh.py`,
+which the Archive's `/m/{slug}/video` redirect calls at view time
+instead of ever trusting the stored `video_url` past ingest.
 
 ## Two ids that look alike but are NOT the government's channel (WO-227)
 
@@ -513,6 +519,51 @@ async def _resolve_id(
     if broadcast is not None:
         return "broadcast", [broadcast]
     return "unknown", []
+
+
+async def refresh_playlist_url(source_url: str) -> Optional[str]:
+    """A freshly-signed HLS playlist URL for the ONE broadcast a
+    `boxcast.tv/view/{own_slug}` `source_url` already names -- WO-229.
+
+    `resolve()`'s own `source_url` (module docstring's "Two ids that
+    look alike" section) is always this reconstructed per-broadcast
+    pseudo-channel URL, regardless of which of the three real URL shapes
+    originally reached the broadcast -- so `_resolve_id()` on it always
+    answers with exactly ONE broadcast, the same one the page was built
+    from, never a different "current newest" pick the way re-running a
+    `/channel/{id}` scan could. That's what makes this safe to call on
+    every page view without risking silently retargeting a page at a
+    different meeting.
+
+    Used by the Archive's `/m/{slug}/video` redirect
+    (archive/utils/video_refresh.py) so a page keeps playing after its
+    stored `video_url`'s signed `Expires=` passes (see this module's own
+    docstring, "signed and expiring" note) -- deliberately lighter than
+    a full `resolve()`: no account/jurisdiction lookup, no caption
+    re-fetch, since neither ever changes for a page that already exists.
+    Returns None on any failure (unrecognized id, not exactly one past
+    broadcast, no playlist) -- never raises -- so a caller can fall back
+    to the page's last-known stored `video_url`, the same graceful-
+    degradation posture every other signed-URL platform here already
+    has (`worker/main.py` re-resolving fresh before every transcription
+    is the existing example)."""
+    raw_id = parse_boxcast_id(source_url)
+    if not raw_id:
+        return None
+    async with aiohttp.ClientSession() as session:
+        _, broadcasts = await _resolve_id(session, raw_id)
+        past = [b for b in broadcasts if b.get("timeframe") == "past"]
+        if len(past) != 1:
+            # Anything other than exactly one past broadcast means
+            # `source_url` isn't the stable per-broadcast pseudo-channel
+            # `resolve()` always writes -- an unexpected state worth
+            # failing honestly on rather than guessing which broadcast a
+            # page meant.
+            return None
+        broadcast_id = past[0].get("id")
+        if not broadcast_id:
+            return None
+        return await _fetch_playlist(session, broadcast_id)
 
 
 # --- Caption reassembly (module docstring's "Captions ARE real" section) ---

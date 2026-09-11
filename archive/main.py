@@ -66,6 +66,7 @@ from .utils.segment_time import format_segment_time
 from .utils.transcript_export import to_srt, to_txt
 from .utils import video_thumbnail
 from .utils.clips import clip_entries
+from .utils.video_refresh import NEEDS_REFRESH, fresh_video_url
 from .utils.video_thumbnail import youtube_thumbnail_url, youtube_watch_url
 
 logger = logging.getLogger("rtr_archive")
@@ -2521,6 +2522,17 @@ async def meeting_page(
         youtube_watch_url(page["video_url"], t) if video_embedding_disabled else None
     )
 
+    # WO-229: BoxCast's stored video_url is a signed HLS playlist that
+    # expires a couple of days after ingest (app/platforms/boxcast.py's
+    # module docstring). For a platform in NEEDS_REFRESH, the player is
+    # pointed at /m/{slug}/video (below) instead of the raw stored URL,
+    # so a page keeps playing past that expiry with no re-ingest needed.
+    # Every other platform's player_video_url is exactly page["video_url"]
+    # -- zero behavior change for the rest of the Archive.
+    player_video_url = (
+        f"/m/{slug}/video" if page["platform"] in NEEDS_REFRESH else page["video_url"]
+    )
+
     # One cheap indexed existence check, no image bytes loaded (see
     # crud.has_thumbnail()). When nothing is stored yet and the page has a
     # real media file, queue an extraction *as a background task* -- the
@@ -2538,10 +2550,20 @@ async def meeting_page(
     # keeps the generic sentence.
     highlight_text = await crud.get_highlight_text(page["id"])
     if not card_available:
+        # WO-229: ffmpeg needs a real, absolute, directly-fetchable URL
+        # (never player_video_url, which is a relative /m/{slug}/video
+        # path for a NEEDS_REFRESH platform) -- resolve a fresh signed
+        # URL here too when this page's stored one may have expired,
+        # falling back to the stored value on any refresh failure, same
+        # as every other use of fresh_video_url().
+        card_warm_video_url = (
+            await fresh_video_url(page["platform"], page["source_url"], slug)
+            or page["video_url"]
+        )
         _schedule_card_warm(
             background_tasks,
             page_id=page["id"],
-            video_url=page["video_url"],
+            video_url=card_warm_video_url,
             video_format=page["video_format"],
             source_url=page["source_url"],
         )
@@ -2555,6 +2577,11 @@ async def meeting_page(
             "page_is_empty": page_is_empty,
             "video_embedding_disabled": video_embedding_disabled,
             "watch_on_youtube_url": watch_on_youtube_url,
+            # WO-229: what the player (and VideoObject.contentUrl) should
+            # actually point at -- page["video_url"] for every ordinary
+            # platform, /m/{slug}/video for one in NEEDS_REFRESH. See
+            # this route's own comment above for why.
+            "player_video_url": player_video_url,
             # "upcoming" / "recent" / None -- drives the notice under the
             # title explaining why a page may not have video/captions yet.
             "date_status": meeting_date_status(
@@ -2607,6 +2634,37 @@ async def meeting_page(
     )
 
 
+@app.get("/m/{slug}/video")
+async def meeting_video_redirect(slug: str):
+    """302s to a playable video URL for this page -- WO-229.
+
+    Exists specifically for a platform in
+    `archive.utils.video_refresh.NEEDS_REFRESH` (BoxCast today): its
+    stored `MeetingPage.video_url` is a signed URL that expires a couple
+    of days after ingest (`app/platforms/boxcast.py`'s module
+    docstring), so `meeting_page.html`'s player is pointed at this route
+    instead of the raw stored URL for that platform -- see this file's
+    `/m/{slug}` route, which computes `player_video_url` the same way.
+    `fresh_video_url()` resolves a new signed playlist (cached briefly)
+    and this just redirects there; on any refresh failure it falls back
+    to the page's last-known stored `video_url` rather than 404ing, the
+    same graceful-degradation posture the rest of this codebase uses for
+    a temporarily-unreachable source.
+
+    A non-NEEDS_REFRESH page also resolves here without error (nothing
+    stops a browser bookmarking this exact URL) -- `fresh_video_url()`
+    returns None immediately for those, so it's a plain redirect to the
+    stored `video_url`, same as if the template had linked there
+    directly.
+    """
+    page = await crud.get_page_by_slug(slug)
+    if page is None or not page["video_url"]:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    fresh = await fresh_video_url(page["platform"], page["source_url"], slug)
+    return RedirectResponse(fresh or page["video_url"], status_code=302)
+
+
 @app.get("/m/{slug}/card.jpg")
 async def meeting_card_image(
     request: Request,
@@ -2646,11 +2704,17 @@ async def meeting_card_image(
         if meta is None:
             # Queue the precise frame, serve the default one meanwhile --
             # a slightly-wrong real frame now beats a correct one that
-            # doesn't exist until after the scraper gave up.
+            # doesn't exist until after the scraper gave up. WO-229: same
+            # fresh_video_url() fallback as /m/{slug}'s own card warm --
+            # ffmpeg needs a real, currently-valid URL, not whatever
+            # signed playlist ingest happened to store.
             _schedule_card_warm(
                 background_tasks,
                 page_id=page["id"],
-                video_url=page["video_url"],
+                video_url=(
+                    await fresh_video_url(page["platform"], page["source_url"], slug)
+                    or page["video_url"]
+                ),
                 video_format=page["video_format"],
                 source_url=page["source_url"],
                 timestamp=timestamp,
@@ -2661,7 +2725,10 @@ async def meeting_card_image(
         _schedule_card_warm(
             background_tasks,
             page_id=page["id"],
-            video_url=page["video_url"],
+            video_url=(
+                await fresh_video_url(page["platform"], page["source_url"], slug)
+                or page["video_url"]
+            ),
             video_format=page["video_format"],
             source_url=page["source_url"],
         )
