@@ -1,5 +1,6 @@
 # Long tier-3 meetings (>90 min) swapped out of the queue for a shorter meeting from the same government; re-queue later for depth.
 # url<TAB>source_url<TAB>gov_id<TAB>jurisdiction<TAB>duration<TAB>title -- gov_id blank when the identity ladder declined; probe rows stay in tier3_auto_transcription_queue_probe.csv.
+# Ryan's re-queue policy (WO-299, 2026-09-12): parked lines are re-queued only when the tier-3 queue is completely depleted; a parked line is not rejected, it waits. This applies to every line here, not just the long-meeting ones this file started with -- WO-299 also parked lines here whose government already had a live page with a real transcript, and single-tenant-host lines set aside for breadth (one meeting per government in the queue).
 https://minotnd.portal.civicclerk.com/event/1586/media		us:place:3853380	Minot, ND	3:36:14	City Council Meeting
 http://sanjoaquincountyca.iqm2.com/Citizens/SplitView.aspx?Mode=Video&MeetingID=1114&MinutesItemID=59851&Format=Minutes&MediaPosition=8570.969		us:county:06077	San Joaquin County, CA	6:03:10	Board of Supervisors Regular Meeting
 http://sccgov.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=16823&MediaPosition=&ID=126983&CssClass=		us:county:06085	The County of Santa Clara, California	7:01:01	Board of Supervisors Regular Meeting
@@ -846,3 +847,99 @@ https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9		us:cousub:23
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council		rtr:unknown:reflect-vsctv.cablecast.tv		1:39:34	
 https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1			Town of Brunswick	3:57:51	
 https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter	us:cousub:2300140770	Livermore Falls, ME	0:51:33	
+https://townhallstreams.com/stream.php?location_id=94&id=75799		us:cousub:2300140035	Lisbon, ME		
+https://townhallstreams.com/stream.php?location_id=47&id=21880					
+https://townhallstreams.com/stream.php?location_id=108&id=35970			New Boston		
+https://townhallstreams.com/stream.php?location_id=169&id=67490		us:cousub:3300577380	Troy, NH		
+https://townhallstreams.com/stream.php?location_id=47&id=76243					
+https://townhallstreams.com/stream.php?location_id=94&id=76283		us:cousub:2300140035	Lisbon, ME		
+https://townhallstreams.com/stream.php?location_id=108&id=76123			New Boston		
+https://townhallstreams.com/stream.php?location_id=169&id=75941		us:cousub:3300577380	Troy, NH		
+https://www.utah.gov/pmn/sitemap/notice/1035147.html		rtr:us:ut:department-of-commerce	Department of Commerce, UT		
+https://www.utah.gov/pmn/sitemap/notice/1102583.html		rtr:us:ut:department-of-natural-resources-dnr	Department of Natural Resources (DNR), UT		
+https://www.utah.gov/pmn/sitemap/notice/1098005.html		rtr:us:ut:department-of-natural-resources-dnr-division-of-forestry-fire-and-state-lands	Department of Natural Resources (DNR) > Division of Forestry, Fire and State Lands, UT		
+https://www.utah.gov/pmn/sitemap/notice/1097079.html		us:county:49019	Grand County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1094395.html		us:county:49021	Iron County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1041417.html		us:county:49035	Salt Lake County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1099107.html		us:county:49047	Uintah County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1100915.html		us:county:49049	Utah County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1102545.html		us:county:49053	Washington County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1097711.html		us:place:4911000	Castle Valley, UT		
+https://www.utah.gov/pmn/sitemap/notice/1102185.html		us:place:4911980	Centerville, UT		
+https://www.utah.gov/pmn/sitemap/notice/1097333.html		us:place:4931120	Grantsville, UT		
+https://www.utah.gov/pmn/sitemap/notice/1098501.html		us:place:4933540	Harrisville, UT		
+https://www.utah.gov/pmn/sitemap/notice/1092293.html		us:place:4950700	Moab, UT		
+https://www.utah.gov/pmn/sitemap/notice/1105389.html		us:place:4954990	North Logan, UT		
+https://www.utah.gov/pmn/sitemap/notice/1076929.html		us:place:4955100	North Ogden, UT		
+https://www.utah.gov/pmn/sitemap/notice/1101851.html		us:place:4957300	Orem, UT		
+https://www.utah.gov/pmn/sitemap/notice/1103991.html		us:place:4958510	Parowan, UT		
+https://www.utah.gov/pmn/sitemap/notice/1100861.html		us:place:4958730	Payson, UT		
+https://www.utah.gov/pmn/sitemap/notice/1077183.html		us:place:4961150	Pleasant View, UT		
+https://www.utah.gov/pmn/sitemap/notice/1097203.html		us:place:4962470	Provo, UT		
+https://www.utah.gov/pmn/sitemap/notice/1103087.html		us:place:4967770	Santaquin, UT		
+https://www.utah.gov/pmn/sitemap/notice/1098077.html		us:place:4967825	Saratoga Springs, UT		
+https://www.utah.gov/pmn/sitemap/notice/1100230.html		us:place:4971290	Spanish Fork, UT		
+https://www.utah.gov/pmn/sitemap/notice/1100234.html		us:place:4971840	Springdale, UT		
+https://www.utah.gov/pmn/sitemap/notice/1102267.html		us:place:4965330	St. George, UT		
+https://www.utah.gov/pmn/sitemap/notice/1096651.html		us:place:4976680	Tooele, UT		
+https://www.utah.gov/pmn/sitemap/notice/1100865.html		us:place:4937924	Interlaken, UT		
+https://www.utah.gov/pmn/sitemap/notice/1103677.html		rtr:us:ut:tooele-county-school-district	Tooele County School District, UT		
+https://www.utah.gov/pmn/sitemap/notice/1094777.html		us:county:49003	Box Elder County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1091125.html		us:county:49027	Millard County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1066341.html		us:county:49043	Summit County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1073435.html		us:county:49051	Wasatch County, UT		
+https://www.utah.gov/pmn/sitemap/notice/1004884.html		us:place:4900650	Alta, UT		
+https://www.utah.gov/pmn/sitemap/notice/1065787.html		us:place:4901905	Apple Valley, UT		
+https://www.utah.gov/pmn/sitemap/notice/1090913.html		us:place:4926940	Francis, UT		
+https://www.utah.gov/pmn/sitemap/notice/1070155.html		us:place:4936400	Hooper, UT		
+https://www.utah.gov/pmn/sitemap/notice/1069021.html		us:place:4945090	Lindon, UT		
+https://www.utah.gov/pmn/sitemap/notice/1071327.html		us:place:4954660	Nibley, UT		
+https://www.utah.gov/pmn/sitemap/notice/1092383.html		us:place:4962360	Providence, UT		
+https://www.utah.gov/pmn/sitemap/notice/1080145.html		us:place:4964340	Riverton, UT		
+https://www.utah.gov/pmn/sitemap/notice/1098397.html		us:place:4967000	Salt Lake City, UT		
+https://www.utah.gov/pmn/sitemap/notice/1074021.html		us:place:4967440	Sandy, UT		
+https://www.utah.gov/pmn/sitemap/notice/1098733.html		us:place:4971070	South Salt Lake, UT		
+https://www.utah.gov/pmn/sitemap/notice/1087919.html		us:place:4980420	Vineyard, UT		
+https://www.utah.gov/pmn/sitemap/notice/1096823.html		us:place:4982950	West Jordan, UT		
+https://www.utah.gov/pmn/sitemap/notice/1081913.html		us:place:4913850	Clearfield, UT		
+https://calhouncotx.portal.civicclerk.com/event/5480/media		us:county:48057	Calhoun County, TX		
+https://cantonoh.portal.civicclerk.com/event/2105/media		us:place:3912000	Canton (city), OH		
+https://crestviewfl.portal.civicclerk.com/event/1370/media		us:place:1215475	Crestview, FL		
+https://frasermi.portal.civicclerk.com/event/1035/media		us:place:2630420	Fraser (city), MI		
+https://godleytx.portal.civicclerk.com/event/6070/media		us:place:4829972	Godley, TX		
+https://grantconm.portal.civicclerk.com/event/704/media					
+https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1		us:county:48187	Guadalupe County, TX		
+https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1168		us:county:48187	Guadalupe County, TX		
+https://guadalupe.granicus.com/player/clip/1160?view_id=1&redirect=true		us:county:48187	Guadalupe County, TX		
+https://harrisoncountyin.portal.civicclerk.com/event/1066/media		us:county:18061	Harrison County, IN		
+https://harrisoncountyin.portal.civicclerk.com/event/1067/media		us:county:18061	Harrison County, IN		
+https://hcnv.granicus.com/player/clip/44?view_id=2&redirect=true					
+https://hobbsnm.portal.civicclerk.com/event/212/media					
+https://howardcotx.portal.civicclerk.com/event/179/media		us:county:48227	Howard County, TX		
+https://kenmorewa.portal.civicclerk.com/event/1802/media					
+https://kentcountymd.portal.civicclerk.com/event/859/media		us:county:24029	Kent County, MD		
+https://kentcountymd.portal.civicclerk.com/event/1037/media		us:county:24029	Kent County, MD		
+https://levycofl.portal.civicclerk.com/event/2039/media		us:county:12075	Levy County, FL		
+https://lumbertonnc.portal.civicclerk.com/event/263/media		us:place:3739700	Lumberton, NC		
+https://lynnhavenfl.portal.civicclerk.com/event/2112/media		us:place:1241825	Lynn Haven, FL		
+https://madisoncoil.portal.civicclerk.com/event/560/media		us:county:17119	Madison County, IL		
+https://madisoncoil.portal.civicclerk.com/event/417/media		us:county:17119	Madison County, IL		
+https://northwoodoh.portal.civicclerk.com/event/309/media					
+https://ottawaks.portal.civicclerk.com/event/1101/media		us:place:2053550	Ottawa (city), KS		
+https://prairievillageks.portal.civicclerk.com/event/684/media		us:place:2057575	Prairie Village (city), KS		
+https://prosserwa.portal.civicclerk.com/event/203/media		us:place:5356450	Prosser, WA		
+https://pueblococo.portal.civicclerk.com/event/10402/media		us:county:08101	Pueblo County, CO		
+https://rockawaybeachor.portal.civicclerk.com/event/2070/media		us:place:4162900	Rockaway Beach, OR		
+https://rockporttx.portal.civicclerk.com/event/1102/media		us:place:4862804	Rockport, TX		
+https://saratogaspringsny.new.swagit.com/videos/306992					
+https://seadrifttx.portal.civicclerk.com/event/5/media		us:place:4866416	Seadrift, TX		
+https://seadrifttx.portal.civicclerk.com/event/21/media		us:place:4866416	Seadrift, TX		
+https://waycrossga.portal.civicclerk.com/event/308/media		us:place:1380956	Waycross, GA		
+https://whiteville.granicus.com/player/clip/388?view_id=1&redirect=true					
+https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1					
+https://winterhaven-fl.granicus.com/player/clip/616?view_id=1&redirect=true					
+https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616					
+https://wrightcountymn.portal.civicclerk.com/event/1667/media		us:county:27171	Wright County, MN		
+https://wrightcountymn.portal.civicclerk.com/event/2682/media		us:county:27171	Wright County, MN		
+https://wrightcountymn.portal.civicclerk.com/event/30/media		us:county:27171	Wright County, MN		
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238					

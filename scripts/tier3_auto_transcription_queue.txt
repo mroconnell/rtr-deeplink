@@ -7,13 +7,9 @@ https://townshipofhornepayne.civicweb.net/Portal/MeetingInformation.aspx?Id=477
 https://tppfl.civicweb.net/Portal/MeetingInformation.aspx?Id=8161
 http://stluciefl.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2070&MediaPosition=&ID=2780&CssClass=
 http://traviscountytx.iqm2.com/Citizens/Detail_LegiFile.aspx?Frame=&MeetingID=2025&MediaPosition=&ID=24610&CssClass=
-https://townhallstreams.com/stream.php?location_id=94&id=75799
-https://townhallstreams.com/stream.php?location_id=47&id=21880
 https://townhallstreams.com/stream.php?location_id=69&id=26034
-https://townhallstreams.com/stream.php?location_id=108&id=35970
 https://townhallstreams.com/stream.php?location_id=116&id=36006
 https://townhallstreams.com/stream.php?location_id=124&id=44331
-https://townhallstreams.com/stream.php?location_id=169&id=67490
 https://townhallstreams.com/stream.php?location_id=23&id=76181
 https://townhallstreams.com/stream.php?location_id=28&id=20324
 https://townhallstreams.com/stream.php?location_id=30&id=76187
@@ -32,7 +28,6 @@ https://townhallstreams.com/stream.php?location_id=43&id=53616
 https://townhallstreams.com/stream.php?location_id=44&id=75536
 https://townhallstreams.com/stream.php?location_id=45&id=46031
 https://townhallstreams.com/stream.php?location_id=46&id=16240
-https://townhallstreams.com/stream.php?location_id=47&id=76243
 https://townhallstreams.com/stream.php?location_id=48&id=75409
 https://townhallstreams.com/stream.php?location_id=49&id=62383
 https://townhallstreams.com/stream.php?location_id=50&id=71267
@@ -69,7 +64,6 @@ https://townhallstreams.com/stream.php?location_id=88&id=75491
 https://townhallstreams.com/stream.php?location_id=89&id=75988
 https://townhallstreams.com/stream.php?location_id=90&id=76295
 https://townhallstreams.com/stream.php?location_id=91&id=18731
-https://townhallstreams.com/stream.php?location_id=94&id=76283
 https://townhallstreams.com/stream.php?location_id=96&id=67218
 https://townhallstreams.com/stream.php?location_id=97&id=75659
 https://townhallstreams.com/stream.php?location_id=98&id=76161
@@ -78,7 +72,6 @@ https://townhallstreams.com/stream.php?location_id=101&id=76027
 https://townhallstreams.com/stream.php?location_id=103&id=57839
 https://townhallstreams.com/stream.php?location_id=104&id=75974
 https://townhallstreams.com/stream.php?location_id=107&id=76067
-https://townhallstreams.com/stream.php?location_id=108&id=76123
 https://townhallstreams.com/stream.php?location_id=109&id=60897
 https://townhallstreams.com/stream.php?location_id=110&id=76127
 https://townhallstreams.com/stream.php?location_id=112&id=68061
@@ -121,7 +114,6 @@ https://townhallstreams.com/stream.php?location_id=161&id=75754
 https://townhallstreams.com/stream.php?location_id=162&id=75661
 https://townhallstreams.com/stream.php?location_id=166&id=74574
 https://townhallstreams.com/stream.php?location_id=168&id=75979
-https://townhallstreams.com/stream.php?location_id=169&id=75941
 https://townhallstreams.com/stream.php?location_id=170&id=76170
 https://townhallstreams.com/stream.php?location_id=171&id=76094
 https://townhallstreams.com/stream.php?location_id=172&id=76087
@@ -131,9 +123,6 @@ https://townhallstreams.com/stream.php?location_id=175&id=76135
 https://townhallstreams.com/stream.php?location_id=176&id=76043
 https://townhallstreams.com/stream.php?location_id=177&id=75919
 https://townhallstreams.com/stream.php?location_id=178&id=74225
-https://wrightcountymn.portal.civicclerk.com/event/1667/media
-https://wrightcountymn.portal.civicclerk.com/event/2682/media
-https://wrightcountymn.portal.civicclerk.com/event/30/media
 https://wrightcountymn.portal.civicclerk.com/event/31/media
 https://sanfordnc.portal.civicclerk.com/event/2049/media
 https://claytonca.portal.civicclerk.com/event/22/media
@@ -147,7 +136,6 @@ https://excelsiormn.portal.civicclerk.com/event/3241/media
 https://shorewoodmn.portal.civicclerk.com/event/409/media
 https://thiefriverfallsmn.portal.civicclerk.com/event/446/media
 https://highpointnc.portal.civicclerk.com/event/1073/media
-https://cantonoh.portal.civicclerk.com/event/2105/media
 https://goodlettsvilletn.portal.civicclerk.com/event/3490/media
 https://godleytx.portal.civicclerk.com/event/6069/media
 https://inglesidetx.portal.civicclerk.com/event/591/media
@@ -174,11 +162,9 @@ https://www.youtube.com/watch?v=tQZ5faoP8Ks
 https://bethelak.portal.civicclerk.com/event/1143/media
 https://crestviewfl.portal.civicclerk.com/event/1381/media
 https://longwoodfl.portal.civicclerk.com/event/869/media
-https://lynnhavenfl.portal.civicclerk.com/event/2112/media
 https://www.youtube.com/live/_RZBcYEbQr4?si=ZWq-eD1hKQwGjiiZ
 https://youtube.com/live/3OOngsiBb0A?feature=share
 https://youtu.be/LXaYHmU9YqY
-https://harrisoncountyin.portal.civicclerk.com/event/1066/media
 https://www.youtube.com/watch?v=lKH5HrGfbss&t=275s
 https://www.youtube.com/watch?v=ewmeXCEHRD4
 https://www.youtube.com/watch?v=VJfIRx7jS9g
@@ -272,11 +258,9 @@ https://www.utah.gov/pmn/sitemap/notice/1103253.html
 https://www.utah.gov/pmn/sitemap/notice/1103725.html
 https://www.utah.gov/pmn/sitemap/notice/1073417.html
 https://www.utah.gov/pmn/sitemap/notice/1104203.html
-https://www.utah.gov/pmn/sitemap/notice/1035147.html
 https://www.utah.gov/pmn/sitemap/notice/1085157.html
 https://www.utah.gov/pmn/sitemap/notice/1086431.html
 https://www.utah.gov/pmn/sitemap/notice/1098993.html
-https://www.utah.gov/pmn/sitemap/notice/1102583.html
 https://www.utah.gov/pmn/sitemap/notice/1081495.html
 https://www.utah.gov/pmn/sitemap/notice/1104319.html
 https://www.utah.gov/pmn/sitemap/notice/1107363.html
@@ -290,32 +274,23 @@ https://www.utah.gov/pmn/sitemap/notice/1104835.html
 https://www.utah.gov/pmn/sitemap/notice/983371.html
 https://www.utah.gov/pmn/sitemap/notice/1100163.html
 https://www.utah.gov/pmn/sitemap/notice/1102315.html
-https://www.utah.gov/pmn/sitemap/notice/1098005.html
 https://www.utah.gov/pmn/sitemap/notice/1010733.html
 https://www.utah.gov/pmn/sitemap/notice/1093765.html
 https://www.utah.gov/pmn/sitemap/notice/1061689.html
 https://www.utah.gov/pmn/sitemap/notice/1105465.html
 https://www.utah.gov/pmn/sitemap/notice/1098709.html
 https://www.utah.gov/pmn/sitemap/notice/1100372.html
-https://www.utah.gov/pmn/sitemap/notice/1097079.html
-https://www.utah.gov/pmn/sitemap/notice/1094395.html
 https://www.utah.gov/pmn/sitemap/notice/1103825.html
 https://www.utah.gov/pmn/sitemap/notice/1100679.html
-https://www.utah.gov/pmn/sitemap/notice/1041417.html
 https://www.utah.gov/pmn/sitemap/notice/1050307.html
 https://www.utah.gov/pmn/sitemap/notice/1093417.html
 https://www.utah.gov/pmn/sitemap/notice/1100328.html
 https://www.utah.gov/pmn/sitemap/notice/1098879.html
-https://www.utah.gov/pmn/sitemap/notice/1099107.html
-https://www.utah.gov/pmn/sitemap/notice/1100915.html
-https://www.utah.gov/pmn/sitemap/notice/1102545.html
 https://www.utah.gov/pmn/sitemap/notice/1101473.html
 https://www.utah.gov/pmn/sitemap/notice/1100290.html
 https://www.utah.gov/pmn/sitemap/notice/1101451.html
-https://www.utah.gov/pmn/sitemap/notice/1097711.html
 https://www.utah.gov/pmn/sitemap/notice/1103815.html
 https://www.utah.gov/pmn/sitemap/notice/1105573.html
-https://www.utah.gov/pmn/sitemap/notice/1102185.html
 https://www.utah.gov/pmn/sitemap/notice/1105473.html
 https://www.utah.gov/pmn/sitemap/notice/1101551.html
 https://www.utah.gov/pmn/sitemap/notice/1102777.html
@@ -333,10 +308,8 @@ https://www.utah.gov/pmn/sitemap/notice/1070463.html
 https://www.utah.gov/pmn/sitemap/notice/1102091.html
 https://www.utah.gov/pmn/sitemap/notice/1101091.html
 https://www.utah.gov/pmn/sitemap/notice/1100993.html
-https://www.utah.gov/pmn/sitemap/notice/1097333.html
 https://www.utah.gov/pmn/sitemap/notice/1097435.html
 https://www.utah.gov/pmn/sitemap/notice/1100153.html
-https://www.utah.gov/pmn/sitemap/notice/1098501.html
 https://www.utah.gov/pmn/sitemap/notice/1101013.html
 https://www.utah.gov/pmn/sitemap/notice/1101649.html
 https://www.utah.gov/pmn/sitemap/notice/1100061.html
@@ -360,40 +333,26 @@ https://www.utah.gov/pmn/sitemap/notice/1102277.html
 https://www.utah.gov/pmn/sitemap/notice/1105605.html
 https://www.utah.gov/pmn/sitemap/notice/1095429.html
 https://www.utah.gov/pmn/sitemap/notice/1101685.html
-https://www.utah.gov/pmn/sitemap/notice/1092293.html
 https://www.utah.gov/pmn/sitemap/notice/1101329.html
 https://www.utah.gov/pmn/sitemap/notice/1100322.html
-https://www.utah.gov/pmn/sitemap/notice/1105389.html
-https://www.utah.gov/pmn/sitemap/notice/1076929.html
 https://www.utah.gov/pmn/sitemap/notice/1102609.html
 https://www.utah.gov/pmn/sitemap/notice/1100991.html
 https://www.utah.gov/pmn/sitemap/notice/1101923.html
 https://www.utah.gov/pmn/sitemap/notice/1065291.html
-https://www.utah.gov/pmn/sitemap/notice/1101851.html
 https://www.utah.gov/pmn/sitemap/notice/1101049.html
-https://www.utah.gov/pmn/sitemap/notice/1103991.html
-https://www.utah.gov/pmn/sitemap/notice/1100861.html
 https://www.utah.gov/pmn/sitemap/notice/1100601.html
 https://www.utah.gov/pmn/sitemap/notice/1099711.html
-https://www.utah.gov/pmn/sitemap/notice/1077183.html
 https://www.utah.gov/pmn/sitemap/notice/1099921.html
-https://www.utah.gov/pmn/sitemap/notice/1097203.html
 https://www.utah.gov/pmn/sitemap/notice/1100829.html
 https://www.utah.gov/pmn/sitemap/notice/1099853.html
 https://www.utah.gov/pmn/sitemap/notice/1105113.html
 https://www.utah.gov/pmn/sitemap/notice/1096089.html
-https://www.utah.gov/pmn/sitemap/notice/1103087.html
-https://www.utah.gov/pmn/sitemap/notice/1098077.html
 https://www.utah.gov/pmn/sitemap/notice/1101037.html
 https://www.utah.gov/pmn/sitemap/notice/1098611.html
-https://www.utah.gov/pmn/sitemap/notice/1100230.html
 https://www.utah.gov/pmn/sitemap/notice/1038693.html
-https://www.utah.gov/pmn/sitemap/notice/1100234.html
-https://www.utah.gov/pmn/sitemap/notice/1102267.html
 https://www.utah.gov/pmn/sitemap/notice/1102455.html
 https://www.utah.gov/pmn/sitemap/notice/1101977.html
 https://www.utah.gov/pmn/sitemap/notice/1094253.html
-https://www.utah.gov/pmn/sitemap/notice/1096651.html
 https://www.utah.gov/pmn/sitemap/notice/1083781.html
 https://www.utah.gov/pmn/sitemap/notice/1103325.html
 https://www.utah.gov/pmn/sitemap/notice/1098291.html
@@ -404,7 +363,6 @@ https://www.utah.gov/pmn/sitemap/notice/1083825.html
 https://www.utah.gov/pmn/sitemap/notice/1104475.html
 https://www.utah.gov/pmn/sitemap/notice/1102683.html
 https://www.utah.gov/pmn/sitemap/notice/1100923.html
-https://www.utah.gov/pmn/sitemap/notice/1100865.html
 https://www.utah.gov/pmn/sitemap/notice/1096075.html
 https://www.utah.gov/pmn/sitemap/notice/1099139.html
 https://www.utah.gov/pmn/sitemap/notice/1084361.html
@@ -593,7 +551,6 @@ https://www.utah.gov/pmn/sitemap/notice/1102767.html
 https://www.utah.gov/pmn/sitemap/notice/1100623.html
 https://www.utah.gov/pmn/sitemap/notice/1098205.html
 https://www.utah.gov/pmn/sitemap/notice/1080031.html
-https://www.utah.gov/pmn/sitemap/notice/1103677.html
 https://www.utah.gov/pmn/sitemap/notice/1091035.html
 https://www.utah.gov/pmn/sitemap/notice/1099115.html
 https://www.utah.gov/pmn/sitemap/notice/1100857.html
@@ -618,14 +575,8 @@ https://www.utah.gov/pmn/sitemap/notice/1042983.html
 https://www.utah.gov/pmn/sitemap/notice/1069763.html
 https://www.utah.gov/pmn/sitemap/notice/1075071.html
 https://www.utah.gov/pmn/sitemap/notice/1066108.html
-https://www.utah.gov/pmn/sitemap/notice/1094777.html
 https://www.utah.gov/pmn/sitemap/notice/1073707.html
-https://www.utah.gov/pmn/sitemap/notice/1091125.html
 https://www.utah.gov/pmn/sitemap/notice/1085325.html
-https://www.utah.gov/pmn/sitemap/notice/1066341.html
-https://www.utah.gov/pmn/sitemap/notice/1073435.html
-https://www.utah.gov/pmn/sitemap/notice/1004884.html
-https://www.utah.gov/pmn/sitemap/notice/1065787.html
 https://www.utah.gov/pmn/sitemap/notice/1065731.html
 https://www.utah.gov/pmn/sitemap/notice/1078997.html
 https://www.utah.gov/pmn/sitemap/notice/1092271.html
@@ -633,34 +584,22 @@ https://www.utah.gov/pmn/sitemap/notice/1054853.html
 https://www.utah.gov/pmn/sitemap/notice/1073529.html
 https://www.utah.gov/pmn/sitemap/notice/1067625.html
 https://www.utah.gov/pmn/sitemap/notice/1064867.html
-https://www.utah.gov/pmn/sitemap/notice/1090913.html
 https://www.utah.gov/pmn/sitemap/notice/1082545.html
 https://www.utah.gov/pmn/sitemap/notice/1082041.html
 https://www.utah.gov/pmn/sitemap/notice/1066373.html
 https://www.utah.gov/pmn/sitemap/notice/1086577.html
 https://www.utah.gov/pmn/sitemap/notice/1096137.html
-https://www.utah.gov/pmn/sitemap/notice/1070155.html
 https://www.utah.gov/pmn/sitemap/notice/1069761.html
 https://www.utah.gov/pmn/sitemap/notice/1065417.html
 https://www.utah.gov/pmn/sitemap/notice/1065601.html
-https://www.utah.gov/pmn/sitemap/notice/1069021.html
 https://www.utah.gov/pmn/sitemap/notice/1091831.html
-https://www.utah.gov/pmn/sitemap/notice/1071327.html
-https://www.utah.gov/pmn/sitemap/notice/1092383.html
 https://www.utah.gov/pmn/sitemap/notice/1064401.html
-https://www.utah.gov/pmn/sitemap/notice/1080145.html
-https://www.utah.gov/pmn/sitemap/notice/1098397.html
-https://www.utah.gov/pmn/sitemap/notice/1074021.html
-https://www.utah.gov/pmn/sitemap/notice/1098733.html
 https://www.utah.gov/pmn/sitemap/notice/1078131.html
 https://www.utah.gov/pmn/sitemap/notice/1075397.html
-https://www.utah.gov/pmn/sitemap/notice/1087919.html
 https://www.utah.gov/pmn/sitemap/notice/1074923.html
 https://www.utah.gov/pmn/sitemap/notice/1091521.html
 https://www.utah.gov/pmn/sitemap/notice/1065203.html
 https://www.utah.gov/pmn/sitemap/notice/1071705.html
-https://www.utah.gov/pmn/sitemap/notice/1096823.html
-https://www.utah.gov/pmn/sitemap/notice/1081913.html
 https://www.utah.gov/pmn/sitemap/notice/1083815.html
 https://www.utah.gov/pmn/sitemap/notice/1076159.html
 https://www.utah.gov/pmn/sitemap/notice/1092851.html
@@ -843,7 +782,6 @@ https://sandovalcountynm.new.swagit.com/videos/07112019-1080/4/
 https://santacruzcountyca.new.swagit.com/videos/337126
 https://sdmf.new.swagit.com/videos/334434
 https://severanceco.portal.civicclerk.com/event/1379/media
-https://crestviewfl.portal.civicclerk.com/event/1370/media
 https://youtu.be/MW7uV8fohm0	https://www.macomb-mi.gov/
 https://www.youtube.com/embed/fMfmeh2OtQY?feature=oembed	https://bramptonbot.com/
 https://youtu.be/V_Yb9586WDU	https://sccmo.org
@@ -1279,7 +1217,6 @@ https://youtu.be/-a-RpEuUt3Y	https://lakecountyco.gov
 https://www.youtube.com/watch?v=4vl9l6MWEuw	https://www.jeffersoncountypa.gov/
 https://youtu.be/Aeb42Gdp6Nw	https://www.pikecountyil.org/archived-board-meetings-live-stream/
 https://youtu.be/a0lGf-8xa40	https://www.sheridancountywy.gov/county_government/elected_offices/county_commissioners/agenda_minutes.php
-https://levycofl.portal.civicclerk.com/event/2039/media	https://meetings.municode.com/PublishPage?cid=LEVYFL&ppid=30f40d5f-0bf1-4d60-8413-75276d9d7712&p=1
 https://www.youtube.com/live/zRMTdcNOpx4?si=31rFRo8XchKaasP0	https://mcleancountyil.gov
 https://youtu.be/MQKY7v54ixg?t=1454	https://camdencountyga.gov
 https://jodaviesscoil.portal.civicclerk.com/event/2478/media	https://www.jodaviesscountyil.gov
@@ -1367,7 +1304,6 @@ https://www.youtube.com/watch?v=ME-g4YWUuHU	https://www.rosellepark.gov
 https://www.youtube.com/watch?v=_QHJvvBO9NI	https://ofallonmo.gov
 https://www.youtube.com/watch?v=iJn9InK2GQw	https://www.reedsburgwi.gov/index.asp?SEC=93000E88-F045-4841-8659-34D750D80645
 https://fountainhillsaz.portal.civicclerk.com/event/502/media
-https://northwoodoh.portal.civicclerk.com/event/309/media
 https://northbendwa.portal.civicclerk.com/event/168/media
 https://newberlinwi.portal.civicclerk.com/event/2025/media
 https://www.youtube.com/watch?v=0FU_UvxUH4A	https://www.portland.gov/council/agenda
@@ -1423,7 +1359,6 @@ https://www.youtube.com/watch?v=TBr78xMZxpg	https://www.newphiladelphiaoh.gov/Ag
 https://www.youtube.com/watch?v=QVaJ4dxTLFE	https://www.lancastercitysc.com/AgendaCenter
 https://www.youtube.com/watch?v=6RhNBl6-k-s	https://tompsc.com/AgendaCenter
 https://youtu.be/9uy2D6Kdd7Y	https://littlefieldtexas.net/AgendaCenter
-https://seadrifttx.portal.civicclerk.com/event/5/media
 https://shadyshorestx.portal.civicclerk.com/event/723/media
 https://www.youtube.com/watch?v=JHW3Blu3-ZE&list=PLljLFn4BZd2NhM59Ok6XPPTGC8lTj9w32&index=3	https://southburlingtonvt.gov/AgendaCenter
 https://youtu.be/IvsSBC4gNq4	https://cityofweirton.com/AgendaCenter
@@ -1431,7 +1366,6 @@ https://www.youtube.com/watch?v=ktgYPhnicvU&list=PLuOvQjp9VUNM2wKjIu3hPaXEkCvVy7
 https://pleasantprairiewi.granicus.com/MediaPlayer.php?view_id=1&clip_id=899
 https://windsorwi.granicus.com/MediaPlayer.php?view_id=1&clip_id=1254
 https://www.youtube.com/watch?v=Yc7Lap20wwQ	https://www.torringtonwy.gov/AgendaCenter
-https://grantconm.portal.civicclerk.com/event/704/media
 https://ozaukeecowi.portal.civicclerk.com/event/5776/media
 https://bighorncomt.portal.civicclerk.com/event/1058/media
 https://lumbertonnc.portal.civicclerk.com/event/267/media
@@ -1470,11 +1404,8 @@ https://www.youtube.com/watch?v=steJb4YdIQg	https://www.youtube.com/channel/UCmT
 https://www.youtube.com/watch?v=R6df4R7eYJc	https://www.youtube.com/channel/UCWtusnZhfIw0prlR89zEXBw
 https://www.youtube.com/watch?v=FpEQDdaoNKE	https://www.youtube.com/@OAKBROOKTV
 https://wycokck.portal.civicclerk.com/event/3554/media
-https://winterhaven-fl.granicus.com/MediaPlayer.php?clip_id=616&view_id=1
 https://shawneeok.portal.civicclerk.com/event/2124/media
-https://saratogaspringsny.new.swagit.com/videos/306992
 https://www.youtube.com/watch?v=ADl2lGtXofs
-https://pueblococo.portal.civicclerk.com/event/10402/media
 https://columbiasc.portal.civicclerk.com/event/1840/media
 https://whiteville.granicus.com/MediaPlayer.php?view_id=1&clip_id=388
 https://www.youtube.com/watch?v=rvl6aumK-X8
@@ -1552,13 +1483,10 @@ https://www.youtube.com/watch?v=i1_IofTGFX4	https://m.youtube.com/@MarshallCount
 https://www.youtube.com/watch?v=hVShsVktHZs	https://www.youtube.com/@millercountyar
 https://vimeo.com/560189851	https://vimeo.com/channels/1570654
 https://harrisoncountyin.portal.civicclerk.com/event/1051/media
-https://calhouncotx.portal.civicclerk.com/event/5480/media
-https://kentcountymd.portal.civicclerk.com/event/859/media
 https://www.youtube.com/watch?v=7RW7VRUDn3I	https://www.youtube.com/channel/UCb1CXWu_V08NI--XRa3FzAA
 https://www.youtube.com/watch?v=g0ZCC-GROnk	https://www.youtube.com/@countyofgreensville1146
 https://www.youtube.com/watch?v=jxOpy7Gp1Nc	https://www.youtube.com/@WallowaCountyGov
 https://www.youtube.com/watch?v=aCxx9A1fOzc
-https://guadalupe.granicus.com/MediaPlayer.php?clip_id=1160&view_id=1
 https://www.youtube.com/watch?v=jnHV1mqRQFc	https://www.cityofgraham.com/agendas-minutes/
 https://www.youtube.com/watch?v=TopVL6GwVZQ	https://www.beechgrove.com/watch-city-meetings
 https://spenceria.portal.civicclerk.com/event/65/media	https://spenceriowacity.com/departments/administration/meeting-agendas-minutes/
@@ -2091,7 +2019,6 @@ https://www.youtube.com/watch?v=xh4DlMrr5ME	https://rousespointny.gov/government
 https://youtu.be/e8Jr18zynxs
 https://vimeo.com/646562708
 https://mabletonga.portal.civicclerk.com/event/672/media
-https://hobbsnm.portal.civicclerk.com/event/212/media
 https://manliusny.portal.civicclerk.com/event/1095/media
 https://spearfishsd.portal.civicclerk.com/event/3353/media
 https://comptoncity.granicus.com/MediaPlayer.php?view_id=2&clip_id=2260
@@ -2102,13 +2029,10 @@ https://rollinghillsca.portal.civicclerk.com/event/808/media	https://www.rolling
 https://fernleynv.portal.civicclerk.com/event/520/media	http://www.cityoffernley.org
 https://cityofracine.granicus.com/MediaPlayer.php?view_id=1&clip_id=794
 https://saratogaspringsny.new.swagit.com/videos/133742
-https://harrisoncountyin.portal.civicclerk.com/event/1067/media	https://www.in.gov/counties/harrison/leadership/meeting-video-recordings/
-https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1168	https://www.guadalupetx.gov/page/commcourt.agendas
 https://lynnhavenfl.portal.civicclerk.com/event/2115/media	https://cityoflynnhaven.gov
 https://stjosephmo.portal.civicclerk.com/event/1309/media
 https://grantconm.portal.civicclerk.com/event/716/media
 https://lantanafl.granicus.com/MediaPlayer.php?view_id=1&clip_id=255
-https://ottawaks.portal.civicclerk.com/event/1101/media
 https://richfieldmn.portal.civicclerk.com/event/2605/media
 https://hcnv.granicus.com/MediaPlayer.php?view_id=2&clip_id=36
 https://levycofl.portal.civicclerk.com/event/2033/media
@@ -2121,25 +2045,18 @@ https://www.youtube.com/watch?v=qbQqZZgGRaE	https://www.youtube.com/@AbingtonTow
 https://www.youtube.com/watch?v=T8IhUhljAlc
 https://www.youtube.com/watch?v=lE5-ntOUEo4	https://www.youtube.com/user/StLouisCountyMN
 https://www.youtube.com/watch?v=CoVf_pZt1to	https://www.youtube.com/user/CityofBrandonMB
-https://kentcountymd.portal.civicclerk.com/event/1037/media	https://kentcountymd.portal.civicclerk.com/
 https://www.youtube.com/watch?v=JVXqo2VOr_A	https://www.youtube.com/c/VillageofSalemLakesWI
 https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=237	https://yazoo.granicus.com/ViewPublisher.php?view_id=1
-https://rockawaybeachor.portal.civicclerk.com/event/2070/media	https://rockawaybeachor.portal.civicclerk.com/
 https://www.youtube.com/watch?v=CRjz_MamYYA	https://www.youtube.com/@TownofandrewsIN
 https://www.youtube.com/watch?v=cD4bPov9BQQ	https://www.youtube.com/channel/UCAgMZD_gMuhgTdpQmZn2ACg
 https://edmundsgovtech.wistia.com/medias/cmc7wzifwc
 https://parkland.legistar.com/Video.aspx?Mode=Granicus&ID1=1327&Mode2=Video	https://www.parklandcounty.com/
-https://madisoncoil.portal.civicclerk.com/event/560/media
-https://guadalupe.granicus.com/player/clip/1160?view_id=1&redirect=true
 https://wisecountytx.new.swagit.com/videos/398832
-https://winterhaven-fl.granicus.com/player/clip/616?view_id=1&redirect=true
 https://manortx.new.swagit.com/videos/400366
-https://hcnv.granicus.com/player/clip/44?view_id=2&redirect=true
 https://reidsville.granicus.com/MediaPlayer.php?clip_id=51&view_id=1
 https://www.youtube.com/watch?v=C5Rztq-zC34	https://youtu.be/C5Rztq-zC34
 https://reflect-lmcc.cablecast.tv/CablecastPublicSite/show/57519?site=1
 https://pembrokeparkfl.portal.civicclerk.com/event/4284/media
-https://whiteville.granicus.com/player/clip/388?view_id=1&redirect=true
 https://pub-grand-forks.escribemeetings.com/Meeting.aspx?Id=93708097-20f9-4e71-8dcd-221550f099f5&Agenda=Agenda&lang=English
 https://glendale.granicus.com/MediaPlayer.php?clip_id=8524&view_id=2
 https://www.youtube.com/watch?v=sWUkyx7R7XA	https://youtube.com/live/sWUkyx7R7XA?feature=share
@@ -2150,7 +2067,6 @@ https://townhallstreams.com/stream.php?location_id=152&id=72646
 https://www.youtube.com/watch?v=z0nnVqiAhz4	https://www.youtube.com/channel/UCv9E_465QV3gi88DGIXmz2Q
 https://videoplayer.telvue.com/player/GBRlyEOJkXtkfSrhIDK-uv2PonrUwFBn/playlists/11625/media/1041521	https://warrennj.org/agendacenter
 https://pewaukeewi.portal.civicclerk.com/event/1245/media	https://pewaukeewi.portal.civicclerk.com/
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238	https://yazoo.granicus.com/ViewPublisher.php?view_id=1
 https://www.utah.gov/pmn/sitemap/notice/1051133.html	https://magna.utah.gov/AgendaCenter
 https://cloud.castus.tv/vod/weston/video/6a9884618f04390002ee839d?page=HOME	https://westonma.gov/agendacenter
 https://crd.ca.granicus.com/MediaPlayer.php?view_id=1&clip_id=3674
@@ -2178,7 +2094,6 @@ https://www.youtube.com/watch?v=QfOV2qPwxyc	https://www.youtube.com/channel/UCtX
 https://www.youtube.com/watch?v=XaoAbEJMtmM	https://www.youtube.com/%40LafayetteConsolidatedGovt
 https://www.youtube.com/watch?v=SU6ky6OL4es	https://www.youtube.com/CityofStanton
 https://www.youtube.com/watch?v=332B9eGOZCE	https://www.youtube.com/channel/UCc-5pQrwMYdWNJiST7NXvXg
-https://prosserwa.portal.civicclerk.com/event/203/media	https://prosserwa.portal.civicclerk.com/
 https://foxpointwi.portal.civicclerk.com/event/1006/media	https://foxpointwi.portal.civicclerk.com/
 https://www.youtube.com/watch?v=6I7NBXq1rnM	https://www.youtube.com/channel/UCGF1XYOeXabkJA4XZCv4MTw
 https://www.youtube.com/watch?v=eeqdewlwnmM	https://www.youtube.com/watch?v=eeqdewlwnmM
@@ -2194,21 +2109,11 @@ https://www.youtube.com/watch?v=s2TTtUcnzag	https://www.youtube.com/@townofmilli
 https://www.youtube.com/watch?v=tmfvXiRUPfE	https://www.youtube.com/@townofgranville4545
 https://www.youtube.com/watch?v=V_lFTibeVyQ	https://www.youtube.com/@townofstoningtonct.9270
 https://www.youtube.com/watch?v=4O873q7Q-1U	https://www.youtube.com/@TexasWorkforceCommission
-https://madisoncoil.portal.civicclerk.com/event/417/media	https://madisoncoil.portal.civicclerk.com/?category_id=26
 https://cantonoh.portal.civicclerk.com/event/2106/media	https://cantonohio.gov
 https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=617	https://winterhaven-fl.granicus.com/ViewPublisher.php?view_id=1
 https://hobbsnm.portal.civicclerk.com/event/119/media	https://hobbsnm.portal.civicclerk.com/
 https://www.youtube.com/watch?v=QUoRTvjmRQ4	https://www.youtube.com/@CityofRichfield
-https://howardcotx.portal.civicclerk.com/event/179/media	https://howardcotx.portal.civicclerk.com/
-https://kenmorewa.portal.civicclerk.com/event/1802/media	https://kenmorewa.portal.civicclerk.com/
-https://prairievillageks.portal.civicclerk.com/event/684/media	https://prairievillageks.portal.civicclerk.com/
-https://lumbertonnc.portal.civicclerk.com/event/263/media
-https://frasermi.portal.civicclerk.com/event/1035/media	https://frasermi.portal.civicclerk.com/.
-https://waycrossga.portal.civicclerk.com/event/308/media	https://waycrossga.portal.civicclerk.com/
-https://rockporttx.portal.civicclerk.com/event/1102/media	https://rockporttx.portal.civicclerk.com/
 https://northwoodoh.portal.civicclerk.com/event/297/media	https://northwoodoh.portal.civicclerk.com/
-https://godleytx.portal.civicclerk.com/event/6070/media	https://godleytx.gov
-https://seadrifttx.portal.civicclerk.com/event/21/media	https://www.seadrifttx.org/agendacenter
 https://www.youtube.com/watch?v=1s9vw8DXQzk	https://www.youtube.com/embed/1s9vw8DXQzk?si=L0IAcx8CawjYzUgj
 https://guadalupe.granicus.com/MediaPlayer.php?view_id=1&clip_id=1170	https://guadalupe.granicus.com/ViewPublisher.php?view_id=1
 https://www.youtube.com/watch?v=PqH6BABYbGg	https://www.youtube.com/user/CityofBrandonMB
@@ -2242,7 +2147,6 @@ https://lewisberryborough.org/residents/meeting-agendas-and-minutes/
 https://williamstownma.gov/2026-elections-and-town-meeting/
 https://tatetownship.org/trustees-and-clerk/meeting-minutes/2025-trustee-meeting-minutes-videos/
 https://www.youtube.com/watch?v=5QV8GitLo1Q	https://sheboygan-wi.municodemeetings.com/bc-commoncouncil/page/tenth-regular-common-council-meeting-2
-https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616
 https://leecoal.portal.civicclerk.com/event/1596/media	https://leecoal.civicclerk.com/web/Home.aspx
 https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right	https://boxcast.tv/view-embed/dcj8qnxnnonndniok58o?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&playInline=0&dvr=1&market=government&showCountdown=0&showDonations=0&showDocuments=1&showIndex=1&showChat=1&hidePreBroadcastTextOverlay=0&layout=playlist-to-right
 https://harrisonburg-va.granicus.com/MediaPlayer.php?view_id=2&clip_id=1370	https://harrisonburg-va.granicus.com/account/forgotpassword
