@@ -5528,6 +5528,19 @@ DIRECT_PLATFORMS: dict[str, str] = {
     # (a broadcast, view-embed, or channel URL alike), so a real pushed
     # row keeps its own "boxcast" label, same as vimeo/wistia/invintus.
     "boxcast": "BoxCast",
+    # A bare video file on a government's own domain, Dropbox, or Google
+    # Drive -- WO-303, 2026-09-12. Not a vendor civic-meeting platform at
+    # all (there's no per-tenant page structure, just a file), but it's
+    # the same "one adapter, many independent governments" shape as
+    # vimeo/wistia/boxcast above -- Palisade town CO, Dundee city OR,
+    # Cayuga Heights village NY (own domain), Enterprise city OR
+    # (Dropbox), Kemmerer city WY (Google Drive) are five real, unrelated
+    # governments already confirmed live. direct_file.py's resolve() sets
+    # `resolved.platform = self.platform_name` on every return path
+    # (including its graceful-degradation "not actually a video"
+    # outcome), so a real pushed row keeps its own "direct_file" label,
+    # same as vimeo/wistia/invintus/boxcast.
+    "direct_file": "Direct video file (own domain / Dropbox / Google Drive)",
 }
 
 # Platforms grouped under a single "Custom" row on /coverage -- each is a

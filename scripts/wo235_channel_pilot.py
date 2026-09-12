@@ -536,7 +536,132 @@ def channel_tab_url(channel_or_playlist_url: str, kind: str) -> List[str]:
     base = channel_or_playlist_url.rstrip("/")
     if kind == "playlist":
         return [base]
+    if kind == "playlists":
+        # WO-303, 2026-09-12: BACKLOG.md's "playlist-organised channels"
+        # entry -- a channel whose meetings are grouped into playlists
+        # (by year, by committee) rather than appearing directly in the
+        # flat Videos tab. One call, flat (`extract_flat: "in_playlist"`,
+        # same as the Videos-tab call), returns the channel's own
+        # playlists as entries (id + title, no video-level data) --
+        # `find_governing_body_playlist()` below picks which one (if any)
+        # to expand next.
+        return [f"{base}/playlists"]
     return [f"{base}/videos", f"{base}/streams"]
+
+
+_LEADING_YEAR_RE = re.compile(r"^(\d{4})\b\s*(.*)")
+_TRAILING_MEETING_WORD_RE = re.compile(r"\s*meetings?\s*$")
+
+
+def find_governing_body_playlist(
+    playlists_listing: Optional[dict], body_keywords: Tuple[str, ...]
+) -> Optional[dict]:
+    """From a FLAT channel/playlists listing (`channel_tab_url(...,
+    "playlists")` + `yt_dlp_listing()`), pick the one playlist that holds
+    a government's own regular meetings for a SPECIFIC governing body,
+    named by `body_keywords` -- case-insensitive phrases the CALLER
+    already knows identify that body (e.g. `("city council",)`). This
+    function never guesses the body name itself: the two real examples
+    on file (BACKLOG.md's "playlist-organised channels" entry) disagree
+    on shape too much to auto-derive one safely without a third example,
+    per that entry's own Constraint.
+
+    A candidate playlist's title, with any LEADING year and any TRAILING
+    "meeting"/"meetings" word stripped, must match a `body_keywords`
+    phrase EXACTLY (not merely contain it) -- grounded in Watertown city,
+    SD's real channel (youtube.com/channel/UCIslXYgiw39n0iPfGV9nP1A/
+    playlists, captured live 2026-09-12), whose real "City Council"
+    family alone spans four different real title shapes across the
+    years ("2026 City Council Meetings", "2006 City Council Meeting"
+    (singular), ...) while a genuinely different real sub-body sharing
+    the same words ("2024 City Council Work Session Meetings") must NOT
+    be swept in alongside it -- a plain substring/grouping check let the
+    Work Session sub-body collide with the real family and made the
+    function see two groups where there should be one; the exact-match
+    normalization fixes both at once. The newest year among the exact
+    matches is returned (an entry with no leading year sorts last, so it
+    only wins when it's the only match). Zero exact matches after
+    normalizing means decline (return None) rather than guess --
+    confirmed against Groton city, CT's real channel
+    (youtube.com/channel/UCBk-9Ahudi4nbh26x3jZxlA/playlists): its only
+    `body_keywords=("town council",)`-containing playlists are three
+    "Meet the Candidates ... Town Council <year>" candidate-forum
+    playlists (a real, different-shaped false lead, not the government's
+    actual meetings) -- none normalizes to exactly "town council" (the
+    year sits mid-title, not leading, and "meet the candidates for
+    groton" doesn't strip away), so this correctly returns None rather
+    than picking one at random. Matches BACKLOG.md's own finding that
+    Groton's real governing body (a Representative Town Meeting) has no
+    single "the meetings" playlist to expand at all.
+    """
+    entries = (playlists_listing or {}).get("entries") or []
+    keywords = [k.strip().lower() for k in body_keywords]
+    matches: List[Tuple[dict, Optional[int]]] = []
+    for entry in entries:
+        title = (entry.get("title") or "").strip()
+        if not title:
+            continue
+        year_match = _LEADING_YEAR_RE.match(title)
+        if year_match:
+            year: Optional[int] = int(year_match.group(1))
+            rest = year_match.group(2)
+        else:
+            year, rest = None, title
+        normalized = _TRAILING_MEETING_WORD_RE.sub("", rest.lower()).strip()
+        if normalized in keywords:
+            matches.append((entry, year))
+    if not matches:
+        return None
+    matches.sort(key=lambda pair: (pair[1] is not None, pair[1] or 0), reverse=True)
+    return matches[0][0]
+
+
+async def yt_dlp_playlist_videos(
+    playlist_entry: dict, playlistend: int = 10
+) -> Optional[dict]:
+    """Expand one playlist entry (from `find_governing_body_playlist()`)
+    into its own newest `playlistend` videos -- one more flat yt-dlp
+    listing call, against the playlist's own URL (`entry["url"]`, a real
+    `youtube.com/playlist?list=...` link -- confirmed shape in both the
+    Watertown SD and Groton CT fixtures captured for this WO)."""
+    url = playlist_entry.get("url")
+    if not url:
+        playlist_id = playlist_entry.get("id")
+        if not playlist_id:
+            return None
+        url = f"https://www.youtube.com/playlist?list={playlist_id}"
+    return await yt_dlp_listing(url, playlistend=playlistend)
+
+
+async def yt_dlp_channel_playlists_mode(
+    channel_url: str,
+    body_keywords: Tuple[str, ...],
+    *,
+    playlistend: int = 50,
+    expand_n: int = 10,
+) -> Optional[dict]:
+    """The `--playlists` mode BACKLOG.md's "playlist-organised channels"
+    entry asks for, as one composable call: list a channel's playlists
+    (flat, one call), find the one holding `body_keywords`'s regular
+    meetings (`find_governing_body_playlist()`), and expand it into its
+    own newest `expand_n` videos (one more call). Two yt-dlp calls total
+    on a match, one on a miss -- no more than `discover_one()`'s existing
+    flat Videos-tab call already costs.
+
+    Returns None at any step that finds nothing -- a channel with no
+    matching playlist (Groton city, CT's real shape) is a valid "nothing
+    here" answer, not an error to raise."""
+    listing = None
+    for playlists_url in channel_tab_url(channel_url, "playlists"):
+        listing = await yt_dlp_listing(playlists_url, playlistend=playlistend)
+        if listing and listing.get("entries"):
+            break
+    if not listing or not listing.get("entries"):
+        return None
+    match = find_governing_body_playlist(listing, body_keywords)
+    if not match:
+        return None
+    return await yt_dlp_playlist_videos(match, playlistend=expand_n)
 
 
 _MEETING_ALLOWLIST = wo134.MEETING_ALLOWLIST

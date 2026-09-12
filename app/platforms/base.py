@@ -252,6 +252,7 @@ def detect_platform(url: str) -> str:
     from .az_legislature import is_az_legislature_video_url
     from .wistia import parse_wistia_account_url
     from .boxcast import parse_boxcast_id
+    from .direct_file import is_direct_file_url
 
     netloc = urlparse(url).netloc.lower()
     path = urlparse(url).path.lower()
@@ -694,6 +695,17 @@ def detect_platform(url: str) -> str:
         # itself is never trusted to say whether it's a broadcast or a
         # channel (the real API is asked instead).
         return "boxcast"
+    if is_direct_file_url(url):
+        # WO-303, 2026-09-12: a bare video file on a first-party/file-
+        # sharing host with no vendor platform in front of it -- see
+        # direct_file.py's own module docstring for the real fixtures
+        # (Palisade CO/Dundee OR/Cayuga Heights NY's own domains,
+        # Enterprise OR's Dropbox link, Kemmerer WY's Google Drive
+        # files) and BACKLOG.md's WO-264/WO-284 entries this closes.
+        # Checked LAST, after every known vendor platform above, so a
+        # video URL actually served by a recognized platform never
+        # reaches here.
+        return "direct_file"
     return "unknown"
 
 

@@ -122,6 +122,16 @@ CANARY_URLS: dict[str, list[str]] = {
         "https://public.destinyhosted.com/agenda_publish.cfm"
         "?id=96635&mt=ALL&get_month=8&get_year=2026&dsp=ag&seq=4147"
     ],
+    # Palisade town, CO's own real Board of Trustees recording, direct on
+    # its domain -- confirmed live 2026-09-12 (WO-303), the plainest of
+    # the three real own-domain fixtures (no Drive/Dropbox rewrite in the
+    # path, so a failure here points squarely at the content-type check
+    # or the government's file itself, not at a third-party rewrite
+    # mechanism). See direct_file.py's own module docstring.
+    "direct_file": [
+        "https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/"
+        "Zoom-Video_Board-of-Trustees_08.25.2026.mp4"
+    ],
     "escribe": [
         "https://pub-bakersfield.escribemeetings.com/Meeting.aspx?"
         "Id=981f78d7-8211-4b4b-b066-5f93b4fd5e74&Agenda=Agenda&lang=English"

@@ -204,6 +204,46 @@ from conftest import load_fixture
         # new path-only check, since the civicclerk.com netloc branch
         # runs first in detect_platform()'s dispatch order.
         ("https://example.civicclerk.com/AgendaCenter", "civicclerk"),
+        # WO-303 (2026-09-12): direct_file.py's real fixtures -- a bare
+        # video file on a first-party domain (Palisade town CO, Dundee
+        # city OR, Cayuga Heights village NY -- all confirmed live to
+        # answer a plain HEAD with Content-Type: video/mp4, see
+        # BACKLOG_DONE.md's WO-303 entry), a Dropbox share link whose
+        # filename segment carries a real .mp4 extension (Enterprise
+        # city, OR), and a Google Drive single-file view link (Kemmerer
+        # city, WY -- confirmed to bypass Drive's virus-scan interstitial
+        # via `confirm=t` with no sign-in).
+        (
+            "https://palisade.colorado.gov/sites/g/files/lrnvjt1146/files/"
+            "Zoom-Video_Board-of-Trustees_08.25.2026.mp4",
+            "direct_file",
+        ),
+        (
+            "https://cayugaheights.gov/wp-content/uploads/2025/10/video1478511047.mp4",
+            "direct_file",
+        ),
+        (
+            "https://www.dropbox.com/scl/fi/jf8u7cx0atqmkirxzw6ec/"
+            "2025-09-09-City-Council-Recording.mp4",
+            "direct_file",
+        ),
+        (
+            "https://drive.google.com/file/d/1R6UKdoiv7_3nXk-sEmH7gil4toaEA1su/"
+            "view?usp=share_link",
+            "direct_file",
+        ),
+        # Negative control: a Drive FOLDER listing (Walbridge village,
+        # OH's real "Meeting Recordings" folder -- see BACKLOG.md's
+        # residual entry) is deliberately out of scope -- it renders via
+        # JavaScript and this adapter only resolves a single file.
+        (
+            "https://drive.google.com/drive/folders/1Je8_qcPnv1mh2tdbUhjDtSeWllW9lnT8",
+            "unknown",
+        ),
+        # Negative control: an ordinary page (no video extension, no
+        # Drive file id) must stay "unknown", not get swept up by the
+        # new check.
+        ("https://example.gov/agendas", "unknown"),
     ],
 )
 def test_detect_platform(url, expected):
