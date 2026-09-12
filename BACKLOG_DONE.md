@@ -1,5 +1,108 @@
 # Backlog — done
 
+## WO-270: WordPress surface pilot -- no signal clears the bar, front-page YouTube link is the closest lead [Done 2026-09-12]
+
+**What was tested and why.** WO-179 found that WordPress's own search
+box (`/?s=agenda`) reaches meeting posts the front page hides. WO-197
+found WordPress's `/feed/` answers almost every time (82.3%), but a
+10-feed sample carried town news with zero video links — so the feed
+alone wasn't the answer. Ryan asked for a real pilot on WordPress
+governments we already have video for, to find what else on a
+WordPress site — the REST API, custom post types, the posts search
+endpoint, the media library, an events endpoint, sitemaps, or the front
+page — reveals a real meeting video, audio file, or transcript. This
+was a measurement pilot only: no ingest, no queue, no research-file
+writes.
+
+**What was measured.** 277 real WordPress governments, fetched with
+plain honest HTTP (no browser headers, no headless browsing): 127 with a
+video already live in the Archive ("positive"), 150 confirmed no video
+after a real check ("negative"). Every surface was checked for two word
+lists — a broad list (youtube.com, youtu.be, vimeo.com, a Facebook video
+link, `.mp4`/`.m4a`/`.mp3`, plus generic words like "recording,"
+"watch," "livestream," "zoom," "transcript," "closed caption") and a
+narrow list (only a literal video-host link or file type, no generic
+words).
+
+**Result 1: how often each surface answers, out of 277 sites.**
+
+| Surface | Answered |
+|---|---|
+| `/feed/` | 257 (92.8%) |
+| `/wp-json/` REST API root | 253 (91.3%) |
+| REST posts search | 239 (86.3%) |
+| REST media library | 238 (85.9%) |
+| Sitemap | 230 (83.0%) |
+| Site search (no REST needed) | 246 (88.8%) |
+| Front page | 246 (88.8%) |
+| Events REST endpoint (only tried where one exists, 109 sites) | 104 of 109 (95.4%) |
+
+The REST API being silently disabled (answering 200 with the ordinary
+front page instead of real data) only happened on about 2.5% of sites —
+smaller than expected. The bigger reason a REST call fails is a plain
+401/403 block (up to 6.1% of sites) or the site being unreachable, not a
+security plugin quietly swapping in a fallback page.
+
+**Result 2: no single signal passed the bar.** Platforms' rule (WO-267):
+a signal is adopted at 90% or higher hit rate on real video sites and 5%
+or lower false-alarm rate on real no-video sites. Nothing tested here
+cleared it. The closest: a literal `youtube.com` link on the
+government's own front page — 65% hit rate, 7% false-alarm rate, and it
+costs nothing extra beyond a homepage fetch a CMS-fingerprinting pass
+already needs to make. The generic word list (the one named in the
+original request) did much worse — it fired on 85% of no-video sites
+too, because words like "watch" and "recording" are ordinary
+town-website copy, not evidence of a meeting video. The 9-word meeting
+vocabulary (agenda, minutes, meeting, council, board, commission,
+hearing, workshop, session) in the feed is just as common on no-video
+sites as video sites — this confirms WO-197's own finding rather than
+finding something new.
+
+**Result 3: for the 127 known-video sites, only 14 (11%) had ANY
+WordPress surface show the specific video already in the Archive.** Most
+of the time, that video was found through a different route entirely (a
+YouTube channel scan, a direct platform ingest), not by reading the
+government's own WordPress site. Checked by hand for Empress, AB: its
+own posts search for "youtube" finds a real post with a real video link
+— to a different, older meeting than the one already in the Archive.
+
+**Caution.** This is a 277-site pilot on governments already checked one
+way or the other by a person. The false-alarm rate could be different on
+the noisier 1,355-government population WO-271 will actually run
+against. No signal here is safe to auto-adopt; the front-page
+`youtube.com` check is a cheap first filter to prioritize which sites to
+look at further, not a final answer.
+
+**Recommendation.** WO-271 should run, in order of cost: (1) check the
+already-fetched front page for a YouTube/Vimeo link; (2) fetch `/feed/`
+and check the same way, plus the meeting-word list for finding a real
+meeting page even with no video; (3) try the REST posts search for
+"youtube," "agenda," then "meeting" (the single most productive surface
+in this pilot for finding a specific real video post); (4) site search
+as a fallback when the REST API is blocked; (5) sitemaps and the events
+endpoint last, since they found the least.
+
+**Files.** `~/Documents/rtr-business/research/wo270_probe_results.csv`
+(one row per site per probe, 277 sites), `wo270_site_summary.csv` (one
+row per site), `ENUMERATION_METHODS.md` §295 (all committed in
+rtr-business — no PR there, it's a local research repo).
+`docs/CMS_FAMILIES.md`'s WordPress section (the ranked recipe above),
+`docs/investigations/platform_fingerprints.md` (WO-270 addendum with the
+full near-miss table), `scripts/platform_fingerprints.py`'s docstring
+(records that this pass ran and found nothing to add). No changes to
+`app/utils/jurisdiction_data/platform_signatures.csv` — nothing measured
+here cleared that file's own 90%/5% bar, so nothing was added, per that
+file's stated rule that weaker candidates are documented, not folded in.
+Note: this entry's own earlier draft assumed "WO-268" would be the
+homepage-fetch pass consuming `platform_signatures.csv` — the task
+actually built under that number (below) is a DNS/sitemap/archive-index
+pass that deliberately does not fetch the homepage, so the front-page
+signal above is free relative to CMS fingerprinting generally, not to
+that specific pass.
+
+**Deploy status.** Nothing here touches `app/`, `archive/`, `worker/`,
+or `render.yaml` — docs and scripts only, no deploy needed.
+
 ## WO-268: a passive, light-touch way to find a government's meeting platform — DNS, sitemap, and archive lookups, tried on 300 governments [Done 2026-09-12]
 
 **What was done and why.** Today's way of finding a government's meeting

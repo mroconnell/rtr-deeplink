@@ -383,3 +383,79 @@ which column above actually has evidence for that platform:
    ones) before relying on any of their numbers above; don't silently
    promote a rejected signal into production matching on the strength
    of this table alone.
+
+
+## WO-270 addendum: WordPress-specific surfaces, none clear the bar
+
+WordPress is a CMS/site-builder (`scripts/cms_fingerprint.py`'s own
+territory), not a video-hosting platform like the rows above -- but
+Ryan's ask was specifically to find a WordPress-specific SIGNAL for
+"this site has a real meeting video," so it's recorded here rather than
+inventing a third file, following this doc's own stated convention that
+a signal not clearing the bar is a documented lead, not silently
+dropped.
+
+**Sample**: 127 WordPress governments with a real, live Archive video
+("positive") and 150 confirmed no-video after a real check ("negative"),
+`~/Documents/rtr-business/research/wo_wordpress_pilot_sets.csv`. All
+honest HTTP, no headless. Full method and every number:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §295.
+
+**Surfaces tested**: `/feed/`, `/wp-json/` root + `/wp/v2/types` +
+`/wp/v2/posts?search=` (6 words) + `/wp/v2/media` + an events REST
+endpoint when one exists, `/wp-sitemap.xml`/`/sitemap_index.xml`, site
+search `/?s=` (4 words), and the front page -- each checked for a BROAD
+marker set (the word list from the brief: youtube.com, youtu.be,
+vimeo.com, a Facebook video link, `.mp4`/`.m4a`/`.mp3`, "recording",
+"watch", "livestream", "zoom", "transcript", "closed caption") and a
+STRICT subset (only a literal video-host link or file extension, no
+generic English words).
+
+**Result: zero signals cleared 90% hit / 5% false-positive.** The
+closest:
+
+| Signal | Hit (of 127) | FP (of 150) |
+|---|---|---|
+| Front page has a literal `youtube.com` link (STRICT) | 0.646 | 0.073 |
+| Site search finds `youtube.com` (STRICT) | 0.575 | 0.093 |
+| Any surface, `youtube.com` specifically | 0.803 | 0.147 |
+| Any surface, any STRICT marker | 0.835 | 0.273 |
+
+BROAD markers (the generic words) are much worse: site-search BROAD hit
+89.8% but false-positive 85.3% -- essentially fires on everyone, because
+words like "watch"/"recording" are ordinary WordPress town-site copy.
+The 9-word meeting vocabulary (agenda/minutes/meeting/council/board/
+commission/hearing/workshop/session) in `/feed/` is no more common on
+video sites than no-video sites (e.g. "meeting" 56.7% positive vs 48.0%
+negative) -- this reproduces WO-197's own finding, not a new result.
+30+ plugin names, themes, `/wp-json/` namespaces and custom post types
+were also checked for a clean split; none found one (The Events Calendar
+plugin, for instance, is nearly as common on no-video sites as
+video sites, since installing an events calendar has nothing to do with
+whether a meeting gets a video).
+
+**Endpoint availability** (the other half of the brief -- "REST is often
+disabled" as a finding on its own): real REST availability across
+`/wp-json/*` was 85.9-91.3% of 277 sites, with only ~2.5% showing the
+specific "silently disabled, front page served instead of JSON" pattern
+this pass went looking for. The larger gap is plain 401/403 (up to 6.1%)
+and ordinary unreachability, not that specific pattern. Site search and
+the front page, which need no REST API, answered at a similar 88.8%
+rate.
+
+**Why "no signal passed" doesn't mean nothing useful came of this**:
+checking which surface reached the SPECIFIC video already in the
+Archive, for the 127 positives, found only 14 (11%) where any surface
+did -- most of the time the Archive's video was found through a
+different route (a YouTube channel scan, a direct platform ingest), not
+via the WordPress site's own content. So "does surface X carry video V"
+is a much harder bar than "does surface X carry *a* real meeting video,"
+and the near-miss numbers above are about the latter, more useful
+question.
+
+**No new `platform_signatures.csv` rows from this pass**, per this
+doc's own rule (only signals clearing the bar go in that file). The
+front-page `youtube.com` near miss is the strongest lead for a future
+pass with a bigger or more representative sample (this pilot's negative
+set is confirmed-checked governments, not the noisier 1,355-government
+population WO-271 will actually run against).
