@@ -7,6 +7,7 @@ from app.platforms.youtube import (
     YOUTUBE_VIDEO_UNAVAILABLE_MARKER,
     YouTubeAssetFinder,
     YouTubeUnavailableError,
+    _parse_meeting_date_from_title,
     classify_unavailability,
 )
 
@@ -79,14 +80,17 @@ async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
     assert result.source_url == "https://okc.primegov.com/x"
     assert result.external_id == f"youtube:{REAL_VIDEO_ID}"
     assert result.title == REAL_TITLE
-    # upload_date YYYYMMDD -> ISO. This still falls back to the imperfect
-    # upload_date (one day after the real meeting -- see BACKLOG_DONE.md)
-    # since _info_with_track() doesn't set release_date -- pins the
-    # fallback path specifically, for a video with no release_date at all
-    # (e.g. a plain never-live upload). See
-    # test_resolve_video_id_prefers_release_date_over_upload_date below
-    # for the now-fixed, real-release_date case.
-    assert result.date == "2026-08-05"
+    # WO-285, 2026-09-12: REAL_TITLE ("...August 4, 2026") is itself the
+    # real, live example that motivated preferring a title-parsed date
+    # over release_date/upload_date -- this video has no release_date set
+    # (_info_with_track() doesn't set one), so before this fix the old
+    # code fell all the way back to the imperfect upload_date (one day
+    # after the real meeting -- see BACKLOG_DONE.md's original
+    # release_date/upload_date entry). The title's own stated date (the
+    # real meeting date) now wins. See
+    # test_resolve_video_id_falls_back_to_release_date_when_title_has_no_date
+    # below for the release_date fallback path this replaced.
+    assert result.date == "2026-08-04"
     # REAL_UPLOADER ("cityofokc") doesn't validate as a real place on its
     # own -- glued, no space, doesn't wordninja-split into anything Census
     # recognizes -- so this is the honest, validated outcome (None), not
@@ -105,13 +109,16 @@ async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
 
 
 async def test_resolve_video_id_prefers_release_date_over_upload_date(monkeypatch):
-    # Real bug fixed 2026-08-12: confirmed on this exact real OKC video
-    # (id uNDJRR3ywVo, a livestreamed-then-archived meeting, was_live=True)
-    # that yt-dlp's real upload_date ("20260805") is one day after the
-    # real meeting, while its real release_date ("20260804") matches the
-    # video's own title ("...August 4, 2026") exactly -- confirmed on a
-    # second independent real sample (Columbus, OH) too, both was_live.
+    # Real bug fixed 2026-08-12: yt-dlp's real upload_date ("20260805") is
+    # one day after the real OKC meeting, while its real release_date
+    # ("20260804") matches -- confirmed on a second independent real
+    # sample (Columbus, OH) too, both was_live. Title is deliberately
+    # generic here (no parseable date) so this test isolates the
+    # release_date-vs-upload_date fallback WO-285 left in place, now that
+    # a title-parsed date (tested separately below) takes priority over
+    # both when one is present.
     info = _info_with_track(is_manual=True)
+    info["title"] = "City Council Regular Meeting"
     info["release_date"] = "20260804"
     monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
 
@@ -120,6 +127,62 @@ async def test_resolve_video_id_prefers_release_date_over_upload_date(monkeypatc
     )
 
     assert result.date == "2026-08-04"
+
+
+async def test_resolve_video_id_title_date_wins_over_release_date(monkeypatch):
+    # WO-285, 2026-09-12: the audit behind this fix found release_date
+    # itself still carries the same UTC-day-rollover shape as the
+    # original upload_date bug (780 of 1,298 real disagreements were off
+    # by exactly +1 day). REAL_TITLE states August 4; release_date here
+    # is deliberately set one day later (the rollover shape) to confirm
+    # the title's own stated date wins.
+    info = _info_with_track(is_manual=True)
+    info["release_date"] = "20260805"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
+
+    assert result.date == "2026-08-04"
+
+
+async def test_resolve_video_id_parses_bare_numeric_title_date(monkeypatch):
+    # Real case, WO-277 (2026-09-12): a real Aransas Pass, TX council
+    # meeting titled "2020 3 16" (a batch-uploaded older recording) was
+    # dated by its YouTube upload_date, 2020-10-05, months after the real
+    # meeting -- the caption text itself states "March 16, 2020". This
+    # bare "YYYY M D" shape has no weekday/month name and wasn't
+    # recognized by any date parser before this fix.
+    info = _info_with_track(is_manual=True)
+    info["title"] = "2020 3 16"
+    info["upload_date"] = "20201005"
+    monkeypatch.setattr(YouTubeAssetFinder, "_extract_info", lambda video_id: info)
+
+    result = await YouTubeAssetFinder.resolve_video_id(
+        REAL_VIDEO_ID, source_url="https://example.com"
+    )
+
+    assert result.date == "2020-03-16"
+
+
+@pytest.mark.parametrize(
+    ("title", "expected"),
+    [
+        ("Oklahoma City Council Meeting - August 4, 2026", "2026-08-04"),
+        ("2020 3 16", "2020-03-16"),
+        ("Winnebago County IL Board 01/22/2026", "2026-01-22"),
+        ("September 2, 2026 Box Elder County Commission Meeting", "2026-09-02"),
+        ("March 18, 2026 Council Meeting", "2026-03-18"),
+        # No date at all -- callers must fall back to release/upload_date.
+        ("City Council Regular Meeting", None),
+        ("Special Meeting", None),
+        # A year below the sanity floor isn't misread as a real date.
+        ("Founded 1987 3 4 Historical Marker Dedication", None),
+    ],
+)
+def test_parse_meeting_date_from_title(title, expected):
+    assert _parse_meeting_date_from_title(title) == expected
 
 
 async def test_resolve_video_id_flags_auto_generated_captions(monkeypatch):
@@ -381,11 +444,16 @@ def test_classify_unavailability_returns_none_for_an_unrecognized_message():
 
 
 async def test_resolve_video_id_missing_upload_date_leaves_date_none(monkeypatch):
+    # WO-285, 2026-09-12: title is deliberately generic (no parseable
+    # date) so this isolates the "no signal at all" case -- with
+    # REAL_TITLE's own stated date ("...August 4, 2026"), the correct
+    # result is no longer None; see
+    # test_resolve_video_id_title_date_wins_over_release_date above.
     monkeypatch.setattr(
         YouTubeAssetFinder,
         "_extract_info",
         lambda video_id: {
-            "title": REAL_TITLE,
+            "title": "City Council Regular Meeting",
             "uploader": REAL_UPLOADER,
             "upload_date": None,
         },

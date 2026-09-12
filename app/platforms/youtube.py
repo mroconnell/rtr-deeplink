@@ -1,5 +1,7 @@
 import asyncio
+import datetime
 import logging
+import re
 from typing import List, Optional, Tuple
 
 import yt_dlp
@@ -18,6 +20,119 @@ from ..utils.vtt_parser import (
 logger = logging.getLogger("rtr_deeplink.youtube")
 
 TARGET_LANGUAGE = "en"
+
+# WO-285, 2026-09-12: a real, live-example already sitting in this file's
+# own test fixture (REAL_TITLE in tests/test_youtube.py, "Oklahoma City
+# Council Meeting - August 4, 2026") shows the meeting-date bug wasn't
+# fully fixed by the 2026-08-12 release_date/upload_date change below --
+# that OKC video's real title states August 4, but with no release_date
+# set the old code fell back straight to upload_date (August 5, one day
+# late). WO-277 found the same shape live on a real Aransas Pass, TX
+# video and filed it in BACKLOG.md. A read-only audit of every archived
+# YouTube page (3,764 total, 2026-09-12) confirmed this isn't rare: 2,416
+# pages have a title with a parseable date, and 1,298 of those (54%)
+# disagree with the *already-release_date-preferring* stored date --
+# 780 of those disagreements (60%) are off by exactly +1 day, the same
+# UTC-day-rollover shape as the original upload_date bug, meaning
+# release_date carries it too for a meeting that starts in the evening
+# US local time. The video's own stated title date is the most direct
+# signal available and is preferred first now; release_date/upload_date
+# stay as the fallback for the (common) case where the title has no
+# parseable date at all. See BACKLOG.md's "page date = upload date" and
+# "six real, confirmed cases" entries (moved to BACKLOG_DONE.md under
+# WO-285) for the full audit numbers -- existing archived pages are
+# *not* backfilled by this change; that's tracked as its own BACKLOG.md
+# entry with the count.
+_MEETING_TITLE_MONTHS = {
+    "jan": 1,
+    "january": 1,
+    "feb": 2,
+    "february": 2,
+    "mar": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "july": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dec": 12,
+    "december": 12,
+}
+_MONTH_NAME_ALTERNATION = "|".join(sorted(_MEETING_TITLE_MONTHS, key=len, reverse=True))
+_MONTH_NAME_DATE_RE = re.compile(
+    rf"\b({_MONTH_NAME_ALTERNATION})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b",
+    re.IGNORECASE,
+)
+# M/D/Y or M-D-Y -- every real confirmed example so far is US-convention
+# month-first (see BACKLOG.md's WO-226 six-case entry).
+_NUMERIC_SLASH_DATE_RE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
+# Bare "YYYY M D" / "YYYY-MM-DD" with no fixed separator width -- the
+# specific shape WO-277 found ("2020 3 16") that the two patterns above
+# don't match.
+_BARE_YMD_DATE_RE = re.compile(r"\b(\d{4})[\s-](\d{1,2})[\s-](\d{1,2})\b")
+
+# Real dates only -- reject a plausible-looking but nonsensical year
+# (e.g. a stray "2024" budget-ordinance number that happens to sit next
+# to two more small numbers) by bounding it to when this project's
+# corpus could plausibly contain a video.
+_MEETING_TITLE_MIN_YEAR = 2000
+
+
+def _parse_meeting_date_from_title(title: Optional[str]) -> Optional[str]:
+    """Best-effort ISO date parsed directly from a YouTube video's own
+    title, e.g. "Oklahoma City Council Meeting - August 4, 2026" or a
+    bare "2020 3 16". Returns None when no confident date is found --
+    callers fall back to release_date/upload_date in that case. See the
+    WO-285 comment above for why this now takes priority over both."""
+    if not title:
+        return None
+
+    def _valid(year: int, month: int, day: int) -> Optional[str]:
+        if year < _MEETING_TITLE_MIN_YEAR:
+            return None
+        try:
+            return datetime.date(year, month, day).isoformat()
+        except ValueError:
+            return None
+
+    m = _MONTH_NAME_DATE_RE.search(title)
+    if m:
+        month = _MEETING_TITLE_MONTHS.get(m.group(1).lower())
+        if month:
+            day, year = int(m.group(2)), int(m.group(3))
+            parsed = _valid(year, month, day)
+            if parsed:
+                return parsed
+
+    m = _NUMERIC_SLASH_DATE_RE.search(title)
+    if m:
+        a, b, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= a <= 12 and 1 <= b <= 31:
+            parsed = _valid(year, a, b)
+            if parsed:
+                return parsed
+
+    m = _BARE_YMD_DATE_RE.search(title)
+    if m:
+        year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            parsed = _valid(year, month, day)
+            if parsed:
+                return parsed
+
+    return None
+
 
 # `_VIDEO_ID_RE`/id extraction now live in `youtube_ids.py` (yt-dlp-free,
 # WO-250) -- `extract_video_id()` above is re-exported from there, and
@@ -330,11 +445,21 @@ class YouTubeAssetFinder(AssetFinder):
         # benefits every adapter that delegates to YouTubeAssetFinder
         # (direct YouTube URLs, SLC, LIMS, Mesa/Albuquerque's Legistar
         # delegation), not just PrimeGov.
+        #
+        # WO-285, 2026-09-12: neither of the two above is actually
+        # reliable for a video whose own title states the real date --
+        # see the module-level comment above _parse_meeting_date_from_
+        # title() for the audit that found this at scale (54% of pages
+        # with a parseable title date disagreed with the release_date-
+        # preferring result this block used to compute on its own). The
+        # title's own stated date now wins first; release_date/
+        # upload_date remain the fallback, unchanged, for the common case
+        # where the title carries no parseable date at all.
         raw_date = info.get("release_date") or info.get(
             "upload_date"
         )  # YYYYMMDD or None
-        date = None
-        if raw_date and len(raw_date) == 8:
+        date = _parse_meeting_date_from_title(info.get("title"))
+        if not date and raw_date and len(raw_date) == 8:
             date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
 
         segments: List[TranscriptSegment] = []

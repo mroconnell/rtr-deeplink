@@ -114,8 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
-  `pick_calendar_candidate()`'s ambiguous-candidate error message…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
@@ -179,7 +178,6 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (173)
-  [NEEDS-AUDIT] `[EASY]` A YouTube video titled as a bare date (no…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
@@ -304,11 +302,12 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (173)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (51)
+  Adapter & platform gaps  (52)
     [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
-    [NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload…
+    [NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload…
+    [NEEDS-AUDIT] `[BIG]` 1,298 already-archived YouTube pages have a…
     [NEEDS-AUDIT] The shared meeting-title filter…
     [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
     [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
@@ -702,32 +701,6 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
-
-### `pick_calendar_candidate()`'s ambiguous-candidate error message crashes on a `(date, candidate)` tuple -- fixed in one of five identical copies, four remain `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** every copy of `pick_calendar_candidate()` builds `dated` as
-  a list of `(datetime, candidate_dict)` tuples, then its own fallback
-  "no clean recent candidate" error-message line does
-  `[c.get("title") for c in (dated[:5] or candidates[:5])]` -- when
-  `dated` is non-empty, `c` is the tuple, not the dict, and `.get()`
-  raises `AttributeError: 'tuple' object has no attribute 'get'`. Hit
-  live by WO-276 (2026-09-12) on the very first government whose
-  candidate list was genuinely ambiguous, crashing the whole sweep.
-- **Impact:** any sweep that reaches a real ambiguous-candidate case
-  (at least one dated-but-unclean candidate, more than one candidate
-  total) crashes outright instead of recording a clean "ambiguous"
-  outcome and moving on.
-- **Next action:** `scripts/nationwide_2404_ingest.py`'s copy is fixed
-  (`top_titles = [c.get("title") for _, c in dated[:5]] or [c.get("title")
-  for c in candidates[:5]]`). Four identical copies still carry the bug:
-  `scripts/nationwide_1911_ingest.py`, `scripts/nationwide_395_ingest.py`,
-  `scripts/nationwide_431_ingest.py`, `scripts/wo130_county_ingest.py` --
-  apply the same one-line fix to each.
-- **Constraint:** none -- this is a pure bug fix, not a behavior change;
-  the corrected line produces the identical error message it always
-  intended to.
-- **History:** found and fixed in one copy during WO-276 (2026-09-12);
-  see `BACKLOG_DONE.md`'s WO-276 entry.
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
 
@@ -1490,13 +1463,13 @@ so that work reads together.
 - **Constraint:** classification only; a challenge host is skipped, never retried headless.
 - **History:** WO-902 (`BACKLOG_DONE.md`, 2026-09-12).
 
-### 34 of WO-271's WordPress governments have a front-page `youtube.com`/`youtu.be` mention that never resolved to a classifiable channel link `[JUST-DO-IT]`
+### 34 of WO-271's WordPress governments have a front-page `youtube.com`/`youtu.be` mention that never resolved to a classifiable channel link -- `find_youtube_links()` widened, the 34-government re-run itself is still open `[JUST-DO-IT]`
 
-- **Issue:** WO-271 ran all 1,355 WordPress governments through the front-page-YouTube-link check; 42 had the literal substring, but only 8 of those produced an anchor/iframe/onclick shape `find_youtube_links()` recognizes as a channel, playlist, or video. The other 34 were never inspected by hand — the likely shape is a `youtube-nocookie.com` embed (a different domain string the substring check doesn't match) or a share-widget link the classifier doesn't parse.
+- **Issue:** WO-271 ran all 1,355 WordPress governments through the front-page-YouTube-link check; 42 had the literal substring, but only 8 of those produced an anchor/iframe/onclick shape `find_youtube_links()` recognizes as a channel, playlist, or video. The other 34 were never inspected by hand. WO-285 (2026-09-12) checked 12 of the 34 directly: the entry's own guess (a `youtube-nocookie.com` embed) wasn't the real cause on any of them -- the actual, confirmed shape on 6 of 12 was a real youtube.com/youtu.be URL sitting inside an inline `<script>` JSON config (a WordPress video-embed plugin's own per-post settings, JSON- and HTML-entity-escaped), never in any tag `find_youtube_links()` scanned; the other 6 had no real youtube link on the page at all (some 403'd, others' only "youtube" mention was that same plugin's own generic boilerplate JS, never a populated embed).
 - **Impact:** small — at most 34 governments, and WO-271's own measured yield (9.5% of linked governments) says most would resolve to nothing anyway. Not urgent.
-- **Next action:** read `rtr-business/research/wo271_discovery.csv`'s rows with `front_page_youtube_link=True` and a blank `channel_urls`; widen `find_youtube_links()` to also match a `youtube-nocookie.com` iframe/video `src`, and re-run discovery on just those 34 gov_ids.
-- **Constraint:** small population — a by-hand read of 34 rows, not a new bulk sweep.
-- **History:** `BACKLOG_DONE.md`'s WO-271 entry; `rtr-business/research/ENUMERATION_METHODS.md` §298.
+- **Next action:** `find_youtube_links()`/`classify_youtube_url()` are fixed (WO-285: raw-text scan for a de-escaped youtube.com/youtu.be URL, plus `/embed/{id}` and `youtube-nocookie.com` support for defense in depth) in all three copies (`scripts/wo235_channel_pilot.py`, `scripts/wo247_channel_band.py`, `scripts/wo252_channel_band.py`). What's still open: re-run discovery on the remaining 22 of the 34 gov_ids not yet checked by hand (`rtr-business/research/wo271_discovery.csv`'s rows with `front_page_youtube_link=True` and a blank `channel_urls`, minus the 12 WO-285 already read).
+- **Constraint:** small population — a by-hand read of the remaining 22 rows, not a new bulk sweep.
+- **History:** `BACKLOG_DONE.md`'s WO-271 entry; `rtr-business/research/ENUMERATION_METHODS.md` §298; WO-285, 2026-09-12 (`BACKLOG_DONE.md`) fixed the classifier and checked 12 of the 34.
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -1762,12 +1735,6 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] `[EASY]` A YouTube video titled as a bare date (no weekday/month name) gets the upload date as its displayed meeting date, even when the real meeting date is stated in its own captions.**
-  - **Issue**: found live 2026-09-12 (WO-277) ingesting a real Aransas Pass, TX council meeting titled "2020 3 16" — `app/platforms/youtube.py`'s title-to-date parser doesn't recognize that shape, so the page fell back to the video's YouTube upload date (2020-10-05, a later batch-upload) instead of the real meeting date. The caption text itself says "meeting of the City of Aransas Pass City Council, March 16, 2020 at 6pm" — the real date was available, just not where the parser looked.
-  - **Impact**: cosmetic, not a trust problem — the video and transcript are both correct. Confirmed live on one page so far: `/m/aransas-pass-tx-2020-10-05-2020-3-16`, whose title and displayed date are both wrong (shows "2020 3 16" / 2020-10-05 instead of March 16, 2020). Likely affects other governments whose channel has a backlog of batch-uploaded older recordings titled only by date.
-  - **Next action**: widen the title parser to recognize a `YYYY M D`/`YYYY MM DD` bare-date shape, or add a caption-text date fallback (search the first ~2 minutes of auto-caption text for a stated date) before falling back to upload_date.
-  - **Constraint**: only one real example confirmed so far — don't build the caption-text fallback from this single case without checking whether the stated-date phrasing is consistent across a second real tenant.
-  - **History**: `BACKLOG_DONE.md`'s WO-277 entry.
 - **[NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row says `shares_video=True` with no `example_meeting_url`, but a fresh WO-281 resolve of its own recorded CivicPlus AgendaCenter URL found the adapter checked the 5 most recent listings and found no real video link.**
   - **Issue**: found live 2026-09-12 (WO-281) resolving `https://randallcounty.gov/agendacenter` directly through `civicplus.py` — the adapter's own resolve explicitly reported checking the 5 most recent listings and finding no video, which contradicts the row's existing `shares_video=True`. Neither an `example_meeting_url` nor a `reject_reason` is set on the row, so there's no record of where the `shares_video=True` claim came from.
   - **Impact**: this government's coverage status can't currently be trusted either way — the dashboards would count it as having video with nothing to point to.
@@ -4478,27 +4445,75 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't ingest a Boxcast tier-1 page before this ships
     -- the page would go dead the moment the signed URL expires.
   - **History**: `BACKLOG_DONE.md`'s WO-227 and WO-226 entries, 2026-09-11.
-- **[NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload date, not the meeting date in its own title -- six real, confirmed cases.**
-  - **Issue**: WO-226's spot-check found six pages where the archived
-    slug's date is the YouTube upload date, not the meeting date the
-    video's own title states: Littleton CO (slug `2026-07-13` for a
-    title reading 07-09), Harvey IL (slug `8-25` for a title reading
-    8-24), Waldwick NJ (slug `07-18` for a title reading 07-14),
-    Richlands VA (slug `02-12` for "February 10"), Brookshire TX (slug
-    `09-04` for a title reading 09/03), Dallas OR (slug `08-18` for a
-    title reading 8/17).
-  - **Impact**: a reader comparing the URL's date to the meeting's own
-    stated date sees a mismatch on every one of these -- cosmetic, not a
-    wrong-meeting bug (the video and transcript are both still the
-    correct meeting), but a real, confusing inconsistency once several
-    examples exist across unrelated governments.
-  - **Next action**: find where the slug date is derived (the YouTube
-    adapter's own upload-date field vs. a title-date parse) and prefer a
-    date parsed from the title when one exists and looks like a real
-    date, falling back to upload date only when the title carries none.
+- **[NEEDS-AUDIT] `[EASY]` Two of WO-226's six real "slug takes upload date, not title date" cases use a 2-digit year in the title (`8-24-26`, `8/17/26`) -- the WO-285 fix that closed the other four doesn't parse that shape.**
+  - **Issue**: WO-226's spot-check found six real pages where the
+    archived slug/date is the YouTube upload date, not the meeting date
+    the video's own title states. WO-285 (2026-09-12) fixed the root
+    cause -- `youtube.py` now prefers a date parsed from the title over
+    release_date/upload_date -- and re-checking the real stored titles
+    for all six confirms four are now fixed prospectively (any FUTURE
+    resolve of these exact titles gets the right date): Littleton CO
+    ("Arts & Culture Board - 07/09/2026"), Waldwick NJ
+    ("07-14-2026 Council Regular Meeting"), Richlands VA ("Town of
+    Richlands February 10, 2026 1"), Brookshire TX ("09/03/2026 - 7:00PM
+    City of Brookshire City Council Regular Meeting") -- all four state
+    a full 4-digit year. The remaining two don't: Harvey IL ("Finance
+    committee meeting 8-24-26") and Dallas OR ("8/17/26 City Council
+    Meeting") both use a 2-digit year, which `_parse_meeting_date_from_
+    title()`'s numeric-slash pattern deliberately requires 4 digits for
+    (a 2-digit number is a much weaker date signal -- more likely to
+    collide with something else in a real title) and so doesn't match.
+    These 6 pages themselves are NOT backfilled by WO-285 either way --
+    see the separate `[NEEDS-AUDIT]` "1,298 pages disagree" entry below
+    for that.
+  - **Impact**: small -- 2 known real pages, cosmetic (video/transcript
+    are still correct either way).
+  - **Next action**: only worth widening `_parse_meeting_date_from_
+    title()` to a 2-digit-year shape once a second, independently
+    confirmed real example turns up beyond these two, per this repo's
+    "test against a real URL first" rule -- these two alone were both
+    found by the same WO-226 spot-check, not independently.
   - **Constraint**: don't regress a page whose title genuinely has no
     parseable date -- upload date is still the only signal for those.
-  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
+  - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11; WO-285,
+    2026-09-12 (`BACKLOG_DONE.md`) fixed the other four and the general
+    precedence bug.
+- **[NEEDS-AUDIT] `[BIG]` 1,298 already-archived YouTube pages have a title-stated date that disagrees with the stored date -- a real backfill candidate, not yet built.**
+  - **Issue**: WO-285's read-only audit (2026-09-12, against the real
+    Archive DB) checked every archived YouTube page's stored `date`
+    against a date parsed from its own `title`: of 3,764 total, 2,416
+    have a title with a parseable date, and 1,298 of those (54%)
+    disagree with the stored date -- the same root cause WO-285 fixed
+    for future resolves (see this file's own YouTube-date entries
+    above), just not yet applied to pages already ingested before the
+    fix. 780 of the 1,298 disagreements (60%) are off by exactly +1 day
+    -- the same UTC-day-rollover shape the original 2026-08-12
+    release_date fix was meant to close, meaning `release_date` itself
+    still carries it for an evening meeting in US local time. The rest
+    (+2 to +21 days, long tail) are mostly genuine batch-upload gaps
+    (the Aransas Pass, TX shape WO-277 found) where the title date is
+    unambiguously the real one.
+  - **Impact**: potentially the single largest confirmed date-accuracy
+    gap found in this repo's YouTube corpus -- but the count is from a
+    deliberately permissive, audit-quality title-date regex (built to
+    count disagreement, not to write production values), so it likely
+    over-counts real backfill candidates somewhat (e.g. a title
+    containing an unrelated 4-digit number sequence that coincidentally
+    parses as a date). Not independently verified page-by-page.
+  - **Next action**: before building a backfill script, (1) re-run the
+    same audit using the actual production `_parse_meeting_date_from_
+    title()` (not the audit script's own regex) to get an honest count
+    against what will really be written, (2) spot-check ~20 real
+    disagreements by hand to confirm the title date is genuinely more
+    correct than the stored one before trusting the bulk number, (3)
+    follow this repo's backfill conventions (commit per row, skip
+    already-current rows, run from the Archive's own Render shell per
+    CLAUDE.md's standing decision -- this reads/writes `meeting_pages`
+    only, no `segments`).
+  - **Constraint**: read-only so far -- no page has been changed. Don't
+    conflate this with WO-285's own code fix, which only affects new
+    resolves.
+  - **History**: `BACKLOG_DONE.md`'s WO-285 entry, 2026-09-12.
 - **[NEEDS-AUDIT] The shared meeting-title filter (`wo134_confirmed_hits_ingest.MEETING_ALLOWLIST`/`PROMO_BLOCKLIST`) passes a "Recap" clip, a community-outreach session, a training session, a mayor's own podcast/town-hall, and a sub-minute interview.**
   - **Issue**: WO-235's by-hand review of 137 governments' YouTube candidates found five confirmed real misses the shared automated filter (`_looks_like_real_meeting()` + `classify_video_hand_check()`) let through, because each contains an allowlisted governing-body word without being a real meeting recording: Pullman WA's entire channel is "Pullman City Council **Recap**" clips (96-141 seconds, a condensed highlight, not the meeting); Alhambra CA's "Trash and Recycling **Community Meeting**"/two Historic Preservation "**Community Meeting**s"/"Advancing Alhambra **Community Meeting**" (public-outreach sessions, not a governing body's own proceeding); West Haven CT's "FDA Food Code **Training** Virtual Session" (a training session — the blocklist only matches the exact phrase "training video", not "training ... session"); Methuen MA's "Mayor Neil Perry Agenda Review **Podcast**" (the mayor's own explainer, not a Council session); Pittsylvania County VA's "Board of Supervisors Vice Chairman Robert Tucker on RiverStreet" (a 34-second interview clip, title contains "Board of Supervisors" but is not a meeting).
   - **Impact**: every sweep script that imports this shared filter (at minimum `wo134_confirmed_hits_ingest.py`, `wo147_access_ladder_sweep.py`, `wo174_pipeline.py`, `wo235_channel_pilot.py`, and now `wo247_channel_band.py`) inherits the same gaps; each was only caught here because this WO's brief required an actual human read of every title before ingest, not because the code caught it. WO-247 (2026-09-12, the same method at 3x the population) hand-caught a further, larger batch of confirmed misses, the same shape: a Spanish-language "Recap"/"Resumen" clip (Worthington MN, 5 of 5 channel candidates, 58-75 seconds); a produced "Information Session" series with no governing-body proceeding (North Battleford SK's "UPAR Information Session", 5 of 5 candidates); board/commission recruitment PSAs ("Join the Lone Tree Planning Commission!", "...is Seeking New Members" — Lone Tree CO, all 3 candidates); a ceremonial "State of the City/County" mayoral address (Mobile County AL, Gadsden AL); a produced news-style update segment or community-affairs show ("Special Episode City Council Update" — Sidney OH; "Mayor's Minute" — Havelock NC; "Springboro: Here & There" — Springboro OH); a public information webinar or outreach/listening session with no governing-body proceeding (Sidney OH's Amazon-data-center webinar, Washougal WA's Regional Fire Authority info sessions, Greenfield CA's Groundwater Sustainability Agency meetings — a separate joint agency, not the city itself); a tourism/visitor-promotion channel mistaken for the government's own (Oconomowoc WI's "Visit Ocon", Rockingham County VA's `@VisitRockinghamVA`, Americus GA's "Americus Sumter Tourism", Pleasanton TX's unrelated "SAAE Society" — the last three only surfaced as bare video links with no channel page, so the title/channel had to be hand-checked via a direct yt-dlp lookup, not the channel-identity heuristic); a produced holiday/greeting message (Kingsville ON, Douglas AZ); and "Board's Personal Meeting Room" (Knox County IL, 2 of 5 candidates — almost certainly an unused Zoom waiting-room recording, not a meeting).
