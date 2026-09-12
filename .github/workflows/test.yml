@@ -37,7 +37,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 2 (not the default 1) so a `push` event's own
+      # HEAD~1 resolves locally -- the BACKLOG_DONE.md heading-integrity
+      # step below needs it as its comparison base for a direct push to
+      # main, since `origin/main` at that point in the run *is* the
+      # commit just pushed and would always diff empty against itself.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: actions/setup-python@v5
         with:
@@ -134,6 +141,29 @@ jobs:
         run: |
           python3 scripts/build_backlog_toc.py
           git diff --exit-code BACKLOG.md
+
+      # WO-236 (2026-09-11): BACKLOG_DONE.md is append-only by convention
+      # -- see CLAUDE.md -- and nothing enforced that until now. Two
+      # hand-resolved rebase conflicts silently dropped 22 already-
+      # recorded headings in one evening before this existed; see
+      # BACKLOG_DONE.md's own WO-236 entry and the script's docstring for
+      # the full story. `origin/main` isn't fetched by the checkout step
+      # above (it only fetches the ref actually being built), so it's
+      # fetched explicitly here; a direct push to main instead compares
+      # against the immediately preceding commit, since `origin/main` at
+      # that point in the run already *is* the commit just pushed and
+      # would otherwise always diff empty against itself. Blocking for a
+      # BACKLOG_DONE.md loss; a companion BACKLOG.md check is
+      # warning-only (see the script's own docstring for why).
+      - name: BACKLOG_DONE.md heading integrity
+        run: |
+          git fetch origin main --depth=1
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE_REF=HEAD~1
+          else
+            BASE_REF=origin/main
+          fi
+          python3 scripts/check_backlog_done_headings.py --base-ref "$BASE_REF"
 
       - uses: actions/setup-node@v4
         with:

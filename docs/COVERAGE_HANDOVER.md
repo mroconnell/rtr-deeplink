@@ -438,7 +438,10 @@ What the 2026-09-09 sweeps established about *where video is*:
    removed long meetings and a removed pin on 2026-09-11, WO-212/WO-210,
    and CI now fails on both). Budget for the session limit: seven agents
    at once tripped it once; resumable per-row reports meant nothing was
-   lost.
+   lost. `BACKLOG_DONE.md` is a union too — a hand-resolved rebase
+   conflict there is exactly as likely to silently drop a finished-work
+   entry as it is a queue or pin line, and as of WO-236 (2026-09-11) CI
+   fails a PR that does.
 
 ## 6. What is honest but unfinished
 

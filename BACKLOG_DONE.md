@@ -1,5 +1,89 @@
 # Backlog — done
 
+## WO-236: restored the small real damage from 22 "lost" BACKLOG_DONE.md headings, and a CI gate so a finished-work entry can never disappear again [Done 2026-09-11]
+
+**What was done and why.** The conductor found 22 `BACKLOG_DONE.md`
+headings that existed in yesterday's last commit and were gone from
+today's `main`, and flagged two merges as the cause. `BACKLOG_DONE.md`
+is append-only by convention — an entry, once written, never leaves
+(see `CLAUDE.md`) — so this needed fixing. Before restoring anything,
+this work order re-derived the claim against git history rather than
+trusting the headline count, per this repo's own rule that a lead is not
+a spec. The real picture turned out much smaller than "22 entries
+vanished."
+
+**What was actually found.** All 22 headings were real, but only one of
+them had actually lost its entry. The other 21 had been sitting
+**duplicated in full** — the same 21-entry, 567-line block copied twice,
+back to back, almost certainly from an earlier bad merge unrelated to
+this work order. One of the two flagged merges (`b88eee4`, WO-202's PR
+#948, a hand rebase) collapsed that duplicate down to one copy each —
+which is the correct fix, not a loss — but the collapse also clipped the
+very last line off several of the surviving copies. The other flagged
+merge (`9bb73d1`, WO-191 slice 2's PR #950 — not PR #916 as first
+reported; corrected here) did not delete its heading at all: it
+rewrote the entry in place, replacing a partial "798 of 3,304,
+continuing" draft with the finished sweep's own final numbers under an
+updated title. Restoring the old draft text as a new entry would have
+reintroduced stale content next to the real one, so it was left alone.
+Separately, the Archive Triage session's PR #983 (merged during this
+work order, independently) restored two entries of its own (the
+diacritics fix, the Granicus organization-name fix) — both turned out to
+already exist, word-for-word minus one later postscript paragraph, much
+further down the file, from the same kind of earlier duplication. The
+older, less-complete copies were removed, keeping PR #983's more
+complete versions as the single surviving copy of each.
+
+| Outcome | Count of 22 | What it means |
+| --- | --- | --- |
+| Already intact, nothing to restore | 13 | A duplicate from an earlier bad merge, already correctly collapsed to one full copy; never actually missing anything. |
+| Lost exactly its own last line | 7 | The collapse clipped one trailing line — a closing word, the end of a sentence, or a cosmetic divider — off the surviving copy; restored verbatim from git history. |
+| Kept all its content, gained stray blank lines | 1 | No text lost, but about 86 blank lines were left behind after it; trimmed back to normal spacing. |
+| Superseded, not lost | 1 | Rewritten in place with the sweep's final numbers once it finished; restoring the old partial draft would have added stale text back, so it was left as is. |
+
+**A related, separate duplicate found and fixed along the way.**
+`BACKLOG.md` also carried a stale, untagged copy of the "28 IQM2
+retired-tenant queue rows" entry — an older draft ("Ryan's call on
+whether to drop the confirmed-dead rows... 26 of 28") sitting right next
+to the current, correct one ("a third same-day probe... 27 of 28...
+left in the queue"). Removed the stale copy; the current one already
+says everything it said.
+
+**Caution.** This work order's count (22, all either intact or
+trivially fixable) depends on the specific two merges the conductor
+named actually being the only cause. It does not re-verify that no
+*other* `BACKLOG_DONE.md` heading, anywhere in the file's history, was
+ever fully deleted by some earlier, unflagged merge — the new CI gate
+(below) only protects the file going forward, from this point on.
+
+**Recommendation.** Ship the CI gate (already done, see below) and treat
+this as closed. The two merges that caused it (`b88eee4` / PR #948,
+`9bb73d1` / PR #950) both happened during the same single evening of
+heavy parallel work the multi-session rules already describe; the gate
+is the structural fix, not a one-off cleanup.
+
+**The fix going forward: `scripts/check_backlog_done_headings.py`,
+wired into CI as a fifth gate.** Given a base ref (`origin/main` for a
+PR, the immediately preceding commit for a direct push to `main`),
+every distinct `## ` heading present in the base's `BACKLOG_DONE.md`
+must still exist — at least once — in the working tree's. Deliberately
+an existence check, not a count check: the very duplicate-collapse this
+work order just walked through would have tripped a count-based version
+of this same gate on the PR that did the (correct) collapsing. A
+companion check on `BACKLOG.md` is warning-only — an open entry that
+disappears without a matching `BACKLOG_DONE.md` heading to show it was
+actually finished gets a warning, never a failure, since an open entry
+legitimately gets rewritten as work narrows and a hard gate on that
+would false-positive constantly. Fixture-backed tests in
+`tests/test_check_backlog_done_headings.py` cover a dropped heading, a
+grown body, a duplicate correctly collapsed, and the open-entry
+promotion case. `CLAUDE.md`'s CI-gates bullet and
+`docs/COVERAGE_HANDOVER.md` §5.6 (the "parallel agents" breakthrough)
+both updated to say the file is a union too and that CI now enforces it.
+
+**Deploy status.** Nothing to deploy. This work order only changed docs,
+`BACKLOG.md`/`BACKLOG_DONE.md`, a CI workflow, and a new script + tests.
+
 ## WO-231: correct the 13 wrong fallback pins the post-deploy backfill applied, settle 9 ambiguous re-keys, alias the correct hub moves, and audit every per-video pin on a shared host [Done 2026-09-11]
 
 **What was done and why.** Ryan deployed all four services today. The
@@ -7195,74 +7279,6 @@ this repo are manual. The five sweep sessions running right now use this
 worktree's own code directly, so they pick up the fix on their next run
 without waiting for a deploy.
 
-## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
-
-Ryan asked why a batch of ~40 Granicus pages (all the newer
-`/player/clip/{id}` URL format, no `view_id`) archived as "Unknown
-Jurisdiction." Confirmed live: that page format has no jurisdiction
-text anywhere in its visible body, and the existing RSS-channel-title
-lookup can't fire without a `view_id`. But every Granicus page's own
-`<meta name="description">` follows the same template regardless of
-tenant type -- "Live and Recorded Public meetings of {meeting title}
-for {ORGANIZATION NAME}" -- confirmed live on 4 distinct real tenants:
-a water district (`sfwmd` → "South Florida Water Management
-District"), a transit authority (`rideuta` → "Utah Transit Authority
-(UTA)"), a council of governments (`scag` → "Southern California
-Association of Governments"), and an ordinary city (`pcbgov` →
-"Panama City Beach").
-
-**What was done.** Added a new fallback tier to `granicus.py`, tried
-only after page-text extraction and subdomain humanization both
-decline (never overriding the higher-trust RSS channel title when a
-`view_id` is present). Rejects a domain-shaped result the same way the
-RSS-title tier already does -- confirmed live that `lcd.granicus.com`'s
-own meta description echoes its own hostname ("...for
-lcd.granicus.com"), the identical misconfigured-customer shape already
-guarded against on that tenant's RSS title. Special districts still get
-no auto-assigned `gov_id` (by design -- no national table covers them),
-but now get their real name instead of a bare placeholder, which feeds
-the mint/pin worklist with something a human can act on. Fixture-backed
-regression tests added (extraction, domain-shaped rejection, priority
-vs. the RSS channel title); full suite (2920) and `ruff` clean. PR:
-"Granicus: extract organization name from meta description" (#857).
-
-## Fixed double-encoded diacritics in 5 gov-registry data files: 23 real government names [Done 2026-09-10]
-
-Found chasing Ryan's "why is `lacanadaflintridge-ca.granicus.com`
-Unknown Jurisdiction" question. `us_places.csv` stored the government's
-real name as "La CaÃ±ada Flintridge city" instead of "La Cañada
-Flintridge city" -- UTF-8 bytes for "ñ" decoded as Latin-1 and
-re-encoded. A separate same-day session (the shared-host pin pass, see
-"39 pages on bare YouTube and Vimeo hosts" below) independently found
-the same corruption and filed it in `BACKLOG.md` without fixing it;
-this session found 3 more affected rows they hadn't checked
-(`us_school_districts.csv`) and the same corruption duplicated in the
-older `counties.csv`/`places.csv` tables, for 23 unique names / 43
-total row fixes across 5 files (mostly Puerto Rico municipios --
-Bayamón, Mayagüez, Añasco, etc. -- plus Doña Ana County NM, Cañon City
-CO, Española NM, La Cañada Flintridge CA).
-
-**What was done.** A surgical byte-level repair (`line.encode("latin-1").
-decode("utf-8")` applied only to the corrupted characters, never
-rewriting the file's own CRLF line endings the way a naive line-by-line
-rewrite first did) -- row/line counts unchanged in every file, verified
-reversible and correct on every affected row. `pytest tests/
-test_gov_registry.py` (275) and the full suite (2917) both pass, `ruff`
-clean. PR: "Fix double-encoded diacritics in 5 gov-registry data files."
-
-**What's still open, filed in `BACKLOG.md`'s Open bugs.** The generator
-(`scripts/build_jurisdiction_data.py`)'s own blanket `.decode("latin-1")`
-on raw Census source files is the actual root cause and will re-corrupt
-the same rows (or any other UTF-8-sourced row not yet noticed) on a
-future regeneration -- not fixed here, needs per-row encoding detection.
-Separately: even with the table now correctly accented, a real
-government's own page text almost always spells its name WITHOUT the
-accent (confirmed on La Cañada Flintridge's own Granicus page: "La
-Canada Flintridge"), and `finalize_jurisdiction()`'s table validation
-requires an exact character match -- so this fix alone does not make
-that specific example auto-resolve. Filed separately since it's a
-different, riskier fix (touches heavily-tuned validation code).
-
 ## WO-151: access-ladder sweep of 1,026 governments from the research file's own meetings-page URLs, all populations -- all 1,026 now checked, 69 real videos found [Done 2026-09-10]
 
 Ryan's ask: for 1,026 governments with no page on the site (no population
@@ -14414,6 +14430,7 @@ history, the GovAccess fuzzy-match investigation) or an external doc
 
 Full numbers from the original 2026-08-15 sweep, moved out of the live
 `BACKLOG.md` entry to keep it scannable — the live entry now just points
+here.
 
 **Baseline counts (649 archived jurisdictions)**: 510 valid as-is, 73
 reachable by longest-valid-prefix trim, 44 not in the Census/StatsCan
@@ -14451,6 +14468,7 @@ jurisdiction-side examples originally cited (Sarasota/Hollywood/Hampton)
 are moot per the correction above, so no jurisdiction-side example
 currently motivates building it.
 
+---
 
 ## 2026-08-30 production write: 98 jurisdiction corrections applied directly to published pages [Done 2026-08-30]
 
@@ -14577,6 +14595,7 @@ that touch one service's tree, so it decays as PRs get broader. The
 1,001/1,000 figure confirmed 2026-08-29 came in ahead of (i.e. worse
 than) the ~1,145 month-end projection the entry used to carry.
 
+---
 
 ## Granicus `chunklist.m3u8` timeout -- detail moved out [Investigated 2026-08-31]
 
@@ -14604,6 +14623,8 @@ the same symptoms and starts re-litigating root cause):**
 don't assume an immediate retry fixes it — cold-storage cases may need
 hours, dead assets may never succeed.
 
+---
+
 
 ## Same-host pulls / flat timeout split -- measurement detail moved out [Investigated 2026-08-31]
 
@@ -14626,6 +14647,7 @@ jobs in two days — ~3.5 hours of retry (106 × 120s) against ~96
 worker-hours available over the same window, about **4%**. Timeouts are
 not what caps real output at ~35 jobs/day.
 
+---
 
 ## Search Console "Reasons preventing indexing" -- detail moved out [Investigated 2026-08-31]
 
@@ -14651,6 +14673,7 @@ reslugged old URL was never sending a real 301 either — it was serving
 200 with a different canonical the whole time. That was fixed
 2026-08-31 (see `BACKLOG_DONE.md`).
 
+---
 
 ## `/coverage` QA surface -- detail moved out [Investigated 2026-08-31]
 
@@ -14737,6 +14760,7 @@ unverified live, only checked from this session's sandbox, worth a real
 browser check. Real text-extraction for a searchable preview (needing
 `pypdf`/`pdfplumber`, neither in `requirements.txt`, plus a new storage
 column) remains a separate, bigger, unbuilt ask — see the live
+`BACKLOG.md` entry.
 
 ## Transcript version picker analytics shipped [Done 2026-08-31]
 
@@ -14771,6 +14795,7 @@ two static `mailto:` Contact links and the `ryan@how-to-adu.com` address
 on `about.html` were both repointed. Remaining config values
 (`RESEND_REPLY_TO_ADDRESS`, `DAILY_REPORT_EMAIL_TO`,
 `YOUTUBE_FETCH_REPORT_EMAIL`) are tracked as still-open in the live
+`BACKLOG.md` entry.
 
 ## "Which Ryan address" resolved: `ally@redtaperecordings.com` for all operator/ops reporting [Done 2026-08-22]
 
@@ -14798,89 +14823,6 @@ this recipient — they look nearly identical in a config diff, and mixing
 them up would silently break either delivery or reporting. Confirm
 `ally@redtaperecordings.com` receives mail before switching anything
 over.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## Phase 4: caught UnicodeError alongside gaierror in check_destination() (PR #642) [Done 2026-08-31]
 

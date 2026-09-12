@@ -3276,24 +3276,6 @@ of human step they need.
   Still not conclusive (never resolved even once), but the pattern is
   now 3-for-3 consistent. Left in the queue.
 
-- **Issue**: 28 structurally-correct IQM2 queue rows resolve to tenants
-  that appear to be retired (the Accela/IQM2 sunset) rather than
-  truncated URLs — distinct from the 52 truncated rows already fixed.
-- **Impact**: these 28 rows will never successfully transcribe left as-is
-  in the queue; wildcard DNS means even a dead tenant still answers, so a
-  single probe alone can't tell "retired" from "transient outage."
-- **Next action**: Ryan's call on whether to drop the confirmed-dead rows,
-  now that two probes on different days (2026-08-22 and 2026-08-31) agree
-  on 26 of 28; `pec` needs separate handling first — it shows a
-  connection-level timeout, not the shared generic-error signature the
-  other 27 share.
-- **Constraint**: never drop a row off a single probe on this population —
-  a dead IQM2 tenant still returns the generic "Accela Meeting Portal"
-  body instead of failing outright.
-- **History**: `BACKLOG_DONE.md` — split from tier-3 queue repair #308
-  (2026-08-22); repeat probe and full tenant list [Investigated
-  2026-08-31].
-
 ### `[LATER]` Swagit multi-clip meetings: both transcription paths now handle it, two small residuals remain
 
 - **Issue**: two known, unconfirmed-as-real gaps left after both paths
