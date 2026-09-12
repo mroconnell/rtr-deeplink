@@ -462,6 +462,94 @@ def _name_tokens(text: str) -> set:
     return {w for w in words if w not in _GENERIC_GOV_NAME_WORDS and len(w) > 2}
 
 
+def _ordered_name_words(text: str) -> list:
+    """Same filtering as `_name_tokens()` (drop generic gov-type words and
+    anything <=2 chars) but ordered and not deduped -- `_run_together_
+    name_match()` below needs the government's own words in the order
+    they actually appear in `gov_name`, not a bag, since "the name's
+    tokens appear in order" is the property it's checking for."""
+    words = re.findall(r"[a-z]+", (text or "").lower())
+    return [w for w in words if w not in _GENERIC_GOV_NAME_WORDS and len(w) > 2]
+
+
+# WO-254 (found during WO-249): a real handle that runs the government's
+# name together with no separators at all -- South River borough, NJ's
+# own municipal channel, `@southrivernjtv3564`, confirmed live via
+# YouTube's oEmbed to be "South River NJ TV35" -- tokenizes under
+# `_name_tokens()`'s plain `[a-z]+` splitter as ONE blob
+# ("southrivernjtv") that can never intersect a gov_name tokenized on
+# real word boundaries, no matter whose channel it really is. This
+# constant gates `_run_together_name_match()`'s fallback below at 2 real
+# words minimum, not 1 -- see that function's own docstring for why a
+# single word can't be trusted alone.
+_MIN_RUN_TOGETHER_WORDS = 2
+
+# The same generic gov-type words `_name_tokens()` already drops, plus
+# every 2-word concatenation of them (order matters: "townof"/"cityof"
+# are the real compound-handle prefixes; "ofcity" etc. are included too
+# since nothing stops a government from writing it that way) -- used
+# only to anchor a SINGLE real name-word against a genuine administrative
+# prefix/suffix ("town of Weston" -> "townofweston...") before accepting
+# it as a match. See `_run_together_name_match()`'s docstring for why a
+# bare, unanchored single word is never accepted on its own.
+_GENERIC_NAME_ADJACENCY = set(_GENERIC_GOV_NAME_WORDS) | {
+    a + b for a in _GENERIC_GOV_NAME_WORDS for b in _GENERIC_GOV_NAME_WORDS if a != b
+}
+
+
+def _run_together_name_match(gov_name: str, channel_text: str) -> bool:
+    """True when the government's own real name-words, in the order they
+    appear in `gov_name`, concatenated with no separator, form a
+    substring of `channel_text`'s own letters run together the same way.
+
+    Exists for a real handle with no word separators at all (see
+    `_MIN_RUN_TOGETHER_WORDS`'s own comment for the confirmed South River
+    borough, NJ case) -- `channel_name_plausible()` calls this only as a
+    fallback, after its own exact-token-set check has already failed to
+    find a shared word the normal way.
+
+    Requires at least `_MIN_RUN_TOGETHER_WORDS` (2) of the government's
+    own words when checking a bare run-together match, specifically so a
+    SINGLE word can never match alone: a lone word is exactly the shape
+    of the false positive this whole check exists to avoid. Confirmed
+    live during this same sweep (WO-247): Rockingham County, VA's real
+    *tourism* channel, `@VisitRockinghamVA`, is ALSO one run-together
+    blob ("visitrockinghamva") that legitimately contains "rockingham" --
+    the government's only non-generic word -- with no way to tell it
+    apart from a real government handle using text shape alone. Two
+    consecutive real words together ("south" + "river", "west" +
+    "fargo") are specific enough that a coincidental match inside an
+    unrelated handle is implausible; one word is not -- per CLAUDE.md/
+    BACKLOG.md's own constraint on this check, "don't just loosen the
+    tokenizer to substring matching generically."
+
+    A government whose own name reduces to exactly one non-generic word
+    (e.g. plain "Weston") still gets a match here, but ONLY when that one
+    word sits directly against a real generic government-type prefix or
+    suffix in the channel blob (`_GENERIC_NAME_ADJACENCY` -- "town of
+    Weston" -> "townofweston...", never a bare "weston" floating with no
+    anchor) -- that's what a real municipal handle's own "Town of
+    <Name>" shape looks like run together, and it's exactly what
+    Rockingham's tourism-channel handle does NOT have (it's anchored by
+    "visit", not by any government-type word).
+    """
+    gov_words = _ordered_name_words(gov_name)
+    if not gov_words:
+        return False
+    channel_letters = "".join(re.findall(r"[a-z]+", (channel_text or "").lower()))
+    if not channel_letters:
+        return False
+    run_together = "".join(gov_words)
+    if len(gov_words) >= _MIN_RUN_TOGETHER_WORDS:
+        return run_together in channel_letters
+    for adjacency in _GENERIC_NAME_ADJACENCY:
+        if (adjacency + run_together) in channel_letters or (
+            run_together + adjacency
+        ) in channel_letters:
+            return True
+    return False
+
+
 _PREVIEW_NOT_THE_MEETING_RE = re.compile(
     r"podcast|preview|teaser|recap|highlight reel", re.IGNORECASE
 )
@@ -487,17 +575,24 @@ def looks_like_deliberative_meeting(title: str) -> bool:
 def channel_name_plausible(channel_text: str, gov_name: str) -> bool:
     """True when `channel_text` is blank (nothing to check -- most
     YouTube metadata lookups return no usable channel name at all, see
-    `_channel_handle()`'s own docstring) or shares at least one real word
-    with the government's own name. False is a real negative signal
-    (Shelby County OH's real channel was literally 'Union County OH'),
-    not proof by itself -- callers combine this with the title check."""
+    `_channel_handle()`'s own docstring), shares at least one real word
+    with the government's own name, OR (WO-254) matches via
+    `_run_together_name_match()`'s compound-handle fallback -- a real
+    handle with no word separators at all (`@southrivernjtv3564`) can
+    never share a token with a gov_name tokenized on real word
+    boundaries no matter whose channel it really is. False is a real
+    negative signal (Shelby County OH's real channel was literally
+    'Union County OH'), not proof by itself -- callers combine this with
+    the title check."""
     if not channel_text:
         return True
     gov_tokens = _name_tokens(gov_name)
     channel_tokens = _name_tokens(channel_text)
     if not gov_tokens or not channel_tokens:
         return True
-    return bool(gov_tokens & channel_tokens)
+    if gov_tokens & channel_tokens:
+        return True
+    return _run_together_name_match(gov_name, channel_text)
 
 
 def _yt_channel_recent_entries(channel_url: str, limit: int = 20) -> list:

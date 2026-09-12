@@ -180,6 +180,114 @@ reasons), `research/ENUMERATION_METHODS.md` §284 (the full write-up).
 
 **History**: `BACKLOG_DONE.md`'s WO-234 entry (the discovery pass this
 closes out); `rtr-business/research/ENUMERATION_METHODS.md` §284.
+
+## WO-254: two small filed bugs — South River NJ's own channel wrongly rejected, the 6-hourly GitHub feeder never saved its probe rows [Done 2026-09-11]
+
+**What was done and why.** Two small, unrelated bugs that earlier
+sessions had already found and written up in `BACKLOG.md` (filed by
+WO-249 and WO-248). Both are fixed now; both entries moved here.
+
+**Bug 1 — a real government channel was wrongly rejected.**
+`scripts/wo230_agendacenter_followup.py`'s `channel_name_plausible()`
+checks whether a found YouTube channel's name shares a real word with
+the government's own name, as one signal that the channel is really
+that government's. The check splits text into words on letter runs, so
+it works fine when a channel's handle has spaces or other separators
+between words. South River borough, NJ's own real municipal TV channel
+does not: its handle is `@southrivernjtv3564`, with no separators at
+all, so the whole handle read as one word ("southrivernjtv") that
+shares nothing with "South River" — the check said no match, even
+though this channel, confirmed live via YouTube's own oEmbed lookup, is
+really "South River NJ TV35," the government's own channel.
+
+**What changed.** The check now has a second try when the first one
+finds no shared word: it looks for the government's own real words, in
+the order they appear in the government's name, run together with no
+gap, as a substring of the channel text (also with all separators
+stripped). South River's "south" + "river" run together as "southriver"
+— found inside "southrivernjtv3564." This second try only fires on a
+single word (most real government names in this list are a single
+distinctive word once "city," "town," "county," and similar words are
+dropped) when that one word sits directly against a real "town of" /
+"city of" style prefix in the channel text — never on a bare single
+word by itself. That guard is not theoretical: this same sweep also
+found Rockingham County, VA's real *tourism* channel,
+`@VisitRockinghamVA` — also one run-together word, and it legitimately
+contains "rockingham," the county's own name. A bare single-word match
+would have wrongly accepted that tourism channel as the county's own
+government channel. Two or more real words run together together (like
+South River's) are specific enough on their own; one word needs that
+extra anchor.
+
+| Check | Before | After |
+|---|---|---|
+| `@southrivernjtv3564` (South River borough, NJ's own real channel) | rejected | accepted |
+| `@VisitRockinghamVA` (Rockingham County, VA's real tourism channel) | rejected | still rejected |
+| Every existing passing/failing case (Shelby County OH vs. "Union County OH," Niles city MI vs. Berrien County's own channel, Atoka County OK vs. City of Atoka) | unchanged | unchanged |
+
+**Caution.** South River borough, NJ's own row was not re-ingested by
+this fix — per the conductor's instruction, this WO only fixed the
+check itself. The row is ready for the next sweep that runs
+`wo230_agendacenter_followup.py` again.
+
+**Verification.** New tests in `tests/test_wo230_channel_name_plausible.py`
+cover the real South River fix, a same-shape West Fargo-style example,
+the single-word-needs-an-anchor rule (using the real Rockingham tourism
+channel as the negative case it must keep rejecting), and the existing
+Shelby County / Niles-Berrien / Atoka negative cases, confirming none of
+them flipped. Full suite green (3,378 passed, 16 skipped — the skips are
+pre-existing and unrelated), `ruff check` and `ruff format --check`
+clean. No model changed, so `alembic check` does not apply.
+
+**Bug 2 — the 6-hourly GitHub feeder never saved its probe rows.**
+`.github/workflows/feed-tier3-transcription.yml` runs every 6 hours and
+feeds a batch of queued videos toward the worker's auto-transcription
+pipeline. Each video it checks gets a row written to a tracked file,
+`scripts/tier3_auto_transcription_queue_probe.csv`, recording what was
+learned about it (how long the video is, whether it looks like a dead
+link, and so on). The workflow's own commit step only ever staged the
+queue file itself (`git add
+scripts/tier3_auto_transcription_queue.txt`) — never the probe file —
+so every probe row this job has ever written was thrown away when the
+job's temporary runner shut down, every run, 4 times a day, since the
+workflow started.
+
+**What changed.** The commit step now stages both files and only
+declares "nothing to commit" after checking both of their diffs, not
+just the queue file's. The script that writes the probe rows
+(`append_probe_row()`) only ever adds new rows — it never rewrites or
+deletes an old one — so this change just lets the workflow actually
+commit the rows it was already correctly writing to disk; nothing about
+which rows get written, or when a video gets accepted or rejected,
+changed.
+
+| What changed | Before | After |
+|---|---|---|
+| Where a probe row landed after a run | written to disk, thrown away when the job ended | written to disk, committed |
+| What the commit step checked before committing | only the queue file's diff | both the queue file's and the probe file's diff |
+
+**Caution.** This only affects whether the probe file's real history
+gets saved. It does not change which videos get queued, accepted, or
+rejected — the probe CSV was always written correctly on disk during
+each run; only the save step was missing one of the two files.
+
+**Verification.** A new test,
+`tests/test_feed_tier3_workflow.py`, parses the workflow file itself
+(the same way an existing test already checks `render.yaml`) and
+asserts the commit step stages both files and checks the diff only
+after staging both — so a future edit that reverts this, or reorders
+the steps wrong, fails a test instead of silently losing rows again.
+`tests/test_transcription_queue_files.py` stayed green, unchanged.
+
+**Deploy status.** Neither fix needs a deploy. Bug 1 is a plain Python
+script, run by hand. Bug 2 is a GitHub Actions workflow — it takes
+effect on its very next scheduled run after this merges, automatically.
+
+**What is undone.** South River borough, NJ's row still needs a sweep
+re-run to actually pick up the fixed channel check (see Bug 1's
+Caution). No backlog entry needed for that — `BACKLOG.md`'s WO-249
+history note already says the row is ready for the next sweep.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on

@@ -114,8 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (35)
-  `channel_name_plausible()`'s word-tokenizer rejects a real…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (33)
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -133,7 +132,6 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (35)
   `hub_slug_aliases.csv` can only redirect an old slug to ONE new home,…
   WO-153's leftover Part B/C rows: 111 shared-host domains still…
   `wo150_finish_tier3.py` never writes a probe reject back into…
-  The 6-hourly tier-3 feed GitHub Action never commits the probe rows…
   `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform…
   Dashboard filters: exclude a string, and filter on blank / non-blank…
   `tenant_overrides.csv`'s `evidence` text always says "WO-134…
@@ -682,43 +680,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### `channel_name_plausible()`'s word-tokenizer rejects a real own-channel when the handle is one run-together word, not space-separated -- confirmed live on South River borough, NJ `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: `scripts/wo230_agendacenter_followup.py`'s
-  `channel_name_plausible()` (and `_name_tokens()`, the same shape) splits
-  on `[a-z]+`, so a YouTube handle with no spaces between words
-  (`@southrivernjtv3564`) tokenizes as one blob (`southrivernjtv`) that
-  shares no token with "South River borough, NJ" -- even though the
-  channel's own real display name, confirmed live via YouTube's oEmbed
-  endpoint, is "South River NJ TV35": a real, own-government municipal TV
-  channel. The check compares the URL-derived handle text, never the
-  channel's actual display name, and a compound handle with no word
-  boundaries can never match the split-on-letters tokenizer no matter
-  whose channel it really is.
-- **Impact**: a real, own-government video is wrongly filed as kind-A
-  ("channel name shares no word with the government's own name") and the
-  government is recorded as no-usable-video, when a real meeting video
-  was right there. Confirmed on one row this WO found (South River
-  borough, NJ, "Borough Council meeting August 17 2026",
-  `https://www.youtube.com/watch?v=RXDl1mJNJBw` -- oEmbed's `author_name`
-  is "South River NJ TV35", `author_url` is
-  `https://www.youtube.com/@southrivernjtv3564`); likely affects any
-  other government whose own channel handle happens to run its name
-  together with no separating characters.
-- **Next action**: have `resolve_and_finish()` fetch the channel's real
-  display name (YouTube oEmbed on the video URL is free, no API key, and
-  already used elsewhere in this codebase for exactly this) and pass that
-  into `channel_name_plausible()` alongside (not instead of) the
-  URL-derived handle text, so a compound handle doesn't lose to a
-  correctly spaced real display name.
-- **Constraint**: don't just loosen the tokenizer to substring matching
-  generically -- that reopens the false-positive side this check exists
-  to close (a short generic government name token appearing inside an
-  unrelated longer word).
-- **History**: found during WO-249 (2026-09-12); see `BACKLOG_DONE.md`'s
-  WO-249 entry. South River borough, NJ's row was not re-ingested in that
-  WO -- this entry is the only record of the miss.
-
 ### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
 
 - **Issue**: Littleton, CO's own site links
@@ -1192,36 +1153,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   either file.
 - **History:** Found and worked around (not fixed) during WO-169,
   `BACKLOG_DONE.md` 2026-09-10.
-
-### The 6-hourly tier-3 feed GitHub Action never commits the probe rows it writes `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** found while building WO-248 (the YouTube drip's own version
-  of this same file-write problem, `BACKLOG_DONE.md`). Every run of
-  `.github/workflows/feed-tier3-transcription.yml` calls
-  `feed_tier3_auto_transcription.py`'s `_push_if_has_video()`, which
-  writes a row to `scripts/tier3_auto_transcription_queue_probe.csv` for
-  every URL it checks. But the workflow's commit step only ever does
-  `git add scripts/tier3_auto_transcription_queue.txt` (confirmed reading
-  that file directly) — the probe CSV's changes sit in the ephemeral
-  runner's working tree and are thrown away when the job ends, every
-  single run.
-- **Impact:** the tracked probe CSV is missing every row this cron job
-  has ever produced, 4x/day since the workflow started. Nothing breaks —
-  the probe always re-runs fresh before a video is queued either way —
-  but other scripts that skip a URL already in this file to avoid
-  re-probing it (e.g. `wo150_finish_tier3.py`'s `_load_probed_urls()`)
-  never benefit from this cron's work and may probe the same URL again
-  for no reason. The CSV also under-counts as a record of what's been
-  checked.
-- **Next action:** add
-  `git add scripts/tier3_auto_transcription_queue_probe.csv` alongside
-  the existing queue-file add, and check both paths' diff (not just the
-  queue file's) before deciding there's nothing to commit.
-- **Constraint:** the probe CSV is append-only and a shared file other
-  sessions also append to by hand — rebase as a union, same rule as the
-  queue file (`docs/COVERAGE_HANDOVER.md` §5 bullet 6).
-- **History:** `BACKLOG_DONE.md` WO-248, 2026-09-12 (the related drip fix,
-  not this one).
 
 ### `wo150_muni_ladder_sweep.py`'s headless rung finds a real platform link but can't extract its host `[JUST-DO-IT]` `[EASY]`
 
