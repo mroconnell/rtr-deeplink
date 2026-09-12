@@ -583,6 +583,76 @@ class VendorCooloff:
             )
 
 
+_VENDOR_LOCKS: Dict[str, asyncio.Lock] = {}
+MAX_VENDOR_REQUESTS_PER_FAMILY = 6
+
+
+def _vendor_lock(vendor_key: str) -> asyncio.Lock:
+    """One lock per vendor family so that, however many governments are
+    in flight at once (`--concurrency`), a vendor's shared edge host
+    (granicus.com, legistar.com, ...) only ever sees ONE request from this
+    run at a time, spaced by `ladder.HOST_DELAY_SECONDS`. This is the
+    politeness rule the Platforms conductor asked for, kept exactly, while
+    the families themselves run side by side -- the first shape of this
+    loop ran every guess for every family in one serial chain with a 2 s
+    sleep before each, which measured at ~1 government/minute live
+    (WO-264b, 2026-09-11 22:00)."""
+    lock = _VENDOR_LOCKS.get(vendor_key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _VENDOR_LOCKS[vendor_key] = lock
+    return lock
+
+
+async def _guess_one_family(
+    session: aiohttp.ClientSession,
+    vendor_key: str,
+    build_urls,
+    variants: List[str],
+    name: str,
+    state: str,
+    cooloff: VendorCooloff,
+) -> Optional[dict]:
+    tried = 0
+    for label in variants:
+        for url in build_urls(label):
+            if tried >= MAX_VENDOR_REQUESTS_PER_FAMILY:
+                return None
+            if cooloff.blocked(vendor_key):
+                return None
+            async with _vendor_lock(vendor_key):
+                await asyncio.sleep(ladder.HOST_DELAY_SECONDS)
+                r = await ladder.fetch_one(session, url, ladder.HONEST_HEADERS)
+            tried += 1
+
+            if r.error_kind == "dns":
+                # NXDOMAIN -- no such tenant, not a failure of the
+                # vendor's own infrastructure.
+                cooloff.record(vendor_key, False)
+                continue
+            if r.error_kind in ("timeout", "connection"):
+                cooloff.record(vendor_key, True)
+                continue
+            if r.html and ladder.is_challenge(r.html):
+                cooloff.record(vendor_key, True)
+                continue
+            if r.status in (403, 503):
+                cooloff.record(vendor_key, True)
+                continue
+            cooloff.record(vendor_key, False)
+            if r.status == 200 and r.html:
+                reason = _tenant_names_this_government(r.html, name, state)
+                if reason:
+                    return {
+                        "platform": vendor_key,
+                        "url": url,
+                        "marker": (
+                            f"vendor-path guess (label={label!r}) confirmed: {reason}"
+                        ),
+                    }
+    return None
+
+
 async def try_vendor_guesses(
     session: aiohttp.ClientSession,
     name: str,
@@ -590,9 +660,24 @@ async def try_vendor_guesses(
     domain: str,
     cooloff: VendorCooloff,
 ) -> Optional[dict]:
+    """Every vendor family at once, each family sequential behind its own
+    lock (see `_vendor_lock`). The first hit in VENDOR_TEMPLATES order
+    wins when more than one family answers."""
     variants = label_variants(domain, state)
     if not variants:
         return None
+    results = await asyncio.gather(
+        *(
+            _guess_one_family(
+                session, vendor_key, build_urls, variants, name, state, cooloff
+            )
+            for vendor_key, build_urls in VENDOR_TEMPLATES
+        )
+    )
+    for hit in results:
+        if hit:
+            return hit
+    return None
     tried = 0
     for label in variants:
         for vendor_key, build_urls in VENDOR_TEMPLATES:
@@ -775,6 +860,13 @@ async def main() -> None:
     ap.add_argument("--input", type=Path, default=DEFAULT_INPUT_CSV)
     ap.add_argument("--report", type=Path, default=DEFAULT_REPORT_CSV)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--concurrency",
+        type=int,
+        default=4,
+        help="governments in flight at once; per-host politeness is kept by "
+        "the ladder's own per-host delay and the per-vendor-family locks",
+    )
     args = ap.parse_args()
 
     with args.input.open(newline="", encoding="utf-8") as f:
@@ -791,21 +883,40 @@ async def main() -> None:
 
     report = ReportWriter(args.report)
     cooloff = VendorCooloff()
-    processed_this_run = 0
     started = time.time()
+    queue: "asyncio.Queue[dict]" = asyncio.Queue()
+    for cand in todo:
+        queue.put_nowait(cand)
+    counter = {"done": 0}
+
+    async def worker(session: aiohttp.ClientSession) -> None:
+        # Each worker is one sequential chain of governments; different
+        # governments are different front-page hosts, and the vendor
+        # families are serialised by `_vendor_lock`, so N workers never
+        # put more than one request on any one host at a time.
+        while True:
+            try:
+                cand = queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            try:
+                await process_government(session, cand, report, cooloff)
+            except Exception as e:  # noqa: BLE001 -- one bad row must not end the run
+                print(f"[ERROR] {cand.get('gov_id')}: {e!r}", flush=True)
+            counter["done"] += 1
+            if counter["done"] % 250 == 0:
+                elapsed = time.time() - started
+                rate = counter["done"] / elapsed * 60 if elapsed else 0
+                print(
+                    f"--- {counter['done']}/{len(todo)} processed this run "
+                    f"({rate:.1f}/min) ---",
+                    flush=True,
+                )
+            await asyncio.sleep(GOV_DELAY_SECONDS)
+
     try:
         async with aiohttp.ClientSession() as session:
-            for cand in todo:
-                await process_government(session, cand, report, cooloff)
-                processed_this_run += 1
-                if processed_this_run % 250 == 0:
-                    elapsed = time.time() - started
-                    rate = processed_this_run / elapsed * 60 if elapsed else 0
-                    print(
-                        f"--- {processed_this_run}/{len(todo)} processed this run "
-                        f"({rate:.1f}/min) ---",
-                        flush=True,
-                    )
+            await asyncio.gather(*(worker(session) for _ in range(args.concurrency)))
     finally:
         report.close()
 
