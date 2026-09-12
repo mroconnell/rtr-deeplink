@@ -1,5 +1,40 @@
 # Backlog — done
 
+## WO-285: nine small fixes filed by this week's sweeps — adapter, probe, script and doc corrections, shipped as three PRs [Done 2026-09-12]
+
+Nine small `BACKLOG.md` entries, each filed by a different sweep this
+week (WO-258, WO-260, WO-261, WO-271, WO-276, WO-277), fixed or checked
+in one pass. CLAUDE.md's own rule applied to every one: an entry is a
+lead, not a spec, so each claim was re-checked against the real code and
+a real live example before anything changed. Shipped as three PRs, each
+merged green before the next: PR A (adapter and probe fixes, needs a
+deploy), PR B (script fixes, no deploy), PR C (one doc fix, no deploy).
+
+Result, one row per item:
+
+| Item | What was claimed | What was true | What changed | Test |
+|---|---|---|---|---|
+| 1. BoxCast tier-3 pin | `wo134_confirmed_hits_ingest.py` never writes a `tenant_overrides.csv` pin for a BoxCast tier-3 find (Habersham County, GA hand-fixed) | Confirmed — `SHARED_HOST_PLATFORMS` had no `"boxcast"` entry at all | Added `"boxcast"` to `SHARED_HOST_PLATFORMS`; taught `_tenant_override_host`/`_tenant_override_match` BoxCast's own `boxcast.tv` / `channel=boxcast:<id>` shape, keyed off `video_channel` (never a blank/account-wide match) | `tests/test_wo285_boxcast_tenant_override.py`, real Habersham County pin shape |
+| 2a. SuiteOne has no `queue_probe.py` recipe | Every CivicClerk→SuiteOne tier-3 line (Vineyard, UT) is "dead" to the ingest gate | Confirmed — `queue_probe.py` had zero SuiteOne dispatch branch | Added a SuiteOne branch (`_probe_suiteone`): resolves the SuiteOne page for its real media URL, then reuses the existing direct-file/ffprobe recipe; a `suiteone.py` resolve error is caught as `reject-dead`, not a crash | `tests/test_queue_probe.py`, real Vineyard UT `event/1453` fixture |
+| 2b. SuiteOne raw `ValueError` | `suiteone.py`'s `resolve()` raises a raw error on "one live URL shape" (WO-258 named Floyd County, GA) | Real, but WO-258's own government name was wrong — the tenant (`floydcoin`) is Floyd County, **IN**, not GA (confirmed live: the tenant's own page says "Indiana", and this adapter's own jurisdiction pipeline independently agrees). The failing shape is a generic `/web/live` livestream stub, structurally identical to a real not-yet-recorded event page | Added `_is_live_stub_url()`; that one shape now degrades to an honest "no video" result instead of raising. A DIFFERENT, wider gap (a bare tenant management-listing root, e.g. `lunaconm.suiteonemedia.com/`) is real but NOT fixed here — narrowed the existing WO-149 entry to describe only that remaining piece, corrected its Floyd County state along the way | `tests/test_suiteone.py`, real `floydcoin.suiteonemedia.com/web/live/` fixture fetched live 2026-09-12 |
+| 3. OMP Network `/embed/sessions/` | `openmedia.py` doesn't accept the `/embed/sessions/{id}/...` form Littleton, CO links, only plain `/sessions/{id}/...` | Confirmed live: both real pages carry the identical `"om_youtube":{"youtube_id":...}` JS blob, but only the plain page also has the URL-shaped `<meta property="og:video">` tag `extract_video_id()` actually scans for | Normalizes the URL by stripping a leading `/embed` segment before fetching, so the plain (already-working) page is always what gets fetched and parsed; `source_url`/`external_id` still key off the original URL the caller passed | `tests/test_openmedia.py`, real Littleton CO fixture pair fetched live 2026-09-12 |
+| 4. Granicus newer player UI | `granicus.py` can't extract video from the newer `/player/clip/{id}?redirect=true` UI, reproduced on 3 real Lewis & Clark County, MT clips | **Not reproducible as a code bug.** Live re-test on the same tenant: this exact URL shape already resolves real video correctly (confirmed on 3 different real clips). The 3 clips the original report checked have a literal `video_url=""` baked into Granicus's OWN page (confirmed by a byte-for-byte diff against a working clip on the identical template) — an upstream data/encoding gap, not a URL-parsing one. Clips in between (both older and newer) mix real video and empty `video_url`, ruling out a clean date cutoff too | No code change. Entry corrected to reflect the re-test; two regression tests lock in the already-correct behavior on both real fixtures | `tests/test_granicus.py`, real clip 3500 (has video) and clip 4202 (genuinely empty `video_url`) fetched live 2026-09-12 |
+| 5. CivicPlus non-UTF8 decode | `civicplus.py` raises a raw `UnicodeDecodeError` on a real page instead of skipping cleanly (El Mirage, AZ, byte 0xdd) | Real, and a second independent real tenant already had the identical root cause on file from a week earlier (Richmond Hill, GA, byte 0xe2, a `DocumentCenter` PDF-view page reached via `detect_platform()`'s ordinary CivicPlus routing) — satisfying both entries' own "need a second real example" gate | Reused the already-existing `url_guard.read_capped_text()` helper (decode with the declared encoding, fall back to `utf-8` + `errors="replace"`) instead of a new adapter-local fallback; also gives this adapter a response-size cap it had none of before | `tests/test_civicplus.py`, real Richmond Hill GA PDF bytes fetched live 2026-09-12, reproducing the exact recorded error message |
+
+Caution: item 4's finding means Ryan should not expect a Granicus code
+fix to recover those 3 Lewis & Clark County meetings — the video is
+genuinely missing on Granicus's own side, so recovering it (if possible
+at all) means checking back with Granicus or the county, not this
+project's code.
+
+Recommendation: none of PR A needs anything beyond the deploy below.
+
+Deploy status: PR A (items 1-5, `app/platforms/civicplus.py`,
+`app/platforms/openmedia.py`, `app/platforms/queue_probe.py`,
+`app/platforms/suiteone.py`, `scripts/wo134_confirmed_hits_ingest.py`)
+is merged to `main` but **not live** — needs a resolver deploy. Items
+6-9 (PR B, PR C) are appended to this same entry as they ship.
+
 ## WO-280: two small bugs from WO-259 — a two-letter word read as a state code, and the deferred-file guard that did not fire [Done 2026-09-12]
 
 **What this fixes and why.** WO-259 part 2 found two small but real

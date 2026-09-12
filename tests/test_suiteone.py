@@ -211,6 +211,61 @@ async def test_resolve_missing_ids_raises_value_error():
         await SuiteOneAssetFinder().resolve("https://suiteonemedia.com/")
 
 
+async def test_resolve_bare_tenant_management_root_still_raises_value_error():
+    # WO-285, 2026-09-12: a bare tenant management-listing root (real,
+    # confirmed live examples: lunaconm.suiteonemedia.com/,
+    # rushcoin.suiteonemedia.com/?embed=1 -- both real ~200-680KB listing
+    # pages, no event id anywhere in the URL) is NOT the same shape as
+    # the `/web/live` stub fixed below -- there's no known event-id
+    # lookup for it yet (that's WO-149's own still-open BACKLOG.md entry:
+    # "give SuiteOneAssetFinder a real event-listing lookup"). This still
+    # fails loudly rather than silently guessing.
+    import pytest
+
+    with pytest.raises(ValueError):
+        await SuiteOneAssetFinder().resolve("https://lunaconm.suiteonemedia.com/")
+
+
+async def test_resolve_live_stub_url_degrades_to_no_video_instead_of_raising():
+    # Real page fetched live 2026-09-12 -- floydcoin.suiteonemedia.com's
+    # `/web/live/` URL (the exact one WO-258's alt-hop sweep hit trying
+    # to resolve a SuiteOne lead for the government at this tenant --
+    # BACKLOG.md attributed it to "Floyd County, GA", but this tenant's
+    # own real management page states "Indiana" -- Floyd County, IN, the
+    # same tenant WO-149 already had 3 other bare-tenant-root failures
+    # for; corrected here rather than repeated) -- 200s, redirects to
+    # `/Live`, and carries the exact same static jQuery-ready JW Player
+    # embed shape as a real `/event/?id=...` page, just with a
+    # hardcoded `var src = '';` -- the SAME empty-source "stream is
+    # offline" shape St Marys, GA's real event 1000 already exercises
+    # (test_resolve_st_marys_ga_no_video_yet_... above), just with no
+    # event id in the URL at all. Before this fix, resolve() raised a
+    # raw ValueError here instead of degrading to a clean "no video"
+    # result the way every other confirmed no-video-yet SuiteOne page
+    # already does.
+    live_html = load_fixture("suiteone", "floydcoin_live.html")
+    live_url = "https://floydcoin.suiteonemedia.com/web/live/"
+    redirected_url = "https://floydcoin.suiteonemedia.com/Live"
+
+    routes = {
+        live_url: FakeResponse(status=200, text=live_html, url=redirected_url),
+    }
+
+    with mock_session(routes):
+        result = await SuiteOneAssetFinder().resolve(live_url)
+
+    assert result.video_url is None
+    assert result.video_format is None
+    assert result.video_warnings == ["No playable video found for this event."]
+    assert result.date is None
+    assert result.external_id == "suiteone:floydcoin:live"
+    # Independently confirms the real state: this adapter's own shared
+    # jurisdiction_enrich pipeline resolves "floydcoin" to Indiana, not
+    # Georgia -- matching this tenant's own live "Indiana" text checked
+    # by hand, not BACKLOG.md's original WO-258 attribution.
+    assert result.jurisdiction == "Floyd County, IN"
+
+
 def test_captions_vtt_fixture_is_real_and_non_empty():
     # Guards against a future accidental truncation of the fixture --
     # this app's own convention is "don't claim a data path works without
