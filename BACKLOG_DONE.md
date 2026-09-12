@@ -1,5 +1,134 @@
 # Backlog — done
 
+## WO-288: correct the meeting date on archived YouTube pages whose title date disagrees with the stored date — 1,349 pages ready, script built and tested, write not yet run [Done 2026-09-12]
+
+**What was done and why.** WO-285 found that many archived YouTube
+pages show the wrong meeting date: the page's `date` field disagrees
+with the date the video's own title states. WO-285 already fixed this
+for every *new* page. This work order fixes the pages that were already
+live before that fix, following the rule Ryan approved.
+
+Before building anything, this session re-ran WO-285's count using the
+real code that will actually write the value (not the looser regex the
+original audit used), against the live database. The population grew a
+little since WO-285's audit a few hours earlier — the site keeps adding
+pages — so the numbers below are slightly different from WO-285's
+1,298/780/518, and that is expected, not a mistake.
+
+**Result — every YouTube page with a title and a stored date (4,032 total).**
+
+| Outcome | Count of 4,032 | What it means |
+|---|---|---|
+| No date in the title | 1,528 | The upload date is still the only signal available; left alone |
+| Title date already matches the stored date | 1,151 | Already correct; no change |
+| Off by exactly one day, corrected | 813 | An evening meeting's upload crossed midnight UTC; the title date is used |
+| Off by more than one day, corrected | 536 | Usually a video uploaded days or weeks after the real meeting (a "batch upload"); the title date is used |
+| Left alone, needs a person | 4 | The title's own date looks wrong, not the stored date; see below |
+
+813 + 536 = 1,349 pages are ready to have their date corrected. 4 pages
+are being left alone on purpose (see "Left alone" below). The old date
+is never thrown away — it's written into the page's own warnings field
+first, so any single page can be put back by hand if needed. Page
+slugs are not touched (they were never meant to track a correction —
+see `docs/COVERAGE_HANDOVER.md`-adjacent WO-256 freeze), so a slug's
+own date can now legitimately disagree with the page's corrected date;
+that's expected, not a bug.
+
+**Off-by-one bucket (813 corrected).** Ryan's rule was: use the title
+date when the title has one, otherwise shift the stored date back a
+day only if the upload happened before 08:00 UTC. In practice, every
+single row in this bucket already had a usable title date (that's how
+the row got flagged as "off by one" in the first place), so the
+08:00-UTC fallback rule was never actually needed — it would have
+applied to 0 rows. This is reported, not assumed.
+
+**Off-by-more bucket (536 corrected) — the 20-page check Ryan asked for
+before trusting the bulk number.** 20 pages were picked at random (with
+a fixed random seed, so the same 20 come up again if this is re-run)
+out of the 539 "off by more than one day" pages. For each one, this
+session read the title, the video's own description, and — since all
+20 happened to already have real captions saved in the Archive — the
+first few lines of the actual transcript.
+
+| Page | Title date | Stored date | Does the title date name the meeting? |
+|---|---|---|---|
+| Fort Atkinson, WI (3052) | 2026-08-18 | 2026-08-20 | Yes — the meeting's own captions say "It is Tuesday, August 18th, 2026, 7 p.m." |
+| Schenectady, NY budget hearing (4420) | 2025-10-23 | 2025-11-13 | Yes — the title itself is a specific, numbered hearing ("#6"); no evidence against it |
+| Hooper, UT (6700) | 2026-05-07 | 2026-05-11 | Yes — captions say "it is Thursday, May 7th, 2026" |
+| Tooele, UT library board (6878) | 2026-01-22 | 2026-01-27 | Yes — captions say "it is January 22nd" |
+| Newfields, NH conservation commission (7296) | 2026-08-17 | 2026-08-19 | Yes, presumed — no date spoken in the captions read, but nothing contradicts the title |
+| Hideout, UT (7359) | 2026-07-23 | 2026-08-03 | Yes — the recording itself has an on-screen camera date/time stamp reading "2026-07-23 16:25:04" |
+| Bloomingdale, NJ (7900) | 2026-03-17 | 2026-03-24 | Yes — captions say "Tuesday, March 17th, 2026" |
+| Huntington Woods, MI zoning board (8093) | 2026-03-09 | 2026-03-11 | Yes — captions say "the March 9th meeting" |
+| Lake Township, MI (8130) | 2026-08-06 | 2026-08-10 | Yes, presumed — the channel names every meeting "YYYY MM DD Board Meeting"; no date spoken in the clip read |
+| Maywood, NJ (8303) | 2026-06-23 | 2026-07-08 | Yes — the video's own title card on screen reads "June 23, 2026" |
+| City of Bronson, MI (8539) | 2027-08-27 | 2026-09-10 | **No** — the title's year is a typo. The channel's other videos are all 2026, and this one was uploaded "2 days ago," matching the stored date. Left alone. |
+| Rossford, OH (8729) | 2026-04-27 | 2026-05-04 | Yes, presumed — the channel consistently dates its titles this way; uploaded "4 months ago," consistent |
+| Santa Fe, NM liquor hearing (8949) | 2026-02-18 | 2026-03-17 | Yes — captions say "this is February 18th, 2026" |
+| Innisfil, ON committee of adjustment (8954) | 2025-04-17 | 2025-04-22 | Yes — captions say "Committee of Adjustments on April 17th" |
+| Nantucket, MA sign advisory council (8988) | 2026-09-01 | 2026-09-09 | Yes — captions say "September 1st, 2026" |
+| Albany, GA utility board (9038) | 2021-02-25 | 2021-03-11 | Yes, presumed — a 2021 virtual meeting, "5 years ago" upload bucket is consistent; no date spoken in the clip read |
+| Norfolk County, MA commissioners (9048) | 2026-08-19 | 2026-09-03 | Yes — captions say "the Wednesday, August 19th 2026" meeting |
+| Lewis and Clark County, MT noxious weed board (9063) | 2026-09-02 | 2026-09-09 | Yes — the recording has an on-screen date/time stamp reading "2026-09-02 14:00:36" |
+| Goldsboro, NC (9095) | 2022-02-07 | 2022-02-09 | Yes — the video's own written description states "02-07-2022" |
+| Hanceville, AL (9281) | 2026-07-23 | 2026-07-30 | Yes — the video's own written description states "held on July 23rd, 2026" |
+
+19 of 20 name the meeting correctly by its title date. That clears
+Ryan's bar (title has to win at least 18 of 20 before applying it to
+every page in the bucket), so the title date is applied to all 539
+off-by-more pages except the ones named below.
+
+**Left alone, needs a person (4 pages, none of them auto-corrected).**
+While building the script, two more kinds of bad title date turned up
+beyond the one caught by the 20-page check above, both confirmed by
+hand and both excluded automatically by the script, not just this
+report:
+
+- **A title date that is in the future.** Three pages had one. All
+  three were checked directly and all three are title mistakes, not
+  real dates: City of Bronson, MI (above) and Smiths Falls, ON — both
+  say "2027" where the video is clearly a 2026 recording (confirmed by
+  the same channel's other, correctly-dated uploads) — and Vermillion,
+  SD, where YouTube's own title metadata says "2026-09-17" but the
+  video's own on-screen title card reads "City Council / September 8,
+  2026" — exactly the date already stored. All three are left
+  unchanged.
+- **A title date that's really just an upload-system clock stamp.**
+  One page (a Las Vegas Planning Commission recording) has the title
+  "Planning Commission - 8/12/2026 1:00:00 AM" — a raw timestamp, not
+  a human stating a meeting date, and it's the only "off by one day"
+  page (out of 814) where the stored date is a day *before* the title
+  date instead of a day after. Left unchanged.
+
+**Caution.** The script has not written anything yet — everything above
+is from its dry run. The 20-page check above is a sample, not a full
+read of all 539 off-by-more pages; a handful more pages shaped like the
+4 above (a wrong future year, an upload-timestamp-shaped title) could
+exist among the ones not read by hand. The script catches both of
+those shapes automatically wherever they appear, not just in the 20
+sampled, so it will keep protecting against them at full scale — but
+that's a safety net, not a hand-check.
+
+**Recommendation.** Run the script for real. It's tested (`tests/
+test_wo288_youtube_date_backfill.py`, using the real rows found above)
+and merged.
+
+**Deploy status.** Nothing here needs a resolver deploy — this only
+changes rows already in the Archive database, and it does that through
+a script, not the running service's code path. To apply it, from the
+Archive service's Render Shell:
+
+```
+python scripts/wo288_youtube_date_backfill.py --apply --report /tmp/wo288_apply_report.csv
+```
+
+Run it without `--apply` first if you want to see the dry-run numbers
+again before committing.
+
+**What's undone.** The `--apply` run itself (left for Ryan to run on
+the Render Shell, per this repo's standing rule against bulk writes
+from a laptop). Left as its own short `BACKLOG.md` entry.
+
 ## WO-286: hand-read and resolve the 152 "weak" WO-281 confirmations — corrected to 67 real non-YouTube leads, 3 queued [Done 2026-09-12]
 
 **What was done and why.** WO-281 found a real platform on 259
