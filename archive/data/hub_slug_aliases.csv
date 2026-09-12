@@ -1015,3 +1015,8 @@ sussex-county-nj,us:place:3471670,sussex-nj,"'sussex-county-nj' retired by the 2
 greenwich,us:cousub:0919033620,greenwich-ct,"'greenwich' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to greenwich-ct (us:cousub:0919033620)"
 lisbon,us:cousub:0918043230,lisbon-ct,"'lisbon' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to lisbon-ct (us:cousub:0918043230)"
 town-of-county-line,us:place:0117968,county-line-al,"'town-of-county-line' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to county-line-al (us:place:0117968)"
+town-of-creston,ca:csd:5903004,creston-bc,"'town-of-creston' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to creston-bc (ca:csd:5903004)"
+white-rock,ca:csd:5915007,white-rock-bc,"'white-rock' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to white-rock-bc (ca:csd:5915007)"
+walton-county,us:county:12131,walton-county-fl,"'walton-county' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to walton-county-fl (us:county:12131)"
+watertown,us:place:4669300,watertown-sd,"'watertown' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to watertown-sd (us:place:4669300)"
+township-of-clearview,ca:csd:3543005,clearview-on,"'township-of-clearview' hub retired by scripts/backfill_gov_id.py --apply; no government owns it any more, its pages moved to clearview-on (ca:csd:3543005)"

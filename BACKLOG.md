@@ -163,29 +163,26 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
-  A blank-match pin on Castus's shared platform host mis-keyed at least…
-  A `ryan_stated` TelVue org-token pin says Centre County, PA — the…
-  51 research-file rows say `transcribed=true` with no matching Archive…
-  Production actions only Ryan should take  (15)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+  45 of the 51 `transcribed=true`-no-page research rows found no live…
+  `videoplayer.telvue.com` carries the same shape of blank-match…
+  `POST /internal/jurisdiction/override`'s own draft-rule suggestion…
+  Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
     [HUMAN] 310 real school-district YouTube/Vimeo leads from the WO-292…
     [HUMAN] Sequatchie County, TN's page (id 7377) is not a real…
     [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
-    [HUMAN] One YouTube video's own title disagrees with an existing…
     [HUMAN] 3 live/pending Archive pages need `POST…
     [HUMAN] 6 real, confirmed owner-body meetings are ready to ingest but…
     [HUMAN] 4 LocalView channels from WO-175's recheck read as an…
     [HUMAN] One live page is keyed to the wrong government: a real…
-    [HUMAN] 13 hosts the coverage registry ties to the wrong government:…
-    [HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough*…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
   Decisions about already-live content  (2)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
-    [HUMAN] Five `/j/` hubs really do hold two different governments each…
+    [HUMAN] Three `/j/` hubs still hold two real governments each — no…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (184)
   [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both…
@@ -1756,93 +1753,107 @@ Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
 
-### A blank-match pin on Castus's shared platform host mis-keyed at least 2 live pages to Andover, MA — fixed going forward, the 2 existing pages still need re-keying `[HUMAN]`
+### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
-- **Issue:** `tenant_overrides.csv` carried a BLANK-match pin on
-  `cloud.castus.tv` to Andover, MA (`us:cousub:2500901465`) —
-  `cloud.castus.tv` is Castus's own shared SaaS domain, used by every
-  Castus customer nationwide (`/vod/{tenantSlug}/video/{id}`), not just
-  Andover. WO-306 (2026-09-12) found and fixed the pin itself (scoped to
-  `/vod/andover/` only, and added `cloud.castus.tv` to
-  `MULTI_GOV_HOSTS`) while working the Castus population band, but the
-  damage already done to two OTHER real governments' Archive pages is
-  still live in production.
-- **Impact:** confirmed live via the Archive's own export: a real
-  Waterford (tenant slug `waterford-media`, title "Board of Trustees
-  Meeting, 06/22/26" — state not yet confirmed) and a real City of Vero
-  Beach, FL page (tenant slug `vero-beach`, confirmed unambiguous —
-  `jurisdiction_coverage.csv`'s own row for Vero Beach city, FL,
-  `us:place:1274150`, already names this exact video URL) are both
-  currently filed under Andover, MA's `gov_id` instead of their own.
-  Nobody browsing Andover's page would notice; nobody looking for
-  Waterford's or Vero Beach's meeting would find it there.
-- **Next action:** re-key both existing pages to their real
-  governments via the Archive's admin tooling — Vero Beach to
-  `us:place:1274150` directly (confirmed); Waterford needs its state
-  confirmed first (a Waterford, CT/MI/NY/WI collision is plausible for
-  a "Board of Trustees" body — check the tenant's own real content, not
-  the slug alone) before it can be re-keyed. Also worth a quick check
-  of whether MORE than these 2 pages were affected — the Archive export
-  used to find them was not filtered exhaustively for every Castus
-  page, just the ones this WO's own population touched.
-- **Constraint:** this is an existing-page re-key, not a pin or ingest
-  fix — don't attempt it via a bulk script; each page needs its own
-  confirmed gov_id first.
-- **History:** WO-306 (2026-09-12), this session;
-  `rtr-business/research/wo306_report.csv`.
+- **Issue:** WO-301 (2026-09-12) found 51 `jurisdiction_coverage.csv`
+  rows marked `transcribed=true` with no matching Archive page. WO-310
+  (2026-09-12) hand-checked all 51 live against the Archive's
+  jurisdiction search. 6 match `consolidated_governments.csv`'s
+  canonical list exactly (San Francisco, Denver, Bibb/Macon-Bibb,
+  Clarke/Athens-Clarke, Richmond/Augusta-Richmond GA, East Baton Rouge)
+  and get the §317 shared-gov-exception treatment once the
+  `paired_gov_id` column exists (Ryan's own instruction: the conductor
+  adds that column after WO-283 lands, not this WO). Sussex County, NJ's
+  row is already fixed by WO-310's own item 2 (pin + page re-key).
+  Babylon village, NY is NOT a §317 case — the Town of Babylon holds
+  every real page on that domain, the village has none. Waukesha city,
+  WI's blank-gov_id row just needs the blank filled
+  (`us:place:5584250`) — no resolver bug fired, its tenant already
+  resolves correctly. Two rows (Lexington-Fayette urban county KY, North
+  Bay ON) and one page found along the way (Hamilton Township, Mercer
+  County NJ) are real identity-join opportunities: live pages already
+  exist with `jurisdiction_confidence=unresolved`, never keyed to the
+  government's own id. The remaining 42 rows found no live page anywhere
+  in the Archive under any plausible name.
+- **Impact:** the 42 with no live page anywhere are misleading the
+  coverage flag in the opposite direction from what a sizing pass
+  expects — they read as covered when nothing confirms it. The 3
+  identity-join rows are the opposite: real coverage that exists today,
+  invisible because of a missing key.
+- **Next action:** full per-row verdict and evidence:
+  `rtr-business/research/wo310_51_rows_plan.csv`. For the 42 with no
+  page: correct `transcribed` to blank once the applying script exists
+  (not done by WO-310 — see its own item 9 constraint). For
+  Lexington-Fayette urban county KY: fill the research row's blank
+  `gov_id` and pin+re-key pages 338/5789 to `us:place:2146027`. For North
+  Bay, ON: pin `pub-northbay.escribemeetings.com` -> `ca:csd:3548044`
+  and re-key pages 1036/1805. For Hamilton Township, Mercer County, NJ:
+  pin/re-key page 7302 to `us:cousub:3402129310` (its own stored title
+  already names Mercer County — no new fetch needed to confirm this
+  one). For Waukesha city, WI: fill the blank `gov_id` with
+  `us:place:5584250`.
+- **Constraint:** don't bulk-blank or bulk-re-key from a guess — each of
+  the 51 rows now has its own hand-checked verdict in the plan file
+  above; there is no need to re-derive them from scratch.
+- **History:** `BACKLOG_DONE.md`, WO-301 (2026-09-12) and WO-310
+  (2026-09-12).
 
-### A `ryan_stated` TelVue org-token pin says Centre County, PA — the live page says Bellefonte Borough Council `[HUMAN]`
+### `videoplayer.telvue.com` carries the same shape of blank-match multi-government pin that WO-306 already fixed for Castus, not yet fixed here `[HUMAN]`
 
-- **Issue:** `tenant_overrides.csv` pins TelVue org token
-  `GNduNoua2rBThhw6N4PRP9OCSPf6B2ru` to Centre County, PA
-  (`us:county:42027`, `source=ryan_stated`). WO-306 (2026-09-12) fetched
-  this org's real playlist 4806 live to ingest a Bellefonte Borough
-  meeting and found the page's own `<title>` reads "Borough of
-  Bellefonte - Council" — real content, "7/6/26 Bellefonte Borough
-  Council" with 430 real caption segments — not county content.
-- **Impact:** unknown how many of this org's OTHER playlists (it likely
-  carries several bodies, the way Bellefonte's own playlist 4806 is just
-  "Council") would key to Centre County via this pin on a future
-  re-resolve, versus how many genuinely are county content. WO-306's own
-  ingest (`/m/bellefonte-pa-7-6-26-bellefonte-borough-council`) is safe
-  regardless — it carries `gov_id=us:place:4205256` directly in its
-  ingest payload — but nothing else on this org token is.
-- **Next action:** Ryan decides: is this `ryan_stated` pin a deliberate
-  coarse-filing choice (this org's whole catalog filed under the county
-  on purpose, the same shape the "Authoritative pins" convention
-  already accepts for a town under its county), or was it simply wrong
-  and should move to Bellefonte Borough (`us:place:4205256`) or split
-  per-playlist? Not overridden here without asking, per that same
-  convention.
-- **Constraint:** don't touch the pin from a guess — it's `ryan_stated`,
-  the most authoritative source tag this file uses.
-- **History:** WO-306 (2026-09-12), this session; `rtr-business/research/wo306_report.csv`.
+- **Issue:** found live 2026-09-12 while fixing WO-310's Bellefonte
+  item: `tenant_overrides.csv`'s
+  `videoplayer.telvue.com,,us:place:3658354,fallback,hub_sweep_wo126,...`
+  row is a BLANK-match pin (to Pittsford village, NY) on
+  `videoplayer.telvue.com` — a domain TelVue shares across hundreds of
+  unrelated org tokens, the exact shape `cloud.castus.tv`'s Andover pin
+  had before WO-306 scoped it and added the host to `MULTI_GOV_HOSTS`.
+  This row predates that fix and was never touched.
+- **Impact:** unconfirmed how many pages this blank match has already
+  mis-keyed to Pittsford village, NY on org tokens that aren't
+  Pittsford's — not measured in this pass, since it was found
+  incidentally, not through a dedicated Castus-style scan of the whole
+  host.
+- **Next action:** run the same audit WO-306 ran for Castus: scan every
+  `videoplayer.telvue.com` page in the Archive export, group by org
+  token, and check whether the blank match's `us:place:3658354` actually
+  belongs to more than one org token's worth of content. If so, scope
+  the match to Pittsford's own org token (the way the Bellefonte fix
+  scoped to `playlists/4806`) and add `videoplayer.telvue.com` to
+  `MULTI_GOV_HOSTS`, then re-key any mis-keyed pages the same way WO-310
+  did for Vero Beach/Waterford.
+- **Constraint:** don't bulk-fix from a guess — confirm the mis-key
+  first, the same way WO-306 did for Castus.
+- **History:** found by WO-310, 2026-09-12 (this session), while
+  building the Bellefonte pin fix; see `BACKLOG_DONE.md`'s WO-310 entry.
 
-### 51 research-file rows say `transcribed=true` with no matching Archive page — deleted, or re-keyed, is a per-row human call `[HUMAN]`
+### `POST /internal/jurisdiction/override`'s own draft-rule suggestion doesn't check `MULTI_GOV_HOSTS` before drafting a blank-match row `[HUMAN]`
 
-- **Issue:** WO-301 (2026-09-12) refreshed `jurisdiction_coverage.csv`'s
-  `transcribed` column against a fresh Archive export and found 51 rows
-  still marked `transcribed=true` with no Archive page for that row's
-  `gov_id`. It did not blank any of them — a `transcribed=true` row with
-  no page could mean a real deleted page, or a page that's still there
-  but re-keyed to a different `gov_id` for the same government.
-- **Impact:** small (51 of 45,610 rows) but each one is misleading the
-  flag in the opposite direction from the 1,249 this WO corrected —
-  these read as covered when a sizing pass can't actually confirm it.
-  6 of the 51 cross-check cleanly to another `gov_id` on the same host
-  (structural cases: San Francisco County/City, CA; Denver County/City,
-  CO; East Baton Rouge Parish, LA — consolidated city-county
-  governments whose Archive page sits under the place-level id while
-  the county-level research row still says `transcribed=true`). The
-  other 45 have no matching host in the Archive at all.
-- **Next action:** the full 51-row list, with the 6 likely-re-key
-  guesses named, is in `rtr-business/research/wo301_true_no_page.csv`.
-  Ryan (or a follow-up WO working from his call) decides per row: blank
-  `transcribed` for a real deletion, or re-key the research row's
-  `gov_id` to match the Archive's for a structural re-key case.
-- **Constraint:** don't bulk-blank or bulk-re-key from a guess — the 6
-  likely-re-key rows are a cross-check hint, not a confirmed match.
-- **History:** `BACKLOG_DONE.md`, WO-301 (2026-09-12).
+- **Issue:** found live 2026-09-12 (WO-310): calling the override
+  endpoint against pages on `cloud.castus.tv` and `videoplayer.telvue.com`
+  (both confirmed multi-government hosts) returned a suggested
+  `tenant_override_rules` line with a BLANK `match` field — the exact
+  shape `MULTI_GOV_HOSTS`'s own loader-time check exists to reject once
+  it's actually pasted into `tenant_overrides.csv`. The endpoint's own
+  doc comment says these suggestions are "for a human to copy into the
+  committed registry," so a human who trusts the draft output verbatim
+  on one of these hosts would recreate the exact Andover/Oak Bluffs bug
+  WO-210/WO-306 exist to prevent — CI would only catch it at PR time, not
+  at the point the suggestion was generated.
+- **Impact:** no bad pin was written this time (WO-310 wrote its own
+  correctly-scoped pins by hand instead of copying the draft), but the
+  endpoint gives no warning that its own suggestion is unsafe on these
+  specific hosts.
+- **Next action:** in `archive/main.py`'s override endpoint (see
+  `crud.override_jurisdiction()`), check the touched host(s) against
+  `is_multi_gov_host()` before drafting a blank-match rule; either
+  refuse to draft one at all (mirroring the loader's own refusal) or
+  draft a per-video/channel/path match the same way the endpoint already
+  does elsewhere for other multi-gov hosts.
+- **Constraint:** this is about the SUGGESTION only — the endpoint's own
+  write path (which government a page gets keyed to) is unaffected and
+  was not the bug.
+- **History:** found by WO-310, 2026-09-12 (this session); see
+  `BACKLOG_DONE.md`'s WO-310 entry.
 
 ### Production actions only Ryan should take
 
@@ -1907,12 +1918,6 @@ of human step they need.
     Duda-hosted `#!` fragment page, a document library subdomain the
     crawl never found) or something session-gated.
   - **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
-- **[HUMAN] One YouTube video's own title disagrees with an existing tenant_overrides.csv pin about which of two same-named governments it belongs to -- Clinton town, NY vs Clinton village, NY.**
-  - **Issue**: WO-221 (2026-09-11) found video `lNJoncQNJbM` ("9/18/2025 ZBA Meeting, Town of Clinton, New York", channel "Town of Clinton, NY") tied to two candidate governments in `jurisdiction_coverage.csv` (Clinton town, `us:cousub:3602716408`, and Clinton village, `us:place:3616419`, both NY). The video's own title/channel say "Town of Clinton" -- but `tenant_overrides.csv` already has a row pinning this exact video (`www.youtube.com,youtube:lNJoncQNJbM`) to Clinton **village** (`us:place:3616419`, source `wo147_access_ladder_sweep`). WO-221 did not overwrite the existing pin -- it only appends, never replaces -- so the file still says village and nothing was changed.
-  - **Impact**: one video, keyed either way once it's ingested/transcribed -- not yet a live page as of this WO. Whichever is right, the other is a real wrong-government risk if this video is ever used as evidence for its own government's identity elsewhere.
-  - **Next action**: check which government's own site/channel actually published this video (WO-147's original access-ladder sweep presumably visited one of the two governments directly, which is stronger evidence than a title read alone) before trusting either. If the village pin is wrong, delete/replace that one `tenant_overrides.csv` row (`us:place:3616419` -> `us:cousub:3602716408`) by hand.
-  - **Constraint**: don't guess from the title alone -- a New York "town" often colloquially includes a "village" within it, and casual speech/title text sometimes says "town" when it means the general place, not the formal government type.
-  - **History**: found by WO-221, 2026-09-11 -- see `BACKLOG_DONE.md`'s WO-221 entry.
 - **[HUMAN] 3 live/pending Archive pages need `POST /internal/jurisdiction/override` to fix a wrong or missing gov_id -- dry-run confirmed, the real call blocked by the auto-mode classifier.**
   - **Issue**: WO-184's continuation (2026-09-11) hand-checked every
     video its retry-set/one-hop pipelines produced and found the
@@ -2017,19 +2022,6 @@ of human step they need.
   - **Constraint**: the pin must be live (deployed) before the backfill runs, or it re-resolves to the same wrong id.
   - **History**: WO-145, `BACKLOG_DONE.md` 2026-09-10.
 
-- **[HUMAN] 13 hosts the coverage registry ties to the wrong government: 11 still want a pin to the *correct* one, 2 are undecidable (WO-153 fixed 5 of the original 18, 2026-09-10; the 2 county hosts a `fallback` pin couldn't fix were settled the same day with `authoritative` pins, see `BACKLOG_DONE.md`).**
-  - **Issue**: WO-125's identity join (`BACKLOG_DONE.md`, 2026-09-09) checked every (gov_id, host) pair the registry claims against the host's landing page and found `jurisdiction_coverage.csv` matches names without state or type. WO-153 fixed 5 of these live (pin + `backfill_gov_id.py`, confirmed via a landing-page or meeting-text fetch first): `townofchevychase.org` → `us:place:2416620` (Town of Chevy Chase, MD), `pub-cambridge.escribemeetings.com` → `ca:csd:3530010` (Cambridge, ON, 5 pages), `cityofoakgrove.com` → `us:place:2953624` (Oak Grove *city*, MO — the "undecidable" city-vs-village call is settled: the domain literally says "cityofoakgrove", the Village has its own separate, correct row), plus two more found the same session (`reflect-brewster-ma.cablecast.tv` → `us:cousub:2500107980` Brewster, MA; `tecumseh-pub.escribemeetings.com` → `ca:csd:3537048` Tecumseh, ON). Still open: `superiorwi.gov` → `us:place:5578650` (City of Superior; page "Common Council"); `shelbytownmi.iqm2.com` → `us:cousub:2609972820` (portal "Charter Township of Shelby"); `colonieny.iqm2.com` → `us:cousub:3600117343`, `townofvictorny.gov` → `us:cousub:3606977387`, `websterny.gov` → `us:cousub:3605578971`, `southamptonny.iqm2.com` → `us:cousub:3610368473` (Town Boards, filed as villages — not re-verified by WO-153); `pub-clearview.escribemeetings.com` → `ca:csd:3543005` (WO-153 confirmed live: this eScribe tenant serves Township of Clearview, ON, not Clearview, OK, whose own research row wrongly recorded it — not yet pinned); `pub-whiterockcity.escribemeetings.com` → `ca:csd:5915007`, `pub-creston.escribemeetings.com` → `ca:csd:5903004` (same shape, not yet pinned); `watertown.civicweb.net` → `us:place:4669300` (WO-125's own landing-page fetch already found the portal footer says ", SD 57201" — confirms Watertown SD, not WI; still not pinned). Two more found by WO-186 (2026-09-10) while filling UScityURL domains, same shape, neither pinned yet: `franklinpa.gov` → `us:place:4227456` (live-fetched: title "Franklin, PA - Venango County" / "City of Franklin" — the research row this domain currently sits on is `us:place:4227360`, tiny Franklin *borough*, pop 267, which WO-186 left alone and instead added the real city as its own new row); `us:place:2054400` (Park *city*, KS, pop 112) has an archived page titled "Park Township Planning Commission Meeting" — a real "Park township, KS" cousub exists (`us:cousub:2017354425`) that the title suggests is the actual government, but this one is a naming-coincidence flag only, not landing-page-verified. `mcleancountyil.gov` and `kankakeecountyil.gov` are done (2026-09-10, `authoritative` pins with Ryan's ok, both pages re-keyed — `BACKLOG_DONE.md`); the general "a `fallback` pin cannot override a clean `registry` match" bug they hit stays open as its own entry. Two undecidable, unchanged: `walton.civicweb.net` ("Walton County", no state; claimed for Walton County FL *and* Walton village NY — WO-153 found the archived meeting titles ("Board of County Commissioners") support Walton *County*, but not which state), `camas.new.swagit.com` (file says Camas city, page says Camas School District `us:sd:5300810`).
-  - **Impact**: live pages minted or unresolved on 11 still-open hosts; the coverage registry's `archive_pages`/tier/hub columns are wrong for every one of these rows.
-  - **Next action**: Ryan confirms the pin candidates and writes them as `tenant_overrides.csv` rows (source `ryan_stated`), then `backfill_gov_id.py --hosts …`. If any turns out to have page text that already resolves cleanly to a *different* real government, a `fallback` pin will be inert the same way — go straight to asking Ryan for `authoritative`. Park city/township KS needs a landing-page or meeting-text check first, same as every other row here — it is currently only a naming-coincidence flag.
-  - **Constraint**: never pin from the research file's gov_id without a landing-page or meeting-text check first — WO-125 found 56% of the research file's checkable host associations wrong, and WO-153 caught one more of the same shape (Chevy Chase Village, MD vs. the separate, real "Chevy Chase town, MD") that a name-only match would have mis-pinned.
-  - **History**: WO-125, WO-153, WO-186, `BACKLOG_DONE.md` 2026-09-09/2026-09-10.
-
-- **[HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough* (`us:place:3471670`, source `ryan_stated`), but its landing page title is "Sussex County, NJ | Official Website" — and a SECOND, independent `ryan_stated` pin on the same borough shows the identical pattern.**
-  - **Issue**: WO-125 left the row alone by rule (an identity join never overwrites an existing pin) and lists it here instead: the research file says Sussex County (`us:county:34037`), the live site agrees, and the one archived page's stored name is just "Sussex, NJ". WO-231 (2026-09-11) found a second, separate pin with the same shape while settling an ambiguous re-key: `tenant_overrides.csv`'s `www.youtube.com,IEZoIxA87S8,us:place:3471670,fallback,ryan_stated,"Sussex, NJ (YouTube channel @SussexNJ) -- us_places.csv Sussex borough"` — the video itself is titled "Sussex County Special BCC Meeting" on channel "County of Sussex", plainly the county's own meeting, not the borough's. Both pins point the same real Sussex, NJ evidence at the borough; WO-231 did not silently override either (per the `ryan_stated` provenance rule), so page 4941 currently still sits on the borough.
-  - **Impact**: two pins (the domain and this video) and at least one live page/hub on the wrong government.
-  - **Next action**: Ryan confirms both should be the county, then changes both `tenant_overrides.csv` rows' `gov_id` to `us:county:34037` and runs `backfill_gov_id.py --hosts www.sussex.nj.us,www.youtube.com` (scoped to this match).
-  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09; WO-231, `BACKLOG_DONE.md` 2026-09-11.
-
 - **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids); 11 have no transcript.**
   - **Issue**: per-video oEmbed statuses in `reports/shared_host_lookups.csv` (blank channel) cross-checked against the export; the video ids are the 404/403/400 rows in the study's classifier.
   - **Impact**: pages with neither video nor transcript are indexable and offer a reader nothing.
@@ -2093,12 +2085,12 @@ of human step they need.
     candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
-- **[HUMAN] Five `/j/` hubs really do hold two different governments each — a human has to say, per hub, which is right**
-  - **Issue**: measured on a fresh 8,222-page export (WO-232): 5 hub slugs carry 2+ distinct real `gov_id`s, 11 pages in all — 3 hubs where a minted `rtr:` id and a national `us:`/`ca:` id look like the same real government and coincidentally slugify the same (6 pages), 1 where two genuinely different governments legitimately share a display name (Yarmouth County, NS vs. the Municipality of Yarmouth, NS — 3 pages), and 1 where two different not-yet-scored Nova Scotia subdivisions collide (Lunenburg, 2 pages).
-  - **Impact**: each of those hubs shows one government's meetings mixed with another's. WO-256's slug freeze stops *new* collisions of this shape forming by coincidence, but it does not retroactively separate the 5 that already exist.
-  - **Next action**: for each of the 5, decide whether the two ids are one government (merge them — one id wins, one `hub_slug_aliases.csv` row for the retired one) or two (give the second its own frozen slug in `hub_slugs`, which needs a name that distinguishes it). The audit's §2 table names all 5.
-  - **Constraint**: not a code fix and not guessable — Yarmouth is a real case of two separate governments that share a name, so a rule that merges on name collision would be wrong.
-  - **History**: `docs/investigations/hub_architecture_audit.md` §2 and §8; `BACKLOG_DONE.md`'s WO-256 entry.
+- **[HUMAN] Three `/j/` hubs still hold two real governments each — no tool exists to give the second one its own frozen slug `[HUMAN]`**
+  - **Issue**: the original WO-232 audit (2026-09-11) measured 5 colliding hub slugs on a stale export. WO-310 (2026-09-12) re-measured live against the production `hub_slugs` table (a read-only query, `SELECT gov_id, hub_slug FROM hub_slugs` grouped by slug) and found the same COUNT but a different shape, because a day of concurrent sweeps moved the ground underneath it. Two of the five (`deerfield-township-oh`, `paso-robles-ca`) were genuine duplicate mints of ONE real government each and are fixed: re-keyed the one page under each duplicate id via `POST /internal/jurisdiction/override` (page 2079 -> `us:cousub:3916521238`; page 9064 -> `rtr:us:ca:paso-robles`), so both duplicate ids now carry zero pages. The other three are real 2-government splits, same shape as Yarmouth NS: `middletown-township-pa` (Middletown Township, Bucks County, PA -- `us:cousub:4201749120`, re-keyed page 3458 there from a REDUNDANT minted id that a name-repair pass should have matched to this already-existing national cousub instead -- vs. Middletown Township, Delaware County, PA -- `us:cousub:4204549136`, unrelated, already correct), `yarmouth-ns` (Yarmouth County `ca:cd:1202`, Municipal District of Yarmouth `ca:csd:1202004`, Town of Yarmouth `ca:csd:1202006` -- 3 distinct ids, not 2; also found live: the Town's own eScribe tenant page, `pub-townofyarmouth.escribemeetings.com` id 2379, is itself mis-keyed to the COUNTY id rather than its own Town csd), and `lunenburg-ns` (Municipal District of Lunenburg `ca:csd:1206001` vs. Town of Lunenburg `ca:csd:1206006`, as the original audit found).
+  - **Impact**: each of these three hubs shows one government's meetings mixed with another's. WO-256's slug freeze stops *new* collisions of this shape forming by coincidence, but nothing retroactively separates one that already exists, and no existing script inserts a second, distinctly-named, frozen `hub_slugs` row for a government that isn't the slug's current dominant one.
+  - **Next action**: for each of the 3, mint a distinguishing slug (the brief's own suggestion: work "municipality" or the county/township distinction into the losing government's name) and insert its `hub_slugs` row directly (no script does this today -- `scripts/freeze_hub_slugs.py` only mints/freezes the SINGLE dominant government per already-computed slug, and is itself a full-corpus sweep that must run from the Render Shell, not scoped to a few governments). Also re-key page 2379 (Town of Yarmouth's own tenant, currently on the county id) once Yarmouth's own csd gets its distinguishing slug.
+  - **Constraint**: not a code fix and not guessable — Yarmouth and Lunenburg are real cases of two separate governments that share a name, and Middletown Township PA turned out to be the same shape (not the "duplicate mint" the original audit assumed), so a rule that merges on slug collision would be wrong for these three specifically.
+  - **History**: `docs/investigations/hub_architecture_audit.md` §2 and §8; `BACKLOG_DONE.md`'s WO-256 and WO-310 entries.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
