@@ -173,7 +173,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (162)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (164)
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
@@ -290,7 +290,9 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (162)
     `[NEEDS-AUDIT]` A CivicPlus page that delegates to a video link on a
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
-  Adapter & platform gaps  (49)
+  Adapter & platform gaps  (51)
+    [JUST-DO-IT] WO-268: wire `scripts/platform_fingerprints.py`'s 28…
+    [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
     [NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload…
     [NEEDS-AUDIT] The shared meeting-title filter…
@@ -4203,6 +4205,65 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Adapter & platform gaps
 
+- **[JUST-DO-IT] WO-268: wire `scripts/platform_fingerprints.py`'s 28 measured signals into a passive, one-fetch pass over the unknown-platform domains.**
+  - **Issue**: WO-267 (2026-09-12) measured real candidate signals beyond
+    a bare vendor hostname -- first-party paths (CivicWeb's
+    `Portal/MeetingInformation.aspx`, IQM2's `/Citizens/`, Hyland's
+    `AgendaOnline/Meetings/ViewMeeting` which catches custom-domain
+    tenants the hostname check misses entirely), vendor hostnames for
+    platforms the access ladder didn't already alias (TelVue, ChampDS,
+    ClerkBase, SuiteOne, Town Hall Streams, Utah PMN) -- against a real
+    ~770-fetch sample, and shipped the 28 that cleared a 90% hit / 5%
+    false-positive bar as `app/utils/jurisdiction_data/
+    platform_signatures.csv`, with a reusable matcher
+    (`scripts/platform_fingerprints.py`'s `fingerprint()`). Nothing
+    calls it yet -- it's inert until a sweep script does.
+  - **Impact**: tens of thousands of governments in the research file
+    have no known platform; this is the cheapest-to-wire path to
+    finding more of them without a new fetch method.
+  - **Next action**: build the one-fetch pass over domains with a blank
+    `suspected_meeting_link_provider`/`suspected_video_provider`: fetch
+    the homepage once, run `fingerprint()` plus `classify_site_builder()`
+    (already delegates to `scripts/cms_fingerprint.py`), and record a
+    hit. Read `docs/investigations/platform_fingerprints.md` first --
+    it is NOT "fetch and regex-match the whole table blindly": several
+    signals are confirmation-only (found because the candidate URL
+    already had that shape, not discoverable from an unrelated
+    homepage -- civicweb/granicus/iqm2/wistia's distinct-domain home
+    hit rate was 0-33% despite a 90-100% any-page hit rate), and six
+    platforms (escribe, swagit, clerkbase, champds, suiteone,
+    townhallstreams) have ZERO real evidence either way for a blind
+    homepage fetch in that pass -- every sampled tenant's recorded
+    domain was already the vendor host itself.
+  - **Constraint**: don't promote a REJECTED signal (PrimeGov, Vimeo,
+    Cablecast, Boxcast, YouTube, Legistar, CivicPlus -- 19 of 47
+    measured signals, listed in the doc with why) into production
+    matching just because it's tempting to have SOME signal for every
+    platform; the doc explains each rejection and what a real fix would
+    need.
+  - **History**: `BACKLOG_DONE.md`'s WO-267 entry; full measurement and
+    per-platform table in `docs/investigations/platform_fingerprints.md`.
+- **[EASY] `jurisdiction_coverage.csv`'s `suspected_meeting_link_provider`/`suspected_video_provider` columns sometimes store a raw domain-shaped value instead of the normalized platform key.**
+  - **Issue**: found while building WO-267's candidate sampler: 67 rows
+    across the file (as of 2026-09-12) carry `civicplus.com` (21),
+    `civicclerk.com` (9), `youtu.be` (9), `vimeo.com` (8),
+    `granicus.com` (8), `youtube.com/embed` (6), `legistar.com` (3),
+    `champds.com` (2) instead of the short key (`civicplus`,
+    `civicclerk`, `youtube`, `vimeo`, `granicus`, `legistar`, `champds`)
+    every other row in that column uses.
+  - **Impact**: any `Counter`/`groupby` over these columns silently
+    splits one platform's population across two label spellings --
+    cost WO-267 a few minutes to notice; a future sweep filtering on
+    `suspected_video_provider == "civicplus"` would quietly miss 21 real
+    rows without ever erroring.
+  - **Next action**: a one-time normalization pass mapping each
+    domain-shaped value to its short key, through the §158 write
+    protocol (lock, re-read, row-count floor, atomic rename, `git diff
+    --stat` shows only the touched rows).
+  - **Constraint**: don't touch any other column on a row while fixing
+    this -- it's a pure relabeling, not a re-test.
+  - **History**: found by WO-267, 2026-09-12 (not fixed in that WO --
+    out of its measurement-only scope).
 - **[JUST-DO-IT] Boxcast tier-1 pages need the signed playlist re-resolved at view time (or the broadcast id stored) -- until then no Boxcast page can be ingested.**
   - **Issue**: a Boxcast-hosted meeting's stored `video_url` is a signed,
     time-limited playlist URL, not a stable link -- confirmed captioned
