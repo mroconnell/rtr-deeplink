@@ -63,7 +63,8 @@ from urllib.parse import urlparse
 _DATA_DIR = Path(__file__).parent / "jurisdiction_data"
 
 _LEADING_TYPE_RE = re.compile(
-    r"^(?:city|county|town|township|village|borough|parish)\s+of\s+", re.IGNORECASE
+    r"^(?:the\s+)?(city|county|town|township|village|borough|parish)\s+of\s+",
+    re.IGNORECASE,
 )
 _TRAILING_TYPE_RE = re.compile(
     r"\s+(?:county|parish|borough|city|town|village|township|municipality|municipio)$",
@@ -125,14 +126,19 @@ def _normalize_slash_spacing(name: str) -> str:
 
 
 def _normalize_name(name: str) -> str:
-    """Strips a leading "City of "/"County of "/etc. and lowercases --
-    used for the stored Census data (see `_load_name_state_table()`),
-    where the trailing word is always Census's own guaranteed single
-    generic type annotation (e.g. "Abbeville city", "Oklahoma City city"
-    -- the real proper name followed by exactly one lowercase type word),
-    safe to strip unconditionally. Also strips a trailing "(balance)" +
-    government-type phrase first, when present -- see
-    `_BALANCE_SUFFIX_RE`'s comment.
+    """Strips a leading "City of "/"County of "/"The City of "/etc. and
+    lowercases -- used for the stored Census data (see
+    `_load_name_state_table()`), where the trailing word is always
+    Census's own guaranteed single generic type annotation (e.g.
+    "Abbeville city", "Oklahoma City city" -- the real proper name
+    followed by exactly one lowercase type word), safe to strip
+    unconditionally. Also strips a trailing "(balance)" + government-type
+    phrase first, when present -- see `_BALANCE_SUFFIX_RE`'s comment.
+
+    The optional leading "the " in `_LEADING_TYPE_RE` (WO-251) is inert
+    here -- Census/StatsCan table names never start with "The" -- kept
+    only because `_normalize_candidates()` below needs it on the
+    query-side and the two functions share one regex.
 
     NOT used directly on query-side text -- see `_normalize_candidates()`
     below for why a bare query needs a different, two-attempt strategy.
@@ -185,11 +191,48 @@ def _normalize_candidates(name: str) -> List[str]:
     unstripped form isn't a real key anywhere. A leading "X of " prefix,
     when present, is unambiguous and still only ever produces one
     candidate -- see `_normalize_name()`.
+
+    Two more candidates, both WO-251, both real and confirmed live from
+    `scripts/backfill_gov_id.py --apply` on production (2026-09-12, 92
+    pages re-keyed off a registry hub onto a fresh mint):
+
+    1. A leading "The " before the type word. `_LEADING_TYPE_RE` didn't
+       accept it at all, so "The City of Redmond, WA" (a real Granicus
+       tenant's own raw jurisdiction text) fell all the way through to
+       the unstripped/trailing-stripped pair above -- neither is a real
+       table key -- and minted `rtr:us:wa:redmond-city` instead of
+       matching `us:place:5357535` ("Redmond city, WA"), which "City of
+       Redmond, WA" (no leading "The") already matched correctly. Same
+       shape hit Harrisonburg VA, Amarillo TX, Placentia CA, Janesville
+       WI and more -- all real Granicus tenants that happen to write
+       their own name with a leading "The". Reproduced as unaffected by
+       WO-243 (`tests/test_gov_registry.py`'s
+       `test_wo251_prefix_shapes_mint_identically_before_wo243`): the
+       pre-WO-243 code mints the identical wrong id, so this was never a
+       WO-243 regression, just never fixed.
+    2. The type word re-appended at the END, tried only as a fallback
+       after the plain stripped form misses. Some real Census/StatsCan
+       names genuinely keep the same word the "<Type> of <Name>" phrasing
+       strips as filler -- "Lake Havasu City city, AZ" and "West
+       Springfield Town city, MA" are both real rows in `places.csv`, so
+       "City of Lake Havasu, AZ" and "Town of West Springfield, MA" (both
+       real Granicus tenants' own raw text, neither with a leading "The")
+       stripped to "Lake Havasu"/"West Springfield" and minted instead of
+       matching the place table. This is the same kind of real-word-that-
+       looks-generic case `_normalize_name()`'s own "Greeley County
+       unified government" comment and this function's own Oklahoma
+       City/Carson City history already document for the *unprefixed*
+       side; tried last, never ahead of the plain stripped candidate, so
+       it can't shadow an already-correct match ("City of Fresno" still
+       resolves on "fresno" first, "fresno city" is never reached).
     """
     name = name.strip()
     leading_match = _LEADING_TYPE_RE.match(name)
     if leading_match:
-        return [name[leading_match.end() :].strip().lower()]
+        stripped = name[leading_match.end() :].strip().lower()
+        type_word = leading_match.group(1).lower()
+        with_type_word = f"{stripped} {type_word}"
+        return [stripped, with_type_word] if with_type_word != stripped else [stripped]
     as_is = name.lower()
     stripped = _TRAILING_TYPE_RE.sub("", name).strip().lower()
     return [as_is] if stripped == as_is else [as_is, stripped]
@@ -1536,6 +1579,20 @@ _LEADING_DATE_RE = re.compile(r"^\d{1,2}/\d{1,2}/\d{2,4}\s*[-–]?\s*")
 # no-op-when-absent reasoning as the date regex above: no real jurisdiction
 # name contains a bare recognized office-document extension.
 _GLUED_EXTENSION_RE = re.compile(r"(?<=[a-zA-Z])\.(pdf|docx?|xlsx?|pptx?)\b")
+# ", Long Island" -- a real, recurring qualifier a handful of Granicus
+# tenants add to their own name, confirmed live on three of Suffolk
+# County NY's towns: "Town of Southampton, Long Island, NY", "Town of
+# Southold, Long Island, NY", "Town of East Hampton, Long Island, NY"
+# (WO-251). It sits between the name and the state, so -- like the
+# leading-date bleed above -- it is noise `_trim_repair()` cannot reach
+# (it only ever trims from the right) and `_STATE_SUFFIX_RE` cannot reach
+# either (it only strips the trailing ", XX"). Genuinely load-bearing for
+# disambiguation in one of the three: "East Hampton town" is a real,
+# separate government in both NY and CT (`county_subdivisions.csv`), so
+# without the explicit state this qualifier sits beside, a stateless
+# query would have to decline. Stripped unconditionally -- no real
+# jurisdiction name otherwise contains this exact phrase.
+_LONG_ISLAND_QUALIFIER_RE = re.compile(r",\s*Long\s+Island\b", re.IGNORECASE)
 # Bare government-type words -- if an attempted split leaves nothing but
 # one of these as the "body," it isn't a real entity name, just the
 # ordinary "Type of Name" shape (e.g. "City of Boston") that should never
@@ -2568,6 +2625,7 @@ def finalize_jurisdiction(
     if date_stripped:
         raw_jurisdiction = date_stripped
     raw_jurisdiction = _GLUED_EXTENSION_RE.sub(r" .\1", raw_jurisdiction)
+    raw_jurisdiction = _LONG_ISLAND_QUALIFIER_RE.sub("", raw_jurisdiction)
 
     # Already has a state suffix from a prior enrichment step -- validate
     # the name portion only, state stays as already resolved.
@@ -3681,14 +3739,36 @@ def _base_name_key(jurisdiction: str) -> str:
     compare a text-mined candidate's resolved identity against a
     URL-derived subdomain hint's identity, ignoring formatting
     differences ("City of Hercules, CA" vs. "Hercules", "San Bernardino
-    County" vs. "San Bernardino"). Uses the LAST (most-stripped) candidate
-    `_normalize_candidates()` returns, not the first -- unlike
-    `_table_lookup_strength()`'s literal-vs-heuristic distinction (which
-    cares whether a match came from the exact typed text), this is a pure
-    identity comparison, so the bare-est form is the right one to key on."""
+    County" vs. "San Bernardino"). Uses the SHORTEST candidate
+    `_normalize_candidates()` returns, not positionally the first or the
+    last -- unlike `_table_lookup_strength()`'s literal-vs-heuristic
+    distinction (which cares whether a match came from the exact typed
+    text), this is a pure identity comparison, so the bare-est form is the
+    right one to key on, and "bare-est" is "shortest" regardless of which
+    position a given call returns it in.
+
+    Was "the last candidate" until WO-251 added a THIRD shape to
+    `_normalize_candidates()`: a leading-type match now returns
+    `[stripped, stripped + " " + type_word]` (the type word re-appended,
+    tried only as a fallback -- see that function's own docstring), so
+    its LAST entry is the LONGER one, the opposite of the trailing-type
+    branch's `[as_is, stripped]` where the last entry is genuinely the
+    barest. Picking positionally broke exactly the case it exists for:
+    "The City of Milwaukee" used to disagree with hint "Milwaukee" on the
+    (old, unstripped) key "the city of milwaukee" -- but the STRING
+    identity comparison this result fed was never reached, because
+    `_table_lookup()` missed on "The City of Milwaukee" entirely before
+    WO-251's other fix and took a different branch. Once that branch
+    started succeeding, this function started returning "milwaukee city"
+    (the new last entry) for a base whose actual bare identity is
+    "milwaukee", a false disagreement that routed a real city page into
+    `_subdomain_override()`'s latent county-retype branch and produced
+    "Milwaukee County, WI" -- confirmed live by the new mismatch alone,
+    with no separate bug in that function. `min(..., key=len)` is
+    order-independent and correct for both branches at once."""
     base = _STATE_SUFFIX_RE.sub("", jurisdiction).strip().rstrip(".,;:")
     candidates = _normalize_candidates(base)
-    return candidates[-1] if candidates else base.lower()
+    return min(candidates, key=len) if candidates else base.lower()
 
 
 def _county_retype_from_page_text(candidate: str, page_text: str) -> str:

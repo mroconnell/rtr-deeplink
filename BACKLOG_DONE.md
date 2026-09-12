@@ -1,5 +1,119 @@
 # Backlog — done
 
+## WO-251: "The City of X, ST" never was a WO-243 regression — it's an older repair gap, now fixed; plus one wrong Juneau pin [Done 2026-09-12]
+
+- **Why:** Ryan ran `scripts/backfill_gov_id.py --apply` on the Archive's
+  Render shell on 2026-09-12 and it moved 92 pages off a real registry
+  hub onto a fresh mint, retiring 35 hub slugs — including
+  `/j/redmond-wa` and `/j/harrisonburg-va`. The brief this WO started
+  from blamed WO-243's new rung (the one that checks a hand-written
+  "curated" government before name repair runs). That turned out to be
+  wrong. Re-running the same 18 real names against the commit
+  immediately BEFORE WO-243 reproduces the identical wrong mint on every
+  one — rung 1c never fires for any of them, since none is a curated
+  row. The real cause is three older gaps in the name-repair code
+  itself, none touched by WO-243: (1) `_LEADING_TYPE_RE` required a name
+  to start with the type word itself — "City of Redmond" matched, but a
+  leading "The" ("The City of Redmond, WA", the real Granicus tenant's
+  own raw text) did not, so it never reached the place table at all;
+  (2) a few real Census place names genuinely keep the word the
+  phrasing strips as filler — "Lake Havasu City" and, only in
+  Massachusetts, "West Springfield Town" — so even a successful strip
+  still missed; (3) three real Suffolk County, NY towns write their own
+  name with a ", Long Island" qualifier the repair code had no rule for
+  at all.
+- **What was done:** fixed the three gaps directly, in the functions
+  where the gap actually was, not in rung 1c (which needed no change):
+  `_LEADING_TYPE_RE` (`app/utils/jurisdiction_enrich.py`) now accepts an
+  optional leading "the"; `_normalize_candidates()` now also tries the
+  type word re-appended as a fallback candidate; `_census_type_word()`
+  (`app/utils/gov_registry/resolver.py`) now recognizes Massachusetts's
+  own "<Name> Town city" Gazetteer naming (13 real rows, and only in
+  MA — three other states have a real place literally named "___ Town",
+  where treating "Town" as generic would be wrong, so this is scoped to
+  MA specifically); and a new preprocessing strip removes ", Long
+  Island" before the state suffix is split off. One side effect needed
+  its own fix: widening the leading-type match changed what
+  `_base_name_key()`'s "most-stripped candidate" picked for "The City of
+  Milwaukee" in a way that mis-fired a latent bug in the unrelated
+  subdomain-override path, producing "Milwaukee County" instead of the
+  city — fixed by making that function pick the shortest candidate
+  (order-independent) instead of positionally the last one. Also fixed:
+  one wrong pin on a shared YouTube host
+  (`app/utils/jurisdiction_data/tenant_overrides.csv`) — the
+  `@cityandboroughofjuneau2053` channel, whose own owner title is the
+  official name of Juneau, ALASKA, was pinned to Juneau, WISCONSIN (a
+  real but different, much smaller city), moving one real Assembly video
+  into the wrong state's hub. The other Juneau WI channel pin
+  (`@cityofjuneaucabletv8377`) was already correct and is untouched.
+- **Result:**
+
+  | Outcome | Count of 18 | What it means |
+  |---|---|---|
+  | Now reaches the real registry row | 18 | Every real government named in the incident — Redmond WA, Harrisonburg VA, Amarillo TX, East Lansing MI, Huntington Park CA, Lincoln Park MI, Morgantown WV, Placentia CA, Grand Island NE, Janesville WI, Lake Havasu AZ, Collierville TN, North Salem NY, Palmetto Bay FL, West Springfield MA, and the three Long Island towns (Southampton, Southold, East Hampton) — now resolves to its real `us:place:…`/`us:cousub:…` id at the `registry` tier, the same one it had before the incident, with no `tenant_gov_id` needed. |
+
+- **Caution:** the pre-existing WO-243 tests that used "The City of
+  Milwaukee, WI"/"The City of College Park, MD" to exercise the ladder's
+  `inferred` (tenant-consistency) safety net now resolve one rung
+  earlier, at `registry` tier directly — correct and expected, since
+  that net existed only because the repair gap this WO fixes was in the
+  way. Those two tests were updated to assert the new, stronger tier;
+  a third case in the same family ("The City of Andover", genuinely
+  stateless and nationally ambiguous) still needs the net and is
+  unchanged. Full suite green (3,386 passed, 16 skipped) before and
+  after, `ruff check`/`ruff format --check` clean.
+- **Recommendation:** deploy the resolver + Archive change, then re-run
+  `python scripts/backfill_gov_id.py --apply` on the Archive's Render
+  shell. **Do this before ever running `scripts/freeze_hub_slugs.py
+  --apply`** (WO-256, merged the same day, also not live yet): once a
+  hub address is frozen it is a one-way door by that WO's own design, so
+  re-running this WO's fix after a freeze would leave the 12 wrongly-
+  minted hubs WO-256's own entry names (Redmond WA, Harrisonburg VA,
+  Amarillo TX, East Lansing MI, Lake Havasu AZ, Collierville TN, North
+  Salem NY, the three Long Island towns and others) permanently stuck at
+  their wrong addresses instead of self-healing for free.
+
+  `_hub_identity()`'s own docstring already explains why the 35
+  retired hubs need no alias rows either way: `archive/data/
+  hub_slug_aliases.csv` is written only by `scripts/score_gov_registry.
+  py`'s own full scoring pass (`_write_hub_slug_aliases()`), not by
+  `backfill_gov_id.py` — this incident ran the latter directly, so that
+  file was never touched and no redirect exists from the retired slugs
+  today. That is fine: the re-run moves these 92 pages back onto the
+  SAME real registry ids/slugs they had before the incident (real
+  places, not new mints), so the old hubs come back exactly as they were
+  — more complete, never emptied — with nothing new to alias. One
+  observation from checking the live site (read-only, no production
+  write): right now `/j/redmond-wa` answers 200 and
+  `/j/the-city-of-redmond-wa` answers 404, even though the moved pages
+  are keyed to the minted id that slugs to the second one. The mechanism
+  for the first half is clear from the code: a freshly-minted `rtr:` id
+  has no row in `governments.csv` (that file is a checked-in snapshot,
+  never written by `backfill_gov_id.py` itself), so `archive/db/crud.
+  py`'s `_hub_identity()` falls back to the page's own stored
+  jurisdiction text to compute a slug — and that text is the minted
+  government's un-repaired display name, "The City of Redmond, WA",
+  which is exactly why the new slug reads oddly. `/j/redmond-wa` itself
+  very likely still 200s because not every one of Redmond's archived
+  pages carried the buggy "The City of…" raw text — at least one
+  already-correct page is probably still keyed to the real
+  `us:place:5357535` and renders. I could not confirm why the NEW hub
+  specifically 404s rather than rendering the moved pages — the live
+  `/j/` route (`archive/main.py`'s `get_jurisdiction_hub_data()`) runs a
+  fresh, uncached database query every request, so it should find them;
+  confirming the rest needs a read against the live Archive database,
+  which this WO did not do. Either way, the re-run resolves it: these
+  pages move back to their real ids, and the minted hub stops existing.
+- **Tests:** `tests/test_gov_registry.py` gets a parametrized regression
+  covering all 18 real names against their real hosts and real registry
+  ids, a literal frozen-string test proving the wrong mint reproduces on
+  the pre-WO-243 commit (so the next reader doesn't re-blame rung 1c), a
+  Juneau pin test keeping the two real Juneaus apart, and the two
+  updated WO-243 tier assertions above.
+- **Deploy:** `app/utils/jurisdiction_enrich.py`,
+  `app/utils/gov_registry/resolver.py` and `app/utils/jurisdiction_data/
+  tenant_overrides.csv` are on `main` but not live until the next
+  resolver + Archive deploy. No production writes were made by this WO.
 ## WO-256 (part 2 of 3): a hub now decides which un-keyed meetings are its own by the website they came from, not by matching text [Done 2026-09-12]
 
 **What was done and why.** A hub page lists every meeting we hold for one

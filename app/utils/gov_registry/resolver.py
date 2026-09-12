@@ -574,7 +574,9 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
 
     places = tables.us_places().lookup_all(name, state)
     if type_preference:
-        places = [p for p in places if _census_type_word(p.name) == type_preference]
+        places = [
+            p for p in places if _census_type_word(p.name, p.state) == type_preference
+        ]
     elif len(places) > 1:
         places = []
     place = places[0] if len(places) == 1 else None
@@ -587,14 +589,16 @@ def _general_purpose_lookup(name: str, state: str, type_preference: str):
         # started becoming `us:cousub:3603365178` -- "Santa Clara TOWN,
         # NY" -- swapping one wrong government for another. A leading
         # "City of" may only ever match a city.
-        cousubs = [c for c in cousubs if _census_type_word(c.name) == type_preference]
+        cousubs = [
+            c for c in cousubs if _census_type_word(c.name, c.state) == type_preference
+        ]
     elif len(cousubs) > 1:
         cousubs = []
     cousub = cousubs[0] if len(cousubs) == 1 else None
 
     if type_preference and place and cousub:
-        place_word = _census_type_word(place.name)
-        cousub_word = _census_type_word(cousub.name)
+        place_word = _census_type_word(place.name, place.state)
+        cousub_word = _census_type_word(cousub.name, cousub.state)
         if cousub_word == type_preference and place_word != type_preference:
             return None, cousub
         if place_word == type_preference and cousub_word != type_preference:
@@ -665,11 +669,39 @@ def _consolidated_lookup(name: str, state: str):
     return None
 
 
-def _census_type_word(census_name: str) -> str:
+def _census_type_word(census_name: str, state: str = "") -> str:
     """The generic type word Census appends to a general-purpose
-    government's name: "Cottage Grove village" -> "village"."""
+    government's name: "Cottage Grove village" -> "village".
+
+    Massachusetts-specific exception (WO-251, `state` param added for
+    it): 13 real `places.csv` rows -- "West Springfield Town city, MA",
+    "Amherst Town city, MA", "Braintree Town city, MA" and 10 more, all
+    and only MA (confirmed: no CT/RI row shares the shape) -- spell a
+    literal "Town" as part of the name AND still carry Census's ordinary
+    generic "city" LSAD word after it. The "Town" is the real legal type
+    here (every one of these is a Massachusetts town, not a city); "city"
+    is just the Gazetteer's own generic statistical-area suffix, present
+    on every MA place regardless of its real type. Real, confirmed-live
+    case this was missed on: "Town of West Springfield, MA" (a real
+    Granicus tenant's own raw jurisdiction text) correctly matched the
+    place table's `lookup_all()` but then failed this function's
+    type-word filter ("city" != the raw text's own "town") and minted a
+    fresh `rtr:` id instead of matching `us:place:2577890`.
+
+    Deliberately scoped to MA (not a general "second-to-last word is also
+    a type word" rule): `places.csv` has exactly three OTHER rows shaped
+    "<Name> Town city" outside Massachusetts -- "Charles Town city, WV",
+    "New Town city, ND", "Old Town city, ME" -- and in all three "Town" is
+    genuinely part of the proper name, not a generic annotation; the real
+    government in each case really is organized as a city. Treating
+    "Town" as the type word there would be wrong in the other direction,
+    so this only fires for state == "MA".
+    """
     parts = census_name.rsplit(" ", 1)
-    return parts[1].lower() if len(parts) == 2 else ""
+    word = parts[1].lower() if len(parts) == 2 else ""
+    if word == "city" and state.upper() == "MA" and parts[0].endswith(" Town"):
+        return "town"
+    return word
 
 
 def _stateless_states(name: str, type_preference: str = "") -> set:
@@ -715,7 +747,10 @@ def _stateless_states(name: str, type_preference: str = "") -> set:
     out = set()
     for table in (tables.us_places, tables.us_cousubs):
         for row in table().lookup_all(name, None):
-            if type_preference and _census_type_word(row.name) != type_preference:
+            if (
+                type_preference
+                and _census_type_word(row.name, row.state) != type_preference
+            ):
                 continue
             out.add(row.state.upper())
     if not type_preference:
@@ -1726,7 +1761,7 @@ def _squashed_national_hit(
         if (
             namespace == "us:place"
             and type_preference
-            and _census_type_word(hit.name) != type_preference
+            and _census_type_word(hit.name, hit.state) != type_preference
         ):
             # A name that says "township"/"village"/etc. may not be
             # satisfied by a same-named place of a DIFFERENT type just
