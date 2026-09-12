@@ -731,6 +731,78 @@ async def test_probe_queue_entry_dispatches_direct_file_for_utah_pmn_m4a(monkeyp
     assert result.duration_seconds == 1830.0
 
 
+async def test_probe_queue_entry_accepts_audio_only_laserfiche_docid_shape(
+    monkeypatch,
+):
+    # WO-317, 2026-09-12: BACKLOG.md's Laserfiche entry asked for a new
+    # probe recipe for an audio-only Laserfiche source. Measured, not
+    # assumed: direct_file.py's adapter fix alone (classifying real MP3
+    # bytes and setting `video_format="mp3"`) is enough -- this dispatch
+    # already accepts a bare `.mp3` via `video_format` (WO-166), and
+    # `.mp3` is already in `_DIRECT_FILE_EXTENSIONS`, so NO change was
+    # needed here. This test documents that finding against the real
+    # Deschutes County, OR URL shape rather than a generic placeholder.
+    media_url = (
+        "https://weblink.deschutes.org/WebLink/ElectronicFile.aspx"
+        "?docid=94746&dbid=0&repo=LFPUB"
+    )
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp3"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "direct_file")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 1899.488  # the real ffprobe duration, confirmed live
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "22637874"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 1899.488
+
+
+async def test_probe_queue_entry_accepts_audio_only_laserfiche_edoc_shape(monkeypatch):
+    # WO-317: the OTHER real confirmed shape (Ramsey city, MN's older
+    # WebLink 9 `/edoc/<docid>/<filename>.mp3` path) -- this one DOES
+    # carry a real `.mp3` extension in the URL itself, so `media_path.
+    # endswith(_DIRECT_FILE_EXTENSIONS)` accepts it directly, without
+    # even needing the `video_format` fallback the docid shape above
+    # relies on.
+    media_url = (
+        "https://weblink.cityoframsey.com/WebLink/0/edoc/813049/"
+        "Meeting%20AudioVideo%20-%20Council%20Work%20Session%20-%2009082026.mp3"
+    )
+    fake_result = _FakeResolvedMeeting(video_url=media_url, source_url=media_url)
+    fake_result.video_format = "mp3"
+    monkeypatch.setattr(queue_probe, "detect_platform", lambda url: "direct_file")
+    monkeypatch.setattr(
+        queue_probe, "get_finder", lambda platform: _FakeFinder(fake_result)
+    )
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 4920.947  # the real ffprobe duration, confirmed live
+
+    monkeypatch.setattr(media_probe, "probe_duration", _fake_probe_duration)
+
+    with _mock_head(
+        {media_url: FakeResponse(status=200, headers={"Content-Length": "39368600"})}
+    ):
+        result = await probe_queue_entry(media_url)
+
+    assert result.verdict == "accept"
+    assert result.probe_method == "head+ffprobe"
+    assert result.duration_seconds == 4920.947
+
+
 # --- Resolve-first path (video_url not given) ---------------------------
 
 

@@ -1,5 +1,107 @@
 # Backlog — done
 
+## WO-317: audio-only Laserfiche joins tier 3 — Ramsey city, MN and Deschutes County, OR queued [Done 2026-09-12]
+
+**What this was for.** Ryan asked: "didn't we build audio tier 3 for
+PMN Utah? we should grab that Ramsey MN content like Deschutes County."
+`BACKLOG.md`'s Laserfiche entry said the code path that reads a
+Laserfiche WebLink download (`app/platforms/direct_file.py`) only knew
+how to recognize a video file, so neither government's real audio
+recording — already found by earlier work (WO-305, WO-315) — could
+become a tier-3 queue line yet. This work order re-checked that claim
+against the real code and real files, then built the missing piece.
+
+**The code change, and what it was checked against.**
+
+| Check | Before this change | After this change | Confirmed on |
+|---|---|---|---|
+| Laserfiche download bytes recognized | Video only | Video, plus real MP3 audio and (for a future match) M4A audio | A real ranged download of both governments' actual files |
+| Tier-3 queue tool accepts an audio result from this download shape | Untested for this shape | Yes — no separate change needed, confirmed by measuring, not assuming | Both governments, live |
+
+The second row matters: the brief expected two separate fixes, one to
+the file reader and one to the queue tool. Measuring the real files
+through the whole pipeline showed the queue tool already accepts an
+audio result once the file reader reports it correctly — a rule it
+already had for Utah's own bare audio files. Only the file reader
+needed a real change.
+
+**A real complication found along the way: the two governments use
+different versions of the same download system.** Deschutes County's
+address has no file extension at all (the same shape already used for
+Jefferson County's video, WO-304). Ramsey's is an older version of the
+same system that puts the real file name — including its extension —
+right in the address. Watching a plain-text web request to each address
+showed both answering a direct "give me the file" request the same
+way, and both silently redirecting a lighter "just tell me about the
+file" request to the same generic error page — so this is one real
+system with two public address styles, not two different systems, and
+one piece of code now reads both.
+
+**A second real complication: Ramsey's own web server was corrupting
+the first bytes of a small read.** Asking for just the first 64 bytes
+of the file, the normal fast way to confirm what a file is before
+downloading all of it, came back broken on Ramsey's server specifically
+— it tried to compress that small excerpt on its own, and the result
+could not be decompressed. A plain command-line download tool (`curl`)
+never showed this, because it doesn't ask for compression by default.
+The fix was to explicitly ask Ramsey's server not to compress the
+response, which is what `curl` was doing without saying so.
+
+**Governments checked and queued.**
+
+| Government | Recording chosen | Length | Body |
+|---|---|---|---|
+| Deschutes County, OR | "Historic Landmarks Commission Audio Minutes," 2021-08-05 | 32 minutes | Historic Landmarks Commission — a real, appointed county commission |
+| Ramsey city, MN | "Council Work Session," 2026-09-08 | 82 minutes | City Council's own regular work session |
+
+Both are the newest recording in that government's own Laserfiche
+folder. Both were hand-checked: read the folder path, the document
+name, and the government's own record of which body met and when,
+confirming each is a real meeting of that government's own governing
+body, not a document mislabeled as a recording.
+
+**Result.**
+
+| Outcome | Count of 2 | What it means |
+|---|---|---|
+| Queued to tier 3 | 2 | Both real audio recordings are now in `scripts/tier3_auto_transcription_queue.txt`, waiting for an on-demand transcription pass |
+| Pinned to their government | 2 | Each government's own Laserfiche address now points straight at its correct government, without depending on a separate lookup |
+| Hand-check found wrong | 0 | Both matched their government on folder, document name, and governing body |
+
+**Caution.** Deschutes' recording is from 2021 — the newest one that
+government's Laserfiche folder has; nothing more recent exists there.
+Neither recording has a caption file (expected: neither government's
+system stores captions next to a plain audio file). Ramsey's own
+government id (`us:place:2753026`) is a real, valid Census place id but
+does not yet have its own row in the generated `governments.csv`
+snapshot — checked live: the lookup code already derives a government's
+name and details straight from the national Census table when the
+snapshot doesn't have a row yet, so this works correctly today, but a
+future regeneration of that snapshot should pick it up as a normal row.
+Separately, this work confirmed a real, pre-existing small bug (not
+new, and not fixed here): the queue tool's own size measurement is
+wrong for every Laserfiche address on file — filed in `BACKLOG.md`'s
+Open bugs section, since a page's actual airtime doesn't depend on it.
+
+**Recommendation.** The file-reader and queue-tool code is correct and
+tested, but not yet serving real traffic — it needs the next resolver
+deploy. Until that deploy runs, these two queue lines will sit in the
+queue file unprobed by production; after it runs, the worker's own
+next re-check of the queue will pick them up and transcribe them like
+any other tier-3 meeting.
+
+**What needs a deploy.** `app/platforms/direct_file.py`'s code change —
+the resolver deploy that follows this merge.
+
+**Not yet deployed, already committed:** `scripts/
+tier3_auto_transcription_queue.txt` (2 new lines), `scripts/
+tier3_auto_transcription_queue_probe.csv` (2 new rows), `app/utils/
+jurisdiction_data/tenant_overrides.csv` (2 new pins) — these are data
+files the worker reads at runtime, not code, but the worker itself
+needs the code deploy above before it can act on the queue lines
+correctly (today's deployed adapter would still see these as
+unconfirmed audio and reject them on next probe).
+
 ## WO-309: reconcile and finish the remaining small-video-platform governments (the ones under 5,000 population, or with population unknown) [Done 2026-09-12]
 
 **What this was for.** WO-306, WO-307 and WO-308 (all the same day)

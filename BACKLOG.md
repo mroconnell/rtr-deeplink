@@ -181,10 +181,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (186)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (188)
   [JUST-DO-IT] `[EASY]` Page 8494 (Middletown Township, Delaware County…
   [NEEDS-AUDIT] ~40 pages still keyed to Pittsford (village), NY via…
   [NEEDS-AUDIT] Nothing has found which sweep/script ingests a Viebit…
+  [NEEDS-AUDIT] `queue_probe.py`'s `_probe_direct_file()` records a…
+  [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
   [EASY]…
@@ -452,8 +454,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
-Dormant — needs a real example first `[LATER]`  (1)
-  Laserfiche WebLink: a general adapter is answered "no" now (79 of 79…
+Dormant — needs a real example first `[LATER]`
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -2032,6 +2033,18 @@ of human step they need.
   - **Next action**: search sweep scripts active around 2026-09-08 for one that treats a bare listing/index link as a candidate meeting URL without checking it resolves to one video; once found, check whether the same gap exists for other folder/listing-shaped platforms (CivicClerk's own listing pages, Cablecast's public site index, etc.).
   - **Constraint**: don't guess which script did it without checking — several sweeps ran that week.
   - **History**: `BACKLOG_DONE.md`'s WO-307 and WO-316 entries; `rtr-business/research/wo307_methods_section.md` (§319).
+- **[NEEDS-AUDIT] `queue_probe.py`'s `_probe_direct_file()` records a wrong (tiny) `size_bytes` for a Laserfiche WebLink URL, because its HEAD-with-redirects call lands on the host's own generic error page, not the real file.**
+  - **Issue**: found live 2026-09-12 (WO-317) queuing Deschutes County, OR's and Ramsey city, MN's real audio-only Laserfiche recordings — the SAME bug `BACKLOG_DONE.md`'s WO-304 entry said it filed as "its own small BACKLOG.md item" for Jefferson County, WA's video (2 KB recorded instead of ~1.7 GB), which is not actually present in this file today (either never filed or lost without a matching `BACKLOG_DONE.md` note — worth knowing regardless of which). `_probe_direct_file()` HEADs `video_url` with `allow_redirects=True` for its `Content-Length`/`Last-Modified` signal; every Laserfiche WebLink host in this repo (Jefferson County; Deschutes; Ramsey) answers a plain HEAD with a 302 to `Error.aspx` (see `direct_file.py`'s own module docstring), and that redirect target returns `200` with its own small HTML body — so the HEAD "succeeds" and the size it reports is the error page's byte count (1993/845 bytes for these two), not the real file's (22,637,874/39,368,600 bytes, confirmed via a real ranged GET).
+  - **Impact**: cosmetic only so far — `verdict`/`duration_seconds` (the fields that actually gate accept/reject) come from a separate `ffprobe` call against `video_url` directly and are correct; `size_bytes` in the sidecar CSV is simply wrong for every Laserfiche queue line, which could mislead a human skimming that column for "is this a real file."
+  - **Next action**: have `_probe_direct_file()` fall back to a ranged GET (`Range: bytes=0-0`) when a HEAD's *final* response, after redirects, isn't recognizably the real file — e.g. compare against the same ISO-BMFF/ID3 magic-byte check `direct_file.py`'s own `_classify_laserfiche_media()` already does, or simply always prefer `Content-Range`'s total from a ranged GET for any URL this module already knows is a Laserfiche shape.
+  - **Constraint**: don't widen the ranged-GET fallback to every direct-file host without checking it doesn't regress the CivicPlus DocumentCenter case this function's own docstring already documents (a real 404-then-ranged-GET fallback, WO-166) — two different hosts hitting the same code path for different reasons.
+  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-317 entry.
+- **[NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) have a Viebit folder-listing URL as `source_url_normalized`, not a real meeting — a `?folder=ALL` page was ingested as if it were a single video.**
+  - **Issue**: found live 2026-09-12 (WO-307) cross-checking `wo306_export_pages.json` while queuing real Viebit meetings for these same two governments. Page ids 6523 (`https://buffalo.viebit.com/?folder=ALL`) and 6524 (`https://biglake.viebit.com/?folder=ALL`) both have `video_url=null`, `video_warnings: ["Could not find Viebit's video configuration on this page."]`, and a title scraped from an agenda/packet link elsewhere on that folder page ("HRA *Special Meeting* Agenda (PDF)", "City Council Regular Meeting Packet") rather than any real meeting content. `gov_id` is `rtr:unknown:<host>` on both — no government identity, no video, no real transcript.
+  - **Impact**: two junk pages live on the site today (no user-facing content, but they exist and count toward the Archive's page total); once this WO's real, hand-picked Viebit meetings for these same two governments finish transcribing, each government will have TWO pages — one real, one junk — which could confuse a reader landing on the wrong one via search or a stale link.
+  - **Next action**: confirm live via `POST /internal/admin/delete-pages` (dry run first) that both slugs are exactly this shape, then delete them; separately, find which sweep/script ingests a Viebit `?folder=ALL` URL as a candidate page at all (neither `viebit.py`'s `resolve()` nor `list_recent_videos()`, added by WO-306, ever produces this URL shape, so it came from something else — an AgendaCenter-style sweep that treated the folder link on a government's calendar page as if it were the meeting URL) and check whether other platforms have the same gap.
+  - **Constraint**: don't delete without a fresh dry run first — the slugs above are as of 2026-09-12's export and could have changed.
+  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-307 entry; `rtr-business/research/wo307_methods_section.md` (§319).
 - **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
   - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
   - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.
@@ -7193,65 +7206,7 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-### Laserfiche WebLink: a general adapter is answered "no" now (79 of 79 read for real), and the audio-only tier-3 gap now has a second confirmed example `[LATER]` `[EXAMPLE]`
-
-- **Issue**: WO-305 (2026-09-12, two passes) censused all 79 named-
-  government Laserfiche WebLink repositories from WO-234's 302-host
-  discovery (`research/wo234_laserfiche_governments.csv`) with a plain
-  HTTP client; WO-315 (2026-09-12) then walked the 16 of those 79 a
-  plain fetch couldn't read at all (11 JS-cookie-check gates, 5 WebLink 9
-  postback gates) in a real browser, so all 79 are now genuinely read,
-  not "read except for a tooling gap." Exactly one holds real,
-  ingestable meeting video: Jefferson County, WA (already live, WO-304).
-  Three more real media files turned up and were hand-checked away:
-  Westlake, TX's one .mov file sits in a Board of Trustees agenda-packet
-  folder alongside three unrelated presentation PDFs — supplementary
-  material for one agenda item, not a meeting recording
-  (`video-without-meeting`). Deschutes County, OR has 6 real mp3 files
-  under its Historic Landmarks Commission's own meeting-minutes folder
-  (a real appointed commission, not — as suspected — the County
-  Recorder's land-records archive) but no video. Ramsey, MN (found by
-  WO-315, real browser walk) has a "Meeting Recordings" folder with
-  genuine Council Work Session and Canvassing Board recordings spanning
-  2022-2026 — every sampled entry across two years an .mp3 despite the
-  folder itself being named "Recordings - Audio/Video." All three are
-  video-only-rule rejects (audio-without-video never becomes a page or a
-  queue line).
-- **Impact**: the general-adapter question is now answered with a full,
-  real-browser-verified population, not a partial one — building `app/
-  platforms/laserfiche.py` is not justified by anything on file. The
-  live gap is narrower and different in kind: **no tier-3 probe recipe
-  exists for an audio-only Laserfiche source**, so Deschutes County's
-  and Ramsey's real commission/council audio can't be queued the way a
-  video-with-no-captions meeting can. That gap isn't Laserfiche-specific
-  in principle (any audio-only source hits the same wall), but there are
-  now **two** confirmed real examples on file, not one — Ramsey closes
-  the "needs a second real source to confirm the shape against" gate
-  this entry used to cite as the reason to wait.
-- **Next action**: nothing to build for a general Laserfiche adapter —
-  that question is closed. For the audio-only gap: with two real,
-  independently-confirmed sources now on file (a county commission and a
-  city council, on two different WebLink generations), the
-  CLAUDE.md synthetic-test bar for building a probe recipe against a
-  real, confirmed shape is arguably met — worth a session actually
-  building `queue_probe.py`'s audio-only acceptance path rather than
-  waiting further. `app/platforms/direct_file.py`'s existing Laserfiche
-  extension (`ElectronicFile.aspx?docid=<entryId>&dbid=0&repo=<repo>`,
-  no cookie, honors Range) already fetches the raw bytes from either
-  government; what's missing is only the probe recipe (today's assumes
-  a video file) and, since Ramsey names its meetings "Council Work
-  Session" and "Canvassing Board" while Deschutes names its "Historic
-  Landmarks Commission," a hand-check step to confirm the audio is a
-  real governing-body meeting, same as any video candidate.
-- **Constraint**: still don't build a speculative general adapter — the
-  full-population read now makes that a settled "no," not a placeholder.
-- **History**: `BACKLOG_DONE.md`'s WO-226, WO-233, WO-304, WO-305 and
-  WO-315 entries; `rtr-business/research/ENUMERATION_METHODS.md` §277
-  (WO-233), §278 (WO-234), §318 (WO-305), §322 (WO-315);
-  `rtr-business/research/wo233_repositories.csv` (the first 20),
-  `wo305_report.csv` (63 of the 79 read directly by WO-305) and
-  `wo315_report.csv` (the other 16, read by real browser).
-
+Nothing open here right now.
 
 ## Parked deliberately — allowed back `[PARK]`
 
