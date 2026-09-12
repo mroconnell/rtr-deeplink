@@ -177,7 +177,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (180)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (182)
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
@@ -189,6 +189,8 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (180)
   [NEEDS-AUDIT] This codebase has no adapter for a direct video file…
   [NEEDS-AUDIT] `find_video_candidates()`'s video-file-extension regex…
   [NEEDS-AUDIT] Real Kind-A finds from hand-read gates, none of the…
+  [NEEDS-AUDIT] A hop into an unrelated third-party payment portal can…
+  [NEEDS-AUDIT] A CivicPlus AgendaCenter listing page needs a…
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] Hondo city, TX now has two different real BoxCast…
@@ -385,7 +387,8 @@ Reliability, ops & cost  (15)
   `/coverage` as a QA surface  (1)
     [JUST-DO-IT] `/coverage`'s "Every place we've covered" table is a
 
-Trust, safety & data quality  (19)
+Trust, safety & data quality  (20)
+  `jurisdiction_coverage.csv` has at least 5 rows where a smaller…
   `jurisdiction_coverage.csv`'s shared write helper still uses a…
   A tenant with no video content never runs the identity conflict…
   A bare YouTube channel-listing scan measurably ingests non-meeting…
@@ -1808,6 +1811,18 @@ of human step they need.
   - **Next action**: look up East China Township, MI's, Chisholm city, MN's, and Gwinnett County, GA's own `gov_id`s and resolve/ingest each video against the correct government instead.
   - **Constraint**: don't pin any of the three videos/channels to Marine City, Mountain Iron, or Berkeley Lake under any circumstance — none of them owns this content.
   - **History**: `BACKLOG_DONE.md`'s WO-264 entry; `rtr-business/research/ENUMERATION_METHODS.md` §303, §308.
+- **[NEEDS-AUDIT] A hop into an unrelated third-party payment portal can surface a totally unrelated video, keyed to the wrong government.**
+  - **Issue**: found live 2026-09-12 (WO-282) — Jemison, AL and Zillah, WA both independently resolved to the exact same Wistia video ("Making a Payment with PayPal") via a hop from their own homepage into an unrelated invoicecloud.com billing portal. Neither government's own content is on that page at all; the hop-link scorer or resolve chain followed a real, on-domain-looking link off the government's own site onto a third-party vendor host with no meeting content.
+  - **Impact**: caught by this WO's own hand-read gate before either was ingested, so no bad page shipped — but a less careful pass (or a future automated confirm-without-hand-read step) could ingest an identical, wrong, non-meeting video for two different governments from the same unrelated source.
+  - **Next action**: add a guard (in the hop-link scorer or the resolve pipeline) against following a link off a government's own domain onto a known billing/payment-portal host (`invoicecloud.com` confirmed so far) with no meeting-related path segment.
+  - **Constraint**: only one vendor host confirmed live so far — don't build a broad "never follow any third-party host" rule from this single case; a real vendor delegation (Vimeo, YouTube, Granicus, etc.) is exactly the opposite of what should be blocked.
+  - **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
+- **[NEEDS-AUDIT] A CivicPlus AgendaCenter listing page needs a drill-down into its most recent meeting that this WO's own resolve call didn't do.**
+  - **Issue**: found live 2026-09-12 (WO-282) — `finder.resolve()` called directly on a flagged AgendaCenter URL (La Pine, OR; Ketchum, ID) correctly raises `CalendarPageError` ("looks like an agenda listing page ... not a link to one specific meeting") rather than guessing, but nothing in this WO's own pipeline followed that listing down into a specific recent meeting.
+  - **Impact**: 2 real, confirmed CivicPlus governments in this WO's population have no meeting resolved despite a real platform link found — unclear whether this is a gap in the CivicPlus adapter's own resolve chain (some other caller may already handle the listing-walk) or in how this WO invoked it.
+  - **Next action**: check whether `app/platforms/civicplus.py` or `base.py`'s `resolve_via_platform()` already has a listing-walk path some other caller (e.g. `/api/resolve` itself) uses that this WO's direct `finder.resolve()` call bypassed; if not, teach it to walk the listing's most recent entries the way `wo147_access_ladder_sweep.py`'s `find_calendar_entry_links()` does for a generic calendar page.
+  - **Constraint**: only 2 real cases confirmed so far — verify against both before generalizing.
+  - **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
 - **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
   - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
   - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.
@@ -5667,6 +5682,37 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: `BACKLOG_DONE.md` (WO-16 full-production scan,
     2026-08-15/16).
 ## Trust, safety & data quality
+
+### `jurisdiction_coverage.csv` has at least 5 rows where a smaller government's `domain` is really its county's or state's domain `[NEEDS-AUDIT]`
+
+- **Issue**: found live 2026-09-12 (WO-282), building a population of
+  "own domain only" governments -- Mohnton borough PA
+  (`us:place:4250272`) and Kenhorst borough PA (`us:place:4239256`) both
+  carry `co.berks.pa.us` (Berks County's own domain, not either
+  borough's) as `domain`. Costilla County CO (`us:county:08023`),
+  Phillips County CO (`us:county:08095`), and Washington County CO
+  (`us:county:08121`) all carry `colorado.gov` (the state's own domain)
+  as `domain`. All 5 slipped through WO-282's "no vendor-host domain"
+  filter since a `.gov`/`.pa.us` government domain isn't a meeting-
+  platform vendor host -- the filter that would catch this is "is this
+  really THIS government's own domain," which nothing currently checks.
+- **Impact**: unknown scope beyond these 5 -- found by coincidence while
+  building an unrelated population, not by a targeted search. Any
+  downstream method that trusts `domain` as this government's own site
+  will fetch and score the wrong entity's homepage/sitemap for these
+  rows (and any others like them).
+- **Next action**: find each of these 5 governments' real own domain (a
+  short, targeted lookup, not a guess) and move the wrong value into
+  `alternate_domains` per this file's own domain-promotion convention
+  (never blank `domain` outright); then run a wider sweep of the
+  ~1,700-row population-under-5,000 band for the same county/state-
+  domain-on-a-smaller-government pattern, since these 5 were found by
+  chance in a narrower population.
+- **Constraint**: don't blank or guess a replacement `domain` for these
+  5 without confirming the real one first -- an unconfirmed guess is
+  worse than the current wrong value, which at least is visibly wrong
+  once looked at directly.
+- **History**: `BACKLOG_DONE.md`'s WO-282 entry; `docs/investigations/passive_discovery_v2.md`.
 
 ### `jurisdiction_coverage.csv`'s shared write helper still uses a hardcoded 25,000-row floor, not the 99%-of-`HEAD` floor this repo's protocol now asks for `[NEEDS-AUDIT]`
 
