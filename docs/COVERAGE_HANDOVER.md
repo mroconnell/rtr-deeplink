@@ -274,6 +274,15 @@ place, `app/platforms/queue_probe.py`'s `finish_candidate()`
 verdict into a queue line, a pin, or a deferred-file line, so a new
 finish script should call it rather than reimplementing the decision.
 
+**Ryan's re-queue policy for parked/deferred lines (WO-299, 2026-09-12):**
+a line moved out of `scripts/tier3_auto_transcription_queue.txt` into
+`scripts/tier3_long_meetings_deferred.txt` — whether it was parked
+because its government already has a live page with a real transcript,
+set aside for breadth (a single-tenant host keeping one governing-body
+meeting instead of several), or genuinely too long — is re-queued only
+once the tier-3 queue is completely depleted. A parked line is not
+rejected; it waits.
+
 **Alternate domains (WO-181, 2026-09-10; widened by WO-184,
 2026-09-10/11).** The research file carries two more columns,
 `alternate_domains` and `alternate_urls` (added in WO-165's duplicate-row

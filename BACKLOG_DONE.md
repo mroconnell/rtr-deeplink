@@ -1,5 +1,160 @@
 # Backlog — done
 
+## WO-299: queue breadth pass — parked 96 tier-3 lines whose government already has coverage, plus a Vineyard UT re-check [Done 2026-09-12]
+
+**What this was.** A data-only pass over the tier-3 auto-transcription
+queue (`scripts/tier3_auto_transcription_queue.txt`), following Ryan's
+breadth rule: one meeting per government in the queue. Four parts —
+(1) Utah PMN and Town Hall Streams, two hosts where every queue line is
+its own government; (2) 31 single-tenant hosts still holding more than
+one line; (3) a re-check of Vineyard, UT's line now that WO-285 taught
+the probe a SuiteOne recipe; (4) writing Ryan's re-queue policy into the
+deferred file and the coverage handover doc. All reads of production
+went through the token-gated export (`GET /internal/export/pages`,
+~8,750 pages). No production writes; nothing here needs a deploy.
+
+**Part 1 — Utah PMN and Town Hall Streams.** Every line on these two
+shared hosts is one government's own notice, so a line gets parked when
+that SAME government already has a real transcript somewhere in the
+Archive (any platform, not just PMN/THS). "Real transcript" = a version
+with more than 0 caption segments.
+
+| Host | Queue lines checked | Could not classify | Parked (government already covered) | Kept |
+|---|---|---|---|---|
+| Utah PMN (`www.utah.gov/pmn/...`) | 574 | 0 | 47 | 527 |
+| Town Hall Streams (`townhallstreams.com`) | 126 | 0 | 8 | 118 |
+
+Every PMN line's government came from the notice's own "Entity" field
+(`pmn_utah_pilot.fetch_notice_detail()`, one polite fetch per line, 1.5s
+apart, 0 failures in 574 fetches). A Town Hall Streams line's government
+came from its own `location_id` query parameter, matched against the
+same `location_id` on any already-archived Town Hall Streams page.
+
+**A caution on the PMN match, found while checking it.** Resolving each
+Entity name to a government id (`resolve_government()`) at first found
+59 governments already covered, not 47. Checking each one by hand (comparing
+the Entity text to the government name it resolved to) found 12 that were
+wrong: the resolver matched a name that merely *contains* a real
+place/county name to that place or county, even when the entity is a
+different government. Two shapes of this: a Utah state-level body whose
+name contains the word "Utah" (e.g. "Utah Board of Higher Education",
+"Ascent Academies of Utah", "Utah State Fair Corporation Board of
+Directors") matched **Utah County** — a coincidence of the state and
+county sharing a name — and a special-service-area name that contains
+its host county/city's name (e.g. "Ogden Valley Parks Service Area",
+"Salt Lake Valley Law Enforcement Service Area") matched that county or
+city, even though a service area is its own separate government. Both
+are excluded from the 47 parked above; the 12 excluded rows are listed
+below for reference, and the resolver bug itself is filed as a new entry
+in `BACKLOG.md` rather than fixed here (out of this WO's scope).
+
+| Entity (PMN's own text) | Wrongly matched to | Why it's wrong |
+|---|---|---|
+| Utah Board of Higher Education | Utah County, UT | Name contains "Utah", not actually Utah County's government |
+| Utah Board of Higher Education > University of Utah | Utah County, UT | Same |
+| Utah Board of Higher Education > Utah State University > Edith Bowen Laboratory School | Utah County, UT | Same |
+| Utah County Academy of Sciences | Utah County, UT | A charter school, not the county government |
+| Ascent Academies of Utah | Utah County, UT | Same "Utah" coincidence |
+| Utah Association of Local Health Departments | Utah County, UT | Same |
+| Utah State Fair Corporation Board of Directors | Utah County, UT | Same |
+| Ogden Valley Parks Service Area | Ogden, UT (city) | A special service area, not the city |
+| Salt Lake Valley Law Enforcement Service Area | Salt Lake County, UT | A special service area, not the county |
+| Box Elder County and Perry City Flood Control Special Service District | Box Elder County, UT | A special service district, not the county |
+| Summit County Service Area 3 | Summit County, UT | A special service area, not the county |
+| Grand County Service Area for Castle Valley Fire Protection | Grand County, UT | A special service area, not the county |
+
+**Part 2 — single-tenant hosts holding more than one queue line.**
+32 hosts / 76 lines as of Friday morning per the work order; by the
+time this ran, 31 hosts / 72 lines remained (other work already
+resolved the difference — expected drift, not a discrepancy). None of
+the 5 Granicus/1 Swagit hosts in this set CNAME to
+`granicusgovaccess.net` (checked with `dig +short`), so nothing was
+skipped for the Akamai block.
+
+For each host, kept the governing body's meeting (city council / county
+board / commission) closest to, but at or over, 9 minutes; parked the
+rest. Titles came from CivicClerk's own `Events/{id}` API or the
+Granicus/Swagit page's `<title>`.
+
+| Result | Count of 31 hosts |
+|---|---|
+| Kept a governing-body meeting at or over 9 minutes | 24 |
+| No governing-body title found; kept the shortest real (≥9 min) line instead | 5 |
+| No line at or over 9 minutes at all; kept the shortest probed line regardless | 2 |
+
+The 2 hosts with no meeting at or over 9 minutes: Yazoo County, MS
+(both of its two lines are literally titled "Test Meeting", not a real
+meeting name — kept the shorter, real-content one) and Levy County, FL
+(its only governing-body line is a 3-second dead probe; kept the real
+41-minute "Special Meeting and Budget Workshop" instead, since a broken
+stub isn't real coverage).
+
+| Result | Count of 31 hosts |
+|---|---|
+| Parked lines carry a national gov_id | 22 |
+| Parked lines have gov_id left blank (no reliable jurisdiction hint) | 9 |
+
+Gov_id came from `resolve_government(jurisdiction, tenant_host=host)`:
+the tenant host alone when it's already pinned, else the CivicClerk
+event's own self-reported city/state (`eventLocation`). One hand
+correction: `pueblococo.portal.civicclerk.com`'s eventLocation says city
+"Pueblo", which resolves to the *city* of Pueblo — but the kept
+meeting's own title is "Board of County Commissioners Meeting" at the
+Pueblo County Courthouse, so this is Pueblo **County**, corrected by
+hand to `us:county:08101`. A minted (`rtr:`) id was never written for a
+blank case, per CLAUDE.md's rule that a fill script must never invent a
+government.
+
+**Total parked, all parts.**
+
+| Part | Platform | Lines parked |
+|---|---|---|
+| 1 | Utah PMN | 47 |
+| 1 | Town Hall Streams | 8 |
+| 2 | CivicClerk | 31 |
+| 2 | Granicus | 9 |
+| 2 | Swagit | 1 |
+| **Total** | | **96** |
+
+Queue: 2,273 → 2,177 lines. Deferred file: 842 → 938 data lines (96
+added, matching exactly).
+
+**Part 3 — Vineyard, UT re-check.** WO-285 taught
+`app/platforms/queue_probe.py` a SuiteOne recipe it didn't have before,
+so Vineyard's one remaining queue line
+(`vineyardut.portal.civicclerk.com/event/1453/media`, previously
+rejected "no probe recipe for this media shape") was re-probed with
+`scripts/probe_tier3_queue.py --reprobe`.
+
+| Field | Before (pre-WO-285) | After (this re-check) |
+|---|---|---|
+| Verdict | reject-dead | **accept** |
+| Duration | — | 49.7 minutes (2,984.6s) |
+| Date | — | 2026-08-26 |
+| Size | — | 92.4 MB |
+
+The line stays in the queue (it was already accepted, not parked).
+`BACKLOG.md`'s SuiteOne entry for this exact gap ("SuiteOne has no
+`queue_probe.py` recipe") was already moved into `BACKLOG_DONE.md` under
+WO-285 — confirmed, nothing left to move. (A separate, still-open
+SuiteOne entry in `BACKLOG.md` covers a different, unrelated gap — a
+bare tenant management-listing root crashing `resolve()` — and correctly
+stays open.)
+
+**Part 4 — re-queue policy written down.** Ryan's rule: a parked line is
+re-queued only once the tier-3 queue is completely depleted; a parked
+line is not rejected, it waits. Added to the top of
+`scripts/tier3_long_meetings_deferred.txt` and to
+`docs/COVERAGE_HANDOVER.md`'s sweep-pattern section.
+
+**Caution.** The 12 excluded PMN matches above are a real, reproducible
+resolver bug (a name-contains-a-real-place-name false positive), not
+specific to this WO — it will misfire again wherever the same shape
+shows up. Filed as its own `BACKLOG.md` entry rather than fixed here.
+
+**Recommendation.** No action needed beyond merging this. It's a data
+file change; there is nothing to deploy.
+
 ## WO-289: platform already known, no page — first pass through 120 governments, zero new pages after removing overlap with other sweeps, one bad research-file URL and two probe gaps found [Done 2026-09-12]
 
 **What was done and why.** A large group of governments already have a
