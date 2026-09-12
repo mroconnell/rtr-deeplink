@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
-  WO-306's small-video-platform sweep: Viebit is fully done (WO-307),…
+  WO-306's small-video-platform sweep: the whole 5,000+ band is now…
   `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
@@ -725,49 +725,61 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### WO-306's small-video-platform sweep: Viebit is fully done (WO-307), Cablecast/TelVue/Castus 5,000+ are done, three platforms and every under-5,000/unknown row for THOSE remain `[JUST-DO-IT]`
+### WO-306's small-video-platform sweep: the whole 5,000+ band is now done across all six target platforms; only under-5,000/unknown-population rows remain `[JUST-DO-IT]`
 
 - **Issue:** WO-306 (2026-09-12) built a row-by-row join of the 136
   no-page governments whose recorded URL/provider names Viebit,
   Cablecast, Castus, Boxcast, TelVue, ChampDS, eLocalLink or Google
-  Drive, then worked the Cablecast, TelVue, Viebit and Castus 5,000+
-  bands (10, 5, 9 and 7 rows) live to completion — real ingests, tier-3
-  queueing, pins, a `detect_platform()` fix (Cablecast on a
-  government's own domain, not just `*.cablecast.tv`), a `telvue.py`
-  `list_playlist_items()` listing step, a `viebit.py`
-  `list_recent_videos()` listing step, a real missing `queue_probe.py`
-  recipe for Viebit (every Viebit tier-3 candidate was silently
-  rejected as dead before this — see `BACKLOG_DONE.md`'s entry), and a
-  real Castus listing endpoint found live
-  (`GET .../playlist/{tenantSlug}/{playlistName}`, no new code needed —
-  `queue_probe.py` already had a working HLS-based recipe for Castus).
-  It stopped there on budget, per its own brief's "stop at a platform
-  boundary" rule.
-- **Impact:** Boxcast (7 rows, 5,000+), ChampDS (8), Google Drive (2)
-  5,000+ bands are untouched, plus every under-5,000 and
-  unknown-population row for Boxcast/ChampDS/Google Drive/eLocalLink
-  (roughly 70 more rows total). ChampDS almost certainly needs the same
-  kind of new listing step TelVue/Viebit just got (its adapter also
-  resolves only a single URL); Boxcast already has a listing function
-  (`app/platforms/boxcast.py`'s `_search_channel`/
-  `_fetch_channel_broadcasts`), so that band should need no new code
-  either. **Viebit is now fully done, every band (WO-307, 2026-09-12)**:
-  all 19 rows from the join (9 already worked by WO-306, 10 more —
-  Coventry CT, Tullytown PA, Fort Wayne IN, Watertown MN, Buffalo MN,
-  Cokato MN, Big Lake MN, Maple Lake MN, Springfield Township MI queued;
-  Savannah GA needed no action) plus all 51 stale `reject-dead` sidecar
-  rows across 12 hosts (all now resolve `accept` under the recipe WO-306
-  built) — see `BACKLOG_DONE.md`'s WO-307 entry. Remove Viebit from any
-  future resume of this entry.
-- **Next action:** resume from
-  `<scratchpad>/agents/a4b576e372dc43dc5/wo306_still_to_do.csv` (the
-  exact row-by-row join, one row per platform×government with a reason
-  for every already-covered row) — copy it into a fresh scratch
-  directory first, the shared scratchpad is not preserved across
-  sessions. Work Boxcast 5,000+ next (same order the brief set: Boxcast,
-  ChampDS, Google Drive, then every under-5,000/unknown row), one
-  meeting per government, hand-read every video first. Viebit rows in
-  that file are all done — skip them.
+  Drive, then worked the Cablecast, TelVue and Castus 5,000+ bands (10,
+  5 and 7 rows) live to completion. WO-307 (2026-09-12) finished every
+  Viebit row, every band. **WO-308 (2026-09-12) re-derived the
+  remaining 5,000+ population directly from the live research file
+  (`suspected_video_provider` + `transcribed`/`queued`/`parked`/
+  `reject_reason`) rather than trusting the brief's own headline count
+  ("34 governments, 5,000+, across six platforms") — that count came
+  from Breadth's re-derivation the same day and turned out stale**: it
+  didn't account for governments already queued via the tier-3 queue
+  file or pinned in `tenant_overrides.csv` without the research file's
+  own `queued` column being set (the same 18.5%-catch-rate gap this
+  file already tracks elsewhere). Cross-checking every "untouched-
+  looking" row against the queue file, the pins file and
+  `BACKLOG_DONE.md`'s WO-306/WO-227/WO-227b/WO-245/WO-258 entries found
+  **Cablecast, TelVue, Castus and ChampDS's entire 5,000+ bands were
+  already fully resolved** (ingested, queued, or rejected with a real
+  reason) before WO-308 touched anything, and 4 of Boxcast's 5
+  apparently-open rows (Habersham GA, Hondo TX, Maywood IL — all
+  already queued; Ingleside TX — already covered via a different
+  platform, CivicClerk) were too. The true remaining population was 2
+  governments: Pascagoula, MS (Boxcast) and Sagadahoc County, ME (Town
+  Hall Streams, whose row's own `reject_reason=no-platform-link-found`
+  turned out stale — a real `townhallstreams.com/towns/sagadahoc_me`
+  link sits on the county's own site today). Both are now queued
+  tier-3, pinned, hand-checked. WO-308 also added the missing ChampDS
+  listing step (`app/platforms/champds.py`'s `list_archive_events()`,
+  PR #1092) the brief asked for, confirmed it finds real recent
+  meetings on a previously-rejected customer (Fulton County, GA) — but
+  that customer's video is still blocked by the separate, already-
+  documented VOD2 referer-lock issue (see this file's own entry), so
+  the listing step alone doesn't unlock a new page there.
+- **Impact:** every 5,000+ row across Cablecast, TelVue, Castus,
+  Boxcast, ChampDS, Town Hall Streams and Viebit is now accounted for.
+  What's left: every under-5,000 and unknown-population row for
+  Boxcast/ChampDS/Google Drive/eLocalLink (roughly 70 rows, the
+  original WO-306 join's remainder), plus three specific stale-looking
+  reject rows WO-308 noticed but didn't chase (Oradell, NJ and Roselle,
+  NJ — telvue rows carrying a real-looking URL on file despite a
+  recorded reject; Collegedale, TN — a champds customer whose "council"
+  search term found nothing, worth trying the adapter's other default
+  terms).
+- **Next action:** resume the under-5,000/unknown-population rows from
+  `~/Documents/rtr-business/research/wo306_report.csv` (already-worked
+  gov_ids) joined against the live research file the way WO-308 did —
+  don't reuse the original `wo306_still_to_do.csv` join uncritically,
+  re-derive it fresh (that file predates WO-306/307/308's own work and
+  looked stale in exactly the way this entry describes). Boxcast
+  already has a listing function
+  (`app/platforms/boxcast.py`'s channel-broadcast listing); ChampDS now
+  has `list_archive_events()` (WO-308).
 - **Constraint:** the same long-only rule this WO applied several times
   already (Southfield MI, Sun Prairie WI, Auburn Hills MI, Delano MN,
   Dayton MN, Decatur AL all had a >90-minute (or broken) newest video
@@ -776,21 +788,21 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   one; a real caption exists is grounds to ingest regardless of length
   (Billings, MT's real 131-minute meeting, tier1/2, 1938 segments — the
   long-only rule is a tier-3 rule only). Also: check the tier-3 queue
-  for a same-tenant-different-URL hit before assuming a government is
-  untouched — the row-by-row join's domain-based matching missed 4
-  real already-queued governments this round (Shorewood MN, Delano MN,
-  Monticello MN, Briarcliff Manor NY) because the queued URL used a
-  platform subdomain, not the research file's own recorded domain. And:
+  AND the pins file for a same-tenant-different-URL hit before assuming
+  a government is untouched — that check alone reclassified 4 of
+  WO-308's apparently-open Boxcast/Castus rows as already-done. And:
   before pinning ANY shared-SaaS host blank-match, confirm it's really
   single-tenant first — `cloud.castus.tv` (Castus's own shared platform
   domain) had exactly this mistake already committed (see this file's
   own "Needs a human" entry on the Andover/Waterford/Vero Beach
   mis-keying); Castus tenants need per-tenant-slug or per-video pins,
   never a blank host-wide one.
-- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, three entries) and
-  WO-307 (2026-09-12, Viebit finish); `rtr-business/research/
-  wo306_report.csv`/`wo306_methods_section.md` and `wo307_report.csv`/
-  `wo307_methods_section.md`.
+- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, three entries),
+  WO-307 (2026-09-12, Viebit finish) and WO-308 (2026-09-12, ChampDS
+  listing step + Boxcast/Town Hall Streams 5,000+ reconciliation);
+  `rtr-business/research/wo306_report.csv`/`wo306_methods_section.md`,
+  `wo307_report.csv`/`wo307_methods_section.md`, and
+  `wo308_report.csv`/`wo308_methods_section.md`.
 
 ### `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong STATE for a real customer (Marathon, FL → "City Of Marathon, WI") `[JUST-DO-IT]` `[EASY]`
 
