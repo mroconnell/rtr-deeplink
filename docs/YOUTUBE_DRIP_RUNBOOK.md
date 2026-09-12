@@ -80,11 +80,29 @@ git pull
 .venv/bin/python scripts/youtube_drip.py advance
 ```
 
-`advance` removes the queue lines the feed lane has already handled and
-tells the Archive the new remaining count. Commit the queue file on a
-branch and open a PR titled "Advance tier 3 auto-transcription queue
-(YouTube drip)" — the same thing the GitHub feed does for the other
-platforms. If the PR conflicts, take the union of both sides' lines.
+`advance` removes the queue lines the feed lane has already handled,
+tells the Archive the new remaining count, and folds the feed lane's
+probe rows (piled up locally all day — see below) into the tracked
+`scripts/tier3_auto_transcription_queue_probe.csv`. Commit **both**
+files (`git add scripts/tier3_auto_transcription_queue.txt
+scripts/tier3_auto_transcription_queue_probe.csv`) on a branch and open
+a PR titled "Advance tier 3 auto-transcription queue (YouTube drip)" —
+the same thing the GitHub feed does for the other platforms. If the PR
+conflicts, take the union of both sides' lines (see
+`docs/COVERAGE_HANDOVER.md` §5.6 for the one exception — a deliberately
+*deleted* line stays deleted).
+
+**WO-248 (2026-09-12):** the feed lane's probe rows used to go straight
+to the tracked CSV above, live, all day — every one of those writes made
+the working tree dirty hours before this once-a-day commit, and `main`
+kept growing the same file through merged sweeps in the meantime, so
+`git pull` conflicted on it every single day (append-only, nothing was
+ever lost, but it took a hand-resolved union each time). They now go to
+a local, gitignored buffer instead
+(`scripts/tier3_auto_transcription_queue_probe.local.csv`), and `advance`
+folds that buffer into the tracked file once, right here, then empties
+it. **After this lands, `git pull` on this Mac once more; every pull
+after that is clean.**
 
 ## Identity: what the drip does not do
 

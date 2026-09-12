@@ -151,7 +151,17 @@ async def _push_if_has_video(
     session: aiohttp.ClientSession,
     url: str,
     source_url_override: Optional[str] = None,
+    *,
+    probe_sidecar_path: Path = DEFAULT_SIDECAR_PATH,
 ) -> str:
+    """`probe_sidecar_path` defaults to the tracked CSV (this script's own
+    GitHub Actions run and every other caller). WO-248: the always-on
+    YouTube drip (scripts/youtube_drip.py) passes its own LOCAL, gitignored
+    buffer here instead -- appending to the tracked file hundreds of times
+    a day, hours apart from the one daily commit, is what produced a merge
+    conflict on every `git pull` on the drip Mac. The drip's daily
+    `advance` step folds that local buffer into the tracked file once,
+    right before the commit, the same shape as the queue file itself."""
     try:
         platform = detect_platform(url)
         finder = get_finder(platform)
@@ -181,7 +191,7 @@ async def _push_if_has_video(
         source_page_url=result.source_url,
         platform=platform,
     )
-    append_probe_row(DEFAULT_SIDECAR_PATH, probe)
+    append_probe_row(probe_sidecar_path, probe)
     if probe.verdict.startswith("reject-"):
         return f"[SKIP] {probe.verdict}: {probe.reason} ({url})"
 
