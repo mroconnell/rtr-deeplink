@@ -430,7 +430,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
-  `[IMPROVEMENT-ROUND]` Passive platform discovery…
+  `[JUST-DO-IT]` Passive discovery scaled to the full population: 147…
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
 Dormant — needs a real example first `[LATER]`  (1)
@@ -6717,46 +6717,46 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `DAILY_REPORT_EMAIL_TO`'s prior `ryan@how-to-adu.com` default)
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
-### `[IMPROVEMENT-ROUND]` Passive platform discovery (DNS/sitemap/archive-index) ready to scale past its 300-domain pilot (added 2026-09-12)
+### `[JUST-DO-IT]` Passive discovery scaled to the full population: 147 confirmed leads need a hand-read + ingest pass (added 2026-09-12)
 
-- **Issue**: WO-268's pilot (`scripts/wo268_passive_discovery.py`) ran
-  DNS/CNAME, sitemap+robots, and the Wayback CDX + Common Crawl archive
-  index against 300 US governments of 5,000+ population with no known
-  platform, found a real vendor platform signature for 25/300 (8%;
-  21 CivicPlus, 3 CivicWeb, 1 PrimeGov) and a strong keyword-only lead
-  (both "agenda" and "minutes" in the path) for another 16/300 -- about
-  41/300 (14%) worth carrying forward, against a population the
-  keyword-guided access ladder had already rejected once. Full writeup,
-  including a real DNS-wildcarding trap hit and fixed mid-pilot (4 of 6
-  named vendor-label guesses wildcard their DNS and can't be trusted
-  without an HTTP follow-up) and a Common Crawl reachability gap that
-  looks like a real outage, not a bug: `docs/investigations/
-  passive_platform_discovery_pilot.md`.
-- **Impact**: the pilot's 300-domain population is a small slice of the
-  ~34,000-row "nothing found" population in `jurisdiction_coverage.csv`
-  at 5,000+ population. An 8% platform-signature yield at full scale
-  would be several hundred new real leads, cheaply (DNS is free; the
-  whole 300-domain pilot made roughly 300 robots fetches + ~450 sitemap
-  fetches + 300 Wayback queries + 300 Common Crawl attempts + ~500 HEAD
-  checks over about 100 minutes).
-- **Next action**: re-run `scripts/wo268_passive_discovery.py
-  --build-candidates` against the full "nothing found" population (no
-  code change needed -- it already reads the live research file and
-  resumes via its JSONL), apply the agenda+minutes strength filter from
-  the investigation doc before treating a keyword-only hit as a real
-  lead, then hand the confirmed platform/strong-hub rows to a resolve
-  pass (this WO never fetched a hub with a GET, only a HEAD to drop dead
-  links -- confirming video is the next step, not this one).
-- **Constraint**: Common Crawl was unreachable for about half this
-  pilot's domains (confirmed live as a real, current outage at
-  `index.commoncrawl.org`, not a bug) -- re-check it's back before
-  relying on it at scale, and consider running it last or skipping it
-  (its own yield was the lowest of the three methods, 1% platform-signal
-  vs DNS/sitemap/Wayback's 1-6%). Re-derive the candidate-pool count
-  fresh before running -- this entry's numbers are a 2026-09-12 snapshot
-  and the research file changes under concurrent sessions.
-- **History**: `docs/investigations/passive_platform_discovery_pilot.md`
-  (WO-268, 2026-09-12).
+- **Issue**: WO-273 scaled WO-268's 300-domain pilot to the full
+  2,575-government "nothing found" population, split into three phases
+  (fast raw recon, offline scoring, targeted fetch of only the flagged
+  URLs). 147 of 2,571 governments (5.7%) got a platform CONFIRMED -- a
+  vendor/path signature matched on a live fetch AND the page names this
+  government's own city/county and state, not just a keyword hit. Top
+  platforms: Hyland (AgendaOnline) 75, CivicClerk 25, Granicus 20, IQM2
+  11, CivicWeb 6, eScribe 3, ProudCity 3, Utah PMN 2, YouTube 1, Swagit
+  1. Full writeup, including a real, live Internet Archive CDX-search
+  degradation hit and worked around mid-run (see that doc's own
+  section): `docs/investigations/passive_discovery_full_scale.md`.
+  Reports: `research/wo273_recon.jsonl`, `wo273_classified.csv`,
+  `wo273_targeted.csv`.
+- **Impact**: 147 real, named-government leads against a population the
+  keyword-guided access ladder had already rejected once -- none of
+  them ingested, queued, or written to `jurisdiction_coverage.csv` yet
+  (this WO was detection-only by design).
+- **Next action**: hand-read each of the 147 (`research/
+  wo273_targeted.csv`, filter `platform_confirmed != ""`) the way every
+  other sweep in this repo does -- confirm a real, reachable meeting
+  VIDEO exists (not just agenda-only) before any ingest or tier-3 queue
+  line, send the government's own `gov_id` in the ingest payload, and
+  check `tenant_overrides.csv` for an existing pin before minting a new
+  one. 75 of the 147 (the Hyland finds) came almost entirely from a
+  blind named-path probe on governments with zero sitemap/CDX signal,
+  not from a scored URL -- worth a slightly closer look before bulk
+  ingest, since that path never got the phase-2 "does this URL look like
+  a real hub" scoring the other platforms did.
+- **Constraint**: Internet Archive's CDX search API was confirmed, live,
+  intermittently failing for this entire run (44 of 2,574 domain-wide
+  CDX queries succeeded, 1.7%) -- almost the whole population took the
+  live-fallback path instead of the cheap archive-first one. Re-running
+  phase 1 (`scripts/wo273_recon.py`, resumable, no code change needed)
+  once Internet Archive's CDX search has recovered could plausibly
+  surface meaningfully more sitemap-sourced signal at near-zero cost to
+  the governments themselves.
+- **History**: `docs/investigations/passive_discovery_full_scale.md`,
+  `BACKLOG_DONE.md`'s WO-273 entry (WO-273, 2026-09-12).
 
 ### `[IMPROVEMENT-ROUND]` A path-probe builder from the hub path-frequency table (added 2026-09-12)
 
