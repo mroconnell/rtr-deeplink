@@ -847,6 +847,102 @@ jurisdiction_coverage.csv` (Paragould's meeting-system field filled in),
 technical detail (the exact web addresses, API calls seen, and how each
 step was checked).
 
+## WO-252: YouTube-channel method, 5,000–9,999 band with a known platform on file — 13 pages, 1 queued [Done 2026-09-12]
+
+**What was done and why.** Ryan asked for the WO-235/WO-247 YouTube-
+channel method run against a third, smaller band: governments of
+5,000–9,999 people, with a `no-video-found`/`meeting-without-video`
+reject, not yet transcribed, that already had a recognized meeting
+platform on file. The question is the same one WO-235 and WO-247 asked
+at larger population sizes: does the government's own website link a
+YouTube channel that carries its meetings, even though its recorded
+platform doesn't carry video?
+
+**The band.** Re-derived fresh from `jurisdiction_coverage.csv` at run
+time: 112 governments matched, exactly the conductor's own estimate.
+7 of those have a `domain` that is itself a meeting-platform tenant host
+(not a real government website to scan at all) — tabled in
+`rtr-business/research/wo252_platform_domain_rows.csv` for WO-253 rather
+than guessed at here, per this WO's own brief. 105 candidates remained.
+
+**Result.**
+
+| Result | Count of 105 |
+|---|---|
+| Site links no channel or video at all | 77 |
+| Site links a channel or playlist, with a listing | 23 |
+| Already had a live Archive page (the research-file row was stale) | 4 |
+| Channel/playlist link found but its listing could not be fetched | 1 |
+
+**Of the 24 governments with a channel, playlist, or bare video link
+(every one hand-checked — a person read the channel's own name/
+description and each candidate's title and duration, not just the
+automated pre-filter):**
+
+| Result | Count of 24 |
+|---|---|
+| Channel hand-checked as the government's own, real on-mission video found | 13 |
+| Channel hand-checked as the government's own, no on-mission video among its uploads | 9 |
+| Channel/playlist link found but its listing could not be fetched (dead/private/blocked) | 1 |
+| Channel hand-checked as a miss (a tourism/visitors-bureau channel, not the government) | 1 |
+
+**Governments with video found, split the way Ryan's brief asks:**
+
+| Outcome | Count |
+|---|---|
+| Captions available, page live now | 13 |
+| Video, no captions, queued for transcription (a queue count, not pages) | 1 |
+
+**The hand-check.** All 24 governments with any link got a real read,
+not just the automated filter. Every one of the 24 was confirmed on
+first read this time — zero needed a hand correction that reversed the
+automated verdict. The one miss, Grove city OK, was already correctly
+flagged `other` by the automated heuristic (its channel is "Grove
+Convention & Tourism Bureau," a tourism channel, not the city's own) —
+not a correction of a wrong automated pass. No Kind A (owner-elsewhere)
+governments were found in this band.
+
+**No YouTube block signature was hit** — every yt-dlp call either
+listed successfully or failed individually (a channel with no videos/
+streams tab), not as a pattern consistent with a rate-limit block.
+
+**Caution.** Waterford village, WI's channel link
+(`@VillageofWaterford-Wisco-xq8gp`) was found but its yt-dlp listing
+failed on both the `/videos` and `/streams` tabs ("This channel does not
+have a videos/streams tab") — recorded as `blocked`, not re-tried with a
+different approach this round.
+
+**Recommendation.** This band converted at 14/24 = 58.3% of
+channel-linked governments to a real own-channel video, and 14/105 =
+13.3% of all candidates checked — close to WO-247's own 10,000+ band
+(50.7% and 13.3% respectively). The per-candidate conversion rate is
+essentially unchanged from WO-247's broader band; population size in
+this 5,000–25,000+ range doesn't appear to predict whether this method
+finds something.
+
+**Deploy status.** The 13 real pages are live now and the 1 queued
+meeting (Purcell city, OK) will drip in via the existing transcription
+worker once deployed — both used `gov_id` directly in the `POST
+/internal/ingest` payload (WO-222's rule), so neither depended on a pin
+reaching production first. 13 new `channel=@handle` pins landed in
+`app/utils/jurisdiction_data/tenant_overrides.csv` — these fire at
+ingest for any *future* upload on these channels, but only once this
+PR's merge is deployed.
+
+**What is undone.** The 7 platform-tenant-domain rows were not checked
+against their real corporate domain this round — tabled for WO-253.
+Waterford village, WI's channel was not re-tried with a different tab
+shape.
+
+Files: `scripts/wo252_channel_band.py` (copied from WO-247's
+`scripts/wo247_channel_band.py`, two subcommands `discover`/`finalize`,
+resumable — unchanged except for the band's own population floor AND
+ceiling, the restored known-platform filter, and the platform-tenant-
+domain carve-out). `rtr-business/research/wo252_discovery.csv`,
+`wo252_decisions.csv` (written by hand, this session, per government),
+`wo252_report.csv`, `wo252_platform_domain_rows.csv`,
+`wo252_apply_to_jc.py`. Full write-up, `ENUMERATION_METHODS.md` §285.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
