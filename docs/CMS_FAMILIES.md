@@ -2,7 +2,8 @@
 own-domain path pilot added by WO-176, 2026-09-10; GovOffice, Municipal
 Impact and two state-hosted portal families added by WO-179,
 2026-09-10; WordPress's near-universal `/feed/` rate and a small-sample
-CivicPlus video-rate signal added by WO-197, 2026-09-11)
+CivicPlus video-rate signal added by WO-197, 2026-09-11; WordPress
+surface pilot and recipe added by WO-270, 2026-09-12)
 
 Read this before touching `scripts/cms_fingerprint.py` or
 `app/utils/jurisdiction_data/cms_families.csv`. It explains what a
@@ -214,6 +215,43 @@ but it's a real, live-measured signal that a CivicPlus page can carry
 video (an embed, a direct file link, or a link one hop into a meeting
 detail page) that isn't on `/AgendaCenter` itself, worth a larger,
 CivicPlus-specific follow-up before treating it as settled either way.
+
+**WO-270 (2026-09-12) piloted every other cheap WordPress surface
+(`/wp-json/` REST API, custom post types, the posts-search REST
+endpoint, the media library, an events REST endpoint, sitemaps, and the
+front page) against 127 WordPress governments with a known Archive video
+and 150 confirmed no-video, to find what reveals a real meeting video
+beyond `/feed/` and `/?s=agenda`. None individually cleared the 90%
+hit / 5% false-positive bar `platform_signatures.csv` uses (full numbers:
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §295,
+`docs/investigations/platform_fingerprints.md`'s WO-270 addendum) — the
+9-word meeting vocabulary (agenda/minutes/meeting/council/board/
+commission/hearing/workshop/session) is just as common on no-video sites
+as video sites, reproducing WO-197's own finding, and no plugin, theme,
+or `/wp-json/` namespace name discriminates cleanly either. The closest
+lead: a literal `youtube.com`/`youtu.be` link on the government's own
+front page (65% hit, 7% false-positive on this sample) — not confirmed
+enough to auto-adopt, but the cheapest real filter available, since the
+front page is already fetched for CMS fingerprinting.**
+
+**Recipe for a WordPress-confirmed site with no known video (in order of
+cost — WO-271 and the drip should run these in this order and stop at
+the first real hit):**
+1. Check the already-fetched front page for a `youtube.com`/`youtu.be`/
+   `vimeo.com` link or an embedded player.
+2. Fetch `/feed/` (92.8% availability in this pilot) and check it for
+   the same video-host markers, then for the meeting-word list (useful
+   for finding a real meeting/agenda page even with no video on it).
+3. If nothing, try the REST posts search
+   (`/wp-json/wp/v2/posts?search=youtube`, then `agenda`, then
+   `meeting`) — the single most productive surface in this pilot for
+   reaching a specific real video post (11 of the 14 "known video
+   found" cases in WO-270 came from posts search or the feed).
+4. Site search (`/?s=youtube`) as a REST-free fallback when `/wp-json/`
+   is blocked or disabled (88.8% availability, works via plain HTML,
+   needs no REST API at all).
+5. Sitemaps and an events REST endpoint (when one exists) last — lowest
+   yield of every surface tested in this pilot.
 
 ### GovOffice
 

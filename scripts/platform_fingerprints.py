@@ -38,6 +38,19 @@ walk. A signal belonging to the page's OWN host (e.g. a `pub-<tenant>.
 escribemeetings.com` tenant whose body text never happens to spell out
 its own hostname) still counts as a hit via the URL half of that
 search text, the same way `detect_platform()` itself classifies by URL.
+
+WO-270 (2026-09-12) measured a battery of WordPress-specific candidate
+signals (a literal video-host link on the front page, in `/feed/`, in
+the REST posts-search endpoint, and in site search; custom post types;
+plugin/theme/`/wp-json/` namespace names) against 127 WordPress
+governments with a known video and 150 confirmed no-video. None cleared
+the 90%/5% bar, so no `platform=wordpress` rows or new `kind` values
+were added here -- see `docs/investigations/platform_fingerprints.md`'s
+WO-270 addendum and `~/Documents/rtr-business/research/
+ENUMERATION_METHODS.md` §295 for the full near-miss numbers (the
+closest: a literal `youtube.com` link on the front page, 65% hit / 7%
+false-positive) before spending more effort on a WordPress-specific
+signal here.
 """
 
 from __future__ import annotations
