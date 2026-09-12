@@ -382,20 +382,32 @@ under everything else. This repo extracts and fixes just that part.
   is gated behind one, degrade gracefully — skip it and surface a plain
   warning to the *reader* on the page (the existing `transcript_warnings`
   pattern), not just a dev-facing log line.
-- **CI runs four gates, and `pytest` is the third — run all four before
-  pushing (learned the hard way, 2026-08-23).** `.github/workflows/
-  test.yml` runs, in order: `ruff check app/ archive/ worker/ scripts/
-  tests/`, `ruff format --check` on the same paths, `python -m pytest`,
-  and `alembic check` (twice — once with `working-directory: archive`,
-  once with `app`). A green local `pytest` says nothing about the first
-  two, and they run *first*, so a lint slip fails the build before a
-  single test executes. WO-46 burned a full CI round on exactly this:
-  one unused import and six files needing `ruff format`, with 1,640
-  tests passing locally the whole time. Run the same four commands
-  locally, and when `ruff format` reports files to reformat, **check
-  which files first** — formatting one you didn't touch drags an
-  unrelated diff into your PR, and under a parallel wave (see the
-  multi-session bullet below) possibly someone else's in-progress work.
+- **CI runs five gates, and `pytest` is the third — run all five before
+  pushing (learned the hard way, 2026-08-23; fifth gate added WO-236,
+  2026-09-11).** `.github/workflows/test.yml` runs, in order:
+  `ruff check app/ archive/ worker/ scripts/ tests/`, `ruff format
+  --check` on the same paths, `python -m pytest`, `alembic check`
+  (twice — once with `working-directory: archive`, once with `app`),
+  and `scripts/check_backlog_done_headings.py`. A green local `pytest`
+  says nothing about the first two, and they run *first*, so a lint slip
+  fails the build before a single test executes. WO-46 burned a full CI
+  round on exactly this: one unused import and six files needing `ruff
+  format`, with 1,640 tests passing locally the whole time. Run the same
+  five commands locally, and when `ruff format` reports files to
+  reformat, **check which files first** — formatting one you didn't
+  touch drags an unrelated diff into your PR, and under a parallel wave
+  (see the multi-session bullet below) possibly someone else's
+  in-progress work. **The fifth gate catches a lost `BACKLOG_DONE.md`
+  entry** — that file is append-only by convention (an entry, once
+  written, never leaves), and nothing enforced that until two
+  hand-resolved rebase conflicts silently dropped 22 already-recorded
+  headings in one evening (see that file's own WO-236 entry). The
+  script fails the build if any heading present in `origin/main`'s
+  `BACKLOG_DONE.md` (or, on a direct push to `main`, the immediately
+  preceding commit's) is entirely absent from the working tree's — a
+  companion, warning-only check does the same for a `BACKLOG.md` entry
+  that disappears without a matching `BACKLOG_DONE.md` heading to show
+  it was actually finished rather than just dropped.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
