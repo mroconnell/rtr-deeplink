@@ -481,11 +481,12 @@ York State Board of Elections (Clinton County, NY), the Pennsylvania
 Fish and Boat Commission (Perry County, PA), Greater Albany Public
 Schools (Tangent city, OR), NY State Parks (Canadice town, NY), Indiana's
 Family and Social Services Administration (Spencer County, IN), and DC
-Public Schools (District of Columbia). Three of these nine (Tangent
-city, Canadice town, Spencer County) still have a live page showing the
-wrong government today -- their pins are gone so the mistake can't
-repeat, but the pages themselves stay wrong until the real owner gets
-its own government record; see `BACKLOG.md`'s live entry.
+Public Schools (District of Columbia). Four of these nine (Bland
+County, Tangent city, Canadice town, Spencer County) still have a live
+page showing the wrong government today -- their pins are gone so the
+mistake can't repeat, but the pages themselves stay wrong until the
+real owner gets its own government record; see `BACKLOG.md`'s live
+entry.
 
 One correction was reversed mid-work: the Oak Bluffs, MA Vimeo video was
 first read as an unrelated personal clip and marked for deletion, until
