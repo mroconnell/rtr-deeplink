@@ -447,9 +447,9 @@ simply gone now.
 
 | Outcome | Count of 97 | What it means |
 |---|---|---|
-| Correct as pinned | 61 | The video really is this government's; the audit's check just missed it (a channel handle, an abbreviation, a shared community-media channel) |
+| Correct as pinned | 62 | The video really is this government's; the audit's check just missed it (a channel handle, an abbreviation, a shared community-media channel) |
 | Corrected | 13 | Named individually below; the pin now points at the right government |
-| Deleted, no government to key it to | 9 | The video is unrelated to any real government meeting (a tutorial, a jam session, a state association's own explainer) |
+| Deleted, no government to key it to | 8 | The video is unrelated to any real government meeting (a tutorial, a jam session, a state association's own explainer) |
 | Deleted, belongs to a different real body | 9 | A state agency, a regional commission, or a school district actually owns the video, not the government the pin named; that body is logged for a future setup |
 | Already fixed | 4 | WO-231 itself had already corrected these; the audit file was just a snapshot taken before that fix |
 | Still an open question for Ryan | 1 | Sussex, NJ -- unchanged, same open question WO-231 already raised |
@@ -530,20 +530,21 @@ someone decides between the two fixes `BACKLOG.md`'s live entry lays
 out. Today's known-wrong pins are fixed; a new wrong one written
 tomorrow would go undetected the same way, until the next full audit.
 
-**Recommendation.** Deploy the resolver and Archive to pick up the 13
-corrected and 26 deleted pins in `tenant_overrides.csv` -- until then, a
-brand-new page from any of these videos, or the transcription worker's
-next re-resolve of one, could still recreate the wrong keying. The 5
-page reverts are already live and need no deploy.
+**Recommendation.** Deploy the resolver and Archive to pick up the 14
+corrected (13 from the suspect pins, 1 from the video-gone pins) and 33
+deleted pins in `tenant_overrides.csv` -- until then, a brand-new page
+from any of these videos, or the transcription worker's next re-resolve
+of one, could still recreate the wrong keying. The 5 page reverts are
+already live and need no deploy.
 
 **Deploy status.** Pin file changes need the resolver deployed to take
 effect on new pages; the 5 page reverts (via the live override endpoint)
 are already in production.
 
-Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (13 corrected,
-26 deleted, 1 host-level fallback pin corrected), `rtr-business/
-research/wo242_report.csv` (all 197 rows), `rtr-business/research/
-wo242_owner_bodies.csv`, `rtr-business/research/wo242_decisions.csv`,
+Files: `app/utils/jurisdiction_data/tenant_overrides.csv` (14 per-video
+pins corrected, 33 deleted, plus 1 host-level fallback pin corrected),
+`rtr-business/research/wo242_report.csv` (all 197 rows), `rtr-business/
+research/wo242_owner_bodies.csv`, `rtr-business/research/wo242_decisions.csv`,
 `rtr-business/research/wo242_apply_pins.py`, `rtr-business/research/
 ENUMERATION_METHODS.md` §280, `BACKLOG.md` (the WO-221 precedence entry
 updated, a new "Needs a human" entry for page 7377).
