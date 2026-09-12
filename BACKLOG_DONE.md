@@ -1,5 +1,69 @@
 # Backlog — done
 
+## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
+
+**What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
+the Archive service's own Render shell on 2026-09-12 and it crashed
+before doing anything:
+
+```
+ModuleNotFoundError: No module named 'yt_dlp'
+```
+
+"yt-dlp" is the tool this repo uses to read YouTube video pages. The
+Archive service doesn't need it and its requirements file
+(`archive/requirements.txt`) deliberately leaves it out — Archive never
+talks to YouTube itself, only the resolver (`app/`) and the
+transcription worker (`worker/`) do, and both of those list it. The
+backfill script only wanted one small, harmless thing from YouTube code:
+a function that pulls the 11-character video id out of a YouTube URL
+with a regular expression — no network call, no YouTube dependency of
+its own. But it reached that function by importing the whole
+`app/platforms/youtube.py` file, and that file loads yt-dlp as soon as
+it's imported, even if nothing in it actually gets used. So the import
+alone was enough to crash, on a machine that was never supposed to need
+yt-dlp in the first place.
+
+**What changed.** The video-id function now lives on its own, in a new
+file, `app/platforms/youtube_ids.py`, that imports nothing but Python's
+built-in regular-expression module. `app/platforms/youtube.py` now reads
+the function from that new file instead of defining its own copy, so the
+YouTube adapter itself is unchanged and every one of its existing tests
+still passes. The backfill script now imports the video-id function from
+the new file instead of from `app/platforms/youtube.py`, so it no longer
+needs yt-dlp at all.
+
+**Check.** A new test
+(`tests/test_youtube_ids.py::test_extract_video_id_works_with_yt_dlp_
+unimportable`) makes yt-dlp unavailable on purpose — the same way it's
+genuinely missing on the Archive's Render shell — then imports the new
+file and runs the id function on every real YouTube URL shape the
+adapter's own tests already cover (a plain watch link, a shortened
+`youtu.be` link, an embed link, a shorts link, a live link, and an old
+Flash-era `/v/` link). All seven shapes still come back with the right
+id, and a non-YouTube URL still comes back empty, with yt-dlp blocked
+the whole time.
+
+| Check | Result |
+|---|---|
+| Real YouTube URL shapes tried with yt-dlp blocked | 7 |
+| Shapes that still returned the right video id | 7 |
+| Full pytest suite, before and after | 3367 passed, 16 skipped (unchanged) |
+
+**Caution.** The Render shell runs whatever build was last deployed, not
+this branch. This fix only reaches the shell after the next Archive
+deploy. Until then, the workaround Ryan used before this fix — running
+`pip install yt-dlp` inside that shell session — still works, and is
+harmless there (it only affects that one temporary shell session, not
+the deployed build).
+
+**Recommendation.** No action needed beyond the next normal Archive
+deploy. No production data was touched; this is a code-only fix.
+
+**Deploy status.** On `main`, not live. Needs the next Archive deploy
+before `scripts/backfill_video_channel.py` runs cleanly on the Render
+shell without the manual `pip install yt-dlp` workaround.
+
 ## WO-247: the WO-235 YouTube-channel method run at full scale — every government of 10,000+ with a no-video reject, not just 25,000+ on a known platform [Done 2026-09-12]
 
 **What was done and why.** Ryan, 2026-09-12: "Apply the method from WO-235 to

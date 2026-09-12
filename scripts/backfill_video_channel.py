@@ -161,7 +161,7 @@ async def main() -> None:
 
     from sqlalchemy import select
 
-    from app.platforms.youtube import YouTubeAssetFinder
+    from app.platforms.youtube_ids import extract_video_id
     from archive.db.engine import async_session
     from archive.db.models import MeetingPage
 
@@ -198,7 +198,7 @@ async def main() -> None:
     not_in_map = 0
 
     for page_id, slug, video_url, _current_channel in rows:
-        video_id = YouTubeAssetFinder.extract_video_id(video_url or "")
+        video_id = extract_video_id(video_url or "")
         if not video_id:
             no_video_id += 1
             continue
