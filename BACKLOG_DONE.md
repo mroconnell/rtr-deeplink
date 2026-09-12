@@ -143,6 +143,51 @@ lines, no pins. `hop_link_weights_school.csv` and the gov_id-aware
 scorer change in `wo147_access_ladder_sweep.py` are dev/research-only
 (read by sweep scripts, not by the production resolver or Archive
 services) and take effect on merge, no deploy needed.
+## WO-303: second round of small filed fixes — seven items, three PRs [Done 2026-09-12]
+
+**What this was.** Seven small, already-filed `BACKLOG.md` bugs and gaps,
+shipped as three PRs by area (resolver/Archive code; scripts and data;
+docs). Every claim below was re-checked against the code and, where
+possible, a real live example, before anything was changed — the table
+follows this file's own "claim, true, changed, test" shape.
+
+| Item | What the entry claimed | What was actually true | What changed | How it was tested |
+|---|---|---|---|---|
+| 1. WO-300 residual "and"/"for" tails | 2 of WO-299's 12 real Utah PMN names still wrongly resolve to their leading county/city because the discarded tail starts with "and"/"for", not "of" | Confirmed live: `resolve_government()` on both real names ("Box Elder County and Perry City Flood Control Special Service District, UT", "Grand County Service Area for Castle Valley Fire Protection, UT") returned the wrong county | A closed, literal, end-anchored allowlist (`_ENTITY_NAME_CONNECTOR_SUFFIX_PHRASES`) for these two exact tails — a GENERAL "and"/"for" connector rule was tried first and reverted, since it broke two real, already-correct trims (LADWP, Castle Pines CO) that also have "and" as their only extra lowercase word | 5 new unit/integration tests; full suite green (3,647 to start); live blast-radius check against the real Archive export (8,764 pages) found 0 pages whose stored text contains either new tail |
+| 2. Duplicate YouTube id regex in Archive | `archive/db/crud.py`/`archive/utils/video_thumbnail.py` each carry their own duplicate, unbounded 11-char id regex, missing WO-296's app/-side end-boundary fix | Confirmed: both files had the exact pre-WO-296 pattern, with a stale comment claiming Archive "doesn't depend on app/" — false, both already import from `app.utils.gov_registry` | Both now import `app.platforms.youtube_ids.extract_video_id` (built WO-250 specifically to be `yt_dlp`-free and safe for Archive-side code); widened that shared regex to also cover `youtube-nocookie.com`, which both old duplicates matched but the shared helper didn't, so no coverage is lost | 6 new tests (videoseries/live_stream fakes rejected, a real id still resolves, nocookie coverage preserved); full suite green |
+| 3. Slug-retirement detection gap | `backfill_gov_id.py`'s "hub slugs retired" count never fires when an already-KEYED (wrong) government is corrected to a DIFFERENT keyed government (the real Lake Havasu shape) — only for a blank/`rtr:unknown:` page gaining identity for the first time | Reproduced directly: seeding a page with a freshly-minted `rtr:` id whose text a fresh resolve puts on a different real government, `--apply` printed "hub slugs retired : 0" even though the minted government ends the run with zero pages | An end-of-run correction pass: for every candidate retirement, ask the database directly (`hub_slugs.page_count()`, the same helper the freeze gate uses) whether the OLD government has any pages left, rather than trusting the in-loop bookkeeping (which unconditionally re-asserts ownership via the very row that's leaving) | A real DB integration test reproducing the Lake Havasu shape end to end (asserts the printed "hub slugs retired : 1" and the written alias) — confirmed to fail against the pre-fix code, pass after; full suite green |
+| 4. `queued` column shared-host gap | `research/refresh_transcribed_flag.py` matches only 403 of 2,177 tier-3 queue lines (18.5%) to a `gov_id` because shared-host lines (YouTube, Utah PMN, Town Hall Streams — ~92% of the queue) aren't joined by host at all | Confirmed by rerunning the script; WO-299's own breadth pass had already proven three safe per-platform joins for these same three hosts by hand | Implemented all three in the script: YouTube via `tenant_overrides.csv`'s real per-video pins (video id extracted with the same shared `youtube_ids.py` helper item 2 now uses), Town Hall Streams via `location_id` matched against already-archived pages, Utah PMN via the notice's own "Entity" field (one opt-in polite fetch per line, the same method WO-299 validated) resolved through `resolve_government()` | Dry run against a fresh Archive export: coverage rose from 403/2,174 (18.5%) to 1,186/2,174 (54.6%) — 409 single-tenant host, 707 YouTube pin, 3 Town Hall Streams, 67 Utah PMN Entity (458 fetched but did not resolve, reported not guessed). **Not applied** — WO-283/WO-292 were still writing the shared research file when this ran |
+| 5. Google Drive / direct-file video | Two separate gaps: no adapter for a bare video file on a government's own domain or Dropbox (WO-284), and Google Drive's viewer page "does not expose a direct media URL without sign-in" so no Drive adapter exists at all (WO-264, filed `[BIG]`) | The WO-284 half confirmed live (Palisade CO/Dundee OR/Cayuga Heights NY all answer a plain HEAD with real `Content-Type: video/mp4`). The WO-264 half's core assumption was **wrong**: Drive's own documented direct-download endpoint, with `&confirm=t` appended, bypasses the "can't scan for viruses" interstitial (shown on any file too large to scan) and returns a real, ranged `video/mp4` stream with no sign-in — confirmed live against both of Kemmerer WY's real ~2GB files | New `app/platforms/direct_file.py` adapter (own-domain/Dropbox/Drive-file, minimum: recognize the shape, rewrite to the real media URL, confirm by HEAD it's actually a video), registered in `detect_platform()`/`register_all_finders()`, plus `/coverage` and adapter-canary decisions | 13 new tests (URL detection, media-URL rewriting, mocked-HEAD resolve, graceful degradation) against real captured header shapes; full suite green. Enterprise OR's one stored Dropbox URL is missing its `rlkey=` token and could not be verified end to end — flagged below, not silently assumed to work |
+| 6. Playlist-organised YouTube channels | The channel-listing helper reads only the flat Videos tab, so Watertown SD (by-year playlists) and Groton CT (by-committee playlists) show zero candidates even though a real meeting exists one playlist-expansion hop away | Confirmed live (one metadata call per channel, real `/playlists` tab captured as a fixture): Watertown's real "City Council" family spans 4 different real title shapes across the years, interleaved with 3 other real per-body playlist families on the same channel; Groton's only "town council"-matching playlists are 3 real "Meet the Candidates" forums, not meetings | Added a `--playlists` mode to `scripts/wo235_channel_pilot.py`'s shared channel-listing helper: list playlists (flat, one call), `find_governing_body_playlist()` picks the one exactly matching a caller-supplied body name (stripped of any leading year and trailing "meeting(s)"), `yt_dlp_playlist_videos()` expands it. Declines (returns nothing) rather than guessing when zero or more than one playlist matches — confirmed against both real channels | 7 new tests against the two real captured fixtures (trimmed to id/title/url) — finds Watertown's newest City Council playlist, doesn't confuse it with 3 sibling real playlist families, declines on Groton's candidate-forum false lead; full suite green |
+| 7. WO-146 `[HUMAN]` entry | Two live pages (`loudoun-county-va-2013-01-11-video04-maptab`, `waukesha-city-wi-2026-09-08-finance-committee-on-2026-09-08-6-00-pm`) needed deleting; the sandbox couldn't run the delete | Confirmed live: both slugs now 404 on the Archive | Entry closed, moved here | Direct `GET /m/{slug}` on both slugs, both 404 |
+
+**Caution.** Item 4's coverage gain (1,186 of 2,174) is a floor, not a
+full accounting — 458 Utah PMN notices fetched a real Entity field that
+still didn't resolve to a government (reported, not guessed at), and
+this pass was never applied to the shared research file since two other
+sessions (WO-283, WO-292) were still writing it. Item 5's Dropbox rewrite
+is Dropbox's own documented mechanism, verified correct in general, but
+the ONE real fixture on file (Enterprise, OR) is missing its access
+token in the copy captured by WO-284 and could not be verified end to
+end — flagged as a residual gap, not assumed to work. Item 1's fix is
+deliberately narrow (two literal tails, not a general rule) after the
+general version broke two real, already-correct cases.
+
+**Recommendation.** Deploy the resolver + Archive changes (PR A: items
+1-3) — zero measured blast radius against production today. PR B mixed
+two kinds of change: items 4 and 6 are scripts, no deploy; item 5 adds a
+new resolver adapter (`app/platforms/`) and DOES need the same resolver
+deploy as PR A, despite the work order's own "no deploy" label for that
+PR — corrected here rather than silently repeated. PR C is docs only.
+
+**Deploy status.** PR A: merged to `main`, not live until the resolver +
+Archive services are redeployed. PR B: the script changes (items 4, 6)
+need no deploy; the `direct_file` adapter (item 5) is on `main` but not
+live until the resolver is redeployed. PR C: docs only, nothing to
+deploy.
+
+**History.** `BACKLOG_DONE.md`'s WO-285, WO-293, WO-296, WO-299, WO-300,
+WO-301 entries; `BACKLOG.md`'s WO-264/WO-284/WO-279 entries (items 5-6).
 
 ## WO-291: site builders are not meeting platforms — relabelled so builder-labelled rows re-enter discovery [Done 2026-09-12]
 
