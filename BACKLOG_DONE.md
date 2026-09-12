@@ -446,7 +446,7 @@ needed to redirect.
 
 | Outcome | Count of 100 | What it means |
 |---|---|---|
-| Kept | 84 | The video is gone, but the pin still protects a live page that is correctly keyed |
+| Kept | 83 | The video is gone, but the pin still protects a live page that is correctly keyed |
 | Deleted | 16 | The video is gone and no live page depends on the pin |
 | Corrected | 1 | Disagreed with its own duplicate pin for the same video; fixed to match (Ripley County, IN, not Holton town, IN) |
 
