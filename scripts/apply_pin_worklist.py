@@ -129,6 +129,13 @@ ACCEPT_PROPOSAL = "ok"
 DECLINE = {"skip", "none", "no", "-", "n/a"}
 # Permission to pin a minted `rtr:` id, in either of Ryan's two columns.
 MINT_TOKEN = "ok mint"
+# WO-244: a YouTube decision is either the government's OWN channel (the
+# channel's name says this government AND its type -- city vs county vs
+# township vs village) or a channel that merely carries its meetings (a
+# community-TV, county or school channel, a personal account). "own
+# channel" in either column adds a `channel=@handle` pin, which keys
+# every future upload; without it only the archived videos are pinned.
+OWN_CHANNEL_TOKEN = "own channel"
 # In EITHER of Ryan's two columns: this row is not a government, delete
 # every page it represents. Word-boundary matched so it can sit next to
 # other text ("DELETE - obviously a UAT tenant") without a false miss,
@@ -260,24 +267,39 @@ def _pages_by_host(pages: List[dict]) -> Dict[str, List[dict]]:
     return out
 
 
+def _is_own_channel(row: dict) -> bool:
+    """Whether Ryan marked this YouTube row as the government's own channel."""
+    return OWN_CHANNEL_TOKEN in (
+        f"{row.get('ryan_gov_name') or ''} {row.get('ryan_note') or ''}".lower()
+    )
+
+
 def _youtube_match_values(
     row: dict, pages_by_host: Dict[str, List[dict]], channels: Dict[str, dict]
 ) -> List[str]:
-    """The `match` values a YouTube channel row must actually be written as.
+    """The `match` values a YouTube channel row is written as.
 
-    A channel handle is the right unit for a HUMAN decision -- one channel
-    is one government, and Ryan names it once. It is the wrong unit for a
-    pin: `_match_override()` satisfies a `match` by finding it in the
-    page's path or query, and a YouTube page's URL carries the video id
-    and nothing else. Neither ingest nor the backfill passes `page_hints`,
-    so a pin written `match=@TownofWoodside` would be silently inert --
-    the worst possible outcome, because the sheet would say the host was
-    settled and the pages would stay unresolved.
+    A channel handle is the unit of a HUMAN decision -- one channel is one
+    government, and Ryan names it once. It expands to two kinds of pin:
 
-    So one decision expands to one pin per video id on that channel and
-    host, which the path does carry. `reports/pin_worklist_youtube.csv` is
-    the map, written by the build script from the same oEmbed lookups
-    that produced the channel title Ryan read.
+    * one pin per archived video id on that channel and host (the path
+      carries the video id, so these fire on the pages already archived
+      whether or not a channel was stored for them);
+    * when the row says "own channel" (`OWN_CHANNEL_TOKEN`), one
+      `channel=@handle` pin as well. `_match_override()` tests a
+      `key=value` match against the page hints ingest and the backfill
+      build from `MeetingPage.video_channel` (WO-105 + #822), so this one
+      fires for every future upload from that channel. Not written for a
+      shared/community/personal channel: that would key every video the
+      channel ever posts to one government (the WO-231 review found 13
+      same-name-wrong-type pins written that way).
+
+    Until WO-244 the docstring here said a `channel=` pin was inert; it
+    was, but only because the YouTube adapter's trimmed metadata dict
+    never carried the channel keys -- fixed in the same WO.
+    `reports/pin_worklist_youtube.csv` is the video->channel map, written
+    by the build script from the oEmbed lookups that produced the channel
+    title Ryan read.
     """
     host = row["tenant_host"]
     channel = row["match"]
@@ -286,7 +308,10 @@ def _youtube_match_values(
         vid = youtube_video_id(page.get("source_url_normalized") or "")
         if vid and (channels.get(vid) or {}).get("channel") == channel:
             out.append(vid)
-    return sorted(set(out))
+    values = sorted(set(out))
+    if _is_own_channel(row) and channel.startswith("@"):
+        values.append(f"channel={channel}")
+    return values
 
 
 def resolve_answer(name: str, host: str, may_mint: bool, accepted_gov_id: str = ""):
@@ -654,7 +679,7 @@ def main() -> None:
         # `_youtube_match_values()` for why the handle itself cannot be one.
         if host in _YOUTUBE_HOSTS and (row.get("match") or ""):
             match_values = _youtube_match_values(row, pages_by_host, channels)
-            if not match_values:
+            if not [v for v in match_values if not v.startswith("channel=")]:
                 results[-1]["outcome"] = "no_videos"
                 results[-1]["detail"] = (
                     "no archived video on this host maps to this channel -- "

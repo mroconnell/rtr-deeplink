@@ -732,3 +732,47 @@ def test_channel_handle_from_the_shapes_yt_dlp_actually_returns():
         is None
     )
     assert f({}) is None
+
+
+def test_extract_info_carries_the_channel_keys_the_handle_reader_needs(monkeypatch):
+    """WO-244 (2026-09-11): `_extract_info()` returns a trimmed dict, and
+    #822 added `_channel_handle()` / `video_channel_id` readers without
+    adding their keys to it -- so 0 of 3,580 archived YouTube pages had a
+    channel and every `channel=@handle` pin was inert for YouTube. The
+    yt-dlp info here is the real shape (keys as yt-dlp names them); the
+    values are Box Elder County, UT's real channel, confirmed 2026-09-11.
+    """
+    from app.platforms import youtube as yt_module
+
+    info = {
+        "title": "04-22-2026 Box Elder County Commission Meeting",
+        "uploader": "Box Elder County",
+        "uploader_id": "@boxeldercountyut",
+        "uploader_url": "https://www.youtube.com/@boxeldercountyut",
+        "channel_url": "https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx",
+        "channel_id": "UCxxxxxxxxxxxxxxxxxxxxxx",
+        "upload_date": "20260422",
+        "subtitles": {},
+        "automatic_captions": {},
+    }
+
+    class FakeYDL:
+        def __init__(self, opts):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def extract_info(self, url, download=False):
+            return info
+
+    monkeypatch.setattr(yt_module.yt_dlp, "YoutubeDL", FakeYDL)
+    monkeypatch.setattr(
+        YouTubeAssetFinder, "_pick_caption_track", staticmethod(lambda ydl, i: None)
+    )
+    result = YouTubeAssetFinder._extract_info("abcdefghijk")
+    assert YouTubeAssetFinder._channel_handle(result) == "@boxeldercountyut"
+    assert result["channel_id"] == "UCxxxxxxxxxxxxxxxxxxxxxx"

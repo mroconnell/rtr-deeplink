@@ -858,3 +858,50 @@ def test_the_worklist_carries_a_swagit_footer_column():
         r for r in _worklist_rows() if r["platform"] == "swagit" and r["swagit_footer"]
     ]
     assert rows, "expected at least one Swagit row with a fetched footer name"
+
+
+def test_an_own_channel_decision_adds_a_channel_pin_and_a_shared_one_does_not():
+    """WO-244: "own channel" on the row adds `channel=@handle` (fires on
+    every future upload through the page hint) on top of the per-video
+    pins; a community/personal channel gets the per-video pins only."""
+    channels = {
+        "aaaaaaaaaaa": {
+            "channel": "@boxeldercountyut",
+            "channel_title": "Box Elder County",
+        },
+        "bbbbbbbbbbb": {
+            "channel": "@boxeldercountyut",
+            "channel_title": "Box Elder County",
+        },
+        "ccccccccccc": {
+            "channel": "@bournecommunitytv",
+            "channel_title": "Bourne Community TV",
+        },
+    }
+    pages = {
+        "www.youtube.com": [
+            {"source_url_normalized": "https://www.youtube.com/watch?v=aaaaaaaaaaa"},
+            {"source_url_normalized": "https://www.youtube.com/watch?v=bbbbbbbbbbb"},
+            {"source_url_normalized": "https://www.youtube.com/watch?v=ccccccccccc"},
+        ]
+    }
+    own = {
+        "tenant_host": "www.youtube.com",
+        "match": "@boxeldercountyut",
+        "ryan_gov_name": "ok",
+        "ryan_note": "own channel -- name says the county and its type",
+    }
+    shared = {
+        "tenant_host": "www.youtube.com",
+        "match": "@bournecommunitytv",
+        "ryan_gov_name": "Bourne, MA",
+        "ryan_note": "community TV, per video only",
+    }
+    assert apply_pin_worklist._youtube_match_values(own, pages, channels) == [
+        "aaaaaaaaaaa",
+        "bbbbbbbbbbb",
+        "channel=@boxeldercountyut",
+    ]
+    assert apply_pin_worklist._youtube_match_values(shared, pages, channels) == [
+        "ccccccccccc"
+    ]

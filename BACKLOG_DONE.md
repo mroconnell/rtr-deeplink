@@ -1,5 +1,44 @@
 # Backlog — done
 
+## WO-244: channel pins for the drip's own-channel decisions — and the reason no YouTube `channel=` pin has ever fired: the adapter dropped the channel keys [Done 2026-09-11]
+
+- **Why:** Ryan noticed every one of WO-237's 38 pins was per-video, so the
+  12+ channels he had confirmed as the government's own would send every
+  future upload back into the `needs_review` pile (the ~60/day the daily
+  round exists to flatten). Platforms asked for `channel=@handle` pins
+  plus an apply-script change so the next round writes them itself.
+- **What the check found first:** a `channel=` pin fires through the page
+  hint ingest and the backfill build from `MeetingPage.video_channel`
+  (WO-105 + #822), and 1,121 YouTube `channel=` pins already existed —
+  but the 2026-09-11 export showed **0 of 3,580 archived YouTube pages
+  with a stored channel or channel id** (Vimeo: 23 of 79 had one). Root
+  cause: `YouTubeAssetFinder._extract_info()` returns a trimmed dict, and
+  #822 added the `_channel_handle()` / `video_channel_id` readers without
+  adding `uploader_id` / `uploader_url` / `channel_url` / `channel_id` to
+  it. Every YouTube page ingested since 2026-09-09 carried no channel, so
+  every `channel=` pin was inert for YouTube — including the eight
+  `archive_study_2026-09-09` rows for Box Elder County, Tooele, Grand
+  County, Orem, Provo, Cache County, Jackson County NC and Hooper that
+  already covered channels the drip re-flagged today. `apply_pin_
+  worklist.py`'s docstring had said a `channel=` pin was inert; it was
+  right for the wrong reason.
+- **Fix, four parts:** (1) the adapter's metadata dict now carries the
+  four channel keys (test with the real yt-dlp key shape); (2) 17 new
+  `channel=@handle` fallback pins on `www.youtube.com` for the 25
+  channels Ryan confirmed as the government's own in WO-237 (8 already
+  existed and agree on the gov_id), keeping the per-video rows for the
+  archived videos; (3) `apply_pin_worklist.py` writes a `channel=` pin
+  when the row carries "own channel" (`OWN_CHANNEL_TOKEN`, either
+  column) on top of the per-video expansion, and per-video only
+  otherwise — the sheet's printed instructions and the identity-review
+  doc say when to write the token; (4) tests for both shapes.
+- **Deploy:** the adapter fix is under `app/` and the pins are data
+  files — all on `main`, none live until the next Archive deploy. From
+  that deploy, YouTube ingests store the handle and the `channel=` pins
+  (1,138 now) start firing on new uploads. Already-archived YouTube
+  pages have no channel stored and will not gain one from a backfill;
+  they are keyed by their per-video pins or a re-resolve.
+
 ## WO-241 · Deleted 31 dead rows from `tenant_overrides.csv` (13 duplicate catch-alls + 18 lone blank-`gov_id` rows), added the CI guard against both shapes; live-verified Carson is likely mis-pinned [Done 2026-09-11]
 
 **Assigned by the conductor** after WO-132 (2026-09-09/10) found 13 hosts

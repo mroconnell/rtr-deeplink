@@ -111,10 +111,15 @@ for YouTube:
   `www.youtube.com,4pdLtlcWSf0,ca:csd:3543015,fallback,wo195_channel_probe,"Severn, ON (YouTube channel UCzhcoASavyb3nVr4jxzx8vA, linked from severn.civicweb.net) -- ca_csd.csv Severn"`
 - **Per channel (the default)** — `www.youtube.com,channel=@TownofWoodside,<gov_id>,...`.
   Fires for every page that channel published, now and later; the
-  handle comes from `fed_pages.csv`'s `video_channel` column (the Archive
-  stores it on every page ingested since 2026-09-10). One confirmed
-  channel pin keys the government's whole back catalogue and its future
-  meetings, so write this one **only when the channel's own name says
+  handle comes from `fed_pages.csv`'s `video_channel` column. **Until the
+  deploy that carries WO-244 (2026-09-11) the Archive stored no channel
+  on any YouTube page** — the adapter's metadata dict dropped the keys —
+  so `fed_pages.csv`'s column is blank for those pages and a `channel=`
+  pin fired for none of them; from that deploy on, ingest stores the
+  handle and the pin fires on every future upload. A confirmed channel
+  pin therefore keys the government's future meetings (its archived
+  videos get per-video pins from the sheet), so write this one **only
+  when the channel's own name says
   this government AND this government's type** — city vs county vs
   township vs village. The 2026-09-11 backfill review found 13 pins
   where the name matched and the type did not (a "Town of X" channel
@@ -132,7 +137,10 @@ and channel, with a proposal where a cheap signal is the government's
 own name; Ryan writes a name, "ok" or "skip" per row and
 `scripts/apply_pin_worklist.py` writes the pins. Drip-fed pages appear
 there automatically — this document only adds the drip's own per-page
-file, which carries the `source_url` the sheet does not.
+file, which carries the `source_url` the sheet does not. On a YouTube
+row, add "own channel" to `ryan_note` when the channel is the
+government's own; the apply then writes the `channel=` pin as well as
+the per-video ones (WO-244).
 
 ## What happens after a pin
 

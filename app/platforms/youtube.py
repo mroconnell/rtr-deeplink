@@ -591,6 +591,17 @@ class YouTubeAssetFinder(AssetFinder):
             result = {
                 "title": info.get("title"),
                 "uploader": info.get("uploader"),
+                # WO-244 (2026-09-11): the four keys `_channel_handle()` and
+                # `resolve_video_id()`'s `video_channel_id` read. #822 added
+                # both readers but never added the keys to this trimmed
+                # dict, so every YouTube page ingested since carried no
+                # channel and every `channel=@handle` pin was inert for
+                # YouTube (0 of 3,580 archived YouTube pages had a channel
+                # in the 2026-09-11 export; Vimeo's 23 did).
+                "uploader_id": info.get("uploader_id"),
+                "uploader_url": info.get("uploader_url"),
+                "channel_url": info.get("channel_url"),
+                "channel_id": info.get("channel_id"),
                 "upload_date": info.get("upload_date"),
                 "release_date": info.get("release_date"),
                 # Both read at zero extra request cost (WO-135) -- this is
