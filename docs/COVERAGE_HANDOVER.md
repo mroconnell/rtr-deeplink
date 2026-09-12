@@ -490,3 +490,26 @@ What the 2026-09-09 sweeps established about *where video is*:
   instead of trusting the one stored at ingest (WO-229, 2026-09-11), but
   whether BoxCast actually re-signs with a later expiry once the current
   one passes is unconfirmed — see `BACKLOG.md`'s matching `[WAIT]` entry.
+
+## 7. Where to look first next time
+
+- YouTube pages fed by the always-on drip (`scripts/youtube_drip.py`)
+  arrive keyed only as well as the deployed pins allow; the review
+  procedure, the per-page file, and the video-vs-channel pin shapes are
+  in `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` (2026-09-11).
+- `docs/VIDEO_TO_CALENDAR_JOIN.md`: the shelved future project that joins a
+  government's video channel, playlist or feed to its own calendar by body
+  and date (pilot WO-158, about 5% yield). Read it before touching
+  channel enumeration.
+- `docs/BREADTH_SWEEP_BRIEF.md`: the brief for the next round of coverage
+  work, written 2026-09-10 from four read-only pilots. Platform API first,
+  then an honest plain client, browser headers on a 403, headless only for
+  JavaScript-drawn links, never past a challenge; a probe before queuing;
+  reject reasons split into access and content classes.
+- `BACKLOG.md`'s TOC, then the Standing decisions section.
+- `BACKLOG_DONE.md`'s 2026-09-09 and 2026-09-10 entries for every sweep's
+  funnel, and `rtr-business/research/ENUMERATION_METHODS.md` §155–§180
+  for the same from the research side.
+- The coverage registry summary,
+  `rtr-business/research/coverage_registry/COVERAGE_REGISTRY_SUMMARY.md`,
+  for today's numbers with their sources and input timestamps.
