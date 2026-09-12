@@ -1,5 +1,53 @@
 # Backlog — done
 
+## WO-237: first daily sheet round for the YouTube drip's identity pile — 32 channels reviewed, 38 pins, one mint [Done 2026-09-11]
+
+- **Why:** Ol McClaude's drip reported 63 fed pages flagged `needs_review`
+  in its first ~6 h after the restart (0 blocks; 104 captions, 77 pages
+  fed). Those are live Archive pages with an unresolved tier, so the
+  standard sheet (`scripts/build_pin_worklist.py`) catches them grouped
+  by channel; no file leaves the drip's Mac. Platforms handed the round
+  to this session with the rule that bit the same day: **a channel pin
+  only when the channel's own name says this government AND its type**
+  (13 same-name-wrong-type pins had been found in the backfill review);
+  a community-TV, county or school channel that carries a town's
+  meetings gets per-video pins only. That rule is now in
+  `docs/YOUTUBE_DRIP_IDENTITY_REVIEW.md` and in the builder's printed
+  "Next:" text.
+- **What was reviewed:** 50 drip-fed unresolved YouTube pages across 32
+  channels (11 more sit under non-YouTube hosts in the general sheet).
+  Ryan got an artifact with each channel linked, the best join from the
+  national tables with its id, and every same-name candidate where the
+  tables held more than one (Cumberland County ×8, Aberdeen ×7, Webster
+  ×21). His calls: the 8 confident joins agreed (Hooper City confirmed
+  from an agenda item); Cumberland County VA, Osage County KS, Shorewood
+  WI; Aberdeen SD, Webster town NY; Wasatch Front Regional Council
+  "mint it"; the channel-less BOS video is Dickenson County VA; MCTV20Live
+  is Marion KS but unofficial with off-mission mixed in (per video);
+  the three MA community-TV channels and one personal account per video.
+
+  | Rows by kind | Channels | Pins |
+  |---|---|---|
+  | Channel decision, expanded to every archived video (12 proposed + 8 confident + 3 confirmed + 2 ambiguous) | 25 | 31 |
+  | Per-video only (community TV, personal account, channel-less video) | 6 | 6 |
+  | Minted: Wasatch Front Regional Council (`rtr:us:ut:wasatch-front-regional-council`, other, UT) | 1 | 1 |
+
+- **How the script actually pins YouTube:** `apply_pin_worklist.py`
+  expands one channel answer into one `fallback` pin per archived video
+  id on that channel (a `channel=` match would be inert — neither ingest
+  nor the backfill passes page hints), so every YouTube pin is per-video
+  on disk and "channel pin" means the decision unit. It also cannot mint
+  through a shared host (`youtu.be`: the ladder refuses with no
+  per-video pin), so the WFRC row and pin were written by hand.
+- **Left for Ryan on the sheet (older answers, not this round):** Qathet
+  Regional District BC and CSMFO need "ok mint"; ICMA needs a state;
+  "Prince George County, MD" must be retyped as the registry spells it.
+- **Deploy:** pins and the curated row are data files inside the image —
+  on `main` but not live until the next Archive deploy; then Platforms
+  runs the YouTube/Vimeo backfill (dry run, apply, residue, zero) and the
+  hub aliases. Cadence agreed with Platforms: one sheet round a day;
+  ~60 new review rows a day is the number to watch.
+
 ## WO-233: Laserfiche WebLink studied as a meeting-video source — 20 real repositories, decision is defer [Done 2026-09-11]
 
 **What was tested, and why.** Ryan asked for a look at Laserfiche

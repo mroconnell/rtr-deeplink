@@ -1145,7 +1145,11 @@ def main() -> None:
     print(f"  {kept} existing answers preserved")
     print("")
     print('Next: fill `ryan_gov_name` with a plain-English name, or "ok" to')
-    print('accept `proposed_name`, or "skip". Then:')
+    print('accept `proposed_name`, or "skip".')
+    print("A channel pin only when the channel's own name says this government")
+    print("AND its type (city vs county vs township vs village); a community-TV,")
+    print("county or school channel that carries a town's meetings gets per-video")
+    print("pins only (WO-237). Then:")
     print("  python scripts/apply_pin_worklist.py")
 
 
