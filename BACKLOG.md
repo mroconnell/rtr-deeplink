@@ -171,8 +171,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (156)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (157)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
+  [NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
@@ -409,9 +410,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
-Dormant — needs a real example first `[LATER]`  (2)
+Dormant — needs a real example first `[LATER]`  (1)
   Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20…
-  A BoxCast government reached only via a fresh per-meeting…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -1625,6 +1625,12 @@ of human step they need.
   - **Next action**: after 2026-09-13 19:56 UTC, `curl -sI https://rtr-deeplink-archive.onrender.com/m/livermore-falls-me-2026-09-01-livermore-falls-select-board-meeting-september-1st/video` (and Bartow's own slug) and confirm the redirect's `Location` carries an `Expires=` LATER than 1789329408, then confirm that URL actually plays. If it's still the same expired URL, this becomes a `[HUMAN]` item (BoxCast dashboard/support).
   - **Constraint**: can't be tested before the real expiry passes — don't reuse today's Expires value as a stand-in for "it works."
   - **History**: `BACKLOG_DONE.md`'s WO-229 entry.
+- **[NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant entry was waiting for: a BoxCast government only reachable via a per-meeting pseudo-channel on a SHARED account, so its own safe pin can't fire.**
+  - **Issue**: confirmed live 2026-09-12 (WO-245) while fixing the separate per-broadcast `external_id` bug: South Bay, FL's BoxCast account (`nqkdxkaoowxb8iyvornm`, "Primestar Digital Network - PALM SPRINGS, fl") is a SHARED regional vendor account also carrying at least seven other real Florida governments' own meetings (Boynton Beach, Boynton Beach CRA, Belle Glade, Clewiston, Pahokee, Mangonia Park, Delray Beach — confirmed by reading the account's own `GET /channels/{channel}/broadcasts` listing). South Bay's own distinct channel (`kddihfjxfiskfydfkwgy`, carrying only its own meetings, found on the city's site) has a correct, safe pin in `tenant_overrides.csv`. But the real page (8903) was ingested from a direct `boxcast.tv/view/{broadcast}` link, and `boxcast.py`'s `channel_hint` is only ever populated when the ORIGINAL url was itself a `/channel/{id}` scan — a direct `/view/` link never is, so the adapter has no way to discover South Bay's distinct channel from that URL alone, and its `video_channel` instead falls back to the shared account's own channel (confirmed by a real, read-only resolve: `boxcast:nvot5avtqaaljac4xhxt`). This is exactly the shape the earlier WO-227b Dormant entry on this subject ("A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED account") was waiting for a real example of.
+  - **Impact**: contained today — WO-245 deliberately did NOT widen South Bay's pin to the shared account channel (that would misattribute the other seven governments' broadcasts to South Bay the moment any of their own `/view/` links got ingested the same way). So the existing safe pin simply never fires for page 8903 or any future South Bay page ingested the same way; South Bay's identity still comes from the explicit `gov_id` every ingest payload now carries (CLAUDE.md's rule), not from this pin. No misattribution has happened.
+  - **Next action**: no fix without a second signal. Two real options, neither built: (a) teach the adapter to read the account's own broadcast listing at resolve time and cross-check whether it looks single- or multi-tenant (the same check this WO did by hand for Primestar, Mt. Blue Television and Media Mike), trusting `account.channel_id` only when it does; or (b) maintain a small hand-verified map (shared account id -> known distinct per-government channel ids), consulted when `distinct_channel` is None but the account is known-shared. Either needs at least one more confirmed shared-account case before shipping, per CLAUDE.md's "never build from one example" rule for a fix this shape.
+  - **Constraint**: never widen a `tenant_overrides.csv` boxcast pin to an account-level channel without first confirming via the account's own broadcast listing that it is single-tenant — this is exactly what caught Primestar. Don't re-pin South Bay to the shared channel as a workaround.
+  - **History**: `BACKLOG_DONE.md`'s WO-227b entry (the original Dormant version of this question, now superseded by this entry) and WO-245 entry; `app/platforms/boxcast.py`'s "An account can be a shared regional media operator" docstring section.
 - **[NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row says `reject_reason=no-video-found` while the same row already has `shares_video=True` and a real Swagit video URL on file.**
   - **Issue**: found 2026-09-11 while studying Port Arthur's Laserfiche WebLink repository for WO-233 (unrelated — that repo is confirmed agenda-only, not the source of this inconsistency). The row (`us:place:4858820`, domain `portarthurtx.new.swagit.com`) carries `shares_video=True` and `example_meeting_url=https://portarthurtx.new.swagit.com/videos/359787`, yet `reject_reason=no-video-found` — those two fields contradict each other on the same row.
   - **Impact**: unclear which field is stale. If the Swagit video was never actually ingested, `reject_reason` may be right and `shares_video`/`example_meeting_url` are the leftover of an earlier, since-superseded find. If it WAS ingested (or is a real, queueable tier-3 candidate), `reject_reason` is simply wrong and should be cleared.
@@ -6453,38 +6459,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   `rtr-business/research/wo233_repositories.csv` (all 20 repositories,
   per-repo detail).
 
-### A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED (non-government) account would still get the wrong external_id `[LATER]`
-
-- **Issue:** WO-227b (2026-09-11) fixed `boxcast.py`'s `external_id`
-  computation for a government whose real, distinct, multi-broadcast
-  channel is reachable directly (Livermore Falls ME, Atlantic Beach SC —
-  both on a shared regional media operator's account, not the
-  government's own). The fix trusts that distinct channel over the
-  account. But Bartow FL's real shape — a FRESH single-broadcast
-  pseudo-channel per meeting, no distinct channel to prefer at all —
-  still falls back to `account.channel_id`, which is only correct
-  because Bartow's account happens to be single-tenant (confirmed live:
-  its channel lists only Bartow's own meetings). No real government has
-  been found yet whose account is BOTH a shared multi-tenant operator
-  AND only ever reachable via a fresh per-meeting pseudo-channel (never
-  a stable per-government channel link) — if one exists, this code would
-  silently compute the SAME external_id as every other government
-  sharing that account, the exact hazard this WO fixed for the
-  distinct-channel case.
-- **Impact:** none today (no known live case) — a bare BoxCast-video
-  page misattributed to another government sharing the same production
-  vendor's account, if it ever happens.
-- **Next action:** nothing to build without a real example. If one turns
-  up (a sweep finds two governments sharing a BoxCast account with
-  neither having a stable per-government channel URL anywhere), the fix
-  is a second signal beyond `account.channel_id` — e.g. cross-checking
-  the account's own broadcast history for other governments' names the
-  way this WO did by hand for Mt. Blue Television/Media Mike.
-- **Constraint:** don't build a speculative fix without a real account
-  to verify it against — CLAUDE.md's "test against a real, live URL
-  first" rule applies here as much as to a new adapter.
-- **History:** `BACKLOG_DONE.md`'s WO-227b entry; `app/platforms/boxcast.py`'s
-  "An account can be a shared regional media operator" docstring section.
 
 ## Parked deliberately — allowed back `[PARK]`
 

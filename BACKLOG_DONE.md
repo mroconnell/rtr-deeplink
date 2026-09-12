@@ -1,5 +1,94 @@
 # Backlog — done
 
+## WO-245: BoxCast's `external_id` was colliding real broadcasts onto one page — it's now per-broadcast, and the government channel moved to a separate pin field [Done 2026-09-11]
+
+**What happened.** At 2026-09-12 00:50 UTC, three real BoxCast meetings were
+ingested. The second one — a different meeting, "CITISTAT," from the
+same city as the first — quietly overwrote the first meeting's page
+instead of creating its own.
+
+| URL | Government | Result |
+|---|---|---|
+| `boxcast.tv/view/wuv2iiwzlyzhny1zietp` (City Council, 1,294 caption lines) | Atlantic City, NJ | Page 8902 created |
+| `boxcast.tv/view/jgd724osemy5esg1lzsh` (CITISTAT, 397 caption lines) | Atlantic City, NJ | Overwrote page 8902 — wrong title, wrong date |
+| `boxcast.tv/view/cxm9kgwlyf8qj7c4tnbv` (South Bay budget meeting) | South Bay, FL | Page 8903 created — this government's first page, so nothing to overwrite |
+
+The conductor re-ingested the council meeting by hand, which put page
+8902 back. No other page was affected.
+
+**Why it happened.** Our Archive decides whether an incoming meeting is
+new or already has a page by checking two things: the platform name,
+and a field called `external_id`. `external_id` has to be a unique
+label for one meeting — never shared by two different meetings. The
+BoxCast adapter (`app/platforms/boxcast.py`) was setting `external_id`
+to the CITY's BoxCast channel, not the meeting's own broadcast. Every
+meeting from the same city shared the same label, so the second one
+ingested always looked like "the same meeting, updated" to the Archive.
+
+**The fix.** `external_id` is now the broadcast's own id (a random
+20-character code BoxCast assigns to every single recording,
+confirmed unique across different cities by reading the public BoxCast
+API directly). The city-level channel — still useful, just not as a
+meeting label — moved to a different field, `video_channel`. That
+field feeds a separate system: the "pins" list
+(`tenant_overrides.csv`) that tells us which government owns a video
+when the video's own page can't say so by itself. The two jobs
+(telling meetings apart, and naming which government a video belongs
+to) no longer share one field.
+
+**The 9 existing BoxCast pins.** Each pin is one line that says "this
+BoxCast channel belongs to this government." All 9 already used the
+city-level channel as their key — exactly the value that now lives in
+`video_channel` — so converting them was a rename, not a rewrite.
+
+| Outcome | Count of 9 pins | What it means |
+|---|---|---|
+| Key renamed from `external_id=` to `channel=`, same value | 8 | Already pointed at the right channel; still fires the same way |
+| Key renamed, same value, but flagged as currently unreachable | 1 | South Bay, FL — see caution below |
+
+**Caution.** While checking South Bay's pin, we found its BoxCast
+account is shared by at least 7 other real Florida governments
+(Boynton Beach, Boynton Beach CRA, Belle Glade, Clewiston, Pahokee,
+Mangonia Park, Delray Beach — confirmed by reading that account's own
+broadcast list). South Bay's pin correctly points at South Bay's OWN
+channel, which only carries South Bay's meetings — that part is safe.
+But the page we already have for South Bay was ingested from a link
+that never reveals that distinct channel, so the pin can't actually
+fire for it yet. We deliberately did not widen the pin to the shared
+account's channel to make it fire — that would risk attributing the
+other 7 governments' meetings to South Bay. This is a real, known gap,
+logged in `BACKLOG.md` under Open bugs, not silently left unexplained.
+
+**What this does not fix.** The 4 BoxCast pages already live before
+today (Livermore Falls ME, Bartow FL, Atlantic City NJ, South Bay FL)
+keep their old, city-level `external_id`. A NEW meeting from any of
+those same 4 governments will get its own broadcast id and will not
+collide with the old page. A broadcast re-ingested a second time still
+matches correctly, through its own link, not through `external_id`. No
+backfill of those 4 rows is needed.
+
+**Tests.** Added: two different real broadcasts from the same
+Atlantic City channel now get two different `external_id`s while
+sharing one `video_channel` (reproduces the real incident directly);
+a resolved BoxCast page's `video_channel` reaches the pins list and
+correctly picks Atlantic City over a different government on the same
+shared host. Updated 7 existing assertions that checked the old,
+now-wrong `external_id` value. Full suite (3,341 tests), `ruff check`,
+`ruff format --check` all pass. No database model changed, so no
+migration was needed.
+
+**Recommendation.** Deploy the resolver and the Archive before
+ingesting any more BoxCast meetings — until then, a second real
+BoxCast broadcast from the same government will still collide the old
+way. Once deployed, the CITISTAT meeting can be ingested safely, and
+the conductor's earlier manual recovery of page 8902 can be left as
+final.
+
+**History:** `BACKLOG_DONE.md`'s WO-227/WO-227b entries (the original
+`external_id`-as-channel design this WO corrected); `BACKLOG.md`'s Open
+bugs entry on South Bay's unreachable pin (supersedes that file's old
+WO-227b Dormant entry on the same general question).
+
 ## WO-246: a script to store the YouTube channel this repo already knows for 1,903 archived pages, so their `channel=` pins can fire [Done 2026-09-11]
 
 - **Why:** WO-244 (PR #999) fixed the YouTube adapter so a freshly-
