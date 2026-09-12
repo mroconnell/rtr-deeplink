@@ -48599,4 +48599,85 @@ work.
 `gov_id` in the ingest payload (WO-222) and need no deploy; the 26 new
 pins and the 1 new tier-3 queue line (Mille-Isles, QC) need the next
 resolver deploy before a future re-resolve can use them. Rerun
+## [Done 2026-09-12] WO-282: passive discovery v2 -- redesigned three phases, tested on 1,298 governments, 128 platforms confirmed, 1 real page ingested
+
+Ryan redesigned WO-273's pipeline after that WO's own writeup admitted
+two gaps: phase 1 never fetched a government's own homepage, and 76 of
+WO-273's 147 "confirmed" platforms turned out to be a catch-all site
+answering any path (fixed separately by WO-278). This WO built and ran
+the redesign end to end on a fresh population: `scripts/wo282_recon.py`
+(phase 1 -- DNS-first gate, always-on homepage fetch with every link's
+href/anchor/position recorded, every robots.txt sitemap read, Crawl-
+delay honored), `scripts/wo282_classify.py` (phase 2 -- offline scoring,
+adds the measured hop-link scorer over cached homepage links plus
+first-party-embed fingerprinting), `scripts/wo282_targeted.py` (phase 3
+-- top-5 candidate fetch plus a 3-rung fallback ladder for a government
+with none, with its own catch-all/800-byte-floor test). Full writeup:
+`docs/investigations/passive_discovery_v2.md`.
+
+**Population.** 999 fresh US governments (population 2,500-4,999, own
+domain, nothing found previously -- the eligible band held only 999,
+not the requested 1,000, reported as found rather than padded) plus
+WO-268's original 300 pilot domains as an unfiltered regression group,
+for a same-domains comparison across WO-268/WO-273/WO-282.
+
+| Phase | What it measures | Result |
+|---|---|---|
+| 1 (recon) | Governments processed, zero fetch errors | 1,298 of 1,299 rows (2 duplicate-domain rows, 3 rows share only 2 real domains) |
+| 2 (classify) | Governments with >=1 candidate | 875 of 1,298 (67%) -- 266 had none and fed the fallback ladder |
+| 3 (targeted) | Governments with a platform confirmed by name+state, past the catch-all test | **128 of 1,298 (9.9%)** |
+
+**Regression check, same 300 domains, three methods:**
+
+| Method | High confidence | Real platform found |
+|---|---|---|
+| WO-268 (one at a time, 2026-09-11) | 25 | 25 |
+| WO-273 (batched, no homepage fetch, 2026-09-12) | 4 | 4 |
+| WO-282 v2 (this run) | 87 | 90 |
+
+WO-273 did worse than WO-268 on the identical domains (4 platforms vs
+25) -- its own writeup already said phase 1 never fetched a homepage and
+both archive indexes were down that run. This redesign found roughly
+3.5x WO-268's count and over 20x WO-273's on the same 300 governments.
+
+**Caution.** Of the 128 confirmed, 80 are YouTube CHANNEL links, not
+single-video URLs -- per this repo's "YouTube drip ownership"
+convention, channel-scan work runs as `scripts/youtube_drip.py` on a
+separate machine, so this WO recorded them
+(`research/wo282_confirmed_youtube_channels.txt`) rather than scanning
+or ingesting from any of them. Of the other 48, a resolve-only
+diagnostic found 4 real wrong-video cases the hand-read gate correctly
+caught: 2 promotional/history videos on the right government's own real
+channel (Silt CO, East Ridge TN), and 2 identical, unrelated third-party
+payment-portal videos reached through the same invoicecloud.com hop
+(Jemison AL, Zillah WA) -- both filed as new `BACKLOG.md` entries. One
+government (Red Oak TX) resolved to a real future-dated meeting with no
+video yet. About 20 CivicClerk/first-party hub resolves found a real,
+specific meeting with no video attached at all (agenda-only,
+correctly not ingested per this repo's video-only rule). 207 of 4,866
+phase-3 fetches (4.3%) matched their host's own catch-all signature and
+were correctly excluded, the same false-positive class WO-278 fixed.
+
+**Result: 1 real page ingested.** Saco, Maine
+(`us:place:2364675`) -- found via a homepage-nav link, hand-read (title
+"Saco City Council Meeting - July 8, 2024," 1,888 real caption
+segments), ingested with `gov_id` in the payload:
+`/m/saco-me-2024-07-08-saco-city-council-meeting-july-8-2024` (live,
+verified HTTP 200). `research/jurisdiction_coverage.csv` updated (1
+row) to point `example_meeting_url` at the real page.
+
+**Recommendation.** Hand off
+`research/wo282_confirmed_youtube_channels.txt` (80 rows) to the
+YouTube drip process. A fresh CivicPlus AgendaCenter drill-down step
+would recover 2 more real governments (La Pine OR, Ketchum ID) whose
+listing page this WO's direct `resolve()` call correctly refused to
+guess past. WO-278 (#1053) and WO-281 (#1054) landed on `main` mid-run
+with an independently-built version of the same two fixes (always-fetch
+homepage, catch-all test) on their own populations -- this WO's numbers
+(128 confirmed, 1 ingest) land in the same range as WO-278's (60
+confirmed, 1 ingest) and WO-281's (259 confirmed, 2 ingests), reasonable
+convergent evidence neither fix is an implementation artifact. Deploy
+status: nothing to deploy -- no `app/`, `archive/`, or `worker/` code
+changed, only new `scripts/` and docs; the 1 Archive page is already
+live (ingest is a direct API call, not a deploy). Rerun
 `scripts/build_backlog_toc.py` after this entry landed.
