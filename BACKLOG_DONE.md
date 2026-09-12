@@ -2288,6 +2288,88 @@ again before committing.
 the Render Shell, per this repo's standing rule against bulk writes
 from a laptop). Left as its own short `BACKLOG.md` entry.
 
+## WO-283: passive discovery v2 at full scale — 7,746 governments, 414 platforms confirmed, 1 page ingested, 3 queued [Done 2026-09-12]
+
+**What was done and why.** WO-264's overnight sweep and WO-282's own
+999-row pilot left about 7,700 small governments (population under
+5,000) unchecked. WO-283 ran WO-282's redesigned discovery pipeline
+(DNS-first gate, an always-fetched homepage with position-scored links,
+a fallback ladder for a government with no candidate) against all of
+them, then hand-checked every real find before it could become a page or
+a queue line, per this repo's own rule that a channel or platform match
+is not proof a specific video is the right one.
+
+**Result.** All 7,746 governments went through phase 1 (reconnaissance)
+and phase 3 (targeted fetch); 414 came back with a confirmed platform.
+
+| Outcome | Count of 414 confirmed | What it means |
+|---|---|---|
+| YouTube channel link, not a single video | 247 | Not scanned or ingested here — handed to the `youtube_drip.py` process (245 new leads after removing 2 already known) |
+| Single-video/hub URL, hand-read | 167 | Read one by one through the real resolve pipeline before anything was ingested |
+
+Of the 167 hand-read, one real page went live: **Solebury Township, PA**
+— "Housing Forum 06-04-26" on Vimeo, 2,113 real caption segments, found
+on the township's own homepage. Three more real meetings had video but
+no captions, so they were queued for cloud transcription instead of
+ingested directly: Clermont town, NY; Mantua town, UT (an audio-only
+recording — a format this repo's Utah PMN adapter already supports); and
+Capital Regional District, BC. The district's own flagged meeting ran
+2 hours 49 minutes, over this repo's 90-minute cutoff for a first try, so
+this WO checked the same board's other committees for something shorter
+before giving up on it, per Ryan's rule — and found a 21-minute Housing
+Corporation Board meeting instead, which is what actually got queued.
+One more real video (Searsmont, ME) turned out to be a recycling-program
+video, not a meeting, so nothing was recorded for it. 110 more
+governments had a real meeting or agenda page but genuinely no video —
+recorded as such, never ingested, per this repo's video-only rule. Six
+of those 110 came through CivicPlus's "AgendaCenter" listing feature,
+which already checks a government's 5 most recent postings for video
+before giving up — a capability this repo already had, not something
+this WO had to build (see below).
+
+**A new guard stopped 87 real cases of a specific known false-positive
+class.** WO-282 found that Jemison, AL and Zillah, WA both resolved to
+the exact same unrelated payment-portal video by accident. This WO built
+a guard against that whole class — a video reached through a payment,
+billing, or forms website that isn't the government's own site — and it
+caught 87 more real cases across this much larger population, on ten
+different billing-portal companies. Without the guard, some of these
+could have been ingested as wrong, unrelated content for the wrong
+government.
+
+**A caution: this WO made some network calls to YouTube before
+noticing it wasn't supposed to.** Ryan's standing rule keeps all YouTube
+work on one dedicated machine, to avoid several unrelated computers
+tripping YouTube's block at once. This WO's own launch instructions
+repeated that rule as "make no YouTube calls," but the discovery
+pipeline's ordinary web-fetch step and one read-only check both touched
+YouTube URLs — a real page-fetch to 439 YouTube pages, and a deeper
+video-info check on 46 — before this was caught partway through and
+stopped for the rest of the run. No YouTube video was ingested or pinned
+by this WO. The 46 already-checked videos are written to a separate file
+for a human or the drip process to look at, clearly marked as
+unverified, rather than thrown away or used further.
+
+**Recommendation.** Deploy `main` so the three queued meetings reach the
+cloud transcription worker and the Solebury Township pin takes effect for
+any future re-check of that page. Read `BACKLOG.md`'s two new entries
+this WO filed — a diagnostic-script bug that can silently cut off a video
+title, and a Vimeo "channel" page that needs the same kind of listing
+walk CivicPlus already has — before the next passive-discovery run.
+
+**Deploy status.** The Solebury Township page is already live on the
+Archive (its own always-on service). The three queue lines, the tier-3
+sidecar rows, and the new Vimeo pin are on `main` but need the next
+`rtr-deeplink` deploy before the cloud worker or a future re-resolve can
+use them.
+
+**What's undone.** The 245 new YouTube channel leads and 46 single-video
+YouTube leads are recorded but not checked further, waiting on the drip
+process and a human hand-check respectively. Gill town, MA's real Vimeo
+"channel" page needs a listing walk this WO didn't build. The 21
+governments blocked by the Granicus/OpenCities WAF block need a rerun
+from a different network once that block lifts.
+
 ## WO-286: hand-read and resolve the 152 "weak" WO-281 confirmations — corrected to 67 real non-YouTube leads, 3 queued [Done 2026-09-12]
 
 **What was done and why.** WO-281 found a real platform on 259
