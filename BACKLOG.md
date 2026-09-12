@@ -168,8 +168,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (151)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (152)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
+  [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
   [NEEDS-AUDIT] `suspected_video_provider` is wrongly set to…
@@ -402,8 +403,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
 
 Dormant — needs a real example first `[LATER]`  (2)
+  Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20…
   A BoxCast government reached only via a fresh per-meeting…
-  Laserfiche WebLink meeting folders can carry a real Zoom recording +…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -1596,6 +1597,12 @@ of human step they need.
   - **Next action**: after 2026-09-13 19:56 UTC, `curl -sI https://rtr-deeplink-archive.onrender.com/m/livermore-falls-me-2026-09-01-livermore-falls-select-board-meeting-september-1st/video` (and Bartow's own slug) and confirm the redirect's `Location` carries an `Expires=` LATER than 1789329408, then confirm that URL actually plays. If it's still the same expired URL, this becomes a `[HUMAN]` item (BoxCast dashboard/support).
   - **Constraint**: can't be tested before the real expiry passes — don't reuse today's Expires value as a stand-in for "it works."
   - **History**: `BACKLOG_DONE.md`'s WO-229 entry.
+- **[NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row says `reject_reason=no-video-found` while the same row already has `shares_video=True` and a real Swagit video URL on file.**
+  - **Issue**: found 2026-09-11 while studying Port Arthur's Laserfiche WebLink repository for WO-233 (unrelated — that repo is confirmed agenda-only, not the source of this inconsistency). The row (`us:place:4858820`, domain `portarthurtx.new.swagit.com`) carries `shares_video=True` and `example_meeting_url=https://portarthurtx.new.swagit.com/videos/359787`, yet `reject_reason=no-video-found` — those two fields contradict each other on the same row.
+  - **Impact**: unclear which field is stale. If the Swagit video was never actually ingested, `reject_reason` may be right and `shares_video`/`example_meeting_url` are the leftover of an earlier, since-superseded find. If it WAS ingested (or is a real, queueable tier-3 candidate), `reject_reason` is simply wrong and should be cleared.
+  - **Next action**: check whether Port Arthur already has an Archive page (`gov_id=us:place:4858820`) via the meeting-inventory endpoint or a fresh resolve of the Swagit URL; set `reject_reason` to match whatever's actually true (blank if ingested/queued, a real content-class reason otherwise).
+  - **Constraint**: don't guess at the right value without checking — this is exactly the kind of row CLAUDE.md's "reports report, never guess" rule covers.
+  - **History**: `BACKLOG_DONE.md`'s WO-233 entry, 2026-09-11 (found in passing, not this WO's own subject).
 - **[NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a different, real government's meeting videos — Wheatfield town, IN's (Newton County) Town Board — but the pipeline didn't keep the video URL, so the real find can't be keyed yet.**
   - **Issue**: WO-174's close-out (2026-09-11, rows 7,444+) found `wheatfield-ny.gov/AgendaCenter` (confirmed live to be the real New York town's own site) links to at least four meeting videos, all titled "Town of Wheatfield, IN ... REGULAR TOWN BOARD MEETING" from the channel "Town of Wheatfield" — a real, different, already-registry-listed government (`us:place:1883528`, Wheatfield town, Newton County, IN). This is a cross-state Kind-A-shaped mismatch, not the usual same-name city/county collision. The pipeline's own content check correctly rejected the row (`jurisdiction_coverage.csv`'s `reject_reason=wrong-domain-mapping` for `us:cousub:3606381380`) before a page was ever created, but it only logs the rejected candidates' titles, not their URLs, so no video URL survived to act on.
   - **Impact**: a real, findable meeting video for Wheatfield town, IN sits undiscovered — this repo has no page for it at all.
@@ -6330,6 +6337,67 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     and the daily worker report's full build.
 ## Dormant — needs a real example first `[LATER]`
 
+### Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20 real repositories studied carried meeting video `[LATER]` `[EXAMPLE]`
+
+- **Issue**: WO-233 (2026-09-11) studied Laserfiche WebLink as a
+  meeting-video source after Jefferson County, WA turned up a real
+  case (a Board of Commissioners meeting stored as a Zoom-recording
+  MP4 + a real WebVTT caption file, directly inside a Laserfiche
+  folder). Opened 20 real repositories (self-hosted `WebLink`/
+  `WeblinkExternal` and the shared `portal.laserfiche.com` Cloud
+  portal), including Port Arthur TX, Aiken SC, Mebane NC and 16 more.
+  Only Jefferson County carried real video; the other 19 are either
+  documents-only archives (8), login-gated with anonymous API access
+  blocked and never attempted past (7), Cloudflare-challenge-gated (1,
+  Aiken SC), unreachable via DNS or a broken TLS cert chain (2), or on
+  an older WebLink server generation (10.1.1) whose API shape wasn't
+  solved in the time available (1, Pittsylvania County VA).
+- **Impact**: Jefferson County's meeting can be captured without a
+  general adapter — it's one, already fully characterized government,
+  not a pattern. Every other government studied already has its real
+  meeting video recorded correctly via a different platform (Granicus,
+  Swagit, IQM2, PrimeGov, YouTube, CivicPlus); Laserfiche is their
+  document archive, not their video system. A general adapter would
+  also need to solve the login wall (39% of self-hosted repos) and at
+  least two different WebLink API generations to be reliable. Separately,
+  205 rows in `jurisdiction_coverage.csv` link a WebLink media folder
+  from a CivicPlus AgendaCenter (WO-226's own note) — those weren't
+  individually re-opened by this WO's 20-repository sample, so the true
+  population that could ever benefit from a Laserfiche adapter is still
+  unmeasured, just bounded low by this sample's 5% hit rate.
+- **Next action**: nothing to build without a second real example. The
+  recipe is fully captured if one turns up: WebLink's folder-listing
+  call (`FolderListingService.aspx/GetFolderListing2`) is a JSON POST
+  a plain client can replay with no cookie or session — body
+  `{repoName, folderId, getNewListing, start, end, sortColumn,
+  sortAscending}`, headers `Content-Type: application/json` +
+  `X-Lf-Suppress-Login-Redirect: 1` (read straight out of the served
+  `app/dist/browse/main.js` bundle, not guessed). The video file itself
+  is plainly fetchable too, with no token: `ElectronicFile.aspx?
+  docid=<entryId>&dbid=0&repo=<repo>` returns the raw MP4 with no
+  cookie and honors Range requests — `mediahandler.ashx` (the token-
+  bearing in-page streaming URL) needs a live session and should be
+  ignored entirely by a future adapter. A walk would be: Board/Council
+  folder → newest dated subfolder → any entry with `mediaMimeType` set
+  or extension in `{mp4,m4a,mp3,vtt,srt}` → `ElectronicFile.aspx` for
+  the bytes, date from the folder name, identity from the repo's own
+  government. Threshold to revisit: a second real government with
+  actual meeting video or audio in a Laserfiche WebLink repository.
+- **Constraint**: don't build a speculative general adapter against
+  one confirmed government — CLAUDE.md's "test against a real, live
+  URL first, several from different cities" rule applies here, and
+  this sample already shows the single-example risk directly (an
+  adapter built only against Jefferson County's 11.0.2411.10 API shape
+  would silently fail against Pittsylvania County's 10.1.1 shape).
+- **History**: supersedes the earlier WO-226 Dormant entry on this same
+  subject (removed here — this entry answers its "find 2-3 more real
+  tenants" next action directly and corrects its token claim: the video
+  IS plainly fetchable via `ElectronicFile.aspx`, just not via
+  `mediahandler.ashx`). `BACKLOG_DONE.md`'s WO-226 and WO-233 entries;
+  `rtr-business/research/ENUMERATION_METHODS.md` §277;
+  `rtr-business/research/wo233_repositories.csv` (all 20 repositories,
+  per-repo detail).
+
 ### A BoxCast government reached only via a fresh per-meeting pseudo-channel on a SHARED (non-government) account would still get the wrong external_id `[LATER]`
 
 - **Issue:** WO-227b (2026-09-11) fixed `boxcast.py`'s `external_id`
@@ -6362,35 +6430,6 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   first" rule applies here as much as to a new adapter.
 - **History:** `BACKLOG_DONE.md`'s WO-227b entry; `app/platforms/boxcast.py`'s
   "An account can be a shared regional media operator" docstring section.
-
-### Laserfiche WebLink meeting folders can carry a real Zoom recording + VTT captions -- Jefferson County, WA is the first confirmed case, no adapter exists yet `[LATER]` `[EXAMPLE]`
-
-- **Issue**: WO-226's spot-check (2026-09-11) found Jefferson County, WA
-  (`us:county:53031`)'s real BOCC meeting video sitting inside a
-  Laserfiche WebLink repo, not on any already-supported platform:
-  `test.co.jefferson.wa.us`'s WeblinkExternal browse tree
-  (`\Board of Commissioners\BOCC Agenda Packets\2026 Weekly Agenda
-  Items\08 August 2026\082426\Zoom files`) holds entry 10549043 (a Zoom
-  mp4, served only through `mediahandler.ashx` with a session token -- a
-  plain GET returns 302/500) alongside entry 10549042 (a VTT caption
-  file that downloads plainly via
-  `ElectronicFile.aspx?docid=10549042&dbid=0&repo=Jefferson`, 308 KB,
-  1,686 cues, the real 2026-08-24 BOCC regular meeting).
-- **Impact**: 205 rows in `jurisdiction_coverage.csv` link a WebLink
-  media folder from a CivicPlus AgendaCenter (per the earlier ladder
-  sweep's own note on this row) -- Jefferson County WA is the first one
-  actually confirmed to carry real meeting video, so the true population
-  that could benefit is unknown but plausibly nontrivial.
-- **Next action**: find 2-3 more real Laserfiche WebLink tenants with the
-  same folder shape (a dated meeting folder containing both a video
-  entry and a VTT entry) before building an adapter, per this repo's own
-  "test against a real URL first, several samples" rule -- one confirmed
-  tenant isn't enough. A sample VTT is in the conductor's own scratchpad
-  from this WO's verification if a starting fixture is needed.
-- **Constraint**: the video itself needs a session token via
-  `mediahandler.ashx` (not a plain URL) -- any adapter will need to
-  handle that handshake, not just the caption fetch.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
 
 ## Parked deliberately — allowed back `[PARK]`
 
