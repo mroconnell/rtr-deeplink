@@ -159,7 +159,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Production actions only Ryan should take  (15)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
-    [HUMAN] 1,676 archived YouTube video ids have no channel on record…
+    [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
     [HUMAN] Sequatchie County, TN's page (id 7377) is not a real…
     [HUMAN] Atlantic City NJ's CITISTAT broadcasts (22.5 and 30.9 min,…
     [HUMAN] Farmington city, MO: Ryan saw 16 real agenda PDFs on…
@@ -1496,12 +1496,12 @@ of human step they need.
   - **Constraint**: run both scripts from the Render Shell, never from a laptop against the production `DATABASE_URL` -- both are safe to interrupt (commit-per-row, skip-already-set) and safe to re-run.
   - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
 
-- **[HUMAN] 1,676 archived YouTube video ids have no channel on record anywhere in the repo -- needs a real lookup from the YouTube-drip Mac, not this one.**
-  - **Issue**: WO-246 (2026-09-11) found no per-video channel record (in `reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`, or `tenant_overrides.csv`'s pin evidence) for 1,676 of the 3,562 distinct archived YouTube video ids. `scripts/backfill_archived_pages.py --platform youtube` would fill these in via a real yt-dlp re-resolve, but that calls YouTube, and this Mac's office connection has no YouTube budget of its own -- the drip Mac (Ol McClaude's) owns it (see MEMORY.md's "YouTube drip ownership" note).
+- **[HUMAN] ~1,676 archived YouTube video ids have no channel on record anywhere in the repo -- needs a real lookup from the YouTube-drip Mac, not this one.**
+  - **Issue**: WO-246 (2026-09-11) found no per-video channel record (in `reports/pin_worklist_youtube.csv`, `reports/shared_host_lookups.csv`, or `tenant_overrides.csv`'s pin evidence) for 1,676 of the 3,562 distinct archived YouTube video ids. `scripts/backfill_archived_pages.py --platform youtube` fills these in via a real yt-dlp re-resolve, but that calls YouTube, and this Mac's office connection has no YouTube budget of its own -- the drip Mac (Ol McClaude's) owns it (see MEMORY.md's "YouTube drip ownership" note).
   - **Impact**: these pages' `channel=` pins (existing or future) stay unreachable until someone runs a real lookup from a machine with YouTube budget.
-  - **Next action**: from the YouTube-drip Mac, first `--dry-run` to see the diff, then apply: `python scripts/backfill_archived_pages.py --platform youtube --delay 3` (then re-run without `--dry-run` once the diff looks right; add `--limit 20` for a first smoke test). This re-resolves every native-YouTube page, including the 1,897 design (a) already covers -- there's no existing filter for "missing video_channel only" in that script, so it will re-touch already-covered pages too (harmless, just extra YouTube calls a future WO could avoid by adding such a filter).
+  - **Next action**: run `scripts/backfill_video_channel.py --apply` first (the entry above), then from the YouTube-drip Mac, with the drip's own lanes stopped or dropped to `--lanes captions,feed` (shared YouTube budget): first a small `--dry-run`, then the real run -- `python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --dry-run --limit 20`, then `python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --delay 3`. WO-295 (2026-09-12) added `--missing-channel-only`, so this now restricts to pages whose `video_channel` is still NULL/blank instead of re-touching all ~3,464 archived YouTube pages -- see `docs/YOUTUBE_DRIP_RUNBOOK.md`'s "Backfill sweeps" section for the full command and the accommodation with the drip's lanes.
   - **Constraint**: run it on the drip Mac, one drip per office connection -- don't run it here or from any other machine sharing this office's connection.
-  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11.
+  - **History**: `BACKLOG_DONE.md`, WO-246, 2026-09-11; WO-295, 2026-09-12.
 
 - **[HUMAN] Sequatchie County, TN's page (id 7377) is not a real government meeting -- a personal jam session video, delete or not is Ryan's call.**
   - **Issue**: WO-242 (2026-09-11), hand-checking a suspect per-video pin, found the video behind page 7377 (`sequatchie-county-tn-2026-09-09-ed-brown-jam-session-2024`) is "Ed Brown - Jam Session 2024" on the channel "BTC Fiber" (an internet provider) -- a personal music jam session, not any government's meeting. The wrong pin that keyed it to Sequatchie County has been deleted so it can't re-fire, but the page itself already exists and isn't a real meeting of any government.
