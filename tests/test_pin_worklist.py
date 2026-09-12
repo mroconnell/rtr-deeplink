@@ -300,7 +300,11 @@ def test_a_youtube_row_is_keyed_by_channel_and_a_telvue_row_by_token():
     telvue = [
         r for r in rows if r["tenant_host"] == "videoplayer.telvue.com" and r["match"]
     ]
-    assert youtube and telvue
+    # The sheet only lists tenants with unresolved pages, so either kind
+    # can be absent after a round keys them (WO-237 regenerated it with
+    # no TelVue row left). Check the shape of whatever is there.
+    if not youtube and not telvue:
+        pytest.skip("no YouTube or TelVue row on the current sheet")
     assert all(r["match"].startswith("@") for r in youtube)
     assert all(len(r["match"]) >= 16 for r in telvue)
 
@@ -460,15 +464,25 @@ def test_a_youtube_channel_decision_expands_to_its_real_video_ids():
     channels = build_pin_worklist.read_youtube_map(YOUTUBE_MAP)
     if not channels:
         pytest.skip("no YouTube map generated yet")
+    # Any youtu.be channel row whose channel has more than one mapped
+    # video will do -- the sheet drops a channel once its pages are keyed
+    # (the original @TownofWoodside row left it in WO-237's round).
     row = next(
-        r
-        for r in _worklist_rows()
-        if r["tenant_host"] == "youtu.be" and r["match"] == "@TownofWoodside"
+        (
+            r
+            for r in _worklist_rows()
+            if r["tenant_host"] == "youtu.be"
+            and r["match"].startswith("@")
+            and sum(1 for m in channels.values() if m["channel"] == r["match"]) > 1
+        ),
+        None,
     )
+    if row is None:
+        pytest.skip("no youtu.be channel row with more than one mapped video")
     pages = [
         {"source_url_normalized": f"https://youtu.be/{vid}"}
         for vid, meta in channels.items()
-        if meta["channel"] == "@TownofWoodside"
+        if meta["channel"] == row["match"]
     ]
     assert len(pages) > 1
     match_values = apply_pin_worklist._youtube_match_values(
