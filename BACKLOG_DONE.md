@@ -1009,7 +1009,7 @@ since a first pass got that wrong.
 | Shape | Count of 316 | What it means |
 |---|---|---|
 | Soft 404 or front-page redirect | 277 | A real, different site returns 200 at that exact address, but there is no real agenda content there — usually a "page not found" fallback or just the homepage |
-| Blocked or dead | 37 | Could not be read this time — 27 failed the secure-connection handshake, 5 timed out, 4 had no working web address, 1 refused the connection. None were a "prove you're human" page |
+| Blocked or dead | 37 | Could not be read this time — 27 failed the secure-connection handshake, 5 timed out, 4 had no working web address, 1 refused the connection. None were a "prove you're human" page. **Corrected by WO-902 (2026-09-12):** the recorded errors are 19 handshake failures plus 8 plain connection failures, and all 37 answer on a `www.` or `http://` address (the pipeline's own fallback, which this pass's fetch did not try) — none is a meetings page. See that entry |
 | A newer CivicPlus page (HCMS), confirmed | 1 | El Mirage, AZ — see below |
 | A real CivicPlus page WO-174 missed | 1 | Paragould city, AR — see below |
 
@@ -1055,8 +1055,9 @@ pages actually are — not a full push to find video everywhere possible.
 314 of the 316 needed no further action; a "page not found" or a failed
 connection is not something more digging fixes without a different
 method. The 37 failed-connection pages were not retried with a
-browser-identity request in this pass; that is a reasonable next step,
-not something this work ruled out.
+browser-identity request in this pass. WO-902 (2026-09-12) re-tested
+them instead: all 37 answer on the `www.` or `http://` address and
+none is a meetings page, so no browser-identity retry is needed.
 
 **Recommendation.** Deploy `rtr-deeplink` so the new pin for
 `elmirageaz.granicus.com` (in `tenant_overrides.csv`) is live before the
@@ -46756,3 +46757,103 @@ override`, so the "3 real CivicPlus pages are live right now with a
 blank government identity" `[JUST-DO-IT]` entry in `BACKLOG.md` is
 closed; only the 49 at-risk pages remain there as a standing caution
 until WO-214 is deployed.
+
+## [Investigated 2026-09-12] WO-902: WO-261's 37 "blocked or dead" AgendaCenter hosts re-tested — 35 fail the same way again on the bare address, all 37 answer on a `www.` or plain-`http://` address, and none is a meetings page
+
+**What was tested and why.** WO-261 reported that 37 of its 316
+governments could not be read at all, and that 27 of those failed the
+secure-connection (TLS) handshake. That rate looked too high to leave
+unexplained. This work re-fetched all 37 exactly the way the pipeline
+does (`scripts/wo174_pipeline.py`'s `probe_agendacenter()`: one request
+to `https://{domain}/AgendaCenter`, then `https://www.` and plain
+`http://` only when the connection itself fails, 2 seconds apart). It
+then tried the same three addresses with two looser secure-connection
+settings (certificate checking switched off; TLS 1.2 forced), and ran
+`curl` and `openssl s_client` against each host to name the actual
+fault. Per-host detail: `rtr-business/research/wo902_ssl_recheck.csv`;
+method write-up: `rtr-business/research/ENUMERATION_METHODS.md` §294.
+
+**First, a count correction.** WO-261's own saved error text (the
+`detail` column of `wo261_report.csv`) does not support "27 handshake
+failures". Recounted by error class:
+
+| WO-261's recorded error | Count of 37 |
+|---|---|
+| Secure-connection (TLS) failure | 19 |
+| Plain connection failure (reset, refused, no route) | 8 |
+| Timed out | 5 |
+| Name did not resolve | 4 |
+| Server disconnected | 1 |
+
+**Result 1 — the failures repeat; they were not a bad moment.**
+
+| Re-test of the bare `https://{domain}` address | Count of 37 |
+|---|---|
+| Failed again (same or a neighbouring connection error) | 35 |
+| Answered normally this time | 2 |
+
+The two that answered are Pope County, MN and Magnolia city, AR.
+
+**Result 2 — what the fault on the bare address actually is.** Named
+with `openssl`/`curl`, not guessed from the Python error class:
+
+| Fault on the bare address | Count of 37 | What a browser would do |
+|---|---|---|
+| Certificate is for a different name — the address is an alias for another site | 9 | Show a warning |
+| Certificate expired | 3 | Show a warning |
+| Certificate chain incomplete — browsers fetch the missing link, Python does not | 2 | Load the page |
+| Server offers no secure service on that name at all (TLS alert, connection cut during handshake, refused, or no route on port 443) | 13 | Fail |
+| Bare name does not resolve; the `www.` form does | 4 | Fail |
+| Bare address times out; the `www.` or `http://` form answers | 4 | Fail |
+| Answered this time | 2 | Load the page |
+
+**Result 3 — a looser TLS setting recovers nothing the pipeline's own
+fallback does not already reach.** Switching certificate checking off
+got a secure response from the 14 bad-certificate hosts. But every one
+of the 37 also answered on the `www.` or `http://` address with
+checking left on — which is exactly what `probe_agendacenter()` already
+tries. Forcing TLS 1.2 changed nothing on any host. So the pipeline's
+TLS setup needs no change. WO-261 recorded these as dead because its
+own one-off fetch (not committed to either repo; its error text carries
+a `connect error:` prefix the pipeline never writes) evidently tried
+only the bare `https://` address.
+
+**Result 4 — what sits behind the address that does answer: nothing
+to ingest.** Zero CivicPlus AgendaCenter hits (WO-133 strict check) on
+the answering page of any of the 37.
+
+| What the answering page is | Count of 37 |
+|---|---|
+| Blank or near-blank page (0–90 characters of text, no meeting list) | 12 |
+| The government's real website on another domain — homepage only | 9 |
+| "Page not found" or a server error page | 8 |
+| Domain parked, expired, or "Disabled Website" | 3 |
+| A chamber-of-commerce site, not the government | 2 |
+| An automated-client challenge page ("Client Challenge") | 1 |
+| Timed out on this second fetch (reached on the first: an alias of an already-covered government) | 2 |
+
+The research file already knows most of this: 20 of the 37 governments
+carry an `alternate_domains` value, 5 already have a transcript, and 20
+were already worked by WO-258's alternate-domain hop. These addresses
+are mostly secondary or legacy domains of governments already on file.
+
+**Caution.** Two leads, neither acted on here:
+
+- 7 of the 37 carry `dns-unresolvable` in `jurisdiction_coverage.csv`,
+  and 4 of those reach a real government website on the `www.` or
+  `http://` form (Bladen County NC → `bladennc.govoffice3.com`, Lake
+  County SD → `lake.sd.gov`, Atkinson County GA → `atkinsoncounty.org`,
+  Lincoln County MN → `www.co.lincoln.mn.us`). Not corrected here: each
+  needs the per-government hand check the research-file write protocol
+  asks for. Noted on `BACKLOG.md`'s parked "repair the 475
+  `dns-unresolvable` domains" item as its cheapest first step.
+- `www.globeaz.gov` now serves a "Client Challenge" page. The probe's
+  challenge-marker list only knows Cloudflare's wording, so this was
+  counted as a plain "no", not "challenge". Filed as its own
+  `[JUST-DO-IT]` entry.
+
+**Recommendation.** Nothing to build or deploy. Read WO-261's "blocked
+or dead" bucket as "alias addresses of governments already on file",
+not as recoverable coverage. When a future one-off fetch reports a high
+handshake-failure rate, first check whether it tried `www.` and
+`http://`; only then look at TLS.

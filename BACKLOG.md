@@ -114,7 +114,7 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (35)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (36)
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -151,6 +151,7 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (35)
     [JUST-DO-IT] `[EXAMPLE]` Imperial city, CA's own homepage links a…
     [JUST-DO-IT] `[EASY]` A government that stops being ingested only…
     [JUST-DO-IT] `[EASY]` Two hub-membership asymmetries left by WO-256's…
+  `www.globeaz.gov` serves a "Client Challenge" page the probe's…
 
 Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
   Production actions only Ryan should take  (15)
@@ -1339,6 +1340,14 @@ so that work reads together.
   - **Next action**: pass the page's `source_url_normalized` into the hub-link decision and reuse the same adoption map, cached alongside the frozen-slug cache in `archive/db/hub_slugs.py`, rather than recomputing it per meeting render.
   - **Constraint**: don't add a per-render query to `/m/{slug}` — it is the hottest page on the site, which is why this was left rather than fixed inline.
   - **History**: `BACKLOG_DONE.md`'s WO-256 part 2 entry; `docs/investigations/hub_architecture_audit.md` §5.
+
+### `www.globeaz.gov` serves a "Client Challenge" page the probe's challenge-marker list doesn't recognise, so it counts as a plain "no" `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `scripts/hub_sweep_wo126.py`'s `_CLOUDFLARE_CHALLENGE_MARKERS` (shared by `wo174_pipeline.py`'s `probe_agendacenter()`) only knows Cloudflare's wording; `https://www.globeaz.gov/AgendaCenter` (Globe city, AZ) returned HTTP 200 on 2026-09-12 with a 226-character body titled "Client Challenge" ("A required part of this site couldn't load. This may be due to a browser extension, network…") and was classified `access_mode=plain`, `agendacenter_hit=no`.
+- **Impact:** one confirmed host so far; any other tenant behind the same vendor gate is silently counted as "not CivicPlus" instead of "blocked", which is the wrong bucket for a re-check and hides a gate the standing decision says to never go near.
+- **Next action:** add the literal `"client challenge"` to the marker tuple (exact observed wording only — one sample, keep it narrow), with a synthetic fixture test built from the observed body shape.
+- **Constraint:** classification only; a challenge host is skipped, never retried headless.
+- **History:** WO-902 (`BACKLOG_DONE.md`, 2026-09-12).
 
 ## Needs a human — dashboard, prod, or product call `[HUMAN]`
 
@@ -6625,7 +6634,10 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   no page" gap for larger governments.
 - **Next action:** After WO-127..131 report, rebuild the coverage
   registry (`research/refresh_coverage_registry.sh`), re-count these
-  groups, and run (a) then (b) as separate agents.
+  groups, and run (a) then (b) as separate agents. For (b), try the
+  `www.` and plain-`http://` forms before any directory lookup: WO-902
+  (2026-09-12, `BACKLOG_DONE.md`) found 4 of 7 `dns-unresolvable` rows in
+  one 37-government sample reach a real government site that way.
 - **Constraint:** Headless browsing is resource-intensive; not before
   the Friday reset. Never on a host behind an explicit human-verification
   gate.
