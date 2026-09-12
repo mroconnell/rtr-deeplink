@@ -148,10 +148,38 @@ import aiohttp  # noqa: E402
 
 import scripts.wo147_access_ladder_sweep as ladder  # noqa: E402
 from app.utils.jurisdiction_enrich import _STATE_NAME_TO_ABBR_LOWER  # noqa: E402
-from wo145_api_first_sweep import _GENERIC_NAME_WORDS  # noqa: E402
 
 _STATE_ABBR_TO_NAME_LOWER: Dict[str, str] = {
     abbr: name for name, abbr in _STATE_NAME_TO_ABBR_LOWER.items()
+}
+
+# Deliberately duplicated from scripts/wo145_api_first_sweep.py's own
+# `_GENERIC_NAME_WORDS` (same literal set), not imported -- that module
+# imports `discovery.ledger`/`discovery.enumerate_stage` at module scope
+# (it's meant to run under the rtr-discovery venv, per its own
+# docstring), which isn't installed in CI's plain rtr-deeplink venv and
+# would fail this module's import at test-collection time. Same
+# reasoning app/utils/jurisdiction_enrich.py's own comment gives for
+# duplicating app.platforms.granicus.US_STATE_ABBREVIATIONS rather than
+# importing it across a similar dependency boundary.
+_GENERIC_NAME_WORDS = {
+    "city",
+    "county",
+    "town",
+    "township",
+    "village",
+    "borough",
+    "cdp",
+    "of",
+    "the",
+    "municipality",
+    "parish",
+    "charter",
+    "corporation",
+    "cousub",
+    "district",
+    "regional",
+    "municipal",
 }
 
 # --------------------------------------------------------------------------
