@@ -85,6 +85,122 @@ was a research-only count, so nothing needs a deploy. The two research
 files this work order updated (`jurisdiction_coverage.csv` and the new
 `wo305_report.csv`) live outside this repo and need no deploy either.
 
+## WO-307: Viebit — re-probing the old "no probe recipe" rejections now that a real recipe exists, and finishing every remaining Viebit government [Done 2026-09-12]
+
+**What this was for.** WO-306, shipped earlier the same day, gave the
+site its first real way to check whether a Viebit video is playable
+before queuing it for transcription. Before that fix, every single
+Viebit candidate had been rejected as dead, even when the video was
+real — because the check itself had no recipe for this platform, not
+because the video was actually gone. This work order went back and
+re-checked every one of those old rejections, and finished every
+Viebit government still left over from WO-306's own list.
+
+**Viebit itself is a one-way platform for us.** It only offers video
+inside a frame we cannot read audio from on our own — the worker cannot
+transcribe it automatically the way it can for most other platforms.
+So every Viebit meeting on this site ends up as "video, no captions
+yet, waiting in line" (tier 3), never a page with a finished transcript
+on day one. That is expected, not a miss.
+
+**Result 1 — the old stale rejections.**
+
+| Result | Count of 12 hosts | What it means |
+|---|---|---|
+| Now shows a real, playable video | 12 | Every one of the old "rejected" hosts turned out to have a real video all along — the rejection was a gap in our own checking code, not a dead link. |
+
+(The brief said 44 stale URLs; the real, freshly counted number at
+start was 51 across those same 12 hosts. Reported the number actually
+found, not the number handed down.)
+
+**Result 2 — the four governments that already had a video waiting in
+line.**
+
+| Government | Result |
+|---|---|
+| Buffalo, MN | Confirmed real and playable; had no id-pin at all until this work — fixed, see below. |
+| Monticello, MN | Confirmed real and playable. |
+| Watertown, MN | Confirmed real and playable. |
+| Briarcliff Manor, NY | Confirmed real and playable. |
+
+**Result 3 — three governments with no video in line yet.**
+
+| Government | Result |
+|---|---|
+| Coventry, CT | Real Water Pollution Control Authority meeting found and queued, 32.5 minutes. |
+| Tullytown, PA | Real Borough Council meeting found and queued, 25.1 minutes. |
+| Fort Wayne, IN | Real Board of Public Works meeting found and queued, 13.6 minutes — see the hand-read note below. |
+
+**Result 4 — every other Viebit government left over from WO-306's own
+list (19 total, 9 already finished by WO-306).**
+
+| Result | Count of 10 | What it means |
+|---|---|---|
+| New video found and queued | 9 | Coventry CT, Tullytown PA, Fort Wayne IN, Buffalo MN, Watertown MN, Cokato MN, Big Lake MN, Maple Lake MN, Springfield Township MI (the first 5 are the same governments as Results 2/3 above, counted once). |
+| No action needed | 1 | Savannah, GA — its recorded video is really a TelVue link, already waiting in line; it was only tagged "Viebit" because its calendar page happens to mention a Viebit channel too. |
+
+**Summary.**
+
+| Outcome | Count of 11 governments touched | What it means |
+|---|---|---|
+| Video with real captions, page live today | 0 | Expected — Viebit videos never carry a caption the worker can read automatically; see the note above. |
+| Video, no captions, waiting in line | 11 | Buffalo, Monticello, Watertown, Briarcliff Manor (already known, now confirmed real), plus Coventry CT, Tullytown PA, Fort Wayne IN, Cokato MN, Big Lake MN, Maple Lake MN, Springfield Township MI (new). |
+| No action needed | 1 | Savannah, GA. |
+
+**Hand-read, every video, before it went in the line.** Read the
+title and the channel for every video above against the government it
+would be filed under. One needed a closer look: Fort Wayne, IN's real
+video channel is run by the Allen County Public Library, not the city
+— but the videos on it are genuinely Fort Wayne CITY government
+meetings (Common Council, Board of Public Works, Board of Public
+Safety, City Plan Commission, Redevelopment Commission all confirmed
+by title). Picked "Board of Public Works," a meeting with no possible
+confusion about which government it belongs to. No wrong videos found
+this round.
+
+**A real bug found and fixed: the tool that saves a government's id
+against a video channel was refusing to work for an entire category of
+real, correct cases.** Every Viebit channel belongs to exactly one
+government (unlike YouTube or Vimeo, which host thousands of
+unrelated ones) — so most of these channels are saved with a blanket
+rule, "everything on this channel belongs to this government," which
+is safe here specifically because each channel really is one
+government's own. The saving tool had a blanket rule of its own that
+refused to save that shape at all, treating it the same as the unsafe
+version (a blanket rule on a shared multi-government channel, which
+really would be dangerous). Found trying to save Buffalo, MN's channel,
+which had been sitting in the waiting line with no saved id at all
+until now. Fixed so the tool only refuses the genuinely unsafe case;
+added two tests so it can't regress either way.
+
+**Caution.** Two pages already on the site (Buffalo, MN and Big Lake,
+MN) turn out to be junk — an internal folder-listing link got saved as
+if it were a real meeting, with no real video inside it. Not created by
+this work order; found by chance while checking these two same
+governments. Left alone rather than deleted, and written up in
+`BACKLOG.md` so someone can confirm and clean it up, since it wasn't
+clear yet which past process caused it.
+
+**Recommendation.** Viebit is now finished, every government, every
+size. Boxcast, ChampDS, and Google Drive are the three platforms still
+left from WO-306's original list — see `BACKLOG.md`'s matching entry.
+
+**Deploy status.** The saving-tool fix (`write_pin_row()`) needs a
+deploy before any FUTURE Viebit pin can be saved the same way; every
+pin this work order wrote today used the fixed code directly, so
+nothing already saved needs redoing. The 11 queue lines and their id
+pins need the next resolver deploy before they take effect in
+production and the worker can pick them up.
+
+**Files:** `app/platforms/queue_probe.py` (`write_pin_row()` fix),
+`tests/test_queue_probe.py` (two new tests), `scripts/
+tier3_auto_transcription_queue.txt`, `scripts/
+tier3_auto_transcription_queue_probe.csv` (sidecar, append-only),
+`app/utils/jurisdiction_data/tenant_overrides.csv`, `BACKLOG.md` (WO-306
+entry updated, one new entry filed); `rtr-business/research/
+wo307_report.csv`, `wo307_apply_to_jc.py`,
+`wo307_methods_section.md` (§319, appended to `ENUMERATION_METHODS.md`).
+
 ## WO-304: Jefferson County, WA's Laserfiche meeting — the one real example we had is now a live page [Done 2026-09-12]
 
 **What was done and why.** WO-233 (2026-09-11) found one real government

@@ -1268,3 +1268,41 @@ def test_write_pin_row_dedupe_checked(tmp_path):
     assert queue_probe.write_pin_row(**kwargs) is True
     assert queue_probe.write_pin_row(**kwargs) is False
     assert pins_path.read_text().count("www.youtube.com") == 1
+
+
+def test_write_pin_row_blank_match_allowed_on_single_tenant_host(tmp_path):
+    """WO-307 (2026-09-12): a blank `match` is exactly what the
+    committed tenant_overrides.csv already uses for a single-tenant
+    Viebit/Cablecast/TelVue subdomain (one government per tenant) --
+    this function used to refuse it unconditionally, silently blocking a
+    real already-queued government (buffalo.viebit.com) from ever being
+    pinned via the shared finish path."""
+    pins_path = tmp_path / "pins.csv"
+    assert (
+        queue_probe.write_pin_row(
+            host="buffalo.viebit.com",
+            match="",
+            gov_id="us:place:2708452",
+            pins_path=pins_path,
+        )
+        is True
+    )
+    assert "buffalo.viebit.com" in pins_path.read_text()
+
+
+def test_write_pin_row_blank_match_still_refused_on_multi_gov_host(tmp_path):
+    """The WO-210 safeguard this function was built to honour: a blank
+    match on a real multi-government host (youtube.com, vimeo.com, ...)
+    must still be refused outright -- it would key every unidentified
+    video on the whole host to one government."""
+    pins_path = tmp_path / "pins.csv"
+    assert (
+        queue_probe.write_pin_row(
+            host="www.youtube.com",
+            match="",
+            gov_id="us:place:0000006",
+            pins_path=pins_path,
+        )
+        is False
+    )
+    assert not pins_path.exists()
