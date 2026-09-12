@@ -1,5 +1,59 @@
 # Backlog — done
 
+## WO-256 (part 3 of 3): one page that lists every meeting we can't yet name a government for, grouped by the website it came from [Done 2026-09-12]
+
+**What was done and why.** Some archived meetings have no government on
+file. On 2026-09-11 that was 418 of 8,222 pages, spread across 126
+different websites. Finding out which ones, and which are worth fixing
+first, meant downloading the whole page export and searching it by hand —
+and every identity work order this month did exactly that, separately:
+WO-209, WO-210, WO-214, WO-215, WO-221 and the audit itself.
+
+`GET /internal/unidentified-pages` answers it directly. It groups those
+pages by the website they came from, biggest first, because a website is
+what a pin gets written against — that is how the work is actually done.
+
+Each row says four things a person needs before deciding anything:
+
+| Column | What it says |
+| --- | --- |
+| `pages`, `blank_gov_id`, `placeholder_gov_id` | How many meetings, and how many have no government at all versus the "unidentified" marker |
+| `multi_government_host` | Whether this is a website many unrelated governments share (YouTube, Vimeo, ClerkHQ). Those can only be pinned per video or per channel — never by website |
+| `already_keyed_governments` | Which real governments already have meetings on this website. One means a pin is obvious; two means somebody has to decide |
+| `adopted_by` | The government whose hub already shows these meetings, under the inclusion rule built in part 2. When this is filled in, there is nothing to do |
+
+**Why it is internal and not a public page.** The alternative considered
+in the audit was a public per-website page. That would be 126 thin,
+near-identical pages all saying "we don't know whose meeting this is" —
+exactly the thin-content pattern `STATE_HUB_PAGES.md` §1 diagnosed Google
+penalising these hubs for in the first place. The reader-facing answer
+stays what it is today: no public page for a video until a real government
+is known.
+
+**Caution.** Read-only, and behind the same token as every other
+`/internal/*` route — a request without the token gets a 404, checked by a
+test and confirmed live. It changes nothing about what the site shows.
+
+**Recommendation.** After the next Archive deploy, call it once and work
+down from the top:
+
+```
+curl -H "Authorization: Bearer $ARCHIVE_INGEST_TOKEN" \
+  "$ARCHIVE_BASE_URL/internal/unidentified-pages"
+```
+
+Rows with `adopted_by` filled in need nothing. Rows with exactly one
+`already_keyed_governments` entry and no adoption are the cheap pins. Rows
+with `multi_government_host: true` need a per-video or per-channel pin,
+per WO-210.
+
+**Deploy status.** Merged to `main`, **not live** — needs an Archive
+deploy. No migration, no backfill, nothing to run first.
+
+**History.** `docs/investigations/hub_architecture_audit.md` §6 and §8;
+`README.md`'s "unidentified-pages view" paragraph; `BACKLOG_DONE.md`'s
+WO-256 parts 1 and 2.
+
 ## WO-251: "The City of X, ST" never was a WO-243 regression — it's an older repair gap, now fixed; plus one wrong Juneau pin [Done 2026-09-12]
 
 - **Why:** Ryan ran `scripts/backfill_gov_id.py --apply` on the Archive's

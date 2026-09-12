@@ -1205,6 +1205,43 @@ async def internal_jurisdiction_bleed_backfill_candidates(
     return await crud.list_jurisdiction_bleed_backfill_candidates()
 
 
+@app.get("/internal/unidentified-pages")
+async def internal_unidentified_pages(
+    host: Optional[str] = None,
+    limit: int = 200,
+    authorization: Optional[str] = Header(None),
+):
+    """Every archived page with no government yet, grouped by the host it
+    came from, biggest host first -- WO-256, from
+    `docs/investigations/hub_architecture_audit.md` §6.
+
+    This replaces the step every identity work order has repeated by hand:
+    pull `GET /internal/export/pages`, grep it for `rtr:unknown:` and blank
+    `gov_id`s, group by host, then work host by host because a host is
+    what a pin is written against. Each row says how many pages, how many
+    are blank versus the `rtr:unknown:<host>` placeholder, whether the host
+    is one of the confirmed multi-government hosts (those can only ever be
+    pinned per video or per channel -- WO-210), which real governments
+    already have pages on that host, and a handful of example pages to
+    recognise it by.
+
+    `adopted_by` is the answer the `/j/` inclusion rule actually applies
+    (WO-256's §5 work): the single real government on a non-shared host,
+    whose hub these pages already appear on. A host with two governments,
+    or a shared host, leaves it null -- that is a pin somebody has to
+    write, not something to guess.
+
+    Read-only, and internal on purpose: 126 public per-host pages saying
+    "we don't know whose meeting this is" is precisely the thin content
+    `STATE_HUB_PAGES.md` §1 diagnosed. `?host=` narrows to one host,
+    `?limit=` caps the number of host rows (500 max).
+    """
+    if not _token_ok(authorization):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    return await crud.list_unidentified_pages(host=host, limit=limit)
+
+
 @app.get("/internal/low-trust-pages")
 async def internal_low_trust_pages(
     limit: int = 200,

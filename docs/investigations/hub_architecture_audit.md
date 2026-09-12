@@ -1,7 +1,8 @@
 # Hub architecture audit: how `/j/*` and `/state/*` include and exclude meetings and governments
 
-**Status: audit closed (WO-232, 2026-09-11); the build Ryan decided on is
-under way as WO-256 — see §8 at the bottom for what exists now.** Ryan asked,
+**Status: audit closed (WO-232, 2026-09-11); the build Ryan decided on
+shipped as WO-256, 2026-09-12 — see §8 at the bottom for what exists
+now.** Ryan asked,
 verbatim: "we are constantly messing with hubs and redirects after pin
 work. The hubs were designed before any of the gov id work or pinning.
 Should we audit the architecture of the hubs and permanently improve how
@@ -421,9 +422,13 @@ then matched *every* page carrying that placeholder, not only the
 text-matching one — and an un-keyed page nothing adopts still keeps its
 own raw-text hub, so no live URL disappears.
 
-**§6, the unknown-bucket internal view**, ships as its own PR behind this
-one, exactly as §7's recommendation says. This section is updated as each
-lands.
+**§6, the unknown-bucket internal view — built**, as option A restricted
+to internal use, exactly as this file's own recommendation says: `GET
+/internal/unidentified-pages`, token-gated like every other `/internal/*`
+route, grouped by host and sorted biggest first, with no schema change and
+no new public page. Each host row also names the government whose hub
+already adopts its pages under §5, so the "is this a pin or is it already
+handled?" question is answered in the same view.
 
 Everything the §4 "What remains" list says this does not fix still does
 not: a genuine slug rename still costs one alias row, a merge of two
