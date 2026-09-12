@@ -48282,3 +48282,107 @@ this time), 6 hit a host-level block (HTTP 403/525) on the specific
 confirmed URL, and 1 new page was created and hand-verified (Marshalltown,
 IA -- "City Council Meeting", 2026-08-24, 2,886 segments). Full writeup:
 `rtr-business/research/ENUMERATION_METHODS.md` §302.
+## WO-264 close-out: overnight sweep's mandatory hand-read gate, 464 video candidates checked, 112 captioned pages live, 12 queued [Done 2026-09-12]
+
+**What was done and why.** WO-264 ran an overnight, detection-only sweep
+over 10,016 governments under 5,000 people and stopped at 1,894
+completed rows, per Ryan's instruction. This session applied the
+mandatory hand-read gate to every video candidate it found (52 direct
+video links, 340 YouTube/Vimeo platform matches, 72 other platform
+tenants -- 464 total), then did the real ingest/queue/pin/research-file
+work the detection-only sweep deliberately left undone.
+
+**Result.**
+
+| Video (of 464 hand-read) | Count |
+|---|---|
+| Captions available, page live now | 112 |
+| Video, no captions, queued | 12 (3 long-only, queued anyway per Ryan's rule) |
+| Real platform/meeting confirmed, no video anywhere | 101 |
+| Resolved but failed to become a page | 33 |
+| Rejected (not a real candidate, off-mission, wrong government, unconfirmable) | 206 |
+
+Full breakdown, reach/find tallies, and every caution below: `rtr-business/research/ENUMERATION_METHODS.md` §305.
+
+**Two real methodology gaps found, both already handled correctly by
+production code, only missing from this session's own throwaway
+checker script**: an English-only meeting-keyword list silently
+mis-scores French "séance"/"conseil" titles as off-mission (6 real
+Quebec channels affected, corrected by hand); a channel-scan that only
+checked `/videos` missed ~20 real government channels that post to
+`/streams` instead (`app/platforms/youtube_channel.py` already knows to
+check both).
+
+**Four pages were briefly, wrongly created and deleted on later
+review**, all past the automated name/on-mission check but not a closer
+read of the actual content: Altona MB (a budget explainer), Bayside
+village WI (a coyote-ecology information session), Jamestown town NC (a
+personal-background interview with a council member, caught by reading
+its own real transcript), and Unity SK (a "Facilities Committee
+Kick-off BBQ" -- never got a page, since its POST to Archive happened to
+fail twice on real content first). Deleted via `POST
+/internal/admin/delete-pages`.
+
+**A real pin-writing bug, found and fixed mid-run**: the close-out's
+ingest script wrote a per-video fallback pin only when a channel wasn't
+hand-verified as the government's own; when it WAS (`own_channel=yes`)
+but no real `@handle` existed to pin (the normal case for a channel-scan
+pick, and the only possible case for Vimeo, which has no `@handle`
+concept), neither pin path fired and the video was ingested with no pin
+at all. The page itself was still correctly keyed (gov_id sent directly
+in the ingest payload, WO-222's rule), so nothing was live-facing wrong
+-- but a future re-resolve of that video would have had nothing to key
+off of. Fixed in the script; 108 per-video fallback pins were written in
+total, 92 of them backfilled after the fact for rows the fix landed too
+late to help live.
+
+**One long-only video (Sutton, QC) was left in the deferred file by
+mistake** -- both its real candidates ran over 90 minutes with no
+shorter one anywhere in the newest 40 uploads, which under Ryan's
+2026-09-12 rule means queue anyway, not defer. Caught by
+`tests/test_transcription_queue_files.py`'s own regression test
+(written for WO-280, not this WO), which also caught two more rows
+(Lakeview OR, North Braddock PA) sitting in both the deferred file and
+the tier-3 queue from this same close-out's own deliberate long-only
+override. All three corrected.
+
+**A cross-contamination bug, caught before any ingest ran**: Mount
+Vernon city, IA and Lisbon city, IA share one YouTube channel; the
+automatic newest-video pick grabbed a Lisbon-titled meeting for Mount
+Vernon's row. Found by a duplicate-(title, duration) check across the
+whole batch -- one case, corrected.
+
+**A real, confirmed platform gap, not fixed this pass**: this codebase
+has no Google Drive video adapter, and Kemmerer city WY and Walbridge
+village OH both have real, on-mission meeting recordings sitting in
+Drive shares that no adapter can currently resolve to a playable URL.
+Filed as `BACKLOG.md`'s own `[NEEDS-AUDIT]` `[BIG]` entry with both real
+examples.
+
+**Two Kind-A leads found by the hand-read gate, not yet keyed to their
+real owner**: a candidate recorded against Marine City city, MI is
+actually East China Township, MI's own Parks Commission meeting; a
+candidate recorded against Mountain Iron city, MN is actually Chisholm
+city, MN's own City Council meeting. Neither was ingested against the
+wrong government. Filed as a `BACKLOG.md` entry.
+
+**Overlap with WO-273's population** (a separate, disjoint sweep the
+same evening): 12 governments appear in both. Small, expected, not
+investigated further.
+
+**Files:** `research/wo264_hand_read_decisions.csv` (464 rows),
+`research/wo264_candidate_decisions.csv`,
+`research/wo264_platform_decisions.csv`,
+`research/wo264_nonvideo_final.csv`, `research/wo264_ingest_log.csv`
+(161 rows), `research/wo264_apply_to_jc.py` +
+`research/wo264_updates.json`, `jurisdiction_coverage.csv` (1,450 rows
+updated across two commits). `app/utils/jurisdiction_data/
+tenant_overrides.csv` (108 new pins), `scripts/wo264_ingest_driver.py`
+(new -- the ingest/queue/pin driver this close-out wrote and ran, with
+the own-channel-pin fix described above already applied), `scripts/
+tier3_auto_transcription_queue.txt` (11 new lines), `scripts/
+tier3_long_meetings_deferred.txt` (3 lines removed). Deploy status:
+pins and queue/deferred-file changes need a resolver deploy before a
+future re-resolve can use them; the 112 live pages and 12 queue entries
+are already correctly keyed via `gov_id` and need no deploy. Rerun
+`scripts/build_backlog_toc.py` after this entry landed.
