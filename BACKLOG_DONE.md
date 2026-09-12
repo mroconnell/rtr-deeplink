@@ -1,5 +1,148 @@
 # Backlog — done
 
+## WO-308: build the ChampDS listing step, then finish the last small video platforms at 5,000+ population [Done 2026-09-12]
+
+**What this was for.** Ryan asked for two things: build a way to list a
+ChampDS customer's recent meetings (the adapter could only look up one
+meeting at a time), then finish the 34 governments of 5,000+ population
+that WO-306 and WO-307 had not yet reached across six video platforms
+— Cablecast, TelVue, Castus, BoxCast, ChampDS, and Town Hall Streams.
+(A seventh platform, Viebit, was WO-307's and is not counted here.)
+
+**Phase 1 result — the ChampDS listing step.** ChampDS customers run
+their video through a real, unauthenticated web address:
+`playapi.champds.com/{customer}/archive/{id}/search/{word}`. This is
+the same address the customer's own "Search Archive" box on their site
+uses. Confirmed live on two real customers, Atlanta, GA and Auburn,
+NY.
+
+| What was checked | Result |
+|---|---|
+| Endpoint | `GET playapi.champds.com/{customer}/archive/{id}/search/{term}` |
+| Fields returned | Meeting id, title, date/time |
+| Dates present? | Yes, real dates |
+
+Three things about this address needed care. First, there is no
+"show me everything" version of it — a search word under 4 letters
+comes back with an error, not a normal empty answer, so the code tries
+several common words (council, board, commission, committee, session,
+hearing, meeting) and combines the results. Second, the answers do NOT
+come back in date order — confirmed live, one real customer's results
+put an August 17 meeting ahead of a September 1 and September 3
+meeting. The code always re-sorts by date itself rather than trusting
+the order it gets back. Third, each meeting has two different id
+numbers on it; only one of them works with the existing lookup tool,
+and the code uses the right one. New tests (7) cover all of this,
+built from a real customer's real answers, not made-up data.
+
+**A bonus finding, not acted on.** While building test files from real
+answers, one real ChampDS meeting (Atlanta, GA) came back with a real
+caption file listed on it. The existing code's own notes said no real
+customer had ever had one. That note is now out of date. Filed in
+`BACKLOG.md` for a later session — building it out was outside what
+this listing-step PR was for.
+
+**Phase 2 — the population turned out much smaller than expected, once
+checked against the numbers on file.** The 34-government count came
+from a same-day re-count of the research spreadsheet. Before touching
+anything, every "still open" row was checked against three places that
+count as more reliable than that spreadsheet column: the actual queue
+file the transcription robot reads from, the file that tells the
+system which government owns which video channel, and the write-ups
+from the sessions that did the earlier work. That check found almost
+all of the population was already finished — just not marked as
+finished in the spreadsheet.
+
+| Platform | Count of 34 | What happened |
+|---|---|---|
+| Cablecast | 9 | Already fully done by WO-306 — pages live, meetings queued, or checked and rejected |
+| TelVue | 3 | Already fully done by WO-306 |
+| Castus | 6 | Already fully done by WO-306 |
+| BoxCast | 6 | 5 already done by earlier sessions (found only by checking the queue/channel files directly, since the spreadsheet still showed them as open); 1 new — Pascagoula, MS |
+| ChampDS | 4 | Already fully done — every one of these rows already had a real outcome recorded |
+| Town Hall Streams | 1 | Not actually done — the spreadsheet's "no such platform found" note for Sagadahoc County, ME was wrong. A real link exists on the county's own website today |
+
+**Result — the 2 governments that were genuinely still open.**
+
+| Result | Count of 2 | What it means |
+|---|---|---|
+| Video found, no captions, queued for cloud transcription | 2 | Pascagoula, MS (BoxCast) and Sagadahoc County, ME (Town Hall Streams) |
+| Pages live now | 0 | Both meetings still need automatic transcription before they become pages |
+
+**Pascagoula, MS.** Its BoxCast video channel is run by a local video
+company, not the city government directly — the same shape of risk
+this repo has already hit once before (a media company's account
+carrying more than one town's meetings). Checked directly: this
+particular channel only ever shows Pascagoula's own City Council
+meetings, so it was safe to use. Picked the August 18, 2026 meeting
+(about 39 minutes) — the closest to the preferred 9-to-40-minute
+window among the real ones checked; none of the several checked fell
+inside that window exactly.
+
+**Sagadahoc County, ME.** The county's own Board of Commissioners page
+has a working link reading "View Commissioner's Meetings Online" that
+goes straight to a real Town Hall Streams page for the county. Picked
+the July 14, 2026 meeting (about 56 minutes, under the 90-minute
+cutoff for deferring, and the shortest of the recent real meetings
+checked).
+
+**Hand-check.** 2 governments hand-checked, 0 wrong. Both channels
+were confirmed to show only the named government's own meetings before
+anything was queued.
+
+**Kind A owner bodies (a channel belonging to a different real
+government).** None found this round.
+
+**YouTube.** Not touched — this WO never called it.
+
+**Bad pages.** None created, so none deleted.
+
+## Summary
+
+| Question | Answer |
+|---|---|
+| ChampDS listing step built? | Yes — PR #1092, merged |
+| Governments queued this WO | 2 (Pascagoula, MS; Sagadahoc County, ME) |
+| Governments already done before this WO started (once correctly counted) | 32 of the 34 |
+| New real gaps found | 1 (ChampDS captions field, filed in `BACKLOG.md`) |
+
+**The main takeaway: almost all of the "34 governments" were already
+finished by earlier sessions — the count was stale, not the work — and
+only Pascagoula, MS and Sagadahoc County, ME needed real new action.**
+
+**Caution.** The stale-population lesson generalizes: a `queued`/
+`transcribed` column on a research-file row is not proof a government
+is still open, and a blank one is not proof it's still closed — always
+check the queue file, the pin file, and `BACKLOG_DONE.md` directly
+before working a row.
+
+**Recommendation.** Treat any future "N governments remain" count from
+the research file as a lead to re-verify, not a number to act on
+directly — exactly the standing rule this repo already has for backlog
+entries generally, just now confirmed for population counts too.
+
+**Deploy status.** `app/platforms/champds.py`'s new listing step is
+merged to `main` but needs a deploy to affect production resolves (it
+is not called from any deployed code path yet — it is a building
+block for a future sweep, not wired into `resolve()`). The BoxCast pin
+and the two queue lines need the same deploy before they affect a
+production re-resolve; both meetings are already sitting in the
+tier-3 queue file regardless, ready for the transcription worker.
+
+**For the conductor to commit (rtr-business).**
+`research/wo308_report.csv`, `research/wo308_apply_to_jc.py`,
+`research/wo308_methods_section.md`, and the `jurisdiction_coverage.csv`
+row updates the apply script wrote (Pascagoula, MS's `queued` column;
+Sagadahoc County, ME's `reject_reason` cleared and `example_meeting_url`
+filled in) — this worktree cannot commit there.
+
+**Undone.** The under-5,000 and unknown-population rows for
+Boxcast/ChampDS/Google Drive/eLocalLink (roughly 70 rows) are
+untouched — filed as the resumable `BACKLOG.md` entry. Two ChampDS
+customers (Fulton County, GA; Collegedale, TN) and two TelVue rows
+(Oradell, NJ; Roselle, NJ) looked stale on a quick check but were not
+chased to completion — also in that entry.
+
 ## WO-305: Laserfiche WebLink video census, all 79 named repositories read, adapter not built [Done 2026-09-12]
 
 **What this was for.** Ryan asked: if Laserfiche can carry video (WO-304
