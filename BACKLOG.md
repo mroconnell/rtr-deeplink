@@ -178,7 +178,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (170)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (171)
+  [NEEDS-AUDIT] `[EASY]` A YouTube video titled as a bare date (no…
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared…
@@ -1731,6 +1732,12 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `[EASY]` A YouTube video titled as a bare date (no weekday/month name) gets the upload date as its displayed meeting date, even when the real meeting date is stated in its own captions.**
+  - **Issue**: found live 2026-09-12 (WO-277) ingesting a real Aransas Pass, TX council meeting titled "2020 3 16" — `app/platforms/youtube.py`'s title-to-date parser doesn't recognize that shape, so the page fell back to the video's YouTube upload date (2020-10-05, a later batch-upload) instead of the real meeting date. The caption text itself says "meeting of the City of Aransas Pass City Council, March 16, 2020 at 6pm" — the real date was available, just not where the parser looked.
+  - **Impact**: cosmetic, not a trust problem — the video and transcript are both correct. Confirmed live on one page so far: `/m/aransas-pass-tx-2020-10-05-2020-3-16`, whose title and displayed date are both wrong (shows "2020 3 16" / 2020-10-05 instead of March 16, 2020). Likely affects other governments whose channel has a backlog of batch-uploaded older recordings titled only by date.
+  - **Next action**: widen the title parser to recognize a `YYYY M D`/`YYYY MM DD` bare-date shape, or add a caption-text date fallback (search the first ~2 minutes of auto-caption text for a stated date) before falling back to upload_date.
+  - **Constraint**: only one real example confirmed so far — don't build the caption-text fallback from this single case without checking whether the stated-date phrasing is consistent across a second real tenant.
+  - **History**: `BACKLOG_DONE.md`'s WO-277 entry.
 - **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
   - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
   - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.

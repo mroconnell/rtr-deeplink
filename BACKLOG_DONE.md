@@ -105,6 +105,34 @@ deploy needed either. Nothing in this PR needs a production deploy.
 `rtr-deeplink/tests/test_transcription_queue_files.py`,
 `rtr-deeplink/BACKLOG.md`.
 
+## WO-277: a deeper look at the three channels WO-276 turned away — one real meeting found, one channel confirmed clean, one cross-government identity bug found and fixed [Done 2026-09-12]
+
+**What was done and why.** WO-276 read exactly one candidate video per government before deciding yes or no, and turned three away: Mont Belvieu city, TX (a hurricane-preparedness recap), Aransas Pass city, TX (a Chamber of Commerce trip), and Horseheads village, NY (the Town of Horseheads' own meeting, a different real government with the same name). Ryan asked whether a deeper look at each channel would find something real. This work order checked more of each channel and ran the Horseheads name mix-up to ground.
+
+**Result.**
+
+| Government | What we checked | What we found |
+|---|---|---|
+| Mont Belvieu city, TX | 40 newest videos on the city's own channel | None is a real meeting — parks tours, safety PSAs, and event recaps only |
+| Aransas Pass city, TX | 40 newest videos on the city's own channel | One real, on-mission City Council meeting, captions intact, page live now |
+| Horseheads village, NY | The Village's real website, plus a channel search | The meeting on file belongs to a different government, the Town of Horseheads — fixed. The Village's own site is blocked by a real "prove you're human" wall |
+
+**Mont Belvieu: checked, no meeting.** We read all 40 titles on the city's own YouTube channel. Every one is a park tour, a safety announcement, a holiday event, or a short promotional clip — a channel that posts city marketing, not meeting recordings. No council or commission meeting exists in the 40 newest uploads. A real, countable negative; no page or queue line.
+
+**Aransas Pass: a real meeting found, after two dead ends.** Two videos had decisive titles ("City Council Meeting 7/22/2019," two parts) but both turned out to be dead links on YouTube — removed or private. A third, "may 18th, 2019," was also dead. Three more videos had only a bare date for a title; reading their own YouTube auto-captions (rather than guessing from the date alone) confirmed each one opens with "meeting of the City of Aransas Pass City Council" on the stated date. We ingested the newest reachable one, "2020 3 16" — the March 16, 2020 regular Council meeting — with its own real captions: 499 segments, live now at `/m/aransas-pass-tx-2020-10-05-2020-3-16`. A channel pin for `@CityofAransasPass` was added so a future video from this channel keys to Aransas Pass automatically.
+
+**Horseheads: a real identity bug, not a missing video.** New York has two separate real governments named Horseheads — a Village and a Town. WO-249 already correctly declined to credit the Town's own Town Board meeting to the Village. Checking the live Archive directly found that meeting had already been put online on 2026-09-10, and — separately, by an earlier manual correction — already keyed to the Town's own government id. The page itself was never wrong. What was wrong was the Village's own research-file row, which still showed the Town's website, the Town's meeting link, and a "transcribed" flag that was really about the Town's situation, not the Village's. We fixed the Village's row (cleared the fields that described the Town's meeting; the row's own website field is left exactly as it was, per our rule never to blank or replace that field) and filled in a row for the Town to match its already-live meeting. We also found the Village's real website, `villageofhorseheads.gov` (confirmed via Chemung County's own government page), and recorded it as an alternate address. We could not look at the Village's site ourselves — it showed a genuine Cloudflare "prove you're human" page on both a plain try and a polite retry, so we stopped, as the rule requires. A search for a Village-run YouTube channel found only a local TV news station's clips about Village meetings, not the Village's own channel — so nothing was ingested there.
+
+**One flag for the identity team.** The Village of Horseheads' real website is now on file (`villageofhorseheads.gov`) but nobody has actually seen it — it is blocked by that Cloudflare wall every time this project has tried. Worth a human recheck once that clears.
+
+**One small bug filed, not fixed.** The Aransas Pass page we ingested shows the wrong date — October 5, 2020 (the day the video was uploaded, in a batch) instead of the real meeting date, March 16, 2020, which is stated plainly in the video's own captions. Filed in `BACKLOG.md` as `[NEEDS-AUDIT] [EASY]`; only one example confirmed so far, so not fixed this round.
+
+**Caution.** A one-candidate hand-read gate is deliberately careful about trust, but it can leave a real meeting unread on the same channel — both the Aransas Pass meeting and the Horseheads identity bug needed more than a single video's worth of looking to find. Neither finding reopens WO-276's own decision about the specific video it checked; it only extends the search.
+
+**Recommendation.** No further action needed on Mont Belvieu or Aransas Pass. If a future hand-read gate turns away a single-candidate check again, reading more of the same channel — and using a video's own captions when its title alone isn't decisive — is worth reusing before giving up on that channel.
+
+**Deploy status.** The Aransas Pass page is live now; every ingest since WO-210/WO-222 carries the government's id directly, so a page never depends on a pin reaching production first. The new `@CityofAransasPass` channel pin needs the next resolver deploy before it affects any other video from that channel.
+
 ## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
 
 **What was done and why.** WO-230 let 13 confirmed-wrong videos reach a
