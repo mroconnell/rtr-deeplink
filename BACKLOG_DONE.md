@@ -1,5 +1,89 @@
 # Backlog — done
 
+## WO-246: a script to store the YouTube channel this repo already knows for 1,903 archived pages, so their `channel=` pins can fire [Done 2026-09-11]
+
+- **Why:** WO-244 (PR #999) fixed the YouTube adapter so a freshly-
+  resolved page carries its own `video_channel` going forward, but every
+  page archived before that fix still has `video_channel = NULL` --
+  confirmed 0 of 3,580 in the 2026-09-11 `/internal/export/pages` export.
+  That means all 1,138 `channel=@handle` pins in `tenant_overrides.csv`
+  were inert for every already-archived page: `page_hints_for()` only
+  sees a channel when the row has one stored. This WO closes that gap
+  without any YouTube calls, by using channel data this repo already
+  holds.
+- **What was done:** sized how much of the gap could close with data
+  already on file (design (a)), rather than a live re-resolve (design
+  (b)). Two files already carry a video id -> channel map, both built by
+  earlier work with no new lookups needed: `reports/
+  pin_worklist_youtube.csv` (a hand-worked worklist, 148 rows) and
+  `reports/shared_host_lookups.csv` (`scripts/study_shared_host_
+  discriminators.py`'s oEmbed cache, 1,852 YouTube rows). A third
+  candidate source -- `tenant_overrides.csv`'s `channel=` pin evidence,
+  which names one example page per channel -- was checked and added
+  nothing new: it was itself derived from `shared_host_lookups.csv`, so
+  every video id it named was already covered (0 new, 0 conflicts).
+  `~/Documents/rtr-business/research/wo158_channel_videos.csv` was also
+  checked (read-only) and added 2 more, not worth a third source. Wrote
+  `scripts/backfill_video_channel.py`, which loads both files (earlier
+  file wins a conflict; none were found), joins on the video id
+  extracted from each YouTube page's own `video_url` via the same
+  `YouTubeAssetFinder.extract_video_id()` regex the adapter itself uses,
+  and sets `video_channel` on any page that has none yet. Dry run by
+  default, `--apply` to write, `--report` for a per-row CSV, commit per
+  row, and a re-run only touches rows still NULL -- same safety shape as
+  `scripts/backfill_gov_id.py`. `archive/main.py` was checked for an
+  existing endpoint that could take this write instead of a new script;
+  none of its `/internal/*` routes accept a per-video-id-keyed bulk
+  payload (the closest, `/internal/jurisdiction/override`, applies one
+  value to a batch of ids, not thousands of distinct values), so a
+  Render-Shell script is the right shape here, same as every other
+  backfill in `scripts/`.
+- **Result:**
+
+  | Source | Distinct archived video ids covered |
+  |---|---|
+  | `reports/pin_worklist_youtube.csv` | 141 |
+  | `reports/shared_host_lookups.csv` | 1,842 |
+  | `tenant_overrides.csv` pin evidence | 0 new (already covered) |
+  | Combined (design a) | 1,887 of 3,562 (53%) |
+
+  1,887 distinct video ids cover 1,903 of the 3,580 archived YouTube
+  pages (a handful of ids have more than one page). The remaining 1,676
+  video ids have no channel on record anywhere in the repo and need a
+  real yt-dlp/oEmbed lookup (`scripts/backfill_archived_pages.py
+  --platform youtube`) -- filed as a `[HUMAN]` entry for the YouTube-drip
+  Mac, since this Mac's office connection has no YouTube budget of its
+  own. A read-only, offline check against the pins already committed in
+  `tenant_overrides.csv` estimates roughly 47 currently-`needs_review`
+  native-YouTube pages would newly resolve to a government once their
+  channel is stored (of 154 such pages today; 124 of them already have a
+  channel design (a) covers, the other 30 need the drip-Mac lookup) --
+  an estimate only, not a measured result, since the write has not run
+  against production.
+- **Caution:** this script has not been run against production. Writing
+  thousands of rows from a laptop against the real `DATABASE_URL` is the
+  standing "no bulk write from a laptop" decision this repo already has
+  -- it needs to run from the Archive service's Render Shell. Filed as a
+  `[HUMAN]` entry in `BACKLOG.md`'s "Needs a human" section, along with
+  the follow-on `scripts/backfill_gov_id.py --apply` run that re-keys
+  any page whose new channel now matches an existing pin.
+- **Tests:** `tests/test_backfill_video_channel.py` (8 cases) against a
+  seeded local SQLite -- both file shapes load correctly (plain
+  `video_id` column, `video_key` with a `youtube:`/`vimeo:` prefix), a
+  blank channel is skipped not stored empty, an earlier map file wins a
+  conflict, dry run writes nothing, apply sets the channel, a page that
+  already carries a channel is never overwritten even if the map
+  disagrees, a video id missing from the map is left NULL, the report
+  CSV lists the change, and a second `--apply` run changes nothing (the
+  `video_channel IS NULL` filter already excludes what the first run
+  touched). Full suite (3,357 tests) green, `ruff check`/`ruff format
+  --check` clean on `app/ archive/ worker/ scripts/ tests/`, both
+  `alembic check` gates clean (no schema change in this WO).
+- **Deploy:** `scripts/backfill_video_channel.py` and its test need no
+  deploy -- it's a script Ryan runs by hand from the Render Shell, not
+  something the running app calls. `BACKLOG.md`/`BACKLOG_DONE.md`
+  changes need no deploy either.
+
 ## WO-243: curated governments now match before name repair shortens them; the pin worklist can mint through a shared host [Done 2026-09-11]
 
 - **Why:** the Workers session found two real bugs applying WO-237's
