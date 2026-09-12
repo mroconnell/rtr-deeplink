@@ -50634,6 +50634,99 @@ future re-resolve can use them; the 112 live pages and 12 queue entries
 are already correctly keyed via `gov_id` and need no deploy. Rerun
 `scripts/build_backlog_toc.py` after this entry landed.
 
+## WO-310: the approved pin and re-key round from BACKLOG.md's "Needs a human" section [Done 2026-09-12]
+
+These were the open human calls left from the round: pins Ryan had
+already approved, and pages that were still showing the wrong
+government while waiting for someone to write the pin down. Ryan
+approved every item today. The job was to write the pins, move the
+pages, and say what is still left.
+
+**What was checked and fixed, one government at a time.**
+
+| Item | Result | What it means |
+|---|---|---|
+| Carson | pin fixed + 2 pages re-keyed | `carson.granicus.com` was pinned to Carson City, NV by name alone; its own agenda feed names real Carson, CA bodies |
+| Sussex NJ | pin fixed (2 rows) + 2 pages re-keyed | both the domain pin and a video pin said the borough; the domain's own landing page and the video's own title say the county |
+| Clinton NY | pin moved | no live page existed yet; moved the video's pin from the village to the town per its own title/channel |
+| Castus/Andover | 2 pins added + 2 pages re-keyed | WO-306 had already narrowed the dangerous host-wide pin; the 2 pages it had already mis-keyed to Andover, MA were still live |
+| TelVue Bellefonte | pin narrowed + 2 pages re-keyed | dropped an org-wide Centre County pin, added a playlist-scoped one; a third page had already ingested correctly |
+| The 11+2 hosts | 13 pins added or corrected | 7 had landing-page/meeting-text evidence already on file; 4 more hand-checked live (Colonie, Victor, Webster, Southampton towns, NY); 2 more for item 7 (Walton County FL, Camas School District WA) |
+| Park city/township KS | found already fixed | a WO-198 pin from 2026-09-11 already resolves this exact page correctly; the open BACKLOG.md entry was stale |
+| 5 hub collisions | 2 merged, 3 left as real splits | re-measured live against production, not a stale export -- found a different shape than the original audit described (see below) |
+| 51 `transcribed=true`-no-page rows | plan written, not applied | 6 match the canonical shared-government list; 3 are real identity-join finds; 42 have no live page anywhere |
+| Docs | 1 paragraph added, 5 BACKLOG.md entries closed, 2 corrected in place, 2 new entries filed | `docs/COVERAGE_HANDOVER.md` now points at `consolidated_governments.csv` and §317 |
+
+**Summary of the writes.**
+
+| What | Count |
+|---|---|
+| Pins written or corrected | 23 |
+| Live pages re-keyed | 11 |
+| Hub collisions merged (duplicate mints of one real government) | 2 |
+| Hub collisions found to be real 2-government splits, left for the conductor | 3 |
+| Rows planned for the 51-row research-file question | 51 |
+| New gaps filed in BACKLOG.md | 2 |
+| Blocked production calls | 0 |
+
+**The 5 hub collisions were not what the original audit described.**
+The 2026-09-11 audit found 5 colliding hub slugs and described 3 as
+"a minted id and a national id for the same real government, coincidentally
+slugifying the same." Re-measuring live (a read-only query of the
+Archive's `hub_slugs` table, not the year-old export) found the count
+still 5, but only 2 of that shape were real: Deerfield Township, Warren
+County, OH and Paso Robles, CA. Both are fixed — the duplicate id in each
+pair now has zero pages. The third, Middletown Township, PA, turned out
+to be the OPPOSITE finding: not one government minted twice, but two
+DIFFERENT real Middletown Townships (Bucks County and Delaware County,
+PA) that happen to produce the same web address. Both already have a
+real Census entry (`us_cousubs.csv` had a row for each all along); the
+Bucks County one was just never matched to its own row and got a
+redundant, made-up id instead. That page is now re-keyed to its real,
+existing id. This makes Middletown Township, PA a third real
+two-government split, joining Yarmouth NS and Lunenburg NS. No tool in
+this repo can give a second government its own web address when it
+already shares one with another government — that gap is left for the
+conductor, along with a real mis-key found along the way (the Town of
+Yarmouth's own page is keyed to the county, not the town).
+
+**Caution.** Three findings did not get fixed in this pass. Two are now
+their own new BACKLOG.md entries: (1) `videoplayer.telvue.com` carries
+the same shared-host pin danger WO-306 already fixed for Castus, just
+not measured or fixed here. (2) The database tool that suggests a pin
+after a page is re-keyed does not check whether the host is shared
+across many governments before suggesting one — no bad pin was written
+because of it this time, but a future session copying its suggestion
+without checking could recreate the exact bug WO-306 fixed. The third
+is folded into the updated 51-row entry: three real live pages
+(Lexington-Fayette urban county KY, North Bay ON, Hamilton Township NJ)
+already exist and are correctly evidenced but not yet keyed to their
+real government — a small, ready-made coverage win.
+
+**Recommendation.** Deploy the resolver and Archive services once this
+PR is live — every pin here only protects a FUTURE re-resolve; the 11
+pages already re-keyed today needed no deploy and are correct right now.
+After that, three follow-ups are ready to hand to a future session:
+write the second/third hub-slug rows for the three real splits, apply
+the plan in `research/wo310_51_rows_plan.csv` once the conductor adds
+the `paired_gov_id` column, and check whether `videoplayer.telvue.com`'s
+old blank-match pin has mis-keyed anything the way Castus's did.
+
+**Files:** `app/utils/jurisdiction_data/tenant_overrides.csv` (23 pins
+written or corrected), `docs/COVERAGE_HANDOVER.md` (1 paragraph added),
+`BACKLOG.md` (5 entries closed, 2 corrected in place, 2 new entries
+filed, TOC rebuilt). `rtr-business/research/wo310_report.csv` (one row per
+government touched), `wo310_51_rows_plan.csv` (the 51-row plan),
+`wo310_apply_to_jc.py` (the Clinton NY research-file fix, already run),
+`ENUMERATION_METHODS.md` §320, and `jurisdiction_coverage.csv` (2 rows
+changed: Clinton town's `alternate_domains`, Clinton village's
+`reject_reason`) — left uncommitted in the shared rtr-business working
+tree for the conductor, since a worktree-isolated agent's `git` there is
+refused. Deploy status: pins and the hub-slug fixes need a resolver +
+Archive deploy before a future re-resolve or view uses them; the 11 live
+pages re-keyed today are already correct and need no deploy. Rerun
+`scripts/build_backlog_toc.py` after this entry landed.
+
 ## WO-284: the WO-264 rows the close-out never worked — 25 pages live, 1 queued, 14 wrong catches named [Done 2026-09-12]
 
 **What was done and why.** WO-264's close-out (above) only hand-read the

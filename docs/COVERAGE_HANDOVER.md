@@ -172,6 +172,21 @@ reasons. That is how every sweep below was scoped.
   place-level id while the county-level research row still says
   `transcribed=true`). `research/refresh_transcribed_flag.py` never
   blanks these on its own; it lists them for a human backfill decision.
+- **A consolidated city-county (or a borough of a bigger city) is not a
+  "wrong government" finding — check `consolidated_governments.csv`
+  first.** `app/utils/jurisdiction_data/consolidated_governments.csv`
+  (`gov_id, canonical_gov_id, evidence`, 37 rows as of 2026-09-12) is the
+  canonical list of governments the Census keeps two ids for (San
+  Francisco, Denver, Philadelphia, the five NYC boroughs, Carson City,
+  and so on) — `resolver._as_government()` already keys a hit on either
+  id to the canonical one. The research file mirrors this per
+  `ENUMERATION_METHODS.md` §317: the non-canonical row gets
+  `reject_reason=shared-gov-exception` and a blank `transcribed`, never
+  a new column (Ryan, 2026-09-12: the status value plus the canonical
+  list are enough). Before filing a `jurisdiction_coverage.csv` row or a
+  page's identity as wrong because a county-level and place-level id
+  disagree, check this list — it is the difference between a real
+  mis-key and the exact same government recorded twice on purpose.
 - Deploys are manual and pins only reach *new* ingests after one. The
   transcription worker re-resolves a video when it transcribes it, so a
   shared-host pin must be deployed before the worker reaches that queue
