@@ -1,5 +1,143 @@
 # Backlog — done
 
+## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
+
+**What was done and why.** WO-230 let 13 confirmed-wrong videos reach a
+page or queue line before its own checks caught them. WO-249 built a
+mandatory hand-read gate into the same script -- before any page or
+queue line, a person reads the candidate's title, channel, and
+description, and writes one sentence saying why it really is a public
+meeting of that government -- and processed 73 of the 328 governments
+WO-230 left unchecked. This work order finishes the rest.
+
+Re-counted the population fresh rather than trusting the brief's "255
+remain": 59 of the 328 had already picked up a page from other work in
+the meantime, leaving 196 that actually needed a decision. This run
+gave every one of them a real outcome. **Zero governments remain in
+this cohort now** (confirmed by a final pass that found nothing left to
+check).
+
+**Result.**
+
+| Outcome | Count of 196 | What it means |
+|---|---|---|
+| Meeting or hub found, no usable video | 151 | A real agenda/document hub exists, but no video anywhere on it |
+| Real captions, page live now | 17 | A real transcript exists and is on the site now |
+| No meeting or video found at all | 17 | Nothing usable anywhere on the government's own site |
+| Blocked (could not reach the site) | 8 | A dead domain, timeout, or a "prove you're human" page |
+| Video too long, set aside rather than queued | 2 | Over the 90-minute cutoff |
+| Video, no captions, queued for cloud transcription | 1 | A real meeting, short enough to transcribe automatically |
+| Rejected by the dead-link/duration check | 0 | — |
+| Error | 0 | — |
+
+**The hand-read gate worked as designed.** 23 candidates cleared every
+automatic check and reached a person for a real read. 20 were approved;
+3 were turned away, each one a real video that was not a real meeting of
+that government:
+
+| Government | What the video actually was |
+|---|---|
+| Mont Belvieu city, TX | A recap of a National Weather Service hurricane-preparedness presentation, not a meeting |
+| Aransas Pass city, TX | A Chamber of Commerce delegation's trip to the state capitol, not a meeting |
+| Horseheads village, NY | The Town of Horseheads' own Town Board meeting -- a real, separate government from the Village that happens to share its name |
+
+Of the 20 approved, 17 are live pages now (Vienna WV, Coffeyville KS,
+Banff AB, Kill Devil Hills NC, Fort Scott KS, Longboat Key FL,
+St. Joseph MN, Purcell OK, Pepper Pike OH, Oak Point TX, Marshall MI,
+Hoschton GA, Litchfield MN, Ephraim UT, Marion VA, Ashland MO, Windsor
+Heights IA). 2 (Stanwood WA, Louisburg KS) ran long enough to be
+deferred instead of queued. 1 (Tolleson AZ) is queued for cloud
+transcription. None of the 20 were rejected downstream or errored.
+
+Two of the approvals needed more than title/channel to decide, since
+neither was clear-cut on its own: Longboat Key FL's "Canal Dredge
+Program Meeting" was checked live on YouTube (58:58 long, a person
+presenting at a podium in a real meeting room, a companion "Canal
+Dredge Program 2" video on the same channel) and confirmed as a real,
+recurring public meeting about the town's own capital project, not a
+promotional video. Windsor Heights IA's "8.17.26 Regular City Council
+Meeting" carries the word "Recap" only in the text description
+underneath the actual full council-chambers recording -- unlike
+Lacombe AB's earlier rejected case, where "Debrief" was in the video's
+own title.
+
+**One bug blocked the run and was fixed.** `pick_calendar_candidate()`'s
+own ambiguous-candidate error message tried to call `.get()` on a
+`(date, candidate)` tuple instead of the candidate dict, crashing on the
+very first government with a genuinely ambiguous candidate list. Fixed
+the one copy this script imports
+(`scripts/nationwide_2404_ingest.py`). Four other scripts carry an
+identical copy of the same bug and were not touched -- filed in
+`BACKLOG.md`.
+
+**Two more real governments were found wrongly turned away by an
+already-known bug, not a new one.** `channel_name_plausible()`'s
+tokenizer rejects a real own-channel whenever its handle runs the
+government's name together with no separating characters -- already
+filed after South River NJ. This run found the identical shape twice
+more: Kenilworth borough, NJ (`kenilworthtvnj5571`, real title "2026
+Meeting of Mayor & Council") and De Soto city, KS (`DeSotoKansas`, real
+title "November 21st, 2024, City Council Meeting"). Both governments'
+real meetings were turned away as a result. Added as further evidence to
+the existing `BACKLOG.md` entry, not a new one; neither government's row
+was corrected in this run.
+
+**Shell rate and where the real hub lived.** 21 of 193 AgendaCenters
+with a clean read (11%) were an actual empty shell -- in line with
+WO-230's 8% and WO-249's 19%, both confirming most AgendaCenters are
+real, they simply carry no video. Where a real hub was found (172
+rows), it was most often a numbered page in the site's own navigation
+(83), a Document Center (42), the government's own YouTube channel
+already recorded as the hub (28), or a CivicClerk embed (7).
+
+**No YouTube block hit.** A handful of isolated per-video/per-channel
+errors came up (a private video, a channel with no videos tab, a
+deleted channel, a since-unavailable video) -- none of these match the
+sustained 429/"verify you're not a bot" signature in
+`docs/investigations/youtube_429_block.md`, and two of the "video not
+available" cases were later confirmed to be a transient description-
+fetch issue, not a real block: the actual ingest for both (Fort Scott
+KS, Purcell OK) succeeded against the exact approved video, confirmed by
+comparing the resulting page's own URL fields against the hand-read
+decision.
+
+**Caution.** WO-249's own open question -- whether its 21
+`awaiting_hand_read` placeholder rows had ever been applied to
+`jurisdiction_coverage.csv` -- was checked directly against the live
+file rather than assumed: they had. `wo230_jc_applied_keys.txt` and a
+direct read of the research file both confirm all 11 governments behind
+those placeholders (e.g. Spartanburg County SC) already carry their real
+outcome. Someone with `git` access to `rtr-business` ran the apply for
+real between WO-249 landing and this run starting; no extra work was
+needed for it here. This agent's own `git` access to that checkout is
+refused by worktree isolation, so this run's own new outcomes were
+applied with the existing `wo230_apply_to_jc.py --apply` (426 field
+changes across 219 new report rows, written straight to
+`jurisdiction_coverage.csv`), but a session with real `git` access still
+needs to commit that file plus `wo230_report.csv`,
+`wo230_owner_bodies.csv`, `wo230_hand_check_log.csv`, and
+`wo249_hand_read_decisions.csv`.
+
+**Recommendation.** Deploy `rtr-deeplink`. The 17 live pages already
+carry their own `gov_id` in the ingest payload, so they do not depend on
+a deploy, but the 15 new pins in `tenant_overrides.csv`, the 1 new queue
+line, and the 2 new deferred-long lines only take effect for future work
+once the resolver, Archive, and transcription workers are redeployed.
+Separately, have someone with `git` access to `rtr-business` commit the
+research files named above.
+
+**Files**: `scripts/wo230_agendacenter_followup.py` (unchanged --
+resumed as-is), `scripts/nationwide_2404_ingest.py` (one-line bug fix),
+15 new pins in `app/utils/jurisdiction_data/tenant_overrides.csv`, 1 new
+line in `scripts/tier3_auto_transcription_queue.txt`, 2 new lines in
+`scripts/tier3_long_meetings_deferred.txt`, a `BACKLOG.md` entry for the
+`pick_calendar_candidate()` bug plus two more confirmed instances added
+to the existing `channel_name_plausible()` tokenizer entry, and (in
+`rtr-business/research/`) `wo230_report.csv` (continued to 555 rows),
+`wo249_hand_read_decisions.csv` (continued to 34 rows),
+`wo230_owner_bodies.csv`, `wo230_hand_check_log.csv`, and
+`jurisdiction_coverage.csv` (applied). Full methodology:
+`ENUMERATION_METHODS.md` §299.
 ## WO-274: re-weight the hop-link scorer from measured words instead of a hand-picked list, and measure it against 180 real homepages [Done 2026-09-12]
 
 **What was done and why.** When our sweep reads a government's homepage
