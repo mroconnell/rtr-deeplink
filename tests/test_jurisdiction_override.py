@@ -467,6 +467,44 @@ async def test_multi_gov_host_page_with_no_derivable_match_gets_a_note_not_a_rul
     assert "1 page(s)" in overridden["tenant_override_notes"][0]
 
 
+async def test_videoplayer_telvue_com_gets_a_note_not_a_blank_rule():
+    """WO-316: BACKLOG.md filed this as "the endpoint doesn't check
+    `MULTI_GOV_HOSTS` before drafting a blank-match row," found live
+    2026-09-12 (WO-310) against `cloud.castus.tv` and
+    `videoplayer.telvue.com`. Reading `override_jurisdiction()` shows the
+    check has existed since WO-210 (2026-09-11, `git log -S
+    "is_multi_gov_host(host)"` on this file) -- what was actually missing
+    was the HOST CLASSIFICATION: `cloud.castus.tv` wasn't in
+    `MULTI_GOV_HOSTS` until WO-306, and `videoplayer.telvue.com` wasn't
+    until WO-316 (this session, `app/utils/gov_registry/registry.py`).
+    WO-310 most likely hit stale, not-yet-deployed production code for
+    the Castus case (CLAUDE.md's "deploys are manual" gotcha). This test
+    is the regression check for the real fix: now that TelVue is
+    classified, an override touching a telvue page must get a note, not
+    a blank rule -- neither host has a known `video_url` shape for
+    `_multi_gov_match_for_video_url()` to derive a per-video match from,
+    so "note it" (never "guess a blank rule") is the correct outcome for
+    both, matching `test_multi_gov_host_page_with_no_derivable_match_gets_a_note_not_a_rule`
+    above."""
+    result = _ingest(
+        _payload(
+            source_url="https://videoplayer.telvue.com/player/wo316-test-hash/media/1",
+            video_url=(
+                "https://telvuevod-secure.akamaized.net/vodhls/vod_player/1/"
+                "media/1/1/master.m3u8"
+            ),
+        )
+    )
+    page_id = await _page_id_for(result["slug"])
+
+    overridden = _override(page_id)
+    assert overridden["_status"] == 200
+    assert overridden["tenant_override_rules"] == []
+    assert len(overridden["tenant_override_notes"]) == 1
+    assert "videoplayer.telvue.com" in overridden["tenant_override_notes"][0]
+    assert "1 page(s)" in overridden["tenant_override_notes"][0]
+
+
 async def test_single_tenant_host_in_the_same_batch_still_gets_a_blank_match_rule():
     """Control: a normal, non-multi-gov host in the SAME batch as a
     multi-gov one keeps its existing blank-match behaviour (WO-99) --

@@ -50919,3 +50919,134 @@ status: nothing to deploy -- no `app/`, `archive/`, or `worker/` code
 changed, only new `scripts/` and docs; the 1 Archive page is already
 live (ingest is a direct API call, not a deploy). Rerun
 `scripts/build_backlog_toc.py` after this entry landed.
+
+## WO-316: a hub-split tool for the three genuine two-government hubs, plus four small residuals [Done 2026-09-12]
+
+**What this was for.** WO-310 found three `/j/` hub web addresses each
+shared by two (or, for one, three) real governments — Middletown
+Township, PA; Yarmouth, NS; Lunenburg, NS. Nothing in the codebase could
+give the second government its own web address once WO-256's slug
+freeze was in place. This session built that tool, ran it for real, and
+also cleared four small approved leftovers from WO-307/308/310.
+
+**Item 1 — the hub-split tool.** Built `scripts/split_hub_slug.py
+--gov-id <id> --slug <new-slug> [--apply]`. It checks that the named
+government really does share its web address with another one, warns
+if the rule ("more pages, or the older row, keeps the old address")
+says the *other* government should be the one to move, checks the new
+address contains a real distinguishing word (county, municipality-of-,
+town-of-, or a state/province code not already there), and writes a
+permanent new address only when all of that passes. Two real bugs
+turned up building it, both fixed before running it for real: a
+placeholder, page-less government could win the "who keeps it" check by
+default (fixed — it's ignored unless nothing else is real), and a
+three-way shared address made the wrong "who keeps it" call when
+checked against each rival one at a time instead of the whole group
+(fixed — decided once, over everyone sharing it).
+
+| Outcome | Count of 4 | What it means |
+|---|---|---|
+| Given a new, permanent web address | 4 | Bucks County Middletown Township, the Municipality of Yarmouth, the Town of Yarmouth, and the Town of Lunenburg |
+| Left on its original web address | 3 | Delaware County Middletown Township, Yarmouth County, and the Municipality of Lunenburg — chosen because each has more meetings, or has been on that address longer |
+| Verified live, showing only its own meetings | 4 of 4 | checked directly on the production site after writing |
+
+Yarmouth, NS turned out to be a THREE-government mix-up, not two — the
+original 2026-09-11 count was wrong, corrected here and in `BACKLOG.md`.
+Fixing it also surfaced a real mis-key found along the way: the Town of
+Yarmouth's own page (id 2379) was keyed to the County instead of the
+Town — re-keyed via the override endpoint (dry run first) once the Town
+had its own address to move to.
+
+**Item 2 — Ringwood, NJ pin.** Page 2822 was already correctly re-keyed
+by an earlier session (New York NY → Ringwood borough NJ). Added the
+specific per-video pin (`ringwoodtv.viebit.com`, video hash
+`Qb9n3sr6XRM44mOD` → Ringwood) so a future re-check of this page keeps
+the right answer, and noted the live page on Ringwood's research row.
+
+**Item 3 — TelVue's shared host.** `videoplayer.telvue.com` had a
+"blank" pin — one rule that quietly claimed every unidentified video on
+the entire host belonged to one village, Pittsford, NY. This is the
+exact same shape of bug already fixed once for another host (Castus,
+by an earlier session).
+
+| Check | Count | What it means |
+|---|---|---|
+| Pages wrongly keyed to Pittsford, NY on this shared host | 42 | confirmed by reading each page's own title/address |
+| ...fixed in this pass, because the page's own title named a real place | 2 | West Bridgewater, MA and the Town of Saugerties, NY |
+| ...left wrong, needing someone to watch the video to know the real answer | 40 | filed as its own to-do; titles too generic to guess from |
+
+The blank rule is now deleted, and this host is marked (in code) as one
+no single blank rule may ever be written for again — the same
+protection Castus already has. That stops the mistake from happening
+again; it does not fix the 40 pages already wrong.
+
+**Item 4 — the override tool's own suggestion.** The worry was that the
+tool used to fix one page's government also suggests a rule for future
+pages, and might suggest an unsafe "applies to everyone on this host"
+rule on a shared host. Checked the actual code: this safeguard was
+already built (2026-09-11, before this session). What looked like a
+live bug was really the two shared hosts (Castus, TelVue) not yet being
+marked as "shared" at the time someone tested it — one because that
+fix hadn't been deployed yet, the other because item 3 above hadn't
+happened yet. Added one test proving TelVue's case now behaves safely,
+and corrected the `BACKLOG.md` entry to say so rather than leave a wrong
+diagnosis on file.
+
+**Item 5 — two folder-listing pages.** Buffalo, MN and Big Lake, MN each
+had a page that was really a folder listing, not a meeting. Confirmed
+live and deleted (dry run first). Both were created 13 seconds apart on
+2026-09-08, meaning one shared process made both mistakes — which
+process is still not identified, filed as its own smaller to-do.
+
+**A new bug found while verifying item 1.** Middletown Township,
+Delaware County, PA's only archived page turns out to really be an Oak
+Bluffs, MA meeting — a mistaken manual fix by an earlier session trusted
+a channel name over the video's own content. Filed to `BACKLOG.md`
+rather than guessed at here, since fixing it needs someone to actually
+watch the video first.
+
+**Summary.**
+
+| What | Count |
+|---|---|
+| Hubs split (governments given a new permanent address) | 4 |
+| Pins written or corrected | 2 (Ringwood per-video pin; TelVue blank pin removed) |
+| Pages re-keyed to the right government | 3 (Yarmouth's page 2379; West Bridgewater, MA; Saugerties, NY) |
+| Pages deleted | 2 (Buffalo MN, Big Lake MN folder-listing pages) |
+| Code guards added | 1 (`videoplayer.telvue.com` marked as a shared host) |
+| New bugs found and filed, not fixed here | 3 (Delaware County Middletown/Oak Bluffs mis-key; ~40 remaining wrong TelVue pages; the folder-listing sweep still not identified) |
+| Blocked production calls | 0 |
+
+**Caution.** The 40 still-wrong TelVue pages and the Delaware
+County/Oak Bluffs mis-key are real, live, user-facing wrong answers
+today — this session did not guess at fixes for either, because both
+need someone to actually watch a video first, not just read its title.
+
+**Recommendation.** Deploy the resolver once this PR is live — the
+`MULTI_GOV_HOSTS` code change and the two pin/tenant-override-file
+changes only protect a FUTURE re-resolve; every page fixed today (the
+hub splits, the two re-keys, the two deletes) is already correct on the
+production site right now and needed no deploy. After that, a
+WO-307/WO-306-style hand-read pass over the 40 remaining TelVue pages
+is the most valuable next step — the pin is now safe, but the pages it
+already broke are not.
+
+**Files:** `scripts/split_hub_slug.py` (new), `tests/test_split_hub_slug.py`
+(new, 11 tests), `app/utils/gov_registry/registry.py`
+(`videoplayer.telvue.com` added to `MULTI_GOV_HOSTS`),
+`app/utils/jurisdiction_data/tenant_overrides.csv` (Ringwood per-video
+pin added; TelVue blank-match pin removed), `tests/test_gov_registry.py`
+(1 new regression test), `tests/test_jurisdiction_override.py` (1 new
+regression test), `BACKLOG.md` (3 entries closed, 1 narrowed to its
+residual, 2 new entries filed, TOC rebuilt). `rtr-business/research/
+wo316_report.csv`, `wo316_apply_to_jc.py` (Ringwood's research row,
+already run), `ENUMERATION_METHODS.md` §NNN — left on disk in the
+shared rtr-business working tree for the conductor to commit with
+explicit paths, since a worktree-isolated agent's `git` there is
+refused (that working tree also carries other sessions' uncommitted
+rows; this session's own write touched exactly one row, verified before
+and after). Deploy status: the resolver needs a deploy before the
+`MULTI_GOV_HOSTS`/pin changes protect a future re-resolve; every page
+change made today is already live and needed no deploy. Rerun
+`scripts/build_backlog_toc.py` after this entry landed (already done in
+this PR).

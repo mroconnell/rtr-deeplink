@@ -236,6 +236,23 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         # The real identity signal here is the URL's own tenant-slug path
         # segment (`/vod/{tenantSlug}/`), never the host alone.
         "cloud.castus.tv",
+        # TelVue's own shared default hosting domain -- a customer
+        # without its own subdomain gets a `videoplayer.telvue.com/
+        # player/{hash}/media/{id}` URL instead, and the per-video hash
+        # is the ONLY identity signal (no shared tenant-slug path segment
+        # the way Castus has). Confirmed live 2026-09-12 (WO-316, same
+        # audit shape as WO-306's Castus fix): this host was carrying a
+        # BLANK-match pin to Pittsford (village), NY, based on an example
+        # URL that turned out to belong to a DIFFERENT government (East
+        # Rochester, NY) once checked against this file's own per-player
+        # pins -- and the blank match had mis-keyed 42 live pages spanning
+        # at least a dozen unrelated real governments across MA/NH/NJ/NY
+        # (Winchester MA, West Bridgewater MA, Piscataway NJ, Town of
+        # Saugerties NY, ...). Removed rather than narrowed: unlike
+        # Castus, there is no shared prefix to narrow it TO -- a genuine
+        # Pittsford video needs its own per-player pin, same as every
+        # other real government already listed for this host.
+        "videoplayer.telvue.com",
     }
 )
 

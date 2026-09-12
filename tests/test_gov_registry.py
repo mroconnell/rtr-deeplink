@@ -3292,6 +3292,35 @@ def test_multi_gov_host_never_resolves_from_a_name_guess_with_no_pin():
     assert control.tier == resolver.TIER_REGISTRY
 
 
+def test_videoplayer_telvue_com_is_a_multi_gov_host():
+    """WO-316: `videoplayer.telvue.com` was carrying a BLANK-match pin to
+    Pittsford (village), NY, based on an example URL that (checked
+    against this file's own per-player pins) actually belongs to a
+    DIFFERENT government, East Rochester, NY. Removed rather than
+    narrowed -- unlike Castus (WO-306), TelVue's shared default host has
+    no shared tenant-slug path segment to narrow the pin to, only a
+    per-video hash -- and the host added to `MULTI_GOV_HOSTS` so a future
+    blank match here fails CI the same way WO-206b's Oak Bluffs
+    `vimeo.com` regression does."""
+    assert registry.is_multi_gov_host("videoplayer.telvue.com")
+    match = resolver.resolve_government(
+        "Pittsford (village), NY",
+        tenant_host="videoplayer.telvue.com",
+        path="/player/some-unpinned-hash/media/1",
+    )
+    assert not match.gov_id or match.gov_id.startswith("rtr:unknown:")
+    assert match.tier == resolver.TIER_BLANK
+    # A real, already-pinned player hash on the same host still resolves
+    # -- the host-wide safeguard doesn't touch the per-video pins already
+    # on file for Derry NH, Natick MA, etc.
+    pinned = resolver.resolve_government(
+        None,
+        tenant_host="videoplayer.telvue.com",
+        path="/player/CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l/media/951693",
+    )
+    assert pinned.gov_id == "us:cousub:3301517940"  # Derry, NH
+
+
 # --- WO-221, 2026-09-11: a matched pin wins on a shared host, before
 # rungs 2-4 run --------------------------------------------------------
 #

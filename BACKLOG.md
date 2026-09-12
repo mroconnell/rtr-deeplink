@@ -163,10 +163,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
   45 of the 51 `transcribed=true`-no-page research rows found no live…
-  `videoplayer.telvue.com` carries the same shape of blank-match…
-  `POST /internal/jurisdiction/override`'s own draft-rule suggestion…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
@@ -180,12 +178,13 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [HUMAN] One live page is keyed to the wrong government: a real…
     [HUMAN] 13 archived YouTube pages point at a video that is gone (7…
     [HUMAN] A Pennsylvania Public Utility Commission hearing was briefly…
-  Decisions about already-live content  (2)
+  Decisions about already-live content  (1)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
-    [HUMAN] Three `/j/` hubs still hold two real governments each — no…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (184)
-  [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both…
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (186)
+  [NEEDS-AUDIT] Middletown Township, Delaware County PA's only archived…
+  [NEEDS-AUDIT] ~40 pages still keyed to Pittsford (village), NY via…
+  [NEEDS-AUDIT] Nothing has found which sweep/script ingests a Viebit…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
@@ -1798,63 +1797,6 @@ of human step they need.
 - **History:** `BACKLOG_DONE.md`, WO-301 (2026-09-12) and WO-310
   (2026-09-12).
 
-### `videoplayer.telvue.com` carries the same shape of blank-match multi-government pin that WO-306 already fixed for Castus, not yet fixed here `[HUMAN]`
-
-- **Issue:** found live 2026-09-12 while fixing WO-310's Bellefonte
-  item: `tenant_overrides.csv`'s
-  `videoplayer.telvue.com,,us:place:3658354,fallback,hub_sweep_wo126,...`
-  row is a BLANK-match pin (to Pittsford village, NY) on
-  `videoplayer.telvue.com` — a domain TelVue shares across hundreds of
-  unrelated org tokens, the exact shape `cloud.castus.tv`'s Andover pin
-  had before WO-306 scoped it and added the host to `MULTI_GOV_HOSTS`.
-  This row predates that fix and was never touched.
-- **Impact:** unconfirmed how many pages this blank match has already
-  mis-keyed to Pittsford village, NY on org tokens that aren't
-  Pittsford's — not measured in this pass, since it was found
-  incidentally, not through a dedicated Castus-style scan of the whole
-  host.
-- **Next action:** run the same audit WO-306 ran for Castus: scan every
-  `videoplayer.telvue.com` page in the Archive export, group by org
-  token, and check whether the blank match's `us:place:3658354` actually
-  belongs to more than one org token's worth of content. If so, scope
-  the match to Pittsford's own org token (the way the Bellefonte fix
-  scoped to `playlists/4806`) and add `videoplayer.telvue.com` to
-  `MULTI_GOV_HOSTS`, then re-key any mis-keyed pages the same way WO-310
-  did for Vero Beach/Waterford.
-- **Constraint:** don't bulk-fix from a guess — confirm the mis-key
-  first, the same way WO-306 did for Castus.
-- **History:** found by WO-310, 2026-09-12 (this session), while
-  building the Bellefonte pin fix; see `BACKLOG_DONE.md`'s WO-310 entry.
-
-### `POST /internal/jurisdiction/override`'s own draft-rule suggestion doesn't check `MULTI_GOV_HOSTS` before drafting a blank-match row `[HUMAN]`
-
-- **Issue:** found live 2026-09-12 (WO-310): calling the override
-  endpoint against pages on `cloud.castus.tv` and `videoplayer.telvue.com`
-  (both confirmed multi-government hosts) returned a suggested
-  `tenant_override_rules` line with a BLANK `match` field — the exact
-  shape `MULTI_GOV_HOSTS`'s own loader-time check exists to reject once
-  it's actually pasted into `tenant_overrides.csv`. The endpoint's own
-  doc comment says these suggestions are "for a human to copy into the
-  committed registry," so a human who trusts the draft output verbatim
-  on one of these hosts would recreate the exact Andover/Oak Bluffs bug
-  WO-210/WO-306 exist to prevent — CI would only catch it at PR time, not
-  at the point the suggestion was generated.
-- **Impact:** no bad pin was written this time (WO-310 wrote its own
-  correctly-scoped pins by hand instead of copying the draft), but the
-  endpoint gives no warning that its own suggestion is unsafe on these
-  specific hosts.
-- **Next action:** in `archive/main.py`'s override endpoint (see
-  `crud.override_jurisdiction()`), check the touched host(s) against
-  `is_multi_gov_host()` before drafting a blank-match rule; either
-  refuse to draft one at all (mirroring the loader's own refusal) or
-  draft a per-video/channel/path match the same way the endpoint already
-  does elsewhere for other multi-gov hosts.
-- **Constraint:** this is about the SUGGESTION only — the endpoint's own
-  write path (which government a page gets keyed to) is unaffected and
-  was not the bug.
-- **History:** found by WO-310, 2026-09-12 (this session); see
-  `BACKLOG_DONE.md`'s WO-310 entry.
-
 ### Production actions only Ryan should take
 
 - **[HUMAN] Run `scripts/backfill_video_channel.py --apply` from the Archive's Render Shell to store the 1,903 known YouTube channels, then run the gov_id backfill.**
@@ -2085,21 +2027,28 @@ of human step they need.
     candidate-pool gap) is in `BACKLOG_DONE.md`. Full bug history — the
     unbounded-`limit` query fix and the WO-87 event-loop fix — is also
     there, WO-84 and WO-87.
-- **[HUMAN] Three `/j/` hubs still hold two real governments each — no tool exists to give the second one its own frozen slug `[HUMAN]`**
-  - **Issue**: the original WO-232 audit (2026-09-11) measured 5 colliding hub slugs on a stale export. WO-310 (2026-09-12) re-measured live against the production `hub_slugs` table (a read-only query, `SELECT gov_id, hub_slug FROM hub_slugs` grouped by slug) and found the same COUNT but a different shape, because a day of concurrent sweeps moved the ground underneath it. Two of the five (`deerfield-township-oh`, `paso-robles-ca`) were genuine duplicate mints of ONE real government each and are fixed: re-keyed the one page under each duplicate id via `POST /internal/jurisdiction/override` (page 2079 -> `us:cousub:3916521238`; page 9064 -> `rtr:us:ca:paso-robles`), so both duplicate ids now carry zero pages. The other three are real 2-government splits, same shape as Yarmouth NS: `middletown-township-pa` (Middletown Township, Bucks County, PA -- `us:cousub:4201749120`, re-keyed page 3458 there from a REDUNDANT minted id that a name-repair pass should have matched to this already-existing national cousub instead -- vs. Middletown Township, Delaware County, PA -- `us:cousub:4204549136`, unrelated, already correct), `yarmouth-ns` (Yarmouth County `ca:cd:1202`, Municipal District of Yarmouth `ca:csd:1202004`, Town of Yarmouth `ca:csd:1202006` -- 3 distinct ids, not 2; also found live: the Town's own eScribe tenant page, `pub-townofyarmouth.escribemeetings.com` id 2379, is itself mis-keyed to the COUNTY id rather than its own Town csd), and `lunenburg-ns` (Municipal District of Lunenburg `ca:csd:1206001` vs. Town of Lunenburg `ca:csd:1206006`, as the original audit found).
-  - **Impact**: each of these three hubs shows one government's meetings mixed with another's. WO-256's slug freeze stops *new* collisions of this shape forming by coincidence, but nothing retroactively separates one that already exists, and no existing script inserts a second, distinctly-named, frozen `hub_slugs` row for a government that isn't the slug's current dominant one.
-  - **Next action**: for each of the 3, mint a distinguishing slug (the brief's own suggestion: work "municipality" or the county/township distinction into the losing government's name) and insert its `hub_slugs` row directly (no script does this today -- `scripts/freeze_hub_slugs.py` only mints/freezes the SINGLE dominant government per already-computed slug, and is itself a full-corpus sweep that must run from the Render Shell, not scoped to a few governments). Also re-key page 2379 (Town of Yarmouth's own tenant, currently on the county id) once Yarmouth's own csd gets its distinguishing slug.
-  - **Constraint**: not a code fix and not guessable — Yarmouth and Lunenburg are real cases of two separate governments that share a name, and Middletown Township PA turned out to be the same shape (not the "duplicate mint" the original audit assumed), so a rule that merges on slug collision would be wrong for these three specifically.
-  - **History**: `docs/investigations/hub_architecture_audit.md` §2 and §8; `BACKLOG_DONE.md`'s WO-256 and WO-310 entries.
-
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) have a Viebit folder-listing URL as `source_url_normalized`, not a real meeting — a `?folder=ALL` page was ingested as if it were a single video.**
-  - **Issue**: found live 2026-09-12 (WO-307) cross-checking `wo306_export_pages.json` while queuing real Viebit meetings for these same two governments. Page ids 6523 (`https://buffalo.viebit.com/?folder=ALL`) and 6524 (`https://biglake.viebit.com/?folder=ALL`) both have `video_url=null`, `video_warnings: ["Could not find Viebit's video configuration on this page."]`, and a title scraped from an agenda/packet link elsewhere on that folder page ("HRA *Special Meeting* Agenda (PDF)", "City Council Regular Meeting Packet") rather than any real meeting content. `gov_id` is `rtr:unknown:<host>` on both — no government identity, no video, no real transcript.
-  - **Impact**: two junk pages live on the site today (no user-facing content, but they exist and count toward the Archive's page total); once this WO's real, hand-picked Viebit meetings for these same two governments finish transcribing, each government will have TWO pages — one real, one junk — which could confuse a reader landing on the wrong one via search or a stale link.
-  - **Next action**: confirm live via `POST /internal/admin/delete-pages` (dry run first) that both slugs are exactly this shape, then delete them; separately, find which sweep/script ingests a Viebit `?folder=ALL` URL as a candidate page at all (neither `viebit.py`'s `resolve()` nor `list_recent_videos()`, added by WO-306, ever produces this URL shape, so it came from something else — an AgendaCenter-style sweep that treated the folder link on a government's calendar page as if it were the meeting URL) and check whether other platforms have the same gap.
-  - **Constraint**: don't delete without a fresh dry run first — the slugs above are as of 2026-09-12's export and could have changed.
-  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-307 entry; `rtr-business/research/wo307_methods_section.md` (§319).
+- **[NEEDS-AUDIT] Middletown Township, Delaware County PA's only archived page (id 8494) is really an Oak Bluffs, MA meeting — a `manual_override` that trusted a channel name over the video's own content.**
+  - **Issue**: found live 2026-09-12 (WO-316) verifying the new hub-split tool's Bucks/Delaware County split. Page 8494 is `jurisdiction_confidence=manual_override`, `gov_id=us:cousub:4204549136` (Middletown Township, Delaware County, PA), `video_channel=middletowndelco` — but its own `slug` (`oak-bluffs-ma-2026-09-02-september-2-2026-council-meeting`), `title` ("September 2, 2026 Council Meeting") and Vimeo id (`vimeo:1224013872`) all say Oak Bluffs, MA, not Middletown. WO-310's own report described this government as "already correct... confirmed via that page's own 'middletowndelco' YouTube-derived channel slug already on file" — that channel-name check never looked at the actual video's own content, which is exactly the failure mode `app/utils/gov_registry/registry.py`'s `MULTI_GOV_HOSTS` comment already documents for a blank Vimeo match (the Oak Bluffs `vimeo.com,,<gov_id>` incidents, WO-183/WO-206/WO-206b) — a different mechanism (a manual override, not a pin) landing on the exact same wrong government.
+  - **Impact**: `/j/middletown-township-bucks-county-pa`'s sibling hub (Middletown Township, Delaware County) shows a real, unrelated town's meeting as if it were its own — the same "one government's content on another's hub" problem WO-316's split tool exists to prevent, just from a different cause than a slug collision.
+  - **Next action**: hand-check the Vimeo video (`vimeo.com/1224013872`) to confirm it really is Oak Bluffs, MA (its own real gov_id is `us:place:2549280`); if confirmed, override page 8494 back to Oak Bluffs, MA (`us:cousub:2500750390`, dry run first) and separately check whether Middletown Township, Delaware County, PA has any REAL video anywhere, since this may leave it with zero real pages.
+  - **Constraint**: don't override from the slug/title alone without watching or otherwise confirming the video — that's exactly the kind of unverified assumption that produced this mis-key in the first place.
+  - **History**: `BACKLOG_DONE.md`'s WO-310 (the original, incorrect "already correct" finding) and WO-316 entries.
+
+- **[NEEDS-AUDIT] ~40 pages still keyed to Pittsford (village), NY via the blank-match TelVue pin WO-316 just removed — the pin is gone so nothing NEW mis-keys this way, but the already-wrong pages are untouched.**
+  - **Issue**: WO-316 (2026-09-12) found `videoplayer.telvue.com`'s blank-match pin (`,,us:place:3658354`) had mis-keyed 42 live pages spanning at least a dozen real, unrelated governments (Winchester MA, West Bridgewater MA, Piscataway NJ, Town of Saugerties NY, and about three dozen more with titles too generic to identify without watching them) — the pin's own founding evidence (an example player URL) turned out to belong to a THIRD, different government (East Rochester, NY) once checked against this file's own per-player pins. The pin is now removed and the host added to `MULTI_GOV_HOSTS`, so no future page can mis-key this way; only the 2 pages whose OWN title/slug named a specific real place (West Bridgewater MA, Saugerties NY) were re-keyed in the same pass, since the brief's scope was "fix what the page itself proves."
+  - **Impact**: roughly 40 pages currently show under `/j/pittsford-village-ny` (or wherever `us:place:3658354`'s hub ends up) that don't belong there, and Pittsford's OWN real meetings (if any exist on this host) have no pin protecting them either.
+  - **Next action**: a WO-307/WO-306-style hand-read pass over the ~40 remaining `videoplayer.telvue.com` pages currently on `us:place:3658354` (query `MeetingPage` for `gov_id="us:place:3658354" AND platform="telvue"`), watching or reading enough of each to identify its real government and write a per-player pin + override, the same way this WO did for the 2 provable ones.
+  - **Constraint**: don't bulk re-key from title/slug guesses alone — several of the 40 have generic titles ("City Council - 3/5/24", "Select Board") that need an actual look at the video, not just a name match.
+  - **History**: `BACKLOG_DONE.md`'s WO-316 entry.
+
+- **[NEEDS-AUDIT] Nothing has found which sweep/script ingests a Viebit `?folder=ALL` URL as if it were a single meeting — the two junk pages it produced (Buffalo MN, Big Lake MN) are gone, but the gap that made them isn't closed.**
+  - **Issue**: WO-316 (2026-09-12) confirmed and deleted the two junk pages this entry originally reported (page 6523 `buffalo.viebit.com/?folder=ALL`, page 6524 `biglake.viebit.com/?folder=ALL` — both `video_url=null`, a title scraped from an agenda/packet link on the folder page, `gov_id=rtr:unknown:<host>`), via `POST /internal/admin/delete-pages` (dry run first, titles read). Both `created_at` at 2026-09-08 05:46 UTC, 13 seconds apart — one shared sweep run, not two independent mistakes — but which sweep is still not identified: neither `viebit.py`'s `resolve()` nor `list_recent_videos()` (added by WO-306) ever produces a `?folder=ALL` URL, so something else (plausibly an AgendaCenter-style sweep treating a folder link on a government's calendar page as the meeting URL) did this.
+  - **Impact**: the two known junk pages are gone, but whatever ingested them could still be doing it to other governments/platforms today — not measured.
+  - **Next action**: search sweep scripts active around 2026-09-08 for one that treats a bare listing/index link as a candidate meeting URL without checking it resolves to one video; once found, check whether the same gap exists for other folder/listing-shaped platforms (CivicClerk's own listing pages, Cablecast's public site index, etc.).
+  - **Constraint**: don't guess which script did it without checking — several sweeps ran that week.
+  - **History**: `BACKLOG_DONE.md`'s WO-307 and WO-316 entries; `rtr-business/research/wo307_methods_section.md` (§319).
 - **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
   - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
   - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.
