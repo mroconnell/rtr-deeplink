@@ -178,8 +178,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (171)
-  [NEEDS-AUDIT] `wo146_api_relist_sweep._extract_state_from_text()`'s…
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (170)
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared…
@@ -1732,12 +1731,6 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] `wo146_api_relist_sweep._extract_state_from_text()`'s bare two-letter-word scan can false-positive a real match as a wrong-government mismatch on any place name that contains a common short word matching a state/province code.**
-  - **Issue**: found live 2026-09-12 (WO-259 part 2) on Portage la Prairie, MB — the automatic wrong-government check (`_looks_wrong_government()`, used as `wo134_confirmed_hits_ingest.IDENTITY_CHECK_HOOK` by several sweeps) scans the resolved jurisdiction/meeting_body/title text for any standalone two-letter word (`\b([A-Za-z]{2})\b`) and compares it against the full US+Canada state/province code table. "la" in "Portage la Prairie" matched as Louisiana (LA), even though the row's own state (MB) and the video's own title/channel both say Manitoba — a false positive from a French place-name word, not a real mismatch. The candidate was auto-rejected before ever reaching the mandatory hand-read gate, so nobody read it before it got turned away.
-  - **Impact**: unknown scope beyond this one confirmed case (recovered by hand this session — see `BACKLOG_DONE.md`'s WO-259 entry). The same collision risk exists for any other common short word that happens to also be a real code: "or" (Oregon), "in" (Indiana), "de" (Delaware), "pa" (Pennsylvania), "ok" (Oklahoma), "co" (Colorado), "ma" (Massachusetts), "wa" (Washington), "ny" (New York), "ga" (Georgia), all of which can appear as an ordinary word inside a real place name or a title's prose, not just a genuine state reference. A silent auto-reject means an affected government's real, correct video never reaches a human at all unless someone happens to re-derive and recheck it by hand, the way this one was.
-  - **Next action**: require a word boundary that also excludes an ordinary-English-word match — e.g. only accept a two-letter token as a state/province code when it's directly adjacent to a comma (`City, ST`) or all-caps in otherwise-mixed-case text, rather than matching any bare two-letter token anywhere in the haystack. Re-run against a sample of already-processed sweep reports (WO-146/WO-259/etc.) to see how many other rows this reclassifies before trusting the fix.
-  - **Constraint**: don't just special-case "la" — the fix needs to hold for the whole list of code-colliding short words above, not just the one example that got caught.
-  - **History**: `BACKLOG_DONE.md`'s WO-259 entry (2026-09-12, part 2); `rtr-business/research/ENUMERATION_METHODS.md` §292.
 - **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
   - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
   - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.

@@ -408,6 +408,9 @@ _STATE_NAMES = {
 }
 
 
+_STATE_CODE_AFTER_COMMA_RE = re.compile(r",\s*([A-Za-z]{2})\b")
+
+
 def _extract_state_from_text(text: str):
     """Real, confirmed-live bug fixed here (WO-146, 2026-09-10): the
     first cut of this function only looked at the text AFTER a comma
@@ -429,8 +432,28 @@ def _extract_state_from_text(text: str):
     abbreviations -- a second real miss this WO hit: "Colorado General
     Assembly" (a state legislature, not Colorado County, TX at all)
     names its state by full word, not a 2-letter code, so the
-    abbreviation-only scan found nothing."""
-    for m in re.finditer(r"\b([A-Za-z]{2})\b", text or ""):
+    abbreviation-only scan found nothing.
+
+    Second real bug fixed here (WO-280, 2026-09-12): the two-letter scan
+    above used a bare `\\b([A-Za-z]{2})\\b` match -- ANY standalone
+    two-letter word anywhere in the haystack, not just one that actually
+    reads as a trailing "City, ST" state suffix. That matched "la" in
+    "Portage la Prairie" as Louisiana and auto-rejected a real, correct
+    Manitoba government before a human ever saw it (BACKLOG_DONE.md's
+    WO-259 entry; recovered by hand). The same collision risk exists for
+    any other common short word that also happens to be a real code --
+    confirmed real governments that would trip it: Truth or Consequences
+    city, NM ("or" -> Oregon), Ponce de Leon town, FL ("de" -> Delaware),
+    Lake in the Hills village, IL ("in" -> Indiana). A genuine state/
+    province code in this kind of resolved text is never a bare interior
+    word -- it always directly follows a comma ("City, ST"), the shape
+    every real catch this function documents above (Loudoun County, VA;
+    Village of Winfield, IL; Greenville, NC) already has. Restricting the
+    code scan to comma-adjacent matches only keeps every real catch on
+    file and drops the false-positive class entirely; a state-less
+    interior word is never read as a code now, regardless of whether it
+    also happens to be a real postal abbreviation."""
+    for m in _STATE_CODE_AFTER_COMMA_RE.finditer(text or ""):
         code = m.group(1).upper()
         if code in _ALL_STATE_CODES:
             return code
