@@ -269,6 +269,12 @@ async def main() -> None:
     tiers: Counter = Counter()
     unchanged = 0
     hub_moves: Counter = Counter()
+    # WO-293: which government's slug a retired (old_hub, new_hub) pair
+    # actually landed on, so a genuinely-retired slug (see _report()'s
+    # `retired` set below) can get an alias row written FOR it, not just
+    # counted. Only ever holds a real, non-`rtr:unknown:` gov_id -- the
+    # same filter `owned_slugs` below already applies to `new_hub`.
+    hub_move_gov_id: dict = {}
     # Every slug some real government owns, so the report can tell a slug
     # that MOVED PAGES (normal, and no longer a URL change for anybody)
     # from one that genuinely stops belonging to anybody (WO-256). Seeded
@@ -420,6 +426,8 @@ async def main() -> None:
             owned_slugs.add(new_hub)
         if old_hub and new_hub and old_hub != new_hub:
             hub_moves[(old_hub, new_hub)] += 1
+            if new_gov_id and not new_gov_id.startswith("rtr:unknown:"):
+                hub_move_gov_id[(old_hub, new_hub)] = new_gov_id
 
         changes.append(
             {
@@ -471,10 +479,21 @@ async def main() -> None:
                         page.jurisdiction_confidence = match.tier
                 await write_session.commit()
 
-    _report(changes, tiers, hub_moves, owned_slugs, unchanged, overrides, args)
+    _report(
+        changes,
+        tiers,
+        hub_moves,
+        hub_move_gov_id,
+        owned_slugs,
+        unchanged,
+        overrides,
+        args,
+    )
 
 
-def _report(changes, tiers, hub_moves, owned_slugs, unchanged, overrides, args) -> None:
+def _report(
+    changes, tiers, hub_moves, hub_move_gov_id, owned_slugs, unchanged, overrides, args
+) -> None:
     print("")
     label = "changed          " if args.apply else "would change     "
     print(f"  {label} : {len(changes)}")
@@ -506,6 +525,62 @@ def _report(changes, tiers, hub_moves, owned_slugs, unchanged, overrides, args) 
     print(f"  hub slugs retired         : {len(retired)} (no government owns them)")
     print(f"  pages moving to another hub: {sum(hub_moves.values())}")
     print(f"  hubs receiving pages      : {len(merges)}")
+
+    # WO-293: a retired slug used to need a human to read this report and
+    # add the `hub_slug_aliases.csv` row by hand (WO-209: 64 of 70 got
+    # one, in a separate pass, sometimes days later) -- which is exactly
+    # how `lake-havasu-az -> city-of-lake-havasu-az -> 404` happened: the
+    # SECOND retirement (a fixed name-repair bug re-keying the minted
+    # government onto the real Census place, WO-251) never got that
+    # manual step. Now the same operation that discovers a slug is
+    # retired also writes (or rewrites) its alias, and collapses any
+    # other row in the file that happened to point at it -- see
+    # `archive/utils/hub_aliases.write_retirements()`.
+    if args.apply and retired:
+        by_old: Counter = Counter()
+        for (old_hub, new_hub), n in hub_moves.items():
+            if old_hub in retired:
+                by_old[(old_hub, new_hub)] += n
+        # One target per retired slug: the (old_hub, new_hub) pair this
+        # slug's pages moved to MOST, in the rare case a single old_hub
+        # (an unkeyed, raw-text fallback slug shared by more than one
+        # government before either was keyed) split across more than
+        # one destination.
+        best_by_old: dict = {}
+        for (old_hub, new_hub), n in by_old.items():
+            if (
+                old_hub not in best_by_old
+                or n > by_old[(old_hub, best_by_old[old_hub])]
+            ):
+                best_by_old[old_hub] = new_hub
+        from archive.utils import hub_aliases
+
+        entries = []
+        for old_hub, new_hub in best_by_old.items():
+            gov_id = hub_move_gov_id.get((old_hub, new_hub), "")
+            entries.append(
+                (
+                    old_hub,
+                    gov_id,
+                    new_hub,
+                    f"'{old_hub}' hub retired by scripts/backfill_gov_id.py "
+                    f"--apply; no government owns it any more, its pages "
+                    f"moved to {new_hub}" + (f" ({gov_id})" if gov_id else ""),
+                )
+            )
+        written = hub_aliases.write_retirements(entries)
+        print("")
+        print(
+            f"  hub_slug_aliases.csv rows added/updated: {written} "
+            f"(of {len(entries)} retired slugs with a known destination)"
+        )
+        if len(entries) < len(retired):
+            print(
+                f"  {len(retired) - len(entries)} retired slug(s) had no "
+                "single known destination gov_id -- left for a human, "
+                "same as before this change"
+            )
+
     print("")
     print("  largest hub moves:")
     for (old_hub, new_hub), n in hub_moves.most_common(15):

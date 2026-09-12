@@ -731,6 +731,88 @@ manual, per `render.yaml`'s `autoDeploy: false`).
 **Files:** `app/platforms/youtube_ids.py`, `tests/test_youtube.py`,
 `BACKLOG.md`.
 
+## WO-293: repaired 42 hub addresses that redirected to a dead page, and made future retirements write their own redirect [Done 2026-09-12]
+
+**What was done and why.** A government's `/j/` page address is
+supposed to stay working forever, even after its name changes — WO-256
+built that guarantee two days ago. After it shipped, a check found 42
+old addresses that still broke: a reader following one landed on a
+redirect that pointed at ANOTHER dead redirect, which then showed a
+"page not found" page instead of the government's real page.
+
+The cause: an address gets retired when a government's identity is
+corrected — for example, when a wrongly-guessed government is fixed to
+match the real one. That correction writes a note saying "old address →
+new address." The bug was a SECOND correction. If the "new address" from
+the first note was itself later corrected again, nothing wrote a second
+note. So the first note kept pointing at a dead end instead of the real,
+current page.
+
+The clearest example: `/j/lake-havasu-az` sent a reader to
+`/j/city-of-lake-havasu-az`, a made-up address from when the site
+briefly guessed the government wrong. That guess was fixed nine days
+later, moving the real page to `/j/lake-havasu-city-az` — but nothing
+updated the first note, so it still pointed at the now-empty made-up
+address.
+
+**Result — the 42 broken addresses.**
+
+| Outcome | Count of 42 | What it means |
+| --- | --- | --- |
+| Fixed to point straight at the real, current page | 4 | A second correction had happened with no note written for it; now it goes there in one step |
+| Already work fine on their own; the broken note was simply never used | 15 | The government's address changed back to match the reader's original link, so the direct address already works — the leftover note pointing elsewhere never gets read |
+| Government has no page at all today; the address correctly shows "not found" | 23 | Not a broken link — there is genuinely nothing to show yet for that government |
+
+None of the 42 rows were deleted — the file keeps every row on record,
+as it always has; the 19 that needed a change had their destination
+corrected in place.
+
+**A second problem, found while fixing the first: some notes pointed at
+each other in a loop.** 18 places in the file had a note pointing at
+ANOTHER note instead of straight at a real page — each one worked, just
+with one extra unnecessary hop. All 18 are now straight, one-step
+addresses. One pair was a genuine mix-up worth naming: Caledonia
+Township and Caledonia Village, Michigan, corrected into each other on
+two different days (2026-09-10 and 2026-09-11), leaving each note
+pointing at the other. A live check settled which one is actually
+correct today (Caledonia Township) and the other note was marked as no
+longer needed, by hand.
+
+**The code fix — so this stops happening on its own.** The tool that
+corrects a government's identity now writes the note itself, the moment
+it notices an address has become empty, instead of leaving that step for
+a person to remember later (`archive/utils/hub_aliases.py`'s
+`write_retirements()`, called from `scripts/backfill_gov_id.py --apply`).
+The same step also straightens out any leftover loop in the file, not
+just the one it just added — so the file can never drift back into the
+broken shape this work order fixed. Tested against the real Lake Havasu
+example and against a synthetic three-step chain, plus the real
+Caledonia loop.
+
+**Caution — one real gap found and left open, not fixed here.** The tool
+only notices a government's old address is empty when a page with NO
+government yet gets one for the first time. It does NOT notice when an
+ALREADY-IDENTIFIED (but wrongly guessed) government gets corrected to a
+DIFFERENT government — which is exactly how the Lake Havasu example
+happened in the first place. Confirmed by testing both shapes directly
+against a copy of the database. So a future correction of that second
+kind could still leave a broken address behind, the same way this one
+did, until that gap is closed. Logged as its own item in `BACKLOG.md`
+so it isn't lost.
+
+**Recommendation.** No script needs to be run. The fix is a plain file
+change and a code change, both already in place.
+
+**Deploy status.** Merged to `main`, **not live**. The corrected file and
+the new automatic-note code only take effect on the Archive service's
+next deploy — until then, the 42 addresses still show the old, broken
+behavior for real readers.
+
+**History.** `docs/investigations/hub_architecture_audit.md` §9 (the gap
+found and the fix); `BACKLOG_DONE.md`'s WO-256 entries (the address-
+freeze this builds on) and WO-251 entry (the original Lake Havasu
+incident); `BACKLOG.md`'s open entry on the remaining detection gap.
+
 ## WO-288: correct the meeting date on archived YouTube pages whose title date disagrees with the stored date — 1,349 pages ready, script built and tested, write not yet run [Done 2026-09-12]
 
 **What was done and why.** WO-285 found that many archived YouTube
