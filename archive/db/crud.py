@@ -8159,10 +8159,8 @@ async def _hub_groups(session) -> dict[str, dict]:
     )
     rows = (await session.execute(stmt)).all()
     groups: dict[str, dict] = {}
-    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
-        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
-        if not slug:
-            continue
+
+    def _group(slug, key, display, jurisdiction, registry_type, gov_type, last_updated):
         g = groups.setdefault(
             slug,
             {
@@ -8170,42 +8168,200 @@ async def _hub_groups(session) -> dict[str, dict]:
                 "key": key,
                 "display": display,
                 "gov_ids": [],
+                # Display only, for the /meetings?jurisdiction= "search
+                # all" link -- NOT a membership test any more (WO-256).
                 "jurisdictions": [],
+                # Ids of the un-keyed pages that belong here, worked out in
+                # Python by `_unkeyed_membership()` below.
+                "page_ids": [],
                 "page_count": 0,
                 "last_updated": last_updated,
                 "state_abbr": state_abbr_from_jurisdiction(display or jurisdiction),
                 "gov_type": registry_type or gov_type,
             },
         )
-        if gov_id and gov_id not in g["gov_ids"]:
-            g["gov_ids"].append(gov_id)
         g["jurisdictions"].append(jurisdiction)
-        g["page_count"] += count
         if last_updated and (
             g["last_updated"] is None or last_updated > g["last_updated"]
         ):
             g["last_updated"] = last_updated
+        return g
+
+    # Pass 1: the real governments. An `rtr:unknown:<host>` id is NOT one
+    # -- it means "we do not know whose meeting this is" -- and letting it
+    # into `gov_ids` is exactly how 47 unrelated pages ended up on four
+    # real hubs (Orem UT, Tooele UT, Box Elder County UT, Caledonia
+    # Township MI, measured 2026-09-11): one such page whose raw text
+    # happened to slugify onto a real hub put the shared placeholder id
+    # into that hub's id list, which then matched EVERY page carrying the
+    # same placeholder.
+    unkeyed_seen = False
+    for gov_id, gov_type, jurisdiction, count, last_updated in rows:
+        if not hub_slugs._usable(gov_id):
+            unkeyed_seen = True
+            continue
+        key, slug, display, registry_type = _hub_identity(gov_id, jurisdiction)
+        if not slug:
+            continue
+        g = _group(
+            slug, key, display, jurisdiction, registry_type, gov_type, last_updated
+        )
+        if gov_id not in g["gov_ids"]:
+            g["gov_ids"].append(gov_id)
+        g["page_count"] += count
+
+    if not unkeyed_seen:
+        return groups
+
+    # Pass 2: the un-keyed pages, by HOST rather than by raw text
+    # (WO-256, the audit's §5). Both queries behind this are small: the
+    # first returns only un-keyed pages (418 of 8,222 in the 2026-09-11
+    # export), the second only pages sharing one of their hosts.
+    adoption, unkeyed = await _unkeyed_membership(session)
+    gov_group = {gov_id: g for g in groups.values() for gov_id in g["gov_ids"]}
+    for page_id, gov_id, jurisdiction, host, gov_type, last_updated in unkeyed:
+        owner = adoption.get(host)
+        g = gov_group.get(owner) if owner else None
+        if g is None:
+            # Not adopted, so it keeps the hub its own raw text has always
+            # given it -- UNLESS that slug already belongs to a real
+            # government, in which case this is one of the contamination
+            # cases above and the page belongs nowhere until it is keyed.
+            _key, slug, display, _registry_type = _hub_identity(gov_id, jurisdiction)
+            if not slug or (slug in groups and groups[slug]["gov_ids"]):
+                continue
+            g = _group(
+                slug,
+                gov_id or slug,
+                display,
+                jurisdiction,
+                None,
+                gov_type,
+                last_updated,
+            )
+        elif last_updated and (
+            g["last_updated"] is None or last_updated > g["last_updated"]
+        ):
+            g["last_updated"] = last_updated
+        g["page_ids"].append(page_id)
+        g["page_count"] += 1
     return groups
+
+
+async def _unkeyed_membership(session):
+    """(host -> the one government that owns it, [un-keyed page rows]).
+
+    WO-256, the audit's §5. An un-keyed page -- no `gov_id` at all, or the
+    `rtr:unknown:<host>` placeholder -- joins a real government's hub only
+    when it shares a tenant HOST with a page already keyed to that
+    government, and only when that host is not a `MULTI_GOV_HOSTS` host.
+    Never by raw text.
+
+    Why a host and not the text: the text is a coincidence ("Orem, UT" on
+    a YouTube video says nothing about whose video it is), while a host is
+    the same evidence WO-210/214/215/221 already established as the
+    trustworthy signal for shared-tenant identity. Measured against the
+    2026-09-11 export: 31 un-keyed pages gain a real hub under this rule
+    (20 with a blank id, 11 with the placeholder), and the 4 contamination
+    hubs stop carrying pages of unrelated YouTube video.
+
+    A host with TWO keyed governments on it adopts nothing -- that is a
+    shared tenant this code cannot split, and guessing is the thing the
+    rule exists to stop.
+    """
+    unkeyed = []
+    hosts: set = set()
+    rows = (
+        await session.execute(
+            select(
+                MeetingPage.id,
+                MeetingPage.gov_id,
+                MeetingPage.jurisdiction,
+                MeetingPage.source_url_normalized,
+                MeetingPage.gov_type,
+                MeetingPage.updated_at,
+            ).where(
+                *_hub_base_conditions(),
+                or_(
+                    MeetingPage.gov_id.is_(None),
+                    MeetingPage.gov_id.like("rtr:unknown:%"),
+                ),
+            )
+        )
+    ).all()
+    for page_id, gov_id, jurisdiction, url, gov_type, updated_at in rows:
+        host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+        unkeyed.append((page_id, gov_id, jurisdiction, host, gov_type, updated_at))
+        if host and not is_multi_gov_host(host):
+            hosts.add(host)
+    if not hosts:
+        return {}, unkeyed
+
+    owners: dict = {}
+    keyed = (
+        await session.execute(
+            select(MeetingPage.gov_id, MeetingPage.source_url_normalized).where(
+                MeetingPage.gov_id.is_not(None),
+                ~MeetingPage.gov_id.like("rtr:unknown:%"),
+                _host_url_condition(hosts),
+            )
+        )
+    ).all()
+    for gov_id, url in keyed:
+        host = (urlparse(url or "").netloc or "").lower().split(":")[0]
+        if host in hosts:
+            owners.setdefault(host, set()).add(gov_id)
+    return (
+        {host: next(iter(ids)) for host, ids in owners.items() if len(ids) == 1},
+        unkeyed,
+    )
+
+
+def _host_url_condition(hosts):
+    """SQL for "this page's URL is on one of these hosts".
+
+    `source_url_normalized` is canonicalised to `https://` with the host
+    lowercased (`archive/utils/url_normalize.py`), so this is a prefix
+    match -- written as three explicit shapes rather than one
+    `https://{host}%`, because that one would also match
+    `https://example.com.somewhere-else.test/...`.
+    """
+    arms = []
+    for host in sorted(hosts):
+        base = f"https://{host}"
+        arms += [
+            MeetingPage.source_url_normalized == base,
+            MeetingPage.source_url_normalized.like(f"{base}/%"),
+            MeetingPage.source_url_normalized.like(f"{base}?%"),
+        ]
+    return or_(*arms) if arms else false()
 
 
 def _hub_page_condition(group: dict):
     """Every page belonging to one hub group.
 
-    Two arms, because a hub can hold both kinds of page at once during a
-    partial backfill: rows keyed by `gov_id`, and rows with no id at all
-    whose display string still slugs to this hub. The second arm is
-    restricted to un-keyed rows so a page that resolved to a DIFFERENT
-    government cannot be dragged back in by its old spelling."""
+    Two arms, because a hub can hold both kinds of page at once: rows
+    keyed to one of this government's `gov_id`s, and un-keyed rows that
+    `_unkeyed_membership()` has already decided belong here -- by shared
+    tenant HOST, never by raw text (WO-256, the audit's §5).
+
+    **What the second arm used to be, and why it changed.** It was
+    `gov_id IS NULL AND jurisdiction IN (this hub's raw strings)` -- a
+    text match, added so an un-keyed page could still join its hub during
+    a partial backfill. Measured on 2026-09-11 it was also letting
+    unrelated video ride onto four real governments' hubs by pure
+    spelling coincidence, and (through `_hub_groups()` putting the shared
+    `rtr:unknown:<host>` placeholder into a hub's id list) dragging in
+    every other page that carried the same placeholder. A page id list
+    computed from host evidence answers the original question -- "is this
+    un-keyed page this government's?" -- with the same signal WO-210
+    already trusts for shared hosts, and none of the coincidence.
+    """
     arms = []
     if group["gov_ids"]:
         arms.append(MeetingPage.gov_id.in_(group["gov_ids"]))
-    if group["jurisdictions"]:
-        arms.append(
-            and_(
-                MeetingPage.gov_id.is_(None),
-                MeetingPage.jurisdiction.in_(group["jurisdictions"]),
-            )
-        )
+    if group["page_ids"]:
+        arms.append(MeetingPage.id.in_(group["page_ids"]))
     return or_(*arms) if arms else false()
 
 

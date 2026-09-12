@@ -457,8 +457,14 @@ What the 2026-09-09 sweeps established about *where video is*:
    work**: a page changing government no longer changes any URL, so the
    "does this re-key need an alias row?" review step after a pin round is
    gone. `scripts/freeze_hub_slugs.py --apply` (Render shell) is the
-   one-time backfill and the catch-up sweep. See `STATE_HUB_PAGES.md` §6
-   for the design.
+   one-time backfill and the catch-up sweep. **The same work order also
+   replaced how a hub decides which un-keyed pages are its own**: shared
+   tenant host, never raw jurisdiction text, with `MULTI_GOV_HOSTS` still
+   the list of hosts that can never be keyed by host alone. Measured on
+   the same export: 31 un-keyed pages gain a real hub, and four real hubs
+   (Orem UT, Tooele UT, Box Elder County UT, Caledonia Township MI) stop
+   showing unrelated YouTube video that matched on text alone. See
+   `STATE_HUB_PAGES.md` §6 for both designs.
 
 ## 6. What is honest but unfinished
 
