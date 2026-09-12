@@ -1117,6 +1117,7 @@ rideaulakes.escribemeetings.com,,ca:csd:3507040,fallback,wildcard_http_sweep_2,b
 ridemetro.granicus.com,,us:county:48201,fallback,auto_derived+known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_counties.csv Harris County
 rimbey.civicweb.net,,ca:csd:4808044,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Rimbey
 ringwoodtv.viebit.com,,us:place:3463150,fallback,known_domains,app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> registry: us_places.csv Ringwood borough
+ringwoodtv.viebit.com,Qb9n3sr6XRM44mOD,us:place:3463150,fallback,wo316,"page 2822 (8-18-26_Council-Meeting.mp4) was re-keyed New York NY -> Ringwood borough NJ by Breadth after a hand-read; per-video pin for the worker's re-resolve, same gov_id as the existing host-level fallback pin above"
 riovista-ca.granicus.com,,us:place:0660984,fallback,ryan_stated+upcoming_roster,"rtr-upcoming roster: Rio Vista, Solano County, CA (all 109 are CA per Ryan 2026-09-02) -> registry: us_places.csv Rio Vista city"
 riversidesheriff.portal.civicclerk.com,,rtr:us:ca:riverside-county-sheriff-s-department,fallback,known_domains,"app/utils/jurisdiction_enrich.py _KNOWN_DOMAINS -> unverified: minted from ""Riverside County Sheriff's Department, CA"""
 roanokecountyva.iqm2.com,,us:county:51161,fallback,ryan_stated,"Roanoke County, VA -- us_counties.csv Roanoke County"
@@ -1353,7 +1354,6 @@ victoria.civicweb.net,,us:place:2767036,authoritative,landing_page,"Victoria, MI
 victoria.escribemeetings.com,,ca:csd:5917034,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Victoria
 victoria.granicus.com,,ca:cd:1312,fallback,wildcard_http_sweep_1,HTTP 200 -> registry: ca_cd.csv Victoria
 victorvilleca.primegov.com,,us:place:0682590,fallback,ryan_stated,"Victorville, CA -- us_places.csv Victorville city"
-videoplayer.telvue.com,,us:place:3658354,fallback,hub_sweep_wo126,"coverage registry row us:place:3658354 (Pittsford village, NY); hub https://townofpittsfordny.gov/calendar; meeting found via telvue at https://videoplayer.telvue.com/player/FcqTL0OYMCGU6WlccUApyUL3twz4dm9V/stream/819?fullscreen=false&showtabssearch=true&autostart=true"
 videoplayer.telvue.com,CXN6V2zmqTebSQfLjvlDzEql3BwiQh_l,us:cousub:3301517940,fallback,ryan_stated,"Derry, NH -- us_cousubs.csv Derry town"
 videoplayer.telvue.com,playlists/4806,us:place:4205256,fallback,wo310,"Bellefonte borough, PA -- WO-310, Ryan approved 2026-09-12: playlist 4806 is 'Borough of Bellefonte - Council' (real content, 430 real caption segments); org GNduNoua2rBThhw6N4PRP9OCSPf6B2ru carries multiple PA local governments, not just Centre County -- dropped the org-wide ryan_stated Centre County pin (this row replaces it), scoped to playlist 4806; future playlists on this org get their own per-playlist pin -- us_places.csv Bellefonte borough"
 videoplayer.telvue.com,_SDsUsf4Q9kk48PEivDKgMQltXkMOYD2,us:place:3471430,fallback,ryan_stated,"Summit, NJ -- us_places.csv Summit city"

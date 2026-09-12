@@ -431,9 +431,9 @@ already adopts its pages under §5, so the "is this a pin or is it already
 handled?" question is answered in the same view.
 
 Everything the §4 "What remains" list says this does not fix still does
-not: a genuine slug rename still costs one alias row, a merge of two
-`gov_id`s still needs a human decision, and the 5 real mixed-identity
-hubs measured in §2 still need one each.
+not: a genuine slug rename still costs one alias row, and a merge of two
+`gov_id`s still needs a human decision. The 5 real mixed-identity hubs
+measured in §2 are now all resolved -- see §10.
 
 **§9, a gap in the freeze found live and fixed -- WO-293, 2026-09-12.**
 The freeze stops a page CHANGING GOVERNMENT from moving a hub's URL, but
@@ -456,3 +456,21 @@ the first time, not for a KEYED minted government re-keyed onto a
 DIFFERENT keyed government -- the exact shape that produced the Lake
 Havasu chain in the first place. See `BACKLOG_DONE.md`'s WO-293 entry for
 the full repair and measurements.
+
+**§10, the 5 real mixed-identity hubs from §2 -- all resolved
+(WO-310/WO-316, 2026-09-12).** WO-310 re-measured the original 5 live
+against the production `hub_slugs` table (not the year-old export §2
+was built from) and found a different shape: 2 were genuine duplicate
+mints of one real government each (`deerfield-township-oh`,
+`paso-robles-ca`), fixed by re-keying the one page under each duplicate
+id via `POST /internal/jurisdiction/override`. The other 3 were real
+2-government splits -- and Yarmouth NS turned out to be a real
+THREE-government split (county + 2 subdivisions), not the 2 the
+original §2 measurement counted. No tool existed to give a second (or
+third) government its own frozen slug once WO-256's freeze was in
+place; WO-316 built `scripts/split_hub_slug.py` for exactly this and
+ran it for all 4 remaining splits (Middletown Township, Bucks County PA;
+the Municipal District of Yarmouth, NS; the Town of Yarmouth, NS; the
+Town of Lunenburg, NS), verified live -- each hub now renders only its
+own government's pages. See `BACKLOG_DONE.md`'s WO-310 and WO-316
+entries for the full measurement and fix detail.
