@@ -294,7 +294,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (167)
     `[NEEDS-AUDIT]` `rtr-business/research/jurisdiction_coverage.csv` has…
     `[NEEDS-AUDIT]` A same-state place/county name collision falls…
   Adapter & platform gaps  (51)
-    [JUST-DO-IT] WO-268: wire `scripts/platform_fingerprints.py`'s 28…
+    [JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured…
     [EASY] `jurisdiction_coverage.csv`'s…
     [JUST-DO-IT] Boxcast tier-1 pages need the signed playlist…
     [NEEDS-AUDIT] A YouTube-ingested page's slug takes the video's upload…
@@ -389,7 +389,7 @@ Trust, safety & data quality  (19)
   `[NEEDS-AUDIT]` Chula Vista's stale garbled-marker survives its own…
   `[NEEDS-AUDIT]` One row in `jurisdiction_coverage.csv` has…
 
-Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
+Roadmap & strategy `[IMPROVEMENT-ROUND]`  (28)
   `[IMPROVEMENT-ROUND]` AgendaCenter-empty-shell population: 1,125…
   `[IMPROVEMENT-ROUND]` A general-purpose "is this a real government…
   `[HUMAN]` YouTube captions via YouTube's official API, not InnerTube…
@@ -421,6 +421,8 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (26)
     [IMPROVEMENT-ROUND] Lifecycle-triggered transactional emails (Resend)
     [IMPROVEMENT-ROUND] Consolidate every user-facing email address on
     [IMPROVEMENT-ROUND] Recurring operator email report every 6 hours,
+  `[IMPROVEMENT-ROUND]` Passive platform discovery…
+  `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
 Dormant — needs a real example first `[LATER]`  (1)
   Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20…
@@ -4226,7 +4228,17 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
 
 ### Adapter & platform gaps
 
-- **[JUST-DO-IT] WO-268: wire `scripts/platform_fingerprints.py`'s 28 measured signals into a passive, one-fetch pass over the unknown-platform domains.**
+- **[JUST-DO-IT] Wire `scripts/platform_fingerprints.py`'s 28 measured signals into a passive, one-fetch pass over the unknown-platform domains.**
+  - **Note (WO-268, 2026-09-12)**: this entry's own heading named itself
+    "WO-268" when it was filed, guessing a number rather than getting one
+    from the conductor -- the conductor had already assigned WO-268 to a
+    different, already-run task (the DNS/sitemap/archive-index passive
+    pilot below, in Roadmap & strategy, and
+    `docs/investigations/passive_platform_discovery_pilot.md`). The
+    number is removed here so the repo never has two different things
+    both called "WO-268" in its history; this entry's own task (wiring
+    `platform_fingerprints.py` into a homepage-fetch pass) is real and
+    still open, just not numbered until a session actually builds it.
   - **Issue**: WO-267 (2026-09-12) measured real candidate signals beyond
     a bare vendor hostname -- first-party paths (CivicWeb's
     `Portal/MeetingInformation.aspx`, IQM2's `/Citizens/`, Hyland's
@@ -6525,6 +6537,79 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
     `DAILY_REPORT_EMAIL_TO`'s prior `ryan@how-to-adu.com` default)
     consolidates there. See `BACKLOG_DONE.md` for both that resolution
     and the daily worker report's full build.
+### `[IMPROVEMENT-ROUND]` Passive platform discovery (DNS/sitemap/archive-index) ready to scale past its 300-domain pilot (added 2026-09-12)
+
+- **Issue**: WO-268's pilot (`scripts/wo268_passive_discovery.py`) ran
+  DNS/CNAME, sitemap+robots, and the Wayback CDX + Common Crawl archive
+  index against 300 US governments of 5,000+ population with no known
+  platform, found a real vendor platform signature for 25/300 (8%;
+  21 CivicPlus, 3 CivicWeb, 1 PrimeGov) and a strong keyword-only lead
+  (both "agenda" and "minutes" in the path) for another 16/300 -- about
+  41/300 (14%) worth carrying forward, against a population the
+  keyword-guided access ladder had already rejected once. Full writeup,
+  including a real DNS-wildcarding trap hit and fixed mid-pilot (4 of 6
+  named vendor-label guesses wildcard their DNS and can't be trusted
+  without an HTTP follow-up) and a Common Crawl reachability gap that
+  looks like a real outage, not a bug: `docs/investigations/
+  passive_platform_discovery_pilot.md`.
+- **Impact**: the pilot's 300-domain population is a small slice of the
+  ~34,000-row "nothing found" population in `jurisdiction_coverage.csv`
+  at 5,000+ population. An 8% platform-signature yield at full scale
+  would be several hundred new real leads, cheaply (DNS is free; the
+  whole 300-domain pilot made roughly 300 robots fetches + ~450 sitemap
+  fetches + 300 Wayback queries + 300 Common Crawl attempts + ~500 HEAD
+  checks over about 100 minutes).
+- **Next action**: re-run `scripts/wo268_passive_discovery.py
+  --build-candidates` against the full "nothing found" population (no
+  code change needed -- it already reads the live research file and
+  resumes via its JSONL), apply the agenda+minutes strength filter from
+  the investigation doc before treating a keyword-only hit as a real
+  lead, then hand the confirmed platform/strong-hub rows to a resolve
+  pass (this WO never fetched a hub with a GET, only a HEAD to drop dead
+  links -- confirming video is the next step, not this one).
+- **Constraint**: Common Crawl was unreachable for about half this
+  pilot's domains (confirmed live as a real, current outage at
+  `index.commoncrawl.org`, not a bug) -- re-check it's back before
+  relying on it at scale, and consider running it last or skipping it
+  (its own yield was the lowest of the three methods, 1% platform-signal
+  vs DNS/sitemap/Wayback's 1-6%). Re-derive the candidate-pool count
+  fresh before running -- this entry's numbers are a 2026-09-12 snapshot
+  and the research file changes under concurrent sessions.
+- **History**: `docs/investigations/passive_platform_discovery_pilot.md`
+  (WO-268, 2026-09-12).
+
+### `[IMPROVEMENT-ROUND]` A path-probe builder from the hub path-frequency table (added 2026-09-12)
+
+- **Issue**: WO-268's sitemap rung produced a 1,127-pattern frequency
+  table of every first-path-segment seen across 300 governments'
+  sitemaps (`rtr-business/research/wo268_hub_path_frequency.csv`). The
+  top patterns by raw count are generic CMS navigation
+  (`/government` 120, `/documents` 97, `/news` 74, `/page` 45,
+  `/departments` 34) -- a government site's own navigation structure,
+  not a meeting-platform signature -- which crowds out the one real
+  signal (`/AgendaCenter`, seen but far down the frequency list) by
+  sheer volume. A naive "probe the most common sitemap path" builder
+  built from this table unfiltered would mostly probe noise.
+- **Impact**: no path-probe tool exists yet; this table is the first
+  real input for one, but using it naively would waste request budget
+  on navigation words, not meeting hubs.
+- **Next action**: build a probe list from *named, specific* platform
+  path shapes (`/AgendaCenter`, `/Citizens/`,
+  `/Portal/MeetingInformation.aspx`, `/ViewPublisher.php`,
+  `/MediaPlayer.php`, and whatever WO-267's
+  `platform_signatures.csv` adds once it lands), not from the raw
+  frequency table's top entries -- the frequency table's real
+  contribution is the negative finding (generic CMS words dominate, so
+  don't probe by raw count) plus a small number of real vendor-path hits
+  buried in it, not a ready-made probe list on its own.
+- **Constraint**: WO-267 (platform fingerprints, running in parallel)
+  may supersede the hardcoded alias list this table was built against --
+  check whether `app/utils/jurisdiction_data/platform_signatures.csv`
+  has landed before building, and prefer it over
+  `scripts/wo147_access_ladder_sweep.py`'s `_PLATFORM_ALIASES` if so.
+- **History**: `docs/investigations/passive_platform_discovery_pilot.md`
+  (WO-268, 2026-09-12).
+
 ## Dormant — needs a real example first `[LATER]`
 
 ### Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20 real repositories studied carried meeting video `[LATER]` `[EXAMPLE]`
