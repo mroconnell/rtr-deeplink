@@ -18,10 +18,29 @@ several governments. An Archive **page** is one meeting, keyed to a
 government by `gov_id`, with the adapter's raw jurisdiction string kept in
 `jurisdiction_raw` and the registry's display name in `jurisdiction`. The
 **research file** (`rtr-business/research/jurisdiction_coverage.csv`,
-~34k rows) records what we know about every government we have ever
-looked at: domain, suspected platform, an example calendar URL, and an
-honest test outcome (`reject_reason`). Everything downstream, the
-dashboards included, joins these on `gov_id`. A trailing `website_status`
+45,610 rows as of WO-291/WO-301, 2026-09-12) records what we know about
+every government we have ever looked at: domain, an example calendar
+URL, and an honest test outcome (`reject_reason`). Three columns hold
+a *meeting/video platform* guess (`suspected_meeting_link_provider`,
+`suspected_video_provider`, `suspected_calendar_provider` — real
+platforms only, e.g. `granicus`, `civicclerk`, `youtube`) — kept
+separate, since WO-291 (2026-09-12), from a fourth column,
+`site_builder`, which holds the CMS a government's own website happens
+to run on (`wordpress`, `townweb`, `govoffice`, `revize`, `civiclive`,
+`proudcity`, `opencities`, `govaccess`, `duda`, `streamline`,
+`municipalimpact` — a website vendor, never a meeting/video signal; see
+`ENUMERATION_METHODS.md` §291's `wo291_apply_to_jc.py`). Every sweep
+that filters on "no platform on file" means those three provider
+columns are blank; a `site_builder` value alone no longer counts as
+"already checked" the way it used to when builders and platforms shared
+a column. Two more trailing columns, `queued` and `parked` (added
+WO-301, 2026-09-12; see `ENUMERATION_METHODS.md` §311), flag a
+government already sitting in `scripts/tier3_auto_transcription_queue.txt`
+or `scripts/tier3_long_meetings_deferred.txt`, respectively — a safe
+floor, not a full accounting, since ~92% of queue lines sit on a shared
+multi-government host this join refuses to guess at. Everything
+downstream, the dashboards included, joins these on `gov_id`. A trailing
+`website_status`
 column (added WO-186, 2026-09-10) carries `none-known-2022` on rows
 where UScityURL's 2022 dataset also found no website and ours is still
 blank -- a cheap way for a sweep to deprioritize a row with no lead,
