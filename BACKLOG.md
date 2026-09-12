@@ -115,7 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
-  WO-306's small-video-platform sweep: Cablecast, TelVue, Viebit and…
+  WO-306's small-video-platform sweep: Viebit is fully done (WO-307),…
   `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
@@ -187,7 +187,8 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (20)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (182)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (183)
+  [NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
@@ -723,7 +724,7 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### WO-306's small-video-platform sweep: Cablecast, TelVue, Viebit and Castus 5,000+ are done, three platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
+### WO-306's small-video-platform sweep: Viebit is fully done (WO-307), Cablecast/TelVue/Castus 5,000+ are done, three platforms and every under-5,000/unknown row for THOSE remain `[JUST-DO-IT]`
 
 - **Issue:** WO-306 (2026-09-12) built a row-by-row join of the 136
   no-page governments whose recorded URL/provider names Viebit,
@@ -743,13 +744,20 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   boundary" rule.
 - **Impact:** Boxcast (7 rows, 5,000+), ChampDS (8), Google Drive (2)
   5,000+ bands are untouched, plus every under-5,000 and
-  unknown-population row for all seven platforms (roughly 80 more rows
-  total). ChampDS almost certainly needs the same kind of new listing
-  step TelVue/Viebit just got (its adapter also resolves only a single
-  URL); Boxcast already has a listing function
+  unknown-population row for Boxcast/ChampDS/Google Drive/eLocalLink
+  (roughly 70 more rows total). ChampDS almost certainly needs the same
+  kind of new listing step TelVue/Viebit just got (its adapter also
+  resolves only a single URL); Boxcast already has a listing function
   (`app/platforms/boxcast.py`'s `_search_channel`/
   `_fetch_channel_broadcasts`), so that band should need no new code
-  either.
+  either. **Viebit is now fully done, every band (WO-307, 2026-09-12)**:
+  all 19 rows from the join (9 already worked by WO-306, 10 more —
+  Coventry CT, Tullytown PA, Fort Wayne IN, Watertown MN, Buffalo MN,
+  Cokato MN, Big Lake MN, Maple Lake MN, Springfield Township MI queued;
+  Savannah GA needed no action) plus all 51 stale `reject-dead` sidecar
+  rows across 12 hosts (all now resolve `accept` under the recipe WO-306
+  built) — see `BACKLOG_DONE.md`'s WO-307 entry. Remove Viebit from any
+  future resume of this entry.
 - **Next action:** resume from
   `<scratchpad>/agents/a4b576e372dc43dc5/wo306_still_to_do.csv` (the
   exact row-by-row join, one row per platform×government with a reason
@@ -757,7 +765,8 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   directory first, the shared scratchpad is not preserved across
   sessions. Work Boxcast 5,000+ next (same order the brief set: Boxcast,
   ChampDS, Google Drive, then every under-5,000/unknown row), one
-  meeting per government, hand-read every video first.
+  meeting per government, hand-read every video first. Viebit rows in
+  that file are all done — skip them.
 - **Constraint:** the same long-only rule this WO applied several times
   already (Southfield MI, Sun Prairie WI, Auburn Hills MI, Delano MN,
   Dayton MN, Decatur AL all had a >90-minute (or broken) newest video
@@ -777,9 +786,10 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   own "Needs a human" entry on the Andover/Waterford/Vero Beach
   mis-keying); Castus tenants need per-tenant-slug or per-video pins,
   never a blank host-wide one.
-- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, three entries);
-  `rtr-business/research/wo306_report.csv` and
-  `wo306_methods_section.md`.
+- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12, three entries) and
+  WO-307 (2026-09-12, Viebit finish); `rtr-business/research/
+  wo306_report.csv`/`wo306_methods_section.md` and `wo307_report.csv`/
+  `wo307_methods_section.md`.
 
 ### `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong STATE for a real customer (Marathon, FL → "City Of Marathon, WI") `[JUST-DO-IT]` `[EASY]`
 
@@ -2079,6 +2089,12 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] Two Archive pages (Buffalo MN and Big Lake MN, both `rtr:unknown:*`) have a Viebit folder-listing URL as `source_url_normalized`, not a real meeting — a `?folder=ALL` page was ingested as if it were a single video.**
+  - **Issue**: found live 2026-09-12 (WO-307) cross-checking `wo306_export_pages.json` while queuing real Viebit meetings for these same two governments. Page ids 6523 (`https://buffalo.viebit.com/?folder=ALL`) and 6524 (`https://biglake.viebit.com/?folder=ALL`) both have `video_url=null`, `video_warnings: ["Could not find Viebit's video configuration on this page."]`, and a title scraped from an agenda/packet link elsewhere on that folder page ("HRA *Special Meeting* Agenda (PDF)", "City Council Regular Meeting Packet") rather than any real meeting content. `gov_id` is `rtr:unknown:<host>` on both — no government identity, no video, no real transcript.
+  - **Impact**: two junk pages live on the site today (no user-facing content, but they exist and count toward the Archive's page total); once this WO's real, hand-picked Viebit meetings for these same two governments finish transcribing, each government will have TWO pages — one real, one junk — which could confuse a reader landing on the wrong one via search or a stale link.
+  - **Next action**: confirm live via `POST /internal/admin/delete-pages` (dry run first) that both slugs are exactly this shape, then delete them; separately, find which sweep/script ingests a Viebit `?folder=ALL` URL as a candidate page at all (neither `viebit.py`'s `resolve()` nor `list_recent_videos()`, added by WO-306, ever produces this URL shape, so it came from something else — an AgendaCenter-style sweep that treated the folder link on a government's calendar page as if it were the meeting URL) and check whether other platforms have the same gap.
+  - **Constraint**: don't delete without a fresh dry run first — the slugs above are as of 2026-09-12's export and could have changed.
+  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-307 entry; `rtr-business/research/wo307_methods_section.md` (§319).
 - **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
   - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
   - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.

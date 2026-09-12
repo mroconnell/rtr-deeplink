@@ -76,6 +76,7 @@ from .base import (
     UnsupportedPlatformError,
     detect_platform,
     get_finder,
+    is_multi_gov_host,
 )
 from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
@@ -1339,9 +1340,20 @@ def write_pin_row(
     current (tenant_host, match) pairs -- the same key every existing
     finish script's own `_apply_pin_row()`/`_write_pin()` already checks.
     Returns True only when a new row was actually written. A blank
-    `host`/`match`/`gov_id` is refused outright, same as the loader that
-    reads this file back rejects a blank match on a shared host."""
-    if not host or not match or not gov_id:
+    `host`/`gov_id` is refused outright. A blank `match` is refused only
+    on a `MULTI_GOV_HOSTS` host (WO-210's rule -- a blank match there
+    keys every unidentified video on the whole host to one government);
+    on an ordinary single-tenant host (a Viebit/Cablecast/TelVue
+    subdomain, one government per tenant) a blank match is exactly what
+    the loader (`registry._load_tenant_overrides()`) already accepts and
+    every existing single-tenant pin in the committed file already uses
+    (`delano.viebit.com,,us:place:2715454,...`) -- found live 2026-09-12
+    (WO-307) when this function silently refused to pin a real
+    already-queued single-tenant Viebit government (buffalo.viebit.com)
+    for exactly this reason."""
+    if not host or not gov_id:
+        return False
+    if not match and is_multi_gov_host(host):
         return False
     existing = _read_pin_keys(pins_path)
     if (host, match) in existing:
