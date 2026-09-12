@@ -1253,6 +1253,73 @@ def test_the_county_itself_is_not_shadowed_by_the_citys_alias():
     assert resolve("Boise County, ID").gov_id == "us:county:16015"
 
 
+# --- WO-243: a curated government matches before name repair runs ------
+
+
+@pytest.mark.parametrize(
+    "raw,gov_id",
+    [
+        # WO-220 minted this curated row on Ryan's call, but the ladder's
+        # own name repair (`_trim_repair()`/`_split_entity_prefix()`,
+        # rung 2) truncated "Department of Commerce, UT" to "Commerce,
+        # UT" before rung 4b's curated-alias check ever ran -- "Commerce"
+        # is a real place name NATIONALLY (Commerce, CA/TX/GA and
+        # Commerce City, CO all real), so the truncation looked
+        # legitimate, but no "Commerce" exists in Utah, so it minted a
+        # fresh `rtr:us:ut:commerce` instead of matching the curated row.
+        ("Department of Commerce, UT", "rtr:us:ut:department-of-commerce"),
+        # Same shape, confirmed by WO-220 too: truncated to "Southwest,
+        # UT" (no "Southwest" place exists in Utah either).
+        (
+            "Southwest Utah Public Health Department, UT",
+            "rtr:us:ut:southwest-utah-public-health-department",
+        ),
+        # Truncated to "Early, UT".
+        (
+            "Early Light Academy at Daybreak, UT",
+            "rtr:us:ut:early-light-academy-at-daybreak",
+        ),
+        # WO-201's curated PennDOT row -- classifies `special_district`
+        # on the RAW name (the word "transportation") before rung 2 ever
+        # runs, so it happened to reach the right id by a different,
+        # coincidental route (the raw untruncated name is what rung 6
+        # mints from for a NON_PLACE_TYPES classification) -- but the
+        # result before this fix was a fresh MINT (`source="minted"`,
+        # tier `unverified`), not an actual match against the curated
+        # row already sitting in the file, so it carried the wrong tier
+        # and evidence even though the id string happened to line up.
+        (
+            "Pennsylvania Department of Transportation, PA",
+            "rtr:us:pa:pennsylvania-department-of-transportation",
+        ),
+    ],
+)
+def test_curated_government_matches_before_name_repair_truncates_it(raw, gov_id):
+    match = resolve(raw)
+    assert match.gov_id == gov_id
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_name_repair_truncation_is_unaffected_for_a_real_place():
+    """The truncation itself stays correct for the case it exists for --
+    no curated row names bare "Fresno", so this rung is a no-op and rung
+    2's repair (then rung 4's national lookup) still runs exactly as
+    before."""
+    assert resolve("City of Fresno, CA").gov_id == "us:place:0627000"
+
+
+def test_curated_exact_match_does_not_reintroduce_the_boise_county_collision():
+    """`_curated_exact_match()` (rung 1c) must not use `_curated_alias()`'s
+    place-oriented normalization, which strips a trailing type word and
+    would turn "Boise County" into the candidate key "boise" -- handing
+    the county's own page to the curated Boise CITY alias before rung 4
+    ever gets a chance to match the real county. Exact string equality
+    only, so this stays a no-op here exactly as it is for the
+    already-passing `test_the_county_itself_is_not_shadowed_by_the_citys_
+    alias` above."""
+    assert resolve("Boise County, ID").gov_id == "us:county:16015"
+
+
 # --- WO-101: the column has to hold what the resolver produces --------
 
 

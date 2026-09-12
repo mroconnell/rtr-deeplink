@@ -398,13 +398,32 @@ def curated_aliases() -> Dict[Tuple[str, str], str]:
     government only in KY, and there are real Louisvilles in CO and OH.
     A row with no state contributes its aliases under the empty state,
     which only a stateless query can match.
+
+    A curated row's own `gov_name` is indexed the same way as a declared
+    alias (WO-243), not only what the `aliases` column happens to spell
+    out. The Phase 1b rows above (Boise/Louisville/Nashville/Bainbridge)
+    always duplicated their own name into `aliases` by hand, so this was
+    a no-op for them -- but WO-220's later curated rows (`Department of
+    Commerce, UT`, `Southwest Utah Public Health Department, UT`, `Early
+    Light Academy at Daybreak, UT`) shipped with an empty `aliases`
+    column, so the exact name a human typed into `gov_name` was never
+    itself a lookup key -- confirmed live: resolving "Department of
+    Commerce, UT" found no curated match at all and minted a fresh
+    `rtr:us:ut:commerce` instead, even with the row already in this file.
+    A curated row IS the human assertion this function's own docstring
+    above describes; requiring the same string to also be copied into
+    `aliases` bought nothing.
     """
     out: Dict[Tuple[str, str], str] = {}
     for gov in governments().values():
         if not gov.source.startswith(CURATED_SOURCE_PREFIX):
             continue
-        for alias in gov.aliases:
-            out[(gov.state.upper(), alias.strip().lower())] = gov.gov_id
+        keys = set(gov.aliases)
+        keys.add(gov.gov_name)
+        for alias in keys:
+            key = alias.strip().lower()
+            if key:
+                out[(gov.state.upper(), key)] = gov.gov_id
     return out
 
 
