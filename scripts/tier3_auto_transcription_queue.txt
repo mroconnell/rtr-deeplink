@@ -1265,7 +1265,6 @@ https://www.youtube.com/watch?v=VHX5Aeh70zY	https://www.sumtercountysc.gov/
 https://www.youtube.com/watch?v=KE1hRa780GI	https://senecacountyohio.gov
 https://pueblococo.portal.civicclerk.com/event/6424/media	https://pueblocounty.gov
 https://www.youtube.com/watch?v=Xjun9K7WEak	https://jeffersoncountywi.gov
-https://sheboygan-wi.municodemeetings.com/	https://www.sheboyganwi.gov
 https://youtu.be/XKOPxGb8VwI	https://randolphcountyil.gov/recorded-meetings/
 https://www.youtube.com/embed/_Ij_eflJJT8?rel=0	https://northumberlandcountypa.gov/public-meetings-and-agends/
 https://www.youtube.com/watch?v=qzdE6voYIVg	https://www.dgcoks.gov/
@@ -1343,7 +1342,6 @@ https://www.youtube.com/watch?v=urHz3VISUvM	https://www.fairfaxcounty.gov/boardo
 https://youtu.be/coDPUTYFtl8	https://countyofelkpa.gov/elk-county-offices/board-of-commissioners/meeting-minutes-and-agendas/
 https://www.youtube.com/watch?v=vEYcAon81TU	https://www.bridgeportct.gov/
 https://youtube.com/live/qobK8hBVjXQ?feature=share	https://www.steinbach.ca/city-hall/city-council/
-https://www.mywinterhaven.com
 https://www.youtube.com/embed/gMWk4Rf40Ys?si=GXd0OxdLmAUuaNhr	https://www.thompson.ca/p/meeting-videos
 https://carljunctionmo.portal.civicclerk.com/event/1038/media	https://www.carljunction.org/vnews/display.v/SEC/Government%7CCouncil%20Meetings
 https://www.youtube.com/watch?v=KjNkNnMEXtY	https://huntley.il.us/government/agendas_and_minutes.php
@@ -2252,7 +2250,9 @@ https://www.youtube.com/watch?v=fOoLPVTh1CM	https://www.youtube.com/@CityofPurce
 https://mindenla.portal.civicclerk.com/event/126/media	https://mindenla.portal.civicclerk.com
 https://cayugaheights.gov/village-government/board-of-trustees/
 https://www.utah.gov/pmn/sitemap/notice/872229.html
-https://olantasc.com
 https://lewisberryborough.org/residents/meeting-agendas-and-minutes/
 https://williamstownma.gov/2026-elections-and-town-meeting/
 https://tatetownship.org/trustees-and-clerk/meeting-minutes/2025-trustee-meeting-minutes-videos/
+
+https://www.youtube.com/watch?v=5QV8GitLo1Q	https://sheboygan-wi.municodemeetings.com/bc-commoncouncil/page/tenth-regular-common-council-meeting-2
+https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616
