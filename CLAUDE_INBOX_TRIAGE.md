@@ -107,6 +107,101 @@ it up again as long as it's still inside the search window.
 
 ---
 
+## 2026-09-12
+
+127 candidate message IDs pulled from `label:rtr-claude newer_than:30d`
+(the label's own most recent ~5 days' worth; the label's full 30-day
+content is 200+ threads, but everything from 2026-09-04 on down was
+already covered by prior runs), 28 new after the ledger filter.
+
+**Out of scope / informational, no write-up**: 23 GitHub Actions "PR run
+failed: Test" emails for non-`main` branches (WO-241, WO-242, WO-252 x5,
+WO-253 x2, WO-254, WO-256 x2, WO-264, WO-264b, WO-265 x2, and two "Fold in
+final probe cache line" runs) — an overnight parallel wave's normal
+dev-iteration noise; feature-branch CI has its own merge gate and doesn't
+need a second look here. 1 transcription worker daily report. 1 "YouTube
+transcripts: 11 added" notice — a success report, not a failure.
+
+**Duplicates, no new write-up** (verified against the real job log, not
+just assumed): GitHub Actions "Adapter health canary" failed on `main`
+(`00f7f74`, run `34632170468`, 2026-09-11 18:14-18:15 UTC): 34/36
+platforms OK, 2 failures — the same already-open `[NEEDS-AUDIT][EXAMPLE]`
+"Phoenix Legistar canary sample is a genuinely dead meeting" entry
+(`ClientResponseError: 410`, unchanged) and the same `townhallstreams`
+failure already root-caused in `BACKLOG.md`'s WO-205 entry (2026-09-11's
+inbox-triage run already closed this loop).
+
+- **Confirmed, genuinely new** — GitHub Actions "Run failed: Feed tier 3
+  auto-transcription queue - main" (`18b8595`, run `34674602830`,
+  2026-09-12 05:03-05:07 UTC) and its own detail email ("PR run failed:
+  Test - Advance tier 3 auto-transcription queue", `943077f`) are two
+  emails about one single incident. Pulled the real logs: the script
+  itself (`scripts/feed_tier3_auto_transcription.py`) worked correctly —
+  it fed 12 URLs and every one was a legitimate skip (private video,
+  bot-check, livestream not yet started, deleted video, or no video on
+  re-resolve), 2,238 remaining in the queue. The failure is downstream:
+  the workflow's queue-advance step opened PR #1029 to commit the queue
+  update, that PR's own "test" CI check failed, and
+  `gh pr checks --watch --fail-fast` exited 1 before the workflow ever
+  reached `gh pr merge` — **PR #1029 is still open and unmerged on GitHub
+  right now.**
+  Root-caused the PR's own CI failure (job `103502241443`, run
+  `34674660650`): `scripts/check_backlog_done_headings.py` reported
+  `BACKLOG_DONE.md is missing 1 heading(s) present at origin/main` for the
+  "WO-252" entry. Walked the real commit history and confirmed this is a
+  genuine but purely timing-caused false positive, not a bug needing a
+  fix: PR #1029 branched from `18b8595` (main's tip at 05:00:38 UTC).
+  `e502583` (WO-252, the commit that added that exact heading) merged to
+  main at **05:06:44 UTC** — 32 seconds before PR #1029's check ran at
+  05:07:16 UTC. `f238ed5` (WO-269 — the fix that makes this exact check
+  compare against the branch's own merge-base instead of main's moving
+  tip, landed specifically to prevent this failure mode) didn't merge
+  until **05:14:45 UTC**, ~7.5 minutes *after* PR #1029's check had
+  already failed. PR #1029's own checked-out copy of the script (frozen
+  at `18b8595`) still runs the pre-WO-269 logic, and it happened to run in
+  the roughly 8-minute window between WO-252 landing and WO-269 landing —
+  the exact race WO-269 exists to close, just a few minutes too late for
+  this one PR.
+  - **Impact**: no code fix needed — WO-269 is already on `main`, and any
+    *new* branch this workflow cuts from here on will carry it. The only
+    real residual is PR #1029 itself: it will keep failing this same
+    check no matter how many times it's re-run, since its own frozen
+    script keeps comparing against main's ever-moving tip. Low stakes —
+    its only content is a 2-file queue-advance commit (queue position +
+    probe-sidecar CSV) for 12 URLs that were all legitimate skips, so
+    nothing of real value is at risk of being lost by abandoning it.
+  - **Open question for Ryan (or whoever next works this file)**: rebase
+    `queue-advance/tier3-34674602830` onto current `main` and re-push
+    (picks up both the fix and the new heading, so CI would then pass),
+    or just close PR #1029 and let tomorrow's scheduled run regenerate
+    the same, harmless, idempotent skips? A one-line operational call,
+    not a design decision — left open rather than guessed at.
+
+- **Confirmed, real escalation of the still-open 2026-09-09 finding** —
+  Render's bandwidth alert crossed from "Approaching" to **"Your Render
+  Account Reached the Bandwidth Limit"** (2026-09-12 12:09 UTC): the
+  workspace has now used **all 25 GB** of the Pro plan's included monthly
+  bandwidth (2026-09-09's alert was ">70%" on day 9 of the cycle; this one
+  is 100% by day 12). Per the alert's own text, any further usage this
+  cycle now bills at **$15 per 100 GB** until the cycle resets. This is
+  the same open item as 2026-09-09's entry below (still sitting in this
+  file, not yet promoted since it isn't 7 days old) — updating it here
+  rather than opening a second one.
+  - **Unconfirmed**: same constraint as 2026-09-09's entry — no access to
+    the Render usage dashboard for a day-by-day trend or a breakdown of
+    which service/route is driving it.
+  - **Impact**: this is no longer a "might overshoot" projection, it's
+    active overage billing now, for however many days remain until the
+    cycle resets. Real, if likely modest, dollar cost accruing daily —
+    sizing it precisely still needs the dashboard link in the alert
+    (`https://dashboard.render.com/w/tea-d21a0h24d50c739htil0/billing`),
+    which only Ryan can open.
+
+Ledger: 127 message IDs reviewed and recorded this run (28 new, 99
+already seen), 0 pruned.
+
+---
+
 ## 2026-09-11
 
 211 candidate message IDs from `label:rtr-claude newer_than:30d` (166
