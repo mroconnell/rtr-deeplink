@@ -1,5 +1,182 @@
 # Backlog — done
 
+## WO-289: platform already known, no page — first pass through 120 governments, zero new pages after removing overlap with other sweeps, one bad research-file URL and two probe gaps found [Done 2026-09-12]
+
+**What was done and why.** A large group of governments already have a
+real video platform on file (Granicus, CivicClerk, and 18 others) but
+still have no Archive page — either the platform was never actually
+checked, or an earlier pass found no video and is worth a second look.
+This work order took governments straight to their platform's own
+listing (no guessing at a website first), read every candidate meeting
+by hand before approving it, and only then tried to add it.
+
+**Population, re-derived against the live research file, not the
+conductor's earlier count.**
+
+| Group | What it means | Conductor's count | Re-derived count |
+|---|---|---|---|
+| C | Platform on file, row never finished (blank/no-platform-link-found/no-platform-signature) | 434 | 444 |
+| D | Platform on file, an earlier pass said no video | 189 | 207 |
+| YouTube-only leads (not worked here) | Platform on file is YouTube only | 189 | 187 |
+
+**A fresh check for pages gained since found over a third of Group C/D
+already covered.** 8,743 Archive pages exist right now. Checking every
+Group C/D government's id against that list dropped Group C from 444 to
+203 and Group D from 207 to 146 — both groups combined lost 302 of 651
+governments (46%) to work already finished by other sessions before
+this one started.
+
+| Group | Before the page check | After the page check |
+|---|---|---|
+| C | 444 | 203 |
+| D | 207 | 146 |
+
+**A second check, added mid-run, found the same problem one layer
+deeper.** A government can have no Archive page yet and still be fully
+spoken for — a real meeting already sitting in the tier-3 transcription
+queue or the long-meeting deferred file from another sweep tonight.
+Checking every remaining candidate's own tenant host against those two
+files dropped the pool further, to 112 (Group C) and 116 (Group D) — 121
+more governments (35% of the 349 left after the page check) already
+covered, just not yet as a page.
+
+**Per platform, by group, after both checks (the real starting pool for
+this and the next session's work).**
+
+| Platform | Group C | Group D |
+|---|---|---|
+| Granicus | 44 | 14 |
+| CivicClerk | 21 | 27 |
+| CivicWeb | 11 | 21 |
+| eScribe | 3 | 15 |
+| IQM2 | 7 | 7 |
+| Municode | 6 | 10 |
+| PrimeGov | 0 | 6 |
+| Cablecast | 5 | 1 |
+| Vimeo* | 4 | 2 |
+| Swagit | 0 | 3 |
+| Viebit* | 2 | 3 |
+| Legistar | 2 | 1 |
+| Telvue* | 1 | 2 |
+| ChampDS* | 1 | 2 |
+| Utah PMN* | 2 | 1 |
+| SuiteOne* | 2 | 0 |
+| Townhallstreams* | 1 | 1 |
+
+`*` = no automated listing tool exists for this platform in this repo
+today (see Caution below) — these rows were counted but not attempted.
+Boxcast, Wistia and ProudCity have no rows left in either group after
+both overlap checks.
+
+**Result — 120 governments actually attempted (Group C only; Group D
+was not reached this session).**
+
+| Outcome | Count of 120 | What it means |
+|---|---|---|
+| Rejected automatically, real reason recorded | 112 | The platform's own listing was checked; a real, taxonomy reason was found and recorded (see breakdown below) |
+| Reached a hand-read | 8 | A real candidate meeting was found and read by hand before any decision |
+
+| Automatic reject reason | Count of 112 |
+|---|---|
+| No platform link found on the government's own site | 36 |
+| Wrong-government match (see Caution) | 27 |
+| No meeting or video on the platform's own listing | 23 |
+| Blocked by tonight's Akamai/govAccess block (see CLAUDE.md) | 22 |
+| Blocked, browser headers also failed | 2 |
+| A real Cloudflare human-verification gate | 1 |
+| Real meeting, but no video anywhere | 1 |
+
+**Hand-read result — 8 read, 1 rejected, 7 approved.** Racine County,
+WI was rejected: its title said "Common Council" and its own government
+field said "City of Racine" — the research file's hub URL for the
+*county* row actually pointed at the *city's* Granicus tenant, a real
+bug in the source data, fixed (see below). The other 7 were real,
+on-mission meetings — County Commission Meeting (Lee County, AL), Board
+of Commissioners (Kansas City city, KS — the Unified Government of
+Wyandotte County and Kansas City), Planning & Zoning Commission (Taylor
+County, TX), Board of Commissioners (Calhoun County, MI), Commissioners
+Regular Meeting (Campbell County, WY), City Council Meeting (Carlsbad
+city, NM), Board of City Commissioners Special Call Meeting (Shawnee
+city, OK).
+
+**Finishing the 7 approved found the queue/deferred overlap by hand,
+before the automatic check above existed.** Trying to queue each one
+turned up 5 that were already covered by another meeting queued for the
+same government by a different, concurrent sweep tonight — 2 of those 5
+(Kansas City city, KS and Carlsbad city, NM) had already been written as
+new queue/deferred lines by this run's own tools before the duplicate
+was noticed; both were removed by hand so no government carries two
+queued meetings. The other 2 of the 7 (Taylor County, TX and Campbell
+County, WY) hit a real gap in the queue-probe tool itself — it has no
+recipe for reading a `new.swagit.com` or a `play.champds.com` video page
+reached through CivicClerk, so a real video was rejected as unreachable
+without ever actually being checked. Filed to `BACKLOG.md`.
+
+| Finishing outcome | Count of 7 approved | What it means |
+|---|---|---|
+| Already queued by another sweep, for the same government | 5 | A real meeting, already covered — no new page or queue line |
+| Rejected by a probe-tool gap, not a real content problem | 2 | A real video the probe tool cannot yet read; filed as a bug |
+| **New pages** | **0** | |
+| **New queue lines** | **0** | |
+
+**A real bug in this run's own code was caught before it reached
+ingest, not after.** The listing tool was, for a while, treating a
+meeting's agenda/chapter markers as if they were a real transcript —
+they are not; a government's real captions are a separate field. Three
+of the eight hand-read candidates were briefly mislabeled "has real
+captions" with zero actual caption text. The hand-read step (reading the
+segment count, not just the label) caught this before anything was
+approved; the code was fixed mid-run and the mislabeled rows were
+corrected by hand for the batch already run.
+
+**Caution.** Nine of the 20 platforms in this population (Vimeo,
+ChampDS, Boxcast, Telvue, Utah PMN, SuiteOne, Viebit, Townhallstreams,
+Wistia) have no automated listing tool in this repo today — only a
+single-URL resolver. 51 of the 349 left after the page check, and 24 of the
+228 left after both overlap checks, sit on one of these platforms and
+were counted but not attempted; they need either a hand-built listing
+step per platform or a different method. Racine County, WI's bad hub
+URL is fixed (moved to `alternate_urls`, cleared from the primary
+field) — the same wrong-tenant pattern could exist on other rows nobody
+has hand-checked yet; this pass only found the one it happened to hit.
+No YouTube calls were made.
+
+**Recommendation.** File the two probe-tool gaps (done, see
+`BACKLOG.md`) before running the next batch of Taylor-County/
+Campbell-County-shaped candidates through this same pipeline — otherwise
+they will fail the same way again. Before a next session resumes,
+re-run this work order's own population step rather than reusing the
+saved candidate files verbatim — coverage moves fast on a night with
+this many sweeps running at once, and the files here are already an hour
+or more stale by the time anyone reads this.
+
+**Deploy status.** Nothing here needs a deploy — no new page was
+created, and the queue file wasn't changed (both attempted duplicate
+lines were removed before this PR). 115 rows in `jurisdiction_coverage.csv`
+were given a real, current reject reason (research-file bookkeeping
+only, not production).
+
+**What is undone.** Group D (146 governments) was never reached this
+session. Of the 228 governments left after both overlap checks, 136 are
+still fully untried — 112 on a platform with a listing tool (a plain
+resume: `DATABASE_URL="sqlite+aiosqlite:////tmp/wo289_test.db"
+~/Documents/rtr-discovery/.venv/bin/python
+scripts/wo289_list_candidates.py`, which skips everything already
+logged) and 24 on one of the nine platforms with no listing tool yet.
+
+Files: `research/wo289_candidates_group_c_full_population.csv`,
+`research/wo289_candidates_group_d_full_population.csv` (the full,
+re-derived population before either overlap check),
+`research/wo289_candidates_group_c_remaining.csv`,
+`research/wo289_candidates_group_d_remaining.csv` (the resumable pool
+after both checks), `research/wo289_list_log.csv` (per-government
+outcome), `research/wo289_pending_handread.csv` (the 8 hand-read rows
+and this session's decisions), `research/wo289_finish_log.csv`,
+`research/wo289_apply_to_jc.py` plus its own `research/wo289_jc_*.csv`
+logs, `research/wo289_jc_applied_gov_ids.txt` (120 gov_ids, the
+authoritative "already handled by this work order" list for a future
+apply run), `scripts/wo289_list_candidates.py`, `scripts/
+wo289_finish_approved.py`, `ENUMERATION_METHODS.md`'s new section.
 ## WO-297: the pilot's own search mode now survives PMN's JSON outage too — same fallback the WO-205 follow-up already shipped for the entity search, ported to enumerate_notices() [Done 2026-09-12]
 
 **What was wrong.** Utah PMN's JSON search endpoint
