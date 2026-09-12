@@ -1,0 +1,22 @@
+{
+    "Customer": {
+        "CustomerName": "Atlanta GA",
+        "CustomerAccessID": "atlantaga",
+        "CustomerTimezone": "America\/New_York",
+        "ServiceGroupID": 1,
+        "CustomerEventAreaMask": 16383,
+        "CustomerOtherAreaMask": 16383
+    },
+    "Archive": {
+        "CustomerArchiveID": 1,
+        "ArchiveTitle": "Main",
+        "ArchiveDescription": "",
+        "DisplayTypeID": 1,
+        "LastModifyDateTimeUTC": "2026-01-02 15:16:13"
+    },
+    "SearchType": "ARCHIVE",
+    "SearchText": "aaaa",
+    "SearchResult": {
+        "Events": []
+    }
+}

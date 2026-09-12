@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import re
-from typing import Optional
-from urllib.parse import urlparse
+from typing import List, Optional
+from urllib.parse import quote, urlparse
 
 import aiohttp
 
@@ -26,6 +26,129 @@ from ..utils import jurisdiction_enrich
 _EVENT_PATH_RE = re.compile(r"/([^/]+)/event/(\d+)")
 
 logger = logging.getLogger("rtr_deeplink.champds")
+
+# WO-308 (2026-09-12): the missing "list what's on this customer" step.
+# `ChampDSAssetFinder.resolve()` only ever handles one already-known
+# `/event/{id}` URL -- there was no way to find a customer's *recent*
+# meetings at all. rtr-discovery has no ChampDS enumerator either (only
+# a CDN host-group scan, `cdx-scans/champds_tenants_with_examples.csv`),
+# confirmed by checking it before building this.
+#
+# Found the real data source by driving a real tenant page
+# (play.champds.com/atlantaga/event/1077) in a browser and reading its
+# JS, then confirming every candidate with plain curl -- no JS execution
+# needed to fetch it. Two customer-level playapi.champds.com endpoints
+# exist:
+#   - `GET /{customer}/archive/{archive_id}` -- lists the customer's
+#     "archive groups" (one row per meeting body, e.g. "City Council",
+#     "Committee on Council" for Atlanta) but carries no events at all,
+#     confirmed against the real Atlanta response (top-level keys are
+#     only Customer/Archive/ArchiveGroups/CDSECI).
+#   - `GET /{customer}/archive/{archive_id}/search/{query}` -- a plain,
+#     unauthenticated keyword search (the same call cds.search.js's
+#     "Search Archive" widget makes with `ARCHIVE_ID`/`CUSTOMER_ACCESS_ID`
+#     filled in) that DOES return real events: CustomerEventID (the id
+#     `resolve()`'s own `/event/{id}` URL takes), EventTitle,
+#     EventDateTimeLocal. Confirmed live on two independent real
+#     customers, Atlanta GA (archive_id 1, "Main") and Auburn NY (also
+#     archive_id 1) -- both existing champds.py customers from the
+#     original 2026-08-13 confirmation. `archive_id=1` is used as the
+#     default rather than discovered per-customer because both real
+#     customers checked have their primary archive at id 1 and there is
+#     no unauthenticated "list archives" endpoint to look it up first;
+#     unconfirmed whether every ChampDS customer's main archive is
+#     always id 1.
+#
+# Three confirmed-live quirks that shape this function:
+#   1. There is no "list everything" call -- the server requires a
+#      search term at least 4 characters long (a shorter one, or the
+#      empty string, returns `{"Error": "SEARCH_TOO_SHORT"}` with HTTP
+#      200, not a 4xx). So this searches a fixed list of generic terms
+#      that cover most meeting-body names (council, board, commission,
+#      committee, session, hearing, meeting) and unions the results by
+#      `CustomerEventID`, rather than a single "recent" call.
+#   2. **Results are NOT sorted by date** -- confirmed live: Atlanta's
+#      own "meeting" search returned event 1249 (2026-08-17) ahead of
+#      1259 (2026-09-03) and 1257 (2026-09-01), out of date order. This
+#      function always re-sorts by `EventDateTimeLocal` before
+#      returning, never trusts API order.
+#   3. `CustomerEventID` (used in `/event/{id}` URLs, and what this
+#      function returns) is a different id from `EventMediaTargetID`
+#      (an internal media-file id) -- confirmed on the same real rows;
+#      only `CustomerEventID` is usable with `ChampDSAssetFinder`.
+#
+# This is a best-effort listing, not a complete one -- a customer whose
+# meeting titles don't contain any of the default search terms (e.g. a
+# body named only by an acronym) would be under-counted. Good enough for
+# "find recent meetings to hand-check," the brief's actual ask; a
+# caller wanting more coverage can pass its own `search_terms`.
+_DEFAULT_LISTING_SEARCH_TERMS = (
+    "meeting",
+    "council",
+    "board",
+    "commission",
+    "committee",
+    "session",
+    "hearing",
+)
+
+
+async def list_archive_events(
+    customer: str,
+    *,
+    archive_id: int = 1,
+    limit: int = 10,
+    search_terms: tuple = _DEFAULT_LISTING_SEARCH_TERMS,
+) -> List[dict]:
+    """Recent events for a ChampDS customer, newest first --
+    `{"event_id", "title", "date", "event_datetime_local", "event_url"}`
+    per item, `event_url` ready to feed straight into
+    `ChampDSAssetFinder.resolve()`. See the module-level comment above
+    this function for the real API shape and its three confirmed quirks
+    (no "list all" call, unsorted results, two different id fields).
+    Skips any search term whose request fails, times out, or comes back
+    as `{"Error": ...}` (e.g. a too-short term) rather than raising --
+    one bad term should not lose the others."""
+    seen: dict = {}
+    async with aiohttp.ClientSession() as session:
+        for term in search_terms:
+            url = (
+                f"https://playapi.champds.com/{customer}/archive/{archive_id}"
+                f"/search/{quote(term)}"
+            )
+            try:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=20)
+                ) as response:
+                    if response.status != 200:
+                        continue
+                    data = await response.json(content_type=None)
+            except asyncio.TimeoutError:
+                continue
+            except aiohttp.ClientError:
+                continue
+            except Exception:
+                continue
+            if not data or data.get("Error"):
+                continue
+            for event in (data.get("SearchResult") or {}).get("Events") or []:
+                event_id = event.get("CustomerEventID")
+                if not event_id or event_id in seen:
+                    continue
+                local_dt = event.get("EventDateTimeLocal")
+                seen[event_id] = {
+                    "event_id": event_id,
+                    "title": event.get("EventTitle") or "",
+                    "date": (local_dt or "")[:10] or None,
+                    "event_datetime_local": local_dt,
+                    "event_url": f"https://play.champds.com/{customer}/event/{event_id}",
+                }
+    items = sorted(
+        seen.values(),
+        key=lambda item: item["event_datetime_local"] or "",
+        reverse=True,
+    )
+    return items[:limit]
 
 
 class ChampDSAssetFinder(AssetFinder):
