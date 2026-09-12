@@ -188,7 +188,119 @@ IA is already live (an ingest, not a code change). The fix to
 `scripts/wo273_targeted.py`/`wo273_recon.py` is a script/test change
 only — no `app/`, `archive/`, or `worker/` code touched, so nothing
 else needs a deploy. Full numbers and file list:
-`rtr-business/research/ENUMERATION_METHODS.md` §302.
+`rtr-business/research/ENUMERATION_METHODS.md` §302 (this number is
+stale in this entry's own prose -- the file's real, committed section
+for this work is §303; WO-281 below holds the real §302; see that
+entry's own note).
+
+## WO-281: phase 3b for the 1,610 governments WO-273's blind probes barely touched — one homepage fetch each, scored with the measured hop weights, then the top-5 links [Done 2026-09-12]
+
+**What was done and why.** WO-273 gave the 1,610 governments with no
+flagged URL only five blind guessed-path probes each. Ryan's point: we
+have another polite chance to talk to those sites — fetch the homepage
+once, collect every link with where it sits on the page, and score
+those links with the real measured vocabulary instead of guessing
+paths. This work order did that: one homepage fetch per government,
+the top 5 scored links fetched and checked, then a hand-read pass on
+what looked real.
+
+**Result — reach.**
+
+| Access mode | Count of 1,610 | What it means |
+|---|---|---|
+| Reached the site, plain request | 942 | Normal access, no trouble |
+| Domain doesn't resolve at all | 258 | Dead or wrong domain |
+| Connection dropped | 195 | Site refused or cut off the request |
+| Reached the site, needed a browser-like request | 122 | Site blocked a plain request once, allowed the retry |
+| Timed out | 93 | Site never answered |
+
+**Result — where the winning link sat on the page.** This is the
+question Ryan asked directly. Of the 860 governments where a real
+platform was confirmed later, here is where the ONE link that actually
+led to it sat on the homepage:
+
+| Position | Count of 259 | What it means |
+|---|---|---|
+| Main navigation menu | 178 | The link a visitor would actually click |
+| Plain text in the page body | 37 | Buried in an ordinary paragraph |
+| A list menu outside the main navigation | 28 | A secondary menu |
+| Footer | 16 | The bottom-of-page links |
+
+Seven times out of ten, the real link sits in the site's own main
+navigation menu — worth knowing if a future method wants to look at
+navigation only, though the footer's 16 real finds say a full scan is
+still worth the extra links it checks.
+
+**Result — what this method found.**
+
+| Outcome | Count of 1,610 | What it means |
+|---|---|---|
+| A real platform confirmed (names the government, real signal found) | 259 | A real lead — most still need a human to look before becoming a page |
+| Some link scored but nothing confirmed | 601 | A candidate link existed but didn't pan out |
+| No usable homepage or no scored link at all | 750 | Site unreachable, or nothing on the page looked like a lead |
+
+This is about three times WO-273's own yield on this exact same
+1,610 governments (87 confirmed, 5.4%), using fewer total site
+requests (5,499 here vs 8,050 for WO-273's blind probes on the same
+governments).
+
+**Governments with video found**, from the hand-read gate this work
+order actually ran (13 governments checked by hand — the rest of the
+259 are recorded but not yet hand-read, see "What is undone"):
+
+| Outcome | Count of 13 hand-checked |
+|---|---|
+| Captions available, page live now | 2 |
+| Real platform confirmed, no video found | 9 |
+| Video, no captions, queued | 0 |
+
+The 2 live now: Kasson city, MN (a real August 26 city council meeting,
+1,193 caption segments) and Glenarden city, MD (a real September 9 work
+session, 1,599 caption segments). Both were checked against their real
+YouTube channel name before ingest — "City of Kasson" and "City of
+Glenarden, MD" — and both matched exactly. Both pages carry the
+government's id already, so they don't depend on a pin reaching
+production.
+
+**Hand-read count and the one wrong one caught.** 34 candidates were
+actually resolved and read by hand across two batches (11 confirmed
+non-video-platform hubs, 23 more meeting-shaped candidates). One was
+wrong and rejected before it could become anything: `ci.craig.co.us`'s
+candidate resolved to a real YouTube video titled "How to Translate
+YouTube Videos with Closed Captions 2020" — a tutorial video, not a
+meeting, matched only because the page it came from was about the
+city's "Neighborhood Watch" program and the word "Watch" tripped the
+same-word check. No Kind-A owner-body finds this round (nothing
+resolved to a real video belonging to a DIFFERENT real government).
+
+**No YouTube block hit.** Two single-video lookups only (Kasson,
+Glenarden) — well under any block signature.
+
+**Caution.** `web.archive.org` itself refused every connection from
+this session's environment all day (not the slower CDX-search
+degradation seen in earlier work — a flat, instant connection refusal),
+so every fetch in this run went out live rather than through the
+archive first. This didn't cost anything (the code already treats a
+missing archive copy as "fetch live" by design), but a re-run from a
+normal environment might find a few pages the archive path would have
+answered for free instead. Also: Randall County, TX's research-file row
+already claimed it had video before this check, and this check found
+none — flagged rather than overwritten, see `BACKLOG.md`.
+
+**Recommendation.** Hand-check the remaining 249 confirmed governments
+next: 98 are a bare YouTube channel link (send to the YouTube drip,
+which owns that work), and 152 were confirmed through a different link
+on the same page rather than the specific one scored — those need a
+plain human read of their own top-5 list. Full detail, every number,
+and the exact files: `docs/investigations/passive_discovery_phase3b.md`.
+
+**Deploy status.** The two new pages (Kasson, Glenarden) are live now —
+ingested directly through the Archive's API, no deploy needed. The two
+new YouTube pins added to `tenant_overrides.csv` need the next resolver
+deploy before they take effect for the transcription worker's re-resolve
+(the pages themselves are already correctly keyed at ingest time, so
+this only matters for a future re-resolve of the same video). No queue
+lines were added this round.
 
 ## WO-276: the AgendaCenter follow-up's remaining 255 governments, finished, with a mandatory hand-read gate on every candidate [Done 2026-09-12]
 
