@@ -173,7 +173,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (160)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (162)
+  [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
+  [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
@@ -1597,6 +1599,18 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
+  - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
+  - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.
+  - **Next action**: check a second, unrelated Granicus tenant known to still resolve fine (e.g. any tenant with a live page today) against a FRESH clip id to see whether it also 302s to `/player/clip/`; if the new shape is spreading, teach `granicus.py` to follow that redirect and parse the new player page (or its own API) for the real video URL.
+  - **Constraint**: don't fix this by guessing at the new player's video-URL shape from one tenant alone — confirm the new page's actual structure (view-source or a headless fetch) before writing a parser for it, per this repo's own "test against a real URL first" rule.
+  - **History**: `BACKLOG_DONE.md`'s WO-260 entry; `rtr-business/research/ENUMERATION_METHODS.md` §288.
+- **[NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant carries only internal Legistar-migration training calls, and its real target (Legistar) shows zero meetings — worth a recheck once the migration finishes.**
+  - **Issue**: found live 2026-09-11/12 (WO-260) — `pbc.granicus.com` is confirmed to belong to the real Palm Beach County, FL (its own `ViewPublisherRSS.php` feed titles it "Palm Beach County, FL"), but every item in its videos feed is an internal call about migrating to Legistar ("Kirsten's Test for Training", "Legistar Configuration Workshop #5 - Admin/System Security", etc.), not a public meeting. The county's real target, `pbc.legistar.com` (also confirmed real by its own page title, "Palm Beach County, FL - Calendar"), returns 0 records under every year filter tried.
+  - **Impact**: this county (population 1.58M, the single largest government in this WO's whole candidate list) has no usable video on file anywhere, and neither of its two known platforms currently has one to find.
+  - **Next action**: re-check `pbc.legistar.com/Calendar.aspx` after a few weeks — once the migration completes it should start showing real meetings with video the normal Legistar way.
+  - **Constraint**: don't ingest anything from the training/configuration calls on `pbc.granicus.com` — off-mission by this project's own rule, not a public meeting regardless of how large the government is.
+  - **History**: `BACKLOG_DONE.md`'s WO-260 entry; `rtr-business/research/ENUMERATION_METHODS.md` §288.
 - **[NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a broadcast's playlist with a LATER expiry once the current one passes is unconfirmed — WO-229's fix depends on it.**
   - **Issue**: WO-229 (2026-09-11) fixed the two live BoxCast pages (Livermore Falls ME, Bartow FL) to ask BoxCast for a fresh signed playlist at view time instead of trusting the one stored at ingest, since that one's `Expires=1789329408` (2026-09-13 19:56 UTC) would otherwise go dark. But asking `GET /broadcasts/{id}/view` twice today, minutes apart, returned the byte-identical signed URL both times (same `Signature`, same `Expires`) — and BoxCast's OWN `boxcast.tv/view/{slug}` page, fetched fresh today, server-renders that exact same URL too. Two DIFFERENT broadcasts on two DIFFERENT, unrelated BoxCast accounts (Livermore Falls' shared "Mt. Blue Community TV" account and Bartow's own government account) both carry the identical `Expires=1789329408` — that shared value across unrelated broadcasts is the only real evidence this is a platform-wide signing-epoch rotation (which would rotate again after 2026-09-13, making WO-229's fix work) rather than a signature frozen forever per broadcast (which would make it a no-op).
   - **Impact**: if BoxCast doesn't rotate, WO-229's fix doesn't help — these two pages, and Atlantic City NJ/South Bay FL once ingested, go permanently dark on schedule regardless of this WO, and no server-side trick can fix it; the actual next step would be BoxCast support/dashboard access about recording retention.

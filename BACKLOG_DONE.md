@@ -1070,6 +1070,89 @@ domain carve-out). `rtr-business/research/wo252_discovery.csv`,
 `wo252_report.csv`, `wo252_platform_domain_rows.csv`,
 `wo252_apply_to_jc.py`. Full write-up, `ENUMERATION_METHODS.md` §285.
 
+## WO-260: guessing a meeting-video vendor's own web address for counties with no known platform — 5 real matches found, 2 counties now have a real page [Done 2026-09-12]
+
+**What was tested and why.** 1,164 counties of 5,000 people or more had
+no known way to watch their meetings on this site. An earlier check
+(WO-174) only tried one guess per county: whether they used a specific
+platform called CivicPlus. Counties this size almost always post their
+meetings somewhere, so this work tried nine more platforms
+(Granicus, Legistar, CivicClerk, IQM2, BoardDocs, Municode Meetings,
+eScribe, NovusAgenda, Swagit, and a tenth CivicPlus address style). For
+each county, several likely web addresses were built from its name and
+its own website address, then checked to see if any of them were real.
+20 counties were skipped because another check already found their
+platform; 1,144 were tested.
+
+**A method problem came up first, and it mattered.** Checking whether a
+web address exists (a lookup called DNS) is fast and free. But 7 of the
+10 platforms answer "yes" to almost any made-up address, not just real
+ones — so that check alone would have produced thousands of false
+matches. Only 2 platforms (eScribe and CivicWeb) gave an honest "no" for
+a made-up address. For the other 7, each guess had to be visited for
+real and its answer read, which is slower but was still finished in
+about 14 minutes.
+
+**Result.**
+
+| Result | Count of 1,144 |
+|---|---|
+| A real government's own meeting platform found | 5 |
+| Found, but belongs to a DIFFERENT government with the same name | 22 (3 different platforms) |
+| No answer either way | remaining |
+
+Every "found" case was checked two ways before being trusted: does the
+county's own known website link to it, and does the platform's own page
+say the right county AND state. Most raw matches, checked this way,
+turned out to be a same-named county in a different state — the exact
+mistake this work was told to watch for. Three examples: a guessed
+address for "Washington County" actually belongs to Washington County,
+**Oregon** — 14 different counties named Washington all guessed the
+same address, and none of them own it. The same thing happened once for
+"Clark County" (the real owner is in Indiana) and once for "Johnson
+County" (the real owner is in Iowa).
+
+**Of the 5 real matches, 2 became new pages people can watch today.**
+
+| County | What happened |
+|---|---|
+| Montgomery County, AL | Real meeting platform found (CivicWeb) and the county's own website links to it. Its most recent meeting has a real video and real captions. Page is live now. |
+| Lewis and Clark County, MT | Real meeting platform found (Granicus), but this site could not open its video — a technical gap, explained below. The county's own YouTube channel had the same meeting, with real captions. Page is live now. |
+| Kane County, IL | Real meeting platform found (IQM2), but it stopped being updated around 2022. No current meeting to show. |
+| Union County, NJ | Real meeting platform found (IQM2). Meetings are listed only through mid-2025, and none of them have video. |
+| Somervell County, TX | Real meeting platform found (IQM2), still active, but every meeting's video link is turned off. This exact finding was already on file from an earlier check — nothing new here. |
+
+A sixth real platform was found for Palm Beach County, FL (population
+1.58 million, the largest county in this batch) but it was not used.
+Every video on it is an internal training call about switching to a
+different system, not a real public meeting — recorded, not used.
+
+**Caution.** Lewis and Clark County's Granicus site could not play its
+own video because the site's newer video-player address is a shape this
+project's Granicus reader does not yet follow. This may be a new
+problem on other counties' Granicus sites too, or it may be limited to
+this one county's page — filed as an open item to check.
+
+**Recommendation.** No deploy needed — these pages are live already
+(new pages are created directly, not through code that needs
+deploying). The Granicus video-player gap is worth a look before it
+quietly loses video on other counties; filed in `BACKLOG.md`. Palm
+Beach County is worth a re-check in a few weeks once its switch to the
+new system finishes.
+
+**What changed.** `app/utils/jurisdiction_data/tenant_overrides.csv`: 2
+new entries linking a web address directly to a government
+(`mc-ala.civicweb.net` → Montgomery County AL; `lccountymt.granicus.com`
+→ Lewis and Clark County MT). `scripts/tier3_auto_transcription_queue_probe.csv`:
+2 new cached checks from the ingest tool's own pre-check step.
+`rtr-business/research/jurisdiction_coverage.csv`: 4 rows updated
+(Montgomery AL and Lewis and Clark MT marked as real pages now; Kane IL
+and Union NJ given the extra web address found, no other change).
+`rtr-business/research/wo260_report.csv`: every county checked, with the
+one-sentence reason each ingested video was confirmed to be a real
+meeting of that government. `rtr-business/research/ENUMERATION_METHODS.md`
+§288: the full method and every number above.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
