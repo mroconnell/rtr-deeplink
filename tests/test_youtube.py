@@ -60,9 +60,85 @@ def test_extract_video_id_handles_every_real_url_shape():
         # `youtube.com/v/OU-H69iuvLU`, not one of the shapes above.
         f"https://www.youtube.com/v/{REAL_VIDEO_ID}": REAL_VIDEO_ID,
         "https://example.com/not-youtube": None,
+        # A real id embedded in a longer query string must still resolve,
+        # and the trailing param must not get folded into the id.
+        f"https://www.youtube.com/live/{REAL_VIDEO_ID}?feature=share": REAL_VIDEO_ID,
+        f"https://www.youtube.com/embed/{REAL_VIDEO_ID}?rel=0": REAL_VIDEO_ID,
+        f"https://www.youtube.com/watch?v={REAL_VIDEO_ID}&t=30s": REAL_VIDEO_ID,
     }
     for url, expected in cases.items():
         assert YouTubeAssetFinder.extract_video_id(url) == expected
+
+
+def test_extract_video_id_rejects_a_path_segment_longer_than_11_chars():
+    # WO-195/WO-296 (2026-09-11/12): the old `([A-Za-z0-9_-]{11})` pattern
+    # had no end boundary, so it silently truncated a longer id-shaped
+    # path segment into a fake 11-char id instead of recognizing there's
+    # no real video id here. Real, confirmed-live examples from
+    # BACKLOG.md: `youtube.com/embed/livestreaming` (Mount Vernon, TX)
+    # became id "livestreami", and Severn ON's CivicWeb page produced a
+    # 20-character non-YouTube id ("oggrif3io7ylxfmbxnlz") through an
+    # unrelated path. Both must now return None rather than a truncated
+    # fake id.
+    assert (
+        YouTubeAssetFinder.extract_video_id(
+            "https://www.youtube.com/embed/livestreaming"
+        )
+        is None
+    )
+    twenty_char_id = "a" * 20
+    assert (
+        YouTubeAssetFinder.extract_video_id(
+            f"https://www.youtube.com/embed/{twenty_char_id}"
+        )
+        is None
+    )
+    assert (
+        YouTubeAssetFinder.extract_video_id(
+            f"https://www.youtube.com/watch?v={twenty_char_id}"
+        )
+        is None
+    )
+
+
+def test_extract_video_id_rejects_the_videoseries_playlist_placeholder():
+    # WO-195/WO-296: a playlist-only embed (`/embed/videoseries?list=...`)
+    # was misread as a real 11-character video id -- "videoseries" itself
+    # happens to be exactly 11 characters, so an end-boundary check alone
+    # doesn't catch it (the next character, "?", already isn't an id
+    # character). Real example from BACKLOG.md: a Daviess County, KY
+    # fiscal court page. `videoseries` is YouTube's own reserved literal
+    # for "this embed is a playlist, not a single video" -- there is no
+    # real video id to extract here, so this must return None, not a fake
+    # id, the same way the adapter already signals "no video id in this
+    # URL" for a non-YouTube link.
+    assert (
+        YouTubeAssetFinder.extract_video_id(
+            "https://www.youtube.com/embed/videoseries?list=PLsomeplaylist"
+        )
+        is None
+    )
+    assert (
+        YouTubeAssetFinder.extract_video_id("https://www.youtube.com/embed/videoseries")
+        is None
+    )
+
+
+def test_extract_video_id_rejects_the_live_stream_placeholder():
+    # `live_stream` is YouTube's own reserved literal for an embed shaped
+    # `/embed/live_stream?channel=...` (no video is airing/known yet) --
+    # like "videoseries", it's exactly 11 characters so it needs the same
+    # explicit exclusion, not just an end boundary.
+    assert (
+        YouTubeAssetFinder.extract_video_id(
+            "https://www.youtube.com/embed/live_stream?channel=UCsomechannel"
+        )
+        is None
+    )
+    assert (
+        YouTubeAssetFinder.extract_video_id("https://www.youtube.com/live/live_stream")
+        is None
+    )
 
 
 async def test_resolve_video_id_happy_path_with_manual_captions(monkeypatch):
