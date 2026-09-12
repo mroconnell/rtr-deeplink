@@ -978,6 +978,7 @@ porthope.escribemeetings.com,,ca:csd:3514020,fallback,wildcard_http_sweep_2,bare
 portlandme.portal.civicclerk.com,,us:place:2360545,fallback,wildcard_http_sweep_2,HTTP 404 api-supported-versions present -> registry: us_places.csv Portland city
 portmcneill.civicweb.net,,ca:csd:5943012,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Port McNeill
 portmoody.escribemeetings.com,,ca:csd:5915043,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Port Moody
+portofsandiego.granicus.com,,rtr:us:ca:port-of-san-diego,authoritative,ryan_stated,"Port of San Diego -- WO-263 (2026-09-12), Ryan: ""mint the port of san diego"". Host-wide pin (blank match): portofsandiego.granicus.com is single-tenant, confirmed live 2026-09-12 at ViewPublisher.php?view_id=1 -- ""Port of San Diego Streaming Media Archive"", only Board of Port Commissioners and its own committees, no other government. 2 pages already ingested from this host and unresolved (gov_id NULL) as of this pin -- ids 2661, 5892; the conductor's backfill re-run keys them once this deploys, not this WO."
 poucecoupe.civicweb.net,,ca:csd:5955005,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Pouce Coupe
 poucecoupe.escribemeetings.com,,ca:csd:5955005,fallback,wildcard_http_sweep_2,bare form resolves -> registry: ca_csd.csv Pouce Coupe
 powellriver.civicweb.net,,ca:csd:5927008,fallback,wildcard_http_sweep_2,DNS resolves -> registry: ca_csd.csv Powell River

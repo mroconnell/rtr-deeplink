@@ -1320,6 +1320,32 @@ def test_curated_exact_match_does_not_reintroduce_the_boise_county_collision():
     assert resolve("Boise County, ID").gov_id == "us:county:16015"
 
 
+# --- WO-263: the Port of San Diego, minted on Ryan's call -------------
+
+
+def test_port_of_san_diego_classifies_special_district_on_the_raw_name():
+    """ "Port of" is a `_RULES` special_district phrase (classify.py), so
+    this name reaches rung 1c/4b's curated-row check directly off the raw
+    string, with no name-repair truncation step in between -- unlike
+    WO-220's Department of Commerce/Southwest Utah rows, there is no
+    truncated-alias risk to also cover here."""
+    match = resolve("Port of San Diego, CA")
+    assert match.gov_id == "rtr:us:ca:port-of-san-diego"
+    assert match.gov_type == classify.SPECIAL_DISTRICT
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_port_of_san_diego_host_pin_resolves_with_no_name_at_all():
+    """`portofsandiego.granicus.com` is single-tenant (confirmed live
+    2026-09-12) -- a page from it with no jurisdiction string at all
+    still lands on the Port's own government via the host-wide (blank
+    `match`) pin, same shape as `test_the_nine_mislabelled_tenants_are_
+    pinned_to_the_right_government` above."""
+    match = resolve(None, "portofsandiego.granicus.com")
+    assert match.gov_id == "rtr:us:ca:port-of-san-diego"
+    assert match.tier == resolver.TIER_PINNED
+
+
 # --- WO-101: the column has to hold what the resolver produces --------
 
 
