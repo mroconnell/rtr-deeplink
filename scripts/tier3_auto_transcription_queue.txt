@@ -2172,3 +2172,6 @@ https://dhaz.granicus.com/player/clip/1385?view_id=2
 https://snowmassvillage.granicus.com/player/clip/1577
 https://south-haven.granicus.com/player/clip/663?view_id=4
 https://bishop-ca.granicus.com/player/clip/1804?redirect=true&view_id=1
+https://vod.maplewoodmn.gov/CablecastPublicSite/show/1719?site=1
+https://reflect-bethelpark-cable.cablecast.tv/CablecastPublicSite/show/46?site=1
+https://videoplayer.telvue.com/player/bXdwUSrnr6QUGN4_JWYERXfbtl3o_jt2/media/1041358

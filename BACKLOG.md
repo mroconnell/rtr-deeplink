@@ -114,7 +114,8 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (44)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (45)
+  WO-306's small-video-platform sweep: Cablecast and TelVue 5,000+ are…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
@@ -161,7 +162,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (44)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (19)
+  A `ryan_stated` TelVue org-token pin says Centre County, PA — the…
   51 research-file rows say `transcribed=true` with no matching Archive…
   Production actions only Ryan should take  (15)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -718,6 +720,43 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### WO-306's small-video-platform sweep: Cablecast and TelVue 5,000+ are done, five platforms and every under-5,000/unknown-population row remain `[JUST-DO-IT]`
+
+- **Issue:** WO-306 (2026-09-12) built a row-by-row join of the 136
+  no-page governments whose recorded URL/provider names Viebit,
+  Cablecast, Castus, Boxcast, TelVue, ChampDS, eLocalLink or Google
+  Drive, then worked the Cablecast 5,000+ band (10 rows) and TelVue
+  5,000+ band (5 rows) live to completion — real ingests, tier-3
+  queueing, pins, a `detect_platform()` fix (Cablecast on a government's
+  own domain, not just `*.cablecast.tv`), and a new `telvue.py`
+  `list_playlist_items()` listing step (with fixture + tests) for the
+  URL shape `resolve()` can't handle alone. It stopped there on budget,
+  per its own brief's "stop at a platform boundary" rule.
+- **Impact:** Viebit (13 rows, 5,000+), Castus (8), Boxcast (7), ChampDS
+  (8), Google Drive (2) 5,000+ bands are untouched, plus every
+  under-5,000 and unknown-population row for all seven platforms
+  (roughly 100 more rows total). Viebit and ChampDS need the same kind
+  of new listing step TelVue just got (their adapters also resolve only
+  a single URL); Castus has no listing step known at all yet (see this
+  section's own Castus entry, if filed, or file one when picked up).
+- **Next action:** resume from
+  `<scratchpad>/agents/a4b576e372dc43dc5/wo306_still_to_do.csv` (the
+  exact row-by-row join, one row per platform×government with a reason
+  for every already-covered row) — copy it into a fresh scratch
+  directory first, the shared scratchpad is not preserved across
+  sessions. Work Viebit 5,000+ next (same order the brief set:
+  Viebit, Castus, Boxcast, ChampDS, Google Drive, then every
+  under-5,000/unknown row), one meeting per government, hand-read every
+  video first.
+- **Constraint:** the same long-only rule this WO already applied twice
+  (Southfield, MI and Sun Prairie, WI both had a >90-minute newest video
+  and a real shorter/captioned one one meeting deeper on the same
+  channel) — always look one meeting deeper before deferring or queuing
+  a long one.
+- **History:** `BACKLOG_DONE.md`, WO-306 (2026-09-12);
+  `rtr-business/research/wo306_report.csv` and
+  `wo306_methods_section.md`.
 
 ### The research file's `queued` column only catches 18.5% of tier-3 queue lines — persist the per-platform gov_id resolution WO-299 already proved out, instead of doing it ad hoc every time `[JUST-DO-IT]`
 
@@ -1647,6 +1686,33 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### A `ryan_stated` TelVue org-token pin says Centre County, PA — the live page says Bellefonte Borough Council `[HUMAN]`
+
+- **Issue:** `tenant_overrides.csv` pins TelVue org token
+  `GNduNoua2rBThhw6N4PRP9OCSPf6B2ru` to Centre County, PA
+  (`us:county:42027`, `source=ryan_stated`). WO-306 (2026-09-12) fetched
+  this org's real playlist 4806 live to ingest a Bellefonte Borough
+  meeting and found the page's own `<title>` reads "Borough of
+  Bellefonte - Council" — real content, "7/6/26 Bellefonte Borough
+  Council" with 430 real caption segments — not county content.
+- **Impact:** unknown how many of this org's OTHER playlists (it likely
+  carries several bodies, the way Bellefonte's own playlist 4806 is just
+  "Council") would key to Centre County via this pin on a future
+  re-resolve, versus how many genuinely are county content. WO-306's own
+  ingest (`/m/bellefonte-pa-7-6-26-bellefonte-borough-council`) is safe
+  regardless — it carries `gov_id=us:place:4205256` directly in its
+  ingest payload — but nothing else on this org token is.
+- **Next action:** Ryan decides: is this `ryan_stated` pin a deliberate
+  coarse-filing choice (this org's whole catalog filed under the county
+  on purpose, the same shape the "Authoritative pins" convention
+  already accepts for a town under its county), or was it simply wrong
+  and should move to Bellefonte Borough (`us:place:4205256`) or split
+  per-playlist? Not overridden here without asking, per that same
+  convention.
+- **Constraint:** don't touch the pin from a guess — it's `ryan_stated`,
+  the most authoritative source tag this file uses.
+- **History:** WO-306 (2026-09-12), this session; `rtr-business/research/wo306_report.csv`.
 
 ### 51 research-file rows say `transcribed=true` with no matching Archive page — deleted, or re-keyed, is a per-row human call `[HUMAN]`
 

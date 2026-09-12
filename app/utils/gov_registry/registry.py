@@ -210,6 +210,19 @@ MULTI_GOV_HOSTS: FrozenSet[str] = frozenset(
         "drive.google.com",
         "dropbox.com",
         "sharepoint.com",
+        # Lake Minnetonka Communications Commission's shared Cablecast
+        # PublicSite tenant -- confirmed live 2026-09-12 (WO-306): one
+        # subdomain serves at least Shorewood, Minnetonka, Greenwood,
+        # Spring Park, Loretto, Excelsior and Deephaven, MN, each real
+        # meeting distinguished only by its own show title (e.g.
+        # "Shorewood City Council & Work Session 082426 CH8") -- the
+        # same shared-regional-commission shape as `amsva.wistia.com`
+        # above, just on Cablecast instead of Wistia. Most
+        # `*.cablecast.tv` subdomains ARE single-tenant (the adapter's own
+        # module docstring), which is exactly why this one confirmed
+        # exception needs to be listed explicitly rather than guessed
+        # from the domain suffix.
+        "reflect-lmcc.cablecast.tv",
     }
 )
 

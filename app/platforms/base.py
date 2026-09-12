@@ -379,10 +379,9 @@ def detect_platform(url: str) -> str:
     _cablecast_bare_show_id = (
         path[len("/show/") :].split("/")[0] if path.startswith("/show/") else ""
     )
-    if "cablecast.tv" in netloc and (
-        "/internetchannel/show/" in path
-        or _cablecast_bare_show_id.isdigit()
-        or "/cablecastpublicsite/show/" in path
+    if "/cablecastpublicsite/show/" in path or (
+        "cablecast.tv" in netloc
+        and ("/internetchannel/show/" in path or _cablecast_bare_show_id.isdigit())
     ):
         # Detroit, MI's Cablecast video portal -- confirmed live
         # 2026-08-12, see cablecast.py's own module docstring for why
@@ -412,6 +411,25 @@ def detect_platform(url: str) -> str:
         # `_PUBLICSITE_SHOW_ID_RE` for the real API shape) -- so it's in
         # scope now, just resolved differently (two JSON calls, no HTML
         # scraping) from the other two.
+        #
+        # WO-306 (2026-09-12): the CablecastPublicSite path check above no
+        # longer requires "cablecast.tv" in netloc -- confirmed live on a
+        # real customer hosted entirely on its own government domain,
+        # Maplewood, MN (`vod.maplewoodmn.gov/CablecastPublicSite/show/
+        # {id}?site=1`), whose `/cablecastapi/v1/shows/{id}` API answers
+        # identically to the vendor-subdomain tenants this adapter was
+        # built against. Before this fix, `resolve_via_platform()`'s real
+        # call path (detect_platform() -> get_finder()) never reached
+        # cablecast.py for this URL at all -- it fell through to
+        # generic_fallback and produced a wrong title/date split (it read
+        # "Heritage Preservation Commission" as the title and "September
+        # 10, 2026" as the jurisdiction) plus a false "not officially
+        # supported" warning, even though the real adapter handles this
+        # exact API correctly once reached. The other two path variants
+        # ("/internetchannel/show/" and the bare "/show/{id}") stay scoped
+        # to `cablecast.tv` netlocs -- especially the bare form, which is
+        # too weak a signal on its own to trust against an arbitrary
+        # government domain.
         return "cablecast"
     if "clerkshq.com" in netloc:
         # ClerkBase ("ClerkHQ") -- confirmed live 2026-08-14 against one
