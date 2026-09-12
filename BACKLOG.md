@@ -114,9 +114,10 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (38)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (39)
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
+  `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
   `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
@@ -770,6 +771,37 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History**: found during WO-249 (2026-09-12); see `BACKLOG_DONE.md`'s
   WO-249 entry. South River borough, NJ's row was not re-ingested in that
   WO -- this entry is the only record of the miss.
+
+### `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`) recognizes `municodemeetings.com` but not the related marketing apex `municode.com`, letting a "Powered by Municode" link outrank a tenant's own real meeting page `[JUST-DO-IT]` `[EASY]`
+
+- **Issue**: A Municode Meetings tenant homepage (e.g.
+  `eustis-fl.municodemeetings.com`) can carry a footer/marketing link to
+  `www.municode.com/meetings` (the CMS vendor's own generic marketing
+  page, not a per-government tenant) alongside its own real meeting
+  listing entries. `_is_vendor_marketing_apex()` only recognizes
+  `municodemeetings.com` as a marketing apex, not the related
+  `municode.com` -- confirmed live 2026-09-12 building WO-274's hop-link
+  scorer: on Eustis FL's real homepage, that bare marketing link ranked
+  #1 in `find_hop_links()`'s new weighted scorer (ahead of the tenant's
+  own real `/meetings3?page=1` listing pages), because nothing excludes
+  it as a marketing badge the way `municodemeetings.com`,
+  `granicus.com`, etc. already are.
+- **Impact**: at least one real government (Eustis FL) gets a
+  vendor-marketing link instead of its own real meeting listing when a
+  hop-link scan runs against its homepage; likely affects every other
+  Municode Meetings tenant whose homepage carries the same footer badge
+  (not separately confirmed).
+- **Next action**: add `"municode.com"` to `_VENDOR_MARKETING_APEX` in
+  `scripts/wo147_access_ladder_sweep.py`. Left out of WO-274's own diff
+  on purpose -- that constant is shared by every caller in the file
+  (`find_platform_link()`, `looks_like_document_hub()`, the legacy WO-228
+  scorer, and the new WO-274 scorer), and WO-274 needed the legacy
+  scorer's behavior to stay byte-identical for its own before/after
+  comparison. Add a fixture test alongside the fix (a same-page link to
+  `www.municode.com/meetings` must never appear in either scorer's
+  output).
+- **History**: `docs/investigations/hop_scorer_measurement.md` (WO-274,
+  2026-09-12), `BACKLOG_DONE.md`'s WO-274 entry.
 
 ### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
 

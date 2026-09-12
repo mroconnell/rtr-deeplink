@@ -359,6 +359,22 @@ METHODS.md` §270; code in `scripts/wo147_access_ladder_sweep.py`. The
 161-row re-run of already-recorded calendar-shaped hubs against the
 fixed ranker is a separate WO, not yet run.
 
+**WO-228's own twelve-word candidate gate was itself replaced with
+measured weights (WO-274, 2026-09-12)** -- the same "calendar wins as
+often as the real link" pattern held for the WORDS themselves, not just
+the ranking: plurals/role words (agendas, meetings, commissioners,
+boards, supervisors) and named platform paths (AgendaCenter, Hyland's
+ViewMeeting/AgendaOnline) measured far stronger than "calendar"/singular
+"agenda"/"video"/"stream", none of which the old list weighted
+correctly. `find_hop_links()`'s default is now driven by
+`app/utils/jurisdiction_data/hop_link_weights.csv`
+(`scripts/derive_hop_weights.py` re-derives it); `legacy=True` gets the
+WO-228 scorer back verbatim. On 180 real homepages, the new scorer finds
+a vendor-host/named-path link in its top 8 on strictly more governments
+than the old one (123 vs 95, zero regressions) -- full tables, the two
+real regressions found and fixed building it, and what the sample can't
+show: `docs/investigations/hop_scorer_measurement.md`.
+
 **Two guards Ryan approved 2026-09-11 (WO-226), now in code and unit-
 tested in every apply script that writes `reject_reason`** (see
 `~/Documents/rtr-business/research/wo226_apply_to_jc.py`'s

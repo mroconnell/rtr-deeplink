@@ -1,5 +1,87 @@
 # Backlog — done
 
+## WO-274: re-weight the hop-link scorer from measured words instead of a hand-picked list, and measure it against 180 real homepages [Done 2026-09-12]
+
+**What was done and why.** When our sweep reads a government's homepage
+looking for its meeting page, it scores every link on the page and picks
+the best 8 to check next. That scoring used a list of 12 words someone
+picked by hand ("agenda", "calendar", "video", and so on). The conductor
+checked those 12 words against real data and found several of them
+backwards: "calendar" and the word "agenda" by itself barely tell you
+anything, while words the list never had — "agendas" (plural),
+"meetings", "commissioners", "boards", "supervisors" — are much stronger
+signals, and a named platform path like "AgendaCenter" is close to a
+sure thing. This WO re-measured those words from scratch and built a new
+scoring list from the measurement, replacing the hand-picked one.
+
+**How it was measured.** Using files already saved from other sessions'
+work (no new fetching): 956 real recorded meeting-hub addresses, 10,885
+real meeting-video addresses, and every ordinary link found on 713 real
+government web pages. For each word or short phrase, this compares how
+often it shows up in a real meeting link versus an ordinary link — that
+ratio is called "lift." A word with a lift of 15 shows up 15 times as
+often in real meeting links as in ordinary ones. The new scoring list is
+built entirely from these ratios, not from guessing.
+
+**Two real mistakes were caught and fixed before shipping.** First, some
+government addresses already on file for "the meeting hub" turn out to
+be wrong — a city council roster page, an FAQ page, one government's own
+plain homepage — and the measurement briefly treated words from those
+wrong addresses as if they were real signal. That inflated a few
+generic-looking page-numbering words ("day", "month", "year") into false
+positives on two real government pages during testing. Second, one
+platform link this WO added by hand (not from measurement) turned out to
+outrank a government's own real meeting list on a third real page. Both
+were caught by testing against real saved pages before shipping, and
+both are now regression tests. The second one is only partly fixed — the
+underlying gap is filed as its own `BACKLOG.md` item.
+
+**Result, on 180 real homepages (old scoring list vs. the new one),
+picking the top 8 links from each page:**
+
+| Result | Old list, count of 180 | New list, count of 180 |
+|---|---|---|
+| A real platform link (a video host, or a named platform path like AgendaCenter) is in the top 8 | 95 | 123 |
+| The exact address already on file for the meeting hub is in the top 8 | 29 of 73 | 24 of 73 |
+| The exact address already on file for the meeting video is in the top 8 | 12 of 127 | 7 of 127 |
+
+**The first row is the one that matters.** The new list finds a real
+platform link on more homepages than the old one, and never on fewer —
+every homepage where the old list found one, the new list found one too,
+plus 28 more. That is the actual job: find a real meeting/video link.
+
+**The other two rows look worse, but mostly are not a real drop.**
+Checked every case by hand where the old list matched and the new one
+did not: almost all of them are the old list matching an address already
+on file that is not actually a real meeting page — a job-openings page,
+an FAQ, a press release, one government's own plain homepage recorded as
+its "meeting hub." The new list correctly does not chase those. A
+handful are a real platform link whose recorded address is just the bare
+front page of that platform's own site (nothing specific was ever
+recorded), which no scoring list could realistically match. One is a
+real, narrow gap, now filed in `BACKLOG.md`.
+
+**Caution.** These 180 homepages were all chosen because the government
+was already known to have a working platform — this cannot say how the
+new list performs on a government where no platform is known at all yet,
+which is most of the remaining work. That would need a separate,
+freshly-checked sample.
+
+**Recommendation.** Ship the new scoring list as the default (already
+done in this PR); keep the old one available under a flag for
+comparison only. File the one open platform-marketing-link gap
+(`municode.com`) as its own small fix rather than folding it into this
+change, since fixing it touches code shared with the old list this WO
+needed to keep unchanged for a fair comparison.
+
+**Full tables, every measured word/lift/weight, and both real mistakes
+in detail:** `docs/investigations/hop_scorer_measurement.md`.
+
+**Deploy status.** Everything here is `scripts/`, `app/utils/
+jurisdiction_data/hop_link_weights.csv`, `tests/`, and docs — no
+database change, nothing that needs a production deploy. The next
+access-ladder sweep that imports `scripts/wo147_access_ladder_sweep.py`
+picks up the new scoring automatically.
 ## WO-270: WordPress surface pilot -- no signal clears the bar, front-page YouTube link is the closest lead [Done 2026-09-12]
 
 **What was tested and why.** WO-179 found that WordPress's own search

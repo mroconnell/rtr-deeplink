@@ -2,6 +2,18 @@
 `looks_like_document_hub()`/`find_calendar_entry_links()` helpers in
 `scripts/wo147_access_ladder_sweep.py`.
 
+**WO-274 (2026-09-12) note**: `find_hop_links()`'s DEFAULT scoring is now
+the measured, re-weighted scorer (`legacy=False`, the new default) --
+see `tests/test_hop_scorer_weighted.py` and
+`docs/investigations/hop_scorer_measurement.md` for that scorer's own
+tests and the before/after measurement. Every `find_hop_links()` call in
+THIS file now passes `legacy=True` explicitly, so this file keeps
+testing the exact WO-228 word-list scorer it was written for (a real,
+useful historical/comparison record), rather than silently starting to
+test a different scorer than the one its own docstrings describe.
+`looks_like_document_hub()`/`find_calendar_entry_links()` are unrelated
+to hop-link scoring and are untouched by WO-274.
+
 Every fixture in `tests/fixtures/wo228_hub_ranking/` is a REAL page saved
 from a live fetch on 2026-09-11 (not hand-built), per CLAUDE.md's rule
 that a new adapter/heuristic is built and tested against real samples
@@ -49,7 +61,7 @@ def _load(name: str) -> str:
 
 
 def _top(html: str, url: str, n: int = 3):
-    return find_hop_links(html, url)[:n]
+    return find_hop_links(html, url, legacy=True)[:n]
 
 
 # --- The four named spot-check governments: the real hub must rank
@@ -73,7 +85,7 @@ def test_littleton_co_ranks_meeting_videos_agendas_above_city_calendars():
     html = _load("littleton_co_home.html")
     top3 = _top(html, "https://www.littletonco.gov/")
     assert any("Meeting-Videos-Agendas" in u for u in top3)
-    ranked = find_hop_links(html, "https://www.littletonco.gov/")
+    ranked = find_hop_links(html, "https://www.littletonco.gov/", legacy=True)
     meeting_idx = next(i for i, u in enumerate(ranked) if "Meeting-Videos-Agendas" in u)
     calendar_idx = next(
         (i for i, u in enumerate(ranked) if "City-Calendars" in u), len(ranked)
@@ -86,7 +98,7 @@ def test_littleton_co_ranks_meeting_videos_agendas_above_city_calendars():
 
 def test_atlantic_city_nj_ranks_meetings_above_calendar():
     html = _load("atlantic_city_nj_home.html")
-    ranked = find_hop_links(html, "https://acnj.gov/")
+    ranked = find_hop_links(html, "https://acnj.gov/", legacy=True)
     meetings_idx = next(i for i, u in enumerate(ranked) if "meeting" in u.lower())
     calendar_idx = next(
         (i for i, u in enumerate(ranked) if "calendar" in u.lower()), len(ranked)
@@ -104,13 +116,13 @@ def test_atlantic_city_video_tag_fallback_text_is_not_a_candidate():
     and was outranking the real /meetings link before the boilerplate
     guard was added."""
     html = _load("atlantic_city_nj_home.html")
-    ranked = find_hop_links(html, "https://acnj.gov/")
+    ranked = find_hop_links(html, "https://acnj.gov/", legacy=True)
     assert not any("fishbowlmedia" in u for u in ranked)
 
 
 def test_mcleod_county_mn_ranks_agendas_and_minutes_above_the_bare_board_index():
     html = _load("mcleod_county_mn_home.html")
-    ranked = find_hop_links(html, "https://mcleodcountymn.gov/")
+    ranked = find_hop_links(html, "https://mcleodcountymn.gov/", legacy=True)
     agendas_idx = next(
         i for i, u in enumerate(ranked) if "agendas___minutes" in u.lower()
     )
@@ -196,7 +208,7 @@ def test_calendar_word_alone_never_outranks_agenda_minutes_when_both_present():
     # and several bare CID= calendar list-view links; the platform link
     # must win.
     html = _load("yachats_civicclerk_home.html")
-    ranked = find_hop_links(html, "https://yachatsoregon.org/")
+    ranked = find_hop_links(html, "https://yachatsoregon.org/", legacy=True)
     civicclerk_idx = next(i for i, u in enumerate(ranked) if "civicclerk.com" in u)
     bare_calendar_idxs = [
         i
