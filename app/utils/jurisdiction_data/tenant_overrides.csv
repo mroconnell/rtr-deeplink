@@ -5407,3 +5407,4 @@ www.youtube.com,czPIIiqyGAQ,us:place:1774119,fallback,wo230,"Swansea village, IL
 www.youtube.com,Td4or5VSuZQ,us:place:1748892,fallback,wo230,"Midlothian village, IL -- WO-230 AgendaCenter follow-up, hub https://villageofmidlothian.net/AgendaCenter"
 www.youtube.com,5MAk8rdFoXE,us:place:3948342,fallback,wo230,"Maumee city, OH -- WO-230 AgendaCenter follow-up, hub https://www.maumee.org/AgendaCenter"
 www.youtube.com,Z_GsSDJogls,us:place:0640438,fallback,wo230,"Larkspur city, CA -- WO-230 AgendaCenter follow-up, hub https://larkspur.ca.gov/AgendaCenter"
+elmirageaz.granicus.com,,us:place:0422220,fallback,wo261_hcms_followup,"El Mirage city, AZ -- newer client-rendered CivicPlus (HCMS) tenant; real AgendaCenter now lives at /meeting-agendas-minutes, which iframes public.destinyhosted.com/agenda_publish.cfm?id=35647 (AgendaQuick), which itself links out to this Granicus tenant (elmirageaz.granicus.com) for video"
