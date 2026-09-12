@@ -1,5 +1,90 @@
 # Backlog — done
 
+## WO-305: Laserfiche WebLink video census, all 79 named repositories read, adapter not built [Done 2026-09-12]
+
+**What this was for.** Ryan asked: if Laserfiche can carry video (WO-304
+proved it can, for one government), shouldn't we build a general reader
+and capture the other governments that store their documents in
+Laserfiche too? The honest first step was a census: read every named
+Laserfiche repository, count how many actually hold meeting video or
+audio, and only build a reader if the count clears a bar Ryan set of 5
+repositories.
+
+**First attempt was rejected, and correctly.** The first pass built a
+census tool and ran it once, but only 38 of the 79 repositories came
+back with a real answer — the rest were labelled things like "old
+version, not supported" without anyone actually looking at the page. A
+count built on half the population can't decide anything, and Ryan said
+so. This entry covers the full, corrected read.
+
+**What "read" means here.** For each of the 79 repositories, open its
+document folders, look inside any folder named for a meeting (board,
+council, commission, minutes, recordings, and so on), and count what
+kind of files are in there — video, audio, caption files, or just
+paperwork (PDFs). Every one of the 79 got a real answer this time, not
+just an attempt.
+
+**Result — all 79 repositories, by what was found.**
+
+| Result | Count of 79 | What it means |
+|---|---|---|
+| Meeting folders found, no video or audio inside | 20 | Real folders exist for the governing body, but they only hold paperwork |
+| No folder named for a meeting found at all | 5 | The document system is real and was searched, nothing meeting-shaped turned up |
+| Blocked by a cookie check that needs a real web browser | 11 | The page always says "cookies are not enabled," even with cookies sent — needs a browser to get past |
+| Needs a login, confirmed at the actual document-listing step | 11 | Not just a login page — the underlying data request itself was tested with no session and refused |
+| Repository is gone (site moved, page deleted, or is now a different site entirely) | 12 | 5 pages no longer exist (404), 2 domains are now parked/for-sale pages, 5 quietly now show the government's regular website instead of the document system found in 2026-08 |
+| Real WebLink 9 system, but needs a step a plain fetch can't do (click a search result) | 5 | Confirmed real, just not reachable without a web browser |
+| Never resolved to a working address, or the site never answered | 9 | 3 addresses no longer point anywhere, 3 timed out, 3 the original list never had a working address for |
+| Blocked by an automatic "prove you're human" check | 2 | Same kind of gate the site already knows never to try to get past |
+| Checked, real folders exist, but ran out of budget before finishing | 1 | 1,210 real paperwork files found and 0 video/audio before the check stopped; inconclusive, not a real no |
+| Real video found, but it isn't a meeting recording | 1 | A short video clip found sitting next to a presentation handout for one agenda topic — not a recording of the meeting itself |
+| Real audio found, and it is a real meeting | 1 | 6 real audio files from a real Historic Landmarks Commission's own meetings — but audio with no video, which this site doesn't turn into a page yet |
+| Already had a real, live page (found by earlier work) | 1 | Jefferson County, WA — done before this count started |
+
+**The video found, checked by hand, and turned away.** Every video has
+to be looked at by a person before it can become a page. This one
+(Westlake, TX) was a short recap video sitting in a folder for one
+specific school board agenda topic, right next to three unrelated
+handouts for other topics on the same agenda. It is a clip about one
+topic, not a recording of the meeting. Turned away, no page made.
+
+**The audio found, and why the "is this really a meeting" worry turned
+out to be unfounded.** Before this work started, there was a real worry
+that "audio" sitting in a Laserfiche system might actually be old
+courthouse recordings kept by a county recorder's office (a records
+department, not a meeting body) rather than real meeting audio. Checked
+directly: the audio in question (Deschutes County, OR) sits inside a
+folder plainly labelled for the "Historic Landmarks Commission," a real
+appointed board, not the recorder's office. It is real meeting audio.
+It still isn't turned into a page, because this site only makes pages
+for meetings that have video, and this one doesn't.
+
+**A real bug found and fixed along the way.** The tool doing the
+folder-by-folder search had a bug: Laserfiche's document system has two
+different ways of marking something as "a folder you can open," and the
+tool only recognized one of them. One real government's folders (all of
+them!) were being silently skipped because they used the second kind —
+meaning that government came back "no meeting folder found" when it
+actually had one, fully stocked. Fixed, and every one of the 79
+repositories was re-checked afterward with the fix in place, in case
+others were affected the same way (one more, Westlake TX, was — that's
+how its video was found).
+
+**Recommendation.** Don't build a general Laserfiche reader. Out of 79
+real repositories, only one has a video that's actually usable, and
+that one already has its own page (from earlier work). That's far below
+the bar of 5 Ryan set for building anything general-purpose. The two
+real finds this count turned up (Westlake's clip, Deschutes's audio)
+were both checked by hand and neither qualifies today — filed as an
+open, narrow item in `BACKLOG.md` (audio-only support, not the general
+reader) so it isn't lost, in case a second real audio-only example ever
+turns up.
+
+**Deploy status.** No code changed in the resolver or the Archive — this
+was a research-only count, so nothing needs a deploy. The two research
+files this work order updated (`jurisdiction_coverage.csv` and the new
+`wo305_report.csv`) live outside this repo and need no deploy either.
+
 ## WO-304: Jefferson County, WA's Laserfiche meeting — the one real example we had is now a live page [Done 2026-09-12]
 
 **What was done and why.** WO-233 (2026-09-11) found one real government
