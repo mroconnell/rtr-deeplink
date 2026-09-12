@@ -82,6 +82,77 @@ jurisdiction_data/hop_link_weights.csv`, `tests/`, and docs — no
 database change, nothing that needs a production deploy. The next
 access-ladder sweep that imports `scripts/wo147_access_ladder_sweep.py`
 picks up the new scoring automatically.
+
+## WO-275: `detect_platform()` now recognizes CivicPlus's self-hosted `/AgendaCenter` by path, the way it already does for Hyland [Done 2026-09-12]
+
+**What was done and why.** WO-272 (2026-09-12) found that `detect_
+platform()` -- the function that decides which adapter handles a
+meeting web address -- only recognized CivicPlus when the address was
+on a `civicplus.com` web address. Most real CivicPlus customers run it
+on their OWN web address instead (`welcometoatmore.com/AgendaCenter`,
+not `welcometoatmore.civicplus.com`), so those addresses were falling
+through to the site's generic, weaker handling instead of CivicPlus's
+own code, which knows how to find the real video underneath. The site
+already had the fix for this exact problem for a different vendor,
+Hyland: check the shape of the web address itself (`/Meetings/
+ViewMeeting`), not just its domain name. This WO applies the same fix
+to CivicPlus: any web address whose path starts with `/AgendaCenter`
+(any case, with or without a trailing slash or a specific document)
+now counts as CivicPlus, unless the address already matched a
+different, named vendor first.
+
+| Result | Count of 6 detection tests added | What it means |
+|---|---|---|
+| Real self-hosted `/AgendaCenter` address now recognized as CivicPlus | 3 | A bare listing page, a single-document `ViewFile/Minutes` link, and a mixed-case address -- all real, live web addresses from the research file. |
+| Synthetic self-hosted case, clearly marked | 1 | A single-document `/AgendaCenter/ViewFile/Agenda/...` link on a real self-hosted web address, since no real example of that exact combination turned up anywhere searched (see Caution). |
+| A different, already-supported vendor still wins | 2 | Hyland's own web address still comes back as Hyland, and a made-up example of a different vendor's own web address that happens to contain the word "AgendaCenter" still goes to that vendor -- the new check never overrides an explicit vendor match. |
+
+**Real examples confirmed live in the research file**
+(`~/Documents/rtr-business/research/jurisdiction_coverage.csv`):
+`welcometoatmore.com/AgendaCenter`, `www.voluntown.gov/AgendaCenter`
+(both bare listings), and `www.waynecountyny.gov/AgendaCenter/
+ViewFile/Minutes/_09022026-1555` (a single document link, same
+self-hosted shape). WO-272's own mining file
+(`rtr-business/research/wo272_url_templates.csv`) independently
+confirms the scale: 1,209 research-file rows across 1,205 self-hosted
+web addresses, plus 250 pages already live on the site (245
+governments) whose web address is this exact self-hosted shape.
+
+**Caution.** This is a routing fix, not a new-video fix. CivicPlus's
+`/AgendaCenter` pages are already known to be about 80% agenda-only
+with no video at all, so this does not create new video pages by
+itself -- it only means a self-hosted `/AgendaCenter` address found any
+OTHER way (a link found on a homepage, a passive web search, a reader's
+own paste) now gets CivicPlus's own code, which already knows how to
+find a real video underneath, instead of the site's generic fallback
+handling. Separately: no real example of a self-hosted `/AgendaCenter/
+ViewFile/Agenda/...` single-document link turned up anywhere searched
+(the research file, WO-272's mining file, or the investigation write-up)
+-- every real example found is either a bare listing page or a
+`ViewFile/Minutes` link. The test for that specific shape uses a real,
+confirmed self-hosted web address with a hand-built document id,
+clearly marked as such, per this repo's own rule for a synthetic test.
+The two places that separately guess at platforms during a coverage
+sweep (`scripts/wo147_access_ladder_sweep.py`'s alias list and the hop
+step; WO-267's `platform_signatures.csv`) were checked and need no
+change: the sweep script already has its own hand-built AgendaCenter
+check from before this fix, and WO-267 already decided on purpose that
+`/AgendaCenter` belongs in the separate site-builder list
+(`cms_families.csv`), not in `platform_signatures.csv`.
+
+**Recommendation.** No further action needed on this WO. If a future
+session revisits `scripts/wo147_access_ladder_sweep.py`, its own
+hand-built AgendaCenter check (`find_platform_link()`) could now be
+retired in favor of the general `detect_platform()` path this WO adds
+-- not done here, since it was out of scope and the existing check
+already works.
+
+**Deploy status.** On `main`, not yet live. This changes how the
+resolver AND the Archive both classify a web address (both import
+`app/platforms`), for future resolves only -- pages already on the
+site are unaffected either way. Needs a deploy of both services before
+it takes effect in production.
+
 ## WO-270: WordPress surface pilot -- no signal clears the bar, front-page YouTube link is the closest lead [Done 2026-09-12]
 
 **What was tested and why.** WO-179 found that WordPress's own search
