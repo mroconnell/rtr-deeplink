@@ -1876,6 +1876,27 @@ _MIN_BLEED_WORD_RUN = 4
 # (BACKLOG.md's WO-299 entry): "Academy of Sciences".
 _ENTITY_NAME_OF_SUFFIX_PHRASES = ("academy of sciences",)
 
+# WO-303, 2026-09-12: two of the twelve WO-299 real Utah PMN names
+# WO-300 didn't fix (BACKLOG.md's residual-gap entry) -- both discarded
+# tails have "and"/"for" as their only extra lowercase word, which trips
+# the general lowercase-word bleed signal below exactly the way "of"
+# used to (WO-300's fix above only special-cased "of"). A GENERAL
+# "and"/"for" connector rule was tried and reverted -- it broke two real,
+# already-tested cases the general signal is relied on for: LADWP's
+# "Department of Water and Power" and "History of Parks and
+# Recreation" (Castle Pines, CO) are both real bleed this repo
+# deliberately trims away, and both also have "and" as their only extra
+# lowercase word, so a general rule can't tell them apart from these two
+# real non-bleed tails by shape alone. Kept as a closed, literal,
+# end-anchored allowlist instead -- same pattern as
+# `_ENTITY_NAME_OF_SUFFIX_PHRASES` above and `_ENTITY_TYPE_SUFFIX_PHRASES`
+# below -- grounded in exactly these two real confirmed names, nothing
+# broader.
+_ENTITY_NAME_CONNECTOR_SUFFIX_PHRASES = (
+    "and perry city flood control special service district",
+    "service area for castle valley fire protection",
+)
+
 # Residual gap fix #2, 2026-08-17 (same investigation as
 # `_MIN_BLEED_WORD_RUN` above, found via the bleed-backfill-candidates
 # audit): the word-count tier is one-sided -- it only has NEGATIVE
@@ -2151,6 +2172,14 @@ def _looks_like_bleed(tail: str) -> bool:
     if any(
         " ".join(w.strip(".,;:").lower() for w in words).endswith(phrase)
         for phrase in _ENTITY_NAME_OF_SUFFIX_PHRASES
+    ):
+        return False
+    # WO-303, 2026-09-12: see `_ENTITY_NAME_CONNECTOR_SUFFIX_PHRASES`'s own
+    # comment above for why this is a closed literal allowlist rather than
+    # a general "and"/"for" connector rule.
+    if any(
+        " ".join(w.strip(".,;:").lower() for w in words).endswith(phrase)
+        for phrase in _ENTITY_NAME_CONNECTOR_SUFFIX_PHRASES
     ):
         return False
     if any(w[0].islower() for w in words if w):

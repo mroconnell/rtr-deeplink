@@ -36,8 +36,15 @@ from typing import Optional
 # below requires the id to be exactly 11 characters -- the next
 # character (end of string, `?`, `&`, etc.) must not itself be a valid
 # id character, or there's no match at that position.
+# WO-303, 2026-09-12: `youtube-nocookie.com` added to the host
+# alternation so `archive/db/crud.py` and `archive/utils/video_thumbnail.py`
+# (both switched from their own duplicate regex to importing this module,
+# BACKLOG.md's "Archive's two own copies" entry) don't lose coverage for
+# it -- it's YouTube's real privacy-enhanced embed domain, already
+# recognized separately by `app/platforms/generic_fallback.py`'s
+# `_NOCOOKIE_EMBED_RE` and by both Archive regexes before this change.
 _VIDEO_ID_RE = re.compile(
-    r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)"
+    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)"
     r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])"
 )
 

@@ -275,6 +275,16 @@ async def main() -> None:
     # counted. Only ever holds a real, non-`rtr:unknown:` gov_id -- the
     # same filter `owned_slugs` below already applies to `new_hub`.
     hub_move_gov_id: dict = {}
+    # WO-303: the government `old_hub` belonged to BEFORE this row's move,
+    # for the same (old_hub, new_hub) pairs above -- see the end-of-run
+    # ownership correction below (BACKLOG.md's "hub slugs retired never
+    # fires for a keyed-to-keyed re-key" entry, filed by WO-293). Needed
+    # because `owned_slugs.add(old_hub)` a few lines down runs for every
+    # row that HAS a `current_gov_id`, even the exact row abandoning
+    # `old_hub` -- so a slug whose ONLY page is re-keyed to a different
+    # government this run marks itself "still owned" via the very page
+    # that's leaving. Only ever holds a real, non-`rtr:unknown:` gov_id.
+    hub_move_old_gov_id: dict = {}
     # Every slug some real government owns, so the report can tell a slug
     # that MOVED PAGES (normal, and no longer a URL change for anybody)
     # from one that genuinely stops belonging to anybody (WO-256). Seeded
@@ -428,6 +438,8 @@ async def main() -> None:
             hub_moves[(old_hub, new_hub)] += 1
             if new_gov_id and not new_gov_id.startswith("rtr:unknown:"):
                 hub_move_gov_id[(old_hub, new_hub)] = new_gov_id
+            if current_gov_id and not current_gov_id.startswith("rtr:unknown:"):
+                hub_move_old_gov_id[(old_hub, new_hub)] = current_gov_id
 
         changes.append(
             {
@@ -478,6 +490,44 @@ async def main() -> None:
                     ):
                         page.jurisdiction_confidence = match.tier
                 await write_session.commit()
+
+    # WO-303: correct `owned_slugs` for the exact shape BACKLOG.md flagged
+    # -- a slug whose page(s) were unconditionally counted as "still
+    # owned" by the very row abandoning it (`owned_slugs.add(old_hub)`
+    # above runs for every row with a `current_gov_id`, even the row
+    # that's leaving `old_hub`). For every candidate retirement this run
+    # found (a real old gov_id tracked in `hub_move_old_gov_id`), ask the
+    # database directly how many pages that OLD government has left,
+    # rather than trusting the in-loop bookkeeping alone. `page_count()`
+    # is the same helper the freeze gate already uses. A fresh session,
+    # since the one the main loop read from has already closed.
+    if hub_move_old_gov_id:
+        async with async_session() as check_session:
+            for (old_hub, new_hub), old_gov_id in hub_move_old_gov_id.items():
+                if old_hub not in owned_slugs:
+                    continue  # already correctly flagged retired
+                live_remaining = await hub_slug_table.page_count(
+                    check_session, old_gov_id
+                )
+                if args.apply:
+                    # Rows already committed per-row above, so this count
+                    # is the true post-run state.
+                    remaining = live_remaining
+                else:
+                    # Dry run: nothing was written, so `live_remaining` is
+                    # still the PRE-run count. Subtract the rows THIS run
+                    # proposes moving away from `old_gov_id`, to answer
+                    # "how many would be left if applied."
+                    moved_away = sum(
+                        1
+                        for c in changes
+                        if c["gov_id_before"] == old_gov_id
+                        and c["gov_id_after"] != old_gov_id
+                        and c["gov_id_after"] != ""
+                    )
+                    remaining = live_remaining - moved_away
+                if remaining <= 0:
+                    owned_slugs.discard(old_hub)
 
     _report(
         changes,
