@@ -1,5 +1,89 @@
 # Backlog — done
 
+## WO-291: site builders are not meeting platforms — relabelled so builder-labelled rows re-enter discovery [Done 2026-09-12]
+
+**What this was, and why.** The research file
+(`rtr-business/research/jurisdiction_coverage.csv`) stores what we know
+about every government's meeting platform in three columns. For
+thousands of rows, those columns actually held a SITE BUILDER — the
+website software a government's homepage happens to run on, like
+WordPress — not a real meeting or video platform. Every sweep that
+looks for new governments to check skips a row that already has
+something in those columns. So a row with "wordpress" in it looked
+finished, when nothing about its actual meeting video had ever been
+checked. This work moved site-builder values out to their own column,
+so those rows can be checked again.
+
+**Result: every value in the three platform columns, sorted into one of
+five groups.**
+
+| Group | Distinct values | Count of 45,610 rows (cells) |
+|---|---|---|
+| Real meeting/video platform (left alone) | 47 | 12,334 |
+| Site builder (moved to the new `site_builder` column) | 10 | 2,102 |
+| No real information (blanked, not moved) | 2 | 832 |
+| Real platform written as a raw web address instead of its short name (fixed in place) | 8 | 66 |
+| Social media link (Facebook, Twitter, etc.) | 0 | 0 |
+
+The five most common site builders moved out: WordPress (1,828),
+TownWeb (106), Revize (100), ProudCity (17), CivicLive (16). The two
+no-information values blanked: "unknown" (831) and one row that had a
+different kind of note (a rejection reason) sitting in a platform
+column by mistake (1). No social-media links were found in these
+columns at all — a real result, not a step that was skipped.
+
+**Result: what changed, by column.**
+
+| Column | Site builder moved out | Blanked (no information) | Raw address fixed |
+|---|---|---|---|
+| `suspected_calendar_provider` | 2,082 | 807 | 0 |
+| `suspected_meeting_link_provider` | 8 | 24 | 0 |
+| `suspected_video_provider` | 12 | 1 | 66 |
+
+2,101 governments had a site-builder value moved out. 809 governments
+had a no-information value blanked. 66 governments had a raw web
+address fixed to its short name. The file still has 45,610 rows before
+and after — nothing was added or removed, only relabelled.
+
+**Result: how many more governments this opens back up for checking.**
+Re-run against the real file, after the write, using the actual list of
+what changed (not an estimate made before writing):
+
+| Population | Openable-for-checking before | Openable-for-checking after | Growth |
+|---|---|---|---|
+| Whole file (45,610 governments) | 32,883 | 37,011 | +4,128 |
+| 5,000-plus population (8,406 governments) | 3,680 | 3,964 | +284 |
+| Under 5,000, not already on WO-283's 7,746-government re-check list | — | 593 newly openable | list would grow to 8,339 (+593) |
+
+**Caution.** WO-283's existing 7,746-government list was built mostly
+from a different signal — a past rejection reason, not a blank platform
+column — so this change does not add much to that specific list: only
+593 more governments. A wider count, of every under-5,000 government
+whose platform column changed at all because of this work, is bigger —
+3,844 — but that number mixes in governments a past sweep already
+turned away for an unrelated reason (off-mission, or a real meeting
+with no video). Use the narrower number, 593, when sizing WO-283's next
+batch of work. `docs/COVERAGE_HANDOVER.md` and
+`rtr-business/research/ENUMERATION_METHODS.md` (§312) both carry the
+same tables so a later reader does not have to re-derive them.
+
+**Recommendation.** No further action needed to ship this — it is a
+data relabel plus documentation. The next natural step is for a
+discovery sweep to actually use the 593 (or a similarly-defined) newly
+opened population; that is separate work, not part of this WO.
+
+**Deploy status.** Nothing to deploy. This changed only
+`rtr-business/research/jurisdiction_coverage.csv` (already committed,
+commit `e22d383`), `research/wo291_apply_to_jc.py`,
+`research/wo291_report.csv`, `ENUMERATION_METHODS.md` §312 (committed,
+commit `3d6ceaa`), and this repo's `docs/COVERAGE_HANDOVER.md`. No
+`app/`, `archive/`, or `worker/` code changed, and nothing was ingested.
+
+**Note.** No test file for `jurisdiction_coverage.csv`'s column shape
+exists in `rtr-business` yet, so none was added — flagged here rather
+than built, since building one is a separate decision about where that
+kind of test should live.
+
 ## WO-301: the research file's `transcribed` flag was stale against the live Archive — 1,249 rows corrected, `queued`/`parked` columns added [Done 2026-09-12]
 
 **What this was.** `jurisdiction_coverage.csv`'s `transcribed` column had
