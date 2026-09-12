@@ -174,7 +174,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (167)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (168)
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
   [NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared…
@@ -210,6 +210,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (167)
   [NEEDS-AUDIT] A tier-3 probe's own report `note` always overwrites an…
   [NEEDS-AUDIT] A probe-confirmed-dead URL sits in the live…
   [NEEDS-AUDIT] `detect_platform()`'s bare-substring match on a vendor
+  [JUST-DO-IT] `[EASY]` `detect_platform()` has no path-based check for…
   [NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   [NEEDS-AUDIT] A minted `rtr:` id's state code can be a false positive
   [NEEDS-AUDIT] `scripts/tier3_auto_transcription_queue.txt`'s real…
@@ -1874,6 +1875,12 @@ of human step they need.
     `scripts/wo147_access_ladder_sweep.py` (`_is_vendor_marketing_apex()`),
     not yet applied to the shared `find_specific_platform_link()`/
     `detect_platform()` path. See `BACKLOG_DONE.md`'s WO-147 entry.
+- **[JUST-DO-IT] `[EASY]` `detect_platform()` has no path-based check for CivicPlus's self-hosted `/AgendaCenter` shape, unlike the precedent it already sets for Hyland — so a self-hosted CivicPlus URL reaching the generic resolve pipeline (not a dedicated CivicPlus sweep script) falls through to `generic_fallback.py` instead of `civicplus.py`.**
+  - **Issue**: `detect_platform()`'s `civicplus` branch only fires on `"civicplus.com" in netloc or "civicplus" in netloc` (`app/platforms/base.py`). A self-hosted tenant (CivicPlus installed on the government's own domain, e.g. `welcometoatmore.com/AgendaCenter`, not a `*.civicplus.com` subdomain) never matches, so `detect_platform()` returns `"unknown"` for it. Hyland already has the fix this case needs: its `/meetings/viewmeeting` check (`if "/meetings/viewmeeting" in path: return "hyland"`) fires on PATH alone, specifically because Hyland/OnBase tenants are confirmed to run on arbitrary reseller domains with no shared hostname (see that branch's own comment). Self-hosted CivicPlus is the identical shape and has no equivalent path check.
+  - **Impact**: measured by WO-272's URL-shape mining (2026-09-12, zero fetches, mined from URLs already on file): the bare `/AgendaCenter` path is the single most common recurring first-party template in the whole dataset — **1,209 `jurisdiction_coverage.csv` rows across 1,205 distinct self-hosted hosts**, plus **250 already-archived Archive pages across 245 distinct governments** (real video pages: YouTube, Cablecast, and others, delegated exactly the way `civicplus.py` is built to handle) whose `source_url_normalized` is a bare, self-hosted `/AgendaCenter` URL. Every one of those archived pages exists ONLY because a dedicated sweep script (WO-174 and its follow-ups) called `civicplus.py` directly, bypassing `detect_platform()` entirely — confirmed by inspecting the raw export rows, none of which carry `platform=civicplus` (they carry the delegated platform, `youtube`/`cablecast`/etc., per the known platform-wrapper behavior). Any OTHER path that reaches a self-hosted AgendaCenter URL through the normal `resolve_via_platform()`/`detect_platform()` dispatch — a hop-link scorer result, a passive-discovery candidate (WO-268 already found 20 of these via sitemap/Wayback), a reader's own paste — gets `generic_fallback.py` instead of `civicplus.py`'s dedicated category-listing walk, multi-page handling, and known soft-404 tolerance.
+  - **Next action**: add a path check mirroring Hyland's, e.g. `if path.startswith("/agendacenter"): return "civicplus"`, ordered before the generic `"unknown"` fallthrough (after the existing `_ALL_CORPORATE_HOSTS` check, which already excludes CivicPlus's own marketing hosts). Add a unit test in `tests/test_base.py` (or wherever `detect_platform()` is covered) asserting a self-hosted, non-`civicplus.com` `/AgendaCenter` URL now returns `"civicplus"`, using a real confirmed example (e.g. `https://welcometoatmore.com/AgendaCenter`, `https://www.voluntown.gov/AgendaCenter` — both real, already-archived).
+  - **Constraint**: this is a ROUTING fix, not a video-coverage one — CivicPlus AgendaCenter sites are already measured at ~80% agenda-only, no video (`CLAUDE.md`'s working-conventions bullet), so this will not create new video pages on its own; it only makes a self-hosted AgendaCenter URL found through any OTHER path get the adapter that already knows how to look for delegated video, rather than silently getting weaker generic handling. Don't conflate with WO-267's separate, already-decided recommendation to treat `/AgendaCenter` as a `cms_fingerprint.py` site-builder signal rather than a `platform_signatures.csv` entry (`docs/investigations/platform_fingerprints.md`) — that recommendation is about the UNKNOWN-platform discovery signal used by a sweep deciding what to probe; this entry is about `detect_platform()`'s own dispatch once a real `/AgendaCenter` URL is already in hand.
+  - **History**: found by WO-272's URL-shape mining, 2026-09-12 — `docs/investigations/url_shape_mining.md`, `rtr-business/research/wo272_url_templates.csv` (label `meeting-shaped-unknown`, template `/agendacenter`, both `jc_csv` and `archive_export` sources).
 - **[NEEDS-AUDIT] §158's write protocol doesn't catch a same-row-count
   concurrent write to `jurisdiction_coverage.csv`.**
   - **Issue**: every `*_apply_to_jc.py` script (wo146/148/149/150's)

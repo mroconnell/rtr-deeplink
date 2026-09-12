@@ -74,6 +74,93 @@ calling a weak match a real lead.
 two write-ups. No code path in the live site changed. Full detail:
 `docs/investigations/passive_platform_discovery_pilot.md`.
 
+## WO-272: mined the meeting/video URLs we already hold for recurring path shapes -- a probe set for our own-domain checks, and the CivicPlus dispatch gap [Done 2026-09-12]
+
+**What was tested and why.** WO-267 found that platform page SHAPE
+(a specific path, not just the vendor's own web address) is sometimes
+the stronger signal. Ryan's follow-up question: we already hold
+thousands of real meeting and video links. Mined without fetching
+anything new, do they already show recurring path shapes the site
+doesn't recognize yet? Two sources give the real, proven answer
+(45,610 research-file rows' own recorded links, and every one of the
+8,483 pages already live on the site), and a third corrects for the
+bias in those two (WO-268's fresh pass over 300 governments where
+nothing had been found yet).
+
+| Result | Count of 5,526 recurring path shapes found | What it means |
+| --- | --- | --- |
+| Already recognized by the site | 2,357 | No action -- the resolver already knows these. |
+| A government's own generic page (calendar, homepage, a CMS nav link) | 3,059 | Noise for platform detection, but the raw candidate list Stage 2 drew its probe set from. |
+| Recurs often, names a meeting, not yet recognized | 71 | The real lead list -- see below. |
+| A vendor-hosted shape, not yet recognized, too rare to act on | 39 | Largest is 6 governments -- below the 10-government bar for "worth building." |
+
+**The one finding worth building.** CivicPlus's own agenda system,
+self-hosted on a government's own web address rather than a
+`civicplus.com` one, is the single most common recurring shape in the
+ENTIRE dataset: 1,209 research-file rows, PLUS 245 pages already live
+on the site with real video, all sitting at a bare `/AgendaCenter`
+address. The site's own platform-recognition code (`detect_platform()`)
+already has a working fix for this exact kind of case for a different
+platform (Hyland/OnBase) -- check the web address SHAPE, not just its
+name -- it just was never applied to CivicPlus. Those 245 pages only
+exist today because a dedicated past project called the CivicPlus code
+directly; any OTHER way of finding one of these links (a general
+link-scan, WO-268's own passive pass, a reader's own paste) gets weaker,
+generic handling instead. Filed as a `BACKLOG.md` entry, `[JUST-DO-IT]`
+`[EASY]` -- a three-line fix with a clear precedent already in the code,
+not built here since this WO's job was measuring, not changing the
+resolver.
+
+**No other new platform cleared the bar.** 39 vendor-hosted shapes were
+not yet recognized, but the largest recurs on only 6 governments --
+well under the 10-government line set for "worth a new adapter." Two
+are already-known, separately-filed issues (our own site's internal
+link leaking into the research file; a different Municode product at
+1-2 governments each) rather than new leads.
+
+**Stage 2: does a probe of the top generic shapes actually find real
+pages on governments we haven't resolved yet?** Nine plain web-address
+patterns (things like `/City-Council`, `/meetings`, `/council`), tried
+on 60 governments that have a web address on file but no known meeting
+platform.
+
+| Result | Count of 60 governments | What it means |
+| --- | --- | --- |
+| Found a real page on at least one of the 9 patterns tried | 3 | Pinson AL, Fairfield AL, Robertsdale AL -- real council/agenda pages, confirmed by hand. |
+| Found nothing real | 57 | Either the address didn't exist (most common), answered a generic page, or the connection failed/timed out. |
+
+`/City-Council` and `/council` were the only two patterns that found a
+real page on more than one government; the other seven found none in
+this sample. **None of the 3 real pages found had a video link on it
+directly** -- they're navigation pages (a council roster, an agendas
+list). A real full-scale pass would need one more step past a hit like
+this to reach an actual video, the same "follow one more link" step
+every other part of this repo's discovery process already has.
+
+**Caution.** A plain 200 response proves nothing on its own -- several
+government web addresses answer EVERY page, real or not, with the same
+generic page. This run found that live: Geneva County, AL answered FOUR
+different probed addresses with the same ~490-byte page each time, and a
+naive "does the page mention the county's name and a meeting word" check
+would have counted all four as real hits. The count above only counts a
+hit once the page is also a real size (800+ bytes), not a generic shell
+-- without that check this run's "3" would have read "6 or 7" instead.
+
+**Recommendation.** Fix the CivicPlus dispatch gap first -- it is small,
+precedented, and helps every other discovery method, not just this one.
+Run the Stage 2 probe at full scale before trusting today's yield
+numbers as a production threshold; today's run is a 60-government
+pilot, not the full population. Full detail, every table, and what the
+data cannot show: `docs/investigations/url_shape_mining.md`.
+
+**Deploy status.** This WO shipped no code change and no production
+write -- only two new committed CSVs
+(`rtr-business/research/wo272_url_templates.csv`,
+`rtr-business/research/wo272_probe_yield.csv`), a probe-set CSV
+(`app/utils/jurisdiction_data/first_party_meeting_paths.csv`, explicitly
+NOT wired into the access ladder yet), a `docs/investigations/` writeup,
+one `BACKLOG.md` entry, and this entry. Nothing here needs a deploy.
+
 ## WO-269: the BACKLOG_DONE.md heading gate compares against the branch point, not main's moving tip [Done 2026-09-12]
 
 **What was done and why.** `scripts/check_backlog_done_headings.py`
