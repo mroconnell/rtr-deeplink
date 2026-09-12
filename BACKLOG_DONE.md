@@ -1,5 +1,196 @@
 # Backlog — done
 
+## WO-247: the WO-235 YouTube-channel method run at full scale — every government of 10,000+ with a no-video reject, not just 25,000+ on a known platform [Done 2026-09-12]
+
+**What was done and why.** Ryan, 2026-09-12: "Apply the method from WO-235 to
+the no-video-found and meeting-without-video govs over 10k in population."
+WO-235 piloted this on 179 governments of 25,000+ that also had a known
+meeting platform on file; this run is the same method, unchanged, on the
+full band Ryan asked for — no population ceiling below 10,000, and no
+"known platform" requirement (Ryan didn't ask for that filter here, so
+governments with no suspected platform at all are included too). Reused
+WO-235's script (`scripts/wo235_channel_pilot.py`, copied to
+`scripts/wo247_channel_band.py`) unchanged except for how the candidate
+list is built: it now reads `jurisdiction_coverage.csv` directly (the
+brief's own header) instead of the derived coverage-registry file, and
+drops the known-platform condition. Every other step — the access
+ladder, the YouTube link scanner, the yt-dlp channel listing, the
+hand-check rules, and the `discover`/`finalize` split — is WO-235's own
+code.
+
+**The band.**
+
+| Step | Count |
+|---|---|
+| Governments of 10,000+ with a `no-video-found`/`meeting-without-video` reason, re-derived fresh from `jurisdiction_coverage.csv` | 694 |
+| — of those, 25,000+ | 329 |
+| — of those, 10,000–25,000 | 365 |
+| Already checked by WO-235 (subtracted) | 130 |
+| Remaining candidates this run | 564 |
+
+The conductor's pre-subtraction estimate (329 at 25,000+, 365 at
+10,000–25,000) matched exactly on re-derivation. The subtraction count
+(130, not WO-235's own 179) is lower because 38 of WO-235's 179 gained a
+real page from that run and 2 were already excluded, so fewer of its
+checked governments still carry an open reject reason today.
+
+**Result — discovery, of the 564 candidates checked this run:**
+
+| Result | Count of 564 |
+|---|---|
+| Site links no channel or video at all | 305 |
+| Site links a channel or playlist, with a listing | 132 |
+| Already had a live Archive page (the research-file row was stale) | 113 |
+| Bare video link(s) found, no channel/playlist page | 7 |
+| Channel/playlist link found but its listing could not be fetched | 7 |
+
+**Result — of the 146 governments with a channel, playlist, or bare video
+link (every one hand-checked, not just pre-filtered):**
+
+| Result | Count of 146 |
+|---|---|
+| Channel hand-checked as the government's own, real on-mission video found | 74 |
+| Channel hand-checked as the government's own, no on-mission video among its uploads | 54 |
+| Channel/playlist link found but its listing could not be fetched (dead/private/blocked) | 7 |
+| Bare video hand-checked directly (no channel page existed to list): a miss | 6 |
+| Channel hand-checked as a miss (tourism/promotion/economic-development, not the government) | 3 |
+| Bare video hand-checked directly: a real on-mission video, now ingested | 1 |
+| Channel hand-checked as belonging to a different real government (owner elsewhere) | 1 |
+
+**Result — of the 75 real video finds, the video split:**
+
+| Result | Count of 75 |
+|---|---|
+| Real captions found — page live now | 69 |
+| Real video, no captions — probed, accepted, queued for transcription | 5 |
+| Resolved real content but could not be written (see Caution) | 1 |
+
+**Governments with video found, split the way Ryan's brief asks:**
+
+| Outcome | Count |
+|---|---|
+| Captions available, page live now | 69 |
+| Video, no captions, queued for transcription (a queue count, not pages) | 5 |
+
+**The hand-check.** Every one of the 146 governments with any link got an
+actual read of the channel's own name/description and each candidate's
+title and duration — not just the automated pre-filter
+(`classify_video_hand_check()` plus `wo134_confirmed_hits_ingest`'s
+`MEETING_ALLOWLIST`/`PROMO_BLOCKLIST`). 19 of 146 (13.0%) needed a hand
+correction that reversed the automated verdict, in line with CLAUDE.md's
+"10-12% on small towns" prior:
+
+- **Channel identity wrong, corrected `other`/blank to `own` (6)**:
+  Franklin Town city, MA (`@townoffranklinma104`, description says
+  "official YouTube Account for the Town of Franklin"); Cohoes city, NY
+  (channel name is literally "Cohoes NY"); Traverse City city, MI
+  (channel is literally "CityofTC"); Nantucket County, MA (description:
+  the Town of Nantucket's own "Nantucket Government TV"); Groton city,
+  CT (description: "the official government YouTube channel for Groton,
+  Connecticut", Groton Municipal Television/GMTV); Iowa Colony village,
+  TX (channel name is literally "City of Iowa Colony").
+- **Automated filter passed a non-meeting, corrected by hand (13)**:
+  Union County, NJ (HOME/RFP technical-assistance sessions and a
+  CROWN-Act workshop); Madison city, WI ("Know Your Candidates"
+  voter-education videos); Grand Traverse County, MI ("Straight From
+  Nate" promotional interviews about the Road Commission); Kingsville,
+  ON (a "Holiday Message" greeting); Greenfield city, CA (all uploads
+  are a separate Groundwater Sustainability Agency's meetings, not the
+  City Council's); Powder Springs city, GA (a Youth Council promotional
+  video); East Moline city, IL (a 4.9-minute redevelopment-project promo
+  clip); Sidney city, OH (a produced news segment, a public webinar, and
+  a candidate orientation); Oconomowoc city, WI (channel is "Visit
+  Ocon", a tourism channel); Springboro city, OH (a produced
+  community-affairs segment); Lone Tree city, CO (3 board/commission
+  recruitment PSAs); Worthington city, MN (21 short Spanish-language
+  Council recap/summary clips); North Battleford, SK (8 "UPAR
+  Information Session" videos).
+
+**Bare video links got the same real read, via a direct yt-dlp title
+lookup, since the sweep found no channel page to list for them (7
+governments)**: 6 were misses once read — Rockingham County, VA ("Become
+Short Term Rental Ready" on the tourism channel `@VisitRockinghamVA`);
+Gadsden city, AL ("Gadsden State of the City (2026)", a mayoral address,
+on the city's own real channel); Americus city, GA ("Visit Americus!
+:60" on "Americus Sumter Tourism"); Pleasanton city, TX ("Welcome to
+Pleasanton" on an unrelated channel, "SAAE Society"); Ravenna city, OH
+(a Comprehensive Plan promo video on the real "Ravenna City Council"
+channel); New Richmond city, WI (a "Community Overview" promo on the
+real city channel). **Plano city, IL was the one real recovery**: its 3
+bare video links were all real Plan Commission meetings on the city's
+own channel, `@CityofPlanoIL` — now ingested (1,386 transcript
+segments).
+
+**Caution.** Two of the 75 real finds did not become a clean new page:
+
+- **Niles city, MI's found channel is Berrien County, Michigan's own**
+  (Kind A, owner elsewhere) — recorded in
+  `rtr-business/research/wo247_owner_bodies.csv` rather than keyed to
+  Niles; Berrien County's own row is a separate, real find in this same
+  run (already ingested, 178 transcript segments), so no mint pass is
+  needed.
+- **Franklin Town city, MA's real channel (`@townoffranklinma104`)
+  resolved a real video (1,894 segments) that the Archive refused with a
+  live `409`**: a page for this exact video (id 8878) already exists,
+  keyed to Franklin County, MA (`us:county:25011`) instead of the Town —
+  confirming, as a live incident, the wrong-domain-mapping risk WO-235
+  already flagged in `BACKLOG.md` (the county's row carries the Town's
+  own domain). Not re-keyed by this sweep — that needs a manual
+  `POST /internal/jurisdiction/override` or equivalent, out of scope for
+  an ingest-only sweep. `BACKLOG.md`'s entry updated with this confirmed
+  instance and the exact page id.
+
+**22 of the 564 candidates (3.9%) have a `domain` that is itself a
+meeting-platform tenant host**, the same shape WO-235 found on 14 of
+179 (7.8% there). All 22 came back `no-channel-linked`, which is
+unverified rather than a confirmed absence — 20 of the 22 already have
+a real corporate domain on file in `alternate_domains` (e.g. Coronado
+CA's `coronado.ca.us`, Minot ND's `minotnd.gov`); 2 (Bloomington, IL;
+Saint John, NB) have no alternate domain on file at all ("site not on
+file"). Filed to `BACKLOG.md` with the full list rather than guessed at
+here or re-swept this round.
+
+**No YouTube block signature was hit** (`docs/investigations/
+youtube_429_block.md`) — every yt-dlp call this run either listed
+successfully or failed individually (dead/private/blocked channel), not
+as a pattern consistent with a rate-limit block.
+
+**Recommendation.** This band converted at 74/146 = 50.7% of
+channel-linked governments to a real own-channel video (75/146 = 51.4%
+counting the recovered bare-video case), and 75/564 = 13.3% of all
+candidates checked this run. That is a noticeably higher conversion
+rate than WO-235's 25,000+/known-platform pilot (37/177 = 20.9% real
+pages there) — population size and a known platform on file are not
+what predicts a real channel existing; if anything, this broader,
+unfiltered band did better, possibly because it pulled in every small
+town with no other platform at all, where YouTube is often the *only*
+thing a tiny government's clerk set up. Nothing here suggests a
+remaining band (e.g. a lower population floor) would convert worse.
+
+**Deploy status.** The 69 real pages are live now and the 5 queued
+meetings will drip in via the existing worker once deployed — both used
+`gov_id` directly in the ingest payload (WO-222's rule), so neither
+depended on a pin reaching production first. 75 new `channel=@handle`
+pins landed in `app/utils/jurisdiction_data/tenant_overrides.csv` — per
+WO-244 (deployed), channel pins now fire at ingest for any *future*
+upload on these channels, but that only takes effect once this PR's
+merge is deployed; it was not needed for today's 75 ingests.
+
+**What is undone.** The 22 platform-tenant-domain rows (above) were not
+re-swept against their real corporate domain this round. Franklin Town
+city, MA's page conflict (above) was not re-keyed. The two misses found
+via WO-235's sibling owner-bodies file from this run
+(`wo247_owner_bodies.csv`, just the one Niles/Berrien County row) need
+no further action since the owner already has a real page.
+
+Files: `rtr-deeplink/scripts/wo247_channel_band.py` (the sweep, copied
+from WO-235's `wo235_channel_pilot.py`, two subcommands `discover`/
+`finalize`, resumable). `rtr-business/research/wo247_discovery.csv`,
+`wo247_decisions.csv` (written by hand, this session, per government),
+`wo247_report.csv`, `wo247_owner_bodies.csv`, `wo247_candidates.csv`
+(the 564-row band before discovery), `wo247_platform_domain_rows.csv`
+(the 22-row caution list), `wo247_apply_to_jc.py`. Full write-up,
+`ENUMERATION_METHODS.md` §282.
 ## WO-230: the 607 governments of 5,000+ recorded on a bare AgendaCenter — follow the real hub one hop, and a real hand-check gap found and fixed mid-run [Done 2026-09-11]
 
 **What was done and why.** Ryan's own 30-row spot-check found that a
