@@ -130,6 +130,25 @@ HAND_CHECK_LOG_CSV = RESEARCH_DIR / "wo230_hand_check_log.csv"
 HEADLESS_BUDGET_JSON = RESEARCH_DIR / "wo230_headless_budget.json"
 PINS_STAGED_CSV = RESEARCH_DIR / "wo230_pins_staged.csv"
 
+# WO-249's hand-read gate (2026-09-12): WO-230 found 13 confirmed-wrong
+# videos that reached a page or queue line, and 3 more slipped past the
+# two automatic checks added mid-run (right meeting-shaped word, right
+# channel) because the title carried a meeting word and the channel was
+# right, but the video itself still wasn't this government's own
+# deliberative meeting. Ryan's rule: no candidate that clears the
+# existing automatic checks may become a page or queue line without a
+# human actually reading its title, channel, and (when those two aren't
+# decisive) its description, and recording a one-line reason. Since this
+# script runs unattended, that human read happens as a separate step:
+# a candidate that clears every automatic check is parked in
+# PENDING_HAND_READ_CSV instead of being ingested; once a decision for
+# it exists in HAND_READ_DECISIONS_CSV, the next run of this same script
+# (gov_id resumes -- see `load_done_gov_ids()` below) picks it back up
+# and finishes it for real, using the exact same candidate-retry loop a
+# kind-A/B automatic rejection already uses.
+PENDING_HAND_READ_CSV = RESEARCH_DIR / "wo249_pending_hand_read.csv"
+HAND_READ_DECISIONS_CSV = RESEARCH_DIR / "wo249_hand_read_decisions.csv"
+
 TENANT_OVERRIDES_CSV = (
     REPO_ROOT / "app" / "utils" / "jurisdiction_data" / "tenant_overrides.csv"
 )
@@ -183,6 +202,29 @@ OWNER_BODIES_FIELDS = [
     "found_for_gov_id",
     "found_for_name",
     "note",
+]
+
+PENDING_HAND_READ_FIELDS = [
+    "gov_id",
+    "name",
+    "state",
+    "title",
+    "video_channel",
+    "description_snippet",
+    "video_url",
+    "meeting_url",
+    "platform",
+    "hub_url",
+    "is_own_channel",
+    "tier",
+]
+
+HAND_READ_DECISION_FIELDS = [
+    "gov_id",
+    "video_url",
+    "decision",
+    "kind",
+    "reason",
 ]
 
 # --------------------------------------------------------------------------
@@ -695,12 +737,84 @@ def append_csv_row(path: Path, fieldnames, row: dict):
 
 
 def load_done_gov_ids(path) -> set:
+    """A gov_id is 'done' (skipped on resume) once its LAST recorded row
+    has a non-empty outcome that isn't WO-249's own `awaiting_hand_read`
+    placeholder. The report is append-only (see ReportWriter.write), so a
+    gov_id parked awaiting a hand read and later resolved (once a
+    decision exists in HAND_READ_DECISIONS_CSV) has two rows; the later
+    one wins. This is what lets a WO-249 run naturally pick a parked
+    government back up on its next invocation, through the same
+    resumability mechanism WO-230 already used, rather than needing a
+    separate 'apply' mode."""
     if not path.exists():
         return set()
+    last_outcome: dict = {}
     with path.open(newline="", encoding="utf-8") as f:
-        return {
-            r["gov_id"] for r in csv.DictReader(f) if (r.get("outcome") or "").strip()
-        }
+        for r in csv.DictReader(f):
+            gov_id = r.get("gov_id")
+            if gov_id:
+                last_outcome[gov_id] = (r.get("outcome") or "").strip()
+    return {
+        gov_id
+        for gov_id, outcome in last_outcome.items()
+        if outcome and outcome != "awaiting_hand_read"
+    }
+
+
+def load_hand_read_decisions(path) -> dict:
+    """Keyed by (gov_id, video_url) -> decision row. Populated by a human
+    reading `wo249_pending_hand_read.csv` and recording, per row, whether
+    the video is really a public-body meeting of THAT government -- see
+    the module comment above PENDING_HAND_READ_CSV."""
+    if not path.exists():
+        return {}
+    out = {}
+    with path.open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            key = (r.get("gov_id") or "", r.get("video_url") or "")
+            out[key] = r
+    return out
+
+
+_HAND_READ_DECISIONS: dict = {}
+
+
+async def _fetch_description_snippet(video_url: str, platform: str) -> str:
+    """Best-effort extra context for the human hand-read step, for when
+    title + channel alone aren't decisive (WO-230's own real case: Duncan
+    OK's interview feature, Washougal WA's FAQ session, and Fairburn GA's
+    leadership-training video all had a meeting-shaped title AND a
+    channel that matched the government's own name -- only the
+    description said what the video actually was). YouTube only, since
+    that's where every one of those three misses came from; failure is
+    silent and leaves the snippet blank rather than blocking the gate --
+    the human reading the pending file can still open the URL directly."""
+    if platform != "youtube" or yt_dlp is None or not video_url:
+        return ""
+    vid = YouTubeAssetFinder.extract_video_id(video_url)
+    if not vid:
+        return ""
+    ydl_opts = {
+        "skip_download": True,
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": False,
+        "ignoreerrors": True,
+    }
+    try:
+        info = await asyncio.to_thread(_yt_extract_info_sync, vid, ydl_opts)
+    except Exception:
+        return ""
+    if not info:
+        return ""
+    return (info.get("description") or "")[:300].replace("\n", " ").replace("\r", " ")
+
+
+def _yt_extract_info_sync(vid: str, ydl_opts: dict):
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        return ydl.extract_info(
+            f"https://www.youtube.com/watch?v={vid}", download=False
+        )
 
 
 def load_queue_urls(path) -> set:
@@ -893,10 +1007,104 @@ async def resolve_and_finish(
         )
         return False
 
-    row["hand_check"] = "ok"
-
+    # WO-249's hand-read gate: everything above is automatic (the shared
+    # phrase-based checks plus WO-230's own title/channel checks). A
+    # candidate that clears all of it still cannot become a page or
+    # queue line without a human having actually read its title,
+    # channel, and (when those aren't decisive) its description, and
+    # recorded a one-line reason -- see the module comment above
+    # PENDING_HAND_READ_CSV. No decision yet: park it and stop here for
+    # this run; a later run (once a decision exists) resumes this exact
+    # gov_id via `load_done_gov_ids()` and reaches this same point again.
     meeting_url = url
     tier = "tier1" if result.segments else "tier3"
+    decision_key = (gov_id, result.video_url or "")
+    decision = _HAND_READ_DECISIONS.get(decision_key)
+
+    if decision is None:
+        description_snippet = await _fetch_description_snippet(
+            result.video_url or "", platform
+        )
+        append_csv_row(
+            PENDING_HAND_READ_CSV,
+            PENDING_HAND_READ_FIELDS,
+            {
+                "gov_id": gov_id,
+                "name": unit_name,
+                "state": state,
+                "title": result.title or "",
+                "video_channel": channel_text,
+                "description_snippet": description_snippet,
+                "video_url": result.video_url or "",
+                "meeting_url": meeting_url,
+                "platform": platform,
+                "hub_url": hub_url,
+                "is_own_channel": "yes" if is_own_channel else "no",
+                "tier": tier,
+            },
+        )
+        row.update(
+            outcome="awaiting_hand_read",
+            hand_check="awaiting-hand-read",
+            meeting_url=meeting_url,
+            video_url=result.video_url or "",
+            tier=tier,
+            note=(
+                row.get("note", "")
+                + "; parked for WO-249 hand read (wo249_pending_hand_read.csv)"
+            )[:500],
+        )
+        return True
+
+    append_csv_row(
+        HAND_CHECK_LOG_CSV,
+        HAND_CHECK_FIELDS,
+        {
+            "gov_id": gov_id,
+            "name": name,
+            "state": state,
+            "kind": decision.get("kind", ""),
+            "reason": decision.get("reason", ""),
+            "title": result.title or "",
+            "video_channel": getattr(result, "video_channel", "") or "",
+            "video_url": result.video_url or "",
+            "meeting_url": meeting_url,
+            "verdict": f"hand-read-{decision.get('decision', '')}: {decision.get('reason', '')}",
+        },
+    )
+
+    if decision.get("decision") == "reject":
+        kind = (decision.get("kind") or "B").strip().upper()
+        reason = decision.get("reason", "")
+        if kind == "A":
+            append_csv_row(
+                OWNER_BODIES_CSV,
+                OWNER_BODIES_FIELDS,
+                {
+                    "owner_name": channel_text,
+                    "channel": getattr(result, "video_channel", "") or "",
+                    "video_url": result.video_url or "",
+                    "gov_id_if_known": "",
+                    "found_for_gov_id": gov_id,
+                    "found_for_name": unit_name,
+                    "note": f"WO-249 hand read: {reason}"[:300],
+                },
+            )
+            row["hand_check"] = "kind-A"
+            row["note"] = (
+                row.get("note", "") + f"; kind-A (WO-249 hand read): {reason}"
+            )[:500]
+        else:
+            row["hand_check"] = "kind-B"
+            row["note"] = (
+                row.get("note", "") + f"; kind-B (WO-249 hand read): {reason}"
+            )[:500]
+        return False
+
+    row["hand_check"] = "ok"
+    row["note"] = (
+        row.get("note", "") + f"; hand-read approved: {decision.get('reason', '')}"
+    )[:500]
     row.update(meeting_url=meeting_url, video_url=result.video_url or "", tier=tier)
 
     if tier == "tier1":
@@ -1366,13 +1574,20 @@ async def process_government(session, cand, report) -> str:
 
 
 async def main():
-    global DRY_RUN, _headless_used
+    global DRY_RUN, _headless_used, _HAND_READ_DECISIONS
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--candidates", type=Path, default=CANDIDATES_CSV)
     ap.add_argument("--report", type=Path, default=REPORT_CSV)
     ap.add_argument("--skip-covered-fetch", action="store_true")
+    ap.add_argument(
+        "--hand-read-decisions",
+        type=Path,
+        default=HAND_READ_DECISIONS_CSV,
+        help="WO-249: CSV of (gov_id, video_url) -> decision/kind/reason, "
+        "filled in by a human reading wo249_pending_hand_read.csv",
+    )
     args = ap.parse_args()
     DRY_RUN = args.dry_run
 
@@ -1381,6 +1596,8 @@ async def main():
     global _queue_urls
     _queue_urls = load_queue_urls(QUEUE_FILE)
     _headless_used = load_headless_used()
+    _HAND_READ_DECISIONS = load_hand_read_decisions(args.hand_read_decisions)
+    print(f"{len(_HAND_READ_DECISIONS)} hand-read decisions loaded")
 
     with args.candidates.open(newline="", encoding="utf-8") as f:
         candidates = list(csv.DictReader(f))

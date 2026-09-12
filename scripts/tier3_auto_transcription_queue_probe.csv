@@ -5055,3 +5055,11 @@ https://www.youtube.com/watch?v=doKLrgov4Bc,youtube,yt-dlp-metadata,558.00,2026-
 https://www.youtube.com/watch?v=cJpMt-pk6RQ,youtube,yt-dlp-metadata,542.00,2026-08-17,7585633,1,accept,,2.71,2026-09-12T02:24:50+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=GGErk0S1ZOg,youtube,yt-dlp-metadata,7744.00,2021-04-01,196624771,1,accept,,1.83,2026-09-12T02:25:39+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=GGErk0S1ZOg,youtube,yt-dlp-metadata,7744.00,2021-04-01,196624771,1,accept,,2.02,2026-09-12T02:25:44+00:00,bulk_ingest,0
+https://newtonia.portal.civicclerk.com/event/831/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.newtongov.org/CivicMedia?VID=422,0.00,2026-09-12T03:13:37+00:00,wo230,0
+https://byramms.portal.civicclerk.com/event/1040/media,civicclerk,head+ffprobe,8212.45,2026-09-11,5851159935,1,accept,,3.85,2026-09-12T03:16:43+00:00,wo230,0
+https://www.youtube.com/watch?v=4kFzDylX1vQ,youtube,yt-dlp-metadata,4177.00,2024-10-10,138115898,1,accept,,2.08,2026-09-12T03:18:31+00:00,wo230,0
+https://www.youtube.com/watch?v=1IpMzuIvLz0,youtube,yt-dlp-metadata,6527.00,2026-05-26,210613080,1,accept,,2.05,2026-09-12T03:18:59+00:00,wo230,0
+https://www.youtube.com/watch?v=czPIIiqyGAQ,youtube,yt-dlp-metadata,458.00,2025-08-14,19906835,0,accept,,2.13,2026-09-12T03:19:28+00:00,wo230,0
+https://www.youtube.com/watch?v=Td4or5VSuZQ,youtube,yt-dlp-metadata,1600.00,2025-12-11,43136324,1,accept,,1.76,2026-09-12T03:19:51+00:00,wo230,0
+https://www.youtube.com/watch?v=5MAk8rdFoXE,youtube,yt-dlp-metadata,5577.00,2025-02-04,186850249,1,accept,,1.83,2026-09-12T03:20:10+00:00,wo230,0
+https://www.youtube.com/watch?v=Z_GsSDJogls,youtube,yt-dlp-metadata,8020.00,2026-09-09,160655627,1,accept,,2.22,2026-09-12T03:20:47+00:00,wo230,0

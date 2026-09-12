@@ -576,3 +576,4 @@ https://inglesidetx.portal.civicclerk.com/event/597/media		us:place:4836008	Ingl
 https://www.youtube.com/watch?v=FHaiGhehAlE	https://crookcountyor.gov/agendacenter	us:county:41013	Crook County, OR	3:48:53
 https://www.youtube.com/watch?v=RLhUOmshDCg	https://lincolncosd.portal.civicclerk.com/event/952/media	us:county:46083	Lincoln County, SD	1:40:35
 https://southernpinesnc.portal.civicclerk.com/event/484/media	https://southernpines.net/AgendaCenter	us:place:3763120	Southern Pines town, NC	2:26:49	Town Council Business Meeting
+https://byramms.portal.civicclerk.com/event/1040/media	https://www.byram-ms.us/AgendaCenter	us:place:2810140	Byram city, MS	2:16:52	Mayor and Board of Aldermen Meeting
