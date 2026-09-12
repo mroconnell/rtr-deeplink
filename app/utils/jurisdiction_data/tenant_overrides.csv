@@ -5691,3 +5691,5 @@ www.youtube.com,5qjNK4t2sPg,us:place:4779420,fallback,wo264_closeout_pin_backfil
 www.youtube.com,TCmdcDJRHjQ,us:place:3774580,fallback,wo264_closeout_pin_backfill,"Wilson's Mills town, NC -- WO-264 close-out pin-backfill (own_channel=yes but no real @handle, per-video fallback instead)"
 www.youtube.com,OuV6ehHro3E,us:place:1884734,fallback,wo264_closeout_pin_backfill,"Winamac town, IN -- WO-264 close-out pin-backfill (own_channel=yes but no real @handle, per-video fallback instead)"
 www.youtube.com,aQVhbuiV2Ik,ca:csd:2446058,fallback,wo264_closeout,"Sutton, QC -- WO-264 close-out, long-only (8530s/142min), no shorter candidate found in newest 40 uploads, queued per Rya n 2026-09-12 rule"
+parkcounty.granicus.com,,us:county:30067,fallback,wo286,"parkcounty.org -- WO-286 confirmed tier-3, gov_id=us:county:30067"
+watchungnj.portal.civicclerk.com,,us:place:3477600,fallback,wo286,"watchungnj.gov -- WO-286 confirmed tier-3, gov_id=us:place:3477600"

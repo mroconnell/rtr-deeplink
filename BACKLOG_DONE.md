@@ -1,5 +1,107 @@
 # Backlog — done
 
+## WO-286: hand-read and resolve the 152 "weak" WO-281 confirmations — corrected to 67 real non-YouTube leads, 3 queued [Done 2026-09-12]
+
+**What was done and why.** WO-281 found a real platform on 259
+governments by fetching each one's homepage and scoring its links. It
+hand-checked 13 of them itself and left 249 for later: 98 said to be
+bare YouTube channel links, and 152 said to be confirmed only through a
+different link on the same page. This work order was asked to take the
+152 and read each one by hand.
+
+Before building anything, this session re-derived that 152 number
+directly against the underlying file rather than trusting it. It was
+wrong. Of those 152, 85 had no real lead at all except a stray YouTube
+icon elsewhere on the page — in substance a YouTube lead, just found a
+different way, not something this work order's own tools should touch
+(YouTube work runs from a separate Mac only). The real number of
+non-YouTube governments needing a hand-read was 67, not 152.
+
+**Result — what this work order actually did with the real 67.**
+
+| Outcome | Count of 67 | What it means |
+|---|---|---|
+| Real meeting found, no captions, queued | 3 | A real, current meeting with video, checked by hand against the government's own name, added to the transcription queue |
+| Already covered by an earlier sweep | 3 | This work order found a real meeting too, but the government already had it (one already fully transcribed, one already in the queue under a different meeting) |
+| Real meeting found, no video | 2 | The platform's own listing was checked and genuinely has no video attached |
+| Platform confirmed, nothing more found | 15 | A real video platform is somewhere on the government's site, but this work order could not reach a specific meeting on it |
+| Site blocked every access attempt | 44 | The government's own site refused every request this session could make |
+
+**Result — by platform.**
+
+| Platform | Governments | Queued | Already covered | No video | Platform-only | Blocked |
+|---|---|---|---|---|---|---|
+| Granicus | 45 | 1 | 2 | 2 | 0 | 40 |
+| CivicClerk | 6 | 0 | 1 | 0 | 5 | 0 |
+| IQM2 | 3 | 0 | 0 | 0 | 1 | 2 |
+| Utah PMN | 3 | 1 | 0 | 0 | 0 | 2 |
+| eScribe | 2 | 0 | 0 | 0 | 2 | 0 |
+| SuiteOne | 2 | 0 | 0 | 0 | 2 | 0 |
+| CivicWeb | 2 | 0 | 0 | 0 | 2 | 0 |
+| Swagit | 2 | 0 | 0 | 0 | 2 | 0 |
+| Legistar | 1 | 0 | 0 | 0 | 1 | 0 |
+| BoxCast | 1 | 1 | 0 | 0 | 0 | 0 |
+
+**The 3 newly queued.** Emery County, UT (Economic Development Board,
+about 50 minutes, an audio recording on Utah's own statewide meeting-
+notice site — this repo's `utah_pmn` adapter already treats that the
+same as video, by design). Park County, MT (Planning and Zoning
+Commission, about 9 minutes). Farmersville, TX (Community Development
+Corporation, about 30 minutes — the platform's own newest meeting was a
+133-minute City Council session; this work order looked deeper in the
+same channel's own recent-meeting list and found a shorter, still real,
+still on-mission meeting instead, per this repo's "look deeper before
+taking a long one" rule). All three checked by hand against the real
+platform channel/tenant name before being queued; none were wrong.
+
+**The 3 that turned out already covered.** A late check this work order
+should have run *before* queueing, not after, caught these: Summit
+County, UT already has a real, transcribed page from an earlier sweep.
+Benicia, CA already has five real pages, including the *exact same*
+meeting (same platform clip) this work order's own manual follow-up dug
+up. Watchung, NJ already had a different meeting from the same platform
+tenant sitting in the queue. All three queue lines and one pin this work
+order had already written were removed by hand, and
+`jurisdiction_coverage.csv` was corrected to the real, accurate state
+(the two covered ones marked transcribed; Watchung pointed back at its
+real, pre-existing queued meeting) rather than left showing this work
+order's own mistaken entries.
+
+**Caution.** Two real, confirmed access limits, not code bugs. First: a
+large share of the "platform confirmed but not reachable" governments
+(44 of 67) are blocked by their own site's static "Access Denied" page —
+tried a plain request, a browser-shaped request, and a real headless
+browser, and got the identical block from all three. This is a real
+limit of what this session's own network address could reach today, not
+a "prove you're human" gate, and not something this session tried to
+push past. Second: `web.archive.org` answered normally this time
+(the opposite of what WO-281 found the same week), but held no useful
+older copy of the specific pages this work order needed, so it didn't
+help here. Both are recorded as open, unresolved items in `BACKLOG.md`.
+
+**Hand-check.** Every one of the 3 queued meetings, the 3
+already-covered rediscoveries, and the 2 no-video findings was read by
+hand — title, date, and the real government/channel name it came from —
+before anything was written. Nothing was wrong; no meeting belonged to a
+different government (no Kind-A owner-body finds this round).
+
+**No YouTube calls made.** This work order's own scope excluded YouTube
+entirely, and made none.
+
+**Recommendation.** `BACKLOG.md`'s corresponding entry is corrected and
+reduced to the real YouTube-only population (about 183 governments, not
+98 — the 85 weak-YouTube-only governments found while re-deriving this
+work order's own population belong there too) for the drip to pick up
+next. The 44 blocked governments and the access-limit finding are their
+own open `BACKLOG.md` entries, not re-queued blindly against the same
+limit.
+
+**Deploy status.** No new Archive pages this round (nothing had real
+captions). The 3 new tier-3 queue lines and the 1 new tenant pin
+(`parkcounty.granicus.com`) reach the live site only after the next
+resolver deploy and the transcription worker picking them up; until
+then they sit in the repo only. `jurisdiction_coverage.csv` changes are
+research-file only and need no deploy.
 ## WO-285: nine small fixes filed by this week's sweeps — adapter, probe, script and doc corrections, shipped as three PRs [Done 2026-09-12]
 
 Eight small `BACKLOG.md` entries (each filed by a different sweep this
