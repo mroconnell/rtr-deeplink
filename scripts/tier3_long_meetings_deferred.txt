@@ -847,7 +847,7 @@ https://boxcast.tv/view/village-board-meeting-e142v1tfenqbrkuywbn9		us:cousub:23
 https://reflect-vsctv.cablecast.tv/internetchannel/show/6225?site=1&query=clinton+town+council		rtr:unknown:reflect-vsctv.cablecast.tv		1:39:34	
 https://reflect-brunswick-me.cablecast.tv/internetchannel/show/6559?site=1			Town of Brunswick	3:57:51	
 https://boxcast.tv/view-embed/nwrokauspk1efbe4hifp?showTitle=1&showDescription=1&showHighlights=1&showRelated=1&defaultVideo=next&market=smb&showDocuments=1&showIndex=1&showDonations=0&showChat=1&showCountdown=1&layout=playlist-to-right	https://cityofpascagoula.com/AgendaCenter	us:cousub:2300140770	Livermore Falls, ME	0:51:33	
-https://townhallstreams.com/stream.php?location_id=94&id=75799		us:cousub:2300140035	Lisbon, ME		
+https://townhallstreams.com/stream.php?location_id=94&id=75799		us:cousub:2300140035	Lisbon, ME
 https://townhallstreams.com/stream.php?location_id=47&id=21880					
 https://townhallstreams.com/stream.php?location_id=108&id=35970			New Boston		
 https://townhallstreams.com/stream.php?location_id=169&id=67490		us:cousub:3300577380	Troy, NH		
@@ -942,4 +942,5 @@ https://winterhaven-fl.granicus.com/MediaPlayer.php?view_id=1&clip_id=616
 https://wrightcountymn.portal.civicclerk.com/event/1667/media		us:county:27171	Wright County, MN		
 https://wrightcountymn.portal.civicclerk.com/event/2682/media		us:county:27171	Wright County, MN		
 https://wrightcountymn.portal.civicclerk.com/event/30/media		us:county:27171	Wright County, MN		
-https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238					
+https://yazoo.granicus.com/MediaPlayer.php?view_id=1&clip_id=238
+https://pub-edmonton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6f5d15ef-01bf-411b-8af1-0b22d2f92009&Item=54&Tab=attachments&lang=English		us:place:2123968		18:19:08

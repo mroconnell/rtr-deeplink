@@ -5838,3 +5838,38 @@ https://townhallstreams.com/stream.php?location_id=116&id=36006,townhallstreams,
 https://townhallstreams.com/stream.php?location_id=116&id=36006,townhallstreams,hls-master+variant,3610.51,,,1,accept,,0.34,2026-09-12T15:50:35+00:00,feed_tier3_auto_transcription,0
 https://townhallstreams.com/stream.php?location_id=124&id=44331,townhallstreams,hls-master+variant,8753.01,,,1,accept,,0.57,2026-09-12T15:50:38+00:00,,0
 https://townhallstreams.com/stream.php?location_id=124&id=44331,townhallstreams,hls-master+variant,8753.01,,,1,accept,,0.31,2026-09-12T15:50:39+00:00,feed_tier3_auto_transcription,0
+https://williamsburg.civicweb.net/Portal/MeetingInformation.aspx?Id=1209,youtube,yt-dlp-metadata,3562.00,2026-08-14,69622402,1,accept,,2.68,2026-09-12T15:12:27+00:00,bulk_ingest,0
+https://woodland.civicweb.net/Portal/MeetingInformation.aspx?Id=5913,youtube,yt-dlp-metadata,6651.00,2026-08-21,238093083,1,accept,,3.34,2026-09-12T15:12:36+00:00,bulk_ingest,0
+https://mapleton.civicweb.net/Portal/MeetingInformation.aspx?Id=359,youtube,yt-dlp-metadata,833.00,2026-08-13,11549842,1,accept,,2.03,2026-09-12T15:12:44+00:00,bulk_ingest,0
+https://waverly.civicweb.net/Portal/MeetingInformation.aspx?Id=18903,youtube,yt-dlp-metadata,3000.00,2026-09-04,102238213,1,accept,,1.96,2026-09-12T15:12:50+00:00,bulk_ingest,0
+https://www.youtube.com/embed/yRD3phRicvA?rel=0,youtube,yt-dlp-metadata,480.00,2026-06-10,15019844,0,accept,,1.84,2026-09-12T15:12:56+00:00,bulk_ingest,0
+https://valdez.granicus.com/player/clip/2246?view_id=3,granicus,hls-master+variant,8435.06,,,1,accept,,0.94,2026-09-12T15:13:00+00:00,wo290_known_platform_sweep,0
+https://dhaz.granicus.com/player/clip/1385?view_id=2,granicus,hls-master+variant,6280.79,,,1,accept,,1.64,2026-09-12T15:13:03+00:00,wo290_known_platform_sweep,0
+https://snowmassvillage.granicus.com/player/clip/1577,granicus,hls-master+variant,12338.43,,,1,accept,,1.33,2026-09-12T15:13:07+00:00,wo290_known_platform_sweep,0
+https://vbhil.granicus.com/player/clip/492?view_id=1,granicus,hls-master+variant,2774.16,,,1,accept,,0.51,2026-09-12T15:13:09+00:00,wo290_known_platform_sweep,0
+http://hometown.cablecast.tv/show/209?site=1,cablecast,hls-master+variant,2597.53,,,1,accept,,0.60,2026-09-12T15:13:12+00:00,wo290_known_platform_sweep,0
+https://pub-edmonton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6f5d15ef-01bf-411b-8af1-0b22d2f92009&Item=54&Tab=attachments&lang=English,escribe,hls-master+variant,65947.50,,,1,flag-long,"duration 18.32h is over the 6h flag threshold -- still accepted, a long meeting can be real (Anaheim, BACKLOG_DONE.md's WO-143 entry)",1.28,2026-09-12T15:13:14+00:00,wo290_known_platform_sweep,0
+https://south-haven.granicus.com/player/clip/663?view_id=4,granicus,hls-master+variant,5581.48,,,1,accept,,0.60,2026-09-12T15:13:16+00:00,wo290_known_platform_sweep,0
+https://troutmannc.granicus.com/player/clip/70,granicus,hls-master+variant,3679.95,,,1,accept,,1.17,2026-09-12T15:13:22+00:00,wo290_known_platform_sweep,0
+https://pub-oliver.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=e1e0450b-d89d-4b85-8b28-7ae632ad67d5&lang=English,escribe,hls-master+variant,3696.53,,,1,accept,,0.59,2026-09-12T15:13:26+00:00,wo290_known_platform_sweep,0
+https://pub-langford.escribemeetings.com/Meeting.aspx?Agenda=PostMinutes&Id=f1c3472c-0a03-48f6-8059-884d854c7284&lang=English,escribe,hls-master+variant,6027.25,,,1,accept,,0.63,2026-09-12T15:13:30+00:00,wo290_known_platform_sweep,0
+https://play.champds.com/bellemeadetn/event/227,champds,,,,,0,reject-dead,no probe recipe for this media shape: https://play.champds.com/DOWNLOAD-MEDIA/bellemeadetn/eventmainmedia/227,0.00,2026-09-12T15:13:31+00:00,wo290_known_platform_sweep,0
+https://play.champds.com/oakhilltn/event/50,champds,,,,,0,reject-dead,no probe recipe for this media shape: https://play.champds.com/DOWNLOAD-MEDIA/oakhilltn/eventmainmedia/50,0.00,2026-09-12T15:13:33+00:00,wo290_known_platform_sweep,0
+https://townspi.granicus.com/player/clip/4657?view_id=4,granicus,hls-master+variant,3222.08,,,1,accept,,1.58,2026-09-12T15:13:36+00:00,wo290_known_platform_sweep,0
+https://westlakehillstx.portal.civicclerk.com/event/532/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://www.westlakehills.gov/DocumentCenter/View/4765/07152026-ZAPCO-Audio,0.00,2026-09-12T15:13:37+00:00,wo290_known_platform_sweep,0
+https://pub-abbotsford.escribemeetings.com/Meeting.aspx?Agenda=Merged&Id=c157e0a4-351f-49f2-bd63-bc0747196fed&lang=English,escribe,hls-master+variant,6677.23,,,1,accept,,0.64,2026-09-12T15:13:39+00:00,wo290_known_platform_sweep,0
+https://bishop-ca.granicus.com/player/clip/1804?redirect=true&view_id=1,granicus,hls-master+variant,5875.08,,,1,accept,,1.24,2026-09-12T15:13:42+00:00,wo290_known_platform_sweep,0
+https://youtu.be/zw1ZP2PLbr4,youtube,yt-dlp-metadata,3585.00,2026-08-05,71748004,1,accept,,2.42,2026-09-12T15:34:50+00:00,bulk_ingest,0
+https://www.youtube.com/live/iR2-DJrFEEU?si=6erPHh1l1q9BFXgA,youtube,yt-dlp-metadata,201.00,2026-09-11,6972207,0,accept,,3.01,2026-09-12T15:34:58+00:00,bulk_ingest,0
+https://youtu.be/nVoqTpN5upo?si=NFe77iIatGxpvDa6,youtube,yt-dlp-metadata,969.00,2026-08-20,7320130,1,accept,,3.11,2026-09-12T15:35:06+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=ilWD0kzPbqQ,youtube,yt-dlp-metadata,2642.00,2026-08-11,101576923,1,accept,,2.99,2026-09-12T15:35:14+00:00,bulk_ingest,0
+https://youtube.com/live/BFkKG07SbEA,youtube,yt-dlp-metadata,2903.00,2023-09-15,80903020,1,accept,,1.73,2026-09-12T15:35:20+00:00,bulk_ingest,0
+https://youtu.be/AtN_EmC0mYc,youtube,yt-dlp-metadata,2621.00,2026-08-25,76123200,1,accept,,2.35,2026-09-12T15:35:26+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=XdCWz_dpXQw,youtube,yt-dlp-metadata,2982.00,2026-08-25,50591585,1,accept,,2.01,2026-09-12T15:35:31+00:00,bulk_ingest,0
+https://www.youtube.com/live/b79SZYzFtz0?si=FxSZGQXDG_U5wnQV,youtube,yt-dlp-metadata,4735.00,2026-09-09,119348197,1,accept,,2.44,2026-09-12T15:35:38+00:00,bulk_ingest,0
+https://youtu.be/htCZ-tQOCO0,youtube,yt-dlp-metadata,7576.00,2026-05-14,163827103,1,accept,,1.88,2026-09-12T15:35:44+00:00,bulk_ingest,0
+https://youtube.com/live/LCBCIhK_C3o?feature=share,youtube,yt-dlp-metadata,7810.00,2026-05-07,241801385,1,accept,,1.77,2026-09-12T15:35:50+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=6U_2S0h673k,youtube,yt-dlp-metadata,7475.00,2026-08-25,282526866,1,accept,,2.14,2026-09-12T15:35:56+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=gTvkvlErCgg&t=10s,youtube,yt-dlp-metadata,4164.00,2026-08-19,132045046,1,accept,,1.95,2026-09-12T15:36:02+00:00,bulk_ingest,0
+https://www.youtube.com/live/L0lsITl9_l0?si=Z26piE2eGFgC8O7-,youtube,yt-dlp-metadata,5710.00,2026-08-27,153485048,1,accept,,1.93,2026-09-12T15:36:08+00:00,bulk_ingest,0
+https://www.youtube.com/watch?v=9hrqwx3Vh8A,youtube,yt-dlp-metadata,2827.00,2026-01-06,61617897,1,accept,,1.85,2026-09-12T15:36:14+00:00,bulk_ingest,0
