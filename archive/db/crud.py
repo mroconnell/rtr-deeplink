@@ -92,6 +92,7 @@ from ..topics import (
 from ..utils.highlights import highlight_html
 from ..utils.transcription_quality import detect_hallucination_warnings
 from ..utils.url_normalize import normalize_url
+from . import hub_slugs
 from .engine import async_session
 from .models import (
     MeetingHighlight,
@@ -1275,6 +1276,17 @@ async def _find_or_create_page(
 
     await _ensure_alias(session, input_url_normalized, page.id)
     await _ensure_alias(session, source_url_normalized, page.id)
+    # WO-256: this government's hub slug, stored rather than left to be
+    # recomputed from whatever its name is on the day a reader arrives.
+    # `page.gov_id`, not `gov.gov_id`: the guards above can decline to
+    # write a resolved id (a manual override, WO-215's blank_downgrade),
+    # and the slug must follow the identity the page actually CARRIES.
+    # Flushed first so a brand-new page is counted by the gate's own
+    # page-count query in this same transaction.
+    await session.flush()
+    await hub_slugs.record_government(
+        session, page.gov_id, live_hub_slug(page.gov_id, page.jurisdiction)
+    )
     return page, created
 
 
@@ -3894,6 +3906,15 @@ async def override_jurisdiction(
                 .where(MeetingPage.id.in_([e["meeting_page_id"] for e in changed]))
                 .values(**values)
             )
+            # WO-256: an override is one of the operations that used to
+            # move a reader's URL -- it writes the registry display name,
+            # and the slug was derived from that on the next render. Record
+            # the government's hub slug here too, so the id this human
+            # just decided on owns a hub of its own rather than borrowing
+            # one from whatever its name currently slugifies to.
+            await hub_slugs.record_government(
+                session, gov_id, live_hub_slug(gov_id, display)
+            )
             await session.commit()
 
     rules_written = _append_override_rules(rules) if (rules and not dry_run) else 0
@@ -4389,6 +4410,11 @@ async def clear_future_meeting_dates(
 
 async def get_page_by_slug(slug: str) -> Optional[dict]:
     async with async_session() as session:
+        # WO-256: this page's own "More {Jurisdiction} meetings" link is
+        # built by hub_slug_for_page() from the same cache /j/ groups by,
+        # so it has to be loaded here too or a /m/ page could link to a
+        # live-computed slug while /j/ is grouping by the frozen one.
+        await hub_slugs.refresh(session)
         page = (
             (await session.execute(select(MeetingPage).where(MeetingPage.slug == slug)))
             .scalars()
@@ -7949,12 +7975,42 @@ def _hub_base_conditions():
     )
 
 
+def live_hub_slug(gov_id: Optional[str], jurisdiction: Optional[str]) -> Optional[str]:
+    """The slug this government's hub would be COMPUTED as right now --
+    the registry's current display name for a `gov_id` it knows, else the
+    page's own cleaned jurisdiction text.
+
+    This is what `_hub_identity()` used to return unconditionally, and it
+    is still the answer for a government with no stored row. Split out as
+    its own function (WO-256) because it is now also what every *writer*
+    stores: `hub_slugs.record_government()` takes this value, so the
+    frozen slug is by definition "whatever the live computation said at
+    freeze time" -- which is what makes the cutover change zero URLs.
+    """
+    gov = registry_governments().get(gov_id) if hub_slugs._usable(gov_id) else None
+    if gov:
+        return gov_hub_slug(gov)
+    return jurisdiction_hub_slug(jurisdiction)
+
+
 def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     """(key, slug, display, gov_type) for one page's hub.
 
-    Three cases, and the fallbacks matter as much as the happy path
-    because a hub has to keep working for every page in the archive, not
-    only the resolved ones:
+    **The slug is the government's STORED one whenever it has been frozen**
+    (WO-256, `docs/investigations/hub_architecture_audit.md` §4): a
+    `gov_id` lookup against `hub_slugs`, never a recomputation from the
+    page's text or the government's current name. A rename, a Census
+    correction, an override or a backfill can still change *which*
+    government a page belongs to; it can no longer move the URL of the hub
+    that government already has. `archive/db/hub_slugs.py` holds the read
+    path (a process-level cache, because this function is sync) and the
+    7-day/2-page gate that decides when a slug stops being provisional.
+
+    Everything below is what happens for a government with no frozen row
+    -- every government before `scripts/freeze_hub_slugs.py` has run, and
+    every brand-new one since. Three cases, and the fallbacks matter as
+    much as the happy path because a hub has to keep working for every
+    page in the archive, not only the resolved ones:
 
     1. **A `gov_id` with a registry row** -- the normal case after the
        backfill. The key is the id, and the slug and display name are
@@ -7984,10 +8040,20 @@ def _hub_identity(gov_id: Optional[str], jurisdiction: Optional[str]) -> tuple:
     # now falls through to case 3: no government shown, no hub link,
     # exactly like a page with no id at all.
     known = bool(gov_id) and not gov_id.startswith("rtr:unknown:")
+    # The frozen slug wins over both cases below, and over nothing else:
+    # the DISPLAY name still comes from the registry (so a rename still
+    # shows up in the page's text, which is the whole point of separating
+    # the name from the URL).
+    frozen = hub_slugs.frozen_hub_slug(gov_id) if known else None
     gov = registry_governments().get(gov_id) if known else None
     if gov:
-        return gov.gov_id, gov_hub_slug(gov), gov_display_name(gov), gov.gov_type
-    slug = jurisdiction_hub_slug(jurisdiction)
+        return (
+            gov.gov_id,
+            frozen or gov_hub_slug(gov),
+            gov_display_name(gov),
+            gov.gov_type,
+        )
+    slug = frozen or jurisdiction_hub_slug(jurisdiction)
     display = format_jurisdiction_display(jurisdiction)
     return (gov_id or slug or ""), slug, display, None
 
@@ -8075,6 +8141,11 @@ async def _hub_groups(session) -> dict[str, dict]:
     governments on one hub, which `splits.csv` in the scoring report is
     exactly the thing that would show it.
     """
+    # WO-256: load the frozen slugs before `_hub_identity()` is called for
+    # the first time in this request. This is the main entry point for the
+    # whole cache -- `/j/`, `/state/*`, the home page and `sitemap.xml`
+    # all come through here.
+    await hub_slugs.refresh(session)
     stmt = (
         select(
             MeetingPage.gov_id,

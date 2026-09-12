@@ -282,6 +282,46 @@ optional, so `_featured_entry()` declines rather than publishing a
 placeholder. A render-time guard, not a fix: the rows still want
 re-resolving.
 
+### A hub's slug is frozen, its name is not — WO-256, 2026-09-12
+
+A government's `/j/` slug is **stored once and read back**, not computed
+on each request from the government's current name. The table is
+`hub_slugs(gov_id, hub_slug, first_seen_at, frozen_at)` in the Archive
+database; `archive/db/hub_slugs.py` is the read and write path, and
+`archive/db/models.py`'s `HubSlug` docstring carries the design.
+
+**Why.** Before this, every operation that changed what a `gov_id`
+rendered as — a rename, a Census correction, a
+`POST /internal/jurisdiction/override`, a `backfill_gov_id.py --apply`
+run, a curated mint getting scored — moved a live, indexed, already
+linked URL, and nothing wrote the `hub_slug_aliases.csv` row that keeps
+the old one alive. 829 alias rows for 784 governments had piled up by
+2026-09-11. That evening one backfill run retired 35 hubs and 12 of them
+were retired **wrongly**, by a resolver regression (WO-243, fixed as
+WO-251) that turned "The City of Redmond, WA" into a freshly minted id.
+With the slug frozen those pages would still have changed government, and
+no reader's URL would have moved.
+
+**The gate** (Ryan, 2026-09-12): a row is written the first time a
+government is seen and keeps tracking the live computation until
+`frozen_at` is set, which happens once the government has been known for
+7 days **and** has more than one page. So a brand-new government's pin
+and identity churn settles before anything becomes permanent.
+
+**What reads and writes it.** `crud._hub_identity()` consults the frozen
+slug first, then falls back to exactly the old live computation for a
+government that has no frozen row — so a cold cache, a database where the
+migration has not run, and every un-frozen government all behave exactly
+as they did before. Writers (ingest, the override endpoint,
+`scripts/freeze_hub_slugs.py`) call `hub_slugs.record_government()`
+rather than deriving a slug of their own. The gate runs on the writer
+path and in the sweep, never on a read: the Archive has no scheduler, and
+a write inside a page render is how a slow render becomes an outage.
+
+**A rename after a freeze still costs one alias row**, the same mechanism
+as today — it is now rare (once per correction) instead of once per
+registry refresh.
+
 ### Government grouping
 
 `archive/utils/gov_groups.py` maps each page's stored `gov_type` — the
@@ -364,6 +404,7 @@ content, not separate pages competing for the same query.
 | `MOST_ACTIVE_MIN_GOVERNMENTS` / `_WINDOW_DAYS` / `_COUNT` | 8 / 90 / 6 | `db/crud.py` |
 | `FRESHNESS_WINDOW_DAYS` | 7 | `db/crud.py` |
 | `JURISDICTION_HUB_MIN_INDEXABLE` | 2 | `db/crud.py` |
+| `FREEZE_AFTER` / `FREEZE_MIN_PAGES` | 7 days / 2 | `db/hub_slugs.py` |
 
 `STATE_HIGHLIGHT_POOL` is a *recent* pool on purpose: "which subjects are
 live here right now" is the useful question, and an all-time count would
