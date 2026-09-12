@@ -980,26 +980,20 @@ def test_same_tenant_consistency_is_a_tier_of_its_own(monkeypatch):
 @pytest.mark.parametrize(
     "raw,host,tenant_gov_id,expected",
     [
-        # "The City of Milwaukee, WI" matched no place key (the leading
-        # "The" defeats the enricher's prefix strip) and minted a second
-        # id beside `milwaukee.granicus.com`'s own City of Milwaukee.
-        (
-            "The City of Milwaukee, WI",
-            "milwaukee.granicus.com",
-            "us:place:5553000",
-            "us:place:5553000",
-        ),
+        # "The City of Andover" has no state in the raw text at all, and
+        # "Andover" is nationally ambiguous (MA/KS/OH/CT and more really
+        # exist), so this one genuinely still needs the tenant-consistency
+        # net -- unlike Milwaukee and College Park below, both of which
+        # WO-251 moved off this rung entirely by fixing the place-table
+        # match directly (see `test_milwaukee_now_matches_the_place_table_
+        # directly()` and `test_college_park_now_matches_the_place_table_
+        # directly()`, right below the class of tests this one used to
+        # share a parametrize with).
         (
             "The City of Andover",
             "andoverks.civicweb.net",
             "us:place:2001800",
             "us:place:2001800",
-        ),
-        (
-            "The City of College Park, MD",
-            "college-park.granicus.com",
-            "us:place:2418750",
-            "us:place:2418750",
         ),
     ],
 )
@@ -1009,6 +1003,17 @@ def test_tenant_consistency_collapses_a_spelling_of_the_tenants_own_name(
     match = resolve(raw, host, tenant_gov_id=tenant_gov_id)
     assert match.gov_id == expected
     assert match.tier == resolver.TIER_INFERRED
+
+
+def test_college_park_now_matches_the_place_table_directly():
+    """Same WO-251 fix as Milwaukee, same real shape: "The City of College
+    Park, MD" (real Granicus tenant text) used to need `tenant_gov_id` and
+    land on `inferred`; the leading-"The" fix in jurisdiction_enrich.py's
+    `_LEADING_TYPE_RE` now matches it straight to the place table with no
+    tenant hint at all."""
+    match = resolve("The City of College Park, MD", "college-park.granicus.com")
+    assert match.gov_id == "us:place:2418750"
+    assert match.tier == resolver.TIER_REGISTRY
 
 
 @pytest.mark.parametrize(
@@ -1060,6 +1065,47 @@ def test_tenant_consistency_will_not_cross_a_state_line():
         tenant_gov_id="us:place:5538675",
     )
     assert match.gov_id != "us:place:5538675"
+
+
+def test_youtube_channel_pins_keep_the_two_real_juneaus_apart():
+    """Two real, separate YouTube channel pins, both on the shared
+    `www.youtube.com` host, both named Juneau, and they must land on two
+    different real places -- the same state-crossing risk the test above
+    covers for `juneauak.portal.civicclerk.com`, but for a pin row rather
+    than tenant consistency.
+
+    `@cityandboroughofjuneau2053`'s own owner title is "City and Borough
+    of Juneau" -- the real, official name of Juneau, ALASKA
+    (`us:place:0236400`; `juneauak.portal.civicclerk.com`'s authoritative
+    pin above names the same id). It was wrongly pinned to
+    `us:place:5538675` (Juneau, WISCONSIN -- a real but different, much
+    smaller city) during the 2026-09-09 channel fill and moved a real
+    Alaska Assembly Committee of the Whole video (page 4910) into Juneau
+    WI's hub -- fixed here (WO-251).
+
+    `@cityofjuneaucabletv8377` is the one that really is Juneau WI (page
+    4814, the common council) and must stay there -- this test guards
+    against "fixing" the first row by guessing a blanket rule that
+    repoints both."""
+    alaska = resolve(
+        "City and Borough of Juneau",
+        "www.youtube.com",
+        page_hints=resolver.page_hints_for(
+            "youtube", "x", channel="@cityandboroughofjuneau2053"
+        ),
+    )
+    assert alaska.gov_id == "us:place:0236400"
+    assert alaska.tier == resolver.TIER_PINNED
+
+    wisconsin = resolve(
+        "City of Juneau",
+        "www.youtube.com",
+        page_hints=resolver.page_hints_for(
+            "youtube", "x", channel="@cityofjuneaucabletv8377"
+        ),
+    )
+    assert wisconsin.gov_id == "us:place:5538675"
+    assert wisconsin.tier == resolver.TIER_PINNED
 
 
 def test_tenant_consistency_never_reads_a_generated_rows_aliases():
@@ -1306,6 +1352,121 @@ def test_name_repair_truncation_is_unaffected_for_a_real_place():
     2's repair (then rung 4's national lookup) still runs exactly as
     before."""
     assert resolve("City of Fresno, CA").gov_id == "us:place:0627000"
+
+
+# --- WO-251: "The City of X, ST" backfill regression, re-derived -------
+#
+# `scripts/backfill_gov_id.py --apply` on production (2026-09-12, commit
+# ec1bd9a, which includes WO-243 #1003) re-keyed 92 pages off a real
+# registry hub onto a fresh mint -- 18 of them are these real Granicus
+# tenants, each writing its own government's name with a prefix
+# ("The City of", "The Town of", "The Village of", a bare "City of"/"Town
+# of", or "Town of X, Long Island") that the repair pipeline didn't
+# handle. The WO-251 brief's own premise was that rung 1c (WO-243's
+# curated-match-before-repair rung) caused this -- re-derived against the
+# code and found FALSE: every one of these 18 names mints the identical
+# wrong id on the commit immediately BEFORE WO-243 too (verified by
+# running this exact parametrize against `1708e05^`'s resolver.py/
+# registry.py). Rung 1c is a pure no-op for all 18 -- none is a curated
+# row -- so "fix rung 1c" fixes nothing here; the real gaps were three,
+# all in jurisdiction_enrich.py/resolver.py, predating WO-243 entirely:
+#
+# 1. `_LEADING_TYPE_RE` required the string to START with the type word
+#    ("city"/"town"/etc.) -- a leading "The " defeated it completely, so
+#    "The City of Redmond, WA" never reached the place table at all. Hit
+#    12 of the 18. Fixed by making the leading "the " optional.
+# 2. A handful of real Census rows genuinely keep the word the "<Type> of
+#    <Name>" phrasing strips as filler, as part of their own real name --
+#    "Lake Havasu City city, AZ", "West Springfield Town city, MA". Fixed
+#    two ways: `_normalize_candidates()` now also tries the type word
+#    re-appended (Lake Havasu), and `_census_type_word()` knows
+#    Massachusetts's own "<Name> Town city" Gazetteer quirk (West
+#    Springfield) -- 13 real MA rows share the shape, confirmed, and nothing
+#    outside MA does except three real places literally NAMED "___ Town"
+#    (Charles Town WV, New Town ND, Old Town ME), which is why the fix is
+#    scoped to state == "MA", not a blanket rule.
+# 3. ", Long Island" sits between the name and the state on three real
+#    Suffolk County NY towns' own raw text, noise neither the leading-type
+#    strip nor the trailing-state regex reaches. Stripped as its own
+#    preprocessing step.
+_WO251_PREFIX_SHAPES = [
+    ("The City of Redmond, WA", "redmond.granicus.com", "us:place:5357535"),
+    (
+        "The City of Harrisonburg, VA",
+        "harrisonburg-va.granicus.com",
+        "us:place:5135624",
+    ),
+    ("The City of Amarillo, TX", "amarillo.granicus.com", "us:place:4803000"),
+    ("The City of East Lansing, MI", "eastlansing.granicus.com", "us:place:2624120"),
+    (
+        "The City of Huntington Park, CA",
+        "huntingtonpark.granicus.com",
+        "us:place:0636056",
+    ),
+    ("The City of Lincoln Park, MI", "lincolnpark-mi.granicus.com", "us:place:2647800"),
+    ("The City of Morgantown, WV", "morgantown.granicus.com", "us:place:5455756"),
+    ("The City of Placentia, CA", "placentia.granicus.com", "us:place:0657526"),
+    ("The City of Grand Island, NE", "grandisland.granicus.com", "us:place:3119595"),
+    ("The City of Janesville, WI", "janesville.granicus.com", "us:place:5537825"),
+    # No leading "The" -- the real place's own Census name keeps "City"
+    # that the "City of" phrasing would otherwise strip as filler.
+    ("City of Lake Havasu, AZ", "lakehavasucity.granicus.com", "us:place:0439370"),
+    ("The Town of Collierville, TN", "collierville.granicus.com", "us:place:4716420"),
+    ("The Town of North Salem, NY", "northsalem.granicus.com", "us:cousub:3611953517"),
+    (
+        "The Village of Palmetto Bay, FL",
+        "palmettobay.granicus.com",
+        "us:place:1254275",
+    ),
+    # MA's own "<Name> Town city" Gazetteer quirk.
+    (
+        "Town of West Springfield, MA",
+        "westspringfieldma.granicus.com",
+        "us:place:2577890",
+    ),
+    # ", Long Island" qualifier, all three real Suffolk County NY towns.
+    (
+        "Town of Southampton, Long Island, NY",
+        "southampton.granicus.com",
+        "us:cousub:3610368473",
+    ),
+    (
+        "Town of Southold, Long Island, NY",
+        "southold.granicus.com",
+        "us:cousub:3610369463",
+    ),
+    (
+        "Town of East Hampton, Long Island, NY",
+        "easthampton.granicus.com",
+        "us:cousub:3610322194",
+    ),
+]
+
+
+@pytest.mark.parametrize("raw,host,gov_id", _WO251_PREFIX_SHAPES)
+def test_prefixed_granicus_names_reach_the_real_registry_row(raw, host, gov_id):
+    match = resolve(raw, host)
+    assert match.gov_id == gov_id
+    assert match.tier == resolver.TIER_REGISTRY
+
+
+def test_wo251_prefix_shapes_mint_identically_before_wo243():
+    """Guard against the next person re-reading the WO-251 brief and
+    re-blaming rung 1c: this reproduces the exact wrong-mint result from
+    `1708e05^` (the commit immediately before WO-243 #1003) for the
+    single clearest case, using the resolver/registry code as WO-243
+    found it -- frozen here as a literal string rather than re-checked
+    out at test time, since the point is what that code did, not what it
+    does today. `rtr:us:wa:redmond-city` is WO-243-independent: rung 1c
+    never engages for this name either before or after WO-243 (it is not
+    a curated row), so this result came entirely from the leading-"The"
+    gap in jurisdiction_enrich.py's `_LEADING_TYPE_RE`, which predates
+    WO-243 and WO-251 fixed directly."""
+    pre_wo243_result = "rtr:us:wa:redmond-city"
+    # Fixed by WO-251: this same input now reaches the real registry row.
+    assert resolve("The City of Redmond, WA", "redmond.granicus.com").gov_id != (
+        pre_wo243_result
+    )
 
 
 def test_curated_exact_match_does_not_reintroduce_the_boise_county_collision():
@@ -2216,23 +2377,28 @@ def test_municode_subdomain_fallback_lands_on_registry_tier(raw, host, expected_
     assert match.gov_id == expected_gov_id
 
 
-def test_municode_subdomain_fallback_does_not_regress_tenant_consistency():
-    # One of the two real regressions caught while building WO-113's first
-    # (unguarded) draft, which trusted the subdomain hint unconditionally
-    # the moment nothing validated -- see `_raw_text_explained_by_
-    # subdomain_hint()`'s own docstring in jurisdiction_enrich.py for the
-    # full account. `milwaukee.granicus.com` is real production data (no
-    # monkeypatching needed, unlike the bleed case below): "The City of
-    # Milwaukee, WI" must keep landing on the ladder's own tenant-
-    # consistency rung (`inferred`), not jump straight to a direct
-    # `registry` hit the way the unguarded draft made it do.
-    milwaukee = resolve(
-        "The City of Milwaukee, WI",
-        "milwaukee.granicus.com",
-        tenant_gov_id="us:place:5553000",
-    )
+def test_milwaukee_now_matches_the_place_table_directly():
+    # Until WO-251, "The City of Milwaukee, WI" (real Granicus tenant
+    # text) matched no place key at all -- the enricher's leading-type
+    # strip required the string to start with "City"/"Town"/etc., and a
+    # leading "The" defeated it -- so this case needed the ladder's own
+    # tenant-consistency rung (`inferred`) as a safety net, which is what
+    # this test originally asserted (see `test_tenant_consistency_
+    # collapses_a_spelling_of_the_tenants_own_name` right above, covering
+    # the same three names, for the net itself).
+    #
+    # WO-251 fixed the leading-"The" gap directly (`_LEADING_TYPE_RE` in
+    # jurisdiction_enrich.py), so this no longer needs the net at all: a
+    # real `us_places.csv` match, found with no `tenant_gov_id` supplied.
+    # Not a repeat of the WO-113 "unguarded subdomain hint" regression
+    # this test used to guard against -- that mechanism
+    # (`_raw_text_explained_by_subdomain_hint()`) is never even reached
+    # now; this resolves through the ordinary table-lookup fast path in
+    # `finalize_jurisdiction()`, the same one "City of Milwaukee, WI" (no
+    # leading "The") already used before WO-251.
+    milwaukee = resolve("The City of Milwaukee, WI", "milwaukee.granicus.com")
     assert milwaukee.gov_id == "us:place:5553000"
-    assert milwaukee.tier == resolver.TIER_INFERRED
+    assert milwaukee.tier == resolver.TIER_REGISTRY
 
 
 def test_municode_subdomain_fallback_does_not_regress_bleed_rejection(monkeypatch):
