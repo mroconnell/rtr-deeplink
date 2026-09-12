@@ -561,6 +561,152 @@ effect on its very next scheduled run after this merges, automatically.
 re-run to actually pick up the fixed channel check (see Bug 1's
 Caution). No backlog entry needed for that — `BACKLOG.md`'s WO-249
 history note already says the row is ready for the next sweep.
+## WO-253: the governments recorded on a meeting-platform tenant domain, not their own site — find the real site, re-run the WO-235/WO-247 channel check [Done 2026-09-12]
+
+**What was done and why.** WO-235 and WO-247 both looked for a YouTube
+channel link on a government's own website, for governments whose
+meeting platform carries no video. Some of their candidates had a
+problem: the website on file wasn't really the government's own site.
+It was the address of the meeting platform itself — a page that almost
+never carries a government's own footer links. Both WOs flagged this
+and asked for a follow-up. This work found the real site for those
+governments and ran the same channel check again, properly this time.
+
+**The population.** 36 governments came from WO-235 and WO-247's own
+lists. 7 more came from WO-252, a third sweep running the same method
+on a different population, which found the same problem and handed its
+7 rows to this work instead of guessing. 43 governments in total.
+
+**How big the problem really is, across the whole file.** A simple
+check — does a government's recorded website end in a known meeting-
+platform host? — found 1,099 such rows at population 5,000 or more.
+
+| Platform | Count of 1,099 |
+|---|---|
+| Granicus | 419 |
+| Swagit | 242 |
+| eScribe | 121 |
+| IQM2 | 103 |
+| CivicClerk | 97 |
+| CivicWeb | 62 |
+| PrimeGov | 28 |
+| Municode Meetings | 19 |
+| Legistar | 5 |
+| CivicPlus | 3 |
+
+This work only checked the 43 named above by hand. The other roughly
+1,056 rows are a real, sizable piece of work still to do — too much for
+one pass, since every real website has to be found and read by a
+person, not guessed. That gap is now its own line in `BACKLOG.md`.
+
+**What happened to the 43.** 2 needed no work: one already had a real
+page from an earlier sweep, and one (Providence County, Rhode Island)
+turns out to have no real county website at all — Rhode Island's
+counties stopped having their own government almost 200 years ago, so
+there is nothing to find. Of the other 41:
+
+| Result | Count of 41 |
+|---|---|
+| Real website already on file as a backup address, confirmed by visiting it | 29 |
+| Real website found for the first time (no backup address on file) | 6 |
+| Recorded address belonged to a different government's page entirely — fixed | 2 |
+| Recorded address suspected, not confirmed, to belong to a different government | 1 |
+| Backup address on file was itself dead; a newer one found | 1 |
+| Real website could not be reached — times out | 1 |
+| Real website could not be reached — sits behind a human-check wall | 1 |
+
+**The two "belonged to a different government" cases** are worse than
+the usual problem here. Amherst County, Virginia's recorded address
+actually belongs to the Town of Amherst, NEW YORK — a completely
+different place with a similar name. Destin, Florida's recorded address
+belongs to Okaloosa County, Florida, the county Destin sits inside, not
+the city itself. Both confirmed by visiting the page and reading what it
+actually said. Both fixed: the real site is now the address on file, and
+the wrong one moved to the list of backup addresses (nothing deleted).
+Both reported in `BACKLOG.md` as a warning, since this is a different,
+more serious mistake than "the address is a tenant page" — it is "the
+address is someone else's page."
+
+**Running the channel check again, against the real website, for the 41
+governments with one to check:**
+
+| Result | Count of 41 |
+|---|---|
+| No YouTube channel or video linked at all | 19 |
+| Already had a real page by the time this ran (the old record was stale) | 7 |
+| Could not be reached (a bot-check wall, an expired site certificate, or a timeout) | 5 |
+| A real channel, but nothing on it was a real meeting | 6 |
+| A real channel with a real meeting — a new page made | 5 |
+| A channel link was found but its video list could not be loaded | 1 |
+| A channel was found but turned out to be a tourism channel, not the government's | 1 |
+
+**Governments with video found, split the way every sweep reports it:**
+
+| Outcome | Count |
+|---|---|
+| Captions available, page live now | 5 |
+| Video, no captions, queued for transcription (a queue count, not pages) | 0 |
+
+The 5 new pages: Des Moines city, Iowa (30 transcript segments); Albany
+city, Georgia (606 segments); Destin city, Florida (3,783 segments);
+Revere city, Massachusetts (516 segments); Morristown town, New Jersey
+(206 segments).
+
+**The hand-check caught real mistakes**, same as every earlier sweep of
+this kind. Albany's own channel had a county commissioner's promotional
+message mixed in with a real meeting — excluded. Destin's channel had a
+short-term-rental information session mixed in with two real council
+meetings — excluded. Chilliwack, British Columbia's channel is real and
+official, but none of its uploads were a real council meeting: a
+federal hearing statement, two information sessions, and a council
+inauguration ceremony (the same kind of miss as an earlier sweep's
+"Inaguration" ceremony catch) — all five excluded by a person reading
+them, not the automatic filter.
+
+**A second, separate bug found while recording the results.** The
+script that writes these results into the research file has a rule:
+skip a government if it already shows a transcript. That rule reads any
+non-blank value as "already has a transcript" — but some rows use that
+same field to store a date, like "checked on this day," not a real
+yes/no answer. Two of this work's own 5 real pages (Revere and
+Morristown) got skipped by that rule for exactly this reason, leaving
+the research file looking stale even though a real page now exists.
+Fixed by hand for those two rows; the rule itself is still wrong and is
+now its own line in `BACKLOG.md`.
+
+**Caution.** Two more governments are suspected of the same
+"wrong-government page" problem as Amherst and Destin, but not
+confirmed: Alachua city, Florida (its recorded page may actually belong
+to Alachua COUNTY) and Menifee County, Kentucky (its recorded page may
+actually belong to the City of Menifee, CALIFORNIA). Neither page showed
+enough content to prove it either way. Filed as open questions, not
+fixed — fixing without proof risks breaking a correct record.
+
+**Recommendation.** The real yield here is small in page count (5 pages)
+but the bigger finding is the size of the underlying problem: roughly
+1,056 governments still recorded on the wrong kind of address. That is
+worth a dedicated future pass, in batches, the same way this one was
+done — a real website found and read by a person for each one, never
+guessed.
+
+**Deploy status.** The 5 new pages are live now. 5 new YouTube pins
+(which government owns which channel or video) are on `main` but need
+the next deploy before they help a future automatic re-check.
+
+**What is undone.** The roughly 1,056 remaining platform-tenant-address
+rows. The two suspected wrong-government pages (Alachua, Menifee
+County). The timed-out and bot-walled sites (Raleigh County WV, Antigo
+city WI, Renfrew ON) — nothing more to do there until the sites
+themselves are reachable.
+
+Files: `scripts/wo253_platform_domain_recheck.py` (the sweep, reuses
+WO-247's own access-ladder, link-scanning, and hand-check code
+unchanged). `rtr-business/research/wo253_discovery.csv`,
+`wo253_decisions.csv`, `wo253_report.csv`, `wo253_domain_findings.csv`
+(the per-government evidence for the real website found), `wo253_
+fullfile_platform_counts.csv` (the whole-file size table above),
+`wo253_apply_to_jc.py`, `wo253_fix_transcribed_guard.py`. Full write-up,
+`ENUMERATION_METHODS.md` §286.
 
 ## WO-261: 316 `/AgendaCenter` pages that answered 200/202 but failed the strict CivicPlus marker — almost all soft 404s, one HCMS tenant chased to a real video, one CivicPlus tenant WO-174 missed [Done 2026-09-11]
 

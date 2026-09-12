@@ -5408,3 +5408,8 @@ www.youtube.com,Td4or5VSuZQ,us:place:1748892,fallback,wo230,"Midlothian village,
 www.youtube.com,5MAk8rdFoXE,us:place:3948342,fallback,wo230,"Maumee city, OH -- WO-230 AgendaCenter follow-up, hub https://www.maumee.org/AgendaCenter"
 www.youtube.com,Z_GsSDJogls,us:place:0640438,fallback,wo230,"Larkspur city, CA -- WO-230 AgendaCenter follow-up, hub https://larkspur.ca.gov/AgendaCenter"
 elmirageaz.granicus.com,,us:place:0422220,fallback,wo261_hcms_followup,"El Mirage city, AZ -- newer client-rendered CivicPlus (HCMS) tenant; real AgendaCenter now lives at /meeting-agendas-minutes, which iframes public.destinyhosted.com/agenda_publish.cfm?id=35647 (AgendaQuick), which itself links out to this Granicus tenant (elmirageaz.granicus.com) for video"
+www.youtube.com,channel=@DesMoinesGov,us:place:1921000,fallback,wo253_platform_domain_recheck,"Des Moines city, Iowa -- WO-253 platform-domain recheck, gov_id=us:place:1921000"
+www.youtube.com,channel=@thecityofalbanygeorgia3502,us:place:1301052,fallback,wo253_platform_domain_recheck,"Albany city, Georgia -- WO-253 platform-domain recheck, gov_id=us:place:1301052"
+www.youtube.com,channel=@CityofDestin,us:place:1217325,fallback,wo253_platform_domain_recheck,"Destin city, Florida -- WO-253 platform-domain recheck, gov_id=us:place:1217325"
+www.youtube.com,youtube:f09L7iUysu8,us:place:2556585,fallback,wo253_platform_domain_recheck,"Revere city -- WO-134 confirmed hit, gov_id=us:place:2556585"
+www.youtube.com,channel=@MorristownNJ-200,us:place:3448300,fallback,wo253_platform_domain_recheck,"Morristown town, New Jersey -- WO-253 platform-domain recheck, gov_id=us:place:3448300"
