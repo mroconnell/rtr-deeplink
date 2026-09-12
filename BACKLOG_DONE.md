@@ -48488,3 +48488,115 @@ pins and queue/deferred-file changes need a resolver deploy before a
 future re-resolve can use them; the 112 live pages and 12 queue entries
 are already correctly keyed via `gov_id` and need no deploy. Rerun
 `scripts/build_backlog_toc.py` after this entry landed.
+
+## WO-284: the WO-264 rows the close-out never worked — 25 pages live, 1 queued, 14 wrong catches named [Done 2026-09-12]
+
+**What was done and why.** WO-264's close-out (above) only hand-read the
+464 video candidates its first 1,894 governments produced. Three groups
+were left: a 1,246-government listing-page population nobody had looked
+one hop into, 53 governments the sweep wrote after it was told to stop,
+and 47 governments a hand-read had already marked "no platform link
+found." This session worked all three, plus a second look at one
+specific page Ryan named (Homer village, NY's page 9283, a Recreation
+Department budget meeting, not a governing-body meeting).
+
+The brief's own numbers were checked against the real files first, not
+trusted: group (a) was really 1,246 governments (brief said 1,016);
+group (c)'s 47 rows were not "channel found, meeting not located" as
+assumed — every one's recorded evidence was a bare, contentless
+`youtube.com` link (a "visit YouTube" button or a footer icon), not a
+real channel at all, so the real second look had to find a channel
+first.
+
+**Result.**
+
+| Group | Governments | Real candidates hand-read | Pages live now | Queued (tier-3) | Wrong (named) |
+|---|---|---|---|---|---|
+| (a) one hop into a listing page | 1,246 | 10 | 1 | 0 | 4 |
+| (b) skipped when the sweep overran | 53 | 26 | 16 | 1 | 8 |
+| (c) false "no platform" second look | 47 | 16 | 7 | 0 | 2 |
+| Homer NY second look | 1 | 1 | 1 | 0 | 0 |
+| **Total** | **1,347** | **53** | **25** | **1** | **14** |
+
+Group (a)'s low hand-read count against 71 raw hits is not a shortcut:
+61 of the 71 were already-honest non-video answers with no title to
+read at all (26 Google Drive/Dropbox-folder links with no adapter, 5
+agenda-only Utah public-notice pages, 17 real government agenda hubs
+not yet narrowed to one meeting, 13 pages that were plainly off-topic on
+inspection). Only 10 were an actual video worth reading a title for, and
+1 of those (Driggs city, ID) was real.
+
+**14 wrong catches, every one named**: Uniontown city AL and Farmer City
+city IL (an unrelated Indonesian weather-alert video and an unrelated
+Indonesian COVID-poster video, both surfaced by the same front-page
+rescan bug — see caution below); Mountain Lake city MN (a trail video);
+Oakes city ND (a healthcare video); Elida village OH (an unrelated
+drone-marketing reel); Pikeville city TN (an unrelated local-ISP show);
+Saint-Patrice-de-Sherrington QC (a 62-second web-agency branding clip);
+Menard County TX (the channel is the county's own Probate Court, not
+its Commissioners Court); Belmond city IA (`youtube.com/belmond`
+resolves to the Belmond luxury hotel brand, not the Iowa city); Kensington
+town MD (the link was Maryland's Governor's own channel); Barnwell city
+SC (an unrelated PBS kids episode); Saint-Maurice QC (drone footage);
+Témiscaming QC and Yamaska QC (both an unrelated individual's own
+channel).
+
+**One Kind-A owner-body lead**: Berkeley Lake city, GA's candidate is
+actually Gwinnett County, GA's own regional TV channel — not keyed to
+Berkeley Lake; recorded for a future mint/keying pass alongside two
+older Kind-A leads from WO-264 (see this file's WO-264 entry and
+`BACKLOG.md`).
+
+**Caution — a real front-page-rescan bug, not fixed this pass.** Two of
+the 14 wrong catches (Uniontown AL, Farmer City IL) came from the same
+step: refetching a government's front page after its recorded "platform"
+turned out to be a bare, contentless `youtube.com` link, then trusting
+whatever channel-shaped link `find_youtube_links()`'s raw-text scanner
+found next. On these two, that scanner picked up an unrelated video
+reference from third-party page content (most likely an embedded ad or
+widget), not the government's own channel. Both were caught by hand-read
+before ingestion, so nothing wrong went live, but the false lead cost a
+wasted `yt-dlp` listing call on each. Filed to `BACKLOG.md`.
+
+**Two new, real, confirmed platform gaps, not fixed this pass**: this
+codebase has no adapter for a direct video file on a government's own
+domain or on Dropbox (5 real, clearly-labeled meeting recordings
+confirmed unresolvable — Palisade town CO, Dundee city OR, Cayuga
+Heights village NY, Enterprise city OR), and the video-candidate scanner
+mistakes an Airbnb widget's own UI-icon animation files for embedded
+meeting video (2 real, unrelated governments hit this exact false
+positive). Both filed to `BACKLOG.md`.
+
+**Homer village, NY (the one specific page Ryan named)**: page 9283 was
+a Recreation Department Zoom budget meeting, not a governing-body
+meeting. Its channel (`@HomerNY`) has only 15 uploads total; the newest
+on-mission, right-duration one is "Village ZBA 10232025" (25.6 min, real
+captions) — ingested as
+`/m/homer-village-ny-2025-10-27-village-zba-10232025`; page 9283 deleted
+via `POST /internal/admin/delete-pages` (dry run first, titles read).
+
+**Files:** `scripts/wo284_listing_hop.py`, `scripts/wo284_group_b.py`
+(both new); `research/wo284_population.csv`, `research/wo284_hop_a.csv`
+(1,245 of 1,246 rows — 1 row's fetch hung past its timeout and was left
+for a resume, see the ENUMERATION_METHODS entry), `research/
+wo284_hopa_decisions.csv`, `research/wo284_second_look_c.csv`,
+`research/wo284_group_b.csv`, `research/wo284_owner_bodies.csv`,
+`research/wo284_report.csv` (26 rows, every page/queue line this session
+produced). `app/utils/jurisdiction_data/tenant_overrides.csv` (26 new
+pins: 14 channel `@handle` pins, 10 per-video fallback pins for a
+hand-verified own channel with no real handle, 2 Vimeo per-video pins).
+Full breakdown and every reject reason: `rtr-business/research/
+ENUMERATION_METHODS.md` §308.
+
+**Recommendation**: resume group (a)'s 1 leftover row
+(`scripts/wo284_listing_hop.py hop-a`, no `--limit`), then run the same
+`hop-a`-style one-hop pass over WO-273/WO-278/WO-281's own populations —
+their agenda-hub "reached, not chased further" outcomes (17 in this
+session's own group (a) alone) look like the same shape of leftover
+work.
+
+**Deploy status**: the 25 live pages are already correctly keyed via
+`gov_id` in the ingest payload (WO-222) and need no deploy; the 26 new
+pins and the 1 new tier-3 queue line (Mille-Isles, QC) need the next
+resolver deploy before a future re-resolve can use them. Rerun
+`scripts/build_backlog_toc.py` after this entry landed.
