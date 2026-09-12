@@ -1,5 +1,128 @@
 # Backlog — done
 
+## WO-230: the 607 governments of 5,000+ recorded on a bare AgendaCenter — follow the real hub one hop, and a real hand-check gap found and fixed mid-run [Done 2026-09-11]
+
+**What was done and why.** Ryan's own 30-row spot-check found that a
+government's recorded `/AgendaCenter` hub is usually an empty shell, with
+the real agenda or video hub one click away on the government's own home
+page. This work order re-checked every government of 5,000+ population
+whose only recorded hub was a bare AgendaCenter and who still has no page
+on the site. The population, re-counted fresh against today's registry,
+was 570, not the 607 named in the brief — the registry changes daily, and
+several other work orders landed in it between the brief being written
+and this one starting. Of the 570, 242 were processed before this work
+order stopped for the day; 328 remain, and the run resumes cleanly from
+where it left off.
+
+**Result.**
+
+| Outcome | Count of 242 | What it means |
+|---|---|---|
+| Meeting or hub found, no usable video | 159 | A real agenda/document hub exists, but no video anywhere on it |
+| Real captions, page live now | 37 | A real transcript exists and is on the site now |
+| Blocked (could not reach the site) | 21 | A dead domain, timeout, or a "prove you're human" page |
+| No meeting or video found at all | 17 | Nothing usable anywhere on the government's own site |
+| Video, no captions, queued for cloud transcription | 3 | A real meeting, long enough or short enough to transcribe automatically |
+| Video too long, set aside rather than queued | 2 | Over the 90-minute cutoff |
+| Rejected by the dead-link/duration check | 2 | The video itself turned out to be broken |
+| Error | 1 | One government hit a technical limit and will retry cleanly on resume |
+
+Of the 242, only 19 (8%) were an actual empty shell (zero real document
+links on the AgendaCenter page) — far fewer than the spot-check's 6 of 6.
+Most AgendaCenters are real; they simply carry no video. Where the real
+hub was found somewhere else, it was most often a numbered page in the
+site's own navigation (82 times), the government's own YouTube channel
+(46 times), or a Document Center (34 times).
+
+**A real mistake was found and fixed partway through, not just a gap.**
+A first 25-government batch found 10 of 19 hand-checked videos wrong on
+close reading — not a school board or a state agency (the kind of mistake
+already guarded against), but a government's own real, off-mission video
+(an explainer about a rental rule, a mayor's own podcast previewing an
+agenda, aerial drone footage after a snowfall, a firefighter recruitment
+video, a building-project video) or the wrong government's real meeting
+entirely (a neighboring county's video, an unrelated production
+company's video, a different city's own council meeting). Two new checks
+were added — the video's title must contain a real meeting word (council,
+commission, board, session, and so on), and the channel name must share
+at least one real word with the government's own name. Both were tested
+against all 19 of the first batch's videos and got every one right. Three
+more wrong videos were found afterward even with both new checks in
+place — a real interview feature, a fire-department FAQ session, and a
+civic-leadership-program video — each one had a real meeting word in its
+title and came from the right channel, so only reading the actual content
+caught them. In total, 13 confirmed-wrong videos made it into a real page
+or queue line before being found and removed by hand; the new checks then
+caught roughly 15 more wrong candidates on their own, before they ever
+became anything. Every one of the 13 is named, with its real reason, in
+the detail section below.
+
+**A separate, smaller mistake was also found and fixed the same day.** A
+government in Indiana (Valparaiso) had its video hosted on BoxCast, and
+the linking step wrote a pin with a blank match on `boxcast.tv` — a host
+shared by many unrelated governments, where a blank match is never safe
+(the same rule that already protects YouTube and Vimeo). The project's own
+automated check caught this before it could reach the site; the fix now
+refuses to write a pin at all in this situation, which is always safe,
+rather than writing a risky one.
+
+**A real, open data question was found and left for a person.** Franklin
+County, Massachusetts and "Franklin Town city," Massachusetts both
+resolved to the exact same real website and the exact same YouTube
+channel. The site's own safety check correctly refused to create a second
+page for the same video, so nothing went wrong — but one of these two
+records is likely not a real, separate government. This is recorded in
+`BACKLOG.md` for a person to confirm, not guessed at here.
+
+**Caution.** This work order is not finished — 328 of the 570 governments
+still need checking. The exact command to continue is in
+`ENUMERATION_METHODS.md` §281. Three real videos that were correctly
+captioned when ingested (Clinton County MI, Steuben County NY, Geary
+County KS) have since gone unavailable on YouTube — their transcripts
+stay on the site, but the "watch the original video" link on those three
+pages will not work. This is a general, ongoing risk across the whole
+site (videos get taken down after the fact) and not specific to this
+work, so nothing was changed for it here.
+
+**Recommendation.** Deploy. The 37 live pages and 3 queued meetings are
+already real content, but the pins and the queue line only take effect
+for future work once the resolver, Archive, and transcription workers are
+redeployed. The corrected research file and the updated hand-check rules
+are also ready to deploy with the next release.
+
+**Detail.**
+
+Thirteen confirmed-wrong videos, found, removed, and named:
+
+| Government | What the video actually was |
+|---|---|
+| Woodford County, IL | The state court system's own jury-duty orientation video |
+| Rockingham County, VA | An explainer video about a short-term-rental rule |
+| Methuen, MA | The mayor's own podcast previewing an upcoming council agenda |
+| Cleveland, TN | Aerial drone footage of downtown after a snowfall |
+| Shelby County, OH | A neighboring county's (Union County, OH) own property-value video |
+| Attleboro, MA | An unrelated video-production company's own content |
+| St. Bernard Parish, LA | A firefighter recruitment/profile video |
+| Douglas County, WI | A different city's (Superior, WI) own council meeting |
+| Moline, IL | An unrelated drone-footage hobbyist's video |
+| Benton County, MN | An informational video about a building project |
+| Duncan, OK | An interview feature with a council member, not a meeting |
+| Washougal, WA | A fire-authority FAQ information session |
+| Fairburn, GA | A civic-leadership training program, not a council meeting |
+
+All 13 pages or queue lines were deleted/removed, confirmed by a second
+dry-run check before each real delete. The research file's record for
+each of these 13 governments now says what was actually found (usually
+"meeting found, no usable video"), not the earlier wrong "video found"
+label.
+
+Files: `scripts/wo230_agendacenter_followup.py` (new sweep script),
+`app/utils/video_hand_check.py` (4 new shared phrases for the state-court
+case), `tests/test_wo174_hand_check.py` (2 new tests), plus the research
+file and its own apply script in `rtr-business/research/`. Full
+methodology and the resume command: `rtr-business/research/
+ENUMERATION_METHODS.md` §281.
+
 ## WO-248: the YouTube drip stopped editing a tracked file live — its probe rows go to a local buffer and fold into the real file once a day [Done 2026-09-12]
 
 - **Why:** the Workers session reported that `scripts/youtube_drip.py`,

@@ -69,6 +69,22 @@ _HAND_CHECK_KIND_A_PHRASES = (
     ("river commission", "a regional, multi-jurisdiction river/watershed commission"),
     ("watershed commission", "a regional, multi-jurisdiction watershed commission"),
     ("interstate commission", "a multi-state regional commission"),
+    # WO-230, 2026-09-11: a county government page linked a state court
+    # system's own public-information video (real example: Woodford
+    # County, IL's `/Government` page linked a "IllinoisCourts"-channel
+    # video titled "Illinois Jury Orientation" -- the state judicial
+    # branch's own jury-service orientation, not a Woodford County
+    # meeting). The court system is a real, separate public body from
+    # the county/city government that happened to link to it. Multi-word
+    # on purpose -- a bare "court" phrase would false-positive on a
+    # parks-and-rec tennis/basketball court.
+    ("jury orientation", "a state or county court system's own jury-service video"),
+    ("jury duty", "a state or county court system's own jury-service video"),
+    ("circuit court", "a state or county circuit court, not the general government"),
+    (
+        "clerk of the circuit court",
+        "the circuit court clerk's office, not the general government",
+    ),
 )
 
 # Kind B: content that looks like it's from this government's own channel
