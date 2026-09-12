@@ -1,5 +1,65 @@
 # Backlog — done
 
+## WO-309: reconcile and finish the remaining small-video-platform governments (the ones under 5,000 population, or with population unknown) [Done 2026-09-12]
+
+**What this was for.** WO-306, WO-307 and WO-308 (all the same day)
+finished every government of 5,000+ population across six small video
+platforms — Cablecast, TelVue, Castus, BoxCast, ChampDS and Town Hall
+Streams — plus Viebit at every population size. What was left was every
+smaller or population-unknown government on those platforms, plus
+Google Drive and eLocalLink, which nobody had touched yet. Before doing
+any new work, this checked whether the leftover list was even still
+accurate — the earlier sessions' own work had moved fast enough that a
+plain list from the start of the day was already out of date.
+
+**The leftover list was stale, the same way it was for WO-308.**
+Checking every row against the Archive, the queue file, the pins file,
+and the three earlier sessions' own result files found 14 governments
+that were already handled — some already had a page or a queue entry
+under a different URL for the same government, and three (Clinton CT,
+Old Saybrook CT, Brunswick ME) had a real video found and confirmed
+weeks ago that had simply never been pushed into the queue file, or the
+queue file already had it and just wasn't marked as such in our
+tracking sheet. That left 77 governments to actually check.
+
+**Result of checking those 77, largest population first.**
+
+| Result | Count of 77 | What it means |
+|---|---|---|
+| Real video found and added | 3 | Edison NJ (real captions, page live now), Hampton NH and Galloway Township NJ (video found, no captions, queued for cloud transcription) |
+| Real meetings exist but video is blocked | 4 | Collegedale TN, Signal Mountain TN, Thompson's Station TN, Broadview Heights OH — all on ChampDS, all blocked by the same known video-access problem already seen on Fulton County GA |
+| Confirmed no usable video | 3 | Gillette WY (no real government meetings on file, only old community videos), Oradell NJ and Roselle NJ (both have a video on file, but the newest one is 5-6 years old) |
+| Checked, inconclusive | 2 | Rocky Hill CT (found nothing under our standard search), Yonkers NY school district (the only account we found belongs to the city, not the school district) |
+| Checked, no lead found or blocked from checking | 2 | Old Bridge Township NJ (no lead on its website), Manchester CT (its website returned an error before we could look) |
+| One website lead spotted, not followed | 1 | Bloomfield Township MI has a YouTube channel on its homepage — YouTube checks are outside what this round of work was allowed to do |
+| Not yet checked | 62 | See the file this hands to whoever picks this up next |
+
+**One real bug found and fixed along the way.** Edison NJ's video
+system uses a custom web address instead of the standard one our system
+looks for. Because of that, our system was reading the page wrong even
+though a real transcript was sitting right there. That's now fixed and
+tested, and any other government using the same setup benefits too, not
+just Edison.
+
+**Caution.** 62 governments on this platform group are still unchecked.
+Most are Cablecast (29) and TelVue (12) governments where we have a
+government name but no lead — each one needs its own quick check of
+that government's website, the same way Edison and Galloway Township
+were found. That is real, but slow, one-at-a-time work.
+
+**Recommendation.** Keep working this list, largest population first,
+whenever there's a session free for it — the hit rate stayed real
+throughout (found 3 workable videos and confirmed 4 real dead ends out
+of the first 15 checked). No urgent action needed from Ryan; nothing in
+this round is time-sensitive.
+
+Deploy status: the Edison NJ page is live now (a direct call to the
+Archive, not a deploy). Hampton NH and Galloway Township's queue lines,
+the four new tenant pins, and Edison NJ's code fix in `app/platforms/
+base.py` are merged to `main` but need Ryan's next deploy before the
+queue lines start being picked up for cloud transcription; the page
+that's already live does not depend on a deploy.
+
 ## WO-308: build the ChampDS listing step, then finish the last small video platforms at 5,000+ population [Done 2026-09-12]
 
 **What this was for.** Ryan asked for two things: build a way to list a

@@ -6052,3 +6052,6 @@ https://maplelake.viebit.com/watch?hash=qs6hUGlXdMuGBkba,viebit,viebit-page-conf
 https://springfieldtwp.viebit.com/watch?hash=tdE8faCbsY4cf6PH,viebit,viebit-page-config,,,,0,accept,"duration unknown -- Viebit's raw stream is CDN-gated, no duration recipe exists",0.57,2026-09-12T21:24:16+00:00,wo307_viebit_old_rejections,0
 https://boxcast.tv/view/pascagoula-city-council-81826-z0nwcd5m4geotcf6h3ti,boxcast,hls-master+variant,2355.24,,,1,accept,,1.39,2026-09-12T21:30:18+00:00,wo308,0
 https://townhallstreams.com/stream.php?location_id=154&id=75643,townhallstreams,hls-master+variant,3374.73,,,1,accept,,1.62,2026-09-12T21:33:55+00:00,wo308,0
+https://reflect-hamptonnh.cablecast.tv/internetchannel/show/1958?channel=1,cablecast,hls-master+variant,1523.33,,,1,accept,,1.44,2026-09-12T22:12:47+00:00,wo309,0
+https://cablecast.edisonnj.org/internetchannel/show/4092?site=1,cablecast,hls-master+variant,3085.79,,,1,accept,,0.61,2026-09-12T22:20:11+00:00,bulk_ingest,0
+https://videoplayer.telvue.com/player/5sDJy4puFHzGcdLZ5XfXaWK8ROY8_W2m/media/989568,telvue,telvue-page-json,2250.00,,,1,accept,,0.81,2026-09-12T22:23:02+00:00,wo309,0
