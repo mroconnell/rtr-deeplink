@@ -1,5 +1,93 @@
 # Backlog — done
 
+## WO-304: Jefferson County, WA's Laserfiche meeting — the one real example we had is now a live page [Done 2026-09-12]
+
+**What was done and why.** WO-233 (2026-09-11) found one real government
+— Jefferson County, WA — that stores its Board of County Commissioners
+meetings as a video plus real captions inside a Laserfiche WebLink
+document system, and confirmed both files download with no login. But
+nothing had ever actually turned that into a page. Ryan asked why. This
+work order settled the one open question from WO-233's own notes, then
+made the page.
+
+**The open question, settled live.** Two earlier notes disagreed about
+whether the video needs a login: WO-233 said no, a separate spot-check
+note guessed the video needs a temporary access code (a "session
+token"). Checked directly, with no cookies and no browser session at
+all: WO-233 was right. Both the video and its caption file download
+in full with a plain request, no login, no code.
+
+**The meeting used.** The newest regular Board of County Commissioners
+meeting, September 8, 2026 (the most recent one already held — later
+folders in the list are future meetings with no recording yet). It is
+long, about 4 hours 54 minutes, but that doesn't matter here: it has
+real captions, so it counts as a top-tier ("tier 1") meeting regardless
+of length, same as any other captioned meeting.
+
+**How the caption file was found.** Jefferson County's system doesn't
+name files in a way that lets you guess the caption file from the video
+file's own name (unlike most sites, where you might swap ".mp4" for
+".vtt"). Instead, checked two different real meetings side by side and
+found a real, repeatable pattern: the caption file always sits one
+number below the video file's own internal number, in the same
+recording batch — confirmed the same way on both the September 8
+meeting and the earlier August 24 meeting on file. The video-finding
+code (`app/platforms/direct_file.py`) now uses that pattern to find the
+caption file automatically for this one system.
+
+**Result — two attempts to create the page, because a separate bug got
+in the way the first time.**
+
+| Result | Count of 2 attempts | What it means |
+|---|---|---|
+| Rejected before any page was created | 1 | A bug in the ingest tool (`scripts/bulk_ingest.py`) misread the video's file type as unrecognized, even though the video and its captions were already confirmed real and playable |
+| Real page created | 1 | Jefferson County's page is live now, with the real video and 1,700 real caption lines |
+
+**The bug that blocked the first attempt, and the fix.** Every meeting
+gets a quick, metadata-only check before it becomes a page, to catch a
+dead or fake link. That check couldn't tell what kind of file Jefferson
+County's video link pointed to (the file type only shows up in the
+video's own response, not in its web address) — a known, already-solved
+problem for exactly this shape, but the fix for it was already written
+into a different function and never passed through where this ingest
+tool calls it. Passing it through fixed the block; the check then
+correctly measured the real ~4 hour 54 minute video and accepted it.
+
+**Caution.** A second, smaller, non-blocking bug was found in the same
+check while fixing the first one: for this system, the check ends up
+recording the wrong file size (2 KB instead of the real ~1.7 GB) in its
+own audit log, because a first attempt to reach the video times out on
+one and lands on an error page that itself looks like a normal
+response. It didn't stop the video from being confirmed or the correct
+length from being measured, so it didn't block this page — filed as its
+own small `BACKLOG.md` item so the audit log gets fixed too, separately.
+Also: this is still a one-government pattern, not a general Laserfiche
+reader — WO-233's "defer a general adapter" decision stands unchanged;
+`BACKLOG.md`'s own entry on that decision now notes that this one known
+example is a real page.
+
+**Recommendation.** No action needed for this page — it's already live.
+Whenever the resolver is next redeployed for other reasons, this makes
+two related capabilities live at the same time: (1) pasting this same
+Jefferson County meeting link into the site directly would work the
+same way this ingest did, and (2) the new host-to-government pin means
+any future Jefferson County resolve is instantly linked to the right
+government, without waiting on a separate deploy.
+
+**Deploy status.** The page itself is live now (created directly through
+the Archive's own ingest endpoint, which needed no code deploy). The
+code change (`app/platforms/direct_file.py`, `scripts/bulk_ingest.py`)
+and the new host pin (`test.co.jefferson.wa.us` →
+`us:county:53031` in `app/utils/jurisdiction_data/tenant_overrides.csv`)
+are on `main` but not live on the resolver service until its next
+deploy — until then, a user pasting this same meeting's link into the
+site directly would hit the same file-type bug this WO fixed here by
+hand.
+
+**History.** `BACKLOG_DONE.md`'s WO-233 entry; `BACKLOG.md`'s Laserfiche
+WebLink Dormant entry (updated); `rtr-business/research/
+ENUMERATION_METHODS.md` §277 (WO-233) and its own new WO-304 section.
+
 ## WO-292: school-district pilot — a school-board vocabulary measured first, then the v2 passive pipeline run on 1,000 districts; zero pages ingested, 72 real platforms confirmed, 310 leads handed to the drip [Done 2026-09-12]
 
 **What was done and why.** School districts are the largest untouched
