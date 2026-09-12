@@ -87,7 +87,7 @@ class FakeResponse:
 
 
 @contextmanager
-def mock_session(routes: dict, post_routes: dict = None):
+def mock_session(routes: dict, post_routes: dict = None, head_routes: dict = None):
     """routes: {url: FakeResponse}. url defaults to response.url == the
     request url unless the FakeResponse was built with a different `url`
     (simulating a redirect).
@@ -100,6 +100,11 @@ def mock_session(routes: dict, post_routes: dict = None):
     GET-only adapter test is unaffected -- `session.post()` is only
     patched (and only raises on an unmocked call) when a caller actually
     passes some.
+
+    head_routes: same shape again, for `session.head(url, ...)` calls --
+    added for direct_file.py (WO-303), which only ever needs a response's
+    headers (Content-Type) and deliberately never downloads a real
+    multi-gigabyte video body via GET.
     """
 
     def fake_get(self, url, **kwargs):
@@ -124,9 +129,27 @@ def mock_session(routes: dict, post_routes: dict = None):
             response.url = key
         return response
 
+    def fake_head(self, url, **kwargs):
+        key = str(url)
+        if key not in (head_routes or {}):
+            raise AssertionError(
+                f"Unmocked HEAD in test: {key}\nKnown HEAD routes: {sorted(head_routes or {})}"
+            )
+        response = head_routes[key]
+        if not response.url:
+            response.url = key
+        return response
+
     with mock.patch.object(aiohttp.ClientSession, "get", fake_get):
-        if post_routes is not None:
+        if post_routes is not None and head_routes is not None:
             with mock.patch.object(aiohttp.ClientSession, "post", fake_post):
+                with mock.patch.object(aiohttp.ClientSession, "head", fake_head):
+                    yield
+        elif post_routes is not None:
+            with mock.patch.object(aiohttp.ClientSession, "post", fake_post):
+                yield
+        elif head_routes is not None:
+            with mock.patch.object(aiohttp.ClientSession, "head", fake_head):
                 yield
         else:
             yield
