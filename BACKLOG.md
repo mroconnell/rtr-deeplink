@@ -319,7 +319,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (182)
     [EASY] `scripts/wo288_youtube_date_backfill.py` is built and dry-run…
     [NEEDS-AUDIT] The shared meeting-title filter…
     [NEEDS-AUDIT] `[EXAMPLE]` Town Hall Streams: 116 of the 125 queue…
-    [JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has…
+    [JUST-DO-IT] `[EASY]` Archive's two own copies of the YouTube…
     [NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper…
     [NEEDS-AUDIT] A same-named Granicus tenant is a real video source for…
     [NEEDS-AUDIT] The coverage registry's `domain` field maps a small…
@@ -4571,12 +4571,12 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **Constraint**: don't drop the 116 lines from the queue — the probe sidecar already marks them, so the feed skips them at no cost.
   - **History**: `BACKLOG_DONE.md` WO-205 (2026-09-11).
 
-- **[JUST-DO-IT] `[EASY]` `youtube.py`'s 11-character video-id regex has no end boundary, so a longer path segment is silently truncated into a fake id — three real pages carry a false "video is unavailable" permanent marker because of it.**
-  - **Issue**: `app/platforms/youtube.py:23` captures `([A-Za-z0-9_-]{11})` with nothing after it, so `youtube.com/embed/livestreaming` becomes id `livestreami` (`/m/mount-vernon-tx`), `youtube.com/embed/videoseries?list=…` (a playlist embed) becomes `videoseries` (`/m/daviess-county-ky-fiscal-court-meeting-video-daviess-county-kentucky`), and Severn ON's CivicWeb page produced a 20-character non-YouTube id `oggrif3io7ylxfmbxnlz` through a path still unidentified (`/m/severn-township-nd-2025-06-10-…`). Found 2026-09-11 (WO-195) when a paced caption-fetch loop marked all three permanently "unavailable" — the ids never existed.
-  - **Impact**: a placeholder or playlist embed on a government page is archived as a real meeting video, then permanently written off; the real channel behind each of the three is live and posting 2026 meetings.
-  - **Next action**: add a negative lookahead `(?![A-Za-z0-9_-])` after the 11-char group (and the same to the CivicWeb path if it has its own extraction), make `/embed/videoseries` parse its `list=` playlist id instead, add fixture tests for all three URL shapes, then hand the three slugs to the coverage conductor for deletion/re-key (already sent).
-  - **Constraint**: don't clear the three markers by hand — fix the parser first so a re-ingest can't recreate them.
-  - **History**: `BACKLOG_DONE.md` WO-195 (2026-09-11); `rtr-business/research/ENUMERATION_METHODS.md` §245.
+- **[JUST-DO-IT] `[EASY]` Archive's two own copies of the YouTube video-id regex (`archive/db/crud.py`, `archive/utils/video_thumbnail.py`) still have the same missing-end-boundary bug WO-296 just fixed in `app/`.**
+  - **Issue**: `_YOUTUBE_VIDEO_ID_RE` (`archive/db/crud.py`) and `_YOUTUBE_ID_RE` (`archive/utils/video_thumbnail.py`) are each a standalone copy of the exact same unbounded `([A-Za-z0-9_-]{11})` pattern `app/platforms/youtube_ids.py` had before WO-296 — both files' own comments say they're duplicated on purpose rather than imported, since Archive doesn't depend on `app/`. Neither was touched by WO-296's fix, so both can still turn a longer path segment (e.g. `/embed/videoseries?list=...`, `/embed/live_stream?channel=...`) into a fake 11-character id the same way `app/`'s copy used to.
+  - **Impact**: `crud.py`'s copy feeds a jurisdiction-repair rule (`_multi_gov_match_for_video_url()`) and `video_thumbnail.py`'s feeds the page thumbnail URL — a fake id from either produces a wrong repair suggestion or a broken thumbnail image, not a false "unavailable" marker (Archive never calls YouTube itself), so the blast radius is narrower than the `app/` bug WO-296 fixed, but the same root cause.
+  - **Next action**: port WO-296's fix (the `(?![A-Za-z0-9_-])` end-boundary lookahead, plus excluding the literal `videoseries`/`live_stream`) into both regexes/functions; add a small fixture test in each area's existing test file for the same three shapes `tests/test_youtube.py` now covers.
+  - **Constraint**: keep these as separate copies, don't try to import `app.platforms.youtube_ids` from `archive/` — that's the existing, deliberate app/archive service-boundary convention (see either file's own header comment), not something to undo here.
+  - **History**: `BACKLOG_DONE.md` WO-296 (2026-09-12).
 
 - **[NEEDS-AUDIT] `ec1c24.com` is an unrecognized video-index wrapper domain — Temple City, CA's real CivicPlus meetings all point at it, and it embeds a real YouTube video with per-agenda-item timestamps.**
   - **Issue**: WO-162 (2026-09-10) fixed CivicPlus's corporate-host substring bug (`connect.civicplus.com` no longer misclassified as a real tenant — see `BACKLOG_DONE.md`), using Temple City, CA (`www.templecityca.gov/agendacenter`) as the live example. Fetching that real page live turned up a second, separate gap: every one of its 103 `tr.catAgendaRow` rows links its `td.media` video to `templecity.ec1c24.com/citycouncil/{yyyy}/{mm}/{slug}.html`, a domain `detect_platform()` doesn't recognize at all. Fetching one of those pages live confirms it embeds a real single YouTube video (`youtube.com/embed/hXcwEqIekkc`) with per-agenda-item `?start={seconds}` deep links already built in — a real, resolvable meeting, just one hop further than `civicplus.py`'s `_is_real_video_link()` currently looks (it requires the row's own href to already be a directly-recognized platform link, so it correctly treats these rows as "no video" rather than fabricating one).

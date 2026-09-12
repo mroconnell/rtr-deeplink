@@ -25,11 +25,39 @@ stay free of the `yt_dlp` dependency.
 import re
 from typing import Optional
 
+# WO-296, 2026-09-12: the id group used to have no end boundary, so a
+# longer id-shaped path segment was silently truncated into a fake
+# 11-char id instead of correctly finding no real id -- confirmed live
+# (WO-195, 2026-09-11) on three real pages: `/embed/livestreaming`
+# (Mount Vernon, TX) truncated to "livestreami", `/embed/videoseries?
+# list=...` (a playlist embed, Daviess County, KY) read as "videoseries",
+# and a Severn ON CivicWeb page produced a 20-character non-YouTube id
+# through an unrelated path. The `(?![A-Za-z0-9_-])` negative lookahead
+# below requires the id to be exactly 11 characters -- the next
+# character (end of string, `?`, `&`, etc.) must not itself be a valid
+# id character, or there's no match at that position.
 _VIDEO_ID_RE = re.compile(
-    r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)([A-Za-z0-9_-]{11})"
+    r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/|v/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])"
 )
+
+# Real YouTube reserved literals that happen to also be exactly 11
+# characters, so the end-boundary lookahead above doesn't catch them on
+# its own (the character right after "videoseries"/"live_stream" is
+# always a query-string separator like "?", never an id character).
+# `videoseries` marks a playlist-only embed (`/embed/videoseries?
+# list=...`, no single video id present); `live_stream` marks a
+# not-yet-known live embed (`/embed/live_stream?channel=...`). Neither
+# is a real video id -- both must return None, the same "no video id in
+# this URL" signal a non-YouTube link already produces, not a fake id.
+_RESERVED_NON_IDS = frozenset({"videoseries", "live_stream"})
 
 
 def extract_video_id(url: str) -> Optional[str]:
     match = _VIDEO_ID_RE.search(url)
-    return match.group(1) if match else None
+    if not match:
+        return None
+    video_id = match.group(1)
+    if video_id in _RESERVED_NON_IDS:
+        return None
+    return video_id

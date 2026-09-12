@@ -1,5 +1,161 @@
 # Backlog — done
 
+## WO-295: give scripts/backfill_archived_pages.py a --missing-channel-only filter [Done 2026-09-12]
+
+**What was done and why.** Until PR #999 (2026-09-11), the YouTube
+adapter dropped the video's channel, so about 3,464 archived YouTube
+pages have `meeting_pages.video_channel` still NULL. WO-246 (#1006)
+wrote `scripts/backfill_video_channel.py`, which fills 1,903 of those
+for free from per-video records already in the repo — no YouTube call.
+The remaining ~1,676 need a real re-resolve, which is
+`scripts/backfill_archived_pages.py --platform youtube` — but that
+script had no way to restrict to pages whose channel is still NULL, so
+running it would re-touch all 3,464 pages, each one a real yt-dlp call
+that must be paced and can only run from the YouTube-drip Mac.
+
+This work order adds a `--missing-channel-only` flag so the sweep can
+be scoped to the genuine remainder.
+
+**What changed.**
+
+| File | Change |
+|---|---|
+| `archive/db/crud.py` | `list_all_page_urls()` now returns `video_channel` per page (it didn't before) — the field the new filter needs |
+| `scripts/backfill_archived_pages.py` | added `--missing-channel-only`; pulled the filter chain (`--platform`/`--url-contains`/`--missing-channel-only`/`--limit`) into a standalone `filter_pages()` function so it's unit-testable without a live Archive or a real resolve; docstring explains why the flag exists and that this script's YouTube calls belong on the drip Mac with `--delay` |
+| `docs/YOUTUBE_DRIP_RUNBOOK.md` | new "Backfill sweeps" section with the exact command and the reminder to pause the drip's own lanes first (shared YouTube budget) |
+| `BACKLOG.md` | the WO-246 `[HUMAN]` entry for this remaining-1,676 step now names `--missing-channel-only` and the paired `backfill_video_channel.py --apply` step, instead of describing the missing filter as a future gap |
+
+The commit-per-row and skip-already-current properties this script
+already had are unchanged — `--missing-channel-only` only narrows which
+pages get selected before that loop runs.
+
+**How it was tested.** No production run, no YouTube call, from this
+machine — CLAUDE.md's standing decision on bulk sweeps and this
+session's own instructions both rule that out.
+
+- `tests/test_backfill_page_urls.py`: extended with two tests confirming
+  `list_all_page_urls()` (real DB integration, seeded SQLite, same
+  pattern the file already used) now carries `video_channel` — both when
+  a page has one set and when it's unset (comes back `None`, not
+  omitted).
+- `tests/test_backfill_missing_channel_only.py` (new): six tests against
+  the new `filter_pages()` function directly, with synthetic page dicts
+  — NULL/blank/whitespace channels are all treated as "missing" while a
+  populated channel is kept; combinations with `--platform`,
+  `--url-contains`, and `--limit` match the real intended usage
+  (`--platform youtube --missing-channel-only`); a page dict missing the
+  key entirely doesn't raise.
+- All four CI gates run locally and green: `ruff check`, `ruff format
+  --check`, `python -m pytest` (3,601 passed, 16 pre-existing skips, 0
+  failures), and `alembic check` for both `archive/` and `app/` against
+  a freshly migration-built SQLite (no new migration needed —
+  `video_channel` already existed as a column; this only changed what a
+  read endpoint returns).
+
+**The exact command for the drip Mac** (after
+`scripts/backfill_video_channel.py --apply` has been run from the
+Archive's Render shell first):
+
+```
+python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --dry-run --limit 20
+python scripts/backfill_archived_pages.py --platform youtube --missing-channel-only --delay 3
+```
+
+**Deploy note.** This is a `scripts/` and `archive/db/crud.py` change.
+`archive/db/crud.py` sits under `archive/`, which does need a deploy
+before `list_all_page_urls()`'s new `video_channel` field is live in
+production — until then, the `--missing-channel-only` flag has nothing
+to filter on if run against the live Archive. `scripts/` itself needs no
+deploy. Merging this PR does not ship it to production by itself
+(`render.yaml`'s `autoDeploy: false`) — flagged separately when this
+lands.
+
+**History:** `BACKLOG.md`'s WO-246 `[HUMAN]` entries (2026-09-11);
+PR #1006 (WO-246); PR #999 (the original channel-dropping bug).
+
+## WO-296: fixed the YouTube video-id extractor so a longer id-shaped path segment can no longer be truncated into a fake id [Done 2026-09-12]
+
+**What this fixes and why.** WO-195 (2026-09-11) found that the code
+that pulls a video id out of a YouTube URL had no way to tell where a
+real id ends. It always read exactly 11 characters and stopped, even
+when the real path segment was longer. Three real government pages got
+a fake id out of this: `youtube.com/embed/livestreaming` became id
+"livestreami" (Mount Vernon, TX), `youtube.com/embed/videoseries?
+list=...` — a playlist link, not a single video — became "videoseries"
+(Daviess County, KY), and a Severn, ON page produced a 20-character id
+that isn't a YouTube id shape at all. Each fake id then got checked
+against YouTube and came back "video is unavailable," which is recorded
+as permanent — so all three pages are stuck showing "unavailable" for a
+video that was never real to begin with, while the real channel behind
+each one is alive and posting 2026 meetings.
+
+**Correction to the original backlog entry.** It pointed at
+`app/platforms/youtube.py:23`. That's stale: WO-250 (also 2026-09-12,
+landed first) already moved the id regex out to its own module,
+`app/platforms/youtube_ids.py`, so `yt_dlp` doesn't have to be imported
+just to extract an id. The real regex fixed here is
+`youtube_ids._VIDEO_ID_RE`; `youtube.py` just calls it.
+
+**The fix.** Two parts, both needed:
+
+1. An end boundary — the id must be exactly 11 characters, and the very
+   next character must not itself be a valid id character (letter,
+   digit, `_`, or `-`). This alone fixes "livestreami" and the
+   20-character case: once nothing after the 11th character matches,
+   there's no valid id at that spot, so the extractor correctly finds
+   none.
+2. Two known words as an explicit exception list — "videoseries" (a
+   playlist embed, no single video) and "live_stream" (a not-yet-known
+   live embed). Both are YouTube's own placeholder path segments and
+   both happen to be exactly 11 characters, so the boundary check alone
+   does not catch them; the character right after either one is always
+   a query-string `?`, which already isn't an id character. Both are
+   now treated the same as "no id in this URL," the same result the
+   extractor already gives for a plain non-YouTube link, rather than a
+   fake id.
+
+**Tests.** Written first, confirmed failing against the old code, then
+passing after the fix (`tests/test_youtube.py`):
+`test_extract_video_id_rejects_a_path_segment_longer_than_11_chars`
+(the "livestreaming" and 20-character cases),
+`test_extract_video_id_rejects_the_videoseries_playlist_placeholder`,
+and `test_extract_video_id_rejects_the_live_stream_placeholder`. The
+existing real-URL-shape test was also extended with three cases that
+must keep working: an id followed by `?feature=share`, `?rel=0`, or
+`&t=30s` — proving the boundary check doesn't reject a real id just
+because something follows it in the URL.
+
+**Scope.** The fix lives in one place, `youtube_ids.extract_video_id()`
+— every caller in `app/` (the YouTube adapter itself, and
+`generic_fallback.py`'s delegated-embed scan) goes through it, so both
+are fixed by this one change. `archive/db/crud.py` and
+`archive/utils/video_thumbnail.py` each carry their own separate,
+already-documented duplicate of the same unbounded pattern (Archive
+doesn't import from `app/` across the service boundary) — same bug,
+different file, out of this work order's scope; filed as its own
+`BACKLOG.md` entry below rather than fixed here.
+
+**Caution.** The three real pages named in the original entry
+(Mount Vernon TX, Daviess County KY, Severn ON) still carry their false
+"unavailable" marker — fixing the parser stops new fake ids, it does
+not clear old ones. Clearing those and re-resolving the real video is a
+separate step for whoever owns the coverage sweep, not done here.
+
+**Recommendation.** Code and tests only, safe to merge on green CI.
+
+**Gates.** `ruff check`, `ruff format --check`, `python -m pytest`
+(3604 passed, 16 skipped, all pre-existing) all green.
+`alembic check` doesn't apply — no model changed. `BACKLOG.md`'s
+matching `[JUST-DO-IT]` entry is removed now that this fixes it; TOC
+rebuilt.
+
+**Deploy status.** This touches `app/platforms/youtube_ids.py` — it is
+on `main` after merge but not live until the next deploy (deploys are
+manual, per `render.yaml`'s `autoDeploy: false`).
+
+**Files:** `app/platforms/youtube_ids.py`, `tests/test_youtube.py`,
+`BACKLOG.md`.
+
 ## WO-288: correct the meeting date on archived YouTube pages whose title date disagrees with the stored date — 1,349 pages ready, script built and tested, write not yet run [Done 2026-09-12]
 
 **What was done and why.** WO-285 found that many archived YouTube
