@@ -47689,3 +47689,62 @@ or dead" bucket as "alias addresses of governments already on file",
 not as recoverable coverage. When a future one-off fetch reports a high
 handshake-failure rate, first check whether it tried `www.` and
 `http://`; only then look at TLS.
+
+## [Done 2026-09-12] WO-273: full-scale passive platform discovery, three phases, 2,574 governments, 147 real leads found
+
+WO-268 proved passive discovery (DNS, sitemap, Wayback CDX, Common
+Crawl) on 300 governments run one at a time. This WO scaled it to the
+full population and split it into three separate scripts so the slow
+part only fetches what the fast part actually flagged:
+`scripts/wo273_recon.py` (phase 1, fast/parallel/raw reconnaissance, no
+classification), `scripts/wo273_classify.py` (phase 2, pure offline
+scoring, no network, rerunnable), `scripts/wo273_targeted.py` (phase 3,
+fetches only the specific flagged URLs, many governments at once).
+Detection only: no ingest, no queue line, no write to
+`jurisdiction_coverage.csv`. Full writeup:
+`docs/investigations/passive_discovery_full_scale.md`.
+
+**Population.** 2,575 US/Canada governments of 5,000+ population, no
+known platform, no page, with a "nothing found" reject reason --
+re-derived directly from a live snapshot, 1 row different from the
+conductor's own count the same day (expected live-file drift; every
+per-reason count matched exactly). WO-268's own 300-domain pilot was
+included as a regression check rather than skipped.
+
+| Phase | What it measures | Result |
+|---|---|---|
+| 1 (recon) | Governments processed | 2,574 of 2,575 (1 row errored) |
+| 2 (classify) | Governments with >=1 flagged URL | 964 of 2,574 (37.5%) |
+| 3 (targeted) | Governments with a platform confirmed by name+state | **147 of 2,571 (5.7%)** |
+
+**Caution.** Internet Archive's CDX search API (`web.archive.org/cdx/
+search/cdx`) was confirmed, live, intermittently failing for the entire
+~70-minute phase-1 run -- `HTTP 503` "Temporarily Offline" on some
+tries, a 20+ second hang on others, a real `200` taking 5-13 seconds on
+others. `web.archive.org/`, the `wayback/available` API, and
+`archive.org/` all answered instantly the same minute, so this was
+specifically a CDX-search degradation, not a whole-service outage.
+Every script already treats a CDX failure exactly like "no capture
+found" and falls through to a live fetch, so the sweep never stalled --
+but only 44 of 2,574 domain-wide CDX queries succeeded (1.7%), and only
+0.3% of governments got their sitemap from the archive at all, far
+below WO-268's own pilot (45%). A rerun once Internet Archive's CDX
+search recovers should find more than this run did.
+
+A real labeling bug was found and fixed mid-run: the
+`AgendaOnline/Meetings/ViewMeeting` path shape was mapped to IQM2;
+WO-267's own measured `platform_signatures.csv` says it's Hyland
+(hit_rate 1.00), confirmed by phase 3's actual finds (75 of the 147
+confirmed governments were Hyland, found almost entirely through a
+blind named-path probe, not through any sitemap/CDX URL this
+population surfaced).
+
+**Recommendation.** A hand-read + ingest pass over the 147 confirmed
+rows (`research/wo273_targeted.csv`, `platform_confirmed != ""`),
+per this repo's standing hand-check rule -- a platform/name match is
+not yet a confirmed video. Top platforms confirmed: Hyland 75,
+CivicClerk 25, Granicus 20, IQM2 11, CivicWeb 6, eScribe 3, ProudCity 3,
+Utah PMN 2, YouTube 1, Swagit 1. Re-run phase 1 once Internet Archive's
+CDX search recovers. Deploy status: nothing to deploy -- no app/archive/
+worker code changed, only new `scripts/`, a new test file, and docs.
+Rerun `scripts/build_backlog_toc.py` after this entry landed.
