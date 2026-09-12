@@ -1,5 +1,67 @@
 # Backlog — done
 
+## WO-263: mint the Port of San Diego and pin its Granicus host [Done 2026-09-12]
+
+**Why this ran.** Ryan's 2026-09-11 run of `scripts/backfill_gov_id.py
+--apply` on the Archive shell reported one host "left unresolved (want a
+pin)": `portofsandiego.granicus.com`. Ryan's call: "mint the port of san
+diego." The Port of San Diego (legal name: San Diego Unified Port
+District) is a California special district with its own Board of Port
+Commissioners — not a department of the City or County of San Diego, so
+neither of those governments' ids would be correct for it.
+
+**What was checked first.** The brief said the backfill's own count was
+"1" unresolved page on that host. Re-derived against the live Archive
+(`GET /internal/pages/all-urls`, then a full scan of `/internal/export/
+pages` for each matching slug): the real count is **2**, both with
+`gov_id` NULL — page ids 2661 (ingested 2026-08-25) and 5892 (ingested
+2026-09-06). The backfill's count was stale, not the host.
+
+| Check | Result | What it means |
+|---|---|---|
+| Host is single-tenant | Confirmed live | `portofsandiego.granicus.com/ViewPublisher.php?view_id=1` is "Port of San Diego Streaming Media Archive" — Board of Port Commissioners plus its own committees (Environmental Advisory Committee, Chula Vista Bayfront Facilities Financing Authority, Wildlife Advisory Group, Audit Oversight Committee, Arts, Culture & Design Committee, San Diego Harbor Safety Committee), no other government's meetings |
+| Pages on the host needing this pin | 2, not 1 | ids 2661 and 5892, both `gov_id` NULL today |
+
+**What was built**, following WO-220's mint pattern exactly (curated row
++ host pin, no code change):
+
+- `app/utils/jurisdiction_data/curated_governments.csv`: one new row,
+  `rtr:us:ca:port-of-san-diego`, gov_type `special_district`, state `CA`,
+  aliases `San Diego Unified Port District|San Diego Unified Port
+  District Board of Port Commissioners|Board of Port Commissioners`,
+  `source=curated+ryan_stated`.
+- `app/utils/jurisdiction_data/tenant_overrides.csv`: one host-wide pin
+  (blank `match`, single-tenant Granicus host), `portofsandiego.granicus.
+  com` → the new id, `strength=authoritative`, `source=ryan_stated`.
+  `portofsandiego.granicus.com` is not in the `MULTI_GOV_HOSTS` list
+  (that's YouTube/Vimeo only), so a blank-match pin here is the normal,
+  accepted shape — same as every other `*.granicus.com` row in the file.
+- Unlike WO-220's "Department of Commerce"/"Southwest Utah" rows, no
+  name-repair-truncation fix was needed: "Port of San Diego" classifies
+  `special_district` directly off the raw name's "port of" phrase
+  (`app/utils/gov_registry/classify.py`'s `_RULES`), before any place
+  lookup or truncation step runs.
+- Two new tests in `tests/test_gov_registry.py`: resolving "Port of San
+  Diego, CA" by name reaches the curated row at `TIER_REGISTRY`, and
+  resolving no name at all on the pinned host reaches it at
+  `TIER_PINNED` — same shape as the existing `test_the_nine_mislabelled_
+  tenants_are_pinned_to_the_right_government`. Full suite (3,369 tests)
+  and both `ruff` gates pass.
+
+**Caution.** The two existing pages (2661, 5892) are NOT re-keyed by
+this PR — per the brief, that's the conductor's job, run as a backfill
+dry run after this deploys, so the people watching it can confirm the
+pin actually keys them before it goes live for real.
+
+**Recommendation.** No further code needed. The research file
+(`rtr-business/research/jurisdiction_coverage.csv`) was not touched —
+WO-220, the pattern this WO followed, didn't add rows there either for
+its mints, so this single host-mint skips it too.
+
+**Deploy status.** Data files only (`app/utils/jurisdiction_data/*.csv`)
+— on `main` but not live until the next resolver deploy. No app code
+changed. After that deploy, the conductor's backfill dry run should
+confirm pages 2661 and 5892 key to `rtr:us:ca:port-of-san-diego`.
 ## WO-255: the nine WO-234 Laserfiche second domains, re-confirmed live and filed as `alternate_domains` [Done 2026-09-12]
 
 **What this was.** WO-234 found a second, real document-hosting domain
@@ -87,7 +149,6 @@ reasons), `research/ENUMERATION_METHODS.md` §284 (the full write-up).
 
 **History**: `BACKLOG_DONE.md`'s WO-234 entry (the discovery pass this
 closes out); `rtr-business/research/ENUMERATION_METHODS.md` §284.
-
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
