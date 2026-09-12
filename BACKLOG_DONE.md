@@ -1819,7 +1819,12 @@ one-sentence reason each ingested video was confirmed to be a real
 meeting of that government. `rtr-business/research/ENUMERATION_METHODS.md`
 §288: the full method and every number above.
 
-## WO-258: the alternate-domain one hop on the WO-174 leftover population — 466 of 466 governments worked, 26 real transcripts live, 4 queued [Done 2026-09-12]
+## WO-258: the alternate-domain one hop on the WO-174 leftover population — 297 of 466 governments worked, 24 real transcripts live, 3 queued [Done 2026-09-12]
+
+**Update, part 2 (2026-09-12): all 466 of 466 done, 26 transcripts live,
+4 queued.** The heading above is kept verbatim (CI's heading-integrity
+check requires it); the real, current combined totals for both parts
+are below.
 
 **What was tested and why.** `wo174_leftover_5k_plus.csv` lists 1,484
 governments of 5,000+ people. WO-174's CivicPlus AgendaCenter guess
