@@ -347,6 +347,92 @@ Files: `rtr-business/research/wo197_report.csv` (2,471 rows),
 `rtr-deeplink/scripts/wo197_media_scan.py`, `wo197_build_candidates.py`,
 `wo197_ingest_hits.py`.
 
+## WO-267: measured real signals that find a meeting platform beyond its vendor name, and built a reusable matcher from them [Done 2026-09-12]
+
+**What was tested and why.** Today the site only recognizes a meeting
+platform (Granicus, CivicClerk, and so on) when the vendor's own web
+address shows up on a page — `granicus.com`, `civicclerk.com`. That
+misses two real cases: a platform embedded under the government's own
+address with no vendor name visible at all, and a platform whose page
+shape is a stronger clue than its address once we already have a
+candidate link. Ryan asked for a measured answer, not a guess: fetch real
+government pages, test candidate signals against them, and keep only the
+ones that actually work.
+
+**What was fetched.** 768 real pages, fetched politely (the same
+honest-header, then browser-header-on-block, then stop-at-a-challenge
+order every sweep in this repo uses): 10 real governments for each of 19
+platforms already known to use them, plus about 440 governments used as
+a control group — half already known to use a DIFFERENT platform, half
+with no known platform at all. A signal only counts as good if it shows
+up on at least 9 of 10 real governments that use that platform, AND
+shows up on 5% or fewer of the control group.
+
+| Result | Count of 47 candidate signals | What it means |
+| --- | --- | --- |
+| Passed both bars | 28 | Shipped in `app/utils/jurisdiction_data/platform_signatures.csv`, ready to use |
+| Failed one or both bars | 19 | Logged as a lead in `docs/investigations/platform_fingerprints.md`, not thrown away and not used |
+
+**The one finding worth remembering.** A real Hyland/OnBase government
+page almost never carries the vendor's own web address
+(`hylandcloud.com`) — only 1 of 10 real governments tested did. The page
+SHAPE (`AgendaOnline/Meetings/ViewMeeting`) showed up on all 10, address
+or no address. That is the whole point of this work in one example: the
+address-only check used today would have missed 9 of those 10
+governments entirely.
+
+**Caution: most of these signals confirm a link we already found — they
+don't yet prove we can find a NEW one by just looking at a government's
+homepage.** Several signals were tested against the platform's own page,
+which we already knew about, not a government's separate homepage. Read
+the doc's "home page, distinct domain" column before trusting a number —
+it is often small or zero. For six platforms (eScribe, Swagit, ClerkBase,
+ChampDS, SuiteOne, Town Hall Streams) every government sampled had no
+separate homepage on file at all, so this round has no evidence either
+way about whether their signal would show up on one.
+
+**A second caution: three brief-supplied examples of "sites where the
+platform link is hidden behind JavaScript" did not hold up once checked
+against the real data.** Waldwick NJ's page already shows a plain,
+visible mention of YouTube. Davison MI already has a real platform link
+on file. Farmington MO is a genuine unsolved case, but a different one —
+Ryan's own earlier report says neither a plain fetch nor a real browser
+could reproduce what he saw there. No comparison was forced from examples
+that did not actually show the problem; the claim is corrected in the
+doc instead.
+
+**Recommendation.** Wire the 28 kept signals into a one-fetch pass over
+governments with no known platform (filed as its own `BACKLOG.md` entry,
+tagged `[JUST-DO-IT]` since the signal set and the matcher already
+exist) — but read the doc's per-platform cautions first, since treating
+every kept signal as equally strong would overstate what this round
+actually proved for several of them.
+
+**What changed in the code.**
+- `scripts/platform_fingerprints.py` — a pure function,
+  `fingerprint(html, headers, url)`, that returns every matching signal
+  with its own measured confidence. Reuses `scripts/cms_fingerprint.py`
+  (already built, WO-154/WO-179) for the separate question of which
+  website builder a government's site runs on, rather than duplicating
+  it.
+- `app/utils/jurisdiction_data/platform_signatures.csv` — the 28 kept
+  signals and their measured numbers.
+- `tests/test_platform_fingerprints.py` plus 8 new real fixtures under
+  `tests/fixtures/platform_fingerprints/` (real government pages, one
+  per platform, source URL and date recorded).
+- `docs/investigations/platform_fingerprints.md` — the full table (all
+  47 signals, not just the 28 kept), the site-builder breakdown, and
+  what this round could not cover.
+
+**Found, not fixed (filed in `BACKLOG.md`).** The research file
+sometimes stores a platform's raw web address (`civicplus.com`) instead
+of its short name (`civicplus`) — 67 rows across the whole file. Small,
+real, and out of scope for a measurement-only round.
+
+**Deploy status.** Nothing here changes what the live site does — the
+new file and matcher are not called from anywhere yet. Safe to ship
+whenever the next deploy happens; nothing is waiting on it.
+
 ## WO-256 (part 1 of 3): a government's hub address is now permanent, so identity fixes stop moving reader URLs [Done 2026-09-12]
 
 **What was done and why.** A "hub" is the page that lists every meeting

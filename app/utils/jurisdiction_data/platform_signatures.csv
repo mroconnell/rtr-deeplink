@@ -1,0 +1,29 @@
+platform,signal_id,kind,pattern,hit_rate,false_positive_rate,needs_render,sample_size,measured_on,description
+granicus,granicus-vendor-host,vendor_hostname,granicus\.com,1.000,0.038,false,10,2026-09-12,granicus.com anywhere in the page (baseline -- detect_platform()'s existing check)
+granicus,granicus-player-clip-path,first_party_path,/player/(clip|event)/\d+,0.900,0.000,false,10,2026-09-12,/player/clip/{id} or /player/event/{id} path shape
+civicclerk,civicclerk-vendor-host,vendor_hostname,civicclerk\.com,1.000,0.008,false,10,2026-09-12,civicclerk.com anywhere in the page (baseline)
+civicclerk,civicclerk-portal-host,first_party_path,\.portal\.civicclerk\.com,1.000,0.008,false,10,2026-09-12,<subdomain>.portal.civicclerk.com tenant host shape
+civicclerk,civicclerk-event-media-path,first_party_path,/event/\d+/media,0.900,0.000,false,10,2026-09-12,/event/{id}/media single-meeting path
+civicweb,civicweb-vendor-host,vendor_hostname,civicweb\.net,1.000,0.011,false,10,2026-09-12,civicweb.net anywhere in the page (baseline)
+civicweb,civicweb-portal-meetinginfo-path,first_party_path,/portal/meetinginformation\.aspx,0.900,0.000,false,10,2026-09-12,Portal/MeetingInformation.aspx path (named in the WO-267 brief)
+iqm2,iqm2-vendor-host,vendor_hostname,iqm2\.com,0.900,0.003,false,10,2026-09-12,iqm2.com anywhere in the page (baseline)
+iqm2,iqm2-citizens-path,first_party_path,/citizens/,0.900,0.003,false,10,2026-09-12,/Citizens/ path (named in the WO-267 brief)
+iqm2,iqm2-detail-meeting-path,first_party_path,detail_(meeting|legifile)\.aspx,0.900,0.000,false,10,2026-09-12,Detail_Meeting.aspx / Detail_LegiFile.aspx single-item paths
+escribe,escribe-vendor-host,vendor_hostname,escribemeetings\.com,1.000,0.000,false,10,2026-09-12,escribemeetings.com anywhere in the page (baseline)
+escribe,escribe-meeting-agenda-path,first_party_path,meeting\.aspx\?agenda=,1.000,0.000,false,10,2026-09-12,Meeting.aspx?Agenda= path shape
+escribe,escribe-pub-subdomain,first_party_path,pub-[a-z0-9-]+\.escribemeetings\.com,1.000,0.000,false,10,2026-09-12,pub-<tenant>.escribemeetings.com tenant host shape
+swagit,swagit-vendor-host,vendor_hostname,swagit\.com,1.000,0.003,false,10,2026-09-12,swagit.com anywhere in the page (baseline)
+swagit,swagit-videos-path,first_party_path,\.swagit\.com/videos/\d+,1.000,0.000,false,10,2026-09-12,<tenant>.swagit.com/videos/{id} path shape
+telvue,telvue-vendor-host,vendor_hostname,telvue\.com,1.000,0.003,false,3,2026-09-12,telvue.com anywhere in the page (baseline)
+telvue,telvue-videoplayer-path,first_party_path,videoplayer\.telvue\.com/player/,1.000,0.003,false,3,2026-09-12,videoplayer.telvue.com/player/{org_token}/ shared-host path shape
+champds,champds-vendor-host,vendor_hostname,champds\.com,1.000,0.000,false,1,2026-09-12,champds.com anywhere in the page (baseline)
+champds,champds-event-path,first_party_path,champds\.com/[a-z0-9]+/event/\d+,1.000,0.000,false,1,2026-09-12,champds.com/<tenant>/event/{id} path shape
+clerkbase,clerkbase-vendor-host,vendor_hostname,clerkshq\.com,1.000,0.000,false,2,2026-09-12,clerkshq.com anywhere in the page (baseline)
+municode_meetings,municode-meetings-vendor-host,vendor_hostname,municodemeetings\.com,1.000,0.003,false,10,2026-09-12,municodemeetings.com anywhere in the page (baseline)
+hyland,hyland-agendaonline-path,first_party_path,agendaonline/meetings/viewmeeting,1.000,0.000,false,10,2026-09-12,AgendaOnline/Meetings/ViewMeeting path shape (also matches onbase.* custom-domain tenants)
+wistia,wistia-vendor-host,vendor_hostname,wistia\.com,1.000,0.000,false,8,2026-09-12,wistia.com anywhere in the page (baseline)
+wistia,wistia-medias-path,first_party_path,wistia\.com/medias/,1.000,0.000,false,8,2026-09-12,wistia.com/medias/{hashed_id} path shape
+suiteone,suiteone-vendor-host,vendor_hostname,suiteonemedia\.com,1.000,0.000,false,6,2026-09-12,suiteonemedia.com anywhere in the page (baseline)
+utah_pmn,utah-pmn-path,first_party_path,utah\.gov/pmn,1.000,0.003,false,2,2026-09-12,"utah.gov/pmn state notice-board path (first-party, state-hosted)"
+townhallstreams,townhallstreams-vendor-host,vendor_hostname,townhallstreams\.com,1.000,0.000,false,3,2026-09-12,townhallstreams.com anywhere in the page (baseline)
+townhallstreams,townhallstreams-stream-path,first_party_path,stream\.php\?location_id=,1.000,0.000,false,3,2026-09-12,stream.php?location_id= path shape
