@@ -8,7 +8,8 @@ in one pass. CLAUDE.md's own rule applied to every one: an entry is a
 lead, not a spec, so each claim was re-checked against the real code and
 a real live example before anything changed. Shipped as three PRs, each
 merged green before the next: PR A (adapter and probe fixes, needs a
-deploy), PR B (script fixes, no deploy), PR C (one doc fix, no deploy).
+deploy), PR B (script fixes, plus one adapter fix that also needs a
+deploy -- see below), PR C (one doc fix, no deploy).
 
 Result, one row per item:
 
@@ -20,20 +21,34 @@ Result, one row per item:
 | 3. OMP Network `/embed/sessions/` | `openmedia.py` doesn't accept the `/embed/sessions/{id}/...` form Littleton, CO links, only plain `/sessions/{id}/...` | Confirmed live: both real pages carry the identical `"om_youtube":{"youtube_id":...}` JS blob, but only the plain page also has the URL-shaped `<meta property="og:video">` tag `extract_video_id()` actually scans for | Normalizes the URL by stripping a leading `/embed` segment before fetching, so the plain (already-working) page is always what gets fetched and parsed; `source_url`/`external_id` still key off the original URL the caller passed | `tests/test_openmedia.py`, real Littleton CO fixture pair fetched live 2026-09-12 |
 | 4. Granicus newer player UI | `granicus.py` can't extract video from the newer `/player/clip/{id}?redirect=true` UI, reproduced on 3 real Lewis & Clark County, MT clips | **Not reproducible as a code bug.** Live re-test on the same tenant: this exact URL shape already resolves real video correctly (confirmed on 3 different real clips). The 3 clips the original report checked have a literal `video_url=""` baked into Granicus's OWN page (confirmed by a byte-for-byte diff against a working clip on the identical template) — an upstream data/encoding gap, not a URL-parsing one. Clips in between (both older and newer) mix real video and empty `video_url`, ruling out a clean date cutoff too | No code change. Entry corrected to reflect the re-test; two regression tests lock in the already-correct behavior on both real fixtures | `tests/test_granicus.py`, real clip 3500 (has video) and clip 4202 (genuinely empty `video_url`) fetched live 2026-09-12 |
 | 5. CivicPlus non-UTF8 decode | `civicplus.py` raises a raw `UnicodeDecodeError` on a real page instead of skipping cleanly (El Mirage, AZ, byte 0xdd) | Real, and a second independent real tenant already had the identical root cause on file from a week earlier (Richmond Hill, GA, byte 0xe2, a `DocumentCenter` PDF-view page reached via `detect_platform()`'s ordinary CivicPlus routing) — satisfying both entries' own "need a second real example" gate | Reused the already-existing `url_guard.read_capped_text()` helper (decode with the declared encoding, fall back to `utf-8` + `errors="replace"`) instead of a new adapter-local fallback; also gives this adapter a response-size cap it had none of before | `tests/test_civicplus.py`, real Richmond Hill GA PDF bytes fetched live 2026-09-12, reproducing the exact recorded error message |
+| 6. `pick_calendar_candidate()` crash | Ambiguous-candidate error message crashes on a `(date, candidate)` tuple, fixed in 1 of 5 identical copies | Confirmed — the exact same one-line bug (`.get()` on a tuple, not a dict) was still live in the other 4 copies | Applied the identical one-line fix (already proven in `scripts/nationwide_2404_ingest.py`) to `scripts/nationwide_1911_ingest.py`, `scripts/nationwide_395_ingest.py`, `scripts/nationwide_431_ingest.py`, `scripts/wo130_county_ingest.py` | `tests/test_wo285_pick_calendar_candidate_fix.py`, parametrized over all 5 copies, real ambiguous-candidate shape |
+| 7. YouTube page date = upload date | `youtube.py`'s title-to-date parser doesn't recognize a bare `"2020 3 16"` date shape (Aransas Pass, TX), falls back to upload date | Confirmed, and much bigger than the one page reported: a read-only audit of all 3,764 archived YouTube pages found 2,416 with a parseable title date, 1,298 of which (54%) disagree with the stored date — 780 (60%) off by exactly +1 day, meaning `release_date` (the fix that was supposed to have already solved this on 2026-08-12) still carries the same UTC-day-rollover shape for an evening US meeting | `youtube.py` now prefers a date parsed from the title (month-name, `M/D/Y`, and the bare `YYYY M D` shape) over `release_date`/`upload_date`, for any new resolve. Existing archived pages are **not** backfilled — filed as its own `[BIG]` entry with the audit count. Corrected the related WO-226 "six real cases" entry: 4 of 6 are now fixed prospectively, 2 use a 2-digit year the parser deliberately doesn't accept yet | `tests/test_youtube.py`, `tests/test_primegov.py` — including the real Oklahoma City sample already sitting in this file's own fixtures, which turns out to be a live example of the exact bug |
+| 8. 34 WordPress front pages, no channel found | Likely a `youtube-nocookie.com` embed the classifier can't see | Checked 12 of the 34 real governments: **not one** had an actual nocookie link — every "youtube-nocookie" mention was a WordPress plugin's own generic boilerplate JS, never a populated embed. The real, confirmed shape on 6 of 12: a real youtube.com/youtu.be URL inside an inline `<script>` JSON config, JSON- and HTML-entity-escaped, never in any scanned tag | Widened `find_youtube_links()`/`classify_youtube_url()` (all 3 duplicate copies) to also raw-text-scan for a de-escaped youtube.com/youtu.be URL, and to accept `/embed/{id}` and `youtube-nocookie.com` (unconfirmed, kept as cheap defense in depth). 22 of the 34 governments still need a by-hand re-check — narrowed the entry to describe just that remainder | `tests/test_wo285_channel_discovery_youtube_links.py`, parametrized over all 3 script copies, real McCracken County KY and South Connellsville PA fixtures fetched live 2026-09-12 |
 
 Caution: item 4's finding means Ryan should not expect a Granicus code
 fix to recover those 3 Lewis & Clark County meetings — the video is
 genuinely missing on Granicus's own side, so recovering it (if possible
 at all) means checking back with Granicus or the county, not this
-project's code.
+project's code. Item 7's 1,298-page count is real but not yet
+independently verified page-by-page — see its own new BACKLOG.md entry
+for what to check before backfilling anything.
 
-Recommendation: none of PR A needs anything beyond the deploy below.
+Recommendation: deploy PR A (below) when convenient. Item 7's backfill
+is worth doing once verified — it is the largest single date-accuracy
+gap found in this repo's YouTube corpus so far.
 
 Deploy status: PR A (items 1-5, `app/platforms/civicplus.py`,
 `app/platforms/openmedia.py`, `app/platforms/queue_probe.py`,
 `app/platforms/suiteone.py`, `scripts/wo134_confirmed_hits_ingest.py`)
-is merged to `main` but **not live** — needs a resolver deploy. Items
-6-9 (PR B, PR C) are appended to this same entry as they ship.
+is merged to `main` but **not live** — needs a resolver deploy. PR B
+(items 6-8, `app/platforms/youtube.py` plus four `scripts/nationwide_*
+_ingest.py`/`wo130_county_ingest.py` and three `scripts/wo2*_channel_
+*.py` files) is **also not live** — `app/platforms/youtube.py` needs the
+same resolver deploy as PR A (the brief's own "no deploy" label for PR B
+was wrong about this one file; the four script fixes and three
+channel-discovery-script fixes genuinely need no deploy, since none of
+those files run in production). Item 9 (PR C) is appended to this same
+entry once it ships.
 
 ## WO-280: two small bugs from WO-259 — a two-letter word read as a state code, and the deferred-file guard that did not fire [Done 2026-09-12]
 

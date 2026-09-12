@@ -94,6 +94,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import html as html_module
 import os
 import re
 import sys
@@ -463,15 +464,20 @@ async def fetch_with_ladder(session: aiohttp.ClientSession, url: str) -> PageFet
 # --------------------------------------------------------------------------
 
 _YT_CHANNEL_RE = re.compile(
-    r"(?:https?:)?//(?:www\.)?youtube\.com/(?:channel/[\w-]+|@[\w.-]+|c/[\w.-]+|user/[\w.-]+)",
+    r"(?:https?:)?//(?:www\.)?youtube(?:-nocookie)?\.com/(?:channel/[\w-]+|@[\w.-]+|c/[\w.-]+|user/[\w.-]+)",
     re.IGNORECASE,
 )
 _YT_PLAYLIST_RE = re.compile(
-    r"(?:https?:)?//(?:www\.)?youtube\.com/playlist\?[^\"'\s<>]*list=[\w-]+",
+    r"(?:https?:)?//(?:www\.)?youtube(?:-nocookie)?\.com/playlist\?[^\"'\s<>]*list=[\w-]+",
     re.IGNORECASE,
 )
+# WO-285, 2026-09-12: widened to also match `/embed/{id}` (either domain)
+# -- previously unmatched by ANY pattern here, not just on
+# youtube-nocookie.com. Confirmed real need on South Connellsville, PA's
+# own front page: `"url":"https:\/\/www.youtube.com\/embed\/9uOETcuFjbE
+# ?feature=oembed"` (a real Elementor video-widget JSON config).
 _YT_WATCH_RE = re.compile(
-    r"(?:https?:)?//(?:www\.)?youtube\.com/watch\?[^\"'\s<>]*v=[\w-]+"
+    r"(?:https?:)?//(?:www\.)?youtube(?:-nocookie)?\.com/(?:watch\?[^\"'\s<>]*v=|embed/)[\w-]+"
     r"|(?:https?:)?//youtu\.be/[\w-]+",
     re.IGNORECASE,
 )
@@ -497,10 +503,33 @@ _YT_RESERVED_PATHS = {
     "redirect",
 }
 _YT_VANITY_RE = re.compile(
-    r"(?:https?:)?//(?:www\.)?youtube\.com/([\w.-]+)/?(?:[?#]|$)",
+    r"(?:https?:)?//(?:www\.)?youtube(?:-nocookie)?\.com/([\w.-]+)/?(?:[?#]|$)",
     re.IGNORECASE,
 )
 _ONCLICK_URL_RE = re.compile(r"""\(\s*['"]([^'"]+)""")
+
+# WO-285, 2026-09-12: a bare youtube.com/youtu.be URL sitting in raw
+# script/JSON text, not any tag's href/src -- confirmed real and common:
+# WO-271's own 34-government "front-page mention, no channel found" list
+# (rtr-business/research/wo271_discovery.csv) turned out to be
+# overwhelmingly this shape, not the youtube-nocookie.com embed this
+# entry originally guessed at (checked 12 real examples building this
+# fix: 6 had a real, JSON-escaped `https:\/\/(www.)youtube.com\/...` or
+# `https:\/\/youtu.be\/...` URL inside an inline <script> block -- a
+# WordPress video-embed plugin's own per-post config, e.g. McCracken
+# County, KY's `{"youtube_url":"https:\/\/youtu.be\/7w68XqgThU8",...}` --
+# never inside an <a>/<iframe>/<video>/<source> tag the scan below looks
+# at; the other 6 had no real youtube link on the page at all -- some
+# 403'd outright, others' only "youtube" mention was the SAME plugin's
+# own generic boilerplate JS listing both youtube.com and
+# youtube-nocookie.com as fallback player-domain options, never a
+# populated embed. Not one of the 12 had a real, populated
+# youtube-nocookie.com link anywhere -- the domain widening above is
+# kept as cheap defense in depth, not because it was confirmed live.
+_RAW_YOUTUBE_URL_RE = re.compile(
+    r"https?://(?:www\.)?(?:youtube(?:-nocookie)?\.com|youtu\.be)/[^\"'\s\\<>]+",
+    re.IGNORECASE,
+)
 
 
 def _normalize_link(raw: str) -> str:
@@ -516,7 +545,11 @@ def classify_youtube_url(value: str) -> Optional[str]:
     if not value:
         return None
     low = value.lower()
-    if "youtube.com" not in low and "youtu.be" not in low:
+    if (
+        "youtube.com" not in low
+        and "youtu.be" not in low
+        and "youtube-nocookie.com" not in low
+    ):
         return None
     if _YT_PLAYLIST_RE.search(value):
         return "playlist"
@@ -536,9 +569,18 @@ def find_youtube_links(html: str, base_url: str) -> List[Tuple[str, str]]:
     src, and an onclick handler's first quoted URL -- covers a footer
     social icon and a hover-only nav dropdown alike, since both are
     ordinary anchors in the parsed HTML regardless of what CSS shows by
-    default."""
+    default -- plus (WO-285) a raw-text scan for a bare, possibly
+    JSON-escaped youtube.com/youtu.be URL that isn't in any tag attribute
+    at all; see _RAW_YOUTUBE_URL_RE's own comment for the real, confirmed
+    shape this catches."""
     if not html:
         return []
+    # De-escape JSON-style backslash-escaped slashes before scanning --
+    # same fix media_scan.py's scan_media_urls() already applies for the
+    # identical reason (see that function's own docstring), needed here
+    # for the raw-text scan below to ever match a JSON config's
+    # `"https:\/\/youtu.be\/..."` value.
+    html = html.replace("\\/", "/")
     soup = BeautifulSoup(html, "html.parser")
     found: List[Tuple[str, str]] = []
     seen = set()
@@ -567,6 +609,18 @@ def find_youtube_links(html: str, base_url: str) -> List[Tuple[str, str]]:
             m = _ONCLICK_URL_RE.search(onclick)
             if m:
                 _consider(m.group(1))
+
+    for m in _RAW_YOUTUBE_URL_RE.finditer(html):
+        # Same unescape-then-retrim shape media_scan.py's scan_media_urls()
+        # already uses: unescaping an HTML entity like `&quot;` can reveal
+        # a real quote character the raw regex's own char-class couldn't
+        # see coming, which would otherwise leave trailing JSON garbage
+        # (e.g. `,&quot;video_type&quot;:...`) glued onto the real URL --
+        # confirmed live on McCracken County, KY's own front page.
+        raw = html_module.unescape(m.group(0))
+        raw = re.split(r"[\"'\s<>\\]", raw, maxsplit=1)[0]
+        _consider(raw)
+
     return found
 
 
