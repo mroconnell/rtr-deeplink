@@ -314,6 +314,70 @@ BACKLOG merge conflicts: a stale re-opened entry (see the "20 rows...
 still needs fixing" entry this session had to remove a second time) is
 the visible symptom, but the loss can go either direction silently.
 
+## WO-238: correct the 5 wrong-government domain mappings WO-146 flagged but never applied [Done 2026-09-11]
+
+WO-146 (2026-09-10) found 21 governments whose recorded domain actually
+belonged to a different government somewhere else. A same-day pass fixed
+17 of them. This WO finished the other 5: Providence County RI, Winona
+County MN, Imperial city CA, Colorado County TX, Arkansas County AR.
+
+**What was checked.** Each recorded domain was opened live and read
+before anything was changed — not just re-run through a script.
+
+| Recorded domain | What the page actually said | Real owner |
+| `providenceri.iqm2.com` | "CITY COUNCIL" / "City of Providence" | City of Providence, not the county |
+| `pub-winona.escribemeetings.com` | "City Council" | Winona city, not the county |
+| `imperial.granicus.com` | "published by the County of Imperial", Board of Supervisors | Imperial County, not the city |
+| `coloradoga.granicus.com` | "General Assembly" (a committee clip) | Colorado's state legislature — not a local government at all |
+| `arkansas-sc.granicus.com` | "Latest Supreme Court Opinions" | Arkansas Supreme Court — not a local government at all |
+
+**What was fixed, and where.** All 5 corrections landed in
+`jurisdiction_coverage.csv` only (the research tracking file), via
+`research/wo238_apply_to_jc.py` in the `rtr-business` repo. A fresh pull
+of every live page (`GET /internal/export/pages`, 8,230 pages) found
+zero pages wrongly keyed to any of the 5 governments — the real owners
+(City of Providence, Winona city, Imperial County, Arkansas Supreme
+Court) already each have their own correct pages. So nothing needed
+re-keying, and a check of the site's pin file (`tenant_overrides.csv`)
+found the Colorado and Arkansas cases were already correctly pinned from
+an earlier fix (2026-09-10) — the site itself was already showing the
+right thing; only the tracking file was out of date.
+
+Three of the five governments already had their own real website
+recorded as a backup (`alternate_domains`) — Winona County
+(`co.winona.mn.us`), Imperial city (`cityofimperial.org`), and Colorado
+County (`co.colorado.tx.us`). Each was re-checked live, found working,
+and promoted to be that government's main recorded domain. Providence
+County has no such backup, because Rhode Island counties have no
+government to have a website — its wrong domain was removed and kept
+only as a labeled record of the mistake, per this repo's rule that a
+domain is never deleted outright, only corrected. Arkansas County's
+domain was already blank, so nothing needed removing there — only its
+reason-for-no-domain was updated to the more accurate "not a real local
+government," replacing a vaguer placeholder.
+
+**A second, unplanned fix.** Imperial County's own real website
+(`imperialcounty.org`) had been marked unreachable by an earlier check.
+Re-checked live, it works — a real WordPress site titled "Home -
+Imperial County." That old mark was stale, not something this task
+caused; it's cleared now, alongside recording the confirmed video
+platform.
+
+**Caution.** Two governments now have a real, live meeting-related link
+on their own website that has not been checked further: Winona County
+has an "AgendaCenter" and a YouTube link; Imperial city has a CivicClerk
+portal link and a YouTube link. Neither has been confirmed to hold a
+real, current meeting yet — filed as fresh leads in `BACKLOG.md` rather
+than assumed.
+
+**Recommendation.** No further action needed on the 5 corrections
+themselves. The two new leads above are worth a normal sweep pass when
+time allows.
+
+**Deploy status.** This only changed a research tracking file in a
+separate repo (`rtr-business`) — nothing in `rtr-deeplink` needed a code
+change, so there is nothing to deploy for this task.
+
 ## Granicus: extract the real organization name from the page's own meta description [Done 2026-09-10]
 
 Ryan asked why a batch of ~40 Granicus pages (all the newer
