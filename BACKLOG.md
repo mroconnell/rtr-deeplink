@@ -114,10 +114,11 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (43)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (44)
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
+  `_probe_direct_file()`'s HEAD fallback misfires on a host that…
   The tier-3 probe has no recipe for three real delegated media shapes…
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
@@ -801,6 +802,40 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **Constraint:** none -- pure ordering fix, no behavior change for a
   URL that isn't already queued.
 - **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-290 entry.
+
+### `_probe_direct_file()`'s HEAD fallback misfires on a host that answers HEAD with a 200 error page (not a 4xx) -- records a wrong `size_bytes`, though duration still comes out right `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** `app/platforms/queue_probe.py`'s `_probe_direct_file()`
+  only falls back from HEAD to a ranged GET when the HEAD status is
+  `>= 400`. Confirmed live 2026-09-12 (WO-304) against Jefferson
+  County, WA's real Laserfiche WebLink video: a HEAD (`allow_redirects=
+  True`) 302s to `Error.aspx`, which itself answers **200** -- a real,
+  successful-looking status on a page that is not the video at all. The
+  fallback never fires, so `_size_from_headers()` reads the error page's
+  own `Content-Length` (2038 bytes) instead of the real file's (the real
+  file is ~1.7GB).
+- **Impact:** cosmetic, not blocking -- `media_probe.probe_duration()`
+  (ffprobe) fetches the URL directly regardless of what HEAD returned,
+  so the probe's `duration_seconds` and `verdict` came out correct
+  (`accept`, 17650.39s, matching the real ~4h54m meeting) even with the
+  wrong size. But `size_bytes` is wrong in
+  `scripts/tier3_auto_transcription_queue_probe.csv`'s audit trail for
+  this row, and any future caller that trusts this field (a size-based
+  sanity check, a cost estimate) would be misled on this same host shape.
+- **Next action:** in `_probe_direct_file()`, also fall back to the
+  ranged GET when the HEAD response's `Content-Type` isn't video-shaped
+  (e.g. `text/html` on a 200) -- not just on a 4xx status. Verify against
+  the real Jefferson County URL (`ElectronicFile.aspx?docid=10559483&
+  dbid=0&repo=Jefferson`) before shipping, and re-check the fix doesn't
+  regress WO-166's own confirmed HEAD-404-then-GET-200 case (Hudson, CO's
+  CivicPlus DocumentCenter link) since both paths share this function.
+- **Constraint:** don't widen this to "any HEAD with a non-video
+  Content-Type is suspect" without checking it against every platform
+  already routed through `_probe_direct_file()` -- a real video HEAD
+  response's Content-Type convention hasn't been re-surveyed since
+  WO-166.
+- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-166 and WO-304
+  entries.
 
 ### The tier-3 probe has no recipe for three real delegated media shapes -- a CivicClerk event that delegates to Cablecast, a ChampDS `DOWNLOAD-MEDIA` redirect, and a CivicPlus DocumentCenter audio URL `[JUST-DO-IT]`
 
@@ -7033,7 +7068,14 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
   solved in the time available (1, Pittsylvania County VA).
 - **Impact**: Jefferson County's meeting can be captured without a
   general adapter — it's one, already fully characterized government,
-  not a pattern. Every other government studied already has its real
+  not a pattern. **Done, WO-304 (2026-09-12)**: its September 8, 2026
+  Board of County Commissioners meeting is now a real, live page
+  (`/m/jefferson-county-wa`), ingested via a small, Laserfiche-scoped
+  extension to `app/platforms/direct_file.py` — see `BACKLOG_DONE.md`'s
+  WO-304 entry for what that extension is (docid-based confirmation and
+  sibling-caption lookup, not a general folder-walking adapter) and why
+  it still doesn't change this entry's own defer decision. Every other
+  government studied already has its real
   meeting video recorded correctly via a different platform (Granicus,
   Swagit, IQM2, PrimeGov, YouTube, CivicPlus); Laserfiche is their
   document archive, not their video system. A general adapter would
