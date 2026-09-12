@@ -813,6 +813,100 @@ found and the fix); `BACKLOG_DONE.md`'s WO-256 entries (the address-
 freeze this builds on) and WO-251 entry (the original Lake Havasu
 incident); `BACKLOG.md`'s open entry on the remaining detection gap.
 
+## WO-290: platform already known + the CivicPlus drill-down, under 5,000 people, no page — 15 pages live, 9 queued, 15 wrong-government catches [Done 2026-09-12]
+
+**What was done and why.** This looked for governments with under
+5,000 people that already had a known video platform on file, or whose
+only lead was CivicPlus's agenda system, but had no page on the site
+yet. The idea: skip the search step and go straight to the platform's
+own listing, since the platform was already recorded.
+
+Two groups, re-counted fresh rather than trusted from an earlier
+estimate (the file changes fast with several sweeps running the same
+night):
+
+**Result — governments checked.**
+
+| Outcome | Count of 463 | What it means |
+|---|---|---|
+| Real page created | 15 | A real meeting with captions, live on the site now |
+| Newly queued for transcription | 9 | Real video, no captions yet; cloud worker will transcribe it |
+| Already queued or deferred by another sweep the same night | 5 | No new action needed |
+| Left deferred, needs a person to check | 1 | Edmonton city, KY — a probe said 18 hours 19 minutes for a plain "City Council" meeting, far longer than anything else found; may be a probe error, not a real meeting length |
+| Wrong government (caught before publishing) | 15 | See below |
+| Real video, not a meeting | 2 | A voter-education video and a software announcement, both on a government's general video channel |
+| Real meeting and video, but this site can't read that file yet | 4 | A known, now-filed gap in how videos are checked before queuing |
+| No video, no lead, or not confirmed | 412 | The government either has no video yet, or nothing solid enough to act on |
+
+**15 wrong-government catches — this is the headline finding.** Of the
+52 governments where a real video was actually found, 15 (29%) turned
+out to belong to a different government than the one on file. Three
+different ways this showed up, each checked a different way before
+being recorded:
+
+1. **7 caught by reading the video page itself.** A town's own recorded
+   lead pointed at a bigger, differently-named government that happens
+   to share a tenant address — for example, "Pitkin town, Colorado"
+   turned out to be a recording of Pitkin *County's* own meeting, and
+   "Laverne town, Oklahoma" turned out to be a recording from La Verne,
+   *California*. Each was confirmed by reading the actual page, not
+   just the title.
+2. **4 caught automatically by the site itself.** Four small-town video
+   addresses on one platform (CivicWeb) already had a page on the site
+   under a *different*, correct government — Williamsburg, Virginia
+   instead of Williamsburg, Iowa; Woodland, Washington instead of
+   Woodland, Michigan; a Canadian township instead of Mapleton,
+   Minnesota; Waverly, Iowa instead of Waverly, Minnesota. The site
+   refused to create a duplicate page under the wrong government — the
+   safety check worked exactly as intended.
+3. **3 caught by an existing rule already on file.** Three small-town
+   video addresses were already marked, from earlier work, as
+   belonging to a same-named Canadian town instead. These were removed
+   before anything was queued.
+4. **1 more, from the CivicPlus group**, confirmed by reading the video
+   page: "Red Hook village, New York" was actually a recording from
+   the Town of Red Hook, a different government.
+
+None of the 15 were published under the wrong government. All 15 are
+listed, with the real government's name, in
+`~/Documents/rtr-business/research/wo290_owner_bodies.csv` for a later
+step that gives that real government its own record.
+
+**Caution.** Nine of the real finds ran over 90 minutes, which this
+site normally sets aside rather than queues right away. Since no
+shorter meeting could be found for these towns with the tools
+available, eight were queued anyway, following Ryan's rule from
+2026-09-12. The ninth (Edmonton, Kentucky, 18 hours 19 minutes) was
+left aside — that length is unusual enough it needs a person to check
+before spending transcription time on it.
+
+**Recommendation.** File the 15 real-government leads
+(`wo290_owner_bodies.csv`) into a future government-naming pass. Fix
+the four-government probe gap (filed in this file's own entry below and
+in `BACKLOG.md`) so those four real meetings can be queued without
+redoing the search. Have someone check the Edmonton, Kentucky video
+before it gets queued.
+
+**What's not done.** A third group — governments with no platform on
+file, but whose page address already looks like an agenda system (98
+of them) — was found but not started. The same tool used for the
+CivicPlus group can be pointed at it directly; see the research
+write-up (`ENUMERATION_METHODS.md` §310) for the exact command.
+
+**Deploy status.** The 15 new pages are already live — creating a page
+happens immediately, not on a deploy. The 10 new queue lines and the 11
+pin corrections (`tenant_overrides.csv`) are on `main` after this PR
+merges, but need the next manual deploy before the transcription
+worker or any future resolve actually uses them.
+
+**Files.** `scripts/wo290_known_platform_sweep.py`,
+`scripts/wo290_civicplus_sweep.py`, `scripts/wo290_data/` (candidate
+lists and discovery reports); research write-up at
+`~/Documents/rtr-business/research/ENUMERATION_METHODS.md` §310. The
+research-file update (`wo290_report.csv`, `wo290_apply_to_jc.py`) is
+left on disk, not yet applied or committed — this WO ran with no git
+access to the `rtr-business` repo; see that script's own docstring.
+
 ## WO-288: correct the meeting date on archived YouTube pages whose title date disagrees with the stored date — 1,349 pages ready, script built and tested, write not yet run [Done 2026-09-12]
 
 **What was done and why.** WO-285 found that many archived YouTube

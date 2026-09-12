@@ -114,8 +114,10 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (42)
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
+  `queue_probe.finish_candidate()` can defer an already-queued meeting…
+  The tier-3 probe has no recipe for three real delegated media shapes…
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
@@ -179,9 +181,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
 Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (185)
-  [NEEDS-AUDIT] `app/platforms/queue_probe.py` has no probe recipe for…
   [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] `resolve_government()` matches a name that merely…
+  [NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
@@ -736,6 +738,72 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
   no adapter or queue-file change needed, just running the probe again
   now that the code is fixed.
 - **History:** `BACKLOG_DONE.md`, WO-294 (2026-09-12).
+
+### `queue_probe.finish_candidate()` can defer an already-queued meeting instead of recognizing it, producing a duplicate queue line `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** found live 2026-09-12 (WO-290). `finish_candidate()` checks
+  whether `meeting_url` is already in the deferred file, then whether
+  the probed duration is over `DEFER_OVER_SECONDS` (90 min) -- and defers
+  unconditionally on the second check, without first checking whether
+  the URL is already sitting in the queue file. Only the short-meeting
+  "otherwise" branch's own `append_queue_line()` call does that dedupe
+  check (and it's a no-op there specifically because that's the only
+  place it's reached from). A meeting already queued by an earlier
+  sweep, re-probed by a later one and found to run over 90 minutes, gets
+  deferred instead of recognized as already-queued.
+- **Impact:** confirmed for one real government (Yachats city, OR,
+  `yachatsor.portal.civicclerk.com/event/1157/media` -- already queued
+  on `main` before WO-290 started). WO-290's own hand-requeue step (its
+  brief's "queue a long one anyway when no shorter one was found" rule)
+  then added a second, duplicate line for the same URL, caught by
+  `tests/test_transcription_queue_files.py::test_no_duplicate_rows`
+  before merge and fixed by hand. A future sweep that doesn't run that
+  test locally before committing could land a real duplicate.
+- **Next action:** add an `is_queued()` check at the top of
+  `finish_candidate()`'s accept/flag-long branch, before the deferred-
+  file and duration checks -- return `action="already-queued"`
+  immediately when the URL is already in `TIER3_QUEUE_FILE`, the same
+  way `append_queue_line()`'s own dedupe already behaves for the short
+  path.
+- **Constraint:** none -- pure ordering fix, no behavior change for a
+  URL that isn't already queued.
+- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-290 entry.
+
+### The tier-3 probe has no recipe for three real delegated media shapes -- a CivicClerk event that delegates to Cablecast, a ChampDS `DOWNLOAD-MEDIA` redirect, and a CivicPlus DocumentCenter audio URL `[JUST-DO-IT]`
+
+- **Issue:** `app/platforms/queue_probe.py`'s `probe_queue_entry()`
+  returns `reject-dead` ("no probe recipe for this media shape") for a
+  video URL it has no dispatch rule for, even when the underlying
+  adapter already resolved real, playable video. WO-289 and WO-290
+  (2026-09-12, running the same night on non-overlapping population
+  bands) independently hit the identical gap on `new.swagit.com` /
+  `play.champds.com` (WO-289) and, separately, a CivicClerk event
+  delegating to a `reflect-*.cablecast.tv` show URL, a ChampDS
+  `DOWNLOAD-MEDIA` redirect (twice), and a CivicPlus `DocumentCenter`
+  audio URL (WO-290) -- five real governments across the two runs, none
+  a one-off.
+- **Impact:** Excelsior city MN, Belle Meade city TN, Oak Hill city TN,
+  and West Lake Hills city TX (WO-290) plus the two WO-289 governments
+  each have a confirmed real meeting with real video, sitting unqueued
+  for no reason other than this gap -- re-running either sweep's
+  `--mode finish` against its existing decisions file will pick them up
+  automatically once the probe gains these recipes, no new discovery
+  needed.
+- **Next action:** add a dispatch rule to `probe_queue_entry()` (or
+  wherever `_probe_direct_file()`/its siblings live) for: (1) a
+  Cablecast show URL reached via CivicClerk delegation -- likely just
+  needs the existing Cablecast probe path, not currently reached because
+  `video_format`/`platform` isn't threaded through the delegation; (2) a
+  ChampDS `.../DOWNLOAD-MEDIA/.../eventmainmedia/{id}` redirect --
+  confirm what it redirects to (probably a direct MP4/HLS) and probe
+  that; (3) a CivicPlus DocumentCenter link whose real filename is an
+  audio file, not the PDF this shape usually carries.
+- **Constraint:** verify each recipe against the exact five real URLs
+  above before shipping -- this repo's own rule against claiming a data
+  path works without a positive, live example.
+- **History:** `rtr-deeplink/BACKLOG_DONE.md`'s WO-289 and WO-290
+  entries; `~/Documents/rtr-business/research/ENUMERATION_METHODS.md`
+  §309/§310.
 
 ### `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one confirmed-real gap (Radware/ShieldSquare) is fixed in only 1 of them `[JUST-DO-IT]` `[EASY]`
 
@@ -1770,12 +1838,6 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
-- **[NEEDS-AUDIT] `app/platforms/queue_probe.py` has no probe recipe for a `new.swagit.com` video-detail-page URL or a `play.champds.com` event URL, so a real tier-3 candidate delegated to either from a CivicClerk `media` page is rejected `reject-dead` before it ever reaches the queue.**
-  - **Issue**: found live 2026-09-12 (WO-289), two real governments in the same 7-candidate batch — Taylor County, TX (`https://taylortx.portal.civicclerk.com/event/2001/media` -> `https://taylortx.new.swagit.com/videos/395918`) and Campbell County, WY (`https://campbellcowy.portal.civicclerk.com/event/6808/media` -> `https://play.champds.com/gillettewy/event/957`). Both resolved a real video through CivicClerk's own delegation, and both failed `finish_candidate()`'s probe with `reason="no probe recipe for this media shape"` — the video itself was never actually checked (not a dead-link/short-meeting reject).
-  - **Impact**: every CivicClerk government whose real video lives on one of these two hosts is silently unqueueable today, no matter how good the candidate — a probe-tooling gap masquerading as a content reject in `jurisdiction_coverage.csv`'s `rejected-by-probe` rows.
-  - **Next action**: add a probe recipe for both URL shapes to `app/platforms/queue_probe.py` (Swagit's `new.swagit.com/videos/<id>` page and CivicClerk's champds delegation, `play.champds.com/<tenant>/event/<id>`) — likely a HEAD/metadata fetch analogous to the existing Swagit/CivicClerk recipes already in that file, not a new platform adapter.
-  - **Constraint**: only 2 examples so far (from one batch) — confirm the URL shape is stable across a few more real tenants before hard-coding a parser.
-  - **History**: `BACKLOG_DONE.md`'s WO-289 entry.
 - **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
   - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
   - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.
@@ -1788,6 +1850,12 @@ of human step they need.
   - **Next action**: read `app/utils/gov_registry/resolver.py`'s ladder to find which rung does a bare-substring match against a place/county name without requiring the match to cover most of the input string, and tighten it (e.g. require the place/county name to be the dominant part of the input, not merely present anywhere in it) or gate it behind a caller opt-in.
   - **Constraint**: only Utah PMN entity names have been checked so far (12 confirmed-wrong of 59 raw matches) — a second population before generalizing the fix, per this repo's "verify before fixing" convention.
   - **History**: `BACKLOG_DONE.md`'s WO-299 entry, 2026-09-12.
+- **[NEEDS-AUDIT] Edmonton city, KY's eScribe tier-3 candidate probed at 18h19m for a plain "City Council" meeting -- far outside every comparable real candidate's range, cause not yet confirmed.**
+  - **Issue**: found live 2026-09-12 (WO-290) resolving `https://pub-edmonton.escribemeetings.com/Meeting.aspx?Agenda=Agenda&Id=6f5d15ef-01bf-411b-8af1-0b22d2f92009&Item=54&Tab=attachments&lang=English` -- the probe returned `flag-long` with `duration 18.32h`. The same sweep's 8 other long tier-3 finds (also small-town council/board meetings) ranged 1.5h-3.4h; nothing else in this population came close to 18 hours.
+  - **Impact**: left in `scripts/tier3_long_meetings_deferred.txt` rather than queued (unlike the other 8, which were moved to the queue per Ryan's "queue a long one anyway" rule) -- an 18-hour transcription job is expensive to run and likely wrong to attempt if the duration itself is a probe artifact (e.g. the eScribe VOD stream being continuous/looped rather than one meeting).
+  - **Next action**: watch or scrub the actual stream (or re-probe with a tool that reports more than duration) to confirm whether this is a real marathon meeting or a probe/media anomaly; if real, move the line from `tier3_long_meetings_deferred.txt` to `tier3_auto_transcription_queue.txt` by hand (see `wo290`-tagged pin in `tenant_overrides.csv` for the government's `gov_id`, `us:place:2123968`); if a probe artifact, record why so `app/platforms/queue_probe.py` doesn't get fooled by the same shape again.
+  - **Constraint**: don't push this into the transcription queue without checking first -- an 18-hour job ties up worker time other real meetings could use.
+  - **History**: `rtr-deeplink/BACKLOG_DONE.md`'s WO-290 entry.
 - **[NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row says `shares_video=True` with no `example_meeting_url`, but a fresh WO-281 resolve of its own recorded CivicPlus AgendaCenter URL found the adapter checked the 5 most recent listings and found no real video link.**
   - **Issue**: found live 2026-09-12 (WO-281) resolving `https://randallcounty.gov/agendacenter` directly through `civicplus.py` — the adapter's own resolve explicitly reported checking the 5 most recent listings and finding no video, which contradicts the row's existing `shares_video=True`. Neither an `example_meeting_url` nor a `reject_reason` is set on the row, so there's no record of where the `shares_video=True` claim came from.
   - **Impact**: this government's coverage status can't currently be trusted either way — the dashboards would count it as having video with nothing to point to.
