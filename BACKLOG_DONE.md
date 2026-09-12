@@ -1,5 +1,60 @@
 # Backlog — done
 
+## WO-248: the YouTube drip stopped editing a tracked file live — its probe rows go to a local buffer and fold into the real file once a day [Done 2026-09-12]
+
+- **Why:** the Workers session reported that `scripts/youtube_drip.py`,
+  running all day on Ol McClaude's Mac, was writing rows straight into a
+  file this repo tracks in git
+  (`scripts/tier3_auto_transcription_queue_probe.csv`) every time its
+  feed lane checked a video. Meanwhile the same file kept growing on
+  `main` from other, separate work. So every morning, when the operator
+  ran `git pull` on that Mac, git saw two different sets of changes to
+  the same file and stopped to ask a person to merge them by hand. No
+  rows were ever lost — the file is append-only — but it cost a manual
+  merge every single day.
+- **What was done:** the feed lane now writes its rows to a new file that
+  never goes into git
+  (`scripts/tier3_auto_transcription_queue_probe.local.csv`, added to
+  `.gitignore`). Once a day, the drip's existing `advance` step — the
+  same step that already removes finished lines from the video queue and
+  opens the daily pull request — copies every row from that local file
+  into the real, tracked file, skips any row whose video URL is already
+  there, and then empties the local file. That copy-and-skip step is a
+  new function, `fold_probe_sidecar()`.
+- **Result:**
+
+  | What changed | Before WO-248 | After WO-248 |
+  |---|---|---|
+  | Where a probe row lands right away | the tracked file, live | a local file only this Mac sees |
+  | When the tracked file changes | continuously, all day | once, right before the daily commit |
+  | `git pull` on the drip Mac | conflicted most days | clean |
+
+- **Caution:** nothing about the page-building logic changed — the same
+  probe runs, the same accept/reject rule decides whether a video is
+  queued. This only moves where the paper trail of that decision is
+  written in between.
+- **Operator step:** after this merges, run `git pull` on the drip Mac
+  one more time to pick up the new code. From then on, pulls are clean —
+  no more by-hand merges on this file. `docs/YOUTUBE_DRIP_RUNBOOK.md`'s
+  "Once a day" section has the exact commands, including the one-time
+  note.
+- **Verification:** `tests/test_youtube_drip.py` — new tests for
+  `fold_probe_sidecar()` using real rows copied from the tracked file
+  (only the file split is made up, not the data), plus a test that
+  confirms the feed lane really does send its rows to the new local file
+  and not the tracked one. Full suite green (3,354 passed), `ruff check`
+  and `ruff format --check` clean. No model changed, so `alembic check`
+  does not apply.
+- **Docs updated:** `scripts/youtube_drip.py`'s own docstring,
+  `docs/YOUTUBE_DRIP_RUNBOOK.md`'s "Once a day" section, and
+  `docs/COVERAGE_HANDOVER.md`'s drip bullet in "Where to look first next
+  time."
+- **No video-found split in this entry** — this was a code fix, not a
+  sweep. No new pages, no new queue lines, nothing to hand-check.
+- **Deploy:** none needed. This only touches a script a person runs by
+  hand on a separate Mac, not the resolver, the Archive, or the worker —
+  nothing here depends on a Render deploy.
+
 ## WO-245: BoxCast's `external_id` was colliding real broadcasts onto one page — it's now per-broadcast, and the government channel moved to a separate pin field [Done 2026-09-11]
 
 **What happened.** At 2026-09-12 00:50 UTC, three real BoxCast meetings were
