@@ -167,7 +167,7 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Hub identity: freeze slugs to gov_id (decision)
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (150)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (151)
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] Wheatfield town, NY's own AgendaCenter surfaces a…
   [NEEDS-AUDIT] Nine `jurisdiction_coverage.csv` rows where WO-174's…
@@ -180,6 +180,7 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (150)
   [NEEDS-AUDIT] `escribe.py`'s `resolve()` raises the same raw…
   [LATER] WO-217's guess-pattern domain search has 489 of 513 candidate…
   [NEEDS-AUDIT] At least 6 owner-channel discoveries (WO-211) have a…
+  [NEEDS-AUDIT] A per-video fallback pin wins over the registry…
   [NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a…
   [NEEDS-AUDIT] A WO-174 continuation-ingested YouTube livestream…
   [NEEDS-AUDIT] 112 of WO-152's own `jurisdiction_coverage.csv` rows…
@@ -1493,11 +1494,11 @@ of human step they need.
   - **Constraint**: never pin from the research file's gov_id without a landing-page or meeting-text check first — WO-125 found 56% of the research file's checkable host associations wrong, and WO-153 caught one more of the same shape (Chevy Chase Village, MD vs. the separate, real "Chevy Chase town, MD") that a name-only match would have mis-pinned.
   - **History**: WO-125, WO-153, WO-186, `BACKLOG_DONE.md` 2026-09-09/2026-09-10.
 
-- **[HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough* (`us:place:3471670`, source `ryan_stated`), but its landing page title is "Sussex County, NJ | Official Website".**
-  - **Issue**: WO-125 left the row alone by rule (an identity join never overwrites an existing pin) and lists it here instead: the research file says Sussex County (`us:county:34037`), the live site agrees, and the one archived page's stored name is just "Sussex, NJ".
-  - **Impact**: one page and its hub on the wrong government.
-  - **Next action**: Ryan confirms, changes that row's gov_id to `us:county:34037`, and runs `backfill_gov_id.py --hosts www.sussex.nj.us`.
-  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09.
+- **[HUMAN] `www.sussex.nj.us` is pinned to Sussex *borough* (`us:place:3471670`, source `ryan_stated`), but its landing page title is "Sussex County, NJ | Official Website" — and a SECOND, independent `ryan_stated` pin on the same borough shows the identical pattern.**
+  - **Issue**: WO-125 left the row alone by rule (an identity join never overwrites an existing pin) and lists it here instead: the research file says Sussex County (`us:county:34037`), the live site agrees, and the one archived page's stored name is just "Sussex, NJ". WO-231 (2026-09-11) found a second, separate pin with the same shape while settling an ambiguous re-key: `tenant_overrides.csv`'s `www.youtube.com,IEZoIxA87S8,us:place:3471670,fallback,ryan_stated,"Sussex, NJ (YouTube channel @SussexNJ) -- us_places.csv Sussex borough"` — the video itself is titled "Sussex County Special BCC Meeting" on channel "County of Sussex", plainly the county's own meeting, not the borough's. Both pins point the same real Sussex, NJ evidence at the borough; WO-231 did not silently override either (per the `ryan_stated` provenance rule), so page 4941 currently still sits on the borough.
+  - **Impact**: two pins (the domain and this video) and at least one live page/hub on the wrong government.
+  - **Next action**: Ryan confirms both should be the county, then changes both `tenant_overrides.csv` rows' `gov_id` to `us:county:34037` and runs `backfill_gov_id.py --hosts www.sussex.nj.us,www.youtube.com` (scoped to this match).
+  - **History**: WO-125, `BACKLOG_DONE.md` 2026-09-09; WO-231, `BACKLOG_DONE.md` 2026-09-11.
 
 - **[HUMAN] 13 archived YouTube pages point at a video that is gone (7 deleted, 3 private, 3 malformed ids); 11 have no transcript.**
   - **Issue**: per-video oEmbed statuses in `reports/shared_host_lookups.csv` (blank channel) cross-checked against the export; the video ids are the 404/403/400 rows in the study's classifier.
@@ -1681,6 +1682,13 @@ of human step they need.
   - **Next action**: for each flagged row in `wo211_owner_channels.csv`, verify `app/utils/gov_registry/resolver.py`'s `_match_override()` real precedence between a bare video-id match string and a `youtube:`-prefixed one (both forms exist in the file for different rows; WO-211 did not confirm which one a live lookup actually uses) before removing or repointing anything, then remove the wrong row and add/confirm the correct one.
   - **Constraint**: don't blind-repoint without checking the match-key precedence first -- trading a possibly-already-inert wrong row for a newly-live wrong one would be worse than leaving it alone.
   - **History**: `BACKLOG_DONE.md`, WO-211, 2026-09-11; `rtr-business/research/ENUMERATION_METHODS.md` section 261.
+
+- **[NEEDS-AUDIT] A per-video fallback pin wins over the registry unconditionally (WO-221), so an old WRONG pin is just as authoritative as a right one — 97 of 2,282 audited pins look suspect.**
+  - **Issue**: WO-221 made a matched per-video pin on a `MULTI_GOV_HOSTS` host win over the registry's own answer whenever both exist for the same video — correct for the case it fixed (Bronx County), but it makes no distinction between a pin that agrees with the video's own title/channel and one that doesn't. The very next post-deploy backfill (WO-231, 2026-09-11) proved this out: 13 of 38 pins the backfill made authoritative were wrong (town keyed to village, county to township, Lennox SD to Chancellor SD) — pins written by nine different earlier sweeps that the registry had quietly been out-voting until WO-221 shipped. WO-231's oEmbed-based audit of every YouTube/Vimeo per-video pin (`rtr-business/research/wo231_pin_audit.csv`, 2,282 rows) found 63 more with no name-token overlap between the government and the video's own title/channel at all (`channel-mismatch`) and 34 more naming a conflicting government type for the same place-family name (`type-mismatch`) — 97 total, not yet hand-checked or fixed.
+  - **Impact**: every one of those 97 pins will re-fire the same wrong keying on any brand-new page from the same video, or on the transcription worker's next re-resolve of an already-keyed page — the exact failure mode WO-231 just fixed for 14 of them, recurring indefinitely for the other 97 until someone hand-checks and corrects each one.
+  - **Next action**: two different shapes of fix, either is a real option and this entry doesn't pick one: (a) give a per-video pin a "verified" strength distinct from plain `fallback` (only a verified pin beats the registry; an unverified `fallback` pin on a `MULTI_GOV_HOSTS` host defers to the registry the way it did before WO-221), migrating the ~2,185 currently-consistent pins to `verified` and leaving the 97 suspects at their current strength until hand-checked; or (b) have the resolver itself cross-check a matched pin's government name/type against the video's own title/channel at resolve time (an oEmbed call per resolve, cost TBD) and only let it win when consistent, falling back to the registry's answer otherwise. Whichever is picked, hand-check the 97 suspect rows in `wo231_pin_audit.csv` first (same method as WO-231's 22: oEmbed title/channel vs. the pinned government) — 97 is small enough for one sweep.
+  - **Constraint**: don't build either fix speculatively without re-confirming the 97 by hand first — the audit's verdict is a cheap heuristic (name-token overlap + a type-conflict word list), not a hand-verified answer; a `type-mismatch` verdict on a consolidated city-county (its own name legitimately contains "city of") is a known false-positive shape (see Athens-Clarke County GA / St. Louis city in the audit output), so the real wrong-rate among the 97 is almost certainly lower than 97, not higher.
+  - **History**: `BACKLOG_DONE.md`, WO-231, 2026-09-11; `rtr-business/research/wo231_pin_audit.csv`; `rtr-business/research/ENUMERATION_METHODS.md` §275; the WO-221 pin-wins rule itself is `BACKLOG_DONE.md`'s WO-221 entry.
 
 - **[NEEDS-AUDIT] A `ryan_stated` `tenant_overrides.csv` pin can be a shallow bulk domain-to-place string match, not a personally-checked fact — at least one was confirmed wrong.**
   - **Issue**: WO-204 found `newtowntownship.civicweb.net`'s existing `ryan_stated` pin (from the 112-pin bulk worklist apply, PR #733) pointed to `us:place:4254184` (Newtown *borough*) even though the subdomain itself spells out "township" and the live portal is Newtown *Township*'s own (Board of Supervisors, Delaware County — confirmed live). The pin's own evidence line, "Newtown, PA -- us_places.csv Newtown borough," is a bare name-to-place match that ignored the word "township" sitting right in the hostname — the same root-cause shape WO-198's resolver fix targeted generally, just baked into a `ryan_stated` pin instead of the ladder. `ryan_stated` here records that Ryan approved a *batch* of 112 pins at once, not that each of the 112 was individually re-verified against its live site.
