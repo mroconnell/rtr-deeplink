@@ -434,3 +434,25 @@ Everything the §4 "What remains" list says this does not fix still does
 not: a genuine slug rename still costs one alias row, a merge of two
 `gov_id`s still needs a human decision, and the 5 real mixed-identity
 hubs measured in §2 still need one each.
+
+**§9, a gap in the freeze found live and fixed -- WO-293, 2026-09-12.**
+The freeze stops a page CHANGING GOVERNMENT from moving a hub's URL, but
+it never protected the retired-alias file itself from a SECOND
+retirement: a minted government's `hub_slug_aliases.csv` row can point at
+a slug that a LATER `backfill_gov_id.py --apply` run retires again (the
+government keeps its `gov_id`; a resolver fix just moves it onto a
+different, correct one), and nothing wrote the second hop. Found by a
+post-freeze check that hit 42 of ~970 alias targets 404ing this way --
+`lake-havasu-az -> city-of-lake-havasu-az -> 404`, the real hub at
+`lake-havasu-city-az`. Fixed: the 42 (4 needed a genuine new redirect, 18
+were pre-existing two-hop chains collapsed to one, the rest are minted
+governments that never gained a page and correctly 404 on their own
+address), plus `scripts/backfill_gov_id.py --apply` now writes (and
+collapses) the alias the moment it retires a slug, via
+`archive/utils/hub_aliases.write_retirements()`. **Known remaining
+gap**, filed in `BACKLOG.md`: the retirement DETECTION this hooks onto
+only fires for a blank/`rtr:unknown:`-origin page gaining identity for
+the first time, not for a KEYED minted government re-keyed onto a
+DIFFERENT keyed government -- the exact shape that produced the Lake
+Havasu chain in the first place. See `BACKLOG_DONE.md`'s WO-293 entry for
+the full repair and measurements.
