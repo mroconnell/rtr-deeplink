@@ -77,6 +77,7 @@ from .base import (
     detect_platform,
     get_finder,
 )
+from .suiteone import SuiteOneAssetFinder
 from .telvue import TelvueAssetFinder
 from .vimeo import VimeoAssetFinder, parse_vimeo_video
 from .wistia import (
@@ -496,6 +497,48 @@ async def _probe_telvue(
     return _finish(url, "telvue", method, float(duration), None, None, start)
 
 
+# --- SuiteOne Media ----------------------------------------------------
+
+
+async def _probe_suiteone(
+    url: str, page_url: str, source_page_url: Optional[str], start: float
+) -> ProbeResult:
+    """WO-285, 2026-09-12: `queue_probe.py` had no SuiteOne recipe at
+    all, so every CivicClerk-delegated SuiteOne line (`.../web/
+    Player.aspx?id=...`) was `no probe recipe for this media shape` --
+    confirmed live, all 16 of Vineyard, UT's real CivicClerk lines
+    (BACKLOG.md's matching entry). `SuiteOneAssetFinder` already knows
+    how to turn this page into the real direct-file S3 mp4 URL (and
+    duration is unknown from the page itself); reuse its `resolve()` for
+    that, then hand the result to the same direct-file/ffprobe recipe
+    the CivicClerk `.mp4` case already uses.
+
+    `suiteone.py`'s `resolve()` can still raise a raw `ValueError` for a
+    URL shape it can't parse at all (a separate, narrower BACKLOG.md
+    entry than the one this function closes) -- caught here as
+    `reject-dead` with the reason, exactly per that entry's own
+    constraint, rather than letting it abort the whole probe run."""
+    method = "suiteone-resolve"
+    try:
+        result = await SuiteOneAssetFinder().resolve(page_url)
+    except Exception as e:
+        return _dead(url, "suiteone", method, start, f"SuiteOne resolve raised: {e}")
+
+    if not result.video_url:
+        return _dead(
+            url,
+            "suiteone",
+            method,
+            start,
+            "SuiteOne resolve found no playable video (likely a "
+            "not-yet-recorded event -- var src='' on the page)",
+        )
+
+    return await _probe_direct_file(
+        url, "suiteone", result.video_url, source_page_url or page_url, start
+    )
+
+
 # --- Wistia ----------------------------------------------------------
 
 
@@ -889,6 +932,16 @@ async def probe_queue_entry(
         return await _probe_telvue(url, video_url, source_page_url, start)
     if resolved_platform == "wistia":
         return await _probe_wistia(url, external_id, start)
+    # WO-205's own "dispatch on what the video IS" reasoning above
+    # applies here too -- a CivicClerk event delegates to a SuiteOne
+    # player page (`.../web/Player.aspx?id=...`), so `video_url` carries
+    # a suiteonemedia.com host even though `resolved_platform` is
+    # "civicclerk", not "suiteone".
+    if (
+        resolved_platform == "suiteone"
+        or "suiteonemedia.com" in urlparse(video_url or "").netloc.lower()
+    ):
+        return await _probe_suiteone(url, video_url, source_page_url, start)
 
     media_path = urlparse(video_url).path.lower()
     if media_probe.is_hls(video_url):

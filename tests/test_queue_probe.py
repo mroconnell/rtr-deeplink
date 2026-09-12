@@ -31,6 +31,7 @@ from app.platforms.queue_probe import (
     _sum_extinf,
     probe_queue_entry,
 )
+from conftest import load_fixture
 from tests.aiohttp_mock import FakeResponse, mock_session
 
 # --- pure logic: verdict boundaries -----------------------------------
@@ -803,6 +804,92 @@ async def test_probe_queue_entry_dispatches_youtube_for_a_civicweb_page(monkeypa
     result = await probe_queue_entry(page)
     assert seen["video_url"] == embed
     assert result.verdict == "accept" and result.duration_seconds == 1500.0
+
+
+# --- WO-285: SuiteOne (CivicClerk delegation) ---------------------------
+
+
+async def test_probe_queue_entry_dispatches_suiteone_for_a_civicclerk_delegation():
+    # Real shape, WO-213/BACKLOG.md: CivicClerk resolves Vineyard, UT's
+    # event/1453 to a SuiteOne player page
+    # (`vineyardut.suiteonemedia.com/web/Player.aspx?id=1612&...`) --
+    # `queue_probe.py` had no SuiteOne branch at all, so all 16 of
+    # Vineyard's real CivicClerk lines were "no probe recipe for this
+    # media shape" even though the video is real. `platform="civicclerk"`
+    # here matches the real sidecar row's own platform column exactly --
+    # dispatch must go by the SuiteOne HOST in `video_url`, not
+    # `resolved_platform`, the same "what the video IS" reasoning WO-205
+    # used for CivicWeb->YouTube above.
+    meeting_url = "https://vineyardut.portal.civicclerk.com/event/1453/media"
+    player_url = (
+        "http://vineyardut.suiteonemedia.com/web/Player.aspx"
+        "?id=1612&key=-1&mod=-1&mk=-1&nov=0"
+    )
+    player_html = load_fixture("suiteone", "vineyardut_player.html")
+    media_url = "https://s3.amazonaws.com/suiteone.vineyardut.videofiles/cb54ea20.mp4"
+    home_url = "http://vineyardut.suiteonemedia.com/"
+    captions_url = "http://vineyardut.suiteonemedia.com/Event/GetCaptions/?eventId=1612"
+
+    routes = {
+        player_url: FakeResponse(status=200, text=player_html, url=player_url),
+        home_url: FakeResponse(status=404, text=""),
+        captions_url: FakeResponse(status=404, text=""),
+    }
+
+    async def _fake_probe_duration(url, *, source_page_url):
+        assert url == media_url
+        return 3912.0
+
+    with mock.patch.object(media_probe, "probe_duration", _fake_probe_duration):
+        with mock_session(routes):
+            with _mock_head(
+                {
+                    media_url: FakeResponse(
+                        status=200, headers={"Content-Length": "600000000"}
+                    )
+                }
+            ):
+                result = await probe_queue_entry(
+                    meeting_url, video_url=player_url, platform="civicclerk"
+                )
+
+    assert result.verdict == "accept"
+    assert result.platform == "suiteone"
+    assert result.duration_seconds == 3912.0
+
+
+async def test_probe_suiteone_resolve_error_is_reject_dead_not_a_crash():
+    # The Constraint this WO's own BACKLOG.md entry names: suiteone.py's
+    # resolve() can still raise a raw ValueError for a URL shape it
+    # can't parse at all (the separate, narrower bare-tenant-management-
+    # root gap WO-149 already filed) -- must not abort the whole probe
+    # run.
+    result = await queue_probe._probe_suiteone(
+        "https://example.gov/meeting",
+        "https://lunaconm.suiteonemedia.com/",
+        None,
+        0.0,
+    )
+    assert result.verdict == "reject-dead"
+    assert "SuiteOne resolve raised" in result.reason
+
+
+async def test_probe_suiteone_no_video_yet_is_reject_dead():
+    # Real shape: a not-yet-recorded SuiteOne event serves `var src =
+    # '';` (St Marys, GA event 1000 -- see tests/test_suiteone.py) --
+    # this must be a clean reject, not an exception.
+    live_html = load_fixture("suiteone", "floydcoin_live.html")
+    live_url = "https://floydcoin.suiteonemedia.com/web/live/"
+
+    with mock_session(
+        {live_url: FakeResponse(status=200, text=live_html, url=live_url)}
+    ):
+        result = await queue_probe._probe_suiteone(
+            "https://example.gov/meeting", live_url, None, 0.0
+        )
+
+    assert result.verdict == "reject-dead"
+    assert "no playable video" in result.reason
 
 
 # --- WO-224: the shared finish step ----------------------------------------

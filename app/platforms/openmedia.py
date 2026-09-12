@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import Optional, Tuple
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -84,7 +84,23 @@ class OpenMediaAssetFinder(AssetFinder):
     platform_name = "open_media"
 
     async def resolve(self, url: str) -> ResolvedMeeting:
-        html = await self._fetch(url)
+        # WO-285, 2026-09-12: Littleton, CO's own site links the
+        # `/embed/sessions/{id}/...` form (meant for iframe embedding) --
+        # confirmed live that form 200s but resolves empty, while the
+        # exact same session one path segment later (`/sessions/{id}/
+        # ...`, no `/embed`) resolves correctly. Read both real pages by
+        # hand: they're NOT differently-shaped otherwise -- the embed
+        # page is simply missing the `<meta property="og:video">` tag
+        # (and every other URL-shaped mention) `YouTubeAssetFinder.
+        # extract_video_id()` scans raw HTML text for; both pages carry
+        # the identical `"om_youtube":{"youtube_id":"...")` JS blob, but
+        # that's JSON, not a URL, so the existing extractor can't see it
+        # either way. Fetching the canonical non-embed page instead --
+        # rather than teaching extract_video_id() a JSON-specific case
+        # just for this one adapter -- gets the same real page every
+        # other OMP Network tenant already resolves through correctly.
+        fetch_url = self._strip_embed_segment(url)
+        html = await self._fetch(fetch_url)
         if html is None:
             return ResolvedMeeting(
                 platform=self.platform_name,
@@ -130,6 +146,23 @@ class OpenMediaAssetFinder(AssetFinder):
             resolved.agenda_link = agenda_link
 
         return resolved
+
+    @staticmethod
+    def _strip_embed_segment(url: str) -> str:
+        """`/embed/sessions/{id}/...` -> `/sessions/{id}/...`. Only
+        strips a leading `embed` path segment -- see this function's
+        only call site's comment for why. `source_url`/external_id/
+        jurisdiction all keep using the ORIGINAL `url` unchanged; only
+        the page actually fetched is normalized."""
+        parsed = urlparse(url)
+        segments = parsed.path.split("/")
+        # path.split("/") on "/embed/sessions/1/" -> ["", "embed",
+        # "sessions", "1", ""] -- the leading "" is the split before the
+        # first "/", so segments[1] is the first real path segment.
+        if len(segments) > 1 and segments[1].lower() == "embed":
+            del segments[1]
+        new_path = "/".join(segments) or "/"
+        return urlunparse(parsed._replace(path=new_path))
 
     @staticmethod
     async def _fetch(url: str) -> Optional[str]:

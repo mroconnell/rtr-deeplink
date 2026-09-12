@@ -6,7 +6,7 @@ from app.platforms.granicus import GranicusAssetFinder
 from app.platforms.youtube import YouTubeAssetFinder
 
 from aiohttp_mock import FakeResponse, mock_session
-from conftest import load_fixture
+from conftest import load_fixture, load_fixture_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -610,3 +610,31 @@ async def test_blocked_delegate_title_backfills_from_own_agenda_row(monkeypatch)
     assert result.platform == "youtube"
     assert result.title == "City Council Regular Meeting"
     assert result.date == "2026-04-08"
+
+
+async def test_resolve_non_utf8_response_degrades_instead_of_crashing():
+    # Real bug, WO-285 (2026-09-12): a raw, non-UTF8 CivicPlus response
+    # used to raise an uncaught UnicodeDecodeError out of resolve()'s own
+    # plain `response.text()` call. Two independent real tenants
+    # confirmed this live: Richmond Hill GA's own DocumentCenter PDF-view
+    # page (reached the way BACKLOG.md's entry describes -- detect_
+    # platform() routes any *.civicplus.com URL here, PDF view included)
+    # and El Mirage AZ's AgendaCenter page (WO-258, byte 0xdd). This
+    # fixture is the real PDF bytes fetched live 2026-09-12 from
+    # ga-richmondhill2.civicplus.com/DocumentCenter/View/5032/City-
+    # Charter-Updated-2021 -- confirmed to reproduce the EXACT same
+    # UnicodeDecodeError message BACKLOG.md recorded ("'utf-8' codec
+    # can't decode byte 0xe2 in position 10: invalid continuation byte")
+    # before this fix.
+    url = (
+        "https://ga-richmondhill2.civicplus.com/DocumentCenter/View/5032/"
+        "City-Charter-Updated-2021"
+    )
+    pdf_bytes = load_fixture_bytes("civicplus", "richmondhill_documentcenter_5032.bin")
+    routes = {url: FakeResponse(status=200, raw=pdf_bytes, url=url)}
+
+    with mock_session(routes):
+        # A raw PDF obviously has no CivicPlus AgendaCenter row markup --
+        # the honest, typed "no video here" result, not a crash.
+        with pytest.raises(NoVideoCandidateFound):
+            await CivicPlusAssetFinder().resolve(url)

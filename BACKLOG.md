@@ -114,18 +114,16 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (42)
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (40)
   `pick_calendar_candidate()`'s ambiguous-candidate error message…
   `CHALLENGE_MARKERS` is duplicated across 8 scripts, and one…
   WO-259's full-ladder homepage re-scan: 431 of 964 governments done,…
   `channel_name_plausible()`'s word-tokenizer rejects a real…
   `_VENDOR_MARKETING_APEX` (`scripts/wo147_access_ladder_sweep.py`)…
-  `app/platforms/openmedia.py` doesn't accept the…
   A "website-blocked-platform-unchecked" flag would separate "we never…
   Wilmington OH and Hondo TX's `jurisdiction_coverage.csv` rows still…
   `wo149_county_ladder_sweep.py` carries its own separate, unpatched…
   `wo191_access_ladder_sweep.py`'s headless budget is computed at…
-  Queue probe has no recipe when CivicClerk delegates to SuiteOne Media…
   Two real domain leads found by WO-196, ready to act on but out of…
   `VimeoAssetFinder.resolve()` has no title fallback when Vimeo's own…
   `alternate_urls` entries are only ever used for their HOST, never…
@@ -180,18 +178,14 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (178)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (173)
   [NEEDS-AUDIT] `[EASY]` A YouTube video titled as a bare date (no…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
   [NEEDS-AUDIT] `[BIG]` WO-281's homepage-hop sweep confirmed a real…
   [NEEDS-AUDIT] `wo146_api_relist_sweep._extract_state_from_text()`'s…
-  [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
-  [NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared…
-  [NEEDS-AUDIT] `[EASY]` SuiteOne's adapter can't parse a real, live…
-  [NEEDS-AUDIT] `app/platforms/civicplus.py` raised a text-decoding…
   [NEEDS-AUDIT] Hondo city, TX now has two different real BoxCast…
   [NEEDS-AUDIT] Ste. Genevieve city, MO's existing…
   [NEEDS-AUDIT] `classify_video_hand_check()`'s title-keyword…
@@ -246,7 +240,6 @@ Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (178)
   [LATER] Two real, scoped enumerator/adapter gaps found chasing the
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` overwrites
   [NEEDS-AUDIT] `scripts/score_gov_registry.py` can't see `match`-
-  [NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
   [NEEDS-AUDIT] The same YouTube video submitted via two different URL
   [NEEDS-AUDIT] `[BIG]` No automated "pick the best candidate" step
   [NEEDS-AUDIT] `[BIG]` Microsoft Teams and Zoom are real, confirmed
@@ -879,23 +872,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History**: `docs/investigations/hop_scorer_measurement.md` (WO-274,
   2026-09-12), `BACKLOG_DONE.md`'s WO-274 entry.
 
-### `app/platforms/openmedia.py` doesn't accept the `/embed/sessions/{id}/...` URL form OMP Network cities actually link -- only `/sessions/{id}/...` resolves `[JUST-DO-IT]` `[EASY]`
-
-- **Issue**: Littleton, CO's own site links
-  `littleton.ompnetwork.org/embed/sessions/346131/...` -- that form
-  resolves empty today. The same session under the plain
-  `/sessions/{id}/...` path (no `/embed`) resolves correctly with 3,120
-  caption segments (confirmed live 2026-09-11, WO-226 spot-check).
-- **Impact**: any OMP Network tenant that links the `/embed/sessions/`
-  form (the one meant for iframe embedding, plausibly the more common
-  shape on a city's own meeting-video page) fails to resolve at all,
-  even though the exact same meeting resolves fine one path segment
-  later.
-- **Next action**: teach `openmedia.py`'s URL parser to strip a leading
-  `embed/` segment before matching `sessions/{id}`, then add a fixture
-  test for both forms.
-- **History**: `BACKLOG_DONE.md`'s WO-226 entry, 2026-09-11.
-
 ### A "website-blocked-platform-unchecked" flag would separate "we never even tried the platform" from every other access-class reject -- pending Ryan's pick of where the label lives `[JUST-DO-IT]`
 
 - **Issue**: 3,619 rows in `jurisdiction_coverage.csv` carry an
@@ -1004,28 +980,6 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 - **History:** found and worked around in `rtr-deeplink` WO-218,
   2026-09-11; see `~/Documents/rtr-business/research/
   ENUMERATION_METHODS.md` §263.
-### Queue probe has no recipe when CivicClerk delegates to SuiteOne Media — every Vineyard, UT line is "dead" to the ingest gate `[JUST-DO-IT]` `[EASY]`
-
-- **Issue:** `scripts/probe_tier3_queue.py` on Vineyard UT's 16 CivicClerk
-  lines (2026-09-11, WO-213): all 16 `reject-dead`, reason `no probe
-  recipe for this media shape: http://vineyardut.suiteonemedia.com/web/
-  Player.aspx?id=…`. CivicClerk resolves the event to a SuiteOne player
-  page; `app/platforms/suiteone.py` exists, but `queue_probe.py`'s
-  dispatch has no SuiteOne branch, so the video is real and the gate
-  refuses it.
-- **Impact:** every CivicClerk tenant that delegates to SuiteOne is
-  un-feedable (Vineyard is the one seen; WO-205's sidecar can be grepped
-  for `suiteonemedia.com` to find the rest).
-- **Next action:** add a SuiteOne branch to `queue_probe.py`'s dispatch
-  the way WO-205 added CivicWeb→YouTube (dispatch on the resolved video's
-  host): call `SuiteOneAssetFinder` for the media URL, then the direct-
-  file/ffprobe recipe. One live test against Vineyard `event/1453`.
-- **Constraint:** `suiteone.py`'s `resolve()` raises a raw `ValueError`
-  on some pages (separate `[NEEDS-AUDIT]` entry) — catch it as
-  `reject-dead` with the reason, don't let it abort the probe run.
-- **History:** found 2026-09-11 trimming Vineyard to one meeting (WO-213
-  part 2); the kept line `event/1453` stays refused until this lands.
-
 ### Two real domain leads found by WO-196, ready to act on but out of that WO's own four-group scope `[JUST-DO-IT]` `[EASY]`
 
 - **Issue:** Investigating two WO-190 rejects (both wrongly mapped to
@@ -1844,36 +1798,12 @@ of human step they need.
   - **Next action**: require a word boundary that also excludes an ordinary-English-word match — e.g. only accept a two-letter token as a state/province code when it's directly adjacent to a comma (`City, ST`) or all-caps in otherwise-mixed-case text, rather than matching any bare two-letter token anywhere in the haystack. Re-run against a sample of already-processed sweep reports (WO-146/WO-259/etc.) to see how many other rows this reclassifies before trusting the fix.
   - **Constraint**: don't just special-case "la" — the fix needs to hold for the whole list of code-colliding short words above, not just the one example that got caught.
   - **History**: `BACKLOG_DONE.md`'s WO-259 entry (2026-09-12, part 2); `rtr-business/research/ENUMERATION_METHODS.md` §292.
-- **[NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable video from at least one real, active tenant that has moved to Granicus's newer `/player/clip/` UI.**
-  - **Issue**: found live 2026-09-11/12 (WO-260) on Lewis and Clark County, MT's real Granicus tenant (`lccountymt.granicus.com`) — `MediaPlayer.php?view_id=1&clip_id=N` now 302-redirects to `/player/clip/{id}?view_id=1&redirect=true`, and the adapter's resolve returns "No playable video found on this page" for every one of 3 different, real, recent (Sep 2026) meeting clip ids checked by hand on this one tenant.
-  - **Impact**: unknown scope. Confirmed on exactly one tenant so far — if this is a general rollout of Granicus's new player UI rather than something specific to this tenant's own migration state, other Granicus tenants could be silently losing video the same way, with no error surfaced beyond the existing "no playable video" warning already shown to readers.
-  - **Next action**: check a second, unrelated Granicus tenant known to still resolve fine (e.g. any tenant with a live page today) against a FRESH clip id to see whether it also 302s to `/player/clip/`; if the new shape is spreading, teach `granicus.py` to follow that redirect and parse the new player page (or its own API) for the real video URL.
-  - **Constraint**: don't fix this by guessing at the new player's video-URL shape from one tenant alone — confirm the new page's actual structure (view-source or a headless fetch) before writing a parser for it, per this repo's own "test against a real URL first" rule.
-  - **History**: `BACKLOG_DONE.md`'s WO-260 entry; `rtr-business/research/ENUMERATION_METHODS.md` §288.
 - **[NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant carries only internal Legistar-migration training calls, and its real target (Legistar) shows zero meetings — worth a recheck once the migration finishes.**
   - **Issue**: found live 2026-09-11/12 (WO-260) — `pbc.granicus.com` is confirmed to belong to the real Palm Beach County, FL (its own `ViewPublisherRSS.php` feed titles it "Palm Beach County, FL"), but every item in its videos feed is an internal call about migrating to Legistar ("Kirsten's Test for Training", "Legistar Configuration Workshop #5 - Admin/System Security", etc.), not a public meeting. The county's real target, `pbc.legistar.com` (also confirmed real by its own page title, "Palm Beach County, FL - Calendar"), returns 0 records under every year filter tried.
   - **Impact**: this county (population 1.58M, the single largest government in this WO's whole candidate list) has no usable video on file anywhere, and neither of its two known platforms currently has one to find.
   - **Next action**: re-check `pbc.legistar.com/Calendar.aspx` after a few weeks — once the migration completes it should start showing real meetings with video the normal Legistar way.
   - **Constraint**: don't ingest anything from the training/configuration calls on `pbc.granicus.com` — off-mission by this project's own rule, not a public meeting regardless of how large the government is.
   - **History**: `BACKLOG_DONE.md`'s WO-260 entry; `rtr-business/research/ENUMERATION_METHODS.md` §288.
-- **[NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared tier-3 pin path (`SHARED_HOST_PLATFORMS`/`TIER3_HANDLER`) never covers BoxCast — a BoxCast tier-3 find gets queued with no pin.**
-  - **Issue**: found live 2026-09-11 (WO-258) queuing Habersham County, GA's BoxCast broadcast for tier-3 transcription — confirmed by grep that `scripts/wo134_confirmed_hits_ingest.py` has zero mentions of "boxcast" anywhere in the file. `SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast"}` is the only set that triggers a pin write for a tier-3 queue candidate, so BoxCast never gets one through this path. `scripts/wo184_onehop_ingest.py` mirrors the identical handler shape and has the same gap.
-  - **Impact**: a BoxCast tier-3 candidate queued through either script has no record of which government owns it until a human notices and pins it by hand (as this WO did for Habersham County, `boxcast.tv,channel=boxcast:dcj8qnxnnonndniok58o,...`, following WO-227's own established pin shape) — the transcription worker's later re-resolve of that video has nothing to key it to.
-  - **Next action**: add `"boxcast"` to `SHARED_HOST_PLATFORMS` and teach `_tenant_override_host`/`_tenant_override_match` BoxCast's pin shape (`tenant_host=boxcast.tv`, `match=channel=boxcast:<channel_id>`, from `result.video_channel` — WO-245's own note that `video_channel`, not `external_id`, is the right field for BoxCast).
-  - **Constraint**: BoxCast accounts are shared by several governments (CLAUDE.md's own rule) — a pin must key on the CHANNEL, never a blank/account-wide match, same as the existing WO-227 pins already do.
-  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
-- **[NEEDS-AUDIT] `[EASY]` SuiteOne's adapter can't parse a real, live tenant URL shape: `<slug>.suiteonemedia.com/web/live/`.**
-  - **Issue**: found live 2026-09-11 (WO-258) resolving Floyd County, GA's SuiteOne link — `floydcoin.suiteonemedia.com/web/live/` raised `Could not find a SuiteOne tenant/event id in URL` instead of resolving or skipping cleanly.
-  - **Impact**: this specific government's real video (if one exists behind this URL) can't be resolved at all right now; the error also means the row can't cleanly distinguish "no video" from "adapter can't read this URL shape."
-  - **Next action**: fetch `floydcoin.suiteonemedia.com/web/live/` for real and read what a live/current-broadcast SuiteOne page actually looks like (per CLAUDE.md's "test against a real URL first" rule) before widening the adapter's URL parser to accept this shape.
-  - **Constraint**: only one real example on file so far — don't guess at the general `/web/live/` shape from this single case.
-  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
-- **[NEEDS-AUDIT] `app/platforms/civicplus.py` raised a text-decoding error on a real, live CivicPlus AgendaCenter page instead of skipping cleanly.**
-  - **Issue**: found live 2026-09-12 (WO-258 part 2) resolving El Mirage city, AZ's CivicPlus page — the resolve raised `'utf-8' codec can't decode byte 0xdd in position 44: invalid continuation byte`, reproduced once on the same URL. The page is real and reachable; something on it (likely a non-UTF-8 byte in a linked document or an HTTP response CivicPlus itself serves with the wrong declared encoding) isn't being decoded defensively.
-  - **Impact**: this government's real video/agenda content (if any) can't be resolved at all right now — the row shows as an "error," not a clean "no video" or "no meeting," so its true status is unknown.
-  - **Next action**: fetch El Mirage city, AZ's CivicPlus AgendaCenter page and its linked documents by hand, find the specific non-UTF-8 byte source, and decide whether `civicplus.py` should decode with `errors="replace"` (or detect and use the real encoding) rather than raising.
-  - **Constraint**: only one real example on file so far — don't widen the fix beyond graceful decoding until a second real CivicPlus tenant shows the same failure.
-  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
 - **[NEEDS-AUDIT] Hondo city, TX now has two different real BoxCast channel ids on file, and it's unclear which one BoxCast currently treats as authoritative.**
   - **Issue**: found live 2026-09-12 (WO-258 part 2) — a fresh alt-hop resolve found Hondo's BoxCast video under channel `aetaajdf64jalxx20o9a` ("City Council Meetings," live-confirmed to reference Hondo, several real "Regular City Council Meeting" broadcasts), but `tenant_overrides.csv` already had a DIFFERENT channel id pinned for Hondo from WO-227 (`ffa3guzpvskttftiveop`). Both pins are kept in `tenant_overrides.csv`; neither was removed.
   - **Impact**: low today (both channels resolve to the same government), but a future BoxCast video on either channel keys correctly either way — this is a bookkeeping question, not a live bug, unless BoxCast has actually migrated the account and the old channel id will start 404ing.
@@ -2993,39 +2923,6 @@ of human step they need.
     synthetic case using a real, currently-unpinned `match` value.
   - **History**: found and worked around in WO-112's PR (2026-09-03);
     see that PR's description.
-
-- **[NEEDS-AUDIT] `civicplus.py`'s `resolve()` has no encoding fallback
-  on `response.text()`, crashing on a non-UTF8 CivicPlus response.**
-  - **Issue**: `CivicPlusAssetFinder.resolve()` (`app/platforms/
-    civicplus.py:68`) calls `await response.text()` with no `encoding=`
-    argument and no fallback; a real CivicPlus `DocumentCenter` PDF-view
-    response came back non-UTF8 and raised a raw `UnicodeDecodeError:
-    'utf-8' codec can't decode byte 0xe2 in position 10: invalid
-    continuation byte`, confirmed live 2026-09-01 resolving
-    `https://ga-richmondhill2.civicplus.com/DocumentCenter/View/5032/
-    City-Charter-Updated-2021` (reached via `generic_fallback.py`
-    delegating a candidate link it found on `richmondhill-ga.gov/
-    agendacenter`).
-  - **Impact**: not a production crash today — both call sites that can
-    reach this (`/api/resolve`'s top-level `except Exception` in
-    `app/main.py`, and `generic_fallback._try_delegate_to_known_platform`'s
-    own `except Exception` swallow) already catch it gracefully. The real
-    cost is a silently-failed delegation attempt (logged as a `warning`,
-    not surfaced) on any CivicPlus tenant whose only outbound-link
-    candidate happens to be a non-UTF8 document view rather than a real
-    meeting page — an undercount in exactly the kind of has_video=yes
-    CivicPlus resolve this project is trying to get right (see the
-    §49/coverage_map.csv Phase 1 sweep, `~/Documents/rtr-business/
-    research/ENUMERATION_METHODS.md`).
-  - **Next action**: decode with `encoding=response.get_encoding()` (or
-    a `charset_normalizer`/`chardet` guess) falling back to `errors=
-    "replace"` rather than raising, the way a real browser would render
-    a mis-served page instead of refusing it outright; needs a second
-    real non-UTF8 CivicPlus sample beyond this one before generalizing
-    the fix, per this project's own "never build from one example" rule.
-  - **History**: found during the §49 Phase 1 coverage_map.csv resolve
-    sweep, 2026-09-01 (not yet in `BACKLOG_DONE.md` — this is the first
-    record of it).
 
 - **[NEEDS-AUDIT] The same YouTube video submitted via two different URL
   forms creates two separate Archive pages instead of deduping.**
@@ -4659,37 +4556,52 @@ ever recorded anywhere) — see `BACKLOG_DONE.md`.
   - **History**: found live 2026-09-09, WO-128 (known-platform sweep); worked around locally in `scripts/wo128_known_platform_sweep.py` rather than fixed at the shared-helper level, since `nationwide_2404_ingest.py` was mid-run against production the same day (same "don't change this mid-run" constraint as the agenda-only-ingest entry above).
 
 - **[NEEDS-AUDIT] `suiteone.py`'s `resolve()` raises a raw `ValueError`
-  on a bare tenant homepage instead of finding a real event — confirmed
-  live on 3 counties in one run.**
+  on a bare tenant management-listing root instead of finding a real
+  event — confirmed live on 3 counties in one run.**
   - **Issue**: `SuiteOneAssetFinder.resolve()` requires a URL that
     already carries an `event`/`id` query parameter (`_extract_ids()`);
-    given a bare tenant root (`https://floydcoin.suiteonemedia.com/web/
-    live`, `https://lunaconm.suiteonemedia.com/`, `https://
-    rushcoin.suiteonemedia.com/?embed=1`) it raises `ValueError("Could
-    not find a SuiteOne tenant/event id in URL: ...")`, uncaught by
-    `wo134_confirmed_hits_ingest.py`'s `process_row()`, which surfaces
-    as a hard `RowError` rather than a content-classified skip. Same
-    shape as this section's own eScribe bare-tenant-root entry above and
-    the Granicus bare-homepage-fallback entry a few sections down — a
-    third adapter with the identical "given a listing/root page instead
-    of a specific meeting URL, crash instead of degrading" gap.
-  - **Impact**: confirmed live 2026-09-10, WO-149's county sweep: Floyd
-    County IN, Luna County NM, Rush County IN all counted as `error`
-    (not `skipped`) purely because their only known SuiteOne lead was
-    the tenant's homepage/live-stream URL, not a specific
-    `/event/?id=...` link. Recurred again 2026-09-11 building WO-187
-    (Lincoln County, NM: `https://lincolnconm.suiteonemedia.com/`) — 4
-    counties confirmed now, same bare-tenant-root shape each time.
+    given a bare tenant management root (`https://
+    lunaconm.suiteonemedia.com/`, `https://
+    rushcoin.suiteonemedia.com/?embed=1`, `https://
+    lincolnconm.suiteonemedia.com/` -- each a real, large "Meeting
+    Management" listing page, 200-680KB, confirmed live 2026-09-12) it
+    raises `ValueError("Could not find a SuiteOne tenant/event id in
+    URL: ...")`, uncaught by `wo134_confirmed_hits_ingest.py`'s
+    `process_row()`, which surfaces as a hard `RowError` rather than a
+    content-classified skip. Same shape as this section's own eScribe
+    bare-tenant-root entry above and the Granicus bare-homepage-fallback
+    entry a few sections down — a third adapter with the identical
+    "given a listing/root page instead of a specific meeting URL, crash
+    instead of degrading" gap.
+  - **Impact**: confirmed live 2026-09-10, WO-149's county sweep: Luna
+    County NM, Rush County IN, and (WO-187, 2026-09-11) Lincoln County,
+    NM all counted as `error` (not `skipped`) purely because their only
+    known SuiteOne lead was the tenant's management-listing homepage,
+    not a specific `/event/?id=...` link. A fourth real example from
+    this same run, Floyd County IN's `floydcoin.suiteonemedia.com/web/
+    live/` (a DIFFERENT, smaller "generic livestream pass-through" page,
+    confirmed live 2026-09-12 to be the identical empty-`var src=''`
+    "stream is offline" shape a not-yet-recorded `/event/?id=...` page
+    already produces), is fixed as of WO-285 -- `resolve()` now degrades
+    to an honest no-video result for that one specific shape instead of
+    raising (`_is_live_stub_url()`). The bare management-listing root
+    case here is still open; WO-285 deliberately did not widen into it,
+    per this entry's own "test against a real URL first" rule -- see
+    that WO's own BACKLOG_DONE.md entry.
   - **Next action**: give `SuiteOneAssetFinder` (or its caller) a real
-    event-listing lookup for a bare tenant root, the way
+    event-listing lookup for a bare tenant management root, the way
     `civicclerk_latest_event_url()`/`_discover_escribe_meeting()` already
     do for their platforms — module docstring doesn't document a listing
-    endpoint yet, so check for one on a live tenant (`floydcoin.
+    endpoint yet, so check for one on a live tenant (`lunaconm.
     suiteonemedia.com`) before assuming none exists.
   - **Constraint**: only 3 tenants confirmed so far, all from one sweep
     — a real second example before generalizing further, per this
     repo's "test against a real URL first" rule.
-  - **History**: WO-149, 2026-09-10 (`BACKLOG_DONE.md`).
+  - **History**: WO-149, 2026-09-10 (`BACKLOG_DONE.md`); WO-285,
+    2026-09-12 (`BACKLOG_DONE.md`) fixed the separate `/web/live` shape
+    named here, and corrected that shape's own government from "Floyd
+    County, GA" (WO-258's mistaken attribution) to the real Floyd
+    County, IN this entry already names.
 
 - **[JUST-DO-IT] Castus's URL regex only matches `/video/{id}`, silently
   missing the real `/private/{id}` path variant — confirmed live with

@@ -1,0 +1,240 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+
+    <style type="text/css" runat="server">
+        #captionFrame {
+            position: relative;
+            bottom: 20%;
+            background-color: transparent;
+            overflow: hidden;
+            height: 60px;
+            font-size: 18px !important;
+        }
+
+        #debug {
+            color: yellow;
+            font-size: 12px;
+            position: relative;
+            bottom: 50px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+    <script src="/Scripts/jquery-3.4.1.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jwplayer.com/libraries/c6dKtogg.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+    $(document).ready(function () {
+        var src = '';
+
+        if (src != "") {
+            var sources = [{
+                file: src
+            }, {
+                file: src.replace(":1935", "") + "/playlist.m3u8"
+            }, {
+                file: src.replace(":1935", "") + "/manifest.f4m"
+            }];
+
+            jwplayer('playerContainer').setup({
+                sources: sources,
+                rtmp: {
+                    bufferlength: 3
+                },
+                title: '',
+                width: '100%',
+                aspectratio: '16:9',
+                skin: 'stormtrooper',
+                image: '',
+                autostart: 'True',
+                pipIcon: 'disabled'
+            });
+
+            jwplayer().onBeforePlay(function () {
+                jwplayer().setVolume(50);
+            });
+
+            jwplayer().onError(function () {
+                jwplayer().remove();
+                $("#playerContainer").html('<img src="https://suiteonemedia.com/clifiles/FLOYDCOIN/s3d5umtg.sic.png" style="width:100%;" alt="stream is offline"  />');
+            });
+        }
+        else {
+            $("#playerContainer").html('<img src="https://suiteonemedia.com/clifiles/FLOYDCOIN/s3d5umtg.sic.png" style="width:100%;" alt="stream is offline"  />');
+        }
+
+        setTimeout(function () {
+            if ($('#captionFrame') != null && $('#captionFrame').length) {
+                $('#playerContainer').append($('#captionFrame'));
+                $('#captionFrame').show();
+
+                initCaptionMenu();
+            }
+        }, 3000);
+
+        var refreshId3 = setInterval(function () {
+            checkStreamingStatus();
+        }, 30000);
+
+        function checkStreamingStatus() {
+            var eventId = $("#eventId").val();
+            console.log(eventId);
+            if (parseInt(eventId) <= 0) return;
+
+            $.get('/Event/GetStreamStatus/?eventId=' + eventId, {},
+                function (response) {
+                    var currentStatus = $("#currentStreamStatus").val();
+                    if (currentStatus == "2" && response.status != "2") {
+                        //refresh page to load no stream status image
+                        window.location.reload();
+                    }
+                });
+        }
+    });
+
+    function initCaptionMenu() {
+        $(".jw-icon-cc").attr("style", "display:inline-block;");
+        $(".jw-icon-cc").addClass("cc-on");
+        $(".jw-icon-cc").removeClass("jw-off").removeClass("jw-hidden");
+    }
+
+    $(document).delegate(".jw-icon-cc", "click", function () {
+        if ($(".jw-icon-cc").hasClass("cc-on")) {
+            $(".jw-icon-cc").removeClass("jw-toggle").removeClass("cc-on");
+            $('#captionFrame').hide();
+        }
+        else {
+            $(".jw-icon-cc").addClass("jw-toggle").addClass("cc-on")
+            $('#captionFrame').show();
+        }
+
+        document.querySelector("#playerContainer").focus();
+    });
+
+    setTimeout(function () {
+        jwplayer().on('play', function () {
+            $('#captionFrame').show();
+        });
+
+        jwplayer().on('pause', function (e) {
+            $('#captionFrame').hide();
+        });
+    }, 3000);
+
+    </script>
+</head>
+<body id="homelive">
+    <div id="page-wrapper">
+        <section id="eventDetails">
+            <div class="main-container">
+                <div id="playerContainer"></div>
+                
+<style>
+  .player-help {
+    background: #cacad4;         /* subtle, same as you had */
+    color: #000;                  /* strong contrast on light bg */
+    padding: 6px 8px;
+    font: 400 0.95rem/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    border-radius: 4px;
+  }
+  .player-help__toggle {
+    border: 0;
+    background: none;
+    color: inherit;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;   /* underline for “link” feel */
+    font-weight: 700;             /* bold as requested */
+  }
+  .player-help__toggle:focus-visible {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+  .player-help__instructions {
+    margin-top: 6px;
+    background: #f4f4f7;
+    color: #000;
+    border: 1px solid #e2e2ea;
+    border-radius: 4px;
+    padding: 8px;
+  }
+
+  /* Visually hidden helper for screen readers */
+  .sr-only {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
+</style>
+
+<div class="player-help" role="note" aria-live="polite">
+  <span id="player-help-label">Live stream not working or buffering in Chrome or Edge?</span>
+  <!-- Descriptive, not “Click Here”; stays a button since it reveals inline help -->
+  <button
+    type="button"
+    class="player-help__toggle"
+    id="graphics-toggle"
+    aria-expanded="false"
+    aria-controls="graphics-help"
+    aria-describedby="player-help-label"
+  >
+    Fix video live streaming in Chrome or Edge
+    <span class="sr-only"> — shows steps to disable hardware acceleration</span>
+  </button>
+</div>
+
+<div id="graphics-help" class="player-help__instructions" role="region" aria-labelledby="graphics-help-title" hidden>
+  <p id="graphics-help-title" class="sr-only">Troubleshooting steps</p>
+  <p>
+    In your browser: open <strong>Menu</strong> (three dots) →
+    <strong>Settings</strong> → <strong>System</strong> →
+    turn off <strong>“Use graphics acceleration when available.”</strong>
+    Then <strong>restart</strong> the browser.
+  </p>
+</div>
+
+<script>
+  (function () {
+    const btn = document.getElementById('graphics-toggle');
+    const panel = document.getElementById('graphics-help');
+
+    if (!btn || !panel) return;
+
+    btn.addEventListener('click', function () {
+      const isOpen = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      panel.hidden = isOpen;
+
+      if (!isOpen) {
+        // Move focus into the revealed content for screen-reader users
+        panel.setAttribute('tabindex', '-1');
+        panel.focus({ preventScroll: true });
+      } else {
+        // Return focus to the trigger when collapsing
+        btn.focus({ preventScroll: true });
+      }
+    });
+  })();
+</script>
+                <input type="hidden" id="currentStreamStatus" value="0" />
+                <input type="hidden" id="eventId" value="-1" />
+                <div id="debug" style="visibility:hidden;">no live event was found! Start date: 9/12/2026 7:47:21 AM, zone: Eastern Standard Time</div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
+
