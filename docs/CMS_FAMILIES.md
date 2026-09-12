@@ -1,7 +1,8 @@
 # CMS families field guide (WO-154, 2026-09-10; WordPress family and
 own-domain path pilot added by WO-176, 2026-09-10; GovOffice, Municipal
 Impact and two state-hosted portal families added by WO-179,
-2026-09-10)
+2026-09-10; WordPress's near-universal `/feed/` rate and a small-sample
+CivicPlus video-rate signal added by WO-197, 2026-09-11)
 
 Read this before touching `scripts/cms_fingerprint.py` or
 `app/utils/jurisdiction_data/cms_families.csv`. It explains what a
@@ -184,6 +185,36 @@ rely on them. ProudCity (below) is itself a WordPress build and keeps
 its own more specific family name/rule, checked first — this WordPress
 rule is the fallback for every OTHER WordPress-built government site.
 
+**WO-197 (2026-09-11) found a second, separate reason WordPress is worth
+special treatment: its `/feed/` answers almost every time.** Checking
+2,471 real "a listing page was found, but no video-platform link" sites
+left over from WO-179 for direct video/audio and a working RSS/Atom/ICS
+feed, WordPress sites answered a feed 82.3% of the time (1,354 of 1,645)
+— by far the highest feed-hit rate of any family measured, and higher
+than WordPress's own direct-hit rate for video (7.9%, 130 of 1,645).
+This is exactly what WordPress's own architecture predicts (`/feed/` is
+a built-in, always-on route on a stock install, not a per-tenant
+choice), so treat a WordPress site's `/feed/` as close to a default
+"yes" going into any future feed-based work, the same way `/AgendaCenter`
+is treated as a default "yes" for CivicPlus. See
+`scripts/wo197_media_scan.py`'s feed-detection step and
+`~/Documents/rtr-business/research/wo197_report.csv` for the full,
+per-government data this rate is drawn from.
+
+**The same pass found a small-sample but striking video rate for
+CivicPlus: 66.7% (12 of 18).** These are CivicPlus sites WO-174/179 had
+already checked `/AgendaCenter` for and recorded as carrying no
+recognised platform link — WO-197's direct media/one-hop scan found real
+video or audio on two-thirds of the handful left over anyway, well above
+every other family measured in this same pass (unknown 11.6%, OpenCities
+23.1%, Town Web 6.0%, Revize 6.0%, GovOffice/Municipal Impact 0%). n=18
+is too small to call this a confirmed rate — unlike the families above,
+this one hasn't been checked against a second, independent sample yet —
+but it's a real, live-measured signal that a CivicPlus page can carry
+video (an embed, a direct file link, or a link one hop into a meeting
+detail page) that isn't on `/AgendaCenter` itself, worth a larger,
+CivicPlus-specific follow-up before treating it as settled either way.
+
 ### GovOffice
 
 Added WO-179 (2026-09-10). Unlike every family above, the government's
@@ -299,3 +330,9 @@ family-scale sweep's write-up: WordPress's `/?s=agenda` method run at
 scale over the full `wo174_candidates.csv` population, and how the
 GovOffice/Municipal Impact/state-hosted families above were learned
 (10 real tenants each) and then applied to the rest of that population.
+
+`~/Documents/rtr-business/research/wo197_report.csv` has the per-
+government data behind WO-197's own feed-rate and CivicPlus video-rate
+numbers above: the 2,471 WO-179 "listing found, no platform link"
+governments, checked for direct video/audio and a working feed, one row
+each, with the CMS family carried over from `wo179_report.csv`.

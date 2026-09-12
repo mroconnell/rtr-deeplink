@@ -280,6 +280,72 @@ no backfill.
 **History.** `docs/investigations/hub_architecture_audit.md` §5 and §8;
 `STATE_HUB_PAGES.md` §6; `BACKLOG_DONE.md`'s WO-256 part 1 entry for the
 frozen hub address this builds beside.
+## WO-197 finish: the 2,471-government listing-page media scan, applied, hand-checked, and closed out [Done 2026-09-12]
+
+**What was done and why.** WO-197 scanned every government WO-179 had
+left as a meetings LISTING page with no known platform (2,471 rows): a
+direct media scan of the page for video/audio links, one hop to a
+same-domain meeting-shaped link when the page itself had nothing, and an
+RSS/Atom/ICS feed check as a last resort. Real hits went through the
+usual video-only, one-meeting-per-government, tier-3-only-after-the-
+probe ingest. The scanning agent finished around 02:00 PT on 2026-09-11
+and died before committing anything — this entry is that work's finish:
+applying its report to `jurisdiction_coverage.csv`, hand-checking every
+confirmed video hit, fixing what the hand-check found wrong, and
+carrying its worktree's uncommitted diff onto a fresh branch.
+
+**Result.** Of 2,471 governments: 1,443 had a feed link that answered
+(no video signal — see caution below), 789 stayed agenda-only, 131 had
+no meeting or video at all, 36 were rejected by the tier-3 probe, 20 had
+a meeting but no video, 18 got a live page, 11 went to the tier-3 queue,
+10 errored, and 13 were blocked/gone/challenged.
+
+**Hand-check found 2 wrong-government pages and 1 off-mission page,
+all fixed.** Becker County, MN's "meeting" was really a Minnesota
+Senate committee recording (a state legislature, out of mission) —
+deleted. Alton city, MO's video was really Thayer, MO's own town hall
+meeting — re-keyed to Thayer (a separate real municipality already in
+the registry) via `/internal/jurisdiction/override`. South Newton
+township, PA's video was a regional Cumberland County Planning
+Commission webinar, not a township meeting — deleted. A fourth,
+Galva city, IL, had a claimed page that was never actually created
+(404) on top of an off-mission festival-slideshow video; its row was
+corrected to match. `jurisdiction_coverage.csv` updated for all four.
+Two lower-confidence queued finds (Langhorne borough PA, Greenfield
+town NY) were left on the tier-3 queue but flagged for a look before
+transcription — see `rtr-business/research/wo197_hand_check.csv`.
+
+**Caution: "feed-found" (1,443 rows) is a lead, not a result.** The scan
+only confirms a feed URL exists and answers over HTTP — it never checks
+whether the feed lists meetings or links to video. 93% of these are
+plain WordPress `/feed` URLs (the site's generic content feed, not
+necessarily a meetings calendar). Treat this as a future feed-ingest
+opportunity, not 1,443 working meeting feeds.
+
+**5 real per-video pins added to `tenant_overrides.csv`** for confirmed-
+correct finds (West Milton OH, Ivyland PA, Riverside Township IL,
+Hilltown PA, and Thayer MO in place of the wrong Alton MO pin); the
+agent's worktree had proposed pins for Becker County and South Newton
+too, both dropped since the hand-check found them wrong, and one more
+(The North Shore, ON — a Vimeo showcase link, not a single video)
+dropped because it could not be independently confirmed. Every kept pin
+carries a per-video match, satisfying the `MULTI_GOV_HOSTS` CI
+invariant.
+
+**Docs updated**: `ENUMERATION_METHODS.md` §286 (the full write-up),
+`docs/CMS_FAMILIES.md` (WordPress's 82.3% feed-answer rate and a
+small-sample 66.7% CivicPlus video rate, both found by this scan),
+`docs/COVERAGE_HANDOVER.md`. Two `BACKLOG.md` entries updated: the
+Drive/Dropbox/SoundCloud no-adapter gap widened from a 28-example
+Utah-only finding to an 87-example general one, and a new entry filed
+for BoxCast's adapter being reachable only through ProudCity's own
+delegation (1 real `boxcast.tv` link found outside ProudCity).
+
+Files: `rtr-business/research/wo197_report.csv` (2,471 rows),
+`wo197_confirmed_hits_ingest_log.csv` (226 rows), `wo197_candidates.csv`,
+`wo197_apply_to_jc.py` + its four apply-run logs, `wo197_hand_check.csv`.
+`rtr-deeplink/scripts/wo197_media_scan.py`, `wo197_build_candidates.py`,
+`wo197_ingest_hits.py`.
 
 ## WO-256 (part 1 of 3): a government's hub address is now permanent, so identity fixes stop moving reader URLs [Done 2026-09-12]
 
