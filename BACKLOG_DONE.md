@@ -1552,6 +1552,126 @@ re-check of the same videos.
 `wo258_apply_*.csv` (all `rtr-business/research`, new),
 `ENUMERATION_METHODS.md` §290.
 
+## WO-259: full access-ladder re-scan of the homepage, 431 of 964 governments done, 29 real pages live [Done 2026-09-12]
+
+**What was tested and why.** 964 governments of 5,000+ people had only
+ever had their front page checked once, and that check was a plain
+website fetch plus a scan for links — nothing had tried browser headers
+or a real browser on them before. A plain fetch misses two common
+things: a page a website blocks because it looks like a robot, and a
+page whose menu is built by JavaScript that only shows up in a real
+browser. This work retried those 964 front pages with a step-by-step
+approach: try a plain, honest fetch first; if that is blocked, try
+again looking like an ordinary web browser; if the page loads but shows
+no meeting link at all, load it in a real (headless) browser. Whatever
+worked, stop there and record it.
+
+**A person read every video before it was allowed to become a page or a
+queue entry.** Ryan's rule: no automatic pass gets the final say. For
+every video the ladder found, a person read its title and channel and
+wrote one sentence saying why it really is a meeting of that specific
+government. A video that failed this either belonged to a different
+real government or was not a meeting at all (an interview, a recap, a
+promotional clip).
+
+**Result — how many governments answered, and at which step.**
+
+| Rung that answered | Count of 423 |
+|---|---|
+| Plain fetch | 301 |
+| Real browser (headless) | 98 |
+| Browser headers | 12 |
+| Blocked by a human-check wall (stopped, recorded, not solved) | 7 |
+| Blocked under both plain and browser headers | 3 |
+| Site unreachable | 1 |
+| Timed out | 1 |
+
+423 of the 431 governments processed reached a real page one way or
+another (or already had one); the other 8 already had a page on the
+site.
+
+**Result — what was found on the page.**
+
+| Result | Count of 411 |
+|---|---|
+| Nothing found | 310 |
+| YouTube | 84 |
+| CivicWeb | 3 |
+| Granicus | 3 |
+| Vimeo | 3 |
+| CivicPlus | 2 |
+| SuiteOne Media | 2 |
+| Open Media Project | 1 |
+| CivicClerk | 1 |
+| Viebit | 1 |
+| townhallstreams.com | 1 |
+
+**Result — video.**
+
+| Result | Count of 101 |
+|---|---|
+| Captions available, page live now | 29 |
+| Video, no captions, queued | 4 |
+| Meeting without video | 6 |
+| Rejected by the dead-link/duration check | 0 |
+| Everything else (off-mission, wrong government, resolve error, one shared video that belongs to a different government's page) | 62 |
+
+**Hand-read results.** 4 videos were turned away automatically before a
+person ever saw them (3 named the wrong state or kind of government, 1
+matched a known non-meeting phrase). 45 more reached a person: 36
+approved, 9 turned away. Of the 9: 7 were a real video on the
+government's own channel that was not a governing-body meeting (a youth
+commission interview, a public-input open house about a parks plan, a
+workforce-partnership meeting, a highlights/thank-you recap reel, an
+interview with one council member, a generic Zoom room label with no
+meeting name, a children's-attraction info session), and 2 belonged to a
+different real government (a state agency's video matched by a generic
+title, and a Town's video wrongly matched to the separate, same-named
+Village).
+
+**One approved video already belonged to someone else's page.** Bossier
+Parish, LA's video (a real joint City-Parish board) has real captions,
+but it turned out to already be a live page under Bossier City, not the
+Parish — the joint body's video is the City's, and the Parish still has
+no video of its own. Recorded, not counted as an error.
+
+**A real mistake was found and fixed mid-run.** The script first
+recorded a "likely platform" note for a government the moment ANY
+matching link appeared on its page, before checking whether that link
+led anywhere real. Four governments (Geneva County AL, Winston County
+AL, Vermilion Parish LA, Jackson County IN) got a wrong or empty
+"YouTube" note this way — one was a random unrelated commercial video,
+caught correctly before it could become a page; the other three led
+nowhere. Nothing wrong was ever put on the site — the safety check
+worked — but the note itself was fixed by hand and the script no longer
+writes it until something real is confirmed.
+
+**Caution.** 533 of the 964 governments were never reached — this was a
+real, one-at-a-time run over the live internet and it takes real time
+(about 10 seconds per government, more when the real browser step is
+needed). Nothing was lost: the script picks up exactly where it left
+off, and every government already checked has its answer on file. Zero
+overlap with the 36 governments a separate session (WO-253) is
+correcting for a different, older mistake (recorded tenant domain
+instead of the government's own).
+
+**Recommendation.** Deploy `rtr-deeplink` when convenient — 30 new pins
+landed in `app/utils/jurisdiction_data/tenant_overrides.csv`, and while
+the 29 live pages already carry their own government id and don't need
+a deploy to show correctly, the pins matter for the transcription
+worker's later re-checks. Continuing the remaining 533 governments (the
+exact resume command is in `BACKLOG.md`'s Ship-next section) would keep
+finding more real meetings at roughly this same rate.
+
+**Files:** `rtr-deeplink/scripts/wo259_full_ladder_scan.py` (new),
+`rtr-deeplink/app/utils/jurisdiction_data/tenant_overrides.csv` (30 new
+pins), `rtr-deeplink/scripts/tier3_auto_transcription_queue.txt` (1 new
+line), `rtr-business/research/wo259_report.csv`, `wo259_pending_hand_
+read.csv`, `wo259_hand_read_decisions.csv`, `wo259_hand_check_log.csv`,
+`wo259_host_access_modes.csv`, `wo259_tier3_pending.csv` (all new),
+`jurisdiction_coverage.csv` (updated per government processed),
+`ENUMERATION_METHODS.md` §292.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on
