@@ -1,5 +1,113 @@
 # Backlog — done
 
+## WO-294: Town Hall Streams adapter audit — fixed the real embed-shape change, plus a hidden wrong-video bug [Done 2026-09-12]
+
+**What was done and why.** `BACKLOG.md` carried a `[NEEDS-AUDIT]` entry
+(WO-205, 2026-09-11): 116 of the tier-3 queue's 125 (now ~126)
+townhallstreams.com lines resolved to no video via `townhallstreams.py`'s
+`resolve()`. Per `CLAUDE.md`'s "a backlog entry is a lead, not a spec"
+rule, this re-derived the claim first: 10 real queue lines were picked at
+random from the probe sidecar's "resolve returned no video_url" bucket
+and fetched live, one at a time, with a realistic User-Agent and a 2s
+delay (no CNAME to check — `townhallstreams.com` resolves directly, not
+through `granicusgovaccess.net`).
+
+**What the 10 real pages held.**
+
+| Result | Count of 10 |
+|---|---|
+| Real single-meeting page, real video present, old adapter missed it | 10 |
+| Listing/hub page with no video | 0 |
+| JavaScript-only shell with no server-rendered video | 0 |
+
+All 10 were ordinary single-meeting `stream.php` pages, the same shape
+the adapter was built against. The real video was present in every one —
+just not where the adapter was looking anymore. The site changed its
+embed shape at some point after the adapter was built (2026-08-20): the
+real HLS URL used to sit directly in the `jwplayer(...).setup({file:
+"https://cdn...m3u8"})` call; it now sits one line above, in a JS
+variable (`var originalFile = "https://cdn...m3u8";`) that a browser-side
+script (`thsPlayableHlsUrl`, a Wowza/H.264-keyframe playback workaround)
+reads before handing it to `.setup()`. The adapter's regex only matched
+the old direct-literal shape, so it found nothing on any of these pages.
+Fetching the CDN URL directly (no browser, no extra headers) still works
+today — 9 of the 10 real HLS master playlists returned real content; the
+10th (Durham, ME, 2022) 404s at the CDN, i.e. genuinely gone at the
+source, not an adapter problem.
+
+**A second, more serious bug was found while comparing against the 7-8
+lines the probe had already marked "accept."** Every one of those real
+pages also embeds a second, small "audience view" picture-in-picture
+camera feed, wired up with the *old* literal `file: "..."` shape the
+adapter's regex was matching. Because the regex just searched the whole
+page for that shape, **all 7 (now 8) "accepted" townhallstreams.com
+resolves were silently pointing at the wrong video** — a short clip of
+the room's audience camera, not the meeting — with `title`/`date`/
+`jurisdiction` all coming back `None` besides, since the PIP file's name
+doesn't carry the `{date}_{id}_{title}.mp4` shape the real video's does.
+This had already shipped to production; nothing in the probe or the
+pipeline would have caught it without opening a real page and reading
+what it actually held.
+
+**The fix**, in `app/platforms/townhallstreams.py`: read the real video
+from `var originalFile = "..."` first (confirmed present on all 18 real
+pages checked this session); fall back to the old direct-literal shape
+only if that's absent, and in the fallback, skip any candidate whose
+filename marks it as the PIP camera feed (`pip` appears in every real PIP
+filename checked; no real main-video filename contains it). The fallback
+branch itself has no confirmed positive example — every real page
+checked already has `originalFile` — kept only as defensive backward
+compatibility, flagged as such in the module docstring per this repo's
+"don't claim a data path works without a positive example" convention.
+
+**Verdicts, before and after** (`scripts/probe_tier3_queue.py
+--reprobe`, same real URLs):
+
+| Set | Before | After |
+|---|---|---|
+| 10 sampled "no video_url" lines | 10 reject-dead (no video_url) | 9 accept, 1 reject-dead (Durham ME — real 404 at the CDN, not fixable in the adapter) |
+| 8 previously-"accept" lines | 8 accept (silently the wrong video) | 7 accept (now the real meeting video), 1 reject-short (Searsport, ME — the underlying file is literally named `test.mp4`, a 16.7s test recording, correctly rejected now that the probe reads the real file instead of the PIP camera) |
+
+**Queue correction for the queue owner.** None needed by hand. The probe
+sidecar (`scripts/tier3_auto_transcription_queue_probe.csv`) already
+carries the corrected verdicts for all 18 lines checked this session —
+the existing "feed skips a sidecar-rejected line at no cost" behavior
+handles Durham ME's dead CDN link and Searsport ME's test recording the
+same way it always has. The queue file itself (`scripts/
+tier3_auto_transcription_queue.txt`) was not edited, per this WO's
+constraint.
+
+**Residual**: only 10 of the 116-line "no video_url" bucket were
+reprobed this session (the WO's scope). The fix should recover close to
+all of the rest — logged as its own `BACKLOG.md` entry rather than
+assumed.
+
+**How it was tested.**
+- `tests/fixtures/townhallstreams/hurlockmd_stream_new_shape.html`: real
+  page fetched live 2026-09-12 from `stream.php?location_id=116&id=36006`
+  (Hurlock, MD) — the new `var originalFile` shape, no PIP camera.
+- `tests/fixtures/townhallstreams/henniker_nh_stream_pip.html`: real page
+  fetched live 2026-09-12 from `stream.php?location_id=89&id=75988`
+  (Henniker, NH) — the new shape *plus* the PIP camera, pinning that the
+  adapter now returns the real meeting video and not the audience feed.
+- `tests/test_townhallstreams.py`: two new resolve() tests against those
+  fixtures, plus one synthetic unit test (`test_find_video_url_ignores_a
+  _pip_only_page_in_the_fallback_path`, no real page confirms this branch
+  yet — noted as such) pinning that the fallback path never returns a PIP
+  URL even when it's the only literal `file:` match on the page. All 5
+  pre-existing tests in the file (built against the original literal-
+  shape fixtures) still pass unchanged — those fixtures exercise the
+  fallback path now, which is intentional backward-compatibility
+  coverage rather than a rewrite.
+- All four CI gates run locally and green: `ruff check app/ archive/
+  worker/ scripts/ tests/`, `ruff format --check` (same paths), `python
+  -m pytest`, `alembic check` (untouched — no schema change).
+
+**Deploy note.** This is an `app/` change (`app/platforms/
+townhallstreams.py`). It is on `main` after merge but **not live** until
+the resolver's next deploy (`render.yaml`'s `autoDeploy: false`) — the
+wrong-video bug stays live in production until that deploy happens.
+
 ## WO-295: give scripts/backfill_archived_pages.py a --missing-channel-only filter [Done 2026-09-12]
 
 **What was done and why.** Until PR #999 (2026-09-11), the YouTube

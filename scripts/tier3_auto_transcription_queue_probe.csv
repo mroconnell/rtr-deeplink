@@ -5808,3 +5808,21 @@ https://www.youtube.com/watch?v=Yocwfrtk5P8,youtube,yt-dlp-metadata,6611.00,2025
 https://player.vimeo.com/video/1224988148?badge=0&autopause=0&player_id=0&app_id=58479,vimeo,vimeo-oembed,13260.00,2026-09-08,,1,accept,,0.13,2026-09-12T13:50:22+00:00,bulk_ingest,0
 https://www.youtube.com/watch?v=EFmw0UPb4xs,youtube,yt-dlp-metadata,1691.00,2026-02-24,52116330,1,accept,,1.78,2026-09-12T13:52:44+00:00,bulk_ingest,0
 https://www.sacomaine.org/mayor_and_city_council/council_agendas.php,youtube,yt-dlp-metadata,14444.00,2024-07-09,472044021,1,accept,,1.69,2026-09-12T12:52:38+00:00,bulk_ingest,0
+https://townhallstreams.com/stream.php?location_id=45&id=46031,townhallstreams,hls-master+variant,,,,0,reject-dead,HLS master playlist returned HTTP 404,1.43,2026-09-12T15:17:29+00:00,,0
+https://townhallstreams.com/stream.php?location_id=116&id=36006,townhallstreams,hls-master+variant,3610.51,,,1,accept,,1.69,2026-09-12T15:17:30+00:00,,0
+https://townhallstreams.com/stream.php?location_id=96&id=67218,townhallstreams,hls-master+variant,13711.50,,,1,accept,,1.75,2026-09-12T15:17:32+00:00,,0
+https://townhallstreams.com/stream.php?location_id=48&id=75409,townhallstreams,hls-master+variant,5407.55,,,1,accept,,1.60,2026-09-12T15:17:34+00:00,,0
+https://townhallstreams.com/stream.php?location_id=150&id=73956,townhallstreams,hls-master+variant,148.50,,,0,accept,,1.54,2026-09-12T15:17:35+00:00,,0
+https://townhallstreams.com/stream.php?location_id=33&id=76059,townhallstreams,hls-master+variant,10507.49,,,1,accept,,1.54,2026-09-12T15:17:37+00:00,,0
+https://townhallstreams.com/stream.php?location_id=85&id=47620,townhallstreams,hls-master+variant,10807.01,,,1,accept,,1.58,2026-09-12T15:17:38+00:00,,0
+https://townhallstreams.com/stream.php?location_id=145&id=76049,townhallstreams,hls-master+variant,3481.98,,,1,accept,,1.63,2026-09-12T15:17:40+00:00,,0
+https://townhallstreams.com/stream.php?location_id=122&id=40784,townhallstreams,hls-master+variant,1859.71,,,1,accept,,1.56,2026-09-12T15:17:42+00:00,,0
+https://townhallstreams.com/stream.php?location_id=115&id=76169,townhallstreams,hls-master+variant,5653.40,,,1,accept,,1.56,2026-09-12T15:17:43+00:00,,0
+https://townhallstreams.com/stream.php?location_id=152&id=72646,townhallstreams,hls-master+variant,3884.43,,,1,accept,,1.58,2026-09-12T15:17:49+00:00,,0
+https://townhallstreams.com/stream.php?location_id=30&id=76187,townhallstreams,hls-master+variant,1143.61,,,1,accept,,1.79,2026-09-12T15:17:51+00:00,,0
+https://townhallstreams.com/stream.php?location_id=89&id=75988,townhallstreams,hls-master+variant,5413.87,,,1,accept,,1.77,2026-09-12T15:17:52+00:00,,0
+https://townhallstreams.com/stream.php?location_id=146&id=75023,townhallstreams,hls-master+variant,3672.40,,,1,accept,,1.57,2026-09-12T15:17:54+00:00,,0
+https://townhallstreams.com/stream.php?location_id=152&id=75784,townhallstreams,hls-master+variant,1812.28,,,1,accept,,1.57,2026-09-12T15:17:56+00:00,,0
+https://townhallstreams.com/stream.php?location_id=166&id=74574,townhallstreams,hls-master+variant,5350.82,,,1,accept,,1.57,2026-09-12T15:17:57+00:00,,0
+https://townhallstreams.com/stream.php?location_id=169&id=75941,townhallstreams,hls-master+variant,1883.39,,,1,accept,,1.57,2026-09-12T15:17:59+00:00,,0
+https://townhallstreams.com/stream.php?location_id=175&id=76135,townhallstreams,hls-master+variant,16.71,,,0,reject-short,duration 16.7s is below the 60s meeting-plausibility floor,1.48,2026-09-12T15:18:00+00:00,,0
