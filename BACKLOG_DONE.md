@@ -191,6 +191,123 @@ from WO-235's `wo235_channel_pilot.py`, two subcommands `discover`/
 (the 564-row band before discovery), `wo247_platform_domain_rows.csv`
 (the 22-row caution list), `wo247_apply_to_jc.py`. Full write-up,
 `ENUMERATION_METHODS.md` §282.
+## WO-249: a mandatory hand-read gate on the AgendaCenter follow-up, 73 of the 328 remaining governments processed [Done 2026-09-12]
+
+**What was done and why.** WO-230 left 328 governments unchecked and
+found, partway through, that its own automatic checks still let 3 wrong
+videos through: the title had a real meeting word and the channel was
+the government's own, but the video itself was not a recording of a
+meeting. Ryan's rule, approved 2026-09-12: before any page or queue
+line, a person reads the video's title, channel, and (when those two
+are not enough) its description, and writes one sentence saying why it
+really is a public-body meeting of that government. No page or queue
+line without that sentence.
+
+The existing sweep script
+(`scripts/wo230_agendacenter_followup.py`) now enforces this itself. A
+video that clears every existing automatic check is no longer ingested
+right away. It is set aside in a waiting file
+(`wo249_pending_hand_read.csv`) with its title, channel, and a short
+description. A person reads the waiting file and writes one decision
+per video — approve with a reason, or reject with a reason — into a
+second file (`wo249_hand_read_decisions.csv`). The next run of the same
+script reads that file and finishes the job for real: an approved video
+becomes a page or a queue line exactly as before; a rejected one is
+turned away the same way an automatic rejection already is, so the
+script can still try the next video it found.
+
+**Result.**
+
+| Outcome | Count of 73 | What it means |
+|---|---|---|
+| Meeting or hub found, no usable video | 56 | A real agenda/document hub exists, but no video anywhere on it |
+| No meeting or video found at all | 7 | Nothing usable anywhere on the government's own site |
+| Real captions, page live now | 6 | A real transcript exists and is on the site now |
+| Blocked (could not reach the site) | 2 | A dead domain or a "prove you're human" page |
+| Video too long, set aside rather than queued | 1 | Over the 90-minute cutoff |
+| Rejected by the dead-link/duration check | 1 | The video itself turned out not to have a usable recipe |
+| Video, no captions, queued for cloud transcription | 0 | — |
+| Error | 0 | — |
+
+73 of the 328 remaining governments were processed this run; 255
+remain. Resume with (from a checkout with this WO's PR merged):
+
+```
+DATABASE_URL="sqlite+aiosqlite:////tmp/wo249_scratch.db" \
+  /Users/mroconnell/Documents/rtr-deeplink/.venv/bin/python \
+  scripts/wo230_agendacenter_followup.py
+```
+
+**The hand-read gate caught two more real misses on its own.** 11
+videos cleared every existing automatic check and reached the new gate.
+9 were approved on reading; 2 were turned away, both a real video from
+the government's own channel that was not a meeting recording:
+
+| Government | What the video actually was |
+|---|---|
+| Lacombe, AB | A "Council Debrief" — a short summary of what council decided, not a recording of the meeting itself |
+| Harrison city, OH | A "what to expect when attending" instructional video, not a meeting recording — despite the words "City Council" in its title |
+
+Of the 9 approved, 6 are live pages now (Spartanburg County SC,
+Brooks AB, Swansea village IL, Midlothian village IL, Maumee city OH,
+Larkspur city CA — each checked live on the Archive, each returns
+HTTP 200). 1 (Byram city MS) was approved but its video runs long
+enough to be set aside rather than queued. 1 (Newton city IA) was
+approved but the video's own media shape has no queue recipe yet, so
+it was rejected by that separate, later check — not by the hand read.
+1 (Buffalo city MN) was approved but turned out to already be queued
+by other work, so nothing new was needed.
+
+**A real miss was also found on the automatic side, not fixed here.**
+South River borough, NJ's own real municipal channel ("South River NJ
+TV35," confirmed live via YouTube's own oEmbed lookup) was turned away
+by the *existing* automatic channel check before ever reaching the new
+gate, because its handle (`@southrivernjtv3564`) runs the government's
+name together with no spaces, and that check only recognizes separate
+words. Filed in `BACKLOG.md` with the exact evidence; this government's
+row was not corrected in this run.
+
+**Of this run's 73, 14 of 72 with a shell reading (19%) were an actual
+empty AgendaCenter** (zero real document links) — close to WO-230's own
+8% on its larger batch, both well under the original 30-row spot-check's
+"usually a shell" finding. Where a real hub was found, it was most often
+a numbered page in the site's own navigation (31 times), a Document
+Center (13), the government's own YouTube channel already recorded as
+the hub (12), or a CivicClerk embed (3).
+
+**Caution.** 255 of the 328 governments WO-230 named are still
+unchecked — this run stopped for the day partway through a resumable
+batch, the same way WO-230 did. Nothing was lost: every candidate
+already looked at has a real row, and the script picks up exactly where
+this run left off. This agent could not commit or run `git` against the
+`rtr-business` checkout (worktree isolation inside this session blocks
+any `git` operation outside its own repo) — the research file
+continuation, the waiting/decision files, and a dry-run of what would
+change in `jurisdiction_coverage.csv` (245 field changes across the 336
+governments processed to date) are all written to disk in
+`rtr-business/research/`, but not yet applied or committed there. A
+session with normal `git` access to that checkout needs to run
+`wo230_apply_to_jc.py --apply` and commit the research files.
+
+**Recommendation.** Deploy `rtr-deeplink` — the 6 pins landed straight
+in `app/utils/jurisdiction_data/tenant_overrides.csv` in this PR, and
+the 6 live pages already carry their own `gov_id` in the ingest payload
+so they do not depend on that deploy, but the pins matter for the
+transcription worker's later re-resolve. Separately, have someone with
+`git` access to `rtr-business` run the apply script and commit the
+research files named above.
+
+**Files**: `scripts/wo230_agendacenter_followup.py` (hand-read gate
+added: `PENDING_HAND_READ_CSV`, `HAND_READ_DECISIONS_CSV`,
+`load_hand_read_decisions()`, `_fetch_description_snippet()`, and
+`load_done_gov_ids()` reworked to treat its own `awaiting_hand_read`
+placeholder as not-yet-done so a later run resumes it automatically),
+6 new pins in `app/utils/jurisdiction_data/tenant_overrides.csv`, plus
+`rtr-business/research/wo230_report.csv` (continued), `wo249_pending_
+hand_read.csv`, `wo249_hand_read_decisions.csv` (new), and
+`ENUMERATION_METHODS.md` §283 (methodology and the exact resume
+command).
+
 ## WO-230: the 607 governments of 5,000+ recorded on a bare AgendaCenter — follow the real hub one hop, and a real hand-check gap found and fixed mid-run [Done 2026-09-11]
 
 **What was done and why.** Ryan's own 30-row spot-check found that a
