@@ -1,5 +1,56 @@
 # Backlog — done
 
+## WO-269: the BACKLOG_DONE.md heading gate compares against the branch point, not main's moving tip [Done 2026-09-12]
+
+**What was done and why.** `scripts/check_backlog_done_headings.py`
+(WO-236) is the CI check that stops a finished-work entry from silently
+disappearing from `BACKLOG_DONE.md`. It worked by comparing the current
+branch's `BACKLOG_DONE.md` against `origin/main`'s newest version. Under
+a parallel wave, `main` gains a new heading every few minutes while
+several PRs sit open. A PR's own branch point is always a little behind
+that, so the check kept failing PRs that had never touched the file at
+all — it was comparing against a version of `main` the PR never saw. It
+happened at least four times on 2026-09-12: PR #1027 failed twice, and
+WO-241 and WO-251 each needed a pointless rebase just to pass. The fix
+compares against the **merge-base** instead — the point where the PR
+branch actually forked from `main` — which is what the check's real job
+(catching a PR that drops a heading it inherited) needs. A heading `main`
+gained after that fork point was never the PR's to lose, so it's no
+longer compared at all. `.github/workflows/test.yml`'s checkout step
+needed `fetch-depth: 0` (full history, not a shallow clone) for `git
+merge-base` to find a real common ancestor; this repo is about 1,250
+commits, so the cost is small.
+
+**Result.** A new `resolve_merge_base()` falls back to the old,
+tip-based comparison if `git merge-base` genuinely can't find a common
+ancestor (for example two branches with no shared history), so the check
+never hard-fails on a git quirk. Three new end-to-end tests cover the
+shapes that matter:
+
+| Scenario | Result | What it means |
+| --- | --- | --- |
+| Main gains a heading after the branch forked, branch untouched | Pass | The false failure this fixes — a PR that never touched the file no longer fails. |
+| Branch drops a heading it actually inherited | Fail | The real bug the gate exists to catch still gets caught, even while main has moved on. |
+| Branch only adds new headings of its own | Pass | Normal work keeps passing. |
+
+On a direct push to `main` the check still compares against the
+immediately preceding commit, unchanged — that case was never the
+problem. The companion `BACKLOG.md` warning-only check uses the same
+merge-base.
+
+**Caution.** `fetch-depth: 0` fetches the repo's full git history on
+every CI run. That's cheap today; if the repo grows much larger, revisit
+with a bounded depth plus an `--unshallow` fallback instead.
+
+**Recommendation.** Treat this as closed — verified locally against the
+real `origin/main` on this very branch (the gate printed the resolved
+merge-base commit and passed cleanly) as well as the new fixture-repo
+tests, and the full suite (3,467 tests) and all five CI gates are green.
+
+**Deploy status.** Nothing here touches `app/`, `archive/`, `worker/`, or
+`render.yaml` — only CI config and docs. No deploy needed; this protects
+every PR the moment it merges to `main`.
+
 ## WO-256 (part 3 of 3): one page that lists every meeting we can't yet name a government for, grouped by the website it came from [Done 2026-09-12]
 
 **What was done and why.** Some archived meetings have no government on

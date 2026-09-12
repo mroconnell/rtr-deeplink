@@ -407,7 +407,12 @@ under everything else. This repo extracts and fixes just that part.
   preceding commit's) is entirely absent from the working tree's — a
   companion, warning-only check does the same for a `BACKLOG.md` entry
   that disappears without a matching `BACKLOG_DONE.md` heading to show
-  it was actually finished rather than just dropped.
+  it was actually finished rather than just dropped. **The comparison
+  base is the merge-base of that ref and the PR branch, not the ref's
+  own tip** (WO-269, 2026-09-12) — comparing against `origin/main`'s tip
+  failed PRs under a parallel wave whose branch point simply predated a
+  heading someone else added to `main` in the meantime, even though the
+  PR never touched the file.
 - **A pytest suite exists now (`tests/`, see README's "Running tests")** —
   run it (`pytest`) before/after touching `app/utils/vtt_parser.py`,
   `app/platforms/media_scan.py`, `app/platforms/base.py`, or any platform
