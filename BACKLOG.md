@@ -455,7 +455,7 @@ Roadmap & strategy `[IMPROVEMENT-ROUND]`  (27)
   `[IMPROVEMENT-ROUND]` A path-probe builder from the hub…
 
 Dormant — needs a real example first `[LATER]`  (1)
-  Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20…
+  Laserfiche WebLink: a general adapter is answered "no" now, and the…
 
 Parked deliberately — allowed back `[PARK]`  (4)
   Video-to-calendar join: match a government's video source to its own…
@@ -7198,73 +7198,57 @@ resolver/Archive seam is `get_cached_resolution`/`log_resolution` in
 
 ## Dormant — needs a real example first `[LATER]`
 
-### Laserfiche WebLink: a general adapter isn't justified yet — 1 of 20 real repositories studied carried meeting video `[LATER]` `[EXAMPLE]`
+### Laserfiche WebLink: a general adapter is answered "no" now, and the one live gap is audio-only tier-3 handling `[LATER]` `[EXAMPLE]`
 
-- **Issue**: WO-233 (2026-09-11) studied Laserfiche WebLink as a
-  meeting-video source after Jefferson County, WA turned up a real
-  case (a Board of Commissioners meeting stored as a Zoom-recording
-  MP4 + a real WebVTT caption file, directly inside a Laserfiche
-  folder). Opened 20 real repositories (self-hosted `WebLink`/
-  `WeblinkExternal` and the shared `portal.laserfiche.com` Cloud
-  portal), including Port Arthur TX, Aiken SC, Mebane NC and 16 more.
-  Only Jefferson County carried real video; the other 19 are either
-  documents-only archives (8), login-gated with anonymous API access
-  blocked and never attempted past (7), Cloudflare-challenge-gated (1,
-  Aiken SC), unreachable via DNS or a broken TLS cert chain (2), or on
-  an older WebLink server generation (10.1.1) whose API shape wasn't
-  solved in the time available (1, Pittsylvania County VA).
-- **Impact**: Jefferson County's meeting can be captured without a
-  general adapter — it's one, already fully characterized government,
-  not a pattern. **Done, WO-304 (2026-09-12)**: its September 8, 2026
-  Board of County Commissioners meeting is now a real, live page
-  (`/m/jefferson-county-wa`), ingested via a small, Laserfiche-scoped
-  extension to `app/platforms/direct_file.py` — see `BACKLOG_DONE.md`'s
-  WO-304 entry for what that extension is (docid-based confirmation and
-  sibling-caption lookup, not a general folder-walking adapter) and why
-  it still doesn't change this entry's own defer decision. Every other
-  government studied already has its real
-  meeting video recorded correctly via a different platform (Granicus,
-  Swagit, IQM2, PrimeGov, YouTube, CivicPlus); Laserfiche is their
-  document archive, not their video system. A general adapter would
-  also need to solve the login wall (39% of self-hosted repos) and at
-  least two different WebLink API generations to be reliable. Separately,
-  205 rows in `jurisdiction_coverage.csv` link a WebLink media folder
-  from a CivicPlus AgendaCenter (WO-226's own note) — those weren't
-  individually re-opened by this WO's 20-repository sample, so the true
-  population that could ever benefit from a Laserfiche adapter is still
-  unmeasured, just bounded low by this sample's 5% hit rate.
-- **Next action**: nothing to build without a second real example. The
-  recipe is fully captured if one turns up: WebLink's folder-listing
-  call (`FolderListingService.aspx/GetFolderListing2`) is a JSON POST
-  a plain client can replay with no cookie or session — body
-  `{repoName, folderId, getNewListing, start, end, sortColumn,
-  sortAscending}`, headers `Content-Type: application/json` +
-  `X-Lf-Suppress-Login-Redirect: 1` (read straight out of the served
-  `app/dist/browse/main.js` bundle, not guessed). The video file itself
-  is plainly fetchable too, with no token: `ElectronicFile.aspx?
-  docid=<entryId>&dbid=0&repo=<repo>` returns the raw MP4 with no
-  cookie and honors Range requests — `mediahandler.ashx` (the token-
-  bearing in-page streaming URL) needs a live session and should be
-  ignored entirely by a future adapter. A walk would be: Board/Council
-  folder → newest dated subfolder → any entry with `mediaMimeType` set
-  or extension in `{mp4,m4a,mp3,vtt,srt}` → `ElectronicFile.aspx` for
-  the bytes, date from the folder name, identity from the repo's own
-  government. Threshold to revisit: a second real government with
-  actual meeting video or audio in a Laserfiche WebLink repository.
-- **Constraint**: don't build a speculative general adapter against
-  one confirmed government — CLAUDE.md's "test against a real, live
-  URL first, several from different cities" rule applies here, and
-  this sample already shows the single-example risk directly (an
-  adapter built only against Jefferson County's 11.0.2411.10 API shape
-  would silently fail against Pittsylvania County's 10.1.1 shape).
-- **History**: supersedes the earlier WO-226 Dormant entry on this same
-  subject (removed here — this entry answers its "find 2-3 more real
-  tenants" next action directly and corrects its token claim: the video
-  IS plainly fetchable via `ElectronicFile.aspx`, just not via
-  `mediahandler.ashx`). `BACKLOG_DONE.md`'s WO-226 and WO-233 entries;
-  `rtr-business/research/ENUMERATION_METHODS.md` §277;
-  `rtr-business/research/wo233_repositories.csv` (all 20 repositories,
-  per-repo detail).
+- **Issue**: WO-305 (2026-09-12, two passes) censused all 79 named-
+  government Laserfiche WebLink repositories from WO-234's 302-host
+  discovery (`research/wo234_laserfiche_governments.csv`) — every one
+  actually read, not just attempted. Combined with WO-233's earlier
+  20-repository study, that's every real-named Laserfiche repository on
+  file. Exactly one holds real, ingestable meeting video: Jefferson
+  County, WA (already live, WO-304). Two more real media files turned up
+  and were hand-checked away: Westlake, TX's one .mov file sits in a
+  Board of Trustees agenda-packet folder alongside three unrelated
+  presentation PDFs — supplementary material for one agenda item, not a
+  meeting recording (`video-without-meeting`). Deschutes County, OR has 6
+  real mp3 files under its Historic Landmarks Commission's own
+  meeting-minutes folder (a real appointed commission, not — as
+  suspected — the County Recorder's land-records archive) but no video,
+  and this repo's standing rule is video-only.
+- **Impact**: the general-adapter question is now answered with a full
+  population, not a 20-repository sample — building `app/
+  platforms/laserfiche.py` is not justified by anything on file. The one
+  remaining live gap is narrower and different in kind: **no tier-3
+  probe recipe exists for an audio-only Laserfiche source**, so
+  Deschutes County's real commission audio can't be queued the way a
+  video-with-no-captions meeting can. That gap isn't Laserfiche-specific
+  in principle (any audio-only source hits the same wall) but Deschutes
+  is the only real example on file today.
+- **Next action**: nothing to build for a general Laserfiche adapter
+  without a real example bigger than one government. For the audio-only
+  gap: nothing to build either without a second real audio-only source
+  to confirm the shape against (CLAUDE.md's synthetic-test rule already
+  forbids inventing one) — if a second turns up, `app/
+  platforms/direct_file.py`'s existing Laserfiche extension
+  (`ElectronicFile.aspx?docid=<entryId>&dbid=0&repo=<repo>`, no cookie,
+  honors Range) already fetches the raw bytes; what's missing is a
+  `queue_probe.py` recipe that accepts an audio-only candidate at all
+  (today's probe assumes a video file). Threshold to revisit either
+  half: a second real government, for the adapter question ideally one
+  with meeting video AND a different WebLink API generation than
+  Jefferson County's 11.0.2411.10 (Pittsylvania County VA's 10.1.1 SPA
+  front-end is now a confirmed second generation, still with 0 media
+  found in its own repository); for the audio-only question, any second
+  real audio-only meeting source at all.
+- **Constraint**: don't build a speculative general adapter against one
+  confirmed government, and don't build a speculative audio-only probe
+  recipe against one confirmed source — CLAUDE.md's "test against a
+  real, live URL first, several examples" rule applies to both.
+- **History**: `BACKLOG_DONE.md`'s WO-226, WO-233, WO-304 and WO-305
+  entries; `rtr-business/research/ENUMERATION_METHODS.md` §277 (WO-233),
+  §278 (WO-234), §318 (WO-305); `rtr-business/research/
+  wo233_repositories.csv` (the first 20) and `wo305_report.csv` (all
+  79, one row per government, hand-check verdicts included).
 
 
 ## Parked deliberately — allowed back `[PARK]`
