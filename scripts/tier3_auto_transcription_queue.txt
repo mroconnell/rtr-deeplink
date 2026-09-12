@@ -1,15 +1,3 @@
-https://cfrs-ca.civicweb.net/Portal/MeetingInformation.aspx?Id=4478
-https://codb.civicweb.net/Portal/MeetingInformation.aspx?Id=3550
-https://coforsythnc.civicweb.net/Portal/MeetingInformation.aspx?Id=511
-https://demo.civicweb.net/Portal/MeetingInformation.aspx?Id=778
-https://diligentny.civicweb.net/Portal/MeetingInformation.aspx?Id=778
-https://ingersoll.civicweb.net/Portal/MeetingInformation.aspx?Id=847
-https://kindersley.civicweb.net/Portal/MeetingInformation.aspx?Id=983
-https://leedsthousandislands.civicweb.net/Portal/MeetingInformation.aspx?Id=1234
-https://nederlandco.civicweb.net/Portal/MeetingInformation.aspx?Id=1935
-https://orillia.civicweb.net/Portal/MeetingInformation.aspx?Id=4587
-https://pilottestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
-https://rctestca.civicweb.net/Portal/MeetingInformation.aspx?Id=1778
 https://riverside.civicweb.net/Portal/MeetingInformation.aspx?Id=171
 https://solonohio.civicweb.net/Portal/MeetingInformation.aspx?Id=2711
 https://sylvaniatownship.civicweb.net/Portal/MeetingInformation.aspx?Id=3879
