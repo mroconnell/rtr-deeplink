@@ -739,29 +739,68 @@ class CablecastAssetFinder(AssetFinder):
 
     _CUE_RE = re.compile(r"^(\d{2}):(\d{2}):(\d{2}),(\d{3})\t(.+)$")
 
+    # Real, confirmed second cue shape (WO-309 resume, 2026-09-12) --
+    # independently confirmed live on three unrelated tenants (Wilder KY
+    # /reflect-campbellcounty, Cape Elizabeth ME /reflect-cetv, Huron
+    # charter Township MI /huron-township): the timestamp line itself
+    # carries only a bare speaker label ("S1:", "s4:", ...), and the real
+    # spoken text is on the FOLLOWING line(s), not the same line. Before
+    # this fix, `_parse_transcript()` only ever matched `_CUE_RE`, whose
+    # `(.+)$` group happily captured "S1:" as if it were the cue's real
+    # text -- every cue on an affected tenant came back as just a speaker
+    # label, with the real sentence silently dropped, and nothing
+    # detected this as a warning (transcript_warnings stayed empty, so an
+    # affected page looked like a normal, healthy tier-1/2 ingest). This
+    # is a distinct real shape from the original Charlotte-confirmed one
+    # (`HH:MM:SS,mmm<TAB>TEXT` on one line, no speaker) -- both are
+    # handled here now.
+    _SPEAKER_LABEL_ONLY_RE = re.compile(r"^[Ss]\d+:$")
+
     @staticmethod
     def _parse_transcript(content: str) -> List[dict]:
         """See the module docstring's `vodTranscripts` note for the real
         confirmed shape this parses -- one real cue per line
         (`HH:MM:SS,mmm<TAB>TEXT`), blank-line-separated, no explicit end
-        time. Each cue's end is the next cue's start; the last cue's end
-        equals its own start (same "no better answer available" fallback
-        Granicus's AgendaViewer.php chapter markers already use).
+        time -- or, on some tenants (see `_SPEAKER_LABEL_ONLY_RE` above),
+        `HH:MM:SS,mmm<TAB>SPEAKER:` on its own line followed by the real
+        text on the next line(s), up to a blank line or the next
+        timestamp line. Each cue's end is the next cue's start; the last
+        cue's end equals its own start (same "no better answer available"
+        fallback Granicus's AgendaViewer.php chapter markers already
+        use).
         """
+        lines = content.splitlines()
+        n = len(lines)
         raw_cues = []
-        for line in content.splitlines():
-            match = CablecastAssetFinder._CUE_RE.match(line.strip())
+        i = 0
+        while i < n:
+            match = CablecastAssetFinder._CUE_RE.match(lines[i].strip())
             if not match:
+                i += 1
                 continue
-            h, m, s, ms, text = match.groups()
+            h, m, s, ms, rest = match.groups()
             start = int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
-            text = text.strip()
+            rest = rest.strip()
+            if CablecastAssetFinder._SPEAKER_LABEL_ONLY_RE.match(rest):
+                text_parts = []
+                j = i + 1
+                while j < n:
+                    next_line = lines[j].strip()
+                    if not next_line or CablecastAssetFinder._CUE_RE.match(next_line):
+                        break
+                    text_parts.append(next_line)
+                    j += 1
+                text = " ".join(text_parts).strip()
+                i = j
+            else:
+                text = rest
+                i += 1
             if text:
                 raw_cues.append((start, text))
 
         cues = []
-        for i, (start, text) in enumerate(raw_cues):
-            end = raw_cues[i + 1][0] if i + 1 < len(raw_cues) else start
+        for idx, (start, text) in enumerate(raw_cues):
+            end = raw_cues[idx + 1][0] if idx + 1 < len(raw_cues) else start
             cues.append({"start": start, "end": max(end, start), "text": text})
         return cues
 

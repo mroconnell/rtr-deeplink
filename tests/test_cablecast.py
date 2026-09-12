@@ -559,6 +559,56 @@ def test_parse_transcript_returns_empty_list_for_no_matches():
     assert CablecastAssetFinder._parse_transcript("nothing here") == []
 
 
+def test_parse_transcript_reads_the_speaker_label_on_its_own_line_shape():
+    # Real second cue shape, confirmed live 2026-09-12 (WO-309 resume) on
+    # three unrelated tenants: Wilder KY (reflect-campbellcounty), Cape
+    # Elizabeth ME (reflect-cetv), and this excerpt, from Huron charter
+    # Township, MI's real Zoning Board of Appeals transcript (show 480,
+    # huron-township.cablecast.tv) -- a bare speaker label on the
+    # timestamp line, the real text on the following line. Before the
+    # fix, `_parse_transcript()` returned "S4:" as the cue text and
+    # silently dropped the real sentence.
+    content = (
+        "00:05:44,319\tS4:\n"
+        "Order this meeting of the Zoning Board of Appeals of Huron "
+        "Township at 630. Pledge of allegiance to the flag. Please "
+        "stand for the pledge.\n"
+        "\n"
+        "00:06:17,529\tS4:\n"
+        "Roll call. Vote, please.\n"
+    )
+    cues = CablecastAssetFinder._parse_transcript(content)
+    assert cues == [
+        {
+            "start": 344.319,
+            "end": 377.529,
+            "text": (
+                "Order this meeting of the Zoning Board of Appeals of Huron "
+                "Township at 630. Pledge of allegiance to the flag. Please "
+                "stand for the pledge."
+            ),
+        },
+        {"start": 377.529, "end": 377.529, "text": "Roll call. Vote, please."},
+    ]
+
+
+def test_parse_transcript_still_handles_the_single_line_shape_mixed_in():
+    # The two real cue shapes can appear in the same file (unconfirmed
+    # whether any single real tenant actually mixes them -- this pins
+    # the parser's own per-cue dispatch, not a claim about real data).
+    content = (
+        "00:00:20,830\tFirst cue text.\r\n"
+        "\r\n"
+        "00:00:25,000\tS2:\n"
+        "Second cue, on its own line.\n"
+    )
+    cues = CablecastAssetFinder._parse_transcript(content)
+    assert cues == [
+        {"start": 20.83, "end": 25.0, "text": "First cue text."},
+        {"start": 25.0, "end": 25.0, "text": "Second cue, on its own line."},
+    ]
+
+
 def test_format_date_handles_iso_with_offset_and_invalid():
     assert (
         CablecastAssetFinder._format_date("2026-07-28T00:00:00-04:00") == "2026-07-28"

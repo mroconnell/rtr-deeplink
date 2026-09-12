@@ -101,6 +101,93 @@ files the worker reads at runtime, not code, but the worker itself
 needs the code deploy above before it can act on the queue lines
 correctly (today's deployed adapter would still see these as
 unconfirmed audio and reject them on next probe).
+## WO-309 (resume): the 62 remaining small-platform governments finished, plus a real cablecast.py transcript bug found and fixed [Done 2026-09-12]
+
+**What this was for.** The first WO-309 pass reconciled 117 candidate
+rows down to 63 genuinely open governments across Cablecast, TelVue,
+Castus, ChampDS, Google Drive, eLocalLink and BoxCast, worked 16
+largest-first, and stopped with a resumable file
+(`scratchpad/wo309_still_to_do.csv`) for the rest. This picked that file
+up: re-checked all 63 rows against the Archive, the tier-3 queue and
+deferred files, and the pins file (all still genuinely open), then
+worked every one, largest population first, plus the 4 items the first
+pass left inconclusive or blocked (Rocky Hill CT, Yonkers NY, Manchester
+CT, Old Bridge Township NJ).
+
+**A real, systemic bug was found and fixed along the way.** Three
+unrelated Cablecast tenants (Wilder KY, Cape Elizabeth ME, Huron charter
+Township MI) each returned transcript segments that were just bare
+speaker labels ("S1:", "s4:") with the real spoken text silently
+dropped. The real transcript file format has TWO shapes:
+`HH:MM:SS,mmm<TAB>TEXT` on one line (already handled, confirmed on
+Charlotte NC), and `HH:MM:SS,mmm<TAB>SPEAKER:` on its own line with the
+real text on the FOLLOWING line (not handled at all). Nothing detected
+this as broken — `transcript_warnings` stayed empty, so an affected page
+looked like a normal, healthy transcript. Fixed in
+`app/platforms/cablecast.py` with two new regression tests using real
+transcript text from Huron Township; every existing test still passes.
+This unblocked two real tier-1/2 ingests that would otherwise have gone
+into the tier-3 queue unnecessarily.
+
+**Result of the 63 rows, largest population first:**
+
+| Outcome | Count of 63 | What it means |
+|---|---|---|
+| Page live now (real captions) | 5 | Groton MA, Yarmouth ME, Midland Public Schools MI, Wilder KY, Cape Elizabeth ME |
+| Video found, no captions, queued | 8 | Ludlow KY, Park Hills KY, Lakeside Park KY, Tybee Island GA, Littleton MA, Wellfleet MA, Kansas City USD500 KS, Niagara Falls City SD NY |
+| Already queued, pin fixed | 1 | Farmersville TX (BoxCast) — was queued under a different domain spelling with no gov_id path |
+| Wrong government or tenant | 5 | Nashville AR, Mauston WI, Yonkers City SD NY, Yuma Union HSD AZ, Huron charter Township MI (see below) |
+| Tenant dead or blocked | 2 | Rocky Hill CT and Rocky Hill School District CT (same dead ChampDS tenant) |
+| Rejected by probe | 1 | Oakland charter Township MI |
+| Meeting without video | 5 | Eaton OH, Freemansburg PA, Island Heights NJ, Cranford NJ, St. Lucie County SD FL |
+| Video without meeting or off-mission | 2 | Garza County TX, Worcester County MA |
+| Unsupported platform | 6 | 4 eLocalLink (no adapter), 2 Google Drive folder links |
+| Adapter gap (new URL template) | 1 | Dyersville IA |
+| No platform link found | 19 | Manchester CT, Old Bridge Township NJ, and 17 more New England/Michigan towns and school districts |
+| Real hit found, not chased (budget) | 6 | Hampstead NH, Springfield VT, Pittsford NY, Chester-Upland SD PA, PGCPS MD, Bloomfield charter Township MI |
+| Unconfirmed, fetch failed | 2 | Bedford NH, Paxton MA — need a retry, not a negative finding |
+
+**Wrong-government finds, in detail.** Nashville, AR's Cablecast
+candidate was actually Metro Nashville, TN's real channel — a name
+collision, not this small Arkansas town. Mauston, WI's real meetings are
+on Municode Meetings, not ChampDS — the platform label itself was wrong.
+Yonkers City School District, NY's ChampDS tenant belongs to the CITY of
+Yonkers, not the district (confirmed by the first pass; no other
+platform link found on the district's own site). Yuma Union High School
+District, AZ's own homepage links a TelVue channel that is really the
+City of Yuma, AZ's — a real Kind A find, recorded for a later mint pass;
+the district's own real YouTube channel was not chased (out of scope).
+
+**A caution that needs Ryan's decision, not a silent fix.** Huron
+charter Township, MI's real Cablecast tenant is confirmed (via the
+government's own website) to be "Huron CHARTER Township, WAYNE County,
+MI" — but an EXISTING live Archive page (id 3938) is already keyed to
+"Huron township, HURON County, MI", a different real Michigan township,
+via a `ryan_stated` pin. Not touched. This needs a human decision
+because overriding a `ryan_stated` pin without checking in first is
+exactly the mistake this repo's own conventions warn against.
+
+**Hand-read count.** Roughly 40 real videos were hand-checked against
+their government before queuing or ingesting. 5 came back wrong
+(12.5%), in line with this repo's previously measured 10-12% baseline
+for small towns: the four wrong-government finds above, plus the
+pre-existing Huron Township page (a bug from an earlier session, caught
+by this one's hand-read, not made by this one).
+
+**Recommendation.** Ask Ryan to decide the Huron Township, MI re-key.
+Hand `wo309b_owner_bodies.csv`'s one Kind A row (Yuma, AZ) to a future
+mint pass. The Dyersville IA adapter gap (a third real CablecastPublicSite
+URL template) and the Niagara Falls SD NY URL-shape finding (the
+`/internetchannel/show/{id}` path 404s where `/CablecastPublicSite/
+show/{id}` works) are both filed in `BACKLOG.md` for a future session
+with more URL-investigation budget. Deploy status: the cablecast.py
+transcript-parser fix is code — on `main` after merge, live only after
+the next resolver deploy; the 5 ingested pages and 1 pin fix are live
+now (Archive ingest is a direct API call); the 8 new queue lines and
+their pins reach production tier-3 transcription only after the next
+resolver deploy.
+
+**Rerun `scripts/build_backlog_toc.py` after this entry landed.**
 
 ## WO-318: hand-read the 40 TelVue pages mis-keyed to Pittsford NY, plus the Delaware County PA page [Done 2026-09-12]
 

@@ -114,8 +114,10 @@ Standing decisions — do NOT re-raise  (9)
   Don't lower `MIN_PLAUSIBLE_MEETING_SECONDS` below 60s to catch more…
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
-Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
-  The small-video-platform sweep…
+Ship next — root cause known, fix settled `[JUST-DO-IT]`  (48)
+  The small-video-platform sweep's leftover 8 rows: real hits or fetch…
+  `cablecast.py`: two more real URL/data quirks found by WO-309…
+  `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses…
   `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong…
   The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
@@ -163,7 +165,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (46)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (14)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (15)
+  A live Archive page is keyed to the wrong Michigan township — Huron…
   45 of the 51 `transcribed=true`-no-page research rows found no live…
   Production actions only Ryan should take  (12)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
@@ -722,67 +725,92 @@ recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
 
-### The small-video-platform sweep (Cablecast/TelVue/Castus/Boxcast/ChampDS/Viebit/eLocalLink/Google Drive/Town Hall Streams): 63 governments still open, largest-population-first `[JUST-DO-IT]`
+### The small-video-platform sweep's leftover 8 rows: real hits or fetch failures WO-309 (resume) didn't finish chasing `[JUST-DO-IT]`
 
-- **Issue:** WO-306/307/308 (2026-09-12) finished every 5,000+-population
-  row across Cablecast, TelVue, Castus, Boxcast, ChampDS, Town Hall
-  Streams and Viebit. WO-309 (2026-09-12) reconciled and worked the
-  remainder: cross-checking the original 117-row candidate population
-  against `wo306_report.csv`/`wo307_report.csv`/`wo308_report.csv`,
-  the live research file's `queued`/`parked` columns, the tier-3 queue
-  and deferred files, and `tenant_overrides.csv` found 14 more
-  governments already resolved (6 already queued/deferred/dead from an
-  earlier WO whose pin never reached the queue file or whose `parked`
-  flag was never set; a same-tenant-different-URL miss the domain-only
-  join couldn't catch for 2 more). Of the remainder, WO-309 worked 14 to
-  a real conclusion, largest population first: Edison, NJ ingested
-  tier1/2 (found via a homepage fetch, and required a real
-  `detect_platform()` fix -- see the entry below); Hampton, NH and
-  Galloway Township, NJ queued tier-3 (both via a per-tenant listing
-  step, one meeting deeper than a >90-min newest video); Collegedale
-  TN, Signal Mountain TN, Thompson's Station TN and Broadview Heights
-  OH confirmed blocked by the documented ChampDS VOD2 referer-lock
-  issue (real recent meetings exist, video isn't obtainable — the same
-  confirmed gap as Fulton County GA); Gillette WY confirmed to have no
-  real government-meeting content on its ChampDS customer at all;
-  Oradell NJ and Roselle NJ (both flagged by WO-308) confirmed stale
-  tenants (last real meeting 2020 and 2021 respectively).
-- **Impact:** **63 governments remain open** (cablecast 29, telvue 12,
-  castus 7, champds 5, drive.google 5, elocallink 4, boxcast 1), listed
-  with population and a per-row note in
-  `rtr-business/research/wo309_still_to_do.csv` (ask the conductor for
-  the path if it isn't in this repo). Two smaller leads left dangling:
-  Rocky Hill CT's champds customer slug returned zero events
-  (inconclusive, may be the wrong slug); Bloomfield charter Township,
-  MI has a real YouTube channel (`@BloomfieldCommunityTV`) on its
-  homepage that no session working this entry can chase (YouTube calls
-  are out of scope for this sweep) — a real find for a YouTube-focused
-  session instead.
-- **Next action:** resume from `wo309_still_to_do.csv`, largest
-  population first, the same way Edison/Hampton/Galloway Township were
-  found — a homepage-and-one-hop fetch per government, then the
-  relevant platform's listing step where one exists (Cablecast's
-  `/cablecastapi/v1/shows` JSON listing, TelVue's
-  `list_playlist_items()`, ChampDS's `list_archive_events()`, Boxcast's
-  channel-broadcast listing). No listing step exists yet for Castus or
-  Google Drive/eLocalLink (drive/eLocalLink have no adapter listing
-  concept at all; eLocalLink has no adapter, period — see this file's
-  own entry).
-- **Constraint:** the long-only rule (look one meeting deeper before
-  deferring or queuing a >90-minute newest video; a real caption is
-  grounds to ingest regardless of length) and the "check the queue AND
-  the deferred file AND the pins file for a same-tenant-different-URL
-  hit before assuming a government is untouched" rule both keep paying
-  off — WO-309 found 14 more governments this way before fetching
-  anything. Before pinning ANY shared-SaaS host blank-match, confirm
-  it's really single-tenant first (`cloud.castus.tv`,
-  `videoplayer.telvue.com`, `play.champds.com`, `boxcast.tv` are all
-  confirmed multi-government hosts needing a per-video/per-org pin,
-  never a blank one).
-- **History:** `BACKLOG_DONE.md`, WO-306/307/308/309 (all 2026-09-12);
-  `rtr-business/research/wo306_report.csv` through `wo309_report.csv`
-  and their matching `*_methods_section.md`s
-  (`ENUMERATION_METHODS.md` §318-§323 span this whole sweep).
+- **Issue:** WO-306 through WO-309 (resume) (all 2026-09-12) worked
+  every government across Cablecast, TelVue, Castus, Boxcast, ChampDS,
+  Viebit, Google Drive and eLocalLink to a real conclusion, except 8
+  rows the last pass ran out of budget on: 6 had a real platform hit
+  found but not chased (Hampstead NH's Castus link is on a different
+  domain shape than `cloud.castus.tv`; Springfield VT's Cablecast link
+  looks like a shared regional tenant; Pittsford NY's existing TelVue
+  pin resolves to a different town's content live; Chester-Upland SD
+  PA's TelVue org is live-only with one ambiguous dated item; PGCPS
+  MD's `watch-now` URL didn't yield a show id; Bloomfield charter
+  Township MI has a real YouTube channel, out of scope), and 2 had a
+  homepage fetch simply fail (Bedford NH, Paxton MA).
+- **Impact:** small — 8 governments, none population-known, out of the
+  full ~1,300-government small-video-platform population this sweep
+  already closed.
+- **Next action:** re-fetch Bedford NH (`ci.bedford.nh.us`) and Paxton
+  MA (`townofpaxton.net`) first (simple retries). Then chase the 6 real
+  hits in `rtr-business/research/wo309b_report.csv` (outcome
+  `still_to_do`) one at a time — each row's `note` column has the exact
+  URL and what's unresolved about it.
+- **Constraint:** none.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
+  `rtr-business/research/wo309b_report.csv`;
+  `ENUMERATION_METHODS.md` §327.
+
+### `cablecast.py`: two more real URL/data quirks found by WO-309 (resume), neither fixed yet `[NEEDS-AUDIT]`
+
+- **Issue:** (1) A genuinely new, third CablecastPublicSite URL
+  template, confirmed live on Dyersville, IA
+  (`city-dyersville-ia.cablecast.tv/show/{id}?site=1`) and (in a working
+  form) Huron charter Township, MI: an Ember/FastBoot app mounted at a
+  custom domain's ROOT, using bare `/show/{id}?site=1` URLs -- neither
+  of `cablecast.py`'s two existing resolve paths handles Dyersville's
+  variant (the Remix-scrape path matches the URL shape but finds no
+  Remix context since this is Ember, not Remix; the true
+  CablecastPublicSite JSON API 404s on Dyersville's own subdomain,
+  unlike Huron Township's, which resolves fine via the Remix path
+  despite the same URL shape -- the two tenants are NOT running the same
+  underlying template despite the identical URL). (2) On Niagara Falls
+  City School District, NY's shared tenant
+  (`reflect-niagarafallsosc.cablecast.tv`), the normal
+  `/internetchannel/show/{id}?channel=1` path 404s outright, but
+  `/CablecastPublicSite/show/{id}?site=1` works and returns real data --
+  worth a resolve()-level fallback (try the CablecastPublicSite path
+  when the Remix path 404s) rather than requiring a hand-found URL
+  rewrite every time this shape recurs.
+- **Impact:** Dyersville, IA (real City Council content, confirmed via
+  browser render) stays unresolved. The Niagara Falls shape may recur on
+  other tenants silently -- anyone pasting the "natural"
+  `/internetchannel/show/{id}` URL for such a tenant gets a false
+  "no video" instead of the real content.
+- **Next action:** for (2), add a fallback in `CablecastAssetFinder.resolve()`:
+  when the Remix path's HTML fetch 404s (not just when Remix context is
+  missing), retry via `/CablecastPublicSite/show/{id}?site=<n>` before
+  giving up -- the `site=`/`channel=` query value must be preserved or
+  guessed (Niagara Falls used `site=1`, its own URL had `channel=1`, so
+  a plain re-map might work as a first attempt). For (1), needs a
+  browser session to find the real client-side data-fetch call
+  Dyersville's Ember app makes (a plain `curl`/`aiohttp` fetch of the
+  show page returns no video data at all, real or otherwise) --
+  `mcp__Claude_Browser__read_network_requests` after navigating to the
+  show page and letting it fully render.
+- **Constraint:** none.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
+  `rtr-business/research/wo309b_report.csv`.
+
+### `cablecast.py`'s tenant-slug jurisdiction fallback also mis-guesses the wrong STATE for Wellfleet, MA (returns "Town of Wellfleet, NE") `[JUST-DO-IT]` `[EASY]`
+
+- **Issue:** resolving a real Wellfleet, MA (Cape Cod) Cablecast video
+  (`reflect-townofwellfleet.cablecast.tv`) returns
+  `jurisdiction="Town of Wellfleet, NE"` -- Nebraska, not Massachusetts.
+  Same bug class as the already-documented Marathon, FL/WI Castus
+  collision and Detroit/Charlotte-adjacent cablecast jurisdiction gaps.
+- **Impact:** low today (this WO's own ingest is safe via an explicit
+  `gov_id` pin), but any FUTURE resolve of this tenant with no override
+  would mis-tag the jurisdiction.
+- **Next action:** find whatever known-tenant/known-place map
+  `cablecast.py` uses for its jurisdiction fallback and add an explicit
+  `"reflect-townofwellfleet" -> "Wellfleet, MA"` entry (or fix the
+  underlying place-name-to-state resolution if it's a shared helper),
+  with a regression test pinning the correct state.
+- **Constraint:** none.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
+  `rtr-business/research/wo309b_report.csv`.
 
 ### `castus.py`'s tenant-slug jurisdiction fallback guessed the wrong STATE for a real customer (Marathon, FL → "City Of Marathon, WI") `[JUST-DO-IT]` `[EASY]`
 
@@ -1735,6 +1763,38 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### A live Archive page is keyed to the wrong Michigan township — Huron charter Township, Wayne County, not Huron township, Huron County `[HUMAN]`
+
+- **Issue:** WO-309 (resume) (2026-09-12) found a real Cablecast tenant
+  (`huron-township.cablecast.tv`) for Huron charter Township, MI
+  (`us:cousub:2616340040`, Wayne County) while working the small-video-
+  platform sweep's leftover rows. `bulk_ingest.py` refused with a 409:
+  an EXISTING live Archive page (id 3938,
+  `/m/huron-township-2026-07-30-zba-8-10-26`) is already keyed to
+  `us:cousub:2606340020` ("Huron township", HURON County, MI) via a
+  `ryan_stated` `tenant_overrides.csv` pin. The government's own website
+  (`hurontownship-mi.gov`, the domain the Cablecast link was found on)
+  confirms live it is "Huron CHARTER Township" in "Wayne County" — a
+  different real Michigan township from the one the existing pin names.
+  Two real, distinct governments named "Huron township" exist in
+  Michigan (`us_cousubs.csv`: `2606340020` "Huron township" and
+  `2616340040` "Huron charter township"), which is how this happened.
+- **Impact:** one live page (id 3938) is keyed to the wrong government,
+  and the real ZBA meeting this WO found (show 480, "ZBA 8-10-26", real
+  coherent captions after this WO's own cablecast.py transcript-parser
+  fix) can't be ingested until the conflict is resolved.
+- **Next action:** Ryan decides whether to re-key page 3938 to
+  `us:cousub:2616340040` and update the `tenant_overrides.csv` pin
+  (`huron-township.cablecast.tv,,us:cousub:2606340020,fallback,
+  ryan_stated,...`) to point at the Wayne County township instead —
+  this WO did not touch either, since overriding a `ryan_stated` pin on
+  its own judgment is exactly the mistake this repo's conventions warn
+  against. Once decided, the real ZBA meeting (show 480) is ready to
+  ingest with the corrected `gov_id`.
+- **Constraint:** none.
+- **History:** `BACKLOG_DONE.md`, WO-309 (resume) (2026-09-12);
+  `rtr-business/research/wo309b_report.csv`.
 
 ### 45 of the 51 `transcribed=true`-no-page research rows found no live page anywhere; 3 are real identity-join opportunities `[HUMAN]`
 
