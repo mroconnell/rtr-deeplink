@@ -386,3 +386,103 @@ def test_the_four_wo293_repaired_targets_resolve_in_one_hop():
     ]:
         assert hub_aliases.redirect_target(old_slug) == expected_target
         assert hub_aliases.redirect_target(expected_target) is None
+
+
+# --- WO-303, 2026-09-12: the residual gap BACKLOG.md filed while
+# building the above -- `owned_slugs.add(old_hub)` ran unconditionally
+# for every row with a `current_gov_id`, even the exact row abandoning
+# that hub, so a KEYED (already-minted) government re-keyed to a
+# DIFFERENT keyed government (the actual Lake Havasu shape: a minted
+# `rtr:` id later corrected to the real Census place) never got flagged
+# retired -- only a blank/`rtr:unknown:` page gaining identity for the
+# first time (the test above) did. -------------------------------------
+
+
+async def test_backfill_gov_id_apply_retires_a_slug_when_a_keyed_government_is_rekeyed(
+    tmp_path, monkeypatch, capsys
+):
+    """The real Lake Havasu shape, reproduced end to end: a page already
+    keyed to a freshly-MINTED `rtr:` government (not blank) has its
+    jurisdiction text corrected to a real, different, already-registered
+    government -- exactly what WO-251's name-repair fix did to
+    `rtr:us:az:lake-havasu`, re-keying it onto the real Census place.
+    Before WO-303's fix this printed "hub slugs retired : 0" and wrote
+    no alias, because the row doing the leaving unconditionally
+    re-asserted ownership of its own old hub in the same breath --
+    confirmed directly here against the report's own printed count, not
+    just the end state, since that count IS the exact symptom the
+    original incident's "11 hub slugs retired" precedent relied on a
+    human reading correctly."""
+    alias_file = tmp_path / "hub_slug_aliases.csv"
+    monkeypatch.setattr(hub_aliases, "ALIAS_FILE", alias_file)
+    hub_aliases.hub_slug_aliases.cache_clear()
+
+    source_url = "https://wo303-rekey-retirement-test.example.com/meeting/1"
+    payload = {
+        "platform": "boxcast",
+        "source_url": source_url,
+        "external_id": "boxcast:wo303-rekey-retirement-test",
+        "title": "Council Meeting",
+        "date": "2026-09-01",
+        "jurisdiction": "Wo303 Retirement Repro Placeholder Government, ZZ",
+        "video_url": None,
+        "video_format": None,
+        "segments": [],
+        "agenda_items": [],
+        "transcript_language": None,
+        "transcript_warnings": [],
+    }
+    result = await crud.ingest_resolution(payload, source_url)
+    slug = result["slug"]
+
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+        # Confirm the starting shape really is "already keyed to a minted
+        # government" -- the bug this test guards against only exists for
+        # THAT shape, not the blank one the sibling test above covers.
+        minted_gov_id = page.gov_id
+        assert minted_gov_id and minted_gov_id.startswith("rtr:")
+        # Correct the text to a real, different, registered government --
+        # the WO-251 shape -- without touching gov_id by hand, so the
+        # sweep itself has to discover and perform the re-key. The
+        # sweep computes `old_hub` off the row's STORED jurisdiction at
+        # read time (there is no frozen slug yet for a same-run mint),
+        # so it is this new text, not the original mint-time text, that
+        # decides the old hub here -- "rockaway-nj" (the same raw-text
+        # fallback the sibling blank-shape test above also produces for
+        # this government, before it canonicalizes to the registry's own
+        # "rockaway-borough-nj").
+        page.jurisdiction = "Rockaway, NJ"
+        page.jurisdiction_confidence = "unresolved"
+        await session.commit()
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "backfill_gov_id.py",
+            "--hosts",
+            "wo303-rekey-retirement-test.example.com",
+            "--apply",
+        ],
+    )
+    await backfill_gov_id.main()
+    printed = capsys.readouterr().out
+    assert "hub slugs retired         : 1 " in printed
+
+    async with async_session() as session:
+        page = (
+            await session.execute(select(MeetingPage).where(MeetingPage.slug == slug))
+        ).scalar_one()
+    # The sweep found the real government and re-keyed the page onto it.
+    assert page.gov_id == "us:place:3464050"
+    assert page.gov_id != minted_gov_id
+
+    hub_aliases.hub_slug_aliases.cache_clear()
+    # The abandoned minted government's hub is genuinely retired -- no
+    # page anywhere still carries `minted_gov_id` -- so the alias hook
+    # must have fired for it, redirecting straight to the real
+    # government's own hub.
+    assert hub_aliases.redirect_target("rockaway-nj") == "rockaway-borough-nj"

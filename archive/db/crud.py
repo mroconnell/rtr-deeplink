@@ -47,6 +47,7 @@ from app.utils.gov_registry import governments as registry_governments
 from app.utils.gov_registry import hub_slug as gov_hub_slug
 from app.utils.gov_registry import state_gov_id
 from app.utils.jurisdiction_enrich import finalize_jurisdiction
+from app.platforms.youtube_ids import extract_video_id as _extract_youtube_video_id
 
 from ..utils.date_status import (
     iso_meeting_date,
@@ -3591,20 +3592,24 @@ _TENANT_OVERRIDE_RULES_HEADER = [
 
 # Regex-based per-video match derivation for the WO-210 endpoint fix
 # below -- deliberately duplicated from, not imported from,
-# `app/platforms/youtube.py`/`vimeo.py`/`wistia.py`'s own (more complete)
-# parsers, per this repo's existing app/archive service-boundary
-# convention (see `archive/utils/video_thumbnail.py`'s own header note,
-# and `app/platforms/base.py`'s `MULTI_GOV_HOSTS` comment for why: those
+# `app/platforms/vimeo.py`/`wistia.py`'s own (more complete) parsers, per
+# this repo's existing app/archive service-boundary convention (see
+# `app/platforms/base.py`'s `MULTI_GOV_HOSTS` comment for why: those
 # modules pull in `yt-dlp`/`bs4`, neither of which is in
 # `archive/requirements.txt`, and a module-level import failure there
 # would crash the whole Archive service, not just this one endpoint). A
 # narrower regex than the real adapters' is fine here -- a miss just
 # means no rule is drafted for that page (see the `notes` fallback in
 # `override_jurisdiction()` below) rather than a wrong one.
-_YOUTUBE_VIDEO_ID_RE = re.compile(
-    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/|live/)|youtu\.be/)"
-    r"([A-Za-z0-9_-]{11})"
-)
+#
+# WO-303, 2026-09-12 (BACKLOG.md's "Archive's two own copies" entry): the
+# YouTube case is different -- `app/platforms/youtube_ids.py` was built
+# (WO-250) specifically to hold pure id-extraction with NO `yt_dlp`
+# import, exactly so Archive-side code could use it safely; the "why
+# duplicated" reasoning above never applied to it. This used to be its
+# own copy of the same unbounded `([A-Za-z0-9_-]{11})` pattern, missing
+# the end-boundary fix WO-296 landed in the shared module -- imported
+# from there now instead of drifting out of sync again.
 _VIMEO_VIDEO_ID_RE = re.compile(r"vimeo\.com/(?:video/)?(\d+)")
 _WISTIA_MEDIA_ID_RE = re.compile(r"\.wistia\.com/medias/([A-Za-z0-9]+)")
 
@@ -3625,8 +3630,7 @@ def _multi_gov_match_for_video_url(
     if not video_url or not host:
         return None
     if host in ("www.youtube.com", "youtube.com", "youtu.be", "m.youtube.com"):
-        match = _YOUTUBE_VIDEO_ID_RE.search(video_url)
-        return match.group(1) if match else None
+        return _extract_youtube_video_id(video_url)
     if host in ("vimeo.com", "player.vimeo.com", "www.vimeo.com"):
         match = _VIMEO_VIDEO_ID_RE.search(video_url)
         return f"vimeo:{match.group(1)}" if match else None

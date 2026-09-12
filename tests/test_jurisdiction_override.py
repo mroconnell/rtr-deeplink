@@ -513,3 +513,37 @@ async def test_ordinary_re_ingest_still_updates_jurisdiction_without_an_override
             )
         ).scalar_one()
         assert page.jurisdiction == "Override County C, ZZ"
+
+
+# --- WO-303, 2026-09-12: `_multi_gov_match_for_video_url()`'s YouTube
+# branch switched from its own duplicate 11-char id regex to importing
+# `app.platforms.youtube_ids.extract_video_id` (BACKLOG.md's "Archive's
+# two own copies" entry), which carries WO-296's end-boundary fix.
+# Confirm the "videoseries"/"live_stream" fakes derive no match at all
+# (falling through to a note, not a wrong rule) rather than the old
+# truncated fake id.
+
+
+def test_multi_gov_match_for_video_url_rejects_the_videoseries_and_live_stream_fakes():
+    assert (
+        crud._multi_gov_match_for_video_url(
+            "www.youtube.com", "https://www.youtube.com/embed/videoseries?list=PL123"
+        )
+        is None
+    )
+    assert (
+        crud._multi_gov_match_for_video_url(
+            "www.youtube.com",
+            "https://www.youtube.com/embed/live_stream?channel=UC123",
+        )
+        is None
+    )
+
+
+def test_multi_gov_match_for_video_url_still_resolves_a_real_youtube_id():
+    assert (
+        crud._multi_gov_match_for_video_url(
+            "www.youtube.com", "https://www.youtube.com/embed/aaaaaaaaaaa"
+        )
+        == "aaaaaaaaaaa"
+    )
