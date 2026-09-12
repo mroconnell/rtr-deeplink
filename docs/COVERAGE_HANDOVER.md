@@ -103,7 +103,13 @@ and `scripts/coverage_alternates.py`'s `canonicalize_domain()`.
 - A scheduled task ("Daily coverage registry refresh", 7:09 local, runs
   while the desktop app is open) refreshes it, republishes the hosted
   page, and commits the outputs. Re-running by hand is the one script
-  above.
+  above. **`jurisdiction_coverage.csv`'s own `transcribed` column drifts
+  from the Archive** (pages get deleted or re-keyed, and nothing else
+  writes it back) — `research/refresh_transcribed_flag.py` (WO-301,
+  2026-09-12) corrects it against a fresh archive-inventory export and
+  should run before this refresh; see that script's own docstring and
+  `ENUMERATION_METHODS.md` §311 for the join rules and the caution on
+  its `queued`/`parked` columns undercounting shared-host queue lines.
 
 ### Reading them together
 
@@ -138,7 +144,15 @@ reasons. That is how every sweep below was scoped.
   research file says a government is "ingested" but the registry shows no
   page, the page usually exists on that government's own host under a
   minted or `rtr:unknown` id. Pin the host, backfill, done. 55 hosts and
-  76 pages moved this way in one pass.
+  76 pages moved this way in one pass. **A `transcribed=true` research
+  row with no matching Archive page is the other direction of the same
+  signal** — usually a deleted page, sometimes a page re-keyed to a
+  different `gov_id` for the same government (WO-301, 2026-09-12, found
+  6 of 51 such rows cross-checking cleanly to another `gov_id` on the
+  same host — e.g. a consolidated city-county's page sitting under the
+  place-level id while the county-level research row still says
+  `transcribed=true`). `research/refresh_transcribed_flag.py` never
+  blanks these on its own; it lists them for a human backfill decision.
 - Deploys are manual and pins only reach *new* ingests after one. The
   transcription worker re-resolves a video when it transcribes it, so a
   shared-host pin must be deployed before the worker reaches that queue

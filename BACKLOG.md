@@ -115,6 +115,7 @@ Standing decisions — do NOT re-raise  (9)
   Handover: 120 of the wildcard-sweep's 350 tenants remain unresolved —…
 
 Ship next — root cause known, fix settled `[JUST-DO-IT]`  (42)
+  The research file's `queued` column only catches 18.5% of tier-3…
   Reprobe the rest of the Town Hall Streams tier-3 queue now that the…
   `queue_probe.finish_candidate()` can defer an already-queued meeting…
   The tier-3 probe has no recipe for three real delegated media shapes…
@@ -159,7 +160,8 @@ Ship next — root cause known, fix settled `[JUST-DO-IT]`  (42)
   `www.globeaz.gov` serves a "Client Challenge" page the probe's…
   34 of WO-271's WordPress governments have a front-page…
 
-Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
+Needs a human — dashboard, prod, or product call `[HUMAN]`  (18)
+  51 research-file rows say `transcribed=true` with no matching Archive…
   Production actions only Ryan should take  (15)
     [HUMAN] Run `scripts/backfill_video_channel.py --apply` from the…
     [HUMAN] ~1,676 archived YouTube video ids have no channel on record…
@@ -717,6 +719,39 @@ cap already tried) was tested on 12 large-pool Legistar tenants and
 recovered only 1 more for ~168 extra requests — not worth repeating.
 
 ## Ship next — root cause known, fix settled `[JUST-DO-IT]`
+
+### The research file's `queued` column only catches 18.5% of tier-3 queue lines — persist the per-platform gov_id resolution WO-299 already proved out, instead of doing it ad hoc every time `[JUST-DO-IT]`
+
+- **Issue:** WO-301 (2026-09-12) added a `queued` column to
+  `jurisdiction_coverage.csv` so future sizing can skip re-reading
+  `scripts/tier3_auto_transcription_queue.txt`, joined only through an
+  unambiguous single-tenant host in the research file's own `domain`
+  column (never a shared host, per the same rule CLAUDE.md/
+  `docs/COVERAGE_HANDOVER.md` §3 enforce for pins). ~92% of the queue's
+  2,177 lines sit on a shared host this can't safely join — mostly
+  YouTube (1,314), Utah PMN (527), and Town Hall Streams (118). WO-299
+  (2026-09-12, the same day) already built and ran the real per-platform
+  resolution for two of these — PMN's own "Entity" field, THS's
+  `location_id` query parameter matched against an already-archived page
+  — but did it as one-off in-session logic and never persisted a
+  queue-line-to-gov_id mapping file.
+- **Impact:** `queued` reads as blank for roughly 1,774 real queue
+  lines whose government is knowable, undercounting the column it was
+  built to make trustworthy. Every future sizing pass either
+  under-subtracts an already-queued population or has to redo WO-299's
+  per-platform matching from scratch.
+- **Next action:** persist WO-299's PMN/THS matching (and add YouTube,
+  the largest bucket, via the video's channel where a channel pin
+  already exists) as a small script that writes
+  `research/tier3_queue_gov_ids.csv` (one row per queue line: url,
+  gov_id, match_method), and have `refresh_transcribed_flag.py` read
+  that file instead of doing host-only matching for these lines.
+- **Constraint:** never assign a `gov_id` to a shared-host line by host
+  alone — the multi-gov-host rule is the same reason this wasn't done in
+  the first pass; whatever persists this must resolve per-line, the way
+  WO-299 actually did it.
+- **History:** `BACKLOG_DONE.md`, WO-301 (2026-09-12) and WO-299
+  (2026-09-12).
 
 ### Reprobe the rest of the Town Hall Streams tier-3 queue now that the adapter is fixed `[JUST-DO-IT]` `[EASY]`
 
@@ -1579,6 +1614,32 @@ so that work reads together.
 Nothing here is blocked on engineering. Most are one dashboard login or
 one deliberate production action away from closing. Grouped by what kind
 of human step they need.
+
+### 51 research-file rows say `transcribed=true` with no matching Archive page — deleted, or re-keyed, is a per-row human call `[HUMAN]`
+
+- **Issue:** WO-301 (2026-09-12) refreshed `jurisdiction_coverage.csv`'s
+  `transcribed` column against a fresh Archive export and found 51 rows
+  still marked `transcribed=true` with no Archive page for that row's
+  `gov_id`. It did not blank any of them — a `transcribed=true` row with
+  no page could mean a real deleted page, or a page that's still there
+  but re-keyed to a different `gov_id` for the same government.
+- **Impact:** small (51 of 45,610 rows) but each one is misleading the
+  flag in the opposite direction from the 1,249 this WO corrected —
+  these read as covered when a sizing pass can't actually confirm it.
+  6 of the 51 cross-check cleanly to another `gov_id` on the same host
+  (structural cases: San Francisco County/City, CA; Denver County/City,
+  CO; East Baton Rouge Parish, LA — consolidated city-county
+  governments whose Archive page sits under the place-level id while
+  the county-level research row still says `transcribed=true`). The
+  other 45 have no matching host in the Archive at all.
+- **Next action:** the full 51-row list, with the 6 likely-re-key
+  guesses named, is in `rtr-business/research/wo301_true_no_page.csv`.
+  Ryan (or a follow-up WO working from his call) decides per row: blank
+  `transcribed` for a real deletion, or re-key the research row's
+  `gov_id` to match the Archive's for a structural re-key case.
+- **Constraint:** don't bulk-blank or bulk-re-key from a guess — the 6
+  likely-re-key rows are a cross-check hint, not a confirmed match.
+- **History:** `BACKLOG_DONE.md`, WO-301 (2026-09-12).
 
 ### Production actions only Ryan should take
 

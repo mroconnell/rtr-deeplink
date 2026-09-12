@@ -1,5 +1,74 @@
 # Backlog — done
 
+## WO-301: the research file's `transcribed` flag was stale against the live Archive — 1,249 rows corrected, `queued`/`parked` columns added [Done 2026-09-12]
+
+**What this was.** `jurisdiction_coverage.csv`'s `transcribed` column had
+drifted from the Archive, and it was costing real work: WO-292 found 94
+real `us:sd:` pages where the flag showed only 6, and WO-289 sized a
+623-government pool from the flag and found 302 already had a page and
+121 more were already queued or deferred. Every population-sizing sweep
+that night over-counted because of it. This WO refreshed the flag from
+one fresh read of the live Archive, and added `queued`/`parked` columns
+so a future sweep can size its pool without re-reading the tier-3 queue
+files.
+
+**Result.** One fresh Archive export (`scripts/export_meeting_inventory.py`,
+8,757 pages, 4,682 distinct `gov_id`s with a page) checked against all
+45,610 research-file rows.
+
+| Row's `transcribed`/page state | Count of 45,610 rows | What it means |
+|---|---|---|
+| Blank/false, Archive has a page | 1,249 | Corrected: flag set to `true` |
+| True, Archive has a page | 3,259 | Already correct, untouched |
+| Blank/false, no Archive page | 41,051 | Already correct, untouched |
+| True, no Archive page | 51 | Left untouched, listed for a human call |
+
+Rows corrected, by government kind: municipality 824, county 283,
+township 86, school district 56. The school-district number is the one
+WO-292 flagged directly: the flag went from 6 to 62 true.
+
+**Caution.** The 51 stale-true rows were never auto-blanked — a page may
+be genuinely deleted, or the government may have been re-keyed to a
+different `gov_id` (6 of the 51 cross-check cleanly to another `gov_id`
+on the same host, e.g. a consolidated city-county's page sitting under
+the place-level id). Both cases need a human decision, not a script
+guessing. Separately, the two new columns are a safe floor, not a full
+accounting: `queued` only caught 403 of 2,177 tier-3 queue lines
+(18.5%) because ~92% of the queue sits on a shared multi-government host
+(YouTube, Utah PMN, Town Hall Streams) that this refresh deliberately
+refuses to join by host alone — the same identity-safety rule CLAUDE.md
+and `docs/COVERAGE_HANDOVER.md` §3 already enforce for pins. `parked`
+fared much better (841 of 938, 89.7%) because the deferred file already
+carries `gov_id` per line. Also: this WO's own brief expected the tier-3
+probe sidecar (`tier3_auto_transcription_queue_probe.csv`) to carry
+`gov_id` — checked directly, it doesn't (its header has no identity
+column at all); corrected in `ENUMERATION_METHODS.md` §311.
+
+**Recommendation.** Run `research/refresh_transcribed_flag.py --apply`
+(rtr-business) before every Gov Coverage dashboard refresh, against a
+fresh archive-inventory export — it's cheap (no network calls of its
+own). One sentence pointing to it was added to `coverage_registry.py`'s
+own docstring and to this repo's `docs/COVERAGE_HANDOVER.md` (§2's
+dashboard-refresh bullet, and §3 next to the identity-joins bullet, for
+the re-key-cross-check finding specifically).
+
+**Deploy status.** Data-only change to `rtr-business/research/`
+(`jurisdiction_coverage.csv`, the new `refresh_transcribed_flag.py`
+script, `wo301_report.csv`, `coverage_registry.py`'s docstring,
+`ENUMERATION_METHODS.md` §311) plus two doc sentences in this repo
+(`docs/COVERAGE_HANDOVER.md`). No code in `app/`, `archive/`, `worker/`
+or `scripts/` touched — nothing here needs a deploy. No ingests were
+performed.
+
+**A note on the rtr-business commit.** The shared `rtr-business` working
+tree carried several other sessions' uncommitted files at apply time
+(WO-283, WO-290, WO-291, WO-292's scratch/report files, and an
+uncommitted append to `ENUMERATION_METHODS.md` from WO-289/WO-290) — per
+this repo's multi-session rule, this WO's rtr-business changes were left
+on disk, verified, and NOT committed from this worktree; see this WO's
+final report to the conductor for the exact file list to commit with
+explicit paths.
+
 ## WO-299: queue breadth pass — parked 96 tier-3 lines whose government already has coverage, plus a Vineyard UT re-check [Done 2026-09-12]
 
 **What this was.** A data-only pass over the tier-3 auto-transcription
