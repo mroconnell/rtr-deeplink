@@ -2,11 +2,12 @@
 
 ## WO-285: nine small fixes filed by this week's sweeps — adapter, probe, script and doc corrections, shipped as three PRs [Done 2026-09-12]
 
-Nine small `BACKLOG.md` entries, each filed by a different sweep this
-week (WO-258, WO-260, WO-261, WO-271, WO-276, WO-277), fixed or checked
-in one pass. CLAUDE.md's own rule applied to every one: an entry is a
-lead, not a spec, so each claim was re-checked against the real code and
-a real live example before anything changed. Shipped as three PRs, each
+Eight small `BACKLOG.md` entries (each filed by a different sweep this
+week: WO-258, WO-260, WO-261, WO-271, WO-276, WO-277) plus one stale
+sentence in `BACKLOG_DONE.md`'s own WO-200 entry, fixed or checked in
+one pass. CLAUDE.md's own rule applied to every one: an entry is a lead,
+not a spec, so each claim was re-checked against the real code and a
+real live example before anything changed. Shipped as three PRs, each
 merged green before the next: PR A (adapter and probe fixes, needs a
 deploy), PR B (script fixes, plus one adapter fix that also needs a
 deploy -- see below), PR C (one doc fix, no deploy).
@@ -47,8 +48,16 @@ _ingest.py`/`wo130_county_ingest.py` and three `scripts/wo2*_channel_
 same resolver deploy as PR A (the brief's own "no deploy" label for PR B
 was wrong about this one file; the four script fixes and three
 channel-discovery-script fixes genuinely need no deploy, since none of
-those files run in production). Item 9 (PR C) is appended to this same
-entry once it ships.
+those files run in production). PR C (item 9, docs only) needs no
+deploy.
+
+| Item | What was claimed | What was true | What changed | Test |
+|---|---|---|---|---|
+| 9. BACKLOG_DONE.md WO-200 entry | "Sibling repos (rtr-business, rtr-discovery) have no such hook" | Stale — both now carry the same `SubagentStart` hook: rtr-business (confirmed live: `.claude/hooks/subagent-start.sh` present, `SubagentStart` registered in `.claude/settings.json`) and rtr-discovery (confirmed via `gh pr view 17`: merged 2026-09-11, adds exactly those two files) | Replaced the stale sentence with the brief's supplied replacement, confirmed accurate | N/A -- docs only |
+
+So, all nine items: PR A needs a deploy (items 1-5), PR B needs the same
+deploy for one file (item 7, `youtube.py`) but not for the other two
+(items 6, 8), PR C needs no deploy (item 9).
 
 ## WO-280: two small bugs from WO-259 — a two-letter word read as a state code, and the deferred-file guard that did not fire [Done 2026-09-12]
 
@@ -7353,9 +7362,9 @@ lives in a separate repo with no deploy step.
   - **Caution**: the hook only fires for subagents started from a
     checkout that carries `.claude/settings.json` (any worktree of this
     repo does). It is advisory context, not enforcement: an agent can
-    still write to the shared root. Sibling repos (`rtr-business`,
-    `rtr-discovery`) have no such hook; their conductor waves have the
-    same exposure and the same one-line fix.
+    still write to the shared root. The same hook is on rtr-business
+    master (commit d575a98) and rtr-discovery main (PR #17) since
+    2026-09-11, so all three repos are covered.
   - **Not a code bug**: nothing in `app/`, `archive/`, `worker/` or
     `scripts/` changed. No deploy needed.
   - **The WO number itself collided once**: this entry was first filed as
