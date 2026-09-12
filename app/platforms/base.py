@@ -465,6 +465,37 @@ def detect_platform(url: str) -> str:
         # see hyland.py's own module docstring for the rest of the
         # investigation.
         return "hyland"
+    if path.startswith("/agendacenter"):
+        # CivicPlus "AgendaCenter" -- identical shape to Hyland's path
+        # check just above: most real CivicPlus tenants are white-labeled
+        # onto the government's OWN domain (confirmed live, see
+        # civicplus.py's module docstring for the enumeration), not a
+        # *.civicplus.com subdomain, so the netloc-based "civicplus"
+        # branch above never fires for them. Placed AFTER every netloc
+        # check in this function (this is the last path-only check, right
+        # after Hyland's) so an explicit vendor-host match always wins --
+        # this only fires once nothing above has already claimed the URL.
+        # WO-272 (2026-09-12) mined the real scale of this gap with zero
+        # fetches, from URLs already on file: 1,209 jurisdiction_
+        # coverage.csv rows across 1,205 distinct self-hosted hosts, plus
+        # 250 already-archived Archive pages across 245 distinct
+        # governments, whose source_url is a bare, self-hosted
+        # `/AgendaCenter` URL -- every one of those pages exists only
+        # because a dedicated sweep script called civicplus.py directly,
+        # bypassing this function entirely. Confirmed real self-hosted
+        # examples: welcometoatmore.com/AgendaCenter, www.voluntown.gov/
+        # AgendaCenter (bare listings), www.waynecountyny.gov/
+        # AgendaCenter/ViewFile/Minutes/_09022026-1555 (a single document
+        # link, same host prefix) -- see BACKLOG_DONE.md's WO-275 entry
+        # and docs/investigations/url_shape_mining.md for the rest of the
+        # investigation. This is a routing fix only: CivicPlus AgendaCenter
+        # sites are already measured at ~80% agenda-only/no video, so this
+        # doesn't create new video pages on its own -- it just makes a
+        # self-hosted AgendaCenter URL reached through any OTHER path
+        # (a hop-link scorer, passive discovery, a reader's own paste)
+        # get civicplus.py's dedicated category-listing walk instead of
+        # generic_fallback.py.
+        return "civicplus"
     if "castus.tv" in netloc and "/vod/" in path:
         # Castus -- a real PEG/government-access video platform, confirmed
         # live 2026-08-21 (WO-19) against one real customer, Billings, MT's

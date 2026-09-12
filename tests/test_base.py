@@ -151,6 +151,59 @@ from conftest import load_fixture
             "https://pacificgroveca.suiteonemedia.com/event/?id=1",
             "suiteone",
         ),
+        # WO-275 (2026-09-12): CivicPlus's self-hosted `/AgendaCenter`
+        # shape, path-dispatched the same way Hyland's `/Meetings/
+        # ViewMeeting` already is above -- most real CivicPlus tenants are
+        # white-labeled onto the government's OWN domain, never touching
+        # civicplus.com, so the netloc-based "civicplus" branch above
+        # never fires for them (see WO-272's BACKLOG_DONE.md entry and
+        # docs/investigations/url_shape_mining.md). Real, confirmed
+        # self-hosted examples, all still live as of 2026-09-12:
+        # welcometoatmore.com/AgendaCenter (jurisdiction_coverage.csv) and
+        # www.waynecountyny.gov/AgendaCenter/ViewFile/Minutes/
+        # _09022026-1555 (jurisdiction_coverage.csv, a single-document
+        # link on the same self-hosted shape).
+        ("https://welcometoatmore.com/AgendaCenter", "civicplus"),
+        (
+            "https://www.waynecountyny.gov/AgendaCenter/ViewFile/Minutes/"
+            "_09022026-1555",
+            "civicplus",
+        ),
+        # SYNTHETIC: no self-hosted `/AgendaCenter/ViewFile/Agenda/...`
+        # example turned up anywhere searched for this WO (jurisdiction_
+        # coverage.csv, the archive_export/jc_csv rows in
+        # rtr-business/research/wo272_url_templates.csv, or
+        # docs/investigations/url_shape_mining.md) -- every real self-
+        # hosted example found is either a bare category listing or a
+        # ViewFile/Minutes link. The host (welcometoatmore.com) and the
+        # `/AgendaCenter/ViewFile/Agenda/_MMDDYYYY-nnnn` template are both
+        # real and independently confirmed (the template from the two
+        # real ViewFile examples above and durham/desoto's civicplus.com-
+        # hosted fixtures); only the specific document id is hand-built,
+        # per CLAUDE.md's synthetic-test convention.
+        (
+            "https://welcometoatmore.com/AgendaCenter/ViewFile/Agenda/_09022026-1234",
+            "civicplus",
+        ),
+        # Case-insensitive: real tenants render the path with mixed case.
+        ("https://www.voluntown.gov/agendacenter/", "civicplus"),
+        # Negative control: a Hyland URL must still resolve to "hyland",
+        # not get shadowed by this new check.
+        (
+            "https://tucsonaz.hylandcloud.com/221agendaonline/Meetings/"
+            "ViewMeeting?id=1",
+            "hyland",
+        ),
+        # SYNTHETIC negative control: no real customer combining a known
+        # vendor host with an "/AgendaCenter"-shaped path turned up in
+        # jurisdiction_coverage.csv either (searched for civicclerk.com/
+        # granicus.com/legistar.com/etc. with "agendacenter" anywhere in
+        # the URL) -- this exercises that an explicit vendor-host match
+        # (civicclerk.com, a real, confirmed platform host -- see the
+        # clovisca.portal.civicclerk.com case above) still wins over the
+        # new path-only check, since the civicclerk.com netloc branch
+        # runs first in detect_platform()'s dispatch order.
+        ("https://example.civicclerk.com/AgendaCenter", "civicclerk"),
     ],
 )
 def test_detect_platform(url, expected):
