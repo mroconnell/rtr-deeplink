@@ -1,5 +1,110 @@
 # Backlog — done
 
+## WO-241 · Deleted 31 dead rows from `tenant_overrides.csv` (13 duplicate catch-alls + 18 lone blank-`gov_id` rows), added the CI guard against both shapes; live-verified Carson is likely mis-pinned [Done 2026-09-11]
+
+**Assigned by the conductor** after WO-132 (2026-09-09/10) found 13 hosts
+each carrying two `match=""` (catch-all) rows while resolving rtr-deeplink
+PR #811's merge conflict.
+
+**Checked the actual live impact before touching anything, per the
+conductor's own instruction not to just decide.** `_load_tenant_overrides()`
+already drops a blank-`gov_id` row via its own `if not host or not gov_id:
+continue`, and `_pinned()` already picks the higher-strength row when two
+catch-alls differ in strength (confirmed by calling `resolve_government()`
+directly against `carson.granicus.com` and `newtowntownship.civicweb.net`
+before making any change). **None of the 13 were actually resolving
+wrong today** -- the blank-`gov_id` ones were dead weight the loader
+already ignored, not live bugs, and Newtown's WO-204 `authoritative` row
+was already winning over its stray `fallback` one. Worth cleaning up
+regardless: two catch-alls for one host is exactly the shape that *was*
+a live bug elsewhere the same week (PR #813/WO-132's
+`dallascounty.civicweb.net` fix -- two same-strength catch-alls with no
+principled tiebreak, resolved only by file order).
+
+**Scope grew from 13 to 31 once the general test was written.** The
+conductor asked for a test that "no row has a blank `gov_id`" -- writing
+that test against the real file found **18 more hosts** with a *lone*
+blank-`gov_id` row (no duplicate, just one useless row): `edina-mn.cablecast.tv`,
+`fairfaxcounty.civicweb.net`, `fremont.granicus.com`, `lcpsnm.granicus.com`,
+`lfucg.granicus.com`, `lipower.granicus.com`, `meridianmi.new.swagit.com`,
+`metrolink.granicus.com`, `millcreekut.portal.civicclerk.com`,
+`mwrd.granicus.com`, `pasadenaedu.granicus.com`,
+`pioneercommunityenergy.granicus.com`, `pub-hamilton.escribemeetings.com`,
+`pub-stratford.escribemeetings.com`, `ramseycountymn.granicus.com`,
+`rideuta.granicus.com`, `riverviewmi.cablecast.tv`, `wsscwater.granicus.com`.
+Same dead-weight shape, same zero behavior change from deleting them, so
+deleted too rather than leaving the new test unable to pass.
+
+**The 13 original hosts:**
+
+| host | kept (unchanged) | deleted |
+|---|---|---|
+| carson.granicus.com | `ryan_stated`: Carson City, NV | blank `gov_id` row |
+| greenville.granicus.com | `ryan_stated`: Greenville, NC | blank `gov_id` row |
+| gulfport.granicus.com | `ryan_stated`: Gulfport, FL | blank `gov_id` row |
+| hctv.cablecast.tv | `ryan_stated`: Holden, MA | blank `gov_id` row |
+| howardcounty.granicus.com | `ryan_stated`: Howard County, MD | blank `gov_id` row |
+| huron-township.cablecast.tv | `ryan_stated`: Huron Township, MI | blank `gov_id` row |
+| irvington.granicus.com | `ryan_stated`: Irvington, NY | blank `gov_id` row |
+| newtowntownship.civicweb.net | `wo204` authoritative: Newtown Township, Delaware Co., PA | stray `ryan_stated` fallback row for Newtown borough, PA (a different, real place) |
+| nystateassembly.granicus.com | `ryan_stated`: State of New York | blank `gov_id` row |
+| pasadena.granicus.com | `ryan_stated`: Pasadena, CA | blank `gov_id` row |
+| pleasanthill.granicus.com | `ryan_stated`: Pleasant Hill, CA | blank `gov_id` row |
+| pub-brucecounty.escribemeetings.com | `ryan_stated`: Bruce County, ON | blank `gov_id` row |
+| pub-london.escribemeetings.com | `ryan_stated`: London, ON | blank `gov_id` row |
+
+**Live-verified every surviving pin against the real tenant, not just
+the blank row** (ledger.db `candidates.title`/`resolved_json` for
+archived meeting titles, plus a live browser check on the ambiguous
+ones) -- per the conductor's instruction to flag a contradiction rather
+than decide it. Confirmed correct: `hctv.cablecast.tv` ("Board of
+Selectmen", MA-specific governance), `huron-township.cablecast.tv`
+("LDFA" -- Michigan's Local Development Financing Act, MI-specific),
+`pub-brucecounty.escribemeetings.com` ("Bruce County Council" literally
+in a meeting title). **One likely wrong, flagged rather than fixed**:
+`carson.granicus.com`'s MediaManager login page reads "City of Carson"
+(a City Council government -- Carson City, NV is instead governed by a
+Mayor and Board of Supervisors), and the ledger's own archived meeting
+titles include "Carson Enhanced Infrastructure Financing District" (a
+California-only financing mechanism) and "Carson Reclamation Authority"
+(a real joint powers authority for the City of Carson, CA's landfill
+remediation project -- no Nevada analog exists). This points at
+**Carson, CA**, not the currently-pinned Carson City, NV. Not changed
+here -- flagged for Ryan/the conductor to confirm and decide the
+replacement `gov_id`, since deciding it was explicitly out of this WO's
+scope. The other three ambiguous survivors (`greenville.granicus.com`,
+`gulfport.granicus.com`, `pasadena.granicus.com` -- each has a same-named,
+comparably-plausible city in another state) showed no evidence either
+way in the ledger's stored titles; left as-is, not flagged as wrong,
+just unconfirmed.
+
+**Two new committed-file invariant tests** in `tests/test_gov_registry.py`
+(modeled on WO-210's `test_no_blank_match_row_on_a_multi_gov_host`):
+`test_no_row_has_a_blank_gov_id` and `test_at_most_one_catchall_row_per_host`.
+Deliberately a flat "at most one catch-all row, period" rather than "at
+most one per strength" -- no real case today needs two catch-alls at
+different strengths for one host (Kankakee/McLean's WO-153 fix edited an
+existing row's strength in place rather than adding a second), so the
+stricter invariant stays until a real case argues otherwise.
+
+**Rebase note**: main moved twice under this branch while it was open --
+first WO-231 (13 pin corrections + 1 deletion in this same file), then
+WO-236 (a new BACKLOG_DONE.md heading-preservation CI gate, which this
+entry's own placement must now satisfy). Confirmed neither touched any
+of these 31 hosts; reset to each fresh tip in turn and re-derived the
+deletions from scratch rather than resolving a textual conflict, so
+neither PR's changes were ever at risk.
+
+**Verified.** `ruff check`, `ruff format --check`, `python -m pytest`
+all clean -- 3,326 passed, 16 skipped. Diff on `tenant_overrides.csv` is
+a pure 31-line deletion (checked explicitly: an early attempt via a
+full CSV parse/rewrite round-trip silently normalized incidental
+over-quoting on 2 unrelated pre-existing rows -- redone as a raw
+line-level removal so every surviving row is byte-identical to `main`).
+
+**Next**: after this merges and Ryan deploys, tell the conductor so it
+can run the `gov_id` backfill for the (now single-row) hosts.
+
 ## WO-237: first daily sheet round for the YouTube drip's identity pile — 32 channels reviewed, 38 pins, one mint [Done 2026-09-11]
 
 - **Why:** Ol McClaude's drip reported 63 fed pages flagged `needs_review`

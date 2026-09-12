@@ -2755,6 +2755,63 @@ def test_no_blank_match_row_on_a_multi_gov_host():
     assert registry.rejected_multi_gov_overrides() == ()
 
 
+# --- WO-241, 2026-09-11: no duplicate/blank-gov_id catch-all rows -------
+#
+# Found while resolving rtr-deeplink PR #811's merge conflict (WO-132):
+# 13 hosts each carried two `match=""` (catch-all) rows. Verified live
+# against the current loader (`_load_tenant_overrides()` already drops a
+# blank-`gov_id` row via its own `if not host or not gov_id: continue`,
+# and `_pinned()` already picks the higher-strength row when two catch-
+# alls differ in strength) that none of the 13 were actually resolving
+# wrong today -- the blank-gov_id ones are dead weight, not live bugs,
+# and `newtowntownship.civicweb.net`'s WO-204 `authoritative` row already
+# won over its stray `fallback` one. Cleaned up anyway: two catch-all
+# rows for one host is exactly the shape that WAS a live bug elsewhere
+# this same week (PR #813/WO-132's `dallascounty.civicweb.net` fix, two
+# same-strength catch-alls with no principled way to pick between them,
+# resolved only by file order) -- these tests are the guard against that
+# shape recurring, not just cleanup of these 13. A further 18 hosts
+# turned out to carry a lone blank-`gov_id` row (no duplicate) once the
+# first test below was written against the real file -- same dead-weight
+# shape, cleaned up too since the general invariant asked for is "no row
+# has a blank gov_id", not "no row has a blank gov_id next to another
+# row for the same host".
+
+
+def test_no_row_has_a_blank_gov_id():
+    """Committed-file invariant: every `tenant_overrides.csv` row has a
+    real `gov_id`. The loader already drops a blank one silently
+    (`_load_tenant_overrides()`), which is exactly why one could sit
+    there unnoticed for as long as these rows did -- nothing failed
+    loudly until someone went looking. This is that loud failure."""
+    with open(DATA_DIR / "tenant_overrides.csv", encoding="utf-8") as fh:
+        blank = [
+            r["tenant_host"] for r in csv.DictReader(fh) if not r["gov_id"].strip()
+        ]
+    assert blank == []
+
+
+def test_at_most_one_catchall_row_per_host():
+    """Committed-file invariant: no `tenant_host` carries two `match=""`
+    rows. `_match_override()` returns every row whose `match is None`
+    for a host, and `_pinned()` takes the first one at a given strength
+    -- two catch-alls at the SAME strength resolve by file order alone,
+    not by anything meaningful (the `dallascounty.civicweb.net` bug this
+    guards against). Two catch-alls at DIFFERENT strengths (an
+    `authoritative` override sitting beside the `fallback` row it beats)
+    aren't dangerous the same way, but no real case needs that shape
+    today -- Kankakee/McLean's fix edited one row's strength in place
+    rather than adding a second -- so this stays a flat "at most one,"
+    not "at most one per strength," until a real case argues otherwise."""
+    with open(DATA_DIR / "tenant_overrides.csv", encoding="utf-8") as fh:
+        catchall_hosts = [
+            r["tenant_host"] for r in csv.DictReader(fh) if not r["match"].strip()
+        ]
+    seen = set()
+    dupes = sorted({h for h in catchall_hosts if h in seen or seen.add(h)})
+    assert dupes == []
+
+
 def test_loader_rejects_blank_match_row_on_a_multi_gov_host(monkeypatch, tmp_path):
     """The loader-level half of the safeguard: a blank-match row on
     `vimeo.com` (the real Oak Bluffs shape before WO-183's fix) never
