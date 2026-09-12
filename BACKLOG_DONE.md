@@ -1253,6 +1253,127 @@ one-sentence reason each ingested video was confirmed to be a real
 meeting of that government. `rtr-business/research/ENUMERATION_METHODS.md`
 §288: the full method and every number above.
 
+## WO-258: the alternate-domain one hop on the WO-174 leftover population — 297 of 466 governments worked, 24 real transcripts live, 3 queued [Done 2026-09-12]
+
+**What was tested and why.** `wo174_leftover_5k_plus.csv` lists 1,484
+governments of 5,000+ people. WO-174's CivicPlus AgendaCenter guess
+found nothing for any of them, and none has an Archive page yet. 466 of
+them (333 counties, 133 towns and cities) each have a second, untested
+domain on file. Ryan's rule: a domain earns priority once it produces a
+real meeting. A domain that produces nothing may just be the wrong
+domain, and trying a second one costs nothing. One real example from
+this list: Gooding County, Idaho is recorded under
+`goodingcountyid.gov`, but its real meetings page is
+`goodingcounty.org/agendacenter`, a completely different address.
+
+This session tested that second domain for each of these 466
+governments: could a real person read the page, find a known video
+platform, and — if a video existed — confirm by hand that the video is
+a real meeting of that specific government (not a different government
+with a similar name, and not an unrelated video).
+
+**Result.** 297 of the 466 governments were checked before this session
+ended. 169 remain; the work resumes cleanly (see "What is left" below).
+
+**Result, by step of the test.**
+
+| Step | Result | Count of 297 |
+|---|---|---|
+| Reach | Answered (the page loaded) | 249 |
+| Reach | Dead (no page loaded, or no second domain was really different from the first) | 41 |
+| Reach | Blocked (a "prove you're human" page) | 7 |
+| Find | Nothing on the page | 142 |
+| Find | A real meetings or agenda page, but no known video platform | 85 |
+| Find | A known video platform | 70 |
+
+Of the 70 with a known platform, most (54) were YouTube; the rest were
+spread across CivicPlus (8), CivicClerk (3), and five other platforms
+(1 each).
+
+| Video, of the 70 with a platform | Count of 70 |
+|---|---|
+| Captions available, page live now | 24 |
+| Video, no captions, queued | 3 |
+| Rejected by probe | 0 |
+| Meeting without video | 0 |
+| Error (a real code bug, see below) | 2 |
+| Nothing usable found | 41 |
+
+Of the 24 with captions live now, 14 are brand-new pages and 10 already
+existed under a different path — found again here through the second
+domain, which fixed the bookkeeping even though the page itself was not
+new. All 3 queued videos passed the pre-queue check; one of them (a
+Habersham County, GA commission meeting) is a real 3.2-hour recording,
+kept rather than rejected, per this project's rule that a long meeting
+is not queued out just for being long.
+
+**Hand-read: every candidate with a video was read by a person before
+counting.** 32 candidates were read. 27 were approved as real. 5 were
+turned away:
+
+| Government | What the video actually was |
+|---|---|
+| Orleans County, NY | The New York STATE Board of Elections' own meeting — a real government, just not this county |
+| Early County, GA | The Early County SCHOOL SYSTEM's own channel — a different government from the county |
+| Josephine County, OR | A narrow "Cannabis Advisory Panel" meeting from 2017 — not the county's own governing board |
+| Otter Tail County, MN | A "Workforce Partner Meeting" — a coordination meeting, not the County Board |
+| Marshall County, IN | "Marshall County's Personal Meeting Room" — a Zoom default name, not a real meeting recording |
+
+**A real code bug found, not fixed here.** Floyd County, GA's video
+platform is SuiteOne Media, at
+`floydcoin.suiteonemedia.com/web/live/`. This project's SuiteOne code
+could not read an id out of that exact web address and raised an error
+instead of skipping cleanly. Filed in `BACKLOG.md`.
+
+**A real gap found in shared code, not fixed here.** BoxCast is a video
+host used by several governments (Habersham County, GA is one). This
+project's shared ingest code has no BoxCast support at all for writing
+down which government owns a BoxCast video queued for later
+transcription — checked directly, not assumed. Habersham County's own
+pin was added by hand this session, but the next BoxCast video queued
+through this same code will silently miss the same step. Filed in
+`BACKLOG.md`.
+
+**Domain changes made were conservative, on purpose.** This project
+never changes a government's main recorded domain by itself. When the
+second domain was clearly better and the main domain still loads, the
+second domain was moved to the front of the "other domains" list
+instead — 1 government. When the main domain does not load at all, and
+the second domain found something real, nothing was reordered — the
+finding was written down instead, for a person to decide later. 10
+governments are in that second group, including Karnes County, TX,
+whose main domain does not load and whose real video is on the second
+domain.
+
+**Overlap with WO-253**, a same-day session correcting government
+domains recorded on a shared hosting company's own domain: zero. The
+two lists do not share any of the same governments.
+
+**What is left.** 169 of 466 governments were not reached this session.
+Nothing was lost — every finished government is recorded, and the same
+script skips them automatically on the next run:
+
+```
+DATABASE_URL="sqlite+aiosqlite:////tmp/wo258_resume.db" \
+  python3 scripts/wo258_alt_hop_sweep.py --stage ladder
+```
+
+**What is live now, and what needs a deploy.** The 14 new pages and the
+10 re-found pages are live on the site right now — publishing a page
+does not wait for a deploy. 21 new pins (a permanent record of which
+government owns which video, for future re-checks) and 2 new
+lines in the video-transcription queue are saved in this repository but
+need `rtr-deeplink` to be deployed before they take effect for a future
+re-check of the same videos.
+
+**Files**: `scripts/wo258_alt_hop_sweep.py` (rtr-deeplink, new),
+`~/Documents/rtr-business/research/wo258_apply_to_jc.py` (new),
+`wo258_report.csv`, `wo258_resolve_report.csv`,
+`wo258_pending_hand_read.csv`, `wo258_hand_read_decisions.csv`,
+`wo258_tier3_pending.csv`, `wo258_domain_correction_candidates.csv`,
+`wo258_apply_*.csv` (all `rtr-business/research`, new),
+`ENUMERATION_METHODS.md` §290.
+
 ## WO-250: `scripts/backfill_video_channel.py` crashed on the Archive's Render shell — it imported yt-dlp by accident [Done 2026-09-12]
 
 **What failed and why.** Ryan ran `scripts/backfill_video_channel.py` on

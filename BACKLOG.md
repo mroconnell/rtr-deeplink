@@ -173,9 +173,12 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (164)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (167)
   [NEEDS-AUDIT] `app/platforms/granicus.py` can't extract a playable…
   [NEEDS-AUDIT] `[WAIT]` Palm Beach County, FL's real Granicus tenant…
+  [NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared…
+  [NEEDS-AUDIT] `[EASY]` SuiteOne's adapter can't parse a real, live…
+  [NEEDS-AUDIT] Two real Kind-A finds from WO-258's hand-read gate,…
   [NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a…
   [NEEDS-AUDIT] South Bay, FL is the real example an earlier Dormant…
   [NEEDS-AUDIT] Port Arthur city, TX's `jurisdiction_coverage.csv` row…
@@ -1613,6 +1616,24 @@ of human step they need.
   - **Next action**: re-check `pbc.legistar.com/Calendar.aspx` after a few weeks — once the migration completes it should start showing real meetings with video the normal Legistar way.
   - **Constraint**: don't ingest anything from the training/configuration calls on `pbc.granicus.com` — off-mission by this project's own rule, not a public meeting regardless of how large the government is.
   - **History**: `BACKLOG_DONE.md`'s WO-260 entry; `rtr-business/research/ENUMERATION_METHODS.md` §288.
+- **[NEEDS-AUDIT] `[EASY]` `wo134_confirmed_hits_ingest.py`'s shared tier-3 pin path (`SHARED_HOST_PLATFORMS`/`TIER3_HANDLER`) never covers BoxCast — a BoxCast tier-3 find gets queued with no pin.**
+  - **Issue**: found live 2026-09-11 (WO-258) queuing Habersham County, GA's BoxCast broadcast for tier-3 transcription — confirmed by grep that `scripts/wo134_confirmed_hits_ingest.py` has zero mentions of "boxcast" anywhere in the file. `SHARED_HOST_PLATFORMS = {"youtube", "vimeo", "telvue", "cablecast"}` is the only set that triggers a pin write for a tier-3 queue candidate, so BoxCast never gets one through this path. `scripts/wo184_onehop_ingest.py` mirrors the identical handler shape and has the same gap.
+  - **Impact**: a BoxCast tier-3 candidate queued through either script has no record of which government owns it until a human notices and pins it by hand (as this WO did for Habersham County, `boxcast.tv,channel=boxcast:dcj8qnxnnonndniok58o,...`, following WO-227's own established pin shape) — the transcription worker's later re-resolve of that video has nothing to key it to.
+  - **Next action**: add `"boxcast"` to `SHARED_HOST_PLATFORMS` and teach `_tenant_override_host`/`_tenant_override_match` BoxCast's pin shape (`tenant_host=boxcast.tv`, `match=channel=boxcast:<channel_id>`, from `result.video_channel` — WO-245's own note that `video_channel`, not `external_id`, is the right field for BoxCast).
+  - **Constraint**: BoxCast accounts are shared by several governments (CLAUDE.md's own rule) — a pin must key on the CHANNEL, never a blank/account-wide match, same as the existing WO-227 pins already do.
+  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
+- **[NEEDS-AUDIT] `[EASY]` SuiteOne's adapter can't parse a real, live tenant URL shape: `<slug>.suiteonemedia.com/web/live/`.**
+  - **Issue**: found live 2026-09-11 (WO-258) resolving Floyd County, GA's SuiteOne link — `floydcoin.suiteonemedia.com/web/live/` raised `Could not find a SuiteOne tenant/event id in URL` instead of resolving or skipping cleanly.
+  - **Impact**: this specific government's real video (if one exists behind this URL) can't be resolved at all right now; the error also means the row can't cleanly distinguish "no video" from "adapter can't read this URL shape."
+  - **Next action**: fetch `floydcoin.suiteonemedia.com/web/live/` for real and read what a live/current-broadcast SuiteOne page actually looks like (per CLAUDE.md's "test against a real URL first" rule) before widening the adapter's URL parser to accept this shape.
+  - **Constraint**: only one real example on file so far — don't guess at the general `/web/live/` shape from this single case.
+  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
+- **[NEEDS-AUDIT] Two real Kind-A finds from WO-258's hand-read gate, neither minted or keyed anywhere yet: the New York State Board of Elections, and the Early County, GA school district's own channel.**
+  - **Issue**: WO-258 (2026-09-11) found a real video wrongly resolved for two counties, both caught by the hand-read gate before any page was created (no trust problem live). Orleans County, NY: the video is the NEW YORK STATE Board of Elections' own commissioners' meeting (`@NYSBOE`), a real state agency with no `gov_id` in this project's registry — same "ok to mint?" shape as WO-201's PennDOT/Upper Delaware Council entry above. Early County, GA: the video is the Early County SCHOOL SYSTEM's own channel (`@earlycountyschoolsystem1705`) — a real, different local government (a school district) that this project's national tables already cover as a type, just not looked up here.
+  - **Impact**: none live-facing — both were rejected before ingest, per the hand-read gate. Both are real leads sitting unused: a state board's meetings recorded nowhere, and a school district's own real video not yet checked against that district's own `gov_id`.
+  - **Next action**: for the NYS Board of Elections, Ryan decides whether it's in scope to mint as a curated government at all. For Early County's school district, look up its own `gov_id` in `us_school_districts.csv` and resolve/ingest the same video keyed to that id instead.
+  - **Constraint**: don't pin either video to Orleans County or Early County (the counties) under any circumstance — neither owns this content.
+  - **History**: `BACKLOG_DONE.md`'s WO-258 entry, 2026-09-12.
 - **[NEEDS-AUDIT] `[WAIT]` Whether BoxCast actually re-signs a broadcast's playlist with a LATER expiry once the current one passes is unconfirmed — WO-229's fix depends on it.**
   - **Issue**: WO-229 (2026-09-11) fixed the two live BoxCast pages (Livermore Falls ME, Bartow FL) to ask BoxCast for a fresh signed playlist at view time instead of trusting the one stored at ingest, since that one's `Expires=1789329408` (2026-09-13 19:56 UTC) would otherwise go dark. But asking `GET /broadcasts/{id}/view` twice today, minutes apart, returned the byte-identical signed URL both times (same `Signature`, same `Expires`) — and BoxCast's OWN `boxcast.tv/view/{slug}` page, fetched fresh today, server-renders that exact same URL too. Two DIFFERENT broadcasts on two DIFFERENT, unrelated BoxCast accounts (Livermore Falls' shared "Mt. Blue Community TV" account and Bartow's own government account) both carry the identical `Expires=1789329408` — that shared value across unrelated broadcasts is the only real evidence this is a platform-wide signing-epoch rotation (which would rotate again after 2026-09-13, making WO-229's fix work) rather than a signature frozen forever per broadcast (which would make it a no-op).
   - **Impact**: if BoxCast doesn't rotate, WO-229's fix doesn't help — these two pages, and Atlantic City NJ/South Bay FL once ingested, go permanently dark on schedule regardless of this WO, and no server-side trick can fix it; the actual next step would be BoxCast support/dashboard access about recording retention.
