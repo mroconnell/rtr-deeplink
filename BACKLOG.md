@@ -178,7 +178,9 @@ Needs a human — dashboard, prod, or product call `[HUMAN]`  (17)
     [NEEDS-AUDIT] `[BIG]` Repetition-loop transcript-defect population —…
     [HUMAN] Five `/j/` hubs really do hold two different governments each…
 
-Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (181)
+Open bugs — real, root cause not settled `[NEEDS-AUDIT]`  (183)
+  [NEEDS-AUDIT] `app/platforms/queue_probe.py` has no probe recipe for…
+  [NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a…
   [NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row…
   [NEEDS-AUDIT] `app/platforms/civicplus.py`'s resolve() sometimes…
   [NEEDS-AUDIT] A real ProudCity or viebit tenant page named "watch…
@@ -1766,6 +1768,18 @@ of human step they need.
 
 ## Open bugs — real, root cause not settled `[NEEDS-AUDIT]`
 
+- **[NEEDS-AUDIT] `app/platforms/queue_probe.py` has no probe recipe for a `new.swagit.com` video-detail-page URL or a `play.champds.com` event URL, so a real tier-3 candidate delegated to either from a CivicClerk `media` page is rejected `reject-dead` before it ever reaches the queue.**
+  - **Issue**: found live 2026-09-12 (WO-289), two real governments in the same 7-candidate batch — Taylor County, TX (`https://taylortx.portal.civicclerk.com/event/2001/media` -> `https://taylortx.new.swagit.com/videos/395918`) and Campbell County, WY (`https://campbellcowy.portal.civicclerk.com/event/6808/media` -> `https://play.champds.com/gillettewy/event/957`). Both resolved a real video through CivicClerk's own delegation, and both failed `finish_candidate()`'s probe with `reason="no probe recipe for this media shape"` — the video itself was never actually checked (not a dead-link/short-meeting reject).
+  - **Impact**: every CivicClerk government whose real video lives on one of these two hosts is silently unqueueable today, no matter how good the candidate — a probe-tooling gap masquerading as a content reject in `jurisdiction_coverage.csv`'s `rejected-by-probe` rows.
+  - **Next action**: add a probe recipe for both URL shapes to `app/platforms/queue_probe.py` (Swagit's `new.swagit.com/videos/<id>` page and CivicClerk's champds delegation, `play.champds.com/<tenant>/event/<id>`) — likely a HEAD/metadata fetch analogous to the existing Swagit/CivicClerk recipes already in that file, not a new platform adapter.
+  - **Constraint**: only 2 examples so far (from one batch) — confirm the URL shape is stable across a few more real tenants before hard-coding a parser.
+  - **History**: `BACKLOG_DONE.md`'s WO-289 entry.
+- **[NEEDS-AUDIT] A "known platform, no page" sweep needs to filter out a government already represented in `scripts/tier3_auto_transcription_queue.txt` / `tier3_long_meetings_deferred.txt`, not just one with an existing Archive page — checking pages alone let WO-289 pick 5 of 7 hand-approved candidates that turned out to duplicate another concurrent sweep's already-queued meeting for the same government.**
+  - **Issue**: found live 2026-09-12 (WO-289) — the candidate population was filtered against a fresh meeting-inventory export (governments with a page), but not against the tier-3 queue/deferred files (governments with a real candidate already queued but not yet ingested). Of 7 hand-approved candidates in the first batch, 5 turned out to already have a queue/deferred line for the same government under a *different* URL, once checked during finishing — 2 of those (Kansas City city, KS and Carlsbad city, NM) had already been written as new/duplicate lines by this run's own `finish_candidate()` call before the check caught it, and were removed by hand afterward.
+  - **Impact**: real time spent hand-reading and finishing candidates that added zero net-new coverage, and a real risk of two queue/deferred lines existing for one government (violates the "one meeting per government" rule) if the duplicate isn't caught before commit.
+  - **Next action**: before hand-reading, cross-check each candidate's tenant host against every host already present in `tier3_auto_transcription_queue.txt` and `tier3_long_meetings_deferred.txt` (a coarse but effective single-tenant-vendor-host match — `scripts/wo289_list_candidates.py`'s own round-2 pre-filter, added mid-run, is the reference implementation) and skip a match rather than re-approving it.
+  - **Constraint**: the host-level check is approximate (a single-tenant vendor subdomain almost always means one government, but isn't a formal guarantee) — a genuine per-government/per-URL check would be stronger if this recurs often.
+  - **History**: `BACKLOG_DONE.md`'s WO-289 entry.
 - **[NEEDS-AUDIT] Randall County, TX's `jurisdiction_coverage.csv` row says `shares_video=True` with no `example_meeting_url`, but a fresh WO-281 resolve of its own recorded CivicPlus AgendaCenter URL found the adapter checked the 5 most recent listings and found no real video link.**
   - **Issue**: found live 2026-09-12 (WO-281) resolving `https://randallcounty.gov/agendacenter` directly through `civicplus.py` — the adapter's own resolve explicitly reported checking the 5 most recent listings and finding no video, which contradicts the row's existing `shares_video=True`. Neither an `example_meeting_url` nor a `reject_reason` is set on the row, so there's no record of where the `shares_video=True` claim came from.
   - **Impact**: this government's coverage status can't currently be trusted either way — the dashboards would count it as having video with nothing to point to.

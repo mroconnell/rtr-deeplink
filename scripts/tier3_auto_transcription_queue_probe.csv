@@ -5826,3 +5826,5 @@ https://townhallstreams.com/stream.php?location_id=152&id=75784,townhallstreams,
 https://townhallstreams.com/stream.php?location_id=166&id=74574,townhallstreams,hls-master+variant,5350.82,,,1,accept,,1.57,2026-09-12T15:17:57+00:00,,0
 https://townhallstreams.com/stream.php?location_id=169&id=75941,townhallstreams,hls-master+variant,1883.39,,,1,accept,,1.57,2026-09-12T15:17:59+00:00,,0
 https://townhallstreams.com/stream.php?location_id=175&id=76135,townhallstreams,hls-master+variant,16.71,,,0,reject-short,duration 16.7s is below the 60s meeting-plausibility floor,1.48,2026-09-12T15:18:00+00:00,,0
+https://taylortx.portal.civicclerk.com/event/2001/media,civicclerk,,,,,0,reject-dead,no probe recipe for this media shape: https://taylortx.new.swagit.com/videos/395918,0.00,2026-09-12T15:08:40+00:00,wo289,0
+https://carlsbadnm.portal.civicclerk.com/event/1464/media,civicclerk,head+ffprobe,1440.73,2026-08-13,14407314,1,accept,,2.43,2026-09-12T15:08:42+00:00,wo289,0
